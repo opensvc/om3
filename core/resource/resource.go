@@ -19,20 +19,7 @@ type (
 
 		// common
 		GetSubset()	string
-		GetLog()	Log
-	}
-
-	LogEntryLevel		string
-
-	LogEntry struct {
-		level		LogEntryLevel		`json:"level"`
-		message		string			`json:"message"`
-	}
-
-	Log []LogEntry
-
-	Logger interface {
-		Error()
+		GetLog()	*LogType
 	}
 
 	ManifestType struct {
@@ -44,7 +31,7 @@ type (
 	Resource struct {
 		ResourceId	string			`json:"rid"`
 		Subset		string			`json:"subset"`
-		Log		Log			`json:"log,omitempty"`
+		Log		LogType			`json:"-"`
 	}
 
 	ResourceStatusType struct {
@@ -52,7 +39,7 @@ type (
 		Status		status.StatusType	`json:"status"`
 		Subset		string			`json:"subset,omitempty"`
 		Type		string			`json:"type"`
-		Log		Log			`json:"log,omitempty"`
+		Log		[]LogEntry		`json:"log,omitempty"`
 	}
 )
 
@@ -65,13 +52,8 @@ func (r Resource) GetSubset() string {
 	return r.Subset
 }
 
-func (r Resource) GetLog() Log {
-	return r.Log
-}
-
-func (l Log) Error(s string, args ...interface{}) {
-	message := fmt.Sprintf(s, args...)
-	l = append(l, LogEntry{"error", message})
+func (r *Resource) GetLog() *LogType {
+	return &r.Log
 }
 
 func ResourceType(r ResourceInterface) string {
@@ -101,7 +83,7 @@ func PrintStatus(r ResourceInterface) error {
 		Type: ResourceType(r),
 		Status: Status(r),
 		Subset: r.GetSubset(),
-		Log: r.GetLog(),
+		Log: r.GetLog().Dump(),
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
@@ -127,6 +109,7 @@ Stdin:
 
 func Action(r ResourceInterface) error {
 	action := os.Getenv("RES_ACTION")
+
 	switch action {
 	case "status":
 		return PrintStatus(r)

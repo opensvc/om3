@@ -17,7 +17,7 @@ type R struct {
 	Destination string	`json:"destination"`
 	Gateway string		`json:"gateway"`
 	Netns string		`json:"netns"`
-	resource.Resource
+	*resource.Resource
 }
 
 func (r R) Manifest() resource.ManifestType {
@@ -45,6 +45,6 @@ func (r R) Manifest() resource.ManifestType {
 }
 
 func (r R) String() string {
-        return fmt.Sprintf("<Resource %s.%s %s>", DriverGroup, DriverName, r.ResourceId)
+        return fmt.Sprintf("<Resource %s.%s %s>", DriverGroup, DriverName, r.Resource.ResourceId)
 }
 
