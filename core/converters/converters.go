@@ -4,8 +4,8 @@ package converters
 type Type string
 
 const (
-	// ConverterSHLEX Convert string to a shell expression argv-style list
-	ConverterSHLEX Type = "shlex"
-	// ConverterINTEGER Concert string to an integer
-	ConverterINTEGER Type = "integer"
+	// Shlex Convert string to a shell expression argv-style list
+	Shlex Type = "shlex"
+	// Integer Concert string to an integer
+	Integer Type = "integer"
 )
