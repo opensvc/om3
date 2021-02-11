@@ -1,15 +1,14 @@
 package keywords
 
 import (
-        "opensvc.com/opensvc/core/converters"
+	"opensvc.com/opensvc/core/converters"
 )
 
 type Keyword struct {
-	Name		string
-	Scopable	bool
-	Required	bool
-	Convert		converters.ConverterType
-	Text		string
-	Example		string
+	Name     string
+	Scopable bool
+	Required bool
+	Convert  converters.Type
+	Text     string
+	Example  string
 }
-

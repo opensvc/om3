@@ -11,38 +11,37 @@ import (
 
 type (
 	ResourceInterface interface {
-		Label()		string
-		Manifest()	ManifestType
-		Start()		error
-		Stop()		error
-		Status()	status.StatusType
+		Label() string
+		Manifest() ManifestType
+		Start() error
+		Stop() error
+		Status() status.Type
 
 		// common
-		GetSubset()	string
-		GetLog()	*LogType
+		GetSubset() string
+		GetLog() *LogType
 	}
 
 	ManifestType struct {
-		Group		string			`json:"group"`
-		Name		string			`json:"name"`
-		Keywords	[]keywords.Keyword	`json:"keywords"`
+		Group    string             `json:"group"`
+		Name     string             `json:"name"`
+		Keywords []keywords.Keyword `json:"keywords"`
 	}
 
 	Resource struct {
-		ResourceId	string			`json:"rid"`
-		Subset		string			`json:"subset"`
-		Log		LogType			`json:"-"`
+		ResourceId string  `json:"rid"`
+		Subset     string  `json:"subset"`
+		Log        LogType `json:"-"`
 	}
 
 	ResourceStatusType struct {
-		Label		string			`json:"label"`
-		Status		status.StatusType	`json:"status"`
-		Subset		string			`json:"subset,omitempty"`
-		Type		string			`json:"type"`
-		Log		[]LogEntry		`json:"log,omitempty"`
+		Label  string      `json:"label"`
+		Status status.Type `json:"status"`
+		Subset string      `json:"subset,omitempty"`
+		Type   string      `json:"type"`
+		Log    []LogEntry  `json:"log,omitempty"`
 	}
 )
-
 
 func (r Resource) String() string {
 	return fmt.Sprintf("<Resource %s>", r.ResourceId)
@@ -73,17 +72,17 @@ func Stop(r ResourceInterface) error {
 	return r.Stop()
 }
 
-func Status(r ResourceInterface) status.StatusType {
+func Status(r ResourceInterface) status.Type {
 	return r.Status()
 }
 
 func PrintStatus(r ResourceInterface) error {
-	data :=  ResourceStatusType {
-		Label: ResourceLabel(r),
-		Type: ResourceType(r),
+	data := ResourceStatusType{
+		Label:  ResourceLabel(r),
+		Type:   ResourceType(r),
 		Status: Status(r),
 		Subset: r.GetSubset(),
-		Log: r.GetLog().Dump(),
+		Log:    r.GetLog().Dump(),
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
@@ -109,7 +108,6 @@ Stdin:
 
 func Action(r ResourceInterface) error {
 	action := os.Getenv("RES_ACTION")
-
 	switch action {
 	case "status":
 		return PrintStatus(r)
@@ -122,6 +120,4 @@ func Action(r ResourceInterface) error {
 	default:
 		return PrintHelp(r)
 	}
-	return nil
 }
-

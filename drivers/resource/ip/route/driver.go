@@ -22,11 +22,11 @@ func (r R) Label() string {
 	return fmt.Sprintf("%s via %s", r.Destination, r.Gateway)
 }
 
-func (r R) Status() status.StatusType {
+func (r R) Status() status.Type {
 	netns, err := ns.GetNS(r.Netns)
 	if err != nil {
 		r.Log.Error("failed to open netns %q: %v", r.Netns, err)
-		return status.DOWN
+		return status.Down
 	}
 	defer netns.Close()
 
@@ -39,10 +39,10 @@ func (r R) Status() status.StatusType {
 		return nil
 	}); err != nil {
 		r.Log.Error("%v", err)
-		return status.DOWN
+		return status.Down
 	}
 
-	return status.UP
+	return status.Up
 }
 
 func (r R) MakeRoute() []*types.Route {
@@ -54,7 +54,7 @@ func (r R) MakeRoute() []*types.Route {
 	gw := net.ParseIP(r.Gateway)
 	routes = append(
 		routes,
-		&types.Route {Dst: *dst, GW: gw},
+		&types.Route{Dst: *dst, GW: gw},
 	)
 	return routes
 }
