@@ -5,79 +5,76 @@ import (
 	"fmt"
 	"os"
 
-	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/resource/log"
+	"opensvc.com/opensvc/core/resource/manifest"
 	"opensvc.com/opensvc/core/status"
 )
 
 type (
-	ResourceInterface interface {
+	// Interface exposes what can be done with a Resource
+	Interface interface {
 		Label() string
-		Manifest() ManifestType
+		Manifest() manifest.Type
 		Start() error
 		Stop() error
 		Status() status.Type
 
 		// common
 		GetSubset() string
-		GetLog() *LogType
+		GetLog() *log.Type
 	}
 
-	ManifestType struct {
-		Group    string             `json:"group"`
-		Name     string             `json:"name"`
-		Keywords []keywords.Keyword `json:"keywords"`
+	Type struct {
+		ResourceId string   `json:"rid"`
+		Subset     string   `json:"subset"`
+		Log        log.Type `json:"-"`
 	}
 
-	Resource struct {
-		ResourceId string  `json:"rid"`
-		Subset     string  `json:"subset"`
-		Log        LogType `json:"-"`
-	}
-
-	ResourceStatusType struct {
+	OutputStatus struct {
 		Label  string      `json:"label"`
 		Status status.Type `json:"status"`
 		Subset string      `json:"subset,omitempty"`
 		Type   string      `json:"type"`
-		Log    []LogEntry  `json:"log,omitempty"`
+		Log    []log.Entry `json:"log,omitempty"`
 	}
 )
 
-func (r Resource) String() string {
+func (r Type) String() string {
 	return fmt.Sprintf("<Resource %s>", r.ResourceId)
 }
 
-func (r Resource) GetSubset() string {
+// GetSubset
+func (r Type) GetSubset() string {
 	return r.Subset
 }
 
-func (r *Resource) GetLog() *LogType {
+func (r *Type) GetLog() *log.Type {
 	return &r.Log
 }
 
-func ResourceType(r ResourceInterface) string {
+func ResourceType(r Interface) string {
 	m := r.Manifest()
 	return fmt.Sprintf("%s.%s", m.Group, m.Name)
 }
 
-func ResourceLabel(r ResourceInterface) string {
+func ResourceLabel(r Interface) string {
 	return fmt.Sprintf("%s %s", ResourceType(r), r.Label())
 }
 
-func Start(r ResourceInterface) error {
+func Start(r Interface) error {
 	return r.Start()
 }
 
-func Stop(r ResourceInterface) error {
+func Stop(r Interface) error {
 	return r.Stop()
 }
 
-func Status(r ResourceInterface) status.Type {
+func Status(r Interface) status.Type {
 	return r.Status()
 }
 
-func PrintStatus(r ResourceInterface) error {
-	data := ResourceStatusType{
+func PrintStatus(r Interface) error {
+	data := OutputStatus{
 		Label:  ResourceLabel(r),
 		Type:   ResourceType(r),
 		Status: Status(r),
@@ -89,14 +86,14 @@ func PrintStatus(r ResourceInterface) error {
 	return enc.Encode(data)
 }
 
-func PrintManifest(r ResourceInterface) error {
+func PrintManifest(r Interface) error {
 	m := r.Manifest()
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(m)
 }
 
-func PrintHelp(r ResourceInterface) error {
+func PrintHelp(r Interface) error {
 	fmt.Println(`Environment variables:
   RES_ACTION=start|stop|status|manifest
 
@@ -106,7 +103,7 @@ Stdin:
 	return nil
 }
 
-func Action(r ResourceInterface) error {
+func Action(r Interface) error {
 	action := os.Getenv("RES_ACTION")
 	switch action {
 	case "status":
