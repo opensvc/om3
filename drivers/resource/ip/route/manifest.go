@@ -7,21 +7,23 @@ import (
 )
 
 const (
-	DriverGroup = "ip"
-	DriverName  = "route"
+	driverGroup = "ip"
+	driverName  = "route"
 )
 
-type R struct {
+// Type ...
+type Type struct {
 	Destination string `json:"destination"`
 	Gateway     string `json:"gateway"`
 	Netns       string `json:"netns"`
 	*resource.Resource
 }
 
-func (r R) Manifest() resource.ManifestType {
+// Manifest ...
+func (r Type) Manifest() resource.ManifestType {
 	return resource.ManifestType{
-		Group: DriverGroup,
-		Name:  DriverName,
+		Group: driverGroup,
+		Name:  driverName,
 		Keywords: []keywords.Keyword{
 			{
 				Name:     "netns",
@@ -34,7 +36,7 @@ func (r R) Manifest() resource.ManifestType {
 				Name:     "spec",
 				Scopable: true,
 				Required: true,
-				Convert:  converters.ConverterSHLEX,
+				Convert:  converters.Shlex,
 				Text:     "the resource id of the container to plumb the ip into.",
 				Example:  "container#0",
 			},

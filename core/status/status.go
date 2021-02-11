@@ -1,5 +1,10 @@
 package status
 
+import (
+	"bytes"
+	"encoding/json"
+)
+
 // Type representing a Resource, Object Instance or Object status
 type Type int
 
@@ -24,27 +29,48 @@ const (
 	StandbyUpWithDown
 )
 
+var toString = map[Type]string{
+	Up:                "up",
+	Down:              "down",
+	Warn:              "warn",
+	NotApplicable:     "n/a",
+	Undef:             "undef",
+	StandbyUp:         "stdby up",
+	StandbyDown:       "stdby down",
+	StandbyUpWithUp:   "up",
+	StandbyUpWithDown: "stdby up",
+}
+
+var toID = map[string]Type{
+	"up":         Up,
+	"down":       Down,
+	"warn":       Warn,
+	"n/a":        NotApplicable,
+	"undef":      Undef,
+	"stdby up":   StandbyUp,
+	"stdby down": StandbyDown,
+}
+
 func (t Type) String() string {
-	switch t {
-	case Up:
-		return "up"
-	case Down:
-		return "down"
-	case Warn:
-		return "warn"
-	case NotApplicable:
-		return "n/a"
-	case Undef:
-		return "undef"
-	case StandbyUp:
-		return "stdby up"
-	case StandbyDown:
-		return "stdby down"
-	case StandbyUpWithUp:
-		return "up"
-	case StandbyUpWithDown:
-		return "stdby up"
-	default:
-		return "unknown"
+	return toString[t]
+}
+
+// MarshalJSON marshals the enum as a quoted json string
+func (t Type) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(toString[t])
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+// UnmarshalJSON unmashals a quoted json string to the enum value
+func (t *Type) UnmarshalJSON(b []byte) error {
+	var j string
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
 	}
+	// Note that if the string cannot be found then it will be set to the zero value, 'Created' in this case.
+	*t = toID[j]
+	return nil
 }

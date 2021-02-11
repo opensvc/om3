@@ -10,19 +10,23 @@ import (
 	"opensvc.com/opensvc/core/status"
 )
 
-func (r R) Start() error {
+// Start the Resource
+func (r Type) Start() error {
 	return nil
 }
 
-func (r R) Stop() error {
+// Stop the Resource
+func (r Type) Stop() error {
 	return nil
 }
 
-func (r R) Label() string {
+// Label returns a formatted short description of the Resource
+func (r Type) Label() string {
 	return fmt.Sprintf("%s via %s", r.Destination, r.Gateway)
 }
 
-func (r R) Status() status.Type {
+// Status evaluates and display the Resource status and logs
+func (r Type) Status() status.Type {
 	netns, err := ns.GetNS(r.Netns)
 	if err != nil {
 		r.Log.Error("failed to open netns %q: %v", r.Netns, err)
@@ -31,7 +35,7 @@ func (r R) Status() status.Type {
 	defer netns.Close()
 
 	if err := netns.Do(func(_ ns.NetNS) error {
-		var routes = r.MakeRoute()
+		var routes = makeRoute(r)
 		errV := ip.ValidateExpectedRoute(routes)
 		if errV != nil {
 			return errV
@@ -45,7 +49,7 @@ func (r R) Status() status.Type {
 	return status.Up
 }
 
-func (r R) MakeRoute() []*types.Route {
+func makeRoute(r Type) []*types.Route {
 	var routes []*types.Route
 	_, dst, err := net.ParseCIDR(r.Destination)
 	if err != nil {
