@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	// Interface exposes what can be done with a Resource
+	// Interface exposes what can be done with a resource
 	Interface interface {
 		Label() string
 		Manifest() manifest.Type
@@ -24,12 +24,15 @@ type (
 		GetLog() *log.Type
 	}
 
+	// Type is the resource type, embedded in each drivers type
 	Type struct {
-		ResourceId string   `json:"rid"`
-		Subset     string   `json:"subset"`
-		Log        log.Type `json:"-"`
+		RID    string   `json:"rid"`
+		Subset string   `json:"subset"`
+		Log    log.Type `json:"-"`
 	}
 
+	// OutputStatus is the structure representing the resource status,
+	// which is embedded in the instance status.
 	OutputStatus struct {
 		Label  string      `json:"label"`
 		Status status.Type `json:"status"`
@@ -40,43 +43,47 @@ type (
 )
 
 func (r Type) String() string {
-	return fmt.Sprintf("<Resource %s>", r.ResourceId)
+	return fmt.Sprintf("<Resource %s>", r.RID)
 }
 
-// GetSubset
+// GetSubset returns the resource subset name
 func (r Type) GetSubset() string {
 	return r.Subset
 }
 
+// GetLog return a reference to the resource log
 func (r *Type) GetLog() *log.Type {
 	return &r.Log
 }
 
-func ResourceType(r Interface) string {
+func formatResourceType(r Interface) string {
 	m := r.Manifest()
 	return fmt.Sprintf("%s.%s", m.Group, m.Name)
 }
 
-func ResourceLabel(r Interface) string {
-	return fmt.Sprintf("%s %s", ResourceType(r), r.Label())
+func formatResourceLabel(r Interface) string {
+	return fmt.Sprintf("%s %s", formatResourceType(r), r.Label())
 }
 
+// Start activates a resource interfacer
 func Start(r Interface) error {
 	return r.Start()
 }
 
+// Stop deactivates a resource interfacer
 func Stop(r Interface) error {
 	return r.Stop()
 }
 
+// Status evaluates the status of a resource interfacer
 func Status(r Interface) status.Type {
 	return r.Status()
 }
 
-func PrintStatus(r Interface) error {
+func printStatus(r Interface) error {
 	data := OutputStatus{
-		Label:  ResourceLabel(r),
-		Type:   ResourceType(r),
+		Label:  formatResourceLabel(r),
+		Type:   formatResourceType(r),
 		Status: Status(r),
 		Subset: r.GetSubset(),
 		Log:    r.GetLog().Dump(),
@@ -86,14 +93,14 @@ func PrintStatus(r Interface) error {
 	return enc.Encode(data)
 }
 
-func PrintManifest(r Interface) error {
+func printManifest(r Interface) error {
 	m := r.Manifest()
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(m)
 }
 
-func PrintHelp(r Interface) error {
+func printHelp(r Interface) error {
 	fmt.Println(`Environment variables:
   RES_ACTION=start|stop|status|manifest
 
@@ -103,18 +110,19 @@ Stdin:
 	return nil
 }
 
+// Action calls the resource method set as the RES_ACTION environment variable
 func Action(r Interface) error {
 	action := os.Getenv("RES_ACTION")
 	switch action {
 	case "status":
-		return PrintStatus(r)
+		return printStatus(r)
 	case "stop":
 		return Stop(r)
 	case "start":
 		return Start(r)
 	case "manifest":
-		return PrintManifest(r)
+		return printManifest(r)
 	default:
-		return PrintHelp(r)
+		return printHelp(r)
 	}
 }
