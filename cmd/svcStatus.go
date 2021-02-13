@@ -14,6 +14,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+
+// Package cmd defines the opensvc command line actions and options.
 package cmd
 
 import (
@@ -33,7 +35,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		selection.New(selector).Status()
+		selection.New(svcSelector).Status()
 	},
 }
 
