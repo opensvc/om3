@@ -37,12 +37,14 @@ to quickly create a Cobra application.`,
 	},
 }
 
+var selector string
+
 func init() {
 	rootCmd.AddCommand(svcCmd)
-	svcCmd.PersistentFlags().String("namespace", "root", "The namespace to select")
-	svcCmd.PersistentFlags().String("name", "", "The name of the object to select")
-	svcCmd.PersistentFlags().StringP("selector", "s", "", "The name of the object to select")
-	svcCmd.PersistentFlags().Bool("local", false, "Run action on the local instance of the selected objects")
-	svcCmd.PersistentFlags().String("node", "", "Run action on the instance of the selected objects on <node>")
+	//svcCmd.PersistentFlags().String("namespace", "root", "The namespace to select")
+	//svcCmd.PersistentFlags().String("name", "", "The name of the object to select")
+	svcCmd.PersistentFlags().StringVarP(&selector, "selector", "s", "", "The name of the object to select")
+	//svcCmd.PersistentFlags().Bool("local", false, "Run action on the local instance of the selected objects")
+	//svcCmd.PersistentFlags().String("node", "", "Run action on the instance of the selected objects on <node>")
 	// svcCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
