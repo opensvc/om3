@@ -9,23 +9,23 @@ import (
 type Type int
 
 const (
-	// Up Configured or Active
+	// Up means Configured or Active
 	Up Type = iota
-	// Down Unconfigured or Inactive
+	// Down means Unconfigured or Inactive
 	Down
-	// Warn Partially configured or active
+	// Warn means Partially configured or active
 	Warn
-	// NotApplicable Not Applicable
+	// NotApplicable means Not Applicable
 	NotApplicable
-	// Undef Undefined
+	// Undef means Undefined
 	Undef
-	// StandbyUp Instance with standby resources Configured or Active and no other resources
+	// StandbyUp means Instance with standby resources Configured or Active and no other resources
 	StandbyUp
-	// StandbyDown Instance with standby resources Unconfigured or Inactive and no other resources
+	// StandbyDown means Instance with standby resources Unconfigured or Inactive and no other resources
 	StandbyDown
-	// StandbyUpWithUp Instance with standby resources Configured or Active and other resources Up
+	// StandbyUpWithUp means Instance with standby resources Configured or Active and other resources Up
 	StandbyUpWithUp
-	// StandbyUpWithDown Instance with standby resources Configured or Active and other resources Down
+	// StandbyUpWithDown means Instance with standby resources Configured or Active and other resources Down
 	StandbyUpWithDown
 )
 
