@@ -43,9 +43,12 @@ func init() {
 }
 
 func monitor() {
-	cl := client.New(client.Config{
-		InsecureSkipVerify: true, // get from config
+	api := client.New(client.Config{
+		URL: "raw://opt/opensvc/var/lsnr/lsnr.sock",
 	})
-	defer cl.Close()
-	cl.DaemonStatus()
+	//requester := client.New(client.Config{
+	//	URL: "https://127.0.0.1:1215"
+	//	InsecureSkipVerify: true, // get from config
+	//})
+	api.DaemonStatus()
 }

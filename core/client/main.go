@@ -1,63 +1,48 @@
 package client
 
 import (
-	"crypto/tls"
-	"fmt"
-	"io/ioutil"
 	"net/http"
-
-	"golang.org/x/net/http2"
+	"strings"
 )
 
 type (
-	// Type is the agent api client struct
-	Type struct {
-		Client *http.Client
-		URL    string
+	// API abstracts the requester and exposes the agent API methods
+	API struct {
+		Requester Requester
 	}
+
+	// Config is the agent api client configuration
 	Config struct {
 		URL                string
 		InsecureSkipVerify bool
 	}
+
+	// Requester abstracts the requesting details of supported protocols
+	Requester interface {
+		Get(req string) (*http.Response, error)
+	}
 )
 
 // New allocates a new agent api client struct
-func New(c Config) Type {
-
-	client := &http.Client{}
-	client.Transport = &http2.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: c.InsecureSkipVerify,
-		},
+func New(c Config) API {
+	return API{
+		Requester: NewRequester(c),
 	}
+}
+
+// NewRequester allocates the Requester interface implementing struct selected
+// by the scheme of the URL key in Config{}.
+func NewRequester(c Config) Requester {
 	if c.URL == "" {
-		c.URL = "https://127.0.0.1:1215"
+		//c.URL = "https://127.0.0.1:1215"
+		c.URL = JSONRPCScheme + JSONRPCUDSPath
+		return newJSONRPC(c)
 	}
-	t := Type{
-		Client: client,
-		URL:    c.URL,
+	if strings.HasPrefix(c.URL, H2UDSScheme) {
+		return newUDS(c)
 	}
-	return t
-}
-
-// Close closes the http.Client embedded in this agent client
-func (t Type) Close() {
-
-}
-
-// DaemonStatus fetchs the daemon status structure from the agent api
-func (t Type) DaemonStatus() (interface{}, error) {
-	resp, err := t.Client.Get(t.URL + "/daemon_status")
-	if err != nil {
-		return nil, err
+	if strings.HasPrefix(c.URL, JSONRPCScheme) {
+		return newJSONRPC(c)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf(
-		"Got response %d: %s %s\n",
-		resp.StatusCode, resp.Proto, string(body))
-	return nil, nil
+	return newInet(c)
 }
