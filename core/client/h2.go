@@ -28,7 +28,7 @@ const (
 	H2UDSSockPath string = "/opt/opensvc/var/lsnr/h2.sock" // TODO get from env
 )
 
-func newUDS(c Config) H2 {
+func newH2UDS(c Config) H2 {
 	unixTransport := &httpunix.Transport{
 		DialTimeout:           100 * time.Millisecond,
 		RequestTimeout:        1 * time.Second,
@@ -54,7 +54,7 @@ func newUDS(c Config) H2 {
 	}
 }
 
-func newInet(c Config) H2 {
+func newH2Inet(c Config) H2 {
 	t := &http2.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: c.InsecureSkipVerify,

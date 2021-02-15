@@ -39,10 +39,10 @@ func NewRequester(c Config) Requester {
 		return newJSONRPC(c)
 	}
 	if strings.HasPrefix(c.URL, H2UDSScheme) {
-		return newUDS(c)
+		return newH2UDS(c)
 	}
 	if strings.HasPrefix(c.URL, JSONRPCScheme) {
 		return newJSONRPC(c)
 	}
-	return newInet(c)
+	return newH2Inet(c)
 }
