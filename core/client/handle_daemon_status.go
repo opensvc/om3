@@ -29,6 +29,5 @@ func (a API) DaemonStatus() (types.DaemonStatus, error) {
 		fmt.Println(err)
 		return ds, err
 	}
-	fmt.Println(ds)
 	return ds, nil
 }
