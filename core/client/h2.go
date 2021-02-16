@@ -67,6 +67,10 @@ func newH2Inet(c Config) H2 {
 }
 
 // Get implements the Get request for the H2 protocol
-func (t H2) Get(req string) (*http.Response, error) {
-	return t.Client.Get(t.URL + "/" + req)
+func (t H2) Get(path string, opts RequestOptions) (*http.Response, error) {
+	req, err := http.NewRequest("GET", t.URL+"/"+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return t.Client.Do(req)
 }

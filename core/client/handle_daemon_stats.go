@@ -3,14 +3,13 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 
 	"opensvc.com/opensvc/core/types"
 )
 
-// DaemonStatsConfig
-type DaemonStatsCmdConfig struct {
+// DaemonStatsCmdOptions describes the daemon statistics api handler options.
+type DaemonStatsCmdOptions struct {
 	NodeSelector   string
 	ObjectSelector string
 	Server         string
@@ -18,8 +17,8 @@ type DaemonStatsCmdConfig struct {
 
 // NewDaemonStatsCmdConfig allocates a DaemonStatsCmdConfig struct and sets
 // default values to its keys.
-func NewDaemonStatsCmdConfig() *DaemonStatsCmdConfig {
-	return &DaemonStatsCmdConfig{
+func NewDaemonStatsCmdConfig() *DaemonStatsCmdOptions {
+	return &DaemonStatsCmdOptions{
 		NodeSelector:   "*",
 		ObjectSelector: "**",
 		Server:         "",
@@ -27,29 +26,36 @@ func NewDaemonStatsCmdConfig() *DaemonStatsCmdConfig {
 }
 
 // DaemonStats fetchs the daemon statistics structure from the agent api
-func (a API) DaemonStats(c DaemonStatsCmdConfig) (types.DaemonStats, error) {
-	type t struct {
-		Status int               `json:"status"`
-		Data   types.DaemonStats `json:"data"`
+func (a API) DaemonStats(o DaemonStatsCmdOptions) (types.DaemonStats, error) {
+	type nodeData struct {
+		Status int             `json:"status"`
+		Data   types.NodeStats `json:"data"`
 	}
-	var ds t
-	resp, err := a.Requester.Get("daemon_stats")
+	type responseType struct {
+		Status int                 `json:"status"`
+		Nodes  map[string]nodeData `json:"nodes"`
+	}
+	ds := make(types.DaemonStats)
+	var t responseType
+	opts := a.NewRequestOptions()
+	opts.Node = "*"
+
+	resp, err := a.Requester.Get("daemon_stats", *opts)
 	if err != nil {
-		fmt.Println(err)
-		return ds.Data, err
+		return ds, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err)
-		return ds.Data, err
+		return ds, err
 	}
 	body = bytes.TrimRight(body, "\x00")
-	err = json.Unmarshal(body, &ds)
+	err = json.Unmarshal(body, &t)
 	if err != nil {
-		fmt.Println(err)
-		return ds.Data, err
+		return ds, err
 	}
-	fmt.Println(ds)
-	return ds.Data, nil
+	for k, v := range t.Nodes {
+		ds[k] = v.Data
+	}
+	return ds, nil
 }

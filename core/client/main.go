@@ -19,7 +19,12 @@ type (
 
 	// Requester abstracts the requesting details of supported protocols
 	Requester interface {
-		Get(req string) (*http.Response, error)
+		Get(req string, opts RequestOptions) (*http.Response, error)
+	}
+
+	// RequestOptions abstract H2 headers and JSONRPC root keys
+	RequestOptions struct {
+		Node string
 	}
 )
 
@@ -28,6 +33,12 @@ func New(c Config) API {
 	return API{
 		Requester: NewRequester(c),
 	}
+}
+
+// NewRequestOptions allocates an unconfigured RequestOptions and returns its
+// address.
+func (a API) NewRequestOptions() *RequestOptions {
+	return &RequestOptions{}
 }
 
 // NewRequester allocates the Requester interface implementing struct selected

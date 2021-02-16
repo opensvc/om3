@@ -12,7 +12,8 @@ import (
 // DaemonStatus fetchs the daemon status structure from the agent api
 func (a API) DaemonStatus() (types.DaemonStatus, error) {
 	var ds types.DaemonStatus
-	resp, err := a.Requester.Get("daemon_status")
+	opts := a.NewRequestOptions()
+	resp, err := a.Requester.Get("daemon_status", *opts)
 	if err != nil {
 		fmt.Println(err)
 		return ds, err
