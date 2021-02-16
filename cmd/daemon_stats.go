@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -51,5 +52,7 @@ func daemonStats() {
 	if err != nil {
 		return
 	}
-	fmt.Println(data)
+	var b []byte
+	b, err = json.MarshalIndent(data, "", "    ")
+	fmt.Println(string(b))
 }
