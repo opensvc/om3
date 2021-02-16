@@ -28,11 +28,7 @@ import (
 // daemonStatsCmd represents the daemonStats command
 var daemonStatsCmd = &cobra.Command{
 	Use:   "stats",
-	Short: "Print the daemon threads and objects statistics.",
-	Long: `Print the daemon threads and objects statistics.
-	
-The daemon gathers statistics from the selected nodes.
-Statistics include CPU, memory and number of processes or threads.`,
+	Short: "Print the resource usage statistics.",
 	Run: func(cmd *cobra.Command, args []string) {
 		daemonStats()
 	},

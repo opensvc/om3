@@ -27,13 +27,19 @@ import (
 // svcStatusCmd represents the svcStatus command
 var svcStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Print selected service and instance status",
+	Long: `Resources Flags:
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+(1) R   Running,           . Not Running
+(2) M   Monitored,         . Not Monitored
+(3) D   Disabled,          . Enabled
+(4) O   Optional,          . Not Optional
+(5) E   Encap,             . Not Encap
+(6) P   Not Provisioned,   . Provisioned
+(7) S   Standby,           . Not Standby
+(8) <n> Remaining Restart, + if more than 10,   . No Restart
+
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		selection.New(svcSelector).Status()
 	},

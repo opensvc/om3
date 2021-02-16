@@ -24,8 +24,9 @@ import (
 
 // monCmd represents the svc command
 var monCmd = &cobra.Command{
-	Use:   "monitor",
-	Short: "Show the cluster status",
+	Use:     "monitor",
+	Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
+	Short:   "Print the cluster status",
 	Long: `
 `,
 	Run: func(cmd *cobra.Command, args []string) {

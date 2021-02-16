@@ -19,24 +19,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
 // svcCmd represents the svc command
 var svcCmd = &cobra.Command{
 	Use:   "svc",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("svc called")
-	},
+	Short: "Manage services",
+	Long: `Services are objects serving applications. They can use 
+support objects like volumes, secrets and configmaps to have a separate
+lifecycle or to abstract cluster-specific knowledge.`,
 }
 
 var svcSelector string
@@ -48,5 +40,4 @@ func init() {
 	svcCmd.PersistentFlags().StringVarP(&svcSelector, "selector", "s", "", "The name of the object to select")
 	//svcCmd.PersistentFlags().Bool("local", false, "Run action on the local instance of the selected objects")
 	//svcCmd.PersistentFlags().String("node", "", "Run action on the instance of the selected objects on <node>")
-	// svcCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
