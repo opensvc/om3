@@ -2,12 +2,15 @@ package client
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/tv42/httpunix"
+	"opensvc.com/opensvc/config"
 
 	"golang.org/x/net/http2"
 )
@@ -23,10 +26,12 @@ type (
 const (
 	// H2UDSScheme is the Unix Domain Socket protocol scheme prefix in URL
 	H2UDSScheme string = "http+unix://"
-
-	// H2UDSSockPath is the default location of the Unix Domain Socket
-	H2UDSSockPath string = "/opt/opensvc/var/lsnr/h2.sock" // TODO get from env
 )
+
+// H2UDSPath formats the H2 api Unix Domain Socket path
+func H2UDSPath() string {
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Viper.GetString("paths.var")))
+}
 
 func newH2UDS(c Config) H2 {
 	unixTransport := &httpunix.Transport{

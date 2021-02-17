@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/render"
 )
 
 // daemonStatusCmd represents the daemonStatus command
@@ -52,6 +53,10 @@ func monitor() {
 	if err != nil {
 		return
 	}
+	fmt.Println(render.DaemonStatus(
+		render.DaemonStatusData{Current: data},
+		render.DaemonStatusOptions{},
+	))
 	var b []byte
 	b, err = json.MarshalIndent(data, "", "    ")
 	fmt.Println(string(b))

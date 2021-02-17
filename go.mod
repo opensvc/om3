@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
+	github.com/fatih/color v1.10.0
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect

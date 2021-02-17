@@ -46,7 +46,7 @@ func (a API) NewRequestOptions() *RequestOptions {
 func NewRequester(c Config) Requester {
 	if c.URL == "" {
 		//c.URL = "https://127.0.0.1:1215"
-		c.URL = JSONRPCScheme + JSONRPCUDSPath
+		c.URL = JSONRPCScheme + JSONRPCUDSPath()
 		return newJSONRPC(c)
 	}
 	if strings.HasPrefix(c.URL, H2UDSScheme) {

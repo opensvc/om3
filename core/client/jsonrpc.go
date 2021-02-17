@@ -2,8 +2,12 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
+
+	"opensvc.com/opensvc/config"
 )
 
 type (
@@ -23,10 +27,12 @@ type (
 const (
 	// JSONRPCScheme is the JSONRPC protocol scheme prefix in URL
 	JSONRPCScheme string = "raw://"
-
-	// JSONRPCUDSPath is the default location of the JSONRPC Unix Domain Socket
-	JSONRPCUDSPath string = "/opt/opensvc/var/lsnr/lsnr.sock"
 )
+
+// JSONRPCUDSPath formats the JSONRPC api unix domain socket path
+func JSONRPCUDSPath() string {
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.Viper.GetString("paths.var")))
+}
 
 func newJSONRPCRequest(method string, action string, node string, opts map[string]interface{}) *jsonrpcRequest {
 	if opts == nil {
@@ -42,7 +48,7 @@ func newJSONRPCRequest(method string, action string, node string, opts map[strin
 
 // Get implements the Get interface method for the JSONRPC api
 func (t JSONRPC) Get(path string, opts RequestOptions) (*http.Response, error) {
-	conn, err := net.Dial("unix", JSONRPCUDSPath)
+	conn, err := net.Dial("unix", JSONRPCUDSPath())
 
 	if err != nil {
 		return nil, err

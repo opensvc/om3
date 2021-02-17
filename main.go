@@ -16,8 +16,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 package main
 
-import "opensvc.com/opensvc/cmd"
+import (
+	"opensvc.com/opensvc/cmd"
+	"opensvc.com/opensvc/config"
+)
 
 func main() {
+	config.Load()
 	cmd.Execute()
 }
