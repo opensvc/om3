@@ -39,6 +39,7 @@ var daemonStatusCmd = &cobra.Command{
 
 func init() {
 	daemonCmd.AddCommand(daemonStatusCmd)
+	daemonStatusCmd.Flags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto (default is auto)")
 }
 
 func monitor() {
@@ -48,11 +49,19 @@ func monitor() {
 	if err != nil {
 		return
 	}
-	fmt.Println(render.DaemonStatus(
-		render.DaemonStatusData{Current: data},
-		render.DaemonStatusOptions{},
-	))
 	var b []byte
 	b, err = json.MarshalIndent(data, "", "    ")
-	fmt.Println(string(b))
+
+	switch formatFlag {
+	case "flat":
+	case "flat_json":
+	case "json":
+		fmt.Println(string(b))
+	default:
+		render.DaemonStatus(
+			render.DaemonStatusData{Current: data},
+			render.DaemonStatusOptions{},
+		)
+	}
+
 }

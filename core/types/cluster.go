@@ -97,6 +97,7 @@ type (
 	// NodeStatus holds a node DataSet.
 	NodeStatus struct {
 		Agent        string                      `json:"agent"`
+		Speaker      bool                        `json:"speaker"`
 		API          uint64                      `json:"api"`
 		Arbitrators  map[string]ArbitratorStatus `json:"arbitrators"`
 		Compat       uint64                      `json:"compat"`
