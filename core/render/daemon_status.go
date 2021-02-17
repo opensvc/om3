@@ -35,6 +35,5 @@ type (
 // DaemonStatus return a string buffer containing a human-friendly
 // representation of DaemonStatus.
 func DaemonStatus(data DaemonStatusData, c DaemonStatusOptions) string {
-	color.NoColor = false
 	return string(yellow("foo"))
 }

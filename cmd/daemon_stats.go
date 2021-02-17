@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/render"
 )
 
 // daemonStatsCmd represents the daemonStats command
@@ -40,13 +41,8 @@ func init() {
 }
 
 func daemonStats() {
-	api := client.New(client.Config{
-		URL: "raw://opt/opensvc/var/lsnr/lsnr.sock",
-	})
-	//requester := client.New(client.Config{
-	//	URL: "https://127.0.0.1:1215"
-	//	InsecureSkipVerify: true, // get from config
-	//})
+	render.SetColor(colorFlag)
+	api := client.New()
 	c := client.NewDaemonStatsCmdConfig()
 	data, err := api.DaemonStats(*c)
 	if err != nil {

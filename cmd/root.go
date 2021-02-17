@@ -29,6 +29,7 @@ import (
 )
 
 var cfgFile string
+var colorFlag string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -53,6 +54,7 @@ func init() {
 
 	// global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.opensvc.yaml)")
+	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto (default is auto)")
 
 	// local to this action.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

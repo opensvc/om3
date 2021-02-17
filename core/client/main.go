@@ -28,10 +28,17 @@ type (
 	}
 )
 
-// New allocates a new agent api client struct
-func New(c Config) API {
+// NewCustomClient allocates a new agent api client struct
+func NewCustomClient(c Config) API {
 	return API{
 		Requester: NewRequester(c),
+	}
+}
+
+// New allocates a new agent api client struct
+func New() API {
+	return API{
+		Requester: NewRequester(Config{}),
 	}
 }
 
