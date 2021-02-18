@@ -11,7 +11,6 @@ import (
 type (
 	// DaemonStatus describes the full Cluster state.
 	DaemonStatus struct {
-		PID        int64                            `json:"pid"`
 		Cluster    ClusterInfo                      `json:"cluster"`
 		Collector  CollectorThreadStatus            `json:"collector"`
 		DNS        DNSThreadStatus                  `json:"dns"`
@@ -34,16 +33,30 @@ type (
 	// was last configured, when it was created, its current state and thread
 	// id.
 	ThreadStatus struct {
-		Configured float64 `json:"configured"`
-		Created    float64 `json:"created"`
-		State      string  `json:"state"`
-		TID        int64   `json:"tid"`
+		Configured float64       `json:"configured"`
+		Created    float64       `json:"created"`
+		State      string        `json:"state"`
+		TID        int64         `json:"tid"`
+		Alerts     []ThreadAlert `json:"alerts,omitempty"`
+	}
+
+	// ThreadAlert describes a message with a severity. Embedded in ThreadStatus
+	ThreadAlert struct {
+		Message  string `json:"message"`
+		Severity string `json:"severity"`
 	}
 
 	// ListenerThreadStatus describes the OpenSVC daemon listener thread,
 	// which is responsible for serving the API.
 	ListenerThreadStatus struct {
 		ThreadStatus
+		Config ListenerThreadStatusConfig `json:"config"`
+	}
+
+	// ListenerThreadStatusConfig holds a summary of the listener configuration
+	ListenerThreadStatusConfig struct {
+		Addr string `json:"addr"`
+		Port int64
 	}
 
 	// CollectorThreadStatus describes the OpenSVC daemon collector thread,
@@ -96,20 +109,32 @@ type (
 
 	// NodeStatus holds a node DataSet.
 	NodeStatus struct {
-		Agent        string                      `json:"agent"`
-		Speaker      bool                        `json:"speaker"`
-		API          uint64                      `json:"api"`
-		Arbitrators  map[string]ArbitratorStatus `json:"arbitrators"`
-		Compat       uint64                      `json:"compat"`
-		Env          string                      `json:"env"`
-		Frozen       float64                     `json:"frozen"`
-		Gen          map[string]uint64           `json:"gen"`
-		Labels       map[string]string           `json:"labels"`
-		MinAvailMem  uint64                      `json:"min_avail_mem"`
-		MinAvailSwap uint64                      `json:"min_avail_swap"`
-		Monitor      NodeMonitor                 `json:"monitor"`
-		Services     NodeServices                `json:"services"`
+		Agent           string                      `json:"agent"`
+		Speaker         bool                        `json:"speaker"`
+		API             uint64                      `json:"api"`
+		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
+		Compat          uint64                      `json:"compat"`
+		Env             string                      `json:"env"`
+		Frozen          float64                     `json:"frozen"`
+		Gen             map[string]uint64           `json:"gen"`
+		Labels          map[string]string           `json:"labels"`
+		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
+		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
+		Monitor         NodeMonitor                 `json:"monitor"`
+		Services        NodeServices                `json:"services"`
+		Stats           NodeStatusStats             `json:"stats"`
 		//Locks map[string]Lock `json:"locks"`
+	}
+
+	// NodeStatusStats describes systems (cpu, mem, swap) resource usage of a node
+	// and a opensvc-specific score.
+	NodeStatusStats struct {
+		Load15M      float64 `json:"load_15m"`
+		MemAvailPct  uint64  `json:"mem_avail"`
+		MemTotalMB   uint64  `json:"mem_total"`
+		Score        uint    `json:"score"`
+		SwapAvailPct uint64  `json:"swap_avail"`
+		SwapTotalMB  uint64  `json:"swap_total"`
 	}
 
 	// NodeMonitor describes the in-daemon states of a node
@@ -198,8 +223,6 @@ func (t *DaemonStatus) UnmarshalJSON(b []byte) error {
 			json.Unmarshal(tmp, &ds.Collector)
 		case "dns":
 			json.Unmarshal(tmp, &ds.DNS)
-		case "pid":
-			json.Unmarshal(tmp, &ds.PID)
 		case "listener":
 			json.Unmarshal(tmp, &ds.Listener)
 		default:
