@@ -30,9 +30,8 @@ func TestRender(t *testing.T) {
 		},
 	}
 	for testName, test := range tests {
-		t.Logf("Running test case %s", testName)
+		t.Logf("%s", testName)
 		output := Render(test.addr, test.port)
-		assert.IsType(t, test.output, "")
 		assert.Equal(t, test.output, output)
 	}
 
