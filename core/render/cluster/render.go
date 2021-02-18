@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/fatih/color"
@@ -18,12 +19,22 @@ var (
 		"nodes",
 		"services",
 	}
-	green  = color.New(color.FgGreen).SprintFunc()
-	yellow = color.New(color.FgYellow).SprintFunc()
-	red    = color.New(color.FgRed).SprintFunc()
-	blue   = color.New(color.FgBlue).SprintFunc()
-	hiblue = color.New(color.FgHiBlue).SprintFunc()
-	bold   = color.New(color.Bold).SprintFunc()
+	green   = color.New(color.FgGreen).SprintFunc()
+	yellow  = color.New(color.FgYellow).SprintFunc()
+	red     = color.New(color.FgRed).SprintFunc()
+	blue    = color.New(color.FgBlue).SprintFunc()
+	hiblue  = color.New(color.FgHiBlue).SprintFunc()
+	hiblack = color.New(color.FgHiBlack).SprintFunc()
+	bold    = color.New(color.Bold).SprintFunc()
+
+	iconPlacementAlert = red("^")
+	iconWarning        = yellow("!")
+	iconFrozen         = blue("*")
+	iconProvisionAlert = red("P")
+	iconDown           = red("X")
+	iconUp             = green("O")
+	iconLeader         = hiblack("^")
+	iconNotApplicable  = hiblack("/")
 )
 
 const (
@@ -75,6 +86,7 @@ type dataInfo struct {
 	emptyNodes  string
 	separator   string
 	columns     int
+	paths       []string
 }
 
 func scanData(data Data) *dataInfo {
@@ -94,6 +106,11 @@ func scanData(data Data) *dataInfo {
 			info.arbitrators[name] = 1
 		}
 	}
+	info.paths = make([]string, 0)
+	for path := range data.Current.Monitor.Services {
+		info.paths = append(info.paths, path)
+	}
+	sort.Strings(info.paths)
 	return info
 }
 

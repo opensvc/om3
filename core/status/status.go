@@ -3,20 +3,22 @@ package status
 import (
 	"bytes"
 	"encoding/json"
+
+	"github.com/fatih/color"
 )
 
 // Type representing a Resource, Object Instance or Object status
 type Type int
 
 const (
+	// NotApplicable means Not Applicable
+	NotApplicable Type = iota
 	// Up means Configured or Active
-	Up Type = iota
+	Up
 	// Down means Unconfigured or Inactive
 	Down
 	// Warn means Partially configured or active
 	Warn
-	// NotApplicable means Not Applicable
-	NotApplicable
 	// Undef means Undefined
 	Undef
 	// StandbyUp means Instance with standby resources Configured or Active and no other resources
@@ -51,8 +53,28 @@ var toID = map[string]Type{
 	"stdby down": StandbyDown,
 }
 
+var toColor = map[Type]color.Attribute{
+	Up:                color.FgGreen,
+	Down:              color.FgRed,
+	Warn:              color.FgYellow,
+	NotApplicable:     color.FgHiBlack,
+	Undef:             color.FgHiBlack,
+	StandbyUp:         color.FgGreen,
+	StandbyDown:       color.FgRed,
+	StandbyUpWithUp:   color.FgGreen,
+	StandbyUpWithDown: color.FgGreen,
+}
+
 func (t Type) String() string {
 	return toString[t]
+}
+
+// ColorString returns a colorized string representation of the status.
+func (t Type) ColorString() string {
+	c := toColor[t]
+	f := color.New(c).SprintfFunc()
+	s := t.String()
+	return f(s)
 }
 
 // MarshalJSON marshals the enum as a quoted json string

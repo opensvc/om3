@@ -172,14 +172,43 @@ type (
 
 	// InstanceStatus describes the instance status.
 	InstanceStatus struct {
-		App     string          `json:"app"`
-		Avail   status.Type     `json:"avail"`
-		Overall status.Type     `json:"overall"`
-		Csum    string          `json:"csum"`
-		Env     string          `json:"env"`
-		Frozen  float64         `json:"frozen"`
-		Kind    kinds.Type      `json:"kind"`
-		Monitor InstanceMonitor `json:"monitor"`
+		App         string                    `json:"app,omitempty"`
+		Avail       status.Type               `json:"avail,omitempty"`
+		Overall     status.Type               `json:"overall,omitempty"`
+		Csum        string                    `json:"csum,omitempty"`
+		Env         string                    `json:"env,omitempty"`
+		Frozen      float64                   `json:"frozen,omitempty"`
+		Kind        kinds.Type                `json:"kind"`
+		Monitor     InstanceMonitor           `json:"monitor"`
+		Optional    bool                      `json:"optional,omitempty"`
+		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
+		Topology    string                    `json:"topology,omitempty"`    // TODO enum
+		Placement   string                    `json:"placement,omitempty"`   // TODO enum
+		Provisioned bool                      `json:"provisioned,omitempty"` // TODO tristate
+		Updated     float64                   `json:"updated"`
+		FlexTarget  int                       `json:"flex_target,omitempty"`
+		FlexMin     int                       `json:"flex_min,omitempty"`
+		FlexMax     int                       `json:"flex_max,omitempty"`
+		Subsets     map[string]SubsetStatus   `json:"subsets,omitempty"`
+		Resources   map[string]ResourceStatus `json:"resources,omitempty"`
+	}
+
+	// SubsetStatus ... TODO
+	SubsetStatus struct{}
+
+	// ResourceStatus describes the status of a resource of an instance of an object.
+	ResourceStatus struct {
+		Label       string                  `json:"label"`
+		Log         []string                `json:"log"`
+		Status      status.Type             `json:"status"`
+		Type        string                  `json:"type"`
+		Provisioned ResourceStatusProvision `json:"provisioned"`
+	}
+
+	// ResourceStatusProvision define if and when the resource became provisioned.
+	ResourceStatusProvision struct {
+		Mtime float64 `json:"mtime"`
+		State bool    `json:"state"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
@@ -192,11 +221,11 @@ type (
 	// ServiceStatus contains the object states obtained via
 	// aggregation of all instances states.
 	ServiceStatus struct {
-		Avail       status.Type `json:"avail"`
-		Overall     status.Type `json:"overall"`
-		Frozen      float64     `json:"frozen"`
-		Placement   string      `json:"placement"`
-		Provisioned bool        `json:"provisioned"`
+		Avail       status.Type `json:"avail,omitempty"`
+		Overall     status.Type `json:"overall,omitempty"`
+		Frozen      string      `json:"frozen,omitempty"` // TODO enum
+		Placement   string      `json:"placement,omitempty"`
+		Provisioned bool        `json:"provisioned,omitempty"`
 	}
 )
 
