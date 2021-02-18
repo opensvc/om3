@@ -26,6 +26,7 @@ import (
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/render"
+	"opensvc.com/opensvc/core/render/cluster"
 )
 
 // daemonStatusCmd represents the daemonStatus command
@@ -58,9 +59,9 @@ func monitor() {
 	case "json":
 		fmt.Println(string(b))
 	default:
-		render.DaemonStatus(
-			render.DaemonStatusData{Current: data},
-			render.DaemonStatusOptions{},
+		cluster.Render(
+			cluster.Data{Current: data},
+			cluster.Options{},
 		)
 	}
 

@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"net"
 	"strings"
 
 	"opensvc.com/opensvc/core/objects/kinds"
@@ -55,8 +56,8 @@ type (
 
 	// ListenerThreadStatusConfig holds a summary of the listener configuration
 	ListenerThreadStatusConfig struct {
-		Addr string `json:"addr"`
-		Port int64
+		Addr net.IP `json:"addr"`
+		Port int
 	}
 
 	// CollectorThreadStatus describes the OpenSVC daemon collector thread,

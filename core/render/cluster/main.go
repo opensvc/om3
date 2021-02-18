@@ -1,4 +1,4 @@
-package render
+package cluster
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	tsize "github.com/kopoli/go-terminal-size"
 
 	"opensvc.com/opensvc/core/converters/sizeconv"
+	"opensvc.com/opensvc/core/render/listener"
 	"opensvc.com/opensvc/core/types"
 )
 
@@ -34,14 +35,14 @@ const (
 )
 
 type (
-	// DaemonStatusOptions exposes daemon status renderer tunables.
-	DaemonStatusOptions struct {
+	// Options exposes daemon status renderer tunables.
+	Options struct {
 		Paths []string
 		Node  string
 	}
 
-	// DaemonStatusData holds current, previous and statistics datasets.
-	DaemonStatusData struct {
+	// Data holds current, previous and statistics datasets.
+	Data struct {
 		Current  types.DaemonStatus
 		Previous types.DaemonStatus
 		Stats    types.DaemonStats
@@ -57,9 +58,9 @@ func GetOutputTermSize() tsize.Size {
 	return ts
 }
 
-// DaemonStatus return a string buffer containing a human-friendly
-// representation of DaemonStatus.
-func DaemonStatus(data DaemonStatusData, c DaemonStatusOptions) string {
+// Render return a string buffer containing a human-friendly
+// representation of Render.
+func Render(data Data, opts Options) string {
 	//ts := GetOutputTermSize()
 	info := scanData(data)
 	w := tabwriter.NewTabWriter(os.Stdout, 1, 1, 1, ' ', 0)
@@ -80,7 +81,7 @@ type dataInfo struct {
 	columns     int
 }
 
-func scanData(data DaemonStatusData) *dataInfo {
+func scanData(data Data) *dataInfo {
 	info := &dataInfo{}
 	info.nodeCount = len(data.Current.Cluster.Nodes)
 	// +1 for the separator between static cols and node cols
@@ -100,7 +101,7 @@ func scanData(data DaemonStatusData) *dataInfo {
 	return info
 }
 
-func wThreadDaemon(data DaemonStatusData, info *dataInfo) string {
+func wThreadDaemon(data Data, info *dataInfo) string {
 	var s string
 	s += bold(" daemon") + "\t"
 	s += green("running") + "\t"
@@ -110,7 +111,7 @@ func wThreadDaemon(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func wThreadCollector(data DaemonStatusData, info *dataInfo) string {
+func wThreadCollector(data Data, info *dataInfo) string {
 	var s string
 	s += bold(" collector") + "\t"
 	if data.Current.Collector.State == "running" {
@@ -130,7 +131,7 @@ func wThreadCollector(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func wThreadListener(data DaemonStatusData, info *dataInfo) string {
+func wThreadListener(data Data, info *dataInfo) string {
 	var s string
 	s += bold(" listener") + "\t"
 	if data.Current.Listener.State == "running" {
@@ -138,13 +139,13 @@ func wThreadListener(data DaemonStatusData, info *dataInfo) string {
 	} else {
 		s += "\t"
 	}
-	s += fmt.Sprintf("%s\t", Listener(data.Current.Listener.Config.Addr, data.Current.Listener.Config.Port))
+	s += fmt.Sprintf("%s\t", listener.Render(data.Current.Listener.Config.Addr, data.Current.Listener.Config.Port))
 	s += info.separator + "\t"
 	s += info.emptyNodes
 	return s
 }
 
-func wThreadScheduler(data DaemonStatusData, info *dataInfo) string {
+func wThreadScheduler(data Data, info *dataInfo) string {
 	var s string
 	s += bold(" scheduler") + "\t"
 	if data.Current.Scheduler.State == "running" {
@@ -158,7 +159,7 @@ func wThreadScheduler(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func wThreadMonitor(data DaemonStatusData, info *dataInfo) string {
+func wThreadMonitor(data Data, info *dataInfo) string {
 	var s string
 	s += bold(" monitor") + "\t"
 	if data.Current.Monitor.State == "running" {
@@ -172,7 +173,7 @@ func wThreadMonitor(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func wThreadDNS(data DaemonStatusData, info *dataInfo) string {
+func wThreadDNS(data Data, info *dataInfo) string {
 	var s string
 	s += bold(" dns") + "\t"
 	if data.Current.DNS.State == "running" {
@@ -207,14 +208,14 @@ func sThreadAlerts(data []types.ThreadAlert) string {
 	return ""
 }
 
-func sNodeScoreLine(data DaemonStatusData, info *dataInfo) string {
+func sNodeScoreLine(data Data, info *dataInfo) string {
 	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("score"), info.separator)
 	for _, n := range data.Current.Cluster.Nodes {
 		s += sNodeScore(n, data) + "\t"
 	}
 	return s
 }
-func sNodeLoadLine(data DaemonStatusData, info *dataInfo) string {
+func sNodeLoadLine(data Data, info *dataInfo) string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("load15m"), info.separator)
 	for _, n := range data.Current.Cluster.Nodes {
 		s += sNodeLoad(n, data) + "\t"
@@ -222,7 +223,7 @@ func sNodeLoadLine(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func sNodeMemLine(data DaemonStatusData, info *dataInfo) string {
+func sNodeMemLine(data Data, info *dataInfo) string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("mem"), info.separator)
 	for _, n := range data.Current.Cluster.Nodes {
 		s += sNodeMem(n, data) + "\t"
@@ -230,7 +231,7 @@ func sNodeMemLine(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func sNodeSwapLine(data DaemonStatusData, info *dataInfo) string {
+func sNodeSwapLine(data Data, info *dataInfo) string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("swap"), info.separator)
 	for _, n := range data.Current.Cluster.Nodes {
 		s += sNodeSwap(n, data) + "\t"
@@ -238,21 +239,21 @@ func sNodeSwapLine(data DaemonStatusData, info *dataInfo) string {
 	return s
 }
 
-func sNodeScore(n string, data DaemonStatusData) string {
+func sNodeScore(n string, data Data) string {
 	if val, ok := data.Current.Monitor.Nodes[n]; ok {
 		return fmt.Sprintf("%d", val.Stats.Score)
 	}
 	return ""
 }
 
-func sNodeLoad(n string, data DaemonStatusData) string {
+func sNodeLoad(n string, data Data) string {
 	if val, ok := data.Current.Monitor.Nodes[n]; ok {
 		return fmt.Sprintf("%.1f", val.Stats.Load15M)
 	}
 	return ""
 }
 
-func sNodeMem(n string, data DaemonStatusData) string {
+func sNodeMem(n string, data Data) string {
 	if val, ok := data.Current.Monitor.Nodes[n]; ok {
 		if val.Stats.MemTotalMB == 0 {
 			return hiblue("-")
@@ -277,7 +278,7 @@ func sNodeMem(n string, data DaemonStatusData) string {
 	return ""
 }
 
-func sNodeSwap(n string, data DaemonStatusData) string {
+func sNodeSwap(n string, data Data) string {
 	if val, ok := data.Current.Monitor.Nodes[n]; ok {
 		if val.Stats.SwapTotalMB == 0 {
 			return hiblue("-")
@@ -302,7 +303,7 @@ func sNodeSwap(n string, data DaemonStatusData) string {
 	return ""
 }
 
-func wThreads(w io.Writer, data DaemonStatusData, info *dataInfo) {
+func wThreads(w io.Writer, data Data, info *dataInfo) {
 	fmt.Fprintln(w, title("Threads", data))
 	fmt.Fprintln(w, wThreadDaemon(data, info))
 	fmt.Fprintln(w, wThreadDNS(data, info))
@@ -316,7 +317,7 @@ func wThreads(w io.Writer, data DaemonStatusData, info *dataInfo) {
 	fmt.Fprintln(w, info.empty)
 }
 
-func wArbitrators(w io.Writer, data DaemonStatusData, info *dataInfo) {
+func wArbitrators(w io.Writer, data Data, info *dataInfo) {
 	if len(info.arbitrators) == 0 {
 		return
 	}
@@ -324,7 +325,7 @@ func wArbitrators(w io.Writer, data DaemonStatusData, info *dataInfo) {
 	fmt.Fprintln(w, info.empty)
 }
 
-func wNodes(w io.Writer, data DaemonStatusData, info *dataInfo) {
+func wNodes(w io.Writer, data Data, info *dataInfo) {
 	fmt.Fprintln(w, title("Nodes", data))
 	fmt.Fprintln(w, sNodeScoreLine(data, info))
 	fmt.Fprintln(w, sNodeLoadLine(data, info))
@@ -333,11 +334,11 @@ func wNodes(w io.Writer, data DaemonStatusData, info *dataInfo) {
 	fmt.Fprintln(w, info.empty)
 }
 
-func wObjects(w io.Writer, data DaemonStatusData, info *dataInfo) {
+func wObjects(w io.Writer, data Data, info *dataInfo) {
 	fmt.Fprintln(w, title("Objects", data))
 }
 
-func title(s string, data DaemonStatusData) string {
+func title(s string, data Data) string {
 	s += "\t\t\t\t"
 	for _, v := range data.Current.Cluster.Nodes {
 		s += bold(v) + "\t"
