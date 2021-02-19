@@ -232,6 +232,9 @@ type (
 	}
 )
 
+// MarshalJSON transforms a DaemonStatus struct into a []byte
+//func (t *DaemonStatus) MarshalJSON()([]byte, error) {}
+
 // UnmarshalJSON loads a byte array into a DaemonStatus struct
 func (t *DaemonStatus) UnmarshalJSON(b []byte) error {
 	var m map[string]interface{}

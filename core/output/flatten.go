@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// Flatten accepts a nested struct and returns a flat struct with key like a.'b/c'.d[0].e
 func Flatten(inputJSON map[string]interface{}) map[string]interface{} {
 	var lkey = ""
 	var flattened = make(map[string]interface{})
@@ -15,6 +16,8 @@ func Flatten(inputJSON map[string]interface{}) map[string]interface{} {
 	return flattened
 }
 
+// PrintFlat accepts a JSON formated byte array and prints to stdout the sorted
+// "key = val"
 func PrintFlat(b []byte) {
 	var data map[string]interface{}
 	json.Unmarshal(b, &data)
