@@ -50,6 +50,7 @@ type (
 	Options struct {
 		Paths []string
 		Node  string
+		Watch bool
 	}
 
 	// Data holds current, previous and statistics datasets.

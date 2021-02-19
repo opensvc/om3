@@ -20,6 +20,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
 // monCmd represents the svc command
@@ -30,13 +31,15 @@ var monCmd = &cobra.Command{
 	Long: `
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		monitor()
+		monitor.Do(optMonWatch, colorFlag, formatFlag)
 	},
 }
 
-var monSelector string
+var optMonSelector string
+var optMonWatch bool
 
 func init() {
 	rootCmd.AddCommand(monCmd)
-	monCmd.PersistentFlags().StringVarP(&monSelector, "selector", "s", "", "An object selector expression")
+	monCmd.PersistentFlags().StringVarP(&optMonSelector, "selector", "s", "", "An object selector expression")
+	monCmd.PersistentFlags().BoolVarP(&optMonWatch, "watch", "w", false, "Watch the monitor changes")
 }

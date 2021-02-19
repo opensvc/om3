@@ -19,14 +19,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/spf13/cobra"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/render"
-	"opensvc.com/opensvc/core/render/cluster"
+	"opensvc.com/opensvc/core/entrypoints/monitor"
+)
+
+var (
+	optDaemonStatusWatch bool
 )
 
 // daemonStatusCmd represents the daemonStatus command
@@ -34,35 +33,12 @@ var daemonStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Print the cluster status",
 	Run: func(cmd *cobra.Command, args []string) {
-		monitor()
+		monitor.Do(optDaemonStatusWatch, colorFlag, formatFlag)
 	},
 }
 
 func init() {
 	daemonCmd.AddCommand(daemonStatusCmd)
 	daemonStatusCmd.Flags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto (default is auto)")
-}
-
-func monitor() {
-	render.SetColor(colorFlag)
-	api := client.New()
-	data, err := api.DaemonStatus()
-	if err != nil {
-		return
-	}
-	var b []byte
-	b, err = json.MarshalIndent(data, "", "    ")
-
-	switch formatFlag {
-	case "flat":
-	case "flat_json":
-	case "json":
-		fmt.Println(string(b))
-	default:
-		cluster.Render(
-			cluster.Data{Current: data},
-			cluster.Options{},
-		)
-	}
-
+	daemonStatusCmd.Flags().BoolVarP(&optDaemonStatusWatch, "watch", "w", false, "Watch the monitor changes")
 }

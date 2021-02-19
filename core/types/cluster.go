@@ -57,7 +57,7 @@ type (
 	// ListenerThreadStatusConfig holds a summary of the listener configuration
 	ListenerThreadStatusConfig struct {
 		Addr net.IP `json:"addr"`
-		Port int
+		Port int    `json:"port"`
 	}
 
 	// CollectorThreadStatus describes the OpenSVC daemon collector thread,
@@ -194,8 +194,10 @@ type (
 		Resources   map[string]ResourceStatus `json:"resources,omitempty"`
 	}
 
-	// SubsetStatus ... TODO
-	SubsetStatus struct{}
+	// SubsetStatus describes a resource subset properties.
+	SubsetStatus struct {
+		Parallel bool `json:"parallel,omitempty"`
+	}
 
 	// ResourceStatus describes the status of a resource of an instance of an object.
 	ResourceStatus struct {
