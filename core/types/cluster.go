@@ -174,6 +174,7 @@ type (
 	InstanceStatus struct {
 		App         string                    `json:"app,omitempty"`
 		Avail       status.Type               `json:"avail,omitempty"`
+		DRP         bool                      `json:"drp,omitempty"`
 		Overall     status.Type               `json:"overall,omitempty"`
 		Csum        string                    `json:"csum,omitempty"`
 		Env         string                    `json:"env,omitempty"`

@@ -33,8 +33,12 @@ var (
 	iconProvisionAlert = red("P")
 	iconDown           = red("X")
 	iconUp             = green("O")
+	iconStandbyDown    = red("o")
+	iconStandbyUp      = hiblack("x")
+	iconStandbyUpIssue = red("x")
 	iconLeader         = hiblack("^")
 	iconNotApplicable  = hiblack("/")
+	iconDRP            = hiblack("#")
 )
 
 const (
