@@ -23,6 +23,10 @@ func Switch(formatStr string, color string, data interface{}, human RenderFunc) 
 		b, _ := json.MarshalIndent(data, "", "    ")
 		fmt.Println(string(b))
 	default:
-		human()
+		if human != nil {
+			human()
+		} else {
+			fmt.Println(data)
+		}
 	}
 }
