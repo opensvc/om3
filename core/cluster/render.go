@@ -8,8 +8,6 @@ import (
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
 	tsize "github.com/kopoli/go-terminal-size"
-
-	"opensvc.com/opensvc/core/types"
 )
 
 var (
@@ -55,9 +53,9 @@ type (
 
 	// Data holds current, previous and statistics datasets.
 	Data struct {
-		Current  types.DaemonStatus
-		Previous types.DaemonStatus
-		Stats    types.DaemonStats
+		Current  Status
+		Previous Status
+		Stats    Stats
 	}
 )
 

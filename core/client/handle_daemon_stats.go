@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"opensvc.com/opensvc/core/types"
+	"opensvc.com/opensvc/core/cluster"
 )
 
 // DaemonStatsCmdOptions describes the daemon statistics api handler options.
@@ -26,16 +26,16 @@ func NewDaemonStatsCmdConfig() *DaemonStatsCmdOptions {
 }
 
 // DaemonStats fetchs the daemon statistics structure from the agent api
-func (a API) DaemonStats(o DaemonStatsCmdOptions) (types.DaemonStats, error) {
+func (a API) DaemonStats(o DaemonStatsCmdOptions) (cluster.Stats, error) {
 	type nodeData struct {
-		Status int             `json:"status"`
-		Data   types.NodeStats `json:"data"`
+		Status int               `json:"status"`
+		Data   cluster.NodeStats `json:"data"`
 	}
 	type responseType struct {
 		Status int                 `json:"status"`
 		Nodes  map[string]nodeData `json:"nodes"`
 	}
-	ds := make(types.DaemonStats)
+	ds := make(cluster.Stats)
 	var t responseType
 	opts := a.NewRequestOptions()
 	opts.Node = "*"

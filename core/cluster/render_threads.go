@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"opensvc.com/opensvc/core/render/listener"
-	"opensvc.com/opensvc/core/types"
+	"opensvc.com/opensvc/util/render/listener"
 )
 
 func wThreadDaemon(data Data, info *dataInfo) string {
@@ -94,7 +93,7 @@ func wThreadDNS(data Data, info *dataInfo) string {
 	return s
 }
 
-func wThreadHeartbeat(name string, data types.HeartbeatThreadStatus, info *dataInfo) string {
+func wThreadHeartbeat(name string, data HeartbeatThreadStatus, info *dataInfo) string {
 	var s string
 	s += bold(" "+name) + "\t"
 	if data.State == "running" {
@@ -108,7 +107,7 @@ func wThreadHeartbeat(name string, data types.HeartbeatThreadStatus, info *dataI
 	return s
 }
 
-func sThreadAlerts(data []types.ThreadAlert) string {
+func sThreadAlerts(data []ThreadAlert) string {
 	if len(data) > 0 {
 		return yellow("!")
 	}

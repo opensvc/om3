@@ -19,12 +19,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/render"
+	"opensvc.com/opensvc/core/output"
 )
 
 // daemonStatsCmd represents the daemonStats command
@@ -42,14 +41,12 @@ func init() {
 }
 
 func daemonStats() {
-	render.SetColor(colorFlag)
 	api := client.New()
 	c := client.NewDaemonStatsCmdConfig()
 	data, err := api.DaemonStats(*c)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
-	var b []byte
-	b, err = json.MarshalIndent(data, "", "    ")
-	fmt.Println(string(b))
+	output.Switch(formatFlag, colorFlag, data, nil)
 }

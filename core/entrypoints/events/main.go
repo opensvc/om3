@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
 )
 
@@ -18,9 +19,9 @@ func Do(color string, format string) {
 	}
 }
 
-func doOne(event client.Event, color string, format string) {
+func doOne(e event.Event, color string, format string) {
 	human := func() {
-		fmt.Println(event)
+		fmt.Print(event.Render(e))
 	}
-	output.Switch(format, color, event, human)
+	output.Switch(format, color, e, human)
 }

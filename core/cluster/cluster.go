@@ -1,18 +1,16 @@
-package types
+package cluster
 
 import (
-	"encoding/json"
 	"net"
-	"strings"
 
 	"opensvc.com/opensvc/core/objects/kinds"
 	"opensvc.com/opensvc/core/status"
 )
 
 type (
-	// DaemonStatus describes the full Cluster state.
-	DaemonStatus struct {
-		Cluster    ClusterInfo                      `json:"cluster"`
+	// Status describes the full Cluster state.
+	Status struct {
+		Cluster    Info                             `json:"cluster"`
 		Collector  CollectorThreadStatus            `json:"collector"`
 		DNS        DNSThreadStatus                  `json:"dns"`
 		Scheduler  SchedulerThreadStatus            `json:"scheduler"`
@@ -21,10 +19,10 @@ type (
 		Heartbeats map[string]HeartbeatThreadStatus `json:"-"`
 	}
 
-	// ClusterInfo decribes the cluster id, name and nodes
+	// Info decribes the cluster id, name and nodes
 	// The cluster name is used as the right most part of cluster dns
 	// names.
-	ClusterInfo struct {
+	Info struct {
 		ID    string   `json:"id"`
 		Name  string   `json:"name"`
 		Nodes []string `json:"nodes"`
@@ -231,45 +229,3 @@ type (
 		Provisioned bool        `json:"provisioned,omitempty"`
 	}
 )
-
-// MarshalJSON transforms a DaemonStatus struct into a []byte
-//func (t *DaemonStatus) MarshalJSON()([]byte, error) {}
-
-// UnmarshalJSON loads a byte array into a DaemonStatus struct
-func (t *DaemonStatus) UnmarshalJSON(b []byte) error {
-	var m map[string]interface{}
-	err := json.Unmarshal(b, &m)
-	if err != nil {
-		return err
-	}
-	var ds DaemonStatus
-	var tmp []byte
-	ds.Heartbeats = make(map[string]HeartbeatThreadStatus)
-
-	for k, v := range m {
-		tmp, err = json.Marshal(v)
-		switch k {
-		case "cluster":
-			json.Unmarshal(tmp, &ds.Cluster)
-		case "monitor":
-			json.Unmarshal(tmp, &ds.Monitor)
-		case "scheduler":
-			json.Unmarshal(tmp, &ds.Scheduler)
-		case "collector":
-			json.Unmarshal(tmp, &ds.Collector)
-		case "dns":
-			json.Unmarshal(tmp, &ds.DNS)
-		case "listener":
-			json.Unmarshal(tmp, &ds.Listener)
-		default:
-			if strings.HasPrefix(k, "hb#") {
-				var hb HeartbeatThreadStatus
-				json.Unmarshal(tmp, &hb)
-				ds.Heartbeats[k] = hb
-			}
-		}
-	}
-
-	*t = ds
-	return nil
-}

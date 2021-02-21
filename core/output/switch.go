@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"opensvc.com/opensvc/core/render"
+	"opensvc.com/opensvc/util/render"
 )
 
 // RenderFunc must be passed by the Switch() caller
@@ -26,7 +26,8 @@ func Switch(formatStr string, color string, data interface{}, human RenderFunc) 
 		if human != nil {
 			human()
 		} else {
-			fmt.Println(data)
+			b, _ := json.MarshalIndent(data, "", "    ")
+			fmt.Println(string(b))
 		}
 	}
 }

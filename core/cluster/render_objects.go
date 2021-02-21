@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/types"
 )
 
 func wObjects(w io.Writer, data Data, info *dataInfo) {
@@ -15,7 +14,7 @@ func wObjects(w io.Writer, data Data, info *dataInfo) {
 	}
 }
 
-func sObjectPlacement(d types.ServiceStatus) string {
+func sObjectPlacement(d ServiceStatus) string {
 	var s string
 	switch d.Placement {
 	case "":
@@ -28,7 +27,7 @@ func sObjectPlacement(d types.ServiceStatus) string {
 	return s
 }
 
-func sObjectWarning(d types.ServiceStatus) string {
+func sObjectWarning(d ServiceStatus) string {
 	var s string
 	if d.Overall == status.Warn {
 		s = iconWarning
@@ -66,7 +65,7 @@ func sObjectRunning(path string, data Data) string {
 	return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
 }
 
-func sObjectAvail(d types.ServiceStatus) string {
+func sObjectAvail(d ServiceStatus) string {
 	s := d.Avail
 	return s.ColorString()
 }
@@ -100,7 +99,7 @@ func sObjectInstance(path string, node string, data Data) string {
 	return s
 }
 
-func sObjectInstanceAvail(avail status.Type, instance types.InstanceStatus) string {
+func sObjectInstanceAvail(avail status.Type, instance InstanceStatus) string {
 	switch instance.Avail {
 	case status.Up:
 		return iconUp
@@ -121,49 +120,49 @@ func sObjectInstanceAvail(avail status.Type, instance types.InstanceStatus) stri
 	return instance.Avail.String()
 }
 
-func sObjectInstanceOverall(instance types.InstanceStatus) string {
+func sObjectInstanceOverall(instance InstanceStatus) string {
 	if instance.Overall == status.Warn {
 		return iconWarning
 	}
 	return ""
 }
 
-func sObjectInstanceDRP(instance types.InstanceStatus) string {
+func sObjectInstanceDRP(instance InstanceStatus) string {
 	if instance.DRP {
 		return iconDRP
 	}
 	return ""
 }
 
-func sObjectInstanceLeader(instance types.InstanceStatus) string {
+func sObjectInstanceLeader(instance InstanceStatus) string {
 	if instance.Placement == "leader" {
 		return iconLeader
 	}
 	return ""
 }
 
-func sObjectInstanceFrozen(instance types.InstanceStatus) string {
+func sObjectInstanceFrozen(instance InstanceStatus) string {
 	if instance.Frozen > 0 {
 		return iconFrozen
 	}
 	return ""
 }
 
-func sObjectInstanceUnprovisioned(instance types.InstanceStatus) string {
+func sObjectInstanceUnprovisioned(instance InstanceStatus) string {
 	if !instance.Provisioned {
 		return iconProvisionAlert
 	}
 	return ""
 }
 
-func sObjectInstanceMonitorStatus(instance types.InstanceStatus) string {
+func sObjectInstanceMonitorStatus(instance InstanceStatus) string {
 	if instance.Monitor.Status != "idle" {
 		return " " + instance.Monitor.Status
 	}
 	return ""
 }
 
-func sObjectInstanceMonitorGlobalExpect(instance types.InstanceStatus) string {
+func sObjectInstanceMonitorGlobalExpect(instance InstanceStatus) string {
 	if instance.Monitor.GlobalExpect != "" {
 		return hiblack(" >" + instance.Monitor.GlobalExpect)
 	}

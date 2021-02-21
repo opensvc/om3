@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"io"
 	"time"
+
+	"opensvc.com/opensvc/core/event"
 )
 
 // EventsCmdOptions describes the events api handler options.
@@ -25,23 +27,15 @@ func NewEventsCmdConfig() *EventsCmdOptions {
 	}
 }
 
-// Event describes a opensvc daemon event
-type Event struct {
-	Kind      string      `json:"kind"`
-	ID        uint64      `json:"id"`
-	Timestamp float64     `json:"ts"`
-	Data      interface{} `json:"data"`
-}
-
 // Events fetchs an Event stream from the agent api
-func (a API) Events(o EventsCmdOptions) (chan Event, error) {
+func (a API) Events(o EventsCmdOptions) (chan event.Event, error) {
 	opts := a.NewRequestOptions()
 	opts.Node = "*"
 	resp, err := a.Requester.Get("events", *opts)
 	if err != nil {
 		return nil, err
 	}
-	q := make(chan Event, 1000)
+	q := make(chan event.Event, 1000)
 	go getMessages(q, resp.Body)
 	return q, nil
 }
@@ -72,13 +66,13 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func getMessages(q chan Event, rc io.ReadCloser) {
+func getMessages(q chan event.Event, rc io.ReadCloser) {
 	scanner := bufio.NewScanner(rc)
 	scanner.Split(splitFunc)
 	defer rc.Close()
 	for {
 		scanner.Scan()
-		e := &Event{}
+		e := &event.Event{}
 		b := scanner.Bytes()
 		if err := json.Unmarshal(b, &e); err != nil {
 			//fmt.Printf("Event stream parse error: %s", err)

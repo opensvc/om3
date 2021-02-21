@@ -1,4 +1,4 @@
-package types
+package cluster
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 )
 
 type (
-	// DaemonStats is a map of node statistics.
-	DaemonStats map[string]NodeStats
+	// Stats is a map of node statistics.
+	Stats map[string]NodeStats
 
 	// NodeStats embeds all daemon threads and each objet system
 	// resource usage metrics.

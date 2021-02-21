@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"opensvc.com/opensvc/core/converters/sizeconv"
+	"opensvc.com/opensvc/util/converters/sizeconv"
 )
 
 func sNodeScoreLine(data Data, info *dataInfo) string {

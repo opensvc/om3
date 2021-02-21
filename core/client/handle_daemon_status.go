@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"opensvc.com/opensvc/core/types"
+	"opensvc.com/opensvc/core/cluster"
 )
 
 // DaemonStatus fetchs the daemon status structure from the agent api
-func (a API) DaemonStatus() (types.DaemonStatus, error) {
-	var ds types.DaemonStatus
+func (a API) DaemonStatus() (cluster.Status, error) {
+	var ds cluster.Status
 	opts := a.NewRequestOptions()
 	resp, err := a.Requester.Get("daemon_status", *opts)
 	if err != nil {

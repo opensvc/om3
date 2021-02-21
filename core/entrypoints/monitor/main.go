@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/render/cluster"
-	"opensvc.com/opensvc/core/types"
 )
 
 // Do renders the cluster status
@@ -23,7 +22,7 @@ func Do(watch bool, color string, format string) {
 	doOneshot(data, color, format)
 }
 
-func doWatch(api client.API, data types.DaemonStatus, color string, format string) {
+func doWatch(api client.API, data cluster.Status, color string, format string) {
 	opts := client.NewEventsCmdConfig()
 	events, _ := api.Events(*opts)
 	defer close(events)
@@ -34,7 +33,7 @@ func doWatch(api client.API, data types.DaemonStatus, color string, format strin
 	}
 }
 
-func doOneshot(data types.DaemonStatus, color string, format string) {
+func doOneshot(data cluster.Status, color string, format string) {
 	human := func() {
 		cluster.Render(
 			cluster.Data{Current: data},
