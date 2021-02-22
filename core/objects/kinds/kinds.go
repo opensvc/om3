@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 )
 
+// Type is an integer representing the opensvc object kind.
 type Type int
 
 const (
@@ -25,23 +26,23 @@ const (
 )
 
 var toString = map[Type]string{
-	Svc:                "svc",
-	Vol:                "vol",
-	Cfg:                "cfg",
-	Sec:                "sec",
-	Usr:                "usr",
-	Ccfg:               "ccfg",
-	Nscfg:              "nscfg",
+	Svc:   "svc",
+	Vol:   "vol",
+	Cfg:   "cfg",
+	Sec:   "sec",
+	Usr:   "usr",
+	Ccfg:  "ccfg",
+	Nscfg: "nscfg",
 }
 
 var toID = map[string]Type{
-	"svc":         Svc,
-	"vol":         Vol,
-	"cfg":         Cfg,
-	"sec":         Sec,
-	"usr":         Usr,
-	"ccfg":        Ccfg,
-	"nscfg":       Nscfg,
+	"svc":   Svc,
+	"vol":   Vol,
+	"cfg":   Cfg,
+	"sec":   Sec,
+	"usr":   Usr,
+	"ccfg":  Ccfg,
+	"nscfg": Nscfg,
 }
 
 func (t Type) String() string {
@@ -67,4 +68,3 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 	*t = toID[j]
 	return nil
 }
-
