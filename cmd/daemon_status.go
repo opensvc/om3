@@ -30,8 +30,9 @@ var (
 
 // daemonStatusCmd represents the daemonStatus command
 var daemonStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Print the cluster status",
+	Use:     "status",
+	Short:   "Print the cluster status",
+	Aliases: []string{"statu"},
 	Run: func(cmd *cobra.Command, args []string) {
 		monitor.Do(optDaemonStatusWatch, colorFlag, formatFlag)
 	},

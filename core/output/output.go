@@ -10,29 +10,33 @@ import (
 type Type int
 
 const (
-	// Human encodes the prefered human friendly output format
+	// Human is the prefered human friendly output format
 	Human Type = iota
-	// JSON encodes the json output format
+	// JSON is the json output format
 	JSON
-	// Flat encodes the flattened json output format (a.'b#b'.c = d, a[0] = b)
+	// Flat is the flattened json output format (a.'b#b'.c = d, a[0] = b)
 	Flat
-	// Table encodes the simple tabular output format
+	// JSONLine is unindented json output format
+	JSONLine
+	// Table is the simple tabular output format
 	Table
-	// CSV encodes the csv tabular output format
+	// CSV is the csv tabular output format
 	CSV
 )
 
 var toString = map[Type]string{
-	Human: "human",
-	JSON:  "json",
-	Flat:  "flat",
-	Table: "table",
-	CSV:   "csv",
+	Human:    "human",
+	JSON:     "json",
+	JSONLine: "jsonline",
+	Flat:     "flat",
+	Table:    "table",
+	CSV:      "csv",
 }
 
 var toID = map[string]Type{
 	"human":     Human,
 	"json":      JSON,
+	"jsonline":  JSONLine,
 	"flat":      Flat,
 	"flat_json": Flat, // compat
 	"table":     Table,

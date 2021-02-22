@@ -17,10 +17,13 @@ func Switch(formatStr string, color string, data interface{}, human RenderFunc) 
 	render.SetColor(color)
 	switch format {
 	case Flat:
-		b, _ := json.MarshalIndent(data, "", "    ")
+		b, _ := json.Marshal(data)
 		PrintFlat(b)
 	case JSON:
 		b, _ := json.MarshalIndent(data, "", "    ")
+		fmt.Println(string(b))
+	case JSONLine:
+		b, _ := json.Marshal(data)
 		fmt.Println(string(b))
 	default:
 		if human != nil {
