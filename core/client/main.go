@@ -19,17 +19,20 @@ type (
 
 	// Requester abstracts the requesting details of supported protocols
 	Requester interface {
-		Get(req string, opts RequestOptions) (*http.Response, error)
+		Get(req Request) (*http.Response, error)
 	}
 
-	// RequestOptions abstract H2 headers and JSONRPC root keys
-	RequestOptions struct {
-		Node string
+	// Request is a api request abstracting the protocol differences
+	Request struct {
+		Method  string                 `json:"method"`
+		Action  string                 `json:"action"`
+		Node    string                 `json:"node"`
+		Options map[string]interface{} `json:"options"`
 	}
 )
 
-// NewCustomClient allocates a new agent api client struct
-func NewCustomClient(c Config) API {
+// NewClientFromConfig allocates a new agent api client struct
+func NewClientFromConfig(c Config) API {
 	return API{
 		Requester: NewRequester(c),
 	}
@@ -42,10 +45,12 @@ func New() API {
 	}
 }
 
-// NewRequestOptions allocates an unconfigured RequestOptions and returns its
+// NewRequest allocates an unconfigured RequestOptions and returns its
 // address.
-func (a API) NewRequestOptions() *RequestOptions {
-	return &RequestOptions{}
+func (a API) NewRequest() *Request {
+	r := &Request{}
+	r.Options = make(map[string]interface{})
+	return r
 }
 
 // NewRequester allocates the Requester interface implementing struct selected

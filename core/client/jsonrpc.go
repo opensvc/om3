@@ -15,13 +15,6 @@ type (
 	JSONRPC struct {
 		URL string
 	}
-
-	jsonrpcRequest struct {
-		Method  string                 `json:"method"`
-		Action  string                 `json:"action"`
-		Node    string                 `json:"node"`
-		Options map[string]interface{} `json:"options"`
-	}
 )
 
 const (
@@ -34,26 +27,14 @@ func JSONRPCUDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.Viper.GetString("paths.var")))
 }
 
-func newJSONRPCRequest(method string, action string, node string, opts map[string]interface{}) *jsonrpcRequest {
-	if opts == nil {
-		opts = make(map[string]interface{})
-	}
-	return &jsonrpcRequest{
-		Method:  method,
-		Action:  action,
-		Node:    node,
-		Options: opts,
-	}
-}
-
 // Get implements the Get interface method for the JSONRPC api
-func (t JSONRPC) Get(path string, opts RequestOptions) (*http.Response, error) {
+func (t JSONRPC) Get(req Request) (*http.Response, error) {
 	conn, err := net.Dial("unix", JSONRPCUDSPath())
 
 	if err != nil {
 		return nil, err
 	}
-	req := newJSONRPCRequest("GET", path, opts.Node, nil)
+	req.Method = "GET"
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, err

@@ -42,7 +42,7 @@ func init() {
 
 func daemonStats() {
 	api := client.New()
-	c := client.NewDaemonStatsCmdConfig()
+	c := client.NewDaemonStatsOptions()
 	data, err := api.DaemonStats(*c)
 	if err != nil {
 		fmt.Println(err)

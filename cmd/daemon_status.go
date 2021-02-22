@@ -25,7 +25,8 @@ import (
 )
 
 var (
-	optDaemonStatusWatch bool
+	optDaemonStatusWatch    bool
+	optDaemonStatusSelector string
 )
 
 // daemonStatusCmd represents the daemonStatus command
@@ -34,7 +35,7 @@ var daemonStatusCmd = &cobra.Command{
 	Short:   "Print the cluster status",
 	Aliases: []string{"statu"},
 	Run: func(cmd *cobra.Command, args []string) {
-		monitor.Do(optDaemonStatusWatch, colorFlag, formatFlag)
+		monitor.Do(optDaemonStatusSelector, optDaemonStatusWatch, colorFlag, formatFlag)
 	},
 }
 
@@ -42,4 +43,5 @@ func init() {
 	daemonCmd.AddCommand(daemonStatusCmd)
 	daemonStatusCmd.Flags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto (default is auto)")
 	daemonStatusCmd.Flags().BoolVarP(&optDaemonStatusWatch, "watch", "w", false, "Watch the monitor changes")
+	daemonStatusCmd.Flags().StringVarP(&optDaemonStatusSelector, "selector", "s", "**", "Select opensvc objects (ex: **/db*,*/svc/db*)")
 }

@@ -9,27 +9,30 @@ import (
 )
 
 // Do renders the cluster status
-func Do(watch bool, color string, format string) {
+func Do(selector string, watch bool, color string, format string) {
 	api := client.New()
-	data, err := api.DaemonStatus()
+	opts := client.NewDaemonStatusOptions()
+	opts.ObjectSelector = selector
+	data, err := api.DaemonStatus(*opts)
 	if err != nil {
 		return
 	}
 
 	if watch {
-		doWatch(api, data, color, format)
+		doWatch(api, &data, selector, color, format)
 	}
 	doOneshot(data, color, format)
 }
 
-func doWatch(api client.API, data cluster.Status, color string, format string) {
-	opts := client.NewEventsCmdConfig()
+func doWatch(api client.API, data *cluster.Status, selector string, color string, format string) {
+	opts := client.NewEventsOptions()
+	opts.ObjectSelector = selector
 	events, _ := api.Events(*opts)
 	defer close(events)
-	doOneshot(data, color, format)
+	doOneshot(*data, color, format)
 	for event := range events {
 		fmt.Println("xx", event)
-		doOneshot(data, color, format)
+		doOneshot(*data, color, format)
 	}
 }
 

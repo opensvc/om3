@@ -1,7 +1,9 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -72,8 +74,11 @@ func newH2Inet(c Config) H2 {
 }
 
 // Get implements the Get request for the H2 protocol
-func (t H2) Get(path string, opts RequestOptions) (*http.Response, error) {
-	req, err := http.NewRequest("GET", t.URL+"/"+path, nil)
+func (t H2) Get(r Request) (*http.Response, error) {
+	jsonStr, _ := json.Marshal(r.Options)
+	body := bytes.NewBuffer(jsonStr)
+	req, err := http.NewRequest("GET", t.URL+"/"+r.Action, body)
+	req.Header.Add("o-node", r.Node)
 	if err != nil {
 		return nil, err
 	}

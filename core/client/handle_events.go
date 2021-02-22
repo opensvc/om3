@@ -10,17 +10,17 @@ import (
 	"opensvc.com/opensvc/core/event"
 )
 
-// EventsCmdOptions describes the events api handler options.
-type EventsCmdOptions struct {
+// EventsOptions describes the events api handler options.
+type EventsOptions struct {
 	Namespace      string `json:"namespace"`
 	ObjectSelector string `json:"selector"`
 	Full           bool   `json:"full"`
 }
 
-// NewEventsCmdConfig allocates a EventsCmdConfig struct and sets
+// NewEventsOptions allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewEventsCmdConfig() *EventsCmdOptions {
-	return &EventsCmdOptions{
+func NewEventsOptions() *EventsOptions {
+	return &EventsOptions{
 		Namespace:      "*",
 		ObjectSelector: "**",
 		Full:           true,
@@ -28,10 +28,11 @@ func NewEventsCmdConfig() *EventsCmdOptions {
 }
 
 // Events fetchs an Event stream from the agent api
-func (a API) Events(o EventsCmdOptions) (chan event.Event, error) {
-	opts := a.NewRequestOptions()
+func (a API) Events(o EventsOptions) (chan event.Event, error) {
+	opts := a.NewRequest()
+	opts.Method = "events"
 	opts.Node = "*"
-	resp, err := a.Requester.Get("events", *opts)
+	resp, err := a.Requester.Get(*opts)
 	if err != nil {
 		return nil, err
 	}
