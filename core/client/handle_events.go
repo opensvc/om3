@@ -31,7 +31,7 @@ func NewEventsOptions() *EventsOptions {
 // Events fetchs an Event stream from the agent api
 func (a API) Events(o EventsOptions) (chan event.Event, error) {
 	opts := a.NewRequest()
-	opts.Method = "events"
+	opts.Action = "events"
 	opts.Node = "*"
 	resp, err := a.Requester.Get(*opts)
 	if err != nil {
