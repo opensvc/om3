@@ -2,10 +2,13 @@ package monitor
 
 import (
 	"fmt"
+	"time"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/patch"
 )
 
 // Do renders the cluster status
@@ -31,9 +34,27 @@ func doWatch(api client.API, data *cluster.Status, selector string, color string
 	defer close(events)
 	doOneshot(*data, color, format)
 	for event := range events {
-		fmt.Println("xx", event)
+		handleEvent(data, event)
 		doOneshot(*data, color, format)
 	}
+}
+
+func handleEvent(data *cluster.Status, e event.Event) {
+	switch e.Kind {
+	case "event":
+		return
+	case "patch":
+		patchset := patch.NewSet(e.Data.([]interface{}))
+		patchData(data, patchset)
+	default:
+		// unexpected: avoid fast looping
+		time.Sleep(100 * time.Millisecond)
+		return
+	}
+}
+
+func patchData(data *cluster.Status, patchset patch.SetType) {
+	fmt.Println("patching", "with", patchset)
 }
 
 func doOneshot(data cluster.Status, color string, format string) {

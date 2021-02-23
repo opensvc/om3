@@ -22,7 +22,7 @@ func Render(e Event) string {
 		for k, v := range output.Flatten(e.Data.(map[string]interface{})) {
 			s += fmt.Sprintln(" ", k, "=", v)
 		}
-	} else {
+	} else if e.Data != nil {
 		ps := patch.NewSet(e.Data.([]interface{}))
 		s += patch.RenderSet(ps)
 	}

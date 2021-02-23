@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -71,13 +72,23 @@ func getMessages(q chan event.Event, rc io.ReadCloser) {
 	scanner := bufio.NewScanner(rc)
 	scanner.Split(splitFunc)
 	defer rc.Close()
+	defer close(q)
 	for {
 		scanner.Scan()
 		e := &event.Event{}
 		b := scanner.Bytes()
+		if len(b) == 0 {
+			break
+		}
 		if err := json.Unmarshal(b, &e); err != nil {
-			//fmt.Printf("Event stream parse error: %s", err)
+			//fmt.Println("Event stream parse error:", err, string(b))
 			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		if e.Kind == "" {
+			fmt.Println("unexpected message:", string(b))
+			time.Sleep(100 * time.Millisecond)
+			continue
 		}
 		q <- *e
 	}

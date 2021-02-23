@@ -13,7 +13,6 @@ func Do(color string, format string) {
 	api := client.New()
 	opts := client.NewEventsOptions()
 	events, _ := api.Events(*opts)
-	defer close(events)
 	for event := range events {
 		doOne(event, color, format)
 	}
