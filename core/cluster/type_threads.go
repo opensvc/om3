@@ -1,7 +1,5 @@
 package cluster
 
-import "net"
-
 type (
 	// ThreadStatus describes a OpenSVC daemon thread: when the thread
 	// was last configured, when it was created, its current state and thread
@@ -18,19 +16,6 @@ type (
 	ThreadAlert struct {
 		Message  string `json:"message"`
 		Severity string `json:"severity"`
-	}
-
-	// ListenerThreadStatus describes the OpenSVC daemon listener thread,
-	// which is responsible for serving the API.
-	ListenerThreadStatus struct {
-		ThreadStatus
-		Config ListenerThreadStatusConfig `json:"config"`
-	}
-
-	// ListenerThreadStatusConfig holds a summary of the listener configuration
-	ListenerThreadStatusConfig struct {
-		Addr net.IP `json:"addr"`
-		Port int    `json:"port"`
 	}
 
 	// CollectorThreadStatus describes the OpenSVC daemon collector thread,
@@ -61,12 +46,5 @@ type (
 	HeartbeatPeerStatus struct {
 		Beating bool    `json:"beating"`
 		Last    float64 `json:"last"`
-	}
-
-	// SchedulerThreadStatus describes the OpenSVC daemon scheduler thread
-	// state, which is responsible for executing node and objects scheduled
-	// jobs.
-	SchedulerThreadStatus struct {
-		ThreadStatus
 	}
 )

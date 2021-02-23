@@ -16,6 +16,24 @@ func Flatten(inputJSON map[string]interface{}) map[string]interface{} {
 	return flattened
 }
 
+// SprintFlat accepts a JSON formated byte array and returns the sorted
+// "key = val" buffer
+func SprintFlat(b []byte) string {
+	var s string
+	var data map[string]interface{}
+	json.Unmarshal(b, &data)
+	flattened := Flatten(data)
+	keys := make([]string, 0)
+	for key := range flattened {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		s += fmt.Sprintln(k, "=", flattened[k])
+	}
+	return s
+}
+
 // PrintFlat accepts a JSON formated byte array and prints to stdout the sorted
 // "key = val"
 func PrintFlat(b []byte) {

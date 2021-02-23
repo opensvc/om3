@@ -7,6 +7,7 @@ require (
 	github.com/containernetworking/plugins v0.9.1
 	github.com/docker/go-units v0.4.0
 	github.com/dustin/go-humanize v1.0.0
+	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
 	github.com/fatih/color v1.10.0
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
@@ -25,6 +26,7 @@ require (
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/pelletier/go-toml v1.8.1 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/safchain/ethtool v0.0.0-20201023143004-874930cb3ce0 // indirect
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/spf13/afero v1.5.1 // indirect

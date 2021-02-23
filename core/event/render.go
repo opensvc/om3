@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"opensvc.com/opensvc/core/delta"
 	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/patch"
 )
 
 func unixFromFloat64(f float64) time.Time {
@@ -19,12 +19,10 @@ func Render(e Event) string {
 	t := unixFromFloat64(e.Timestamp)
 	s := fmt.Sprintf("%s %s\n", t, e.Kind)
 	if e.Kind == "event" {
-		for k, v := range output.Flatten(e.Data.(map[string]interface{})) {
-			s += fmt.Sprintln(" ", k, "=", v)
-		}
+		s += output.SprintFlat(*e.Data)
 	} else if e.Data != nil {
-		ps := patch.NewSet(e.Data.([]interface{}))
-		s += patch.RenderSet(ps)
+		patch := delta.NewPatch(*e.Data)
+		s += patch.Render()
 	}
 	return s
 }

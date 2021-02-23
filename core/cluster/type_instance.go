@@ -48,6 +48,7 @@ type (
 		FlexMax     int                       `json:"flex_max,omitempty"`
 		Subsets     map[string]SubsetStatus   `json:"subsets,omitempty"`
 		Resources   map[string]ResourceStatus `json:"resources,omitempty"`
+		Running     []string                  `json:"running,omitempty"`
 	}
 
 	// SubsetStatus describes a resource subset properties.
