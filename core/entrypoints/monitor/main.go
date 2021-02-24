@@ -31,7 +31,7 @@ func Do(selector string, watch bool, color string, format string) {
 	if err != nil {
 		return
 	}
-	doOneshot(data, color, format)
+	doOneshot(data, color, format, false)
 }
 
 func doWatch(api client.API, selector string, color string, format string) error {
@@ -57,9 +57,7 @@ func doWatch(api client.API, selector string, color string, format string) error
 	}
 	b = *evt.Data
 	json.Unmarshal(*evt.Data, &data)
-	screen.Clear()
-	screen.MoveTopLeft()
-	doOneshot(data, color, format)
+	doOneshot(data, color, format, true)
 	for m := range events {
 		e, ok := m.([]byte)
 		if !ok {
@@ -75,9 +73,7 @@ func doWatch(api client.API, selector string, color string, format string) error
 			return err
 		}
 		json.Unmarshal(b, &data)
-		screen.Clear()
-		screen.MoveTopLeft()
-		doOneshot(data, color, format)
+		doOneshot(data, color, format, true)
 	}
 	return nil
 }
@@ -123,13 +119,18 @@ func applyOp(data interface{}, o delta.Operation) {
 	//data = o.value()
 }
 
-func doOneshot(data cluster.Status, color string, format string) {
-	human := func() {
-		cluster.Render(
+func doOneshot(data cluster.Status, color string, format string, clear bool) {
+	human := func() string {
+		return cluster.Render(
 			cluster.Data{Current: data},
 			cluster.Options{},
 		)
 	}
 
-	output.Switch(format, color, data, human)
+	s := output.Switch(format, color, data, human)
+	if clear {
+		screen.Clear()
+		screen.MoveTopLeft()
+	}
+	fmt.Print(s)
 }

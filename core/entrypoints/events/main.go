@@ -19,11 +19,11 @@ func Do(color string, format string) {
 }
 
 func doOne(e event.Event, color string, format string) {
-	human := func() {
-		fmt.Print(event.Render(e))
+	human := func() string {
+		return event.Render(e)
 	}
 	if format == output.JSON.String() {
 		format = output.JSONLine.String()
 	}
-	output.Switch(format, color, e, human)
+	fmt.Print(output.Switch(format, color, e, human))
 }

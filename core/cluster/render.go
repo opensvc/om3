@@ -74,14 +74,15 @@ func GetOutputTermSize() tsize.Size {
 // representation of Render.
 func Render(data Data, opts Options) string {
 	//ts := GetOutputTermSize()
+	var builder strings.Builder
 	info := scanData(data)
-	w := tabwriter.NewTabWriter(os.Stdout, 1, 1, 1, ' ', 0)
+	w := tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
 	wThreads(w, data, info)
 	wArbitrators(w, data, info)
 	wNodes(w, data, info)
 	wObjects(w, data, info)
 	w.Flush()
-	return ""
+	return builder.String()
 }
 
 type dataInfo struct {

@@ -2,35 +2,33 @@ package output
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"opensvc.com/opensvc/util/render"
 )
 
 // RenderFunc must be passed by the Switch() caller
-type RenderFunc func()
+type RenderFunc func() string
 
-// Switch outputs the dataset in one of the supported format (json, flat, human, ...).
+// Switch returns the dataset in one of the supported format (json, flat, human, ...).
 // The human format needs a RenderFunc to be passed.
-func Switch(formatStr string, color string, data interface{}, human RenderFunc) {
+func Switch(formatStr string, color string, data interface{}, human RenderFunc) string {
 	format := toID[formatStr]
 	render.SetColor(color)
 	switch format {
 	case Flat:
 		b, _ := json.Marshal(data)
-		PrintFlat(b)
+		return SprintFlat(b)
 	case JSON:
 		b, _ := json.MarshalIndent(data, "", "    ")
-		fmt.Println(string(b))
+		return string(b)
 	case JSONLine:
 		b, _ := json.Marshal(data)
-		fmt.Println(string(b))
+		return string(b)
 	default:
 		if human != nil {
-			human()
-		} else {
-			b, _ := json.MarshalIndent(data, "", "    ")
-			fmt.Println(string(b))
+			return human()
 		}
+		b, _ := json.MarshalIndent(data, "", "    ")
+		return string(b)
 	}
 }
