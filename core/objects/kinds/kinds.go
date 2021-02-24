@@ -3,14 +3,17 @@ package kinds
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 )
 
 // Type is an integer representing the opensvc object kind.
 type Type int
 
 const (
+	// Invalid is for invalid kinds
+	Invalid Type = iota
 	// Svc is the kind of objects containing app, containers, or volumes resources.
-	Svc Type = iota
+	Svc
 	// Vol is the kind of objects containing fs, disk resources. Allocated from Pools.
 	Vol
 	// Cfg is the kind of objects containing unencrypted key/val pairs used to abstract Svc configurations
@@ -25,28 +28,41 @@ const (
 	Nscfg
 )
 
-var toString = map[Type]string{
-	Svc:   "svc",
-	Vol:   "vol",
-	Cfg:   "cfg",
-	Sec:   "sec",
-	Usr:   "usr",
-	Ccfg:  "ccfg",
-	Nscfg: "nscfg",
-}
+var (
+	// ErrInvalid is raised by the allocator if the kind is invalid
+	ErrInvalid = errors.New("invalid kind")
 
-var toID = map[string]Type{
-	"svc":   Svc,
-	"vol":   Vol,
-	"cfg":   Cfg,
-	"sec":   Sec,
-	"usr":   Usr,
-	"ccfg":  Ccfg,
-	"nscfg": Nscfg,
-}
+	toString = map[Type]string{
+		Svc:   "svc",
+		Vol:   "vol",
+		Cfg:   "cfg",
+		Sec:   "sec",
+		Usr:   "usr",
+		Ccfg:  "ccfg",
+		Nscfg: "nscfg",
+	}
+
+	toID = map[string]Type{
+		"svc":   Svc,
+		"vol":   Vol,
+		"cfg":   Cfg,
+		"sec":   Sec,
+		"usr":   Usr,
+		"ccfg":  Ccfg,
+		"nscfg": Nscfg,
+	}
+)
 
 func (t Type) String() string {
 	return toString[t]
+}
+
+func New(kind string) Type {
+	t, ok := toID[kind]
+	if ok {
+		return t
+	}
+	return Invalid
 }
 
 // MarshalJSON marshals the enum as a quoted json string

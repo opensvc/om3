@@ -41,7 +41,7 @@ var svcStatusCmd = &cobra.Command{
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		selection.New(svcSelector).Status()
+		selection.New(selectorFlag).Status()
 	},
 }
 

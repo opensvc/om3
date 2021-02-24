@@ -28,34 +28,47 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
-var colorFlag string
-var formatFlag string
+var (
+	cfgFile      string
+	colorFlag    string
+	formatFlag   string
+	selectorFlag string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "opensvc",
 	Short: "Manage the opensvc cluster infrastructure and its deployed services.",
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	//Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	_, _, err := rootCmd.Find(os.Args[1:])
+
+	if err != nil {
+		// command not found... try lpop'ing args[1] as a selector
+		if len(os.Args) > 1 {
+			selectorFlag = os.Args[1]
+			args := append([]string{"svc"}, os.Args[2:]...)
+			rootCmd.SetArgs(args)
+		}
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 }
 
 func init() {
 	cobra.OnInitialize(initConfig)
 
 	// global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.opensvc.yaml)")
-	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto (default is auto)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
+	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
 
 	// local to this action.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

@@ -35,5 +35,5 @@ var nodeEventsCmd = &cobra.Command{
 
 func init() {
 	nodeCmd.AddCommand(nodeEventsCmd)
-	nodeEventsCmd.Flags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto (default is auto)")
+	nodeEventsCmd.Flags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 }
