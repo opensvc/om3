@@ -24,21 +24,32 @@ func NewEventsOptions() *EventsOptions {
 	return &EventsOptions{
 		Namespace:      "*",
 		ObjectSelector: "**",
-		Full:           true,
+		Full:           false,
 	}
 }
 
+// EventsRaw fetchs an event json RawMessage stream from the agent api
+func (a API) EventsRaw(o EventsOptions) (chan interface{}, error) {
+	return a.eventsBase(o, true)
+}
+
 // Events fetchs an Event stream from the agent api
-func (a API) Events(o EventsOptions) (chan event.Event, error) {
-	opts := a.NewRequest()
-	opts.Action = "events"
-	opts.Node = "*"
-	resp, err := a.Requester.Get(*opts)
+func (a API) Events(o EventsOptions) (chan interface{}, error) {
+	return a.eventsBase(o, false)
+}
+
+func (a API) eventsBase(o EventsOptions, raw bool) (chan interface{}, error) {
+	req := a.NewRequest()
+	req.Action = "events"
+	req.Options["selector"] = o.ObjectSelector
+	req.Options["namespace"] = o.Namespace
+	req.Options["full"] = o.Full
+	resp, err := a.Requester.Get(*req)
 	if err != nil {
 		return nil, err
 	}
-	q := make(chan event.Event, 1000)
-	go getMessages(q, resp.Body)
+	q := make(chan interface{}, 1000)
+	go getMessages(q, resp.Body, raw)
 	return q, nil
 }
 
@@ -68,18 +79,25 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func getMessages(q chan event.Event, rc io.ReadCloser) {
+func getMessages(q chan interface{}, rc io.ReadCloser, raw bool) {
 	scanner := bufio.NewScanner(rc)
+	min := 1000     // usual event size
+	max := 10000000 // max kind=full event size
+	scanner.Buffer(make([]byte, min, max), max)
 	scanner.Split(splitFunc)
 	defer rc.Close()
 	defer close(q)
 	for {
 		scanner.Scan()
-		e := &event.Event{}
 		b := scanner.Bytes()
 		if len(b) == 0 {
 			break
 		}
+		if raw {
+			q <- b
+			continue
+		}
+		e := &event.Event{}
 		if err := json.Unmarshal(b, &e); err != nil {
 			//fmt.Println("Event stream parse error:", err, string(b))
 			time.Sleep(100 * time.Millisecond)

@@ -3,6 +3,7 @@ module opensvc.com/opensvc
 go 1.13
 
 require (
+	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
 	github.com/docker/go-units v0.4.0
@@ -12,6 +13,7 @@ require (
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
+	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/jeremywohl/flatten v1.0.1
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54

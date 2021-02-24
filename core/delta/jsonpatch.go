@@ -432,7 +432,10 @@ func (p Patch) replace(doc *container, op Operation) error {
 
 	_, ok := con.get(key)
 	if ok != nil {
-		return errors.Wrapf(ErrMissing, "replace operation does not apply: doc is missing key: %s", path)
+		err = con.add(key, op.value())
+		if err != nil {
+			return errors.Wrapf(err, "error in add for path: '%s'", path)
+		}
 	}
 
 	err = con.set(key, op.value())

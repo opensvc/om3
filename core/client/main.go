@@ -25,9 +25,9 @@ type (
 	// Request is a api request abstracting the protocol differences
 	Request struct {
 		Method  string                 `json:"method"`
-		Action  string                 `json:"action"`
-		Node    string                 `json:"node"`
-		Options map[string]interface{} `json:"options"`
+		Action  string                 `json:"action,omitempty"`
+		Node    string                 `json:"node,omitempty"`
+		Options map[string]interface{} `json:"options,omitempty"`
 	}
 )
 
