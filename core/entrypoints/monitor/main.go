@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/inancgumus/screen"
@@ -94,29 +93,6 @@ func handleEvent(b *[]byte, e event.Event) error {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
-}
-
-func patchData(data interface{}, patch delta.Patch) {
-	for _, o := range patch {
-		applyOp(data, o)
-	}
-}
-
-func applyOp(data interface{}, o delta.Operation) {
-	path, _ := o.Path()
-	for _, key := range path {
-		switch key.(type) {
-		case string:
-			fmt.Println("patching", "string", key)
-			data = data.(map[string]interface{})[key.(string)]
-		case int:
-			fmt.Println("patching", "int", key)
-			data = data.([]interface{})[key.(int)]
-		default:
-			fmt.Println("xx", key, reflect.TypeOf(key), reflect.ValueOf(key))
-		}
-	}
-	//data = o.value()
 }
 
 func doOneshot(data cluster.Status, color string, format string, clear bool) {
