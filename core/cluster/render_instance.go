@@ -32,7 +32,10 @@ func sObjectInstanceAvail(objectAvail status.Type, instance InstanceStatus) stri
 	case status.Up:
 		return iconUp
 	case status.Down:
-		return iconDown
+		if objectAvail == status.Up {
+			return iconDown
+		}
+		return iconDownIssue
 	case status.Warn:
 		return iconWarning
 	case status.NotApplicable:
@@ -40,10 +43,10 @@ func sObjectInstanceAvail(objectAvail status.Type, instance InstanceStatus) stri
 	case status.StandbyDown:
 		return iconStandbyDown
 	case status.StandbyUp:
-		if objectAvail != status.Up {
-			return iconStandbyUpIssue
+		if objectAvail == status.Up {
+			return iconStandbyUp
 		}
-		return iconStandbyUp
+		return iconStandbyUpIssue
 	}
 	return instance.Avail.String()
 }
