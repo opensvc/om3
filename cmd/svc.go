@@ -28,9 +28,13 @@ var svcSelectorFlag string
 var svcCmd = &cobra.Command{
 	Use:   "svc",
 	Short: "Manage services",
-	Long: `Services are objects serving applications. They can use 
-support objects like volumes, secrets and configmaps to have a separate
-lifecycle or to abstract cluster-specific knowledge.`,
+	Long: `Service objects subsystem.
+	
+A service is typically made of ip, app, container and task resources.
+
+They can use support objects like volumes, secrets and configmaps to
+isolate lifecycles or to abstract cluster-specific knowledge.
+`,
 }
 
 func init() {
