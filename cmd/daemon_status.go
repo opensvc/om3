@@ -33,6 +33,7 @@ var (
 var daemonStatusCmd = &cobra.Command{
 	Use:     "status",
 	Short:   "Print the cluster status",
+	Long:    monitor.CmdLong,
 	Aliases: []string{"statu"},
 	Run: func(cmd *cobra.Command, args []string) {
 		m := monitor.New()

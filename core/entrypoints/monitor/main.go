@@ -26,6 +26,27 @@ type (
 	}
 )
 
+// CmdLong factorizes the long desc text defined by commands invoking a Monitor.
+const CmdLong = `Color convention:
+  red     issue
+  orange  warning
+
+Object Flags:
+  !       Warning
+  ^       Placement non-optimal
+
+Instance Flags:
+  O       Up
+  S       Standby up
+  X       Down
+  s       Standby down
+  !       Warning
+  P       Unprovisioned
+  *       Frozen
+  ^       Placement leader
+  #       DRP instance
+`
+
 // New allocates a monitor.
 func New() Type {
 	return Type{

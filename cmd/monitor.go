@@ -33,8 +33,7 @@ var monCmd = &cobra.Command{
 	Use:     "monitor",
 	Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
 	Short:   "Print the cluster status",
-	Long: `
-`,
+	Long:    monitor.CmdLong,
 	Run: func(cmd *cobra.Command, args []string) {
 		m := monitor.New()
 		m.SetWatch(monWatchFlag)

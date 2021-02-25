@@ -30,20 +30,7 @@ var svcMonitorCmd = &cobra.Command{
 	Use:     "monitor",
 	Aliases: []string{"mon", "moni", "monit", "monito"},
 	Short:   "Print selected service and instance status summary",
-	Long: `Instance Flags:
-
-  O       Up
-  S       Standby up
-  X       Down
-  s       Standby down
-  !       Warning
-  P       Unprovisioned
-  *       Frozen
-  ^ red   Placement non-optimal
-  ^ gray  Placement leader
-  #       DRP instance
-
-`,
+	Long:    monitor.CmdLong,
 	Run: func(cmd *cobra.Command, args []string) {
 		selector := mergeSelector(svcSelectorFlag)
 		m := monitor.New()
