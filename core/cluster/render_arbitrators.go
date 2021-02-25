@@ -2,13 +2,12 @@ package cluster
 
 import (
 	"fmt"
-	"io"
 )
 
-func wArbitrators(w io.Writer, data Data, info *dataInfo) {
-	if len(info.arbitrators) == 0 {
+func (f Frame) wArbitrators() {
+	if len(f.info.arbitrators) == 0 {
 		return
 	}
-	fmt.Fprintln(w, title("Arbitrators", data))
-	fmt.Fprintln(w, info.empty)
+	fmt.Fprintln(f.w, f.title("Arbitrators"))
+	fmt.Fprintln(f.w, f.info.empty)
 }

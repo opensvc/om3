@@ -155,12 +155,11 @@ func handleEvent(b *[]byte, e event.Event) error {
 
 func (m Type) doOneshot(data cluster.Status, clear bool) {
 	human := func() string {
-		return cluster.Render(
-			cluster.Data{Current: data},
-			cluster.Options{
-				Sections: m.sections,
-			},
-		)
+		f := cluster.Frame{
+			Current:  data,
+			Sections: m.sections,
+		}
+		return f.Render()
 	}
 
 	s := output.Switch(m.format, m.color, data, human)

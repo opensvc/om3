@@ -1,13 +1,11 @@
 package cluster
 
 import (
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
-	tsize "github.com/kopoli/go-terminal-size"
 )
 
 const (
@@ -53,106 +51,93 @@ var (
 )
 
 type (
-	// Options exposes daemon status renderer tunables.
-	Options struct {
+	// Frame exposes daemon status renderer tunables.
+	Frame struct {
 		Nodes    []string
 		Sections []string
-	}
-
-	// Data holds current, previous and statistics datasets.
-	Data struct {
 		Current  Status
 		Previous Status
 		Stats    Stats
+
+		// private
+		w           *tabwriter.TabWriter
+		sectionMask int
+		info        struct {
+			nodeCount   int
+			arbitrators map[string]int
+			empty       string
+			emptyNodes  string
+			separator   string
+			columns     int
+			paths       []string
+		}
 	}
 )
 
-// GetOutputTermSize returns the stdout terminal size or defaults
-func GetOutputTermSize() tsize.Size {
-	ts, err := tsize.FgetSize(os.Stdout)
-	if err != nil {
-		return tsize.Size{Height: 250, Width: 800}
-	}
-	return ts
-}
-
-func sectionMask(sections []string) int {
+func (f *Frame) setSectionMask() {
 	i := 0
-	for _, s := range sections {
+	for _, s := range f.Sections {
 		i += sectionToID[s]
 	}
-	return i
+	f.sectionMask = i
 }
 
-func hasSection(mask int, section string) bool {
-	if mask == 0 {
+func (f Frame) hasSection(section string) bool {
+	if f.sectionMask == 0 {
 		return true
 	}
-	return mask&sectionToID[section] != 0
+	return f.sectionMask&sectionToID[section] != 0
 }
 
 // Render return a string buffer containing a human-friendly
 // representation of Render.
-func Render(data Data, opts Options) string {
-	//ts := GetOutputTermSize()
+func (f *Frame) Render() string {
 	var builder strings.Builder
-	sm := sectionMask(opts.Sections)
-	info := scanData(data)
-	w := tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
-	if hasSection(sm, "threads") {
-		wThreads(w, data, info)
+	f.setSectionMask()
+	f.scanData()
+	f.w = tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
+	if f.hasSection("threads") {
+		f.wThreads()
 	}
-	if hasSection(sm, "arbitrators") {
-		wArbitrators(w, data, info)
+	if f.hasSection("arbitrators") {
+		f.wArbitrators()
 	}
-	if hasSection(sm, "nodes") {
-		wNodes(w, data, info)
+	if f.hasSection("nodes") {
+		f.wNodes()
 	}
-	if hasSection(sm, "objects") {
-		wObjects(w, data, info)
+	if f.hasSection("objects") {
+		f.wObjects()
 	}
-	w.Flush()
+	f.w.Flush()
 	return builder.String()
 }
 
-type dataInfo struct {
-	nodeCount   int
-	arbitrators map[string]int
-	empty       string
-	emptyNodes  string
-	separator   string
-	columns     int
-	paths       []string
-}
-
-func scanData(data Data) *dataInfo {
-	info := &dataInfo{}
-	info.nodeCount = len(data.Current.Cluster.Nodes)
+func (f *Frame) scanData() {
+	f.info.nodeCount = len(f.Current.Cluster.Nodes)
 	// +1 for the separator between static cols and node cols
-	info.columns = staticCols + info.nodeCount + 1
-	info.empty = strings.Repeat("\t", info.columns)
-	info.emptyNodes = strings.Repeat("\t", info.nodeCount)
-	if info.nodeCount > 0 {
-		info.separator = "|"
+	f.info.columns = staticCols + f.info.nodeCount + 1
+	f.info.empty = strings.Repeat("\t", f.info.columns)
+	f.info.emptyNodes = strings.Repeat("\t", f.info.nodeCount)
+	if f.info.nodeCount > 0 {
+		f.info.separator = "|"
 	} else {
-		info.separator = " "
+		f.info.separator = " "
 	}
-	for _, v := range data.Current.Monitor.Nodes {
+	for _, v := range f.Current.Monitor.Nodes {
 		for name := range v.Arbitrators {
-			info.arbitrators[name] = 1
+			f.info.arbitrators[name] = 1
 		}
 	}
-	info.paths = make([]string, 0)
-	for path := range data.Current.Monitor.Services {
-		info.paths = append(info.paths, path)
+	f.info.paths = make([]string, 0)
+	for path := range f.Current.Monitor.Services {
+		f.info.paths = append(f.info.paths, path)
 	}
-	sort.Strings(info.paths)
-	return info
+	sort.Strings(f.info.paths)
 }
 
-func title(s string, data Data) string {
+func (f Frame) title(s string) string {
 	s += "\t\t\t\t"
-	for _, v := range data.Current.Cluster.Nodes {
+	for _, v := range f.Current.Cluster.Nodes {
 		s += bold(v) + "\t"
 	}
 	return s

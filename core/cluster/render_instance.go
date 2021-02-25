@@ -5,10 +5,10 @@ import (
 	"opensvc.com/opensvc/core/status"
 )
 
-func sObjectInstance(path string, node string, data Data) string {
+func (f Frame) sObjectInstance(path string, node string) string {
 	s := ""
-	avail := data.Current.Monitor.Services[path].Avail
-	if instance, ok := data.Current.Monitor.Nodes[node].Services.Status[path]; ok {
+	avail := f.Current.Monitor.Services[path].Avail
+	if instance, ok := f.Current.Monitor.Nodes[node].Services.Status[path]; ok {
 		s += sObjectInstanceAvail(avail, instance)
 		s += sObjectInstanceOverall(instance)
 		s += sObjectInstanceDRP(instance)

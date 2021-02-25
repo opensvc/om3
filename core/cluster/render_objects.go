@@ -2,15 +2,14 @@ package cluster
 
 import (
 	"fmt"
-	"io"
 
 	"opensvc.com/opensvc/core/status"
 )
 
-func wObjects(w io.Writer, data Data, info *dataInfo) {
-	fmt.Fprintln(w, title("Objects", data))
-	for _, k := range info.paths {
-		fmt.Fprintln(w, sObject(k, data, info))
+func (f Frame) wObjects() {
+	fmt.Fprintln(f.w, f.title("Objects"))
+	for _, k := range f.info.paths {
+		fmt.Fprintln(f.w, f.sObject(k))
 	}
 }
 
@@ -35,11 +34,11 @@ func sObjectWarning(d ServiceStatus) string {
 	return s
 }
 
-func sObjectRunning(path string, data Data) string {
+func (f Frame) sObjectRunning(path string) string {
 	actual := 0
 	expected := 0
 	orchestrate := ""
-	for _, node := range data.Current.Monitor.Nodes {
+	for _, node := range f.Current.Monitor.Nodes {
 		if instance, ok := node.Services.Status[path]; ok {
 			if instance.Avail == status.Up {
 				actual++
@@ -70,15 +69,15 @@ func sObjectAvail(d ServiceStatus) string {
 	return s.ColorString()
 }
 
-func sObject(path string, data Data, info *dataInfo) string {
-	d := data.Current.Monitor.Services[path]
+func (f Frame) sObject(path string) string {
+	d := f.Current.Monitor.Services[path]
 	c3 := sObjectAvail(d) + sObjectWarning(d) + sObjectPlacement(d)
 	s := fmt.Sprintf(" %s\t", bold(path))
 	s += fmt.Sprintf("%s\t", c3)
-	s += fmt.Sprintf("%s\t", sObjectRunning(path, data))
-	s += fmt.Sprintf("%s\t", info.separator)
-	for _, node := range data.Current.Cluster.Nodes {
-		s += sObjectInstance(path, node, data)
+	s += fmt.Sprintf("%s\t", f.sObjectRunning(path))
+	s += fmt.Sprintf("%s\t", f.info.separator)
+	for _, node := range f.Current.Cluster.Nodes {
+		s += f.sObjectInstance(path, node)
 	}
 	return s
 }
