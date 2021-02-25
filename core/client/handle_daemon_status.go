@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 
 	"opensvc.com/opensvc/core/cluster"
@@ -33,19 +32,16 @@ func (a API) DaemonStatus(o DaemonStatusOptions) (cluster.Status, error) {
 	opts.Options["selector"] = o.ObjectSelector
 	resp, err := a.Requester.Get(*opts)
 	if err != nil {
-		fmt.Println(err)
 		return ds, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err)
 		return ds, err
 	}
 	body = bytes.TrimRight(body, "\x00")
 	err = json.Unmarshal(body, &ds)
 	if err != nil {
-		fmt.Println(err)
 		return ds, err
 	}
 	return ds, nil

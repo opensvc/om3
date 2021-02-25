@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/inancgumus/screen"
@@ -95,10 +96,18 @@ func (m *Type) SetNodes(v []string) {
 
 // Do renders the cluster status
 func (m Type) Do() {
-	api := client.New()
+	var (
+		api client.API
+		err error
+	)
+	api, err = client.New()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 
 	if m.watch {
-		if err := m.doWatch(api); err != nil {
+		if err = m.doWatch(api); err != nil {
 			fmt.Println(err)
 		}
 		return
@@ -107,6 +116,7 @@ func (m Type) Do() {
 	opts.ObjectSelector = m.selector
 	data, err := api.DaemonStatus(*opts)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	m.doOneshot(data, false)

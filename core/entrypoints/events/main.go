@@ -2,6 +2,7 @@ package events
 
 import (
 	"fmt"
+	"os"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/event"
@@ -10,7 +11,11 @@ import (
 
 // Do renders the cluster status
 func Do(color string, format string) {
-	api := client.New()
+	api, err := client.New()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 	opts := client.NewEventsOptions()
 	events, _ := api.Events(*opts)
 	for m := range events {

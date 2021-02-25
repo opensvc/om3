@@ -35,7 +35,8 @@ func H2UDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Viper.GetString("paths.var")))
 }
 
-func newH2UDS(c Config) H2 {
+func newH2UDS(c Config) (H2, error) {
+	r := &H2{}
 	unixTransport := &httpunix.Transport{
 		DialTimeout:           100 * time.Millisecond,
 		RequestTimeout:        1 * time.Second,
@@ -49,28 +50,32 @@ func newH2UDS(c Config) H2 {
 	var t *http2.Transport
 	t, err = http2.ConfigureTransports(t1)
 	if err != nil {
-		panic(err)
+		return *r, err
 	}
 	t.AllowHTTP = true
 	t.DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 		return net.Dial(network, addr)
 	}
-	return H2{
-		URL:    "http+unix://myservice",
-		Client: http.Client{Transport: t},
-	}
+	r.URL = "http+unix://myservice"
+	r.Client = http.Client{Transport: t}
+	return *r, nil
 }
 
-func newH2Inet(c Config) H2 {
+func newH2Inet(c Config) (H2, error) {
+	r := &H2{}
+	cer, err := tls.LoadX509KeyPair(c.ClientCertificate, c.ClientKey)
+	if err != nil {
+		return *r, err
+	}
 	t := &http2.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: c.InsecureSkipVerify,
+			Certificates:       []tls.Certificate{cer},
 		},
 	}
-	return H2{
-		URL:    c.URL,
-		Client: http.Client{Transport: t},
-	}
+	r.URL = c.URL
+	r.Client = http.Client{Transport: t}
+	return *r, nil
 }
 
 // Get implements the Get request for the H2 protocol
@@ -78,9 +83,9 @@ func (t H2) Get(r Request) (*http.Response, error) {
 	jsonStr, _ := json.Marshal(r.Options)
 	body := bytes.NewBuffer(jsonStr)
 	req, err := http.NewRequest("GET", t.URL+"/"+r.Action, body)
-	req.Header.Add("o-node", r.Node)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Add("o-node", r.Node)
 	return t.Client.Do(req)
 }

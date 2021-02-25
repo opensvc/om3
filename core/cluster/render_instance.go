@@ -17,6 +17,7 @@ func (f Frame) sObjectInstance(path string, node string) string {
 		s += sObjectInstanceUnprovisioned(instance)
 		s += sObjectInstanceMonitorStatus(instance)
 		s += sObjectInstanceMonitorGlobalExpect(instance)
+		s += "\t"
 	}
 	return s
 }

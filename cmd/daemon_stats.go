@@ -20,9 +20,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/output"
 )
 
@@ -40,9 +42,18 @@ func init() {
 }
 
 func daemonStats() {
-	api := client.New()
+	var (
+		api  client.API
+		err  error
+		data cluster.Stats
+	)
+	api, err = client.New()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 	c := client.NewDaemonStatsOptions()
-	data, err := api.DaemonStats(*c)
+	data, err = api.DaemonStats(*c)
 	if err != nil {
 		fmt.Println(err)
 		return

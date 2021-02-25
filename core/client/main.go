@@ -15,6 +15,8 @@ type (
 	Config struct {
 		URL                string
 		InsecureSkipVerify bool
+		ClientCertificate  string
+		ClientKey          string
 	}
 
 	// Requester abstracts the requesting details of supported protocols
@@ -32,17 +34,30 @@ type (
 )
 
 // NewClientFromConfig allocates a new agent api client struct
-func NewClientFromConfig(c Config) API {
-	return API{
-		Requester: NewRequester(c),
+func NewClientFromConfig(c Config) (API, error) {
+	a := &API{}
+	r, err := NewRequester(c)
+	if err != nil {
+		return *a, err
 	}
+	a.Requester = r
+	return *a, nil
 }
 
 // New allocates a new agent api client struct
-func New() API {
-	return API{
-		Requester: NewRequester(Config{}),
+func New() (API, error) {
+	context, err := NewContext()
+	if err != nil {
+		return API{}, err
 	}
+	c := &Config{}
+	if context.Cluster.Server != "" {
+		c.URL = context.Cluster.Server
+		c.InsecureSkipVerify = context.Cluster.InsecureSkipVerify
+		c.ClientCertificate = context.User.ClientCertificate
+		c.ClientKey = context.User.ClientKey
+	}
+	return NewClientFromConfig(*c)
 }
 
 // NewRequest allocates an unconfigured RequestOptions and returns its
@@ -55,9 +70,8 @@ func (a API) NewRequest() *Request {
 
 // NewRequester allocates the Requester interface implementing struct selected
 // by the scheme of the URL key in Config{}.
-func NewRequester(c Config) Requester {
+func NewRequester(c Config) (Requester, error) {
 	if c.URL == "" {
-		//c.URL = "https://127.0.0.1:1215"
 		c.URL = JSONRPCScheme + JSONRPCUDSPath()
 		return newJSONRPC(c)
 	}

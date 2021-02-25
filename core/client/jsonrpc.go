@@ -51,6 +51,6 @@ func (t JSONRPC) Get(req Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func newJSONRPC(c Config) JSONRPC {
-	return JSONRPC{}
+func newJSONRPC(c Config) (JSONRPC, error) {
+	return JSONRPC{}, nil
 }
