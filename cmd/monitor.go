@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	monWatchFlag bool
+	monWatchFlag    bool
+	monSelectorFlag string
 )
 
 // monCmd represents the svc command
@@ -35,12 +36,17 @@ var monCmd = &cobra.Command{
 	Long: `
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		monitor.Do(selectorFlag, monWatchFlag, colorFlag, formatFlag)
+		m := monitor.New()
+		m.SetWatch(monWatchFlag)
+		m.SetColor(colorFlag)
+		m.SetFormat(formatFlag)
+		m.SetSelector(monSelectorFlag)
+		m.Do()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(monCmd)
-	monCmd.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "*", "An object selector expression")
-	monCmd.PersistentFlags().BoolVarP(&monWatchFlag, "watch", "w", false, "Watch the monitor changes")
+	monCmd.Flags().StringVarP(&monSelectorFlag, "selector", "s", "*", "An object selector expression")
+	monCmd.Flags().BoolVarP(&monWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }

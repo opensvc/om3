@@ -1,10 +1,10 @@
 package main
 
 import (
-	"opensvc.com/opensvc/core/converters"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resource/manifest"
+	"opensvc.com/opensvc/util/converters"
 )
 
 const (

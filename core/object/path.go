@@ -1,23 +1,21 @@
-package path
+package object
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/objects/kinds"
 )
 
 type (
-	// Type represents an opensvc object path-like identifier. Ex: ns1/svc/svc1
-	Type struct {
+	// Path represents an opensvc object path-like identifier. Ex: ns1/svc/svc1
+	Path struct {
 		// Name is the name part of the path
 		Name string
 		// Namespace is the namespace part of the path
 		Namespace string
 		// Kind is the kinf part of the path
-		Kind kinds.Type
+		Kind Kind
 	}
 )
 
@@ -39,21 +37,21 @@ var (
 	fqdnRegexRFC1123    = regexp.MustCompile(fqdnRegexStringRFC1123)
 )
 
-// New allocates a new path type from its elements
-func New(name string, namespace string, kind string) (Type, error) {
-	var t Type
+// NewPath allocates a new path type from its elements
+func NewPath(name string, namespace string, kind string) (Path, error) {
+	var path Path
 	name = strings.ToLower(name)
 	namespace = strings.ToLower(namespace)
 	kind = strings.ToLower(kind)
 	if name == "" {
-		return t, errors.Wrap(ErrPathInvalid, "name is empty")
+		return path, errors.Wrap(ErrPathInvalid, "name is empty")
 	}
 	if kind == "" {
 		kind = "svc"
 	}
-	k := kinds.New(kind)
-	if k == kinds.Invalid {
-		return t, errors.Wrapf(ErrPathInvalid, "invalid kind %s", kind)
+	k := NewKind(kind)
+	if k == KindInvalid {
+		return path, errors.Wrapf(ErrPathInvalid, "invalid kind %s", kind)
 	}
 	if namespace == "" {
 		namespace = "root"
@@ -62,34 +60,33 @@ func New(name string, namespace string, kind string) (Type, error) {
 		kind = "svc"
 	}
 	if !hostnameRegexRFC952.MatchString(name) {
-		return t, errors.Wrapf(ErrPathInvalid, "invalid name %s (rfc952)", kind)
+		return path, errors.Wrapf(ErrPathInvalid, "invalid name %s (rfc952)", kind)
 	}
 	if !hostnameRegexRFC952.MatchString(namespace) {
-		return t, errors.Wrapf(ErrPathInvalid, "invalid namespace %s (rfc952)", kind)
+		return path, errors.Wrapf(ErrPathInvalid, "invalid namespace %s (rfc952)", kind)
 	}
-	t.Namespace = namespace
-	t.Name = name
-	t.Kind = k
-	return t, nil
+	path.Namespace = namespace
+	path.Name = name
+	path.Kind = k
+	return path, nil
 }
 
-func (t Type) String() string {
+func (t Path) String() string {
 	var s string
-	if t.Kind == kinds.Invalid {
+	if t.Kind == KindInvalid {
 		return ""
 	}
 	if t.Namespace != "" && t.Namespace != "root" {
 		s += t.Namespace + Separator
 	}
-	fmt.Printf("xx %d\n", t.Kind)
-	if t.Kind != kinds.Svc || s != "" {
+	if t.Kind != KindSvc || s != "" {
 		s += t.Kind.String() + Separator
 	}
 	return s + t.Name
 }
 
-// Split returns a new path struct from a path string representation
-func (t Type) Split(s string) (Type, error) {
+// NewPathFromString returns a new path struct from a path string representation
+func NewPathFromString(s string) (Path, error) {
 	var (
 		name      string
 		namespace string
@@ -111,5 +108,5 @@ func (t Type) Split(s string) (Type, error) {
 		kind = "svc"
 		name = l[2]
 	}
-	return New(name, namespace, kind)
+	return NewPath(name, namespace, kind)
 }

@@ -37,7 +37,6 @@ var daemonStatsCmd = &cobra.Command{
 
 func init() {
 	daemonCmd.AddCommand(daemonStatsCmd)
-	daemonStatsCmd.Flags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 }
 
 func daemonStats() {

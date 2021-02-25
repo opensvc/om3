@@ -20,32 +20,43 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
-var (
-	daemonStatusWatchFlag    bool
-	daemonStatusSelectorFlag string
-)
+var svcMonitorWatchFlag bool
 
-// daemonStatusCmd represents the daemonStatus command
-var daemonStatusCmd = &cobra.Command{
-	Use:     "status",
-	Short:   "Print the cluster status",
-	Aliases: []string{"statu"},
+// svcStatusCmd represents the svcStatus command
+var svcMonitorCmd = &cobra.Command{
+	Use:     "monitor",
+	Aliases: []string{"mon", "moni", "monit", "monito"},
+	Short:   "Print selected service and instance status summary",
+	Long: `Instance Flags:
+
+  O       Up
+  S       Standby up
+  X       Down
+  s       Standby down
+  !       Warning
+  P       Unprovisioned
+  *       Frozen
+  ^ red   Placement non-optimal
+  ^ gray  Placement leader
+  #       DRP instance
+
+`,
 	Run: func(cmd *cobra.Command, args []string) {
+		selector := mergeSelector(svcSelectorFlag)
 		m := monitor.New()
-		m.SetWatch(daemonStatusWatchFlag)
+		m.SetWatch(svcMonitorWatchFlag)
 		m.SetColor(colorFlag)
 		m.SetFormat(formatFlag)
-		m.SetSelector(daemonStatusSelectorFlag)
+		m.SetSelector(selector)
+		m.SetSections([]string{"objects"})
 		m.Do()
 	},
 }
 
 func init() {
-	daemonCmd.AddCommand(daemonStatusCmd)
-	daemonStatusCmd.Flags().BoolVarP(&daemonStatusWatchFlag, "watch", "w", false, "Watch the monitor changes")
-	daemonStatusCmd.Flags().StringVarP(&daemonStatusSelectorFlag, "selector", "s", "**", "Select opensvc objects (ex: **/db*,*/svc/db*)")
+	svcCmd.AddCommand(svcMonitorCmd)
+	svcMonitorCmd.Flags().BoolVarP(&svcMonitorWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }

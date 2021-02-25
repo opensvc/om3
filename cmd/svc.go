@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var svcSelectorFlag string
+
 // svcCmd represents the svc command
 var svcCmd = &cobra.Command{
 	Use:   "svc",
@@ -33,9 +35,5 @@ lifecycle or to abstract cluster-specific knowledge.`,
 
 func init() {
 	rootCmd.AddCommand(svcCmd)
-	//svcCmd.PersistentFlags().String("namespace", "root", "The namespace to select")
-	//svcCmd.PersistentFlags().String("name", "", "The name of the object to select")
-	svcCmd.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "The name of the object to select")
-	//svcCmd.PersistentFlags().Bool("local", false, "Run action on the local instance of the selected objects")
-	//svcCmd.PersistentFlags().String("node", "", "Run action on the instance of the selected objects on <node>")
+	svcCmd.PersistentFlags().StringVar(&svcSelectorFlag, "selector", "s", "The name of the object to select")
 }

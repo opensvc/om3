@@ -1,4 +1,4 @@
-package path
+package object
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNew(t *testing.T) {
+func TestNewPath(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -59,7 +59,7 @@ func TestNew(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, err := New(test.name, test.namespace, test.kind)
+		path, err := NewPath(test.name, test.namespace, test.kind)
 		if test.ok {
 			if ok := assert.Nil(t, err); !ok {
 				return

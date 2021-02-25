@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	"opensvc.com/opensvc/core/objects/kinds"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
@@ -34,7 +34,7 @@ type (
 		Csum        string                    `json:"csum,omitempty"`
 		Env         string                    `json:"env,omitempty"`
 		Frozen      float64                   `json:"frozen,omitempty"`
-		Kind        kinds.Type                `json:"kind"`
+		Kind        object.Kind               `json:"kind"`
 		Monitor     InstanceMonitor           `json:"monitor"`
 		Optional    bool                      `json:"optional,omitempty"`
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"opensvc.com/opensvc/core/delta"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/util/jsondelta"
 )
 
 func unixFromFloat64(f float64) time.Time {
@@ -21,7 +21,7 @@ func Render(e Event) string {
 	if e.Kind == "event" {
 		s += output.SprintFlat(*e.Data)
 	} else if e.Data != nil {
-		patch := delta.NewPatch(*e.Data)
+		patch := jsondelta.NewPatch(*e.Data)
 		s += patch.Render()
 	}
 	return s

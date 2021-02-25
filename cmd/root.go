@@ -69,6 +69,7 @@ func init() {
 	// global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
+	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 
 	// local to this action.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
@@ -98,4 +99,11 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func mergeSelector(s string) string {
+	if selectorFlag != "" {
+		return selectorFlag
+	}
+	return s
 }

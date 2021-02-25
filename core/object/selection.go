@@ -1,34 +1,32 @@
-package selection
+package object
 
 import (
 	"fmt"
-
-	"opensvc.com/opensvc/core/objects/path"
 )
 
 type (
-	// Type is the selection structure
-	Type struct {
+	// Selection is the selection structure
+	Selection struct {
 		SelectorExpression string
 	}
 )
 
-// New allocates a new object selection
-func New(selector string) Type {
-	t := Type{
+// NewSelection allocates a new object selection
+func NewSelection(selector string) Selection {
+	t := Selection{
 		SelectorExpression: selector,
 	}
 	return t
 }
 
 // Expand resolves a selector expression into a list of object paths
-func (t Type) Expand() []path.Type {
-	var l []path.Type
+func (t Selection) Expand() []Path {
+	var l []Path
 	return l
 }
 
 // Status executes Status on all selected objects
-func (t Type) Status() error {
+func (t Selection) Status() error {
 	for o := range t.Expand() {
 		fmt.Println(o)
 	}

@@ -10,13 +10,24 @@ import (
 	tsize "github.com/kopoli/go-terminal-size"
 )
 
+const (
+	staticCols = 3
+
+	sectionThreads int = 1 << iota
+	sectionArbitrators
+	sectionNodes
+	sectionObjects
+)
+
 var (
-	sections = [4]string{
-		"threads",
-		"arbitrators",
-		"nodes",
-		"services",
+	sectionToID = map[string]int{
+		"threads":     sectionThreads,
+		"arbitrators": sectionArbitrators,
+		"nodes":       sectionNodes,
+		"objects":     sectionObjects,
+		"services":    sectionObjects,
 	}
+
 	green   = color.New(color.FgGreen).SprintFunc()
 	yellow  = color.New(color.FgYellow).SprintFunc()
 	red     = color.New(color.FgRed).SprintFunc()
@@ -41,16 +52,11 @@ var (
 	iconStandbyUp      = hiblack("x")
 )
 
-const (
-	staticCols = 3
-)
-
 type (
 	// Options exposes daemon status renderer tunables.
 	Options struct {
-		Paths []string
-		Node  string
-		Watch bool
+		Nodes    []string
+		Sections []string
 	}
 
 	// Data holds current, previous and statistics datasets.
@@ -70,17 +76,41 @@ func GetOutputTermSize() tsize.Size {
 	return ts
 }
 
+func sectionMask(sections []string) int {
+	i := 0
+	for _, s := range sections {
+		i += sectionToID[s]
+	}
+	return i
+}
+
+func hasSection(mask int, section string) bool {
+	if mask == 0 {
+		return true
+	}
+	return mask&sectionToID[section] != 0
+}
+
 // Render return a string buffer containing a human-friendly
 // representation of Render.
 func Render(data Data, opts Options) string {
 	//ts := GetOutputTermSize()
 	var builder strings.Builder
+	sm := sectionMask(opts.Sections)
 	info := scanData(data)
 	w := tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
-	wThreads(w, data, info)
-	wArbitrators(w, data, info)
-	wNodes(w, data, info)
-	wObjects(w, data, info)
+	if hasSection(sm, "threads") {
+		wThreads(w, data, info)
+	}
+	if hasSection(sm, "arbitrators") {
+		wArbitrators(w, data, info)
+	}
+	if hasSection(sm, "nodes") {
+		wNodes(w, data, info)
+	}
+	if hasSection(sm, "objects") {
+		wObjects(w, data, info)
+	}
 	w.Flush()
 	return builder.String()
 }
