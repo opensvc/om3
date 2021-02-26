@@ -16,8 +16,12 @@ func Do(color string, format string) {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	opts := client.NewEventsOptions()
-	events, _ := api.Events(*opts)
+	handle := api.NewGetEvents()
+	events, err := handle.Do()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	for m := range events {
 		doOne(m, color, format)
 	}

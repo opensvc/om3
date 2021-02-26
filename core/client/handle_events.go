@@ -8,31 +8,33 @@ import (
 	"opensvc.com/opensvc/core/event"
 )
 
-// EventsOptions describes the events api handler options.
-type EventsOptions struct {
+// GetEvents describes the events request options.
+type GetEvents struct {
+	API            API    `json:"-"`
 	Namespace      string `json:"namespace"`
 	ObjectSelector string `json:"selector"`
 	Full           bool   `json:"full"`
 }
 
-// NewEventsOptions allocates a EventsCmdConfig struct and sets
+// NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewEventsOptions() *EventsOptions {
-	return &EventsOptions{
+func (a API) NewGetEvents() *GetEvents {
+	return &GetEvents{
+		API:            a,
 		Namespace:      "*",
 		ObjectSelector: "**",
 		Full:           false,
 	}
 }
 
-// EventsRaw fetchs an event json RawMessage stream from the agent api
-func (a API) EventsRaw(o EventsOptions) (chan []byte, error) {
-	return a.eventsBase(o)
+// DoRaw fetchs an event json RawMessage stream from the agent api
+func (o GetEvents) DoRaw() (chan []byte, error) {
+	return o.eventsBase()
 }
 
-// Events fetchs an Event stream from the agent api
-func (a API) Events(o EventsOptions) (chan event.Event, error) {
-	q, err := a.eventsBase(o)
+// Do fetchs an Event stream from the agent api
+func (o GetEvents) Do() (chan event.Event, error) {
+	q, err := o.eventsBase()
 	if err != nil {
 		return nil, err
 	}
@@ -62,11 +64,11 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (a API) eventsBase(o EventsOptions) (chan []byte, error) {
-	req := a.NewRequest()
+func (o GetEvents) eventsBase() (chan []byte, error) {
+	req := o.API.NewRequest()
 	req.Action = "events"
 	req.Options["selector"] = o.ObjectSelector
 	req.Options["namespace"] = o.Namespace
 	req.Options["full"] = o.Full
-	return a.Requester.GetStream(*req)
+	return o.API.Requester.GetStream(*req)
 }

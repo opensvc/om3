@@ -130,10 +130,10 @@ func (m Type) doWatch(api client.API) error {
 		evt    event.Event
 		events chan []byte
 	)
-	opts := client.NewEventsOptions()
-	opts.Full = true
-	opts.ObjectSelector = m.selector
-	events, err = api.EventsRaw(*opts)
+	handle := api.NewGetEvents()
+	handle.Full = true
+	handle.ObjectSelector = m.selector
+	events, err = handle.DoRaw()
 	if err != nil {
 		return err
 	}
