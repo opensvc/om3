@@ -50,13 +50,13 @@ func daemonStats() {
 	api, err = client.New()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return
+		os.Exit(1)
 	}
-	c := client.NewDaemonStatsOptions()
-	data, err = api.DaemonStats(*c)
+	handle := api.NewGetDaemonStats()
+	data, err = handle.Do()
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	output.Switch(formatFlag, colorFlag, data, nil)
+	fmt.Println(output.Switch(formatFlag, colorFlag, data, nil))
 }

@@ -6,25 +6,27 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 )
 
-// DaemonStatsOptions describes the daemon statistics api handler options.
-type DaemonStatsOptions struct {
-	NodeSelector   string
-	ObjectSelector string
-	Server         string
+// GetDaemonStats describes the daemon statistics api handler options.
+type GetDaemonStats struct {
+	API            API    `json:"-"`
+	NodeSelector   string `json:"node"`
+	ObjectSelector string `json:"selector"`
+	Server         string `json:"server"`
 }
 
-// NewDaemonStatsOptions allocates a DaemonStatsCmdConfig struct and sets
+// NewGetDaemonStats allocates a DaemonStatsCmdConfig struct and sets
 // default values to its keys.
-func NewDaemonStatsOptions() *DaemonStatsOptions {
-	return &DaemonStatsOptions{
+func (a API) NewGetDaemonStats() *GetDaemonStats {
+	return &GetDaemonStats{
+		API:            a,
 		NodeSelector:   "*",
 		ObjectSelector: "**",
 		Server:         "",
 	}
 }
 
-// DaemonStats fetchs the daemon statistics structure from the agent api
-func (a API) DaemonStats(o DaemonStatsOptions) (cluster.Stats, error) {
+// Do fetchs the daemon statistics structure from the agent api
+func (o GetDaemonStats) Do() (cluster.Stats, error) {
 	type nodeData struct {
 		Status int               `json:"status"`
 		Data   cluster.NodeStats `json:"data"`
@@ -35,11 +37,11 @@ func (a API) DaemonStats(o DaemonStatsOptions) (cluster.Stats, error) {
 	}
 	ds := make(cluster.Stats)
 	var t responseType
-	opts := a.NewRequest()
+	opts := o.API.NewRequest()
 	opts.Node = "*"
 	opts.Action = "daemon_stats"
 
-	b, err := a.Requester.Get(*opts)
+	b, err := o.API.Requester.Get(*opts)
 	if err != nil {
 		return ds, err
 	}

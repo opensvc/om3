@@ -6,29 +6,31 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 )
 
-// DaemonStatusOptions describes the daemon status api handler options.
-type DaemonStatusOptions struct {
+// GetDaemonStatus describes the daemon status api handler options.
+type GetDaemonStatus struct {
+	API            API    `json:"-"`
 	Namespace      string `json:"namespace,omitempty"`
 	ObjectSelector string `json:"selector,omitempty"`
 }
 
-// NewDaemonStatusOptions allocates a DaemonStatusOptions struct and sets
+// NewGetDaemonStatus allocates a DaemonStatusOptions struct and sets
 // default values to its keys.
-func NewDaemonStatusOptions() *DaemonStatusOptions {
-	return &DaemonStatusOptions{
+func (a API) NewGetDaemonStatus() *GetDaemonStatus {
+	return &GetDaemonStatus{
+		API:            a,
 		Namespace:      "",
 		ObjectSelector: "*",
 	}
 }
 
-// DaemonStatus fetchs the daemon status structure from the agent api
-func (a API) DaemonStatus(o DaemonStatusOptions) (cluster.Status, error) {
+// Do fetchs the daemon status structure from the agent api
+func (o GetDaemonStatus) Do() (cluster.Status, error) {
 	var ds cluster.Status
-	opts := a.NewRequest()
+	opts := o.API.NewRequest()
 	opts.Action = "daemon_status"
 	opts.Options["namespace"] = o.Namespace
 	opts.Options["selector"] = o.ObjectSelector
-	b, err := a.Requester.Get(*opts)
+	b, err := o.API.Requester.Get(*opts)
 	if err != nil {
 		return ds, err
 	}

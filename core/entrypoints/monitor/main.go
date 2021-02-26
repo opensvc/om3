@@ -112,9 +112,9 @@ func (m Type) Do() {
 		}
 		return
 	}
-	opts := client.NewDaemonStatusOptions()
-	opts.ObjectSelector = m.selector
-	data, err := api.DaemonStatus(*opts)
+	handle := api.NewGetDaemonStatus()
+	handle.ObjectSelector = m.selector
+	data, err := handle.Do()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
