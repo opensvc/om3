@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/core/output"
 )
 
-// Do renders the cluster status
+// Do renders the event stream
 func Do(color string, format string) {
 	api, err := client.New()
 	if err != nil {
@@ -19,7 +19,7 @@ func Do(color string, format string) {
 	opts := client.NewEventsOptions()
 	events, _ := api.Events(*opts)
 	for m := range events {
-		doOne(m.(event.Event), color, format)
+		doOne(m, color, format)
 	}
 }
 

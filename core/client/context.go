@@ -83,9 +83,11 @@ func NewContext() (Context, error) {
 	if !ok {
 		return c, errors.Wrapf(ErrContext, "cluster not defined: %s", cr.ClusterRefName)
 	}
-	c.User, ok = cfg.Users[cr.UserRefName]
-	if !ok {
-		return c, errors.Wrapf(ErrContext, "user not defined: %s", cr.ClusterRefName)
+	if cr.UserRefName != "" {
+		c.User, ok = cfg.Users[cr.UserRefName]
+		if !ok {
+			return c, errors.Wrapf(ErrContext, "user not defined: %s", cr.ClusterRefName)
+		}
 	}
 	c.Namespace = cr.Namespace
 	return c, nil

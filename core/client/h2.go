@@ -1,17 +1,17 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"path/filepath"
-	"strings"
-	"time"
 
-	"github.com/tv42/httpunix"
 	"opensvc.com/opensvc/config"
 
 	"golang.org/x/net/http2"
@@ -27,8 +27,12 @@ type (
 
 const (
 	// H2UDSScheme is the Unix Domain Socket protocol scheme prefix in URL
-	H2UDSScheme string = "http+unix://"
+	H2UDSScheme string = "http:///"
 )
+
+func (t H2) String() string {
+	return fmt.Sprintf("H2 %s", t.URL)
+}
 
 // H2UDSPath formats the H2 api Unix Domain Socket path
 func H2UDSPath() string {
@@ -37,26 +41,13 @@ func H2UDSPath() string {
 
 func newH2UDS(c Config) (H2, error) {
 	r := &H2{}
-	unixTransport := &httpunix.Transport{
-		DialTimeout:           100 * time.Millisecond,
-		RequestTimeout:        1 * time.Second,
-		ResponseHeaderTimeout: 1 * time.Second,
+	t := &http2.Transport{
+		AllowHTTP: true,
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return net.Dial("unix", H2UDSPath())
+		},
 	}
-	path := strings.TrimPrefix(c.URL, H2UDSScheme)
-	unixTransport.RegisterLocation("myservice", path)
-	t1 := &http.Transport{}
-	t1.RegisterProtocol(httpunix.Scheme, unixTransport)
-	var err error
-	var t *http2.Transport
-	t, err = http2.ConfigureTransports(t1)
-	if err != nil {
-		return *r, err
-	}
-	t.AllowHTTP = true
-	t.DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-		return net.Dial(network, addr)
-	}
-	r.URL = "http+unix://myservice"
+	r.URL = "http://localhost"
 	r.Client = http.Client{Transport: t}
 	return *r, nil
 }
@@ -78,14 +69,92 @@ func newH2Inet(c Config) (H2, error) {
 	return *r, nil
 }
 
-// Get implements the Get request for the H2 protocol
-func (t H2) Get(r Request) (*http.Response, error) {
+func (t H2) newRequest(method string, r Request) (*http.Request, error) {
 	jsonStr, _ := json.Marshal(r.Options)
 	body := bytes.NewBuffer(jsonStr)
 	req, err := http.NewRequest("GET", t.URL+"/"+r.Action, body)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("o-node", r.Node)
-	return t.Client.Do(req)
+	req.Header.Set("o-node", r.Node)
+	return req, nil
+}
+
+func (t H2) get(r Request) (*http.Response, error) {
+	req, err := t.newRequest("GET", r)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := t.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// Get implements the Get request for the H2 protocol
+func (t H2) Get(r Request) ([]byte, error) {
+	resp, err := t.get(r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// GetStream returns a chan of raw json messages
+func (t H2) GetStream(r Request) (chan []byte, error) {
+	req, err := t.newRequest("GET", r)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	resp, err := t.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	q := make(chan []byte, 1000)
+	if err != nil {
+		return nil, err
+	}
+	go getServerSideEvents(q, resp)
+	return q, nil
+}
+
+func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
+	br := bufio.NewReader(resp.Body)
+	delim := []byte{':', ' '}
+	defer resp.Body.Close()
+	defer close(q)
+	for {
+		bs, err := br.ReadBytes('\n')
+
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		if len(bs) < 2 {
+			continue
+		}
+
+		spl := bytes.Split(bs, delim)
+
+		if len(spl) < 2 {
+			continue
+		}
+
+		switch string(spl[0]) {
+		case "data":
+			b := bytes.TrimLeft(bs, "data: ")
+			q <- b
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	return nil
 }

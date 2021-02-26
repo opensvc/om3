@@ -1,7 +1,6 @@
 package client
 
 import (
-	"net/http"
 	"strings"
 )
 
@@ -21,7 +20,8 @@ type (
 
 	// Requester abstracts the requesting details of supported protocols
 	Requester interface {
-		Get(req Request) (*http.Response, error)
+		Get(req Request) ([]byte, error)
+		GetStream(req Request) (chan []byte, error)
 	}
 
 	// Request is a api request abstracting the protocol differences
@@ -80,6 +80,10 @@ func NewRequester(c Config) (Requester, error) {
 	}
 	if strings.HasPrefix(c.URL, JSONRPCScheme) {
 		return newJSONRPC(c)
+	}
+	if strings.HasPrefix(c.URL, "tls://") {
+		c.URL = "https://" + c.URL[6:]
+		return newH2Inet(c)
 	}
 	return newH2Inet(c)
 }

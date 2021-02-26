@@ -10,6 +10,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
 	github.com/fatih/color v1.10.0
+	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect

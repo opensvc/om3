@@ -124,40 +124,39 @@ func (m Type) Do() {
 
 func (m Type) doWatch(api client.API) error {
 	var (
-		data cluster.Status
-		ok   bool
+		data   cluster.Status
+		ok     bool
+		err    error
+		evt    event.Event
+		events chan []byte
 	)
 	opts := client.NewEventsOptions()
 	opts.Full = true
 	opts.ObjectSelector = m.selector
-	events, _ := api.EventsRaw(*opts)
-	first, ok := <-events
+	events, err = api.EventsRaw(*opts)
+	if err != nil {
+		return err
+	}
+	b, ok := <-events
 	if !ok {
 		return errors.New("event channel unexpectedly closed")
 	}
-	b, ok := first.([]byte)
-	if !ok {
-		return errors.New("first event channel message is not a byte array")
-	}
-	evt, err := event.DecodeFromJSON(b)
+	evt, err = event.DecodeFromJSON(b)
 	if err != nil {
 		return err
 	}
 	b = *evt.Data
 	json.Unmarshal(*evt.Data, &data)
 	m.doOneshot(data, true)
-	for msg := range events {
-		e, ok := msg.([]byte)
-		if !ok {
-			continue
-		}
+	for e := range events {
 		evt, err := event.DecodeFromJSON(e)
 		if err != nil {
-			fmt.Println(err, string(e))
+			fmt.Fprintln(os.Stderr, err, string(e))
 			continue
 		}
 		err = handleEvent(&b, evt)
 		if err != nil {
+			fmt.Fprintln(os.Stderr, err, string(e))
 			return err
 		}
 		json.Unmarshal(b, &data)
