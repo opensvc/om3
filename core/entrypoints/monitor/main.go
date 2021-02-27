@@ -109,16 +109,19 @@ func (m Type) Do() {
 	if m.watch {
 		if err = m.doWatch(api); err != nil {
 			fmt.Println(err)
+			os.Exit(1)
 		}
 		return
 	}
 	handle := api.NewGetDaemonStatus()
 	handle.ObjectSelector = m.selector
-	data, err := handle.Do()
+	b, err := handle.Do()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return
+		os.Exit(1)
 	}
+	var data cluster.Status
+	err = json.Unmarshal(b, &data)
 	m.doOneshot(data, false)
 }
 

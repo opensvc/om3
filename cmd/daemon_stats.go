@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -45,6 +46,7 @@ func daemonStats() {
 	var (
 		api  client.API
 		err  error
+		b    []byte
 		data cluster.Stats
 	)
 	api, err = client.New()
@@ -53,10 +55,38 @@ func daemonStats() {
 		os.Exit(1)
 	}
 	handle := api.NewGetDaemonStats()
-	data, err = handle.Do()
+	b, err = handle.Do()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	data, err = parseDaemonStats(b)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	fmt.Println(output.Switch(formatFlag, colorFlag, data, nil))
+}
+
+func parseDaemonStats(b []byte) (cluster.Stats, error) {
+	type (
+		nodeData struct {
+			Status int               `json:"status"`
+			Data   cluster.NodeStats `json:"data"`
+		}
+		responseType struct {
+			Status int                 `json:"status"`
+			Nodes  map[string]nodeData `json:"nodes"`
+		}
+	)
+	var t responseType
+	ds := make(cluster.Stats)
+	err := json.Unmarshal(b, &t)
+	if err != nil {
+		return ds, err
+	}
+	for k, v := range t.Nodes {
+		ds[k] = v.Data
+	}
+	return ds, nil
 }

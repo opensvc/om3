@@ -1,6 +1,8 @@
 package object
 
 import (
+	"bytes"
+	"encoding/json"
 	"regexp"
 	"strings"
 
@@ -101,12 +103,34 @@ func NewPathFromString(s string) (Path, error) {
 		name = l[2]
 	case 2:
 		namespace = "root"
-		kind = l[1]
-		name = l[2]
+		kind = l[0]
+		name = l[1]
 	case 1:
 		namespace = "root"
 		kind = "svc"
-		name = l[2]
+		name = l[0]
 	}
 	return NewPath(name, namespace, kind)
+}
+
+// MarshalJSON implements the json interface
+func (t Path) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(t.String())
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+// UnmarshalJSON implements the json interface
+func (t *Path) UnmarshalJSON(b []byte) error {
+	var j string
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	*t, err = NewPathFromString(j)
+	if err != nil {
+		return err
+	}
+	return nil
 }
