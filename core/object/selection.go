@@ -57,9 +57,14 @@ func (t Selection) Action(action string, args ...interface{}) []ActionResult {
 	paths := t.Expand()
 	q := make(chan ActionResult, len(paths))
 	results := make([]ActionResult, 0)
+	started := 0
 
 	for _, path := range paths {
 		obj := path.NewObject()
+		if obj == nil {
+			//fmt.Fprintf(os.Stderr, "don't know how to handle %s\n", path)
+			continue
+		}
 		fn := reflect.ValueOf(obj).MethodByName(action)
 		fa := make([]reflect.Value, len(args))
 		for k, arg := range args {
@@ -76,9 +81,10 @@ func (t Selection) Action(action string, args ...interface{}) []ActionResult {
 			}()
 			q <- fn.Call(fa)[0].Interface().(ActionResult)
 		}(path)
+		started++
 	}
 
-	for range paths {
+	for i := 0; i < started; i++ {
 		r := <-q
 		results = append(results, r)
 	}
