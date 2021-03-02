@@ -39,5 +39,5 @@ isolate lifecycles or to abstract cluster-specific knowledge.
 
 func init() {
 	rootCmd.AddCommand(svcCmd)
-	svcCmd.PersistentFlags().StringVar(&svcSelectorFlag, "selector", "s", "The name of the object to select")
+	svcCmd.PersistentFlags().StringVarP(&svcSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

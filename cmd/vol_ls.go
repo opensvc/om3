@@ -20,34 +20,23 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/entrypoints"
 )
 
-// svcStatusCmd represents the svcStatus command
-var svcStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Print selected service and instance status",
-	Long: `Resources Flags:
-
-(1) R   Running,           . Not Running
-(2) M   Monitored,         . Not Monitored
-(3) D   Disabled,          . Enabled
-(4) O   Optional,          . Not Optional
-(5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned
-(7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
-
-`,
-	Run: svcStatusCmdRun,
+var volLsCmd = &cobra.Command{
+	Use:   "ls",
+	Short: "Print the selected objects.",
+	Run:   volLsCmdRun,
 }
 
 func init() {
-	svcCmd.AddCommand(svcStatusCmd)
+	volCmd.AddCommand(volLsCmd)
 }
 
-func svcStatusCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag, "svc", "")
-	object.NewSelection(selector).Action("PrintStatus")
+func volLsCmdRun(cmd *cobra.Command, args []string) {
+	entrypoints.List{
+		ObjectSelector: mergeSelector(volSelectorFlag, "vol", "**"),
+		Format:         formatFlag,
+		Color:          colorFlag,
+	}.Do()
 }

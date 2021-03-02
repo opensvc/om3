@@ -20,34 +20,22 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-
-	"opensvc.com/opensvc/core/object"
 )
 
-// svcStatusCmd represents the svcStatus command
-var svcStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Print selected service and instance status",
-	Long: `Resources Flags:
+var usrSelectorFlag string
 
-(1) R   Running,           . Not Running
-(2) M   Monitored,         . Not Monitored
-(3) D   Disabled,          . Enabled
-(4) O   Optional,          . Not Optional
-(5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned
-(7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
+// usrCmd represents the usr command
+var usrCmd = &cobra.Command{
+	Use:   "usr",
+	Short: "Manage users",
+	Long: `A user stores the grants and credentials of user of the agent API.
 
+User objects are not necessary with OpenID authentication, as the
+grants are embedded in the trusted bearer tokens.
 `,
-	Run: svcStatusCmdRun,
 }
 
 func init() {
-	svcCmd.AddCommand(svcStatusCmd)
-}
-
-func svcStatusCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag, "svc", "")
-	object.NewSelection(selector).Action("PrintStatus")
+	rootCmd.AddCommand(usrCmd)
+	usrCmd.PersistentFlags().StringVarP(&usrSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

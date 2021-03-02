@@ -19,12 +19,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
-
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/entrypoints"
 )
 
 var svcLsCmd = &cobra.Command{
@@ -38,23 +34,9 @@ func init() {
 }
 
 func svcLsCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag)
-	results := object.NewSelection(selector).Action("List")
-	data := make([]string, 0)
-	for _, r := range results {
-		buff, ok := r.Data.(string)
-		if !ok {
-			continue
-		}
-		data = append(data, buff)
-	}
-	human := func() string {
-		s := ""
-		for _, r := range data {
-			s += r + "\n"
-		}
-		return s
-	}
-	s := output.Switch(formatFlag, colorFlag, data, human)
-	fmt.Print(s)
+	entrypoints.List{
+		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", "**"),
+		Format:         formatFlag,
+		Color:          colorFlag,
+	}.Do()
 }

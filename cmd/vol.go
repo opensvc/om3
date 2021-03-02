@@ -20,34 +20,26 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-
-	"opensvc.com/opensvc/core/object"
 )
 
-// svcStatusCmd represents the svcStatus command
-var svcStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Print selected service and instance status",
-	Long: `Resources Flags:
+var volSelectorFlag string
 
-(1) R   Running,           . Not Running
-(2) M   Monitored,         . Not Monitored
-(3) D   Disabled,          . Enabled
-(4) O   Optional,          . Not Optional
-(5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned
-(7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
+// volCmd represents the vol command
+var volCmd = &cobra.Command{
+	Use:   "vol",
+	Short: "Manage volumes",
+	Long: `A volume is a persistent data provider.
+	
+A volume is made of disk, fs and sync resources. It is created by a pool,
+to satisfy a demand from a volume resource in a service.
 
+Volumes and their subdirectories can be mounted inside containers.
+
+A volume can host cfg and sec keys projections.
 `,
-	Run: svcStatusCmdRun,
 }
 
 func init() {
-	svcCmd.AddCommand(svcStatusCmd)
-}
-
-func svcStatusCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag, "svc", "")
-	object.NewSelection(selector).Action("PrintStatus")
+	rootCmd.AddCommand(volCmd)
+	volCmd.PersistentFlags().StringVarP(&volSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

@@ -43,7 +43,7 @@ func init() {
 
 func svcFreezeCmdRun(cmd *cobra.Command, args []string) {
 	entrypoints.Action{
-		ObjectSelector: mergeSelector(svcSelectorFlag),
+		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcFreezeNodeFlag,
 		Action:         "freeze",
 		Method:         "Freeze",

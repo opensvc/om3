@@ -20,34 +20,33 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-
-	"opensvc.com/opensvc/core/object"
 )
 
-// svcStatusCmd represents the svcStatus command
-var svcStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Print selected service and instance status",
-	Long: `Resources Flags:
+var secSelectorFlag string
 
-(1) R   Running,           . Not Running
-(2) M   Monitored,         . Not Monitored
-(3) D   Disabled,          . Enabled
-(4) O   Optional,          . Not Optional
-(5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned
-(7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
+// secCmd represents the sec command
+var secCmd = &cobra.Command{
+	Use:   "sec",
+	Short: "Manage secrets",
+	Long: ` A secret is an encypted key-value store.
 
+Values can be binary or text.
+
+A key can be installed as a file in a Vol, then exposed to apps
+and containers.
+
+A key can be exposed as a environment variable for apps and
+containers.
+
+A signal can be sent to consumer processes upon exposed key value
+changes.
+	
+The key names can include the '/' character, interpreted as a path separator
+when installing the key in a volume.
 `,
-	Run: svcStatusCmdRun,
 }
 
 func init() {
-	svcCmd.AddCommand(svcStatusCmd)
-}
-
-func svcStatusCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag, "svc", "")
-	object.NewSelection(selector).Action("PrintStatus")
+	rootCmd.AddCommand(secCmd)
+	secCmd.PersistentFlags().StringVarP(&secSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

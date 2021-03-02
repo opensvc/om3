@@ -40,7 +40,7 @@ func init() {
 }
 
 func svcMonitorCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag)
+	selector := mergeSelector(svcSelectorFlag, "svc", "")
 	m := monitor.New()
 	m.SetWatch(svcMonitorWatchFlag)
 	m.SetColor(colorFlag)

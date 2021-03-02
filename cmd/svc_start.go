@@ -43,7 +43,7 @@ func init() {
 
 func svcStartCmdRun(cmd *cobra.Command, args []string) {
 	entrypoints.Action{
-		ObjectSelector: mergeSelector(svcSelectorFlag),
+		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcStartNodeFlag,
 		Action:         "start",
 		Method:         "Start",
