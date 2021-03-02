@@ -9,7 +9,7 @@ import (
 )
 
 // Flatten accepts a nested struct and returns a flat struct with key like a.'b/c'.d[0].e
-func Flatten(inputJSON map[string]interface{}) map[string]interface{} {
+func Flatten(inputJSON interface{}) map[string]interface{} {
 	var lkey = ""
 	var flattened = make(map[string]interface{})
 	flatten(inputJSON, lkey, &flattened)
@@ -20,7 +20,7 @@ func Flatten(inputJSON map[string]interface{}) map[string]interface{} {
 // "key = val" buffer
 func SprintFlat(b []byte) string {
 	var s string
-	var data map[string]interface{}
+	var data interface{}
 	json.Unmarshal(b, &data)
 	flattened := Flatten(data)
 	keys := make([]string, 0)
