@@ -33,13 +33,15 @@ import (
 var daemonStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Print the resource usage statistics.",
-	Run: func(cmd *cobra.Command, args []string) {
-		daemonStats()
-	},
+	Run:   daemonStatsCmdRun,
 }
 
 func init() {
 	daemonCmd.AddCommand(daemonStatsCmd)
+}
+
+func daemonStatsCmdRun(cmd *cobra.Command, args []string) {
+	daemonStats()
 }
 
 func daemonStats() {

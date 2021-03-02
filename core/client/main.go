@@ -22,6 +22,9 @@ type (
 	Requester interface {
 		Get(req Request) ([]byte, error)
 		GetStream(req Request) (chan []byte, error)
+		Post(req Request) ([]byte, error)
+		Put(req Request) ([]byte, error)
+		Delete(req Request) ([]byte, error)
 	}
 
 	// Request is a api request abstracting the protocol differences

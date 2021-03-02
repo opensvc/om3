@@ -34,3 +34,9 @@ func (o *Base) List() ActionResult {
 	result.Data = o.Path.String()
 	return *result
 }
+
+// Start starts the local instance of the object
+func (o *Base) Start() ActionResult {
+	result := o.NewActionResult()
+	return *result
+}

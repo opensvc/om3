@@ -19,42 +19,37 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
-
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/entrypoints"
 )
 
-var svcLsCmd = &cobra.Command{
-	Use:   "ls",
-	Short: "Print the selected objects.",
-	Run:   svcLsCmdRun,
+var (
+	svcStopNodeFlag  string
+	svcStopLocalFlag bool
+	svcStopWatchFlag bool
+)
+
+var svcStopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "Stop the selected objects.",
+	Run:   svcStopCmdRun,
 }
 
 func init() {
-	svcCmd.AddCommand(svcLsCmd)
+	svcCmd.AddCommand(svcStopCmd)
+	svcStopCmd.Flags().BoolVarP(&svcStopLocalFlag, "local", "", false, "Stop inline the selected local instances.")
+	svcStopCmd.Flags().BoolVarP(&svcStopWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }
 
-func svcLsCmdRun(cmd *cobra.Command, args []string) {
-	selector := mergeSelector(svcSelectorFlag)
-	results := object.NewSelection(selector).Action("List")
-	data := make([]string, 0)
-	for _, r := range results {
-		buff, ok := r.Data.(string)
-		if !ok {
-			continue
-		}
-		data = append(data, buff)
-	}
-	human := func() string {
-		s := ""
-		for _, r := range data {
-			s += r + "\n"
-		}
-		return s
-	}
-	s := output.Switch(formatFlag, colorFlag, data, human)
-	fmt.Print(s)
+func svcStopCmdRun(cmd *cobra.Command, args []string) {
+	entrypoints.Action{
+		ObjectSelector: mergeSelector(svcSelectorFlag),
+		NodeSelector:   svcStopNodeFlag,
+		Action:         "stop",
+		Method:         "Stop",
+		Target:         "stopped",
+		Watch:          svcStopWatchFlag,
+		Format:         formatFlag,
+		Color:          colorFlag,
+	}.Do()
 }

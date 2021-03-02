@@ -31,19 +31,21 @@ var svcMonitorCmd = &cobra.Command{
 	Aliases: []string{"mon", "moni", "monit", "monito"},
 	Short:   "Print selected service and instance status summary",
 	Long:    monitor.CmdLong,
-	Run: func(cmd *cobra.Command, args []string) {
-		selector := mergeSelector(svcSelectorFlag)
-		m := monitor.New()
-		m.SetWatch(svcMonitorWatchFlag)
-		m.SetColor(colorFlag)
-		m.SetFormat(formatFlag)
-		m.SetSelector(selector)
-		m.SetSections([]string{"objects"})
-		m.Do()
-	},
+	Run:     svcMonitorCmdRun,
 }
 
 func init() {
 	svcCmd.AddCommand(svcMonitorCmd)
 	svcMonitorCmd.Flags().BoolVarP(&svcMonitorWatchFlag, "watch", "w", false, "Watch the monitor changes")
+}
+
+func svcMonitorCmdRun(cmd *cobra.Command, args []string) {
+	selector := mergeSelector(svcSelectorFlag)
+	m := monitor.New()
+	m.SetWatch(svcMonitorWatchFlag)
+	m.SetColor(colorFlag)
+	m.SetFormat(formatFlag)
+	m.SetSelector(selector)
+	m.SetSections([]string{"objects"})
+	m.Do()
 }

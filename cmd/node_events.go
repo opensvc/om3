@@ -28,11 +28,13 @@ var nodeEventsCmd = &cobra.Command{
 	Use:     "events",
 	Short:   "Print the node event stream",
 	Aliases: []string{"eve", "even", "event"},
-	Run: func(cmd *cobra.Command, args []string) {
-		events.Do(colorFlag, formatFlag)
-	},
+	Run:     nodeEventsCmdRun,
 }
 
 func init() {
 	nodeCmd.AddCommand(nodeEventsCmd)
+}
+
+func nodeEventsCmdRun(cmd *cobra.Command, args []string) {
+	events.Do(colorFlag, formatFlag)
 }

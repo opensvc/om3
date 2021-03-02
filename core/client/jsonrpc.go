@@ -35,13 +35,13 @@ func JSONRPCUDSPath() string {
 }
 
 // Get implements the Get interface method for the JSONRPC api
-func (t JSONRPC) get(req Request) (io.ReadCloser, error) {
+func (t JSONRPC) doReq(method string, req Request) (io.ReadCloser, error) {
 	conn, err := net.Dial("unix", JSONRPCUDSPath())
 
 	if err != nil {
 		return nil, err
 	}
-	req.Method = "GET"
+	req.Method = method
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -55,10 +55,9 @@ func (t JSONRPC) get(req Request) (io.ReadCloser, error) {
 	return conn, err
 }
 
-// Get implements the Get interface method for the JSONRPC api
-func (t JSONRPC) Get(req Request) ([]byte, error) {
+func (t JSONRPC) doReqReadResponse(method string, req Request) ([]byte, error) {
 	var b []byte
-	rc, err := t.get(req)
+	rc, err := t.doReq(method, req)
 	if err != nil {
 		return b, err
 	}
@@ -71,10 +70,30 @@ func (t JSONRPC) Get(req Request) ([]byte, error) {
 	return b, nil
 }
 
+// Get implements the Get interface method for the JSONRPC api
+func (t JSONRPC) Get(req Request) ([]byte, error) {
+	return t.doReqReadResponse("GET", req)
+}
+
+// Post implements the Post interface method for the JSONRPC api
+func (t JSONRPC) Post(req Request) ([]byte, error) {
+	return t.doReqReadResponse("POST", req)
+}
+
+// Put implements the Put interface method for the JSONRPC api
+func (t JSONRPC) Put(req Request) ([]byte, error) {
+	return t.doReqReadResponse("PUT", req)
+}
+
+// Delete implements the Delete interface method for the JSONRPC api
+func (t JSONRPC) Delete(req Request) ([]byte, error) {
+	return t.doReqReadResponse("DELETE", req)
+}
+
 // GetStream returns a chan of raw json messages
 func (t JSONRPC) GetStream(req Request) (chan []byte, error) {
 	q := make(chan []byte, 1000)
-	rc, err := t.get(req)
+	rc, err := t.doReq("GET", req)
 	if err != nil {
 		return q, err
 	}

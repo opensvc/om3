@@ -40,12 +40,14 @@ var svcStatusCmd = &cobra.Command{
 (8) <n> Remaining Restart, + if more than 10,   . No Restart
 
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		selector := mergeSelector(svcSelectorFlag)
-		object.NewSelection(selector).Action("PrintStatus")
-	},
+	Run: svcStatusCmdRun,
 }
 
 func init() {
 	svcCmd.AddCommand(svcStatusCmd)
+}
+
+func svcStatusCmdRun(cmd *cobra.Command, args []string) {
+	selector := mergeSelector(svcSelectorFlag)
+	object.NewSelection(selector).Action("PrintStatus")
 }

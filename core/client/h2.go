@@ -80,8 +80,8 @@ func (t H2) newRequest(method string, r Request) (*http.Request, error) {
 	return req, nil
 }
 
-func (t H2) get(r Request) (*http.Response, error) {
-	req, err := t.newRequest("GET", r)
+func (t H2) doReq(method string, r Request) (*http.Response, error) {
+	req, err := t.newRequest(method, r)
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +92,8 @@ func (t H2) get(r Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// Get implements the Get request for the H2 protocol
-func (t H2) Get(r Request) ([]byte, error) {
-	resp, err := t.get(r)
+func (t H2) doReqReadResponse(method string, r Request) ([]byte, error) {
+	resp, err := t.doReq(method, r)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +103,26 @@ func (t H2) Get(r Request) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+// Get implements the Get interface for the H2 protocol
+func (t H2) Get(r Request) ([]byte, error) {
+	return t.doReqReadResponse("GET", r)
+}
+
+// Post implements the Post interface for the H2 protocol
+func (t H2) Post(r Request) ([]byte, error) {
+	return t.doReqReadResponse("POST", r)
+}
+
+// Put implements the Put interface for the H2 protocol
+func (t H2) Put(r Request) ([]byte, error) {
+	return t.doReqReadResponse("PUT", r)
+}
+
+// Delete implements the Delete interface for the H2 protocol
+func (t H2) Delete(r Request) ([]byte, error) {
+	return t.doReqReadResponse("DELETE", r)
 }
 
 // GetStream returns a chan of raw json messages

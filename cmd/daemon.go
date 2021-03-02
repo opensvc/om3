@@ -26,7 +26,6 @@ import (
 var daemonCmd = &cobra.Command{
 	Use:   "daemon",
 	Short: "Manage the opensvc daemon",
-	Long:  ``,
 }
 
 func init() {
