@@ -214,28 +214,24 @@ func (t *Tree) adjustPads() {
 	for _, pad = range t.pads {
 		width += pad
 	}
-	width += (t.columnCount - 1) * len(t.Separator)
-	width += (t.depth - 1) * 3
 	oversize := width - t.totalWidth
 	if oversize <= 0 {
-		return // unchanged pads
+		return // no width pressure, unchanged pads
 	}
-	avgColumnWidth := (t.totalWidth - len(t.Separator)*(t.columnCount-1)) // columns
+	avgColumnWidth := t.totalWidth / t.columnCount
+	usableWidth := t.totalWidth - maxPrefixLen - t.pads[0]
 	oversizedColumnCount := 0
-	for i, pad = range t.pads {
-		if avgColumnWidth-pad < 0 {
-			oversizedColumnCount++
-		}
-	}
-	remainingWidth := t.totalWidth - maxPrefixLen
-	for i, pad = range t.pads {
-		if pad <= avgColumnWidth {
-			remainingWidth -= pad + len(t.Separator)
-		}
-	}
-	for i, pad = range t.pads {
+	for _, pad = range t.pads[1:] {
 		if pad > avgColumnWidth {
-			t.pads[i] = remainingWidth // n_oversize
+			oversizedColumnCount++
+		} else {
+			usableWidth -= pad
+		}
+	}
+	maxWidth := usableWidth / oversizedColumnCount
+	for i, pad = range t.pads[1:] {
+		if pad > avgColumnWidth {
+			t.pads[i+1] = maxWidth
 		}
 	}
 }

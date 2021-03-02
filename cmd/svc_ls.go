@@ -19,9 +19,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/output"
 )
 
 // svcStatusCmd represents the svcStatus command
@@ -30,7 +33,24 @@ var svcLsCmd = &cobra.Command{
 	Short: "Print the selected objects.",
 	Run: func(cmd *cobra.Command, args []string) {
 		selector := mergeSelector(svcSelectorFlag)
-		object.NewSelection(selector).List()
+		results := object.NewSelection(selector).Action("List")
+		data := make([]string, 0)
+		for _, r := range results {
+			buff, ok := r.Data.(string)
+			if !ok {
+				continue
+			}
+			data = append(data, buff)
+		}
+		human := func() string {
+			s := ""
+			for _, r := range data {
+				s += r + "\n"
+			}
+			return s
+		}
+		s := output.Switch(formatFlag, colorFlag, data, human)
+		fmt.Print(s)
 	},
 }
 

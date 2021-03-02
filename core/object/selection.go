@@ -2,7 +2,7 @@ package object
 
 import (
 	"encoding/json"
-	"fmt"
+	"reflect"
 
 	"opensvc.com/opensvc/core/client"
 )
@@ -51,18 +51,36 @@ func (t Selection) daemonExpand() ([]Path, error) {
 	return l, nil
 }
 
-// Status executes Status on all selected objects
-func (t Selection) Status() error {
-	for _, o := range t.Expand() {
-		fmt.Println(o)
-	}
-	return nil
-}
+// Action executes in parallel the action on all selected objects supporting
+// the action.
+func (t Selection) Action(action string, args ...interface{}) []ActionResult {
+	paths := t.Expand()
+	q := make(chan ActionResult, len(paths))
+	results := make([]ActionResult, 0)
 
-// List prints all selected objects
-func (t Selection) List() error {
-	for _, o := range t.Expand() {
-		fmt.Println(o)
+	for _, path := range paths {
+		obj := path.NewObject()
+		fn := reflect.ValueOf(obj).MethodByName(action)
+		fa := make([]reflect.Value, len(args))
+		for k, arg := range args {
+			fa[k] = reflect.ValueOf(arg)
+		}
+		go func(path Path) {
+			defer func() {
+				if r := recover(); r != nil {
+					q <- ActionResult{
+						Path:  path,
+						Panic: r,
+					}
+				}
+			}()
+			q <- fn.Call(fa)[0].Interface().(ActionResult)
+		}(path)
 	}
-	return nil
+
+	for range paths {
+		r := <-q
+		results = append(results, r)
+	}
+	return results
 }

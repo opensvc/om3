@@ -65,7 +65,7 @@ func daemonStats() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Println(output.Switch(formatFlag, colorFlag, data, nil))
+	fmt.Print(output.Switch(formatFlag, colorFlag, data, nil))
 }
 
 func parseDaemonStats(b []byte) (cluster.Stats, error) {

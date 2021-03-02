@@ -1,6 +1,7 @@
 package forest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/fatih/color"
@@ -14,6 +15,7 @@ func TestForest(t *testing.T) {
 		"                        warn   \n" +
 		"                        err    \n"
 	tree := New()
+	tree.ForcedWidth = 35
 	tree.head.AddColumn().AddText("svc1").SetColor(color.Bold)
 	node := tree.AddNode()
 	node.AddColumn().AddText("avail")
@@ -25,10 +27,10 @@ func TestForest(t *testing.T) {
 	node.AddColumn().AddText("up").SetColor(color.FgGreen)
 	col := node.AddColumn()
 	col.AddText("label")
-	col.AddText("warn").SetColor(color.FgYellow).SetAlign(AlignLeft)
+	col.AddText("warn: some long warning description").SetColor(color.FgYellow).SetAlign(AlignLeft)
 	col.AddText("err").SetColor(color.FgRed).SetAlign(AlignLeft)
 	s := tree.Render()
-	//fmt.Println(s)
+	fmt.Println(s)
 	t.Log("programatic forest")
 	t.Log(s)
 	assert.Equal(t, ref, s)

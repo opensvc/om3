@@ -42,7 +42,7 @@ var svcStatusCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		selector := mergeSelector(svcSelectorFlag)
-		object.NewSelection(selector).Status()
+		object.NewSelection(selector).Action("PrintStatus")
 	},
 }
 

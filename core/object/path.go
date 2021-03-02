@@ -134,3 +134,13 @@ func (t *Path) UnmarshalJSON(b []byte) error {
 	}
 	return nil
 }
+
+// NewObject allocates a new kinded object
+func (t Path) NewObject() interface{} {
+	switch t.Kind {
+	case KindSvc:
+		return NewSvc(t)
+	default:
+		return nil
+	}
+}

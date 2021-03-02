@@ -20,15 +20,15 @@ func Switch(formatStr string, color string, data interface{}, human RenderFunc) 
 		return SprintFlat(b)
 	case JSON:
 		b, _ := json.MarshalIndent(data, "", "    ")
-		return string(b)
+		return string(b) + "\n"
 	case JSONLine:
 		b, _ := json.Marshal(data)
-		return string(b)
+		return string(b) + "\n"
 	default:
 		if human != nil {
 			return human()
 		}
 		b, _ := json.MarshalIndent(data, "", "    ")
-		return string(b)
+		return string(b) + "\n"
 	}
 }
