@@ -140,6 +140,14 @@ func (t Path) NewObject() interface{} {
 	switch t.Kind {
 	case KindSvc:
 		return NewSvc(t)
+	case KindVol:
+		return NewVol(t)
+	case KindCfg:
+		return NewCfg(t)
+	case KindSec:
+		return NewSec(t)
+	case KindUsr:
+		return NewUsr(t)
 	default:
 		return nil
 	}
