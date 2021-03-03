@@ -1,7 +1,7 @@
 package keywords
 
 import (
-	"opensvc.com/opensvc/core/converters"
+	"opensvc.com/opensvc/util/converters"
 )
 
 // Keyword represents a configuration option in an object or node configuration file
