@@ -1,59 +1,43 @@
-package entrypoints
+package action
 
 import (
 	"fmt"
 	"os"
 
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/entrypoints/monitor"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 )
 
-// Action switches between local, remote or async mode for a command action
-type Action struct {
-	ObjectSelector string
-	NodeSelector   string
-	Local          bool
-	Action         string
-	Method         string
-	Target         string
-	Watch          bool
-	Format         string
-	Color          string
-}
+type (
+	// NodeAction has the same attributes as Action, but the interface
+	// method implementation differ.
+	NodeAction Action
+)
 
 // Do is the switch method between local, remote or async mode.
 // If Watch is set, end up starting a monitor on the selected objects.
-func (t Action) Do() {
+func (t NodeAction) Do() {
 	if t.Local {
-		// TODO: plug local action
-		object.NewSelection(t.ObjectSelector).Action(t.Method)
-	} else if t.NodeSelector != "" {
-		t.DoRemote()
-	} else {
-		t.DoAsync()
+		//		node.New().Action(t.Method)
+		return
 	}
-	if t.Watch {
-		m := monitor.New()
-		m.SetWatch(true)
-		m.SetColor(t.Color)
-		m.SetFormat(t.Format)
-		m.SetSelector(t.ObjectSelector)
-		m.Do()
-	}
+	do(t)
+}
+
+// Options returns the base Action struct
+func (t NodeAction) Options() Action {
+	return Action(t)
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
-func (t Action) DoAsync() {
+func (t NodeAction) DoAsync() {
 	api, err := client.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
 	}
-	req := api.NewPostObjectMonitor()
-	req.ObjectSelector = t.ObjectSelector
+	req := api.NewPostNodeMonitor()
 	req.GlobalExpect = t.Target
 	b, err := req.Do()
 	human := func() string {
@@ -70,14 +54,13 @@ func (t Action) DoAsync() {
 
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
-func (t Action) DoRemote() {
+func (t NodeAction) DoRemote() {
 	api, err := client.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
 	}
-	req := api.NewPostObjectAction()
-	req.ObjectSelector = t.ObjectSelector
+	req := api.NewPostNodeAction()
 	req.NodeSelector = t.NodeSelector
 	req.Action = t.Action
 	b, err := req.Do()

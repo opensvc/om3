@@ -20,7 +20,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints"
+	"opensvc.com/opensvc/core/entrypoints/action"
 )
 
 var (
@@ -42,7 +42,7 @@ func init() {
 }
 
 func svcStartCmdRun(cmd *cobra.Command, args []string) {
-	entrypoints.Action{
+	action.ObjectAction{
 		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcStartNodeFlag,
 		Action:         "start",

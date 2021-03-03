@@ -24,31 +24,32 @@ import (
 )
 
 var (
-	svcStopNodeFlag  string
-	svcStopLocalFlag bool
-	svcStopWatchFlag bool
+	svcUnfreezeNodeFlag  string
+	svcUnfreezeLocalFlag bool
+	svcUnfreezeWatchFlag bool
 )
 
-var svcStopCmd = &cobra.Command{
-	Use:   "stop",
-	Short: "Stop the selected objects.",
-	Run:   svcStopCmdRun,
+var svcUnfreezeCmd = &cobra.Command{
+	Use:     "unfreeze",
+	Aliases: []string{"thaw"},
+	Short:   "Unfreeze the selected objects.",
+	Run:     svcUnfreezeCmdRun,
 }
 
 func init() {
-	svcCmd.AddCommand(svcStopCmd)
-	svcStopCmd.Flags().BoolVarP(&svcStopLocalFlag, "local", "", false, "Stop inline the selected local instances.")
-	svcStopCmd.Flags().BoolVarP(&svcStopWatchFlag, "watch", "w", false, "Watch the monitor changes")
+	svcCmd.AddCommand(svcUnfreezeCmd)
+	svcUnfreezeCmd.Flags().BoolVarP(&svcUnfreezeLocalFlag, "local", "", false, "Unfreeze inline the selected local instances.")
+	svcUnfreezeCmd.Flags().BoolVarP(&svcUnfreezeWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }
 
-func svcStopCmdRun(cmd *cobra.Command, args []string) {
+func svcUnfreezeCmdRun(cmd *cobra.Command, args []string) {
 	action.ObjectAction{
 		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
-		NodeSelector:   svcStopNodeFlag,
-		Action:         "stop",
-		Method:         "Stop",
-		Target:         "stopped",
-		Watch:          svcStopWatchFlag,
+		NodeSelector:   svcUnfreezeNodeFlag,
+		Action:         "freeze",
+		Method:         "Unfreeze",
+		Target:         "thawed",
+		Watch:          svcUnfreezeWatchFlag,
 		Format:         formatFlag,
 		Color:          colorFlag,
 	}.Do()
