@@ -1,7 +1,7 @@
 package df
 
-// DFEntry represents a parsed line of the df unix command
-type DFEntry struct {
+// Entry represents a parsed line of the df unix command
+type Entry struct {
 	Device      string
 	Total       int64
 	Used        int64

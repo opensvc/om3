@@ -11,7 +11,7 @@ import (
 
 func (t Type) parseDF() ([]*check.Result, error) {
 	r := make([]*check.Result, 0)
-	data, err := df.Usage()
+	data, err := df.Inode()
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +74,13 @@ func (t Type) parseDF() ([]*check.Result, error) {
 			Instance: e.MountPoint + ".free",
 			Value:    e.Free,
 			Path:     path,
-			Unit:     "kb",
+			Unit:     "inode",
 		})
 		r = append(r, &check.Result{
 			Instance: e.MountPoint + ".size",
 			Value:    e.Total,
 			Path:     path,
-			Unit:     "kb",
+			Unit:     "inode",
 		})
 	}
 	return r, nil

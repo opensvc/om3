@@ -8,14 +8,22 @@ import (
 	"strings"
 )
 
-func doDF() ([]byte, error) {
+func doDFInode() ([]byte, error) {
+	return doDF([]string{"-lPi"})
+}
+
+func doDFUsage() ([]byte, error) {
+	return doDF([]string{"-lP"})
+}
+
+func doDF(args []string) ([]byte, error) {
 	df, err := exec.LookPath("df")
 	if err != nil {
 		return nil, err
 	}
 	cmd := &exec.Cmd{
 		Path: df,
-		Args: []string{"-lP"},
+		Args: args,
 	}
 	b, err := cmd.Output()
 	if err != nil {
@@ -24,13 +32,26 @@ func doDF() ([]byte, error) {
 	return b, nil
 }
 
-// Do executes and parses a df command
-func Do() ([]DFEntry, error) {
-	r := make([]DFEntry, 0)
-	b, err := doDF()
+// Usage executes and parses a df command
+func Usage() ([]Entry, error) {
+	b, err := doDFUsage()
 	if err != nil {
-		return r, err
+		return nil, err
 	}
+	return parse(b)
+}
+
+// Inode executes and parses a df command
+func Inode() ([]Entry, error) {
+	b, err := doDFInode()
+	if err != nil {
+		return nil, err
+	}
+	return parse(b)
+}
+
+func parse(b []byte) ([]Entry, error) {
+	r := make([]Entry, 0)
 	text := string(b)
 	for _, line := range strings.Split(text, "\n")[1:] {
 		l := strings.Fields(line)
@@ -49,7 +70,7 @@ func Do() ([]DFEntry, error) {
 		if err != nil {
 			continue
 		}
-		r = append(r, DFEntry{
+		r = append(r, Entry{
 			Device:      l[0],
 			Total:       total,
 			Used:        used,
