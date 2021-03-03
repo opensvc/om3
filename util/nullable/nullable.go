@@ -1,3 +1,10 @@
+package status
+
+import (
+	"database/sql"
+	"encoding/json"
+)
+
 type NullBool struct {
 	sql.NullBool
 }
