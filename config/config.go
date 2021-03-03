@@ -47,6 +47,7 @@ func Load() {
 	Viper.SetDefault("paths.tmp", defPathTmp)
 	Viper.SetDefault("paths.doc", defPathDoc)
 	Viper.SetDefault("paths.html", defPathHTML)
+	Viper.SetDefault("paths.drivers", defPathDrivers)
 	Viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	Viper.ReadInConfig()
@@ -61,6 +62,7 @@ func Load() {
 		Viper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
 		Viper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
 		Viper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
+		Viper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
 	}
 
 	if err := Viper.Unmarshal(&Config); err != nil {

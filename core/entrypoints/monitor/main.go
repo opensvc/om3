@@ -195,7 +195,13 @@ func (m Type) doOneshot(data cluster.Status, clear bool) {
 		return f.Render()
 	}
 
-	s := output.Switch(m.format, m.color, data, human)
+	s := output.Renderer{
+		Format:        m.format,
+		Color:         m.color,
+		Data:          data,
+		HumanRenderer: human,
+	}.Sprint()
+
 	if clear {
 		screen.Clear()
 		screen.MoveTopLeft()

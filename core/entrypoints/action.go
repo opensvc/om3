@@ -60,8 +60,12 @@ func (t Action) DoAsync() {
 		s := fmt.Sprintln(string(b))
 		return s
 	}
-	s := output.Switch(t.Format, t.Color, b, human)
-	fmt.Print(s)
+	output.Renderer{
+		Format:        t.Format,
+		Color:         t.Color,
+		Data:          b,
+		HumanRenderer: human,
+	}.Print()
 }
 
 // DoRemote posts the action to a peer node agent API, for synchronous
@@ -81,6 +85,10 @@ func (t Action) DoRemote() {
 		s := fmt.Sprintln(string(b))
 		return s
 	}
-	s := output.Switch(t.Format, t.Color, b, human)
-	fmt.Print(s)
+	output.Renderer{
+		Format:        t.Format,
+		Color:         t.Color,
+		Data:          b,
+		HumanRenderer: human,
+	}.Print()
 }

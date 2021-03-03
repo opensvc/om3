@@ -2,7 +2,8 @@ package event
 
 import (
 	"encoding/json"
-	"errors"
+
+	"github.com/pkg/errors"
 )
 
 type (
@@ -28,7 +29,7 @@ func DecodeFromJSON(b json.RawMessage) (Event, error) {
 		return e, err
 	}
 	if e.Kind == "" {
-		return e, ErrInvalidKind
+		return e, errors.Wrapf(ErrInvalidKind, "%s", string(b))
 	}
 	return e, nil
 }

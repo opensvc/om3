@@ -34,5 +34,10 @@ func doOne(e event.Event, color string, format string) {
 	if format == output.JSON.String() {
 		format = output.JSONLine.String()
 	}
-	fmt.Print(output.Switch(format, color, e, human))
+	output.Renderer{
+		Format:        format,
+		Color:         color,
+		Data:          e,
+		HumanRenderer: human,
+	}.Print()
 }

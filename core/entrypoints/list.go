@@ -1,7 +1,6 @@
 package entrypoints
 
 import (
-	"fmt"
 	"sort"
 
 	"opensvc.com/opensvc/core/object"
@@ -34,6 +33,10 @@ func (t List) Do() {
 		}
 		return s
 	}
-	s := output.Switch(t.Format, t.Color, data, human)
-	fmt.Print(s)
+	output.Renderer{
+		Format:        t.Format,
+		Color:         t.Color,
+		Data:          data,
+		HumanRenderer: human,
+	}.Print()
 }
