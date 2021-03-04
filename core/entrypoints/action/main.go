@@ -16,21 +16,25 @@ type (
 		Color          string
 	}
 
-	// Actioner is a interface implemented for node and object.
-	Actioner interface {
-		Do()
-		DoRemote()
-		DoAsync()
-		Options() Action
+	// actioner is a interface implemented for node and object.
+	actioner interface {
+		doRemote()
+		doLocal()
+		doAsync()
+		options() Action
 	}
 )
 
-func do(t Actioner) {
-	o := t.Options()
-	if o.NodeSelector != "" {
-		t.DoRemote()
+// Do is the switch method between local, remote or async mode.
+// If Watch is set, end up starting a monitor on the selected objects.
+func Do(t actioner) {
+	o := t.options()
+	if o.Local {
+		t.doLocal()
+	} else if o.NodeSelector != "" {
+		t.doRemote()
 	} else {
-		t.DoAsync()
+		t.doAsync()
 	}
 	if o.Watch {
 		m := monitor.New()

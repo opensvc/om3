@@ -25,7 +25,7 @@ func init() {
 }
 
 func nodeUnfreezeCmdRun(cmd *cobra.Command, args []string) {
-	action.NodeAction{
+	a := action.NodeAction{
 		NodeSelector: nodeUnfreezeNodeFlag,
 		Action:       "unfreeze",
 		Method:       "Unfreeze",
@@ -33,5 +33,6 @@ func nodeUnfreezeCmdRun(cmd *cobra.Command, args []string) {
 		Watch:        nodeUnfreezeWatchFlag,
 		Format:       formatFlag,
 		Color:        colorFlag,
-	}.Do()
+	}
+	action.Do(a)
 }

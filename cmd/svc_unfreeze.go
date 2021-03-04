@@ -43,7 +43,7 @@ func init() {
 }
 
 func svcUnfreezeCmdRun(cmd *cobra.Command, args []string) {
-	action.ObjectAction{
+	a := action.ObjectAction{
 		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcUnfreezeNodeFlag,
 		Action:         "freeze",
@@ -52,5 +52,6 @@ func svcUnfreezeCmdRun(cmd *cobra.Command, args []string) {
 		Watch:          svcUnfreezeWatchFlag,
 		Format:         formatFlag,
 		Color:          colorFlag,
-	}.Do()
+	}
+	action.Do(a)
 }

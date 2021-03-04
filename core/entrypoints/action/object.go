@@ -15,24 +15,18 @@ type (
 	ObjectAction Action
 )
 
-// Do is the switch method between local, remote or async mode.
-// If Watch is set, end up starting a monitor on the selected objects.
-func (t ObjectAction) Do() {
-	if t.Local {
-		object.NewSelection(t.ObjectSelector).Action(t.Method)
-		return
-	}
-	do(t)
+// Options returns the base Action struct
+func (t ObjectAction) options() Action {
+	return Action(t)
 }
 
-// Options returns the base Action struct
-func (t ObjectAction) Options() Action {
-	return Action(t)
+func (t ObjectAction) doLocal() {
+	object.NewSelection(t.ObjectSelector).Action(t.Method)
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
-func (t ObjectAction) DoAsync() {
+func (t ObjectAction) doAsync() {
 	api, err := client.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
@@ -61,7 +55,7 @@ func (t ObjectAction) DoAsync() {
 
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
-func (t ObjectAction) DoRemote() {
+func (t ObjectAction) doRemote() {
 	api, err := client.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
