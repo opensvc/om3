@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"opensvc.com/opensvc/core/resource/log"
 	"opensvc.com/opensvc/core/resource/manifest"
 	"opensvc.com/opensvc/core/status"
 )
@@ -20,15 +19,16 @@ type (
 		Status() status.Type
 
 		// common
-		GetSubset() string
-		GetLog() *log.Type
+		RID() string
+		Subset() string
+		Log() *Log
 	}
 
 	// Type is the resource type, embedded in each drivers type
 	Type struct {
-		RID    string   `json:"rid"`
-		Subset string   `json:"subset"`
-		Log    log.Type `json:"-"`
+		rid    string
+		subset string
+		log    Log `json:"-"`
 	}
 
 	// OutputStatus is the structure representing the resource status,
@@ -38,22 +38,27 @@ type (
 		Status status.Type `json:"status"`
 		Subset string      `json:"subset,omitempty"`
 		Type   string      `json:"type"`
-		Log    []log.Entry `json:"log,omitempty"`
+		Log    []*LogEntry `json:"log,omitempty"`
 	}
 )
 
 func (r Type) String() string {
-	return fmt.Sprintf("<Resource %s>", r.RID)
+	return fmt.Sprintf("<Resource %s>", r.rid)
 }
 
-// GetSubset returns the resource subset name
-func (r Type) GetSubset() string {
-	return r.Subset
+// Subset returns the resource subset name
+func (r Type) Subset() string {
+	return r.subset
 }
 
-// GetLog return a reference to the resource log
-func (r *Type) GetLog() *log.Type {
-	return &r.Log
+// Log return a reference to the resource log
+func (r *Type) Log() *Log {
+	return &r.log
+}
+
+// RID return a reference to the resource log
+func (r Type) RID() string {
+	return r.rid
 }
 
 func formatResourceType(r Interface) string {
@@ -85,8 +90,8 @@ func printStatus(r Interface) error {
 		Label:  formatResourceLabel(r),
 		Type:   formatResourceType(r),
 		Status: Status(r),
-		Subset: r.GetSubset(),
-		Log:    r.GetLog().Dump(),
+		Subset: r.Subset(),
+		Log:    r.Log().Entries(),
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")

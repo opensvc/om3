@@ -3,19 +3,18 @@ module opensvc.com/opensvc
 go 1.13
 
 require (
-	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
+	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129 // indirect
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
-	github.com/docker/go-units v0.4.0
-	github.com/dustin/go-humanize v1.0.0
+	github.com/docker/go-units v0.4.0 // indirect
+	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
 	github.com/fatih/color v1.10.0
-	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
-	github.com/jeremywohl/flatten v1.0.1
+	github.com/jeremywohl/flatten v1.0.1 // indirect
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54
 	github.com/kr/text v0.2.0 // indirect
@@ -25,7 +24,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0
+	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/pelletier/go-toml v1.8.1 // indirect
@@ -38,7 +37,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c
+	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect

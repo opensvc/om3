@@ -17,7 +17,7 @@ type Type struct {
 	Destination string `json:"destination"`
 	Gateway     string `json:"gateway"`
 	Netns       string `json:"netns"`
-	*resource.Type
+	resource.Type
 }
 
 // Manifest ...

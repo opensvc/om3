@@ -26,39 +26,42 @@ func (r Type) Label() string {
 }
 
 // Status evaluates and display the Resource status and logs
-func (r Type) Status() status.Type {
+func (r *Type) Status() status.Type {
 	netns, err := ns.GetNS(r.Netns)
 	if err != nil {
-		r.Log.Error("failed to open netns %q: %v", r.Netns, err)
+		r.Log().Error("failed to open netns %q: %v", r.Netns, err)
 		return status.Down
 	}
 	defer netns.Close()
 
 	if err := netns.Do(func(_ ns.NetNS) error {
-		var routes = makeRoute(r)
+		routes, errM := r.makeRoute()
+		if errM != nil {
+			return errM
+		}
 		errV := ip.ValidateExpectedRoute(routes)
 		if errV != nil {
 			return errV
 		}
 		return nil
 	}); err != nil {
-		r.Log.Error("%v", err)
+		r.Log().Error("%v", err)
 		return status.Down
 	}
 
 	return status.Up
 }
 
-func makeRoute(r Type) []*types.Route {
+func (r *Type) makeRoute() ([]*types.Route, error) {
 	var routes []*types.Route
 	_, dst, err := net.ParseCIDR(r.Destination)
 	if err != nil {
-		panic(err)
+		return routes, err
 	}
 	gw := net.ParseIP(r.Gateway)
 	routes = append(
 		routes,
 		&types.Route{Dst: *dst, GW: gw},
 	)
-	return routes
+	return routes, nil
 }

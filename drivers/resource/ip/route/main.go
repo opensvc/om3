@@ -7,8 +7,7 @@ import (
 )
 
 func main() {
-	var r Type
-	loader := resource.NewLoader(os.Stdin)
-	loader.Load(&r)
+	r := &Type{}
+	resource.NewLoader(os.Stdin).Load(r)
 	resource.Action(r)
 }
