@@ -633,7 +633,7 @@ func (p Patch) ApplyIndent(doc []byte, indent string) ([]byte, error) {
 		case "copy":
 			err = p.copy(&pd, op, &accumulatedCopySize)
 		default:
-			err = fmt.Errorf("Unexpected kind: %s", op.Kind())
+			err = fmt.Errorf("unexpected kind: %s", op.Kind())
 		}
 
 		if err != nil {
