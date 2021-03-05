@@ -1,6 +1,8 @@
 package action
 
-import "opensvc.com/opensvc/core/entrypoints/monitor"
+import (
+	"opensvc.com/opensvc/core/entrypoints/monitor"
+)
 
 type (
 	// Action switches between local, remote or async mode for a command action
@@ -14,6 +16,7 @@ type (
 		Watch          bool
 		Format         string
 		Color          string
+		Server         string
 	}
 
 	// actioner is a interface implemented for node and object.
@@ -42,6 +45,7 @@ func Do(t actioner) {
 		m.SetColor(o.Color)
 		m.SetFormat(o.Format)
 		m.SetSelector(o.ObjectSelector)
+		m.SetServer(o.Server)
 		m.Do()
 	}
 }

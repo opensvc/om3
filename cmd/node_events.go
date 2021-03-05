@@ -20,7 +20,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/events"
+	"opensvc.com/opensvc/core/entrypoints"
 )
 
 // nodeEventsCmd represents the nodeEvents command
@@ -36,5 +36,10 @@ func init() {
 }
 
 func nodeEventsCmdRun(cmd *cobra.Command, args []string) {
-	events.Do(colorFlag, formatFlag)
+	e := entrypoints.Events{
+		Format: formatFlag,
+		Color:  colorFlag,
+		Server: serverFlag,
+	}
+	e.Do()
 }

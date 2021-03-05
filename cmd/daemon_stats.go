@@ -19,14 +19,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/entrypoints"
 )
 
 // daemonStatsCmd represents the daemonStats command
@@ -41,59 +38,13 @@ func init() {
 }
 
 func daemonStatsCmdRun(cmd *cobra.Command, args []string) {
-	daemonStats()
-}
-
-func daemonStats() {
-	var (
-		api  client.API
-		err  error
-		b    []byte
-		data cluster.Stats
-	)
-	api, err = client.New()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	handle := api.NewGetDaemonStats()
-	b, err = handle.Do()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	data, err = parseDaemonStats(b)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	renderer := output.Renderer{
+	err := entrypoints.DaemonStats{
 		Format: formatFlag,
 		Color:  colorFlag,
-		Data:   data,
-	}
-	renderer.Print()
-}
-
-func parseDaemonStats(b []byte) (cluster.Stats, error) {
-	type (
-		nodeData struct {
-			Status int               `json:"status"`
-			Data   cluster.NodeStats `json:"data"`
-		}
-		responseType struct {
-			Status int                 `json:"status"`
-			Nodes  map[string]nodeData `json:"nodes"`
-		}
-	)
-	var t responseType
-	ds := make(cluster.Stats)
-	err := json.Unmarshal(b, &t)
+		Server: serverFlag,
+	}.Do()
 	if err != nil {
-		return ds, err
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	for k, v := range t.Nodes {
-		ds[k] = v.Data
-	}
-	return ds, nil
 }

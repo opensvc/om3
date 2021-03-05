@@ -19,7 +19,7 @@ func (a API) NewGetDaemonStatus() *GetDaemonStatus {
 
 // Do fetchs the daemon status structure from the agent api
 func (o GetDaemonStatus) Do() ([]byte, error) {
-	opts := o.API.NewRequest()
+	opts := NewRequest()
 	opts.Action = "daemon_status"
 	opts.Options["namespace"] = o.Namespace
 	opts.Options["selector"] = o.ObjectSelector

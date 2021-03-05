@@ -1,4 +1,4 @@
-package events
+package entrypoints
 
 import (
 	"fmt"
@@ -9,9 +9,17 @@ import (
 	"opensvc.com/opensvc/core/output"
 )
 
+type Events struct {
+	Color  string
+	Format string
+	Server string
+}
+
 // Do renders the event stream
-func Do(color string, format string) {
-	api, err := client.New()
+func (t Events) Do() {
+	c := client.NewConfig()
+	c.SetURL(t.Server)
+	api, err := c.NewAPI()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
@@ -23,20 +31,20 @@ func Do(color string, format string) {
 		os.Exit(1)
 	}
 	for m := range events {
-		doOne(m, color, format)
+		t.doOne(m)
 	}
 }
 
-func doOne(e event.Event, color string, format string) {
+func (t Events) doOne(e event.Event) {
 	human := func() string {
 		return event.Render(e)
 	}
-	if format == output.JSON.String() {
-		format = output.JSONLine.String()
+	if t.Format == output.JSON.String() {
+		t.Format = output.JSONLine.String()
 	}
 	output.Renderer{
-		Format:        format,
-		Color:         color,
+		Format:        t.Format,
+		Color:         t.Color,
 		Data:          e,
 		HumanRenderer: human,
 	}.Print()

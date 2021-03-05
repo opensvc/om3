@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"strings"
 
 	"opensvc.com/opensvc/config"
 )
@@ -16,27 +17,27 @@ import (
 type (
 	// JSONRPC is the agent JSON RPC api struct
 	JSONRPC struct {
+		Requester
 		URL string
 	}
 )
 
 const (
-	// JSONRPCScheme is the JSONRPC protocol scheme prefix in URL
-	JSONRPCScheme string = "raw://"
+	jsonrpcUDSPrefix  = "raw:///"
+	jsonrpcInetPrefix = "raw://"
 )
 
 func (t JSONRPC) String() string {
 	return fmt.Sprintf("JSONRPC %s", t.URL)
 }
 
-// JSONRPCUDSPath formats the JSONRPC api unix domain socket path
-func JSONRPCUDSPath() string {
+func defaultJSONRPCUDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.Viper.GetString("paths.var")))
 }
 
 // Get implements the Get interface method for the JSONRPC api
 func (t JSONRPC) doReq(method string, req Request) (io.ReadCloser, error) {
-	conn, err := net.Dial("unix", JSONRPCUDSPath())
+	conn, err := net.Dial("unix", t.URL)
 
 	if err != nil {
 		return nil, err
@@ -102,7 +103,16 @@ func (t JSONRPC) GetStream(req Request) (chan []byte, error) {
 }
 
 func newJSONRPC(c Config) (JSONRPC, error) {
-	return JSONRPC{}, nil
+	var url string
+	if c.url == "" {
+		url = defaultJSONRPCUDSPath()
+	} else {
+		url = strings.Replace(c.url, jsonrpcUDSPrefix, "/", 1)
+	}
+	r := JSONRPC{
+		URL: url,
+	}
+	return r, nil
 }
 
 // dropCR drops a terminal \r from the data.

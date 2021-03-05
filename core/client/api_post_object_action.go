@@ -26,7 +26,7 @@ func (a API) NewPostObjectAction() *PostObjectAction {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o PostObjectAction) Do() ([]byte, error) {
-	opts := o.API.NewRequest()
+	opts := NewRequest()
 	opts.Action = "object_action"
 	opts.Options["path"] = o.ObjectSelector
 	opts.Options["node"] = o.NodeSelector

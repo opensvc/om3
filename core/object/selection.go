@@ -11,6 +11,7 @@ type (
 	// Selection is the selection structure
 	Selection struct {
 		SelectorExpression string
+		API                client.API
 	}
 )
 
@@ -20,6 +21,11 @@ func NewSelection(selector string) Selection {
 		SelectorExpression: selector,
 	}
 	return t
+}
+
+// SetAPI sets the API struct key
+func (t *Selection) SetAPI(api client.API) {
+	t.API = api
 }
 
 // Expand resolves a selector expression into a list of object paths
@@ -36,11 +42,7 @@ func (t Selection) Expand() []Path {
 }
 
 func (t Selection) daemonExpand() ([]Path, error) {
-	api, err := client.New()
-	if err != nil {
-		return nil, err
-	}
-	handle := api.NewGetObjectSelector()
+	handle := t.API.NewGetObjectSelector()
 	handle.ObjectSelector = t.SelectorExpression
 	b, err := handle.Do()
 	if err != nil {

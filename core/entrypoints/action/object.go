@@ -27,12 +27,16 @@ func (t ObjectAction) doLocal() {
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t ObjectAction) doAsync() {
-	api, err := client.New()
+	c := client.NewConfig()
+	c.SetURL(t.Server)
+	api, err := c.NewAPI()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
 	}
-	for _, path := range object.NewSelection(t.ObjectSelector).Expand() {
+	sel := object.NewSelection(t.ObjectSelector)
+	sel.SetAPI(api)
+	for _, path := range sel.Expand() {
 		req := api.NewPostObjectMonitor()
 		req.ObjectSelector = path.String()
 		req.GlobalExpect = t.Target
@@ -56,7 +60,9 @@ func (t ObjectAction) doAsync() {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t ObjectAction) doRemote() {
-	api, err := client.New()
+	c := client.NewConfig()
+	c.SetURL(t.Server)
+	api, err := c.NewAPI()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)

@@ -18,7 +18,7 @@ func (a API) NewGetObjectSelector() *GetObjectSelector {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o GetObjectSelector) Do() ([]byte, error) {
-	opts := o.API.NewRequest()
+	opts := NewRequest()
 	opts.Action = "object_selector"
 	opts.Options["selector"] = o.ObjectSelector
 	return o.API.Requester.Get(*opts)

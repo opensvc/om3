@@ -21,6 +21,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -49,5 +50,10 @@ func init() {
 
 func svcStatusCmdRun(cmd *cobra.Command, args []string) {
 	selector := mergeSelector(svcSelectorFlag, "svc", "")
-	object.NewSelection(selector).Action("PrintStatus")
+	c := client.NewConfig()
+	c.SetURL(serverFlag)
+	api, _ := c.NewAPI()
+	selection := object.NewSelection(selector)
+	selection.SetAPI(api)
+	selection.Action("PrintStatus")
 }

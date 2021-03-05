@@ -21,7 +21,7 @@ func (a API) NewGetDaemonStats() *GetDaemonStats {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o GetDaemonStats) Do() ([]byte, error) {
-	opts := o.API.NewRequest()
+	opts := NewRequest()
 	opts.Node = "*"
 	opts.Action = "daemon_stats"
 	return o.API.Requester.Get(*opts)

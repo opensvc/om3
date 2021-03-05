@@ -48,6 +48,7 @@ func monCmdRun(cmd *cobra.Command, args []string) {
 	m.SetWatch(monWatchFlag)
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
+	m.SetServer(serverFlag)
 	m.SetSelector(monSelectorFlag)
 	m.Do()
 }

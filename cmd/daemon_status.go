@@ -49,6 +49,7 @@ func daemonStatusCmdRun(cmd *cobra.Command, args []string) {
 	m.SetWatch(daemonStatusWatchFlag)
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
+	m.SetServer(serverFlag)
 	m.SetSelector(daemonStatusSelectorFlag)
 	m.Do()
 }

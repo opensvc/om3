@@ -18,7 +18,7 @@ func (a API) NewPostObjectMonitor() *PostObjectMonitor {
 
 // Do ...
 func (o PostObjectMonitor) Do() ([]byte, error) {
-	opts := o.API.NewRequest()
+	opts := NewRequest()
 	opts.Action = "object_monitor"
 	opts.Options["path"] = o.ObjectSelector
 	opts.Options["global_expect"] = o.GlobalExpect

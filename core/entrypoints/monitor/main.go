@@ -22,6 +22,7 @@ type (
 		color    string
 		format   string
 		selector string
+		server   string
 		sections []string
 		nodes    []string
 	}
@@ -56,6 +57,11 @@ func New() Type {
 		color:    "auto",
 		format:   "auto",
 	}
+}
+
+// SetServer sets the server option
+func (m *Type) SetServer(v string) {
+	m.server = v
 }
 
 // SetSelector sets the selector option
@@ -100,7 +106,9 @@ func (m Type) Do() {
 		api client.API
 		err error
 	)
-	api, err = client.New()
+	c := client.NewConfig()
+	c.SetURL(m.server)
+	api, err = c.NewAPI()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

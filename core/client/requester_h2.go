@@ -20,31 +20,42 @@ import (
 type (
 	// H2 is the agent HTTP/2 api client struct
 	H2 struct {
+		Requester
 		Client http.Client
 		URL    string
 	}
 )
 
 const (
-	// H2UDSScheme is the Unix Domain Socket protocol scheme prefix in URL
-	H2UDSScheme string = "http:///"
+	h2UDSPrefix  = "http:///"
+	h2InetPrefix = "https://"
+)
+
+var (
+	wellKnowH2UDSURLS  = []string{"http", "http://", "/"}
+	wellKnowH2InetURLS = []string{"https", "https://"}
 )
 
 func (t H2) String() string {
 	return fmt.Sprintf("H2 %s", t.URL)
 }
 
-// H2UDSPath formats the H2 api Unix Domain Socket path
-func H2UDSPath() string {
+func defaultH2UDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Viper.GetString("paths.var")))
 }
 
 func newH2UDS(c Config) (H2, error) {
+	var url string
+	if c.url == "" {
+		url = defaultH2UDSPath()
+	} else {
+		url = c.url
+	}
 	r := &H2{}
 	t := &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial("unix", H2UDSPath())
+			return net.Dial("unix", url)
 		},
 	}
 	r.URL = "http://localhost"
@@ -54,17 +65,17 @@ func newH2UDS(c Config) (H2, error) {
 
 func newH2Inet(c Config) (H2, error) {
 	r := &H2{}
-	cer, err := tls.LoadX509KeyPair(c.ClientCertificate, c.ClientKey)
+	cer, err := tls.LoadX509KeyPair(c.clientCertificate, c.clientKey)
 	if err != nil {
 		return *r, err
 	}
 	t := &http2.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: c.InsecureSkipVerify,
+			InsecureSkipVerify: c.insecureSkipVerify,
 			Certificates:       []tls.Certificate{cer},
 		},
 	}
-	r.URL = c.URL
+	r.URL = c.url
 	r.Client = http.Client{Transport: t}
 	return *r, nil
 }

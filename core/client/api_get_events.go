@@ -65,7 +65,7 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 }
 
 func (o GetEvents) eventsBase() (chan []byte, error) {
-	req := o.API.NewRequest()
+	req := NewRequest()
 	req.Action = "events"
 	req.Options["selector"] = o.ObjectSelector
 	req.Options["namespace"] = o.Namespace

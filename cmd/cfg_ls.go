@@ -38,5 +38,6 @@ func cfgLsCmdRun(cmd *cobra.Command, args []string) {
 		ObjectSelector: mergeSelector(cfgSelectorFlag, "cfg", "**"),
 		Format:         formatFlag,
 		Color:          colorFlag,
+		Server:         serverFlag,
 	}.Do()
 }

@@ -45,6 +45,7 @@ func svcMonitorCmdRun(cmd *cobra.Command, args []string) {
 	m.SetWatch(svcMonitorWatchFlag)
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
+	m.SetServer(serverFlag)
 	m.SetSelector(selector)
 	m.SetSections([]string{"objects"})
 	m.Do()

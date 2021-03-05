@@ -33,6 +33,7 @@ var (
 	colorFlag    string
 	formatFlag   string
 	selectorFlag string
+	serverFlag   string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -66,13 +67,10 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
 	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
-
-	// local to this action.
-	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
 }
 
 // initConfig reads in config file and ENV variables if set.

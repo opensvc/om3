@@ -3,6 +3,7 @@ package entrypoints
 import (
 	"sort"
 
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 )
@@ -10,13 +11,19 @@ import (
 // List is the struct exposing the object selection printing method.
 type List struct {
 	ObjectSelector string
-	Format         string
 	Color          string
+	Format         string
+	Server         string
 }
 
 // Do prints the formatted object selection
 func (t List) Do() {
-	results := object.NewSelection(t.ObjectSelector).Action("List")
+	c := client.NewConfig()
+	c.SetURL(t.Server)
+	api, _ := c.NewAPI()
+	selection := object.NewSelection(t.ObjectSelector)
+	selection.SetAPI(api)
+	results := selection.Action("List")
 	data := make([]string, 0)
 	for _, r := range results {
 		buff, ok := r.Data.(string)

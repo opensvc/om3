@@ -6,12 +6,13 @@ import (
 	"io"
 )
 
-// Loader uses a Reader to load a Resource configuration into the Resource struct
+// Loader uses a Reader to load a JSON Resource configuration into
+// the resource struct.
 type Loader struct {
 	r io.Reader
 }
 
-// NewLoader allocates a new Loader struct
+// NewLoader allocates a new Loader and returns a reference.
 func NewLoader(r io.Reader) *Loader {
 	return &Loader{r: r}
 }
