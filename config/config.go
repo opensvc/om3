@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,59 +15,79 @@ const (
 )
 
 var (
-	// Config is the global containing the program configuration
-	Config Type
+	// Node is the global containing the program configuration
+	Node node
 
-	// Viper is the global accessor to the viper instance handling configuration
-	Viper *viper.Viper
+	// NodeViper is the global accessor to the viper instance handling configuration
+	NodeViper *viper.Viper
 )
 
 type (
 	// Type is the top level configuration structure
-	Type struct {
-		Paths AgentPaths `mapstructure:"paths"`
+	node struct {
+		Hostname string         `mapstructure:"hostname"`
+		Paths    AgentPaths     `mapstructure:"paths"`
+		Cluster  clusterSection `mapstructure:"cluster"`
+	}
+
+	clusterSection struct {
+		Name   string `mapstructure:"name"`
+		Secret string `mapstructure:"secret"`
 	}
 )
 
 // Load initializes the Viper and Config globals
 func Load() {
-	Viper = viper.New()
-	Viper.SetConfigName("opensvc")
-	Viper.SetConfigType("yaml")
-	//v.SetEnvPrefix("")
-	Viper.AddConfigPath(filepath.Join("etc", Program))
-	Viper.AddConfigPath(filepath.Join("$HOME", "."+Program))
-	Viper.AddConfigPath(".")
-	Viper.AutomaticEnv()
-	Viper.SetDefault("paths.root", "")
-	Viper.SetDefault("paths.bin", defPathBin)
-	Viper.SetDefault("paths.var", defPathVar)
-	Viper.SetDefault("paths.log", defPathLog)
-	Viper.SetDefault("paths.etc", defPathEtc)
-	Viper.SetDefault("paths.etcns", defPathEtcNs)
-	Viper.SetDefault("paths.tmp", defPathTmp)
-	Viper.SetDefault("paths.doc", defPathDoc)
-	Viper.SetDefault("paths.html", defPathHTML)
-	Viper.SetDefault("paths.drivers", defPathDrivers)
-	Viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	NodeViper = viper.New()
 
-	Viper.ReadInConfig()
+	if s, err := os.Hostname(); err != nil {
+		NodeViper.SetDefault("hostname", s)
+	}
+	NodeViper.SetDefault("paths.root", "")
+	NodeViper.SetDefault("paths.bin", defPathBin)
+	NodeViper.SetDefault("paths.var", defPathVar)
+	NodeViper.SetDefault("paths.log", defPathLog)
+	NodeViper.SetDefault("paths.etc", defPathEtc)
+	NodeViper.SetDefault("paths.etcns", defPathEtcNs)
+	NodeViper.SetDefault("paths.tmp", defPathTmp)
+	NodeViper.SetDefault("paths.doc", defPathDoc)
+	NodeViper.SetDefault("paths.html", defPathHTML)
+	NodeViper.SetDefault("paths.drivers", defPathDrivers)
+	NodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	NodeViper.AutomaticEnv()
 
-	root := Viper.GetString("paths.root")
-	if root != defPathRoot {
-		Viper.SetDefault("paths.bin", filepath.Join(root, "bin"))
-		Viper.SetDefault("paths.var", filepath.Join(root, "var"))
-		Viper.SetDefault("paths.log", filepath.Join(root, "log"))
-		Viper.SetDefault("paths.etc", filepath.Join(root, "etc"))
-		Viper.SetDefault("paths.etcns", filepath.Join(root, "etc", "namespaces"))
-		Viper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
-		Viper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
-		Viper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
-		Viper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
+	envCfg := readEnvFile()
+	root, ok := envCfg["osvc_root_path"].(string)
+	if ok && root != defPathRoot {
+		NodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
+		NodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
+		NodeViper.SetDefault("paths.log", filepath.Join(root, "log"))
+		NodeViper.SetDefault("paths.etc", filepath.Join(root, "etc"))
+		NodeViper.SetDefault("paths.etcns", filepath.Join(root, "etc", "namespaces"))
+		NodeViper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
+		NodeViper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
+		NodeViper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
+		NodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
 	}
 
-	if err := Viper.Unmarshal(&Config); err != nil {
-		fmt.Printf("Failed to parse the configuration file: %s\n", err)
+	NodeViper.SetConfigType("ini")
+
+	p := fmt.Sprintf("%s/cluster.conf", NodeViper.GetString("paths.etc"))
+	NodeViper.SetConfigFile(filepath.FromSlash(p))
+	NodeViper.MergeInConfig()
+
+	p = fmt.Sprintf("%s/node.conf", NodeViper.GetString("paths.etc"))
+	NodeViper.SetConfigFile(filepath.FromSlash(p))
+	NodeViper.MergeInConfig()
+
+	p = fmt.Sprintf("$HOME/.%s", Program)
+	NodeViper.SetConfigType("yaml")
+	NodeViper.AddConfigPath(filepath.FromSlash(p))
+	NodeViper.AddConfigPath(".")
+	NodeViper.MergeInConfig()
+
+	if err := NodeViper.Unmarshal(&Node); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse the configuration file: %s\n", err)
 		return
 	}
 }

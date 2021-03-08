@@ -23,6 +23,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
+	github.com/msoap/byline v1.1.1
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect

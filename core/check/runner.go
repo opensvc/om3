@@ -50,7 +50,7 @@ func doCheck(q chan []Result, path string) {
 
 func (r Runner) list() []string {
 	l := make([]string, 0)
-	root := filepath.Join(config.Viper.GetString("paths.drivers"), "check")
+	root := filepath.Join(config.NodeViper.GetString("paths.drivers"), "check")
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

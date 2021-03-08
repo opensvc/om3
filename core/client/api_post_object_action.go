@@ -1,10 +1,5 @@
 package client
 
-import (
-	"encoding/json"
-	"fmt"
-)
-
 // PostObjectAction describes the daemon object selector expression
 // resolver options.
 type PostObjectAction struct {
@@ -32,7 +27,5 @@ func (o PostObjectAction) Do() ([]byte, error) {
 	opts.Options["node"] = o.NodeSelector
 	opts.Options["action"] = o.Action
 	opts.Options["options"] = o.Options
-	b, _ := json.Marshal(opts)
-	fmt.Println(string(b))
 	return o.API.Requester.Post(*opts)
 }

@@ -31,17 +31,12 @@ const (
 	h2InetPrefix = "https://"
 )
 
-var (
-	wellKnowH2UDSURLS  = []string{"http", "http://", "/"}
-	wellKnowH2InetURLS = []string{"https", "https://"}
-)
-
 func (t H2) String() string {
 	return fmt.Sprintf("H2 %s", t.URL)
 }
 
 func defaultH2UDSPath() string {
-	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Viper.GetString("paths.var")))
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Node.Paths.Var))
 }
 
 func newH2UDS(c Config) (H2, error) {

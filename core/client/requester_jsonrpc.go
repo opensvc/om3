@@ -18,7 +18,8 @@ type (
 	// JSONRPC is the agent JSON RPC api struct
 	JSONRPC struct {
 		Requester
-		URL string
+		URL  string
+		Inet bool
 	}
 )
 
@@ -32,20 +33,41 @@ func (t JSONRPC) String() string {
 }
 
 func defaultJSONRPCUDSPath() string {
-	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.Viper.GetString("paths.var")))
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.NodeViper.GetString("paths.var")))
 }
 
 // Get implements the Get interface method for the JSONRPC api
 func (t JSONRPC) doReq(method string, req Request) (io.ReadCloser, error) {
-	conn, err := net.Dial("unix", t.URL)
+	var (
+		conn net.Conn
+		err  error
+		b    []byte
+	)
+	if t.Inet {
+		conn, err = net.Dial("tcp", t.URL)
+	} else {
+		conn, err = net.Dial("unix", t.URL)
+	}
 
 	if err != nil {
 		return nil, err
 	}
 	req.Method = method
-	b, err := json.Marshal(req)
+	b, err = json.Marshal(req)
 	if err != nil {
 		return nil, err
+	}
+	if t.Inet {
+		m := &Message{
+			NodeName:    config.Node.Hostname,
+			ClusterName: config.Node.Cluster.Name,
+			Key:         config.Node.Cluster.Secret,
+			Data:        b,
+		}
+		b, err = m.Encrypt()
+		if err != nil {
+			return nil, err
+		}
 	}
 	conn.Write(b)
 	conn.Write([]byte("\x00"))
@@ -68,6 +90,18 @@ func (t JSONRPC) doReqReadResponse(method string, req Request) ([]byte, error) {
 		return b, err
 	}
 	b = bytes.TrimRight(b, "\x00")
+	if t.Inet {
+		m := &Message{
+			NodeName:    config.Node.Hostname,
+			ClusterName: config.Node.Cluster.Name,
+			Key:         config.Node.Cluster.Secret,
+			Data:        b,
+		}
+		b, err = m.Decrypt()
+		if err != nil {
+			return nil, err
+		}
+	}
 	return b, nil
 }
 
@@ -108,9 +142,11 @@ func newJSONRPC(c Config) (JSONRPC, error) {
 		url = defaultJSONRPCUDSPath()
 	} else {
 		url = strings.Replace(c.url, jsonrpcUDSPrefix, "/", 1)
+		url = strings.Replace(c.url, jsonrpcInetPrefix, "", 1)
 	}
 	r := JSONRPC{
-		URL: url,
+		URL:  url,
+		Inet: strings.Contains(url, ":"),
 	}
 	return r, nil
 }

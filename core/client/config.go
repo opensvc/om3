@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -60,7 +59,6 @@ func (c *Config) NewAPI() (API, error) {
 		return *a, err
 	}
 	a.Requester = r
-	fmt.Println(c.url, r)
 	return *a, nil
 }
 
