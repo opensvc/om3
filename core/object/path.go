@@ -48,21 +48,24 @@ func NewPath(name string, namespace string, kind string) (Path, error) {
 	name = strings.ToLower(name)
 	namespace = strings.ToLower(namespace)
 	kind = strings.ToLower(kind)
-	if name == "" {
-		return path, errors.Wrap(ErrPathInvalid, "name is empty")
-	}
+	// apply defaults
 	if kind == "" {
 		kind = "svc"
-	}
-	k := NewKind(kind)
-	if k == KindInvalid {
-		return path, errors.Wrapf(ErrPathInvalid, "invalid kind %s", kind)
 	}
 	if namespace == "" {
 		namespace = "root"
 	}
-	if kind == "" {
-		kind = "svc"
+
+	k := NewKind(kind)
+	switch k {
+	case KindInvalid:
+		return path, errors.Wrapf(ErrPathInvalid, "invalid kind %s", kind)
+	case KindNscfg:
+		name = "namespace"
+	}
+
+	if name == "" {
+		return path, errors.Wrap(ErrPathInvalid, "name is empty")
 	}
 	if !hostnameRegexRFC952.MatchString(name) {
 		return path, errors.Wrapf(ErrPathInvalid, "invalid name %s (rfc952)", kind)
@@ -105,9 +108,16 @@ func NewPathFromString(s string) (Path, error) {
 		kind = l[1]
 		name = l[2]
 	case 2:
-		namespace = "root"
-		kind = l[0]
-		name = l[1]
+		switch l[1] {
+		case "": // ex: ns1/
+			namespace = l[0]
+			kind = "nscfg"
+			name = "namespace"
+		default: // ex: cfg/c1
+			namespace = "root"
+			kind = l[0]
+			name = l[1]
+		}
 	case 1:
 		namespace = "root"
 		kind = "svc"
@@ -132,10 +142,7 @@ func (t *Path) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*t, err = NewPathFromString(j)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // NewObject allocates a new kinded object
