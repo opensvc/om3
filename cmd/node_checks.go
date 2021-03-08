@@ -1,4 +1,3 @@
-// Package cmd defines the opensvc command line actions and options.
 package cmd
 
 import (
@@ -6,7 +5,6 @@ import (
 	"opensvc.com/opensvc/core/check"
 )
 
-// nodeEventsCmd represents the nodeEvents command
 var nodeChecksCmd = &cobra.Command{
 	Use:     "checks",
 	Short:   "Run the check drivers, push and print the instances",

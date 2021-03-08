@@ -36,11 +36,9 @@ var (
 	serverFlag   string
 )
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "opensvc",
 	Short: "Manage the opensvc cluster infrastructure and its deployed services.",
-	//Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

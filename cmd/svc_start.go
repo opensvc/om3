@@ -31,7 +31,7 @@ var (
 
 var svcStartCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the selected objects.",
+	Short: "Start the selected objects",
 	Run:   svcStartCmdRun,
 }
 
