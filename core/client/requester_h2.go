@@ -78,7 +78,7 @@ func newH2Inet(c Config) (H2, error) {
 func (t H2) newRequest(method string, r Request) (*http.Request, error) {
 	jsonStr, _ := json.Marshal(r.Options)
 	body := bytes.NewBuffer(jsonStr)
-	req, err := http.NewRequest("GET", t.URL+"/"+r.Action, body)
+	req, err := http.NewRequest(method, t.URL+"/"+r.Action, body)
 	if err != nil {
 		return nil, err
 	}
