@@ -1,5 +1,10 @@
 package object
 
+import (
+	"github.com/spf13/viper"
+	"opensvc.com/opensvc/config"
+)
+
 type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
@@ -38,5 +43,10 @@ func (o *Base) List() ActionResult {
 // Start starts the local instance of the object
 func (o *Base) Start() ActionResult {
 	result := o.NewActionResult()
+	o.loadObjectConfig()
 	return *result
+}
+
+func (o *Base) loadObjectConfig() (*viper.Viper, error) {
+	return config.LoadObject(o.Path.ConfigFile())
 }
