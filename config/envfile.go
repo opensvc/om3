@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-func readEnvFile() map[string]interface{} {
+func readEnvFile() map[string]string {
 	envVip := viper.New()
-	envCfg := make(map[string]interface{})
+	envCfg := make(map[string]string)
 	envVip.SetConfigType("env")
 	candidates := []string{
 		filepath.FromSlash("/etc/sysconfig"),

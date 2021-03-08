@@ -3,10 +3,13 @@ package object
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/config"
 )
 
 type (
@@ -151,4 +154,17 @@ func (t Path) NewObject() interface{} {
 	default:
 		return nil
 	}
+}
+
+// ConfigFile returns the absolute path of an opensvc object configuration
+// file.
+func (t Path) ConfigFile() string {
+	p := t.String()
+	switch t.Namespace {
+	case "", "root":
+		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.Etc, p)
+	default:
+		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.EtcNs, p)
+	}
+	return filepath.FromSlash(p)
 }

@@ -22,6 +22,6 @@ import (
 )
 
 func main() {
-	config.Load()
+	config.Load(nil)
 	cmd.Execute()
 }

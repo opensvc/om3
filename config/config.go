@@ -36,29 +36,23 @@ type (
 	}
 )
 
-// Load initializes the Viper and Config globals
-func Load() {
-	NodeViper = viper.New()
-
+func setDefaults(root string) {
 	if s, err := os.Hostname(); err != nil {
 		NodeViper.SetDefault("hostname", s)
 	}
-	NodeViper.SetDefault("paths.root", "")
-	NodeViper.SetDefault("paths.bin", defPathBin)
-	NodeViper.SetDefault("paths.var", defPathVar)
-	NodeViper.SetDefault("paths.log", defPathLog)
-	NodeViper.SetDefault("paths.etc", defPathEtc)
-	NodeViper.SetDefault("paths.etcns", defPathEtcNs)
-	NodeViper.SetDefault("paths.tmp", defPathTmp)
-	NodeViper.SetDefault("paths.doc", defPathDoc)
-	NodeViper.SetDefault("paths.html", defPathHTML)
-	NodeViper.SetDefault("paths.drivers", defPathDrivers)
-	NodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	NodeViper.AutomaticEnv()
-
-	envCfg := readEnvFile()
-	root, ok := envCfg["osvc_root_path"].(string)
-	if ok && root != defPathRoot {
+	if root == defPathRoot {
+		NodeViper.SetDefault("paths.root", "")
+		NodeViper.SetDefault("paths.bin", defPathBin)
+		NodeViper.SetDefault("paths.var", defPathVar)
+		NodeViper.SetDefault("paths.log", defPathLog)
+		NodeViper.SetDefault("paths.etc", defPathEtc)
+		NodeViper.SetDefault("paths.etcns", defPathEtcNs)
+		NodeViper.SetDefault("paths.tmp", defPathTmp)
+		NodeViper.SetDefault("paths.doc", defPathDoc)
+		NodeViper.SetDefault("paths.html", defPathHTML)
+		NodeViper.SetDefault("paths.drivers", defPathDrivers)
+	} else {
+		NodeViper.SetDefault("paths.root", root)
 		NodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
 		NodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
 		NodeViper.SetDefault("paths.log", filepath.Join(root, "log"))
@@ -70,6 +64,23 @@ func Load() {
 		NodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
 	}
 
+}
+
+// Load initializes the Viper and Config globals
+func Load(env map[string]string) {
+	NodeViper = viper.New()
+	NodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	NodeViper.AutomaticEnv()
+
+	if env == nil {
+		env = readEnvFile()
+	}
+	root, _ := env["osvc_root_path"]
+	setDefaults(root)
+	loadEpilogue()
+}
+
+func loadEpilogue() {
 	NodeViper.SetConfigType("ini")
 
 	p := fmt.Sprintf("%s/cluster.conf", NodeViper.GetString("paths.etc"))
