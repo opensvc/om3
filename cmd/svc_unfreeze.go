@@ -28,6 +28,7 @@ func svcUnfreezeCmdRun(cmd *cobra.Command, args []string) {
 	a := action.ObjectAction{
 		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcUnfreezeNodeFlag,
+		Local:          nodeUnfreezeLocalFlag,
 		Action:         "freeze",
 		Method:         "Unfreeze",
 		Target:         "thawed",

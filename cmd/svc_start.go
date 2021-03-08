@@ -45,6 +45,7 @@ func svcStartCmdRun(cmd *cobra.Command, args []string) {
 	a := action.ObjectAction{
 		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcStartNodeFlag,
+		Local:          svcStartLocalFlag,
 		Action:         "start",
 		Method:         "Start",
 		Target:         "started",

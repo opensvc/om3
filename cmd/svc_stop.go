@@ -27,6 +27,7 @@ func svcStopCmdRun(cmd *cobra.Command, args []string) {
 	a := action.ObjectAction{
 		ObjectSelector: mergeSelector(svcSelectorFlag, "svc", ""),
 		NodeSelector:   svcStopNodeFlag,
+		Local:          svcStopLocalFlag,
 		Action:         "stop",
 		Method:         "Stop",
 		Target:         "stopped",
