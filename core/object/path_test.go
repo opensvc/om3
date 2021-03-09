@@ -79,6 +79,13 @@ func TestNewPath(t *testing.T) {
 			output:    "",
 			ok:        false,
 		},
+		"cluster": {
+			name:      "cluster",
+			namespace: "root",
+			kind:      "ccfg",
+			output:    "cluster",
+			ok:        true,
+		},
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
@@ -156,6 +163,12 @@ func TestNewPathFromString(t *testing.T) {
 			name:      "namespace",
 			namespace: "ns1",
 			kind:      "nscfg",
+			ok:        true,
+		},
+		"cluster": {
+			name:      "cluster",
+			namespace: "root",
+			kind:      "ccfg",
 			ok:        true,
 		},
 	}
@@ -248,6 +261,13 @@ func TestConfigFile(t *testing.T) {
 			cf:        "/etc/opensvc/cfg/cfg1.conf",
 			root:      "",
 		},
+		"cluster cfg, package install": {
+			name:      "cluster",
+			namespace: "",
+			kind:      "ccfg",
+			cf:        "/etc/opensvc/cluster.conf",
+			root:      "",
+		},
 		"namespaced, dev install": {
 			name:      "svc1",
 			namespace: "ns1",
@@ -269,6 +289,13 @@ func TestConfigFile(t *testing.T) {
 			cf:        "/opt/opensvc/etc/cfg/cfg1.conf",
 			root:      "/opt/opensvc",
 		},
+		"cluster cfg, dev install": {
+			name:      "cluster",
+			namespace: "",
+			kind:      "ccfg",
+			cf:        "/opt/opensvc/etc/cluster.conf",
+			root:      "/opt/opensvc",
+		},
 	}
 	for testName, test := range tests {
 		config.Load(map[string]string{
@@ -279,4 +306,62 @@ func TestConfigFile(t *testing.T) {
 		assert.Equal(t, test.cf, path.ConfigFile())
 	}
 
+}
+
+func TestMatch(t *testing.T) {
+	tests := map[string]struct {
+		name      string
+		namespace string
+		kind      string
+		pattern   string
+		match     bool
+	}{
+		"ns1/svc/svc1 matches */svc/*": {
+			name:      "svc1",
+			namespace: "ns1",
+			kind:      "svc",
+			pattern:   "*/svc/*",
+			match:     true,
+		},
+		"vol/vol1 matches vol/v*": {
+			name:      "vol1",
+			namespace: "",
+			kind:      "vol",
+			pattern:   "vol/v*",
+			match:     true,
+		},
+		"vol/vol1 does not match v*": {
+			name:      "vol1",
+			namespace: "",
+			kind:      "vol",
+			pattern:   "v*",
+			match:     false,
+		},
+		"ns1/svc/svc1 does not match svc/*": {
+			name:      "svc1",
+			namespace: "ns1",
+			kind:      "svc",
+			pattern:   "svc/*",
+			match:     false,
+		},
+		"ns1/svc/svc1 matches *": {
+			name:      "svc1",
+			namespace: "ns1",
+			kind:      "svc",
+			pattern:   "*",
+			match:     true,
+		},
+		"svc1 matches *": {
+			name:      "svc1",
+			namespace: "root",
+			kind:      "svc",
+			pattern:   "*",
+			match:     true,
+		},
+	}
+	for testName, test := range tests {
+		t.Logf("%s", testName)
+		path, _ := NewPath(test.name, test.namespace, test.kind)
+		assert.Equal(t, test.match, path.Match(test.pattern))
+	}
 }

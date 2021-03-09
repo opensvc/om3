@@ -199,27 +199,46 @@ func (t Path) ConfigFile() string {
 
 func (t Path) Match(pattern string) bool {
 	l := strings.Split(pattern, "/")
+	s := t.String()
+	f := fnmatch.FNM_IGNORECASE | fnmatch.FNM_PATHNAME
 	switch len(l) {
 	case 1:
-		if fnmatch.Match(pattern, t.Name, fnmatch.FNM_IGNORECASE) {
+		switch pattern {
+		case "**":
 			return true
+		case "*":
+			if fnmatch.Match("*/svc/*", s, f) {
+				return true
+			}
+			if fnmatch.Match("*", s, f) {
+				return true
+			}
+		default:
+			if fnmatch.Match(pattern, s, f) {
+				return true
+			}
+			if fnmatch.Match("*/svc/"+pattern, s, f) {
+				return true
+			}
 		}
 	case 2:
 		if l[0] == "svc" {
-			// svc/foo => foo
-			pattern = l[1]
+			// svc/foo => foo ... for root namespace
+			if fnmatch.Match(l[1], s, f) {
+				return true
+			}
 		}
-		if fnmatch.Match(pattern, t.String(), fnmatch.FNM_IGNORECASE) {
+		if fnmatch.Match(pattern, s, f) {
 			return true
 		}
 	case 3:
 		if l[1] == "svc" {
-			// */svc/foo => foo
-			if t.Kind == KindSvc && fnmatch.Match(l[2], t.Name, fnmatch.FNM_IGNORECASE) {
+			// */svc/foo => foo ... for root namespace
+			if fnmatch.Match(l[2], s, f) {
 				return true
 			}
 		}
-		if fnmatch.Match(pattern, t.String(), fnmatch.FNM_IGNORECASE) {
+		if fnmatch.Match(pattern, s, f) {
 			return true
 		}
 	}
