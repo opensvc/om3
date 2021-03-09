@@ -2,6 +2,7 @@ package action
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"os"
 
 	"opensvc.com/opensvc/core/client"
@@ -31,7 +32,7 @@ func (t ObjectAction) doAsync() {
 	c.SetURL(t.Server)
 	api, err := c.NewAPI()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		log.Error(err)
 		os.Exit(1)
 	}
 	sel := object.NewSelection(t.ObjectSelector)

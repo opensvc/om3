@@ -1,21 +1,3 @@
-/*
-Copyright © 2021 OPENSVC SAS <contact@opensvc.com>
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-// Package cmd defines the opensvc command line actions and options.
 package cmd
 
 import (
@@ -25,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -34,11 +17,20 @@ var (
 	formatFlag   string
 	selectorFlag string
 	serverFlag   string
+	debugFlag    bool
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "opensvc",
-	Short: "Manage the opensvc cluster infrastructure and its deployed services.",
+	Use:               "opensvc",
+	Short:             "Manage the opensvc cluster infrastructure and its deployed services.",
+	PersistentPreRunE: persistentPreRunE,
+}
+
+func persistentPreRunE(cmd *cobra.Command, args []string) error {
+	if debugFlag {
+		log.SetLevel(log.DebugLevel)
+	}
+	return nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -59,7 +51,6 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
 }
 
 func init() {
@@ -69,6 +60,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
 	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
+	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")
 }
 
 // initConfig reads in config file and ENV variables if set.

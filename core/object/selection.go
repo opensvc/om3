@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 
+	log "github.com/sirupsen/logrus"
+
 	"opensvc.com/opensvc/core/client"
 )
 
@@ -42,13 +44,17 @@ func (t Selection) Expand() []Path {
 }
 
 func (t Selection) daemonExpand() ([]Path, error) {
+	l := make([]Path, 0)
+	if t.API.Requester == nil {
+		log.Debugf("Selection{%s} expansion via daemon disabled: no API attribute set", t.SelectorExpression)
+		return l, nil
+	}
 	handle := t.API.NewGetObjectSelector()
 	handle.ObjectSelector = t.SelectorExpression
 	b, err := handle.Do()
 	if err != nil {
 		return nil, err
 	}
-	l := make([]Path, 0)
 	json.Unmarshal(b, &l)
 	return l, nil
 }

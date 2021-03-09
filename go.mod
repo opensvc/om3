@@ -31,6 +31,7 @@ require (
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/safchain/ethtool v0.0.0-20201023143004-874930cb3ce0 // indirect
+	github.com/sirupsen/logrus v1.2.0
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/spf13/afero v1.5.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
