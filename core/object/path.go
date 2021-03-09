@@ -8,8 +8,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/danwakefield/fnmatch"
+
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/xmap"
 )
 
 type (
@@ -40,6 +43,12 @@ var (
 
 	hostnameRegexRFC952 = regexp.MustCompile(hostnameRegexStringRFC952)
 	fqdnRegexRFC1123    = regexp.MustCompile(fqdnRegexStringRFC1123)
+	forbiddenNames      = append(
+		xmap.Skeys(kindStringToID),
+		[]string{
+			"node",
+		}...,
+	)
 )
 
 // NewPath allocates a new path type from its elements
@@ -68,10 +77,15 @@ func NewPath(name string, namespace string, kind string) (Path, error) {
 		return path, errors.Wrap(ErrPathInvalid, "name is empty")
 	}
 	if !hostnameRegexRFC952.MatchString(name) {
-		return path, errors.Wrapf(ErrPathInvalid, "invalid name %s (rfc952)", kind)
+		return path, errors.Wrapf(ErrPathInvalid, "invalid name %s (rfc952)", name)
 	}
 	if !hostnameRegexRFC952.MatchString(namespace) {
-		return path, errors.Wrapf(ErrPathInvalid, "invalid namespace %s (rfc952)", kind)
+		return path, errors.Wrapf(ErrPathInvalid, "invalid namespace %s (rfc952)", namespace)
+	}
+	for _, reserved := range forbiddenNames {
+		if reserved == name {
+			return path, errors.Wrapf(ErrPathInvalid, "reserved name '%s'", name)
+		}
 	}
 	path.Namespace = namespace
 	path.Name = name
@@ -87,7 +101,7 @@ func (t Path) String() string {
 	if t.Namespace != "" && t.Namespace != "root" {
 		s += t.Namespace + Separator
 	}
-	if t.Kind != KindSvc || s != "" {
+	if (t.Kind != KindSvc && t.Kind != KindCcfg) || s != "" {
 		s += t.Kind.String() + Separator
 	}
 	return s + t.Name
@@ -119,9 +133,16 @@ func NewPathFromString(s string) (Path, error) {
 			name = l[1]
 		}
 	case 1:
-		namespace = "root"
-		kind = "svc"
-		name = l[0]
+		switch l[0] {
+		case "cluster":
+			namespace = "root"
+			kind = "ccfg"
+			name = l[0]
+		default:
+			namespace = "root"
+			kind = "svc"
+			name = l[0]
+		}
 	}
 	return NewPath(name, namespace, kind)
 }
@@ -174,4 +195,33 @@ func (t Path) ConfigFile() string {
 		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.EtcNs, p)
 	}
 	return filepath.FromSlash(p)
+}
+
+func (t Path) Match(pattern string) bool {
+	l := strings.Split(pattern, "/")
+	switch len(l) {
+	case 1:
+		if fnmatch.Match(pattern, t.Name, fnmatch.FNM_IGNORECASE) {
+			return true
+		}
+	case 2:
+		if l[0] == "svc" {
+			// svc/foo => foo
+			pattern = l[1]
+		}
+		if fnmatch.Match(pattern, t.String(), fnmatch.FNM_IGNORECASE) {
+			return true
+		}
+	case 3:
+		if l[1] == "svc" {
+			// */svc/foo => foo
+			if t.Kind == KindSvc && fnmatch.Match(l[2], t.Name, fnmatch.FNM_IGNORECASE) {
+				return true
+			}
+		}
+		if fnmatch.Match(pattern, t.String(), fnmatch.FNM_IGNORECASE) {
+			return true
+		}
+	}
+	return false
 }

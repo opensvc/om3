@@ -72,6 +72,13 @@ func TestNewPath(t *testing.T) {
 			output:    "",
 			ok:        false,
 		},
+		"forbidden name": {
+			name:      "svc",
+			namespace: "root",
+			kind:      "svc",
+			output:    "",
+			ok:        false,
+		},
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)

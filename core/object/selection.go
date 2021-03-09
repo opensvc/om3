@@ -2,11 +2,18 @@ package object
 
 import (
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 	"reflect"
+	"strings"
 
+	"github.com/golang-collections/collections/set"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
@@ -14,6 +21,8 @@ type (
 	Selection struct {
 		SelectorExpression string
 		API                client.API
+		paths              []Path
+		installed          []Path
 	}
 )
 
@@ -30,33 +39,162 @@ func (t *Selection) SetAPI(api client.API) {
 	t.API = api
 }
 
-// Expand resolves a selector expression into a list of object paths
+//
+// Expand resolves a selector expression into a list of object paths.
+// First try to resolve using the daemon (remote or local), as the
+// daemons know all cluster objects, even remote ones.
+// If executed on a cluster node, fallback to a local selector, which
+// looks up installed configuration files.
+//
 func (t Selection) Expand() []Path {
-	var (
-		l   []Path
-		err error
-	)
-	l, err = t.daemonExpand()
-	if err != nil {
-		l = make([]Path, 0)
+	if t.paths != nil {
+		return t.paths
 	}
-	return l
+	t.expand()
+	return t.paths
 }
 
-func (t Selection) daemonExpand() ([]Path, error) {
+func (t *Selection) Add(path Path) {
+	pathStr := path.String()
+	for _, p := range t.paths {
+		if pathStr == p.String() {
+			return
+		}
+	}
+	t.paths = append(t.paths, path)
+}
+
+func (t Selection) expand() {
+	if err := t.daemonExpand(); err == nil {
+		return
+	} else if client.WantContext() {
+		log.Debugf("Selection{%s} expansion via daemon error: %s", t.SelectorExpression, err)
+		return
+	}
+	if err := t.localExpand(); err != nil {
+		log.Debug(err)
+	}
+}
+
+// Installed returns a list Path of every object with a locally installed configuration file.
+func Installed() ([]Path, error) {
 	l := make([]Path, 0)
+	matches := make([]string, 0)
+	patterns := []string{
+		fmt.Sprintf("%s/*.conf", config.Node.Paths.Etc),                // root svc
+		fmt.Sprintf("%s/*/*.conf", config.Node.Paths.Etc),              // root other
+		fmt.Sprintf("%s/namespaces/*/*/*.conf", config.Node.Paths.Etc), // namespaces
+	}
+	for _, pattern := range patterns {
+		m, err := filepath.Glob(pattern)
+		if err != nil {
+			return l, err
+		}
+		matches = append(matches, m...)
+	}
+	replacements := []string{
+		fmt.Sprintf("%s/", config.Node.Paths.EtcNs),
+		fmt.Sprintf("%s/", config.Node.Paths.Etc),
+	}
+	envNamespace := config.EnvNamespace()
+	envKind := NewKind(config.EnvKind())
+	for _, p := range matches {
+		for _, r := range replacements {
+			p = strings.Replace(p, r, "", 1)
+			p = strings.Replace(p, r, "", 1)
+		}
+		p = xstrings.TrimLast(p, 5) // strip trailing .conf
+		path, err := NewPathFromString(p)
+		if err != nil {
+			//log.Debugf("path '%s' local expansion error: %s", p, err)
+			continue
+		}
+		if envKind != KindInvalid && envKind != path.Kind {
+			continue
+		}
+		if envNamespace != "" && envNamespace != path.Namespace {
+			continue
+		}
+		l = append(l, path)
+	}
+	return l, nil
+}
+
+func (t *Selection) localExpand() error {
+	for _, s := range strings.Split(t.SelectorExpression, ",") {
+		pset, err := t.localExpandIntersector(s)
+		if err != nil {
+			return err
+		}
+		pset.Do(func(i interface{}) {
+			p, _ := NewPathFromString(i.(string))
+			t.Add(p)
+		})
+	}
+	return nil
+}
+
+func (t Selection) localExpandIntersector(s string) (*set.Set, error) {
+	pset := set.New()
+	for i, selector := range strings.Split(s, "+") {
+		ps, err := t.localExpandOne(selector)
+		if err != nil {
+			return pset, err
+		}
+		if i == 0 {
+			pset = pset.Union(ps)
+		} else {
+			pset = pset.Intersection(ps)
+		}
+	}
+	return pset, nil
+}
+
+func (t Selection) localExpandOne(s string) (*set.Set, error) {
+	// t.localConfigExpand()
+	return t.localFnmatchExpand(s)
+}
+
+func (t Selection) Installed() ([]Path, error) {
+	if t.installed != nil {
+		return t.installed, nil
+	}
+	var err error
+	t.installed, err = Installed()
+	if err != nil {
+		return t.installed, err
+	}
+	return t.installed, nil
+}
+
+func (t Selection) localFnmatchExpand(s string) (*set.Set, error) {
+	matching := set.New()
+	paths, err := t.Installed()
+	if err != nil {
+		return matching, err
+	}
+	for _, p := range paths {
+		if p.Match(s) {
+			matching.Insert(p.String())
+		}
+	}
+	return matching, nil
+}
+
+func (t Selection) daemonExpand() error {
+	if config.HasDaemonOrigin() {
+		return errors.New("Action origin is daemon")
+	}
 	if t.API.Requester == nil {
-		log.Debugf("Selection{%s} expansion via daemon disabled: no API attribute set", t.SelectorExpression)
-		return l, nil
+		return errors.New("API not set")
 	}
 	handle := t.API.NewGetObjectSelector()
 	handle.ObjectSelector = t.SelectorExpression
 	b, err := handle.Do()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	json.Unmarshal(b, &l)
-	return l, nil
+	return json.Unmarshal(b, &t.paths)
 }
 
 // Action executes in parallel the action on all selected objects supporting

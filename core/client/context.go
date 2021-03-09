@@ -57,6 +57,11 @@ var (
 	ErrContext = errors.New("context error")
 )
 
+// WantContext returns true if the OSVC_CONTEXT environment variable is set
+func WantContext() bool {
+	return os.Getenv(contextNameEnvVar) != ""
+}
+
 // NewContext return a remote cluster connection context (endpoint and user)
 func NewContext() (Context, error) {
 	var cfg ContextsConfig
