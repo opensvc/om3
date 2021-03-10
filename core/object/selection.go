@@ -229,6 +229,10 @@ func (t *Selection) Action(action string, args ...interface{}) []ActionResult {
 			continue
 		}
 		fn := reflect.ValueOf(obj).MethodByName(action)
+		if fn.Kind() == reflect.Invalid {
+			log.Errorf("unsupported method %s on %s", action, path)
+			continue
+		}
 		fa := make([]reflect.Value, len(args))
 		for k, arg := range args {
 			fa[k] = reflect.ValueOf(arg)
