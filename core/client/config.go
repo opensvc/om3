@@ -2,6 +2,8 @@ package client
 
 import (
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -59,16 +61,17 @@ func (c *Config) NewAPI() (API, error) {
 		return *a, err
 	}
 	a.Requester = r
+	log.Debugf("new API: %s", a)
 	return *a, nil
 }
 
 // newRequester allocates the Requester interface implementing struct selected
 // by the scheme of the URL key in Config{}.
 func (c *Config) newRequester() (Requester, error) {
-	switch {
-	case strings.HasPrefix(c.url, "tls://"):
+	if strings.HasPrefix(c.url, "tls://") {
 		c.url = "https://" + c.url[6:]
-		fallthrough
+	}
+	switch {
 	case c.url == "raw", c.url == "raw://", c.url == "raw:///":
 		c.url = ""
 		return newJSONRPC(*c)

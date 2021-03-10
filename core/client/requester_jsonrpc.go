@@ -29,7 +29,16 @@ const (
 )
 
 func (t JSONRPC) String() string {
-	return fmt.Sprintf("JSONRPC %s", t.URL)
+	b, _ := json.Marshal(t)
+	return string(b)
+}
+
+func (t JSONRPC) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "jsonrpc",
+		"url":  t.URL,
+		"inet": t.Inet,
+	})
 }
 
 func defaultJSONRPCUDSPath() string {

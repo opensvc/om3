@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"opensvc.com/opensvc/config"
 
@@ -21,8 +22,8 @@ type (
 	// H2 is the agent HTTP/2 api client struct
 	H2 struct {
 		Requester
-		Client http.Client
-		URL    string
+		Client http.Client `json:"-"`
+		URL    string      `json:url`
 	}
 )
 
@@ -32,7 +33,15 @@ const (
 )
 
 func (t H2) String() string {
-	return fmt.Sprintf("H2 %s", t.URL)
+	b, _ := json.Marshal(t)
+	return string(b)
+}
+
+func (t H2) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "h2",
+		"url":  t.URL,
+	})
 }
 
 func defaultH2UDSPath() string {
@@ -54,7 +63,7 @@ func newH2UDS(c Config) (H2, error) {
 		},
 	}
 	r.URL = "http://localhost"
-	r.Client = http.Client{Transport: t}
+	r.Client = http.Client{Transport: t, Timeout: 30 * time.Second}
 	return *r, nil
 }
 

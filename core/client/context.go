@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 )
@@ -24,9 +26,9 @@ type (
 
 	// Context is a dereferenced Cluster-User relation.
 	Context struct {
-		Cluster   Cluster
-		User      User
-		Namespace string
+		Cluster   Cluster `json:"cluster"`
+		User      User    `json:"user"`
+		Namespace string  `json:"namespace"`
 	}
 
 	// ContextRelation is a Cluster-User relation.
@@ -95,5 +97,11 @@ func NewContext() (Context, error) {
 		}
 	}
 	c.Namespace = cr.Namespace
+	log.Debugf("new context: %s", c)
 	return c, nil
+}
+
+func (t Context) String() string {
+	b, _ := json.Marshal(t)
+	return string(b)
 }
