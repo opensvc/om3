@@ -37,8 +37,10 @@ type (
 )
 
 func setDefaults(root string) {
-	if s, err := os.Hostname(); err != nil {
+	if s, err := os.Hostname(); err == nil {
 		NodeViper.SetDefault("hostname", s)
+	} else {
+		panic("can not determine hostname")
 	}
 	if root == defPathRoot {
 		NodeViper.SetDefault("paths.root", "")

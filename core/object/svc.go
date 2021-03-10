@@ -14,6 +14,6 @@ type (
 // NewSvc allocates a svc kind object.
 func NewSvc(path Path) *Svc {
 	s := &Svc{}
-	s.Path = path
+	s.Base.init(path)
 	return s
 }

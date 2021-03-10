@@ -8,23 +8,29 @@ import (
 )
 
 // LoadObject configures and returns a Viper instance
-func LoadObject(p string) (*viper.Viper, error) {
-	v := viper.New()
-	v.SetConfigType("ini")
-	v.SetConfigFile(filepath.FromSlash(p))
-	v.ReadInConfig()
+func NewObject(p string) (*Type, error) {
+	t := &Type{
+		Path: p,
+	}
+	t.v = viper.New()
+	t.v.SetConfigType("ini")
+	t.v.SetConfigFile(filepath.FromSlash(p))
+	t.v.ReadInConfig()
+	t.raw = make(map[string]interface{})
 
-	data := make(map[string]interface{})
-
-	if err := v.Unmarshal(&data); err != nil {
+	if err := t.v.Unmarshal(&t.raw); err != nil {
 		return nil, err
 	}
-	defaults, ok := data["DEFAULT"]
+
+	log.Debugf("new config for %s: %d sections", p, len(t.raw))
+	return t, nil
+}
+
+/*
+	defaults, ok := data["default"]
 	if !ok {
-		defaults = map[string]string{
+		data["defaults"] = map[string]string{
 			"nodes": Node.Hostname,
 		}
 	}
-	log.Debugf("config loaded from %s: %s", p, defaults)
-	return v, nil
-}
+*/
