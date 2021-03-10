@@ -1,6 +1,9 @@
 package action
 
 import (
+	"os"
+
+	log "github.com/sirupsen/logrus"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
@@ -10,6 +13,7 @@ type (
 		ObjectSelector string
 		NodeSelector   string
 		Local          bool
+		DefaultIsLocal bool
 		Action         string
 		Method         string
 		Target         string
@@ -32,12 +36,16 @@ type (
 // If Watch is set, end up starting a monitor on the selected objects.
 func Do(t actioner) {
 	o := t.options()
-	if o.Local {
-		t.doLocal()
-	} else if o.NodeSelector != "" {
+	switch {
+	case o.NodeSelector != "":
 		t.doRemote()
-	} else {
+	case o.Local || o.DefaultIsLocal:
+		t.doLocal()
+	case o.Target != "":
 		t.doAsync()
+	default:
+		log.Errorf("no available method to run action %s", t)
+		os.Exit(1)
 	}
 	if o.Watch {
 		m := monitor.New()
