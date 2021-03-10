@@ -3,6 +3,7 @@ package action
 import (
 	"fmt"
 	"os"
+	"reflect"
 
 	log "github.com/sirupsen/logrus"
 
@@ -23,7 +24,35 @@ func (t ObjectAction) options() Action {
 }
 
 func (t ObjectAction) doLocal() {
-	object.NewSelection(t.ObjectSelector).SetLocal(true).Action(t.Method)
+	sel := object.NewSelection(t.ObjectSelector).SetLocal(true)
+	rs := sel.Action(t.Method, t.MethodArgs...)
+	human := func() string {
+		s := ""
+		for _, r := range rs {
+			switch {
+			case r.Error != nil:
+				log.Error(r.Error)
+			case r.Panic != nil:
+				log.Error(r.Panic)
+			case r.Data != nil:
+				switch v := r.Data.(type) {
+				case []string:
+					for _, e := range v {
+						s += fmt.Sprintln(e)
+					}
+				default:
+					log.Errorf("xx %s", reflect.TypeOf(v))
+				}
+			}
+		}
+		return s
+	}
+	output.Renderer{
+		Format:        t.Format,
+		Color:         t.Color,
+		Data:          rs,
+		HumanRenderer: human,
+	}.Print()
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an

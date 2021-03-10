@@ -16,6 +16,7 @@ type (
 		DefaultIsLocal bool
 		Action         string
 		Method         string
+		MethodArgs     []interface{}
 		Target         string
 		Watch          bool
 		Format         string

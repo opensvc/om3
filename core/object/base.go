@@ -13,41 +13,30 @@ type (
 		Path   Path
 		config *config.Type
 	}
-
-	// ActionResult is a predictible type of actions return value, for reflect
-	ActionResult struct {
-		Path  Path
-		Error error
-		Data  interface{}
-		Panic interface{}
-	}
 )
 
-// NewActionResult allocate a new object action result, setting the path
-// automatically.
-func (o *Base) NewActionResult() *ActionResult {
-	return &ActionResult{
-		Path: o.Path,
-	}
-}
-
 // Status returns the service status dataset
-func (o *Base) Status(refresh bool) ActionResult {
-	return *o.NewActionResult()
+func (o *Base) Status(refresh bool) error {
+	return nil
 }
 
 // List returns the stringified path as data
-func (o *Base) List() ActionResult {
-	result := o.NewActionResult()
-	result.Data = o.Path.String()
-	return *result
+func (o *Base) List() (string, error) {
+	return o.Path.String(), nil
 }
 
 // Start starts the local instance of the object
-func (o *Base) Start() ActionResult {
-	result := o.NewActionResult()
-	_ = o.config.Get("default.nodes")
-	return *result
+func (o *Base) Start() error {
+	return nil
+}
+
+// Get gets keyword values
+func (o *Base) Get(kws []string) ([]string, error) {
+	data := make([]string, 0)
+	for _, kw := range kws {
+		data = append(data, o.config.Get(kw).(string))
+	}
+	return data, nil
 }
 
 func (o *Base) init(path Path) error {

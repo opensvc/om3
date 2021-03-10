@@ -25,6 +25,15 @@ type (
 		paths              []Path
 		installed          []Path
 	}
+
+	// ActionResult is a predictible type of actions return value, for reflect
+	ActionResult struct {
+		Nodename string      `json:"nodename"`
+		Path     Path        `json:"path"`
+		Data     interface{} `json:"data"`
+		Error    error       `json:"error,omitempty"`
+		Panic    interface{} `json:"panic,omitempty"`
+	}
 )
 
 // NewSelection allocates a new object selection
@@ -241,12 +250,26 @@ func (t *Selection) Action(action string, args ...interface{}) []ActionResult {
 			defer func() {
 				if r := recover(); r != nil {
 					q <- ActionResult{
-						Path:  path,
-						Panic: r,
+						Path:     path,
+						Nodename: config.Node.Hostname,
+						Panic:    r,
 					}
 				}
 			}()
-			q <- fn.Call(fa)[0].Interface().(ActionResult)
+			values := fn.Call(fa)
+			result := ActionResult{
+				Path:     path,
+				Nodename: config.Node.Hostname,
+			}
+			switch len(values) {
+			case 0:
+			case 1:
+				result.Error, _ = values[0].Interface().(error)
+			case 2:
+				result.Data = values[0].Interface()
+				result.Error, _ = values[1].Interface().(error)
+			}
+			q <- result
 		}(path)
 		started++
 	}
