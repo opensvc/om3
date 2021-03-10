@@ -64,6 +64,7 @@ func (t *Selection) Expand() []Path {
 		return t.paths
 	}
 	t.expand()
+	log.Debugf("%d objects selected", len(t.paths))
 	return t.paths
 }
 
@@ -146,7 +147,6 @@ func (t *Selection) localExpand() error {
 			t.add(p)
 		})
 	}
-	log.Debugf("%d objects selected", len(t.paths))
 	return nil
 }
 

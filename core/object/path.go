@@ -217,9 +217,6 @@ func (t Path) Match(pattern string) bool {
 			if fnmatch.Match(pattern, s, f) {
 				return true
 			}
-			if fnmatch.Match("*/svc/"+pattern, s, f) {
-				return true
-			}
 		}
 	case 2:
 		if l[0] == "svc" {
