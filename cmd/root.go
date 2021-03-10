@@ -92,13 +92,11 @@ func initConfig() {
 // mergeSelector returns the selector from argv[1], or falls back to
 // the selector passed by the -s flag.
 func mergeSelector(subsysSelector string, kind string, deft string) string {
-	var selector string
-	if selectorFlag != "" {
-		selector = selectorFlag
-	} else if subsysSelector != "" {
-		selector = subsysSelector
-	} else {
-		selector = deft
+	switch {
+	case selectorFlag != "":
+		return selectorFlag
+	case subsysSelector != "":
+		return fmt.Sprintf("%s+*/%s/*", subsysSelector, kind)
 	}
-	return fmt.Sprintf("%s+*/%s/*", selector, kind)
+	return fmt.Sprintf("%s+*/%s/*", deft, kind)
 }

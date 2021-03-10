@@ -5,6 +5,10 @@ import (
 	"opensvc.com/opensvc/core/entrypoints"
 )
 
+var (
+	volLsLocalFlag bool
+)
+
 var volLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Print the selected objects path",
@@ -13,6 +17,7 @@ var volLsCmd = &cobra.Command{
 
 func init() {
 	volCmd.AddCommand(volLsCmd)
+	volLsCmd.Flags().BoolVarP(&volLsLocalFlag, "local", "", false, "select only local instances")
 }
 
 func volLsCmdRun(cmd *cobra.Command, args []string) {
@@ -20,5 +25,6 @@ func volLsCmdRun(cmd *cobra.Command, args []string) {
 		ObjectSelector: mergeSelector(volSelectorFlag, "vol", "**"),
 		Format:         formatFlag,
 		Color:          colorFlag,
+		Local:          volLsLocalFlag,
 	}.Do()
 }
