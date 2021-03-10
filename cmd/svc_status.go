@@ -36,5 +36,6 @@ func svcStatusCmdRun(cmd *cobra.Command, args []string) {
 	api, _ := c.NewAPI()
 	selection := object.NewSelection(selector)
 	selection.SetAPI(api)
+	//selection.SetLocal()
 	selection.Action("Status")
 }

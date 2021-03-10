@@ -2,8 +2,9 @@ package action
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
@@ -22,7 +23,7 @@ func (t ObjectAction) options() Action {
 }
 
 func (t ObjectAction) doLocal() {
-	object.NewSelection(t.ObjectSelector).Action(t.Method)
+	object.NewSelection(t.ObjectSelector).SetLocal(true).Action(t.Method)
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
@@ -43,7 +44,7 @@ func (t ObjectAction) doAsync() {
 		req.GlobalExpect = t.Target
 		b, err := req.Do()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			log.Error(err)
 		}
 		human := func() string {
 			s := fmt.Sprintln(string(b))
@@ -65,7 +66,7 @@ func (t ObjectAction) doRemote() {
 	c.SetURL(t.Server)
 	api, err := c.NewAPI()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		log.Error(err)
 		os.Exit(1)
 	}
 	req := api.NewPostObjectAction()

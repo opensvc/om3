@@ -14,15 +14,20 @@ type List struct {
 	Color          string
 	Format         string
 	Server         string
+	Local          bool
 }
 
 // Do prints the formatted object selection
 func (t List) Do() {
-	c := client.NewConfig()
-	c.SetURL(t.Server)
-	api, _ := c.NewAPI()
 	selection := object.NewSelection(t.ObjectSelector)
-	selection.SetAPI(api)
+	if t.Local {
+		selection.SetLocal(t.Local)
+	} else {
+		c := client.NewConfig()
+		c.SetURL(t.Server)
+		api, _ := c.NewAPI()
+		selection.SetAPI(api)
+	}
 	results := selection.Action("List")
 	data := make([]string, 0)
 	for _, r := range results {

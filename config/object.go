@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"path/filepath"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -25,6 +25,6 @@ func LoadObject(p string) (*viper.Viper, error) {
 			"nodes": Node.Hostname,
 		}
 	}
-	fmt.Println(defaults)
+	log.Debugf("config loaded from %s: %s", p, defaults)
 	return v, nil
 }

@@ -21,32 +21,45 @@ type (
 	Selection struct {
 		SelectorExpression string
 		API                client.API
+		Local              bool
 		paths              []Path
 		installed          []Path
 	}
 )
 
 // NewSelection allocates a new object selection
-func NewSelection(selector string) Selection {
-	t := Selection{
+func NewSelection(selector string) *Selection {
+	t := &Selection{
 		SelectorExpression: selector,
 	}
 	return t
 }
 
 // SetAPI sets the API struct key
-func (t *Selection) SetAPI(api client.API) {
+func (t *Selection) SetAPI(api client.API) *Selection {
 	t.API = api
+	return t
+}
+
+// SetLocal sets the Local struct key
+func (t *Selection) SetLocal(local bool) *Selection {
+	t.Local = local
+	return t
+}
+
+func (t Selection) String() string {
+	return fmt.Sprintf("Selection{%s}", t.SelectorExpression)
 }
 
 //
 // Expand resolves a selector expression into a list of object paths.
+//
 // First try to resolve using the daemon (remote or local), as the
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
 //
-func (t Selection) Expand() []Path {
+func (t *Selection) Expand() []Path {
 	if t.paths != nil {
 		return t.paths
 	}
@@ -54,7 +67,7 @@ func (t Selection) Expand() []Path {
 	return t.paths
 }
 
-func (t *Selection) Add(path Path) {
+func (t *Selection) add(path Path) {
 	pathStr := path.String()
 	for _, p := range t.paths {
 		if pathStr == p.String() {
@@ -64,12 +77,14 @@ func (t *Selection) Add(path Path) {
 	t.paths = append(t.paths, path)
 }
 
-func (t Selection) expand() {
-	if err := t.daemonExpand(); err == nil {
-		return
-	} else if client.WantContext() {
-		log.Debugf("Selection{%s} expansion via daemon error: %s", t.SelectorExpression, err)
-		return
+func (t *Selection) expand() {
+	if !t.Local {
+		if err := t.daemonExpand(); err == nil {
+			return
+		} else if client.WantContext() {
+			log.Debugf("%s daemon expansion error: %s", t, err)
+			return
+		}
 	}
 	if err := t.localExpand(); err != nil {
 		log.Debug(err)
@@ -106,7 +121,6 @@ func Installed() ([]Path, error) {
 		p = xstrings.TrimLast(p, 5) // strip trailing .conf
 		path, err := NewPathFromString(p)
 		if err != nil {
-			//log.Debugf("path '%s' local expansion error: %s", p, err)
 			continue
 		}
 		if envKind != KindInvalid && envKind != path.Kind {
@@ -121,6 +135,7 @@ func Installed() ([]Path, error) {
 }
 
 func (t *Selection) localExpand() error {
+	log.Debugf("%s local expansion", t)
 	for _, s := range strings.Split(t.SelectorExpression, ",") {
 		pset, err := t.localExpandIntersector(s)
 		if err != nil {
@@ -128,13 +143,14 @@ func (t *Selection) localExpand() error {
 		}
 		pset.Do(func(i interface{}) {
 			p, _ := NewPathFromString(i.(string))
-			t.Add(p)
+			t.add(p)
 		})
 	}
+	log.Debugf("%d objects selected", len(t.paths))
 	return nil
 }
 
-func (t Selection) localExpandIntersector(s string) (*set.Set, error) {
+func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
 	pset := set.New()
 	for i, selector := range strings.Split(s, "+") {
 		ps, err := t.localExpandOne(selector)
@@ -150,12 +166,12 @@ func (t Selection) localExpandIntersector(s string) (*set.Set, error) {
 	return pset, nil
 }
 
-func (t Selection) localExpandOne(s string) (*set.Set, error) {
+func (t *Selection) localExpandOne(s string) (*set.Set, error) {
 	// t.localConfigExpand()
 	return t.localFnmatchExpand(s)
 }
 
-func (t Selection) Installed() ([]Path, error) {
+func (t *Selection) Installed() ([]Path, error) {
 	if t.installed != nil {
 		return t.installed, nil
 	}
@@ -167,7 +183,7 @@ func (t Selection) Installed() ([]Path, error) {
 	return t.installed, nil
 }
 
-func (t Selection) localFnmatchExpand(s string) (*set.Set, error) {
+func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {
 	matching := set.New()
 	paths, err := t.Installed()
 	if err != nil {
@@ -181,7 +197,8 @@ func (t Selection) localFnmatchExpand(s string) (*set.Set, error) {
 	return matching, nil
 }
 
-func (t Selection) daemonExpand() error {
+func (t *Selection) daemonExpand() error {
+	log.Debugf("%s daemon expansion", t)
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
@@ -199,16 +216,16 @@ func (t Selection) daemonExpand() error {
 
 // Action executes in parallel the action on all selected objects supporting
 // the action.
-func (t Selection) Action(action string, args ...interface{}) []ActionResult {
-	paths := t.Expand()
-	q := make(chan ActionResult, len(paths))
+func (t *Selection) Action(action string, args ...interface{}) []ActionResult {
+	t.Expand()
+	q := make(chan ActionResult, len(t.paths))
 	results := make([]ActionResult, 0)
 	started := 0
 
-	for _, path := range paths {
+	for _, path := range t.paths {
 		obj := path.NewObject()
 		if obj == nil {
-			//fmt.Fprintf(os.Stderr, "don't know how to handle %s\n", path)
+			log.Debugf("skip action on %s: no object allocator", path)
 			continue
 		}
 		fn := reflect.ValueOf(obj).MethodByName(action)
