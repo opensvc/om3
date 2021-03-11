@@ -60,8 +60,8 @@ func (c *Config) NewAPI() (API, error) {
 	if err != nil {
 		return *a, err
 	}
-	a.Requester = r
-	log.Debugf("new API: %s", a)
+	a.requester = r
+	log.Debugf("New %s", a)
 	return *a, nil
 }
 

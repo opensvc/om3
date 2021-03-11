@@ -24,5 +24,5 @@ func (o GetDaemonStats) Do() ([]byte, error) {
 	opts := NewRequest()
 	opts.Node = "*"
 	opts.Action = "daemon_stats"
-	return o.API.Requester.Get(*opts)
+	return o.API.Get(*opts)
 }

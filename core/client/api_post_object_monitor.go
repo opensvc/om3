@@ -22,5 +22,5 @@ func (o PostObjectMonitor) Do() ([]byte, error) {
 	opts.Action = "object_monitor"
 	opts.Options["path"] = o.ObjectSelector
 	opts.Options["global_expect"] = o.GlobalExpect
-	return o.API.Requester.Post(*opts)
+	return o.API.Post(*opts)
 }

@@ -21,9 +21,9 @@ import (
 type (
 	// H2 is the agent HTTP/2 api client struct
 	H2 struct {
-		Requester
-		Client http.Client `json:"-"`
-		URL    string      `json:url`
+		Requester `json:"-"`
+		Client    http.Client `json:"-"`
+		URL       string      `json:"url"`
 	}
 )
 
@@ -34,14 +34,7 @@ const (
 
 func (t H2) String() string {
 	b, _ := json.Marshal(t)
-	return string(b)
-}
-
-func (t H2) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"type": "h2",
-		"url":  t.URL,
-	})
+	return "H2" + string(b)
 }
 
 func defaultH2UDSPath() string {

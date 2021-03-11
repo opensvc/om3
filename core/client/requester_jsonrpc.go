@@ -17,9 +17,9 @@ import (
 type (
 	// JSONRPC is the agent JSON RPC api struct
 	JSONRPC struct {
-		Requester
-		URL  string
-		Inet bool
+		Requester `json:"-"`
+		URL       string `json:"url"`
+		Inet      bool   `json:"inet"`
 	}
 )
 
@@ -30,15 +30,7 @@ const (
 
 func (t JSONRPC) String() string {
 	b, _ := json.Marshal(t)
-	return string(b)
-}
-
-func (t JSONRPC) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"type": "jsonrpc",
-		"url":  t.URL,
-		"inet": t.Inet,
-	})
+	return "JSONRPC" + string(b)
 }
 
 func defaultJSONRPCUDSPath() string {

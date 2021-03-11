@@ -70,5 +70,5 @@ func (o GetEvents) eventsBase() (chan []byte, error) {
 	req.Options["selector"] = o.ObjectSelector
 	req.Options["namespace"] = o.Namespace
 	req.Options["full"] = o.Full
-	return o.API.Requester.GetStream(*req)
+	return o.API.GetStream(*req)
 }

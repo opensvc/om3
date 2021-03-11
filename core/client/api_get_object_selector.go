@@ -21,5 +21,5 @@ func (o GetObjectSelector) Do() ([]byte, error) {
 	opts := NewRequest()
 	opts.Action = "object_selector"
 	opts.Options["selector"] = o.ObjectSelector
-	return o.API.Requester.Get(*opts)
+	return o.API.Get(*opts)
 }

@@ -30,13 +30,9 @@ func (o *Base) Start() error {
 	return nil
 }
 
-// Get gets keyword values
-func (o *Base) Get(kws []string) ([]string, error) {
-	data := make([]string, 0)
-	for _, kw := range kws {
-		data = append(data, o.config.Get(kw).(string))
-	}
-	return data, nil
+// Get gets a keyword value
+func (o *Base) Get(kw string) (string, error) {
+	return o.config.Get(kw).(string), nil
 }
 
 func (o *Base) init(path Path) error {

@@ -1,5 +1,7 @@
 package client
 
+import "encoding/json"
+
 type (
 	// Requester abstracts the requesting details of supported protocols
 	Requester interface {
@@ -12,7 +14,7 @@ type (
 
 	// Request is a api request abstracting the protocol differences
 	Request struct {
-		Method  string                 `json:"method"`
+		Method  string                 `json:"method,omitempty"`
 		Action  string                 `json:"action,omitempty"`
 		Node    string                 `json:"node,omitempty"`
 		Options map[string]interface{} `json:"options,omitempty"`
@@ -25,4 +27,9 @@ func NewRequest() *Request {
 	r := &Request{}
 	r.Options = make(map[string]interface{})
 	return r
+}
+
+func (t Request) String() string {
+	b, _ := json.Marshal(t)
+	return "Request" + string(b)
 }

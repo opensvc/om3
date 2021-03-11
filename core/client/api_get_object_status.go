@@ -20,5 +20,5 @@ func (o GetObjectStatus) Do() ([]byte, error) {
 	opts := NewRequest()
 	opts.Action = "object_status"
 	opts.Options["selector"] = o.ObjectSelector
-	return o.API.Requester.Get(*opts)
+	return o.API.Get(*opts)
 }

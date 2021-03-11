@@ -20,5 +20,5 @@ func (o PostNodeMonitor) Do() ([]byte, error) {
 	opts := NewRequest()
 	opts.Action = "node_monitor"
 	opts.Options["global_expect"] = o.GlobalExpect
-	return o.API.Requester.Post(*opts)
+	return o.API.Post(*opts)
 }

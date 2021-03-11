@@ -36,12 +36,14 @@ func (t ObjectAction) doLocal() {
 				log.Error(r.Panic)
 			case r.Data != nil:
 				switch v := r.Data.(type) {
+				case string:
+					s += fmt.Sprintln(v)
 				case []string:
 					for _, e := range v {
 						s += fmt.Sprintln(e)
 					}
 				default:
-					log.Errorf("xx %s", reflect.TypeOf(v))
+					log.Errorf("unimplemented default renderer for local action result of type %s", reflect.TypeOf(v))
 				}
 			}
 		}
@@ -102,6 +104,7 @@ func (t ObjectAction) doRemote() {
 	req.ObjectSelector = t.ObjectSelector
 	req.NodeSelector = t.NodeSelector
 	req.Action = t.Action
+	req.Options = t.Flags
 	b, err := req.Do()
 	human := func() string {
 		s := fmt.Sprintln(string(b))

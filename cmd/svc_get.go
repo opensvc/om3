@@ -8,7 +8,7 @@ import (
 var (
 	svcGetNodeFlag  string
 	svcGetLocalFlag bool
-	svcGetKWFlag    []string
+	svcGetKWFlag    string
 )
 
 var svcGetCmd = &cobra.Command{
@@ -21,7 +21,7 @@ func init() {
 	svcCmd.AddCommand(svcGetCmd)
 	svcGetCmd.Flags().BoolVarP(&svcGetLocalFlag, "local", "", false, "Get from the local instance")
 	svcGetCmd.Flags().StringVar(&svcGetNodeFlag, "node", "", "Get from the specified nodes")
-	svcGetCmd.Flags().StringSliceVar(&svcGetKWFlag, "kw", []string{}, "A keyword to get")
+	svcGetCmd.Flags().StringVar(&svcGetKWFlag, "kw", "", "A keyword to get")
 }
 
 func svcGetCmdRun(cmd *cobra.Command, args []string) {
@@ -34,6 +34,9 @@ func svcGetCmdRun(cmd *cobra.Command, args []string) {
 		Method:         "Get",
 		MethodArgs: []interface{}{
 			svcGetKWFlag,
+		},
+		Flags: map[string]interface{}{
+			"kw": svcGetKWFlag,
 		},
 		Format: formatFlag,
 		Color:  colorFlag,

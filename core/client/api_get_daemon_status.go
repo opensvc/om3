@@ -23,5 +23,5 @@ func (o GetDaemonStatus) Do() ([]byte, error) {
 	opts.Action = "daemon_status"
 	opts.Options["namespace"] = o.Namespace
 	opts.Options["selector"] = o.ObjectSelector
-	return o.API.Requester.Get(*opts)
+	return o.API.Get(*opts)
 }

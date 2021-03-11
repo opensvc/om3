@@ -211,7 +211,7 @@ func (t *Selection) daemonExpand() error {
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
-	if t.API.Requester == nil {
+	if !t.API.HasRequester() {
 		return errors.New("API not set")
 	}
 	handle := t.API.NewGetObjectSelector()

@@ -15,6 +15,7 @@ type (
 		Local          bool
 		DefaultIsLocal bool
 		Action         string
+		Flags          map[string]interface{}
 		Method         string
 		MethodArgs     []interface{}
 		Target         string

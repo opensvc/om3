@@ -25,5 +25,5 @@ func (o PostNodeAction) Do() ([]byte, error) {
 	opts.Options["node"] = o.NodeSelector
 	opts.Options["action"] = o.Action
 	opts.Options["options"] = o.Options
-	return o.API.Requester.Post(*opts)
+	return o.API.Post(*opts)
 }
