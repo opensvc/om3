@@ -5,9 +5,9 @@ import (
 )
 
 var (
-	svcSet commands.CmdObjectSet
+	volGet commands.CmdObjectGet
 )
 
 func init() {
-	svcSet.Init("svc", svcCmd, &selectorFlag)
+	volGet.Init("vol", volCmd, &selectorFlag)
 }

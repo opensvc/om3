@@ -27,10 +27,15 @@ var (
 )
 
 var (
-	ErrTestFailed   = errors.New("test failed")
-	ErrMissing      = errors.New("missing value")
-	ErrUnknownType  = errors.New("unknown object type")
-	ErrInvalid      = errors.New("invalid state detected")
+	// ErrTestFailed hints a eponym error
+	ErrTestFailed = errors.New("test failed")
+	// ErrMissing hints a eponym error
+	ErrMissing = errors.New("missing value")
+	// ErrUnknownType hints a eponym error
+	ErrUnknownType = errors.New("unknown object type")
+	// ErrInvalid hints a eponym error
+	ErrInvalid = errors.New("invalid state detected")
+	// ErrInvalidIndex hints a eponym error
 	ErrInvalidIndex = errors.New("invalid index referenced")
 )
 

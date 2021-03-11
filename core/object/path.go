@@ -184,8 +184,10 @@ func (t Path) NewObject() interface{} {
 	}
 }
 
+//
 // ConfigFile returns the absolute path of an opensvc object configuration
 // file.
+//
 func (t Path) ConfigFile() string {
 	p := t.String()
 	switch t.Namespace {
@@ -197,6 +199,30 @@ func (t Path) ConfigFile() string {
 	return filepath.FromSlash(p)
 }
 
+//
+// VarDir returns the directory on the local filesystem where the object
+// variable persistent data is stored as files.
+//
+func (t Path) VarDir() string {
+	p := t.String()
+	switch t.Namespace {
+	case "", "root":
+		p = fmt.Sprintf("%s/%s", config.Node.Paths.Var, p)
+	default:
+		p = fmt.Sprintf("%s/namespaces/%s", config.Node.Paths.Var, p)
+	}
+	return filepath.FromSlash(p)
+}
+
+//
+// Match returns true if the object matches the pattern, using a fnmatch
+// matching algorithm with a few special cases to mask the root namespace
+// tricks and the svc object kind as default.
+//
+// Trick:
+// The 'f*' pattern matches all svc objects in the root namespace.
+// The '*' pattern matches all svc objects in all namespaces.
+//
 func (t Path) Match(pattern string) bool {
 	l := strings.Split(pattern, "/")
 	s := t.String()

@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/core/output"
 )
 
+// Events hosts the options of the events fetcher/renderer entrypoint.
 type Events struct {
 	Color  string
 	Format string

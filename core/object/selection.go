@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
@@ -20,10 +21,21 @@ type (
 	// Selection is the selection structure
 	Selection struct {
 		SelectorExpression string
-		API                client.API
-		Local              bool
+		apiConfigured      bool
+		api                client.API
+		local              bool
 		paths              []Path
 		installed          []Path
+		server             string
+	}
+
+	// Action describes an action to execute on the selected objects using.
+	Action struct {
+		Lock        bool
+		LockTimeout time.Duration
+		LockGroup   string
+		Method      string
+		MethodArgs  []interface{}
 	}
 
 	// ActionResult is a predictible type of actions return value, for reflect
@@ -44,15 +56,22 @@ func NewSelection(selector string) *Selection {
 	return t
 }
 
-// SetAPI sets the API struct key
+// SetAPI sets the api struct key
 func (t *Selection) SetAPI(api client.API) *Selection {
-	t.API = api
+	t.api = api
+	t.apiConfigured = true
 	return t
 }
 
-// SetLocal sets the Local struct key
+// SetLocal sets the local struct key
 func (t *Selection) SetLocal(local bool) *Selection {
-	t.Local = local
+	t.local = local
+	return t
+}
+
+// SetServer sets the server struct key
+func (t *Selection) SetServer(server string) *Selection {
+	t.server = server
 	return t
 }
 
@@ -88,7 +107,13 @@ func (t *Selection) add(path Path) {
 }
 
 func (t *Selection) expand() {
-	if !t.Local {
+	if !t.local {
+		if !t.apiConfigured {
+			c := client.NewConfig()
+			c.SetURL(t.server)
+			api, _ := c.NewAPI()
+			t.SetAPI(api)
+		}
 		if err := t.daemonExpand(); err == nil {
 			return
 		} else if client.WantContext() {
@@ -180,6 +205,8 @@ func (t *Selection) localExpandOne(s string) (*set.Set, error) {
 	return t.localFnmatchExpand(s)
 }
 
+// Installed returns the list of all paths with a locally installed
+// configuration file.
 func (t *Selection) Installed() ([]Path, error) {
 	if t.installed != nil {
 		return t.installed, nil
@@ -211,10 +238,10 @@ func (t *Selection) daemonExpand() error {
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
-	if !t.API.HasRequester() {
-		return errors.New("API not set")
+	if !t.api.HasRequester() {
+		return errors.New("api has no requester")
 	}
-	handle := t.API.NewGetObjectSelector()
+	handle := t.api.NewGetObjectSelector()
 	handle.ObjectSelector = t.SelectorExpression
 	b, err := handle.Do()
 	if err != nil {
@@ -223,9 +250,9 @@ func (t *Selection) daemonExpand() error {
 	return json.Unmarshal(b, &t.paths)
 }
 
-// Action executes in parallel the action on all selected objects supporting
+// Do executes in parallel the action on all selected objects supporting
 // the action.
-func (t *Selection) Action(action string, args ...interface{}) []ActionResult {
+func (t *Selection) Do(action Action) []ActionResult {
 	t.Expand()
 	q := make(chan ActionResult, len(t.paths))
 	results := make([]ActionResult, 0)
@@ -237,13 +264,13 @@ func (t *Selection) Action(action string, args ...interface{}) []ActionResult {
 			log.Debugf("skip action on %s: no object allocator", path)
 			continue
 		}
-		fn := reflect.ValueOf(obj).MethodByName(action)
+		fn := reflect.ValueOf(obj).MethodByName(action.Method)
 		if fn.Kind() == reflect.Invalid {
-			log.Errorf("unsupported method %s on %s", action, path)
+			log.Errorf("unsupported method %s on %s", action.Method, path)
 			continue
 		}
-		fa := make([]reflect.Value, len(args))
-		for k, arg := range args {
+		fa := make([]reflect.Value, len(action.MethodArgs))
+		for k, arg := range action.MethodArgs {
 			fa[k] = reflect.ValueOf(arg)
 		}
 		go func(path Path) {

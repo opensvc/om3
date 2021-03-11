@@ -25,7 +25,14 @@ func (t ObjectAction) options() Action {
 
 func (t ObjectAction) doLocal() {
 	sel := object.NewSelection(t.ObjectSelector).SetLocal(true)
-	rs := sel.Action(t.Method, t.MethodArgs...)
+	action := object.Action{
+		Method:      t.Method,
+		MethodArgs:  t.MethodArgs,
+		Lock:        t.Lock,
+		LockTimeout: t.LockTimeout,
+		LockGroup:   t.LockGroup,
+	}
+	rs := sel.Do(action)
 	human := func() string {
 		s := ""
 		for _, r := range rs {
@@ -104,7 +111,7 @@ func (t ObjectAction) doRemote() {
 	req.ObjectSelector = t.ObjectSelector
 	req.NodeSelector = t.NodeSelector
 	req.Action = t.Action
-	req.Options = t.Flags
+	req.Options = t.PostFlags
 	b, err := req.Do()
 	human := func() string {
 		s := fmt.Sprintln(string(b))

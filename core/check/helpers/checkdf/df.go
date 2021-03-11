@@ -1,9 +1,10 @@
 package checkdf
 
 import (
+	"strings"
+
 	"opensvc.com/opensvc/core/check"
 	"opensvc.com/opensvc/util/df"
-	"strings"
 )
 
 func skipper(dfEntry df.Entry) bool {
@@ -50,6 +51,7 @@ type translator interface {
 	Results(*df.Entry) []*check.Result
 }
 
+// Check returns a list of check result
 func Check(trans translator) ([]*check.Result, error) {
 	checkResults := make([]*check.Result, 0)
 	data, err := trans.Entries()

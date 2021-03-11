@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// Type exposes methods to read and write configurations.
 	Type struct {
 		Path string
 		v    *viper.Viper
@@ -13,6 +14,13 @@ type (
 	}
 )
 
+//
+// Get returns a key value,
+// * contextualized for a node (by default the local node, customized by the
+//   impersonate option)
+// * dereferenced
+// * evaluated
+//
 func (t *Type) Get(key string) interface{} {
 	val := t.v.Get(key)
 	log.Debugf("config %s get %s => %s", t.Path, key, val)

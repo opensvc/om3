@@ -3,7 +3,6 @@ package entrypoints
 import (
 	"sort"
 
-	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 )
@@ -20,22 +19,11 @@ type List struct {
 // Do prints the formatted object selection
 func (t List) Do() {
 	selection := object.NewSelection(t.ObjectSelector)
-	if t.Local {
-		selection.SetLocal(t.Local)
-	} else {
-		c := client.NewConfig()
-		c.SetURL(t.Server)
-		api, _ := c.NewAPI()
-		selection.SetAPI(api)
-	}
-	results := selection.Action("List")
+	selection.SetLocal(t.Local)
+	selection.SetServer(t.Server)
 	data := make([]string, 0)
-	for _, r := range results {
-		buff, ok := r.Data.(string)
-		if !ok {
-			continue
-		}
-		data = append(data, buff)
+	for _, path := range selection.Expand() {
+		data = append(data, path.String())
 	}
 	sort.Strings(data)
 	human := func() string {

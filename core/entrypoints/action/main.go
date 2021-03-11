@@ -2,6 +2,7 @@ package action
 
 import (
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
@@ -10,19 +11,110 @@ import (
 type (
 	// Action switches between local, remote or async mode for a command action
 	Action struct {
+		//
+		// ObjectSelector expands into a selection of objects to execute
+		// the action on.
+		//
 		ObjectSelector string
-		NodeSelector   string
-		Local          bool
+
+		//
+		// NodeSelector expands into a selection of nodes to execute the
+		// action on.
+		//
+		NodeSelector string
+
+		//
+		// Local routes the action to the CRM instead of remoting it via
+		// orchestration or remote execution.
+		//
+		Local bool
+
+		//
+		// DefaultIsLocal makes actions not explicitely Local nor remoted
+		// via NodeSelector be treated as local (CRM level).
+		//
 		DefaultIsLocal bool
-		Action         string
-		Flags          map[string]interface{}
-		Method         string
-		MethodArgs     []interface{}
-		Target         string
-		Watch          bool
-		Format         string
-		Color          string
-		Server         string
+
+		//
+		// Action is the name of the action as passed to the command line
+		// interface.
+		//
+		Action string
+
+		//
+		// PostFlags is the dataset submited in the POST /{object|node}_action
+		// api handler to execute the action remotely.
+		//
+		PostFlags map[string]interface{}
+
+		//
+		// Flags is the command flags as parsed by cobra. This is the struct
+		// passed to the object method on local execution.
+		//
+		Flags interface{}
+
+		//
+		// Method is the func name called by the local execution, in the object
+		// structure. Example "Start" call Svc{}.Start(...)
+		//
+		Method string
+
+		//
+		// MethodArgs is the list of arguments passed to the Method.
+		//
+		MethodArgs []interface{}
+
+		//
+		// Target is the node or object state the daemons should orchestrate
+		// to reach.
+		//
+		Target string
+
+		//
+		// Watch runs a event-driven monitor on the selected objects after
+		// setting a new target. So the operator can see the orchestration
+		// unfolding.
+		//
+		Watch bool
+
+		//
+		// Format controls the output data format.
+		// <empty>   => human readable format
+		// json      => json machine readable format
+		// flat      => flattened json (<k>=<v>) machine readable format
+		// flat_json => same as flat (backward compat)
+		//
+		Format string
+
+		//
+		// Color activates the colorization of outputs
+		// auto => yes if os.Stdout is a tty
+		// yes
+		// no
+		//
+		Color string
+
+		//
+		// Server bypasses the agent api requester automatic selection. It
+		// Accepts a uri where the scheme can be:
+		// raw   => jsonrpc
+		// http  => http/2 cleartext (over unix domain socket only)
+		// https => http/2 with TLS
+		// tls   => http/2 with TLS
+		//
+		Server string
+
+		// Lock prevents the action to run concurrently on the node.
+		Lock bool
+
+		// LockTimeout decides how long to wait for the lock before returning
+		// an error.
+		LockTimeout time.Duration
+
+		// LockGroup specifies an alternate lockfile, so this action is can not
+		// be run in parallel with the action of the same group, but can run in
+		// parallel with the actions of the default group.
+		LockGroup string
 	}
 
 	// actioner is a interface implemented for node and object.

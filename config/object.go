@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// LoadObject configures and returns a Viper instance
+// NewObject configures and returns a Viper instance
 func NewObject(p string) (*Type, error) {
 	t := &Type{
 		Path: p,

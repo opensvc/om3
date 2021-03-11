@@ -5,9 +5,9 @@ import (
 )
 
 var (
-	svcSet commands.CmdObjectSet
+	secMonitor commands.CmdObjectMonitor
 )
 
 func init() {
-	svcSet.Init("svc", svcCmd, &selectorFlag)
+	secMonitor.Init("sec", secCmd, &selectorFlag)
 }
