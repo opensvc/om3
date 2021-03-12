@@ -11,10 +11,9 @@ import (
 // --color flag value and with tty capability
 func SetColor(flag string) {
 	switch flag {
-	case "no":
+	case "no", "never":
 		color.NoColor = true
-	case "yes":
-	case "always":
+	case "yes", "always":
 		color.NoColor = false
 	default:
 		color.NoColor = !isatty.IsTerminal(os.Stdout.Fd())
