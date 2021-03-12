@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -46,6 +47,11 @@ type (
 		Error    error       `json:"error,omitempty"`
 		Panic    interface{} `json:"panic,omitempty"`
 	}
+)
+
+var (
+	fnmatchExpressionRegex = regexp.MustCompile(`\?*\[\]`)
+	configExpressionRegex  = regexp.MustCompile(`=:><`)
 )
 
 // NewSelection allocates a new object selection
@@ -202,7 +208,14 @@ func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
 
 func (t *Selection) localExpandOne(s string) (*set.Set, error) {
 	// t.localConfigExpand()
-	return t.localFnmatchExpand(s)
+	switch {
+	case fnmatchExpressionRegex.MatchString(s):
+		return t.localFnmatchExpand(s)
+	case configExpressionRegex.MatchString(s):
+		return t.localConfigExpand(s)
+	default:
+		return t.localExactExpand(s)
+	}
 }
 
 // Installed returns the list of all paths with a locally installed
@@ -217,6 +230,25 @@ func (t *Selection) Installed() ([]Path, error) {
 		return t.installed, err
 	}
 	return t.installed, nil
+}
+
+func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
+	matching := set.New()
+	log.Warning("TODO: localConfigExpand")
+	return matching, nil
+}
+
+func (t *Selection) localExactExpand(s string) (*set.Set, error) {
+	matching := set.New()
+	path, err := NewPathFromString(s)
+	if err != nil {
+		return matching, err
+	}
+	if !path.Exists() {
+		return matching, nil
+	}
+	matching.Insert(path.String())
+	return matching, nil
 }
 
 func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {

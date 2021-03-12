@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/xmap"
 )
 
@@ -197,6 +198,11 @@ func (t Path) ConfigFile() string {
 		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.EtcNs, p)
 	}
 	return filepath.FromSlash(p)
+}
+
+// Exists returns true if the object configuration file exists.
+func (t Path) Exists() bool {
+	return file.Exists(t.ConfigFile())
 }
 
 //
