@@ -1,10 +1,9 @@
 package commands
 
 import (
-	"time"
-
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
@@ -13,8 +12,7 @@ type (
 		flagSetObject
 		flagSetAction
 		flagSetAsync
-		Force       bool
-		LockTimeout time.Duration
+		object.ActionOptionsStart
 	}
 )
 
@@ -26,7 +24,7 @@ func (t *CmdObjectStart) Init(kind string, parent *cobra.Command, selector *stri
 	t.flagSetObject.init(cmd)
 	t.flagSetAction.init(cmd)
 	t.flagSetAsync.init(cmd)
-	cmd.Flags().BoolVar(&t.Force, "force", false, "allow dangerous operations")
+	t.ActionOptionsStart.Init(cmd)
 }
 
 func (t *CmdObjectStart) cmd(kind string, selector *string) *cobra.Command {
@@ -46,7 +44,7 @@ func (t *CmdObjectStart) run(selector *string, kind string) {
 		Local:          t.Local,
 		Action:         "start",
 		Method:         "Start",
-		Flags:          t,
+		MethodArgs:     []interface{}{t.ActionOptionsStart},
 		Target:         "started",
 		Watch:          t.Watch,
 		Format:         t.Format,

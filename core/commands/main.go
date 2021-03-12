@@ -22,7 +22,6 @@ type (
 		Watch       bool
 		Wait        bool
 		WaitTimeout time.Duration
-		LockTimeout time.Duration
 	}
 
 	flagSetAction struct {
@@ -45,7 +44,6 @@ func (t *flagSetAsync) init(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&t.Watch, "watch", "w", false, "Watch the monitor changes")
 	cmd.Flags().BoolVar(&t.Wait, "wait", false, "Wait for the object to reach the target state")
 	cmd.Flags().DurationVar(&t.WaitTimeout, "time", 5*time.Minute, "Stop waiting for the object to reach the target state after a duration")
-	cmd.Flags().DurationVar(&t.LockTimeout, "waitlock", 30*time.Second, "Lock acquire timeout")
 }
 
 func (t *flagSetAction) init(cmd *cobra.Command) {
