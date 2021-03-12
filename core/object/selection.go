@@ -50,8 +50,8 @@ type (
 )
 
 var (
-	fnmatchExpressionRegex = regexp.MustCompile(`\?*\[\]`)
-	configExpressionRegex  = regexp.MustCompile(`=:><`)
+	fnmatchExpressionRegex = regexp.MustCompile(`[\?\*\[\]]`)
+	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
 
 // NewSelection allocates a new object selection
