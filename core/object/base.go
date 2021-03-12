@@ -32,10 +32,11 @@ func (t *Base) List() (string, error) {
 
 // Start starts the local instance of the object
 func (t *Base) Start(options ActionOptionsStart) error {
-	if err := t.Lock("", options.LockTimeout); err != nil {
+	lock, err := t.Lock("", options.LockTimeout, "start")
+	if err != nil {
 		return err
 	}
-	defer t.Unlock("")
+	defer lock.Unlock()
 	time.Sleep(10 * time.Second)
 	return nil
 }
