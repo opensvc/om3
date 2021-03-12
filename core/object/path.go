@@ -213,9 +213,43 @@ func (t Path) VarDir() string {
 	p := t.String()
 	switch t.Namespace {
 	case "", "root":
-		p = fmt.Sprintf("%s/%s", config.Node.Paths.Var, p)
+		p = fmt.Sprintf("%s/%s/%s", config.Node.Paths.Var, t.Kind, t.Name)
 	default:
 		p = fmt.Sprintf("%s/namespaces/%s", config.Node.Paths.Var, p)
+	}
+	return filepath.FromSlash(p)
+}
+
+//
+// TmpDir returns the directory on the local filesystem where the object
+// stores its temporary files.
+//
+func (t Path) TmpDir() string {
+	p := t.String()
+	switch {
+	case t.Namespace != "", t.Namespace != "root":
+		p = fmt.Sprintf("%s/namespaces/%s/%s", config.Node.Paths.Tmp, t.Namespace, t.Kind)
+	case t.Kind == KindSvc, t.Kind == KindCcfg:
+		p = fmt.Sprintf("%s", config.Node.Paths.Tmp)
+	default:
+		p = fmt.Sprintf("%s/%s", config.Node.Paths.Tmp, t.Kind)
+	}
+	return filepath.FromSlash(p)
+}
+
+//
+// TmpDir returns the directory on the local filesystem where the object
+// stores its temporary files.
+//
+func (t Path) LogDir() string {
+	p := t.String()
+	switch {
+	case t.Namespace != "", t.Namespace != "root":
+		p = fmt.Sprintf("%s/namespaces/%s/%s", config.Node.Paths.Log, t.Namespace, t.Kind)
+	case t.Kind == KindSvc, t.Kind == KindCcfg:
+		p = fmt.Sprintf("%s", config.Node.Paths.Log)
+	default:
+		p = fmt.Sprintf("%s/%s", config.Node.Paths.Log, t.Kind)
 	}
 	return filepath.FromSlash(p)
 }
