@@ -1,9 +1,13 @@
 package object
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
+
+	"github.com/gofrs/flock"
 
 	log "github.com/sirupsen/logrus"
 	"opensvc.com/opensvc/config"
@@ -33,6 +37,11 @@ func (o *Base) List() (string, error) {
 
 // Start starts the local instance of the object
 func (o *Base) Start() error {
+	if err := o.Lock("", 10); err != nil {
+		return err
+	}
+	defer o.Unlock("")
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -68,7 +77,6 @@ func (o *Base) VarDir() string {
 	}
 	o.varDir = o.Path.VarDir()
 	if !o.Volatile {
-		log.Debugf("create directory %s", o.varDir)
 		if err := os.MkdirAll(o.varDir, os.ModePerm); err != nil {
 			log.Error(err)
 		}
@@ -91,8 +99,30 @@ func (o *Base) LockFile(group string) string {
 // A custom lock group can be specified to prevent parallel run of a subset
 // of object actions.
 //
-func (o *Base) Lock(group string) error {
+func (o *Base) Lock(group string, timeout time.Duration) error {
 	p := o.LockFile(group)
-	log.Debugf("lock %s", p)
+	log.Debugf("locking %s", p)
+	f := flock.New(p)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err := f.TryLockContext(ctx, 1*time.Second)
+	if err != nil {
+		return err
+	}
+	log.Debugf("locked %s", p)
+	return nil
+}
+
+//
+// Unlock releases the action lock.
+//
+// A custom lock group can be specified to prevent parallel run of a subset
+// of object actions.
+//
+func (o *Base) Unlock(group string) error {
+	p := o.LockFile(group)
+	log.Debugf("unlock %s", p)
+	f := flock.New(p)
+	f.Unlock()
 	return nil
 }
