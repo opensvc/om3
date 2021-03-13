@@ -37,6 +37,8 @@ func persistentPreRunE(cmd *cobra.Command, args []string) error {
 
 	if debugFlag {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	l := logging.Configure(logging.Config{
