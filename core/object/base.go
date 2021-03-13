@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/util/logging"
 )
@@ -50,6 +51,7 @@ func (t *Base) Get(kw string) (string, error) {
 
 func (t *Base) init(path Path) error {
 	t.Path = path
+	t.log = log.Logger
 	t.log = logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJson:      true,
