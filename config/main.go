@@ -1,7 +1,7 @@
 package config
 
 import (
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -23,6 +23,6 @@ type (
 //
 func (t *Type) Get(key string) interface{} {
 	val := t.v.Get(key)
-	log.Debugf("config %s get %s => %s", t.Path, key, val)
+	log.Debug().Msgf("config %s get %s => %s", t.Path, key, val)
 	return val
 }

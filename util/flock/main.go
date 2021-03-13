@@ -8,6 +8,7 @@ import (
 	"time"
 
 	bflock "github.com/gofrs/flock"
+	"opensvc.com/opensvc/config"
 )
 
 type (
@@ -55,7 +56,7 @@ func writeMeta(p string, intent string) error {
 	m := meta{
 		PID:       os.Getpid(),
 		Intent:    intent,
-		SessionId: os.Getenv("OSVC_SESSION_ID"),
+		SessionId: config.SessionId,
 	}
 	f, err := os.Create(p)
 	if err != nil {

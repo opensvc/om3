@@ -5,7 +5,7 @@ import (
 	"os"
 	"reflect"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
@@ -38,9 +38,9 @@ func (t ObjectAction) doLocal() {
 		for _, r := range rs {
 			switch {
 			case r.Error != nil:
-				log.Error(r.Error)
+				log.Error().Msgf("%s", r.Error)
 			case r.Panic != nil:
-				log.Error(r.Panic)
+				log.Fatal().Msgf("%s", r.Panic)
 			case r.Data != nil:
 				switch v := r.Data.(type) {
 				case string:
@@ -50,7 +50,7 @@ func (t ObjectAction) doLocal() {
 						s += fmt.Sprintln(e)
 					}
 				default:
-					log.Errorf("unimplemented default renderer for local action result of type %s", reflect.TypeOf(v))
+					log.Error().Msgf("unimplemented default renderer for local action result of type %s", reflect.TypeOf(v))
 				}
 			}
 		}
@@ -71,7 +71,7 @@ func (t ObjectAction) doAsync() {
 	c.SetURL(t.Server)
 	api, err := c.NewAPI()
 	if err != nil {
-		log.Error(err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 	sel := object.NewSelection(t.ObjectSelector)
@@ -82,7 +82,7 @@ func (t ObjectAction) doAsync() {
 		req.GlobalExpect = t.Target
 		b, err := req.Do()
 		if err != nil {
-			log.Error(err)
+			log.Error().Err(err).Msg("")
 		}
 		human := func() string {
 			s := fmt.Sprintln(string(b))
@@ -104,7 +104,7 @@ func (t ObjectAction) doRemote() {
 	c.SetURL(t.Server)
 	api, err := c.NewAPI()
 	if err != nil {
-		log.Error(err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 	req := api.NewPostObjectAction()

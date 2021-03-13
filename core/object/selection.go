@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
@@ -98,7 +98,7 @@ func (t *Selection) Expand() []Path {
 		return t.paths
 	}
 	t.expand()
-	log.Debugf("%d objects selected", len(t.paths))
+	log.Debug().Msgf("%d objects selected", len(t.paths))
 	return t.paths
 }
 
@@ -123,12 +123,12 @@ func (t *Selection) expand() {
 		if err := t.daemonExpand(); err == nil {
 			return
 		} else if client.WantContext() {
-			log.Debugf("%s daemon expansion error: %s", t, err)
+			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 			return
 		}
 	}
 	if err := t.localExpand(); err != nil {
-		log.Debug(err)
+		log.Debug().Err(err).Msg("")
 	}
 }
 
@@ -176,7 +176,7 @@ func Installed() ([]Path, error) {
 }
 
 func (t *Selection) localExpand() error {
-	log.Debugf("%s local expansion", t)
+	log.Debug().Msgf("%s local expansion", t)
 	for _, s := range strings.Split(t.SelectorExpression, ",") {
 		pset, err := t.localExpandIntersector(s)
 		if err != nil {
@@ -234,7 +234,7 @@ func (t *Selection) Installed() ([]Path, error) {
 
 func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 	matching := set.New()
-	log.Warning("TODO: localConfigExpand")
+	log.Warn().Msg("TODO: localConfigExpand")
 	return matching, nil
 }
 
@@ -266,7 +266,7 @@ func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {
 }
 
 func (t *Selection) daemonExpand() error {
-	log.Debugf("%s daemon expansion", t)
+	log.Debug().Msgf("%s daemon expansion", t)
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
@@ -293,12 +293,12 @@ func (t *Selection) Do(action Action) []ActionResult {
 	for _, path := range t.paths {
 		obj := path.NewObject()
 		if obj == nil {
-			log.Debugf("skip action on %s: no object allocator", path)
+			log.Debug().Msgf("skip action on %s: no object allocator", path)
 			continue
 		}
 		fn := reflect.ValueOf(obj).MethodByName(action.Method)
 		if fn.Kind() == reflect.Invalid {
-			log.Errorf("unsupported method %s on %s", action.Method, path)
+			log.Error().Msgf("unsupported method %s on %s", action.Method, path)
 			continue
 		}
 		fa := make([]reflect.Value, len(action.MethodArgs))

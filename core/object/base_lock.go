@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/util/flock"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // LockFile is the path of the file to use as an action lock.
@@ -26,12 +24,12 @@ func (t *Base) LockFile(group string) string {
 //
 func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.T, error) {
 	p := t.LockFile(group)
-	log.Debugf("locking %s, timeout %s", p, timeout)
+	t.log.Debug().Msgf("locking %s, timeout %s", p, timeout)
 	lock := flock.New(p)
 	_, err := lock.Lock(timeout, intent)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("locked %s", p)
+	t.log.Debug().Msgf("locked %s", p)
 	return lock, nil
 }

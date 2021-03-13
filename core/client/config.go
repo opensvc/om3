@@ -3,7 +3,7 @@ package client
 import (
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -61,7 +61,7 @@ func (c *Config) NewAPI() (API, error) {
 		return *a, err
 	}
 	a.requester = r
-	log.Debugf("New %s", a)
+	log.Debug().Msgf("New %s", a)
 	return *a, nil
 }
 

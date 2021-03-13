@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -97,7 +97,7 @@ func NewContext() (Context, error) {
 		}
 	}
 	c.Namespace = cr.Namespace
-	log.Debugf("new context: %s", c)
+	log.Debug().Msgf("new context: %s", c)
 	return c, nil
 }
 

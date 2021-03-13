@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/logging"
 
 	homedir "github.com/mitchellh/go-homedir"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -27,9 +30,31 @@ var rootCmd = &cobra.Command{
 }
 
 func persistentPreRunE(cmd *cobra.Command, args []string) error {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimestampFieldName = "t"
+	zerolog.LevelFieldName = "l"
+	zerolog.MessageFieldName = "m"
+
 	if debugFlag {
-		log.SetLevel(log.DebugLevel)
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
+
+	l := logging.Configure(logging.Config{
+		ConsoleLoggingEnabled: true,
+		EncodeLogsAsJson:      true,
+		FileLoggingEnabled:    true,
+		Directory:             config.Node.Paths.Log,
+		Filename:              "node.log",
+		MaxSize:               5,
+		MaxBackups:            1,
+		MaxAge:                30,
+	}).
+		With().
+		Str("n", config.Node.Hostname).
+		Str("sid", config.SessionId).
+		Logger()
+	log.Logger = l
+
 	return nil
 }
 

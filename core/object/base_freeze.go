@@ -4,7 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -29,7 +30,7 @@ func (t *Base) Freeze() error {
 		return err
 	}
 	f.Close()
-	log.Info("now frozen")
+	log.Info().Msg("now frozen")
 	return nil
 }
 
@@ -42,6 +43,6 @@ func (t *Base) Unfreeze() error {
 	if err != nil {
 		return err
 	}
-	log.Info("now unfrozen")
+	log.Info().Msg("now unfrozen")
 	return nil
 }

@@ -3,7 +3,8 @@ package config
 import (
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
+
 	"github.com/spf13/viper"
 )
 
@@ -22,7 +23,7 @@ func NewObject(p string) (*Type, error) {
 		return nil, err
 	}
 
-	log.Debugf("new config for %s: %d sections", p, len(t.raw))
+	log.Debug().Msgf("new config for %s: %d sections", p, len(t.raw))
 	return t, nil
 }
 

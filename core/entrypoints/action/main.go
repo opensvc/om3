@@ -4,7 +4,8 @@ import (
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
@@ -138,7 +139,7 @@ func Do(t actioner) {
 	case o.Target != "":
 		t.doAsync()
 	default:
-		log.Errorf("no available method to run action %s", t)
+		log.Error().Msgf("no available method to run action %s", t)
 		os.Exit(1)
 	}
 	if o.Watch {

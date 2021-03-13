@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/logging"
 )
 
 type (
@@ -13,6 +14,7 @@ type (
 	Base struct {
 		Path     Path
 		Volatile bool
+		log      zerolog.Logger
 
 		// caches
 		config *config.Type
@@ -48,11 +50,27 @@ func (t *Base) Get(kw string) (string, error) {
 
 func (t *Base) init(path Path) error {
 	t.Path = path
+	t.log = logging.Configure(logging.Config{
+		ConsoleLoggingEnabled: true,
+		EncodeLogsAsJson:      true,
+		FileLoggingEnabled:    true,
+		Directory:             t.logDir(),
+		Filename:              t.Path.String() + ".log",
+		MaxSize:               5,
+		MaxBackups:            1,
+		MaxAge:                30,
+	}).
+		With().
+		Str("o", t.Path.String()).
+		Str("n", config.Node.Hostname).
+		Str("sid", config.SessionId).
+		Logger()
+
 	if err := t.loadConfig(); err != nil {
-		log.Debugf("%s init error: %s", t, err)
+		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}
-	log.Debugf("%s initialized", t)
+	t.log.Debug().Msgf("%s initialized", t)
 	return nil
 }
 
