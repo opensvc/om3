@@ -4,6 +4,7 @@ import (
 	"os"
 )
 
+// BasePaths contains lazy initialized object paths on the node filesystem.
 type BasePaths struct {
 	varDir string
 	logDir string

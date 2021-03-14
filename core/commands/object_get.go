@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// CmdObjectGet is the cobra flag set of the get command.
 	CmdObjectGet struct {
 		flagSetGlobal
 		flagSetObject

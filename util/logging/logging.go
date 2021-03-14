@@ -10,13 +10,13 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// Configuration for logging
+// Config is the configuration of the zerolog logger and writers
 type Config struct {
 	// Enable console logging
 	ConsoleLoggingEnabled bool
 
-	// EncodeLogsAsJson makes the log framework log JSON
-	EncodeLogsAsJson bool
+	// EncodeLogsAsJSON makes the log framework log JSON
+	EncodeLogsAsJSON bool
 
 	// FileLoggingEnabled makes the framework log to a file
 	// the fields below can be skipped if this value is false!
@@ -38,6 +38,7 @@ type Config struct {
 	MaxAge int
 }
 
+// Logger is the opensvc specific zerolog logger
 type Logger struct {
 	*zerolog.Logger
 }
@@ -59,7 +60,7 @@ func Configure(config Config) *Logger {
 
 	logger.Debug().
 		Bool("fileLogging", config.FileLoggingEnabled).
-		Bool("jsonLogOutput", config.EncodeLogsAsJson).
+		Bool("jsonLogOutput", config.EncodeLogsAsJSON).
 		Str("logDirectory", config.Directory).
 		Str("fileName", config.Filename).
 		Int("maxSizeMB", config.MaxSize).

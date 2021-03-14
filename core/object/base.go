@@ -54,7 +54,7 @@ func (t *Base) init(path Path) error {
 	t.log = log.Logger
 	t.log = logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
-		EncodeLogsAsJson:      true,
+		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             t.logDir(),
 		Filename:              t.Path.String() + ".log",
@@ -65,7 +65,7 @@ func (t *Base) init(path Path) error {
 		With().
 		Str("o", t.Path.String()).
 		Str("n", config.Node.Hostname).
-		Str("sid", config.SessionId).
+		Str("sid", config.SessionID).
 		Logger()
 
 	if err := t.loadConfig(); err != nil {

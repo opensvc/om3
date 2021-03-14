@@ -21,10 +21,11 @@ type (
 	meta struct {
 		PID       int    `json:"pid"`
 		Intent    string `json:"intent"`
-		SessionId string `json:"session_id"`
+		SessionID string `json:"session_id"`
 	}
 )
 
+// New allocate a file lock struct.
 func New(p string) *T {
 	return &T{
 		Base: bflock.New(p),
@@ -56,7 +57,7 @@ func writeMeta(p string, intent string) error {
 	m := meta{
 		PID:       os.Getpid(),
 		Intent:    intent,
-		SessionId: config.SessionId,
+		SessionID: config.SessionID,
 	}
 	f, err := os.Create(p)
 	if err != nil {
@@ -66,6 +67,7 @@ func writeMeta(p string, intent string) error {
 	return enc.Encode(m)
 }
 
+// Unlock releases the file lock acquired by Lock.
 func (t *T) Unlock() {
 	os.Remove(t.Base.Path())
 	t.Base.Unlock()

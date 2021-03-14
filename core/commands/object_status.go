@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// CmdObjectStatus is the cobra flag set of the status command.
 	CmdObjectStatus struct {
 		flagSetGlobal
 		flagSetObject

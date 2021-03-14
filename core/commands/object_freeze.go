@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// CmdObjectFreeze is the cobra flag set of the freeze command.
 	CmdObjectFreeze struct {
 		flagSetGlobal
 		flagSetObject

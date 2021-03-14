@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// CmdObjectMonitor is the cobra flag set of the monitor command.
 	CmdObjectMonitor struct {
 		flagSetGlobal
 		flagSetObject

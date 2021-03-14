@@ -3,6 +3,8 @@ module opensvc.com/opensvc
 go 1.13
 
 require (
+	github.com/containernetworking/cni v0.8.1
+	github.com/containernetworking/plugins v0.9.1
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/fatih/color v1.10.0
 	github.com/gofrs/flock v0.8.0

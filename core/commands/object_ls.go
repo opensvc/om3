@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// CmdObjectLs is the cobra flag set of the ls command.
 	CmdObjectLs struct {
 		flagSetGlobal
 		flagSetObject

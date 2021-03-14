@@ -158,13 +158,18 @@ func (t Path) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json interface
 func (t *Path) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	p, err := NewPathFromString(s)
 	if err != nil {
 		return err
 	}
-	*t, err = NewPathFromString(j)
-	return err
+	t.Name = p.Name
+	t.Namespace = p.Namespace
+	t.Kind = p.Kind
+	return nil
 }
 
 // NewObject allocates a new kinded object
@@ -238,7 +243,7 @@ func (t Path) TmpDir() string {
 }
 
 //
-// TmpDir returns the directory on the local filesystem where the object
+// LogDir returns the directory on the local filesystem where the object
 // stores its temporary files.
 //
 func (t Path) LogDir() string {

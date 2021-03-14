@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectSet struct {
 		flagSetGlobal
 		flagSetObject

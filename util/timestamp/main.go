@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
+// T is a unix timestamp with nanosecond precision.
 type T int64
 
+// New return a new timestamp for the present date.
 func New() T {
 	return T(time.Now().UnixNano())
 }

@@ -13,31 +13,31 @@ import (
 )
 
 // Start the Resource
-func (r Type) Start() error {
+func (t T) Start() error {
 	return nil
 }
 
 // Stop the Resource
-func (r Type) Stop() error {
+func (t T) Stop() error {
 	return nil
 }
 
 // Label returns a formatted short description of the Resource
-func (r Type) Label() string {
-	return fmt.Sprintf("%s via %s", r.Destination, r.Gateway)
+func (t T) Label() string {
+	return fmt.Sprintf("%s via %s", t.Destination, t.Gateway)
 }
 
 // Status evaluates and display the Resource status and logs
-func (r *Type) Status() status.Type {
-	netns, err := ns.GetNS(r.Netns)
+func (t *T) Status() status.Type {
+	netns, err := ns.GetNS(t.Netns)
 	if err != nil {
-		r.Log().Error("failed to open netns %q: %v", r.Netns, err)
+		t.Log.Error("failed to open netns %q: %v", t.Netns, err)
 		return status.Down
 	}
 	defer netns.Close()
 
 	if err := netns.Do(func(_ ns.NetNS) error {
-		routes, errM := r.makeRoute()
+		routes, errM := t.makeRoute()
 		if errM != nil {
 			return errM
 		}
@@ -47,20 +47,20 @@ func (r *Type) Status() status.Type {
 		}
 		return nil
 	}); err != nil {
-		r.Log().Error("%v", err)
+		t.Log.Error("%v", err)
 		return status.Down
 	}
 
 	return status.Up
 }
 
-func (r *Type) makeRoute() ([]*types.Route, error) {
+func (t *T) makeRoute() ([]*types.Route, error) {
 	var routes []*types.Route
-	_, dst, err := net.ParseCIDR(r.Destination)
+	_, dst, err := net.ParseCIDR(t.Destination)
 	if err != nil {
 		return routes, err
 	}
-	gw := net.ParseIP(r.Gateway)
+	gw := net.ParseIP(t.Gateway)
 	routes = append(
 		routes,
 		&types.Route{Dst: *dst, GW: gw},

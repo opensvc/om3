@@ -3,7 +3,6 @@ package main
 import (
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resource/manifest"
 	"opensvc.com/opensvc/util/converters"
 )
 
@@ -12,17 +11,17 @@ const (
 	driverName  = "route"
 )
 
-// Type ...
-type Type struct {
+// T ...
+type T struct {
 	Destination string `json:"destination"`
 	Gateway     string `json:"gateway"`
 	Netns       string `json:"netns"`
-	resource.Type
+	resource.T
 }
 
 // Manifest ...
-func (r Type) Manifest() manifest.Type {
-	return manifest.Type{
+func (t T) Manifest() resource.Manifest {
+	return resource.Manifest{
 		Group: driverGroup,
 		Name:  driverName,
 		Keywords: []keywords.Keyword{
