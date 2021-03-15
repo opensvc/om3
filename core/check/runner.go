@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/util/exe"
@@ -51,6 +52,7 @@ func doCheck(q chan []Result, path string) {
 func (r Runner) list() []string {
 	l := make([]string, 0)
 	root := filepath.Join(config.NodeViper.GetString("paths.drivers"), "check")
+	log.Debug().Str("head", root).Msg("search check drivers")
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

@@ -46,12 +46,12 @@ func (t T) String() string {
 	return fmt.Sprintf("<Resource %s>", t.ResourceID)
 }
 
-// Subset returns the resource subset name
+// RSubset returns the resource subset name
 func (t T) RSubset() string {
 	return t.Subset
 }
 
-// Log return a reference to the resource log
+// RLog return a reference to the resource log
 func (t *T) RLog() *Log {
 	return &t.Log
 }

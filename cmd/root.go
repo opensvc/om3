@@ -43,7 +43,7 @@ func persistentPreRunE(cmd *cobra.Command, args []string) error {
 
 	l := logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
-		EncodeLogsAsJson:      true,
+		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             config.Node.Paths.Log,
 		Filename:              "node.log",
@@ -53,7 +53,7 @@ func persistentPreRunE(cmd *cobra.Command, args []string) error {
 	}).
 		With().
 		Str("n", config.Node.Hostname).
-		Str("sid", config.SessionId).
+		Str("sid", config.SessionID).
 		Logger()
 	log.Logger = l
 
