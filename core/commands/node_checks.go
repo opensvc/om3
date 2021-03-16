@@ -37,16 +37,22 @@ func (t *CmdNodeChecks) cmd() *cobra.Command {
 
 func (t *CmdNodeChecks) run() {
 	a := action.NodeAction{
-		NodeSelector: t.NodeSelector,
-		Local:        t.Local,
-		Action:       "checks",
-		Method:       "Checks",
-		MethodArgs:   []interface{}{t.ActionOptionsNodeChecks},
-		PostFlags: map[string]interface{}{
-			"format": t.Format,
+		Action: action.Action{
+			NodeSelector: t.NodeSelector,
+			Local:        t.Local,
+			Action:       "checks",
+			PostFlags: map[string]interface{}{
+				"format": t.Format,
+			},
+			Format: t.Format,
+			Color:  t.Color,
 		},
-		Format: t.Format,
-		Color:  t.Color,
+		Node: object.NodeAction{
+			Run: func() (interface{}, error) {
+				opts := object.ActionOptionsNodeChecks{}
+				return object.NewNode().Checks(opts), nil
+			},
+		},
 	}
 	action.Do(a)
 }

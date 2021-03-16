@@ -1,8 +1,6 @@
 package action
 
 import (
-	"time"
-
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
@@ -53,17 +51,6 @@ type (
 		Flags interface{}
 
 		//
-		// Method is the func name called by the local execution, in the object
-		// structure. Example "Start" call Svc{}.Start(...)
-		//
-		Method string
-
-		//
-		// MethodArgs is the list of arguments passed to the Method.
-		//
-		MethodArgs []interface{}
-
-		//
 		// Target is the node or object state the daemons should orchestrate
 		// to reach.
 		//
@@ -102,18 +89,6 @@ type (
 		// tls   => http/2 with TLS
 		//
 		Server string
-
-		// Lock prevents the action to run concurrently on the node.
-		Lock bool
-
-		// LockTimeout decides how long to wait for the lock before returning
-		// an error.
-		LockTimeout time.Duration
-
-		// LockGroup specifies an alternate lockfile, so this action is can not
-		// be run in parallel with the action of the same group, but can run in
-		// parallel with the actions of the default group.
-		LockGroup string
 	}
 
 	// actioner is a interface implemented for node and object.

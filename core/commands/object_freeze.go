@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
@@ -37,15 +38,22 @@ func (t *CmdObjectFreeze) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectFreeze) run(selector *string, kind string) {
 	a := action.ObjectAction{
-		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-		NodeSelector:   t.NodeSelector,
-		Local:          t.Local,
-		Action:         "freeze",
-		Method:         "Freeze",
-		Target:         "frozen",
-		Watch:          t.Watch,
-		Format:         t.Format,
-		Color:          t.Color,
+		Action: action.Action{
+			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
+			NodeSelector:   t.NodeSelector,
+			Local:          t.Local,
+			Action:         "freeze",
+			Target:         "frozen",
+			Watch:          t.Watch,
+			Format:         t.Format,
+			Color:          t.Color,
+		},
+		Object: object.ObjectAction{
+			Run: func(path object.Path) (interface{}, error) {
+				intf := path.NewObject().(object.Freezer)
+				return nil, intf.Freeze()
+			},
+		},
 	}
 	action.Do(a)
 }

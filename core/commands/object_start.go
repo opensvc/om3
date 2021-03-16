@@ -40,16 +40,21 @@ func (t *CmdObjectStart) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectStart) run(selector *string, kind string) {
 	a := action.ObjectAction{
-		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-		NodeSelector:   t.NodeSelector,
-		Local:          t.Local,
-		Action:         "start",
-		Method:         "Start",
-		MethodArgs:     []interface{}{t.ActionOptionsStart},
-		Target:         "started",
-		Watch:          t.Watch,
-		Format:         t.Format,
-		Color:          t.Color,
+		Action: action.Action{
+			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
+			NodeSelector:   t.NodeSelector,
+			Local:          t.Local,
+			Action:         "start",
+			Target:         "started",
+			Watch:          t.Watch,
+			Format:         t.Format,
+			Color:          t.Color,
+		},
+		Object: object.ObjectAction{
+			Run: func(path object.Path) (interface{}, error) {
+				return nil, path.NewObject().(object.Starter).Start(t.ActionOptionsStart)
+			},
+		},
 	}
 	action.Do(a)
 }

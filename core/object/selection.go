@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -30,16 +29,50 @@ type (
 		server             string
 	}
 
-	// Action describes an action to execute on the selected objects using.
-	Action struct {
+	// BaseAction describes common options of actions to execute on the selected objects or node.
+	BaseAction struct {
 		Lock        bool
 		LockTimeout time.Duration
 		LockGroup   string
-		Method      string
-		MethodArgs  []interface{}
+		Action      string
 	}
 
-	// ActionResult is a predictible type of actions return value, for reflect
+	// ObjectAction describes an action to execute on the selected objects.
+	ObjectAction struct {
+		BaseAction
+		Run func(Path) (interface{}, error)
+	}
+
+	// Renderer is implemented by data type stored in ActionResults.Data.
+	Renderer interface {
+		Render() string
+	}
+
+	// Baser is implemented by all object kinds.
+	Baser interface {
+		Status(ActionOptionsStatus) (interface{}, error)
+	}
+
+	// Starter is implemented by object kinds supporting start, stop, ...
+	Starter interface {
+		Start(ActionOptionsStart) error
+		Stop(ActionOptionsStop) error
+	}
+
+	// Freezer is implemented by object kinds supporting freeze and thaw.
+	Freezer interface {
+		Freeze() error
+		Unfreeze() error
+		Thaw() error
+	}
+
+	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
+	Configurer interface {
+		Get(ActionOptionsGet) (string, error)
+		Set(ActionOptionsSet) error
+	}
+
+	// ActionResult is a predictible type of actions return value, for reflect.
 	ActionResult struct {
 		Nodename      string        `json:"nodename"`
 		Path          Path          `json:"path"`
@@ -285,54 +318,25 @@ func (t *Selection) daemonExpand() error {
 
 // Do executes in parallel the action on all selected objects supporting
 // the action.
-func (t *Selection) Do(action Action) []ActionResult {
+func (t *Selection) Do(action ObjectAction) []ActionResult {
 	t.Expand()
 	q := make(chan ActionResult, len(t.paths))
 	results := make([]ActionResult, 0)
 	started := 0
 
 	for _, path := range t.paths {
-		obj := path.NewObject()
-		if obj == nil {
-			log.Debug().Msgf("skip action on %s: no object allocator", path)
-			continue
-		}
-		fn := reflect.ValueOf(obj).MethodByName(action.Method)
-		if fn.Kind() == reflect.Invalid {
-			log.Error().Msgf("unsupported method %s on %s", action.Method, path)
-			continue
-		}
-		fa := make([]reflect.Value, len(action.MethodArgs))
-		for k, arg := range action.MethodArgs {
-			fa[k] = reflect.ValueOf(arg)
-		}
 		go func(path Path) {
-			defer func() {
-				if r := recover(); r != nil {
-					q <- ActionResult{
-						Path:     path,
-						Nodename: config.Node.Hostname,
-						Panic:    r,
-					}
-				}
-			}()
-			values := fn.Call(fa)
 			result := ActionResult{
 				Path:     path,
 				Nodename: config.Node.Hostname,
 			}
-			var ok bool
-			switch len(values) {
-			case 0:
-			case 1:
-				result.Error, ok = values[0].Interface().(error)
-				if !ok {
-					result.Data = values[0].Interface()
+			defer func() {
+				if r := recover(); r != nil {
+					result.Panic = r
+					q <- result
 				}
-			case 2:
-				result.Data = values[0].Interface()
-				result.Error, _ = values[1].Interface().(error)
-			}
+			}()
+			result.Data, result.Error = action.Run(path)
 			q <- result
 		}(path)
 		started++

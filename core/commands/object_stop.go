@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
@@ -12,7 +13,7 @@ type (
 		flagSetObject
 		flagSetAction
 		flagSetAsync
-		Force bool
+		object.ActionOptionsStop
 	}
 )
 
@@ -24,7 +25,7 @@ func (t *CmdObjectStop) Init(kind string, parent *cobra.Command, selector *strin
 	t.flagSetObject.init(cmd)
 	t.flagSetAction.init(cmd)
 	t.flagSetAsync.init(cmd)
-	cmd.Flags().BoolVar(&t.Force, "force", false, "allow dangerous operations")
+	t.ActionOptionsStop.Init(cmd)
 }
 
 func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
@@ -39,16 +40,22 @@ func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectStop) run(selector *string, kind string) {
 	a := action.ObjectAction{
-		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-		NodeSelector:   t.NodeSelector,
-		Local:          t.Local,
-		Action:         "stop",
-		Method:         "Stop",
-		Flags:          t,
-		Target:         "stopped",
-		Watch:          t.Watch,
-		Format:         t.Format,
-		Color:          t.Color,
+		Action: action.Action{
+			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
+			NodeSelector:   t.NodeSelector,
+			Local:          t.Local,
+			Action:         "stop",
+			Target:         "stopped",
+			Watch:          t.Watch,
+			Format:         t.Format,
+			Color:          t.Color,
+		},
+		Object: object.ObjectAction{
+			Run: func(path object.Path) (interface{}, error) {
+				intf := path.NewObject().(object.Starter)
+				return nil, intf.Stop(t.ActionOptionsStop)
+			},
+		},
 	}
 	action.Do(a)
 }

@@ -49,3 +49,30 @@ type ActionOptionsForce struct {
 func (t *ActionOptionsForce) init(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&t.Force, "force", false, "allow dangerous operations")
 }
+
+// ActionOptionsKeyword is a command line flag.
+type ActionOptionsKeyword struct {
+	Keyword string
+}
+
+func (t *ActionOptionsKeyword) init(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&t.Keyword, "kw", "", "A keyword to get")
+}
+
+// ActionOptionsKeywordOps is a command line flag.
+type ActionOptionsKeywordOps struct {
+	KeywordOps []string
+}
+
+func (t *ActionOptionsKeywordOps) init(cmd *cobra.Command) {
+	cmd.Flags().StringSliceVar(&t.KeywordOps, "kw", []string{}, "keyword operations (= |= += -= ^=)")
+}
+
+// ActionOptionsRefresh is a command line flag.
+type ActionOptionsRefresh struct {
+	Refresh bool
+}
+
+func (t *ActionOptionsRefresh) init(cmd *cobra.Command) {
+	cmd.Flags().BoolVarP(&t.Refresh, "refresh", "r", false, "refresh the status data")
+}

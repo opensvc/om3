@@ -15,24 +15,20 @@ import (
 type (
 	// ObjectAction has the same attributes as Action, but the interface
 	// method implementation differ.
-	ObjectAction Action
+	ObjectAction struct {
+		Action
+		Object object.ObjectAction
+	}
 )
 
 // Options returns the base Action struct
 func (t ObjectAction) options() Action {
-	return Action(t)
+	return Action(t.Action)
 }
 
 func (t ObjectAction) doLocal() {
 	sel := object.NewSelection(t.ObjectSelector).SetLocal(true)
-	action := object.Action{
-		Method:      t.Method,
-		MethodArgs:  t.MethodArgs,
-		Lock:        t.Lock,
-		LockTimeout: t.LockTimeout,
-		LockGroup:   t.LockGroup,
-	}
-	rs := sel.Do(action)
+	rs := sel.Do(t.Object)
 	human := func() string {
 		s := ""
 		for _, r := range rs {
@@ -110,8 +106,8 @@ func (t ObjectAction) doRemote() {
 	req := api.NewPostObjectAction()
 	req.ObjectSelector = t.ObjectSelector
 	req.NodeSelector = t.NodeSelector
-	req.Action = t.Action
-	req.Options = t.PostFlags
+	req.Action = t.Action.Action
+	req.Options = t.Action.PostFlags
 	b, err := req.Do()
 	human := func() string {
 		s := fmt.Sprintln(string(b))

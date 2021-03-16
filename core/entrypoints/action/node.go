@@ -15,23 +15,19 @@ import (
 type (
 	// NodeAction has the same attributes as Action, but the interface
 	// method implementation differ.
-	NodeAction Action
+	NodeAction struct {
+		Node object.NodeAction
+		Action
+	}
 )
 
 // Options returns the base Action struct
 func (t NodeAction) options() Action {
-	return Action(t)
+	return Action(t.Action)
 }
 
 func (t NodeAction) doLocal() {
-	action := object.Action{
-		Method:      t.Method,
-		MethodArgs:  t.MethodArgs,
-		Lock:        t.Lock,
-		LockTimeout: t.LockTimeout,
-		LockGroup:   t.LockGroup,
-	}
-	r := object.NewNode().Do(action)
+	r := object.NewNode().Do(t.Node)
 	human := func() string {
 		s := ""
 		switch {
@@ -100,8 +96,8 @@ func (t NodeAction) doRemote() {
 	}
 	req := api.NewPostNodeAction()
 	req.NodeSelector = t.NodeSelector
-	req.Action = t.Action
-	req.Options = t.PostFlags
+	req.Action = t.Action.Action
+	req.Options = t.Action.PostFlags
 	b, err := req.Do()
 	data := &struct {
 		Err    string `json:"err"`

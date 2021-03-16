@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
@@ -11,7 +12,7 @@ type (
 		flagSetGlobal
 		flagSetObject
 		flagSetAction
-		Keyword string
+		object.ActionOptionsGet
 	}
 )
 
@@ -22,7 +23,7 @@ func (t *CmdObjectGet) Init(kind string, parent *cobra.Command, selector *string
 	t.flagSetGlobal.init(cmd)
 	t.flagSetObject.init(cmd)
 	t.flagSetAction.init(cmd)
-	cmd.Flags().StringVar(&t.Keyword, "kw", "", "A keyword to get")
+	t.ActionOptionsGet.Init(cmd)
 }
 
 func (t *CmdObjectGet) cmd(kind string, selector *string) *cobra.Command {
@@ -37,20 +38,25 @@ func (t *CmdObjectGet) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectGet) run(selector *string, kind string) {
 	a := action.ObjectAction{
-		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-		NodeSelector:   t.NodeSelector,
-		Local:          t.Local,
-		DefaultIsLocal: true,
-		Action:         "get",
-		Method:         "Get",
-		MethodArgs: []interface{}{
-			t.Keyword,
+		Action: action.Action{
+			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
+			NodeSelector:   t.NodeSelector,
+			Local:          t.Local,
+			DefaultIsLocal: true,
+			Action:         "get",
+			Flags: map[string]interface{}{
+				"kw": t.Keyword,
+			},
+			Format: t.Format,
+			Color:  t.Color,
 		},
-		Flags: map[string]interface{}{
-			"kw": t.Keyword,
+		Object: object.ObjectAction{
+			Run: func(path object.Path) (interface{}, error) {
+				options := object.ActionOptionsGet{}
+				options.Keyword = t.Keyword
+				return path.NewObject().(object.Configurer).Get(options)
+			},
 		},
-		Format: t.Format,
-		Color:  t.Color,
 	}
 	action.Do(a)
 }

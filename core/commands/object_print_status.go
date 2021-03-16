@@ -2,13 +2,12 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/object"
 )
 
 type (
-	// CmdObjectStatus is the cobra flag set of the status command.
-	CmdObjectStatus struct {
+	// CmdObjectPrintStatus is the cobra flag set of the status command.
+	CmdObjectPrintStatus struct {
 		flagSetGlobal
 		flagSetObject
 		flagSetAction
@@ -17,7 +16,7 @@ type (
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectStatus) Init(kind string, parent *cobra.Command, selector *string) {
+func (t *CmdObjectPrintStatus) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
 	t.flagSetGlobal.init(cmd)
@@ -26,7 +25,7 @@ func (t *CmdObjectStatus) Init(kind string, parent *cobra.Command, selector *str
 	t.ActionOptionsStatus.Init(cmd)
 }
 
-func (t *CmdObjectStatus) cmd(kind string, selector *string) *cobra.Command {
+func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Print selected service and instance status",
@@ -48,22 +47,15 @@ func (t *CmdObjectStatus) cmd(kind string, selector *string) *cobra.Command {
 	}
 }
 
-func (t *CmdObjectStatus) run(selector *string, kind string) {
-	a := action.ObjectAction{
-		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			DefaultIsLocal: true,
-			Local:          t.Local,
-			Action:         "status",
-		},
-		Object: object.ObjectAction{
-			Run: func(path object.Path) (interface{}, error) {
-				intf := path.NewObject().(object.Baser)
-				return intf.Status(t.ActionOptionsStatus)
-			},
-		},
+func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	selection := object.NewSelection(mergedSelector)
+	selection.SetServer(t.Server)
+	selection.SetLocal(true)
+	options := object.ObjectAction{}
+	options.Run = func(path object.Path) (interface{}, error) {
+		intf := path.NewObject().(object.Baser)
+		return intf.Status(t.ActionOptionsStatus)
 	}
-	action.Do(a)
-
+	selection.Do(options)
 }

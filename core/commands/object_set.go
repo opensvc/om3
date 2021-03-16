@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
@@ -11,7 +12,7 @@ type (
 		flagSetGlobal
 		flagSetObject
 		flagSetAction
-		Keywords []string
+		object.ActionOptionsSet
 	}
 )
 
@@ -22,7 +23,7 @@ func (t *CmdObjectSet) Init(kind string, parent *cobra.Command, selector *string
 	t.flagSetGlobal.init(cmd)
 	t.flagSetObject.init(cmd)
 	t.flagSetAction.init(cmd)
-	cmd.Flags().StringSliceVar(&t.Keywords, "kw", []string{}, "A keyword to set (operators = += |= -= ^=)")
+	t.ActionOptionsSet.Init(cmd)
 }
 
 func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
@@ -37,20 +38,25 @@ func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectSet) run(selector *string, kind string) {
 	a := action.ObjectAction{
-		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-		NodeSelector:   t.NodeSelector,
-		Local:          t.Local,
-		DefaultIsLocal: true,
-		Action:         "set",
-		Method:         "Set",
-		MethodArgs: []interface{}{
-			t.Keywords,
+		Action: action.Action{
+			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
+			NodeSelector:   t.NodeSelector,
+			Local:          t.Local,
+			DefaultIsLocal: true,
+			Action:         "set",
+			Flags: map[string]interface{}{
+				"kw": t.KeywordOps,
+			},
+			Format: t.Format,
+			Color:  t.Color,
 		},
-		Flags: map[string]interface{}{
-			"kw": t.Keywords,
+		Object: object.ObjectAction{
+			Run: func(path object.Path) (interface{}, error) {
+				options := object.ActionOptionsSet{}
+				options.KeywordOps = t.KeywordOps
+				return nil, path.NewObject().(object.Configurer).Set(options)
+			},
 		},
-		Format: t.Format,
-		Color:  t.Color,
 	}
 	action.Do(a)
 }

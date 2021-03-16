@@ -22,19 +22,9 @@ type (
 	}
 )
 
-// Status returns the service status dataset
-func (t *Base) Status(refresh bool) error {
-	return nil
-}
-
 // List returns the stringified path as data
 func (t *Base) List() (string, error) {
 	return t.Path.String(), nil
-}
-
-// Get gets a keyword value
-func (t *Base) Get(kw string) (string, error) {
-	return t.config.Get(kw).(string), nil
 }
 
 func (t *Base) init(path Path) error {

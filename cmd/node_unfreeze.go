@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/object"
 )
 
 var (
@@ -26,13 +27,19 @@ func init() {
 
 func nodeUnfreezeCmdRun(cmd *cobra.Command, args []string) {
 	a := action.NodeAction{
-		NodeSelector: nodeUnfreezeNodeFlag,
-		Action:       "unfreeze",
-		Method:       "Unfreeze",
-		Target:       "thawed",
-		Watch:        nodeUnfreezeWatchFlag,
-		Format:       formatFlag,
-		Color:        colorFlag,
+		Action: action.Action{
+			NodeSelector: nodeUnfreezeNodeFlag,
+			Action:       "unfreeze",
+			Target:       "thawed",
+			Watch:        nodeUnfreezeWatchFlag,
+			Format:       formatFlag,
+			Color:        colorFlag,
+		},
+		Node: object.NodeAction{
+			Run: func() (interface{}, error) {
+				return nil, object.NewNode().Unfreeze()
+			},
+		},
 	}
 	action.Do(a)
 }

@@ -3,6 +3,7 @@ package object
 type (
 	// T is the node struct.
 	Node struct {
+		paths BasePaths
 	}
 )
 
