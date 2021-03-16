@@ -1,4 +1,4 @@
-package forest
+package tree
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ type (
 	//
 	// Example:
 	//
-	// Tree := forest.New()
+	// Tree := tree.New()
 	// overallNode := Tree.AddNode()
 	// overallNode.AddColumn("overall")
 	//
@@ -107,7 +107,7 @@ const (
 	AlignRight
 )
 
-// New allocates a new forest and returns a reference.
+// New allocates a new tree and returns a reference.
 func New() *Tree {
 	t := &Tree{
 		Separator: defaultSeparator,
@@ -121,6 +121,12 @@ func New() *Tree {
 // AddNode adds and returns a new Node, child of this node.
 func (t *Tree) AddNode() *Node {
 	return t.head.AddNode()
+}
+
+// AddColumn adds and returns a column to the head node.
+// Phrases can be added through the returned Column object.
+func (t *Tree) AddColumn() *Column {
+	return t.head.AddColumn()
 }
 
 // AddNode adds and returns a new Node, child of this node.
@@ -150,7 +156,7 @@ func (t *Tree) setTotalWidth() {
 }
 
 //
-// Render returns the string representation of the forest.
+// Render returns the string representation of the tree.
 //
 // Each node is considered tabular, with cells content aligned and wrapped.
 //
@@ -236,7 +242,7 @@ func (t *Tree) adjustPads() {
 	}
 }
 
-// formatPrefix returns the forest markers as a string for a line.
+// formatPrefix returns the tree markers as a string for a line.
 func formatPrefix(lasts []bool, nChildren int, firstLine bool) string {
 	if len(lasts) == 0 {
 		return ""
@@ -339,7 +345,7 @@ func (n *Node) wrapData() {
 	}
 }
 
-// Recurse the data and return the forest tree buffer string.
+// Recurse the data and return the tree buffer string.
 func (t *Tree) renderRecurse(n *Node, buff string, depth int, lasts []bool) string {
 	var (
 		i     int

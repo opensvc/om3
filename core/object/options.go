@@ -9,6 +9,8 @@ import (
 // ActionOptionsGlobal hosts options that are passed to all object action methods.
 type ActionOptionsGlobal struct {
 	DryRun bool
+	Color  string
+	Format string
 }
 
 func (t *ActionOptionsGlobal) init(cmd *cobra.Command) {
@@ -46,20 +48,4 @@ type ActionOptionsForce struct {
 
 func (t *ActionOptionsForce) init(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&t.Force, "force", false, "allow dangerous operations")
-}
-
-// ActionOptionsStart is the options of the Start object method.
-type ActionOptionsStart struct {
-	ActionOptionsGlobal
-	ActionOptionsLocking
-	ActionOptionsResources
-	ActionOptionsForce
-}
-
-// Init declares the cobra flags associated with the type options
-func (t *ActionOptionsStart) Init(cmd *cobra.Command) {
-	t.ActionOptionsGlobal.init(cmd)
-	t.ActionOptionsLocking.init(cmd)
-	t.ActionOptionsResources.init(cmd)
-	t.ActionOptionsForce.init(cmd)
 }

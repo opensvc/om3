@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -31,17 +30,6 @@ func (t *Base) Status(refresh bool) error {
 // List returns the stringified path as data
 func (t *Base) List() (string, error) {
 	return t.Path.String(), nil
-}
-
-// Start starts the local instance of the object
-func (t *Base) Start(options ActionOptionsStart) error {
-	lock, err := t.Lock("", options.LockTimeout, "start")
-	if err != nil {
-		return err
-	}
-	defer lock.Unlock()
-	time.Sleep(10 * time.Second)
-	return nil
 }
 
 // Get gets a keyword value

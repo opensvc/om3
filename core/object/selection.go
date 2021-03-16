@@ -41,11 +41,12 @@ type (
 
 	// ActionResult is a predictible type of actions return value, for reflect
 	ActionResult struct {
-		Nodename string      `json:"nodename"`
-		Path     Path        `json:"path"`
-		Data     interface{} `json:"data"`
-		Error    error       `json:"error,omitempty"`
-		Panic    interface{} `json:"panic,omitempty"`
+		Nodename      string        `json:"nodename"`
+		Path          Path          `json:"path"`
+		Data          interface{}   `json:"data"`
+		Error         error         `json:"error,omitempty"`
+		Panic         interface{}   `json:"panic,omitempty"`
+		HumanRenderer func() string `json:"-"`
 	}
 )
 
@@ -320,10 +321,14 @@ func (t *Selection) Do(action Action) []ActionResult {
 				Path:     path,
 				Nodename: config.Node.Hostname,
 			}
+			var ok bool
 			switch len(values) {
 			case 0:
 			case 1:
-				result.Error, _ = values[0].Interface().(error)
+				result.Error, ok = values[0].Interface().(error)
+				if !ok {
+					result.Data = values[0].Interface()
+				}
 			case 2:
 				result.Data = values[0].Interface()
 				result.Error, _ = values[1].Interface().(error)

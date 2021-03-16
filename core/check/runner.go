@@ -8,51 +8,64 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/util/exe"
 )
 
 type (
 	// Runner exposes the method to run the check drivers,
 	// aggregate results and format the output.
-	Runner struct {
-		Color  string
-		Format string
-	}
+	Runner struct{}
 )
 
 // Do runs the check drivers, aggregates results and format
 // the output.
-func (r Runner) Do() {
-	data := make([]Result, 0)
-	q := make(chan []Result)
+func (r Runner) Do() *ResultSet {
+	rs := NewResultSet()
+	q := make(chan *ResultSet)
 	paths := r.list()
 	for _, path := range paths {
 		go doCheck(q, path)
 	}
 	for range paths {
 		d := <-q
-		data = append(data, d...)
+		rs.Add(d)
 	}
-	output.Renderer{
-		Color:  r.Color,
-		Format: r.Format,
-		Data:   data,
-	}.Print()
+	log.Debug().
+		Str("c", "checks").
+		Int("instances", len(rs.Data)).
+		Int("drivers", len(paths)).
+		Msg("checks done")
+	return rs
 }
 
-func doCheck(q chan []Result, path string) {
-	var results []Result
-	if b, err := exec.Command(path).Output(); err == nil {
-		json.Unmarshal(b, &results)
+func doCheck(q chan *ResultSet, path string) {
+	rs := NewResultSet()
+	cmd := exec.Command(path)
+	cmd.Stderr = os.Stderr
+	b, err := cmd.Output()
+	if err != nil {
+		log.Error().Str("checker", path).Err(err).Msg("execution")
+		q <- rs
+		return
 	}
-	q <- results
+	if err := json.Unmarshal(b, rs); err != nil {
+		log.Error().Str("checker", path).Err(err).Msg("unmarshal json")
+	}
+	log.Debug().
+		Str("c", "checks").
+		Str("driver", path).
+		Int("instances", len(rs.Data)).
+		Msg("")
+	q <- rs
 }
 
 func (r Runner) list() []string {
 	l := make([]string, 0)
 	root := filepath.Join(config.NodeViper.GetString("paths.drivers"), "check")
-	log.Debug().Str("head", root).Msg("search check drivers")
+	log.Debug().
+		Str("c", "checks").
+		Str("head", root).
+		Msg("search check drivers")
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

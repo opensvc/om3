@@ -1,11 +1,9 @@
 package action
 
 import (
-	"os"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
@@ -138,9 +136,11 @@ func Do(t actioner) {
 		t.doLocal()
 	case o.Target != "":
 		t.doAsync()
+	case !client.WantContext():
+		t.doLocal()
 	default:
-		log.Error().Msgf("no available method to run action %s", t)
-		os.Exit(1)
+		// post action on context endpoint
+		t.doRemote()
 	}
 	if o.Watch {
 		m := monitor.New()

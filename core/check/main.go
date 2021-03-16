@@ -9,7 +9,7 @@ import (
 type (
 	// Interface exposes what can be done with a check
 	Interface interface {
-		Check() ([]*Result, error)
+		Check() (*ResultSet, error)
 	}
 
 	// Type is the check type

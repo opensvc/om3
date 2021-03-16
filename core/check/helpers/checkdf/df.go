@@ -1,6 +1,8 @@
 package checkdf
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"opensvc.com/opensvc/core/check"
@@ -48,21 +50,22 @@ func skipper(dfEntry df.Entry) bool {
 
 type translator interface {
 	Entries() ([]df.Entry, error)
-	Results(*df.Entry) []*check.Result
+	ResultSet(*df.Entry) *check.ResultSet
 }
 
 // Check returns a list of check result
-func Check(trans translator) ([]*check.Result, error) {
-	checkResults := make([]*check.Result, 0)
+func Check(trans translator) (*check.ResultSet, error) {
+	rs := check.NewResultSet()
 	data, err := trans.Entries()
 	if err != nil {
-		return checkResults, err
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return rs, err
 	}
 	for _, dfEntry := range data {
 		if skipper(dfEntry) {
 			continue
 		}
-		checkResults = append(checkResults, trans.Results(&dfEntry)...)
+		rs.Add(trans.ResultSet(&dfEntry))
 	}
-	return checkResults, nil
+	return rs, nil
 }

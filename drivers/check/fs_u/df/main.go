@@ -25,10 +25,10 @@ func (t *fsChecker) objectPath(_ string) string {
 	return ""
 }
 
-func (t *fsChecker) Results(entry *df.Entry) []*check.Result {
-	results := make([]*check.Result, 0)
+func (t *fsChecker) ResultSet(entry *df.Entry) *check.ResultSet {
 	path := t.objectPath(entry.MountPoint)
-	results = append(results, &check.Result{
+	rs := check.NewResultSet()
+	rs.Push(check.Result{
 		Instance:    entry.MountPoint,
 		Value:       entry.UsedPercent,
 		Path:        path,
@@ -36,7 +36,7 @@ func (t *fsChecker) Results(entry *df.Entry) []*check.Result {
 		DriverGroup: DriverGroup,
 		DriverName:  DriverName,
 	})
-	results = append(results, &check.Result{
+	rs.Push(check.Result{
 		Instance:    entry.MountPoint + ".free",
 		Value:       entry.Free,
 		Path:        path,
@@ -44,7 +44,7 @@ func (t *fsChecker) Results(entry *df.Entry) []*check.Result {
 		DriverGroup: DriverGroup,
 		DriverName:  DriverName,
 	})
-	results = append(results, &check.Result{
+	rs.Push(check.Result{
 		Instance:    entry.MountPoint + ".size",
 		Value:       entry.Total,
 		Path:        path,
@@ -52,10 +52,10 @@ func (t *fsChecker) Results(entry *df.Entry) []*check.Result {
 		DriverGroup: DriverGroup,
 		DriverName:  DriverName,
 	})
-	return results
+	return rs
 }
 
-func (t *fsChecker) Check() ([]*check.Result, error) {
+func (t *fsChecker) Check() (*check.ResultSet, error) {
 	return checkdf.Check(t)
 }
 

@@ -1,4 +1,4 @@
-package forest
+package tree
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ func TestForest(t *testing.T) {
 
 		tree := New()
 		tree.ForcedWidth = width
-		tree.head.AddColumn().AddText("svc1").SetColor(color.Bold)
+		tree.AddColumn().AddText("svc1").SetColor(color.Bold)
 		node := tree.AddNode()
 		node.AddColumn().AddText("avail")
 		node.AddColumn()
@@ -43,7 +43,7 @@ func TestForest(t *testing.T) {
 		col.AddText("err").SetColor(color.FgRed).SetAlign(AlignLeft)
 		s := tree.Render()
 		fmt.Println(s)
-		t.Log("programatic forest")
+		t.Log("programatic tree")
 		t.Log(s)
 		assert.Equal(t, expected, s)
 	}

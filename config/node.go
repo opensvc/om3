@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"opensvc.com/opensvc/util/render/palette"
 )
 
 const (
@@ -25,14 +26,21 @@ var (
 type (
 	// Type is the top level configuration structure
 	node struct {
-		Hostname string         `mapstructure:"hostname"`
-		Paths    AgentPaths     `mapstructure:"paths"`
-		Cluster  clusterSection `mapstructure:"cluster"`
+		Hostname string                `mapstructure:"hostname"`
+		Paths    AgentPaths            `mapstructure:"paths"`
+		Cluster  clusterSection        `mapstructure:"cluster"`
+		Node     nodeSection           `mapstructure:"node"`
+		Palette  palette.StringPalette `mapstructure:"palette"`
 	}
 
 	clusterSection struct {
 		Name   string `mapstructure:"name"`
 		Secret string `mapstructure:"secret"`
+	}
+
+	nodeSection struct {
+		Env       string `mapstructure:"env"`
+		Collector string `mapstructure:"dbopensvc"`
 	}
 )
 
@@ -65,7 +73,10 @@ func setDefaults(root string) {
 		NodeViper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
 		NodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
 	}
-
+	NodeViper.SetDefault("palette.primary", palette.DefaultPrimary)
+	NodeViper.SetDefault("palette.secondary", palette.DefaultSecondary)
+	NodeViper.SetDefault("palette.error", palette.DefaultError)
+	NodeViper.SetDefault("palette.warning", palette.DefaultWarning)
 }
 
 // Load initializes the Viper and Config globals
