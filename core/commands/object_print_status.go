@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -48,14 +49,22 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 }
 
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	selection := object.NewSelection(mergedSelector)
-	selection.SetServer(t.Server)
-	selection.SetLocal(true)
-	options := object.ObjectAction{}
-	options.Run = func(path object.Path) (interface{}, error) {
-		intf := path.NewObject().(object.Baser)
-		return intf.Status(t.ActionOptionsStatus)
+	a := action.ObjectAction{
+		Action: action.Action{
+			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
+			NodeSelector:   t.NodeSelector,
+			DefaultIsLocal: true,
+			Local:          t.Local,
+			Format:         t.Format,
+			Color:          t.Color,
+			Action:         "status",
+		},
+		Object: object.ObjectAction{
+			Run: func(path object.Path) (interface{}, error) {
+				intf := path.NewObject().(object.Baser)
+				return intf.Status(t.ActionOptionsStatus)
+			},
+		},
 	}
-	selection.Do(options)
+	action.Do(a)
 }

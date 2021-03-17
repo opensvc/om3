@@ -27,6 +27,10 @@ func (t ObjectAction) options() Action {
 }
 
 func (t ObjectAction) doLocal() {
+	log.Debug().
+		Str("format", t.Format).
+		Str("selector", t.ObjectSelector).
+		Msg("do local object selection action")
 	sel := object.NewSelection(t.ObjectSelector).SetLocal(true)
 	rs := sel.Do(t.Object)
 	human := func() string {

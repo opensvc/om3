@@ -55,6 +55,8 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 			NodeSelector:   t.NodeSelector,
 			DefaultIsLocal: true,
 			Local:          t.Local,
+			Format:         t.Format,
+			Color:          t.Color,
 			Action:         "status",
 		},
 		Object: object.ObjectAction{
@@ -65,5 +67,4 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 		},
 	}
 	action.Do(a)
-
 }
