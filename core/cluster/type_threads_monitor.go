@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -13,10 +12,10 @@ type (
 	// making.
 	MonitorThreadStatus struct {
 		ThreadStatus
-		Compat   bool                     `json:"compat"`
-		Frozen   bool                     `json:"frozen"`
-		Nodes    map[string]NodeStatus    `json:"nodes,omitempty"`
-		Services map[string]ServiceStatus `json:"services,omitempty"`
+		Compat   bool                               `json:"compat"`
+		Frozen   bool                               `json:"frozen"`
+		Nodes    map[string]NodeStatus              `json:"nodes,omitempty"`
+		Services map[string]object.AggregatedStatus `json:"services,omitempty"`
 	}
 
 	// NodeStatus holds a node DataSet.
@@ -69,14 +68,26 @@ type (
 		Name   string      `json:"name"`
 		Status status.Type `json:"status"`
 	}
-
-	// ServiceStatus contains the object states obtained via
-	// aggregation of all instances states.
-	ServiceStatus struct {
-		Avail       status.Type      `json:"avail,omitempty"`
-		Overall     status.Type      `json:"overall,omitempty"`
-		Frozen      string           `json:"frozen,omitempty"` // TODO enum
-		Placement   string           `json:"placement,omitempty"`
-		Provisioned provisioned.Type `json:"provisioned,omitempty"`
-	}
 )
+
+func (t Status) GetObjectStatus(path object.Path) object.ObjectStatus {
+	p := path.String()
+	data := object.NewObjectStatus()
+	data.Path = path
+	data.Compat = t.Monitor.Compat
+	data.Object, _ = t.Monitor.Services[p]
+	for nodename, ndata := range t.Monitor.Nodes {
+		var ok bool
+		instance := object.ObjectStatusInstance{}
+		instance.Status, ok = ndata.Services.Status[p]
+		if !ok {
+			continue
+		}
+		instance.Config, ok = ndata.Services.Config[p]
+		if !ok {
+			continue
+		}
+		data.Instances[nodename] = instance
+	}
+	return *data
+}

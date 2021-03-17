@@ -9,5 +9,5 @@ var (
 )
 
 func init() {
-	svcStatus.Init("svc", svcPrintCmd, &selectorFlag)
+	svcPrintStatus.Init("svc", svcPrintCmd, &selectorFlag)
 }

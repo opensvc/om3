@@ -19,6 +19,8 @@ type (
 	// InstanceConfigStatus describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	InstanceConfigStatus struct {
+		Nodename string   `json:"-"`
+		Path     Path     `json:"-"`
 		Checksum string   `json:"csum"`
 		Scope    []string `json:"scope"`
 		Updated  float64
@@ -26,6 +28,8 @@ type (
 
 	// InstanceStatus describes the instance status.
 	InstanceStatus struct {
+		Nodename    string                    `json:"-"`
+		Path        Path                      `json:"-"`
 		App         string                    `json:"app,omitempty"`
 		Avail       status.Type               `json:"avail,omitempty"`
 		DRP         bool                      `json:"drp,omitempty"`

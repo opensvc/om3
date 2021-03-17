@@ -1,9 +1,14 @@
 package commands
 
 import (
+	"encoding/json"
+
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/output"
 )
 
 type (
@@ -48,23 +53,53 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 	}
 }
 
-func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
-	a := action.ObjectAction{
-		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			DefaultIsLocal: true,
-			Local:          t.Local,
-			Format:         t.Format,
-			Color:          t.Color,
-			Action:         "status",
-		},
-		Object: object.ObjectAction{
-			Run: func(path object.Path) (interface{}, error) {
-				intf := path.NewObject().(object.Baser)
-				return intf.Status(t.ActionOptionsStatus)
-			},
-		},
+// extract is a port of core.objects.svc.Svc::get_mon_data()
+func (t *CmdObjectPrintStatus) extract(selector string, api client.API) cluster.Status {
+	var (
+		err           error
+		b             []byte
+		clusterStatus cluster.Status
+	)
+	handle := api.NewGetDaemonStatus()
+	handle.ObjectSelector = selector
+	b, err = handle.Do()
+	if err != nil {
+		log.Debug().Err(err).Msg("extract cluster status")
+		return clusterStatus
 	}
-	action.Do(a)
+	err = json.Unmarshal(b, &clusterStatus)
+	if err != nil {
+		log.Debug().Err(err).Msg("extract cluster status")
+		return clusterStatus
+	}
+	return clusterStatus
+}
+
+func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
+	var daemonStatus cluster.Status
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	c := client.NewConfig()
+	c.SetURL(t.Server)
+	api, err := c.NewAPI()
+	if err == nil {
+		daemonStatus = t.extract(mergedSelector, api)
+	}
+	sel := object.NewSelection(mergedSelector)
+	sel.SetAPI(api)
+	data := make([]object.ObjectStatus, 0)
+	for _, path := range sel.Expand() {
+		data = append(data, daemonStatus.GetObjectStatus(path))
+	}
+	output.Renderer{
+		Format: t.Format,
+		Color:  t.Color,
+		Data:   data,
+		HumanRenderer: func() string {
+			s := ""
+			for _, d := range data {
+				s += d.Render()
+			}
+			return s
+		},
+	}.Print()
 }

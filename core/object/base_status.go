@@ -2,6 +2,7 @@ package object
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -10,13 +11,12 @@ import (
 )
 
 // ActionOptionsStart is the options of the Start object method.
-type (
-	ActionOptionsStatus struct {
-		ActionOptionsGlobal
-		ActionOptionsLocking
-		ActionOptionsRefresh
-	}
-)
+type ActionOptionsStatus struct {
+	ActionOptionsGlobal
+	ActionOptionsLocking
+	ActionOptionsRefresh
+	ObjectStatus ObjectStatus
+}
 
 // Init declares the cobra flags associated with the type options
 func (t *ActionOptionsStatus) Init(cmd *cobra.Command) {
@@ -35,6 +35,7 @@ func (t *Base) Status(options ActionOptionsStatus) (InstanceStatus, error) {
 		data InstanceStatus
 		err  error
 	)
+	fmt.Println(options.ObjectStatus)
 	if options.Refresh {
 		data, err = t.statusEval()
 		if err != nil {

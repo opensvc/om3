@@ -118,6 +118,11 @@ func New() *Tree {
 	return t
 }
 
+// Head return the tree head Node reference.
+func (t *Tree) Head() *Node {
+	return &t.head
+}
+
 // AddNode adds and returns a new Node, child of this node.
 func (t *Tree) AddNode() *Node {
 	return t.head.AddNode()

@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -13,7 +14,7 @@ func (f Frame) wObjects() {
 	}
 }
 
-func sObjectPlacement(d ServiceStatus) string {
+func sObjectPlacement(d object.AggregatedStatus) string {
 	var s string
 	switch d.Placement {
 	case "":
@@ -26,7 +27,7 @@ func sObjectPlacement(d ServiceStatus) string {
 	return s
 }
 
-func sObjectWarning(d ServiceStatus) string {
+func sObjectWarning(d object.AggregatedStatus) string {
 	var s string
 	if d.Overall == status.Warn {
 		s = iconWarning
@@ -64,7 +65,7 @@ func (f Frame) sObjectRunning(path string) string {
 	return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
 }
 
-func sObjectAvail(d ServiceStatus) string {
+func sObjectAvail(d object.AggregatedStatus) string {
 	s := d.Avail
 	return s.ColorString()
 }
