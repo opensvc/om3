@@ -4,7 +4,7 @@ import "github.com/fatih/color"
 
 const (
 	DefaultPrimary   = "yellow"
-	DefaultSecondary = "hiblue"
+	DefaultSecondary = "hiblack"
 	DefaultError     = "red"
 	DefaultWarning   = "hiyellow"
 )
