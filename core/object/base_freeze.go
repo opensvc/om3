@@ -7,7 +7,11 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-// LockFile is the path of the file to use as an action lock.
+//
+// frozenFile is the path of the file to use as the frozen flag.
+// The file mtime is loaded as the frozen key value in the
+// instance status dataset.
+//
 func (t *Base) frozenFile() string {
 	return filepath.Join(t.varDir(), "frozen")
 }

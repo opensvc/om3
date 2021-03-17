@@ -1,7 +1,6 @@
-package cluster
+package object
 
 import (
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
@@ -34,12 +33,13 @@ type (
 		Csum        string                    `json:"csum,omitempty"`
 		Env         string                    `json:"env,omitempty"`
 		Frozen      float64                   `json:"frozen,omitempty"`
-		Kind        object.Kind               `json:"kind"`
+		Kind        Kind                      `json:"kind"`
 		Monitor     InstanceMonitor           `json:"monitor"`
-		Optional    bool                      `json:"optional,omitempty"`
+		Optional    status.Type               `json:"optional,omitempty"`
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
 		Topology    string                    `json:"topology,omitempty"`    // TODO enum
 		Placement   string                    `json:"placement,omitempty"`   // TODO enum
+		Priority    int                       `json:"priority,omitempty"`
 		Provisioned provisioned.Type          `json:"provisioned,omitempty"`
 		Preserved   bool                      `json:"preserved,omitempty"`
 		Updated     float64                   `json:"updated"`

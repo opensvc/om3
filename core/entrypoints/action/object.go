@@ -37,6 +37,8 @@ func (t ObjectAction) doLocal() {
 				log.Error().Msgf("%s", r.Error)
 			case r.Panic != nil:
 				log.Fatal().Msgf("%s", r.Panic)
+			case r.HumanRenderer != nil:
+				s += r.HumanRenderer()
 			case r.Data != nil:
 				switch v := r.Data.(type) {
 				case string:

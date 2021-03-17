@@ -50,7 +50,7 @@ type (
 
 	// Baser is implemented by all object kinds.
 	Baser interface {
-		Status(ActionOptionsStatus) (interface{}, error)
+		Status(ActionOptionsStatus) (InstanceStatus, error)
 	}
 
 	// Starter is implemented by object kinds supporting start, stop, ...
@@ -336,7 +336,12 @@ func (t *Selection) Do(action ObjectAction) []ActionResult {
 					q <- result
 				}
 			}()
-			result.Data, result.Error = action.Run(path)
+			data, err := action.Run(path)
+			result.Data = data
+			result.Error = err
+			result.HumanRenderer = func() string {
+				return data.(Renderer).Render()
+			}
 			q <- result
 		}(path)
 		started++
