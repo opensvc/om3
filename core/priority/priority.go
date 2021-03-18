@@ -1,6 +1,8 @@
 package priority
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // T is the scheduling priority of an object instance on a its node.
 type T int

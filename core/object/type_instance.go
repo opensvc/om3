@@ -1,6 +1,8 @@
 package object
 
 import (
+	"encoding/json"
+
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
@@ -161,4 +163,16 @@ func (t ResourceRunningSet) Has(rid string) bool {
 		}
 	}
 	return false
+}
+
+func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
+	type tempT InstanceStatus
+	temp := tempT(InstanceStatus{
+		Priority: priority.Default,
+	})
+	if err := json.Unmarshal(b, &temp); err != nil {
+		return err
+	}
+	*t = InstanceStatus(temp)
+	return nil
 }
