@@ -8,17 +8,23 @@ import (
 	"opensvc.com/opensvc/util/render/tree"
 )
 
+// Render returns a human friendly string representation of the type instance.
 func (t InstanceStatus) Render() string {
 	tree := t.Tree()
 	return tree.Render()
 }
 
+// Tree returns a tree loaded with the type instance.
 func (t InstanceStatus) Tree() *tree.Tree {
 	tree := tree.New()
 	t.LoadTreeNode(tree.Head())
 	return tree
 }
 
+//
+// LoadTreeNode add the tree nodes representing the type instance into another
+// tree, at the specified node.
+//
 func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
 	colors := palette.New(config.Node.Palette)
 	head.AddColumn().AddText(t.Nodename).SetColor(colors.Bold)

@@ -59,7 +59,7 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 			Color:          t.Color,
 			Action:         "status",
 		},
-		Object: object.ObjectAction{
+		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
 				intf := path.NewObject().(object.Baser)
 				return intf.Status(t.ActionOptionsStatus)

@@ -50,7 +50,7 @@ func (t *CmdObjectGet) run(selector *string, kind string) {
 			Format: t.Format,
 			Color:  t.Color,
 		},
-		Object: object.ObjectAction{
+		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
 				options := object.ActionOptionsGet{}
 				options.Keyword = t.Keyword

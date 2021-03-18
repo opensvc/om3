@@ -8,6 +8,7 @@ import (
 	"opensvc.com/opensvc/util/render/tree"
 )
 
+// Render returns a human friendly string representation of the type.
 func (t ResultSet) Render() string {
 	colors := palette.New(config.Node.Palette)
 	tree := tree.New()

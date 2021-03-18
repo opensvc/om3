@@ -10,12 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ActionOptionsStart is the options of the Start object method.
+// ActionOptionsStatus is the options of the Start object method.
 type ActionOptionsStatus struct {
 	ActionOptionsGlobal
 	ActionOptionsLocking
 	ActionOptionsRefresh
-	ObjectStatus ObjectStatus
+	ObjectStatus Status
 }
 
 // Init declares the cobra flags associated with the type options

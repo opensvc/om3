@@ -8,13 +8,13 @@ import (
 )
 
 type (
-	// ObjectStatus is a composite extract of different parts of
+	// Status is a composite extract of different parts of
 	// the cluster status.
-	ObjectStatus struct {
-		Path      Path                            `json:"path"`
-		Compat    bool                            `json:"compat"`
-		Object    AggregatedStatus                `json:"service"`
-		Instances map[string]ObjectStatusInstance `json:"instances"`
+	Status struct {
+		Path      Path                      `json:"path"`
+		Compat    bool                      `json:"compat"`
+		Object    AggregatedStatus          `json:"service"`
+		Instances map[string]InstanceStates `json:"instances"`
 	}
 
 	// AggregatedStatus contains the object states obtained via
@@ -22,30 +22,33 @@ type (
 	AggregatedStatus struct {
 		Avail       status.T      `json:"avail,omitempty"`
 		Overall     status.T      `json:"overall,omitempty"`
-		Frozen      string           `json:"frozen,omitempty"`
-		Placement   string           `json:"placement,omitempty"`
+		Frozen      string        `json:"frozen,omitempty"`
+		Placement   string        `json:"placement,omitempty"`
 		Provisioned provisioned.T `json:"provisioned,omitempty"`
 	}
 
-	// ObjectStatusInstance groups config and status of the object as seen by the daemon.
-	ObjectStatusInstance struct {
-		Config InstanceConfigStatus
+	// InstanceStates groups config and status of the object as seen by the daemon.
+	InstanceStates struct {
+		Config InstanceConfig
 		Status InstanceStatus
 	}
 )
 
-func (t ObjectStatus) Render() string {
+// Render returns a human friendy string representation of the type instance.
+func (t Status) Render() string {
 	tree := t.Tree()
 	return tree.Render()
 }
 
-func (t ObjectStatus) Tree() *tree.Tree {
+// Tree returns a tree loaded with the type instance.
+func (t Status) Tree() *tree.Tree {
 	tree := tree.New()
 	t.LoadTreeNode(tree.Head())
 	return tree
 }
 
-func (t ObjectStatus) LoadTreeNode(head *tree.Node) {
+// LoadTreeNode add the tree nodes representing the type instance into another.
+func (t Status) LoadTreeNode(head *tree.Node) {
 	//colors := palette.New(config.Node.Palette)
 	head.AddColumn().AddText(t.Path.String()).SetColor(color.Bold)
 	for nodename, ndata := range t.Instances {
@@ -56,8 +59,9 @@ func (t ObjectStatus) LoadTreeNode(head *tree.Node) {
 	}
 }
 
-func NewObjectStatus() *ObjectStatus {
-	t := &ObjectStatus{}
-	t.Instances = make(map[string]ObjectStatusInstance)
+// NewObjectStatus allocates and return a struct to host an objet full state dataset.
+func NewObjectStatus() *Status {
+	t := &Status{}
+	t.Instances = make(map[string]InstanceStates)
 	return t
 }

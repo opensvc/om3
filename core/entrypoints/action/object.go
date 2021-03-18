@@ -17,7 +17,7 @@ type (
 	// method implementation differ.
 	ObjectAction struct {
 		Action
-		Object object.ObjectAction
+		Object object.Action
 	}
 )
 

@@ -37,8 +37,8 @@ type (
 		Action      string
 	}
 
-	// ObjectAction describes an action to execute on the selected objects.
-	ObjectAction struct {
+	// Action describes an action to execute on the selected objects.
+	Action struct {
 		BaseAction
 		Run func(Path) (interface{}, error)
 	}
@@ -316,7 +316,7 @@ func (t *Selection) daemonExpand() error {
 
 // Do executes in parallel the action on all selected objects supporting
 // the action.
-func (t *Selection) Do(action ObjectAction) []ActionResult {
+func (t *Selection) Do(action Action) []ActionResult {
 	t.Expand()
 	q := make(chan ActionResult, len(t.paths))
 	results := make([]ActionResult, 0)

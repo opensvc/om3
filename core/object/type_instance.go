@@ -16,9 +16,9 @@ type (
 		Placement           string  `json:"placement"`
 	}
 
-	// InstanceConfigStatus describes a configuration file content checksum,
+	// InstanceConfig describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
-	InstanceConfigStatus struct {
+	InstanceConfig struct {
 		Nodename string   `json:"-"`
 		Path     Path     `json:"-"`
 		Checksum string   `json:"csum"`

@@ -48,7 +48,7 @@ func (t *CmdObjectUnfreeze) run(selector *string, kind string) {
 			Format:         t.Format,
 			Color:          t.Color,
 		},
-		Object: object.ObjectAction{
+		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
 				intf := path.NewObject().(object.Freezer)
 				return nil, intf.Unfreeze()

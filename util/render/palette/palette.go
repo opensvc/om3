@@ -2,6 +2,7 @@ package palette
 
 import "github.com/fatih/color"
 
+// The color names as string, usable in configuration files.
 const (
 	DefaultPrimary   = "yellow"
 	DefaultSecondary = "hiblack"
@@ -10,8 +11,10 @@ const (
 )
 
 type (
+	// C is the integer reprenstation of the color (ANSI code).
 	C color.Attribute
 
+	// StringPalette declares the color (as string) to use for each role.
 	StringPalette struct {
 		Primary   string
 		Secondary string
@@ -19,6 +22,7 @@ type (
 		Warning   string
 	}
 
+	// ColorPalette declares the color (as C) to use for each role.
 	ColorPalette struct {
 		Primary   color.Attribute
 		Secondary color.Attribute
@@ -67,6 +71,7 @@ func toFgColor(s string) color.Attribute {
 	}
 }
 
+// New returns a color palette (as C) from a string color palette (as read by viper).
 func New(m StringPalette) ColorPalette {
 	r := ColorPalette{}
 	r.Primary = toFgColor(m.Primary)

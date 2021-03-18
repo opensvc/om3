@@ -50,7 +50,7 @@ func (t *CmdObjectStop) run(selector *string, kind string) {
 			Format:         t.Format,
 			Color:          t.Color,
 		},
-		Object: object.ObjectAction{
+		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
 				intf := path.NewObject().(object.Starter)
 				return nil, intf.Stop(t.ActionOptionsStop)

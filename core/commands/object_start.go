@@ -50,7 +50,7 @@ func (t *CmdObjectStart) run(selector *string, kind string) {
 			Format:         t.Format,
 			Color:          t.Color,
 		},
-		Object: object.ObjectAction{
+		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
 				return nil, path.NewObject().(object.Starter).Start(t.ActionOptionsStart)
 			},

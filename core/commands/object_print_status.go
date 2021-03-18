@@ -84,7 +84,7 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	}
 	sel := object.NewSelection(mergedSelector)
 	sel.SetClient(c)
-	data := make([]object.ObjectStatus, 0)
+	data := make([]object.Status, 0)
 	for _, path := range sel.Expand() {
 		data = append(data, daemonStatus.GetObjectStatus(path))
 	}

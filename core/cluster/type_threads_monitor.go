@@ -58,19 +58,21 @@ type (
 
 	// NodeServices groups instances configuration digest and status
 	NodeServices struct {
-		Config map[string]object.InstanceConfigStatus `json:"config"`
+		Config map[string]object.InstanceConfig `json:"config"`
 		Status map[string]object.InstanceStatus       `json:"status"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
 	// if it is joinable.
 	ArbitratorStatus struct {
-		Name   string      `json:"name"`
+		Name   string   `json:"name"`
 		Status status.T `json:"status"`
 	}
 )
 
-func (t Status) GetObjectStatus(path object.Path) object.ObjectStatus {
+// GetObjectStatus extracts from the cluster dataset all information relative
+// to an object.
+func (t Status) GetObjectStatus(path object.Path) object.Status {
 	p := path.String()
 	data := object.NewObjectStatus()
 	data.Path = path
@@ -78,7 +80,7 @@ func (t Status) GetObjectStatus(path object.Path) object.ObjectStatus {
 	data.Object, _ = t.Monitor.Services[p]
 	for nodename, ndata := range t.Monitor.Nodes {
 		var ok bool
-		instance := object.ObjectStatusInstance{}
+		instance := object.InstanceStates{}
 		instance.Status, ok = ndata.Services.Status[p]
 		if !ok {
 			continue
