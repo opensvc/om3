@@ -6,8 +6,8 @@ import (
 )
 
 type (
-	// Type exposes methods to read and write configurations.
-	Type struct {
+	// T exposes methods to read and write configurations.
+	T struct {
 		Path string
 		v    *viper.Viper
 		raw  map[string]interface{}
@@ -21,7 +21,7 @@ type (
 // * dereferenced
 // * evaluated
 //
-func (t *Type) Get(key string) interface{} {
+func (t *T) Get(key string) interface{} {
 	val := t.v.Get(key)
 	log.Debug().Msgf("config %s get %s => %s", t.Path, key, val)
 	return val

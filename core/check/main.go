@@ -12,8 +12,8 @@ type (
 		Check() (*ResultSet, error)
 	}
 
-	// Type is the check type
-	Type struct {
+	// T is the check type
+	T struct {
 		Name string
 	}
 
@@ -28,7 +28,7 @@ type (
 	}
 )
 
-func (r Type) String() string {
+func (r T) String() string {
 	return fmt.Sprintf("<Check %s>", r.Name)
 }
 

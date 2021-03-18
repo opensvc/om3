@@ -1,11 +1,11 @@
 package converters
 
-// Type defines a converter name
-type Type string
+// T defines a converter name
+type T string
 
 const (
 	// Shlex Convert string to a shell expression argv-style list
-	Shlex Type = "shlex"
+	Shlex T = "shlex"
 	// Integer Concert string to an integer
-	Integer Type = "integer"
+	Integer T = "integer"
 )

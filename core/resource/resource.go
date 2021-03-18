@@ -15,7 +15,7 @@ type (
 		Manifest() Manifest
 		Start() error
 		Stop() error
-		Status() status.Type
+		Status() status.T
 
 		// common
 		RID() string
@@ -35,7 +35,7 @@ type (
 	// which is embedded in the instance status.
 	OutputStatus struct {
 		Label  string      `json:"label"`
-		Status status.Type `json:"status"`
+		Status status.T `json:"status"`
 		Subset string      `json:"subset,omitempty"`
 		Type   string      `json:"type"`
 		Log    []*LogEntry `json:"log,omitempty"`
@@ -81,7 +81,7 @@ func Stop(r Interface) error {
 }
 
 // Status evaluates the status of a resource interfacer
-func Status(r Interface) status.Type {
+func Status(r Interface) status.T {
 	return r.Status()
 }
 

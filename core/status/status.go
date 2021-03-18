@@ -7,12 +7,12 @@ import (
 	"github.com/fatih/color"
 )
 
-// Type representing a Resource, Object Instance or Object status
-type Type int
+// T representing a Resource, Object Instance or Object status
+type T int
 
 const (
 	// NotApplicable means Not Applicable
-	NotApplicable Type = iota
+	NotApplicable T = iota
 	// Up means Configured or Active
 	Up
 	// Down means Unconfigured or Inactive
@@ -31,7 +31,7 @@ const (
 	StandbyUpWithDown
 )
 
-var toString = map[Type]string{
+var toString = map[T]string{
 	Up:                "up",
 	Down:              "down",
 	Warn:              "warn",
@@ -43,7 +43,7 @@ var toString = map[Type]string{
 	StandbyUpWithDown: "stdby up",
 }
 
-var toID = map[string]Type{
+var toID = map[string]T{
 	"up":         Up,
 	"down":       Down,
 	"warn":       Warn,
@@ -53,7 +53,7 @@ var toID = map[string]Type{
 	"stdby down": StandbyDown,
 }
 
-var toColor = map[Type]color.Attribute{
+var toColor = map[T]color.Attribute{
 	Up:                color.FgGreen,
 	Down:              color.FgRed,
 	Warn:              color.FgYellow,
@@ -65,12 +65,12 @@ var toColor = map[Type]color.Attribute{
 	StandbyUpWithDown: color.FgGreen,
 }
 
-func (t Type) String() string {
+func (t T) String() string {
 	return toString[t]
 }
 
 // ColorString returns a colorized string representation of the status.
-func (t Type) ColorString() string {
+func (t T) ColorString() string {
 	c := toColor[t]
 	f := color.New(c).SprintfFunc()
 	s := t.String()
@@ -78,7 +78,7 @@ func (t Type) ColorString() string {
 }
 
 // MarshalJSON marshals the enum as a quoted json string
-func (t Type) MarshalJSON() ([]byte, error) {
+func (t T) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString(`"`)
 	buffer.WriteString(toString[t])
 	buffer.WriteString(`"`)
@@ -86,7 +86,7 @@ func (t Type) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *Type) UnmarshalJSON(b []byte) error {
+func (t *T) UnmarshalJSON(b []byte) error {
 	var j string
 	err := json.Unmarshal(b, &j)
 	if err != nil {

@@ -9,7 +9,7 @@ type Keyword struct {
 	Name     string
 	Scopable bool
 	Required bool
-	Convert  converters.Type
+	Convert  converters.T
 	Text     string
 	Example  string
 }

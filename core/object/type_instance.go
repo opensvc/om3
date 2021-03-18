@@ -31,20 +31,20 @@ type (
 		Nodename    string                    `json:"-"`
 		Path        Path                      `json:"-"`
 		App         string                    `json:"app,omitempty"`
-		Avail       status.Type               `json:"avail,omitempty"`
+		Avail       status.T               `json:"avail,omitempty"`
 		DRP         bool                      `json:"drp,omitempty"`
-		Overall     status.Type               `json:"overall,omitempty"`
+		Overall     status.T               `json:"overall,omitempty"`
 		Csum        string                    `json:"csum,omitempty"`
 		Env         string                    `json:"env,omitempty"`
 		Frozen      float64                   `json:"frozen,omitempty"`
 		Kind        Kind                      `json:"kind"`
 		Monitor     InstanceMonitor           `json:"monitor"`
-		Optional    status.Type               `json:"optional,omitempty"`
+		Optional    status.T               `json:"optional,omitempty"`
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
 		Topology    string                    `json:"topology,omitempty"`    // TODO enum
 		Placement   string                    `json:"placement,omitempty"`   // TODO enum
 		Priority    int                       `json:"priority,omitempty"`
-		Provisioned provisioned.Type          `json:"provisioned,omitempty"`
+		Provisioned provisioned.T          `json:"provisioned,omitempty"`
 		Preserved   bool                      `json:"preserved,omitempty"`
 		Updated     float64                   `json:"updated"`
 		FlexTarget  int                       `json:"flex_target,omitempty"`
@@ -64,7 +64,7 @@ type (
 	ResourceStatus struct {
 		Label       string                  `json:"label"`
 		Log         []string                `json:"log"`
-		Status      status.Type             `json:"status"`
+		Status      status.T             `json:"status"`
 		Type        string                  `json:"type"`
 		Provisioned ResourceStatusProvision `json:"provisioned"`
 	}
@@ -72,6 +72,6 @@ type (
 	// ResourceStatusProvision define if and when the resource became provisioned.
 	ResourceStatusProvision struct {
 		Mtime float64          `json:"mtime"`
-		State provisioned.Type `json:"state"`
+		State provisioned.T `json:"state"`
 	}
 )

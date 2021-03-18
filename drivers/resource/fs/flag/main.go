@@ -55,7 +55,7 @@ func (t T) Label() string {
 }
 
 // Status evaluates and display the Resource status and logs
-func (t *T) Status() status.Type {
+func (t *T) Status() status.T {
 	if t.file() == "" {
 		t.Log.Error("empty file path")
 		return status.NotApplicable

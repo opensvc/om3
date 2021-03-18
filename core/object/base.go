@@ -17,7 +17,7 @@ type (
 		log      zerolog.Logger
 
 		// caches
-		config *config.Type
+		config *config.T
 		paths  BasePaths
 	}
 )

@@ -23,7 +23,7 @@ func (f Frame) sObjectInstance(path string, node string) string {
 	return s
 }
 
-func sObjectInstanceAvail(objectAvail status.Type, instance object.InstanceStatus) string {
+func sObjectInstanceAvail(objectAvail status.T, instance object.InstanceStatus) string {
 	if instance.Preserved {
 		return iconPreserved
 	}

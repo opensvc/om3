@@ -20,11 +20,11 @@ type (
 	// AggregatedStatus contains the object states obtained via
 	// aggregation of all instances states.
 	AggregatedStatus struct {
-		Avail       status.Type      `json:"avail,omitempty"`
-		Overall     status.Type      `json:"overall,omitempty"`
+		Avail       status.T      `json:"avail,omitempty"`
+		Overall     status.T      `json:"overall,omitempty"`
 		Frozen      string           `json:"frozen,omitempty"`
 		Placement   string           `json:"placement,omitempty"`
-		Provisioned provisioned.Type `json:"provisioned,omitempty"`
+		Provisioned provisioned.T `json:"provisioned,omitempty"`
 	}
 
 	// ObjectStatusInstance groups config and status of the object as seen by the daemon.

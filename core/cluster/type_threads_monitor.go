@@ -66,7 +66,7 @@ type (
 	// if it is joinable.
 	ArbitratorStatus struct {
 		Name   string      `json:"name"`
-		Status status.Type `json:"status"`
+		Status status.T `json:"status"`
 	}
 )
 

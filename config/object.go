@@ -9,8 +9,8 @@ import (
 )
 
 // NewObject configures and returns a Viper instance
-func NewObject(p string) (*Type, error) {
-	t := &Type{
+func NewObject(p string) (*T, error) {
+	t := &T{
 		Path: p,
 	}
 	t.v = viper.New()

@@ -16,8 +16,8 @@ import (
 )
 
 type (
-	// Type is a monitor renderer instance. It stores the rendering options.
-	Type struct {
+	// T is a monitor renderer instance. It stores the rendering options.
+	T struct {
 		watch    bool
 		color    string
 		format   string
@@ -50,8 +50,8 @@ Instance Flags:
 `
 
 // New allocates a monitor.
-func New() Type {
-	return Type{
+func New() T {
+	return T{
 		watch:    false,
 		selector: "*",
 		color:    "auto",
@@ -60,48 +60,48 @@ func New() Type {
 }
 
 // SetServer sets the server option
-func (m *Type) SetServer(v string) {
+func (m *T) SetServer(v string) {
 	m.server = v
 }
 
 // SetSelector sets the selector option
-func (m *Type) SetSelector(v string) {
+func (m *T) SetSelector(v string) {
 	m.selector = v
 }
 
 // SetWatch sets the watch option. Default is false. If true, listen to events
 // and re-render new cluster data.
-func (m *Type) SetWatch(v bool) {
+func (m *T) SetWatch(v bool) {
 	m.watch = v
 }
 
 // SetColor sets the color option. Default is "auto", interpreted as colored if
 // the terminal as a tty.
-func (m *Type) SetColor(v string) {
+func (m *T) SetColor(v string) {
 	m.color = v
 }
 
 // SetFormat sets the rendering format option. Default is "auto", interpreted as
 // human readable.
-func (m *Type) SetFormat(v string) {
+func (m *T) SetFormat(v string) {
 	m.format = v
 }
 
 // SetSections sets the sections option, controlling which sections to render
 // (threads, nodes, arbitrators, objects). Defaults to an empty list, interpreted
 // as all sections.
-func (m *Type) SetSections(v []string) {
+func (m *T) SetSections(v []string) {
 	m.sections = v
 }
 
 // SetNodes sets the nodes option, controlling which node columns to render.
 // Defaults to an empty list, interpreted as all nodes.
-func (m *Type) SetNodes(v []string) {
+func (m *T) SetNodes(v []string) {
 	m.nodes = v
 }
 
 // Do renders the cluster status
-func (m Type) Do() {
+func (m T) Do() {
 	var (
 		c   *client.T
 		err error
@@ -131,7 +131,7 @@ func (m Type) Do() {
 	m.doOneshot(data, false)
 }
 
-func (m Type) doWatch(c *client.T) error {
+func (m T) doWatch(c *client.T) error {
 	var (
 		data   cluster.Status
 		ok     bool
@@ -192,7 +192,7 @@ func handleEvent(b *[]byte, e event.Event) error {
 	return nil
 }
 
-func (m Type) doOneshot(data cluster.Status, clear bool) {
+func (m T) doOneshot(data cluster.Status, clear bool) {
 	human := func() string {
 		f := cluster.Frame{
 			Current:  data,

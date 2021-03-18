@@ -28,7 +28,7 @@ func (t T) Label() string {
 }
 
 // Status evaluates and display the Resource status and logs
-func (t *T) Status() status.Type {
+func (t *T) Status() status.T {
 	netns, err := ns.GetNS(t.Netns)
 	if err != nil {
 		t.Log.Error("failed to open netns %q: %v", t.Netns, err)
