@@ -1,6 +1,7 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
@@ -44,7 +45,7 @@ type (
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
 		Topology    string                    `json:"topology,omitempty"`    // TODO enum
 		Placement   string                    `json:"placement,omitempty"`   // TODO enum
-		Priority    int                       `json:"priority,omitempty"`
+		Priority    priority.T                `json:"priority,omitempty"`
 		Provisioned provisioned.T             `json:"provisioned,omitempty"`
 		Preserved   bool                      `json:"preserved,omitempty"`
 		Updated     float64                   `json:"updated"`
@@ -67,6 +68,26 @@ type (
 		Parallel bool `json:"parallel,omitempty"`
 	}
 
+	// ResourceStatusMonitor tells the daemon if it should trigger a monitor action
+	// when the resource is not up.
+	ResourceStatusMonitor bool
+
+	// ResourceStatusDisable hints the resource ignores all state transition actions
+	ResourceStatusDisable bool
+
+	// ResourceStatusOptional makes this resource status aggregated into Overall
+	// instead of Avail instance status. Errors in optional resource don't stop
+	// a state transition action.
+	ResourceStatusOptional bool
+
+	// ResourceStatusEncap indicates that the resource is handled by the encapsulated
+	// agents, and ignored at the hypervisor level.
+	ResourceStatusEncap bool
+
+	// ResourceStatusStandby tells the daemon this resource should always be up,
+	// even after a stop state transition action.
+	ResourceStatusStandby bool
+
 	// ResourceStatus describes the status of a resource of an instance of an object.
 	ResourceStatus struct {
 		Label       string                  `json:"label"`
@@ -74,11 +95,11 @@ type (
 		Status      status.T                `json:"status"`
 		Type        string                  `json:"type"`
 		Provisioned ResourceStatusProvision `json:"provisioned"`
-		Monitor     bool                    `json:"monitor,omitempty"`
-		Disable     bool                    `json:"disable,omitempty"`
-		Optional    bool                    `json:"optional,omitempty"`
-		Encap       bool                    `json:"encap,omitempty"`
-		Standby     bool                    `json:"standby,omitempty"`
+		Monitor     ResourceStatusMonitor   `json:"monitor,omitempty"`
+		Disable     ResourceStatusDisable   `json:"disable,omitempty"`
+		Optional    ResourceStatusOptional  `json:"optional,omitempty"`
+		Encap       ResourceStatusEncap     `json:"encap,omitempty"`
+		Standby     ResourceStatusStandby   `json:"standby,omitempty"`
 		Subset      string                  `json:"subset,omitempty"`
 		Info        map[string]string       `json:"info,omitempty"`
 		Restart     int                     `json:"restart,omitempty"`
@@ -92,6 +113,47 @@ type (
 	}
 )
 
+// FlagString returns a one character representation of the type instance.
+func (t ResourceStatusMonitor) FlagString() string {
+	if t {
+		return "M"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t ResourceStatusDisable) FlagString() string {
+	if t {
+		return "D"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t ResourceStatusOptional) FlagString() string {
+	if t {
+		return "O"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t ResourceStatusEncap) FlagString() string {
+	if t {
+		return "E"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t ResourceStatusStandby) FlagString() string {
+	if t {
+		return "S"
+	}
+	return "."
+}
+
+// Has is true if the rid is found running in the Instance Monitor data sent by the daemon.
 func (t ResourceRunningSet) Has(rid string) bool {
 	for _, r := range t {
 		if r == rid {

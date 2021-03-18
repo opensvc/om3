@@ -2,15 +2,11 @@ package object
 
 import (
 	"fmt"
+	"strings"
 
 	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/util/render/palette"
 	"opensvc.com/opensvc/util/render/tree"
-)
-
-const (
-	FlagEmpty = "."
 )
 
 // Render returns a human friendly string representation of the type instance.
@@ -35,7 +31,8 @@ func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Nodename).SetColor(colors.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(t.Avail.ColorString())
-	head.AddColumn().AddText(fmt.Sprint(t.Priority)).SetColor(colors.Secondary)
+	head.AddColumn().AddText(t.descString())
+
 	for rid, r := range t.Resources {
 		n := head.AddNode()
 		n.AddColumn().AddText(rid)
@@ -43,6 +40,33 @@ func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
 		n.AddColumn().AddText(r.Status.ColorString())
 		n.AddColumn().AddText(r.Label)
 	}
+}
+
+func (t InstanceStatus) descString() string {
+	colorizers := palette.NewFunc(config.Node.Palette)
+	l := make([]string, 0)
+
+	// Frozen
+	if t.Frozen > 0 {
+		l = append(l, colorizers.Frozen("frozen"))
+	}
+
+	// Priority
+	if s := t.Priority.StatusString(); s != "" {
+		l = append(l, colorizers.Secondary(s))
+	}
+
+	// Monitor status
+	if s := t.Monitor.Status; s != "" {
+		l = append(l, s)
+	}
+
+	// Monitor global expect
+	if s := t.Monitor.GlobalExpect; s != "" {
+		l = append(l, s)
+	}
+
+	return strings.Join(l, " ")
 }
 
 //
@@ -63,65 +87,27 @@ func (t InstanceStatus) resourceFlagsString(rid string, r ResourceStatus) string
 	if t.Running.Has(rid) {
 		flags += "R"
 	} else {
-		flags += FlagEmpty
-	}
-
-	// Monitored
-	if r.Monitor {
-		flags += "M"
-	} else {
-		flags += FlagEmpty
-	}
-
-	// Disabled
-	if r.Disable {
-		flags += "D"
-	} else {
-		flags += FlagEmpty
-	}
-
-	// Optional
-	if r.Optional {
-		flags += "O"
-	} else {
-		flags += FlagEmpty
-	}
-
-	// Encapsulated
-	if r.Encap {
-		flags += "E"
-	} else {
-		flags += FlagEmpty
-	}
-
-	// Provisioned
-	switch r.Provisioned.State {
-	case provisioned.True:
 		flags += "."
-	case provisioned.False:
-		flags += "P"
-	default:
-		flags += "/"
 	}
 
-	// Standby
-	if r.Standby {
-		flags += "S"
-	} else {
-		flags += FlagEmpty
-	}
+	flags += r.Monitor.FlagString()
+	flags += r.Disable.FlagString()
+	flags += r.Optional.FlagString()
+	flags += r.Encap.FlagString()
+	flags += r.Provisioned.State.FlagString()
+	flags += r.Standby.FlagString()
 
 	// Restart and retries
 	retries := 0
 	retries, _ = t.Monitor.Restart[rid]
-	remaining_restart := r.Restart - retries
+	remaining := r.Restart - retries
 	switch {
 	case r.Restart <= 0:
 		flags += "."
-	case remaining_restart < 0:
+	case remaining < 0:
 		flags += "0"
-	case remaining_restart < 10:
-		flags += fmt.Sprintf("%d", remaining_restart)
+	case remaining < 10:
+		flags += fmt.Sprintf("%d", remaining)
 	default:
 		flags += "+"
 	}

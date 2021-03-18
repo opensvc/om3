@@ -77,6 +77,7 @@ func setDefaults(root string) {
 	NodeViper.SetDefault("palette.secondary", palette.DefaultSecondary)
 	NodeViper.SetDefault("palette.error", palette.DefaultError)
 	NodeViper.SetDefault("palette.warning", palette.DefaultWarning)
+	NodeViper.SetDefault("palette.frozen", palette.DefaultFrozen)
 }
 
 // Load initializes the Viper and Config globals

@@ -8,6 +8,7 @@ const (
 	DefaultSecondary = "hiblack"
 	DefaultError     = "red"
 	DefaultWarning   = "hiyellow"
+	DefaultFrozen    = "hiblue"
 )
 
 type (
@@ -20,6 +21,7 @@ type (
 		Secondary string
 		Error     string
 		Warning   string
+		Frozen    string
 	}
 
 	// ColorPalette declares the color (as C) to use for each role.
@@ -28,7 +30,18 @@ type (
 		Secondary color.Attribute
 		Error     color.Attribute
 		Warning   color.Attribute
+		Frozen    color.Attribute
 		Bold      color.Attribute
+	}
+
+	// ColorPaletteFunc declares the string colorizer to use for each role.
+	ColorPaletteFunc struct {
+		Primary   func(a ...interface{}) string
+		Secondary func(a ...interface{}) string
+		Error     func(a ...interface{}) string
+		Warning   func(a ...interface{}) string
+		Frozen    func(a ...interface{}) string
+		Bold      func(a ...interface{}) string
 	}
 )
 
@@ -78,6 +91,20 @@ func New(m StringPalette) ColorPalette {
 	r.Secondary = toFgColor(m.Secondary)
 	r.Error = toFgColor(m.Error)
 	r.Warning = toFgColor(m.Warning)
+	r.Frozen = toFgColor(m.Frozen)
 	r.Bold = color.Bold
+	return r
+}
+
+// NewFunc returns a color palette (as string colorizer func) from a string color palette (as read by viper).
+func NewFunc(m StringPalette) ColorPaletteFunc {
+	r := ColorPaletteFunc{}
+	c := New(m)
+	r.Primary = color.New(c.Primary).SprintFunc()
+	r.Secondary = color.New(c.Secondary).SprintFunc()
+	r.Error = color.New(c.Error).SprintFunc()
+	r.Warning = color.New(c.Warning).SprintFunc()
+	r.Frozen = color.New(c.Frozen).SprintFunc()
+	r.Bold = color.New(c.Bold).SprintFunc()
 	return r
 }

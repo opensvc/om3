@@ -1,6 +1,8 @@
 package object
 
 import (
+	"strings"
+
 	"github.com/fatih/color"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
@@ -51,12 +53,21 @@ func (t Status) Tree() *tree.Tree {
 func (t Status) LoadTreeNode(head *tree.Node) {
 	//colors := palette.New(config.Node.Palette)
 	head.AddColumn().AddText(t.Path.String()).SetColor(color.Bold)
+	head.AddColumn()
+	head.AddColumn().AddText(t.Object.Avail.ColorString())
+	head.AddColumn().AddText(t.DescString())
 	for nodename, ndata := range t.Instances {
 		ndata.Status.Nodename = nodename
 		ndata.Status.Path = t.Path
 		n := head.AddNode()
 		ndata.Status.LoadTreeNode(n)
 	}
+}
+
+func (t Status) DescString() string {
+	l := make([]string, 0)
+	l = append(l, t.Object.Overall.ColorString())
+	return strings.Join(l, " ")
 }
 
 // NewObjectStatus allocates and return a struct to host an objet full state dataset.

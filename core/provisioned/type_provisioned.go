@@ -43,6 +43,24 @@ func (t T) String() string {
 	return toString[t]
 }
 
+//
+// FlagString returns a one character representation of the type instance.
+//
+//   .  Provisioned
+//   P  Not provisioned
+//   /  Not applicable
+//
+func (t T) FlagString() string {
+	switch t {
+	case True:
+		return "."
+	case False:
+		return "P"
+	default:
+		return "/"
+	}
+}
+
 // MarshalJSON marshals the enum as a quoted json string
 func (t T) MarshalJSON() ([]byte, error) {
 	var buffer *bytes.Buffer
