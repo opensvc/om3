@@ -55,10 +55,12 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn()
 	head.AddColumn().AddText(t.Object.Avail.ColorString())
 	head.AddColumn().AddText(t.DescString())
+	instances := head.AddNode()
+	instances.AddColumn().AddText("instances")
 	for nodename, ndata := range t.Instances {
 		ndata.Status.Nodename = nodename
 		ndata.Status.Path = t.Path
-		n := head.AddNode()
+		n := instances.AddNode()
 		ndata.Status.LoadTreeNode(n)
 	}
 }
