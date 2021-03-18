@@ -19,18 +19,16 @@ type DaemonStats struct {
 // Do prints the formatted object selection
 func (t DaemonStats) Do() error {
 	var (
-		api  client.API
 		err  error
 		b    []byte
 		data cluster.Stats
+		c    *client.T
 	)
-	c := client.NewConfig()
-	c.SetURL(t.Server)
-	api, err = c.NewAPI()
+	c, err = client.New().SetURL(t.Server).Configure()
 	if err != nil {
 		return err
 	}
-	handle := api.NewGetDaemonStats()
+	handle := c.NewGetDaemonStats()
 	b, err = handle.Do()
 	if err != nil {
 		return err

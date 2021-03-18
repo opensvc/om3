@@ -3,7 +3,7 @@ package client
 // PostObjectAction describes the daemon object selector expression
 // resolver options.
 type PostObjectAction struct {
-	API            API                    `json:"-"`
+	client         *T                     `json:"-"`
 	ObjectSelector string                 `json:"path"`
 	NodeSelector   string                 `json:"node"`
 	Action         string                 `json:"action"`
@@ -12,9 +12,9 @@ type PostObjectAction struct {
 
 // NewPostObjectAction allocates a PostObjectAction struct and sets
 // default values to its keys.
-func (a API) NewPostObjectAction() *PostObjectAction {
+func (t *T) NewPostObjectAction() *PostObjectAction {
 	return &PostObjectAction{
-		API:     a,
+		client:  t,
 		Options: make(map[string]interface{}),
 	}
 }
@@ -27,5 +27,5 @@ func (o PostObjectAction) Do() ([]byte, error) {
 	opts.Options["node"] = o.NodeSelector
 	opts.Options["action"] = o.Action
 	opts.Options["options"] = o.Options
-	return o.API.Post(*opts)
+	return o.client.Post(*opts)
 }

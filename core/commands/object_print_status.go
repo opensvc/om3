@@ -54,13 +54,13 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 }
 
 // extract is a port of core.objects.svc.Svc::get_mon_data()
-func (t *CmdObjectPrintStatus) extract(selector string, api client.API) cluster.Status {
+func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) cluster.Status {
 	var (
 		err           error
 		b             []byte
 		clusterStatus cluster.Status
 	)
-	handle := api.NewGetDaemonStatus()
+	handle := c.NewGetDaemonStatus()
 	handle.ObjectSelector = selector
 	b, err = handle.Do()
 	if err != nil {
@@ -78,14 +78,12 @@ func (t *CmdObjectPrintStatus) extract(selector string, api client.API) cluster.
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	var daemonStatus cluster.Status
 	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	c := client.NewConfig()
-	c.SetURL(t.Server)
-	api, err := c.NewAPI()
+	c, err := client.New().SetURL(t.Server).Configure()
 	if err == nil {
-		daemonStatus = t.extract(mergedSelector, api)
+		daemonStatus = t.extract(mergedSelector, c)
 	}
 	sel := object.NewSelection(mergedSelector)
-	sel.SetAPI(api)
+	sel.SetClient(c)
 	data := make([]object.ObjectStatus, 0)
 	for _, path := range sel.Expand() {
 		data = append(data, daemonStatus.GetObjectStatus(path))

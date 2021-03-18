@@ -103,25 +103,23 @@ func (m *Type) SetNodes(v []string) {
 // Do renders the cluster status
 func (m Type) Do() {
 	var (
-		api client.API
+		c   *client.T
 		err error
 	)
-	c := client.NewConfig()
-	c.SetURL(m.server)
-	api, err = c.NewAPI()
+	c, err = client.New().SetURL(m.server).Configure()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 
 	if m.watch {
-		if err = m.doWatch(api); err != nil {
+		if err = m.doWatch(c); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 		return
 	}
-	handle := api.NewGetDaemonStatus()
+	handle := c.NewGetDaemonStatus()
 	handle.ObjectSelector = m.selector
 	b, err := handle.Do()
 	if err != nil {
@@ -133,7 +131,7 @@ func (m Type) Do() {
 	m.doOneshot(data, false)
 }
 
-func (m Type) doWatch(api client.API) error {
+func (m Type) doWatch(c *client.T) error {
 	var (
 		data   cluster.Status
 		ok     bool
@@ -141,7 +139,7 @@ func (m Type) doWatch(api client.API) error {
 		evt    event.Event
 		events chan []byte
 	)
-	handle := api.NewGetEvents()
+	handle := c.NewGetEvents()
 	handle.Full = true
 	handle.ObjectSelector = m.selector
 	events, err = handle.DoRaw()

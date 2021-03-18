@@ -10,7 +10,7 @@ import (
 
 // GetEvents describes the events request options.
 type GetEvents struct {
-	API            API    `json:"-"`
+	client         *T     `json:"-"`
 	Namespace      string `json:"namespace"`
 	ObjectSelector string `json:"selector"`
 	Full           bool   `json:"full"`
@@ -18,9 +18,9 @@ type GetEvents struct {
 
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func (a API) NewGetEvents() *GetEvents {
+func (t *T) NewGetEvents() *GetEvents {
 	return &GetEvents{
-		API:            a,
+		client:         t,
 		Namespace:      "*",
 		ObjectSelector: "**",
 		Full:           false,
@@ -70,5 +70,5 @@ func (o GetEvents) eventsBase() (chan []byte, error) {
 	req.Options["selector"] = o.ObjectSelector
 	req.Options["namespace"] = o.Namespace
 	req.Options["full"] = o.Full
-	return o.API.GetStream(*req)
+	return o.client.GetStream(*req)
 }

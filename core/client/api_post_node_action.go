@@ -3,7 +3,7 @@ package client
 // PostNodeAction describes the daemon object selector expression
 // resolver options.
 type PostNodeAction struct {
-	API          API                    `json:"-"`
+	client       *T                     `json:"-"`
 	NodeSelector string                 `json:"node"`
 	Action       string                 `json:"action"`
 	Options      map[string]interface{} `json:"options"`
@@ -11,9 +11,9 @@ type PostNodeAction struct {
 
 // NewPostNodeAction allocates a PostNodeAction struct and sets
 // default values to its keys.
-func (a API) NewPostNodeAction() *PostNodeAction {
+func (t *T) NewPostNodeAction() *PostNodeAction {
 	return &PostNodeAction{
-		API:     a,
+		client:  t,
 		Options: make(map[string]interface{}),
 	}
 }
@@ -25,5 +25,5 @@ func (o PostNodeAction) Do() ([]byte, error) {
 	opts.Options["node"] = o.NodeSelector
 	opts.Options["action"] = o.Action
 	opts.Options["options"] = o.Options
-	return o.API.Post(*opts)
+	return o.client.Post(*opts)
 }

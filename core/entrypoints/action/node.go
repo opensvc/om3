@@ -62,14 +62,12 @@ func (t NodeAction) doLocal() {
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t NodeAction) doAsync() {
-	c := client.NewConfig()
-	c.SetURL(t.Server)
-	api, err := c.NewAPI()
+	c, err := client.New().SetURL(t.Server).Configure()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
 	}
-	req := api.NewPostNodeMonitor()
+	req := c.NewPostNodeMonitor()
 	req.GlobalExpect = t.Target
 	b, err := req.Do()
 	human := func() string {
@@ -87,14 +85,12 @@ func (t NodeAction) doAsync() {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t NodeAction) doRemote() {
-	c := client.NewConfig()
-	c.SetURL(t.Server)
-	api, err := c.NewAPI()
+	c, err := client.New().SetURL(t.Server).Configure()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
 	}
-	req := api.NewPostNodeAction()
+	req := c.NewPostNodeAction()
 	req.NodeSelector = t.NodeSelector
 	req.Action = t.Action.Action
 	req.Options = t.Action.PostFlags

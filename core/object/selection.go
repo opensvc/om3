@@ -21,8 +21,8 @@ type (
 	// Selection is the selection structure
 	Selection struct {
 		SelectorExpression string
-		apiConfigured      bool
-		api                client.API
+		hasClient          bool
+		client             *client.T
 		local              bool
 		paths              []Path
 		installed          []Path
@@ -96,10 +96,10 @@ func NewSelection(selector string) *Selection {
 	return t
 }
 
-// SetAPI sets the api struct key
-func (t *Selection) SetAPI(api client.API) *Selection {
-	t.api = api
-	t.apiConfigured = true
+// SetClient sets the client struct key
+func (t *Selection) SetClient(client *client.T) *Selection {
+	t.client = client
+	t.hasClient = true
 	return t
 }
 
@@ -148,11 +148,9 @@ func (t *Selection) add(path Path) {
 
 func (t *Selection) expand() {
 	if !t.local {
-		if !t.apiConfigured {
-			c := client.NewConfig()
-			c.SetURL(t.server)
-			api, _ := c.NewAPI()
-			t.SetAPI(api)
+		if !t.hasClient {
+			c := client.New().SetURL(t.server)
+			t.SetClient(c)
 		}
 		if err := t.daemonExpand(); err == nil {
 			return
@@ -304,10 +302,10 @@ func (t *Selection) daemonExpand() error {
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
-	if !t.api.HasRequester() {
-		return errors.New("api has no requester")
+	if !t.client.HasRequester() {
+		return errors.New("client has no requester")
 	}
-	handle := t.api.NewGetObjectSelector()
+	handle := t.client.NewGetObjectSelector()
 	handle.ObjectSelector = t.SelectorExpression
 	b, err := handle.Do()
 	if err != nil {

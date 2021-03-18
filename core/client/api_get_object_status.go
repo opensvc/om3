@@ -3,15 +3,15 @@ package client
 // GetObjectStatus describes the daemon object selector expression
 // resolver options.
 type GetObjectStatus struct {
-	API            API    `json:"-"`
+	client         *T     `json:"-"`
 	ObjectSelector string `json:"selector"`
 }
 
 // NewGetObjectStatus allocates a GetObjectStatus struct and sets
 // default values to its keys.
-func (a API) NewGetObjectStatus() *GetObjectStatus {
+func (t *T) NewGetObjectStatus() *GetObjectStatus {
 	return &GetObjectStatus{
-		API: a,
+		client: t,
 	}
 }
 
@@ -20,5 +20,5 @@ func (o GetObjectStatus) Do() ([]byte, error) {
 	opts := NewRequest()
 	opts.Action = "object_status"
 	opts.Options["selector"] = o.ObjectSelector
-	return o.API.Get(*opts)
+	return o.client.Get(*opts)
 }

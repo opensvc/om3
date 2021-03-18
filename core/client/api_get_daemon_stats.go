@@ -2,7 +2,7 @@ package client
 
 // GetDaemonStats describes the daemon statistics api handler options.
 type GetDaemonStats struct {
-	API            API    `json:"-"`
+	client         *T     `json:"-"`
 	NodeSelector   string `json:"node"`
 	ObjectSelector string `json:"selector"`
 	Server         string `json:"server"`
@@ -10,9 +10,9 @@ type GetDaemonStats struct {
 
 // NewGetDaemonStats allocates a DaemonStatsCmdConfig struct and sets
 // default values to its keys.
-func (a API) NewGetDaemonStats() *GetDaemonStats {
+func (t *T) NewGetDaemonStats() *GetDaemonStats {
 	return &GetDaemonStats{
-		API:            a,
+		client:         t,
 		NodeSelector:   "*",
 		ObjectSelector: "**",
 		Server:         "",
@@ -24,5 +24,5 @@ func (o GetDaemonStats) Do() ([]byte, error) {
 	opts := NewRequest()
 	opts.Node = "*"
 	opts.Action = "daemon_stats"
-	return o.API.Get(*opts)
+	return o.client.Get(*opts)
 }

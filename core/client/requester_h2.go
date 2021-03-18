@@ -41,40 +41,42 @@ func defaultH2UDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Node.Paths.Var))
 }
 
-func newH2UDS(c Config) (H2, error) {
+func (t *T) configureH2UDS() error {
 	var url string
-	if c.url == "" {
+	if t.url == "" {
 		url = defaultH2UDSPath()
 	} else {
-		url = c.url
+		url = t.url
 	}
 	r := &H2{}
-	t := &http2.Transport{
+	tp := &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 			return net.Dial("unix", url)
 		},
 	}
 	r.URL = "http://localhost"
-	r.Client = http.Client{Transport: t, Timeout: 30 * time.Second}
-	return *r, nil
+	r.Client = http.Client{Transport: tp, Timeout: 30 * time.Second}
+	t.requester = *r
+	return nil
 }
 
-func newH2Inet(c Config) (H2, error) {
+func (t *T) configureH2Inet() error {
 	r := &H2{}
-	cer, err := tls.LoadX509KeyPair(c.clientCertificate, c.clientKey)
+	cer, err := tls.LoadX509KeyPair(t.clientCertificate, t.clientKey)
 	if err != nil {
-		return *r, err
+		return err
 	}
-	t := &http2.Transport{
+	tp := &http2.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: c.insecureSkipVerify,
+			InsecureSkipVerify: t.insecureSkipVerify,
 			Certificates:       []tls.Certificate{cer},
 		},
 	}
-	r.URL = c.url
-	r.Client = http.Client{Transport: t}
-	return *r, nil
+	r.URL = t.url
+	r.Client = http.Client{Transport: tp}
+	t.requester = *r
+	return nil
 }
 
 func (t H2) newRequest(method string, r Request) (*http.Request, error) {

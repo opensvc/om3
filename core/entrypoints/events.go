@@ -18,14 +18,16 @@ type Events struct {
 
 // Do renders the event stream
 func (t Events) Do() {
-	c := client.NewConfig()
-	c.SetURL(t.Server)
-	api, err := c.NewAPI()
+	var (
+		err error
+		c   *client.T
+	)
+	c, err = client.New().SetURL(t.Server).Configure()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	handle := api.NewGetEvents()
+	handle := c.NewGetEvents()
 	events, err := handle.Do()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

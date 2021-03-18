@@ -137,19 +137,19 @@ func (t JSONRPC) GetStream(req Request) (chan []byte, error) {
 	return q, nil
 }
 
-func newJSONRPC(c Config) (JSONRPC, error) {
+func (t *T) configureJSONRPC() error {
 	var url string
-	if c.url == "" {
+	if t.url == "" {
 		url = defaultJSONRPCUDSPath()
 	} else {
-		url = strings.Replace(c.url, jsonrpcUDSPrefix, "/", 1)
-		url = strings.Replace(c.url, jsonrpcInetPrefix, "", 1)
+		url = strings.Replace(t.url, jsonrpcUDSPrefix, "/", 1)
+		url = strings.Replace(t.url, jsonrpcInetPrefix, "", 1)
 	}
-	r := JSONRPC{
+	t.requester = JSONRPC{
 		URL:  url,
 		Inet: strings.Contains(url, ":"),
 	}
-	return r, nil
+	return nil
 }
 
 // dropCR drops a terminal \r from the data.
