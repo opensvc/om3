@@ -31,6 +31,8 @@ type (
 		Cluster  clusterSection        `mapstructure:"cluster"`
 		Node     nodeSection           `mapstructure:"node"`
 		Palette  palette.StringPalette `mapstructure:"palette"`
+		Colorize palette.ColorPaletteFunc
+		Color    palette.ColorPalette
 	}
 
 	clusterSection struct {
@@ -115,4 +117,6 @@ func loadEpilogue() {
 		fmt.Fprintf(os.Stderr, "Failed to parse the configuration file: %s\n", err)
 		return
 	}
+	Node.Colorize = palette.NewFunc(Node.Palette)
+	Node.Color = palette.New(Node.Palette)
 }

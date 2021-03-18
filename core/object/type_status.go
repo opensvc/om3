@@ -3,7 +3,7 @@ package object
 import (
 	"strings"
 
-	"github.com/fatih/color"
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
@@ -51,8 +51,7 @@ func (t Status) Tree() *tree.Tree {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t Status) LoadTreeNode(head *tree.Node) {
-	//colors := palette.New(config.Node.Palette)
-	head.AddColumn().AddText(t.Path.String()).SetColor(color.Bold)
+	head.AddColumn().AddText(t.Path.String()).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(t.Object.Avail.ColorString())
 	head.AddColumn().AddText(t.DescString())

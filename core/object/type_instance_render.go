@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/util/render/palette"
 	"opensvc.com/opensvc/util/render/tree"
 )
 
@@ -27,8 +26,7 @@ func (t InstanceStatus) Tree() *tree.Tree {
 // tree, at the specified node.
 //
 func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
-	colors := palette.New(config.Node.Palette)
-	head.AddColumn().AddText(t.Nodename).SetColor(colors.Bold)
+	head.AddColumn().AddText(t.Nodename).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(t.Avail.ColorString())
 	head.AddColumn().AddText(t.descString())
@@ -43,17 +41,16 @@ func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
 }
 
 func (t InstanceStatus) descString() string {
-	colorizers := palette.NewFunc(config.Node.Palette)
 	l := make([]string, 0)
 
 	// Frozen
 	if t.Frozen > 0 {
-		l = append(l, colorizers.Frozen("frozen"))
+		l = append(l, config.Node.Colorize.Frozen("frozen"))
 	}
 
 	// Priority
 	if s := t.Priority.StatusString(); s != "" {
-		l = append(l, colorizers.Secondary(s))
+		l = append(l, config.Node.Colorize.Secondary(s))
 	}
 
 	// Monitor status
