@@ -2,9 +2,8 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/event"
 )
 
@@ -45,22 +44,20 @@ func (o GetEvents) Do() (chan event.Event, error) {
 
 func marshalMessages(q chan []byte, out chan event.Event) {
 	var (
-		b   []byte
-		e   event.Event
-		err error
-		ok  bool
+		b  []byte
+		ok bool
 	)
 	for {
 		b, ok = <-q
 		if !ok {
 			break // channel closed
 		}
-		err = json.Unmarshal(b, &e)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "marshal raw event messages:", err)
+		e := &event.Event{}
+		if err := json.Unmarshal(b, e); err != nil {
+			log.Error().Err(err).Msg("")
 			continue
 		}
-		out <- e
+		out <- *e
 	}
 }
 
