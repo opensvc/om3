@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strings"
+	"regexp"
 
 	"github.com/fatih/color"
 	tsize "github.com/kopoli/go-terminal-size"
@@ -18,6 +18,19 @@ const (
 	defaultSeparator = "  "
 	prefixLen        = 3
 )
+
+const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+
+var re = regexp.MustCompile(ansi)
+
+func realLen(s string) int {
+	fmt.Println(s, len(stripAnsi(s)))
+	return len(stripAnsi(s))
+}
+
+func stripAnsi(s string) string {
+	return re.ReplaceAllString(s, "")
+}
 
 type (
 	//
@@ -197,7 +210,7 @@ func (n *Node) getPads() {
 			continue
 		}
 		for _, fragment := range col.Text {
-			fragmentWidth := len(fragment.Text) + len(n.Forest.Separator)
+			fragmentWidth := realLen(fragment.Text) + len(n.Forest.Separator)
 			if fragmentWidth > n.Forest.pads[idx] {
 				if width.Min > 0 && n.Forest.pads[idx] < width.Min {
 					n.Forest.pads[idx] = width.Min
@@ -276,7 +289,8 @@ func formatPrefix(lasts []bool, nChildren int, firstLine bool) string {
 				buff += contNode
 			}
 		}
-		if nChildren > 0 {
+		last := lasts[len(lasts)-1]
+		if nChildren > 0 || !last {
 			buff += contNode
 		} else {
 			buff += contLastNode
@@ -288,10 +302,8 @@ func formatPrefix(lasts []bool, nChildren int, firstLine bool) string {
 // formatCell returns the table cell, happending the separator, coloring the
 // text and applying the padding for alignment.
 func (c *Column) formatCell(text string, width int, textColor color.Attribute) string {
-	if text == "" {
-		return strings.Repeat(" ", width)
-	}
 	var f string
+	width += len(text) - realLen(text)
 	switch c.Align {
 	case AlignRight:
 		f = fmt.Sprintf("%%%ds", width)
@@ -309,7 +321,7 @@ func (c *Column) wrappedLines(text string, width int) []string {
 		return lines
 	}
 	offset := 0
-	remain := len(text)
+	remain := realLen(text)
 	for remain > width {
 		lines = append(lines, text[:width])
 		text = text[width:]
@@ -361,7 +373,8 @@ func (t *Tree) renderRecurse(n *Node, buff string, depth int, lasts []bool) stri
 	nChildren := len(n.children)
 	lastChildIndex := nChildren - 1
 	for j := 0; j < n.cellCount; j++ {
-		buff += formatPrefix(lasts, nChildren, j == 0)
+		prefix := formatPrefix(lasts, nChildren, j == 0)
+		buff += prefix
 		for i, col = range n.columns {
 			width := t.pads[i]
 			if i == 0 {
