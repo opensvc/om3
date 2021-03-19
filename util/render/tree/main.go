@@ -24,7 +24,6 @@ const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)
 var re = regexp.MustCompile(ansi)
 
 func realLen(s string) int {
-	fmt.Println(s, len(stripAnsi(s)))
 	return len(stripAnsi(s))
 }
 
