@@ -59,7 +59,7 @@ type (
 	// NodeServices groups instances configuration digest and status
 	NodeServices struct {
 		Config map[string]object.InstanceConfig `json:"config"`
-		Status map[string]object.InstanceStatus       `json:"status"`
+		Status map[string]object.InstanceStatus `json:"status"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
@@ -90,6 +90,18 @@ func (t Status) GetObjectStatus(path object.Path) object.Status {
 			continue
 		}
 		data.Instances[nodename] = instance
+		for _, relative := range instance.Status.Parents {
+			p := relative.String()
+			data.Parents[p] = t.Monitor.Services[p]
+		}
+		for _, relative := range instance.Status.Children {
+			p := relative.String()
+			data.Children[p] = t.Monitor.Services[p]
+		}
+		for _, relative := range instance.Status.Slaves {
+			p := relative.String()
+			data.Slaves[p] = t.Monitor.Services[p]
+		}
 	}
 	return *data
 }

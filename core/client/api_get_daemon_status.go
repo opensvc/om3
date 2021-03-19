@@ -5,6 +5,7 @@ type GetDaemonStatus struct {
 	client         *T     `json:"-"`
 	Namespace      string `json:"namespace,omitempty"`
 	ObjectSelector string `json:"selector,omitempty"`
+	Relatives      bool   `json:"relatives,omitempty"`
 }
 
 // NewGetDaemonStatus allocates a DaemonStatusOptions struct and sets
@@ -14,6 +15,7 @@ func (t *T) NewGetDaemonStatus() *GetDaemonStatus {
 		client:         t,
 		Namespace:      "",
 		ObjectSelector: "*",
+		Relatives:      false,
 	}
 }
 
@@ -23,5 +25,6 @@ func (o GetDaemonStatus) Do() ([]byte, error) {
 	opts.Action = "daemon_status"
 	opts.Options["namespace"] = o.Namespace
 	opts.Options["selector"] = o.ObjectSelector
+	opts.Options["relatives"] = o.Relatives
 	return o.client.Get(*opts)
 }

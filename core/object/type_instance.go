@@ -57,6 +57,9 @@ type (
 		Subsets     map[string]SubsetStatus   `json:"subsets,omitempty"`
 		Resources   map[string]ResourceStatus `json:"resources,omitempty"`
 		Running     ResourceRunningSet        `json:"running,omitempty"`
+		Parents     []Path                    `json:"parents,omitempty"`
+		Children    []Path                    `json:"children,omitempty"`
+		Slaves      []Path                    `json:"slaves,omitempty"`
 	}
 
 	// ResourceRunningSet is the list of resource currently running (sync and task).

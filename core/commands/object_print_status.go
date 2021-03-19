@@ -62,6 +62,7 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) cluster.Sta
 	)
 	handle := c.NewGetDaemonStatus()
 	handle.ObjectSelector = selector
+	handle.Relatives = true
 	b, err = handle.Do()
 	if err != nil {
 		log.Debug().Err(err).Msg("extract cluster status")
