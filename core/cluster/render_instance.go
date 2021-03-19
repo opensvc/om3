@@ -74,7 +74,7 @@ func sObjectInstanceLeader(instance object.InstanceStatus) string {
 }
 
 func sObjectInstanceFrozen(instance object.InstanceStatus) string {
-	if instance.Frozen > 0 {
+	if !instance.Frozen.IsZero() {
 		return iconFrozen
 	}
 	return ""

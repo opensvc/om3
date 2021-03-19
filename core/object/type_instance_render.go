@@ -36,7 +36,17 @@ func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
 		n.AddColumn().AddText(rid)
 		n.AddColumn().AddText(t.resourceFlagsString(rid, r)) // flags
 		n.AddColumn().AddText(r.Status.ColorString())
-		n.AddColumn().AddText(r.Label)
+		desc := n.AddColumn()
+		desc.AddText(r.Label)
+		for _, entry := range r.Log {
+			t := desc.AddText(entry)
+			switch {
+			case strings.HasPrefix(entry, "error:"):
+				t.SetColor(config.Node.Color.Error)
+			case strings.HasPrefix(entry, "warn:"):
+				t.SetColor(config.Node.Color.Warning)
+			}
+		}
 	}
 }
 
@@ -44,7 +54,7 @@ func (t InstanceStatus) descString() string {
 	l := make([]string, 0)
 
 	// Frozen
-	if t.Frozen > 0 {
+	if !t.Frozen.IsZero() {
 		l = append(l, config.Node.Colorize.Frozen("frozen"))
 	}
 
@@ -53,9 +63,17 @@ func (t InstanceStatus) descString() string {
 		l = append(l, config.Node.Colorize.Secondary(s))
 	}
 
+	// Overall
+	l = append(l, t.Overall.ColorString())
+
 	// Monitor status
-	if s := t.Monitor.Status; s != "" {
-		l = append(l, s)
+	switch t.Monitor.Status {
+	case "":
+		l = append(l, config.Node.Colorize.Secondary("idle"))
+	case "idle":
+		l = append(l, config.Node.Colorize.Secondary(t.Monitor.Status))
+	default:
+		l = append(l, config.Node.Colorize.Primary(t.Monitor.Status))
 	}
 
 	// Monitor global expect

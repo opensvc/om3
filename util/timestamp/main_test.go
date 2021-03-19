@@ -5,7 +5,7 @@ import (
 )
 
 func TestTimestamp(t *testing.T) {
-	ts := New()
+	ts := Now()
 	s := ts.String()
 	t.Logf("%s", s)
 }

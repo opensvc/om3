@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/inancgumus/screen"
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
@@ -123,11 +124,14 @@ func (m T) Do() {
 	handle.ObjectSelector = m.selector
 	b, err := handle.Do()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 	var data cluster.Status
-	err = json.Unmarshal(b, &data)
+	if err := json.Unmarshal(b, &data); err != nil {
+		log.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
 	m.doOneshot(data, false)
 }
 
@@ -155,20 +159,25 @@ func (m T) doWatch(c *client.T) error {
 		return err
 	}
 	b = *evt.Data
-	json.Unmarshal(*evt.Data, &data)
+	if err := json.Unmarshal(*evt.Data, &data); err != nil {
+		log.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
 	m.doOneshot(data, true)
 	for e := range events {
 		evt, err := event.DecodeFromJSON(e)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err, string(e))
+			log.Debug().Err(err).Msgf("decode event %e", e)
 			continue
 		}
-		err = handleEvent(&b, evt)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err, string(e))
+		if err := handleEvent(&b, evt); err != nil {
+			log.Error().Err(err).Msgf("handle event %e", e)
 			return err
 		}
-		json.Unmarshal(b, &data)
+		if err := json.Unmarshal(b, &data); err != nil {
+			log.Error().Err(err).Msgf("unmarshal event data %e", e)
+			return err
+		}
 		m.doOneshot(data, true)
 	}
 	return nil

@@ -3,6 +3,8 @@ package cluster
 import (
 	"encoding/json"
 	"strings"
+
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -12,7 +14,7 @@ type (
 	// NodeStats embeds all daemon threads and each objet system
 	// resource usage metrics.
 	NodeStats struct {
-		Timestamp  float64                `json:"timestamp"`
+		Timestamp  timestamp.T            `json:"timestamp"`
 		Collector  ThreadStats            `json:"collector"`
 		Daemon     ThreadStats            `json:"daemon"`
 		DNS        ThreadStats            `json:"dns"`
@@ -33,7 +35,7 @@ type (
 
 	// CPUStats holds CPU resource usage metrics.
 	CPUStats struct {
-		Time float64 `json:"time"`
+		Time timestamp.T `json:"time"`
 	}
 
 	// MemStats holds CPU resource usage metrics.
@@ -59,47 +61,68 @@ type (
 
 	// ObjectStats holds an object (ie cgroup) system resource usage metrics
 	ObjectStats struct {
-		Blk     BlkStats `json:"blk"`
-		Net     NetStats `json:"net"`
-		Mem     MemStats `json:"mem"`
-		CPU     CPUStats `json:"cpu"`
-		Tasks   uint64   `json:"tasks"`
-		Created float64  `json:"created"`
+		Blk     BlkStats    `json:"blk"`
+		Net     NetStats    `json:"net"`
+		Mem     MemStats    `json:"mem"`
+		CPU     CPUStats    `json:"cpu"`
+		Tasks   uint64      `json:"tasks"`
+		Created timestamp.T `json:"created"`
 	}
 )
 
 // UnmarshalJSON loads a byte array into a DaemonStatus struct
 func (t *NodeStats) UnmarshalJSON(b []byte) error {
-	var m map[string]interface{}
-	err := json.Unmarshal(b, &m)
-	if err != nil {
+	var (
+		m   map[string]interface{}
+		ns  NodeStats
+		err error
+		tmp []byte
+	)
+	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	var ns NodeStats
-	var tmp []byte
 	ns.Heartbeats = make(map[string]ThreadStats)
 
 	for k, v := range m {
-		tmp, err = json.Marshal(v)
+		if tmp, err = json.Marshal(v); err != nil {
+			return err
+		}
 		switch k {
 		case "cluster":
-			json.Unmarshal(tmp, &ns.Daemon)
+			if err := json.Unmarshal(tmp, &ns.Daemon); err != nil {
+				return err
+			}
 		case "monitor":
-			json.Unmarshal(tmp, &ns.Monitor)
+			if err := json.Unmarshal(tmp, &ns.Monitor); err != nil {
+				return err
+			}
 		case "scheduler":
-			json.Unmarshal(tmp, &ns.Scheduler)
+			if err := json.Unmarshal(tmp, &ns.Scheduler); err != nil {
+				return err
+			}
 		case "collector":
-			json.Unmarshal(tmp, &ns.Collector)
+			if err := json.Unmarshal(tmp, &ns.Collector); err != nil {
+				return err
+			}
 		case "dns":
-			json.Unmarshal(tmp, &ns.DNS)
+			if err := json.Unmarshal(tmp, &ns.DNS); err != nil {
+				return err
+			}
 		case "pid":
-			json.Unmarshal(tmp, &ns.Services)
+			if err := json.Unmarshal(tmp, &ns.Services); err != nil {
+				return err
+			}
 		case "listener":
-			json.Unmarshal(tmp, &ns.Listener)
+			if err := json.Unmarshal(tmp, &ns.Listener); err != nil {
+				return err
+			}
 		default:
 			if strings.HasPrefix(k, "hb#") {
 				var hb ThreadStats
-				json.Unmarshal(tmp, &hb)
+				if err := json.Unmarshal(tmp, &hb); err != nil {
+					return err
+				}
+
 				ns.Heartbeats[k] = hb
 			}
 		}

@@ -3,9 +3,11 @@ package object
 import (
 	"encoding/json"
 
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -14,8 +16,8 @@ type (
 		GlobalExpect        string         `json:"global_expect"`
 		LocalExpect         string         `json:"local_expect"`
 		Status              string         `json:"status"`
-		StatusUpdated       float64        `json:"status_updated"`
-		GlobalExpectUpdated float64        `json:"global_expect_updated"`
+		StatusUpdated       timestamp.T    `json:"status_updated"`
+		GlobalExpectUpdated timestamp.T    `json:"global_expect_updated"`
 		Placement           string         `json:"placement"`
 		Restart             map[string]int `json:"restart,omitempty"`
 	}
@@ -27,7 +29,7 @@ type (
 		Path     Path     `json:"-"`
 		Checksum string   `json:"csum"`
 		Scope    []string `json:"scope"`
-		Updated  float64
+		Updated  timestamp.T
 	}
 
 	// InstanceStatus describes the instance status.
@@ -40,7 +42,7 @@ type (
 		Overall     status.T                  `json:"overall,omitempty"`
 		Csum        string                    `json:"csum,omitempty"`
 		Env         string                    `json:"env,omitempty"`
-		Frozen      float64                   `json:"frozen,omitempty"`
+		Frozen      timestamp.T               `json:"frozen,omitempty"`
 		Kind        Kind                      `json:"kind"`
 		Monitor     InstanceMonitor           `json:"monitor"`
 		Optional    status.T                  `json:"optional,omitempty"`
@@ -50,16 +52,16 @@ type (
 		Priority    priority.T                `json:"priority,omitempty"`
 		Provisioned provisioned.T             `json:"provisioned,omitempty"`
 		Preserved   bool                      `json:"preserved,omitempty"`
-		Updated     float64                   `json:"updated"`
+		Updated     timestamp.T               `json:"updated"`
 		FlexTarget  int                       `json:"flex_target,omitempty"`
 		FlexMin     int                       `json:"flex_min,omitempty"`
 		FlexMax     int                       `json:"flex_max,omitempty"`
 		Subsets     map[string]SubsetStatus   `json:"subsets,omitempty"`
 		Resources   map[string]ResourceStatus `json:"resources,omitempty"`
 		Running     ResourceRunningSet        `json:"running,omitempty"`
-		Parents     []Path                    `json:"parents,omitempty"`
-		Children    []Path                    `json:"children,omitempty"`
-		Slaves      []Path                    `json:"slaves,omitempty"`
+		Parents     []RelationPath            `json:"parents,omitempty"`
+		Children    []RelationPath            `json:"children,omitempty"`
+		Slaves      []RelationPath            `json:"slaves,omitempty"`
 	}
 
 	// ResourceRunningSet is the list of resource currently running (sync and task).
@@ -99,22 +101,22 @@ type (
 		Log         []string                `json:"log,omitempty"`
 		Status      status.T                `json:"status"`
 		Type        string                  `json:"type"`
-		Provisioned ResourceStatusProvision `json:"provisioned"`
+		Provisioned ResourceStatusProvision `json:"provisioned,omitempty"`
 		Monitor     ResourceStatusMonitor   `json:"monitor,omitempty"`
 		Disable     ResourceStatusDisable   `json:"disable,omitempty"`
 		Optional    ResourceStatusOptional  `json:"optional,omitempty"`
 		Encap       ResourceStatusEncap     `json:"encap,omitempty"`
 		Standby     ResourceStatusStandby   `json:"standby,omitempty"`
 		Subset      string                  `json:"subset,omitempty"`
-		Info        map[string]string       `json:"info,omitempty"`
+		Info        map[string]interface{}  `json:"info,omitempty"`
 		Restart     int                     `json:"restart,omitempty"`
 		Tags        TagSet                  `json:"tags,omitempty"`
 	}
 
 	// ResourceStatusProvision define if and when the resource became provisioned.
 	ResourceStatusProvision struct {
-		Mtime float64       `json:"mtime"`
-		State provisioned.T `json:"state"`
+		Mtime timestamp.T   `json:"mtime,omitempty"`
+		State provisioned.T `json:"state,omitempty"`
 	}
 )
 
@@ -174,6 +176,7 @@ func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
 		Priority: priority.Default,
 	})
 	if err := json.Unmarshal(b, &temp); err != nil {
+		log.Error().Err(err).Msg("unmarshal InstanceStatus")
 		return err
 	}
 	*t = InstanceStatus(temp)

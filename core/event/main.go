@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -11,7 +12,7 @@ type (
 	Event struct {
 		Kind      string           `json:"kind"`
 		ID        uint64           `json:"id"`
-		Timestamp float64          `json:"ts"`
+		Timestamp timestamp.T      `json:"ts"`
 		Data      *json.RawMessage `json:"data"`
 	}
 )

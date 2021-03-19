@@ -10,34 +10,50 @@ import (
 
 // UnmarshalJSON loads a byte array into a cluster.Status struct
 func (t *Status) UnmarshalJSON(b []byte) error {
-	var m map[string]interface{}
-	err := json.Unmarshal(b, &m)
-	if err != nil {
+	var (
+		m   map[string]interface{}
+		ds  Status
+		tmp []byte
+		err error
+	)
+	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	var ds Status
-	var tmp []byte
 	ds.Heartbeats = make(map[string]HeartbeatThreadStatus)
 
 	for k, v := range m {
 		tmp, err = json.Marshal(v)
 		switch k {
 		case "cluster":
-			json.Unmarshal(tmp, &ds.Cluster)
+			if err := json.Unmarshal(tmp, &ds.Cluster); err != nil {
+				return err
+			}
 		case "monitor":
-			json.Unmarshal(tmp, &ds.Monitor)
+			if json.Unmarshal(tmp, &ds.Monitor); err != nil {
+				return err
+			}
 		case "scheduler":
-			json.Unmarshal(tmp, &ds.Scheduler)
+			if json.Unmarshal(tmp, &ds.Scheduler); err != nil {
+				return err
+			}
 		case "collector":
-			json.Unmarshal(tmp, &ds.Collector)
+			if json.Unmarshal(tmp, &ds.Collector); err != nil {
+				return err
+			}
 		case "dns":
-			json.Unmarshal(tmp, &ds.DNS)
+			if json.Unmarshal(tmp, &ds.DNS); err != nil {
+				return err
+			}
 		case "listener":
-			json.Unmarshal(tmp, &ds.Listener)
+			if json.Unmarshal(tmp, &ds.Listener); err != nil {
+				return err
+			}
 		default:
 			if strings.HasPrefix(k, "hb#") {
 				var hb HeartbeatThreadStatus
-				json.Unmarshal(tmp, &hb)
+				if err := json.Unmarshal(tmp, &hb); err != nil {
+					return err
+				}
 				ds.Heartbeats[k] = hb
 			}
 		}

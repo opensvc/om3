@@ -4,10 +4,11 @@ import "github.com/fatih/color"
 
 // The color names as string, usable in configuration files.
 const (
-	DefaultPrimary   = "yellow"
+	DefaultPrimary   = "hiyellow"
 	DefaultSecondary = "hiblack"
+	DefaultOptimal   = "green"
 	DefaultError     = "red"
-	DefaultWarning   = "hiyellow"
+	DefaultWarning   = "yellow"
 	DefaultFrozen    = "hiblue"
 )
 
@@ -19,6 +20,7 @@ type (
 	StringPalette struct {
 		Primary   string
 		Secondary string
+		Optimal   string
 		Error     string
 		Warning   string
 		Frozen    string
@@ -28,6 +30,7 @@ type (
 	ColorPalette struct {
 		Primary   color.Attribute
 		Secondary color.Attribute
+		Optimal   color.Attribute
 		Error     color.Attribute
 		Warning   color.Attribute
 		Frozen    color.Attribute
@@ -38,6 +41,7 @@ type (
 	ColorPaletteFunc struct {
 		Primary   func(a ...interface{}) string
 		Secondary func(a ...interface{}) string
+		Optimal   func(a ...interface{}) string
 		Error     func(a ...interface{}) string
 		Warning   func(a ...interface{}) string
 		Frozen    func(a ...interface{}) string
@@ -89,6 +93,7 @@ func New(m StringPalette) ColorPalette {
 	r := ColorPalette{}
 	r.Primary = toFgColor(m.Primary)
 	r.Secondary = toFgColor(m.Secondary)
+	r.Optimal = toFgColor(m.Optimal)
 	r.Error = toFgColor(m.Error)
 	r.Warning = toFgColor(m.Warning)
 	r.Frozen = toFgColor(m.Frozen)
@@ -102,6 +107,7 @@ func NewFunc(m StringPalette) ColorPaletteFunc {
 	c := New(m)
 	r.Primary = color.New(c.Primary).SprintFunc()
 	r.Secondary = color.New(c.Secondary).SprintFunc()
+	r.Optimal = color.New(c.Optimal).SprintFunc()
 	r.Error = color.New(c.Error).SprintFunc()
 	r.Warning = color.New(c.Warning).SprintFunc()
 	r.Frozen = color.New(c.Frozen).SprintFunc()

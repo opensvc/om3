@@ -26,6 +26,9 @@ type (
 		// Kind is the kinf part of the path
 		Kind Kind
 	}
+
+	// RelationPath is an object path or an instance path (path@node).
+	RelationPath string
 )
 
 const (
@@ -311,4 +314,8 @@ func (t Path) Match(pattern string) bool {
 		}
 	}
 	return false
+}
+
+func (t RelationPath) String() string {
+	return string(t)
 }

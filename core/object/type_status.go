@@ -34,8 +34,8 @@ type (
 
 	// InstanceStates groups config and status of the object as seen by the daemon.
 	InstanceStates struct {
-		Config InstanceConfig
-		Status InstanceStatus
+		Config InstanceConfig `json:"config"`
+		Status InstanceStatus `json:"status"`
 	}
 )
 
