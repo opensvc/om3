@@ -38,6 +38,7 @@ type (
 		Path        Path                      `json:"-"`
 		App         string                    `json:"app,omitempty"`
 		Avail       status.T                  `json:"avail,omitempty"`
+		Constraints bool                      `json:"constraints,omitempty"`
 		DRP         bool                      `json:"drp,omitempty"`
 		Overall     status.T                  `json:"overall,omitempty"`
 		Csum        string                    `json:"csum,omitempty"`

@@ -5,17 +5,19 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
 )
 
 // Render returns a human friendly string representation of the type instance.
-func (t InstanceStatus) Render() string {
+func (t InstanceStates) Render() string {
 	tree := t.Tree()
 	return tree.Render()
 }
 
 // Tree returns a tree loaded with the type instance.
-func (t InstanceStatus) Tree() *tree.Tree {
+func (t InstanceStates) Tree() *tree.Tree {
 	tree := tree.New()
 	t.LoadTreeNode(tree.Head())
 	return tree
@@ -25,16 +27,16 @@ func (t InstanceStatus) Tree() *tree.Tree {
 // LoadTreeNode add the tree nodes representing the type instance into another
 // tree, at the specified node.
 //
-func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Nodename).SetColor(config.Node.Color.Bold)
+func (t InstanceStates) LoadTreeNode(head *tree.Node) {
+	head.AddColumn().AddText(t.Node.Name).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
-	head.AddColumn().AddText(t.Avail.ColorString())
+	head.AddColumn().AddText(t.Status.Avail.ColorString())
 	head.AddColumn().AddText(t.descString())
 
-	for rid, r := range t.Resources {
+	for rid, r := range t.Status.Resources {
 		n := head.AddNode()
 		n.AddColumn().AddText(rid)
-		n.AddColumn().AddText(t.resourceFlagsString(rid, r)) // flags
+		n.AddColumn().AddText(t.Status.resourceFlagsString(rid, r))
 		n.AddColumn().AddText(r.Status.ColorString())
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
@@ -50,35 +52,60 @@ func (t InstanceStatus) LoadTreeNode(head *tree.Node) {
 	}
 }
 
-func (t InstanceStatus) descString() string {
+func (t InstanceStates) descString() string {
 	l := make([]string, 0)
 
+	// Overall
+	if t.Status.Overall == status.Warn {
+		l = append(l, t.Status.Overall.ColorString())
+	}
+
 	// Frozen
-	if !t.Frozen.IsZero() {
+	if !t.Status.Frozen.IsZero() {
 		l = append(l, config.Node.Colorize.Frozen("frozen"))
 	}
 
+	// Node frozen
+	if !t.Node.Frozen.IsZero() {
+		l = append(l, config.Node.Colorize.Frozen("node-frozen"))
+	}
+
+	// Constraints
+	if t.Status.Constraints {
+		l = append(l, config.Node.Colorize.Error("constraints-violation"))
+	}
+
+	// Provisioned
+	switch t.Status.Provisioned {
+	case provisioned.False:
+		l = append(l, config.Node.Colorize.Error("not-provisioned"))
+	case provisioned.Mixed:
+		l = append(l, config.Node.Colorize.Error("mix-provisioned"))
+	}
+
 	// Priority
-	if s := t.Priority.StatusString(); s != "" {
+	if s := t.Status.Priority.StatusString(); s != "" {
 		l = append(l, config.Node.Colorize.Secondary(s))
 	}
 
-	// Overall
-	l = append(l, t.Overall.ColorString())
-
 	// Monitor status
-	switch t.Monitor.Status {
+	switch t.Status.Monitor.Status {
 	case "":
 		l = append(l, config.Node.Colorize.Secondary("idle"))
 	case "idle":
-		l = append(l, config.Node.Colorize.Secondary(t.Monitor.Status))
+		l = append(l, config.Node.Colorize.Secondary(t.Status.Monitor.Status))
 	default:
-		l = append(l, config.Node.Colorize.Primary(t.Monitor.Status))
+		l = append(l, config.Node.Colorize.Primary(t.Status.Monitor.Status))
 	}
 
 	// Monitor global expect
-	if s := t.Monitor.GlobalExpect; s != "" {
+	if s := t.Status.Monitor.GlobalExpect; s != "" {
 		l = append(l, s)
+	}
+
+	// Daemon down
+	if t.Status.Monitor.StatusUpdated.IsZero() {
+		l = append(l, config.Node.Colorize.Warning("daemon-down"))
 	}
 
 	return strings.Join(l, " ")

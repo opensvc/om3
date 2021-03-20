@@ -1,12 +1,14 @@
 package object
 
 import (
+	"fmt"
 	"strings"
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -34,8 +36,14 @@ type (
 
 	// InstanceStates groups config and status of the object as seen by the daemon.
 	InstanceStates struct {
-		Config InstanceConfig `json:"config"`
-		Status InstanceStatus `json:"status"`
+		Node   InstanceNode   `json:"node,omitempty"`
+		Config InstanceConfig `json:"config,omitempty"`
+		Status InstanceStatus `json:"status,omitempty"`
+	}
+
+	InstanceNode struct {
+		Name   string      `json:"name"`
+		Frozen timestamp.T `json:"frozen,omitempty"`
 	}
 )
 
@@ -60,11 +68,9 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.DescString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
-	for nodename, data := range t.Instances {
-		data.Status.Nodename = nodename
-		data.Status.Path = t.Path
+	for _, data := range t.Instances {
 		n := instances.AddNode()
-		data.Status.LoadTreeNode(n)
+		data.LoadTreeNode(n)
 	}
 	t.loadTreeNodeParents(head)
 	t.loadTreeNodeChildren(head)
@@ -115,7 +121,24 @@ func (t Status) loadTreeNodeSlaves(head *tree.Node) {
 
 func (t Status) DescString() string {
 	l := make([]string, 0)
-	l = append(l, t.Object.Overall.ColorString())
+
+	// Overall if warn. Else no need to repeat an info we can guess from Avail.
+	if t.Object.Overall == status.Warn {
+		l = append(l, t.Object.Overall.ColorString())
+	}
+
+	// Placement
+	switch t.Object.Placement {
+	case "optimal", "n/a", "":
+	default:
+		l = append(l, config.Node.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.Placement)))
+	}
+
+	// Agent compatibility
+	if !t.Compat {
+		l = append(l, config.Node.Colorize.Error("incompatible versions"))
+	}
+
 	return strings.Join(l, " ")
 }
 

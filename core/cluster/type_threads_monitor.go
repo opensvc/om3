@@ -82,6 +82,8 @@ func (t Status) GetObjectStatus(path object.Path) object.Status {
 	for nodename, ndata := range t.Monitor.Nodes {
 		var ok bool
 		instance := object.InstanceStates{}
+		instance.Node.Frozen = ndata.Frozen
+		instance.Node.Name = nodename
 		instance.Status, ok = ndata.Services.Status[p]
 		if !ok {
 			continue
