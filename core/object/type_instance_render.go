@@ -33,10 +33,31 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Status.Avail.ColorString())
 	head.AddColumn().AddText(t.descString())
 
-	for rid, r := range t.Status.Resources {
-		n := head.AddNode()
-		n.AddColumn().AddText(rid)
-		n.AddColumn().AddText(t.Status.resourceFlagsString(rid, r))
+	lastSubset := ""
+	subsetNode := head
+	for _, r := range t.Status.SortedResources() {
+		if lastSubset != r.Subset {
+			if r.Subset == "" {
+				subsetNode = head
+			} else {
+				resourceSetName := r.ResourceId.DriverGroup().Name() + ":" + r.Subset
+				subsetNode = head.AddNode()
+				subsetNode.AddColumn().AddText(resourceSetName)
+				subsetNode.AddColumn()
+				subsetNode.AddColumn()
+				parallel := ""
+				if subset, ok := t.Status.Subsets[resourceSetName]; ok {
+					if subset.Parallel {
+						parallel = "//"
+					}
+				}
+				subsetNode.AddColumn().AddText(parallel)
+			}
+			lastSubset = r.Subset
+		}
+		n := subsetNode.AddNode()
+		n.AddColumn().AddText(r.ResourceId.Name)
+		n.AddColumn().AddText(t.Status.resourceFlagsString(r.ResourceId, r))
 		n.AddColumn().AddText(r.Status.ColorString())
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
@@ -122,11 +143,11 @@ func (t InstanceStates) descString() string {
 //   P  Provisioned
 //   S  Standby
 //
-func (t InstanceStatus) resourceFlagsString(rid string, r ResourceStatus) string {
+func (t InstanceStatus) resourceFlagsString(rid ResourceId, r ResourceStatus) string {
 	flags := ""
 
 	// Running task or sync
-	if t.Running.Has(rid) {
+	if t.Running.Has(rid.Name) {
 		flags += "R"
 	} else {
 		flags += "."
@@ -141,7 +162,7 @@ func (t InstanceStatus) resourceFlagsString(rid string, r ResourceStatus) string
 
 	// Restart and retries
 	retries := 0
-	retries, _ = t.Monitor.Restart[rid]
+	retries, _ = t.Monitor.Restart[rid.Name]
 	remaining := r.Restart - retries
 	switch {
 	case r.Restart <= 0:

@@ -2,6 +2,7 @@ package object
 
 import (
 	"encoding/json"
+	"sort"
 
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/priority"
@@ -65,6 +66,10 @@ type (
 		Slaves      []RelationPath            `json:"slaves,omitempty"`
 	}
 
+	// ResourceOrder is a sortable list representation of the
+	// instance status resources map.
+	ResourceOrder []ResourceStatus
+
 	// ResourceRunningSet is the list of resource currently running (sync and task).
 	ResourceRunningSet []string
 
@@ -98,6 +103,7 @@ type (
 
 	// ResourceStatus describes the status of a resource of an instance of an object.
 	ResourceStatus struct {
+		ResourceId  ResourceId              `json:"-"`
 		Label       string                  `json:"label"`
 		Log         []string                `json:"log,omitempty"`
 		Status      status.T                `json:"status"`
@@ -182,4 +188,33 @@ func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
 	}
 	*t = InstanceStatus(temp)
 	return nil
+}
+
+func (t *InstanceStatus) SortedResources() []ResourceStatus {
+	l := make([]ResourceStatus, 0)
+	for k, v := range t.Resources {
+		v.ResourceId = *NewResourceId(k)
+		l = append(l, v)
+	}
+	sort.Sort(ResourceOrder(l))
+	return l
+}
+
+func (a ResourceOrder) Len() int      { return len(a) }
+func (a ResourceOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ResourceOrder) Less(i, j int) bool {
+	switch {
+	case a[i].ResourceId.DriverGroup() < a[j].ResourceId.DriverGroup():
+		return true
+	case a[i].ResourceId.DriverGroup() > a[j].ResourceId.DriverGroup():
+		return false
+	// same driver group
+	case a[i].Subset < a[j].Subset:
+		return true
+	case a[i].Subset > a[j].Subset:
+		return false
+	// and same subset
+	default:
+		return a[i].ResourceId.Name < a[j].ResourceId.Name
+	}
 }
