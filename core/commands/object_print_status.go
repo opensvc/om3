@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/object"
@@ -53,8 +54,44 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 	}
 }
 
-// extract is a port of core.objects.svc.Svc::get_mon_data()
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) cluster.Status {
+func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) []object.Status {
+	if data, err := t.extractFromDaemon(selector, c); err == nil {
+		log.Debug().Err(err).Msg("extract cluster status")
+		return data
+	}
+	if client.WantContext() {
+		log.Error().Msg("can not fetch daemon data")
+		return []object.Status{}
+	}
+	return t.extractLocal(selector)
+}
+
+func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
+	data := make([]object.Status, 0)
+	sel := object.NewSelection(selector).SetLocal(true)
+	for _, path := range sel.Expand() {
+		obj := path.NewBaser()
+		status, err := obj.Status(object.ActionOptionsStatus{})
+		if err != nil {
+			log.Debug().Err(err).Str("path", path.String()).Msg("extract local")
+			continue
+		}
+		o := object.Status{
+			Path:   path,
+			Compat: true,
+			Object: object.AggregatedStatus{},
+			Instances: map[string]object.InstanceStates{
+				config.Node.Hostname: {
+					Status: status,
+				},
+			},
+		}
+		data = append(data, o)
+	}
+	return data
+}
+
+func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) ([]object.Status, error) {
 	var (
 		err           error
 		b             []byte
@@ -65,29 +102,30 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) cluster.Sta
 	handle.Relatives = true
 	b, err = handle.Do()
 	if err != nil {
-		log.Debug().Err(err).Msg("extract cluster status")
-		return clusterStatus
+		return []object.Status{}, err
 	}
 	err = json.Unmarshal(b, &clusterStatus)
 	if err != nil {
-		log.Debug().Err(err).Msg("extract cluster status")
-		return clusterStatus
+		return []object.Status{}, err
 	}
-	return clusterStatus
+	data := make([]object.Status, 0)
+	for p, _ := range clusterStatus.Monitor.Services {
+		path, err := object.NewPathFromString(p)
+		if err != nil {
+			log.Debug().Err(err).Str("path", p).Msg("extractFromDaemon")
+			continue
+		}
+		data = append(data, clusterStatus.GetObjectStatus(path))
+	}
+	return data, nil
 }
 
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
-	var daemonStatus cluster.Status
+	var data []object.Status
 	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	c, err := client.New().SetURL(t.Server).Configure()
 	if err == nil {
-		daemonStatus = t.extract(mergedSelector, c)
-	}
-	sel := object.NewSelection(mergedSelector)
-	sel.SetClient(c)
-	data := make([]object.Status, 0)
-	for _, path := range sel.Expand() {
-		data = append(data, daemonStatus.GetObjectStatus(path))
+		data = t.extract(mergedSelector, c)
 	}
 	output.Renderer{
 		Format: t.Format,

@@ -193,6 +193,11 @@ func (t Path) NewObject() interface{} {
 	}
 }
 
+// NewBaser returns a Baser interface from an object
+func (t Path) NewBaser() Baser {
+	return t.NewObject().(Baser)
+}
+
 //
 // ConfigFile returns the absolute path of an opensvc object configuration
 // file.

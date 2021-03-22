@@ -2,7 +2,6 @@ package object
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -35,7 +34,6 @@ func (t *Base) Status(options ActionOptionsStatus) (InstanceStatus, error) {
 		data InstanceStatus
 		err  error
 	)
-	fmt.Println(options.ObjectStatus)
 	if options.Refresh {
 		data, err = t.statusEval()
 		if err != nil {
