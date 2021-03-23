@@ -309,7 +309,11 @@ func (t *Selection) Do(action Action) []ActionResult {
 			result.Data = data
 			result.Error = err
 			result.HumanRenderer = func() string {
-				return data.(Renderer).Render()
+				r, ok := data.(Renderer)
+				if ok {
+					return r.Render()
+				}
+				return fmt.Sprintln(data)
 			}
 			q <- result
 		}(path)
