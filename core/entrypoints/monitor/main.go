@@ -167,15 +167,15 @@ func (m T) doWatch(c *client.T) error {
 	for e := range events {
 		evt, err := event.DecodeFromJSON(e)
 		if err != nil {
-			log.Debug().Err(err).Msgf("decode event %e", e)
+			log.Debug().Err(err).Msgf("decode event %v", e)
 			continue
 		}
 		if err := handleEvent(&b, evt); err != nil {
-			log.Error().Err(err).Msgf("handle event %e", e)
+			log.Error().Err(err).Msgf("handle event %v", e)
 			return err
 		}
 		if err := json.Unmarshal(b, &data); err != nil {
-			log.Error().Err(err).Msgf("unmarshal event data %e", e)
+			log.Error().Err(err).Msgf("unmarshal event data %v", e)
 			return err
 		}
 		m.doOneshot(data, true)
