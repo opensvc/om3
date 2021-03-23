@@ -50,6 +50,15 @@ func (t *ActionOptionsForce) init(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&t.Force, "force", false, "allow dangerous operations")
 }
 
+// ActionOptionsEval is a command line flag.
+type ActionOptionsEval struct {
+	Eval bool
+}
+
+func (t *ActionOptionsEval) init(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&t.Eval, "eval", false, "dereference and evaluate arythmetic expressions in value")
+}
+
 // ActionOptionsKeyword is a command line flag.
 type ActionOptionsKeyword struct {
 	Keyword string
