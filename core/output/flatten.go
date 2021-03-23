@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"opensvc.com/opensvc/config"
 )
 
 // Flatten accepts a nested struct and returns a flat struct with key like a.'b/c'.d[0].e
@@ -29,7 +31,7 @@ func SprintFlat(b []byte) string {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		s += fmt.Sprintln(k, "=", flattened[k])
+		s += fmt.Sprintln(config.Node.Colorize.Primary(k+" ="), flattened[k])
 	}
 	return s
 }

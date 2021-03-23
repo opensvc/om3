@@ -4,7 +4,7 @@ import "github.com/fatih/color"
 
 // The color names as string, usable in configuration files.
 const (
-	DefaultPrimary   = "hiyellow"
+	DefaultPrimary   = "himagenta"
 	DefaultSecondary = "hiblack"
 	DefaultOptimal   = "green"
 	DefaultError     = "red"

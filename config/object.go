@@ -32,12 +32,3 @@ func NewObject(p string) (*T, error) {
 	log.Debug().Msgf("new config for %s: %d sections", p, len(t.raw))
 	return t, nil
 }
-
-/*
-	defaults, ok := data["default"]
-	if !ok {
-		data["defaults"] = map[string]string{
-			"nodes": Node.Hostname,
-		}
-	}
-*/

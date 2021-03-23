@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -57,12 +58,17 @@ func (t *T) Raw() Raw {
 	return t.raw
 }
 
+var (
+	RegexpReference = regexp.MustCompile(`({.+})`)
+)
+
 func (t Raw) Render() string {
 	s := ""
 	for section, data := range t {
 		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
 		for k, v := range data.(map[string]interface{}) {
-			s += fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), v)
+			coloredValue := RegexpReference.ReplaceAllString(v.(string), Node.Colorize.Optimal("$1"))
+			s += fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), coloredValue)
 		}
 		s += "\n"
 	}
