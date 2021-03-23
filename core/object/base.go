@@ -57,9 +57,3 @@ func (t *Base) init(path Path) error {
 func (t Base) String() string {
 	return fmt.Sprintf("base object %s", t.Path)
 }
-
-func (t *Base) loadConfig() error {
-	var err error
-	t.config, err = config.NewObject(t.Path.ConfigFile())
-	return err
-}

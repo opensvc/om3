@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -10,9 +13,32 @@ type (
 	T struct {
 		Path string
 		v    *viper.Viper
-		raw  map[string]interface{}
+		raw  Raw
 	}
+
+	Raw map[string]interface{}
+	Key string
 )
+
+func (t Key) section() string {
+	l := strings.Split(string(t), ".")
+	switch len(l) {
+	case 2:
+		return l[0]
+	default:
+		return "DEFAULT"
+	}
+}
+
+func (t Key) option() string {
+	l := strings.Split(string(t), ".")
+	switch len(l) {
+	case 2:
+		return l[1]
+	default:
+		return l[0]
+	}
+}
 
 //
 // Get returns a key value,
@@ -22,7 +48,23 @@ type (
 // * evaluated
 //
 func (t *T) Get(key string) interface{} {
-	val := t.v.Get(key)
+	val := t.v.GetString(key)
 	log.Debug().Msgf("config %s get %s => %s", t.Path, key, val)
 	return val
+}
+
+func (t *T) Raw() Raw {
+	return t.raw
+}
+
+func (t Raw) Render() string {
+	s := ""
+	for section, data := range t {
+		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
+		for k, v := range data.(map[string]interface{}) {
+			s += fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), v)
+		}
+		s += "\n"
+	}
+	return s
 }

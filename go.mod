@@ -25,5 +25,8 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
+
+replace github.com/spf13/viper => github.com/opensvc/viper v1.7.0-osvc.1

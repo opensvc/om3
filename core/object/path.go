@@ -193,9 +193,14 @@ func (t Path) NewObject() interface{} {
 	}
 }
 
-// NewBaser returns a Baser interface from an object
+// NewBaser returns a Baser interface from an object path
 func (t Path) NewBaser() Baser {
 	return t.NewObject().(Baser)
+}
+
+// NewConfigurer returns a Configurer interface from an object path
+func (t Path) NewConfigurer() Configurer {
+	return t.NewObject().(Configurer)
 }
 
 //
