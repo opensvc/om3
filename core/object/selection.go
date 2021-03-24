@@ -120,7 +120,7 @@ func (t *Selection) add(path Path) {
 func (t *Selection) expand() {
 	if !t.local {
 		if !t.hasClient {
-			c := client.New().SetURL(t.server)
+			c, _ := client.New().SetURL(t.server).Configure()
 			t.SetClient(c)
 		}
 		if err := t.daemonExpand(); err == nil {
@@ -128,6 +128,8 @@ func (t *Selection) expand() {
 		} else if client.WantContext() {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 			return
+		} else {
+			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
 	}
 	if err := t.localExpand(); err != nil {

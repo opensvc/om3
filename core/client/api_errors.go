@@ -29,8 +29,9 @@ func parse(b []byte, err error) ([]byte, error) {
 	}
 	data := &Schema1{}
 	if err := json.Unmarshal(b, &data); err != nil {
+		// not a Schema1 response => let it go as-is
 		log.Debug().Bytes("b", b).Msg("parse")
-		return b, err
+		return b, nil
 	}
 
 	switch data.Info.(type) {

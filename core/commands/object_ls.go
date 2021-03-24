@@ -39,5 +39,7 @@ func (t *CmdObjectLs) run(selector *string, kind string) {
 		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, "**"),
 		Format:         t.Format,
 		Color:          t.Color,
+		Local:          t.Local,
+		Server:         t.Server,
 	}.Do()
 }
