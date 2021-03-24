@@ -315,7 +315,7 @@ func (t Path) Match(pattern string) bool {
 			return true
 		}
 	case 3:
-		if l[1] == "svc" {
+		if l[1] == "svc" && l[0] == "*" {
 			// */svc/foo => foo ... for root namespace
 			if fnmatch.Match(l[2], s, f) {
 				return true

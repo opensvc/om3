@@ -181,7 +181,10 @@ func Installed() ([]Path, error) {
 }
 
 func (t *Selection) localExpand() error {
-	log.Debug().Msgf("%s local expansion", t)
+	log.Debug().
+		Str("selector", t.SelectorExpression).
+		Str("mode", "local").
+		Msg("expand selection")
 	for _, s := range strings.Split(t.SelectorExpression, ",") {
 		pset, err := t.localExpandIntersector(s)
 		if err != nil {
@@ -212,7 +215,6 @@ func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
 }
 
 func (t *Selection) localExpandOne(s string) (*set.Set, error) {
-	// t.localConfigExpand()
 	switch {
 	case fnmatchExpressionRegex.MatchString(s):
 		return t.localFnmatchExpand(s)
@@ -271,7 +273,10 @@ func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {
 }
 
 func (t *Selection) daemonExpand() error {
-	log.Debug().Msgf("%s daemon expansion", t)
+	log.Debug().
+		Str("selector", t.SelectorExpression).
+		Str("mode", "daemon").
+		Msg("expand selection")
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
