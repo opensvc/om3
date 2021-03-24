@@ -305,12 +305,14 @@ func (t Path) Match(pattern string) bool {
 			}
 		}
 	case 2:
+
 		if l[0] == "svc" {
 			// svc/foo => foo ... for root namespace
 			if fnmatch.Match(l[1], s, f) {
 				return true
 			}
 		}
+		pattern = strings.Replace(pattern, "**", "*/*", 1)
 		if fnmatch.Match(pattern, s, f) {
 			return true
 		}

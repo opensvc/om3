@@ -26,6 +26,7 @@ type (
 		local              bool
 		paths              []Path
 		installed          []Path
+		installedSet       *set.Set
 		server             string
 	}
 
@@ -52,6 +53,10 @@ type (
 		Panic         interface{}   `json:"panic,omitempty"`
 		HumanRenderer func() string `json:"-"`
 	}
+)
+
+const (
+	expressionNegationPrefix = "!"
 )
 
 var (
@@ -215,6 +220,33 @@ func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
 }
 
 func (t *Selection) localExpandOne(s string) (*set.Set, error) {
+	if strings.HasPrefix(s, expressionNegationPrefix) {
+		return t.localExpandOneNegative(s)
+	} else {
+		return t.localExpandOnePositive(s)
+	}
+}
+
+func (t *Selection) localExpandOneNegative(s string) (*set.Set, error) {
+	var (
+		positiveMatchSet *set.Set
+		installedSet     *set.Set
+		err              error
+	)
+	positiveExpression := strings.TrimLeft(s, expressionNegationPrefix)
+	positiveMatchSet, err = t.localExpandOnePositive(positiveExpression)
+	if err != nil {
+		return set.New(), err
+	}
+	installedSet, err = t.InstalledSet()
+	if err != nil {
+		return set.New(), err
+	}
+	negativeMatchSet := installedSet.Difference(positiveMatchSet)
+	return negativeMatchSet, nil
+}
+
+func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
 	switch {
 	case fnmatchExpressionRegex.MatchString(s):
 		return t.localFnmatchExpand(s)
@@ -237,6 +269,22 @@ func (t *Selection) Installed() ([]Path, error) {
 		return t.installed, err
 	}
 	return t.installed, nil
+}
+
+func (t *Selection) InstalledSet() (*set.Set, error) {
+	if t.installedSet != nil {
+		return t.installedSet, nil
+	}
+	var err error
+	t.installed, err = Installed()
+	if err != nil {
+		return t.installedSet, err
+	}
+	t.installedSet = set.New()
+	for _, p := range t.installed {
+		t.installedSet.Insert(p.String())
+	}
+	return t.installedSet, nil
 }
 
 func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
