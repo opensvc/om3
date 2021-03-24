@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -40,16 +42,12 @@ func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command
 }
 
 func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) ([]config.Raw, error) {
-	/*
-		if data, err := t.extractFromDaemon(selector, c); err == nil {
-			log.Debug().Err(err).Msg("extract config")
-			return data
-		}
-		if client.WantContext() {
-			log.Error().Msg("can not fetch from daemon")
-			return []object.Config{}
-		}
-	*/
+	if data, err := t.extractFromDaemon(selector, c); err == nil {
+		return data, nil
+	}
+	if client.WantContext() {
+		return []config.Raw{}, errors.New("can not fetch from daemon")
+	}
 	return t.extractLocal(selector)
 }
 
@@ -64,26 +62,25 @@ func (t *CmdObjectPrintConfig) extractLocal(selector string) ([]config.Raw, erro
 	return data, nil
 }
 
-/*
 func (t *CmdObjectPrintConfig) extractFromDaemon(selector string, c *client.T) ([]config.Raw, error) {
 	var (
 		err error
 		b   []byte
 	)
-	data := make([]object.Config, 0)
+	data := make([]config.Raw, 1)
 	handle := c.NewGetObjectConfig()
 	handle.ObjectSelector = selector
 	b, err = handle.Do()
 	if err != nil {
+		log.Error().Err(err).Msg("")
 		return data, err
 	}
-	err = json.Unmarshal(b, &configs)
+	err = json.Unmarshal(b, &data[0])
 	if err != nil {
 		return data, err
 	}
 	return data, nil
 }
-*/
 
 func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 	var (

@@ -1,0 +1,75 @@
+package client
+
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+)
+
+type (
+	Schema1 struct {
+		Status    interface{} `json:"status"`
+		Error     interface{} `json:"error"`
+		Info      interface{} `json:"info"`
+		Traceback string      `json:"traceback"`
+		Data      interface{} `json:"data"`
+	}
+)
+
+//
+// parse tries to abstract the status code, error and info strings
+// parsing in the response body, returning Go-friendly errors.
+//
+func parse(b []byte, err error) ([]byte, error) {
+	//log.Debug().Err(err).Bytes("b", b).Msg("parse response")
+	if err != nil {
+		return b, err
+	}
+	data := &Schema1{}
+	if err := json.Unmarshal(b, &data); err != nil {
+		log.Debug().Bytes("b", b).Msg("parse")
+		return b, err
+	}
+
+	switch data.Info.(type) {
+	case string:
+		log.Debug().Str("info", data.Info.(string)).Msgf("parse response")
+	case []string:
+		for _, s := range data.Info.([]string) {
+			log.Debug().Str("info", s).Msgf("parse response")
+		}
+	}
+
+	switch data.Error.(type) {
+	case string:
+		log.Debug().Str("error", data.Error.(string)).Msgf("parse response")
+		err = errors.New(data.Error.(string))
+	case []string:
+		for _, s := range data.Error.([]string) {
+			log.Debug().Str("error", s).Msgf("parse response")
+		}
+		msg := strings.Join(data.Error.([]string), "\n")
+		err = errors.New(msg)
+	}
+
+	if data.Traceback != "" {
+		log.Error().Str("traceback", data.Traceback).Msg("parse")
+		return nil, errors.New("api bug")
+	}
+
+	switch data.Status {
+	case 0, "0":
+		switch data.Data {
+		case nil:
+			log.Debug().Msg("parse: not Schema1")
+			return b, nil
+		default:
+			log.Debug().Msg("parse: Schema1")
+			return json.Marshal(data.Data)
+		}
+	default:
+		return nil, err
+	}
+}

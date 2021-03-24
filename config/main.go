@@ -25,8 +25,9 @@ type (
 )
 
 var (
-	RegexpReference = regexp.MustCompile(`({.+})`)
+	RegexpReference = regexp.MustCompile(`({[\w\.-_:]+})`)
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
+	RegexpScope     = regexp.MustCompile(`(@[\w\.-_]+)`)
 	ErrorExists     = errors.New("does not exists")
 )
 
@@ -184,12 +185,38 @@ func (t *T) IsInEncapNodes() bool {
 func (t Raw) Render() string {
 	s := ""
 	for section, data := range t {
+		if s == "metadata" {
+			continue
+		}
 		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
 		for k, v := range data.(map[string]interface{}) {
-			coloredValue := RegexpReference.ReplaceAllString(v.(string), Node.Colorize.Optimal("$1"))
-			s += fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), coloredValue)
+			if k == "comment" {
+				s += renderComment(k, v)
+				continue
+			}
+			s += renderKey(k, v)
 		}
 		s += "\n"
 	}
 	return s
+}
+
+func renderComment(k string, v interface{}) string {
+	vs, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return "# " + strings.ReplaceAll(vs, "\n", "\n# ") + "\n"
+}
+
+func renderKey(k string, v interface{}) string {
+	k = RegexpScope.ReplaceAllString(k, Node.Colorize.Error("$1"))
+	vs, ok := v.(string)
+	if ok {
+		vs = RegexpReference.ReplaceAllString(vs, Node.Colorize.Optimal("$1"))
+		vs = strings.ReplaceAll(vs, "\n", "\n\t")
+	} else {
+		vs = ""
+	}
+	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
 }
