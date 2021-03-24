@@ -61,7 +61,7 @@ func (t Key) scope() string {
 	}
 }
 
-func (t *T) Raw() Raw {
+func (t T) Raw() Raw {
 	return t.raw
 }
 

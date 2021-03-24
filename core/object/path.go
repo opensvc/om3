@@ -188,6 +188,8 @@ func (t Path) NewObject() interface{} {
 		return NewSec(t)
 	case KindUsr:
 		return NewUsr(t)
+	case KindCcfg:
+		return NewCcfg(t)
 	default:
 		return nil
 	}
