@@ -3,10 +3,18 @@ package client
 import "encoding/json"
 
 type (
+	Getter interface {
+		Get(req Request) ([]byte, error)
+	}
+
+	StreamGetter interface {
+		GetStream(req Request) (chan []byte, error)
+	}
+
 	// Requester abstracts the requesting details of supported protocols
 	Requester interface {
-		Get(req Request) ([]byte, error)
-		GetStream(req Request) (chan []byte, error)
+		Getter
+		StreamGetter
 		Post(req Request) ([]byte, error)
 		Put(req Request) ([]byte, error)
 		Delete(req Request) ([]byte, error)

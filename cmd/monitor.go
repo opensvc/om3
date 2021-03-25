@@ -1,8 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/api/daemon/status"
+	"opensvc.com/opensvc/core/api/getevent"
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"os"
 )
 
 var (
@@ -24,12 +29,23 @@ func init() {
 	monCmd.Flags().BoolVarP(&monWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }
 
-func monCmdRun(cmd *cobra.Command, args []string) {
+func monCmdRun(_ *cobra.Command, _ []string) {
 	m := monitor.New()
-	m.SetWatch(monWatchFlag)
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
-	m.SetServer(serverFlag)
-	m.SetSelector(monSelectorFlag)
-	m.Do()
+	cli, err := client.New(client.URL(serverFlag))
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	if monWatchFlag {
+		getter := getevent.New(*cli, monSelectorFlag, true)
+		if err = m.DoWatch(getter, os.Stdout); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+			return
+		}
+	} else {
+		getter := status.New(*cli, monSelectorFlag)
+		m.Do(getter, os.Stdout)
+	}
 }

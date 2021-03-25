@@ -1,8 +1,11 @@
 package action
 
 import (
+	"fmt"
+	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"os"
 )
 
 type (
@@ -119,11 +122,14 @@ func Do(t actioner) {
 	}
 	if o.Watch {
 		m := monitor.New()
-		m.SetWatch(true)
 		m.SetColor(o.Color)
 		m.SetFormat(o.Format)
-		m.SetSelector(o.ObjectSelector)
-		m.SetServer(o.Server)
-		m.Do()
+		cli, err := client.New(client.URL(o.Server))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		getter := getevent.New(*cli, o.ObjectSelector, true)
+		m.DoWatch(getter, os.Stdout)
 	}
 }

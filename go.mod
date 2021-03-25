@@ -9,6 +9,7 @@ require (
 	github.com/fatih/color v1.10.0
 	github.com/gofrs/flock v0.8.0
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
+	github.com/golang/mock v1.5.0
 	github.com/google/uuid v1.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
