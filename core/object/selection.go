@@ -125,7 +125,9 @@ func (t *Selection) add(path Path) {
 func (t *Selection) expand() {
 	if !t.local {
 		if !t.hasClient {
-			c, _ := client.New().SetURL(t.server).Configure()
+			c, _ := client.New(
+				client.URL(t.server),
+			)
 			t.SetClient(c)
 		}
 		if err := t.daemonExpand(); err == nil {

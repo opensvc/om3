@@ -107,7 +107,7 @@ func (m T) Do() {
 		c   *client.T
 		err error
 	)
-	c, err = client.New().SetURL(m.server).Configure()
+	c, err = client.New(client.URL(m.server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

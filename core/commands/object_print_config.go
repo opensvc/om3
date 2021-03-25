@@ -93,7 +93,7 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		err  error
 	)
 	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	if c, err = client.New().SetURL(t.Server).Configure(); err != nil {
+	if c, err = client.New(client.URL(t.Server)); err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
