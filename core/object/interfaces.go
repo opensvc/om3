@@ -1,6 +1,9 @@
 package object
 
-import "opensvc.com/opensvc/config"
+import (
+	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/timestamp"
+)
 
 type (
 	// Renderer is implemented by data type stored in ActionResults.Data.
@@ -24,6 +27,7 @@ type (
 		Freeze() error
 		Unfreeze() error
 		Thaw() error
+		Frozen() timestamp.T
 	}
 
 	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...

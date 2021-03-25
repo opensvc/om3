@@ -82,6 +82,10 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 			Object: object.AggregatedStatus{},
 			Instances: map[string]object.InstanceStates{
 				config.Node.Hostname: {
+					Node: object.InstanceNode{
+						Name:   config.Node.Hostname,
+						Frozen: object.NewNode().Frozen(),
+					},
 					Status: status,
 				},
 			},

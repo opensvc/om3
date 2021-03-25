@@ -6,11 +6,22 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 // LockFile is the path of the file to use as an action lock.
 func (t *Node) frozenFile() string {
 	return filepath.Join(t.varDir(), "frozen")
+}
+
+// Frozen returns the unix timestamp of the last freeze.
+func (t *Node) Frozen() timestamp.T {
+	p := t.frozenFile()
+	fi, err := os.Stat(p)
+	if err != nil {
+		return timestamp.T{}
+	}
+	return timestamp.New(fi.ModTime())
 }
 
 //

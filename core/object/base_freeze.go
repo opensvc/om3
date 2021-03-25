@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 //
@@ -14,6 +15,16 @@ import (
 //
 func (t *Base) frozenFile() string {
 	return filepath.Join(t.varDir(), "frozen")
+}
+
+// Frozen returns the unix timestamp of the last freeze.
+func (t *Base) Frozen() timestamp.T {
+	p := t.frozenFile()
+	fi, err := os.Stat(p)
+	if err != nil {
+		return timestamp.T{}
+	}
+	return timestamp.New(fi.ModTime())
 }
 
 //
