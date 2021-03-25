@@ -22,6 +22,6 @@ type (
 // NewCfg allocates a cfg kind object.
 func NewCfg(path Path) *Cfg {
 	s := &Cfg{}
-	s.Path = path
+	s.Base.init(path)
 	return s
 }

@@ -52,9 +52,7 @@ func (t *CmdObjectGet) run(selector *string, kind string) {
 		},
 		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
-				options := object.ActionOptionsGet{}
-				options.Keyword = t.Keyword
-				return path.NewObject().(object.Configurer).Get(options)
+				return path.NewObject().(object.Configurer).Get(t.ActionOptionsGet)
 			},
 		},
 	}

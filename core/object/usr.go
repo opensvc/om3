@@ -16,6 +16,6 @@ type (
 // NewUsr allocates a usr kind object.
 func NewUsr(path Path) *Usr {
 	s := &Usr{}
-	s.Path = path
+	s.Base.init(path)
 	return s
 }

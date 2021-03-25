@@ -15,53 +15,107 @@ type (
 		clientKey          string
 		requester          Requester
 	}
+
+	// Option is a functional option configurer.
+	// https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
+	Option interface {
+		apply(t *T) error
+	}
+
+	optionFunc func(*T) error
 )
+
+func (fn optionFunc) apply(t *T) error {
+	return fn(t)
+}
 
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
 // make loadContext useless.
-func New() *T {
-	return &T{}
+func New(opts ...Option) (*T, error) {
+	t := &T{}
+	for _, opt := range opts {
+		if err := opt.apply(t); err != nil {
+			return nil, err
+		}
+	}
+	if err := t.Configure(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
-// SetURL sets the config key.
-func (t *T) SetURL(url string) *T {
-	t.url = url
-	return t
+//
+// URL is the option pointing the api location and protocol using the
+// [<scheme>://]<addr>[:<port>] format.
+//
+// Supported schemes:
+// * raw
+//   json rpc, AES-256-CBC encrypted payload if transported by AF_INET,
+//   cleartext on unix domain socket.
+// * https
+//   http/2 with TLS
+// * tls
+//   http/2 with TLS
+//
+// If unset, a unix domain socket connection and the http/2 protocol is
+// selected.
+//
+// If URL is a unix domain socket path, use the corresponding protocol.
+//
+// If scheme is omitted, select the http/2 protocol.
+//
+// Examples:
+// * /opt/opensvc/var/lsnr/lsnr.sock
+// * /opt/opensvc/var/lsnr/h2.sock
+// * https://acme.com:1215
+// * raw://acme.com:1214
+//
+func URL(url string) Option {
+	return optionFunc(func(t *T) error {
+		t.url = url
+		return nil
+	})
 }
 
-// SetInsecureSkipVerify sets the config key.
-func (t *T) SetInsecureSkipVerify(b bool) *T {
-	t.insecureSkipVerify = b
-	return t
+// InsecureSkipVerify skips certificate validity checks.
+func InsecureSkipVerify() Option {
+	return optionFunc(func(t *T) error {
+		t.insecureSkipVerify = true
+		return nil
+	})
 }
 
-// SetClientCertificate sets the config key.
-func (t *T) SetClientCertificate(s string) *T {
-	t.clientCertificate = s
-	return t
+// ClientCertificate sets the x509 client certificate.
+func ClientCertificate(s string) Option {
+	return optionFunc(func(t *T) error {
+		t.clientCertificate = s
+		return nil
+	})
 }
 
-// SetClientKey sets the config key.
-func (t *T) SetClientKey(s string) *T {
-	t.clientKey = s
-	return t
+// ClientKey sets the x509 client private key..
+func ClientKey(s string) Option {
+	return optionFunc(func(t *T) error {
+		t.clientKey = s
+		return nil
+	})
 }
 
 // Configure allocates a new requester with a requester for the server found in Config,
 // or for the server found in Context.
-func (t *T) Configure() (*T, error) {
+func (t *T) Configure() error {
 	if t.url == "" {
 		if err := t.loadContext(); err != nil {
-			return t, err
+			return err
 		}
 	}
 	err := t.newRequester()
 	if err != nil {
-		return t, err
+		return err
 	}
 	log.Debug().Msgf("connected %s", t.requester)
-	return t, nil
+	return nil
 }
 
 // newRequester allocates the Requester interface implementing struct selected

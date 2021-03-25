@@ -26,6 +26,7 @@ type (
 		local              bool
 		paths              []Path
 		installed          []Path
+		installedSet       *set.Set
 		server             string
 	}
 
@@ -43,35 +44,6 @@ type (
 		Run func(Path) (interface{}, error)
 	}
 
-	// Renderer is implemented by data type stored in ActionResults.Data.
-	Renderer interface {
-		Render() string
-	}
-
-	// Baser is implemented by all object kinds.
-	Baser interface {
-		Status(ActionOptionsStatus) (InstanceStatus, error)
-	}
-
-	// Starter is implemented by object kinds supporting start, stop, ...
-	Starter interface {
-		Start(ActionOptionsStart) error
-		Stop(ActionOptionsStop) error
-	}
-
-	// Freezer is implemented by object kinds supporting freeze and thaw.
-	Freezer interface {
-		Freeze() error
-		Unfreeze() error
-		Thaw() error
-	}
-
-	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
-	Configurer interface {
-		Get(ActionOptionsGet) (string, error)
-		Set(ActionOptionsSet) error
-	}
-
 	// ActionResult is a predictible type of actions return value, for reflect.
 	ActionResult struct {
 		Nodename      string        `json:"nodename"`
@@ -81,6 +53,10 @@ type (
 		Panic         interface{}   `json:"panic,omitempty"`
 		HumanRenderer func() string `json:"-"`
 	}
+)
+
+const (
+	expressionNegationPrefix = "!"
 )
 
 var (
@@ -149,7 +125,9 @@ func (t *Selection) add(path Path) {
 func (t *Selection) expand() {
 	if !t.local {
 		if !t.hasClient {
-			c := client.New().SetURL(t.server)
+			c, _ := client.New(
+				client.URL(t.server),
+			)
 			t.SetClient(c)
 		}
 		if err := t.daemonExpand(); err == nil {
@@ -157,6 +135,8 @@ func (t *Selection) expand() {
 		} else if client.WantContext() {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 			return
+		} else {
+			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
 	}
 	if err := t.localExpand(); err != nil {
@@ -208,7 +188,10 @@ func Installed() ([]Path, error) {
 }
 
 func (t *Selection) localExpand() error {
-	log.Debug().Msgf("%s local expansion", t)
+	log.Debug().
+		Str("selector", t.SelectorExpression).
+		Str("mode", "local").
+		Msg("expand selection")
 	for _, s := range strings.Split(t.SelectorExpression, ",") {
 		pset, err := t.localExpandIntersector(s)
 		if err != nil {
@@ -239,7 +222,33 @@ func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
 }
 
 func (t *Selection) localExpandOne(s string) (*set.Set, error) {
-	// t.localConfigExpand()
+	if strings.HasPrefix(s, expressionNegationPrefix) {
+		return t.localExpandOneNegative(s)
+	} else {
+		return t.localExpandOnePositive(s)
+	}
+}
+
+func (t *Selection) localExpandOneNegative(s string) (*set.Set, error) {
+	var (
+		positiveMatchSet *set.Set
+		installedSet     *set.Set
+		err              error
+	)
+	positiveExpression := strings.TrimLeft(s, expressionNegationPrefix)
+	positiveMatchSet, err = t.localExpandOnePositive(positiveExpression)
+	if err != nil {
+		return set.New(), err
+	}
+	installedSet, err = t.InstalledSet()
+	if err != nil {
+		return set.New(), err
+	}
+	negativeMatchSet := installedSet.Difference(positiveMatchSet)
+	return negativeMatchSet, nil
+}
+
+func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
 	switch {
 	case fnmatchExpressionRegex.MatchString(s):
 		return t.localFnmatchExpand(s)
@@ -262,6 +271,22 @@ func (t *Selection) Installed() ([]Path, error) {
 		return t.installed, err
 	}
 	return t.installed, nil
+}
+
+func (t *Selection) InstalledSet() (*set.Set, error) {
+	if t.installedSet != nil {
+		return t.installedSet, nil
+	}
+	var err error
+	t.installed, err = Installed()
+	if err != nil {
+		return t.installedSet, err
+	}
+	t.installedSet = set.New()
+	for _, p := range t.installed {
+		t.installedSet.Insert(p.String())
+	}
+	return t.installedSet, nil
 }
 
 func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
@@ -298,7 +323,10 @@ func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {
 }
 
 func (t *Selection) daemonExpand() error {
-	log.Debug().Msgf("%s daemon expansion", t)
+	log.Debug().
+		Str("selector", t.SelectorExpression).
+		Str("mode", "daemon").
+		Msg("expand selection")
 	if config.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
@@ -338,7 +366,11 @@ func (t *Selection) Do(action Action) []ActionResult {
 			result.Data = data
 			result.Error = err
 			result.HumanRenderer = func() string {
-				return data.(Renderer).Render()
+				r, ok := data.(Renderer)
+				if ok {
+					return r.Render()
+				}
+				return fmt.Sprintln(data)
 			}
 			q <- result
 		}(path)

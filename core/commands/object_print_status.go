@@ -82,6 +82,10 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 			Object: object.AggregatedStatus{},
 			Instances: map[string]object.InstanceStates{
 				config.Node.Hostname: {
+					Node: object.InstanceNode{
+						Name:   config.Node.Hostname,
+						Frozen: object.NewNode().Frozen(),
+					},
 					Status: status,
 				},
 			},
@@ -123,7 +127,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	var data []object.Status
 	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	c, err := client.New().SetURL(t.Server).Configure()
+	c, err := client.New(client.URL(t.Server))
 	if err == nil {
 		data = t.extract(mergedSelector, c)
 	}

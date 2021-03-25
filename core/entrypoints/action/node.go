@@ -62,7 +62,7 @@ func (t NodeAction) doLocal() {
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t NodeAction) doAsync() {
-	c, err := client.New().SetURL(t.Server).Configure()
+	c, err := client.New(client.URL(t.Server))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
@@ -85,7 +85,7 @@ func (t NodeAction) doAsync() {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t NodeAction) doRemote() {
-	c, err := client.New().SetURL(t.Server).Configure()
+	c, err := client.New(client.URL(t.Server))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)

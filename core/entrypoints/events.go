@@ -22,7 +22,7 @@ func (t Events) Do() {
 		err error
 		c   *client.T
 	)
-	c, err = client.New().SetURL(t.Server).Configure()
+	c, err = client.New(client.URL(t.Server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

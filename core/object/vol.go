@@ -17,6 +17,6 @@ type (
 // NewVol allocates a vol kind object.
 func NewVol(path Path) *Vol {
 	s := &Vol{}
-	s.Path = path
+	s.Base.init(path)
 	return s
 }

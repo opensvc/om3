@@ -22,6 +22,6 @@ type (
 // NewSec allocates a sec kind object.
 func NewSec(path Path) *Sec {
 	s := &Sec{}
-	s.Path = path
+	s.Base.init(path)
 	return s
 }

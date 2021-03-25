@@ -6,15 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"time"
+
 	"github.com/inancgumus/screen"
 	"github.com/rs/zerolog/log"
-	"io"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/util/jsondelta"
-	"os"
-	"time"
 )
 
 type (
