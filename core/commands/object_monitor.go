@@ -2,13 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/api/daemon/status"
 	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
-	"opensvc.com/opensvc/core/entrypoints/omonitor"
-	"os"
 )
 
 type (
@@ -34,7 +33,7 @@ func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
 		Use:     "monitor",
 		Aliases: []string{"mon", "moni", "monit", "monito"},
 		Short:   "Print selected service and instance status summary",
-		Long:    omonitor.CmdLong,
+		Long:    monitor.CmdLong,
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
@@ -43,7 +42,7 @@ func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	cli, err := client.New().SetURL(t.Server).Configure()
+	cli, err := client.New(client.URL(t.Server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

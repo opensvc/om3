@@ -124,7 +124,7 @@ func Do(t actioner) {
 		m := monitor.New()
 		m.SetColor(o.Color)
 		m.SetFormat(o.Format)
-		cli, err := client.New().SetURL(o.Server).Configure()
+		cli, err := client.New(client.URL(o.Server))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return

@@ -34,7 +34,7 @@ func daemonStatusCmdRun(cmd *cobra.Command, args []string) {
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
 
-	cli, err := client.New().SetURL(serverFlag).Configure()
+	cli, err := client.New(client.URL(serverFlag))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
