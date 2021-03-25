@@ -3,7 +3,7 @@ package monitor
 import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	mock_monitor "opensvc.com/opensvc/core/entrypoints/mocks"
+	"opensvc.com/opensvc/core/entrypoints/mock_monitor"
 	"testing"
 )
 
@@ -52,7 +52,6 @@ func TestMonitorOutputIsCorrect(t *testing.T) {
 
 	assert.Equal(t, string(spy.data), expected, "they should be equal")
 }
-
 
 func TestMonitorOutputIsCorrectWithGoMock(t *testing.T) {
 	ctrl := gomock.NewController(t)
