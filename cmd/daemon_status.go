@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
-
+	"opensvc.com/opensvc/core/api/daemon/status"
+	"opensvc.com/opensvc/core/api/getevent"
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"os"
 )
 
 var (
@@ -27,10 +31,19 @@ func init() {
 
 func daemonStatusCmdRun(cmd *cobra.Command, args []string) {
 	m := monitor.New()
-	m.SetWatch(daemonStatusWatchFlag)
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
-	m.SetServer(serverFlag)
-	m.SetSelector(daemonStatusSelectorFlag)
-	m.Do()
+
+	cli, err := client.New().SetURL(serverFlag).Configure()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	if daemonStatusWatchFlag {
+		getter := getevent.New(*cli, daemonStatusSelectorFlag, true)
+		m.DoWatch(getter, os.Stdout)
+	} else {
+		getter := status.New(*cli, daemonStatusSelectorFlag)
+		m.Do(getter, os.Stdout)
+	}
 }
