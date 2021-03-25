@@ -1,29 +1,28 @@
 package monitor
 
+//go:generate mockgen -source=main.go -destination=../mocks/monitor.go
+
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"time"
-
 	"github.com/inancgumus/screen"
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/core/client"
+	"io"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/util/jsondelta"
+	"os"
+	"time"
 )
 
 type (
 	// T is a monitor renderer instance. It stores the rendering options.
 	T struct {
-		watch    bool
 		color    string
 		format   string
 		selector string
-		server   string
 		sections []string
 		nodes    []string
 	}
@@ -53,27 +52,10 @@ Instance Flags:
 // New allocates a monitor.
 func New() T {
 	return T{
-		watch:    false,
 		selector: "*",
 		color:    "auto",
 		format:   "auto",
 	}
-}
-
-// SetServer sets the server option
-func (m *T) SetServer(v string) {
-	m.server = v
-}
-
-// SetSelector sets the selector option
-func (m *T) SetSelector(v string) {
-	m.selector = v
-}
-
-// SetWatch sets the watch option. Default is false. If true, listen to events
-// and re-render new cluster data.
-func (m *T) SetWatch(v bool) {
-	m.watch = v
 }
 
 // SetColor sets the color option. Default is "auto", interpreted as colored if
@@ -101,28 +83,18 @@ func (m *T) SetNodes(v []string) {
 	m.nodes = v
 }
 
-// Do renders the cluster status
-func (m T) Do() {
-	var (
-		c   *client.T
-		err error
-	)
-	c, err = client.New().SetURL(m.server).Configure()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
+type Getter interface {
+	Get() ([]byte, error)
+}
 
-	if m.watch {
-		if err = m.doWatch(c); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		return
-	}
-	handle := c.NewGetDaemonStatus()
-	handle.ObjectSelector = m.selector
-	b, err := handle.Do()
+type EventGetter interface {
+	GetRaw() (chan []byte, error)
+}
+
+// Do renders the cluster status
+func (m T) Do(getter Getter, out io.Writer) {
+	var err error
+	b, err := getter.Get()
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
@@ -132,10 +104,10 @@ func (m T) Do() {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
-	m.doOneshot(data, false)
+	m.doOneShot(data, false, out)
 }
 
-func (m T) doWatch(c *client.T) error {
+func (m T) DoWatch(eventGetter EventGetter, out io.Writer) error {
 	var (
 		data   cluster.Status
 		ok     bool
@@ -143,10 +115,7 @@ func (m T) doWatch(c *client.T) error {
 		evt    event.Event
 		events chan []byte
 	)
-	handle := c.NewGetEvents()
-	handle.Full = true
-	handle.ObjectSelector = m.selector
-	events, err = handle.DoRaw()
+	events, err = eventGetter.GetRaw()
 	if err != nil {
 		return err
 	}
@@ -163,7 +132,7 @@ func (m T) doWatch(c *client.T) error {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
-	m.doOneshot(data, true)
+	m.doOneShot(data, true, out)
 	for e := range events {
 		evt, err := event.DecodeFromJSON(e)
 		if err != nil {
@@ -178,7 +147,7 @@ func (m T) doWatch(c *client.T) error {
 			log.Error().Err(err).Msgf("unmarshal event data %v", e)
 			return err
 		}
-		m.doOneshot(data, true)
+		m.doOneShot(data, true, out)
 	}
 	return nil
 }
@@ -201,7 +170,7 @@ func handleEvent(b *[]byte, e event.Event) error {
 	return nil
 }
 
-func (m T) doOneshot(data cluster.Status, clear bool) {
+func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
 	human := func() string {
 		f := cluster.Frame{
 			Current:  data,
@@ -221,5 +190,5 @@ func (m T) doOneshot(data cluster.Status, clear bool) {
 		screen.Clear()
 		screen.MoveTopLeft()
 	}
-	fmt.Print(s)
+	_, _ = fmt.Fprint(out, s)
 }
