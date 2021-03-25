@@ -9,15 +9,15 @@ import (
 
 // GetEvents describes the events request options.
 type getEvent struct {
-	cli       client.StreamGetter `json:"-"`
-	namespace string              `json:"namespace"`
-	selector  string              `json:"selector"`
-	full      bool                `json:"full"`
+	cli       client.GetStreamer `json:"-"`
+	namespace string             `json:"namespace"`
+	selector  string             `json:"selector"`
+	full      bool               `json:"full"`
 }
 
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func New(cli client.StreamGetter, selector string, full bool) *getEvent {
+func New(cli client.GetStreamer, selector string, full bool) *getEvent {
 	return &getEvent{
 		cli:       cli,
 		namespace: "*",
