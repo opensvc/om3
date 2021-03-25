@@ -59,6 +59,15 @@ func (t *ActionOptionsEval) init(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&t.Eval, "eval", false, "dereference and evaluate arythmetic expressions in value")
 }
 
+// ActionOptionsImpersonate is a command line flag.
+type ActionOptionsImpersonate struct {
+	Impersonate string
+}
+
+func (t *ActionOptionsImpersonate) init(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&t.Impersonate, "impersonate", "", "impersonate a peer node when evaluating keywords")
+}
+
 // ActionOptionsKeyword is a command line flag.
 type ActionOptionsKeyword struct {
 	Keyword string
