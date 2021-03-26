@@ -218,7 +218,7 @@ type (
 	}
 
 	OptsResourceSelector struct {
-		Id     string `flag:"rid"`
+		ID     string `flag:"rid"`
 		Subset string `flag:"subsets"`
 		Tag    string `flag:"tags"`
 	}

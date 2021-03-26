@@ -41,6 +41,7 @@ type (
 		Status InstanceStatus `json:"status,omitempty"`
 	}
 
+	// InstanceNode contains the node information displayed in print status.
 	InstanceNode struct {
 		Name   string      `json:"name"`
 		Frozen timestamp.T `json:"frozen,omitempty"`
@@ -65,7 +66,7 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Path.String()).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(t.Object.Avail.ColorString())
-	head.AddColumn().AddText(t.DescString())
+	head.AddColumn().AddText(t.descString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
 	for _, data := range t.Instances {
@@ -119,7 +120,11 @@ func (t Status) loadTreeNodeSlaves(head *tree.Node) {
 	}
 }
 
-func (t Status) DescString() string {
+//
+// descString returns a string presenting notable information at the object,
+// instances-aggregated, level.
+//
+func (t Status) descString() string {
 	l := make([]string, 0)
 
 	// Overall if warn. Else no need to repeat an info we can guess from Avail.

@@ -11,11 +11,12 @@ type T struct {
 	tm time.Time
 }
 
+// New allocates a timestamp from the given time.
 func New(tm time.Time) T {
 	return T{tm: tm}
 }
 
-// New return a new timestamp for the present date.
+// Now return a new timestamp for the present date.
 func Now() T {
 	return T{tm: time.Now()}
 }
