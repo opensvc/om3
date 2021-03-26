@@ -6,22 +6,14 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 )
 
-// ActionOptionsStatus is the options of the Start object method.
-type ActionOptionsStatus struct {
-	ActionOptionsGlobal
-	ActionOptionsLocking
-	ActionOptionsRefresh
-	ObjectStatus Status
-}
-
-// Init declares the cobra flags associated with the type options
-func (t *ActionOptionsStatus) Init(cmd *cobra.Command) {
-	t.ActionOptionsGlobal.init(cmd)
-	t.ActionOptionsLocking.init(cmd)
-	t.ActionOptionsRefresh.init(cmd)
+// OptsStatus is the options of the Start object method.
+type OptsStatus struct {
+	Global  OptsGlobal
+	Lock    OptsLocking
+	Refresh bool `flag:"refresh"`
+	//Status string `flag:"status"`
 }
 
 func (t *Base) statusFile() string {
@@ -29,7 +21,7 @@ func (t *Base) statusFile() string {
 }
 
 // Status returns the service status dataset
-func (t *Base) Status(options ActionOptionsStatus) (InstanceStatus, error) {
+func (t *Base) Status(options OptsStatus) (InstanceStatus, error) {
 	var (
 		data InstanceStatus
 		err  error

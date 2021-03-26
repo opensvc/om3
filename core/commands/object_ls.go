@@ -3,15 +3,13 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
 	// CmdObjectLs is the cobra flag set of the ls command.
 	CmdObjectLs struct {
-		flagSetGlobal
-		flagSetObject
-		NodeSelector string
-		Local        bool
+		Global object.OptsGlobal
 	}
 )
 
@@ -19,9 +17,7 @@ type (
 func (t *CmdObjectLs) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	cmd.Flags().BoolVarP(&t.Local, "local", "", false, "Report only local instances")
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectLs) cmd(kind string, selector *string) *cobra.Command {
@@ -36,10 +32,10 @@ func (t *CmdObjectLs) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectLs) run(selector *string, kind string) {
 	entrypoints.List{
-		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, "**"),
-		Format:         t.Format,
-		Color:          t.Color,
-		Local:          t.Local,
-		Server:         t.Server,
+		ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, "**"),
+		Format:         t.Global.Format,
+		Color:          t.Global.Color,
+		Local:          t.Global.Local,
+		Server:         t.Global.Server,
 	}.Do()
 }

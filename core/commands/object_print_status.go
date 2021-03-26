@@ -15,10 +15,7 @@ import (
 type (
 	// CmdObjectPrintStatus is the cobra flag set of the status command.
 	CmdObjectPrintStatus struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAction
-		object.ActionOptionsStatus
+		object.OptsStatus
 	}
 )
 
@@ -26,10 +23,7 @@ type (
 func (t *CmdObjectPrintStatus) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAction.init(cmd)
-	t.ActionOptionsStatus.Init(cmd)
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command {
@@ -71,7 +65,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 	sel := object.NewSelection(selector).SetLocal(true)
 	for _, path := range sel.Expand() {
 		obj := path.NewBaser()
-		status, err := obj.Status(object.ActionOptionsStatus{})
+		status, err := obj.Status(t.OptsStatus)
 		if err != nil {
 			log.Debug().Err(err).Str("path", path.String()).Msg("extract local")
 			continue
@@ -126,14 +120,14 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	var data []object.Status
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	c, err := client.New(client.URL(t.Server))
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	c, err := client.New(client.URL(t.Global.Server))
 	if err == nil {
 		data = t.extract(mergedSelector, c)
 	}
 	output.Renderer{
-		Format: t.Format,
-		Color:  t.Color,
+		Format: t.Global.Format,
+		Color:  t.Global.Color,
 		Data:   data,
 		HumanRenderer: func() string {
 			s := ""

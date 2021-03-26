@@ -9,10 +9,7 @@ import (
 type (
 	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectSet struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAction
-		object.ActionOptionsSet
+		object.OptsSet
 	}
 )
 
@@ -20,10 +17,7 @@ type (
 func (t *CmdObjectSet) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAction.init(cmd)
-	t.ActionOptionsSet.Init(cmd)
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
@@ -39,22 +33,20 @@ func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectSet) run(selector *string, kind string) {
 	a := action.ObjectAction{
 		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			Local:          t.Local,
+			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
+			NodeSelector:   t.Global.NodeSelector,
+			Local:          t.Global.Local,
 			DefaultIsLocal: true,
 			Action:         "set",
 			Flags: map[string]interface{}{
 				"kw": t.KeywordOps,
 			},
-			Format: t.Format,
-			Color:  t.Color,
+			Format: t.Global.Format,
+			Color:  t.Global.Color,
 		},
 		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
-				options := object.ActionOptionsSet{}
-				options.KeywordOps = t.KeywordOps
-				return nil, path.NewObject().(object.Configurer).Set(options)
+				return nil, path.NewObject().(object.Configurer).Set(t.OptsSet)
 			},
 		},
 	}

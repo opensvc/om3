@@ -9,10 +9,8 @@ import (
 type (
 	// CmdObjectUnfreeze is the cobra flag set of the unfreeze command.
 	CmdObjectUnfreeze struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAsync
-		flagSetAction
+		Global object.OptsGlobal
+		Async  object.OptsAsync
 	}
 )
 
@@ -20,10 +18,7 @@ type (
 func (t *CmdObjectUnfreeze) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAsync.init(cmd)
-	t.flagSetAction.init(cmd)
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectUnfreeze) cmd(kind string, selector *string) *cobra.Command {
@@ -39,14 +34,14 @@ func (t *CmdObjectUnfreeze) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectUnfreeze) run(selector *string, kind string) {
 	a := action.ObjectAction{
 		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			Local:          t.Local,
+			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
+			NodeSelector:   t.Global.NodeSelector,
+			Local:          t.Global.Local,
 			Action:         "unfreeze",
 			Target:         "thawed",
-			Watch:          t.Watch,
-			Format:         t.Format,
-			Color:          t.Color,
+			Watch:          t.Async.Watch,
+			Format:         t.Global.Format,
+			Color:          t.Global.Color,
 		},
 		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {

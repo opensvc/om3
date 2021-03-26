@@ -3,19 +3,20 @@ package commands
 import (
 	"fmt"
 	"os"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/api/daemon/status"
 	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
 	// CmdObjectMonitor is the cobra flag set of the monitor command.
 	CmdObjectMonitor struct {
-		flagSetGlobal
-		flagSetObject
-		Watch bool
+		Global object.OptsGlobal
+		Watch  bool `flag:"watch"`
 	}
 )
 
@@ -23,9 +24,7 @@ type (
 func (t *CmdObjectMonitor) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	cmd.Flags().BoolVarP(&t.Watch, "watch", "w", false, "Watch the monitor changes")
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
@@ -41,16 +40,16 @@ func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectMonitor) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	cli, err := client.New(client.URL(t.Server))
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	cli, err := client.New(client.URL(t.Global.Server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 
 	m := monitor.New()
-	m.SetColor(t.Color)
-	m.SetFormat(t.Format)
+	m.SetColor(t.Global.Color)
+	m.SetFormat(t.Global.Format)
 	m.SetSections([]string{"objects"})
 
 	if t.Watch {

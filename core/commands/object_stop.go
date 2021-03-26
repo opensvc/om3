@@ -9,11 +9,7 @@ import (
 type (
 	// CmdObjectStop is the cobra flag set of the stop command.
 	CmdObjectStop struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAction
-		flagSetAsync
-		object.ActionOptionsStop
+		object.OptsStop
 	}
 )
 
@@ -21,11 +17,7 @@ type (
 func (t *CmdObjectStop) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAction.init(cmd)
-	t.flagSetAsync.init(cmd)
-	t.ActionOptionsStop.Init(cmd)
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
@@ -41,19 +33,19 @@ func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectStop) run(selector *string, kind string) {
 	a := action.ObjectAction{
 		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			Local:          t.Local,
+			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
+			NodeSelector:   t.Global.NodeSelector,
+			Local:          t.Global.Local,
 			Action:         "stop",
 			Target:         "stopped",
-			Watch:          t.Watch,
-			Format:         t.Format,
-			Color:          t.Color,
+			Watch:          t.Async.Watch,
+			Format:         t.Global.Format,
+			Color:          t.Global.Color,
 		},
 		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
 				intf := path.NewObject().(object.Starter)
-				return nil, intf.Stop(t.ActionOptionsStop)
+				return nil, intf.Stop(t.OptsStop)
 			},
 		},
 	}

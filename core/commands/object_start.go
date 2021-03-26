@@ -9,11 +9,7 @@ import (
 type (
 	// CmdObjectStart is the cobra flag set of the start command.
 	CmdObjectStart struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAction
-		flagSetAsync
-		object.ActionOptionsStart
+		object.OptsStart
 	}
 )
 
@@ -21,11 +17,7 @@ type (
 func (t *CmdObjectStart) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAction.init(cmd)
-	t.flagSetAsync.init(cmd)
-	t.ActionOptionsStart.Init(cmd)
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectStart) cmd(kind string, selector *string) *cobra.Command {
@@ -41,18 +33,18 @@ func (t *CmdObjectStart) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectStart) run(selector *string, kind string) {
 	a := action.ObjectAction{
 		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			Local:          t.Local,
+			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
+			NodeSelector:   t.Global.NodeSelector,
+			Local:          t.Global.Local,
 			Action:         "start",
 			Target:         "started",
-			Watch:          t.Watch,
-			Format:         t.Format,
-			Color:          t.Color,
+			Watch:          t.Async.Watch,
+			Format:         t.Global.Format,
+			Color:          t.Global.Color,
 		},
 		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
-				return nil, path.NewObject().(object.Starter).Start(t.ActionOptionsStart)
+				return nil, path.NewObject().(object.Starter).Start(t.OptsStart)
 			},
 		},
 	}

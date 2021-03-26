@@ -2,29 +2,20 @@ package object
 
 import (
 	"time"
-
-	"github.com/spf13/cobra"
 )
 
-// ActionOptionsStop is the options of the Stop object method.
-type ActionOptionsStop struct {
-	ActionOptionsGlobal
-	ActionOptionsLocking
-	ActionOptionsResources
-	ActionOptionsForce
-}
-
-// Init declares the cobra flags associated with the type options
-func (t *ActionOptionsStop) Init(cmd *cobra.Command) {
-	t.ActionOptionsGlobal.init(cmd)
-	t.ActionOptionsLocking.init(cmd)
-	t.ActionOptionsResources.init(cmd)
-	t.ActionOptionsForce.init(cmd)
+// OptsStop is the options of the Stop object method.
+type OptsStop struct {
+	Global           OptsGlobal
+	Async            OptsAsync
+	Lock             OptsLocking
+	ResourceSelector OptsResourceSelector
+	Force            bool `flag:"force"`
 }
 
 // Stop starts the local instance of the object
-func (t *Base) Stop(options ActionOptionsStop) error {
-	lock, err := t.Lock("", options.LockTimeout, "stop")
+func (t *Base) Stop(options OptsStop) error {
+	lock, err := t.Lock("", options.Lock.Timeout, "stop")
 	if err != nil {
 		return err
 	}

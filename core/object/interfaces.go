@@ -13,13 +13,13 @@ type (
 
 	// Baser is implemented by all object kinds.
 	Baser interface {
-		Status(ActionOptionsStatus) (InstanceStatus, error)
+		Status(OptsStatus) (InstanceStatus, error)
 	}
 
 	// Starter is implemented by object kinds supporting start, stop, ...
 	Starter interface {
-		Start(ActionOptionsStart) error
-		Stop(ActionOptionsStop) error
+		Start(OptsStart) error
+		Stop(OptsStop) error
 	}
 
 	// Freezer is implemented by object kinds supporting freeze and thaw.
@@ -34,6 +34,6 @@ type (
 	Configurer interface {
 		Config() *config.T
 		Get(OptsGet) (interface{}, error)
-		Set(ActionOptionsSet) error
+		Set(OptsSet) error
 	}
 )

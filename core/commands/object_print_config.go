@@ -16,9 +16,7 @@ import (
 type (
 	// CmdObjectPrintConfig is the cobra flag set of the print config command.
 	CmdObjectPrintConfig struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAction
+		Global object.OptsGlobal
 	}
 )
 
@@ -26,9 +24,7 @@ type (
 func (t *CmdObjectPrintConfig) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAction.init(cmd)
+	object.InstallFlags(cmd, t)
 }
 
 func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command {
@@ -92,8 +88,8 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		data []config.Raw
 		err  error
 	)
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	if c, err = client.New(client.URL(t.Server)); err != nil {
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	if c, err = client.New(client.URL(t.Global.Server)); err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
@@ -102,8 +98,8 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		os.Exit(1)
 	}
 	output.Renderer{
-		Format: t.Format,
-		Color:  t.Color,
+		Format: t.Global.Format,
+		Color:  t.Global.Color,
 		Data:   data,
 		HumanRenderer: func() string {
 			s := ""

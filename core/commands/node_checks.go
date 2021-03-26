@@ -9,9 +9,7 @@ import (
 type (
 	// CmdNodeChecks is the cobra flag set of the start command.
 	CmdNodeChecks struct {
-		flagSetGlobal
-		flagSetAction
-		object.ActionOptionsNodeChecks
+		object.OptsNodeChecks
 	}
 )
 
@@ -19,9 +17,7 @@ type (
 func (t *CmdNodeChecks) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetAction.init(cmd)
-	t.ActionOptionsNodeChecks.Init(cmd)
+	object.InstallFlags(cmd, &t.OptsNodeChecks)
 }
 
 func (t *CmdNodeChecks) cmd() *cobra.Command {
@@ -38,19 +34,18 @@ func (t *CmdNodeChecks) cmd() *cobra.Command {
 func (t *CmdNodeChecks) run() {
 	a := action.NodeAction{
 		Action: action.Action{
-			NodeSelector: t.NodeSelector,
-			Local:        t.Local,
+			NodeSelector: t.Global.NodeSelector,
+			Local:        t.Global.Local,
 			Action:       "checks",
 			PostFlags: map[string]interface{}{
-				"format": t.Format,
+				"format": t.Global.Format,
 			},
-			Format: t.Format,
-			Color:  t.Color,
+			Format: t.Global.Format,
+			Color:  t.Global.Color,
 		},
 		Node: object.NodeAction{
 			Run: func() (interface{}, error) {
-				opts := object.ActionOptionsNodeChecks{}
-				return object.NewNode().Checks(opts), nil
+				return object.NewNode().Checks(t.OptsNodeChecks), nil
 			},
 		},
 	}
