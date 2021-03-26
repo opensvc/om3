@@ -5,8 +5,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/api/daemon/status"
-	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"opensvc.com/opensvc/core/object"
