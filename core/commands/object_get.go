@@ -9,10 +9,7 @@ import (
 type (
 	// CmdObjectGet is the cobra flag set of the get command.
 	CmdObjectGet struct {
-		flagSetGlobal
-		flagSetObject
-		flagSetAction
-		object.ActionOptionsGet
+		object.OptsGet
 	}
 )
 
@@ -20,16 +17,13 @@ type (
 func (t *CmdObjectGet) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	t.flagSetGlobal.init(cmd)
-	t.flagSetObject.init(cmd)
-	t.flagSetAction.init(cmd)
-	t.ActionOptionsGet.Init(cmd)
+	object.InstallFlags(cmd, &t.OptsGet)
 }
 
 func (t *CmdObjectGet) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get",
-		Short: "Get a configuration key raw value",
+		Short: "Get a configuration key value.",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
@@ -39,20 +33,20 @@ func (t *CmdObjectGet) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectGet) run(selector *string, kind string) {
 	a := action.ObjectAction{
 		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, ""),
-			NodeSelector:   t.NodeSelector,
-			Local:          t.Local,
+			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
+			NodeSelector:   t.Global.NodeSelector,
+			Local:          t.Global.Local,
 			DefaultIsLocal: true,
 			Action:         "get",
 			Flags: map[string]interface{}{
 				"kw": t.Keyword,
 			},
-			Format: t.Format,
-			Color:  t.Color,
+			Format: t.Global.Format,
+			Color:  t.Global.Color,
 		},
 		Object: object.Action{
 			Run: func(path object.Path) (interface{}, error) {
-				return path.NewObject().(object.Configurer).Get(t.ActionOptionsGet)
+				return path.NewObject().(object.Configurer).Get(t.OptsGet)
 			},
 		},
 	}

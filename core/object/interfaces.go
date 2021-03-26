@@ -33,7 +33,7 @@ type (
 	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
 	Configurer interface {
 		Config() *config.T
-		Get(ActionOptionsGet) (interface{}, error)
+		Get(OptsGet) (interface{}, error)
 		Set(ActionOptionsSet) error
 	}
 )

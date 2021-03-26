@@ -1,27 +1,16 @@
 package object
 
-import (
-	"github.com/spf13/cobra"
-)
-
-// ActionOptionsGet is the options of the Get object method.
-type ActionOptionsGet struct {
-	ActionOptionsGlobal
-	ActionOptionsLocking
-	ActionOptionsKeyword
-	ActionOptionsEval
+// OptsBaseGet is the options of the Get function of all base objects.
+type OptsGet struct {
+	Global      OptsGlobal
+	Lock        OptsLocking
+	Keyword     string `flag:"kw"`
+	Eval        bool   `flag:"eval"`
+	Impersonate bool   `flag:"impersonate"`
 }
 
-// Init declares the cobra flags associated with the type options
-func (t *ActionOptionsGet) Init(cmd *cobra.Command) {
-	t.ActionOptionsGlobal.init(cmd)
-	t.ActionOptionsLocking.init(cmd)
-	t.ActionOptionsKeyword.init(cmd)
-	t.ActionOptionsEval.init(cmd)
-}
-
-// Get gets a keyword value
-func (t *Base) Get(options ActionOptionsGet) (interface{}, error) {
+// Get returns a keyword value
+func (t *Base) Get(options OptsGet) (interface{}, error) {
 	if options.Eval {
 		return t.config.Eval(options.Keyword)
 	} else {
