@@ -27,8 +27,12 @@ func (t Events) Do() {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	handle := c.NewGetEvents()
-	events, err := handle.Do()
+	streamer, err := client.NewGetEvents(c, client.WithRelatives(false))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	events, err := streamer.Do()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

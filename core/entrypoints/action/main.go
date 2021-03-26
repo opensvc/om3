@@ -2,7 +2,6 @@ package action
 
 import (
 	"fmt"
-	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"os"
@@ -129,7 +128,7 @@ func Do(t actioner) {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
-		getter := getevent.New(*cli, o.ObjectSelector, true)
+		getter, _ := client.NewGetEvents(*cli, client.WithSelector(o.ObjectSelector))
 		m.DoWatch(getter, os.Stdout)
 	}
 }
