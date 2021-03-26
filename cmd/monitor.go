@@ -43,7 +43,7 @@ func monCmdRun(_ *cobra.Command, _ []string) {
 			return
 		}
 	} else {
-		getter, _ := client.NewGetDaemonStatusB(*cli, client.WithSelector(monSelectorFlag))
+		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(monSelectorFlag))
 		m.Do(getter, os.Stdout)
 	}
 }

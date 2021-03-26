@@ -41,7 +41,7 @@ func daemonStatusCmdRun(cmd *cobra.Command, args []string) {
 		getter, _ := client.NewGetEvents(*cli, client.WithSelector(daemonStatusSelectorFlag))
 		m.DoWatch(getter, os.Stdout)
 	} else {
-		getter, _ := client.NewGetDaemonStatusB(*cli, client.WithSelector(daemonStatusSelectorFlag))
+		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(daemonStatusSelectorFlag))
 		m.Do(getter, os.Stdout)
 	}
 }

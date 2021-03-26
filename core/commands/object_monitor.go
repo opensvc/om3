@@ -54,7 +54,7 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 		getter, _ := client.NewGetEvents(*cli, client.WithSelector(mergedSelector))
 		m.DoWatch(getter, os.Stdout)
 	} else {
-		getter, _ := client.NewGetDaemonStatusB(*cli, client.WithSelector(mergedSelector))
+		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(mergedSelector))
 		m.Do(getter, os.Stdout)
 	}
 }

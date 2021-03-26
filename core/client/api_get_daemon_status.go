@@ -16,7 +16,7 @@ type getDaemonStatus struct {
 	//relatives bool   `json:"relatives,omitempty"`
 }
 
-func NewGetDaemonStatusB(cli Getter, opts ...OptionExtra) (*getDaemonStatus, error) {
+func NewGetDaemonStatus(cli Getter, opts ...OptionExtra) (*getDaemonStatus, error) {
 	options := getDaemonStatus{
 		cli,
 		&Namespace{""},
