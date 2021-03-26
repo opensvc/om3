@@ -103,7 +103,7 @@ type (
 
 	// ResourceStatus describes the status of a resource of an instance of an object.
 	ResourceStatus struct {
-		ResourceId  ResourceId              `json:"-"`
+		ResourceID  ResourceID              `json:"-"`
 		Label       string                  `json:"label"`
 		Log         []string                `json:"log,omitempty"`
 		Status      status.T                `json:"status"`
@@ -177,6 +177,7 @@ func (t ResourceRunningSet) Has(rid string) bool {
 	return false
 }
 
+// UnmarshalJSON serializes the type instance as JSON.
 func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
 	type tempT InstanceStatus
 	temp := tempT(InstanceStatus{
@@ -190,10 +191,16 @@ func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+//
+// SortedResources returns a list of resource identifiers sorted by:
+// 1/ driver group
+// 2/ subset
+// 3/ resource name
+//
 func (t *InstanceStatus) SortedResources() []ResourceStatus {
 	l := make([]ResourceStatus, 0)
 	for k, v := range t.Resources {
-		v.ResourceId = *NewResourceId(k)
+		v.ResourceID = *NewResourceID(k)
 		l = append(l, v)
 	}
 	sort.Sort(ResourceOrder(l))
@@ -204,9 +211,9 @@ func (a ResourceOrder) Len() int      { return len(a) }
 func (a ResourceOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ResourceOrder) Less(i, j int) bool {
 	switch {
-	case a[i].ResourceId.DriverGroup() < a[j].ResourceId.DriverGroup():
+	case a[i].ResourceID.DriverGroup() < a[j].ResourceID.DriverGroup():
 		return true
-	case a[i].ResourceId.DriverGroup() > a[j].ResourceId.DriverGroup():
+	case a[i].ResourceID.DriverGroup() > a[j].ResourceID.DriverGroup():
 		return false
 	// same driver group
 	case a[i].Subset < a[j].Subset:
@@ -215,6 +222,6 @@ func (a ResourceOrder) Less(i, j int) bool {
 		return false
 	// and same subset
 	default:
-		return a[i].ResourceId.Name < a[j].ResourceId.Name
+		return a[i].ResourceID.Name < a[j].ResourceID.Name
 	}
 }

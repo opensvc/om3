@@ -224,9 +224,8 @@ func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
 func (t *Selection) localExpandOne(s string) (*set.Set, error) {
 	if strings.HasPrefix(s, expressionNegationPrefix) {
 		return t.localExpandOneNegative(s)
-	} else {
-		return t.localExpandOnePositive(s)
 	}
+	return t.localExpandOnePositive(s)
 }
 
 func (t *Selection) localExpandOneNegative(s string) (*set.Set, error) {
@@ -240,7 +239,7 @@ func (t *Selection) localExpandOneNegative(s string) (*set.Set, error) {
 	if err != nil {
 		return set.New(), err
 	}
-	installedSet, err = t.InstalledSet()
+	installedSet, err = t.getInstalledSet()
 	if err != nil {
 		return set.New(), err
 	}
@@ -259,9 +258,11 @@ func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
 	}
 }
 
-// Installed returns the list of all paths with a locally installed
+//
+// getInstalled returns the list of all paths with a locally installed
 // configuration file.
-func (t *Selection) Installed() ([]Path, error) {
+//
+func (t *Selection) getInstalled() ([]Path, error) {
 	if t.installed != nil {
 		return t.installed, nil
 	}
@@ -273,7 +274,7 @@ func (t *Selection) Installed() ([]Path, error) {
 	return t.installed, nil
 }
 
-func (t *Selection) InstalledSet() (*set.Set, error) {
+func (t *Selection) getInstalledSet() (*set.Set, error) {
 	if t.installedSet != nil {
 		return t.installedSet, nil
 	}
@@ -310,7 +311,7 @@ func (t *Selection) localExactExpand(s string) (*set.Set, error) {
 
 func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {
 	matching := set.New()
-	paths, err := t.Installed()
+	paths, err := t.getInstalled()
 	if err != nil {
 		return matching, err
 	}

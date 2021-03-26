@@ -8,22 +8,22 @@ import (
 	"opensvc.com/opensvc/core/drivergroup"
 )
 
-type ResourceId struct {
+type ResourceID struct {
 	Name        string
 	driverGroup drivergroup.T
 	index       string
 	initialized bool
 }
 
-func (t ResourceId) String() string {
+func (t ResourceID) String() string {
 	return t.Name
 }
 
-func NewResourceId(s string) *ResourceId {
-	return &ResourceId{Name: s}
+func NewResourceID(s string) *ResourceID {
+	return &ResourceID{Name: s}
 }
 
-func (t *ResourceId) splitName() {
+func (t *ResourceID) splitName() {
 	if t.initialized {
 		return
 	}
@@ -35,21 +35,21 @@ func (t *ResourceId) splitName() {
 	t.initialized = true
 }
 
-func (t *ResourceId) DriverGroup() drivergroup.T {
+func (t *ResourceID) DriverGroup() drivergroup.T {
 	t.splitName()
 	return t.driverGroup
 }
 
-func (t *ResourceId) Index() string {
+func (t *ResourceID) Index() string {
 	t.splitName()
 	return t.index
 }
 
-func (t ResourceId) MarshalJSON() ([]byte, error) {
+func (t ResourceID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.Name)
 }
 
-func (t *ResourceId) UnmarshalJSON(b []byte) error {
+func (t *ResourceID) UnmarshalJSON(b []byte) error {
 	var temp string
 	if err := json.Unmarshal(b, &temp); err != nil {
 		log.Error().Err(err).Msg("unmarshal ResourceId")

@@ -28,7 +28,7 @@ type (
 func InstallFlags(cmd *cobra.Command, data interface{}) {
 	v := reflect.ValueOf(data).Elem()
 	t := v.Type()
-	for i := 0; i < t.NumField(); i += 1 {
+	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
 		fv := v.Field(i)
 		switch fv.Kind() {

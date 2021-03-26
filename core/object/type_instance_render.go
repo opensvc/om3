@@ -40,7 +40,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 			if r.Subset == "" {
 				subsetNode = head
 			} else {
-				resourceSetName := r.ResourceId.DriverGroup().Name() + ":" + r.Subset
+				resourceSetName := r.ResourceID.DriverGroup().Name() + ":" + r.Subset
 				subsetNode = head.AddNode()
 				subsetNode.AddColumn().AddText(resourceSetName)
 				subsetNode.AddColumn()
@@ -56,8 +56,8 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 			lastSubset = r.Subset
 		}
 		n := subsetNode.AddNode()
-		n.AddColumn().AddText(r.ResourceId.Name)
-		n.AddColumn().AddText(t.Status.resourceFlagsString(r.ResourceId, r))
+		n.AddColumn().AddText(r.ResourceID.Name)
+		n.AddColumn().AddText(t.Status.resourceFlagsString(r.ResourceID, r))
 		n.AddColumn().AddText(r.Status.ColorString())
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
@@ -143,7 +143,7 @@ func (t InstanceStates) descString() string {
 //   P  Provisioned
 //   S  Standby
 //
-func (t InstanceStatus) resourceFlagsString(rid ResourceId, r ResourceStatus) string {
+func (t InstanceStatus) resourceFlagsString(rid ResourceID, r ResourceStatus) string {
 	flags := ""
 
 	// Running task or sync
