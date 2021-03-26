@@ -7,14 +7,14 @@ type (
 		Get(req Request) ([]byte, error)
 	}
 
-	StreamGetter interface {
+	GetStreamer interface {
 		GetStream(req Request) (chan []byte, error)
 	}
 
 	// Requester abstracts the requesting details of supported protocols
 	Requester interface {
 		Getter
-		StreamGetter
+		GetStreamer
 		Post(req Request) ([]byte, error)
 		Put(req Request) ([]byte, error)
 		Delete(req Request) ([]byte, error)

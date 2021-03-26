@@ -1,30 +1,51 @@
 package client
 
-// GetDaemonStatus describes the daemon status api handler options.
-type GetDaemonStatus struct {
-	client         *T     `json:"-"`
-	Namespace      string `json:"namespace,omitempty"`
-	ObjectSelector string `json:"selector,omitempty"`
-	Relatives      bool   `json:"relatives,omitempty"`
+import (
+	"errors"
+	"fmt"
+)
+
+type getDaemonStatus struct {
+	cli Getter
+	*Namespace
+	*Selector
+	*Relatives
+	//cli       Getter `json:"-"`
+	//namespace string `json:"namespace,omitempty"`
+	//selector  string `json:"selector,omitempty"`
+	//relatives bool   `json:"relatives,omitempty"`
 }
 
-// NewGetDaemonStatus allocates a DaemonStatusOptions struct and sets
-// default values to its keys.
-func (t *T) NewGetDaemonStatus() *GetDaemonStatus {
-	return &GetDaemonStatus{
-		client:         t,
-		Namespace:      "",
-		ObjectSelector: "*",
-		Relatives:      false,
+func NewGetDaemonStatus(cli Getter, opts ...OptionExtra) (*getDaemonStatus, error) {
+	options := getDaemonStatus{
+		cli,
+		&Namespace{""},
+		&Selector{"*"},
+		&Relatives{false},
 	}
+
+	for _, o := range opts {
+		switch t := o.(type) {
+		case SelectorType:
+			_ = t.apply(options.Selector)
+		case NamespaceType:
+			_ = t.apply(options.Namespace)
+		case RelativesType:
+			_ = t.apply(options.Relatives)
+		default:
+			message := fmt.Sprintf("non allowed option type %T", t)
+			return nil, errors.New(message)
+		}
+	}
+	return &options, nil
 }
 
-// Do fetchs the daemon status structure from the agent api
-func (o GetDaemonStatus) Do() ([]byte, error) {
-	opts := NewRequest()
-	opts.Action = "daemon_status"
-	opts.Options["namespace"] = o.Namespace
-	opts.Options["selector"] = o.ObjectSelector
-	opts.Options["relatives"] = o.Relatives
-	return o.client.Get(*opts)
+// GetDaemonStatus fetchs the daemon status structure from the agent api
+func (c *getDaemonStatus) Get() ([]byte, error) {
+	request := NewRequest()
+	request.Action = "daemon_status"
+	request.Options["namespace"] = c.NamespaceValue()
+	request.Options["selector"] = c.SelectorValue()
+	request.Options["relatives"] = c.RelativesValue()
+	return c.cli.Get(*request)
 }

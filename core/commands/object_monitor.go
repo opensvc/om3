@@ -5,8 +5,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/api/daemon/status"
-	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"opensvc.com/opensvc/core/object"
@@ -53,10 +51,10 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	m.SetSections([]string{"objects"})
 
 	if t.Watch {
-		getter := getevent.New(*cli, mergedSelector, true)
+		getter, _ := client.NewGetEvents(*cli, client.WithSelector(mergedSelector))
 		m.DoWatch(getter, os.Stdout)
 	} else {
-		getter := status.New(*cli, mergedSelector)
+		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(mergedSelector))
 		m.Do(getter, os.Stdout)
 	}
 }

@@ -3,8 +3,6 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/api/daemon/status"
-	"opensvc.com/opensvc/core/api/getevent"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"os"
@@ -39,13 +37,13 @@ func monCmdRun(_ *cobra.Command, _ []string) {
 		return
 	}
 	if monWatchFlag {
-		getter := getevent.New(*cli, monSelectorFlag, true)
+		getter, _ := client.NewGetEvents(*cli, client.WithSelector(monSelectorFlag))
 		if err = m.DoWatch(getter, os.Stdout); err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 			return
 		}
 	} else {
-		getter := status.New(*cli, monSelectorFlag)
+		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(monSelectorFlag))
 		m.Do(getter, os.Stdout)
 	}
 }

@@ -1,6 +1,6 @@
 package monitor
 
-//go:generate mockgen -source=main.go -destination=../mocks/monitor.go
+//go:generate mockgen -source=main.go -destination=../mock_monitor/main.go
 
 import (
 	"encoding/json"
