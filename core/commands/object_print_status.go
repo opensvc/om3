@@ -107,7 +107,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 		return []object.Status{}, err
 	}
 	data := make([]object.Status, 0)
-	for p, _ := range clusterStatus.Monitor.Services {
+	for p := range clusterStatus.Monitor.Services {
 		path, err := object.NewPathFromString(p)
 		if err != nil {
 			log.Debug().Err(err).Str("path", p).Msg("extractFromDaemon")

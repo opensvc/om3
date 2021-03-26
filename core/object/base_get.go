@@ -1,6 +1,6 @@
 package object
 
-// OptsBaseGet is the options of the Get function of all base objects.
+// OptsGet is the options of the Get function of all base objects.
 type OptsGet struct {
 	Global      OptsGlobal
 	Lock        OptsLocking
@@ -13,7 +13,6 @@ type OptsGet struct {
 func (t *Base) Get(options OptsGet) (interface{}, error) {
 	if options.Eval {
 		return t.config.Eval(options.Keyword)
-	} else {
-		return t.config.Get(options.Keyword)
 	}
+	return t.config.Get(options.Keyword)
 }

@@ -86,16 +86,16 @@ func InsecureSkipVerify() Option {
 	})
 }
 
-// ClientCertificate sets the x509 client certificate.
-func ClientCertificate(s string) Option {
+// Certificate sets the x509 client certificate.
+func Certificate(s string) Option {
 	return optionFunc(func(t *T) error {
 		t.clientCertificate = s
 		return nil
 	})
 }
 
-// ClientKey sets the x509 client private key..
-func ClientKey(s string) Option {
+// Key sets the x509 client private key..
+func Key(s string) Option {
 	return optionFunc(func(t *T) error {
 		t.clientKey = s
 		return nil

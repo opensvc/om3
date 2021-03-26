@@ -4,7 +4,7 @@ import (
 	"opensvc.com/opensvc/config"
 )
 
-// PrintConfigOptions is the options of the PrintConfig object method.
+// OptsPrintConfig is the options of the PrintConfig object method.
 type OptsPrintConfig struct {
 	Global      OptsGlobal
 	Lock        OptsLocking
@@ -17,7 +17,6 @@ func (t *Base) PrintConfig(options OptsPrintConfig) (config.Raw, error) {
 	if options.Eval {
 		// TODO
 		return config.Raw{}, nil
-	} else {
-		return t.config.Raw(), nil
 	}
+	return t.config.Raw(), nil
 }
