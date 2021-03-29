@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -43,22 +43,18 @@ func (t *CmdObjectStatus) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectStatus) run(selector *string, kind string) {
-	a := action.ObjectAction{
-		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
-			NodeSelector:   t.Global.NodeSelector,
-			DefaultIsLocal: true,
-			Local:          t.Global.Local,
-			Format:         t.Global.Format,
-			Color:          t.Global.Color,
-			Action:         "status",
-		},
-		Object: object.Action{
-			Run: func(path object.Path) (interface{}, error) {
-				intf := path.NewObject().(object.Baser)
-				return intf.Status(t.OptsStatus)
-			},
-		},
-	}
-	action.Do(a)
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	objectaction.New(
+		objectaction.LocalFirst(),
+		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithLocal(t.Global.Local),
+		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithColor(t.Global.Color),
+		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithRemoteAction("status"),
+		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
+			intf := path.NewObject().(object.Baser)
+			return intf.Status(t.OptsStatus)
+		}),
+	).Do()
 }

@@ -367,6 +367,9 @@ func (t *Selection) Do(action Action) []ActionResult {
 			result.Data = data
 			result.Error = err
 			result.HumanRenderer = func() string {
+				if data == nil {
+					return ""
+				}
 				r, ok := data.(Renderer)
 				if ok {
 					return r.Render()

@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -31,24 +31,20 @@ func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectSet) run(selector *string, kind string) {
-	a := action.ObjectAction{
-		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
-			NodeSelector:   t.Global.NodeSelector,
-			Local:          t.Global.Local,
-			DefaultIsLocal: true,
-			Action:         "set",
-			Flags: map[string]interface{}{
-				"kw": t.KeywordOps,
-			},
-			Format: t.Global.Format,
-			Color:  t.Global.Color,
-		},
-		Object: object.Action{
-			Run: func(path object.Path) (interface{}, error) {
-				return nil, path.NewObject().(object.Configurer).Set(t.OptsSet)
-			},
-		},
-	}
-	action.Do(a)
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	objectaction.New(
+		objectaction.LocalFirst(),
+		objectaction.WithLocal(t.Global.Local),
+		objectaction.WithColor(t.Global.Color),
+		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithRemoteAction("set"),
+		objectaction.WithRemoteOptions(map[string]interface{}{
+			"kw": t.KeywordOps,
+		}),
+		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
+			return nil, path.NewObject().(object.Configurer).Set(t.OptsSet)
+		}),
+	).Do()
 }

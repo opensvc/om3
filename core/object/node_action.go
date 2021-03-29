@@ -1,6 +1,8 @@
 package object
 
 import (
+	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/config"
 )
@@ -31,7 +33,14 @@ func (t *Node) Do(action NodeAction) ActionResult {
 			Msg("do")
 	}
 	result.HumanRenderer = func() string {
-		return data.(Renderer).Render()
+		if data == nil {
+			return ""
+		}
+		r, ok := data.(Renderer)
+		if ok {
+			return r.Render()
+		}
+		return fmt.Sprintln(data)
 	}
 	return result
 }

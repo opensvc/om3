@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/entrypoints/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -32,22 +32,18 @@ func (t *CmdNodeChecks) cmd() *cobra.Command {
 }
 
 func (t *CmdNodeChecks) run() {
-	a := action.NodeAction{
-		Action: action.Action{
-			NodeSelector: t.Global.NodeSelector,
-			Local:        t.Global.Local,
-			Action:       "checks",
-			PostFlags: map[string]interface{}{
-				"format": t.Global.Format,
-			},
-			Format: t.Global.Format,
-			Color:  t.Global.Color,
-		},
-		Node: object.NodeAction{
-			Run: func() (interface{}, error) {
-				return object.NewNode().Checks(t.OptsNodeChecks), nil
-			},
-		},
-	}
-	action.Do(a)
+	nodeaction.New(
+		nodeaction.WithLocal(t.Global.Local),
+		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
+		nodeaction.WithFormat(t.Global.Format),
+		nodeaction.WithColor(t.Global.Color),
+		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithRemoteAction("checks"),
+		nodeaction.WithRemoteOptions(map[string]interface{}{
+			"format": t.Global.Format,
+		}),
+		nodeaction.WithLocalRun(func() (interface{}, error) {
+			return object.NewNode().Checks(t.OptsNodeChecks), nil
+		}),
+	).Do()
 }

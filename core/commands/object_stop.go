@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -31,23 +31,19 @@ func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectStop) run(selector *string, kind string) {
-	a := action.ObjectAction{
-		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
-			NodeSelector:   t.Global.NodeSelector,
-			Local:          t.Global.Local,
-			Action:         "stop",
-			Target:         "stopped",
-			Watch:          t.Async.Watch,
-			Format:         t.Global.Format,
-			Color:          t.Global.Color,
-		},
-		Object: object.Action{
-			Run: func(path object.Path) (interface{}, error) {
-				intf := path.NewObject().(object.Starter)
-				return nil, intf.Stop(t.OptsStop)
-			},
-		},
-	}
-	action.Do(a)
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	objectaction.New(
+		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithLocal(t.Global.Local),
+		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithColor(t.Global.Color),
+		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithRemoteAction("stop"),
+		objectaction.WithAsyncTarget("stopped"),
+		objectaction.WithAsyncWatch(t.Async.Watch),
+		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
+			intf := path.NewObject().(object.Starter)
+			return nil, intf.Stop(t.OptsStop)
+		}),
+	).Do()
 }

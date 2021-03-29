@@ -2,14 +2,15 @@ package action
 
 import (
 	"fmt"
+	"os"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
-	"os"
 )
 
 type (
-	// Action switches between local, remote or async mode for a command action
-	Action struct {
+	// T holds the action options common to all actioner implementations.
+	T struct {
 		//
 		// ObjectSelector expands into a selection of objects to execute
 		// the action on.
@@ -93,31 +94,31 @@ type (
 		Server string
 	}
 
-	// actioner is a interface implemented for node and object.
-	actioner interface {
-		doRemote()
-		doLocal()
-		doAsync()
-		options() Action
+	// Actioner is the interface implemented by nodeaction.T and objectaction.T
+	Actioner interface {
+		DoRemote()
+		DoLocal()
+		DoAsync()
+		Options() T
 	}
 )
 
 // Do is the switch method between local, remote or async mode.
 // If Watch is set, end up starting a monitor on the selected objects.
-func Do(t actioner) {
-	o := t.options()
+func Do(t Actioner) {
+	o := t.Options()
 	switch {
 	case o.NodeSelector != "":
-		t.doRemote()
+		t.DoRemote()
 	case o.Local || o.DefaultIsLocal:
-		t.doLocal()
+		t.DoLocal()
 	case o.Target != "":
-		t.doAsync()
+		t.DoAsync()
 	case !client.WantContext():
-		t.doLocal()
+		t.DoLocal()
 	default:
 		// post action on context endpoint
-		t.doRemote()
+		t.DoRemote()
 	}
 	if o.Watch {
 		m := monitor.New()

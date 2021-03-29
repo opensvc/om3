@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/entrypoints/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -20,25 +20,22 @@ var nodeFreezeCmd = &cobra.Command{
 
 func init() {
 	nodeCmd.AddCommand(nodeFreezeCmd)
+	nodeFreezeCmd.Flags().StringVarP(&nodeFreezeNodeFlag, "node", "", "", "the nodes to execute the action on")
 	nodeFreezeCmd.Flags().BoolVarP(&nodeFreezeLocalFlag, "local", "", false, "Freeze inline the selected local instances.")
 	nodeFreezeCmd.Flags().BoolVarP(&nodeFreezeWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }
 
 func nodeFreezeCmdRun(cmd *cobra.Command, args []string) {
-	a := action.NodeAction{
-		Action: action.Action{
-			NodeSelector: nodeFreezeNodeFlag,
-			Action:       "freeze",
-			Target:       "frozen",
-			Watch:        nodeFreezeWatchFlag,
-			Format:       formatFlag,
-			Color:        colorFlag,
-		},
-		Node: object.NodeAction{
-			Run: func() (interface{}, error) {
-				return nil, object.NewNode().Freeze()
-			},
-		},
-	}
-	action.Do(a)
+	nodeaction.New(
+		nodeaction.WithRemoteNodes(nodeFreezeNodeFlag),
+		nodeaction.WithRemoteAction("freeze"),
+		nodeaction.WithAsyncTarget("frozen"),
+		nodeaction.WithAsyncWatch(nodeFreezeWatchFlag),
+		nodeaction.WithFormat(formatFlag),
+		nodeaction.WithColor(colorFlag),
+		nodeaction.WithLocal(nodeFreezeLocalFlag),
+		nodeaction.WithLocalRun(func() (interface{}, error) {
+			return nil, object.NewNode().Freeze()
+		}),
+	).Do()
 }

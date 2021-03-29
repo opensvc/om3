@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/action"
+	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -32,23 +32,20 @@ func (t *CmdObjectFreeze) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectFreeze) run(selector *string, kind string) {
-	a := action.ObjectAction{
-		Action: action.Action{
-			ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, ""),
-			NodeSelector:   t.Global.NodeSelector,
-			Local:          t.Global.Local,
-			Action:         "freeze",
-			Target:         "frozen",
-			Watch:          t.Async.Watch,
-			Format:         t.Global.Format,
-			Color:          t.Global.Color,
-		},
-		Object: object.Action{
-			Run: func(path object.Path) (interface{}, error) {
-				intf := path.NewObject().(object.Freezer)
-				return nil, intf.Freeze()
-			},
-		},
-	}
-	action.Do(a)
+	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	objectaction.New(
+		objectaction.WithLocal(t.Global.Local),
+		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithColor(t.Global.Color),
+		objectaction.WithServer(t.Global.Server),
+		objectaction.WithAsyncTarget("frozen"),
+		objectaction.WithAsyncWatch(t.Async.Watch),
+		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithRemoteAction("freeze"),
+		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
+			intf := path.NewObject().(object.Freezer)
+			return nil, intf.Freeze()
+		}),
+	).Do()
 }
