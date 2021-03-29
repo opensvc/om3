@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 
+	"github.com/golang-collections/collections/set"
 	"opensvc.com/opensvc/util/converters/sizeconv"
 )
 
@@ -35,6 +36,40 @@ func (f Frame) sNodeSwapLine() string {
 		s += f.sNodeSwap(n) + "\t"
 	}
 	return s
+}
+
+func (f Frame) sNodeWarningsLine() string {
+	s := fmt.Sprintf("%s\t\t\t%s\t", bold("state"), f.info.separator)
+	for _, n := range f.Current.Cluster.Nodes {
+		s += f.sNodeFrozen(n) + "\t"
+	}
+	return s
+}
+
+func (f Frame) sNodeVersionLine() string {
+	versions := set.New()
+	for _, n := range f.Current.Cluster.Nodes {
+		versions.Insert(f.sNodeVersion(n))
+	}
+	if versions.Len() == 1 {
+		return ""
+	}
+	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator)
+	for _, n := range f.Current.Cluster.Nodes {
+		s += f.sNodeVersion(n) + "\t"
+	}
+	return s + "\n"
+}
+
+func (f Frame) sNodeCompatLine() string {
+	if f.Current.Monitor.Compat {
+		return ""
+	}
+	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator)
+	for _, n := range f.Current.Cluster.Nodes {
+		s += f.sNodeCompat(n) + "\t"
+	}
+	return s + "\n"
 }
 
 func (f Frame) sNodeScore(n string) string {
@@ -101,11 +136,37 @@ func (f Frame) sNodeSwap(n string) string {
 	return ""
 }
 
+func (f Frame) sNodeFrozen(n string) string {
+	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+		if !val.Frozen.IsZero() {
+			return iconFrozen
+		}
+	}
+	return ""
+}
+
+func (f Frame) sNodeCompat(n string) string {
+	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+		return fmt.Sprintf("%d", val.Compat)
+	}
+	return ""
+}
+
+func (f Frame) sNodeVersion(n string) string {
+	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+		return fmt.Sprintf("%d", val.Agent)
+	}
+	return ""
+}
+
 func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.title("Nodes"))
 	fmt.Fprintln(f.w, f.sNodeScoreLine())
 	fmt.Fprintln(f.w, f.sNodeLoadLine())
 	fmt.Fprintln(f.w, f.sNodeMemLine())
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
+	fmt.Fprint(f.w, f.sNodeVersionLine())
+	fmt.Fprint(f.w, f.sNodeCompatLine())
+	fmt.Fprintln(f.w, f.sNodeWarningsLine())
 	fmt.Fprintln(f.w, f.info.empty)
 }
