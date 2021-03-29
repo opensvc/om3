@@ -62,7 +62,10 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) []object.St
 
 func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 	data := make([]object.Status, 0)
-	sel := object.NewSelection(selector).SetLocal(true)
+	sel := object.NewSelection(
+		selector,
+		object.SelectionWithLocal(true),
+	)
 	for _, path := range sel.Expand() {
 		obj := path.NewBaser()
 		status, err := obj.Status(t.OptsStatus)

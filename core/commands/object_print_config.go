@@ -49,7 +49,10 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) ([]config.R
 
 func (t *CmdObjectPrintConfig) extractLocal(selector string) ([]config.Raw, error) {
 	data := make([]config.Raw, 0)
-	sel := object.NewSelection(selector).SetLocal(true)
+	sel := object.NewSelection(
+		selector,
+		object.SelectionWithLocal(true),
+	)
 	for _, path := range sel.Expand() {
 		obj := path.NewConfigurer()
 		c := obj.Config()

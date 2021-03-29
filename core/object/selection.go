@@ -53,6 +53,14 @@ type (
 		Panic         interface{}   `json:"panic,omitempty"`
 		HumanRenderer func() string `json:"-"`
 	}
+
+	// Option is a functional option configurer.
+	// https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
+	Option interface {
+		apply(t *Selection) error
+	}
+
+	optionFunc func(*Selection) error
 )
 
 const (
@@ -64,31 +72,46 @@ var (
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
 
+func (fn optionFunc) apply(t *Selection) error {
+	return fn(t)
+}
+
 // NewSelection allocates a new object selection
-func NewSelection(selector string) *Selection {
+func NewSelection(selector string, opts ...Option) *Selection {
 	t := &Selection{
 		SelectorExpression: selector,
+	}
+	for _, opt := range opts {
+		_ = opt.apply(t)
 	}
 	return t
 }
 
-// SetClient sets the client struct key
-func (t *Selection) SetClient(client *client.T) *Selection {
-	t.client = client
-	t.hasClient = true
-	return t
+// WithClient sets the client struct key
+func SelectionWithClient(client *client.T) Option {
+	return optionFunc(func(t *Selection) error {
+		t.client = client
+		t.hasClient = true
+		return nil
+	})
 }
 
-// SetLocal sets the local struct key
-func (t *Selection) SetLocal(local bool) *Selection {
-	t.local = local
-	return t
+// WithLocal forces the selection to be expanded without asking the
+// daemon, which might result in an sub-selection of what the
+// daemon would expand the selector to.
+func SelectionWithLocal(v bool) Option {
+	return optionFunc(func(t *Selection) error {
+		t.local = v
+		return nil
+	})
 }
 
-// SetServer sets the server struct key
-func (t *Selection) SetServer(server string) *Selection {
-	t.server = server
-	return t
+// WithServer sets the server struct key
+func SelectionWithServer(server string) Option {
+	return optionFunc(func(t *Selection) error {
+		t.server = server
+		return nil
+	})
 }
 
 func (t Selection) String() string {
@@ -128,7 +151,8 @@ func (t *Selection) expand() {
 			c, _ := client.New(
 				client.URL(t.server),
 			)
-			t.SetClient(c)
+			t.client = c
+			t.hasClient = true
 		}
 		if err := t.daemonExpand(); err == nil {
 			return

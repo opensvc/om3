@@ -18,9 +18,11 @@ type List struct {
 
 // Do prints the formatted object selection
 func (t List) Do() {
-	selection := object.NewSelection(t.ObjectSelector)
-	selection.SetLocal(t.Local)
-	selection.SetServer(t.Server)
+	selection := object.NewSelection(
+		t.ObjectSelector,
+		object.SelectionWithLocal(t.Local),
+		object.SelectionWithServer(t.Server),
+	)
 	data := make([]string, 0)
 	for _, path := range selection.Expand() {
 		data = append(data, path.String())

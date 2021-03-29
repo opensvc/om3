@@ -189,7 +189,10 @@ func (t T) DoLocal() {
 		Str("format", t.Format).
 		Str("selector", t.ObjectSelector).
 		Msg("do local object selection action")
-	sel := object.NewSelection(t.ObjectSelector).SetLocal(true)
+	sel := object.NewSelection(
+		t.ObjectSelector,
+		object.SelectionWithLocal(true),
+	)
 	rs := sel.Do(t.Object)
 	human := func() string {
 		s := ""
@@ -232,8 +235,10 @@ func (t T) DoAsync() {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
-	sel := object.NewSelection(t.ObjectSelector)
-	sel.SetClient(c)
+	sel := object.NewSelection(
+		t.ObjectSelector,
+		object.SelectionWithClient(c),
+	)
 	for _, path := range sel.Expand() {
 		req := c.NewPostObjectMonitor()
 		req.ObjectSelector = path.String()
