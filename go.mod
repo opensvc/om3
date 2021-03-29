@@ -11,6 +11,7 @@ require (
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0
 	github.com/google/uuid v1.2.0
+	github.com/guregu/null v4.0.0+incompatible
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54

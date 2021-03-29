@@ -2,7 +2,9 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/guregu/null"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/status"
 )
@@ -35,34 +37,63 @@ func sObjectWarning(d object.AggregatedStatus) string {
 	return s
 }
 
+func (f Frame) scalerInstancesUp(path string) int {
+	actual := 0
+	for _, node := range f.Current.Monitor.Nodes {
+		for p, instance := range node.Services.Status {
+			l := strings.SplitN(p, ".", 2)
+			if len(l) == 2 && l[1] == path && instance.Avail == status.Up {
+				actual++
+			}
+		}
+	}
+	return actual
+}
+
 func (f Frame) sObjectRunning(path string) string {
 	actual := 0
 	expected := 0
 	orchestrate := ""
+	avail := status.NotApplicable
+
+	var scale null.Int
 	for _, node := range f.Current.Monitor.Nodes {
 		if instance, ok := node.Services.Status[path]; ok {
 			if instance.Avail == status.Up {
 				actual++
 			}
 			if expected == 0 {
-				if instance.Topology == "flex" {
+				switch {
+				case !instance.Scale.IsZero():
+					expected = int(instance.Scale.ValueOrZero())
+				case instance.Topology == "flex":
 					expected = instance.FlexTarget
-				}
-				if instance.Topology == "failover" {
+				case instance.Topology == "failover":
 					expected = 1
 				}
-
 			}
 			orchestrate = instance.Orchestrate
+			scale = instance.Scale
 		}
 	}
-	if actual == 0 && expected == 0 {
+
+	if s, ok := f.Current.Monitor.Services[path]; ok {
+		avail = s.Avail
+	}
+
+	switch {
+	case actual == 0 && expected == 0:
 		return ""
-	}
-	if expected == 0 {
+	case expected == 0:
 		return fmt.Sprintf("%-5s %d", orchestrate, actual)
+	case !scale.IsZero():
+		actual = f.scalerInstancesUp(path)
+		return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
+	case avail == status.NotApplicable:
+		return fmt.Sprintf("%-5s", orchestrate)
+	default:
+		return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
 	}
-	return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
 }
 
 func sObjectAvail(d object.AggregatedStatus) string {
