@@ -135,6 +135,18 @@ func (t *Selection) Expand() []Path {
 	return t.paths
 }
 
+//
+// ExpandSet returns a set of the paths returned by Expand. Usually to
+// benefit from the .Has() function.
+//
+func (t *Selection) ExpandSet() *set.Set {
+	s := set.New()
+	for _, p := range t.Expand() {
+		s.Insert(p)
+	}
+	return s
+}
+
 func (t *Selection) add(path Path) {
 	pathStr := path.String()
 	for _, p := range t.paths {

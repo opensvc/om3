@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -126,9 +127,17 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	var data []object.Status
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
 	c, err := client.New(client.URL(t.Global.Server))
-	if err == nil {
-		data = t.extract(mergedSelector, c)
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		os.Exit(1)
 	}
+	sel := object.NewSelection(
+		mergedSelector,
+		object.SelectionWithClient(c),
+	)
+	paths := sel.ExpandSet()
+	data = t.extract(mergedSelector, c)
+
 	output.Renderer{
 		Format: t.Global.Format,
 		Color:  t.Global.Color,
@@ -136,6 +145,9 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 		HumanRenderer: func() string {
 			s := ""
 			for _, d := range data {
+				if !paths.Has(d.Path) {
+					continue
+				}
 				s += d.Render()
 			}
 			return s
