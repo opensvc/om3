@@ -33,3 +33,12 @@ func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.
 	t.log.Debug().Msgf("locked %s", p)
 	return lock, nil
 }
+
+func (t *Base) lockedAction(group string, timeout time.Duration, intent string, f func() error) error {
+	lock, err := t.Lock(group, timeout, intent)
+	if err != nil {
+		return err
+	}
+	defer lock.Unlock()
+	return f()
+}
