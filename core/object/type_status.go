@@ -65,7 +65,7 @@ func (t Status) Tree() *tree.Tree {
 func (t Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Path.String()).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
-	head.AddColumn().AddText(t.Object.Avail.ColorString())
+	head.AddColumn().AddText(config.ColoredStatus(t.Object.Avail))
 	head.AddColumn().AddText(t.descString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
@@ -88,7 +88,7 @@ func (t Status) loadTreeNodeParents(head *tree.Node) {
 		pNode := n.AddNode()
 		pNode.AddColumn().AddText(p).SetColor(config.Node.Color.Bold)
 		pNode.AddColumn()
-		pNode.AddColumn().AddText(data.Avail.ColorString())
+		pNode.AddColumn().AddText(config.ColoredStatus(data.Avail))
 	}
 }
 
@@ -102,7 +102,7 @@ func (t Status) loadTreeNodeChildren(head *tree.Node) {
 		pNode := n.AddNode()
 		pNode.AddColumn().AddText(p).SetColor(config.Node.Color.Bold)
 		pNode.AddColumn()
-		pNode.AddColumn().AddText(data.Avail.ColorString())
+		pNode.AddColumn().AddText(config.ColoredStatus(data.Avail))
 	}
 }
 
@@ -116,7 +116,7 @@ func (t Status) loadTreeNodeSlaves(head *tree.Node) {
 		pNode := n.AddNode()
 		pNode.AddColumn().AddText(p).SetColor(config.Node.Color.Bold)
 		pNode.AddColumn()
-		pNode.AddColumn().AddText(data.Avail.ColorString())
+		pNode.AddColumn().AddText(config.ColoredStatus(data.Avail))
 	}
 }
 
@@ -129,7 +129,7 @@ func (t Status) descString() string {
 
 	// Overall if warn. Else no need to repeat an info we can guess from Avail.
 	if t.Object.Overall == status.Warn {
-		l = append(l, t.Object.Overall.ColorString())
+		l = append(l, config.ColoredStatus(t.Object.Overall))
 	}
 
 	// Placement

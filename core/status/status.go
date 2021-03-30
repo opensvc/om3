@@ -3,9 +3,6 @@ package status
 import (
 	"bytes"
 	"encoding/json"
-
-	"github.com/fatih/color"
-	"opensvc.com/opensvc/config"
 )
 
 // T representing a Resource, Object Instance or Object status
@@ -54,41 +51,8 @@ var toID = map[string]T{
 	"stdby down": StandbyDown,
 }
 
-func toColor(t T) color.Attribute {
-	switch t {
-	case Up:
-		return config.Node.Color.Optimal
-	case Down:
-		return config.Node.Color.Error
-	case Warn:
-		return config.Node.Color.Warning
-	case NotApplicable:
-		return config.Node.Color.Secondary
-	case Undef:
-		return config.Node.Color.Secondary
-	case StandbyUp:
-		return config.Node.Color.Optimal
-	case StandbyDown:
-		return config.Node.Color.Error
-	case StandbyUpWithUp:
-		return config.Node.Color.Optimal
-	case StandbyUpWithDown:
-		return config.Node.Color.Optimal
-	default:
-		return color.Reset
-	}
-}
-
 func (t T) String() string {
 	return toString[t]
-}
-
-// ColorString returns a colorized string representation of the status.
-func (t T) ColorString() string {
-	c := toColor(t)
-	f := color.New(c).SprintfFunc()
-	s := t.String()
-	return f(s)
 }
 
 // MarshalJSON marshals the enum as a quoted json string

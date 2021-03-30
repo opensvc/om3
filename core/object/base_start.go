@@ -21,6 +21,27 @@ func (t *Base) Start(options OptsStart) error {
 }
 
 func (t *Base) lockedStart(options OptsStart) error {
+	if err := t.abortStart(options); err != nil {
+		return err
+	}
+	if err := t.masterStart(options); err != nil {
+		return err
+	}
+	if err := t.slaveStart(options); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Base) abortStart(options OptsStart) error {
+	return nil
+}
+
+func (t *Base) masterStart(options OptsStart) error {
 	time.Sleep(10 * time.Second)
+	return nil
+}
+
+func (t *Base) slaveStart(options OptsStart) error {
 	return nil
 }

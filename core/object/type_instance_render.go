@@ -30,7 +30,7 @@ func (t InstanceStates) Tree() *tree.Tree {
 func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
-	head.AddColumn().AddText(t.Status.Avail.ColorString())
+	head.AddColumn().AddText(config.ColoredStatus(t.Status.Avail))
 	head.AddColumn().AddText(t.descString())
 
 	lastSubset := ""
@@ -58,7 +58,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 		n := subsetNode.AddNode()
 		n.AddColumn().AddText(r.ResourceID.Name)
 		n.AddColumn().AddText(t.Status.resourceFlagsString(r.ResourceID, r))
-		n.AddColumn().AddText(r.Status.ColorString())
+		n.AddColumn().AddText(config.ColoredStatus(r.Status))
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
 		for _, entry := range r.Log {
@@ -78,7 +78,7 @@ func (t InstanceStates) descString() string {
 
 	// Overall
 	if t.Status.Overall == status.Warn {
-		l = append(l, t.Status.Overall.ColorString())
+		l = append(l, config.ColoredStatus(t.Status.Overall))
 	}
 
 	// Frozen
