@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/golang-collections/collections/set"
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/util/converters/sizeconv"
 )
 
@@ -41,7 +42,10 @@ func (f Frame) sNodeSwapLine() string {
 func (f Frame) sNodeWarningsLine() string {
 	s := fmt.Sprintf("%s\t\t\t%s\t", bold("state"), f.info.separator)
 	for _, n := range f.Current.Cluster.Nodes {
-		s += f.sNodeFrozen(n) + "\t"
+		s += f.sNodeMonState(n)
+		s += f.sNodeFrozen(n)
+		s += f.sNodeMonTarget(n)
+		s += "\t"
 	}
 	return s
 }
@@ -136,10 +140,28 @@ func (f Frame) sNodeSwap(n string) string {
 	return ""
 }
 
+func (f Frame) sNodeMonState(n string) string {
+	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+		if val.Monitor.Status != "idle" {
+			return val.Monitor.Status
+		}
+	}
+	return ""
+}
+
 func (f Frame) sNodeFrozen(n string) string {
 	if val, ok := f.Current.Monitor.Nodes[n]; ok {
 		if !val.Frozen.IsZero() {
 			return iconFrozen
+		}
+	}
+	return ""
+}
+
+func (f Frame) sNodeMonTarget(n string) string {
+	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+		if val.Monitor.GlobalExpect != "" {
+			return config.Node.Colorize.Secondary(" >" + val.Monitor.GlobalExpect)
 		}
 	}
 	return ""
