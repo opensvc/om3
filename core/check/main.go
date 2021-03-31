@@ -7,8 +7,8 @@ import (
 )
 
 type (
-	// Interface exposes what can be done with a check
-	Interface interface {
+	// Checker exposes what can be done with a check
+	Checker interface {
 		Check() (*ResultSet, error)
 	}
 
@@ -28,12 +28,22 @@ type (
 	}
 )
 
+var checkers = make([]Checker, 0)
+
+func Register(i interface{}) {
+	c, ok := i.(Checker)
+	if !ok {
+		return
+	}
+	checkers = append(checkers, c)
+}
+
 func (r T) String() string {
 	return fmt.Sprintf("<Check %s>", r.Name)
 }
 
 // Check returns a result list
-func Check(r Interface) error {
+func Check(r Checker) error {
 	data, err := r.Check()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

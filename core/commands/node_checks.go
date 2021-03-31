@@ -4,6 +4,9 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/nodeaction"
 	"opensvc.com/opensvc/core/object"
+
+	_ "opensvc.com/opensvc/drivers/check/fs_i/df"
+	_ "opensvc.com/opensvc/drivers/check/fs_u/df"
 )
 
 type (

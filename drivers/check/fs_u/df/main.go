@@ -1,4 +1,4 @@
-package main
+package chkfsudf
 
 import (
 	"opensvc.com/opensvc/core/check"
@@ -14,6 +14,10 @@ const (
 )
 
 type fsChecker struct{}
+
+func init() {
+	check.Register(&fsChecker{})
+}
 
 func (t *fsChecker) Entries() ([]df.Entry, error) {
 	return df.Usage()

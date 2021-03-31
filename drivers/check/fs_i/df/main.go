@@ -1,4 +1,4 @@
-package main
+package chkfsidf
 
 import (
 	"fmt"
@@ -17,6 +17,10 @@ const (
 )
 
 type fsChecker struct{}
+
+func init() {
+	check.Register(&fsChecker{})
+}
 
 func (t *fsChecker) Entries() ([]df.Entry, error) {
 	return df.Inode()

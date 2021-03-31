@@ -26,7 +26,14 @@ func (r Runner) Do() *ResultSet {
 	for _, path := range paths {
 		go doCheck(q, path)
 	}
+	for _, c := range checkers {
+		go doRegisteredCheck(q, c)
+	}
 	for range paths {
+		d := <-q
+		rs.Add(d)
+	}
+	for range checkers {
 		d := <-q
 		rs.Add(d)
 	}
@@ -36,6 +43,20 @@ func (r Runner) Do() *ResultSet {
 		Int("drivers", len(paths)).
 		Msg("checks done")
 	return rs
+}
+
+func doRegisteredCheck(q chan *ResultSet, c Checker) {
+	rs, err := c.Check()
+	if err != nil {
+		log.Error().Err(err).Msg("execution")
+		q <- rs
+		return
+	}
+	log.Debug().
+		Str("c", "checks").
+		Int("instances", len(rs.Data)).
+		Msg("")
+	q <- rs
 }
 
 func doCheck(q chan *ResultSet, path string) {
