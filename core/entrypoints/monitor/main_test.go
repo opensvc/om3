@@ -37,6 +37,9 @@ var expected = "Threads                 \n" +
 	"  load15m               \n" +
 	"  mem                   \n" +
 	"  swap                  \n" +
+	"  version  warn         \n" +
+	"  compat   warn         \n" +
+	"state                   \n" +
 	"                        \n" +
 	"Objects                 \n"
 

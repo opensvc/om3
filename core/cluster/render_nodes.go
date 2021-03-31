@@ -176,7 +176,7 @@ func (f Frame) sNodeCompat(n string) string {
 
 func (f Frame) sNodeVersion(n string) string {
 	if val, ok := f.Current.Monitor.Nodes[n]; ok {
-		return fmt.Sprintf("%d", val.Agent)
+		return fmt.Sprintf("%s", val.Agent)
 	}
 	return ""
 }
