@@ -4,13 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"opensvc.com/opensvc/core/status"
 )
 
 type (
-	// Interface exposes what can be done with a resource
-	Interface interface {
+	// DriverId identifies a driver.
+	DriverId struct {
+		Group string
+		Name  string
+	}
+
+	// Driver exposes what can be done with a resource
+	Driver interface {
 		Label() string
 		Manifest() Manifest
 		Start() error
@@ -35,12 +42,41 @@ type (
 	// which is embedded in the instance status.
 	OutputStatus struct {
 		Label  string      `json:"label"`
-		Status status.T `json:"status"`
+		Status status.T    `json:"status"`
 		Subset string      `json:"subset,omitempty"`
 		Type   string      `json:"type"`
 		Log    []*LogEntry `json:"log,omitempty"`
 	}
 )
+
+func (t DriverId) String() string {
+	if t.Name == "" {
+		return t.Group
+	}
+	return fmt.Sprintf("%s.%s", t.Group, t.Name)
+}
+
+func ParseDriverId(s string) *DriverId {
+	l := strings.SplitN(s, ".", 2)
+	return &DriverId{
+		Group: l[0],
+		Name:  l[1],
+	}
+}
+
+func NewDriverId(group string, name string) *DriverId {
+	return &DriverId{
+		Group: group,
+		Name:  name,
+	}
+}
+
+var drivers = make(map[string]func() Driver)
+
+func Register(group string, name string, f func() Driver) {
+	driverId := NewDriverId(group, name)
+	drivers[driverId.String()] = f
+}
 
 func (t T) String() string {
 	return fmt.Sprintf("<Resource %s>", t.ResourceID)
@@ -61,31 +97,31 @@ func (t T) RID() string {
 	return t.ResourceID
 }
 
-func formatResourceType(r Interface) string {
+func formatResourceType(r Driver) string {
 	m := r.Manifest()
 	return fmt.Sprintf("%s.%s", m.Group, m.Name)
 }
 
-func formatResourceLabel(r Interface) string {
+func formatResourceLabel(r Driver) string {
 	return fmt.Sprintf("%s %s", formatResourceType(r), r.Label())
 }
 
 // Start activates a resource interfacer
-func Start(r Interface) error {
+func Start(r Driver) error {
 	return r.Start()
 }
 
 // Stop deactivates a resource interfacer
-func Stop(r Interface) error {
+func Stop(r Driver) error {
 	return r.Stop()
 }
 
 // Status evaluates the status of a resource interfacer
-func Status(r Interface) status.T {
+func Status(r Driver) status.T {
 	return r.Status()
 }
 
-func printStatus(r Interface) error {
+func printStatus(r Driver) error {
 	data := OutputStatus{
 		Label:  formatResourceLabel(r),
 		Type:   formatResourceType(r),
@@ -98,14 +134,14 @@ func printStatus(r Interface) error {
 	return enc.Encode(data)
 }
 
-func printManifest(r Interface) error {
+func printManifest(r Driver) error {
 	m := r.Manifest()
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(m)
 }
 
-func printHelp(r Interface) error {
+func printHelp(r Driver) error {
 	fmt.Println(`Environment variables:
   RES_ACTION=start|stop|status|manifest
 
@@ -116,7 +152,7 @@ Stdin:
 }
 
 // Action calls the resource method set as the RES_ACTION environment variable
-func Action(r Interface) error {
+func Action(r Driver) error {
 	action := os.Getenv("RES_ACTION")
 	switch action {
 	case "status":

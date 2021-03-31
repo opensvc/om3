@@ -12,6 +12,10 @@ import (
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+
+	_ "opensvc.com/opensvc/drivers/resfsdir"
+	_ "opensvc.com/opensvc/drivers/resfsflag"
+	_ "opensvc.com/opensvc/drivers/resiproute"
 )
 
 var (

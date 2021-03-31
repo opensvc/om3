@@ -1,4 +1,4 @@
-package main
+package resfsflag
 
 import (
 	"opensvc.com/opensvc/core/object"

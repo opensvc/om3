@@ -1,6 +1,6 @@
 // +build !linux
 
-package main
+package resiproute
 
 import (
 	"fmt"

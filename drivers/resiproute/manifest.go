@@ -1,4 +1,4 @@
-package main
+package resiproute
 
 import (
 	"opensvc.com/opensvc/core/keywords"
@@ -17,6 +17,14 @@ type T struct {
 	Gateway     string `json:"gateway"`
 	Netns       string `json:"netns"`
 	resource.T
+}
+
+func init() {
+	resource.Register(driverName, driverGroup, New)
+}
+
+func New() resource.Driver {
+	return &T{}
 }
 
 // Manifest ...

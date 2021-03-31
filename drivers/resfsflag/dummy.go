@@ -1,6 +1,6 @@
 // +build !linux,!solaris
 
-package main
+package resfsflag
 
 func (t T) baseDir() string {
 	panic("not implemented")

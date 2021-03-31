@@ -1,4 +1,4 @@
-package main
+package resfsflag
 
 import (
 	"errors"
@@ -10,6 +10,14 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
 )
+
+func init() {
+	resource.Register(driverName, driverGroup, New)
+}
+
+func New() resource.Driver {
+	return &T{}
+}
 
 // Start the Resource
 func (t T) Start() error {
