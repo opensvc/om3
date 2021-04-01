@@ -40,7 +40,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 			if r.Subset == "" {
 				subsetNode = head
 			} else {
-				resourceSetName := r.ResourceID.DriverGroup().Name() + ":" + r.Subset
+				resourceSetName := r.ResourceID.DriverGroup().String() + ":" + r.Subset
 				subsetNode = head.AddNode()
 				subsetNode.AddColumn().AddText(resourceSetName)
 				subsetNode.AddColumn()

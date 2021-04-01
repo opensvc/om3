@@ -44,7 +44,7 @@ func New(s string) T {
 	}
 }
 
-func (t T) Name() string {
+func (t T) String() string {
 	switch t {
 	case IP:
 		return "ip"

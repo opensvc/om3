@@ -6,6 +6,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/logging"
 )
 
@@ -17,8 +19,9 @@ type (
 		log      zerolog.Logger
 
 		// caches
-		config *config.T
-		paths  BasePaths
+		config    *config.T
+		paths     BasePaths
+		resources []resource.Driver
 	}
 )
 
@@ -56,4 +59,23 @@ func (t *Base) init(path Path) error {
 
 func (t Base) String() string {
 	return fmt.Sprintf("base object %s", t.Path)
+}
+
+func (t Base) listResources() []resource.Driver {
+	if t.resources != nil {
+		return t.resources
+	}
+	t.resources = make([]resource.Driver, 0)
+	for k, _ := range t.config.Raw() {
+		rid := NewResourceID(k)
+		if rid.DriverGroup() == drivergroup.Unknown {
+			t.log.Debug().Str("rid", k).Msg("unknown driver group")
+			continue
+		}
+		driverGroup := rid.DriverGroup().String()
+		driverName := t.config.GetStringP(k, "type")
+		driverID := resource.NewDriverID(driverGroup, driverName)
+		fmt.Println("xx", driverID.String())
+	}
+	return t.resources
 }

@@ -1,6 +1,7 @@
 package object
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -34,6 +35,10 @@ func (t *Base) lockedStart(options OptsStart) error {
 }
 
 func (t *Base) abortStart(options OptsStart) error {
+	t.log.Debug().Msg("abort start check")
+	for _, r := range t.listResources() {
+		fmt.Println(r)
+	}
 	return nil
 }
 

@@ -10,8 +10,8 @@ import (
 )
 
 type (
-	// DriverId identifies a driver.
-	DriverId struct {
+	// DriverID identifies a driver.
+	DriverID struct {
 		Group string
 		Name  string
 	}
@@ -49,23 +49,23 @@ type (
 	}
 )
 
-func (t DriverId) String() string {
+func (t DriverID) String() string {
 	if t.Name == "" {
 		return t.Group
 	}
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
-func ParseDriverId(s string) *DriverId {
+func ParseDriverID(s string) *DriverID {
 	l := strings.SplitN(s, ".", 2)
-	return &DriverId{
+	return &DriverID{
 		Group: l[0],
 		Name:  l[1],
 	}
 }
 
-func NewDriverId(group string, name string) *DriverId {
-	return &DriverId{
+func NewDriverID(group string, name string) *DriverID {
+	return &DriverID{
 		Group: group,
 		Name:  name,
 	}
@@ -74,7 +74,7 @@ func NewDriverId(group string, name string) *DriverId {
 var drivers = make(map[string]func() Driver)
 
 func Register(group string, name string, f func() Driver) {
-	driverId := NewDriverId(group, name)
+	driverId := NewDriverID(group, name)
 	drivers[driverId.String()] = f
 }
 

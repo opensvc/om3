@@ -78,6 +78,16 @@ func (t *T) Get(key string) (interface{}, error) {
 	return val, nil
 }
 
+func (t *T) GetP(opts ...string) interface{} {
+	key := strings.Join(opts, ".")
+	return t.v.Get(key)
+}
+
+func (t *T) GetStringP(opts ...string) string {
+	key := strings.Join(opts, ".")
+	return t.v.GetString(key)
+}
+
 func (t *T) Eval(key string) (interface{}, error) {
 	var (
 		err error
