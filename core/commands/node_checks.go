@@ -4,9 +4,6 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/nodeaction"
 	"opensvc.com/opensvc/core/object"
-
-	_ "opensvc.com/opensvc/drivers/check/fs_i/df"
-	_ "opensvc.com/opensvc/drivers/check/fs_u/df"
 )
 
 type (
@@ -46,7 +43,7 @@ func (t *CmdNodeChecks) run() {
 			"format": t.Global.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Checks(t.OptsNodeChecks), nil
+			return object.NewNode().Checks(), nil
 		}),
 	).Do()
 }

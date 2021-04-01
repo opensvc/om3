@@ -2,34 +2,38 @@ package check
 
 import (
 	"encoding/json"
+	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
-	"path/filepath"
-
-	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/util/exe"
 )
+
+var execCommand = exec.Command
 
 type (
-	// Runner exposes the method to run the check drivers,
 	// aggregate results and format the output.
-	Runner struct{}
+	runner struct {
+		customCheckPaths []string
+	}
 )
+
+func NewRunner(customCheckPaths []string) *runner {
+	return &runner{
+		customCheckPaths: customCheckPaths,
+	}
+}
 
 // Do runs the check drivers, aggregates results and format
 // the output.
-func (r Runner) Do() *ResultSet {
+func (r runner) Do() *ResultSet {
 	rs := NewResultSet()
 	q := make(chan *ResultSet)
-	paths := r.list()
-	for _, path := range paths {
-		go doCheck(q, path)
+	for _, path := range r.customCheckPaths {
+		go doCustomCheck(q, path)
 	}
 	for _, c := range checkers {
 		go doRegisteredCheck(q, c)
 	}
-	for range paths {
+	for range r.customCheckPaths {
 		d := <-q
 		rs.Add(d)
 	}
@@ -40,7 +44,7 @@ func (r Runner) Do() *ResultSet {
 	log.Debug().
 		Str("c", "checks").
 		Int("instances", len(rs.Data)).
-		Int("drivers", len(paths)).
+		Int("drivers", len(r.customCheckPaths)).
 		Msg("checks done")
 	return rs
 }
@@ -59,9 +63,9 @@ func doRegisteredCheck(q chan *ResultSet, c Checker) {
 	q <- rs
 }
 
-func doCheck(q chan *ResultSet, path string) {
+func doCustomCheck(q chan *ResultSet, path string) {
 	rs := NewResultSet()
-	cmd := exec.Command(path)
+	cmd := execCommand(path)
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {
@@ -69,6 +73,7 @@ func doCheck(q chan *ResultSet, path string) {
 		q <- rs
 		return
 	}
+	log.Error().Str("checker", path).Err(err).Msg(string(b))
 	if err := json.Unmarshal(b, rs); err != nil {
 		log.Error().Str("checker", path).Err(err).Msg("unmarshal json")
 	}
@@ -78,27 +83,4 @@ func doCheck(q chan *ResultSet, path string) {
 		Int("instances", len(rs.Data)).
 		Msg("")
 	q <- rs
-}
-
-func (r Runner) list() []string {
-	l := make([]string, 0)
-	root := filepath.Join(config.NodeViper.GetString("paths.drivers"), "check")
-	log.Debug().
-		Str("c", "checks").
-		Str("head", root).
-		Msg("search check drivers")
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.Mode().IsDir() {
-			return nil
-		}
-		if exe.IsExecOwner(info.Mode().Perm()) {
-			l = append(l, path)
-			return nil
-		}
-		return nil
-	})
-	return l
 }

@@ -1,6 +1,9 @@
 package exe
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // IsExecOwner returns true is the file mode indicates the file is
 // executable by its owner.
@@ -30,4 +33,22 @@ func IsExecAny(mode os.FileMode) bool {
 // executable by owner, group and other.
 func IsExecAll(mode os.FileMode) bool {
 	return mode&0111 == 0111
+}
+
+func FindExe(root string) []string {
+	l := make([]string, 0)
+	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Mode().IsDir() {
+			return nil
+		}
+		if IsExecOwner(info.Mode().Perm()) {
+			l = append(l, path)
+			return nil
+		}
+		return nil
+	})
+	return l
 }
