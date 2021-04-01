@@ -34,7 +34,13 @@ type (
 	// }
 	//
 	Context struct {
+		// Key is the name of the key in the json representation of the context.
 		Key string
+
+		// Attr is the name of the field in the resource struct.
+		Attr string
+
+		// Ref is the code describing what context information to embed in the resource struct.
 		Ref string
 	}
 )

@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/resource"
@@ -61,7 +62,7 @@ func (t Base) String() string {
 	return fmt.Sprintf("base object %s", t.Path)
 }
 
-func (t Base) listResources() []resource.Driver {
+func (t *Base) listResources() []resource.Driver {
 	if t.resources != nil {
 		return t.resources
 	}
@@ -81,8 +82,31 @@ func (t Base) listResources() []resource.Driver {
 			continue
 		}
 		r := factory()
+		if err := t.configureResource(r, k); err != nil {
+			t.log.Error().
+				Err(err).
+				Str("rid", k).
+				Msg("configureResource")
+			continue
+		}
 		t.resources = append(t.resources, r)
-		fmt.Println("xx", r.Manifest())
 	}
 	return t.resources
+}
+
+func (t Base) configureResource(r resource.Driver, rid string) error {
+	r.SetRID(rid)
+	m := r.Manifest()
+	for _, kw := range m.Keywords {
+		t.log.Debug().Str("kw", kw.Name).Msg("")
+	}
+	for _, c := range m.Context {
+		switch {
+		case c.Ref == "object.path":
+			if err := attr.SetValue(r, c.Attr, t.Path); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

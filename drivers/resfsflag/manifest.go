@@ -26,8 +26,9 @@ func (t T) Manifest() resource.Manifest {
 		Name:  driverName,
 		Context: []resource.Context{
 			{
-				Key: "path",
-				Ref: "object.path",
+				Key:  "path",
+				Attr: "Path",
+				Ref:  "object.path",
 			},
 		},
 	}

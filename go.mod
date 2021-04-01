@@ -23,7 +23,8 @@ require (
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.3.0
+	github.com/ssrathi/go-attr v1.3.0
+	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0

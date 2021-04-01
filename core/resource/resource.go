@@ -26,13 +26,19 @@ type (
 		Status() status.T
 
 		// common
+		SetRID(string)
 		RID() string
 		RSubset() string
 		RLog() *Log
 	}
 
+	Aborter interface {
+		Abort() bool
+	}
+
 	// T is the resource type, embedded in each drivers type
 	T struct {
+		Driver
 		ResourceID string `json:"rid"`
 		Subset     string `json:"subset"`
 		Disable    bool   `json:"disable"`
@@ -105,6 +111,11 @@ func (t *T) RLog() *Log {
 // RID return a reference to the resource log
 func (t T) RID() string {
 	return t.ResourceID
+}
+
+// SetRID sets the resource identifier
+func (t *T) SetRID(v string) {
+	t.ResourceID = v
 }
 
 func formatResourceType(r Driver) string {

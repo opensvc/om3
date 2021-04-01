@@ -19,8 +19,8 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func AbortStart() bool {
-	return false
+func (t T) Abort() bool {
+	return true
 }
 
 // Start the Resource
