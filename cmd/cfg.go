@@ -9,7 +9,7 @@ var cfgSelectorFlag string
 var cfgCmd = &cobra.Command{
 	Use:   "cfg",
 	Short: "Manage configmaps",
-	Long: ` A configmap is an unencypted key-value store.
+	Long: ` A configmap is an unencrypted key-value store.
 
 Values can be binary or text.
 

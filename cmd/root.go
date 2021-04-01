@@ -10,7 +10,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/util/logging"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 
 	_ "opensvc.com/opensvc/drivers/resfsdir"
@@ -33,7 +33,7 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: persistentPreRunE,
 }
 
-func persistentPreRunE(cmd *cobra.Command, args []string) error {
+func persistentPreRunE(_ *cobra.Command, _ []string) error {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
@@ -70,7 +70,7 @@ func Execute() {
 	_, _, err := rootCmd.Find(os.Args[1:])
 
 	if err != nil {
-		// command not found... try lpop'ing args[1] as a selector
+		// command not found... try loop'ing args[1] as a selector
 		if len(os.Args) > 1 {
 			selectorFlag = os.Args[1]
 			args := append([]string{"svc"}, os.Args[2:]...)
@@ -79,7 +79,7 @@ func Execute() {
 	}
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

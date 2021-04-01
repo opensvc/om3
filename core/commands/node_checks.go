@@ -25,7 +25,7 @@ func (t *CmdNodeChecks) cmd() *cobra.Command {
 		Use:     "checks",
 		Short:   "Run the check drivers, push and print the instances",
 		Aliases: []string{"check", "chec", "che", "ch"},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
 	}
