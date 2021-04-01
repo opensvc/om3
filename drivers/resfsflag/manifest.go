@@ -1,12 +1,13 @@
 package resfsflag
 
 import (
+	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/resource"
 )
 
 const (
-	driverGroup = "fs"
+	driverGroup = drivergroup.FS
 	driverName  = "flag"
 )
 

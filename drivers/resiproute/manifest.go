@@ -1,13 +1,14 @@
 package resiproute
 
 import (
+	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/converters"
 )
 
 const (
-	driverGroup = "ip"
+	driverGroup = drivergroup.IP
 	driverName  = "route"
 )
 
@@ -20,7 +21,7 @@ type T struct {
 }
 
 func init() {
-	resource.Register(driverName, driverGroup, New)
+	resource.Register(driverGroup, driverName, New)
 }
 
 func New() resource.Driver {

@@ -3,13 +3,14 @@ package resfsdir
 import (
 	"fmt"
 
+	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 )
 
 const (
-	driverGroup = "fs"
+	driverGroup = drivergroup.FS
 	driverName  = "directory"
 )
 

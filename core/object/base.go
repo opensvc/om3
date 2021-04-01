@@ -72,10 +72,17 @@ func (t Base) listResources() []resource.Driver {
 			t.log.Debug().Str("rid", k).Msg("unknown driver group")
 			continue
 		}
-		driverGroup := rid.DriverGroup().String()
+		driverGroup := rid.DriverGroup()
 		driverName := t.config.GetStringP(k, "type")
 		driverID := resource.NewDriverID(driverGroup, driverName)
-		fmt.Println("xx", driverID.String())
+		factory := driverID.NewResourceFunc()
+		if factory == nil {
+			t.log.Debug().Str("driver", driverID.String()).Msg("driver not found")
+			continue
+		}
+		r := factory()
+		t.resources = append(t.resources, r)
+		fmt.Println("xx", r.Manifest())
 	}
 	return t.resources
 }

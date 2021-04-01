@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 )
 
@@ -10,7 +11,7 @@ type (
 	// driver expects.
 	//
 	Manifest struct {
-		Group    string             `json:"group"`
+		Group    drivergroup.T      `json:"group"`
 		Name     string             `json:"name"`
 		Keywords []keywords.Keyword `json:"keywords"`
 		Context  []Context          `json:"context"`

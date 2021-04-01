@@ -6,13 +6,14 @@ import (
 	"os"
 	"strings"
 
+	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/status"
 )
 
 type (
 	// DriverID identifies a driver.
 	DriverID struct {
-		Group string
+		Group drivergroup.T
 		Name  string
 	}
 
@@ -51,31 +52,40 @@ type (
 
 func (t DriverID) String() string {
 	if t.Name == "" {
-		return t.Group
+		return t.Group.String()
 	}
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
 func ParseDriverID(s string) *DriverID {
 	l := strings.SplitN(s, ".", 2)
+	g := drivergroup.New(l[0])
 	return &DriverID{
-		Group: l[0],
+		Group: g,
 		Name:  l[1],
 	}
 }
 
-func NewDriverID(group string, name string) *DriverID {
+func NewDriverID(group drivergroup.T, name string) *DriverID {
 	return &DriverID{
 		Group: group,
 		Name:  name,
 	}
 }
 
-var drivers = make(map[string]func() Driver)
+var drivers = make(map[DriverID]func() Driver)
 
-func Register(group string, name string, f func() Driver) {
-	driverId := NewDriverID(group, name)
-	drivers[driverId.String()] = f
+func Register(group drivergroup.T, name string, f func() Driver) {
+	driverID := NewDriverID(group, name)
+	drivers[*driverID] = f
+}
+
+func (t DriverID) NewResourceFunc() func() Driver {
+	drv, ok := drivers[t]
+	if !ok {
+		return nil
+	}
+	return drv
 }
 
 func (t T) String() string {

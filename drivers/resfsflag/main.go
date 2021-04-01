@@ -12,11 +12,15 @@ import (
 )
 
 func init() {
-	resource.Register(driverName, driverGroup, New)
+	resource.Register(driverGroup, driverName, New)
 }
 
 func New() resource.Driver {
 	return &T{}
+}
+
+func AbortStart() bool {
+	return false
 }
 
 // Start the Resource

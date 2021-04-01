@@ -1,5 +1,10 @@
 package drivergroup
 
+import (
+	"bytes"
+	"encoding/json"
+)
+
 //
 // T groups drivers sharing some properties.
 // A resourceset is a collection of resources having the same drivergroup and subset.
@@ -67,4 +72,23 @@ func (t T) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// MarshalJSON marshals the enum as a quoted json string
+func (t T) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(t.String())
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+// UnmarshalJSON unmashals a quoted json string to the enum value
+func (t *T) UnmarshalJSON(b []byte) error {
+	var j string
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	*t = New(j)
+	return nil
 }
