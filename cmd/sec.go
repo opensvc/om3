@@ -9,7 +9,7 @@ var secSelectorFlag string
 var secCmd = &cobra.Command{
 	Use:   "sec",
 	Short: "Manage secrets",
-	Long: ` A secret is an encypted key-value store.
+	Long: ` A secret is an encrypted key-value store.
 
 Values can be binary or text.
 

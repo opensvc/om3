@@ -18,14 +18,14 @@ func init() {
 	daemonCmd.AddCommand(daemonStatsCmd)
 }
 
-func daemonStatsCmdRun(cmd *cobra.Command, args []string) {
+func daemonStatsCmdRun(_ *cobra.Command, _ []string) {
 	err := entrypoints.DaemonStats{
 		Format: formatFlag,
 		Color:  colorFlag,
 		Server: serverFlag,
 	}.Do()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

@@ -25,7 +25,7 @@ func init() {
 	nodeFreezeCmd.Flags().BoolVarP(&nodeFreezeWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }
 
-func nodeFreezeCmdRun(cmd *cobra.Command, args []string) {
+func nodeFreezeCmdRun(_ *cobra.Command, _ []string) {
 	nodeaction.New(
 		nodeaction.WithRemoteNodes(nodeFreezeNodeFlag),
 		nodeaction.WithRemoteAction("freeze"),

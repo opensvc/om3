@@ -16,7 +16,7 @@ func init() {
 	nodeCmd.AddCommand(nodeEventsCmd)
 }
 
-func nodeEventsCmdRun(cmd *cobra.Command, args []string) {
+func nodeEventsCmdRun(_ *cobra.Command, _ []string) {
 	e := entrypoints.Events{
 		Format: formatFlag,
 		Color:  colorFlag,

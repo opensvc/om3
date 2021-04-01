@@ -70,7 +70,7 @@ func Execute() {
 	_, _, err := rootCmd.Find(os.Args[1:])
 
 	if err != nil {
-		// command not found... try loop'ing args[1] as a selector
+		// command not found... try look in args[1] as a selector
 		if len(os.Args) > 1 {
 			selectorFlag = os.Args[1]
 			args := append([]string{"svc"}, os.Args[2:]...)
