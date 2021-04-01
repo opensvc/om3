@@ -27,19 +27,19 @@ func init() {
 	daemonStatusCmd.Flags().StringVarP(&daemonStatusSelectorFlag, "selector", "s", "**", "Select opensvc objects (ex: **/db*,*/svc/db*)")
 }
 
-func daemonStatusCmdRun(cmd *cobra.Command, args []string) {
+func daemonStatusCmdRun(_ *cobra.Command, _ []string) {
 	m := monitor.New()
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
 
 	cli, err := client.New(client.URL(serverFlag))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	if daemonStatusWatchFlag {
 		getter, _ := client.NewGetEvents(*cli, client.WithSelector(daemonStatusSelectorFlag))
-		m.DoWatch(getter, os.Stdout)
+		_ = m.DoWatch(getter, os.Stdout)
 	} else {
 		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(daemonStatusSelectorFlag))
 		m.Do(getter, os.Stdout)
