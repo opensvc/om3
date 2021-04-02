@@ -48,7 +48,7 @@ var (
 	hostnameRegexRFC952 = regexp.MustCompile(hostnameRegexStringRFC952)
 	fqdnRegexRFC1123    = regexp.MustCompile(fqdnRegexStringRFC1123)
 	forbiddenNames      = append(
-		xmap.Skeys(kindStringToID),
+		xmap.Keys(kindStringToID),
 		[]string{
 			"node",
 		}...,
