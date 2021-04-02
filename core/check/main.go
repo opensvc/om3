@@ -30,11 +30,12 @@ type (
 
 var checkers = make([]Checker, 0)
 
-func Register(i interface{}) {
-	c, ok := i.(Checker)
-	if !ok {
-		return
-	}
+// UnRegisterAll unregister all registered checkers
+func UnRegisterAll() {
+	checkers = make([]Checker, 0)
+}
+
+func Register(c Checker) {
 	checkers = append(checkers, c)
 }
 
@@ -46,7 +47,7 @@ func (r T) String() string {
 func Check(r Checker) error {
 	data, err := r.Check()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		return err
 	}
 	enc := json.NewEncoder(os.Stdout)
