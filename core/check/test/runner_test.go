@@ -1,6 +1,7 @@
 package check_test
 
 import (
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/check"
 
 	"encoding/json"
@@ -39,6 +40,8 @@ func TestHelperProcess(t *testing.T) {
 	cmd := args[0]
 	switch {
 	case cmd == "succeed":
+	case cmd == "succeedWithInvalidOut":
+		out = "{}["
 	case cmd == "exitCode3":
 		exitCode = 3
 	case strings.Contains(cmd, "succeedWithOut"):
@@ -77,87 +80,234 @@ func TestHelperProcess(t *testing.T) {
 	return
 }
 
+type fakeChecker struct {
+	DriverGroup string
+	DriverName  string
+	Ids         []string
+	Unit        string
+}
+
+func (t fakeChecker) Check() (*check.ResultSet, error) {
+	var results []check.Result
+	if strings.Contains(t.DriverGroup, "error") {
+		return &check.ResultSet{}, errors.New("something wrong happen")
+	}
+	for _, id := range t.Ids {
+		results = append(results, check.Result{
+			DriverGroup: t.DriverGroup,
+			DriverName:  t.DriverName,
+			Path:        "path-" + id,
+			Instance:    "instance-" + id,
+			Unit:        "",
+			Value:       0,
+		})
+	}
+	return &check.ResultSet{Data: results}, nil
+}
+
 func TestRunnerDo(t *testing.T) {
 	check.ExecCommand = fakeExecCommand
 	defer func() { check.ExecCommand = exec.Command }()
+	var checker1, checker2, errorChecker check.Checker
+	checker1 = &fakeChecker{
+		DriverGroup: "checker1Grp",
+		DriverName:  "checker1Drv",
+		Ids:         []string{"a", "b"},
+		Unit:        "",
+	}
+	checker2 = &fakeChecker{
+		DriverGroup: "checker2Grp",
+		DriverName:  "checker2Drv",
+		Ids:         []string{"a"},
+		Unit:        "",
+	}
+	errorChecker = &fakeChecker{
+		DriverGroup: "error",
+		DriverName:  "checker",
+		Ids:         []string{"a"},
+		Unit:        "",
+	}
 	cases := []struct {
-		Name             string
-		CustomCheckPaths []string
-		ExpectedResults  []check.Result
+		Name               string
+		CustomCheckPaths   []string
+		RegisteredCheckers []check.Checker
+		ExpectedResults    []check.Result
 	}{
 		{
-			"withoutCustomCheckers",
-			[]string{},
-			[]check.Result{},
+			Name:             "succeedWithInvalidOut",
+			CustomCheckPaths: []string{"succeedWithInvalidOut"},
+			ExpectedResults:  []check.Result{},
 		},
 		{
-			"withOneFailedChecker",
-			[]string{"exitCode3"},
-			[]check.Result{},
+			Name:             "withoutCustomCheckers",
+			CustomCheckPaths: []string{},
+			ExpectedResults:  []check.Result{},
 		},
 		{
-			"withOneSucceedCustomCheckers",
-			[]string{"succeedWithOut"},
-			[]check.Result{
+			Name:             "withOneFailedChecker",
+			CustomCheckPaths: []string{"exitCode3"},
+			ExpectedResults:  nil,
+		},
+		{
+			Name:             "withOneSucceedCustomCheckers",
+			CustomCheckPaths: []string{"succeedWithOut"},
+			ExpectedResults: []check.Result{
 				{
-					"group1",
-					"succeedWithOut",
-					"path/succeedWithOut",
-					"1",
-					"count",
-					int64(2),
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut",
+					Path:        "path/succeedWithOut",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
 				},
 			},
 		},
 		{
-			"withSomeSucceedCustomCheckers",
-			[]string{"succeedWithOut1", "succeedWithOut2"},
-			[]check.Result{
+			Name:               "withOneSucceedCustomAndRegisteredCheckers",
+			CustomCheckPaths:   []string{"succeedWithOut"},
+			RegisteredCheckers: []check.Checker{checker1},
+			ExpectedResults: []check.Result{
 				{
-					"group1",
-					"succeedWithOut1",
-					"path/succeedWithOut1",
-					"1",
-					"count",
-					int64(2),
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut",
+					Path:        "path/succeedWithOut",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
 				},
 				{
-					"group1",
-					"succeedWithOut2",
-					"path/succeedWithOut2",
-					"1",
-					"count",
-					int64(2),
+					DriverGroup: "checker1Grp",
+					DriverName:  "checker1Drv",
+					Path:        "path-a",
+					Instance:    "instance-a",
+					Unit:        "",
+					Value:       int64(0),
 				},
-			},
-		},
-		{
-			"withSomeFailedCustomCheckers",
-			[]string{"succeedWithOut", "exitCode3"},
-			[]check.Result{
 				{
-					"group1",
-					"succeedWithOut",
-					"path/succeedWithOut",
-					"1",
-					"count",
-					int64(2),
+					DriverGroup: "checker1Grp",
+					DriverName:  "checker1Drv",
+					Path:        "path-b",
+					Instance:    "instance-b",
+					Unit:        "",
+					Value:       int64(0),
 				},
 			},
 		},
 		{
-			"withWithCorrectOutputButBadExitCode",
-			[]string{"failWithCorrectOut"},
-			[]check.Result{},
+			Name:               "withOneSucceedCustomAndTwoRegisteredCheckers",
+			CustomCheckPaths:   []string{"succeedWithOut"},
+			RegisteredCheckers: []check.Checker{checker1, checker2},
+			ExpectedResults: []check.Result{
+				{
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut",
+					Path:        "path/succeedWithOut",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
+				},
+				{
+					DriverGroup: "checker1Grp",
+					DriverName:  "checker1Drv",
+					Path:        "path-a",
+					Instance:    "instance-a",
+					Unit:        "",
+					Value:       int64(0),
+				},
+				{
+					DriverGroup: "checker1Grp",
+					DriverName:  "checker1Drv",
+					Path:        "path-b",
+					Instance:    "instance-b",
+					Unit:        "",
+					Value:       int64(0),
+				},
+				{
+					DriverGroup: "checker2Grp",
+					DriverName:  "checker2Drv",
+					Path:        "path-a",
+					Instance:    "instance-a",
+					Unit:        "",
+					Value:       int64(0),
+				},
+			},
 		},
 		{
-			"withFailedCustomCheckers",
-			[]string{"failWithOutAndErr"},
-			[]check.Result{},
+			Name:               "succeedCustomChecker, error and succeed registered checkers",
+			CustomCheckPaths:   []string{"succeedWithOut"},
+			RegisteredCheckers: []check.Checker{errorChecker, checker2},
+			ExpectedResults: []check.Result{
+				{
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut",
+					Path:        "path/succeedWithOut",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
+				},
+				{
+					DriverGroup: "checker2Grp",
+					DriverName:  "checker2Drv",
+					Path:        "path-a",
+					Instance:    "instance-a",
+					Unit:        "",
+					Value:       int64(0),
+				},
+			},
+		},
+		{
+			Name:             "withSomeSucceedCustomCheckers",
+			CustomCheckPaths: []string{"succeedWithOut1", "succeedWithOut2"},
+			ExpectedResults: []check.Result{
+				{
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut1",
+					Path:        "path/succeedWithOut1",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
+				},
+				{
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut2",
+					Path:        "path/succeedWithOut2",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
+				},
+			},
+		},
+		{
+			Name:             "withSomeFailedCustomCheckers",
+			CustomCheckPaths: []string{"succeedWithOut", "exitCode3"},
+			ExpectedResults: []check.Result{
+				{
+					DriverGroup: "group1",
+					DriverName:  "succeedWithOut",
+					Path:        "path/succeedWithOut",
+					Instance:    "1",
+					Unit:        "count",
+					Value:       int64(2),
+				},
+			},
+		},
+		{
+			Name:             "withWithCorrectOutputButBadExitCode",
+			CustomCheckPaths: []string{"failWithCorrectOut"},
+			ExpectedResults:  []check.Result{},
+		},
+		{
+			Name:             "withFailedCustomCheckers",
+			CustomCheckPaths: []string{"failWithOutAndErr"},
+			ExpectedResults:  []check.Result{},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
+			check.UnRegisterAll()
+			for _, checker := range tc.RegisteredCheckers {
+				check.Register(checker)
+			}
 			resultSet := check.NewRunner(tc.CustomCheckPaths).Do()
 			for _, expectedResult := range tc.ExpectedResults {
 				assert.Containsf(t, resultSet.Data, expectedResult,
