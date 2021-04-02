@@ -7,7 +7,7 @@ import (
 	"os/exec"
 )
 
-var execCommand = exec.Command
+var ExecCommand = exec.Command
 
 type (
 	// aggregate results and format the output.
@@ -65,7 +65,7 @@ func doRegisteredCheck(q chan *ResultSet, c Checker) {
 
 func doCustomCheck(q chan *ResultSet, path string) {
 	rs := NewResultSet()
-	cmd := execCommand(path)
+	cmd := ExecCommand(path)
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {

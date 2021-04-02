@@ -1,6 +1,8 @@
-package check
+package check_test
 
 import (
+	"opensvc.com/opensvc/core/check"
+
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -40,8 +42,8 @@ func TestHelperProcess(t *testing.T) {
 	case cmd == "exitCode3":
 		exitCode = 3
 	case strings.Contains(cmd, "succeedWithOut"):
-		data := ResultSet{
-			Data: []Result{
+		data := check.ResultSet{
+			Data: []check.Result{
 				{"group1", cmd, "path/" + cmd, "1", "count", 2},
 			},
 		}
@@ -51,7 +53,7 @@ func TestHelperProcess(t *testing.T) {
 		}
 		out = string(outB)
 	case cmd == "failWithCorrectOut":
-		data := ResultSet{Data: []Result{
+		data := check.ResultSet{Data: []check.Result{
 			{"group1", cmd, "path/" + cmd, "1", "count", 2}},
 		}
 		outB, err := json.Marshal(data)
@@ -76,27 +78,27 @@ func TestHelperProcess(t *testing.T) {
 }
 
 func TestRunnerDo(t *testing.T) {
-	execCommand = fakeExecCommand
-	defer func() { execCommand = exec.Command }()
+	check.ExecCommand = fakeExecCommand
+	defer func() { check.ExecCommand = exec.Command }()
 	cases := []struct {
 		Name             string
 		CustomCheckPaths []string
-		ExpectedResults  []Result
+		ExpectedResults  []check.Result
 	}{
 		{
 			"withoutCustomCheckers",
 			[]string{},
-			[]Result{},
+			[]check.Result{},
 		},
 		{
 			"withOneFailedChecker",
 			[]string{"exitCode3"},
-			[]Result{},
+			[]check.Result{},
 		},
 		{
 			"withOneSucceedCustomCheckers",
 			[]string{"succeedWithOut"},
-			[]Result{
+			[]check.Result{
 				{
 					"group1",
 					"succeedWithOut",
@@ -110,7 +112,7 @@ func TestRunnerDo(t *testing.T) {
 		{
 			"withSomeSucceedCustomCheckers",
 			[]string{"succeedWithOut1", "succeedWithOut2"},
-			[]Result{
+			[]check.Result{
 				{
 					"group1",
 					"succeedWithOut1",
@@ -132,7 +134,7 @@ func TestRunnerDo(t *testing.T) {
 		{
 			"withSomeFailedCustomCheckers",
 			[]string{"succeedWithOut", "exitCode3"},
-			[]Result{
+			[]check.Result{
 				{
 					"group1",
 					"succeedWithOut",
@@ -146,17 +148,17 @@ func TestRunnerDo(t *testing.T) {
 		{
 			"withWithCorrectOutputButBadExitCode",
 			[]string{"failWithCorrectOut"},
-			[]Result{},
+			[]check.Result{},
 		},
 		{
 			"withFailedCustomCheckers",
 			[]string{"failWithOutAndErr"},
-			[]Result{},
+			[]check.Result{},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
-			resultSet := NewRunner(tc.CustomCheckPaths).Do()
+			resultSet := check.NewRunner(tc.CustomCheckPaths).Do()
 			for _, expectedResult := range tc.ExpectedResults {
 				assert.Containsf(t, resultSet.Data, expectedResult,
 					"result: %+v not found in resultSet %+v\n", expectedResult, resultSet.Data)
