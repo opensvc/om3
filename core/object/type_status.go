@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
@@ -15,7 +16,7 @@ type (
 	// Status is a composite extract of different parts of
 	// the cluster status.
 	Status struct {
-		Path      Path                        `json:"path"`
+		Path      path.T                      `json:"path"`
 		Compat    bool                        `json:"compat"`
 		Object    AggregatedStatus            `json:"service"`
 		Instances map[string]InstanceStates   `json:"instances"`

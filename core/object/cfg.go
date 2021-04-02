@@ -1,5 +1,7 @@
 package object
 
+import "opensvc.com/opensvc/core/path"
+
 type (
 	//
 	// Cfg is the cfg-kind object.
@@ -20,8 +22,8 @@ type (
 )
 
 // NewCfg allocates a cfg kind object.
-func NewCfg(path Path) *Cfg {
+func NewCfg(p path.T) *Cfg {
 	s := &Cfg{}
-	s.Base.init(path)
+	s.Base.init(p)
 	return s
 }

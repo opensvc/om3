@@ -1,5 +1,7 @@
 package object
 
+import "opensvc.com/opensvc/core/path"
+
 type (
 	//
 	// Ccfg is the clusterwide configuration store.
@@ -13,8 +15,8 @@ type (
 )
 
 // NewCcfg allocates a ccfg kind object.
-func NewCcfg(path Path) *Ccfg {
+func NewCcfg(p path.T) *Ccfg {
 	s := &Ccfg{}
-	s.Base.init(path)
+	s.Base.init(p)
 	return s
 }

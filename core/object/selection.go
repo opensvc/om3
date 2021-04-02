@@ -14,6 +14,8 @@ import (
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -24,8 +26,8 @@ type (
 		hasClient          bool
 		client             *client.T
 		local              bool
-		paths              []Path
-		installed          []Path
+		paths              []path.T
+		installed          []path.T
 		installedSet       *set.Set
 		server             string
 	}
@@ -41,13 +43,13 @@ type (
 	// Action describes an action to execute on the selected objects.
 	Action struct {
 		BaseAction
-		Run func(Path) (interface{}, error)
+		Run func(path.T) (interface{}, error)
 	}
 
 	// ActionResult is a predictible type of actions return value, for reflect.
 	ActionResult struct {
 		Nodename      string        `json:"nodename"`
-		Path          Path          `json:"path"`
+		Path          path.T        `json:"path"`
 		Data          interface{}   `json:"data"`
 		Error         error         `json:"error,omitempty"`
 		Panic         interface{}   `json:"panic,omitempty"`
@@ -126,7 +128,7 @@ func (t Selection) String() string {
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
 //
-func (t *Selection) Expand() []Path {
+func (t *Selection) Expand() []path.T {
 	if t.paths != nil {
 		return t.paths
 	}
@@ -147,14 +149,14 @@ func (t *Selection) ExpandSet() *set.Set {
 	return s
 }
 
-func (t *Selection) add(path Path) {
-	pathStr := path.String()
-	for _, p := range t.paths {
-		if pathStr == p.String() {
+func (t *Selection) add(p path.T) {
+	pathStr := p.String()
+	for _, e := range t.paths {
+		if pathStr == e.String() {
 			return
 		}
 	}
-	t.paths = append(t.paths, path)
+	t.paths = append(t.paths, p)
 }
 
 func (t *Selection) expand() {
@@ -181,8 +183,8 @@ func (t *Selection) expand() {
 }
 
 // Installed returns a list Path of every object with a locally installed configuration file.
-func Installed() ([]Path, error) {
-	l := make([]Path, 0)
+func Installed() ([]path.T, error) {
+	l := make([]path.T, 0)
 	matches := make([]string, 0)
 	patterns := []string{
 		fmt.Sprintf("%s/*.conf", config.Node.Paths.Etc),                // root svc
@@ -201,24 +203,24 @@ func Installed() ([]Path, error) {
 		fmt.Sprintf("%s/", config.Node.Paths.Etc),
 	}
 	envNamespace := config.EnvNamespace()
-	envKind := NewKind(config.EnvKind())
-	for _, p := range matches {
+	envKind := kind.New(config.EnvKind())
+	for _, ps := range matches {
 		for _, r := range replacements {
-			p = strings.Replace(p, r, "", 1)
-			p = strings.Replace(p, r, "", 1)
+			ps = strings.Replace(ps, r, "", 1)
+			ps = strings.Replace(ps, r, "", 1)
 		}
-		p = xstrings.TrimLast(p, 5) // strip trailing .conf
-		path, err := NewPathFromString(p)
+		ps = xstrings.TrimLast(ps, 5) // strip trailing .conf
+		p, err := path.Parse(ps)
 		if err != nil {
 			continue
 		}
-		if envKind != KindInvalid && envKind != path.Kind {
+		if envKind != kind.Invalid && envKind != p.Kind {
 			continue
 		}
-		if envNamespace != "" && envNamespace != path.Namespace {
+		if envNamespace != "" && envNamespace != p.Namespace {
 			continue
 		}
-		l = append(l, path)
+		l = append(l, p)
 	}
 	return l, nil
 }
@@ -234,7 +236,7 @@ func (t *Selection) localExpand() error {
 			return err
 		}
 		pset.Do(func(i interface{}) {
-			p, _ := NewPathFromString(i.(string))
+			p, _ := path.Parse(i.(string))
 			t.add(p)
 		})
 	}
@@ -298,7 +300,7 @@ func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
 // getInstalled returns the list of all paths with a locally installed
 // configuration file.
 //
-func (t *Selection) getInstalled() ([]Path, error) {
+func (t *Selection) getInstalled() ([]path.T, error) {
 	if t.installed != nil {
 		return t.installed, nil
 	}
@@ -334,14 +336,15 @@ func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 
 func (t *Selection) localExactExpand(s string) (*set.Set, error) {
 	matching := set.New()
-	path, err := NewPathFromString(s)
+	p, err := path.Parse(s)
 	if err != nil {
 		return matching, err
 	}
-	if !path.Exists() {
+	o := NewBaserFromPath(p)
+	if !o.Exists() {
 		return matching, nil
 	}
-	matching.Insert(path.String())
+	matching.Insert(p.String())
 	return matching, nil
 }
 
@@ -387,10 +390,10 @@ func (t *Selection) Do(action Action) []ActionResult {
 	results := make([]ActionResult, 0)
 	started := 0
 
-	for _, path := range t.paths {
-		go func(path Path) {
+	for _, p := range t.paths {
+		go func(p path.T) {
 			result := ActionResult{
-				Path:     path,
+				Path:     p,
 				Nodename: config.Node.Hostname,
 			}
 			defer func() {
@@ -399,7 +402,7 @@ func (t *Selection) Do(action Action) []ActionResult {
 					q <- result
 				}
 			}()
-			data, err := action.Run(path)
+			data, err := action.Run(p)
 			result.Data = data
 			result.Error = err
 			result.HumanRenderer = func() string {
@@ -413,7 +416,7 @@ func (t *Selection) Do(action Action) []ActionResult {
 				return fmt.Sprintln(data)
 			}
 			q <- result
-		}(path)
+		}(p)
 		started++
 	}
 

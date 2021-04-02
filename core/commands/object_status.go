@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -52,8 +53,8 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 		objectaction.WithColor(t.Global.Color),
 		objectaction.WithRemoteNodes(t.Global.NodeSelector),
 		objectaction.WithRemoteAction("status"),
-		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
-			intf := path.NewObject().(object.Baser)
+		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+			intf := object.NewBaserFromPath(p)
 			return intf.Status(t.OptsStatus)
 		}),
 	).Do()

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -45,8 +46,8 @@ func (t *CmdObjectGet) run(selector *string, kind string) {
 			"impersonate": t.Impersonate,
 			"eval":        t.Eval,
 		}),
-		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
-			return path.NewObject().(object.Configurer).Get(t.OptsGet)
+		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+			return object.NewFromPath(p).(object.Configurer).Get(t.OptsGet)
 		}),
 	).Do()
 }

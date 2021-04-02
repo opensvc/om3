@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -43,8 +44,8 @@ func (t *CmdObjectSet) run(selector *string, kind string) {
 		objectaction.WithRemoteOptions(map[string]interface{}{
 			"kw": t.KeywordOps,
 		}),
-		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
-			return nil, path.NewObject().(object.Configurer).Set(t.OptsSet)
+		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+			return nil, object.NewConfigurerFromPath(p).Set(t.OptsSet)
 		}),
 	).Do()
 }

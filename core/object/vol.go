@@ -1,5 +1,7 @@
 package object
 
+import "opensvc.com/opensvc/core/path"
+
 type (
 	//
 	// Vol is the vol-kind object.
@@ -15,8 +17,8 @@ type (
 )
 
 // NewVol allocates a vol kind object.
-func NewVol(path Path) *Vol {
+func NewVol(p path.T) *Vol {
 	s := &Vol{}
-	s.Base.init(path)
+	s.Base.init(p)
 	return s
 }

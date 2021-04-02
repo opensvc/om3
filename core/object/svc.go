@@ -1,5 +1,7 @@
 package object
 
+import "opensvc.com/opensvc/core/path"
+
 type (
 	//
 	// Svc is the svc-kind object.
@@ -12,8 +14,8 @@ type (
 )
 
 // NewSvc allocates a svc kind object.
-func NewSvc(path Path) *Svc {
+func NewSvc(p path.T) *Svc {
 	s := &Svc{}
-	s.Base.init(path)
+	s.Base.init(p)
 	return s
 }

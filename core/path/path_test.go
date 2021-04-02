@@ -1,14 +1,13 @@
-package object
+package path
 
 import (
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/config"
 )
 
-func TestNewPath(t *testing.T) {
+func TestNew(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -89,7 +88,7 @@ func TestNewPath(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, err := NewPath(test.name, test.namespace, test.kind)
+		path, err := New(test.name, test.namespace, test.kind)
 		if test.ok {
 			if ok := assert.Nil(t, err); !ok {
 				return
@@ -104,7 +103,7 @@ func TestNewPath(t *testing.T) {
 	}
 
 }
-func TestNewPathFromString(t *testing.T) {
+func TestParse(t *testing.T) {
 	tests := map[string]struct {
 		name      string
 		namespace string
@@ -174,7 +173,7 @@ func TestNewPathFromString(t *testing.T) {
 	}
 	for input, test := range tests {
 		t.Logf("%s", input)
-		path, err := NewPathFromString(input)
+		path, err := Parse(input)
 		switch test.ok {
 		case true:
 			assert.Nil(t, err)
@@ -189,7 +188,7 @@ func TestNewPathFromString(t *testing.T) {
 }
 
 func TestMarshalJSON(t *testing.T) {
-	path, _ := NewPath("svc1", "ns1", "svc")
+	path, _ := New("svc1", "ns1", "svc")
 	b, err := json.Marshal(path)
 	assert.Nil(t, err)
 	assert.Equal(t, b, []byte(`"ns1/svc/svc1"`))
@@ -218,7 +217,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	for s, test := range tests {
 		t.Logf("json unmarshal %s", s)
 		b := []byte(s)
-		var path Path
+		var path T
 		err := json.Unmarshal(b, &path)
 		switch test.ok {
 		case true:
@@ -230,82 +229,6 @@ func TestUnmarshalJSON(t *testing.T) {
 		assert.Equal(t, path.Name, test.name)
 		assert.Equal(t, path.Kind.String(), test.kind)
 	}
-}
-
-func TestConfigFile(t *testing.T) {
-	tests := map[string]struct {
-		name      string
-		namespace string
-		kind      string
-		cf        string
-		root      string
-	}{
-		"namespaced, package install": {
-			name:      "svc1",
-			namespace: "ns1",
-			kind:      "svc",
-			cf:        "/etc/opensvc/namespaces/ns1/svc/svc1.conf",
-			root:      "",
-		},
-		"rooted svc, package install": {
-			name:      "svc1",
-			namespace: "",
-			kind:      "svc",
-			cf:        "/etc/opensvc/svc1.conf",
-			root:      "",
-		},
-		"rooted cfg, package install": {
-			name:      "cfg1",
-			namespace: "",
-			kind:      "cfg",
-			cf:        "/etc/opensvc/cfg/cfg1.conf",
-			root:      "",
-		},
-		"cluster cfg, package install": {
-			name:      "cluster",
-			namespace: "",
-			kind:      "ccfg",
-			cf:        "/etc/opensvc/cluster.conf",
-			root:      "",
-		},
-		"namespaced, dev install": {
-			name:      "svc1",
-			namespace: "ns1",
-			kind:      "svc",
-			cf:        "/opt/opensvc/etc/namespaces/ns1/svc/svc1.conf",
-			root:      "/opt/opensvc",
-		},
-		"rooted svc, dev install": {
-			name:      "svc1",
-			namespace: "",
-			kind:      "svc",
-			cf:        "/opt/opensvc/etc/svc1.conf",
-			root:      "/opt/opensvc",
-		},
-		"rooted cfg, dev install": {
-			name:      "cfg1",
-			namespace: "",
-			kind:      "cfg",
-			cf:        "/opt/opensvc/etc/cfg/cfg1.conf",
-			root:      "/opt/opensvc",
-		},
-		"cluster cfg, dev install": {
-			name:      "cluster",
-			namespace: "",
-			kind:      "ccfg",
-			cf:        "/opt/opensvc/etc/cluster.conf",
-			root:      "/opt/opensvc",
-		},
-	}
-	for testName, test := range tests {
-		config.Load(map[string]string{
-			"osvc_root_path": test.root,
-		})
-		t.Logf("%s", testName)
-		path, _ := NewPath(test.name, test.namespace, test.kind)
-		assert.Equal(t, test.cf, path.ConfigFile())
-	}
-
 }
 
 func TestMatch(t *testing.T) {
@@ -361,7 +284,7 @@ func TestMatch(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Logf("%s", testName)
-		path, _ := NewPath(test.name, test.namespace, test.kind)
+		path, _ := New(test.name, test.namespace, test.kind)
 		assert.Equal(t, test.match, path.Match(test.pattern))
 	}
 }

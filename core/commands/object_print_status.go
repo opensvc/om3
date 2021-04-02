@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -67,15 +68,15 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 		selector,
 		object.SelectionWithLocal(true),
 	)
-	for _, path := range sel.Expand() {
-		obj := path.NewBaser()
+	for _, p := range sel.Expand() {
+		obj := object.NewBaserFromPath(p)
 		status, err := obj.Status(t.OptsStatus)
 		if err != nil {
-			log.Debug().Err(err).Str("path", path.String()).Msg("extract local")
+			log.Debug().Err(err).Str("path", p.String()).Msg("extract local")
 			continue
 		}
 		o := object.Status{
-			Path:   path,
+			Path:   p,
 			Compat: true,
 			Object: object.AggregatedStatus{},
 			Instances: map[string]object.InstanceStates{
@@ -112,13 +113,13 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 		return []object.Status{}, err
 	}
 	data := make([]object.Status, 0)
-	for p := range clusterStatus.Monitor.Services {
-		path, err := object.NewPathFromString(p)
+	for ps := range clusterStatus.Monitor.Services {
+		p, err := path.Parse(ps)
 		if err != nil {
-			log.Debug().Err(err).Str("path", p).Msg("extractFromDaemon")
+			log.Debug().Err(err).Str("path", ps).Msg("extractFromDaemon")
 			continue
 		}
-		data = append(data, clusterStatus.GetObjectStatus(path))
+		data = append(data, clusterStatus.GetObjectStatus(p))
 	}
 	return data, nil
 }

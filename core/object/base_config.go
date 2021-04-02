@@ -6,7 +6,7 @@ import (
 
 func (t *Base) loadConfig() error {
 	var err error
-	t.config, err = config.NewObject(t.Path.ConfigFile())
+	t.config, err = config.NewObject(t.ConfigFile())
 	return err
 }
 

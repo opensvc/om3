@@ -10,6 +10,8 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"opensvc.com/opensvc/core/fqdn"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -190,6 +192,15 @@ func (t *T) IsInEncapNodes() bool {
 		s.Insert(n)
 	}
 	return s.Has(Node.Hostname)
+}
+
+func (t T) dereference(ref string, section string) string {
+	switch ref {
+	case "fqdn":
+		p, _ := path.Parse(t.Path)
+		return fqdn.New(p, Node.Cluster.Name).String()
+	}
+	return ref
 }
 
 func (t Raw) Render() string {

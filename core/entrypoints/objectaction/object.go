@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -172,7 +173,7 @@ func WithServer(s string) Option {
 }
 
 // WithLocalRun sets a function to run if the the action is local
-func WithLocalRun(f func(object.Path) (interface{}, error)) Option {
+func WithLocalRun(f func(path.T) (interface{}, error)) Option {
 	return optionFunc(func(t *T) error {
 		t.Object.Run = f
 		return nil

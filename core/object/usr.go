@@ -1,5 +1,7 @@
 package object
 
+import "opensvc.com/opensvc/core/path"
+
 type (
 	//
 	// Usr is the usr-kind object.
@@ -14,8 +16,8 @@ type (
 )
 
 // NewUsr allocates a usr kind object.
-func NewUsr(path Path) *Usr {
+func NewUsr(p path.T) *Usr {
 	s := &Usr{}
-	s.Base.init(path)
+	s.Base.init(p)
 	return s
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -41,8 +42,8 @@ func (t *CmdObjectStop) run(selector *string, kind string) {
 		objectaction.WithRemoteAction("stop"),
 		objectaction.WithAsyncTarget("stopped"),
 		objectaction.WithAsyncWatch(t.Async.Watch),
-		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
-			intf := path.NewObject().(object.Starter)
+		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+			intf := object.NewFromPath(p).(object.Starter)
 			return nil, intf.Stop(t.OptsStop)
 		}),
 	).Do()

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -43,8 +44,8 @@ func (t *CmdObjectUnfreeze) run(selector *string, kind string) {
 		objectaction.WithAsyncWatch(t.Async.Watch),
 		objectaction.WithRemoteNodes(t.Global.NodeSelector),
 		objectaction.WithRemoteAction("unfreeze"),
-		objectaction.WithLocalRun(func(path object.Path) (interface{}, error) {
-			intf := path.NewObject().(object.Freezer)
+		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+			intf := object.NewFromPath(p).(object.Freezer)
 			return nil, intf.Unfreeze()
 		}),
 	).Do()

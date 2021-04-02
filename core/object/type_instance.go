@@ -6,6 +6,8 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
@@ -28,7 +30,7 @@ type (
 	// timestamp of last change and the nodes it should be installed on.
 	InstanceConfig struct {
 		Nodename string   `json:"-"`
-		Path     Path     `json:"-"`
+		Path     path.T   `json:"-"`
 		Checksum string   `json:"csum"`
 		Scope    []string `json:"scope"`
 		Updated  timestamp.T
@@ -37,7 +39,7 @@ type (
 	// InstanceStatus describes the instance status.
 	InstanceStatus struct {
 		Nodename    string                    `json:"-"`
-		Path        Path                      `json:"-"`
+		Path        path.T                    `json:"-"`
 		App         string                    `json:"app,omitempty"`
 		Avail       status.T                  `json:"avail,omitempty"`
 		Constraints bool                      `json:"constraints,omitempty"`
@@ -46,7 +48,7 @@ type (
 		Csum        string                    `json:"csum,omitempty"`
 		Env         string                    `json:"env,omitempty"`
 		Frozen      timestamp.T               `json:"frozen,omitempty"`
-		Kind        Kind                      `json:"kind"`
+		Kind        kind.T                    `json:"kind"`
 		Monitor     InstanceMonitor           `json:"monitor"`
 		Optional    status.T                  `json:"optional,omitempty"`
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
@@ -62,9 +64,9 @@ type (
 		Subsets     map[string]SubsetStatus   `json:"subsets,omitempty"`
 		Resources   map[string]ResourceStatus `json:"resources,omitempty"`
 		Running     ResourceRunningSet        `json:"running,omitempty"`
-		Parents     []RelationPath            `json:"parents,omitempty"`
-		Children    []RelationPath            `json:"children,omitempty"`
-		Slaves      []RelationPath            `json:"slaves,omitempty"`
+		Parents     []path.Relation           `json:"parents,omitempty"`
+		Children    []path.Relation           `json:"children,omitempty"`
+		Slaves      []path.Relation           `json:"slaves,omitempty"`
 		Scale       null.Int                  `json:"scale,omitempty"`
 	}
 

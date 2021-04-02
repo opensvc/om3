@@ -14,6 +14,7 @@ type (
 	// Baser is implemented by all object kinds.
 	Baser interface {
 		Status(OptsStatus) (InstanceStatus, error)
+		Exists() bool
 	}
 
 	// Starter is implemented by object kinds supporting start, stop, ...
@@ -32,6 +33,7 @@ type (
 
 	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
 	Configurer interface {
+		ConfigFile() string
 		Config() *config.T
 		Get(OptsGet) (interface{}, error)
 		Set(OptsSet) error

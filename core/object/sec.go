@@ -1,5 +1,7 @@
 package object
 
+import "opensvc.com/opensvc/core/path"
+
 type (
 	//
 	// Sec is the sec-kind object.
@@ -20,8 +22,8 @@ type (
 )
 
 // NewSec allocates a sec kind object.
-func NewSec(path Path) *Sec {
+func NewSec(p path.T) *Sec {
 	s := &Sec{}
-	s.Base.init(path)
+	s.Base.init(p)
 	return s
 }

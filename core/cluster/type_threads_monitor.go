@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -73,37 +74,37 @@ type (
 
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
-func (t Status) GetObjectStatus(path object.Path) object.Status {
-	p := path.String()
+func (t Status) GetObjectStatus(p path.T) object.Status {
+	ps := p.String()
 	data := object.NewObjectStatus()
-	data.Path = path
+	data.Path = p
 	data.Compat = t.Monitor.Compat
-	data.Object, _ = t.Monitor.Services[p]
+	data.Object, _ = t.Monitor.Services[ps]
 	for nodename, ndata := range t.Monitor.Nodes {
 		var ok bool
 		instance := object.InstanceStates{}
 		instance.Node.Frozen = ndata.Frozen
 		instance.Node.Name = nodename
-		instance.Status, ok = ndata.Services.Status[p]
+		instance.Status, ok = ndata.Services.Status[ps]
 		if !ok {
 			continue
 		}
-		instance.Config, ok = ndata.Services.Config[p]
+		instance.Config, ok = ndata.Services.Config[ps]
 		if !ok {
 			continue
 		}
 		data.Instances[nodename] = instance
 		for _, relative := range instance.Status.Parents {
-			p := relative.String()
-			data.Parents[p] = t.Monitor.Services[p]
+			ps := relative.String()
+			data.Parents[ps] = t.Monitor.Services[ps]
 		}
 		for _, relative := range instance.Status.Children {
-			p := relative.String()
-			data.Children[p] = t.Monitor.Services[p]
+			ps := relative.String()
+			data.Children[ps] = t.Monitor.Services[ps]
 		}
 		for _, relative := range instance.Status.Slaves {
-			p := relative.String()
-			data.Slaves[p] = t.Monitor.Services[p]
+			ps := relative.String()
+			data.Slaves[ps] = t.Monitor.Services[ps]
 		}
 	}
 	return *data

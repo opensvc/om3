@@ -53,11 +53,11 @@ func (t *CmdObjectPrintConfig) extractLocal(selector string) ([]config.Raw, erro
 		selector,
 		object.SelectionWithLocal(true),
 	)
-	for _, path := range sel.Expand() {
-		obj := path.NewConfigurer()
+	for _, p := range sel.Expand() {
+		obj := object.NewConfigurerFromPath(p)
 		c := obj.Config()
 		if c == nil {
-			log.Error().Str("path", path.String()).Msg("no configuration")
+			log.Error().Str("path", p.String()).Msg("no configuration")
 			continue
 		}
 		data = append(data, c.Raw())

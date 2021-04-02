@@ -2,20 +2,24 @@ package object
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/logging"
 )
 
 type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
-		Path     Path
+		Path     path.T
 		Volatile bool
 		log      zerolog.Logger
 
@@ -31,8 +35,8 @@ func (t *Base) List() (string, error) {
 	return t.Path.String(), nil
 }
 
-func (t *Base) init(path Path) error {
-	t.Path = path
+func (t *Base) init(p path.T) error {
+	t.Path = p
 	t.log = log.Logger
 	t.log = logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
@@ -109,4 +113,103 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 		}
 	}
 	return nil
+}
+
+// NewFromPath allocates a new kinded object
+func NewFromPath(p path.T) interface{} {
+	switch p.Kind {
+	case kind.Svc:
+		return NewSvc(p)
+	case kind.Vol:
+		return NewVol(p)
+	case kind.Cfg:
+		return NewCfg(p)
+	case kind.Sec:
+		return NewSec(p)
+	case kind.Usr:
+		return NewUsr(p)
+	case kind.Ccfg:
+		return NewCcfg(p)
+	default:
+		return nil
+	}
+}
+
+// NewBaserFromPath returns a Baser interface from an object path
+func NewBaserFromPath(p path.T) Baser {
+	return NewFromPath(p).(Baser)
+}
+
+// NewConfigurerFromPath returns a Configurer interface from an object path
+func NewConfigurerFromPath(p path.T) Configurer {
+	return NewFromPath(p).(Configurer)
+}
+
+//
+// ConfigFile returns the absolute path of an opensvc object configuration
+// file.
+//
+func (t Base) ConfigFile() string {
+	p := t.Path.String()
+	switch t.Path.Namespace {
+	case "", "root":
+		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.Etc, p)
+	default:
+		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.EtcNs, p)
+	}
+	return filepath.FromSlash(p)
+}
+
+// Exists returns true if the object configuration file exists.
+func (t Base) Exists() bool {
+	return file.Exists(t.ConfigFile())
+}
+
+//
+// VarDir returns the directory on the local filesystem where the object
+// variable persistent data is stored as files.
+//
+func (t Base) VarDir() string {
+	p := t.Path.String()
+	switch t.Path.Namespace {
+	case "", "root":
+		p = fmt.Sprintf("%s/%s/%s", config.Node.Paths.Var, t.Path.Kind, t.Path.Name)
+	default:
+		p = fmt.Sprintf("%s/namespaces/%s", config.Node.Paths.Var, p)
+	}
+	return filepath.FromSlash(p)
+}
+
+//
+// TmpDir returns the directory on the local filesystem where the object
+// stores its temporary files.
+//
+func (t Base) TmpDir() string {
+	p := t.Path.String()
+	switch {
+	case t.Path.Namespace != "", t.Path.Namespace != "root":
+		p = fmt.Sprintf("%s/namespaces/%s/%s", config.Node.Paths.Tmp, t.Path.Namespace, t.Path.Kind)
+	case t.Path.Kind == kind.Svc, t.Path.Kind == kind.Ccfg:
+		p = fmt.Sprintf("%s", config.Node.Paths.Tmp)
+	default:
+		p = fmt.Sprintf("%s/%s", config.Node.Paths.Tmp, t.Path.Kind)
+	}
+	return filepath.FromSlash(p)
+}
+
+//
+// LogDir returns the directory on the local filesystem where the object
+// stores its temporary files.
+//
+func (t Base) LogDir() string {
+	p := t.Path.String()
+	switch {
+	case t.Path.Namespace != "", t.Path.Namespace != "root":
+		p = fmt.Sprintf("%s/namespaces/%s/%s", config.Node.Paths.Log, t.Path.Namespace, t.Path.Kind)
+	case t.Path.Kind == kind.Svc, t.Path.Kind == kind.Ccfg:
+		p = fmt.Sprintf("%s", config.Node.Paths.Log)
+	default:
+		p = fmt.Sprintf("%s/%s", config.Node.Paths.Log, t.Path.Kind)
+	}
+	return filepath.FromSlash(p)
 }
