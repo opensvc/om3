@@ -35,20 +35,28 @@ func IsExecAll(mode os.FileMode) bool {
 	return mode&0111 == 0111
 }
 
-func FindExe(root string) []string {
+// FindExe returns the list of file paths of all executables under the
+// heads globing pattern.
+func FindExe(heads string) []string {
 	l := make([]string, 0)
-	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.Mode().IsDir() {
+	m, err := filepath.Glob(heads)
+	if err != nil {
+		return l
+	}
+	for _, root := range m {
+		_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.Mode().IsDir() {
+				return nil
+			}
+			if IsExecOwner(info.Mode().Perm()) {
+				l = append(l, path)
+				return nil
+			}
 			return nil
-		}
-		if IsExecOwner(info.Mode().Perm()) {
-			l = append(l, path)
-			return nil
-		}
-		return nil
-	})
+		})
+	}
 	return l
 }

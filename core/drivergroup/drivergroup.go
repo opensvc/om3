@@ -24,6 +24,7 @@ const (
 	Task
 )
 
+// New allocates a drivergroup.T from its string representation.
 func New(s string) T {
 	switch s {
 	case "ip":
