@@ -51,8 +51,7 @@ func Configure(config Config) *Logger {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 	if config.FileLoggingEnabled {
-		fileWriter, err := newRollingFile(config)
-		if err == nil {
+		if fileWriter, err := newRollingFile(config); err == nil {
 			writers = append(writers, fileWriter)
 		}
 	}
