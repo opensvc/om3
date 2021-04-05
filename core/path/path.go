@@ -107,6 +107,10 @@ func (t T) String() string {
 	return s + t.Name
 }
 
+func (t T) IsZero() bool {
+	return t.Name == "" && t.Namespace == "" && t.Kind == kind.Invalid
+}
+
 // Parse returns a new path struct from a path string representation
 func Parse(s string) (T, error) {
 	var (

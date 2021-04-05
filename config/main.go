@@ -10,16 +10,23 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/path"
 )
 
 type (
 	// T exposes methods to read and write configurations.
 	T struct {
-		Path string
-		v    *viper.Viper
-		raw  Raw
+		ConfigFilePath string
+		Path           path.T
+		Dereferencer   Dereferencer
+		v              *viper.Viper
+		raw            Raw
+	}
+
+	// Dereferencer is the interface implemented by node and object to
+	// provide a reference resolver using their private attributes.
+	Dereferencer interface {
+		Dereference(string) string
 	}
 
 	Raw map[string]interface{}
@@ -76,7 +83,7 @@ func (t T) Raw() Raw {
 //
 func (t *T) Get(key string) (interface{}, error) {
 	val := t.v.Get(key)
-	log.Debug().Msgf("config %s get %s => %s", t.Path, key, val)
+	log.Debug().Msgf("config %s get %s => %s", t.ConfigFilePath, key, val)
 	return val, nil
 }
 
@@ -107,7 +114,17 @@ func (t *T) Eval(key string) (interface{}, error) {
 		return nil, ErrorExists
 	}
 	v, err := t.descope(s.(map[string]interface{}), option)
-	return v, err
+	if err != nil {
+		return nil, err
+	}
+	var sv string
+	if sv, ok = v.(string); !ok {
+		return v, nil
+	}
+	sv = RegexpReference.ReplaceAllStringFunc(sv, func(ref string) string {
+		return t.dereference(ref, section)
+	})
+	return sv, err
 }
 
 func (t *T) descope(s map[string]interface{}, option string) (interface{}, error) {
@@ -196,9 +213,10 @@ func (t *T) IsInEncapNodes() bool {
 
 func (t T) dereference(ref string, section string) string {
 	switch ref {
-	case "fqdn":
-		p, _ := path.Parse(t.Path)
-		return fqdn.New(p, Node.Cluster.Name).String()
+	case "{rindex}":
+		return strings.SplitN(section, "#", 2)[1]
+	default:
+		return t.Dereferencer.Dereference(ref)
 	}
 	return ref
 }

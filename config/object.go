@@ -12,7 +12,7 @@ import (
 // NewObject configures and returns a Viper instance
 func NewObject(p string) (*T, error) {
 	t := &T{
-		Path: p,
+		ConfigFilePath: p,
 	}
 	t.v = viper.NewWithOptions(viper.IniLoadOptions(ini.LoadOptions{
 		Loose:                      true,
