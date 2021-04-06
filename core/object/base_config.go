@@ -48,56 +48,56 @@ func (t Base) ID() uuid.UUID {
 
 func (t Base) Dereference(ref string) string {
 	switch ref {
-	case "{id}":
+	case "id":
 		return t.ID().String()
-	case "{name}", "{svcname}":
+	case "name", "{svcname}":
 		return t.Path.Name
-	case "{short_name}", "{short_svcname}":
+	case "short_name", "{short_svcname}":
 		return strings.SplitN(t.Path.Name, ".", 1)[0]
-	case "{scaler_name}", "{scaler_svcname}":
+	case "scaler_name", "{scaler_svcname}":
 		return RegexpScalerPrefix.ReplaceAllString(t.Path.Name, "")
-	case "{scaler_short_name}", "{scaler_short_svcname}":
+	case "scaler_short_name", "{scaler_short_svcname}":
 		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), ".", 1)[0]
-	case "{namespace}":
+	case "namespace":
 		return t.Path.Namespace
-	case "{kind}":
+	case "kind":
 		return t.Path.Kind.String()
-	case "{path}", "{svcpath}":
+	case "path", "{svcpath}":
 		if t.Path.IsZero() {
 			return ""
 		}
 		return t.Path.String()
-	case "{fqdn}":
+	case "fqdn":
 		if t.Path.IsZero() {
 			return ""
 		}
 		return fqdn.New(t.Path, config.Node.Cluster.Name).String()
-	case "{domain}":
+	case "domain":
 		if t.Path.IsZero() {
 			return ""
 		}
 		return fqdn.New(t.Path, config.Node.Cluster.Name).Domain()
-	case "{private_var}":
+	case "private_var":
 		return t.paths.varDir
-	case "{initd}":
+	case "initd":
 		return filepath.Join(filepath.Dir(t.ConfigFile()), t.Path.Name+".d")
-	case "{collector_api}":
+	case "collector_api":
 		return "TODO"
-	case "{clusterid}":
+	case "clusterid":
 		return "TODO"
-	case "{clustername}":
+	case "clustername":
 		return "TODO"
-	case "{clusternodes}":
+	case "clusternodes":
 		return "TODO"
-	case "{clusterdrpnodes}":
+	case "clusterdrpnodes":
 		return "TODO"
-	case "{dns}":
+	case "dns":
 		return "TODO"
-	case "{dnsnodes}":
+	case "dnsnodes":
 		return "TODO"
-	case "{dnsuxsock}":
+	case "dnsuxsock":
 		return t.Node().DNSUDSFile()
-	case "{dnsuxsockd}":
+	case "dnsuxsockd":
 		return t.Node().DNSUDSDir()
 	}
 	switch {

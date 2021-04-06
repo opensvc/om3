@@ -1,16 +1,17 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/golang-collections/collections/set"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
@@ -110,19 +111,11 @@ func (t *T) Eval(key string) (interface{}, error) {
 	var (
 		err error
 		ok  bool
-		s   interface{}
 	)
 	k := Key(key)
 	section := k.section()
 	option := k.option()
-	s, ok = t.raw[section]
-	if !ok {
-		return nil, ErrorExists
-	}
-	if _, ok = s.(map[string]interface{}); !ok {
-		return nil, ErrorExists
-	}
-	v, err := t.descope(s.(map[string]interface{}), option)
+	v, err := t.descope(section, option)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +129,22 @@ func (t *T) Eval(key string) (interface{}, error) {
 	return sv, err
 }
 
-func (t *T) descope(s map[string]interface{}, option string) (interface{}, error) {
+func (t T) sectionMap(section string) (map[string]interface{}, error) {
+	m, ok := t.raw[section]
+	if !ok {
+		return nil, errors.Wrapf(ErrorExists, "no section '%s'", section)
+	}
+	if s, ok := m.(map[string]interface{}); ok {
+		return s, nil
+	}
+	return nil, errors.Wrapf(ErrorExists, "section '%s' content is not a map of string", section)
+}
+
+func (t *T) descope(section string, option string) (interface{}, error) {
+	s, err := t.sectionMap(section)
+	if err != nil {
+		return nil, err
+	}
 	if v, ok := s[option+"@"+Node.Hostname]; ok {
 		return v, nil
 	}
@@ -152,7 +160,7 @@ func (t *T) descope(s map[string]interface{}, option string) (interface{}, error
 	if v, ok := s[option]; ok {
 		return v, nil
 	}
-	return nil, ErrorExists
+	return nil, errors.Wrapf(ErrorExists, "option '%s.%s' not found (tried scopes too)", section, option)
 }
 
 func (t *T) Nodes() []string {
@@ -221,26 +229,52 @@ func (t *T) IsInEncapNodes() bool {
 }
 
 func (t T) dereference(ref string, section string) string {
+	val := ""
+	ref = ref[1 : len(ref)-1]
+	l := strings.SplitN(ref, ":", 2)
+	switch l[0] {
+	case "upper":
+		val = t.dereferenceWellKnown(l[1], section)
+		val = strings.ToUpper(val)
+	case "lower":
+		val = t.dereferenceWellKnown(l[1], section)
+		val = strings.ToLower(val)
+	case "capitalize":
+		val = t.dereferenceWellKnown(l[1], section)
+		val = xstrings.Capitalize(val)
+	case "title":
+		val = t.dereferenceWellKnown(l[1], section)
+		val = strings.Title(val)
+	case "swapcase":
+		val = t.dereferenceWellKnown(l[1], section)
+		val = xstrings.SwapCase(val)
+	default:
+		val = t.dereferenceWellKnown(ref, section)
+	}
+	return val
+}
+
+func (t T) dereferenceWellKnown(ref string, section string) string {
 	switch ref {
-	case "{nodename}":
+	case "nodename":
 		return Node.Hostname
-	case "{short_nodename}":
+	case "short_nodename":
 		return strings.SplitN(Node.Hostname, ".", 1)[0]
-	case "{rid}":
+	case "rid":
 		return section
-	case "{rindex}":
+	case "rindex":
 		l := strings.SplitN(section, "#", 2)
 		if len(l) != 2 {
 			return section
 		}
 		return l[1]
-	case "{svcmgr}":
+	case "svcmgr":
 		return os.Args[0] + " svc"
-	case "{nodemgr}":
+	case "nodemgr":
 		return os.Args[0] + " node"
-	case "{etc}":
+	case "etc":
 		return Node.Paths.Etc
-	case "{var}":
+	case "var":
 		return Node.Paths.Var
 	default:
 		if t.Dereferencer != nil {
