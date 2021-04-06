@@ -9,7 +9,15 @@ import (
 	"opensvc.com/opensvc/config"
 )
 
-func (t *Node) varDir() string {
+// NodePaths contains lazy initialized object paths on the node filesystem.
+type NodePaths struct {
+	varDir    string
+	logDir    string
+	tmpDir    string
+	dnsUDSDir string
+}
+
+func (t *Node) VarDir() string {
 	if t.paths.varDir != "" {
 		return t.paths.varDir
 	}
@@ -21,7 +29,7 @@ func (t *Node) varDir() string {
 	return t.paths.varDir
 }
 
-func (t *Node) logDir() string {
+func (t *Node) LogDir() string {
 	if t.paths.logDir != "" {
 		return t.paths.logDir
 	}
@@ -33,7 +41,7 @@ func (t *Node) logDir() string {
 	return t.paths.logDir
 }
 
-func (t *Node) tmpDir() string {
+func (t *Node) TmpDir() string {
 	if t.paths.tmpDir != "" {
 		return t.paths.tmpDir
 	}
@@ -43,4 +51,19 @@ func (t *Node) tmpDir() string {
 		log.Error().Msgf("%s", err)
 	}
 	return t.paths.tmpDir
+}
+
+func (t *Node) DNSUDSDir() string {
+	if t.paths.dnsUDSDir != "" {
+		return t.paths.dnsUDSDir
+	}
+	t.paths.dnsUDSDir = filepath.Join(t.VarDir(), "dns")
+	if err := os.MkdirAll(t.paths.dnsUDSDir, os.ModePerm); err != nil {
+		log.Error().Msgf("%s", err)
+	}
+	return t.paths.dnsUDSDir
+}
+
+func (t *Node) DNSUDSFile() string {
+	return filepath.Join(t.DNSUDSDir(), "pdns.sock")
 }

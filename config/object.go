@@ -11,8 +11,9 @@ import (
 
 // NewObject configures and returns a Viper instance
 func NewObject(p string) (*T, error) {
+	cf := filepath.FromSlash(p)
 	t := &T{
-		ConfigFilePath: p,
+		ConfigFilePath: cf,
 	}
 	t.v = viper.NewWithOptions(viper.IniLoadOptions(ini.LoadOptions{
 		Loose:                      true,
@@ -20,7 +21,9 @@ func NewObject(p string) (*T, error) {
 		SpaceBeforeInlineComment:   true,
 	}))
 	t.v.SetConfigType("ini")
-	t.v.SetConfigFile(filepath.FromSlash(p))
+	t.v.SetConfigFile(cf)
+	t.v.AddConfigPath(filepath.Dir(cf))
+	t.v.SetConfigName(filepath.Base(cf))
 	t.v.ReadInConfig()
 
 	t.raw = make(Raw)

@@ -46,6 +46,11 @@ func (t T) String() string {
 	return fmt.Sprintf("%s.%s.%s.%s", t.Path.Name, t.Path.Namespace, t.Path.Kind, t.Cluster)
 }
 
+// Domain returns the domain part of the fqdn
+func (t T) Domain() string {
+	return fmt.Sprintf("%s.%s.%s", t.Path.Namespace, t.Path.Kind, t.Cluster)
+}
+
 // MarshalJSON implements the json interface
 func (t T) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString(`"`)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/ssrathi/go-attr"
@@ -24,7 +25,9 @@ type (
 		log      zerolog.Logger
 
 		// caches
+		id        uuid.UUID
 		config    *config.T
+		node      *Node
 		paths     BasePaths
 		resources []resource.Driver
 	}
@@ -212,4 +215,16 @@ func (t Base) LogDir() string {
 		p = fmt.Sprintf("%s/%s", config.Node.Paths.Log, t.Path.Kind)
 	}
 	return filepath.FromSlash(p)
+}
+
+//
+// Node returns a cache Node struct pointer. If none is already cached,
+// allocate a new Node{} and cache it.
+//
+func (t *Base) Node() *Node {
+	if t.node != nil {
+		return t.node
+	}
+	t.node = NewNode()
+	return t.node
 }

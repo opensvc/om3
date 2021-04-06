@@ -37,7 +37,7 @@ var (
 	RegexpReference = regexp.MustCompile(`({[\w\.-_:]+})`)
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
 	RegexpScope     = regexp.MustCompile(`(@[\w\.-_]+)`)
-	ErrorExists     = errors.New("does not exists")
+	ErrorExists     = errors.New("configuration does not exist")
 )
 
 func (t Key) section() string {
@@ -95,6 +95,15 @@ func (t *T) GetP(opts ...string) interface{} {
 func (t *T) GetStringP(opts ...string) string {
 	key := strings.Join(opts, ".")
 	return t.v.GetString(key)
+}
+
+func (t *T) Set(key string, val interface{}) error {
+	t.v.Set(key, val)
+	return nil
+}
+
+func (t *T) Commit() error {
+	return t.v.SafeWriteConfig()
 }
 
 func (t *T) Eval(key string) (interface{}, error) {
@@ -213,10 +222,30 @@ func (t *T) IsInEncapNodes() bool {
 
 func (t T) dereference(ref string, section string) string {
 	switch ref {
+	case "{nodename}":
+		return Node.Hostname
+	case "{short_nodename}":
+		return strings.SplitN(Node.Hostname, ".", 1)[0]
+	case "{rid}":
+		return section
 	case "{rindex}":
-		return strings.SplitN(section, "#", 2)[1]
+		l := strings.SplitN(section, "#", 2)
+		if len(l) != 2 {
+			return section
+		}
+		return l[1]
+	case "{svcmgr}":
+		return os.Args[0] + " svc"
+	case "{nodemgr}":
+		return os.Args[0] + " node"
+	case "{etc}":
+		return Node.Paths.Etc
+	case "{var}":
+		return Node.Paths.Var
 	default:
-		return t.Dereferencer.Dereference(ref)
+		if t.Dereferencer != nil {
+			return t.Dereferencer.Dereference(ref)
+		}
 	}
 	return ref
 }
