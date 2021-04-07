@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -30,6 +31,37 @@ type (
 		node      *Node
 		paths     BasePaths
 		resources []resource.Driver
+	}
+
+	// OptsGlobal contains options accepted by all actions
+	OptsGlobal struct {
+		Color          string `flag:"color"`
+		Format         string `flag:"format"`
+		Server         string `flag:"server"`
+		Local          bool   `flag:"local"`
+		NodeSelector   string `flag:"node"`
+		ObjectSelector string `flag:"object"`
+		DryRun         bool   `flag:"dry-run"`
+	}
+
+	// OptsLocking contains options accepted by all actions using an action lock
+	OptsLocking struct {
+		Disable bool          `flag:"nolock"`
+		Timeout time.Duration `flag:"waitlock"`
+	}
+
+	// OptsAsync contains options accepted by all actions having an orchestration
+	OptsAsync struct {
+		Watch bool          `flag:"watch"`
+		Wait  bool          `flag:"wait"`
+		Time  time.Duration `flag:"time"`
+	}
+
+	// OptsResourceSelector contains options accepted by all actions manipulating resources
+	OptsResourceSelector struct {
+		ID     string `flag:"rid"`
+		Subset string `flag:"subsets"`
+		Tag    string `flag:"tags"`
 	}
 )
 

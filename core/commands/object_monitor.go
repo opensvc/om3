@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -22,7 +23,7 @@ type (
 func (t *CmdObjectMonitor) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	object.InstallFlags(cmd, t)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {

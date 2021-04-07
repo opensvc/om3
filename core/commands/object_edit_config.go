@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/editor"
@@ -24,7 +25,7 @@ type (
 func (t *CmdObjectEditConfig) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	object.InstallFlags(cmd, t)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command {

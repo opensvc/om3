@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 )
@@ -24,7 +25,7 @@ type (
 func (t *CmdObjectPrintConfig) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	object.InstallFlags(cmd, t)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command {

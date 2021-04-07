@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints"
+	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -17,7 +18,7 @@ type (
 func (t *CmdObjectLs) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	object.InstallFlags(cmd, t)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectLs) cmd(kind string, selector *string) *cobra.Command {

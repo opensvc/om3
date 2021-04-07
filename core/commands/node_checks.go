@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints/nodeaction"
+	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 )
 
@@ -17,7 +18,7 @@ type (
 func (t *CmdNodeChecks) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	object.InstallFlags(cmd, &t.OptsNodeChecks)
+	flag.Install(cmd, &t.OptsNodeChecks)
 }
 
 func (t *CmdNodeChecks) cmd() *cobra.Command {
