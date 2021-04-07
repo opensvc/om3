@@ -37,6 +37,9 @@ func TempFile(t *testing.T, dirNames ...string) (string, func()) {
 	}
 
 	cleanup := func() {
+		if _, err = os.Stat(tf.Name()); err != nil && os.IsNotExist(err) {
+			return
+		}
 		if err = os.Remove(tf.Name()); err != nil {
 			t.Fatalf("TempFile cleanup error: %v", err)
 		}
