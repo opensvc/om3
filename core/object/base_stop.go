@@ -1,8 +1,6 @@
 package object
 
-import (
-	"time"
-)
+import "time"
 
 // OptsStop is the options of the Stop object method.
 type OptsStop struct {
@@ -15,11 +13,8 @@ type OptsStop struct {
 
 // Stop starts the local instance of the object
 func (t *Base) Stop(options OptsStop) error {
-	lock, err := t.Lock("", options.Lock.Timeout, "stop")
-	if err != nil {
-		return err
-	}
-	defer lock.Unlock()
-	time.Sleep(10 * time.Second)
-	return nil
+	return t.lockedAction("", options.Lock.Timeout, "stop", func() error {
+		time.Sleep(10 * time.Second)
+		return nil
+	})
 }
