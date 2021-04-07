@@ -189,6 +189,14 @@ var FlagTag = map[string]Opt{
 		Long: "tags",
 		Desc: "tag selector expression (t1,t2)",
 	},
+	"recover": Opt{
+		Long: "recover",
+		Desc: "recover the stashed, invalid, configuration file leftover of a previous execution",
+	},
+	"discard": Opt{
+		Long: "discard",
+		Desc: "discard the stashed, invalid, configuration file leftover of a previous execution",
+	},
 	"server": Opt{
 		Long: "server",
 		Desc: "uri of the opensvc api server. scheme raw|https",

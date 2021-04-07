@@ -29,8 +29,9 @@ func (t *CmdObjectPrintConfig) Init(kind string, parent *cobra.Command, selector
 
 func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "config",
-		Short: "Print selected service and instance configuration",
+		Use:     "config",
+		Short:   "Print selected object and instance configuration",
+		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

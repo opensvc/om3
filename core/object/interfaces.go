@@ -33,8 +33,10 @@ type (
 
 	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
 	Configurer interface {
+		Exists() bool
 		ConfigFile() string
 		Config() *config.T
+		EditConfig(OptsEditConfig) error
 		Get(OptsGet) (interface{}, error)
 		Set(OptsSet) error
 	}

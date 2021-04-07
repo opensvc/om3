@@ -163,6 +163,14 @@ func (t Base) ConfigFile() string {
 	return filepath.FromSlash(p)
 }
 
+//
+// editedConfigFile returns the absolute path of an opensvc object configuration
+// file for edition.
+//
+func (t Base) editedConfigFile() string {
+	return t.ConfigFile() + ".tmp"
+}
+
 // Exists returns true if the object configuration file exists.
 func (t Base) Exists() bool {
 	return file.Exists(t.ConfigFile())
