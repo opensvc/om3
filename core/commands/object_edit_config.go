@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -11,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/editor"
+	"opensvc.com/opensvc/util/file"
 )
 
 type (
@@ -41,9 +44,10 @@ func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command 
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	sel := object.NewSelection(selector)
+	wc := client.WantContext()
 	for _, p := range sel.Expand() {
 		obj := object.NewConfigurerFromPath(p)
-		if obj.Exists() {
+		if !wc && obj.Exists() {
 			if err := t.doLocal(obj, c); err != nil {
 				return err
 			}
@@ -66,28 +70,50 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 
 func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
 	var (
-		err error
-		b   []byte
+		err       error
+		b, refSum []byte
+		buff      string
+		f         *os.File
 	)
 	handle := c.NewGetObjectConfig()
 	handle.ObjectSelector = p.String()
-	handle.Format = "raw"
+	handle.Format = "ini"
 	b, err = handle.Do()
 	if err != nil {
 		return err
 	}
-	file, err := ioutil.TempFile("", ".opensvc.edit.config.*.swp")
-	if err != nil {
+	if err = json.Unmarshal(b, &buff); err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
-	if _, err = file.Write(b); err != nil {
+	if f, err = ioutil.TempFile("", ".opensvc.edit.config.*"); err != nil {
 		return err
 	}
-	if err = editor.Edit(file.Name()); err != nil {
+	fName := f.Name()
+	defer os.Remove(fName)
+	if _, err = f.Write([]byte(buff)); err != nil {
 		return err
 	}
-	// TODO: send
+	if refSum, err = file.MD5(fName); err != nil {
+		return err
+	}
+	if err = editor.Edit(fName); err != nil {
+		return err
+	}
+	if file.HaveSameMD5(refSum, fName) {
+		fmt.Println("unchanged")
+		return nil
+	}
+	if b, err = ioutil.ReadAll(f); err != nil {
+		return err
+	}
+	//handle = c.NewPostObjectConfig()
+	//handle.ObjectSelector = p.String()
+	//handle.Format = "ini"
+	//handle.Data = string(b)
+	//_, err = handle.Do()
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
