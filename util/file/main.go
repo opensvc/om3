@@ -1,6 +1,9 @@
 package file
 
-import "os"
+import (
+	"io"
+	"os"
+)
 
 // Exists returns true if the file path exists.
 func Exists(path string) bool {
@@ -18,4 +21,29 @@ func ExistsNotDir(path string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+//
+// Copy copies the file content from src file path to dst file path.
+// If dst does not exist, it is created.
+//
+func Copy(src string, dst string) (err error) {
+	var (
+		r *os.File
+		w *os.File
+	)
+	if r, err = os.Open(src); err != nil {
+		return err
+	}
+	defer r.Close()
+	if w, err = os.Create(dst); err != nil {
+		return err
+	}
+	defer w.Close()
+	if _, err := io.Copy(w, r); err != nil {
+		return err
+	}
+	r.Close()
+	w.Close()
+	return nil
 }
