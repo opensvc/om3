@@ -33,26 +33,24 @@ type (
 	}
 )
 
-var truncate = os.Truncate
-var remove = os.Remove
+var (
+	truncate            = os.Truncate
+	remove              = os.Remove
+	defaultLockProvider = fcntllock.New
+)
 
-type lockProvider interface {
-	New(string) fcntllock.Locker
-}
-
-// New allocate a file lock struct.
-func NewCustomLock(p string, prov lockProvider) *T {
+// New allocate a file lock struct with custom locker provider.
+func NewCustomLock(p string, customLockProvider func(string) locker) *T {
 	return &T{
-		locker: prov.New(p),
+		locker: customLockProvider(p),
 		Path:   p,
 	}
 }
 
 // New allocate a file lock struct.
 func New(p string) *T {
-	prov := &fcntllock.P{}
 	return &T{
-		locker: prov.New(p),
+		locker: defaultLockProvider(p),
 		Path:   p,
 	}
 }
