@@ -21,6 +21,18 @@ func (t *getDaemonStatus) SetRelatives(s bool) {
 	t.relatives = s
 }
 
+func (t getDaemonStatus) Namespace() string {
+	return t.namespace
+}
+
+func (t getDaemonStatus) Selector() string {
+	return t.selector
+}
+
+func (t getDaemonStatus) Relatives() bool {
+	return t.relatives
+}
+
 func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*getDaemonStatus, error) {
 	options := &getDaemonStatus{
 		cli:       cli,

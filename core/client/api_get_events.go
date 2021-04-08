@@ -28,6 +28,18 @@ func (t *getEvents) SetRelatives(s bool) {
 	t.relatives = s
 }
 
+func (t getEvents) Namespace() string {
+	return t.namespace
+}
+
+func (t getEvents) Selector() string {
+	return t.selector
+}
+
+func (t getEvents) Relatives() bool {
+	return t.relatives
+}
+
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
 func NewGetEvents(cli GetStreamer, opts ...funcopt.O) (*getEvents, error) {
