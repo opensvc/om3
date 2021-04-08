@@ -37,6 +37,8 @@ var (
 	truncate            = os.Truncate
 	remove              = os.Remove
 	defaultLockProvider = fcntllock.New
+	retryInterval       = 500 * time.Millisecond
+	getSessionId        = func() string { return config.SessionID }
 )
 
 // New allocate a file lock struct with custom locker provider.
@@ -54,9 +56,6 @@ func New(p string) *T {
 		Path:   p,
 	}
 }
-
-var retryInterval = 500 * time.Millisecond
-var getSessionId = func() string { return config.SessionID }
 
 //
 // Lock acquires an exclusive file lock on the file and write a json
