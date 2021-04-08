@@ -4,18 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/fcntllock"
 	"os"
 	"time"
-
-	bflock "github.com/gofrs/flock"
-	"opensvc.com/opensvc/config"
 )
 
 type (
+	locker interface {
+		LockContext(context.Context, time.Duration) error
+		UnLock() error
+		io.ReadWriteSeeker
+		io.Closer
+	}
+
 	// T wraps flock and dumps a json data in the lock file
-	// hinting about wath holds the lock.
+	// hinting about what holds the lock.
 	T struct {
-		Base *bflock.Flock
+		locker
+		Path string
 	}
 
 	meta struct {
@@ -25,50 +33,65 @@ type (
 	}
 )
 
+var truncate = os.Truncate
+var remove = os.Remove
+
+type lockProvider interface {
+	New(string) fcntllock.Locker
+}
+
 // New allocate a file lock struct.
-func New(p string) *T {
+func NewCustomLock(p string, prov lockProvider) *T {
 	return &T{
-		Base: bflock.New(p),
+		locker: prov.New(p),
+		Path:   p,
 	}
 }
+
+// New allocate a file lock struct.
+func New(p string) *T {
+	prov := &fcntllock.P{}
+	return &T{
+		locker: prov.New(p),
+		Path:   p,
+	}
+}
+
+var retryInterval = 500 * time.Millisecond
+var getSessionId = func() string { return config.SessionID }
 
 //
 // Lock acquires an exclusive file lock on the file and write a json
 // formatted structure hinting who holds the lock and with what
 // intention.
 //
-func (t *T) Lock(timeout time.Duration, intent string) (bool, error) {
+func (t *T) Lock(timeout time.Duration, intent string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	locked, err := t.Base.TryLockContext(ctx, 500*time.Millisecond)
+	err = t.LockContext(ctx, retryInterval)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return locked, errors.New("lock timeout exceeded")
+			return errors.New("lock timeout exceeded")
 		}
-		return locked, err
+		return
 	}
-	if err := writeMeta(t.Base.Path(), intent); err != nil {
-		return locked, err
-	}
-	return locked, nil
+	err = writeMeta(t, intent)
+	return
 }
 
-func writeMeta(p string, intent string) error {
+func writeMeta(w io.Writer, intent string) error {
 	m := meta{
 		PID:       os.Getpid(),
 		Intent:    intent,
-		SessionID: config.SessionID,
+		SessionID: getSessionId(),
 	}
-	f, err := os.Create(p)
-	if err != nil {
-		return err
-	}
-	enc := json.NewEncoder(f)
+	enc := json.NewEncoder(w)
 	return enc.Encode(m)
 }
 
 // Unlock releases the file lock acquired by Lock.
-func (t *T) Unlock() {
-	os.Remove(t.Base.Path())
-	t.Base.Unlock()
+func (t *T) UnLock() error {
+	_ = truncate(t.Path, 0)
+	_ = remove(t.Path)
+	return t.locker.UnLock()
 }

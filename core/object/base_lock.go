@@ -26,7 +26,7 @@ func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.
 	p := t.LockFile(group)
 	t.log.Debug().Msgf("locking %s, timeout %s", p, timeout)
 	lock := flock.New(p)
-	_, err := lock.Lock(timeout, intent)
+	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return nil, err
 	}
@@ -35,10 +35,12 @@ func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.
 }
 
 func (t *Base) lockedAction(group string, timeout time.Duration, intent string, f func() error) error {
-	lock, err := t.Lock(group, timeout, intent)
+	p := t.LockFile(group)
+	lck := flock.New(p)
+	err := lck.Lock(timeout, intent)
 	if err != nil {
 		return err
 	}
-	defer lock.Unlock()
+	defer func() { _ = lck.UnLock() }()
 	return f()
 }
