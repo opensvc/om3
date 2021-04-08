@@ -1,6 +1,9 @@
 package object
 
-import "opensvc.com/opensvc/core/path"
+import (
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/funcopt"
+)
 
 type (
 	//
@@ -22,8 +25,8 @@ type (
 )
 
 // NewSec allocates a sec kind object.
-func NewSec(p path.T) *Sec {
+func NewSec(p path.T, opts ...funcopt.O) *Sec {
 	s := &Sec{}
-	s.Base.init(p)
+	s.Base.init(p, opts...)
 	return s
 }

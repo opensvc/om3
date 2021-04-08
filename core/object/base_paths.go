@@ -16,7 +16,7 @@ func (t *Base) varDir() string {
 		return t.paths.varDir
 	}
 	t.paths.varDir = t.VarDir()
-	if !t.Volatile {
+	if !t.volatile {
 		if err := os.MkdirAll(t.paths.varDir, os.ModePerm); err != nil {
 			t.log.Error().Msgf("%s", err)
 		}
@@ -29,7 +29,7 @@ func (t *Base) logDir() string {
 		return t.paths.logDir
 	}
 	t.paths.logDir = t.LogDir()
-	if !t.Volatile {
+	if !t.volatile {
 		if err := os.MkdirAll(t.paths.logDir, os.ModePerm); err != nil {
 			t.log.Error().Msgf("%s", err)
 		}
@@ -42,7 +42,7 @@ func (t *Base) tmpDir() string {
 		return t.paths.tmpDir
 	}
 	t.paths.tmpDir = t.TmpDir()
-	if !t.Volatile {
+	if !t.volatile {
 		if err := os.MkdirAll(t.paths.tmpDir, os.ModePerm); err != nil {
 			t.log.Error().Msgf("%s", err)
 		}

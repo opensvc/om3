@@ -1,6 +1,9 @@
 package object
 
-import "opensvc.com/opensvc/core/path"
+import (
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/funcopt"
+)
 
 type (
 	//
@@ -15,8 +18,8 @@ type (
 )
 
 // NewCcfg allocates a ccfg kind object.
-func NewCcfg(p path.T) *Ccfg {
+func NewCcfg(p path.T, opts ...funcopt.O) *Ccfg {
 	s := &Ccfg{}
-	s.Base.init(p)
+	s.Base.init(p, opts...)
 	return s
 }

@@ -15,6 +15,7 @@ type (
 	Baser interface {
 		Status(OptsStatus) (InstanceStatus, error)
 		Exists() bool
+		IsVolatile() bool
 	}
 
 	// Starter is implemented by object kinds supporting start, stop, ...

@@ -1,6 +1,9 @@
 package object
 
-import "opensvc.com/opensvc/core/path"
+import (
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/funcopt"
+)
 
 type (
 	//
@@ -16,8 +19,8 @@ type (
 )
 
 // NewUsr allocates a usr kind object.
-func NewUsr(p path.T) *Usr {
+func NewUsr(p path.T, opts ...funcopt.O) *Usr {
 	s := &Usr{}
-	s.Base.init(p)
+	s.Base.init(p, opts...)
 	return s
 }

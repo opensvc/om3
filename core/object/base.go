@@ -15,14 +15,17 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/logging"
 )
 
 type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
-		Path     path.T
-		Volatile bool
+		Path path.T
+
+		// private
+		volatile bool
 		log      zerolog.Logger
 
 		// caches
@@ -70,8 +73,12 @@ func (t *Base) List() (string, error) {
 	return t.Path.String(), nil
 }
 
-func (t *Base) init(p path.T) error {
+func (t *Base) init(p path.T, opts ...funcopt.O) error {
 	t.Path = p
+	if err := funcopt.Apply(t, opts...); err != nil {
+		t.log.Debug().Msgf("%s init error: %s", t, err)
+		return err
+	}
 	t.log = log.Logger
 	t.log = logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
@@ -99,6 +106,10 @@ func (t *Base) init(p path.T) error {
 
 func (t Base) String() string {
 	return fmt.Sprintf("base object %s", t.Path)
+}
+
+func (t Base) IsVolatile() bool {
+	return t.volatile
 }
 
 func (t *Base) listResources() []resource.Driver {
@@ -150,21 +161,30 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	return nil
 }
 
+// WithVolatile makes sure not data is ever written by the object.
+func WithVolatile(s bool) funcopt.O {
+	return funcopt.F(func(t interface{}) error {
+		base := t.(*Base)
+		base.volatile = s
+		return nil
+	})
+}
+
 // NewFromPath allocates a new kinded object
-func NewFromPath(p path.T) interface{} {
+func NewFromPath(p path.T, opts ...funcopt.O) interface{} {
 	switch p.Kind {
 	case kind.Svc:
-		return NewSvc(p)
+		return NewSvc(p, opts...)
 	case kind.Vol:
-		return NewVol(p)
+		return NewVol(p, opts...)
 	case kind.Cfg:
-		return NewCfg(p)
+		return NewCfg(p, opts...)
 	case kind.Sec:
-		return NewSec(p)
+		return NewSec(p, opts...)
 	case kind.Usr:
-		return NewUsr(p)
+		return NewUsr(p, opts...)
 	case kind.Ccfg:
-		return NewCcfg(p)
+		return NewCcfg(p, opts...)
 	default:
 		return nil
 	}

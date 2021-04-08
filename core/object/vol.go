@@ -1,6 +1,9 @@
 package object
 
-import "opensvc.com/opensvc/core/path"
+import (
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/funcopt"
+)
 
 type (
 	//
@@ -17,8 +20,8 @@ type (
 )
 
 // NewVol allocates a vol kind object.
-func NewVol(p path.T) *Vol {
+func NewVol(p path.T, opts ...funcopt.O) *Vol {
 	s := &Vol{}
-	s.Base.init(p)
+	s.Base.init(p, opts...)
 	return s
 }

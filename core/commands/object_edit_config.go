@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -73,21 +74,47 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 	return nil
 }
 
-func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
+func fetchConfig(p path.T, c *client.T) (s string, err error) {
 	var (
-		err       error
-		b, refSum []byte
-		buff      string
-		f         *os.File
+		b []byte
 	)
 	handle := c.NewGetObjectConfig()
 	handle.ObjectSelector = p.String()
 	handle.Format = "ini"
 	b, err = handle.Do()
 	if err != nil {
+		return "", err
+	}
+	if err = json.Unmarshal(b, &s); err != nil {
+		return "", err
+	}
+	return s, nil
+}
+
+func pushConfig(p path.T, fName string, c *client.T) (err error) {
+	var cfg *config.T
+	if cfg, err = config.NewObject(fName); err != nil {
 		return err
 	}
-	if err = json.Unmarshal(b, &buff); err != nil {
+	handle := c.NewPostObjectCreate()
+	handle.ObjectSelector = p.String()
+	handle.Restore = true
+	handle.Data = cfg.Raw()
+	_, err = handle.Do()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
+	var (
+		err    error
+		refSum []byte
+		buff   string
+		f      *os.File
+	)
+	if buff, err = fetchConfig(p, c); err != nil {
 		return err
 	}
 	if f, err = ioutil.TempFile("", ".opensvc.edit.config.*"); err != nil {
@@ -108,17 +135,9 @@ func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if b, err = ioutil.ReadAll(f); err != nil {
+	if err = pushConfig(p, fName, c); err != nil {
 		return err
 	}
-	//handle = c.NewPostObjectConfig()
-	//handle.ObjectSelector = p.String()
-	//handle.Format = "ini"
-	//handle.Data = string(b)
-	//_, err = handle.Do()
-	//if err != nil {
-	//	return err
-	//}
 	return nil
 }
 
