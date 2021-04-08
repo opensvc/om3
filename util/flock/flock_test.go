@@ -13,29 +13,29 @@ import (
 	"time"
 )
 
-func setup(t *testing.T) (ctrl *gomock.Controller, prov *mockFcntlLock.MockLockProvider, lck *mockFcntlLock.MockLocker) {
-	ctrl = gomock.NewController(t)
-	prov = mockFcntlLock.NewMockLockProvider(ctrl)
+func setup(t *testing.T) (prov func(string) locker, lck *mockFcntlLock.MockLocker) {
+	ctrl := gomock.NewController(t)
 	lck = mockFcntlLock.NewMockLocker(ctrl)
-
-	prov.EXPECT().New(gomock.Any()).Return(lck)
+	prov = func(string) locker {
+		return lck
+	}
 	return
 }
 
 func TestLock(t *testing.T) {
 	t.Run("Ensure write data to lock file when lock succeed", func(t *testing.T) {
-		_, prov, lck := setup(t)
-
+		prov, mockLck := setup(t)
+		lck := NewCustomLock("foo.lck", prov)
 		var b []byte
-		lck.EXPECT().LockContext(gomock.Any(), 500*time.Millisecond).Return(nil)
-		lck.EXPECT().
+		mockLck.EXPECT().LockContext(gomock.Any(), 500*time.Millisecond).Return(nil)
+		mockLck.EXPECT().
 			Write(gomock.AssignableToTypeOf(b)).
 			Do(func(arg []byte) {
 				b = arg
 			}).
 			Return(0, nil)
 
-		err := NewCustomLock("foo.lck", prov).Lock(100*time.Millisecond, "intent1")
+		err := lck.Lock(100*time.Millisecond, "intent1")
 		assert.Equal(t, nil, err)
 
 		found := meta{}
@@ -46,9 +46,9 @@ func TestLock(t *testing.T) {
 	})
 
 	t.Run("Ensure return error if lock fail", func(t *testing.T) {
-		_, prov, lck := setup(t)
+		prov, mockLck := setup(t)
 
-		lck.EXPECT().LockContext(gomock.Any(), gomock.Any()).Return(errors.New("can't lock"))
+		mockLck.EXPECT().LockContext(gomock.Any(), gomock.Any()).Return(errors.New("can't lock"))
 
 		err := NewCustomLock("foo.lck", prov).Lock(100*time.Millisecond, "intent1")
 		assert.Equal(t, errors.New("can't lock"), err)
@@ -89,9 +89,9 @@ func TestLock(t *testing.T) {
 
 func TestUnLock(t *testing.T) {
 	t.Run("Ensure unlock succeed", func(t *testing.T) {
-		_, prov, lck := setup(t)
+		prov, mockLck := setup(t)
 
-		lck.EXPECT().UnLock().Return(nil)
+		mockLck.EXPECT().UnLock().Return(nil)
 		l := NewCustomLock("foo.lck", prov)
 
 		err := l.UnLock()

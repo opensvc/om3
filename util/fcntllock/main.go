@@ -10,33 +10,29 @@ import (
 	"time"
 )
 
-type ReadWriteSeekCloser interface {
-	io.ReadWriteSeeker
-	io.Closer
-}
+type (
+	ReadWriteSeekCloser interface {
+		io.ReadWriteSeeker
+		io.Closer
+	}
 
-type Locker interface {
-	LockContext(context.Context, time.Duration) error
-	UnLock() error
-	io.ReadWriteSeeker
-	io.Closer
-}
+	Locker interface {
+		LockContext(context.Context, time.Duration) error
+		UnLock() error
+		io.ReadWriteSeeker
+		io.Closer
+	}
 
-type P struct{}
-
-type LockProvider interface {
-	New(string) Locker
-}
-
-// Lock implement fcntl lock features
-type Lock struct {
-	path string
-	ReadWriteSeekCloser
-	fd uintptr
-}
+	// Lock implement fcntl lock features
+	Lock struct {
+		path string
+		ReadWriteSeekCloser
+		fd uintptr
+	}
+)
 
 // New create a new fcntl lock
-func (p *P) New(path string) *Lock {
+func New(path string) Locker {
 	return &Lock{
 		path: path,
 	}

@@ -10,7 +10,6 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	fcntllock "opensvc.com/opensvc/util/fcntllock"
 )
 
 // MockReadWriteSeekCloser is a mock of ReadWriteSeekCloser interface.
@@ -203,41 +202,4 @@ func (m *MockLocker) Write(p []byte) (int, error) {
 func (mr *MockLockerMockRecorder) Write(p interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockLocker)(nil).Write), p)
-}
-
-// MockLockProvider is a mock of LockProvider interface.
-type MockLockProvider struct {
-	ctrl     *gomock.Controller
-	recorder *MockLockProviderMockRecorder
-}
-
-// MockLockProviderMockRecorder is the mock recorder for MockLockProvider.
-type MockLockProviderMockRecorder struct {
-	mock *MockLockProvider
-}
-
-// NewMockLockProvider creates a new mock instance.
-func NewMockLockProvider(ctrl *gomock.Controller) *MockLockProvider {
-	mock := &MockLockProvider{ctrl: ctrl}
-	mock.recorder = &MockLockProviderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockLockProvider) EXPECT() *MockLockProviderMockRecorder {
-	return m.recorder
-}
-
-// New mocks base method.
-func (m *MockLockProvider) New(arg0 string) fcntllock.Locker {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "New", arg0)
-	ret0, _ := ret[0].(fcntllock.Locker)
-	return ret0
-}
-
-// New indicates an expected call of New.
-func (mr *MockLockProviderMockRecorder) New(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "New", reflect.TypeOf((*MockLockProvider)(nil).New), arg0)
 }

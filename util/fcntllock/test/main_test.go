@@ -12,12 +12,10 @@ import (
 )
 
 func TestLock(t *testing.T) {
-	P := &fcntllock.P{}
-	provider := P.New
 	t.Run("lockfile is created", func(t *testing.T) {
 		lockfile, tfCleanup := test_helper.TempFile(t)
 		defer tfCleanup()
-		l := provider(lockfile)
+		l := fcntllock.New(lockfile)
 		ctx := context.Background()
 		err := l.LockContext(ctx, 10*time.Millisecond)
 		assert.Equal(t, nil, err)
@@ -28,7 +26,7 @@ func TestLock(t *testing.T) {
 	t.Run("lock fail if lock dir doesn't exists", func(t *testing.T) {
 		lockDir, cleanup := test_helper.Tempdir(t)
 		defer cleanup()
-		l := provider(filepath.Join(lockDir, "dir", "lck"))
+		l := fcntllock.New(filepath.Join(lockDir, "dir", "lck"))
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 		defer cancel()
 		err := l.LockContext(ctx, 5*time.Millisecond)
@@ -38,11 +36,10 @@ func TestLock(t *testing.T) {
 }
 
 func TestUnLock(t *testing.T) {
-	P := &fcntllock.P{}
 	t.Run("Ensure unlock (fcntl lock) succeed even if file is not locked", func(t *testing.T) {
 		lockfile, tfCleanup := test_helper.TempFile(t)
 		defer tfCleanup()
-		l := P.New(lockfile)
+		l := fcntllock.New(lockfile)
 
 		err := l.UnLock()
 		assert.Equal(t, nil, err)
