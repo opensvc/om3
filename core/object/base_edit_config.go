@@ -1,8 +1,13 @@
 package object
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/util/editor"
@@ -14,6 +19,25 @@ type OptsEditConfig struct {
 	Recover bool `flag:"recover"`
 }
 
+var ErrEditConfigPending = errors.New(`The configuration is already being edited.
+Set --discard to edit from the installed configuration,
+or --recover to edit the unapplied config`)
+
+func Diff(a, b string) (string, error) {
+	var (
+		err    error
+		ab, bb []byte
+	)
+	if ab, err = ioutil.ReadFile(a); err != nil {
+		return "", err
+	}
+	if bb, err = ioutil.ReadFile(b); err != nil {
+		return "", err
+	}
+	edits := myers.ComputeEdits(span.URIFromPath(a), string(ab), string(bb))
+	return fmt.Sprint(gotextdiff.ToUnified(a, b, string(ab), edits)), nil
+}
+
 func (t Base) EditConfig(opts OptsEditConfig) (err error) {
 	src := t.ConfigFile()
 	dst := t.editedConfigFile()
@@ -23,7 +47,8 @@ func (t Base) EditConfig(opts OptsEditConfig) (err error) {
 				return err
 			}
 		} else {
-			return errors.New(dst + " exists: configuration is already being edited. Set --discard to edit from the current configuration, or --recover to open the unapplied config")
+			diff, _ := Diff(src, dst)
+			return errors.Wrapf(ErrEditConfigPending, "%s", diff)
 		}
 	}
 	if opts.Recover {

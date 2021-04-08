@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -62,6 +63,10 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 
 func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error {
 	err := obj.EditConfig(t.EditConfig)
+	if errors.Is(err, object.ErrEditConfigPending) {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err != nil {
 		return err
 	}
