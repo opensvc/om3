@@ -1,9 +1,7 @@
 package config
 
 import (
-	"os"
-
-	"github.com/google/uuid"
+	"opensvc.com/opensvc/util/xsession"
 )
 
 var (
@@ -28,15 +26,5 @@ var (
 )
 
 func init() {
-	var err error
-	SessionID = os.Getenv("OSVC_SESSION_ID")
-	if SessionID == "" {
-		// No uuid set. Generate a new one.
-		SessionID = uuid.New().String()
-		return
-	}
-	if _, err = uuid.Parse(SessionID); err != nil {
-		// Invalid uuid format. Generate a new one.
-		SessionID = uuid.New().String()
-	}
+	SessionID = xsession.Id()
 }
