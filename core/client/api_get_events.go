@@ -2,52 +2,52 @@ package client
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 // GetEvents describes the events request options.
-type getEvent struct {
-	cli GetStreamer `json:"-"`
-	*Namespace
-	*Selector
-	*Relatives
+type getEvents struct {
+	cli       GetStreamer `json:"-"`
+	namespace string
+	selector  string
+	relatives bool
+}
+
+func (t *getEvents) SetNamespace(s string) {
+	t.namespace = s
+}
+
+func (t *getEvents) SetSelector(s string) {
+	t.selector = s
+}
+
+func (t *getEvents) SetRelatives(s bool) {
+	t.relatives = s
 }
 
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewGetEvents(cli GetStreamer, opts ...OptionExtra) (*getEvent, error) {
-	options := getEvent{
-		cli,
-		&Namespace{"*"},
-		&Selector{""},
-		&Relatives{true},
+func NewGetEvents(cli GetStreamer, opts ...funcopt.O) (*getEvents, error) {
+	options := &getEvents{
+		cli:       cli,
+		namespace: "*",
+		selector:  "",
+		relatives: true,
 	}
-	for _, o := range opts {
-		switch t := o.(type) {
-		case SelectorType:
-			_ = t.apply(options.Selector)
-		case NamespaceType:
-			_ = t.apply(options.Namespace)
-		case RelativesType:
-			_ = t.apply(options.Relatives)
-		default:
-			message := fmt.Sprintf("non allowed option type %T", t)
-			return nil, errors.New(message)
-		}
-	}
-	return &options, nil
+	funcopt.Apply(options, opts...)
+	return options, nil
 }
 
 // DoRaw fetchs an event json RawMessage stream from the agent api
-func (o getEvent) GetRaw() (chan []byte, error) {
+func (o getEvents) GetRaw() (chan []byte, error) {
 	return o.eventsBase()
 }
 
 // Do fetchs an Event stream from the agent api
-func (o getEvent) Do() (chan event.Event, error) {
+func (o getEvents) Do() (chan event.Event, error) {
 	q, err := o.eventsBase()
 	if err != nil {
 		return nil, err
@@ -76,16 +76,16 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (o getEvent) eventsBase() (chan []byte, error) {
+func (o getEvents) eventsBase() (chan []byte, error) {
 	req := o.newRequest()
 	return o.cli.GetStream(*req)
 }
 
-func (o getEvent) newRequest() *Request {
+func (o getEvents) newRequest() *Request {
 	request := NewRequest()
 	request.Action = "events"
-	request.Options["selector"] = o.SelectorValue()
-	request.Options["namespace"] = o.NamespaceValue()
-	request.Options["full"] = o.RelativesValue()
+	request.Options["selector"] = o.selector
+	request.Options["namespace"] = o.namespace
+	request.Options["full"] = o.relatives
 	return request
 }

@@ -1,51 +1,45 @@
 package client
 
-import (
-	"errors"
-	"fmt"
-)
+import "opensvc.com/opensvc/util/funcopt"
 
 type getDaemonStatus struct {
-	cli Getter
-	*Namespace
-	*Selector
-	*Relatives
-	//cli       Getter `json:"-"`
-	//namespace string `json:"namespace,omitempty"`
-	//selector  string `json:"selector,omitempty"`
-	//relatives bool   `json:"relatives,omitempty"`
+	cli       Getter
+	namespace string
+	selector  string
+	relatives bool
 }
 
-func NewGetDaemonStatus(cli Getter, opts ...OptionExtra) (*getDaemonStatus, error) {
-	options := getDaemonStatus{
-		cli,
-		&Namespace{""},
-		&Selector{"*"},
-		&Relatives{false},
-	}
+func (t *getDaemonStatus) SetNamespace(s string) {
+	t.namespace = s
+}
 
-	for _, o := range opts {
-		switch t := o.(type) {
-		case SelectorType:
-			_ = t.apply(options.Selector)
-		case NamespaceType:
-			_ = t.apply(options.Namespace)
-		case RelativesType:
-			_ = t.apply(options.Relatives)
-		default:
-			message := fmt.Sprintf("non allowed option type %T", t)
-			return nil, errors.New(message)
-		}
+func (t *getDaemonStatus) SetSelector(s string) {
+	t.selector = s
+}
+
+func (t *getDaemonStatus) SetRelatives(s bool) {
+	t.relatives = s
+}
+
+func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*getDaemonStatus, error) {
+	options := &getDaemonStatus{
+		cli:       cli,
+		namespace: "",
+		selector:  "*",
+		relatives: false,
 	}
-	return &options, nil
+	if err := funcopt.Apply(options, opts...); err != nil {
+		return nil, err
+	}
+	return options, nil
 }
 
 // GetDaemonStatus fetchs the daemon status structure from the agent api
 func (c *getDaemonStatus) Get() ([]byte, error) {
 	request := NewRequest()
 	request.Action = "daemon_status"
-	request.Options["namespace"] = c.NamespaceValue()
-	request.Options["selector"] = c.SelectorValue()
-	request.Options["relatives"] = c.RelativesValue()
+	request.Options["namespace"] = c.namespace
+	request.Options["selector"] = c.selector
+	request.Options["relatives"] = c.relatives
 	return c.cli.Get(*request)
 }
