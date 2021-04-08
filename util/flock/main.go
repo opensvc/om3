@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/util/fcntllock"
 	"os"
 	"time"
+
+	"opensvc.com/opensvc/util/fcntllock"
 )
 
 type (
@@ -23,7 +23,8 @@ type (
 	// hinting about what holds the lock.
 	T struct {
 		locker
-		Path string
+		Path      string
+		sessionId string
 	}
 
 	meta struct {
@@ -38,22 +39,23 @@ var (
 	remove              = os.Remove
 	defaultLockProvider = fcntllock.New
 	retryInterval       = 500 * time.Millisecond
-	getSessionId        = func() string { return config.SessionID }
 )
 
 // New allocate a file lock struct with custom locker provider.
-func NewCustomLock(p string, customLockProvider func(string) locker) *T {
+func NewCustomLock(p string, sessionId string, customLockProvider func(string) locker) *T {
 	return &T{
-		locker: customLockProvider(p),
-		Path:   p,
+		locker:    customLockProvider(p),
+		Path:      p,
+		sessionId: sessionId,
 	}
 }
 
 // New allocate a file lock struct.
-func New(p string) *T {
+func New(p string, sessionId string) *T {
 	return &T{
-		locker: defaultLockProvider(p),
-		Path:   p,
+		locker:    defaultLockProvider(p),
+		Path:      p,
+		sessionId: sessionId,
 	}
 }
 
@@ -72,15 +74,15 @@ func (t *T) Lock(timeout time.Duration, intent string) (err error) {
 		}
 		return
 	}
-	err = writeMeta(t, intent)
+	err = t.writeMeta(t, intent)
 	return
 }
 
-func writeMeta(w io.Writer, intent string) error {
+func (t T) writeMeta(w io.Writer, intent string) error {
 	m := meta{
 		PID:       os.Getpid(),
 		Intent:    intent,
-		SessionID: getSessionId(),
+		SessionID: t.sessionId,
 	}
 	enc := json.NewEncoder(w)
 	return enc.Encode(m)

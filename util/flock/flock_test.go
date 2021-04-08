@@ -25,7 +25,7 @@ func setup(t *testing.T) (prov func(string) locker, lck *mockFcntlLock.MockLocke
 func TestLock(t *testing.T) {
 	t.Run("Ensure write data to lock file when lock succeed", func(t *testing.T) {
 		prov, mockLck := setup(t)
-		lck := NewCustomLock("foo.lck", prov)
+		lck := NewCustomLock("foo.lck", "session1", prov)
 		var b []byte
 		mockLck.EXPECT().LockContext(gomock.Any(), 500*time.Millisecond).Return(nil)
 		mockLck.EXPECT().
@@ -43,6 +43,7 @@ func TestLock(t *testing.T) {
 			t.Fatalf("expected written data : %+v\n", b)
 		}
 		assert.Equal(t, "intent1", found.Intent)
+		assert.Equal(t, "session1", found.SessionID)
 	})
 
 	t.Run("Ensure return error if lock fail", func(t *testing.T) {
@@ -50,14 +51,14 @@ func TestLock(t *testing.T) {
 
 		mockLck.EXPECT().LockContext(gomock.Any(), gomock.Any()).Return(errors.New("can't lock"))
 
-		err := NewCustomLock("foo.lck", prov).Lock(100*time.Millisecond, "intent1")
+		err := NewCustomLock("foo.lck", "sessionId2", prov).Lock(100*time.Millisecond, "intent1")
 		assert.Equal(t, errors.New("can't lock"), err)
 	})
 
 	t.Run("can write, seek, read on locked file", func(t *testing.T) {
 		lockfile, tfCleanup := test_helper.TempFile(t)
 		defer tfCleanup()
-		l := New(lockfile)
+		l := New(lockfile, "sessionId3")
 		err := l.Lock(1*time.Second, "plop")
 		assert.Equal(t, nil, err)
 		dataToWrite := []byte("{}")
@@ -80,7 +81,7 @@ func TestLock(t *testing.T) {
 		defaultRetryInterval := retryInterval
 		defer func() { retryInterval = defaultRetryInterval }()
 		retryInterval = 5 * time.Millisecond
-		l := New(filepath.Join(lockDir, "dir", "lockfile"))
+		l := New(filepath.Join(lockDir, "dir", "lockfile"), "sessionOne")
 		err := l.Lock(15*time.Millisecond, "plop")
 		assert.NotNil(t, err)
 		assert.Equal(t, "lock timeout exceeded", err.Error())
@@ -92,7 +93,7 @@ func TestUnLock(t *testing.T) {
 		prov, mockLck := setup(t)
 
 		mockLck.EXPECT().UnLock().Return(nil)
-		l := NewCustomLock("foo.lck", prov)
+		l := NewCustomLock("foo.lck", "sessionX", prov)
 
 		err := l.UnLock()
 		assert.Equal(t, nil, err)
@@ -100,7 +101,7 @@ func TestUnLock(t *testing.T) {
 	t.Run("Ensure unlock (fcntl lock) succeed even if file is not locked", func(t *testing.T) {
 		lockfile, tfCleanup := test_helper.TempFile(t)
 		defer tfCleanup()
-		l := New(lockfile)
+		l := New(lockfile, "")
 
 		err := l.UnLock()
 		assert.Equal(t, nil, err)
