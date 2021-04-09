@@ -1,5 +1,7 @@
 package client
 
+import "opensvc.com/opensvc/core/client/request"
+
 // PostNodeAction describes the daemon object selector expression
 // resolver options.
 type PostNodeAction struct {
@@ -20,10 +22,10 @@ func (t *T) NewPostNodeAction() *PostNodeAction {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o PostNodeAction) Do() ([]byte, error) {
-	opts := NewRequest()
-	opts.Action = "node_action"
-	opts.Options["node"] = o.NodeSelector
-	opts.Options["action"] = o.Action
-	opts.Options["options"] = o.Options
-	return o.client.Post(*opts)
+	req := request.New()
+	req.Action = "node_action"
+	req.Options["node"] = o.NodeSelector
+	req.Options["action"] = o.Action
+	req.Options["options"] = o.Options
+	return o.client.Post(*req)
 }

@@ -1,4 +1,4 @@
-package client
+package reqh2
 
 import (
 	"bufio"
@@ -14,41 +14,38 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/client/request"
 
 	"golang.org/x/net/http2"
 )
 
 type (
 	// H2 is the agent HTTP/2 api client struct
-	H2 struct {
-		Requester `json:"-"`
-		Client    http.Client `json:"-"`
-		URL       string      `json:"url"`
+	T struct {
+		Client http.Client `json:"-"`
+		URL    string      `json:"url"`
 	}
 )
 
 const (
-	h2UDSPrefix  = "http:///"
-	h2InetPrefix = "https://"
+	UDSPrefix  = "http:///"
+	InetPrefix = "https://"
 )
 
-func (t H2) String() string {
+func (t T) String() string {
 	b, _ := json.Marshal(t)
 	return "H2" + string(b)
 }
 
-func defaultH2UDSPath() string {
+func defaultUDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Node.Paths.Var))
 }
 
-func (t *T) configureH2UDS() error {
-	var url string
-	if t.url == "" {
-		url = defaultH2UDSPath()
-	} else {
-		url = t.url
+func NewUDS(url string) (*T, error) {
+	if url == "" {
+		url = defaultUDSPath()
 	}
-	r := &H2{}
+	r := &T{}
 	tp := &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
@@ -57,29 +54,27 @@ func (t *T) configureH2UDS() error {
 	}
 	r.URL = "http://localhost"
 	r.Client = http.Client{Transport: tp, Timeout: 30 * time.Second}
-	t.requester = *r
-	return nil
+	return r, nil
 }
 
-func (t *T) configureH2Inet() error {
-	r := &H2{}
-	cer, err := tls.LoadX509KeyPair(t.clientCertificate, t.clientKey)
+func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool) (*T, error) {
+	r := &T{}
+	cer, err := tls.LoadX509KeyPair(clientCertificate, clientKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tp := &http2.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: t.insecureSkipVerify,
+			InsecureSkipVerify: insecureSkipVerify,
 			Certificates:       []tls.Certificate{cer},
 		},
 	}
-	r.URL = t.url
+	r.URL = url
 	r.Client = http.Client{Transport: tp}
-	t.requester = *r
-	return nil
+	return r, nil
 }
 
-func (t H2) newRequest(method string, r Request) (*http.Request, error) {
+func (t T) newRequest(method string, r request.T) (*http.Request, error) {
 	jsonStr, _ := json.Marshal(r.Options)
 	body := bytes.NewBuffer(jsonStr)
 	req, err := http.NewRequest(method, t.URL+"/"+r.Action, body)
@@ -90,7 +85,7 @@ func (t H2) newRequest(method string, r Request) (*http.Request, error) {
 	return req, nil
 }
 
-func (t H2) doReq(method string, r Request) (*http.Response, error) {
+func (t T) doReq(method string, r request.T) (*http.Response, error) {
 	req, err := t.newRequest(method, r)
 	if err != nil {
 		return nil, err
@@ -102,7 +97,7 @@ func (t H2) doReq(method string, r Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func (t H2) doReqReadResponse(method string, r Request) ([]byte, error) {
+func (t T) doReqReadResponse(method string, r request.T) ([]byte, error) {
 	resp, err := t.doReq(method, r)
 	if err != nil {
 		return nil, err
@@ -116,27 +111,27 @@ func (t H2) doReqReadResponse(method string, r Request) ([]byte, error) {
 }
 
 // Get implements the Get interface for the H2 protocol
-func (t H2) Get(r Request) ([]byte, error) {
+func (t T) Get(r request.T) ([]byte, error) {
 	return t.doReqReadResponse("GET", r)
 }
 
 // Post implements the Post interface for the H2 protocol
-func (t H2) Post(r Request) ([]byte, error) {
+func (t T) Post(r request.T) ([]byte, error) {
 	return t.doReqReadResponse("POST", r)
 }
 
 // Put implements the Put interface for the H2 protocol
-func (t H2) Put(r Request) ([]byte, error) {
+func (t T) Put(r request.T) ([]byte, error) {
 	return t.doReqReadResponse("PUT", r)
 }
 
 // Delete implements the Delete interface for the H2 protocol
-func (t H2) Delete(r Request) ([]byte, error) {
+func (t T) Delete(r request.T) ([]byte, error) {
 	return t.doReqReadResponse("DELETE", r)
 }
 
 // GetStream returns a chan of raw json messages
-func (t H2) GetStream(r Request) (chan []byte, error) {
+func (t T) GetStream(r request.T) (chan []byte, error) {
 	req, err := t.newRequest("GET", r)
 	if err != nil {
 		return nil, err

@@ -4,6 +4,9 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/core/client/request"
+	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
+	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -15,6 +18,32 @@ type (
 		clientCertificate  string
 		clientKey          string
 		requester          Requester
+	}
+
+	Getter interface {
+		Get(r request.T) ([]byte, error)
+	}
+
+	GetStreamer interface {
+		GetStream(r request.T) (chan []byte, error)
+	}
+	Poster interface {
+		Post(r request.T) ([]byte, error)
+	}
+	Putter interface {
+		Put(r request.T) ([]byte, error)
+	}
+	Deleter interface {
+		Delete(r request.T) ([]byte, error)
+	}
+
+	// Requester abstracts the requesting details of supported protocols
+	Requester interface {
+		Getter
+		Poster
+		Putter
+		Deleter
+		GetStreamer
 	}
 )
 
@@ -28,7 +57,7 @@ func New(opts ...funcopt.O) (*T, error) {
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return nil, err
 	}
-	if err := t.Configure(); err != nil {
+	if err := t.configure(); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -96,9 +125,9 @@ func WithKey(s string) funcopt.O {
 	})
 }
 
-// Configure allocates a new requester with a requester for the server found in Config,
+// configure allocates a new requester with a requester for the server found in Config,
 // or for the server found in Context.
-func (t *T) Configure() error {
+func (t *T) configure() error {
 	if t.url == "" {
 		if err := t.loadContext(); err != nil {
 			return err
@@ -114,30 +143,31 @@ func (t *T) Configure() error {
 
 // newRequester allocates the Requester interface implementing struct selected
 // by the scheme of the URL key in Config{}.
-func (t *T) newRequester() error {
+func (t *T) newRequester() (err error) {
 	if strings.HasPrefix(t.url, "tls://") {
 		t.url = "https://" + t.url[6:]
 	}
 	switch {
 	case t.url == "raw", t.url == "raw://", t.url == "raw:///":
 		t.url = ""
-		return t.configureJSONRPC()
-	case strings.HasPrefix(t.url, jsonrpcUDSPrefix) == true:
-		return t.configureJSONRPC()
+		t.requester, err = reqjsonrpc.New(t.url)
+	case strings.HasPrefix(t.url, reqjsonrpc.UDSPrefix) == true:
+		t.requester, err = reqjsonrpc.New(t.url)
 	case strings.HasSuffix(t.url, "lsnr.sock"):
-		return t.configureJSONRPC()
-	case strings.HasPrefix(t.url, jsonrpcInetPrefix):
-		return t.configureJSONRPC()
-	case strings.HasPrefix(t.url, h2UDSPrefix):
-		return t.configureH2UDS()
+		t.requester, err = reqjsonrpc.New(t.url)
+	case strings.HasPrefix(t.url, reqjsonrpc.InetPrefix):
+		t.requester, err = reqjsonrpc.New(t.url)
+	case strings.HasPrefix(t.url, reqh2.UDSPrefix):
+		t.requester, err = reqh2.NewUDS(t.url)
 	case strings.HasSuffix(t.url, "h2.sock"):
-		return t.configureH2UDS()
-	case strings.HasPrefix(t.url, h2InetPrefix):
-		return t.configureH2Inet()
+		t.requester, err = reqh2.NewUDS(t.url)
+	case strings.HasPrefix(t.url, reqh2.InetPrefix):
+		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify)
 	default:
 		t.url = ""
-		return t.configureH2UDS()
+		t.requester, err = reqh2.NewUDS(t.url)
 	}
+	return err
 }
 
 func (t *T) loadContext() error {

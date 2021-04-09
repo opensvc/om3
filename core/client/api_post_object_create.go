@@ -1,5 +1,7 @@
 package client
 
+import "opensvc.com/opensvc/core/client/request"
+
 // PostObjectCreate are options supported by the api handler.
 type PostObjectCreate struct {
 	client         *T `json:"-"`
@@ -24,6 +26,6 @@ func (t *T) NewPostObjectCreate() *PostObjectCreate {
 
 // Do executes the request and returns the undecoded bytes.
 func (o PostObjectCreate) Do() ([]byte, error) {
-	req := NewRequestFor(o.action, o)
+	req := request.NewFor(o.action, o)
 	return o.client.Post(*req)
 }

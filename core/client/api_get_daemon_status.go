@@ -1,6 +1,9 @@
 package client
 
-import "opensvc.com/opensvc/util/funcopt"
+import (
+	"opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/util/funcopt"
+)
 
 type getDaemonStatus struct {
 	cli       Getter
@@ -48,10 +51,10 @@ func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*getDaemonStatus, error)
 
 // GetDaemonStatus fetchs the daemon status structure from the agent api
 func (c *getDaemonStatus) Get() ([]byte, error) {
-	request := NewRequest()
-	request.Action = "daemon_status"
-	request.Options["namespace"] = c.namespace
-	request.Options["selector"] = c.selector
-	request.Options["relatives"] = c.relatives
-	return c.cli.Get(*request)
+	req := request.New()
+	req.Action = "daemon_status"
+	req.Options["namespace"] = c.namespace
+	req.Options["selector"] = c.selector
+	req.Options["relatives"] = c.relatives
+	return c.cli.Get(*req)
 }

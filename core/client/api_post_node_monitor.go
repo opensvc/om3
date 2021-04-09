@@ -1,5 +1,7 @@
 package client
 
+import "opensvc.com/opensvc/core/client/request"
+
 // PostNodeMonitor describes the daemon object selector expression
 // resolver options.
 type PostNodeMonitor struct {
@@ -17,8 +19,8 @@ func (t *T) NewPostNodeMonitor() *PostNodeMonitor {
 
 // Do ...
 func (o PostNodeMonitor) Do() ([]byte, error) {
-	opts := NewRequest()
-	opts.Action = "node_monitor"
-	opts.Options["global_expect"] = o.GlobalExpect
-	return o.client.Post(*opts)
+	req := request.New()
+	req.Action = "node_monitor"
+	req.Options["global_expect"] = o.GlobalExpect
+	return o.client.Post(*req)
 }

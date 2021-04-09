@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -93,11 +94,11 @@ func (o getEvents) eventsBase() (chan []byte, error) {
 	return o.cli.GetStream(*req)
 }
 
-func (o getEvents) newRequest() *Request {
-	request := NewRequest()
-	request.Action = "events"
-	request.Options["selector"] = o.selector
-	request.Options["namespace"] = o.namespace
-	request.Options["full"] = o.relatives
-	return request
+func (o getEvents) newRequest() *request.T {
+	req := request.New()
+	req.Action = "events"
+	req.Options["selector"] = o.selector
+	req.Options["namespace"] = o.namespace
+	req.Options["full"] = o.relatives
+	return req
 }

@@ -1,5 +1,7 @@
 package client
 
+import "opensvc.com/opensvc/core/client/request"
+
 // GetDaemonStats describes the daemon statistics api handler options.
 type GetDaemonStats struct {
 	client         *T
@@ -21,7 +23,7 @@ func (t *T) NewGetDaemonStats() *GetDaemonStats {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o GetDaemonStats) Do() ([]byte, error) {
-	req := NewRequestFor("daemon_stats", o)
+	req := request.NewFor("daemon_stats", o)
 	req.Node = "*"
 	return o.client.Get(*req)
 }

@@ -1,4 +1,4 @@
-package client
+package reqjsonrpc
 
 import (
 	"bufio"
@@ -12,33 +12,33 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/client/request"
 )
 
 type (
-	// JSONRPC is the agent JSON RPC api struct
-	JSONRPC struct {
-		Requester `json:"-"`
-		URL       string `json:"url"`
-		Inet      bool   `json:"inet"`
+	// T is the agent JSON RPC requester
+	T struct {
+		URL  string `json:"url"`
+		Inet bool   `json:"inet"`
 	}
 )
 
 const (
-	jsonrpcUDSPrefix  = "raw:///"
-	jsonrpcInetPrefix = "raw://"
+	UDSPrefix  = "raw:///"
+	InetPrefix = "raw://"
 )
 
-func (t JSONRPC) String() string {
+func (t T) String() string {
 	b, _ := json.Marshal(t)
 	return "JSONRPC" + string(b)
 }
 
-func defaultJSONRPCUDSPath() string {
+func defaultUDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.NodeViper.GetString("paths.var")))
 }
 
 // Get implements the Get interface method for the JSONRPC api
-func (t JSONRPC) doReq(method string, req Request) (io.ReadCloser, error) {
+func (t T) doReq(method string, req request.T) (io.ReadCloser, error) {
 	var (
 		conn net.Conn
 		err  error
@@ -79,7 +79,7 @@ func (t JSONRPC) doReq(method string, req Request) (io.ReadCloser, error) {
 	return conn, err
 }
 
-func (t JSONRPC) doReqReadResponse(method string, req Request) ([]byte, error) {
+func (t T) doReqReadResponse(method string, req request.T) ([]byte, error) {
 	var b []byte
 	rc, err := t.doReq(method, req)
 	if err != nil {
@@ -107,27 +107,27 @@ func (t JSONRPC) doReqReadResponse(method string, req Request) ([]byte, error) {
 }
 
 // Get implements the Get interface method for the JSONRPC api
-func (t JSONRPC) Get(req Request) ([]byte, error) {
+func (t T) Get(req request.T) ([]byte, error) {
 	return t.doReqReadResponse("GET", req)
 }
 
 // Post implements the Post interface method for the JSONRPC api
-func (t JSONRPC) Post(req Request) ([]byte, error) {
+func (t T) Post(req request.T) ([]byte, error) {
 	return t.doReqReadResponse("POST", req)
 }
 
 // Put implements the Put interface method for the JSONRPC api
-func (t JSONRPC) Put(req Request) ([]byte, error) {
+func (t T) Put(req request.T) ([]byte, error) {
 	return t.doReqReadResponse("PUT", req)
 }
 
 // Delete implements the Delete interface method for the JSONRPC api
-func (t JSONRPC) Delete(req Request) ([]byte, error) {
+func (t T) Delete(req request.T) ([]byte, error) {
 	return t.doReqReadResponse("DELETE", req)
 }
 
 // GetStream returns a chan of raw json messages
-func (t JSONRPC) GetStream(req Request) (chan []byte, error) {
+func (t T) GetStream(req request.T) (chan []byte, error) {
 	q := make(chan []byte, 1000)
 	rc, err := t.doReq("GET", req)
 	if err != nil {
@@ -137,19 +137,18 @@ func (t JSONRPC) GetStream(req Request) (chan []byte, error) {
 	return q, nil
 }
 
-func (t *T) configureJSONRPC() error {
-	var url string
-	if t.url == "" {
-		url = defaultJSONRPCUDSPath()
+func New(url string) (*T, error) {
+	if url == "" {
+		url = defaultUDSPath()
 	} else {
-		url = strings.Replace(t.url, jsonrpcUDSPrefix, "/", 1)
-		url = strings.Replace(t.url, jsonrpcInetPrefix, "", 1)
+		url = strings.Replace(url, UDSPrefix, "/", 1)
+		url = strings.Replace(url, InetPrefix, "", 1)
 	}
-	t.requester = JSONRPC{
+	r := &T{
 		URL:  url,
 		Inet: strings.Contains(url, ":"),
 	}
-	return nil
+	return r, nil
 }
 
 // dropCR drops a terminal \r from the data.

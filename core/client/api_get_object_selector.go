@@ -1,5 +1,7 @@
 package client
 
+import "opensvc.com/opensvc/core/client/request"
+
 // GetObjectSelector describes the daemon object selector expression
 // resolver options.
 type GetObjectSelector struct {
@@ -18,8 +20,8 @@ func (t *T) NewGetObjectSelector() *GetObjectSelector {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o GetObjectSelector) Do() ([]byte, error) {
-	opts := NewRequest()
-	opts.Action = "object_selector"
-	opts.Options["selector"] = o.ObjectSelector
-	return o.client.Get(*opts)
+	req := request.New()
+	req.Action = "object_selector"
+	req.Options["selector"] = o.ObjectSelector
+	return o.client.Get(*req)
 }

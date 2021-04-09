@@ -1,5 +1,7 @@
 package client
 
+import "opensvc.com/opensvc/core/client/request"
+
 // GetObjectConfig is the options supported by the handler.
 type GetObjectConfig struct {
 	client         *T     `json:"-"`
@@ -20,11 +22,11 @@ func (t *T) NewGetObjectConfig() *GetObjectConfig {
 
 // Do submits the request.
 func (o GetObjectConfig) Do() ([]byte, error) {
-	opts := NewRequest()
-	opts.Action = "object_config"
-	opts.Options["path"] = o.ObjectSelector
-	opts.Options["evaluate"] = o.Evaluate
-	opts.Options["impersonate"] = o.Impersonate
-	opts.Options["format"] = o.Format
-	return o.client.Get(*opts)
+	req := request.New()
+	req.Action = "object_config"
+	req.Options["path"] = o.ObjectSelector
+	req.Options["evaluate"] = o.Evaluate
+	req.Options["impersonate"] = o.Impersonate
+	req.Options["format"] = o.Format
+	return o.client.Get(*req)
 }
