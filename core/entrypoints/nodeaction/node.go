@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 type (
@@ -20,25 +21,11 @@ type (
 		action.T
 		Node object.NodeAction
 	}
-
-	// Option is a functional option configurer.
-	// https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
-	Option interface {
-		apply(t *T) error
-	}
-
-	optionFunc func(*T) error
 )
 
-func (fn optionFunc) apply(t *T) error {
-	return fn(t)
-}
-
-func New(opts ...Option) *T {
+func New(opts ...funcopt.O) *T {
 	t := &T{}
-	for _, opt := range opts {
-		_ = opt.apply(t)
-	}
+	_ = funcopt.Apply(t, opts...)
 	return t
 }
 
@@ -46,8 +33,9 @@ func New(opts ...Option) *T {
 // WithNodeSelector expands into a selection of nodes to execute the
 // action on.
 //
-func WithRemoteNodes(s string) Option {
-	return optionFunc(func(t *T) error {
+func WithRemoteNodes(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.NodeSelector = s
 		return nil
 	})
@@ -57,8 +45,9 @@ func WithRemoteNodes(s string) Option {
 // WithLocal routes the action to the CRM instead of remoting it via
 // orchestration or remote execution.
 //
-func WithLocal(v bool) Option {
-	return optionFunc(func(t *T) error {
+func WithLocal(v bool) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Local = v
 		return nil
 	})
@@ -68,8 +57,9 @@ func WithLocal(v bool) Option {
 // LocalFirst makes actions not explicitely Local nor remoted
 // via NodeSelector be treated as local (CRM level).
 //
-func LocalFirst() Option {
-	return optionFunc(func(t *T) error {
+func LocalFirst() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.DefaultIsLocal = true
 		return nil
 	})
@@ -79,8 +69,9 @@ func LocalFirst() Option {
 // WithRemoteAction is the name of the action as passed to the command line
 // interface.
 //
-func WithRemoteAction(s string) Option {
-	return optionFunc(func(t *T) error {
+func WithRemoteAction(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Action = s
 		return nil
 	})
@@ -90,8 +81,9 @@ func WithRemoteAction(s string) Option {
 // WithRemoteOptions is the dataset submited in the POST /{object|node}_action
 // api handler to execute the action remotely.
 //
-func WithRemoteOptions(m map[string]interface{}) Option {
-	return optionFunc(func(t *T) error {
+func WithRemoteOptions(m map[string]interface{}) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.PostFlags = m
 		return nil
 	})
@@ -101,8 +93,9 @@ func WithRemoteOptions(m map[string]interface{}) Option {
 // WithAsyncTarget is the node or object state the daemons should orchestrate
 // to reach.
 //
-func WithAsyncTarget(s string) Option {
-	return optionFunc(func(t *T) error {
+func WithAsyncTarget(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Target = s
 		return nil
 	})
@@ -113,8 +106,9 @@ func WithAsyncTarget(s string) Option {
 // setting a new target. So the operator can see the orchestration
 // unfolding.
 //
-func WithAsyncWatch(v bool) Option {
-	return optionFunc(func(t *T) error {
+func WithAsyncWatch(v bool) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Watch = v
 		return nil
 	})
@@ -127,8 +121,9 @@ func WithAsyncWatch(v bool) Option {
 // flat      => flattened json (<k>=<v>) machine readable format
 // flat_json => same as flat (backward compat)
 //
-func WithFormat(s string) Option {
-	return optionFunc(func(t *T) error {
+func WithFormat(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Format = s
 		return nil
 	})
@@ -140,8 +135,9 @@ func WithFormat(s string) Option {
 // yes
 // no
 //
-func WithColor(s string) Option {
-	return optionFunc(func(t *T) error {
+func WithColor(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Color = s
 		return nil
 	})
@@ -150,16 +146,18 @@ func WithColor(s string) Option {
 //
 // WithServer sets the api url.
 //
-func WithServer(s string) Option {
-	return optionFunc(func(t *T) error {
+func WithServer(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Server = s
 		return nil
 	})
 }
 
 // WithLocalRun sets a function to run if the the action is local
-func WithLocalRun(f func() (interface{}, error)) Option {
-	return optionFunc(func(t *T) error {
+func WithLocalRun(f func() (interface{}, error)) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.Node.Run = f
 		return nil
 	})
