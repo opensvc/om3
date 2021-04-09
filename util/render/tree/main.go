@@ -2,12 +2,12 @@ package tree
 
 import (
 	"fmt"
+	"golang.org/x/term"
 	"os"
 	"reflect"
 	"regexp"
 
 	"github.com/fatih/color"
-	tsize "github.com/kopoli/go-terminal-size"
 )
 
 const (
@@ -165,11 +165,11 @@ func (t *Tree) setTotalWidth() {
 		t.totalWidth = t.ForcedWidth
 		return
 	}
-	if ts, err := tsize.FgetSize(os.Stdout); err == nil {
-		t.totalWidth = ts.Width - 4
-	} else {
-		t.totalWidth = 76
+	_, columns, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		columns = 80
 	}
+	t.totalWidth = columns - 4
 }
 
 //
