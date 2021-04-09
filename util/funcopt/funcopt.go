@@ -1,7 +1,7 @@
 //
 // Package funcopt is a functional options helper package.
 //
-// Functional options beneficits are described at
+// Functional options benefits are described at
 // https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
 //
 // A typical allocator is implemented as:
