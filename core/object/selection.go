@@ -16,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -55,14 +56,6 @@ type (
 		Panic         interface{}   `json:"panic,omitempty"`
 		HumanRenderer func() string `json:"-"`
 	}
-
-	// Option is a functional option configurer.
-	// https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
-	Option interface {
-		apply(t *Selection) error
-	}
-
-	optionFunc func(*Selection) error
 )
 
 const (
@@ -74,24 +67,19 @@ var (
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
 
-func (fn optionFunc) apply(t *Selection) error {
-	return fn(t)
-}
-
 // NewSelection allocates a new object selection
-func NewSelection(selector string, opts ...Option) *Selection {
+func NewSelection(selector string, opts ...funcopt.O) *Selection {
 	t := &Selection{
 		SelectorExpression: selector,
 	}
-	for _, opt := range opts {
-		_ = opt.apply(t)
-	}
+	_ = funcopt.Apply(t, opts...)
 	return t
 }
 
 // WithClient sets the client struct key
-func SelectionWithClient(client *client.T) Option {
-	return optionFunc(func(t *Selection) error {
+func SelectionWithClient(client *client.T) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*Selection)
 		t.client = client
 		t.hasClient = true
 		return nil
@@ -101,16 +89,18 @@ func SelectionWithClient(client *client.T) Option {
 // WithLocal forces the selection to be expanded without asking the
 // daemon, which might result in an sub-selection of what the
 // daemon would expand the selector to.
-func SelectionWithLocal(v bool) Option {
-	return optionFunc(func(t *Selection) error {
+func SelectionWithLocal(v bool) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*Selection)
 		t.local = v
 		return nil
 	})
 }
 
 // WithServer sets the server struct key
-func SelectionWithServer(server string) Option {
-	return optionFunc(func(t *Selection) error {
+func SelectionWithServer(server string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*Selection)
 		t.server = server
 		return nil
 	})
