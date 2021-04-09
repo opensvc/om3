@@ -153,7 +153,7 @@ func (t *Selection) expand() {
 	if !t.local {
 		if !t.hasClient {
 			c, _ := client.New(
-				client.URL(t.server),
+				client.WithURL(t.server),
 			)
 			t.client = c
 			t.hasClient = true

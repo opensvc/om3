@@ -35,7 +35,7 @@ func New(opts ...funcopt.O) (*T, error) {
 }
 
 //
-// URL is the option pointing the api location and protocol using the
+// WithURL is the option pointing the api location and protocol using the
 // [<scheme>://]<addr>[:<port>] format.
 //
 // Supported schemes:
@@ -51,7 +51,7 @@ func New(opts ...funcopt.O) (*T, error) {
 // If unset, a unix domain socket connection and the http/2 protocol is
 // selected.
 //
-// If URL is a unix domain socket path, use the corresponding protocol.
+// If WithURL is a unix domain socket path, use the corresponding protocol.
 //
 // If scheme is omitted, select the http/2 protocol.
 //
@@ -61,7 +61,7 @@ func New(opts ...funcopt.O) (*T, error) {
 // * https://acme.com:1215
 // * raw://acme.com:1214
 //
-func URL(url string) funcopt.O {
+func WithURL(url string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.url = url
@@ -69,8 +69,8 @@ func URL(url string) funcopt.O {
 	})
 }
 
-// InsecureSkipVerify skips certificate validity checks.
-func InsecureSkipVerify() funcopt.O {
+// WithInsecureSkipVerify skips certificate validity checks.
+func WithInsecureSkipVerify() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.insecureSkipVerify = true
@@ -78,8 +78,8 @@ func InsecureSkipVerify() funcopt.O {
 	})
 }
 
-// Certificate sets the x509 client certificate.
-func Certificate(s string) funcopt.O {
+// WithCertificate sets the x509 client certificate.
+func WithCertificate(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.clientCertificate = s
@@ -87,8 +87,8 @@ func Certificate(s string) funcopt.O {
 	})
 }
 
-// Key sets the x509 client private key..
-func Key(s string) funcopt.O {
+// WithKey sets the x509 client private key..
+func WithKey(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.clientKey = s

@@ -128,7 +128,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	var data []object.Status
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	c, err := client.New(client.URL(t.Global.Server))
+	c, err := client.New(client.WithURL(t.Global.Server))
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)

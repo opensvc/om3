@@ -31,7 +31,7 @@ func monCmdRun(_ *cobra.Command, _ []string) {
 	m := monitor.New()
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
-	cli, err := client.New(client.URL(serverFlag))
+	cli, err := client.New(client.WithURL(serverFlag))
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		return

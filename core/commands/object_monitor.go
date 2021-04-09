@@ -40,7 +40,7 @@ func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	cli, err := client.New(client.URL(t.Global.Server))
+	cli, err := client.New(client.WithURL(t.Global.Server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

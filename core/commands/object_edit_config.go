@@ -147,7 +147,7 @@ func (t *CmdObjectEditConfig) run(selector *string, kind string) {
 		err error
 	)
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	if c, err = client.New(client.URL(t.Global.Server)); err != nil {
+	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
