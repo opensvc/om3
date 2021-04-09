@@ -39,35 +39,47 @@ func Diff(a, b string) (string, error) {
 }
 
 func (t Base) EditConfig(opts OptsEditConfig) (err error) {
+	var (
+		refSum []byte
+	)
 	src := t.ConfigFile()
 	dst := t.editedConfigFile()
 	if file.Exists(dst) {
-		if opts.Discard {
+		switch {
+		case opts.Discard && opts.Recover:
+			return errors.New("discard and recover options are mutually exclusive")
+		case opts.Discard:
 			if err = os.Remove(dst); err != nil {
 				return err
 			}
-		} else {
+		case opts.Recover:
+			log.Debug().Str("dst", dst).Msg("recover existing configuration temporary copy")
+		default:
 			diff, _ := Diff(src, dst)
 			return errors.Wrapf(ErrEditConfigPending, "%s", diff)
 		}
 	}
-	if opts.Recover {
-		if file.Exists(dst) {
-			log.Debug().Str("dst", dst).Msg("recover existing configuration temporary copy")
-		}
-	} else {
+	if !file.Exists(dst) {
 		if err = file.Copy(src, dst); err != nil {
 			return err
 		}
-		defer os.Remove(dst)
 		log.Debug().Str("dst", dst).Msg("new configuration temporary copy")
 	}
-
+	if refSum, err = file.MD5(dst); err != nil {
+		return err
+	}
 	if err = editor.Edit(dst); err != nil {
 		return err
 	}
-	// TODO: Validate dst
-	if err = file.Copy(dst, src); err != nil {
+	if file.HaveSameMD5(refSum, dst) {
+		fmt.Println("unchanged")
+	} else {
+		// TODO: Validate dst
+		if err = file.Copy(dst, src); err != nil {
+			return err
+		}
+	}
+	if err = os.Remove(dst); err != nil {
 		return err
 	}
 	return nil

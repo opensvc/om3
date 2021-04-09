@@ -18,9 +18,11 @@ type (
 	}
 )
 
+//
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
 // make loadContext useless.
+//
 func New(opts ...funcopt.O) (*T, error) {
 	t := &T{}
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -37,6 +39,7 @@ func New(opts ...funcopt.O) (*T, error) {
 // [<scheme>://]<addr>[:<port>] format.
 //
 // Supported schemes:
+//
 // * raw
 //   json rpc, AES-256-CBC encrypted payload if transported by AF_INET,
 //   cleartext on unix domain socket.

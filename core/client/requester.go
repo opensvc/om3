@@ -1,6 +1,8 @@
 package client
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type (
 	Getter interface {
@@ -29,11 +31,34 @@ type (
 	}
 )
 
-// NewRequest allocates an unconfigured RequestOptions and returns its
+//
+// NewRequest allocates an unconfigured Request and returns its
 // address.
+//
 func NewRequest() *Request {
 	r := &Request{}
 	r.Options = make(map[string]interface{})
+	return r
+}
+
+//
+// NewRequestFor allocates a fully configured Request and returns its
+// address.
+//
+func NewRequestFor(action string, options interface{}) *Request {
+	var (
+		b   []byte
+		err error
+	)
+	r := NewRequest()
+	r.Action = action
+	// convert options to the expected json format
+	if b, err = json.Marshal(options); err != nil {
+		return nil
+	}
+	if err = json.Unmarshal(b, &r.Options); err != nil {
+		return nil
+	}
 	return r
 }
 

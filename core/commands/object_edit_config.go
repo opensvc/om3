@@ -96,11 +96,11 @@ func pushConfig(p path.T, fName string, c *client.T) (err error) {
 	if cfg, err = config.NewObject(fName); err != nil {
 		return err
 	}
-	handle := c.NewPostObjectCreate()
-	handle.ObjectSelector = p.String()
-	handle.Restore = true
-	handle.Data = cfg.Raw()
-	_, err = handle.Do()
+	req := c.NewPostObjectCreate()
+	req.ObjectSelector = p.String()
+	req.Restore = true
+	req.Data[p.String()] = cfg.Raw()
+	_, err = req.Do()
 	if err != nil {
 		return err
 	}

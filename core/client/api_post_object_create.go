@@ -2,13 +2,14 @@ package client
 
 // PostObjectCreate are options supported by the api handler.
 type PostObjectCreate struct {
-	client         *T          `json:"-"`
-	ObjectSelector string      `json:"path"`
-	Namespace      string      `json:"namespace"`
-	Template       string      `json:"template"`
-	Provision      bool        `json:"provision"`
-	Restore        bool        `json:"restore"`
-	Data           interface{} `json:"data"`
+	client         *T `json:"-"`
+	action         string
+	ObjectSelector string                 `json:"path,omitempty"`
+	Namespace      string                 `json:"namespace,omitempty"`
+	Template       string                 `json:"template,omitempty"`
+	Provision      bool                   `json:"provision,omitempty"`
+	Restore        bool                   `json:"restore,omitempty"`
+	Data           map[string]interface{} `json:"data,omitempty"`
 }
 
 // NewPostObjectCreate allocates a PostObjectCreate struct and sets
@@ -16,18 +17,13 @@ type PostObjectCreate struct {
 func (t *T) NewPostObjectCreate() *PostObjectCreate {
 	return &PostObjectCreate{
 		client: t,
+		action: "object_create",
+		Data:   make(map[string]interface{}),
 	}
 }
 
-// Do ...
+// Do executes the request and returns the undecoded bytes.
 func (o PostObjectCreate) Do() ([]byte, error) {
-	opts := NewRequest()
-	opts.Action = "object_create"
-	opts.Options["path"] = o.ObjectSelector
-	opts.Options["namespace"] = o.Namespace
-	opts.Options["provision"] = o.Provision
-	opts.Options["template"] = o.Template
-	opts.Options["restore"] = o.Restore
-	opts.Options["data"] = o.Data
-	return o.client.Post(*opts)
+	req := NewRequestFor(o.action, o)
+	return o.client.Post(*req)
 }
