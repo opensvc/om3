@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 type (
@@ -15,29 +16,15 @@ type (
 		clientKey          string
 		requester          Requester
 	}
-
-	// Option is a functional option configurer.
-	// https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
-	Option interface {
-		apply(t *T) error
-	}
-
-	optionFunc func(*T) error
 )
-
-func (fn optionFunc) apply(t *T) error {
-	return fn(t)
-}
 
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
 // make loadContext useless.
-func New(opts ...Option) (*T, error) {
+func New(opts ...funcopt.O) (*T, error) {
 	t := &T{}
-	for _, opt := range opts {
-		if err := opt.apply(t); err != nil {
-			return nil, err
-		}
+	if err := funcopt.Apply(t, opts...); err != nil {
+		return nil, err
 	}
 	if err := t.Configure(); err != nil {
 		return nil, err
@@ -71,32 +58,36 @@ func New(opts ...Option) (*T, error) {
 // * https://acme.com:1215
 // * raw://acme.com:1214
 //
-func URL(url string) Option {
-	return optionFunc(func(t *T) error {
+func URL(url string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.url = url
 		return nil
 	})
 }
 
 // InsecureSkipVerify skips certificate validity checks.
-func InsecureSkipVerify() Option {
-	return optionFunc(func(t *T) error {
+func InsecureSkipVerify() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.insecureSkipVerify = true
 		return nil
 	})
 }
 
 // Certificate sets the x509 client certificate.
-func Certificate(s string) Option {
-	return optionFunc(func(t *T) error {
+func Certificate(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.clientCertificate = s
 		return nil
 	})
 }
 
 // Key sets the x509 client private key..
-func Key(s string) Option {
-	return optionFunc(func(t *T) error {
+func Key(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
 		t.clientKey = s
 		return nil
 	})
