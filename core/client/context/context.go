@@ -15,40 +15,40 @@ const (
 )
 
 type (
-	// Config is the structure stored in and loaded from "~/.opensvc/config".
+	// config is the structure stored in and loaded from "~/.opensvc/config".
 	// It contains the credentials and endpoint information to connect to
 	// remote clusters.
-	Config struct {
-		Contexts map[string]Relation `json:"contexts"`
-		Clusters map[string]Cluster  `json:"clusters"`
-		Users    map[string]User     `json:"users"`
+	config struct {
+		Contexts map[string]relation `json:"contexts"`
+		Clusters map[string]cluster  `json:"clusters"`
+		Users    map[string]user     `json:"users"`
 	}
 
 	// T is a dereferenced Cluster-User relation.
 	T struct {
-		Cluster   Cluster `json:"cluster"`
-		User      User    `json:"user"`
+		Cluster   cluster `json:"cluster"`
+		User      user    `json:"user"`
 		Namespace string  `json:"namespace"`
 	}
 
-	// Relation is a Cluster-User relation.
-	Relation struct {
+	// relation is a Cluster-User relation.
+	relation struct {
 		ClusterRefName string `json:"cluster"`
 		UserRefName    string `json:"user"`
 		Namespace      string `json:"namespace"`
 	}
 
-	// Cluster host the endpoint address or name, and the certificate authority
+	// cluster host the endpoint address or name, and the certificate authority
 	// to trust.
-	Cluster struct {
+	cluster struct {
 		CertificateAuthority string `json:"certificate_authority,omitempty"`
 		Server               string `json:"server"`
 		InsecureSkipVerify   bool   `json:"insecure"`
 	}
 
-	// User hosts the certificate and private to use to connect to the remote
+	// user hosts the certificate and private to use to connect to the remote
 	// cluster.
-	User struct {
+	user struct {
 		ClientCertificate string `json:"client_certificate"`
 		ClientKey         string `json:"client_key"`
 	}
@@ -66,7 +66,7 @@ func IsSet() bool {
 
 // New return a remote cluster connection context (endpoint and user)
 func New() (T, error) {
-	var cfg Config
+	var cfg config
 	var c T
 	n := os.Getenv(EnvVar)
 	if n == "" {
