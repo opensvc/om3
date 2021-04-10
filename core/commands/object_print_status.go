@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	clientcontext "opensvc.com/opensvc/core/client/context"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -56,7 +57,7 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) []object.St
 		log.Debug().Err(err).Msg("extract cluster status")
 		return data
 	}
-	if client.WantContext() {
+	if clientcontext.IsSet() {
 		log.Error().Msg("can not fetch daemon data")
 		return []object.Status{}
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	clientcontext "opensvc.com/opensvc/core/client/context"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -46,7 +47,7 @@ func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command 
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	sel := object.NewSelection(selector)
-	wc := client.WantContext()
+	wc := clientcontext.IsSet()
 	for _, p := range sel.Expand() {
 		obj := object.NewConfigurerFromPath(p)
 		if !wc && obj.Exists() {

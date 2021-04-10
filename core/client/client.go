@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	clientcontext "opensvc.com/opensvc/core/client/context"
 	"opensvc.com/opensvc/core/client/request"
 	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
@@ -171,7 +172,7 @@ func (t *T) newRequester() (err error) {
 }
 
 func (t *T) loadContext() error {
-	context, err := NewContext()
+	context, err := clientcontext.New()
 	if err != nil {
 		return err
 	}

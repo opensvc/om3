@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"opensvc.com/opensvc/core/client"
+	clientcontext "opensvc.com/opensvc/core/client/context"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
@@ -114,7 +115,7 @@ func Do(t Actioner) {
 		t.DoLocal()
 	case o.Target != "":
 		t.DoAsync()
-	case !client.WantContext():
+	case !clientcontext.IsSet():
 		t.DoLocal()
 	default:
 		// post action on context endpoint

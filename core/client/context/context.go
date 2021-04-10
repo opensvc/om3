@@ -1,4 +1,4 @@
-package client
+package clientcontext
 
 import (
 	"encoding/json"
@@ -11,28 +11,28 @@ import (
 )
 
 const (
-	contextNameEnvVar = "OSVC_CONTEXT"
+	EnvVar = "OSVC_CONTEXT"
 )
 
 type (
-	// ContextsConfig is the structure stored in and loaded from "~/.opensvc/config".
+	// Config is the structure stored in and loaded from "~/.opensvc/config".
 	// It contains the credentials and endpoint information to connect to
 	// remote clusters.
-	ContextsConfig struct {
-		Contexts map[string]ContextRelation `json:"contexts"`
-		Clusters map[string]Cluster         `json:"clusters"`
-		Users    map[string]User            `json:"users"`
+	Config struct {
+		Contexts map[string]Relation `json:"contexts"`
+		Clusters map[string]Cluster  `json:"clusters"`
+		Users    map[string]User     `json:"users"`
 	}
 
-	// Context is a dereferenced Cluster-User relation.
-	Context struct {
+	// T is a dereferenced Cluster-User relation.
+	T struct {
 		Cluster   Cluster `json:"cluster"`
 		User      User    `json:"user"`
 		Namespace string  `json:"namespace"`
 	}
 
-	// ContextRelation is a Cluster-User relation.
-	ContextRelation struct {
+	// Relation is a Cluster-User relation.
+	Relation struct {
 		ClusterRefName string `json:"cluster"`
 		UserRefName    string `json:"user"`
 		Namespace      string `json:"namespace"`
@@ -55,20 +55,20 @@ type (
 )
 
 var (
-	// ErrContext is raised when a context definition has issues.
-	ErrContext = errors.New("context error")
+	// Err is raised when a context definition has issues.
+	Err = errors.New("context error")
 )
 
-// WantContext returns true if the OSVC_CONTEXT environment variable is set
-func WantContext() bool {
-	return os.Getenv(contextNameEnvVar) != ""
+// IsSet returns true if the OSVC_CONTEXT environment variable is set
+func IsSet() bool {
+	return os.Getenv(EnvVar) != ""
 }
 
-// NewContext return a remote cluster connection context (endpoint and user)
-func NewContext() (Context, error) {
-	var cfg ContextsConfig
-	var c Context
-	n := os.Getenv(contextNameEnvVar)
+// New return a remote cluster connection context (endpoint and user)
+func New() (T, error) {
+	var cfg Config
+	var c T
+	n := os.Getenv(EnvVar)
 	if n == "" {
 		return c, nil
 	}
@@ -84,16 +84,16 @@ func NewContext() (Context, error) {
 	}
 	cr, ok := cfg.Contexts[n]
 	if !ok {
-		return c, errors.Wrapf(ErrContext, "context not defined: %s", n)
+		return c, errors.Wrapf(Err, "context not defined: %s", n)
 	}
 	c.Cluster, ok = cfg.Clusters[cr.ClusterRefName]
 	if !ok {
-		return c, errors.Wrapf(ErrContext, "cluster not defined: %s", cr.ClusterRefName)
+		return c, errors.Wrapf(Err, "cluster not defined: %s", cr.ClusterRefName)
 	}
 	if cr.UserRefName != "" {
 		c.User, ok = cfg.Users[cr.UserRefName]
 		if !ok {
-			return c, errors.Wrapf(ErrContext, "user not defined: %s", cr.ClusterRefName)
+			return c, errors.Wrapf(Err, "user not defined: %s", cr.ClusterRefName)
 		}
 	}
 	c.Namespace = cr.Namespace
@@ -101,7 +101,7 @@ func NewContext() (Context, error) {
 	return c, nil
 }
 
-func (t Context) String() string {
+func (t T) String() string {
 	b, _ := json.Marshal(t)
 	return string(b)
 }

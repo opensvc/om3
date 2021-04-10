@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	clientcontext "opensvc.com/opensvc/core/client/context"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
@@ -43,7 +44,7 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) ([]config.R
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		return data, nil
 	}
-	if client.WantContext() {
+	if clientcontext.IsSet() {
 		return []config.Raw{}, errors.New("can not fetch from daemon")
 	}
 	return t.extractLocal(selector)

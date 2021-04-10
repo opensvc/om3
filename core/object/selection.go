@@ -14,6 +14,7 @@ import (
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	clientcontext "opensvc.com/opensvc/core/client/context"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
@@ -160,7 +161,7 @@ func (t *Selection) expand() {
 		}
 		if err := t.daemonExpand(); err == nil {
 			return
-		} else if client.WantContext() {
+		} else if clientcontext.IsSet() {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 			return
 		} else {
