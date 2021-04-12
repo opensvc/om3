@@ -5,39 +5,42 @@ import (
 	"opensvc.com/opensvc/util/funcopt"
 )
 
-type getDaemonStatus struct {
+type GetDaemonStatus struct {
 	cli       Getter
 	namespace string
 	selector  string
 	relatives bool
 }
 
-func (t *getDaemonStatus) SetNamespace(s string) {
+func (t *GetDaemonStatus) SetNamespace(s string) *GetDaemonStatus {
 	t.namespace = s
+	return t
 }
 
-func (t *getDaemonStatus) SetSelector(s string) {
+func (t *GetDaemonStatus) SetSelector(s string) *GetDaemonStatus {
 	t.selector = s
+	return t
 }
 
-func (t *getDaemonStatus) SetRelatives(s bool) {
+func (t *GetDaemonStatus) SetRelatives(s bool) *GetDaemonStatus {
 	t.relatives = s
+	return t
 }
 
-func (t getDaemonStatus) Namespace() string {
+func (t GetDaemonStatus) Namespace() string {
 	return t.namespace
 }
 
-func (t getDaemonStatus) Selector() string {
+func (t GetDaemonStatus) Selector() string {
 	return t.selector
 }
 
-func (t getDaemonStatus) Relatives() bool {
+func (t GetDaemonStatus) Relatives() bool {
 	return t.relatives
 }
 
-func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*getDaemonStatus, error) {
-	options := &getDaemonStatus{
+func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*GetDaemonStatus, error) {
+	options := &GetDaemonStatus{
 		cli:       cli,
 		namespace: "",
 		selector:  "*",
@@ -50,11 +53,11 @@ func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*getDaemonStatus, error)
 }
 
 // GetDaemonStatus fetchs the daemon status structure from the agent api
-func (c *getDaemonStatus) Get() ([]byte, error) {
+func (t *GetDaemonStatus) Get() ([]byte, error) {
 	req := request.New()
 	req.Action = "daemon_status"
-	req.Options["namespace"] = c.namespace
-	req.Options["selector"] = c.selector
-	req.Options["relatives"] = c.relatives
-	return c.cli.Get(*req)
+	req.Options["namespace"] = t.namespace
+	req.Options["selector"] = t.selector
+	req.Options["relatives"] = t.relatives
+	return t.cli.Get(*req)
 }
