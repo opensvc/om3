@@ -136,7 +136,7 @@ func unpadPKCSS(b []byte, blockSize int) ([]byte, error) {
 	if blockSize < 1 {
 		return nil, errors.New("block size too small")
 	}
-	if int(len(b))%blockSize != 0 {
+	if len(b)%blockSize != 0 {
 		return nil, errors.New("data isn't aligned to blockSize")
 	}
 	if len(b) == 0 {

@@ -41,7 +41,7 @@ var (
 	retryInterval       = 500 * time.Millisecond
 )
 
-// New allocate a file lock struct with custom locker provider.
+// NewCustomLock allocate a file lock struct with custom locker provider.
 func NewCustomLock(p string, sessionId string, customLockProvider func(string) locker) *T {
 	return &T{
 		locker:    customLockProvider(p),
@@ -88,7 +88,7 @@ func (t T) writeMeta(w io.Writer, intent string) error {
 	return enc.Encode(m)
 }
 
-// Unlock releases the file lock acquired by Lock.
+// UnLock releases the file lock acquired by Lock.
 func (t *T) UnLock() error {
 	_ = truncate(t.Path, 0)
 	_ = remove(t.Path)

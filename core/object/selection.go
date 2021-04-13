@@ -64,7 +64,7 @@ const (
 )
 
 var (
-	fnmatchExpressionRegex = regexp.MustCompile(`[\?\*\[\]]`)
+	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
 
@@ -77,7 +77,7 @@ func NewSelection(selector string, opts ...funcopt.O) *Selection {
 	return t
 }
 
-// WithClient sets the client struct key
+// SelectionWithClient sets the client struct key
 func SelectionWithClient(client *client.T) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)
@@ -87,7 +87,7 @@ func SelectionWithClient(client *client.T) funcopt.O {
 	})
 }
 
-// WithLocal forces the selection to be expanded without asking the
+// SelectionWithLocal forces the selection to be expanded without asking the
 // daemon, which might result in an sub-selection of what the
 // daemon would expand the selector to.
 func SelectionWithLocal(v bool) funcopt.O {
@@ -98,7 +98,7 @@ func SelectionWithLocal(v bool) funcopt.O {
 	})
 }
 
-// WithServer sets the server struct key
+// SelectionWithServer sets the server struct key
 func SelectionWithServer(server string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*Selection)

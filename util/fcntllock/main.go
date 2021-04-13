@@ -43,7 +43,7 @@ func (lck *Lock) TryLock() error {
 	return lck.lock(false)
 }
 
-// Unlock release lock
+// UnLock release lock
 func (lck Lock) UnLock() (err error) {
 	ft := &syscall.Flock_t{
 		Start:  0,

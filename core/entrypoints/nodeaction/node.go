@@ -30,7 +30,7 @@ func New(opts ...funcopt.O) *T {
 }
 
 //
-// WithNodeSelector expands into a selection of nodes to execute the
+// WithRemoteNodes expands into a selection of nodes to execute the
 // action on.
 //
 func WithRemoteNodes(s string) funcopt.O {
@@ -165,7 +165,7 @@ func WithLocalRun(f func() (interface{}, error)) funcopt.O {
 
 // Options returns the base Action struct
 func (t T) Options() action.T {
-	return action.T(t.T)
+	return t.T
 }
 
 func (t T) DoLocal() {

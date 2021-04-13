@@ -117,7 +117,7 @@ func (t *Base) listResources() []resource.Driver {
 		return t.resources
 	}
 	t.resources = make([]resource.Driver, 0)
-	for k, _ := range t.config.Raw() {
+	for k := range t.config.Raw() {
 		rid := NewResourceID(k)
 		if rid.DriverGroup() == drivergroup.Unknown {
 			t.log.Debug().Str("rid", k).Msg("unknown driver group")

@@ -35,9 +35,9 @@ type (
 )
 
 var (
-	RegexpReference = regexp.MustCompile(`({[\w\.-_:]+})`)
+	RegexpReference = regexp.MustCompile(`({[\w.-_:]+})`)
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
-	RegexpScope     = regexp.MustCompile(`(@[\w\.-_]+)`)
+	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
 	ErrorExists     = errors.New("configuration does not exist")
 )
 
