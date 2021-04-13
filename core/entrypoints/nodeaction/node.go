@@ -30,7 +30,7 @@ func New(opts ...funcopt.O) *T {
 }
 
 //
-// WithNodeSelector expands into a selection of nodes to execute the
+// WithRemoteNodes expands into a selection of nodes to execute the
 // action on.
 //
 func WithRemoteNodes(s string) funcopt.O {

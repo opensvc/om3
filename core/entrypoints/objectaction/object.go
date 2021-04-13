@@ -16,7 +16,7 @@ import (
 )
 
 type (
-	// ObjectAction has the same attributes as Action, but the interface
+	// T has the same attributes as Action, but the interface
 	// method implementation differ.
 	T struct {
 		action.T

@@ -55,7 +55,7 @@ func NewGetEvents(t GetStreamer) *GetEvents {
 	return options
 }
 
-// DoRaw fetchs an event json RawMessage stream from the agent api
+// GetRaw fetchs an event json RawMessage stream from the agent api
 func (o GetEvents) GetRaw() (chan []byte, error) {
 	return o.eventsBase()
 }

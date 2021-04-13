@@ -23,7 +23,7 @@ type (
 		Kind kind.T
 	}
 
-	// RelationPath is an object path or an instance path (path@node).
+	// Relation is an object path or an instance path (path@node).
 	Relation string
 )
 

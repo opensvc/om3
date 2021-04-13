@@ -20,7 +20,7 @@ import (
 )
 
 type (
-	// H2 is the agent HTTP/2 requester
+	// T is the agent HTTP/2 requester
 	T struct {
 		Client http.Client `json:"-"`
 		URL    string      `json:"url"`
