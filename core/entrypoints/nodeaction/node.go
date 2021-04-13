@@ -165,7 +165,7 @@ func WithLocalRun(f func() (interface{}, error)) funcopt.O {
 
 // Options returns the base Action struct
 func (t T) Options() action.T {
-	return action.T(t.T)
+	return t.T
 }
 
 func (t T) DoLocal() {
