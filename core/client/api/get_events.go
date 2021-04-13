@@ -56,13 +56,13 @@ func NewGetEvents(t GetStreamer) *GetEvents {
 }
 
 // GetRaw fetchs an event json RawMessage stream from the agent api
-func (o GetEvents) GetRaw() (chan []byte, error) {
-	return o.eventsBase()
+func (t GetEvents) GetRaw() (chan []byte, error) {
+	return t.eventsBase()
 }
 
 // Do fetchs an Event stream from the agent api
-func (o GetEvents) Do() (chan event.Event, error) {
-	q, err := o.eventsBase()
+func (t GetEvents) Do() (chan event.Event, error) {
+	q, err := t.eventsBase()
 	if err != nil {
 		return nil, err
 	}
@@ -90,16 +90,16 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (o GetEvents) eventsBase() (chan []byte, error) {
-	req := o.newRequest()
-	return o.client.GetStream(*req)
+func (t GetEvents) eventsBase() (chan []byte, error) {
+	req := t.newRequest()
+	return t.client.GetStream(*req)
 }
 
-func (o GetEvents) newRequest() *request.T {
+func (t GetEvents) newRequest() *request.T {
 	req := request.New()
 	req.Action = "events"
-	req.Options["selector"] = o.selector
-	req.Options["namespace"] = o.namespace
-	req.Options["full"] = o.relatives
+	req.Options["selector"] = t.selector
+	req.Options["namespace"] = t.namespace
+	req.Options["full"] = t.relatives
 	return req
 }
