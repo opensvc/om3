@@ -64,7 +64,7 @@ const (
 )
 
 var (
-	fnmatchExpressionRegex = regexp.MustCompile(`[\?\*\[\]]`)
+	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
 
