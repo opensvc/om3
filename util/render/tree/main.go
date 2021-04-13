@@ -2,10 +2,11 @@ package tree
 
 import (
 	"fmt"
-	"golang.org/x/term"
 	"os"
 	"reflect"
 	"regexp"
+
+	"golang.org/x/term"
 
 	"github.com/fatih/color"
 )
@@ -165,9 +166,12 @@ func (t *Tree) setTotalWidth() {
 		t.totalWidth = t.ForcedWidth
 		return
 	}
-	_, columns, err := term.GetSize(int(os.Stdout.Fd()))
+	columns, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
-		columns = 80
+		columns, _, err = term.GetSize(int(os.Stdin.Fd()))
+		if err != nil {
+			columns = 80
+		}
 	}
 	t.totalWidth = columns - 4
 }
