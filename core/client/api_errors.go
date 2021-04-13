@@ -9,7 +9,7 @@ import (
 )
 
 type (
-	Schema1 struct {
+	schema1 struct {
 		Status    interface{} `json:"status"`
 		Error     interface{} `json:"error"`
 		Info      interface{} `json:"info"`
@@ -27,9 +27,9 @@ func parse(b []byte, err error) ([]byte, error) {
 	if err != nil {
 		return b, err
 	}
-	data := &Schema1{}
+	data := &schema1{}
 	if err := json.Unmarshal(b, &data); err != nil || data.Status == nil {
-		// not a Schema1 response => let it go as-is
+		// not a schema1 response => let it go as-is
 		//log.Debug().Bytes("b", b).Msg("parse")
 		return b, nil
 	}
@@ -64,10 +64,10 @@ func parse(b []byte, err error) ([]byte, error) {
 	case 0.0, 0, "0":
 		switch data.Data {
 		case nil:
-			log.Debug().Msg("parse: not Schema1")
+			log.Debug().Msg("parse: not schema1")
 			return b, nil
 		default:
-			log.Debug().Msg("parse: Schema1")
+			log.Debug().Msg("parse: schema1")
 			return json.Marshal(data.Data)
 		}
 	default:
