@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewGetDaemonStatusHasCustomValues(t *testing.T) {
-	c, err := New(WithURL("https://localhost:1215"))
+	c, err := New()
 	if err != nil {
 		t.Fatalf("unexepected error during New: %v", err)
 	}
@@ -17,7 +17,7 @@ func TestNewGetDaemonStatusHasCustomValues(t *testing.T) {
 }
 
 func TestNewGetDaemonStatusHasDefaultNullNamespace(t *testing.T) {
-	c, err := New(WithURL("https://localhost:1215"))
+	c, err := New()
 	if err != nil {
 		t.Fatalf("unexepected error during New: %v", err)
 	}
