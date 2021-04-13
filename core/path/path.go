@@ -44,7 +44,7 @@ var (
 	hostnameRegexRFC952 = regexp.MustCompile(hostnameRegexStringRFC952)
 	fqdnRegexRFC1123    = regexp.MustCompile(fqdnRegexStringRFC1123)
 	forbiddenNames      = append(
-		kind.KindNames(),
+		kind.Names(),
 		[]string{
 			"node",
 		}...,

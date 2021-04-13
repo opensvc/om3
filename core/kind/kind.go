@@ -84,6 +84,6 @@ func (t *T) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func KindNames() []string {
+func Names() []string {
 	return xmap.Keys(toID)
 }
