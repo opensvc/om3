@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
-	"os"
 )
 
 var (
@@ -37,13 +38,13 @@ func monCmdRun(_ *cobra.Command, _ []string) {
 		return
 	}
 	if monWatchFlag {
-		getter, _ := client.NewGetEvents(*cli, client.WithSelector(monSelectorFlag))
+		getter := cli.NewGetEvents().SetSelector(monSelectorFlag)
 		if err = m.DoWatch(getter, os.Stdout); err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 			return
 		}
 	} else {
-		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(monSelectorFlag))
+		getter := cli.NewGetDaemonStatus().SetSelector(monSelectorFlag)
 		m.Do(getter, os.Stdout)
 	}
 }

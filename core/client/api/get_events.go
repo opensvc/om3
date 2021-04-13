@@ -1,4 +1,4 @@
-package client
+package api
 
 import (
 	"encoding/json"
@@ -6,61 +6,62 @@ import (
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/util/funcopt"
 )
 
 // GetEvents describes the events request options.
-type getEvents struct {
-	cli       GetStreamer `json:"-"`
+type GetEvents struct {
+	client    GetStreamer
 	namespace string
 	selector  string
 	relatives bool
 }
 
-func (t *getEvents) SetNamespace(s string) {
+func (t *GetEvents) SetNamespace(s string) *GetEvents {
 	t.namespace = s
+	return t
 }
 
-func (t *getEvents) SetSelector(s string) {
+func (t *GetEvents) SetSelector(s string) *GetEvents {
 	t.selector = s
+	return t
 }
 
-func (t *getEvents) SetRelatives(s bool) {
+func (t *GetEvents) SetRelatives(s bool) *GetEvents {
 	t.relatives = s
+	return t
 }
 
-func (t getEvents) Namespace() string {
+func (t GetEvents) Namespace() string {
 	return t.namespace
 }
 
-func (t getEvents) Selector() string {
+func (t GetEvents) Selector() string {
 	return t.selector
 }
 
-func (t getEvents) Relatives() bool {
+func (t GetEvents) Relatives() bool {
 	return t.relatives
 }
 
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewGetEvents(cli GetStreamer, opts ...funcopt.O) (*getEvents, error) {
-	options := &getEvents{
-		cli:       cli,
+func NewGetEvents(t GetStreamer) *GetEvents {
+	options := &GetEvents{
+		client:    t,
 		namespace: "*",
 		selector:  "",
 		relatives: true,
 	}
-	funcopt.Apply(options, opts...)
-	return options, nil
+	return options
 }
 
 // DoRaw fetchs an event json RawMessage stream from the agent api
-func (o getEvents) GetRaw() (chan []byte, error) {
+func (o GetEvents) GetRaw() (chan []byte, error) {
 	return o.eventsBase()
 }
 
 // Do fetchs an Event stream from the agent api
-func (o getEvents) Do() (chan event.Event, error) {
+func (o GetEvents) Do() (chan event.Event, error) {
 	q, err := o.eventsBase()
 	if err != nil {
 		return nil, err
@@ -89,12 +90,12 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (o getEvents) eventsBase() (chan []byte, error) {
+func (o GetEvents) eventsBase() (chan []byte, error) {
 	req := o.newRequest()
-	return o.cli.GetStream(*req)
+	return o.client.GetStream(*req)
 }
 
-func (o getEvents) newRequest() *request.T {
+func (o GetEvents) newRequest() *request.T {
 	req := request.New()
 	req.Action = "events"
 	req.Options["selector"] = o.selector

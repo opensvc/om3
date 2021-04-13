@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
-	"os"
 )
 
 var (
@@ -38,10 +39,10 @@ func daemonStatusCmdRun(_ *cobra.Command, _ []string) {
 		return
 	}
 	if daemonStatusWatchFlag {
-		getter, _ := client.NewGetEvents(*cli, client.WithSelector(daemonStatusSelectorFlag))
+		getter := cli.NewGetEvents().SetSelector(daemonStatusSelectorFlag)
 		_ = m.DoWatch(getter, os.Stdout)
 	} else {
-		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(daemonStatusSelectorFlag))
+		getter := cli.NewGetDaemonStatus().SetSelector(daemonStatusSelectorFlag)
 		m.Do(getter, os.Stdout)
 	}
 }

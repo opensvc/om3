@@ -1,12 +1,11 @@
-package client
+package api
 
 import (
 	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/util/funcopt"
 )
 
 type GetDaemonStatus struct {
-	cli       Getter
+	client    Getter
 	namespace string
 	selector  string
 	relatives bool
@@ -39,25 +38,26 @@ func (t GetDaemonStatus) Relatives() bool {
 	return t.relatives
 }
 
-func NewGetDaemonStatus(cli Getter, opts ...funcopt.O) (*GetDaemonStatus, error) {
+func NewGetDaemonStatus(t Getter) *GetDaemonStatus {
 	options := &GetDaemonStatus{
-		cli:       cli,
+		client:    t,
 		namespace: "",
 		selector:  "*",
 		relatives: false,
 	}
-	if err := funcopt.Apply(options, opts...); err != nil {
-		return nil, err
-	}
-	return options, nil
+	return options
 }
 
-// GetDaemonStatus fetchs the daemon status structure from the agent api
-func (t *GetDaemonStatus) Get() ([]byte, error) {
+// Do fetches the daemon status structure from the agent api
+func (t *GetDaemonStatus) Do() ([]byte, error) {
 	req := request.New()
 	req.Action = "daemon_status"
 	req.Options["namespace"] = t.namespace
 	req.Options["selector"] = t.selector
 	req.Options["relatives"] = t.relatives
-	return t.cli.Get(*req)
+	return t.client.Get(*req)
+}
+
+func (t *GetDaemonStatus) Get() ([]byte, error) {
+	return t.Do()
 }

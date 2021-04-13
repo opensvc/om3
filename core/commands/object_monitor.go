@@ -52,10 +52,10 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	m.SetSections([]string{"objects"})
 
 	if t.Watch {
-		getter, _ := client.NewGetEvents(*cli, client.WithSelector(mergedSelector))
+		getter := cli.NewGetEvents().SetSelector(mergedSelector)
 		m.DoWatch(getter, os.Stdout)
 	} else {
-		getter, _ := client.NewGetDaemonStatus(*cli, client.WithSelector(mergedSelector))
+		getter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
 		m.Do(getter, os.Stdout)
 	}
 }

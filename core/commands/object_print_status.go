@@ -102,11 +102,10 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 		b             []byte
 		clusterStatus cluster.Status
 	)
-	getter, err := client.NewGetDaemonStatus(c, client.WithSelector(selector), client.WithRelatives(true))
-	if err != nil {
-		return []object.Status{}, err
-	}
-	b, err = getter.Get()
+	b, err = c.NewGetDaemonStatus().
+		SetSelector(selector).
+		SetRelatives(true).
+		Do()
 	if err != nil {
 		return []object.Status{}, err
 	}

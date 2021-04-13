@@ -1,10 +1,12 @@
-package client
+package api
 
-import "opensvc.com/opensvc/core/client/request"
+import (
+	"opensvc.com/opensvc/core/client/request"
+)
 
 // GetObjectConfig is the options supported by the handler.
 type GetObjectConfig struct {
-	client         *T     `json:"-"`
+	client         Getter `json:"-"`
 	ObjectSelector string `json:"path"`
 	Evaluate       bool   `json:"evaluate,omitempty"`
 	Impersonate    string `json:"impersonate,omitempty"`
@@ -13,7 +15,7 @@ type GetObjectConfig struct {
 
 // NewGetObjectConfig allocates a GetObjectConfig struct and sets
 // default values to its keys.
-func (t *T) NewGetObjectConfig() *GetObjectConfig {
+func NewGetObjectConfig(t Getter) *GetObjectConfig {
 	return &GetObjectConfig{
 		client: t,
 		Format: "json",
@@ -22,11 +24,6 @@ func (t *T) NewGetObjectConfig() *GetObjectConfig {
 
 // Do submits the request.
 func (o GetObjectConfig) Do() ([]byte, error) {
-	req := request.New()
-	req.Action = "object_config"
-	req.Options["path"] = o.ObjectSelector
-	req.Options["evaluate"] = o.Evaluate
-	req.Options["impersonate"] = o.Impersonate
-	req.Options["format"] = o.Format
+	req := request.NewFor("object_config", o)
 	return o.client.Get(*req)
 }

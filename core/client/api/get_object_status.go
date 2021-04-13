@@ -1,17 +1,19 @@
-package client
+package api
 
-import "opensvc.com/opensvc/core/client/request"
+import (
+	"opensvc.com/opensvc/core/client/request"
+)
 
 // GetObjectStatus describes the daemon object selector expression
 // resolver options.
 type GetObjectStatus struct {
-	client         *T     `json:"-"`
+	client         Getter `json:"-"`
 	ObjectSelector string `json:"selector"`
 }
 
 // NewGetObjectStatus allocates a GetObjectStatus struct and sets
 // default values to its keys.
-func (t *T) NewGetObjectStatus() *GetObjectStatus {
+func NewGetObjectStatus(t Getter) *GetObjectStatus {
 	return &GetObjectStatus{
 		client: t,
 	}
@@ -19,8 +21,6 @@ func (t *T) NewGetObjectStatus() *GetObjectStatus {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (o GetObjectStatus) Do() ([]byte, error) {
-	req := request.New()
-	req.Action = "object_status"
-	req.Options["selector"] = o.ObjectSelector
+	req := request.NewFor("object_status", o)
 	return o.client.Get(*req)
 }

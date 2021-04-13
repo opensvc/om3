@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/core/client/api"
 	clientcontext "opensvc.com/opensvc/core/client/context"
-	"opensvc.com/opensvc/core/client/request"
 	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/util/funcopt"
@@ -18,33 +18,7 @@ type (
 		insecureSkipVerify bool
 		clientCertificate  string
 		clientKey          string
-		requester          Requester
-	}
-
-	Getter interface {
-		Get(r request.T) ([]byte, error)
-	}
-
-	GetStreamer interface {
-		GetStream(r request.T) (chan []byte, error)
-	}
-	Poster interface {
-		Post(r request.T) ([]byte, error)
-	}
-	Putter interface {
-		Put(r request.T) ([]byte, error)
-	}
-	Deleter interface {
-		Delete(r request.T) ([]byte, error)
-	}
-
-	// Requester abstracts the requesting details of supported protocols
-	Requester interface {
-		Getter
-		Poster
-		Putter
-		Deleter
-		GetStreamer
+		requester          api.Requester
 	}
 )
 

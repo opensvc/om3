@@ -194,6 +194,7 @@ github.com/onsi/ginkgo v1.12.1/go.mod h1:zj2OWP4+oCPe1qIXoGWkgMRwljMUYCdkwsT2108
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
 github.com/onsi/gomega v1.10.3 h1:gph6h/qe9GSUw1NhH1gp+qb+h8rXD8Cy60Z32Qw3ELA=
 github.com/onsi/gomega v1.10.3/go.mod h1:V9xEwhxec5O8UDM77eCW8vLymOMltsqPVYWrpDsH8xc=
+github.com/opensvc/opensvc v0.0.0-20210409095147-084b707f471b h1:+9GBvDiifjxgSX1g3Af7kD2omzS8vgHhPskXtYEBeiE=
 github.com/opensvc/viper v1.7.0-osvc.1 h1:Pj3k+rO0qZxZOBRYfr4AXVdofqM5Mg3rZho6PFzTHIc=
 github.com/opensvc/viper v1.7.0-osvc.1/go.mod h1:3sfV/eQm/hLQ0tQ24YjZmGp6Jm+yPGAmxexB8s0KatU=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=

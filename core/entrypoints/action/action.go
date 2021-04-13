@@ -130,7 +130,7 @@ func Do(t Actioner) {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
-		getter, _ := client.NewGetEvents(*cli, client.WithSelector(o.ObjectSelector))
+		getter := cli.NewGetEvents().SetSelector(o.ObjectSelector)
 		m.DoWatch(getter, os.Stdout)
 	}
 }

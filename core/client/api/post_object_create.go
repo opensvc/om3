@@ -1,11 +1,12 @@
-package client
+package api
 
-import "opensvc.com/opensvc/core/client/request"
+import (
+	"opensvc.com/opensvc/core/client/request"
+)
 
 // PostObjectCreate are options supported by the api handler.
 type PostObjectCreate struct {
-	client         *T `json:"-"`
-	action         string
+	client         Poster                 `json:"-"`
 	ObjectSelector string                 `json:"path,omitempty"`
 	Namespace      string                 `json:"namespace,omitempty"`
 	Template       string                 `json:"template,omitempty"`
@@ -16,16 +17,15 @@ type PostObjectCreate struct {
 
 // NewPostObjectCreate allocates a PostObjectCreate struct and sets
 // default values to its keys.
-func (t *T) NewPostObjectCreate() *PostObjectCreate {
+func NewPostObjectCreate(t Poster) *PostObjectCreate {
 	return &PostObjectCreate{
 		client: t,
-		action: "object_create",
 		Data:   make(map[string]interface{}),
 	}
 }
 
 // Do executes the request and returns the undecoded bytes.
 func (o PostObjectCreate) Do() ([]byte, error) {
-	req := request.NewFor(o.action, o)
+	req := request.NewFor("object_create", o)
 	return o.client.Post(*req)
 }

@@ -1,10 +1,12 @@
-package client
+package api
 
-import "opensvc.com/opensvc/core/client/request"
+import (
+	"opensvc.com/opensvc/core/client/request"
+)
 
 // GetDaemonStats describes the daemon statistics api handler options.
 type GetDaemonStats struct {
-	client         *T
+	client         Getter
 	NodeSelector   string `json:"node"`
 	ObjectSelector string `json:"selector"`
 	Server         string `json:"server"`
@@ -12,7 +14,7 @@ type GetDaemonStats struct {
 
 // NewGetDaemonStats allocates a DaemonStatsCmdConfig struct and sets
 // default values to its keys.
-func (t *T) NewGetDaemonStats() *GetDaemonStats {
+func NewGetDaemonStats(t Getter) *GetDaemonStats {
 	return &GetDaemonStats{
 		client:         t,
 		NodeSelector:   "*",

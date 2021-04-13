@@ -27,11 +27,7 @@ func (t Events) Do() {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	streamer, err := client.NewGetEvents(c, client.WithRelatives(false))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
+	streamer := c.NewGetEvents().SetRelatives(false)
 	events, err := streamer.Do()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
