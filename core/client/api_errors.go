@@ -61,7 +61,7 @@ func parse(b []byte, err error) ([]byte, error) {
 	}
 
 	switch data.Status {
-	case 0.0, 0, "0":
+	case 0, "0":
 		switch data.Data {
 		case nil:
 			log.Debug().Msg("parse: not Schema1")
