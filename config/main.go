@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/golang-collections/collections/set"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -19,15 +20,17 @@ type (
 	T struct {
 		ConfigFilePath string
 		Path           path.T
-		Dereferencer   Dereferencer
+		Referrer       Referrer
 		v              *viper.Viper
 		raw            Raw
 	}
 
-	// Dereferencer is the interface implemented by node and object to
+	// Referer is the interface implemented by node and object to
 	// provide a reference resolver using their private attributes.
-	Dereferencer interface {
+	Referrer interface {
 		Dereference(string) string
+		PostCommit() error
+		IsVolatile() bool
 	}
 
 	Raw map[string]interface{}
@@ -277,8 +280,8 @@ func (t T) dereferenceWellKnown(ref string, section string) string {
 	case "var":
 		return Node.Paths.Var
 	default:
-		if t.Dereferencer != nil {
-			return t.Dereferencer.Dereference(ref)
+		if t.Referrer != nil {
+			return t.Referrer.Dereference(ref)
 		}
 	}
 	return ref
@@ -321,4 +324,92 @@ func renderKey(k string, v interface{}) string {
 		vs = ""
 	}
 	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
+}
+
+func (t T) rawCommit(configData map[string]interface{}, configPath string, validate bool) error {
+	if configData == nil {
+		configData = t.raw
+	}
+	if configPath == "" {
+		configPath = t.ConfigFilePath
+	}
+	if len(configData) == 0 {
+		return nil
+	}
+	if _, ok := configData["metadata"]; ok {
+		delete(configData, "metadata")
+	}
+	if _, ok := configData["DEFAULT"]; !ok {
+		configData["DEFAULT"] = make(map[string]interface{})
+	}
+	if d, ok := configData["DEFAULT"]; ok {
+		if d2, ok := d.(map[string]interface{}); ok {
+			if _, ok := d2["id"]; !ok {
+				d2["id"] = uuid.New().String()
+			}
+		}
+	}
+	if validate {
+		if err := t.validate(); err != nil {
+			return err
+		}
+	}
+	if !t.Referrer.IsVolatile() {
+		if err := t.dumpConfigData(configData, configPath); err != nil {
+			return err
+		}
+	}
+	//t.clearRefCache()
+	return t.postCommit()
+}
+
+func (t T) commit() error {
+	return t.rawCommit(nil, "", true)
+}
+
+func (t T) validate() error {
+	return nil
+}
+
+func (t T) commitInsecure() error {
+	return t.rawCommit(nil, "", false)
+}
+
+func (t T) commitTo(configPath string) error {
+	return t.rawCommit(nil, configPath, true)
+}
+
+func (t T) commitToInsecure(configPath string) error {
+	return t.rawCommit(nil, configPath, false)
+}
+
+func (t T) commitDataTo(configData map[string]interface{}, configPath string) error {
+	return t.rawCommit(configData, configPath, true)
+}
+
+func (t T) commitDataToInsecure(configData map[string]interface{}, configPath string) error {
+	return t.rawCommit(configData, configPath, false)
+}
+
+func (t T) postCommit() error {
+	return nil
+}
+
+func (t T) dumpConfigData(configData map[string]interface{}, configPath string) error {
+	return nil
+}
+
+func (t T) DeleteSections(sections []string) error {
+	deleted := 0
+	for _, section := range sections {
+		if _, ok := t.raw[section]; !ok {
+			continue
+		}
+		delete(t.raw, section)
+		deleted++
+	}
+	if deleted > 0 {
+		t.commit()
+	}
+	return nil
 }

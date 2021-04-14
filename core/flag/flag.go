@@ -56,7 +56,7 @@ func installFlag(cmd *cobra.Command, ft reflect.StructField, fv reflect.Value) {
 		log.Error().Msgf("%s has flag tag %s but no opt", fv, flag)
 		return
 	}
-	//log.Info().Msgf("%s has flag tag %s and opt %s", fv, flag, opt)
+	//log.Info().Msgf("%s %s has flag tag %s and opt %s", cmd.Use, fv, flag, opt)
 	opt.installFlag(cmd, fv)
 }
 

@@ -18,7 +18,7 @@ func (t *Base) loadConfig() error {
 	var err error
 	t.config, err = config.NewObject(t.ConfigFile())
 	t.config.Path = t.Path
-	t.config.Dereferencer = t
+	t.config.Referrer = t
 	return err
 }
 
@@ -105,4 +105,8 @@ func (t Base) Dereference(ref string) string {
 		return "TODO"
 	}
 	return ref
+}
+
+func (t Base) PostCommit() error {
+	return nil
 }
