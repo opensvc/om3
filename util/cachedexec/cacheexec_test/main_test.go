@@ -13,8 +13,12 @@ import (
 )
 
 func TestOutput(t *testing.T) {
-	tf, cleanup := test_helper.TempFile(t)
+	td, tdCleanup := test_helper.Tempdir(t)
+	defer tdCleanup()
+	tf, cleanup := test_helper.TempFile(t, td)
 	defer cleanup()
+
+	cachedexec.SetCacheDir(td)
 
 	getRealCommandOutput := func() ([]byte, error) {
 		value := []byte(time.Now().Format("15:04:05.000000000"))
@@ -24,11 +28,6 @@ func TestOutput(t *testing.T) {
 	getNewCommand := func() *cachedexec.T {
 		return cachedexec.New(exec.Command("/bin/cat", tf))
 	}
-
-	defer func(t *testing.T) {
-		err := getNewCommand().Clear()
-		assert.Nil(t, err)
-	}(t)
 
 	t.Run("when cache cleared, return value from command output", func(t *testing.T) {
 		command := getNewCommand()

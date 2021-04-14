@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/util/flock"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -23,22 +24,27 @@ type (
 		Lock(time.Duration, string) (err error)
 		UnLock() (err error)
 	}
-
-//locker = flock.Locker
 )
 
 var (
+	cacheDir     = ""
 	lockProvider = flock.New
 )
 
 func New(cmd *exec.Cmd, s ...string) *T {
-	path := strings.Join(s, "_") + strings.ReplaceAll(cmd.Path, "/", "_")
+	name := strings.Join(s, "_") + strings.ReplaceAll(cmd.Path, "/", "_")
+	path := filepath.Join(cacheDir, name)
 	return &T{
 		Cmd:       cmd,
 		sessionId: "",
 		lockFile:  path + ".lock",
 		dataFile:  path,
 	}
+}
+
+// SetCacheDir define dir for cache
+func SetCacheDir(dir string) {
+	cacheDir = dir
 }
 
 // Output return exec.Cmd cached result
