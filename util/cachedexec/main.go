@@ -2,6 +2,7 @@
 package cachedexec
 
 import (
+	"io/ioutil"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/flock"
 	"os"
@@ -51,13 +52,13 @@ func (t T) Output() (out []byte, err error) {
 		_ = lock.UnLock()
 	}(lock)
 	if t.dataExist() {
-		return os.ReadFile(t.dataFile)
+		return ioutil.ReadFile(t.dataFile)
 	}
 	out, err = t.Cmd.Output()
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(t.dataFile, out, 0600)
+	err = ioutil.WriteFile(t.dataFile, out, 0600)
 	return out, err
 }
 
