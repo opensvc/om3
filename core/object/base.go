@@ -16,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/logging"
 )
 
@@ -117,14 +118,14 @@ func (t *Base) listResources() []resource.Driver {
 		return t.resources
 	}
 	t.resources = make([]resource.Driver, 0)
-	for k := range t.config.Raw() {
+	for _, k := range t.config.SectionStrings() {
 		rid := NewResourceID(k)
 		if rid.DriverGroup() == drivergroup.Unknown {
 			t.log.Debug().Str("rid", k).Msg("unknown driver group")
 			continue
 		}
 		driverGroup := rid.DriverGroup()
-		driverName := t.config.GetStringP(k, "type")
+		driverName := t.config.GetString(key.New(k, "type"))
 		driverID := resource.NewDriverID(driverGroup, driverName)
 		factory := driverID.NewResourceFunc()
 		if factory == nil {
@@ -148,7 +149,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
-		t.log.Debug().Str("kw", kw.Name).Msg("")
+		t.log.Debug().Str("kw", kw.Option).Msg("")
 	}
 	for _, c := range m.Context {
 		switch {

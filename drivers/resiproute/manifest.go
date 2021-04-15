@@ -35,19 +35,19 @@ func (t T) Manifest() resource.Manifest {
 		Name:  driverName,
 		Keywords: []keywords.Keyword{
 			{
-				Name:     "netns",
+				Option:   "netns",
 				Scopable: true,
 				Required: true,
 				Text:     "the resource id of the container to plumb the ip into.",
 				Example:  "container#0",
 			},
 			{
-				Name:     "spec",
-				Scopable: true,
-				Required: true,
-				Convert:  converters.Shlex,
-				Text:     "the resource id of the container to plumb the ip into.",
-				Example:  "container#0",
+				Option:    "spec",
+				Scopable:  true,
+				Required:  true,
+				Converter: converters.Shlex,
+				Text:      "the resource id of the container to plumb the ip into.",
+				Example:   "container#0",
 			},
 		},
 	}

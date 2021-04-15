@@ -19,7 +19,7 @@ type (
 func (t *CmdObjectDelete) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
+	flag.Install(cmd, &t.OptsDelete)
 }
 
 func (t *CmdObjectDelete) cmd(kind string, selector *string) *cobra.Command {

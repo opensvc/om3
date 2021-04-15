@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -10,8 +12,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
+	"gopkg.in/ini.v1"
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -21,20 +25,19 @@ type (
 		ConfigFilePath string
 		Path           path.T
 		Referrer       Referrer
-		v              *viper.Viper
-		raw            Raw
+		file           *ini.File
 	}
 
 	// Referer is the interface implemented by node and object to
 	// provide a reference resolver using their private attributes.
 	Referrer interface {
+		KeywordLookup(key.T) keywords.Keyword
 		Dereference(string) string
 		PostCommit() error
 		IsVolatile() bool
 	}
 
-	Raw map[string]interface{}
-	Key string
+	Raw map[string]map[string]string
 )
 
 var (
@@ -42,40 +45,75 @@ var (
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
 	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
 	ErrorExists     = errors.New("configuration does not exist")
+	ErrNoKeyword    = errors.New("keyword does not exist")
 )
 
-func (t Key) section() string {
-	l := strings.Split(string(t), ".")
-	switch len(l) {
-	case 2:
-		return l[0]
-	default:
-		return "DEFAULT"
-	}
+func (t *T) Get(k key.T) string {
+	val := t.file.Section(k.Section).Key(k.Option).Value()
+	return val
 }
 
-func (t Key) option() string {
-	l := strings.Split(string(t), ".")
-	switch len(l) {
-	case 2:
-		return l[1]
-	default:
-		return l[0]
-	}
+func (t *T) valueAndKeyword(k key.T) (string, keywords.Keyword) {
+	val := t.file.Section(k.Section).Key(k.Option).Value()
+	kw := t.Referrer.KeywordLookup(k)
+	log.Debug().Msgf("config %s get %s => %s", t.ConfigFilePath, k, val)
+	return val, kw
 }
 
-func (t Key) scope() string {
-	l := strings.Split(string(t), "@")
-	switch len(l) {
-	case 2:
-		return l[1]
-	default:
+func (t *T) GetString(k key.T) string {
+	val, kw := t.valueAndKeyword(k)
+	switch {
+	case kw.IsZero():
 		return ""
+	case val == "" && kw.Default != "":
+		return kw.Default
 	}
+	return val
 }
 
-func (t T) Raw() Raw {
-	return t.raw
+func (t *T) GetStringStrict(k key.T) (string, error) {
+	val, kw := t.valueAndKeyword(k)
+	if kw.IsZero() {
+		return "", ErrNoKeyword
+	}
+	return val, nil
+}
+
+func (t *T) GetSlice(k key.T) []string {
+	val, _ := t.GetSliceStrict(k)
+	return val
+}
+
+func (t *T) GetSliceStrict(k key.T) ([]string, error) {
+	val, kw := t.valueAndKeyword(k)
+	if kw.IsZero() {
+		return []string{}, ErrNoKeyword
+	}
+	return kw.Converter.ToSlice(val)
+}
+
+func (t *T) Set(k key.T, val interface{}) error {
+	t.file.Section(k.Section).Key(k.Option).SetValue(val.(string))
+	return nil
+}
+
+func (t *T) write() (err error) {
+	var f *os.File
+	ini.DefaultHeader = true
+	dir := filepath.Dir(t.ConfigFilePath)
+	base := filepath.Base(t.ConfigFilePath)
+	if f, err = ioutil.TempFile(dir, "."+base+".*"); err != nil {
+		return err
+	}
+	fName := f.Name()
+	defer os.Remove(fName)
+	if err = t.file.SaveTo(fName); err != nil {
+		return err
+	}
+	if _, err = t.file.WriteTo(f); err != nil {
+		return err
+	}
+	return os.Rename(fName, t.ConfigFilePath)
 }
 
 //
@@ -85,40 +123,12 @@ func (t T) Raw() Raw {
 // * dereferenced
 // * evaluated
 //
-func (t *T) Get(key string) (interface{}, error) {
-	val := t.v.Get(key)
-	log.Debug().Msgf("config %s get %s => %s", t.ConfigFilePath, key, val)
-	return val, nil
-}
-
-func (t *T) GetP(opts ...string) interface{} {
-	key := strings.Join(opts, ".")
-	return t.v.Get(key)
-}
-
-func (t *T) GetStringP(opts ...string) string {
-	key := strings.Join(opts, ".")
-	return t.v.GetString(key)
-}
-
-func (t *T) Set(key string, val interface{}) error {
-	t.v.Set(key, val)
-	return nil
-}
-
-func (t *T) Commit() error {
-	return t.v.SafeWriteConfig()
-}
-
-func (t *T) Eval(key string) (interface{}, error) {
+func (t *T) Eval(k key.T) (interface{}, error) {
 	var (
 		err error
 		ok  bool
 	)
-	k := Key(key)
-	section := k.section()
-	option := k.option()
-	v, err := t.descope(section, option)
+	v, err := t.descope(k)
 	if err != nil {
 		return nil, err
 	}
@@ -127,47 +137,57 @@ func (t *T) Eval(key string) (interface{}, error) {
 		return v, nil
 	}
 	sv = RegexpReference.ReplaceAllStringFunc(sv, func(ref string) string {
-		return t.dereference(ref, section)
+		return t.dereference(ref, k.Section)
 	})
 	return sv, err
 }
 
-func (t T) sectionMap(section string) (map[string]interface{}, error) {
-	m, ok := t.raw[section]
-	if !ok {
-		return nil, errors.Wrapf(ErrorExists, "no section '%s'", section)
+func (t T) sectionMap(section string) (map[string]string, error) {
+	s, err := t.file.GetSection(section)
+	if err != nil {
+		return nil, errors.Wrapf(ErrorExists, "section '%s'", section)
 	}
-	if s, ok := m.(map[string]interface{}); ok {
-		return s, nil
-	}
-	return nil, errors.Wrapf(ErrorExists, "section '%s' content is not a map of string", section)
+	return s.KeysHash(), nil
 }
 
-func (t *T) descope(section string, option string) (interface{}, error) {
-	s, err := t.sectionMap(section)
+func (t *T) descope(k key.T) (interface{}, error) {
+	s, err := t.sectionMap(k.Section)
 	if err != nil {
 		return nil, err
 	}
-	if v, ok := s[option+"@"+Node.Hostname]; ok {
+	if v, ok := s[k.Option+"@"+Node.Hostname]; ok {
 		return v, nil
 	}
-	if v, ok := s[option+"@nodes"]; ok && t.IsInNodes() {
+	if v, ok := s[k.Option+"@nodes"]; ok && t.IsInNodes() {
 		return v, nil
 	}
-	if v, ok := s[option+"@drpnodes"]; ok && t.IsInDRPNodes() {
+	if v, ok := s[k.Option+"@drpnodes"]; ok && t.IsInDRPNodes() {
 		return v, nil
 	}
-	if v, ok := s[option+"@encapnodes"]; ok && t.IsInEncapNodes() {
+	if v, ok := s[k.Option+"@encapnodes"]; ok && t.IsInEncapNodes() {
 		return v, nil
 	}
-	if v, ok := s[option]; ok {
+	if v, ok := s[k.Option]; ok {
 		return v, nil
 	}
-	return nil, errors.Wrapf(ErrorExists, "option '%s.%s' not found (tried scopes too)", section, option)
+	return nil, errors.Wrapf(ErrorExists, "key '%s' not found (tried scopes too)", k)
+}
+
+func (t T) Raw() Raw {
+	data := make(Raw)
+	for _, s := range t.file.Sections() {
+		data[s.Name()] = s.KeysHash()
+	}
+	return data
+}
+
+func (t T) SectionStrings() []string {
+	return t.file.SectionStrings()
 }
 
 func (t *T) Nodes() []string {
-	l := t.v.GetStringSlice("default.nodes")
+	v := t.Get(key.Parse("nodes"))
+	l := strings.Fields(v)
 	if len(l) == 0 && os.Getenv("OSVC_CONTEXT") == "" {
 		return []string{Node.Hostname}
 	}
@@ -175,12 +195,14 @@ func (t *T) Nodes() []string {
 }
 
 func (t *T) DRPNodes() []string {
-	l := t.v.GetStringSlice("default.drpnodes")
+	v := t.Get(key.Parse("drpnodes"))
+	l := strings.Fields(v)
 	return t.ExpandNodes(l)
 }
 
 func (t *T) EncapNodes() []string {
-	l := t.v.GetStringSlice("default.encapnodes")
+	v := t.Get(key.Parse("encapnodes"))
+	l := strings.Fields(v)
 	return t.ExpandNodes(l)
 }
 
@@ -294,7 +316,7 @@ func (t Raw) Render() string {
 			continue
 		}
 		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
-		for k, v := range data.(map[string]interface{}) {
+		for k, v := range data {
 			if k == "comment" {
 				s += renderComment(k, v)
 				continue
@@ -326,28 +348,53 @@ func renderKey(k string, v interface{}) string {
 	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
 }
 
-func (t T) rawCommit(configData map[string]interface{}, configPath string, validate bool) error {
-	if configData == nil {
-		configData = t.raw
+func (t T) replaceFile(configData Raw) {
+	file := ini.Empty()
+	for section, m := range configData {
+		for option, value := range m {
+			file.Section(section).Key(option).SetValue(value)
+		}
+	}
+	t.file = file
+}
+
+func (t T) deleteSection(section string) {
+	if _, err := t.file.GetSection(section); err != nil {
+		return
+	}
+	t.file.DeleteSection(section)
+}
+
+func (t T) initDefaultSection() error {
+	defaultSection, err := t.file.GetSection("DEFAULT")
+	if err != nil {
+		defaultSection, err = t.file.NewSection("DEFAULT")
+		if err != nil {
+			return err
+		}
+	}
+	if !defaultSection.HasKey("id") {
+		_, err = defaultSection.NewKey("id", uuid.New().String())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t T) rawCommit(configData Raw, configPath string, validate bool) error {
+	if configData != nil {
+		t.replaceFile(configData)
 	}
 	if configPath == "" {
 		configPath = t.ConfigFilePath
 	}
-	if len(configData) == 0 {
+	if len(t.file.Sections()) == 0 {
 		return nil
 	}
-	if _, ok := configData["metadata"]; ok {
-		delete(configData, "metadata")
-	}
-	if _, ok := configData["DEFAULT"]; !ok {
-		configData["DEFAULT"] = make(map[string]interface{})
-	}
-	if d, ok := configData["DEFAULT"]; ok {
-		if d2, ok := d.(map[string]interface{}); ok {
-			if _, ok := d2["id"]; !ok {
-				d2["id"] = uuid.New().String()
-			}
-		}
+	t.deleteSection("metadata")
+	if err := t.initDefaultSection(); err != nil {
+		return err
 	}
 	if validate {
 		if err := t.validate(); err != nil {
@@ -355,7 +402,7 @@ func (t T) rawCommit(configData map[string]interface{}, configPath string, valid
 		}
 	}
 	if !t.Referrer.IsVolatile() {
-		if err := t.dumpConfigData(configData, configPath); err != nil {
+		if err := t.write(); err != nil {
 			return err
 		}
 	}
@@ -363,31 +410,31 @@ func (t T) rawCommit(configData map[string]interface{}, configPath string, valid
 	return t.postCommit()
 }
 
-func (t T) commit() error {
-	return t.rawCommit(nil, "", true)
-}
-
 func (t T) validate() error {
 	return nil
 }
 
-func (t T) commitInsecure() error {
+func (t T) Commit() error {
+	return t.rawCommit(nil, "", true)
+}
+
+func (t T) CommitInvalid() error {
 	return t.rawCommit(nil, "", false)
 }
 
-func (t T) commitTo(configPath string) error {
+func (t T) CommitTo(configPath string) error {
 	return t.rawCommit(nil, configPath, true)
 }
 
-func (t T) commitToInsecure(configPath string) error {
+func (t T) CommitToInvalid(configPath string) error {
 	return t.rawCommit(nil, configPath, false)
 }
 
-func (t T) commitDataTo(configData map[string]interface{}, configPath string) error {
+func (t T) CommitDataTo(configData Raw, configPath string) error {
 	return t.rawCommit(configData, configPath, true)
 }
 
-func (t T) commitDataToInsecure(configData map[string]interface{}, configPath string) error {
+func (t T) CommitDataToInvalid(configData Raw, configPath string) error {
 	return t.rawCommit(configData, configPath, false)
 }
 
@@ -395,21 +442,17 @@ func (t T) postCommit() error {
 	return nil
 }
 
-func (t T) dumpConfigData(configData map[string]interface{}, configPath string) error {
-	return nil
-}
-
 func (t T) DeleteSections(sections []string) error {
 	deleted := 0
 	for _, section := range sections {
-		if _, ok := t.raw[section]; !ok {
+		if _, err := t.file.GetSection(section); err != nil {
 			continue
 		}
-		delete(t.raw, section)
+		t.file.DeleteSection(section)
 		deleted++
 	}
 	if deleted > 0 {
-		t.commit()
+		t.Commit()
 	}
 	return nil
 }

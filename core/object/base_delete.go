@@ -9,8 +9,8 @@ import (
 type OptsDelete struct {
 	Global           OptsGlobal
 	Lock             OptsLocking
-	ResourceSelector string `flag:rid`
-	Unprovision      bool   `flag:unprovision`
+	ResourceSelector string `flag:"rid"`
+	Unprovision      bool   `flag:"unprovision"`
 }
 
 //

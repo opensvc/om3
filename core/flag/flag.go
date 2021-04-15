@@ -50,13 +50,14 @@ func installFlag(cmd *cobra.Command, ft reflect.StructField, fv reflect.Value) {
 		opt  Opt
 	)
 	if flag, ok = ft.Tag.Lookup("flag"); !ok {
+		//log.Info().Msgf("%s %s has no flag tag", cmd.Use, ft.Name)
 		return
 	}
 	if opt, ok = Tags[flag]; !ok {
-		log.Error().Msgf("%s has flag tag %s but no opt", fv, flag)
+		//log.Error().Msgf("%s has flag tag %s but no opt", ft.Name, flag)
 		return
 	}
-	//log.Info().Msgf("%s %s has flag tag %s and opt %s", cmd.Use, fv, flag, opt)
+	//log.Info().Msgf("%s %s has flag tag %s and opt %s", cmd.Use, ft.Name, flag, opt)
 	opt.installFlag(cmd, fv)
 }
 

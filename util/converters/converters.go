@@ -1,11 +1,84 @@
 package converters
 
-// T defines a converter name
-type T string
+import (
+	"errors"
+	"strconv"
+	"strings"
 
-const (
-	// Shlex Convert string to a shell expression argv-style list
-	Shlex T = "shlex"
-	// Integer Concert string to an integer
-	Integer T = "integer"
+	"github.com/anmitsu/go-shlex"
+	"github.com/golang-collections/collections/set"
 )
+
+type (
+	NumType   string
+	ListType  string
+	ShlexType string
+)
+
+var (
+	Num   NumType
+	List  ListType
+	Shlex ShlexType
+
+	ErrMissConverter = errors.New("conversion not implemented")
+)
+
+func (t NumType) ToInt(s string) (int, error) {
+	return strconv.Atoi(s)
+}
+
+func (t NumType) ToInt64(s string) (int64, error) {
+	return strconv.ParseInt(s, 10, 64)
+}
+
+func (t NumType) ToFloat(s string) (float64, error) {
+	return strconv.ParseFloat(s, 64)
+}
+
+func (t NumType) ToSlice(s string) ([]string, error) {
+	return []string{}, ErrMissConverter
+}
+
+func (t ListType) ToInt(s string) (int, error) {
+	return 0, ErrMissConverter
+}
+
+func (t ListType) ToInt64(s string) (int64, error) {
+	return 0, ErrMissConverter
+}
+
+func (t ListType) ToFloat(s string) (float64, error) {
+	return 0.0, ErrMissConverter
+}
+
+func (t ListType) ToSlice(s string) ([]string, error) {
+	return strings.Fields(s), nil
+}
+
+func (t ListType) ToSet(s string) (*set.Set, error) {
+	set := set.New()
+	for _, e := range strings.Fields(s) {
+		set.Insert(e)
+	}
+	return set, nil
+}
+
+func (t ShlexType) ToInt(s string) (int, error) {
+	return 0, ErrMissConverter
+}
+
+func (t ShlexType) ToInt64(s string) (int64, error) {
+	return 0, ErrMissConverter
+}
+
+func (t ShlexType) ToFloat(s string) (float64, error) {
+	return 0.0, ErrMissConverter
+}
+
+func (t ShlexType) ToSlice(s string) ([]string, error) {
+	return shlex.Split(s, true)
+}
+
+func (t ShlexType) ToSet(s string) (*set.Set, error) {
+	return nil, ErrMissConverter
+}

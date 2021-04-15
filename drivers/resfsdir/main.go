@@ -16,25 +16,25 @@ const (
 
 var Keywords = []keywords.Keyword{
 	{
-		Name:     "path",
+		Option:   "path",
 		Scopable: true,
 		Required: true,
 		Text:     "The fullpath of the directory to create.",
 	},
 	{
-		Name:     "user",
+		Option:   "user",
 		Scopable: true,
 		Example:  "root",
 		Text:     "The user that should be owner of the directory. Either in numeric or symbolic form.",
 	},
 	{
-		Name:     "group",
+		Option:   "group",
 		Scopable: true,
 		Example:  "sys",
 		Text:     "The group that should be owner of the directory. Either in numeric or symbolic form.",
 	},
 	{
-		Name:     "perm",
+		Option:   "perm",
 		Scopable: true,
 		Example:  "1777",
 		Text:     "The permissions the directory should have. A string representing the octal permissions.",

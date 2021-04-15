@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/fqdn"
+	"opensvc.com/opensvc/util/key"
 )
 
 var (
@@ -16,7 +17,9 @@ var (
 
 func (t *Base) loadConfig() error {
 	var err error
-	t.config, err = config.NewObject(t.ConfigFile())
+	if t.config, err = config.NewObject(t.ConfigFile()); err != nil {
+		return err
+	}
 	t.config.Path = t.Path
 	t.config.Referrer = t
 	return err
@@ -30,16 +33,15 @@ func (t Base) ID() uuid.UUID {
 	if t.id != uuid.Nil {
 		return t.id
 	}
-	if idIntf, err := t.config.Get("default.id"); err == nil {
-		if idStr, ok := idIntf.(string); ok {
-			if id, err := uuid.Parse(idStr); err == nil {
-				t.id = id
-				return t.id
-			}
+	idKey := key.Parse("id")
+	if idStr := t.config.GetString(idKey); idStr != "" {
+		if id, err := uuid.Parse(idStr); err == nil {
+			t.id = id
+			return t.id
 		}
 	}
 	t.id = uuid.New()
-	_ = t.config.Set("default.id", t.id.String())
+	_ = t.config.Set(idKey, t.id.String())
 	if err := t.config.Commit(); err != nil {
 		t.log.Error().Err(err).Msg("")
 	}
