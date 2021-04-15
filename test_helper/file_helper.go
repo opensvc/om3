@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TempDir create tempora
 func Tempdir(t *testing.T) (td string, tdCleanup func()) {
 	t.Helper()
 
@@ -14,7 +15,9 @@ func Tempdir(t *testing.T) (td string, tdCleanup func()) {
 		t.Fatalf("ioutil.TempDir error= %v", err)
 	}
 	tdCleanup = func() {
-		return
+		if err := os.RemoveAll(td); err != nil {
+			t.Fail()
+		}
 	}
 	return td, tdCleanup
 }
