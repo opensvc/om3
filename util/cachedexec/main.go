@@ -27,7 +27,7 @@ type (
 )
 
 var (
-	cacheDir     = ""
+	cacheDir     = "/tmp"
 	lockProvider = flock.New
 )
 
