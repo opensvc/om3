@@ -38,6 +38,17 @@ type (
 	}
 
 	Raw map[string]map[string]string
+
+	// Op is the int representation of an operation on a key value
+	Op int
+)
+
+const (
+	OpUnknown Op = iota
+	OpSet
+	OpAppend
+	OpRemove
+	OpMerge
 )
 
 var (
@@ -92,8 +103,13 @@ func (t *T) GetSliceStrict(k key.T) ([]string, error) {
 	return kw.Converter.ToSlice(val)
 }
 
-func (t *T) Set(k key.T, val interface{}) error {
-	t.file.Section(k.Section).Key(k.Option).SetValue(val.(string))
+func (t *T) Set(k key.T, op Op, val interface{}) error {
+	switch op {
+	case OpSet:
+		t.file.Section(k.Section).Key(k.Option).SetValue(val.(string))
+	default:
+		return fmt.Errorf("unsupported operator: %d", op)
+	}
 	return nil
 }
 

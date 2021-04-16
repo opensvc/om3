@@ -41,7 +41,7 @@ func (t Base) ID() uuid.UUID {
 		}
 	}
 	t.id = uuid.New()
-	_ = t.config.Set(idKey, t.id.String())
+	_ = t.config.Set(idKey, config.OpSet, t.id.String())
 	if err := t.config.Commit(); err != nil {
 		t.log.Error().Err(err).Msg("")
 	}
