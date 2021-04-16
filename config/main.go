@@ -167,6 +167,16 @@ func (t *T) Set(op keyop.T) error {
 		return setMerge(op)
 	}
 
+	setInsert := func(op keyop.T) error {
+		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		target := []string{}
+		target = append(target, current[:op.Index]...)
+		target = append(target, op.Value)
+		target = append(target, current[op.Index:]...)
+		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(strings.Join(target, " "))
+		return nil
+	}
+
 	switch op.Op {
 	case keyop.Set:
 		return setSet(op)
@@ -178,6 +188,8 @@ func (t *T) Set(op keyop.T) error {
 		return setMerge(op)
 	case keyop.Toggle:
 		return setToggle(op)
+	case keyop.Insert:
+		return setInsert(op)
 	}
 	return fmt.Errorf("unsupported operator: %d", op.Op)
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"opensvc.com/opensvc/util/key"
@@ -19,22 +21,25 @@ type (
 		Key   key.T
 		Op    Op
 		Value string
+		Index int
 	}
 )
 
 const (
 	// Invalid is for invalid operator
 	Invalid Op = iota
-	// Svc is the kind of objects containing app, containers, or volumes resources.
+	// Set overwrites the value
 	Set
-	// Vol is the kind of objects containing fs, disk resources. Allocated from Pools.
+	// Append appends an element, even if already present
 	Append
-	// Cfg is the kind of objects containing unencrypted key/val pairs used to abstract Svc configurations
+	// Remove removes an element if present, do nothing if not present
 	Remove
-	// Sec is the kind of objects containing encrypted key/val pairs used to abstract Svc configurations
+	// Merge adds an element if not present, do nothing if present
 	Merge
-	// Usr is the kind of objects containing a API user grants and credentials
+	// Toggle adds an element if not present, removes it if present
 	Toggle
+	// Insert adds an element at the position specified by Index
+	Insert
 )
 
 var (
@@ -53,6 +58,8 @@ var (
 		"|=": Merge,
 		"^=": Toggle,
 	}
+
+	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)\]`)
 )
 
 func (t Op) String() string {
@@ -109,6 +116,20 @@ func Parse(s string) *T {
 	t.Op = ParseOp(opStr)
 	if t.Op != Set {
 		k = k[:end]
+	}
+	subs := regexpIndex.FindStringSubmatch(k)
+	// Example subs:
+	//   env.foo[0] => {"env.foo[0]", "env.foo", "0"}
+	if len(subs) == 3 {
+		k = subs[1]
+		t.Index, _ = strconv.Atoi(subs[2])
+		switch t.Op {
+		case Set:
+			t.Op = Insert
+		default:
+			// invalid
+			return &T{}
+		}
 	}
 	t.Key = key.Parse(k)
 	return t
