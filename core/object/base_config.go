@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/fqdn"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -41,7 +42,12 @@ func (t Base) ID() uuid.UUID {
 		}
 	}
 	t.id = uuid.New()
-	_ = t.config.Set(idKey, config.OpSet, t.id.String())
+	op := keyop.T{
+		Key:   key.Parse("id"),
+		Op:    keyop.Set,
+		Value: t.id.String(),
+	}
+	_ = t.config.Set(op)
 	if err := t.config.Commit(); err != nil {
 		t.log.Error().Err(err).Msg("")
 	}

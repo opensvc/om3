@@ -40,6 +40,7 @@ type (
 		EditConfig(OptsEditConfig) error
 		Get(OptsGet) (interface{}, error)
 		Set(OptsSet) error
+		Unset(OptsUnset) error
 		Delete(OptsDelete) error
 	}
 )

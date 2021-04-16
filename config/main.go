@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/key"
@@ -38,17 +39,6 @@ type (
 	}
 
 	Raw map[string]map[string]string
-
-	// Op is the int representation of an operation on a key value
-	Op int
-)
-
-const (
-	OpUnknown Op = iota
-	OpSet
-	OpAppend
-	OpRemove
-	OpMerge
 )
 
 var (
@@ -103,14 +93,93 @@ func (t *T) GetSliceStrict(k key.T) ([]string, error) {
 	return kw.Converter.ToSlice(val)
 }
 
-func (t *T) Set(k key.T, op Op, val interface{}) error {
-	switch op {
-	case OpSet:
-		t.file.Section(k.Section).Key(k.Option).SetValue(val.(string))
-	default:
-		return fmt.Errorf("unsupported operator: %d", op)
+// Unset deletes keys and returns the number of deleted keys
+func (t *T) Unset(ks ...key.T) int {
+	deleted := 0
+	for _, k := range ks {
+		if !t.file.Section(k.Section).HasKey(k.Option) {
+			continue
+		}
+		t.file.Section(k.Section).DeleteKey(k.Option)
+		deleted += 1
 	}
-	return nil
+	return deleted
+}
+
+func (t *T) Set(op keyop.T) error {
+	setSet := func(op keyop.T) error {
+		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(op.Value)
+		return nil
+	}
+	setAppend := func(op keyop.T) error {
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option).Value()
+		target := ""
+		if current == "" {
+			target = op.Value
+		} else {
+			target = fmt.Sprintf("%s %s", current, op.Value)
+		}
+		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(target)
+		return nil
+	}
+	setMerge := func(op keyop.T) error {
+		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		currentSet := set.New()
+		for _, e := range current {
+			currentSet.Insert(e)
+		}
+		if currentSet.Has(op.Value) {
+			return nil
+		}
+		return setAppend(op)
+	}
+
+	setRemove := func(op keyop.T) error {
+		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		target := []string{}
+		removed := 0
+		for _, e := range current {
+			if e == op.Value {
+				removed += 1
+				continue
+			}
+			target = append(target, e)
+		}
+		if removed == 0 {
+			return nil
+		}
+		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(strings.Join(target, " "))
+		return nil
+	}
+
+	setToggle := func(op keyop.T) error {
+		current := strings.Fields(t.file.Section(op.Key.Section).Key(op.Key.Option).Value())
+		hasValue := false
+		for _, e := range current {
+			if e == op.Value {
+				hasValue = true
+				break
+			}
+		}
+		if hasValue {
+			return setRemove(op)
+		}
+		return setMerge(op)
+	}
+
+	switch op.Op {
+	case keyop.Set:
+		return setSet(op)
+	case keyop.Append:
+		return setAppend(op)
+	case keyop.Remove:
+		return setRemove(op)
+	case keyop.Merge:
+		return setMerge(op)
+	case keyop.Toggle:
+		return setToggle(op)
+	}
+	return fmt.Errorf("unsupported operator: %d", op.Op)
 }
 
 func (t *T) write() (err error) {

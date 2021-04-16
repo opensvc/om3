@@ -51,6 +51,10 @@ var Tags = map[string]Opt{
 	},
 	"kws": Opt{
 		Long: "kw",
+		Desc: "keyword list",
+	},
+	"kwops": Opt{
+		Long: "kw",
 		Desc: "keyword operations, <k><op><v> with op in = |= += -= ^=",
 	},
 	"kw": Opt{
