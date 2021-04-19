@@ -18,7 +18,7 @@ import (
 type (
 	// CmdObjectPrintConfig is the cobra flag set of the print config command.
 	CmdObjectPrintConfig struct {
-		Global object.OptsGlobal
+		object.OptsPrintConfig
 	}
 )
 
@@ -76,6 +76,8 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(selector string, c *client.T) (
 	data := make([]config.Raw, 1)
 	handle := c.NewGetObjectConfig()
 	handle.ObjectSelector = selector
+	handle.Evaluate = t.Eval
+	handle.Impersonate = t.Impersonate
 	b, err = handle.Do()
 	if err != nil {
 		log.Error().Err(err).Msg("")
