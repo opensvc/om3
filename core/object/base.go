@@ -125,7 +125,8 @@ func (t *Base) listResources() []resource.Driver {
 			continue
 		}
 		driverGroup := rid.DriverGroup()
-		driverName := t.config.GetString(key.New(k, "type"))
+		typeKey := key.New(k, "type")
+		driverName := t.config.Get(typeKey)
 		driverID := resource.NewDriverID(driverGroup, driverName)
 		factory := driverID.NewResourceFunc()
 		if factory == nil {
