@@ -16,14 +16,15 @@ type (
 	}
 
 	Keyword struct {
-		Section   string
-		Option    string
-		Scopable  bool
-		Required  bool
-		Converter Converter
-		Text      string
-		Example   string
-		Default   string
+		Section    string
+		Option     string
+		Scopable   bool
+		Required   bool
+		Converter  Converter
+		Text       string
+		Example    string
+		Default    string
+		Candidates *set.Set
 	}
 
 	Store []Keyword
