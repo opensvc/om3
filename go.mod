@@ -13,6 +13,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/guregu/null v4.0.0+incompatible
 	github.com/hexops/gotextdiff v1.0.3
+	github.com/iancoleman/orderedmap v0.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/lunixbochs/vtclean v1.0.0 // indirect

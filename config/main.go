@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
+	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -39,8 +40,6 @@ type (
 		IsVolatile() bool
 		Log() *zerolog.Logger
 	}
-
-	Raw map[string]map[string]string
 )
 
 var (
@@ -297,11 +296,16 @@ func (t *T) descope(k key.T) (interface{}, error) {
 }
 
 func (t T) Raw() Raw {
-	data := make(Raw)
+	r := Raw{}
+	r.Data = orderedmap.New()
 	for _, s := range t.file.Sections() {
-		data[s.Name()] = s.KeysHash()
+		sectionMap := *orderedmap.New()
+		for k, v := range s.KeysHash() {
+			sectionMap.Set(k, v)
+		}
+		r.Data.Set(s.Name(), sectionMap)
 	}
-	return data
+	return r
 }
 
 func (t T) SectionStrings() []string {
@@ -432,25 +436,6 @@ func (t T) dereferenceWellKnown(ref string, section string) string {
 	return ref
 }
 
-func (t Raw) Render() string {
-	s := ""
-	for section, data := range t {
-		if section == "metadata" {
-			continue
-		}
-		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
-		for k, v := range data {
-			if k == "comment" {
-				s += renderComment(k, v)
-				continue
-			}
-			s += renderKey(k, v)
-		}
-		s += "\n"
-	}
-	return s
-}
-
 func renderComment(k string, v interface{}) string {
 	vs, ok := v.(string)
 	if !ok {
@@ -473,9 +458,12 @@ func renderKey(k string, v interface{}) string {
 
 func (t T) replaceFile(configData Raw) {
 	file := ini.Empty()
-	for section, m := range configData {
-		for option, value := range m {
-			file.Section(section).Key(option).SetValue(value)
+	for _, section := range configData.Data.Keys() {
+		m, _ := configData.Data.Get(section)
+		omap := m.(orderedmap.OrderedMap)
+		for _, option := range omap.Keys() {
+			value, _ := omap.Get(option)
+			file.Section(section).Key(option).SetValue(value.(string))
 		}
 	}
 	t.file = file
@@ -506,7 +494,7 @@ func (t T) initDefaultSection() error {
 }
 
 func (t T) rawCommit(configData Raw, configPath string, validate bool) error {
-	if configData != nil {
+	if !configData.IsZero() {
 		t.replaceFile(configData)
 	}
 	if configPath == "" {
@@ -538,19 +526,19 @@ func (t T) validate() error {
 }
 
 func (t T) Commit() error {
-	return t.rawCommit(nil, "", true)
+	return t.rawCommit(Raw{}, "", true)
 }
 
 func (t T) CommitInvalid() error {
-	return t.rawCommit(nil, "", false)
+	return t.rawCommit(Raw{}, "", false)
 }
 
 func (t T) CommitTo(configPath string) error {
-	return t.rawCommit(nil, configPath, true)
+	return t.rawCommit(Raw{}, configPath, true)
 }
 
 func (t T) CommitToInvalid(configPath string) error {
-	return t.rawCommit(nil, configPath, false)
+	return t.rawCommit(Raw{}, configPath, false)
 }
 
 func (t T) CommitDataTo(configData Raw, configPath string) error {
