@@ -435,7 +435,7 @@ func (t T) dereferenceWellKnown(ref string, section string) string {
 func (t Raw) Render() string {
 	s := ""
 	for section, data := range t {
-		if s == "metadata" {
+		if section == "metadata" {
 			continue
 		}
 		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
