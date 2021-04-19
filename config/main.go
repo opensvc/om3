@@ -68,6 +68,7 @@ func (t *T) GetString(k key.T) string {
 	val, kw := t.valueAndKeyword(k)
 	switch {
 	case kw.IsZero():
+		t.Referrer.Log().Debug().Str("key", k.String()).Msg("keyword not found")
 		return ""
 	case val == "" && kw.Default != "":
 		return kw.Default
