@@ -14,9 +14,10 @@ const (
 // T is the driver structure.
 type T struct {
 	resource.T
-	Path     path.T `json:"path"`
-	lazyFile string `json:"-"`
-	lazyDir  string `json:"-"`
+	Path     path.T   `json:"path"`
+	Nodes    []string `json:"nodes"`
+	lazyFile string
+	lazyDir  string
 }
 
 // Manifest exposes to the core the input expected by the driver.
@@ -29,6 +30,11 @@ func (t T) Manifest() resource.Manifest {
 				Key:  "path",
 				Attr: "Path",
 				Ref:  "object.path",
+			},
+			{
+				Key:  "nodes",
+				Attr: "Nodes",
+				Ref:  "object.nodes",
 			},
 		},
 	}

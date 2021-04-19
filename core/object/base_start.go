@@ -2,7 +2,6 @@ package object
 
 import (
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/resource"
@@ -72,7 +71,12 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	time.Sleep(10 * time.Second)
+	for _, r := range t.listResources() {
+		t.log.Info().Str("rid", r.RID()).Msg("start")
+		if err := r.Start(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

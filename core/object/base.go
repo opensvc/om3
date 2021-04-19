@@ -158,6 +158,10 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 			if err := attr.SetValue(r, c.Attr, t.Path); err != nil {
 				return err
 			}
+		case c.Ref == "object.nodes":
+			if err := attr.SetValue(r, c.Attr, t.config.Nodes()); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

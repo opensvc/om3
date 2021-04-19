@@ -20,7 +20,11 @@ func New() resource.Driver {
 }
 
 func (t T) Abort() bool {
-	return true
+	if len(t.Nodes) > 1 {
+		// TODO
+		return true
+	}
+	return false
 }
 
 // Start the Resource
