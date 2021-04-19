@@ -289,3 +289,7 @@ func (t *Base) Node() *Node {
 	t.node = NewNode()
 	return t.node
 }
+
+func (t Base) Log() *zerolog.Logger {
+	return &t.log
+}

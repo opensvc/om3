@@ -11,6 +11,7 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
 	"opensvc.com/opensvc/core/keyop"
@@ -36,6 +37,7 @@ type (
 		Dereference(string) string
 		PostCommit() error
 		IsVolatile() bool
+		Log() *zerolog.Logger
 	}
 
 	Raw map[string]map[string]string
@@ -47,6 +49,8 @@ var (
 	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
 	ErrorExists     = errors.New("configuration does not exist")
 	ErrNoKeyword    = errors.New("keyword does not exist")
+
+	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
 
 func (t *T) Get(k key.T) string {
@@ -107,6 +111,28 @@ func (t *T) Unset(ks ...key.T) int {
 }
 
 func (t *T) Set(op keyop.T) error {
+	if !DriverGroups.Has(op.Key.Section) {
+		return t.set(op)
+	}
+	return t.DriverGroupSet(op)
+}
+
+func (t *T) DriverGroupSet(op keyop.T) error {
+	prefix := op.Key.Section + "#"
+	for _, section := range t.file.SectionStrings() {
+		if !strings.HasPrefix(section, prefix) {
+			continue
+		}
+		op.Key.Section = section
+		if err := t.set(op); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *T) set(op keyop.T) error {
+	t.Referrer.Log().Debug().Str("op", op.String()).Msg("set")
 	setSet := func(op keyop.T) error {
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(op.Value)
 		return nil

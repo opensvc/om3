@@ -45,6 +45,7 @@ const (
 var (
 	toString = map[Op]string{
 		Set:    "=",
+		Insert: "=",
 		Append: "+=",
 		Remove: "-=",
 		Merge:  "|=",
@@ -133,4 +134,13 @@ func Parse(s string) *T {
 	}
 	t.Key = key.Parse(k)
 	return t
+}
+
+func (t T) String() string {
+	switch t.Op {
+	case Insert:
+		return fmt.Sprintf("%s[%d]=%s", t.Key, t.Index, t.Value)
+	default:
+		return fmt.Sprintf("%s%s%s", t.Key, t.Op, t.Value)
+	}
 }
