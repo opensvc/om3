@@ -8,8 +8,8 @@ import (
 
 var keywordStore = keywords.Store{
 	{
+		Section:   "DEFAULT",
 		Option:    "nodes",
-		Section:   "DEFAULT",
 		Scopable:  false,
 		Required:  false,
 		Converter: converters.List,
@@ -17,8 +17,8 @@ var keywordStore = keywords.Store{
 		Example:   "n1 n2",
 	},
 	{
+		Section:   "DEFAULT",
 		Option:    "drpnodes",
-		Section:   "DEFAULT",
 		Scopable:  false,
 		Required:  false,
 		Converter: converters.List,
@@ -26,8 +26,8 @@ var keywordStore = keywords.Store{
 		Example:   "n1 n2",
 	},
 	{
-		Option:    "encapnodes",
 		Section:   "DEFAULT",
+		Option:    "encapnodes",
 		Scopable:  false,
 		Required:  false,
 		Converter: converters.List,
