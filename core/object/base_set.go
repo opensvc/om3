@@ -22,8 +22,8 @@ func (t *Base) Set(options OptsSet) error {
 			return fmt.Errorf("invalid set expression: %s", kw)
 		}
 		t.log.Debug().
-			Str("key", op.Key.String()).
-			Str("op", op.Op.String()).
+			Stringer("key", op.Key).
+			Stringer("op", op.Op).
 			Str("val", op.Value).
 			Msg("set")
 		if err := t.config.Set(*op); err != nil {

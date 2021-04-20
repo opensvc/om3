@@ -3,6 +3,8 @@ package drivergroup
 import (
 	"bytes"
 	"encoding/json"
+
+	"opensvc.com/opensvc/util/xmap"
 )
 
 //
@@ -24,55 +26,54 @@ const (
 	Task
 )
 
+var (
+	toID = map[string]T{
+		"ip":        IP,
+		"volume":    Volume,
+		"disk":      Disk,
+		"fs":        FS,
+		"share":     Share,
+		"container": Container,
+		"app":       App,
+		"sync":      Sync,
+		"task":      Task,
+	}
+	toString = map[T]string{
+		IP:        "ip",
+		Volume:    "volume",
+		Disk:      "disk",
+		FS:        "fs",
+		Share:     "share",
+		Container: "container",
+		App:       "app",
+		Sync:      "sync",
+		Task:      "task",
+	}
+)
+
 // New allocates a drivergroup.T from its string representation.
 func New(s string) T {
-	switch s {
-	case "ip":
-		return IP
-	case "volume":
-		return Volume
-	case "disk":
-		return Disk
-	case "fs":
-		return FS
-	case "share":
-		return Share
-	case "container":
-		return Container
-	case "app":
-		return App
-	case "sync":
-		return Sync
-	case "task":
-		return Task
-	default:
-		return Unknown
+	if t, ok := toID[s]; ok {
+		return t
 	}
+	return Unknown
+}
+
+// IsValid returns true if not Unknown
+func (t T) IsValid() bool {
+	return t != Unknown
+}
+
+// Names returns all supported drivergroup names
+func Names() []string {
+	return xmap.Keys(toID)
 }
 
 func (t T) String() string {
-	switch t {
-	case IP:
-		return "ip"
-	case Volume:
-		return "volume"
-	case Disk:
-		return "disk"
-	case FS:
-		return "fs"
-	case Share:
-		return "share"
-	case Container:
-		return "container"
-	case App:
-		return "app"
-	case Sync:
-		return "sync"
-	case Task:
-		return "task"
-	default:
-		return "unknown"
+	if s, ok := toString[t]; ok {
+		return s
 	}
+	return "unknown"
 }
 
 // MarshalJSON marshals the enum as a quoted json string

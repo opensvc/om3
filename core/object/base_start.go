@@ -71,9 +71,14 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	for _, r := range t.listResources() {
-		t.log.Info().Str("rid", r.RID()).Msg("start")
-		if err := r.Start(); err != nil {
+	fn := func(r resource.Driver) error {
+		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
+		return r.Start()
+	}
+	for _, rset := range t.listResourceSets() {
+		t.log.Debug().Stringer("rset", rset).Msg("start resourceset")
+		resources := t.listResources() // TODO: real selection
+		if err := rset.Do(resources, fn); err != nil {
 			return err
 		}
 	}

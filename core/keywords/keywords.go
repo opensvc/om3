@@ -13,11 +13,13 @@ type (
 		ToFloat(string) (float64, error)
 		ToSlice(string) ([]string, error)
 		ToSet(string) (*set.Set, error)
+		ToBool(string) (bool, error)
 	}
 
 	Keyword struct {
 		Section    string
 		Option     string
+		Attr       string
 		Scopable   bool
 		Required   bool
 		Converter  Converter

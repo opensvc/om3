@@ -68,7 +68,7 @@ func (t *T) GetString(k key.T) string {
 	val, kw := t.valueAndKeyword(k)
 	switch {
 	case kw.IsZero():
-		t.Referrer.Log().Debug().Str("key", k.String()).Msg("keyword not found")
+		t.Referrer.Log().Debug().Stringer("key", k).Msg("keyword not found")
 		return ""
 	case val == "" && kw.Default != "":
 		return kw.Default
@@ -95,6 +95,19 @@ func (t *T) GetSliceStrict(k key.T) ([]string, error) {
 		return []string{}, ErrNoKeyword
 	}
 	return kw.Converter.ToSlice(val)
+}
+
+func (t *T) GetBool(k key.T) bool {
+	val, _ := t.GetBoolStrict(k)
+	return val
+}
+
+func (t *T) GetBoolStrict(k key.T) (bool, error) {
+	val, kw := t.valueAndKeyword(k)
+	if kw.IsZero() {
+		return false, ErrNoKeyword
+	}
+	return kw.Converter.ToBool(val)
 }
 
 // Unset deletes keys and returns the number of deleted keys
@@ -132,7 +145,7 @@ func (t *T) DriverGroupSet(op keyop.T) error {
 }
 
 func (t *T) set(op keyop.T) error {
-	t.Referrer.Log().Debug().Str("op", op.String()).Msg("set")
+	t.Referrer.Log().Debug().Stringer("op", op).Msg("set")
 	setSet := func(op keyop.T) error {
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(op.Value)
 		return nil

@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/converters"
 )
 
 type (
@@ -30,6 +32,8 @@ type (
 		RID() string
 		RSubset() string
 		RLog() *Log
+		IsOptional() bool
+		String() string
 	}
 
 	Aborter interface {
@@ -42,6 +46,7 @@ type (
 		ResourceID string `json:"rid"`
 		Subset     string `json:"subset"`
 		Disable    bool   `json:"disable"`
+		Optional   bool   `json:"optional"`
 		Log        Log    `json:"-"`
 	}
 
@@ -55,6 +60,23 @@ type (
 		Log    []*LogEntry `json:"log,omitempty"`
 	}
 )
+
+var genericKeywords = []keywords.Keyword{
+	{
+		Option:    "disable",
+		Scopable:  false,
+		Required:  false,
+		Converter: converters.Num,
+		Text:      "",
+	},
+	{
+		Option:    "optional",
+		Scopable:  true,
+		Required:  false,
+		Converter: converters.Num,
+		Text:      "",
+	},
+}
 
 func (t DriverID) String() string {
 	if t.Name == "" {
@@ -96,6 +118,14 @@ func (t DriverID) NewResourceFunc() func() Driver {
 
 func (t T) String() string {
 	return fmt.Sprintf("<Resource %s>", t.ResourceID)
+}
+
+//
+// IsOptional returns true if the resource definition contains optional=true.
+// An optional resource does not break an object action on error.
+//
+func (t T) IsOptional() bool {
+	return t.Optional
 }
 
 // RSubset returns the resource subset name
@@ -157,6 +187,7 @@ func printStatus(r Driver) error {
 
 func printManifest(r Driver) error {
 	m := r.Manifest()
+	m.Keywords = append(m.Keywords, genericKeywords...)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(m)

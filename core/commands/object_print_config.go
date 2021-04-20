@@ -60,7 +60,7 @@ func (t *CmdObjectPrintConfig) extractLocal(selector string) ([]config.Raw, erro
 		obj := object.NewConfigurerFromPath(p)
 		c := obj.Config()
 		if c == nil {
-			log.Error().Str("path", p.String()).Msg("no configuration")
+			log.Error().Stringer("path", p).Msg("no configuration")
 			continue
 		}
 		data = append(data, c.Raw())

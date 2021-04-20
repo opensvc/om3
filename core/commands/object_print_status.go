@@ -74,7 +74,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 		obj := object.NewBaserFromPath(p)
 		status, err := obj.Status(t.OptsStatus)
 		if err != nil {
-			log.Debug().Err(err).Str("path", p.String()).Msg("extract local")
+			log.Debug().Err(err).Stringer("path", p).Msg("extract local")
 			continue
 		}
 		o := object.Status{

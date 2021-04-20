@@ -3,9 +3,12 @@ package object
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"time"
 
+	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/ssrathi/go-attr"
@@ -14,6 +17,7 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
@@ -92,7 +96,7 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 		MaxAge:                30,
 	}).
 		With().
-		Str("o", t.Path.String()).
+		Stringer("o", t.Path).
 		Str("n", config.Node.Hostname).
 		Str("sid", config.SessionID).
 		Logger()
@@ -113,6 +117,37 @@ func (t Base) IsVolatile() bool {
 	return t.volatile
 }
 
+func (t *Base) listResourceSets() resourceset.L {
+	l := resourceset.NewList()
+	s := set.New()
+	for _, k := range t.config.SectionStrings() {
+		if s.Has(k) {
+			continue
+		}
+		if rset, err := resourceset.Parse(k); err == nil {
+			parallelKey := key.New(k, "parallel")
+			rset.Parallel = t.config.GetBool(parallelKey)
+			l = append(l, rset)
+			s.Insert(k)
+		} else {
+			t.log.Debug().Err(err)
+		}
+	}
+	for _, k := range drivergroup.Names() {
+		if s.Has(k) {
+			continue
+		}
+		if rset, err := resourceset.Generic(k); err == nil {
+			l = append(l, rset)
+			s.Insert(k)
+		} else {
+			t.log.Debug().Err(err)
+		}
+	}
+	sort.Sort(l)
+	return l
+}
+
 func (t *Base) listResources() []resource.Driver {
 	if t.resources != nil {
 		return t.resources
@@ -121,7 +156,7 @@ func (t *Base) listResources() []resource.Driver {
 	for _, k := range t.config.SectionStrings() {
 		rid := NewResourceID(k)
 		if rid.DriverGroup() == drivergroup.Unknown {
-			t.log.Debug().Str("rid", k).Msg("unknown driver group")
+			t.log.Debug().Str("rid", k).Str("f", "listResources").Msg("unknown driver group")
 			continue
 		}
 		driverGroup := rid.DriverGroup()
@@ -130,7 +165,7 @@ func (t *Base) listResources() []resource.Driver {
 		driverID := resource.NewDriverID(driverGroup, driverName)
 		factory := driverID.NewResourceFunc()
 		if factory == nil {
-			t.log.Debug().Str("driver", driverID.String()).Msg("driver not found")
+			t.log.Debug().Stringer("driver", driverID).Msg("driver not found")
 			continue
 		}
 		r := factory()
@@ -151,6 +186,13 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
 		t.log.Debug().Str("kw", kw.Option).Msg("")
+		val, err := t.config.Eval(key.New(rid, kw.Option), "")
+		if err != nil {
+			return err
+		}
+		if err := attr.SetValue(r, kw.Attr, val); err != nil {
+			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
+		}
 	}
 	for _, c := range m.Context {
 		switch {

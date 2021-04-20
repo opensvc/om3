@@ -4,7 +4,6 @@ import (
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/converters"
 )
 
 const (
@@ -36,18 +35,19 @@ func (t T) Manifest() resource.Manifest {
 		Keywords: []keywords.Keyword{
 			{
 				Option:   "netns",
+				Attr:     "Netns",
 				Scopable: true,
 				Required: true,
 				Text:     "the resource id of the container to plumb the ip into.",
 				Example:  "container#0",
 			},
 			{
-				Option:    "spec",
-				Scopable:  true,
-				Required:  true,
-				Converter: converters.Shlex,
-				Text:      "the resource id of the container to plumb the ip into.",
-				Example:   "container#0",
+				Option:   "gateway",
+				Attr:     "Gateway",
+				Scopable: true,
+				Required: true,
+				Text:     "the gateway ip address.",
+				Example:  "1.2.3.4",
 			},
 		},
 	}

@@ -23,6 +23,10 @@ var (
 	ErrMissConverter = errors.New("conversion not implemented")
 )
 
+func (t NumType) ToBool(s string) (bool, error) {
+	return strconv.ParseBool(s)
+}
+
 func (t NumType) ToInt(s string) (int, error) {
 	return strconv.Atoi(s)
 }
@@ -37,6 +41,18 @@ func (t NumType) ToFloat(s string) (float64, error) {
 
 func (t NumType) ToSlice(s string) ([]string, error) {
 	return []string{}, ErrMissConverter
+}
+
+func (t NumType) ToSet(s string) (*set.Set, error) {
+	set := set.New()
+	for _, e := range strings.Fields(s) {
+		set.Insert(e)
+	}
+	return set, nil
+}
+
+func (t ListType) ToBool(s string) (bool, error) {
+	return false, ErrMissConverter
 }
 
 func (t ListType) ToInt(s string) (int, error) {
@@ -61,6 +77,10 @@ func (t ListType) ToSet(s string) (*set.Set, error) {
 		set.Insert(e)
 	}
 	return set, nil
+}
+
+func (t ShlexType) ToBool(s string) (bool, error) {
+	return false, ErrMissConverter
 }
 
 func (t ShlexType) ToInt(s string) (int, error) {
