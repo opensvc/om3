@@ -53,15 +53,15 @@ func (t Base) abortWorker(r resource.Driver, q chan bool, wg *sync.WaitGroup) {
 
 func (t *Base) abortStart(options OptsStart) (err error) {
 	t.log.Debug().Msg("abort start check")
-	q := make(chan bool, len(t.listResources()))
+	q := make(chan bool, len(t.ListResources()))
 	var wg sync.WaitGroup
-	for _, r := range t.listResources() {
+	for _, r := range t.ListResources() {
 		wg.Add(1)
 		go t.abortWorker(r, q, &wg)
 	}
 	wg.Wait()
 	var ret bool
-	for range t.listResources() {
+	for range t.ListResources() {
 		ret = ret || <-q
 	}
 	if ret {
@@ -75,9 +75,9 @@ func (t *Base) masterStart(options OptsStart) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return r.Start()
 	}
-	for _, rset := range t.listResourceSets() {
+	for _, rset := range t.ListResourceSets() {
 		t.log.Debug().Stringer("rset", rset).Msg("start resourceset")
-		resources := t.listResources() // TODO: real selection
+		resources := t.ListResources() // TODO: real selection
 		if err := rset.Do(resources, fn); err != nil {
 			return err
 		}

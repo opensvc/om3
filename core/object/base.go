@@ -117,7 +117,7 @@ func (t Base) IsVolatile() bool {
 	return t.volatile
 }
 
-func (t *Base) listResourceSets() resourceset.L {
+func (t *Base) ListResourceSets() resourceset.L {
 	l := resourceset.NewList()
 	s := set.New()
 	for _, k := range t.config.SectionStrings() {
@@ -148,7 +148,7 @@ func (t *Base) listResourceSets() resourceset.L {
 	return l
 }
 
-func (t *Base) listResources() []resource.Driver {
+func (t *Base) ListResources() []resource.Driver {
 	if t.resources != nil {
 		return t.resources
 	}
