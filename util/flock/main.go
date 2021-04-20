@@ -16,7 +16,7 @@ type (
 )
 
 var (
-	lockPath = filepath.Join(config.Node.Paths.Var, "locks")
+	lockPath = filepath.Join(config.Node.Paths.Var, "lock")
 )
 
 // New allocate a file lock struct that use fnctllock.
