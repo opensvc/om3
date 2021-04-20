@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/util/timestamp"
 )
 
-// LockFile is the path of the file to use as an action lock.
+// lockName is the path of the file to use as an action lock.
 func (t *Node) frozenFile() string {
 	return filepath.Join(t.VarDir(), "frozen")
 }
