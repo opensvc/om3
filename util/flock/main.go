@@ -16,11 +16,15 @@ type (
 )
 
 var (
-	lockPath = filepath.Join(config.Node.Paths.Var, "locks")
+	getPathVar = pathVar
 )
 
 // New allocate a file lock struct that use fnctllock.
 func New(name string) *T {
-	path := filepath.Join(lockPath, name)
+	path := filepath.Join(getPathVar(), "lock", name)
 	return flock.New(path, xsession.Id(), fcntllock.New)
+}
+
+func pathVar() string {
+	return config.Node.Paths.Var
 }
