@@ -20,15 +20,18 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/msoap/byline v1.1.1
+	github.com/opensvc/fcache v1.0.1
+	github.com/opensvc/fcntllock v1.0.0
+	github.com/opensvc/flock v1.0.2
+	github.com/opensvc/testhelper v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/ssrathi/go-attr v1.3.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
-	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
