@@ -246,23 +246,19 @@ func (t *T) write() (err error) {
 // * dereferenced
 // * evaluated
 //
-func (t *T) Eval(k key.T, impersonate string) (interface{}, error) {
-	var (
-		err error
-		ok  bool
-	)
-	v, err := t.descope(k, impersonate)
+func (t *T) Eval(k key.T, impersonate string) (v string, err error) {
+	v, err = t.descope(k, impersonate)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	var sv string
-	if sv, ok = v.(string); !ok {
-		return v, nil
-	}
-	sv = RegexpReference.ReplaceAllStringFunc(sv, func(ref string) string {
-		return t.dereference(ref, k.Section)
+	return t.replaceReferences(v, k.Section, impersonate), nil
+}
+
+func (t *T) replaceReferences(v string, section string, impersonate string) string {
+	v = RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
+		return t.dereference(ref, section, impersonate)
 	})
-	return sv, err
+	return v
 }
 
 func (t T) sectionMap(section string) (map[string]string, error) {
@@ -273,13 +269,13 @@ func (t T) sectionMap(section string) (map[string]string, error) {
 	return s.KeysHash(), nil
 }
 
-func (t *T) descope(k key.T, impersonate string) (interface{}, error) {
+func (t *T) descope(k key.T, impersonate string) (string, error) {
 	if impersonate == "" {
 		impersonate = Node.Hostname
 	}
 	s, err := t.sectionMap(k.Section)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if v, ok := s[k.Option+"@"+impersonate]; ok {
 		return v, nil
@@ -296,7 +292,7 @@ func (t *T) descope(k key.T, impersonate string) (interface{}, error) {
 	if v, ok := s[k.Option]; ok {
 		return v, nil
 	}
-	return nil, errors.Wrapf(ErrorExists, "key '%s' not found (tried scopes too)", k)
+	return "", errors.Wrapf(ErrorExists, "key '%s' not found (tried scopes too)", k)
 }
 
 func (t T) Raw() Raw {
@@ -384,38 +380,53 @@ func (t *T) IsInEncapNodes(impersonate string) bool {
 	return s.Has(impersonate)
 }
 
-func (t T) dereference(ref string, section string) string {
+func (t T) dereference(ref string, section string, impersonate string) string {
 	val := ""
 	ref = ref[1 : len(ref)-1]
 	l := strings.SplitN(ref, ":", 2)
 	switch l[0] {
 	case "upper":
-		val = t.dereferenceWellKnown(l[1], section)
+		val = t.dereferenceWellKnown(l[1], section, impersonate)
 		val = strings.ToUpper(val)
 	case "lower":
-		val = t.dereferenceWellKnown(l[1], section)
+		val = t.dereferenceWellKnown(l[1], section, impersonate)
 		val = strings.ToLower(val)
 	case "capitalize":
-		val = t.dereferenceWellKnown(l[1], section)
+		val = t.dereferenceWellKnown(l[1], section, impersonate)
 		val = xstrings.Capitalize(val)
 	case "title":
-		val = t.dereferenceWellKnown(l[1], section)
+		val = t.dereferenceWellKnown(l[1], section, impersonate)
 		val = strings.Title(val)
 	case "swapcase":
-		val = t.dereferenceWellKnown(l[1], section)
+		val = t.dereferenceWellKnown(l[1], section, impersonate)
 		val = xstrings.SwapCase(val)
 	default:
-		val = t.dereferenceWellKnown(ref, section)
+		val = t.dereferenceWellKnown(ref, section, impersonate)
 	}
 	return val
 }
 
-func (t T) dereferenceWellKnown(ref string, section string) string {
+func (t T) dereferenceKey(ref string, section string, impersonate string) (v string, ok bool) {
+	refKey := key.Parse(ref)
+	if refKey.Section == "" {
+		refKey.Section = section
+	}
+	key, err := t.file.Section(refKey.Section).GetKey(refKey.Option)
+	if err != nil {
+		return "", false
+	}
+	return t.replaceReferences(key.String(), refKey.Section, impersonate), true
+}
+
+func (t T) dereferenceWellKnown(ref string, section string, impersonate string) string {
+	if v, ok := t.dereferenceKey(ref, section, impersonate); ok {
+		return v
+	}
 	switch ref {
 	case "nodename":
-		return Node.Hostname
+		return impersonate
 	case "short_nodename":
-		return strings.SplitN(Node.Hostname, ".", 1)[0]
+		return strings.SplitN(impersonate, ".", 1)[0]
 	case "rid":
 		return section
 	case "rindex":
