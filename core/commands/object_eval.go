@@ -9,30 +9,30 @@ import (
 )
 
 type (
-	// CmdObjectUnset is the cobra flag set of the set command.
-	CmdObjectUnset struct {
-		object.OptsUnset
+	// CmdObjectEval is the cobra flag set of the get command.
+	CmdObjectEval struct {
+		object.OptsEval
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectUnset) Init(kind string, parent *cobra.Command, selector *string) {
+func (t *CmdObjectEval) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
+	flag.Install(cmd, &t.OptsEval)
 }
 
-func (t *CmdObjectUnset) cmd(kind string, selector *string) *cobra.Command {
+func (t *CmdObjectEval) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "unset",
-		Short: "unset a configuration key",
+		Use:   "eval",
+		Short: "evaluate a configuration key value",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
 	}
 }
 
-func (t *CmdObjectUnset) run(selector *string, kind string) {
+func (t *CmdObjectEval) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
@@ -41,12 +41,14 @@ func (t *CmdObjectUnset) run(selector *string, kind string) {
 		objectaction.WithFormat(t.Global.Format),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.Global.NodeSelector),
-		objectaction.WithRemoteAction("unset"),
+		objectaction.WithRemoteAction("get"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"kw": t.Keywords,
+			"kw":          t.Keyword,
+			"impersonate": t.Impersonate,
+			"eval":        true,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return nil, object.NewConfigurerFromPath(p).Unset(t.OptsUnset)
+			return object.NewFromPath(p).(object.Configurer).Eval(t.OptsEval)
 		}),
 	).Do()
 }

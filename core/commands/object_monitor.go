@@ -30,7 +30,7 @@ func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "monitor",
 		Aliases: []string{"mon", "moni", "monit", "monito"},
-		Short:   "Print selected service and instance status summary",
+		Short:   "print selected service and instance status summary",
 		Long:    monitor.CmdLong,
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)

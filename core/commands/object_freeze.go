@@ -26,7 +26,7 @@ func (t *CmdObjectFreeze) Init(kind string, parent *cobra.Command, selector *str
 func (t *CmdObjectFreeze) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "freeze",
-		Short: "Freeze the selected objects",
+		Short: "freeze the selected objects",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

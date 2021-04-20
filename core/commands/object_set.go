@@ -25,7 +25,7 @@ func (t *CmdObjectSet) Init(kind string, parent *cobra.Command, selector *string
 func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "set",
-		Short: "Set a configuration key raw value",
+		Short: "set a configuration key raw value",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

@@ -14,7 +14,7 @@ var (
 
 var nodeFreezeCmd = &cobra.Command{
 	Use:   "freeze",
-	Short: "Freeze the selected objects.",
+	Short: "freeze the selected objects.",
 	Run:   nodeFreezeCmdRun,
 }
 

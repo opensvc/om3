@@ -26,7 +26,7 @@ func (t *CmdObjectUnfreeze) Init(kind string, parent *cobra.Command, selector *s
 func (t *CmdObjectUnfreeze) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "unfreeze",
-		Short: "Unfreeze the selected objects",
+		Short: "unfreeze the selected objects",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

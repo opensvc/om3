@@ -25,7 +25,7 @@ func (t *CmdObjectStart) Init(kind string, parent *cobra.Command, selector *stri
 func (t *CmdObjectStart) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
-		Short: "Start the selected objects",
+		Short: "start the selected objects",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

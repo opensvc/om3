@@ -8,14 +8,14 @@ type OptsGet struct {
 	Lock        OptsLocking
 	Keyword     string `flag:"kw"`
 	Eval        bool   `flag:"eval"`
-	Impersonate bool   `flag:"impersonate"`
+	Impersonate string `flag:"impersonate"`
 }
 
 // Get returns a keyword value
 func (t *Base) Get(options OptsGet) (interface{}, error) {
 	k := key.Parse(options.Keyword)
 	if options.Eval {
-		return t.config.Eval(k)
+		return t.config.Eval(k, options.Impersonate)
 	}
 	return t.config.Get(k), nil
 }

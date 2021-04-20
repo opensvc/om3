@@ -24,7 +24,7 @@ func (t *CmdObjectLs) Init(kind string, parent *cobra.Command, selector *string)
 func (t *CmdObjectLs) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls",
-		Short: "Print the selected objects path",
+		Short: "print the selected objects path",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

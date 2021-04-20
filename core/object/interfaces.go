@@ -38,6 +38,7 @@ type (
 		ConfigFile() string
 		Config() *config.T
 		EditConfig(OptsEditConfig) error
+		Eval(OptsEval) (interface{}, error)
 		Get(OptsGet) (interface{}, error)
 		Set(OptsSet) error
 		Unset(OptsUnset) error

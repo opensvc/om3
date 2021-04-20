@@ -246,12 +246,12 @@ func (t *T) write() (err error) {
 // * dereferenced
 // * evaluated
 //
-func (t *T) Eval(k key.T) (interface{}, error) {
+func (t *T) Eval(k key.T, impersonate string) (interface{}, error) {
 	var (
 		err error
 		ok  bool
 	)
-	v, err := t.descope(k)
+	v, err := t.descope(k, impersonate)
 	if err != nil {
 		return nil, err
 	}
@@ -273,21 +273,24 @@ func (t T) sectionMap(section string) (map[string]string, error) {
 	return s.KeysHash(), nil
 }
 
-func (t *T) descope(k key.T) (interface{}, error) {
+func (t *T) descope(k key.T, impersonate string) (interface{}, error) {
+	if impersonate == "" {
+		impersonate = Node.Hostname
+	}
 	s, err := t.sectionMap(k.Section)
 	if err != nil {
 		return nil, err
 	}
-	if v, ok := s[k.Option+"@"+Node.Hostname]; ok {
+	if v, ok := s[k.Option+"@"+impersonate]; ok {
 		return v, nil
 	}
-	if v, ok := s[k.Option+"@nodes"]; ok && t.IsInNodes() {
+	if v, ok := s[k.Option+"@nodes"]; ok && t.IsInNodes(impersonate) {
 		return v, nil
 	}
-	if v, ok := s[k.Option+"@drpnodes"]; ok && t.IsInDRPNodes() {
+	if v, ok := s[k.Option+"@drpnodes"]; ok && t.IsInDRPNodes(impersonate) {
 		return v, nil
 	}
-	if v, ok := s[k.Option+"@encapnodes"]; ok && t.IsInEncapNodes() {
+	if v, ok := s[k.Option+"@encapnodes"]; ok && t.IsInEncapNodes(impersonate) {
 		return v, nil
 	}
 	if v, ok := s[k.Option]; ok {
@@ -357,28 +360,28 @@ func (t *T) NodesWithLabel(label string) []string {
 	return l
 }
 
-func (t *T) IsInNodes() bool {
+func (t *T) IsInNodes(impersonate string) bool {
 	s := set.New()
 	for _, n := range t.Nodes() {
 		s.Insert(n)
 	}
-	return s.Has(Node.Hostname)
+	return s.Has(impersonate)
 }
 
-func (t *T) IsInDRPNodes() bool {
+func (t *T) IsInDRPNodes(impersonate string) bool {
 	s := set.New()
 	for _, n := range t.DRPNodes() {
 		s.Insert(n)
 	}
-	return s.Has(Node.Hostname)
+	return s.Has(impersonate)
 }
 
-func (t *T) IsInEncapNodes() bool {
+func (t *T) IsInEncapNodes(impersonate string) bool {
 	s := set.New()
 	for _, n := range t.EncapNodes() {
 		s.Insert(n)
 	}
-	return s.Has(Node.Hostname)
+	return s.Has(impersonate)
 }
 
 func (t T) dereference(ref string, section string) string {

@@ -25,7 +25,7 @@ func (t *CmdObjectStop) Init(kind string, parent *cobra.Command, selector *strin
 func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop",
-		Short: "Stop the selected objects",
+		Short: "stop the selected objects",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},

@@ -47,7 +47,7 @@ var Tags = map[string]Opt{
 	},
 	"impersonate": Opt{
 		Long: "impersonate",
-		Desc: "impersonate a peer node when evaluating keywords",
+		Desc: "the name of a peer node to impersonate when evaluating keywords",
 	},
 	"kws": Opt{
 		Long: "kw",
