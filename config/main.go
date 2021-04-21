@@ -47,7 +47,7 @@ var (
 	RegexpReference = regexp.MustCompile(`({[\w.-_:]+})`)
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
 	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
-	ErrorExists     = errors.New("configuration does not exist")
+	ErrExist        = errors.New("configuration does not exist")
 	ErrNoKeyword    = errors.New("keyword does not exist")
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
@@ -56,6 +56,14 @@ var (
 func (t *T) Get(k key.T) string {
 	val := t.file.Section(k.Section).Key(k.Option).Value()
 	return val
+}
+
+func (t *T) GetStrict(k key.T) (string, error) {
+	s := t.file.Section(k.Section)
+	if s.HasKey(k.Option) {
+		return s.Key(k.Option).Value(), nil
+	}
+	return "", errors.Wrapf(ErrExist, "key '%s' not found (unscopable kw)", k)
 }
 
 func (t *T) valueAndKeyword(k key.T) (string, keywords.Keyword) {
@@ -80,7 +88,7 @@ func (t *T) GetString(k key.T) string {
 func (t *T) GetStringStrict(k key.T) (string, error) {
 	val, kw := t.valueAndKeyword(k)
 	if kw.IsZero() {
-		return "", ErrNoKeyword
+		return "", errors.Wrapf(ErrNoKeyword, "%s", k)
 	}
 	return val, nil
 }
@@ -93,7 +101,7 @@ func (t *T) GetSlice(k key.T) []string {
 func (t *T) GetSliceStrict(k key.T) ([]string, error) {
 	val, kw := t.valueAndKeyword(k)
 	if kw.IsZero() {
-		return []string{}, ErrNoKeyword
+		return []string{}, errors.Wrapf(ErrNoKeyword, "%s", k)
 	}
 	return converters.ToList(val)
 }
@@ -106,7 +114,7 @@ func (t *T) GetBool(k key.T) bool {
 func (t *T) GetBoolStrict(k key.T) (bool, error) {
 	val, kw := t.valueAndKeyword(k)
 	if kw.IsZero() {
-		return false, ErrNoKeyword
+		return false, errors.Wrapf(ErrNoKeyword, "%s", k)
 	}
 	return converters.ToBool(val)
 }
@@ -261,8 +269,27 @@ func (t *T) write() (err error) {
 // * evaluated
 //
 func (t *T) Eval(k key.T, impersonate string) (v string, err error) {
-	v, err = t.descope(k, impersonate)
-	if err != nil {
+	kw := t.Referrer.KeywordLookup(k)
+	if !kw.IsZero() {
+		return t.EvalKeyword(k, kw, impersonate)
+	}
+	return "", errors.Wrapf(ErrNoKeyword, "%s", k)
+}
+
+func (t *T) EvalKeyword(k key.T, kw keywords.Keyword, impersonate string) (v string, err error) {
+	if kw.Scopable {
+		v, err = t.descope(k, impersonate)
+	} else {
+		v, err = t.GetStrict(k)
+	}
+	switch {
+	case errors.Is(err, ErrExist):
+		if kw.Required {
+			return "", err
+		}
+		v = kw.Default
+		err = nil
+	case err != nil:
 		return "", err
 	}
 	return t.replaceReferences(v, k.Section, impersonate), nil
@@ -278,7 +305,7 @@ func (t *T) replaceReferences(v string, section string, impersonate string) stri
 func (t T) sectionMap(section string) (map[string]string, error) {
 	s, err := t.file.GetSection(section)
 	if err != nil {
-		return nil, errors.Wrapf(ErrorExists, "section '%s'", section)
+		return nil, errors.Wrapf(ErrExist, "section '%s'", section)
 	}
 	return s.KeysHash(), nil
 }
@@ -306,7 +333,7 @@ func (t *T) descope(k key.T, impersonate string) (string, error) {
 	if v, ok := s[k.Option]; ok {
 		return v, nil
 	}
-	return "", errors.Wrapf(ErrorExists, "key '%s' not found (tried scopes too)", k)
+	return "", errors.Wrapf(ErrExist, "key '%s' not found (tried scopes too)", k)
 }
 
 func (t T) Raw() Raw {

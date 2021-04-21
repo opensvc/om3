@@ -37,5 +37,13 @@ var keywordStore = keywords.Store{
 }
 
 func (t Base) KeywordLookup(k key.T) keywords.Keyword {
+	switch k.Section {
+	case "data", "env":
+		return keywords.Keyword{
+			Option:   "*", // trick IsZero()
+			Scopable: true,
+			Required: false,
+		}
+	}
 	return keywordStore.Lookup(k)
 }

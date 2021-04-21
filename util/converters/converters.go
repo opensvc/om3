@@ -16,7 +16,8 @@ type (
 )
 
 const (
-	Int T = iota
+	String T = iota
+	Int
 	Int64
 	Float64
 	Bool
@@ -27,6 +28,7 @@ const (
 
 var (
 	toString = map[T]string{
+		String:  "string",
 		Int:     "int",
 		Int64:   "int64",
 		Float64: "float64",
@@ -36,6 +38,7 @@ var (
 		Shlex:   "Shlex",
 	}
 	toID = map[string]T{
+		"string":  String,
 		"int":     Int,
 		"int64":   Int64,
 		"float64": Float64,
@@ -81,6 +84,8 @@ func ToShlex(s string) ([]string, error) {
 
 func Convert(s string, t T) (interface{}, error) {
 	switch t {
+	case String:
+		return s, nil
 	case Int:
 		return ToInt(s)
 	case Int64:

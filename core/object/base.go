@@ -122,19 +122,37 @@ func (t Base) IsVolatile() bool {
 func (t *Base) ListResourceSets() resourceset.L {
 	l := resourceset.NewList()
 	s := set.New()
+	referenced := set.New()
+
+	// add resourcesets found as section
 	for _, k := range t.config.SectionStrings() {
 		if s.Has(k) {
 			continue
 		}
+		// [subset#fs:g1]
 		if rset, err := resourceset.Parse(k); err == nil {
 			parallelKey := key.New(k, "parallel")
 			rset.Parallel = t.config.GetBool(parallelKey)
 			l = append(l, rset)
 			s.Insert(k)
-		} else {
-			t.log.Debug().Err(err)
+			continue
+		}
+		//
+		// here we have a non-subset section... keep track of the subset referenced, if any.
+		//
+		// [fs#1]
+		// subset = g1
+		//
+		subsetKey := key.New(k, "subset")
+		name := t.config.Get(subsetKey)
+		if name != "" {
+			resourceID := resourceid.Parse(k)
+			sectionName := resourceset.FormatSectionName(resourceID.DriverGroup().String(), name)
+			referenced.Insert(sectionName)
 		}
 	}
+
+	// add generic resourcesets not already found as a section
 	for _, k := range drivergroup.Names() {
 		if s.Has(k) {
 			continue
@@ -146,6 +164,12 @@ func (t *Base) ListResourceSets() resourceset.L {
 			t.log.Debug().Err(err)
 		}
 	}
+	// add subsets referenced but not found as a section
+	referenced.Difference(s).Do(func(k interface{}) {
+		if rset, err := resourceset.Parse(k.(string)); err == nil {
+			l = append(l, rset)
+		}
+	})
 	sort.Sort(l)
 	return l
 }
@@ -188,7 +212,8 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
 		t.log.Debug().Str("kw", kw.Option).Msg("")
-		val, err := t.config.Eval(key.New(rid, kw.Option), "")
+		k := key.New(rid, kw.Option)
+		val, err := t.config.EvalKeyword(k, kw, "")
 		if err != nil {
 			return err
 		}
@@ -212,6 +237,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 			}
 		}
 	}
+	t.log.Debug().Msgf("configured resource: %+v", r)
 	return nil
 }
 

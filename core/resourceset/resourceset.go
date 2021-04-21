@@ -83,6 +83,14 @@ func Parse(s string) (*T, error) {
 	return t, nil
 }
 
+//
+// FormatSectionName returns the resourceset section name for a given
+// drivergroup name and subset name.
+//
+func FormatSectionName(driverGroupName, name string) string {
+	return prefix + driverGroupName + separator + name
+}
+
 func (t T) String() string {
 	return t.SectionName
 }
@@ -121,7 +129,8 @@ func (t T) doSerial(resources []resource.Driver, fn DoFunc) error {
 			continue
 		}
 		if r.IsOptional() {
-			fmt.Println("xx ignore err on optional resource", err, r)
+			//fmt.Println("xx ignore err on optional resource", err, r)
+			continue
 		}
 		return err
 	}

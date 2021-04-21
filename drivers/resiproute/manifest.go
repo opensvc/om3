@@ -3,6 +3,7 @@ package resiproute
 import (
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -28,27 +29,25 @@ func New() resource.Driver {
 }
 
 // Manifest ...
-func (t T) Manifest() resource.Manifest {
-	return resource.Manifest{
-		Group: driverGroup,
-		Name:  driverName,
-		Keywords: []keywords.Keyword{
-			{
-				Option:   "netns",
-				Attr:     "Netns",
-				Scopable: true,
-				Required: true,
-				Text:     "the resource id of the container to plumb the ip into.",
-				Example:  "container#0",
-			},
-			{
-				Option:   "gateway",
-				Attr:     "Gateway",
-				Scopable: true,
-				Required: true,
-				Text:     "the gateway ip address.",
-				Example:  "1.2.3.4",
-			},
+func (t T) Manifest() *manifest.T {
+	m := manifest.New(driverGroup, driverName)
+	m.AddKeyword([]keywords.Keyword{
+		{
+			Option:   "netns",
+			Attr:     "Netns",
+			Scopable: true,
+			Required: true,
+			Text:     "the resource id of the container to plumb the ip into.",
+			Example:  "container#0",
 		},
-	}
+		{
+			Option:   "gateway",
+			Attr:     "Gateway",
+			Scopable: true,
+			Required: true,
+			Text:     "the gateway ip address.",
+			Example:  "1.2.3.4",
+		},
+	}...)
+	return m
 }

@@ -8,10 +8,9 @@ import (
 
 	"github.com/golang-collections/collections/set"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/converters"
 )
 
 type (
@@ -24,7 +23,7 @@ type (
 	// Driver exposes what can be done with a resource
 	Driver interface {
 		Label() string
-		Manifest() Manifest
+		Manifest() *manifest.T
 		Start() error
 		Stop() error
 		Status() status.T
@@ -36,7 +35,6 @@ type (
 		RSubset() string
 		RLog() *Log
 		IsOptional() bool
-		String() string
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -67,30 +65,6 @@ type (
 		Log    []*LogEntry `json:"log,omitempty"`
 	}
 )
-
-var genericKeywords = []keywords.Keyword{
-	{
-		Option:    "disable",
-		Scopable:  false,
-		Required:  false,
-		Converter: converters.Bool,
-		Text:      "",
-	},
-	{
-		Option:    "optional",
-		Scopable:  true,
-		Required:  false,
-		Converter: converters.Bool,
-		Text:      "",
-	},
-	{
-		Option:    "tags",
-		Scopable:  true,
-		Required:  false,
-		Converter: converters.Set,
-		Text:      "A list of tags. Arbitrary tags can be used to limit action scope to resources with a specific tag. Some tags can influence the driver behaviour. For example :c-tag:`noaction` avoids any state changing action from the driver and implies ``optional=true``, :c-tag:`nostatus` forces the status to n/a.",
-	},
-}
 
 func (t DriverID) String() string {
 	if t.Name == "" {
@@ -128,10 +102,6 @@ func (t DriverID) NewResourceFunc() func() Driver {
 		return nil
 	}
 	return drv
-}
-
-func (t T) String() string {
-	return fmt.Sprintf("<Resource %s>", t.ResourceID)
 }
 
 //
@@ -197,6 +167,9 @@ func (t T) MatchSubset(s string) bool {
 
 // MatchTag returns true if one of the resource tags equals the pattern.
 func (t T) MatchTag(s string) bool {
+	if t.Tags == nil {
+		return false
+	}
 	return t.Tags.Has(s)
 }
 
@@ -239,7 +212,6 @@ func printStatus(r Driver) error {
 
 func printManifest(r Driver) error {
 	m := r.Manifest()
-	m.Keywords = append(m.Keywords, genericKeywords...)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(m)

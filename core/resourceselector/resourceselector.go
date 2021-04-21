@@ -58,9 +58,10 @@ func (t T) ListResources() []resource.Driver {
 		return t.lister.ListResources()
 	}
 	m := make(map[string]resource.Driver)
-	rids := strings.Split(t.RID, ",")
-	tags := strings.Split(t.Tag, ",")
-	subsets := strings.Split(t.Subset, ",")
+	f := func(c rune) bool { return c == ',' }
+	rids := strings.FieldsFunc(t.RID, f)
+	tags := strings.FieldsFunc(t.Tag, f)
+	subsets := strings.FieldsFunc(t.Subset, f)
 	for _, r := range t.lister.ListResources() {
 		if _, ok := m[r.RID()]; ok {
 			continue
