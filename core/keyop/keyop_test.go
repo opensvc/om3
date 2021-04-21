@@ -7,18 +7,31 @@ import (
 	"opensvc.com/opensvc/util/key"
 )
 
-func TestKeyop(t *testing.T) {
+func TestKeyopParse(t *testing.T) {
 	tests := []struct {
-		expr string
-		key  key.T
-		op   Op
-		val  string
+		expr  string
+		key   key.T
+		op    Op
+		val   string
+		index int
 	}{
 		{
 			expr: "a=b",
 			key:  key.Parse("a"),
 			op:   Set,
 			val:  "b",
+		},
+		{
+			expr: "foo=bar",
+			key:  key.Parse("foo"),
+			op:   Set,
+			val:  "bar",
+		},
+		{
+			expr: "foo=bar+=666",
+			key:  key.Parse("foo"),
+			op:   Set,
+			val:  "bar+=666",
 		},
 		{
 			expr: "a+=b",
@@ -32,13 +45,45 @@ func TestKeyop(t *testing.T) {
 			op:   Invalid,
 			val:  "",
 		},
+		{
+			expr:  "env.abc[0]=bb8",
+			key:   key.T{Section: "env", Option: "abc"},
+			op:    Insert,
+			val:   "bb8",
+			index: 0,
+		},
+		{
+			expr:  "env.a[2]=b",
+			key:   key.T{Section: "env", Option: "a"},
+			op:    Insert,
+			val:   "b",
+			index: 2,
+		},
+		{
+			expr:  "fs.optional=false",
+			key:   key.T{Section: "fs", Option: "optional"},
+			op:    Set,
+			val:   "false",
+			index: 2,
+		},
 	}
 	for _, test := range tests {
-		t.Logf("%s", test.expr)
-		op := Parse(test.expr)
-		assert.Equal(t, test.key, op.Key)
-		assert.Equal(t, test.op, op.Op)
-		assert.Equal(t, test.val, op.Value)
+		t.Run(test.expr, func(t *testing.T) {
+			op := Parse(test.expr)
+			t.Run("test key is correct", func(t *testing.T) {
+				assert.Equal(t, test.key, op.Key)
+			})
+			t.Run("test option is correct", func(t *testing.T) {
+				assert.Equal(t, test.op, op.Op)
+			})
+			t.Run("test value is correct", func(t *testing.T) {
+				assert.Equal(t, test.val, op.Value)
+			})
+			if op.Op == Insert {
+				t.Run("test index is correct", func(t *testing.T) {
+					assert.Equal(t, test.index, op.Index)
+				})
+			}
+		})
 	}
-
 }
