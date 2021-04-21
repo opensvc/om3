@@ -17,7 +17,9 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
@@ -154,7 +156,7 @@ func (t *Base) ListResources() []resource.Driver {
 	}
 	t.resources = make([]resource.Driver, 0)
 	for _, k := range t.config.SectionStrings() {
-		rid := NewResourceID(k)
+		rid := resourceid.Parse(k)
 		if rid.DriverGroup() == drivergroup.Unknown {
 			t.log.Debug().Str("rid", k).Str("f", "listResources").Msg("unknown driver group")
 			continue
@@ -190,7 +192,11 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 		if err != nil {
 			return err
 		}
-		if err := attr.SetValue(r, kw.Attr, val); err != nil {
+		converted, err := converters.Convert(val, kw.Converter)
+		if err != nil {
+			return err
+		}
+		if err := attr.SetValue(r, kw.Attr, converted); err != nil {
 			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
 		}
 	}

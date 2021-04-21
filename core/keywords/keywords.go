@@ -2,27 +2,19 @@ package keywords
 
 import (
 	"github.com/golang-collections/collections/set"
+	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
 
 // Keyword represents a configuration option in an object or node configuration file
 type (
-	Converter interface {
-		ToInt(string) (int, error)
-		ToInt64(string) (int64, error)
-		ToFloat(string) (float64, error)
-		ToSlice(string) ([]string, error)
-		ToSet(string) (*set.Set, error)
-		ToBool(string) (bool, error)
-	}
-
 	Keyword struct {
 		Section    string
 		Option     string
 		Attr       string
 		Scopable   bool
 		Required   bool
-		Converter  Converter
+		Converter  converters.T
 		Text       string
 		Example    string
 		Default    string

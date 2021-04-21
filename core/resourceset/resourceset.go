@@ -87,7 +87,22 @@ func (t T) String() string {
 	return t.SectionName
 }
 
+func (t T) filterResources(resources []resource.Driver) []resource.Driver {
+	l := make([]resource.Driver, 0)
+	for _, r := range resources {
+		if r.ID().DriverGroup() != t.DriverGroup {
+			continue
+		}
+		if r.RSubset() != t.Name {
+			continue
+		}
+		l = append(l, r)
+	}
+	return l
+}
+
 func (t T) Do(resources []resource.Driver, fn DoFunc) error {
+	resources = t.filterResources(resources)
 	if t.Parallel {
 		return t.doParallel(resources, fn)
 	}

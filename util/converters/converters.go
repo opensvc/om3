@@ -2,6 +2,7 @@ package converters
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -10,68 +11,63 @@ import (
 )
 
 type (
-	NumType   string
-	ListType  string
-	ShlexType string
+	// T is the integer identifier of a converter
+	T int
+)
+
+const (
+	Int T = iota
+	Int64
+	Float64
+	Bool
+	List
+	Set
+	Shlex
 )
 
 var (
-	Num   NumType
-	List  ListType
-	Shlex ShlexType
-
+	toString = map[T]string{
+		Int:     "int",
+		Int64:   "int64",
+		Float64: "float64",
+		Bool:    "bool",
+		List:    "list",
+		Set:     "set",
+		Shlex:   "Shlex",
+	}
+	toID = map[string]T{
+		"int":     Int,
+		"int64":   Int64,
+		"float64": Float64,
+		"bool":    Bool,
+		"list":    List,
+		"set":     Set,
+		"Shlex":   Shlex,
+	}
 	ErrMissConverter = errors.New("conversion not implemented")
 )
 
-func (t NumType) ToBool(s string) (bool, error) {
-	return strconv.ParseBool(s)
-}
-
-func (t NumType) ToInt(s string) (int, error) {
+func ToInt(s string) (int, error) {
 	return strconv.Atoi(s)
 }
 
-func (t NumType) ToInt64(s string) (int64, error) {
+func ToInt64(s string) (int64, error) {
 	return strconv.ParseInt(s, 10, 64)
 }
 
-func (t NumType) ToFloat(s string) (float64, error) {
+func ToFloat64(s string) (float64, error) {
 	return strconv.ParseFloat(s, 64)
 }
 
-func (t NumType) ToSlice(s string) ([]string, error) {
-	return []string{}, ErrMissConverter
+func ToBool(s string) (bool, error) {
+	return strconv.ParseBool(s)
 }
 
-func (t NumType) ToSet(s string) (*set.Set, error) {
-	set := set.New()
-	for _, e := range strings.Fields(s) {
-		set.Insert(e)
-	}
-	return set, nil
-}
-
-func (t ListType) ToBool(s string) (bool, error) {
-	return false, ErrMissConverter
-}
-
-func (t ListType) ToInt(s string) (int, error) {
-	return 0, ErrMissConverter
-}
-
-func (t ListType) ToInt64(s string) (int64, error) {
-	return 0, ErrMissConverter
-}
-
-func (t ListType) ToFloat(s string) (float64, error) {
-	return 0.0, ErrMissConverter
-}
-
-func (t ListType) ToSlice(s string) ([]string, error) {
+func ToList(s string) ([]string, error) {
 	return strings.Fields(s), nil
 }
 
-func (t ListType) ToSet(s string) (*set.Set, error) {
+func ToSet(s string) (*set.Set, error) {
 	set := set.New()
 	for _, e := range strings.Fields(s) {
 		set.Insert(e)
@@ -79,26 +75,27 @@ func (t ListType) ToSet(s string) (*set.Set, error) {
 	return set, nil
 }
 
-func (t ShlexType) ToBool(s string) (bool, error) {
-	return false, ErrMissConverter
-}
-
-func (t ShlexType) ToInt(s string) (int, error) {
-	return 0, ErrMissConverter
-}
-
-func (t ShlexType) ToInt64(s string) (int64, error) {
-	return 0, ErrMissConverter
-}
-
-func (t ShlexType) ToFloat(s string) (float64, error) {
-	return 0.0, ErrMissConverter
-}
-
-func (t ShlexType) ToSlice(s string) ([]string, error) {
+func ToShlex(s string) ([]string, error) {
 	return shlex.Split(s, true)
 }
 
-func (t ShlexType) ToSet(s string) (*set.Set, error) {
-	return nil, ErrMissConverter
+func Convert(s string, t T) (interface{}, error) {
+	switch t {
+	case Int:
+		return ToInt(s)
+	case Int64:
+		return ToInt64(s)
+	case Float64:
+		return ToFloat64(s)
+	case Bool:
+		return ToBool(s)
+	case List:
+		return ToList(s)
+	case Set:
+		return ToSet(s)
+	case Shlex:
+		return ToShlex(s)
+	default:
+		return nil, fmt.Errorf("unknown converter id %d", t)
+	}
 }

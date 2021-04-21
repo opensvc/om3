@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -107,7 +108,7 @@ type (
 
 	// ResourceStatus describes the status of a resource of an instance of an object.
 	ResourceStatus struct {
-		ResourceID  ResourceID              `json:"-"`
+		ResourceID  resourceid.T            `json:"-"`
 		Label       string                  `json:"label"`
 		Log         []string                `json:"log,omitempty"`
 		Status      status.T                `json:"status"`
@@ -204,7 +205,7 @@ func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
 func (t *InstanceStatus) SortedResources() []ResourceStatus {
 	l := make([]ResourceStatus, 0)
 	for k, v := range t.Resources {
-		v.ResourceID = *NewResourceID(k)
+		v.ResourceID = *resourceid.Parse(k)
 		l = append(l, v)
 	}
 	sort.Sort(ResourceOrder(l))

@@ -1,29 +1,29 @@
-package object
+package resourceid
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/drivergroup"
 )
 
-type ResourceID struct {
+type T struct {
 	Name        string
 	driverGroup drivergroup.T
 	index       string
 	initialized bool
 }
 
-func (t ResourceID) String() string {
+func (t T) String() string {
 	return t.Name
 }
 
-func NewResourceID(s string) *ResourceID {
-	return &ResourceID{Name: s}
+func Parse(s string) *T {
+	return &T{Name: s}
 }
 
-func (t *ResourceID) splitName() {
+func (t *T) splitName() {
 	if t.initialized {
 		return
 	}
@@ -35,25 +35,24 @@ func (t *ResourceID) splitName() {
 	t.initialized = true
 }
 
-func (t *ResourceID) DriverGroup() drivergroup.T {
+func (t *T) DriverGroup() drivergroup.T {
 	t.splitName()
 	return t.driverGroup
 }
 
-func (t *ResourceID) Index() string {
+func (t *T) Index() string {
 	t.splitName()
 	return t.index
 }
 
-func (t ResourceID) MarshalJSON() ([]byte, error) {
+func (t T) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.Name)
 }
 
-func (t *ResourceID) UnmarshalJSON(b []byte) error {
+func (t *T) UnmarshalJSON(b []byte) error {
 	var temp string
 	if err := json.Unmarshal(b, &temp); err != nil {
-		log.Error().Err(err).Msg("unmarshal ResourceId")
-		return err
+		return fmt.Errorf("unmarshal ResourceId")
 	}
 	t.Name = temp
 	return nil

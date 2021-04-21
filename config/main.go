@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/xstrings"
 )
@@ -94,7 +95,7 @@ func (t *T) GetSliceStrict(k key.T) ([]string, error) {
 	if kw.IsZero() {
 		return []string{}, ErrNoKeyword
 	}
-	return kw.Converter.ToSlice(val)
+	return converters.ToList(val)
 }
 
 func (t *T) GetBool(k key.T) bool {
@@ -107,7 +108,7 @@ func (t *T) GetBoolStrict(k key.T) (bool, error) {
 	if kw.IsZero() {
 		return false, ErrNoKeyword
 	}
-	return kw.Converter.ToBool(val)
+	return converters.ToBool(val)
 }
 
 // Unset deletes keys and returns the number of deleted keys

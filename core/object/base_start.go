@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceselector"
 )
 
 // OptsStart is the options of the Start object method.
@@ -75,9 +76,14 @@ func (t *Base) masterStart(options OptsStart) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return r.Start()
 	}
+	resources := resourceselector.New(
+		t,
+		resourceselector.WithRID(options.ResourceSelector.ID),
+		resourceselector.WithSubset(options.ResourceSelector.Subset),
+		resourceselector.WithTag(options.ResourceSelector.Tag),
+	).ListResources()
 	for _, rset := range t.ListResourceSets() {
 		t.log.Debug().Stringer("rset", rset).Msg("start resourceset")
-		resources := t.ListResources() // TODO: real selection
 		if err := rset.Do(resources, fn); err != nil {
 			return err
 		}

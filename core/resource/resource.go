@@ -6,8 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang-collections/collections/set"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/converters"
 )
@@ -29,11 +31,15 @@ type (
 
 		// common
 		SetRID(string)
+		ID() *resourceid.T
 		RID() string
 		RSubset() string
 		RLog() *Log
 		IsOptional() bool
 		String() string
+		MatchRID(string) bool
+		MatchSubset(string) bool
+		MatchTag(string) bool
 	}
 
 	Aborter interface {
@@ -43,11 +49,12 @@ type (
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
-		ResourceID string `json:"rid"`
-		Subset     string `json:"subset"`
-		Disable    bool   `json:"disable"`
-		Optional   bool   `json:"optional"`
-		Log        Log    `json:"-"`
+		ResourceID *resourceid.T `json:"rid"`
+		Subset     string        `json:"subset"`
+		Disable    bool          `json:"disable"`
+		Optional   bool          `json:"optional"`
+		Tags       *set.Set      `json:"tags"`
+		Log        Log           `json:"-"`
 	}
 
 	// OutputStatus is the structure representing the resource status,
@@ -66,15 +73,22 @@ var genericKeywords = []keywords.Keyword{
 		Option:    "disable",
 		Scopable:  false,
 		Required:  false,
-		Converter: converters.Num,
+		Converter: converters.Bool,
 		Text:      "",
 	},
 	{
 		Option:    "optional",
 		Scopable:  true,
 		Required:  false,
-		Converter: converters.Num,
+		Converter: converters.Bool,
 		Text:      "",
+	},
+	{
+		Option:    "tags",
+		Scopable:  true,
+		Required:  false,
+		Converter: converters.Set,
+		Text:      "A list of tags. Arbitrary tags can be used to limit action scope to resources with a specific tag. Some tags can influence the driver behaviour. For example :c-tag:`noaction` avoids any state changing action from the driver and implies ``optional=true``, :c-tag:`nostatus` forces the status to n/a.",
 	},
 }
 
@@ -133,19 +147,57 @@ func (t T) RSubset() string {
 	return t.Subset
 }
 
-// RLog return a reference to the resource log
+// RLog returns a reference to the resource log
 func (t *T) RLog() *Log {
 	return &t.Log
 }
 
-// RID return a reference to the resource log
+// RID returns the string representation of the resource id
 func (t T) RID() string {
+	return t.ResourceID.String()
+}
+
+// ID returns the resource id struct
+func (t T) ID() *resourceid.T {
 	return t.ResourceID
 }
 
 // SetRID sets the resource identifier
 func (t *T) SetRID(v string) {
-	t.ResourceID = v
+	t.ResourceID = resourceid.Parse(v)
+}
+
+//
+// MatchRID returns true if:
+//
+// * the pattern is a just a drivergroup name and this name matches this resource's drivergroup
+//   ex: fs#1 matches fs
+// * the pattern is a fully qualified resourceid, and its string representation equals the
+//   pattern.
+//   ex: fs#1 matches fs#1
+//
+func (t T) MatchRID(s string) bool {
+	rid := resourceid.Parse(s)
+	if !rid.DriverGroup().IsValid() {
+		return false
+	}
+	if rid.Name == "" {
+		// ex: fs#1 matches fs
+		return t.ResourceID.DriverGroup().String() == rid.DriverGroup().String()
+	}
+	// ex: fs#1 matches fs#1
+	return t.ResourceID.String() == s
+
+}
+
+// MatchSubset returns true if the resource subset equals the pattern.
+func (t T) MatchSubset(s string) bool {
+	return t.Subset == s
+}
+
+// MatchTag returns true if one of the resource tags equals the pattern.
+func (t T) MatchTag(s string) bool {
+	return t.Tags.Has(s)
 }
 
 func formatResourceType(r Driver) string {

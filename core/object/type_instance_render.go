@@ -6,6 +6,7 @@ import (
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
 )
@@ -143,7 +144,7 @@ func (t InstanceStates) descString() string {
 //   P  Provisioned
 //   S  Standby
 //
-func (t InstanceStatus) resourceFlagsString(rid ResourceID, r ResourceStatus) string {
+func (t InstanceStatus) resourceFlagsString(rid resourceid.T, r ResourceStatus) string {
 	flags := ""
 
 	// Running task or sync
