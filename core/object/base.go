@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
+	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/file"
@@ -40,7 +41,7 @@ type (
 		config    *config.T
 		node      *Node
 		paths     BasePaths
-		resources []resource.Driver
+		resources resource.Drivers
 	}
 
 	// OptsGlobal contains options accepted by all actions
@@ -119,7 +120,7 @@ func (t Base) IsVolatile() bool {
 	return t.volatile
 }
 
-func (t *Base) ListResourceSets() resourceset.L {
+func (t *Base) ResourceSets() resourceset.L {
 	l := resourceset.NewList()
 	s := set.New()
 	referenced := set.New()
@@ -131,6 +132,7 @@ func (t *Base) ListResourceSets() resourceset.L {
 		}
 		// [subset#fs:g1]
 		if rset, err := resourceset.Parse(k); err == nil {
+			rset.ResourceLister = t
 			parallelKey := key.New(k, "parallel")
 			rset.Parallel = t.config.GetBool(parallelKey)
 			l = append(l, rset)
@@ -158,6 +160,7 @@ func (t *Base) ListResourceSets() resourceset.L {
 			continue
 		}
 		if rset, err := resourceset.Generic(k); err == nil {
+			rset.ResourceLister = t
 			l = append(l, rset)
 			s.Insert(k)
 		} else {
@@ -167,6 +170,7 @@ func (t *Base) ListResourceSets() resourceset.L {
 	// add subsets referenced but not found as a section
 	referenced.Difference(s).Do(func(k interface{}) {
 		if rset, err := resourceset.Parse(k.(string)); err == nil {
+			rset.ResourceLister = t
 			l = append(l, rset)
 		}
 	})
@@ -174,11 +178,11 @@ func (t *Base) ListResourceSets() resourceset.L {
 	return l
 }
 
-func (t *Base) ListResources() []resource.Driver {
+func (t *Base) Resources() resource.Drivers {
 	if t.resources != nil {
 		return t.resources
 	}
-	t.resources = make([]resource.Driver, 0)
+	t.resources = make(resource.Drivers, 0)
 	for _, k := range t.config.SectionStrings() {
 		rid := resourceid.Parse(k)
 		if rid.DriverGroup() == drivergroup.Unknown {
@@ -371,4 +375,13 @@ func (t *Base) Node() *Node {
 
 func (t Base) Log() *zerolog.Logger {
 	return &t.log
+}
+
+func (t *Base) actionResourceLister(options OptsResourceSelector) ResourceLister {
+	return resourceselector.New(
+		t,
+		resourceselector.WithRID(options.ID),
+		resourceselector.WithSubset(options.Subset),
+		resourceselector.WithTag(options.Tag),
+	)
 }

@@ -13,11 +13,11 @@ type (
 		Tag    string
 		Subset string
 
-		lister Lister
+		lister ResourceLister
 	}
 
-	Lister interface {
-		ListResources() []resource.Driver
+	ResourceLister interface {
+		Resources() resource.Drivers
 	}
 )
 
@@ -45,7 +45,7 @@ func WithSubset(s string) funcopt.O {
 	})
 }
 
-func New(l Lister, opts ...funcopt.O) *T {
+func New(l ResourceLister, opts ...funcopt.O) *T {
 	t := &T{
 		lister: l,
 	}
@@ -53,16 +53,16 @@ func New(l Lister, opts ...funcopt.O) *T {
 	return t
 }
 
-func (t T) ListResources() []resource.Driver {
+func (t T) Resources() resource.Drivers {
 	if t.RID == "" && t.Tag == "" && t.Subset == "" {
-		return t.lister.ListResources()
+		return t.lister.Resources()
 	}
 	m := make(map[string]resource.Driver)
 	f := func(c rune) bool { return c == ',' }
 	rids := strings.FieldsFunc(t.RID, f)
 	tags := strings.FieldsFunc(t.Tag, f)
 	subsets := strings.FieldsFunc(t.Subset, f)
-	for _, r := range t.lister.ListResources() {
+	for _, r := range t.lister.Resources() {
 		if _, ok := m[r.RID()]; ok {
 			continue
 		}
@@ -82,7 +82,7 @@ func (t T) ListResources() []resource.Driver {
 			}
 		}
 	}
-	l := make([]resource.Driver, len(m))
+	l := make(resource.Drivers, len(m))
 	i := 0
 	for _, r := range m {
 		l[i] = r

@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceselector"
 )
 
 // OptsStart is the options of the Start object method.
@@ -54,15 +53,15 @@ func (t Base) abortWorker(r resource.Driver, q chan bool, wg *sync.WaitGroup) {
 
 func (t *Base) abortStart(options OptsStart) (err error) {
 	t.log.Debug().Msg("abort start check")
-	q := make(chan bool, len(t.ListResources()))
+	q := make(chan bool, len(t.Resources()))
 	var wg sync.WaitGroup
-	for _, r := range t.ListResources() {
+	for _, r := range t.Resources() {
 		wg.Add(1)
 		go t.abortWorker(r, q, &wg)
 	}
 	wg.Wait()
 	var ret bool
-	for range t.ListResources() {
+	for range t.Resources() {
 		ret = ret || <-q
 	}
 	if ret {
@@ -72,23 +71,11 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	fn := func(r resource.Driver) error {
+	resourceLister := t.actionResourceLister(options.ResourceSelector)
+	return t.ResourceSets().Do(resourceLister, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return r.Start()
-	}
-	resources := resourceselector.New(
-		t,
-		resourceselector.WithRID(options.ResourceSelector.ID),
-		resourceselector.WithSubset(options.ResourceSelector.Subset),
-		resourceselector.WithTag(options.ResourceSelector.Tag),
-	).ListResources()
-	for _, rset := range t.ListResourceSets() {
-		t.log.Debug().Stringer("rset", rset).Msg("start resourceset")
-		if err := rset.Do(resources, fn); err != nil {
-			return err
-		}
-	}
-	return nil
+	})
 }
 
 func (t *Base) slaveStart(options OptsStart) error {

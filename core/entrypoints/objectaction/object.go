@@ -199,9 +199,14 @@ func (t T) DoLocal() {
 		for _, r := range rs {
 			switch {
 			case r.Error != nil:
-				log.Error().Msgf("%s", r.Error)
+				log.Error().Err(r.Error).Msg("")
 			case r.Panic != nil:
-				log.Fatal().Msgf("%s", r.Panic)
+				switch err := r.Panic.(type) {
+				case error:
+					log.Fatal().Stack().Err(err).Msg("")
+				default:
+					log.Fatal().Msgf("%s", err)
+				}
 			case r.HumanRenderer != nil:
 				s += r.HumanRenderer()
 			case r.Data != nil:

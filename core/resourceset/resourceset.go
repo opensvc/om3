@@ -4,19 +4,25 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/resource"
 )
 
 type (
 	T struct {
-		Name        string
-		SectionName string
-		DriverGroup drivergroup.T
-		Parallel    bool
+		Name           string
+		SectionName    string
+		DriverGroup    drivergroup.T
+		Parallel       bool
+		ResourceLister ResourceLister
 	}
 
 	L []*T
+
+	ResourceLister interface {
+		Resources() resource.Drivers
+	}
 
 	DoFunc func(resource.Driver) error
 )
@@ -95,9 +101,20 @@ func (t T) String() string {
 	return t.SectionName
 }
 
-func (t T) filterResources(resources []resource.Driver) []resource.Driver {
-	l := make([]resource.Driver, 0)
-	for _, r := range resources {
+//
+// Resources returns the list of resources handled by the resourceset.
+// This function make the resourceset a ResourceLister.
+//
+func (t T) Resources() resource.Drivers {
+	if t.ResourceLister == nil {
+		panic(errors.WithStack(errors.New("resourceset has no ResourceLister set")))
+	}
+	return t.filterResources(t.ResourceLister)
+}
+
+func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
+	l := make(resource.Drivers, 0)
+	for _, r := range resourceLister.Resources() {
 		if r.ID().DriverGroup() != t.DriverGroup {
 			continue
 		}
@@ -109,20 +126,20 @@ func (t T) filterResources(resources []resource.Driver) []resource.Driver {
 	return l
 }
 
-func (t T) Do(resources []resource.Driver, fn DoFunc) error {
-	resources = t.filterResources(resources)
+func (t T) Do(resourceLister ResourceLister, fn DoFunc) error {
+	resources := resourceLister.Resources().Intersection(t.Resources())
 	if t.Parallel {
 		return t.doParallel(resources, fn)
 	}
 	return t.doSerial(resources, fn)
 }
 
-func (t T) doParallel(resources []resource.Driver, fn DoFunc) error {
+func (t T) doParallel(resources resource.Drivers, fn DoFunc) error {
 	fmt.Println("xx TODO: resourceset do parallel")
 	return nil
 }
 
-func (t T) doSerial(resources []resource.Driver, fn DoFunc) error {
+func (t T) doSerial(resources resource.Drivers, fn DoFunc) error {
 	for _, r := range resources {
 		err := fn(r)
 		if err == nil {
@@ -133,6 +150,15 @@ func (t T) doSerial(resources []resource.Driver, fn DoFunc) error {
 			continue
 		}
 		return err
+	}
+	return nil
+}
+
+func (t L) Do(resourceLister ResourceLister, fn DoFunc) error {
+	for _, rset := range t {
+		if err := rset.Do(resourceLister, fn); err != nil {
+			return err
+		}
 	}
 	return nil
 }

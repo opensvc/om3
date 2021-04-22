@@ -2,6 +2,8 @@ package object
 
 import (
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -16,6 +18,7 @@ type (
 		Status(OptsStatus) (InstanceStatus, error)
 		Exists() bool
 		IsVolatile() bool
+		ResourceSets() resourceset.L
 	}
 
 	// Starter is implemented by object kinds supporting start, stop, ...
@@ -43,5 +46,10 @@ type (
 		Set(OptsSet) error
 		Unset(OptsUnset) error
 		Delete(OptsDelete) error
+	}
+
+	// ResourceLister provides a method to list and filter resources
+	ResourceLister interface {
+		Resources() resource.Drivers
 	}
 )
