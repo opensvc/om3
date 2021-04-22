@@ -1,6 +1,8 @@
 package object
 
-import "time"
+import (
+	"opensvc.com/opensvc/core/resource"
+)
 
 // OptsStop is the options of the Stop object method.
 type OptsStop struct {
@@ -11,10 +13,31 @@ type OptsStop struct {
 	Force            bool `flag:"force"`
 }
 
-// Stop starts the local instance of the object
+// Stop stops the local instance of the object
 func (t *Base) Stop(options OptsStop) error {
 	return t.lockedAction("", options.Lock.Timeout, "stop", func() error {
-		time.Sleep(10 * time.Second)
-		return nil
+		return t.lockedStop(options)
 	})
+}
+
+func (t *Base) lockedStop(options OptsStop) error {
+	if err := t.masterStop(options); err != nil {
+		return err
+	}
+	if err := t.slaveStop(options); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Base) masterStop(options OptsStop) error {
+	resourceLister := t.actionResourceLister(options.ResourceSelector)
+	return t.ResourceSets().Do(resourceLister, func(r resource.Driver) error {
+		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
+		return r.Stop()
+	})
+}
+
+func (t *Base) slaveStop(options OptsStop) error {
+	return nil
 }
