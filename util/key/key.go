@@ -47,5 +47,8 @@ func (t T) Scope() string {
 }
 
 func (t T) String() string {
+	if t.Section == "DEFAULT" {
+		return t.Option
+	}
 	return t.Section + "." + t.Option
 }
