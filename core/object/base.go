@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -87,7 +86,6 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}
-	t.log = log.Logger
 	t.log = logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
@@ -213,6 +211,7 @@ func (t *Base) Resources() resource.Drivers {
 
 func (t Base) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
+	r.SetLog(t)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
 		t.log.Debug().Str("kw", kw.Option).Msg("")

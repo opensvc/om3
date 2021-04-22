@@ -31,7 +31,7 @@ func (t T) Label() string {
 func (t *T) Status() status.T {
 	netns, err := ns.GetNS(t.Netns)
 	if err != nil {
-		t.Log.Error("failed to open netns %q: %v", t.Netns, err)
+		t.StatusLog().Error("failed to open netns %q: %v", t.Netns, err)
 		return status.Down
 	}
 	defer netns.Close()
@@ -47,7 +47,7 @@ func (t *T) Status() status.T {
 		}
 		return nil
 	}); err != nil {
-		t.Log.Error("%v", err)
+		t.StatusLog().Error("%v", err)
 		return status.Down
 	}
 

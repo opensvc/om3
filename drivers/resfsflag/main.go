@@ -1,11 +1,11 @@
 package resfsflag
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
@@ -29,20 +29,18 @@ func (t T) Abort() bool {
 
 // Start the Resource
 func (t T) Start() error {
-	if t.exists() {
-		return nil
-	}
 	if t.file() == "" {
-		t.Log.Error("empty file path")
 		return errors.New("empty file path")
 	}
-	if err := os.MkdirAll(t.dir(), os.ModePerm); err != nil {
-		t.Log.Error("%s", err)
-		return err
+	if t.exists() {
+		t.Log().Info().Msgf("flag file %s is already installed", t.file())
+		return nil
 	}
-	//t.log.Info().Msgf("create flag %s", t.file())
+	if err := os.MkdirAll(t.dir(), os.ModePerm); err != nil {
+		return errors.Wrapf(err, "failed to create directory %s", t.dir())
+	}
+	t.Log().Info().Msgf("install flag file %s", t.file())
 	if _, err := os.Create(t.file()); err != nil {
-		t.Log.Error("%s", err)
 		return err
 	}
 	return nil
@@ -50,16 +48,15 @@ func (t T) Start() error {
 
 // Stop the Resource
 func (t T) Stop() error {
-	if !t.exists() {
-		return nil
-	}
 	if t.file() == "" {
-		t.Log.Error("empty file path")
 		return errors.New("empty file path")
 	}
-	//t.log.Info().Msgf("remove flag %s", t.file())
+	if !t.exists() {
+		t.Log().Info().Msgf("flag file %s is already uninstalled", t.file())
+		return nil
+	}
+	t.Log().Info().Msgf("uninstall flag file %s", t.file())
 	if err := os.Remove(t.file()); err != nil {
-		t.Log.Error("%s", err)
 		return err
 	}
 	return nil
@@ -73,7 +70,7 @@ func (t T) Label() string {
 // Status evaluates and display the Resource status and logs
 func (t *T) Status() status.T {
 	if t.file() == "" {
-		t.Log.Error("empty file path")
+		t.StatusLog().Error("empty file path")
 		return status.NotApplicable
 	}
 	if t.exists() {

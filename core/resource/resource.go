@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/golang-collections/collections/set"
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/resourceid"
@@ -20,6 +21,10 @@ type (
 		Name  string
 	}
 
+	Logger interface {
+		Log() *zerolog.Logger
+	}
+
 	// Driver exposes what can be done with a resource
 	Driver interface {
 		Label() string
@@ -29,11 +34,13 @@ type (
 		Status() status.T
 
 		// common
+		SetLog(Logger)
+		Log() *zerolog.Logger
 		SetRID(string)
 		ID() *resourceid.T
 		RID() string
 		RSubset() string
-		RLog() *Log
+		StatusLog() *StatusLog
 		IsOptional() bool
 		MatchRID(string) bool
 		MatchSubset(string) bool
@@ -52,17 +59,18 @@ type (
 		Disable    bool          `json:"disable"`
 		Optional   bool          `json:"optional"`
 		Tags       *set.Set      `json:"tags"`
-		Log        Log           `json:"-"`
+		statusLog  StatusLog     `json:"-"`
+		log        zerolog.Logger
 	}
 
 	// OutputStatus is the structure representing the resource status,
 	// which is embedded in the instance status.
 	OutputStatus struct {
-		Label  string      `json:"label"`
-		Status status.T    `json:"status"`
-		Subset string      `json:"subset,omitempty"`
-		Type   string      `json:"type"`
-		Log    []*LogEntry `json:"log,omitempty"`
+		Label  string            `json:"label"`
+		Status status.T          `json:"status"`
+		Subset string            `json:"subset,omitempty"`
+		Type   string            `json:"type"`
+		Log    []*StatusLogEntry `json:"log,omitempty"`
 	}
 )
 
@@ -117,9 +125,9 @@ func (t T) RSubset() string {
 	return t.Subset
 }
 
-// RLog returns a reference to the resource log
-func (t *T) RLog() *Log {
-	return &t.Log
+// StatusLog returns a reference to the resource log
+func (t *T) StatusLog() *StatusLog {
+	return &t.statusLog
 }
 
 // RID returns the string representation of the resource id
@@ -135,6 +143,16 @@ func (t T) ID() *resourceid.T {
 // SetRID sets the resource identifier
 func (t *T) SetRID(v string) {
 	t.ResourceID = resourceid.Parse(v)
+}
+
+// SetLogger derives a resource specific logger from the passed logger
+func (t *T) SetLog(l Logger) {
+	t.log = l.Log().With().Str("rid", t.RID()).Logger()
+}
+
+// Log returns the resource logger
+func (t *T) Log() *zerolog.Logger {
+	return &t.log
 }
 
 //
@@ -203,7 +221,7 @@ func printStatus(r Driver) error {
 		Type:   formatResourceType(r),
 		Status: Status(r),
 		Subset: r.RSubset(),
-		Log:    r.RLog().Entries(),
+		Log:    r.StatusLog().Entries(),
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
