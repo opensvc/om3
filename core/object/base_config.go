@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -52,6 +53,17 @@ func (t Base) ID() uuid.UUID {
 		t.log.Error().Err(err).Msg("")
 	}
 	return t.id
+}
+
+func (t Base) App() string {
+	k := key.Parse("app")
+	return t.config.GetString(k)
+}
+
+func (t Base) Topology() topology.T {
+	k := key.Parse("topology")
+	topoStr := t.config.GetString(k)
+	return topology.New(topoStr)
 }
 
 func (t Base) Dereference(ref string) string {

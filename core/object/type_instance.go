@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -53,7 +54,7 @@ type (
 		Monitor     InstanceMonitor           `json:"monitor"`
 		Optional    status.T                  `json:"optional,omitempty"`
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
-		Topology    string                    `json:"topology,omitempty"`    // TODO enum
+		Topology    topology.T                `json:"topology,omitempty"`    // TODO enum
 		Placement   string                    `json:"placement,omitempty"`   // TODO enum
 		Priority    priority.T                `json:"priority,omitempty"`
 		Provisioned provisioned.T             `json:"provisioned,omitempty"`

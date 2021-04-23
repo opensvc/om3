@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 // OptsStatus is the options of the Start object method.
@@ -49,11 +50,11 @@ func (t *Base) statusEval(options OptsStatus) (data InstanceStatus, err error) {
 }
 
 func (t *Base) lockedStatusEval() (InstanceStatus, error) {
-	data := InstanceStatus{App: "test"}
-	//err := errors.New("Not implemented") // Simulate err to avoid dumping over status.json
-	//if err != nil {
-	//	return data, err
-	//}
+	data := InstanceStatus{}
+	data.App = t.App()
+	data.Topology = t.Topology()
+	data.Kind = t.Path.Kind
+	data.Updated = timestamp.Now()
 	t.statusDump(data)
 	return data, nil
 }

@@ -8,6 +8,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/topology"
 )
 
 func (f Frame) wObjects() {
@@ -67,9 +68,9 @@ func (f Frame) sObjectRunning(path string) string {
 				switch {
 				case !instance.Scale.IsZero():
 					expected = int(instance.Scale.ValueOrZero())
-				case instance.Topology == "flex":
+				case instance.Topology == topology.Flex:
 					expected = instance.FlexTarget
-				case instance.Topology == "failover":
+				case instance.Topology == topology.Failover:
 					expected = 1
 				}
 			}
