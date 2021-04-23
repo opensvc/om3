@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/key"
 )
@@ -70,8 +71,14 @@ func (t Base) App() string {
 
 func (t Base) Topology() topology.T {
 	k := key.Parse("topology")
-	topoStr := t.config.GetString(k)
-	return topology.New(topoStr)
+	s := t.config.GetString(k)
+	return topology.New(s)
+}
+
+func (t Base) Placement() placement.T {
+	k := key.Parse("placement")
+	s := t.config.GetString(k)
+	return placement.New(s)
 }
 
 func (t Base) Dereference(ref string) string {

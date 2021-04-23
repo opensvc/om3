@@ -54,6 +54,7 @@ func (t *Base) lockedStatusEval() (InstanceStatus, error) {
 	data.App = t.App()
 	data.Env = t.Env()
 	data.Topology = t.Topology()
+	data.Placement = t.Placement()
 	data.Kind = t.Path.Kind
 	data.Updated = timestamp.Now()
 	t.statusDump(data)

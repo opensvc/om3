@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
@@ -54,8 +55,8 @@ type (
 		Monitor     InstanceMonitor           `json:"monitor"`
 		Optional    status.T                  `json:"optional,omitempty"`
 		Orchestrate string                    `json:"orchestrate,omitempty"` // TODO enum
-		Topology    topology.T                `json:"topology,omitempty"`    // TODO enum
-		Placement   string                    `json:"placement,omitempty"`   // TODO enum
+		Topology    topology.T                `json:"topology,omitempty"`
+		Placement   placement.T               `json:"placement,omitempty"`
 		Priority    priority.T                `json:"priority,omitempty"`
 		Provisioned provisioned.T             `json:"provisioned,omitempty"`
 		Preserved   bool                      `json:"preserved,omitempty"`

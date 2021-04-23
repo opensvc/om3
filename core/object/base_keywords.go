@@ -2,6 +2,7 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
@@ -41,6 +42,21 @@ var keywordStore = keywords.Store{
 		DefaultText: "Same as the node env",
 		Candidates:  []string{"CERT", "DEV", "DRP", "FOR", "INT", "PRA", "PRD", "PRJ", "PPRD", "QUAL", "REC", "STG", "TMP", "TST", "UAT"},
 		Text:        "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation). The default value is the node :kw:`env`.",
+	},
+	{
+		Section:    "DEFAULT",
+		Option:     "placement",
+		Default:    "nodes order",
+		Candidates: placement.Names(),
+		Text: `Set a service instances placement policy:
+
+* none        no placement policy. a policy for dummy, observe-only, services.
+* nodes order the left-most available node is allowed to start a service instance when necessary.
+* load avg    the least loaded node takes precedences.
+* shift       shift the nodes order ranking by the service prefix converter to an integer.
+* spread      a spread policy tends to perfect leveling with many services.
+* score       the highest scoring node takes precedence (the score is a composite indice of load, mem and swap).
+`,
 	},
 	{
 		Section:    "DEFAULT",
