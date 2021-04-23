@@ -52,6 +52,7 @@ func (t *Base) statusEval(options OptsStatus) (data InstanceStatus, err error) {
 func (t *Base) lockedStatusEval() (InstanceStatus, error) {
 	data := InstanceStatus{}
 	data.App = t.App()
+	data.Env = t.Env()
 	data.Topology = t.Topology()
 	data.Kind = t.Path.Kind
 	data.Updated = timestamp.Now()

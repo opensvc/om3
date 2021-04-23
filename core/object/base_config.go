@@ -55,6 +55,14 @@ func (t Base) ID() uuid.UUID {
 	return t.id
 }
 
+func (t Base) Env() string {
+	k := key.Parse("env")
+	if s := t.config.GetString(k); s != "" {
+		return s
+	}
+	return config.Node.Node.Env
+}
+
 func (t Base) App() string {
 	k := key.Parse("app")
 	return t.config.GetString(k)

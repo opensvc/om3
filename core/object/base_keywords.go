@@ -36,6 +36,13 @@ var keywordStore = keywords.Store{
 		Text:    "Used to identify who is responsible for this service, who is billable and provides a most useful filtering key. Better keep it a short code.",
 	},
 	{
+		Section:     "DEFAULT",
+		Option:      "env",
+		DefaultText: "Same as the node env",
+		Candidates:  []string{"CERT", "DEV", "DRP", "FOR", "INT", "PRA", "PRD", "PRJ", "PPRD", "QUAL", "REC", "STG", "TMP", "TST", "UAT"},
+		Text:        "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation). The default value is the node :kw:`env`.",
+	},
+	{
 		Section:    "DEFAULT",
 		Option:     "topology",
 		Default:    "failover",
