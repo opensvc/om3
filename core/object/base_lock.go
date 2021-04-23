@@ -1,18 +1,20 @@
 package object
 
 import (
+	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/util/flock"
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
+	"opensvc.com/opensvc/util/xsession"
 )
 
-// lockName is the lock name of the file to use as an action lock.
-func (t *Base) lockName(group string) string {
-	p := "lock.generic"
-	if group != "" {
-		p += "." + group
+func (t *Base) lockPath(group string) (path string) {
+	if group == "" {
+		group = "generic"
 	}
-	return p
+	path = filepath.Join(t.VarDir(), "lock", group)
+	return
 }
 
 //
@@ -22,9 +24,9 @@ func (t *Base) lockName(group string) string {
 // of object actions.
 //
 func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.T, error) {
-	p := t.lockName(group)
+	p := t.lockPath(group)
 	t.log.Debug().Msgf("locking %s, timeout %s", p, timeout)
-	lock := flock.New(p)
+	lock := flock.New(p, xsession.Id(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return nil, err
@@ -34,12 +36,12 @@ func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.
 }
 
 func (t *Base) lockedAction(group string, timeout time.Duration, intent string, f func() error) error {
-	p := t.lockName(group)
-	lck := flock.New(p)
-	err := lck.Lock(timeout, intent)
+	p := t.lockPath(group)
+	lock := flock.New(p, xsession.Id(), fcntllock.New)
+	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = lck.UnLock() }()
+	defer func() { _ = lock.UnLock() }()
 	return f()
 }

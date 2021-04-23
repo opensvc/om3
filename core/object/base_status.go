@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -29,21 +28,32 @@ func (t *Base) Status(options OptsStatus) (InstanceStatus, error) {
 		err  error
 	)
 	if options.Refresh || t.statusDumpOutdated() {
-		return t.statusEval()
+		return t.statusEval(options)
 	}
 	if data, err = t.statusLoad(); err == nil {
 		return data, nil
 	}
 	// corrupted status.json => eval
-	return t.statusEval()
+	return t.statusEval(options)
 }
 
-func (t *Base) statusEval() (InstanceStatus, error) {
-	data := InstanceStatus{}
-	err := errors.New("Not implemented") // Simulate err to avoid dumping over status.json
-	if err != nil {
-		return data, err
+func (t *Base) statusEval(options OptsStatus) (data InstanceStatus, err error) {
+	lockErr := t.lockedAction("status", options.Lock.Timeout, "", func() error {
+		data, err = t.lockedStatusEval()
+		return err
+	})
+	if lockErr != nil {
+		err = lockErr
 	}
+	return
+}
+
+func (t *Base) lockedStatusEval() (InstanceStatus, error) {
+	data := InstanceStatus{App: "test"}
+	//err := errors.New("Not implemented") // Simulate err to avoid dumping over status.json
+	//if err != nil {
+	//	return data, err
+	//}
 	t.statusDump(data)
 	return data, nil
 }
@@ -62,9 +72,18 @@ func (t *Base) statusDumpModTime() time.Time {
 	return file.ModTime(p)
 }
 
+//
+// statusFilePair returns a pair of file path suitable for a tmp-to-final move
+// after change.
+//
+func (t Base) statusFilePair() (final string, tmp string) {
+	final = t.statusFile()
+	tmp = filepath.Join(filepath.Dir(final), "."+filepath.Base(final)+".swp")
+	return
+}
+
 func (t *Base) statusDump(data InstanceStatus) error {
-	p := t.statusFile()
-	tmp := "." + p + ".swp"
+	p, tmp := t.statusFilePair()
 	jsonFile, err := os.Create(tmp)
 	if err != nil {
 		return err
