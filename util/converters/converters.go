@@ -22,30 +22,33 @@ const (
 	Float64
 	Bool
 	List
+	ListLowercase
 	Set
 	Shlex
 )
 
 var (
 	toString = map[T]string{
-		String:  "string",
-		Int:     "int",
-		Int64:   "int64",
-		Float64: "float64",
-		Bool:    "bool",
-		List:    "list",
-		Set:     "set",
-		Shlex:   "Shlex",
+		String:        "string",
+		Int:           "int",
+		Int64:         "int64",
+		Float64:       "float64",
+		Bool:          "bool",
+		List:          "list",
+		ListLowercase: "list-lowercase",
+		Set:           "set",
+		Shlex:         "Shlex",
 	}
 	toID = map[string]T{
-		"string":  String,
-		"int":     Int,
-		"int64":   Int64,
-		"float64": Float64,
-		"bool":    Bool,
-		"list":    List,
-		"set":     Set,
-		"Shlex":   Shlex,
+		"string":         String,
+		"int":            Int,
+		"int64":          Int64,
+		"float64":        Float64,
+		"bool":           Bool,
+		"list":           List,
+		"list-lowercase": ListLowercase,
+		"set":            Set,
+		"Shlex":          Shlex,
 	}
 	ErrMissConverter = errors.New("conversion not implemented")
 )
@@ -68,6 +71,14 @@ func ToBool(s string) (bool, error) {
 
 func ToList(s string) ([]string, error) {
 	return strings.Fields(s), nil
+}
+
+func ToListLowercase(s string) ([]string, error) {
+	l := strings.Fields(s)
+	for i := 0; i < len(l); i++ {
+		l[i] = strings.ToLower(l[i])
+	}
+	return l, nil
 }
 
 func ToSet(s string) (*set.Set, error) {
@@ -96,6 +107,8 @@ func Convert(s string, t T) (interface{}, error) {
 		return ToBool(s)
 	case List:
 		return ToList(s)
+	case ListLowercase:
+		return ToListLowercase(s)
 	case Set:
 		return ToSet(s)
 	case Shlex:
