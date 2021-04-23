@@ -3,6 +3,7 @@ package file
 import (
 	"io"
 	"os"
+	"time"
 )
 
 // Exists returns true if the file path exists.
@@ -46,4 +47,16 @@ func Copy(src string, dst string) (err error) {
 	r.Close()
 	w.Close()
 	return nil
+}
+
+//
+// ModTime returns the file modification time or a zero time.
+//
+func ModTime(p string) (mtime time.Time) {
+	fi, err := os.Stat(p)
+	if err != nil {
+		return
+	}
+	mtime = fi.ModTime()
+	return
 }

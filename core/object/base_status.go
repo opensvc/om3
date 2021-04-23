@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/util/file"
 )
 
 // OptsStatus is the options of the Start object method.
@@ -26,31 +28,38 @@ func (t *Base) Status(options OptsStatus) (InstanceStatus, error) {
 		data InstanceStatus
 		err  error
 	)
-	if options.Refresh {
-		data, err = t.statusEval()
-		if err != nil {
-			return data, err
-		}
-	} else {
-		data, err = t.statusLoad()
-		if err != nil {
-			data, err = t.statusEval()
-		}
-		if err != nil {
-			return data, err
-		}
+	if options.Refresh || t.statusDumpOutdated() {
+		return t.statusEval()
 	}
-	return data, nil
+	if data, err = t.statusLoad(); err == nil {
+		return data, nil
+	}
+	// corrupted status.json => eval
+	return t.statusEval()
 }
 
 func (t *Base) statusEval() (InstanceStatus, error) {
 	data := InstanceStatus{}
-	err := errors.New("") // Simulate err to avoid dumping over status.json
+	err := errors.New("Not implemented") // Simulate err to avoid dumping over status.json
 	if err != nil {
 		return data, err
 	}
 	t.statusDump(data)
 	return data, nil
+}
+
+func (t *Base) statusDumpOutdated() bool {
+	return t.statusDumpModTime().Before(t.configModTime())
+}
+
+func (t *Base) configModTime() time.Time {
+	p := t.statusFile()
+	return file.ModTime(p)
+}
+
+func (t *Base) statusDumpModTime() time.Time {
+	p := t.statusFile()
+	return file.ModTime(p)
 }
 
 func (t *Base) statusDump(data InstanceStatus) error {
