@@ -1,13 +1,11 @@
 package fcache
 
 import (
-	"github.com/opensvc/fcntllock"
-	"github.com/opensvc/flock"
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"opensvc.com/opensvc/config"
 	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -17,17 +15,8 @@ func TestOutput(t *testing.T) {
 	defer tdCleanup()
 	tf, cleanup := testhelper.TempFile(t, td)
 	defer cleanup()
-	cacheDirOrig := cacheDir
-	lockerPOrig := lockerP
-	defer func() {
-		cacheDir = cacheDirOrig
-		lockerP = lockerPOrig
-	}()
-	sessionId := "session1"
-	cacheDir = filepath.Join(td, "cache", sessionId)
-	lockerP = func(name string) *flock.T {
-		return flock.New(td+"/"+name, sessionId, fcntllock.New)
-	}
+	config.Load(map[string]string{"osvc_root_path": td})
+	defer config.Load(map[string]string{})
 
 	getRealCommandOutput := func() ([]byte, error) {
 		value := []byte(time.Now().Format("15:04:05.000000000"))
