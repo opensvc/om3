@@ -10,8 +10,10 @@ import (
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -63,16 +65,104 @@ type (
 		log        zerolog.Logger
 	}
 
-	// OutputStatus is the structure representing the resource status,
+	// ProvisionStatus define if and when the resource became provisioned.
+	ProvisionStatus struct {
+		Mtime timestamp.T   `json:"mtime,omitempty"`
+		State provisioned.T `json:"state,omitempty"`
+	}
+
+	// MonitorFlag tells the daemon if it should trigger a monitor action
+	// when the resource is not up.
+	MonitorFlag bool
+
+	// DisableFlag hints the resource ignores all state transition actions
+	DisableFlag bool
+
+	// OptionalFlag makes this resource status aggregated into Overall
+	// instead of Avail instance status. Errors in optional resource don't stop
+	// a state transition action.
+	OptionalFlag bool
+
+	// EncapFlag indicates that the resource is handled by the encapsulated
+	// agents, and ignored at the hypervisor level.
+	EncapFlag bool
+
+	// StandbyFlag tells the daemon this resource should always be up,
+	// even after a stop state transition action.
+	StandbyFlag bool
+
+	// TagSet is the list of unique tag names found in the resource definition.
+	TagSet []string
+
+	// ExposedStatus is the structure representing the resource status,
 	// which is embedded in the instance status.
-	OutputStatus struct {
-		Label  string            `json:"label"`
-		Status status.T          `json:"status"`
-		Subset string            `json:"subset,omitempty"`
-		Type   string            `json:"type"`
-		Log    []*StatusLogEntry `json:"log,omitempty"`
+	ExposedStatus struct {
+		ResourceID  resourceid.T      `json:"-"`
+		Label       string            `json:"label"`
+		Log         []*StatusLogEntry `json:"log,omitempty"`
+		Status      status.T          `json:"status"`
+		Type        string            `json:"type"`
+		Provisioned ProvisionStatus   `json:"provisioned,omitempty"`
+		Monitor     MonitorFlag       `json:"monitor,omitempty"`
+		Disable     DisableFlag       `json:"disable,omitempty"`
+		Optional    OptionalFlag      `json:"optional,omitempty"`
+		Encap       EncapFlag         `json:"encap,omitempty"`
+		Standby     StandbyFlag       `json:"standby,omitempty"`
+
+		// Subset is the name of the subset this resource is assigned to.
+		Subset string `json:"subset,omitempty"`
+
+		// Info is a list of key-value pairs providing interesting information to
+		// collect site-wide about this resource.
+		Info map[string]interface{} `json:"info,omitempty"`
+
+		// Restart is the number of restart to be tried before giving up.
+		Restart int `json:"restart,omitempty"`
+
+		// Tags is a set of words attached to the resource.
+		Tags TagSet `json:"tags,omitempty"`
 	}
 )
+
+// FlagString returns a one character representation of the type instance.
+func (t MonitorFlag) FlagString() string {
+	if t {
+		return "M"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t DisableFlag) FlagString() string {
+	if t {
+		return "D"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t OptionalFlag) FlagString() string {
+	if t {
+		return "O"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t EncapFlag) FlagString() string {
+	if t {
+		return "E"
+	}
+	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t StandbyFlag) FlagString() string {
+	if t {
+		return "S"
+	}
+	return "."
+}
 
 func (t DriverID) String() string {
 	if t.Name == "" {
@@ -215,14 +305,19 @@ func Status(r Driver) status.T {
 	return r.Status()
 }
 
-func printStatus(r Driver) error {
-	data := OutputStatus{
+// GetExposedStatus returns the resource exposed status data for embedding into the instance status data.
+func GetExposedStatus(r Driver) ExposedStatus {
+	return ExposedStatus{
 		Label:  formatResourceLabel(r),
 		Type:   formatResourceType(r),
 		Status: Status(r),
 		Subset: r.RSubset(),
 		Log:    r.StatusLog().Entries(),
 	}
+}
+
+func printStatus(r Driver) error {
+	data := GetExposedStatus(r)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(data)

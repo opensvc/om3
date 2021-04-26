@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -49,16 +50,29 @@ func (t *Base) statusEval(options OptsStatus) (data InstanceStatus, err error) {
 	return
 }
 
-func (t *Base) lockedStatusEval() (InstanceStatus, error) {
-	data := InstanceStatus{}
+func (t *Base) lockedStatusEval() (data InstanceStatus, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
 	data.Topology = t.Topology()
 	data.Placement = t.Placement()
 	data.Kind = t.Path.Kind
 	data.Updated = timestamp.Now()
+	data.Resources, err = t.resourceStatusEval()
+	if err != nil {
+		return
+	}
 	t.statusDump(data)
-	return data, nil
+	return
+}
+
+func (t *Base) resourceStatusEval() (map[string]resource.ExposedStatus, error) {
+	data := make(map[string]resource.ExposedStatus)
+	err := t.ResourceSets().Do(t, func(r resource.Driver) error {
+		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
+		data[r.RID()] = resource.GetExposedStatus(r)
+		return nil
+	})
+	return data, err
 }
 
 func (t *Base) statusDumpOutdated() bool {

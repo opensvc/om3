@@ -20,6 +20,10 @@ type (
 	}
 )
 
+func (t StatusLogEntry) String() string {
+	return fmt.Sprintf("%s: %s", t.Level, t.Message)
+}
+
 func push(l *StatusLog, lvl Level, s string, args ...interface{}) {
 	message := fmt.Sprintf(s, args...)
 	entry := &StatusLogEntry{Level: lvl, Message: message}

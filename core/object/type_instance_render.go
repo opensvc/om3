@@ -6,6 +6,7 @@ import (
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
@@ -63,11 +64,11 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
 		for _, entry := range r.Log {
-			t := desc.AddText(entry)
-			switch {
-			case strings.HasPrefix(entry, "error:"):
+			t := desc.AddText(entry.String())
+			switch entry.Level {
+			case "error":
 				t.SetColor(config.Node.Color.Error)
-			case strings.HasPrefix(entry, "warn:"):
+			case "warn":
 				t.SetColor(config.Node.Color.Warning)
 			}
 		}
@@ -144,7 +145,7 @@ func (t InstanceStates) descString() string {
 //   P  Provisioned
 //   S  Standby
 //
-func (t InstanceStatus) resourceFlagsString(rid resourceid.T, r ResourceStatus) string {
+func (t InstanceStatus) resourceFlagsString(rid resourceid.T, r resource.ExposedStatus) string {
 	flags := ""
 
 	// Running task or sync
