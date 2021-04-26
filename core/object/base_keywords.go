@@ -95,6 +95,13 @@ var keywordStore = keywords.Store{
 		//},
 		Text: "Optimal number of up instances in the cluster. The value must be between :kw:`flex_min` and :kw:`flex_max`. If ``orchestrate=ha``, the monitor ensures the :kw:`flex_target` is met.",
 	},
+	{
+		Section:   "DEFAULT",
+		Option:    "priority",
+		Default:   "50",
+		Converter: converters.Int,
+		Text:      "A scheduling priority (the smaller the more priority) used by the monitor thread to trigger actions for the top priority services, so that the :kw:`node.max_parallel` constraint doesn't prevent prior services to start first. The priority setting is dropped from a service configuration injected via the api by a user not granted the prioritizer role.",
+	},
 }
 
 func (t Base) KeywordLookup(k key.T) keywords.Keyword {

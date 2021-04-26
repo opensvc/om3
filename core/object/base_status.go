@@ -56,6 +56,7 @@ func (t *Base) lockedStatusEval() (data InstanceStatus, err error) {
 	data.Env = t.Env()
 	data.Topology = t.Topology()
 	data.Placement = t.Placement()
+	data.Priority = t.Priority()
 	data.Kind = t.Path.Kind
 	data.Updated = timestamp.Now()
 	if err = t.resourceStatusEval(&data); err != nil {

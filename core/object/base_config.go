@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/key"
 )
@@ -79,6 +80,16 @@ func (t Base) Placement() placement.T {
 	k := key.Parse("placement")
 	s := t.config.GetString(k)
 	return placement.New(s)
+}
+
+func (t Base) Priority() priority.T {
+	k := key.Parse("priority")
+	if i, err := t.config.GetIntStrict(k); err != nil {
+		t.log.Error().Err(err).Msg("")
+		return *priority.New()
+	} else {
+		return priority.T(i)
+	}
 }
 
 func (t Base) Peers() []string {
