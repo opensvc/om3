@@ -45,10 +45,10 @@ type (
 		Nodename    string                            `json:"-"`
 		Path        path.T                            `json:"-"`
 		App         string                            `json:"app,omitempty"`
-		Avail       status.T                          `json:"avail,omitempty"`
+		Avail       status.T                          `json:"avail"`
 		Constraints bool                              `json:"constraints,omitempty"`
 		DRP         bool                              `json:"drp,omitempty"`
-		Overall     status.T                          `json:"overall,omitempty"`
+		Overall     status.T                          `json:"overall"`
 		Csum        string                            `json:"csum,omitempty"`
 		Env         string                            `json:"env,omitempty"`
 		Frozen      timestamp.T                       `json:"frozen,omitempty"`

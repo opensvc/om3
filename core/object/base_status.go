@@ -77,9 +77,8 @@ func (t *Base) resourceStatusEval(data *InstanceStatus) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
 		xd := resource.GetExposedStatus(r)
 		data.Resources[r.RID()] = xd
-		if xd.Optional {
-			data.Overall.Add(xd.Status)
-		} else {
+		data.Overall.Add(xd.Status)
+		if !xd.Optional {
 			data.Avail.Add(xd.Status)
 		}
 		return nil
