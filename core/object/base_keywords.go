@@ -65,6 +65,36 @@ var keywordStore = keywords.Store{
 		Candidates: []string{"failover", "flex"},
 		Text:       "``failover`` the service is allowed to be up on one node at a time. ``flex`` the service can be up on :kw:`flex_target` nodes, where :kw:`flex_target` must be in the [flex_min, flex_max] range.",
 	},
+	{
+		Section:   "DEFAULT",
+		Option:    "flex_min",
+		Default:   "1",
+		Converter: converters.Int,
+		//Depends: []keyval.T{
+		//	{key.Parse("topology"), "flex"},
+		//},
+		Text: "Minimum number of up instances in the cluster. Below this number the aggregated service status is degraded to warn..",
+	},
+	{
+		Section:     "DEFAULT",
+		Option:      "flex_max",
+		DefaultText: "Number of svc nodes",
+		Converter:   converters.Int,
+		//Depends: []keyval.T{
+		//	{key.Parse("topology"), "flex"},
+		//},
+		Text: "Maximum number of up instances in the cluster. Above this number the aggregated service status is degraded to warn. ``0`` means unlimited.",
+	},
+	{
+		Section:     "DEFAULT",
+		Option:      "flex_target",
+		DefaultText: "The value of flex_min",
+		Converter:   converters.Int,
+		//Depends: []keyval.T{
+		//	{key.Parse("topology"), "flex"},
+		//},
+		Text: "Optimal number of up instances in the cluster. The value must be between :kw:`flex_min` and :kw:`flex_max`. If ``orchestrate=ha``, the monitor ensures the :kw:`flex_target` is met.",
+	},
 }
 
 func (t Base) KeywordLookup(k key.T) keywords.Keyword {

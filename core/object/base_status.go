@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -60,6 +61,11 @@ func (t *Base) lockedStatusEval() (data InstanceStatus, err error) {
 	data.Resources, err = t.resourceStatusEval()
 	if err != nil {
 		return
+	}
+	if data.Topology == topology.Flex {
+		data.FlexTarget = t.FlexTarget()
+		data.FlexMin = t.FlexMin()
+		data.FlexMax = t.FlexMax()
 	}
 	t.statusDump(data)
 	return

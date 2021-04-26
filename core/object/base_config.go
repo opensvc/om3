@@ -81,6 +81,76 @@ func (t Base) Placement() placement.T {
 	return placement.New(s)
 }
 
+func (t Base) Peers() []string {
+	impersonate := config.Node.Hostname
+	switch {
+	case t.config.IsInNodes(impersonate):
+		return t.config.Nodes()
+	case t.config.IsInDRPNodes(impersonate):
+		return t.config.DRPNodes()
+	default:
+		return []string{}
+	}
+}
+
+func (t Base) FlexMin() int {
+	var (
+		i   int
+		err error
+	)
+	k := key.Parse("flex_min")
+	if i, err = t.config.GetIntStrict(k); err != nil {
+		t.log.Error().Err(err).Msg("")
+		return 0
+	}
+	if i < 0 {
+		return 0
+	}
+	max := t.FlexMax()
+	if i > max {
+		return max
+	}
+	return i
+}
+
+func (t Base) FlexMax() int {
+	var (
+		i   int
+		err error
+	)
+	k := key.Parse("flex_max")
+	if i, err = t.config.GetIntStrict(k); err != nil {
+		t.log.Error().Err(err).Msg("")
+		return len(t.Peers())
+	}
+	max := len(t.Peers())
+	if i > max {
+		return max
+	}
+	return i
+}
+
+func (t Base) FlexTarget() int {
+	var (
+		i   int
+		err error
+	)
+	k := key.Parse("flex_target")
+	if i, err = t.config.GetIntStrict(k); err != nil {
+		t.log.Error().Err(err).Msg("")
+		return t.FlexMin()
+	}
+	min := t.FlexMin()
+	max := t.FlexMax()
+	if i < min {
+		return min
+	}
+	if i > max {
+		return max
+	}
+	return i
+}
+
 func (t Base) Dereference(ref string) string {
 	switch ref {
 	case "id":

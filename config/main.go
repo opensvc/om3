@@ -13,7 +13,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
@@ -66,31 +65,17 @@ func (t *T) GetStrict(k key.T) (string, error) {
 	return "", errors.Wrapf(ErrExist, "key '%s' not found (unscopable kw)", k)
 }
 
-func (t *T) valueAndKeyword(k key.T) (string, keywords.Keyword) {
-	val := t.file.Section(k.Section).Key(k.Option).Value()
-	kw := t.Referrer.KeywordLookup(k)
-	log.Debug().Msgf("config %s get %s => %s", t.ConfigFilePath, k, val)
-	return val, kw
-}
-
 func (t *T) GetString(k key.T) string {
-	val, kw := t.valueAndKeyword(k)
-	switch {
-	case kw.IsZero():
-		t.Referrer.Log().Error().Stringer("key", k).Msg("keyword not found")
-		return ""
-	case val == "" && kw.Default != "":
-		return kw.Default
-	}
+	val, _ := t.GetStringStrict(k)
 	return val
 }
 
 func (t *T) GetStringStrict(k key.T) (string, error) {
-	val, kw := t.valueAndKeyword(k)
-	if kw.IsZero() {
-		return "", errors.Wrapf(ErrNoKeyword, "%s", k)
+	if s, err := t.Eval(k, ""); err != nil {
+		return "", err
+	} else {
+		return s, nil
 	}
-	return val, nil
 }
 
 func (t *T) GetSlice(k key.T) []string {
@@ -99,11 +84,11 @@ func (t *T) GetSlice(k key.T) []string {
 }
 
 func (t *T) GetSliceStrict(k key.T) ([]string, error) {
-	val, kw := t.valueAndKeyword(k)
-	if kw.IsZero() {
-		return []string{}, errors.Wrapf(ErrNoKeyword, "%s", k)
+	if s, err := t.Eval(k, ""); err != nil {
+		return []string{}, err
+	} else {
+		return converters.ToList(s)
 	}
-	return converters.ToList(val)
 }
 
 func (t *T) GetBool(k key.T) bool {
@@ -112,11 +97,24 @@ func (t *T) GetBool(k key.T) bool {
 }
 
 func (t *T) GetBoolStrict(k key.T) (bool, error) {
-	val, kw := t.valueAndKeyword(k)
-	if kw.IsZero() {
-		return false, errors.Wrapf(ErrNoKeyword, "%s", k)
+	if s, err := t.Eval(k, ""); err != nil {
+		return false, err
+	} else {
+		return converters.ToBool(s)
 	}
-	return converters.ToBool(val)
+}
+
+func (t *T) GetInt(k key.T) int {
+	val, _ := t.GetIntStrict(k)
+	return val
+}
+
+func (t *T) GetIntStrict(k key.T) (int, error) {
+	if s, err := t.Eval(k, ""); err != nil {
+		return 0, err
+	} else {
+		return converters.ToInt(s)
+	}
 }
 
 // Unset deletes keys and returns the number of deleted keys
