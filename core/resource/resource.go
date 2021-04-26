@@ -42,6 +42,7 @@ type (
 		ID() *resourceid.T
 		RID() string
 		RSubset() string
+		TagSet() TagSet
 		StatusLog() *StatusLog
 		IsOptional() bool
 		MatchRID(string) bool
@@ -281,6 +282,12 @@ func (t T) MatchTag(s string) bool {
 	return t.Tags.Has(s)
 }
 
+func (t T) TagSet() TagSet {
+	s := make(TagSet, 0)
+	t.Tags.Do(func(e interface{}) { s = append(s, e.(string)) })
+	return s
+}
+
 func formatResourceType(r Driver) string {
 	m := r.Manifest()
 	return fmt.Sprintf("%s.%s", m.Group, m.Name)
@@ -312,6 +319,7 @@ func GetExposedStatus(r Driver) ExposedStatus {
 		Type:   formatResourceType(r),
 		Status: Status(r),
 		Subset: r.RSubset(),
+		Tags:   r.TagSet(),
 		Log:    r.StatusLog().Entries(),
 	}
 }
