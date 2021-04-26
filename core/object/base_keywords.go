@@ -9,6 +9,24 @@ import (
 
 var keywordStore = keywords.Store{
 	{
+		Section:   "DEFAULT",
+		Option:    "create_pg",
+		Default:   "true",
+		Scopable:  true,
+		Converter: converters.Bool,
+		Text:      "Use process containers when possible. Containers allow capping memory, swap and cpu usage per service. Lxc containers are naturally containerized, so skip containerization of their startapp.",
+	},
+	{
+		Generic:  true,
+		Option:   "pg_cpus",
+		Scopable: true,
+		//Depends: []keyval.T{
+		//	{key.Parse("create_pg"), "true"},
+		//},
+		Text:    "Allow service process to bind only the specified cpus. Cpus are specified as list or range : 0,1,2 or 0-2",
+		Example: "0-2",
+	},
+	{
 		Section:     "DEFAULT",
 		Option:      "nodes",
 		Converter:   converters.ListLowercase,
