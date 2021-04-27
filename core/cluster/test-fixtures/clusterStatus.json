@@ -1,0 +1,363 @@
+{
+  "monitor": {
+    "nodes": {
+      "u2004-local-1": {
+        "compat": 10,
+        "api": 6,
+        "agent": "dev",
+        "monitor": {
+          "status": "idle",
+          "status_updated": 1619529110.260455,
+          "global_expect_updated": 1619529532.8129585,
+          "global_expect": null
+        },
+        "labels": {
+          "group": "1"
+        },
+        "targets": [],
+        "services": {
+          "status": {
+            "toto": {
+              "updated": 1619536894.2926133,
+              "kind": "svc",
+              "app": "default",
+              "env": "PRD",
+              "placement": "nodes order",
+              "topology": "failover",
+              "frozen": 0,
+              "subsets": {},
+              "resources": {
+                "fs#1": {
+                  "status": "up",
+                  "type": "fs.flag",
+                  "label": "fs.flag",
+                  "provisioned": {
+                    "state": true,
+                    "mtime": 1619078447.4651313
+                  }
+                },
+                "fs#2": {
+                  "status": "up",
+                  "type": "fs.flag",
+                  "label": "fs.flag",
+                  "provisioned": {
+                    "state": true,
+                    "mtime": 1619521998.09622
+                  }
+                },
+                "sync#i0": {
+                  "status": "down",
+                  "type": "sync.rsync",
+                  "label": "rsync svc config to nodes",
+                  "optional": true,
+                  "log": [
+                    "warn: u2004-local-2 need update"
+                  ]
+                }
+              },
+              "status_group": {
+                "subset": "n/a",
+                "container": "n/a",
+                "route": "n/a",
+                "app": "n/a",
+                "sync": "warn",
+                "expose": "n/a",
+                "hashpolicy": "n/a",
+                "share": "n/a",
+                "DEFAULT": "n/a",
+                "volume": "n/a",
+                "task": "n/a",
+                "ip": "n/a",
+                "vhost": "n/a",
+                "disk": "n/a",
+                "fs": "up",
+                "certificate": "n/a"
+              },
+              "overall": "warn",
+              "avail": "up",
+              "optional": "warn",
+              "provisioned": true,
+              "csum": "51d09e2e557c766e4d74ae73beb20ebb",
+              "monitor": {
+                "status": "idle",
+                "placement": "",
+                "local_expect": "started",
+                "local_expect_updated": 1619529397.5926952,
+                "global_expect": null,
+                "global_expect_updated": 1619529372.6079135,
+                "status_updated": 1619529551.5369837,
+                "restart": {
+                  "fs#2": 1
+                }
+              }
+            }
+          },
+          "config": {
+            "toto": {
+              "updated": 1619529667.5422142,
+              "csum": "500fb8028b62583e2b755daa49e6bb63",
+              "scope": [
+                "u2004-local-1",
+                "u2004-local-2"
+              ]
+            }
+          }
+        },
+        "gen": {
+          "u2004-local-1": 1
+        },
+        "config": {
+          "csum": "ac7d5715c8f29a897dc3689f3726fade"
+        },
+        "stats": {
+          "load_15m": 0.1,
+          "mem_total": 7960,
+          "mem_avail": 92,
+          "swap_total": 979,
+          "swap_avail": 100,
+          "score": 98
+        },
+        "frozen": 1619529517.598209,
+        "env": "PRD",
+        "locks": {},
+        "speaker": false,
+        "min_avail_mem": 2,
+        "min_avail_swap": 10,
+        "updated": 1619529109.7035568
+      }
+    },
+    "services": {
+      "toto": {
+        "avail": "up",
+        "frozen": "thawed",
+        "overall": "warn",
+        "placement": "optimal",
+        "provisioned": true
+      }
+    },
+    "state": "running",
+    "created": 1619529109.4243433,
+    "configured": 1619529688.7232838,
+    "tid": 47457,
+    "compat": true,
+    "transitions": 0,
+    "frozen": "frozen"
+  },
+  "cluster": {
+    "name": "u2004-cga",
+    "id": "e3f02dd2-60f1-11eb-9c7b-cbb92200e3c3",
+    "nodes": [
+      "u2004-local-1",
+      "u2004-local-2"
+    ]
+  },
+  "scheduler": {
+    "state": "running",
+    "created": 1619529109.425109,
+    "configured": 1619529109.425109,
+    "tid": 47458,
+    "running": 0,
+    "delayed": [
+      {
+        "action": "status",
+        "path": "system/svc/dns",
+        "rid": null,
+        "queued": 1619536602.3872478,
+        "expire": 1619537201.0,
+        "csum": "d47fa3681da13c5d5a93b8d0168e5d26"
+      },
+      {
+        "action": "status",
+        "path": "system/vol/dns-vol1",
+        "rid": null,
+        "queued": 1619536602.3872478,
+        "expire": 1619537201.0,
+        "csum": "cb330c0c3a3a18ded29dc019392f9c69"
+      },
+      {
+        "action": "collect_stats",
+        "path": null,
+        "rid": null,
+        "queued": 1619536626.47307,
+        "expire": 1619537225.0,
+        "csum": "ac7d5715c8f29a897dc3689f3726fade,1809592f347e0cacd917fe24b4aee3bb"
+      },
+      {
+        "action": "status",
+        "path": "toto",
+        "rid": null,
+        "queued": 1619536626.47307,
+        "expire": 1619537225.0,
+        "csum": "500fb8028b62583e2b755daa49e6bb63"
+      },
+      {
+        "action": "sync_all",
+        "path": "toto",
+        "rid": "sync#i0",
+        "queued": 1619536895.0463433,
+        "expire": 1619540494.0,
+        "csum": "500fb8028b62583e2b755daa49e6bb63"
+      },
+      {
+        "action": "resource_monitor",
+        "path": "system/svc/vip",
+        "rid": null,
+        "queued": 1619537102.9032066,
+        "expire": 1619537161.0,
+        "csum": "f47492caeb5a2decf236d96c6c121ed1"
+      },
+      {
+        "action": "status",
+        "path": "system/svc/vip",
+        "rid": null,
+        "queued": 1619537135.6361167,
+        "expire": 1619537734.0,
+        "csum": "f47492caeb5a2decf236d96c6c121ed1"
+      }
+    ]
+  },
+  "listener": {
+    "state": "running",
+    "created": 1619529109.423816,
+    "configured": 1619529688.6619878,
+    "tid": 47456,
+    "stats": {
+      "sessions": {
+        "accepted": 350,
+        "auth_validated": 409,
+        "tx": 505330,
+        "rx": 158837,
+        "alive": {
+          "a9b9ac58-93c7-4aaf-9a84-593268b00520": {
+            "created": 1619529111.6035728,
+            "addr": "local",
+            "encrypted": false,
+            "progress": "None /events",
+            "tid": 47597
+          },
+          "337e6313-f13c-494b-b43c-73b4b3ccaff6": {
+            "created": 1619537141.0749488,
+            "addr": "::ffff:172.20.16.1",
+            "encrypted": false,
+            "progress": "init"
+          }
+        },
+        "clients": {
+          "local": {
+            "accepted": 270,
+            "auth_validated": 270,
+            "tx": 129788,
+            "rx": 135893
+          },
+          "::ffff:172.20.16.1": {
+            "accepted": 80,
+            "auth_validated": 139,
+            "tx": 375542,
+            "rx": 22944
+          }
+        }
+      }
+    },
+    "config": {
+      "port": 1214,
+      "addr": "::"
+    }
+  },
+  "hb#relay.tx": {
+    "state": "running",
+    "created": 1619529109.4399295,
+    "configured": 1619529689.5149806,
+    "tid": 47465,
+    "peers": {
+      "u2004-local-1": {},
+      "u2004-local-2": {
+        "last": 1619537139.8849397,
+        "beating": true
+      }
+    },
+    "stats": {
+      "since": 1619529109.4439988,
+      "beats": 1584,
+      "bytes": 505160,
+      "errors": 0
+    },
+    "config": {}
+  },
+  "dns": {
+    "state": "running",
+    "created": 1619529109.423185,
+    "configured": 1619529689.53476,
+    "tid": 47455,
+    "stats": {
+      "sessions": {
+        "accepted": 0,
+        "tx": 0,
+        "rx": 0
+      }
+    }
+  },
+  "hb#relay.rx": {
+    "state": "running",
+    "created": 1619529109.4361343,
+    "configured": 1619529690.1182826,
+    "tid": 47463,
+    "peers": {
+      "u2004-local-1": {},
+      "u2004-local-2": {
+        "last": 0,
+        "beating": false
+      }
+    },
+    "stats": {
+      "since": 1619529109.438976,
+      "beats": 0,
+      "bytes": 0,
+      "errors": 1470
+    },
+    "config": {
+      "timeout": 60,
+      "interval": 5,
+      "relay": "relay.opensvc.com"
+    }
+  },
+  "hb#1.tx": {
+    "state": "running",
+    "created": 1619529109.430693,
+    "configured": 1619529690.1169817,
+    "tid": 47460,
+    "peers": {
+      "u2004-local-1": {},
+      "u2004-local-2": {
+        "last": 0,
+        "beating": false
+      }
+    },
+    "stats": {
+      "since": 1619529109.4323645,
+      "beats": 0,
+      "bytes": 0,
+      "errors": 1240
+    },
+    "config": {}
+  },
+  "hb#2.tx": {
+    "state": "running",
+    "created": 1619529109.434761,
+    "configured": 1619529690.6352408,
+    "tid": 47462,
+    "peers": {
+      "u2004-local-1": {},
+      "u2004-local-2": {
+        "last": 0,
+        "beating": false
+      }
+    },
+    "stats": {
+      "since": 1619529109.4356868,
+      "beats": 0,
+      "bytes": 0,
+      "errors": 1240
+    },
+    "config": {}
+  }
+}
