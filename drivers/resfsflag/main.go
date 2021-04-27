@@ -110,6 +110,10 @@ func (t *T) file() string {
 	return t.lazyFile
 }
 
+func tmpBaseDir() string {
+	return filepath.FromSlash("/tmp/opensvc")
+}
+
 func (t T) dir() string {
 	var p string
 	if t.lazyDir != "" {
