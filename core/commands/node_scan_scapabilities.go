@@ -8,39 +8,37 @@ import (
 )
 
 type (
-	// CmdNodeScanCapabilities is the cobra flag set of the node scan command.
-	CmdNodeScanCapabilities struct {
-		object.OptsNodeScanCapabilities
+	// NodeScanCapabilities is the cobra flag set of the node scan command.
+	NodeScanCapabilities struct {
+		Global object.OptsGlobal
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdNodeScanCapabilities) Init(parent *cobra.Command) {
+func (t *NodeScanCapabilities) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeScanCapabilities)
+	flag.Install(cmd, &t.Global)
 }
 
-var (
-	scanLong = `Scan the node for capabilities.
+func (t *NodeScanCapabilities) cmd() *cobra.Command {
+	long := `Scan the node for capabilities.
 
 Capabilities are normally scanned at daemon startup and when the installed 
 system packages change, so admins only have to use this when they want manually 
 installed software to be discovered without restarting the daemon.`
-)
 
-func (t *CmdNodeScanCapabilities) cmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "capabilities",
 		Short: "scan the node for capabilities",
-		Long:  scanLong,
+		Long:  long,
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
 	}
 }
 
-func (t *CmdNodeScanCapabilities) run() {
+func (t *NodeScanCapabilities) run() {
 	nodeaction.New(
 		nodeaction.WithLocal(t.Global.Local),
 		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
