@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -72,7 +73,7 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 
 func (t *Base) masterStart(options OptsStart) error {
 	resourceLister := t.actionResourceLister(options.ResourceSelector)
-	return t.ResourceSets().Do(resourceLister, func(r resource.Driver) error {
+	return t.ResourceSets().Do(resourceLister, ordering.Asc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return r.Start()
 	})

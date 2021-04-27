@@ -1,6 +1,7 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -32,7 +33,7 @@ func (t *Base) lockedStop(options OptsStop) error {
 
 func (t *Base) masterStop(options OptsStop) error {
 	resourceLister := t.actionResourceLister(options.ResourceSelector)
-	return t.ResourceSets().Do(resourceLister, func(r resource.Driver) error {
+	return t.ResourceSets().Do(resourceLister, ordering.Desc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
 		return r.Stop()
 	})

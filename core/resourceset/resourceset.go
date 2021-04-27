@@ -2,10 +2,12 @@ package resourceset
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -47,7 +49,7 @@ func (t L) Less(i, j int) bool {
 	case t[i].DriverGroup > t[j].DriverGroup:
 		return false
 	}
-	return t[i].Name > t[j].Name
+	return t[i].Name < t[j].Name
 }
 
 func (t L) Swap(i, j int) {
@@ -126,8 +128,11 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	return l
 }
 
-func (t T) Do(resourceLister ResourceLister, fn DoFunc) error {
+func (t T) Do(resourceLister ResourceLister, order ordering.T, fn DoFunc) error {
 	resources := resourceLister.Resources().Intersection(t.Resources())
+	if order.IsDesc() {
+		sort.Sort(sort.Reverse(resources))
+	}
 	if t.Parallel {
 		return t.doParallel(resources, fn)
 	}
@@ -154,9 +159,12 @@ func (t T) doSerial(resources resource.Drivers, fn DoFunc) error {
 	return nil
 }
 
-func (t L) Do(resourceLister ResourceLister, fn DoFunc) error {
+func (t L) Do(resourceLister ResourceLister, order ordering.T, fn DoFunc) error {
+	if order.IsDesc() {
+		sort.Sort(sort.Reverse(t))
+	}
 	for _, rset := range t {
-		if err := rset.Do(resourceLister, fn); err != nil {
+		if err := rset.Do(resourceLister, order, fn); err != nil {
 			return err
 		}
 	}

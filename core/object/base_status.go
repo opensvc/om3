@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
@@ -73,7 +74,7 @@ func (t *Base) lockedStatusEval() (data InstanceStatus, err error) {
 
 func (t *Base) resourceStatusEval(data *InstanceStatus) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
-	return t.ResourceSets().Do(t, func(r resource.Driver) error {
+	return t.ResourceSets().Do(t, ordering.Asc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
 		xd := resource.GetExposedStatus(r)
 		data.Resources[r.RID()] = xd
