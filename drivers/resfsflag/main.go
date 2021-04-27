@@ -89,9 +89,7 @@ func (t T) Unprovision() error {
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	fmt.Println("xx")
-	return provisioned.Undef, nil
-	//return provisioned.NotApplicable, nil
+	return provisioned.NotApplicable, nil
 }
 
 func (t T) exists() bool {
@@ -111,7 +109,7 @@ func (t *T) file() string {
 }
 
 func tmpBaseDir() string {
-	return filepath.FromSlash("/tmp/opensvc")
+	return filepath.FromSlash("/dev/shm/opensvc")
 }
 
 func (t T) dir() string {
