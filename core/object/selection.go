@@ -400,11 +400,14 @@ func (t *Selection) Do(action Action) []ActionResult {
 				if data == nil {
 					return ""
 				}
-				r, ok := data.(Renderer)
-				if ok {
-					return r.Render()
+				switch v := data.(type) {
+				case Renderer:
+					return v.Render()
+				case fmt.Stringer:
+					return v.String()
+				default:
+					return ""
 				}
-				return fmt.Sprintln(data)
 			}
 			q <- result
 		}(p)
