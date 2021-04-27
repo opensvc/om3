@@ -1,7 +1,10 @@
 package resource
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 )
 
 type (
@@ -48,4 +51,18 @@ func (l *StatusLog) Info(s string, args ...interface{}) {
 // Entries the log entries
 func (l *StatusLog) Entries() []*StatusLogEntry {
 	return l.entries
+}
+
+func (t *StatusLogEntry) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	splitN := strings.SplitN(s, ":", 2)
+	if len(splitN) != 2 {
+		return errors.New("unmarshal StatusLogEntry")
+	}
+	t.Level = Level(splitN[0])
+	t.Message = strings.TrimSpace(splitN[1])
+	return nil
 }
