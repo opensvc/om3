@@ -40,18 +40,18 @@ type (
 		Unprovision() error
 
 		// common
-		SetObjectDriver(ObjectDriver)
 		Log() *zerolog.Logger
-		SetRID(string)
 		ID() *resourceid.T
-		RID() string
-		RSubset() string
-		TagSet() TagSet
-		StatusLog() *StatusLog
 		IsOptional() bool
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
+		RID() string
+		RSubset() string
+		SetObjectDriver(ObjectDriver)
+		SetRID(string)
+		StatusLog() *StatusLog
+		TagSet() TagSet
 		VarDir() string
 	}
 
@@ -245,7 +245,15 @@ func (t *T) SetRID(v string) {
 // SetObjectDriver holds the useful interface of the parent object of the resource.
 func (t *T) SetObjectDriver(o ObjectDriver) {
 	t.object = o
-	t.log = o.Log().With().Str("rid", t.RID()).Logger()
+	t.log = t.getLogger()
+}
+
+func (t *T) getLogger() zerolog.Logger {
+	l := t.object.Log().With().Stringer("rid", t.ResourceID)
+	if t.Subset != "" {
+		l = l.Str("rs", t.Subset)
+	}
+	return l.Logger()
 }
 
 // Log returns the resource logger

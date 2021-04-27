@@ -211,7 +211,6 @@ func (t *Base) Resources() resource.Drivers {
 
 func (t Base) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
-	r.SetObjectDriver(t)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
 		t.log.Debug().Str("kw", kw.Option).Msg("")
@@ -240,6 +239,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 			}
 		}
 	}
+	r.SetObjectDriver(t)
 	t.log.Debug().Msgf("configured resource: %+v", r)
 	return nil
 }
