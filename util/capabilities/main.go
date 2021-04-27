@@ -38,6 +38,11 @@ func Register(s scanner) {
 	scanners = append(scanners, s)
 }
 
+// Data return copy of capabilities
+func Data() []string {
+	return []string(cache())
+}
+
 // Has return true if capability cap exists
 func Has(cap string) bool {
 	for _, c := range cache() {
