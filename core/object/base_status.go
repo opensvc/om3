@@ -81,6 +81,7 @@ func (t *Base) resourceStatusEval(data *InstanceStatus) error {
 		if !xd.Optional {
 			data.Avail.Add(xd.Status)
 		}
+		data.Provisioned.Add(xd.Provisioned.State)
 		return nil
 	})
 }

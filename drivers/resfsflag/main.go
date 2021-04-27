@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
@@ -77,6 +78,20 @@ func (t *T) Status() status.T {
 		return status.Up
 	}
 	return status.Down
+}
+
+func (t T) Provision() error {
+	return nil
+}
+
+func (t T) Unprovision() error {
+	return nil
+}
+
+func (t T) Provisioned() (provisioned.T, error) {
+	fmt.Println("xx")
+	return provisioned.Undef, nil
+	//return provisioned.NotApplicable, nil
 }
 
 func (t T) exists() bool {

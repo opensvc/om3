@@ -9,6 +9,7 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -66,4 +67,16 @@ func (t *T) makeRoute() ([]*types.Route, error) {
 		&types.Route{Dst: *dst, GW: gw},
 	)
 	return routes, nil
+}
+
+func Provision() error {
+	return nil
+}
+
+func Unprovision() error {
+	return nil
+}
+
+func Provisioned() (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
 }

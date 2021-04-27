@@ -11,20 +11,26 @@ type T int
 
 const (
 	// Undef is used when a resource or instance has no provisioned state.
-	Undef T = iota
+	Undef T = 0
+)
+
+const (
 	// True means the instance or resource is known to be provisioned.
-	True
+	True T = 1 << iota
 	// False means the instance or resource is known to be not provisioned.
 	False
 	// Mixed means the instance or service is partially provisioned.
 	Mixed
+	// NotApplicable means the resource does not need provisioning.
+	NotApplicable
 )
 
 var toString = map[T]string{
-	Undef: "",
-	True:  "true",
-	False: "false",
-	Mixed: "mixed",
+	Undef:         "",
+	True:          "true",
+	False:         "false",
+	Mixed:         "mixed",
+	NotApplicable: "n/a",
 }
 
 var sToID = map[string]T{
@@ -32,6 +38,7 @@ var sToID = map[string]T{
 	"true":  True,
 	"false": False,
 	"mixed": Mixed,
+	"n/a":   NotApplicable,
 }
 
 var bToID = map[bool]T{
@@ -56,8 +63,12 @@ func (t T) FlagString() string {
 		return "."
 	case False:
 		return "P"
-	default:
+	case Mixed:
+		return "p"
+	case NotApplicable:
 		return "/"
+	default:
+		return "?"
 	}
 }
 
@@ -91,4 +102,34 @@ func (t *T) UnmarshalJSON(b []byte) error {
 	}
 	// Note that if the string cannot be found then it will be set to the zero value.
 	return nil
+}
+
+func (t *T) Add(o T) {
+	*t = t.And(o)
+}
+
+// Add merges two states and returns the aggregate state.
+func (t T) And(o T) T {
+	// handle invariants
+	switch t {
+	case Undef, NotApplicable:
+		return o
+	}
+	switch o {
+	case Undef, NotApplicable:
+		return t
+	}
+	// other merges
+	switch t | o {
+	case True | True:
+		return True
+	case True | False:
+		return Mixed
+	case True | Mixed:
+		return Mixed
+	case False | Mixed:
+		return Mixed
+	default:
+		return Undef
+	}
 }

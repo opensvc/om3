@@ -23,8 +23,9 @@ type (
 		Name  string
 	}
 
-	Logger interface {
+	ObjectDriver interface {
 		Log() *zerolog.Logger
+		VarDir() string
 	}
 
 	// Driver exposes what can be done with a resource
@@ -34,9 +35,12 @@ type (
 		Start() error
 		Stop() error
 		Status() status.T
+		Provisioned() (provisioned.T, error)
+		Provision() error
+		Unprovision() error
 
 		// common
-		SetLog(Logger)
+		SetObjectDriver(ObjectDriver)
 		Log() *zerolog.Logger
 		SetRID(string)
 		ID() *resourceid.T
@@ -48,6 +52,7 @@ type (
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
+		VarDir() string
 	}
 
 	Aborter interface {
@@ -62,14 +67,15 @@ type (
 		Disable    bool          `json:"disable"`
 		Optional   bool          `json:"optional"`
 		Tags       *set.Set      `json:"tags"`
-		statusLog  StatusLog     `json:"-"`
+		statusLog  StatusLog
 		log        zerolog.Logger
+		object     ObjectDriver
 	}
 
 	// ProvisionStatus define if and when the resource became provisioned.
 	ProvisionStatus struct {
 		Mtime timestamp.T   `json:"mtime,omitempty"`
-		State provisioned.T `json:"state,omitempty"`
+		State provisioned.T `json:"state"`
 	}
 
 	// MonitorFlag tells the daemon if it should trigger a monitor action
@@ -236,9 +242,10 @@ func (t *T) SetRID(v string) {
 	t.ResourceID = resourceid.Parse(v)
 }
 
-// SetLogger derives a resource specific logger from the passed logger
-func (t *T) SetLog(l Logger) {
-	t.log = l.Log().With().Str("rid", t.RID()).Logger()
+// SetObjectDriver holds the useful interface of the parent object of the resource.
+func (t *T) SetObjectDriver(o ObjectDriver) {
+	t.object = o
+	t.log = o.Log().With().Str("rid", t.RID()).Logger()
 }
 
 // Log returns the resource logger
@@ -315,12 +322,13 @@ func Status(r Driver) status.T {
 // GetExposedStatus returns the resource exposed status data for embedding into the instance status data.
 func GetExposedStatus(r Driver) ExposedStatus {
 	return ExposedStatus{
-		Label:  formatResourceLabel(r),
-		Type:   formatResourceType(r),
-		Status: Status(r),
-		Subset: r.RSubset(),
-		Tags:   r.TagSet(),
-		Log:    r.StatusLog().Entries(),
+		Label:       formatResourceLabel(r),
+		Type:        formatResourceType(r),
+		Status:      Status(r),
+		Subset:      r.RSubset(),
+		Tags:        r.TagSet(),
+		Log:         r.StatusLog().Entries(),
+		Provisioned: getProvisionStatus(r),
 	}
 }
 

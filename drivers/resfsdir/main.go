@@ -6,6 +6,7 @@ import (
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 )
@@ -80,4 +81,16 @@ func (t T) Label() string {
 
 func (t T) path() string {
 	return ""
+}
+
+func Provision() error {
+	return nil
+}
+
+func Unprovision() error {
+	return nil
+}
+
+func Provisioned() (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
 }
