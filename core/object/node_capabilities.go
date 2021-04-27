@@ -26,3 +26,12 @@ func (t Node) NodeScanCapabilities() (interface{}, error) {
 	}
 	return NodeCapabilities(capabilities.Data()), nil
 }
+
+// PrintCapabilities load and return node capabilities
+func (t Node) PrintCapabilities() (interface{}, error) {
+	caps, err := capabilities.Load()
+	if err != nil {
+		return nil, err
+	}
+	return NodeCapabilities(caps), nil
+}
