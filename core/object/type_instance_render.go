@@ -14,15 +14,15 @@ import (
 
 // Render returns a human friendly string representation of the type instance.
 func (t InstanceStates) Render() string {
-	tree := t.Tree()
-	return tree.Render()
+	newTree := t.Tree()
+	return newTree.Render()
 }
 
 // Tree returns a tree loaded with the type instance.
 func (t InstanceStates) Tree() *tree.Tree {
-	tree := tree.New()
-	t.LoadTreeNode(tree.Head())
-	return tree
+	newTree := tree.New()
+	t.LoadTreeNode(newTree.Head())
+	return newTree
 }
 
 //
@@ -123,6 +123,11 @@ func (t InstanceStates) descString() string {
 
 	// Monitor global expect
 	if s := t.Status.Monitor.GlobalExpect; s != "" {
+		l = append(l, s)
+	}
+
+	// Monitor local expect
+	if s := t.Status.Monitor.LocalExpect; s != "" {
 		l = append(l, s)
 	}
 

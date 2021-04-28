@@ -33,6 +33,11 @@
     },
     "fs#2": {
       "label": "fs.flag",
+      "log": [
+        "info: info msg",
+        "warn: warning msg1",
+        "error: warning msg"
+      ],
       "provisioned": {
         "mtime": 1619521998.09622,
         "state": true
@@ -43,7 +48,7 @@
     "sync#i0": {
       "label": "rsync svc config to nodes",
       "log": [
-        "warn: u2004-local-2 need update"
+        "warn: need update"
       ],
       "optional": true,
       "status": "down",
