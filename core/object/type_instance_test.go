@@ -3,7 +3,7 @@ package object
 import (
 	"encoding/json"
 	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 	"io/ioutil"
 	"opensvc.com/opensvc/config"
 	"path/filepath"
@@ -14,9 +14,9 @@ func TestInstanceStatusUnmarshalJSON(t *testing.T) {
 	var instanceStatus InstanceStatus
 	path := filepath.Join("test-fixtures", "instanceStatus.json")
 	b, err := ioutil.ReadFile(path)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	err = json.Unmarshal(b, &instanceStatus)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestInstanceStates_Render(t *testing.T) {
@@ -29,11 +29,11 @@ func TestInstanceStates_Render(t *testing.T) {
 			defer config.Load(map[string]string{})
 
 			b, err := ioutil.ReadFile(filepath.Join("test-fixtures", name+".json"))
-			assert.Nil(t, err)
+			require.Nil(t, err)
 
 			var instanceStatus InstanceStatus
 			err = json.Unmarshal(b, &instanceStatus)
-			assert.Nil(t, err)
+			require.Nil(t, err)
 			instanceState := InstanceStates{
 				Node:   InstanceNode{Name: "node1"},
 				Status: instanceStatus,
@@ -45,13 +45,12 @@ func TestInstanceStates_Render(t *testing.T) {
 				//
 				t.Logf("updating golden file %s with current result", goldenFile)
 				err = ioutil.WriteFile(goldenFile, []byte(s), 0644)
-				assert.Nil(t, err)
+				require.Nil(t, err)
 			}
 			expected, err := ioutil.ReadFile(goldenFile)
-			assert.Nil(t, err)
+			require.Nil(t, err)
 
-			assert.Equalf(t, string(expected), s,
-				"got:\n%v\nexpected:\n%v", s, string(expected))
+			require.Equal(t, string(expected), s)
 		})
 	}
 }

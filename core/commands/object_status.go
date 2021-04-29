@@ -33,7 +33,7 @@ func (t *CmdObjectStatus) cmd(kind string, selector *string) *cobra.Command {
 (3) D   Disabled,          . Enabled
 (4) O   Optional,          . Not Optional
 (5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned
+(6) P   Not Provisioned,   . Provisioned,       p Provisioned Mixed,  / Provisioned undef or n/a
 (7) S   Standby,           . Not Standby
 (8) <n> Remaining Restart, + if more than 10,   . No Restart
 
