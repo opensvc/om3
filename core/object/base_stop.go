@@ -35,7 +35,7 @@ func (t *Base) masterStop(options OptsStop) error {
 	resourceLister := t.actionResourceLister(options.ResourceSelector)
 	return t.ResourceSets().Do(resourceLister, ordering.Desc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
-		return r.Stop()
+		return resource.Stop(r)
 	})
 }
 

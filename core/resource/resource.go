@@ -1,18 +1,23 @@
 package resource
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
+	"github.com/anmitsu/go-shlex"
 	"github.com/golang-collections/collections/set"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -40,6 +45,7 @@ type (
 		Unprovision() error
 
 		// common
+		Trigger(trigger.Blocking, trigger.Hook, trigger.Action) error
 		Log() *zerolog.Logger
 		ID() *resourceid.T
 		IsOptional() bool
@@ -62,14 +68,23 @@ type (
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
-		ResourceID *resourceid.T `json:"rid"`
-		Subset     string        `json:"subset"`
-		Disable    bool          `json:"disable"`
-		Optional   bool          `json:"optional"`
-		Tags       *set.Set      `json:"tags"`
-		statusLog  StatusLog
-		log        zerolog.Logger
-		object     ObjectDriver
+		ResourceID        *resourceid.T `json:"rid"`
+		Subset            string        `json:"subset"`
+		Disable           bool          `json:"disable"`
+		Optional          bool          `json:"optional"`
+		Tags              *set.Set      `json:"tags"`
+		BlockingPreStart  string
+		BlockingPreStop   string
+		PreStart          string
+		PreStop           string
+		BlockingPostStart string
+		BlockingPostStop  string
+		PostStart         string
+		PostStop          string
+
+		statusLog StatusLog
+		log       zerolog.Logger
+		object    ObjectDriver
 	}
 
 	// ProvisionStatus define if and when the resource became provisioned.
@@ -129,6 +144,13 @@ type (
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
 	}
+
+	Hook int
+)
+
+const (
+	Pre Hook = iota
+	Post
 )
 
 // FlagString returns a one character representation of the type instance.
@@ -312,9 +334,136 @@ func formatResourceLabel(r Driver) string {
 	return fmt.Sprintf("%s %s", formatResourceType(r), r.Label())
 }
 
+func triggerWantsShell(s string) bool {
+	switch {
+	case strings.Contains(s, "|"):
+		return true
+	case strings.Contains(s, "&&"):
+		return true
+	case strings.Contains(s, ";"):
+		return true
+	default:
+		return false
+	}
+}
+
+func (t T) trigger(s string) error {
+	cmd, err := triggerCommand(s)
+	if err != nil {
+		return err
+	}
+	if cmd == nil {
+		return nil
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	bufout := bufio.NewReader(stdout)
+	buferr := bufio.NewReader(stderr)
+	go func() {
+		for {
+			line, _, _ := bufout.ReadLine()
+			if len(line) == 0 {
+				continue
+			}
+			t.log.Info().Msg(string(line))
+		}
+	}()
+	go func() {
+		for {
+			line, _, _ := buferr.ReadLine()
+			if len(line) == 0 {
+				continue
+			}
+			t.log.Error().Msg(string(line))
+		}
+	}()
+
+	return cmd.Wait()
+}
+
+func triggerCommand(s string) (*exec.Cmd, error) {
+	if triggerWantsShell(s) {
+		return exec.Command("/bin/sh", "-c", s), nil
+	}
+	l, err := shlex.Split(s, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(l) == 0 {
+		return nil, nil
+	}
+	name, args := l[0], l[1:]
+	return exec.Command(name, args...), nil
+}
+
+func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
+	var cmd string
+	switch {
+	//
+	case action == trigger.Start && hook == trigger.Pre && blocking == trigger.Block:
+		cmd = t.BlockingPreStart
+	case action == trigger.Start && hook == trigger.Pre && blocking == trigger.NoBlock:
+		cmd = t.PreStart
+	case action == trigger.Start && hook == trigger.Post && blocking == trigger.Block:
+		cmd = t.BlockingPostStart
+	case action == trigger.Start && hook == trigger.Post && blocking == trigger.NoBlock:
+		cmd = t.PostStart
+	//
+	case action == trigger.Stop && hook == trigger.Pre && blocking == trigger.Block:
+		cmd = t.BlockingPreStop
+	case action == trigger.Stop && hook == trigger.Pre && blocking == trigger.NoBlock:
+		cmd = t.PreStop
+	case action == trigger.Stop && hook == trigger.Post && blocking == trigger.Block:
+		cmd = t.BlockingPostStop
+	case action == trigger.Stop && hook == trigger.Post && blocking == trigger.NoBlock:
+		cmd = t.PostStop
+	default:
+		return nil
+	}
+	if cmd == "" {
+		return nil
+	}
+	t.log.Info().Msgf("trigger %s %s %s: %s", blocking, hook, action, cmd)
+	return t.trigger(cmd)
+}
+
+func exitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitError, ok := err.(*exec.ExitError); ok {
+		return exitError.ExitCode()
+	}
+	return 0
+}
+
 // Start activates a resource interfacer
 func Start(r Driver) error {
-	return r.Start()
+	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Start); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	if err := r.Start(); err != nil {
+		return err
+	}
+	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Start); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	return nil
 }
 
 // Stop deactivates a resource interfacer

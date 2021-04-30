@@ -83,6 +83,54 @@ var genericKeywords = []keywords.Keyword{
 		Required: false,
 		Text:     "Assign the resource to a specific subset.",
 	},
+	{
+		Option:   "blocking_pre_start",
+		Attr:     "BlockingPreStart",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`start` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_pre_stop",
+		Attr:     "BlockingPreStop",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`stop` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_start",
+		Attr:     "PreStart",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`start` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "pre_stop",
+		Attr:     "PreStop",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`stop` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_start",
+		Attr:     "BlockingPostStart",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`start` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_stop",
+		Attr:     "BlockingPostStop",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`stop` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "post_start",
+		Attr:     "PostStart",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`start` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_stop",
+		Attr:     "PostStop",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`stop` action. Errors do not interrupt the action.",
+	},
 }
 
 func New(group drivergroup.T, name string) *T {

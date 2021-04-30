@@ -75,7 +75,7 @@ func (t *Base) masterStart(options OptsStart) error {
 	resourceLister := t.actionResourceLister(options.ResourceSelector)
 	return t.ResourceSets().Do(resourceLister, ordering.Asc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
-		return r.Start()
+		return resource.Start(r)
 	})
 }
 
