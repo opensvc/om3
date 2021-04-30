@@ -405,6 +405,8 @@ func (t *Selection) Do(action Action) []ActionResult {
 					return v.Render()
 				case fmt.Stringer:
 					return v.String()
+				case string:
+					return v + "\n"
 				default:
 					return ""
 				}
