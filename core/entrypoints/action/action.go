@@ -98,7 +98,7 @@ type (
 	// Actioner is the interface implemented by nodeaction.T and objectaction.T
 	Actioner interface {
 		DoRemote()
-		DoLocal()
+		DoLocal() error
 		DoAsync()
 		Options() T
 	}
@@ -106,17 +106,18 @@ type (
 
 // Do is the switch method between local, remote or async mode.
 // If Watch is set, end up starting a monitor on the selected objects.
-func Do(t Actioner) {
+func Do(t Actioner) error {
+	var err error
 	o := t.Options()
 	switch {
 	case o.NodeSelector != "":
 		t.DoRemote()
 	case o.Local || o.DefaultIsLocal:
-		t.DoLocal()
+		err = t.DoLocal()
 	case o.Target != "":
 		t.DoAsync()
 	case !clientcontext.IsSet():
-		t.DoLocal()
+		err = t.DoLocal()
 	default:
 		// post action on context endpoint
 		t.DoRemote()
@@ -125,12 +126,13 @@ func Do(t Actioner) {
 		m := monitor.New()
 		m.SetColor(o.Color)
 		m.SetFormat(o.Format)
-		cli, err := client.New(client.WithURL(o.Server))
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
+		cli, e := client.New(client.WithURL(o.Server))
+		if e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			return e
 		}
 		getter := cli.NewGetEvents().SetSelector(o.ObjectSelector)
 		m.DoWatch(getter, os.Stdout)
 	}
+	return err
 }

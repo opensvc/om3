@@ -2,6 +2,7 @@ package nodeaction
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -168,7 +169,7 @@ func (t T) Options() action.T {
 	return t.T
 }
 
-func (t T) DoLocal() {
+func (t T) DoLocal() error {
 	r := object.NewNode().Do(t.Node)
 	human := func() string {
 		s := ""
@@ -199,6 +200,13 @@ func (t T) DoLocal() {
 		Data:          r,
 		HumanRenderer: human,
 	}.Print()
+	if r.Panic != nil {
+		return errors.New("")
+	}
+	if r.Error != nil {
+		return errors.New("")
+	}
+	return nil
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
@@ -250,6 +258,6 @@ func (t T) DoRemote() {
 	fmt.Fprintf(os.Stderr, data.Err)
 }
 
-func (t T) Do() {
-	action.Do(t)
+func (t T) Do() error {
+	return action.Do(t)
 }

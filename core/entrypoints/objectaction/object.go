@@ -1,6 +1,7 @@
 package objectaction
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -184,7 +185,7 @@ func (t T) Options() action.T {
 	return t.T
 }
 
-func (t T) DoLocal() {
+func (t T) DoLocal() error {
 	log.Debug().
 		Str("format", t.Format).
 		Str("selector", t.ObjectSelector).
@@ -230,6 +231,12 @@ func (t T) DoLocal() {
 		Data:          rs,
 		HumanRenderer: human,
 	}.Print()
+	for _, ar := range rs {
+		if ar.Panic != nil || ar.Error != nil {
+			return errors.New("")
+		}
+	}
+	return nil
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
@@ -292,5 +299,9 @@ func (t T) DoRemote() {
 }
 
 func (t T) Do() {
-	action.Do(t)
+	err := action.Do(t)
+	if err != nil {
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
