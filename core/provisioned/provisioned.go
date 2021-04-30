@@ -55,7 +55,9 @@ func (t T) String() string {
 //
 //   .  Provisioned
 //   P  Not provisioned
+//   p  Mixed provisioned
 //   /  Not applicable
+//   ?  Unknown
 //
 func (t T) FlagString() string {
 	switch t {
@@ -66,6 +68,8 @@ func (t T) FlagString() string {
 	case Mixed:
 		return "p"
 	case NotApplicable:
+		return "/"
+	case Undef:
 		return "/"
 	default:
 		return "?"
@@ -87,7 +91,7 @@ func (t T) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
+// UnmarshalJSON unmarshals a quoted json string to the enum value
 func (t *T) UnmarshalJSON(b []byte) error {
 	var j interface{}
 	err := json.Unmarshal(b, &j)
@@ -108,7 +112,7 @@ func (t *T) Add(o T) {
 	*t = t.And(o)
 }
 
-// Add merges two states and returns the aggregate state.
+// And merges two states and returns the aggregate state.
 func (t T) And(o T) T {
 	// handle invariants
 	switch t {
