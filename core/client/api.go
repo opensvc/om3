@@ -45,3 +45,7 @@ func (t T) NewPostObjectCreate() *api.PostObjectCreate {
 func (t T) NewPostObjectMonitor() *api.PostObjectMonitor {
 	return api.NewPostObjectMonitor(t)
 }
+
+func (t T) NewPostObjectStatus() *api.PostObjectStatus {
+	return api.NewPostObjectStatus(t)
+}
