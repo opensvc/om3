@@ -44,13 +44,9 @@ func (t *Base) Status(options OptsStatus) (instance.Status, error) {
 }
 
 func (t *Base) postActionStatusEval() {
-	options := OptsStatus{}
-	options.Lock.Timeout, _ = time.ParseDuration("1s")
-	_, err := t.statusEval(options)
-	if err != nil {
-		t.log.Debug().Err(err).Msg("")
+	if _, err := t.statusEval(OptsStatus{}); err != nil {
+		t.log.Debug().Err(err).Msg("a status refresh is already in progress")
 	}
-	return
 }
 
 func (t *Base) statusEval(options OptsStatus) (data instance.Status, err error) {
