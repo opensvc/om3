@@ -1,0 +1,79 @@
+{
+  "app": "default",
+  "avail": "up",
+  "csum": "51d09e2e557c766e4d74ae73beb20ebb",
+  "env": "PRD",
+  "frozen": 0,
+  "kind": "svc",
+  "monitor": {
+    "global_expect": null,
+    "global_expect_updated": 1619529372.6079135,
+    "local_expect": "started",
+    "local_expect_updated": 1619529397.5926952,
+    "placement": "",
+    "restart": {
+      "fs#2": 1
+    },
+    "status": "idle",
+    "status_updated": 1619529551.5369837
+  },
+  "optional": "warn",
+  "overall": "warn",
+  "placement": "nodes order",
+  "provisioned": true,
+  "resources": {
+    "fs#1": {
+      "label": "fs.flag",
+      "provisioned": {
+        "mtime": 1619078447.4651313,
+        "state": true
+      },
+      "status": "up",
+      "type": "fs.flag"
+    },
+    "fs#2": {
+      "label": "fs.flag",
+      "log": [
+        "info: info msg",
+        "warn: warning msg1",
+        "error: warning msg"
+      ],
+      "provisioned": {
+        "mtime": 1619521998.09622,
+        "state": true
+      },
+      "status": "up",
+      "type": "fs.flag"
+    },
+    "sync#i0": {
+      "label": "rsync svc config to nodes",
+      "log": [
+        "warn: need update"
+      ],
+      "optional": true,
+      "status": "down",
+      "type": "sync.rsync"
+    }
+  },
+  "status_group": {
+    "DEFAULT": "n/a",
+    "app": "n/a",
+    "certificate": "n/a",
+    "container": "n/a",
+    "disk": "n/a",
+    "expose": "n/a",
+    "fs": "up",
+    "hashpolicy": "n/a",
+    "ip": "n/a",
+    "route": "n/a",
+    "share": "n/a",
+    "subset": "n/a",
+    "sync": "warn",
+    "task": "n/a",
+    "vhost": "n/a",
+    "volume": "n/a"
+  },
+  "subsets": {},
+  "topology": "failover",
+  "updated": 1619536894.2926133
+}
