@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
@@ -60,8 +61,8 @@ type (
 
 	// NodeServices groups instances configuration digest and status
 	NodeServices struct {
-		Config map[string]object.InstanceConfig `json:"config"`
-		Status map[string]object.InstanceStatus `json:"status"`
+		Config map[string]instance.Config `json:"config"`
+		Status map[string]instance.Status `json:"status"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and

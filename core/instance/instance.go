@@ -1,7 +1,8 @@
-package object
+package instance
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 
 	"github.com/guregu/null"
@@ -19,8 +20,8 @@ import (
 )
 
 type (
-	// InstanceMonitor describes the in-daemon states of an instance
-	InstanceMonitor struct {
+	// Monitor describes the in-daemon states of an instance
+	Monitor struct {
 		GlobalExpect        string         `json:"global_expect"`
 		LocalExpect         string         `json:"local_expect"`
 		Status              string         `json:"status"`
@@ -30,9 +31,9 @@ type (
 		Restart             map[string]int `json:"restart,omitempty"`
 	}
 
-	// InstanceConfig describes a configuration file content checksum,
+	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
-	InstanceConfig struct {
+	Config struct {
 		Nodename string   `json:"-"`
 		Path     path.T   `json:"-"`
 		Checksum string   `json:"csum"`
@@ -40,8 +41,8 @@ type (
 		Updated  timestamp.T
 	}
 
-	// InstanceStatus describes the instance status.
-	InstanceStatus struct {
+	// Status describes the instance status.
+	Status struct {
 		Nodename    string                            `json:"-"`
 		Path        path.T                            `json:"-"`
 		App         string                            `json:"app,omitempty"`
@@ -53,7 +54,7 @@ type (
 		Env         string                            `json:"env,omitempty"`
 		Frozen      timestamp.T                       `json:"frozen,omitempty"`
 		Kind        kind.T                            `json:"kind"`
-		Monitor     InstanceMonitor                   `json:"monitor"`
+		Monitor     Monitor                           `json:"monitor"`
 		Optional    status.T                          `json:"optional,omitempty"`
 		Orchestrate string                            `json:"orchestrate,omitempty"` // TODO enum
 		Topology    topology.T                        `json:"topology,omitempty"`
@@ -98,16 +99,16 @@ func (t ResourceRunningSet) Has(rid string) bool {
 }
 
 // UnmarshalJSON serializes the type instance as JSON.
-func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
-	type tempT InstanceStatus
-	temp := tempT(InstanceStatus{
+func (t *Status) UnmarshalJSON(b []byte) error {
+	type tempT Status
+	temp := tempT(Status{
 		Priority: priority.Default,
 	})
 	if err := json.Unmarshal(b, &temp); err != nil {
-		log.Error().Err(err).Msg("unmarshal InstanceStatus")
+		log.Error().Err(err).Msg("unmarshal instance status")
 		return err
 	}
-	*t = InstanceStatus(temp)
+	*t = Status(temp)
 	return nil
 }
 
@@ -117,7 +118,7 @@ func (t *InstanceStatus) UnmarshalJSON(b []byte) error {
 // 2/ subset
 // 3/ resource name
 //
-func (t *InstanceStatus) SortedResources() []resource.ExposedStatus {
+func (t *Status) SortedResources() []resource.ExposedStatus {
 	l := make([]resource.ExposedStatus, 0)
 	for k, v := range t.Resources {
 		v.ResourceID = *resourceid.Parse(k)
@@ -144,4 +145,49 @@ func (a ResourceOrder) Less(i, j int) bool {
 	default:
 		return a[i].ResourceID.Name < a[j].ResourceID.Name
 	}
+}
+
+//
+// resourceFlagsString formats resource flags as a vector of characters.
+//
+//   R  Running
+//   M  Monitored
+//   D  Disabled
+//   O  Optional
+//   E  Encap
+//   P  Provisioned
+//   S  Standby
+//
+func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) string {
+	flags := ""
+
+	// Running task or sync
+	if t.Running.Has(rid.Name) {
+		flags += "R"
+	} else {
+		flags += "."
+	}
+
+	flags += r.Monitor.FlagString()
+	flags += r.Disable.FlagString()
+	flags += r.Optional.FlagString()
+	flags += r.Encap.FlagString()
+	flags += r.Provisioned.State.FlagString()
+	flags += r.Standby.FlagString()
+
+	// Restart and retries
+	retries := 0
+	retries, _ = t.Monitor.Restart[rid.Name]
+	remaining := r.Restart - retries
+	switch {
+	case r.Restart <= 0:
+		flags += "."
+	case remaining < 0:
+		flags += "0"
+	case remaining < 10:
+		flags += fmt.Sprintf("%d", remaining)
+	default:
+		flags += "+"
+	}
+	return flags
 }

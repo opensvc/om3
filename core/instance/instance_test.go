@@ -1,13 +1,14 @@
-package object
+package instance
 
 import (
 	"encoding/json"
-	"github.com/opensvc/testhelper"
-	require "github.com/stretchr/testify/require"
 	"io/ioutil"
-	"opensvc.com/opensvc/config"
 	"path/filepath"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	require "github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/config"
 )
 
 func TestInstanceStatusUnmarshalJSON(t *testing.T) {

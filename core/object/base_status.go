@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/topology"
@@ -26,9 +28,9 @@ func (t *Base) statusFile() string {
 }
 
 // Status returns the service status dataset
-func (t *Base) Status(options OptsStatus) (InstanceStatus, error) {
+func (t *Base) Status(options OptsStatus) (instance.Status, error) {
 	var (
-		data InstanceStatus
+		data instance.Status
 		err  error
 	)
 	if options.Refresh || t.statusDumpOutdated() {
@@ -41,8 +43,18 @@ func (t *Base) Status(options OptsStatus) (InstanceStatus, error) {
 	return t.statusEval(options)
 }
 
-func (t *Base) statusEval(options OptsStatus) (data InstanceStatus, err error) {
-	lockErr := t.lockedAction("status", options.Lock.Timeout, "", func() error {
+func (t *Base) postActionStatusEval() {
+	options := OptsStatus{}
+	options.Lock.Timeout, _ = time.ParseDuration("1s")
+	_, err := t.statusEval(options)
+	if err != nil {
+		t.log.Debug().Err(err).Msg("")
+	}
+	return
+}
+
+func (t *Base) statusEval(options OptsStatus) (data instance.Status, err error) {
+	lockErr := t.lockedAction("status", options.Lock, "", func() error {
 		data, err = t.lockedStatusEval()
 		return err
 	})
@@ -52,7 +64,7 @@ func (t *Base) statusEval(options OptsStatus) (data InstanceStatus, err error) {
 	return
 }
 
-func (t *Base) lockedStatusEval() (data InstanceStatus, err error) {
+func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
 	data.Topology = t.Topology()
@@ -72,7 +84,7 @@ func (t *Base) lockedStatusEval() (data InstanceStatus, err error) {
 	return
 }
 
-func (t *Base) resourceStatusEval(data *InstanceStatus) error {
+func (t *Base) resourceStatusEval(data *instance.Status) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
 	return t.ResourceSets().Do(t, ordering.Asc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
@@ -111,26 +123,42 @@ func (t Base) statusFilePair() (final string, tmp string) {
 	return
 }
 
-func (t *Base) statusDump(data InstanceStatus) error {
+func (t *Base) statusDump(data instance.Status) error {
 	p, tmp := t.statusFilePair()
 	jsonFile, err := os.Create(tmp)
 	if err != nil {
 		return err
 	}
+	defer os.Remove(tmp)
 	enc := json.NewEncoder(jsonFile)
 	err = enc.Encode(data)
 	if err != nil {
-		t.log.Error().
-			Str("file", tmp).
-			Err(err).
-			Msg("")
+		t.log.Error().Str("file", tmp).Err(err).Msg("")
 		return err
 	}
-	return os.Rename(tmp, p)
+	if err := os.Rename(tmp, p); err != nil {
+		t.log.Error().Str("file", tmp).Err(err).Msg("")
+		return err
+	}
+	t.log.Debug().Str("file", p).Msg("dumped")
+	_ = t.postObjectStatus(data)
+	return nil
 }
 
-func (t *Base) statusLoad() (InstanceStatus, error) {
-	data := InstanceStatus{}
+func (t *Base) postObjectStatus(data instance.Status) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	req := c.NewPostObjectStatus()
+	req.Path = t.Path.String()
+	req.Data = data
+	_, err = req.Do()
+	return err
+}
+
+func (t *Base) statusLoad() (instance.Status, error) {
+	data := instance.Status{}
 	p := t.statusFile()
 	jsonFile, err := os.Open(p)
 	if err != nil {

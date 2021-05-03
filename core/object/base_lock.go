@@ -35,10 +35,14 @@ func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.
 	return lock, nil
 }
 
-func (t *Base) lockedAction(group string, timeout time.Duration, intent string, f func() error) error {
+func (t *Base) lockedAction(group string, options OptsLocking, intent string, f func() error) error {
+	if options.Disable {
+		// --nolock handling
+		return nil
+	}
 	p := t.lockPath(group)
 	lock := flock.New(p, xsession.Id(), fcntllock.New)
-	err := lock.Lock(timeout, intent)
+	err := lock.Lock(options.Timeout, intent)
 	if err != nil {
 		return err
 	}

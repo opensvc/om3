@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
@@ -23,7 +23,7 @@ func (f Frame) sObjectInstance(path string, node string) string {
 	return s
 }
 
-func sObjectInstanceAvail(objectAvail status.T, instance object.InstanceStatus) string {
+func sObjectInstanceAvail(objectAvail status.T, instance instance.Status) string {
 	if instance.Preserved {
 		return iconPreserved
 	}
@@ -52,49 +52,49 @@ func sObjectInstanceAvail(objectAvail status.T, instance object.InstanceStatus) 
 	return instance.Avail.String()
 }
 
-func sObjectInstanceOverall(instance object.InstanceStatus) string {
+func sObjectInstanceOverall(instance instance.Status) string {
 	if instance.Overall == status.Warn {
 		return iconWarning
 	}
 	return ""
 }
 
-func sObjectInstanceDRP(instance object.InstanceStatus) string {
+func sObjectInstanceDRP(instance instance.Status) string {
 	if instance.DRP {
 		return iconDRP
 	}
 	return ""
 }
 
-func sObjectInstanceLeader(instance object.InstanceStatus) string {
+func sObjectInstanceLeader(instance instance.Status) string {
 	if instance.Monitor.Placement == "leader" {
 		return iconLeader
 	}
 	return ""
 }
 
-func sObjectInstanceFrozen(instance object.InstanceStatus) string {
+func sObjectInstanceFrozen(instance instance.Status) string {
 	if !instance.Frozen.IsZero() {
 		return iconFrozen
 	}
 	return ""
 }
 
-func sObjectInstanceUnprovisioned(instance object.InstanceStatus) string {
+func sObjectInstanceUnprovisioned(instance instance.Status) string {
 	if instance.Provisioned == provisioned.False {
 		return iconProvisionAlert
 	}
 	return ""
 }
 
-func sObjectInstanceMonitorStatus(instance object.InstanceStatus) string {
+func sObjectInstanceMonitorStatus(instance instance.Status) string {
 	if instance.Monitor.Status != "idle" {
 		return " " + instance.Monitor.Status
 	}
 	return ""
 }
 
-func sObjectInstanceMonitorGlobalExpect(instance object.InstanceStatus) string {
+func sObjectInstanceMonitorGlobalExpect(instance instance.Status) string {
 	if instance.Monitor.GlobalExpect != "" {
 		return hiblack(" >" + instance.Monitor.GlobalExpect)
 	}

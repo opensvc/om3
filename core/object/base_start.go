@@ -19,9 +19,11 @@ type OptsStart struct {
 
 // Start starts the local instance of the object
 func (t *Base) Start(options OptsStart) error {
-	return t.lockedAction("", options.Lock.Timeout, "start", func() error {
+	err := t.lockedAction("", options.Lock, "start", func() error {
 		return t.lockedStart(options)
 	})
+	t.postActionStatusEval()
+	return err
 }
 
 func (t *Base) lockedStart(options OptsStart) error {

@@ -1,13 +1,10 @@
 package object
 
 import (
-	"fmt"
 	"strings"
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
 )
@@ -59,7 +56,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 		}
 		n := subsetNode.AddNode()
 		n.AddColumn().AddText(r.ResourceID.Name)
-		n.AddColumn().AddText(t.Status.resourceFlagsString(r.ResourceID, r))
+		n.AddColumn().AddText(t.Status.ResourceFlagsString(r.ResourceID, r))
 		n.AddColumn().AddText(config.ColoredStatus(r.Status))
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
@@ -137,49 +134,4 @@ func (t InstanceStates) descString() string {
 	}
 
 	return strings.Join(l, " ")
-}
-
-//
-// resourceFlagsString formats resource flags as a vector of characters.
-//
-//   R  Running
-//   M  Monitored
-//   D  Disabled
-//   O  Optional
-//   E  Encap
-//   P  Provisioned
-//   S  Standby
-//
-func (t InstanceStatus) resourceFlagsString(rid resourceid.T, r resource.ExposedStatus) string {
-	flags := ""
-
-	// Running task or sync
-	if t.Running.Has(rid.Name) {
-		flags += "R"
-	} else {
-		flags += "."
-	}
-
-	flags += r.Monitor.FlagString()
-	flags += r.Disable.FlagString()
-	flags += r.Optional.FlagString()
-	flags += r.Encap.FlagString()
-	flags += r.Provisioned.State.FlagString()
-	flags += r.Standby.FlagString()
-
-	// Restart and retries
-	retries := 0
-	retries, _ = t.Monitor.Restart[rid.Name]
-	remaining := r.Restart - retries
-	switch {
-	case r.Restart <= 0:
-		flags += "."
-	case remaining < 0:
-		flags += "0"
-	case remaining < 10:
-		flags += fmt.Sprintf("%d", remaining)
-	default:
-		flags += "+"
-	}
-	return flags
 }

@@ -2,6 +2,7 @@ package object
 
 import (
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/timestamp"
@@ -15,7 +16,7 @@ type (
 
 	// Baser is implemented by all object kinds.
 	Baser interface {
-		Status(OptsStatus) (InstanceStatus, error)
+		Status(OptsStatus) (instance.Status, error)
 		Exists() bool
 		IsVolatile() bool
 		ResourceSets() resourceset.L

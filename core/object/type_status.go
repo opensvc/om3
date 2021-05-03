@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
@@ -37,9 +38,9 @@ type (
 
 	// InstanceStates groups config and status of the object as seen by the daemon.
 	InstanceStates struct {
-		Node   InstanceNode   `json:"node,omitempty"`
-		Config InstanceConfig `json:"config,omitempty"`
-		Status InstanceStatus `json:"status,omitempty"`
+		Node   InstanceNode    `json:"node,omitempty"`
+		Config instance.Config `json:"config,omitempty"`
+		Status instance.Status `json:"status,omitempty"`
 	}
 
 	// InstanceNode contains the node information displayed in print status.
