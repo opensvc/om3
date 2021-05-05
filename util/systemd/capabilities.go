@@ -1,0 +1,20 @@
+package systemd
+
+import "opensvc.com/opensvc/util/capabilities"
+
+const (
+	NodeCapability = "node.x.systemd"
+)
+
+// CapabilitiesScanner is the capabilities scanner for systemd
+func CapabilitiesScanner() ([]string, error) {
+	if HasSystemd() {
+		return []string{NodeCapability}, nil
+	}
+	return nil, nil
+}
+
+// register node scanners
+func init() {
+	capabilities.Register(CapabilitiesScanner)
+}
