@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/systemd"
 	"opensvc.com/opensvc/util/logging"
 
 	"github.com/mitchellh/go-homedir"
@@ -61,6 +62,9 @@ func persistentPreRunE(_ *cobra.Command, _ []string) error {
 		Logger()
 	log.Logger = l
 
+	if err := systemd.JoinAgentCgroup(); err != nil {
+		l.Debug().Err(err).Msg("")
+	}
 	return nil
 }
 

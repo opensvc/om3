@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
+	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
