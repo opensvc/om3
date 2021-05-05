@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/golang-collections/collections/set"
@@ -367,30 +368,34 @@ func (t T) trigger(s string) error {
 	if err != nil {
 		return err
 	}
+	bufout := bufio.NewReader(stdout)
+	buferr := bufio.NewReader(stderr)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	bufout := bufio.NewReader(stdout)
-	buferr := bufio.NewReader(stderr)
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
 		for {
 			line, _, _ := bufout.ReadLine()
 			if len(line) == 0 {
-				continue
+				break
 			}
 			t.log.Info().Msg(string(line))
 		}
+		wg.Done()
 	}()
 	go func() {
 		for {
 			line, _, _ := buferr.ReadLine()
 			if len(line) == 0 {
-				continue
+				break
 			}
 			t.log.Error().Msg(string(line))
 		}
+		wg.Done()
 	}()
-
+	wg.Wait()
 	return cmd.Wait()
 }
 
