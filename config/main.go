@@ -71,10 +71,11 @@ func (t *T) GetString(k key.T) string {
 }
 
 func (t *T) GetStringStrict(k key.T) (string, error) {
-	if s, err := t.Eval(k, ""); err != nil {
+	if conv, s, err := t.Eval(k); err != nil {
 		return "", err
 	} else {
-		return s, nil
+		v, e := conv(s)
+		return v.(string), e
 	}
 }
 
@@ -84,10 +85,11 @@ func (t *T) GetSlice(k key.T) []string {
 }
 
 func (t *T) GetSliceStrict(k key.T) ([]string, error) {
-	if s, err := t.Eval(k, ""); err != nil {
+	if conv, s, err := t.Eval(k); err != nil {
 		return []string{}, err
 	} else {
-		return converters.ToList(s)
+		v, e := conv(s)
+		return v.([]string), e
 	}
 }
 
@@ -97,10 +99,11 @@ func (t *T) GetBool(k key.T) bool {
 }
 
 func (t *T) GetBoolStrict(k key.T) (bool, error) {
-	if s, err := t.Eval(k, ""); err != nil {
+	if conv, s, err := t.Eval(k); err != nil {
 		return false, err
 	} else {
-		return converters.ToBool(s)
+		v, e := conv(s)
+		return v.(bool), e
 	}
 }
 
@@ -110,10 +113,11 @@ func (t *T) GetInt(k key.T) int {
 }
 
 func (t *T) GetIntStrict(k key.T) (int, error) {
-	if s, err := t.Eval(k, ""); err != nil {
+	if conv, s, err := t.Eval(k); err != nil {
 		return 0, err
 	} else {
-		return converters.ToInt(s)
+		v, e := conv(s)
+		return v.(int), e
 	}
 }
 
@@ -259,6 +263,10 @@ func (t *T) write() (err error) {
 	return os.Rename(fName, t.ConfigFilePath)
 }
 
+func (t *T) Eval(k key.T) (converters.F, string, error) {
+	return t.EvalAs(k, "")
+}
+
 //
 // Get returns a key value,
 // * contextualized for a node (by default the local node, customized by the
@@ -266,15 +274,18 @@ func (t *T) write() (err error) {
 // * dereferenced
 // * evaluated
 //
-func (t *T) Eval(k key.T, impersonate string) (v string, err error) {
+func (t *T) EvalAs(k key.T, impersonate string) (f converters.F, v string, err error) {
 	kw := t.Referrer.KeywordLookup(k)
 	if !kw.IsZero() {
-		return t.EvalKeyword(k, kw, impersonate)
+		return t.EvalKeywordAs(k, kw, impersonate)
 	}
-	return "", errors.Wrapf(ErrNoKeyword, "%s", k)
+	return nil, "", errors.Wrapf(ErrNoKeyword, "%s", k)
 }
 
-func (t *T) EvalKeyword(k key.T, kw keywords.Keyword, impersonate string) (v string, err error) {
+func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (f converters.F, v string, err error) {
+	f = func(s string) (interface{}, error) {
+		return converters.Convert(s, kw.Converter)
+	}
 	if kw.Scopable {
 		v, err = t.descope(k, impersonate)
 	} else {
@@ -283,14 +294,14 @@ func (t *T) EvalKeyword(k key.T, kw keywords.Keyword, impersonate string) (v str
 	switch {
 	case errors.Is(err, ErrExist):
 		if kw.Required {
-			return "", err
+			return nil, "", err
 		}
 		v = kw.Default
 		err = nil
 	case err != nil:
-		return "", err
+		return nil, "", err
 	}
-	return t.replaceReferences(v, k.Section, impersonate), nil
+	return f, t.replaceReferences(v, k.Section, impersonate), nil
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) string {

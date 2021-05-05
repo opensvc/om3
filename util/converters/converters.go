@@ -13,6 +13,7 @@ import (
 type (
 	// T is the integer identifier of a converter
 	T int
+	F func(string) (interface{}, error)
 )
 
 const (

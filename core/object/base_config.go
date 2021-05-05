@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/topology"
@@ -102,6 +103,34 @@ func (t Base) Peers() []string {
 	default:
 		return []string{}
 	}
+}
+
+func (t Base) Children() []path.Relation {
+	data := make([]path.Relation, 0)
+	k := key.Parse("children")
+	l, err := t.config.GetSliceStrict(k)
+	if err != nil {
+		t.log.Error().Err(err).Msg("")
+		return data
+	}
+	for _, e := range l {
+		data = append(data, path.Relation(e))
+	}
+	return data
+}
+
+func (t Base) Parents() []path.Relation {
+	data := make([]path.Relation, 0)
+	k := key.Parse("parents")
+	l, err := t.config.GetSliceStrict(k)
+	if err != nil {
+		t.log.Error().Err(err).Msg("")
+		return data
+	}
+	for _, e := range l {
+		data = append(data, path.Relation(e))
+	}
+	return data
 }
 
 func (t Base) FlexMin() int {

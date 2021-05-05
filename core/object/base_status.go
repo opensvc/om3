@@ -68,6 +68,8 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.Priority = t.Priority()
 	data.Kind = t.Path.Kind
 	data.Updated = timestamp.Now()
+	data.Parents = t.Parents()
+	data.Children = t.Children()
 	if err = t.resourceStatusEval(&data); err != nil {
 		return
 	}

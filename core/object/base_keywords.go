@@ -115,6 +115,19 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Section:   "DEFAULT",
+		Option:    "parents",
+		Converter: converters.ListLowercase,
+		Text:      "List of services or instances expressed as ``<path>[@<nodename>]`` that must be ``avail up`` before allowing this service to be started by the daemon monitor. Whitespace separated.",
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "children",
+		Default:   "",
+		Converter: converters.ListLowercase,
+		Text:      "List of services that must be ``avail down`` before allowing this service to be stopped by the daemon monitor. Whitespace separated.",
+	},
+	{
+		Section:   "DEFAULT",
 		Option:    "priority",
 		Default:   "50",
 		Converter: converters.Int,

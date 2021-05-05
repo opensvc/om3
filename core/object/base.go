@@ -19,7 +19,6 @@ import (
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/core/resourceset"
-	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
@@ -215,11 +214,11 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	for _, kw := range m.Keywords {
 		t.log.Debug().Str("kw", kw.Option).Msg("")
 		k := key.New(rid, kw.Option)
-		val, err := t.config.EvalKeyword(k, kw, "")
+		conv, val, err := t.config.EvalKeywordAs(k, kw, "")
 		if err != nil {
 			return err
 		}
-		converted, err := converters.Convert(val, kw.Converter)
+		converted, err := conv(val)
 		if err != nil {
 			return err
 		}

@@ -13,5 +13,6 @@ type OptsEval struct {
 // Eval returns a keyword value
 func (t *Base) Eval(options OptsEval) (interface{}, error) {
 	k := key.Parse(options.Keyword)
-	return t.config.Eval(k, options.Impersonate)
+	_, v, err := t.config.EvalAs(k, options.Impersonate)
+	return v, err
 }
