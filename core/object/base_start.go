@@ -22,6 +22,7 @@ func (t *Base) Start(options OptsStart) error {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
+	t.setenv("start", false)
 	defer t.postActionStatusEval()
 	return t.lockedAction("", options.Lock, "start", func() error {
 		return t.lockedStart(options)

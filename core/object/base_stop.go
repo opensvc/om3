@@ -19,6 +19,7 @@ func (t *Base) Stop(options OptsStop) error {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
+	t.setenv("stop", false)
 	defer t.postActionStatusEval()
 	return t.lockedAction("", options.Lock, "stop", func() error {
 		return t.lockedStop(options)

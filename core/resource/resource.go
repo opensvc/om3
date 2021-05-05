@@ -33,6 +33,10 @@ type (
 		VarDir() string
 	}
 
+	Setenver interface {
+		Setenv()
+	}
+
 	// Driver exposes what can be done with a resource
 	Driver interface {
 		Label() string
@@ -446,8 +450,15 @@ func exitCode(err error) int {
 	return 0
 }
 
+func Setenv(r Driver) {
+	if s, ok := r.(Setenver); ok {
+		s.Setenv()
+	}
+}
+
 // Start activates a resource interfacer
 func Start(r Driver) error {
+	Setenv(r)
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Start); err != nil {
 		return errors.Wrapf(err, "trigger")
 	}
@@ -468,11 +479,28 @@ func Start(r Driver) error {
 
 // Stop deactivates a resource interfacer
 func Stop(r Driver) error {
-	return r.Stop()
+	Setenv(r)
+	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Stop); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	if err := r.Stop(); err != nil {
+		return err
+	}
+	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Stop); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Stop); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	return nil
 }
 
 // Status evaluates the status of a resource interfacer
 func Status(r Driver) status.T {
+	Setenv(r)
 	return r.Status()
 }
 
