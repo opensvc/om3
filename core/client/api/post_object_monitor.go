@@ -9,7 +9,9 @@ import (
 type PostObjectMonitor struct {
 	client         Poster `json:"-"`
 	ObjectSelector string `json:"path"`
-	GlobalExpect   string `json:"global_expect"`
+	State          string `json:"state,omitempty"`
+	LocalExpect    string `json:"local_expect,omitempty"`
+	GlobalExpect   string `json:"global_expect,omitempty"`
 }
 
 // NewPostObjectMonitor allocates a PostObjectMonitor struct and sets
