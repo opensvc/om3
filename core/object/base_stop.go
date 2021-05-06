@@ -38,6 +38,8 @@ func (t *Base) lockedStop(options OptsStop) error {
 }
 
 func (t *Base) masterStop(options OptsStop) error {
+	t.notifyAction("stop", "stopping", options.Global.DryRun, options.ResourceSelector)
+	t.mayFreeze(options.Global.DryRun, options.ResourceSelector)
 	resourceLister := t.actionResourceLister(options.ResourceSelector)
 	return t.ResourceSets().Do(resourceLister, ordering.Desc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")

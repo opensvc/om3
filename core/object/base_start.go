@@ -77,6 +77,7 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
+	t.notifyAction("start", "starting", options.Global.DryRun, options.ResourceSelector)
 	resourceLister := t.actionResourceLister(options.ResourceSelector)
 	return t.ResourceSets().Do(resourceLister, ordering.Asc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
