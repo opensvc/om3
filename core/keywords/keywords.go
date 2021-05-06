@@ -1,6 +1,8 @@
 package keywords
 
 import (
+	"strings"
+
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
@@ -47,8 +49,12 @@ type (
 )
 
 func (t Store) Lookup(k key.T) Keyword {
+	driverGroup := strings.Split(k.Section, "#")[0]
 	for _, kw := range t {
-		if k.Section == kw.Section && k.Option == kw.Option {
+		if k.Option != kw.Option {
+			continue
+		}
+		if k.Section == kw.Section || driverGroup == kw.Section {
 			return kw
 		}
 	}
