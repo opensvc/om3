@@ -133,6 +133,13 @@ var keywordStore = keywords.Store{
 		Converter: converters.Int,
 		Text:      "A scheduling priority (the smaller the more priority) used by the monitor thread to trigger actions for the top priority services, so that the :kw:`node.max_parallel` constraint doesn't prevent prior services to start first. The priority setting is dropped from a service configuration injected via the api by a user not granted the prioritizer role.",
 	},
+	{
+		Section:   "subset",
+		Option:    "parallel",
+		Scopable:  true,
+		Converter: converters.Bool,
+		Text:      "If set to ``true``, actions are executed in parallel amongst the subset member resources.",
+	},
 }
 
 func (t Base) KeywordLookup(k key.T) keywords.Keyword {
