@@ -179,7 +179,12 @@ func (t *Base) Resources() resource.Drivers {
 	if t.resources != nil {
 		return t.resources
 	}
-	t.resources = make(resource.Drivers, 0)
+	t.resources = t.configureResources()
+	return t.resources
+}
+
+func (t *Base) configureResources() resource.Drivers {
+	resources := make(resource.Drivers, 0)
 	for _, k := range t.config.SectionStrings() {
 		rid := resourceid.Parse(k)
 		if rid.DriverGroup() == drivergroup.Unknown {
@@ -203,9 +208,9 @@ func (t *Base) Resources() resource.Drivers {
 				Msg("configureResource")
 			continue
 		}
-		t.resources = append(t.resources, r)
+		resources = append(resources, r)
 	}
-	return t.resources
+	return resources
 }
 
 func (t Base) configureResource(r resource.Driver, rid string) error {
