@@ -99,6 +99,10 @@ func FormatSectionName(driverGroupName, name string) string {
 	return prefix + driverGroupName + separator + name
 }
 
+func (t T) Fullname() string {
+	return t.SectionName[len(prefix):]
+}
+
 func (t T) String() string {
 	return t.SectionName
 }
@@ -139,9 +143,32 @@ func (t T) Do(resourceLister ResourceLister, order ordering.T, fn DoFunc) error 
 	return t.doSerial(resources, fn)
 }
 
+type result struct {
+	Error    error
+	Resource resource.Driver
+}
+
 func (t T) doParallel(resources resource.Drivers, fn DoFunc) error {
-	fmt.Println("xx TODO: resourceset do parallel")
-	return nil
+	var err error
+	q := make(chan result, len(resources))
+	defer close(q)
+	do := func(q chan<- result, r resource.Driver) {
+		q <- result{
+			Error:    fn(r),
+			Resource: r,
+		}
+	}
+	for _, r := range resources {
+		go do(q, r)
+	}
+	for i := 0; i < len(resources); i++ {
+		res := <-q
+		if res.Resource.IsOptional() {
+			continue
+		}
+		err = res.Error
+	}
+	return err
 }
 
 func (t T) doSerial(resources resource.Drivers, fn DoFunc) error {
@@ -151,7 +178,6 @@ func (t T) doSerial(resources resource.Drivers, fn DoFunc) error {
 			continue
 		}
 		if r.IsOptional() {
-			//fmt.Println("xx ignore err on optional resource", err, r)
 			continue
 		}
 		return err

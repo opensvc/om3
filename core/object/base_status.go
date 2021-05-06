@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/ordering"
@@ -70,6 +72,8 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.Updated = timestamp.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
+	data.DRP = t.config.IsInDRPNodes(config.Node.Hostname)
+	data.Subsets = t.subsetsStatus()
 	if err = t.resourceStatusEval(&data); err != nil {
 		return
 	}
@@ -82,17 +86,33 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	return
 }
 
+func (t *Base) subsetsStatus() map[string]instance.SubsetStatus {
+	data := make(map[string]instance.SubsetStatus)
+	for _, rs := range t.ResourceSets() {
+		if !rs.Parallel {
+			continue
+		}
+		data[rs.Fullname()] = instance.SubsetStatus{
+			Parallel: rs.Parallel,
+		}
+	}
+	return data
+}
+
 func (t *Base) resourceStatusEval(data *instance.Status) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
+	var mu sync.Mutex
 	return t.ResourceSets().Do(t, ordering.Asc, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
 		xd := resource.GetExposedStatus(r)
+		mu.Lock()
 		data.Resources[r.RID()] = xd
 		data.Overall.Add(xd.Status)
 		if !xd.Optional {
 			data.Avail.Add(xd.Status)
 		}
 		data.Provisioned.Add(xd.Provisioned.State)
+		mu.Unlock()
 		return nil
 	})
 }
