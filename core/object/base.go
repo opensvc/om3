@@ -71,8 +71,27 @@ type (
 		ID     string `flag:"rid"`
 		Subset string `flag:"subsets"`
 		Tag    string `flag:"tags"`
+		UpTo   string `flag:"upto"`
+		DownTo string `flag:"downto"`
 	}
 )
+
+func (t OptsResourceSelector) IsZero() bool {
+	switch {
+	case t.ID != "":
+		return true
+	case t.Subset != "":
+		return true
+	case t.Tag != "":
+		return true
+	case t.UpTo != "":
+		return true
+	case t.DownTo != "":
+		return true
+	default:
+		return false
+	}
+}
 
 // List returns the stringified path as data
 func (t *Base) List() (string, error) {
