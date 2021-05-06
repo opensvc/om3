@@ -58,6 +58,11 @@ func (t Base) ID() uuid.UUID {
 	return t.id
 }
 
+func (t Base) Orchestrate() string {
+	k := key.Parse("orchestrate")
+	return t.config.GetString(k)
+}
+
 func (t Base) Env() string {
 	k := key.Parse("env")
 	if s := t.config.GetString(k); s != "" {

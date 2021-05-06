@@ -65,6 +65,7 @@ func (t *Base) statusEval(options OptsStatus) (data instance.Status, err error) 
 func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
+	data.Orchestrate = t.Orchestrate()
 	data.Topology = t.Topology()
 	data.Placement = t.Placement()
 	data.Priority = t.Priority()
@@ -74,6 +75,7 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.Children = t.Children()
 	data.DRP = t.config.IsInDRPNodes(config.Node.Hostname)
 	data.Subsets = t.subsetsStatus()
+	data.Frozen = t.Frozen()
 	if err = t.resourceStatusEval(&data); err != nil {
 		return
 	}

@@ -127,6 +127,13 @@ var keywordStore = keywords.Store{
 		Text:      "List of services that must be ``avail down`` before allowing this service to be stopped by the daemon monitor. Whitespace separated.",
 	},
 	{
+		Section:    "DEFAULT",
+		Option:     "orchestrate",
+		Default:    "no",
+		Candidates: []string{"no", "ha", "start"},
+		Text:       "If set to ``no``, disable service orchestration by the OpenSVC daemon monitor, including service start on boot. If set to ``start`` failover services won't failover automatically, though the service instance on the natural placement leader is started if another instance is not already up. Flex services won't restart the :kw:`flex_target` number of up instances. Resource restart is still active whatever the :kw:`orchestrate` value.",
+	},
+	{
 		Section:   "DEFAULT",
 		Option:    "priority",
 		Default:   "50",
