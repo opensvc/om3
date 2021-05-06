@@ -6,6 +6,14 @@ var Tags = map[string]Opt{
 		Default: "auto",
 		Desc:    "output colorization yes|no|auto",
 	},
+	"downto": Opt{
+		Long: "downto",
+		Desc: "stop the service down to the specified rid or driver group",
+	},
+	"upto": Opt{
+		Long: "upto",
+		Desc: "start the service up to the specified rid or driver group",
+	},
 	"format": Opt{
 		Long:    "format",
 		Default: "auto",
@@ -22,12 +30,12 @@ var Tags = map[string]Opt{
 	"time": Opt{
 		Long:    "time",
 		Default: "5m",
-		Desc:    "Stop waiting for the object to reach the target state after a duration",
+		Desc:    "stop waiting for the object to reach the target state after a duration",
 	},
 	"waitlock": Opt{
 		Long:    "waitlock",
 		Default: "30s",
-		Desc:    "Lock acquire timeout",
+		Desc:    "lock acquire timeout",
 	},
 	"dry-run": Opt{
 		Long: "dry-run",
@@ -35,7 +43,7 @@ var Tags = map[string]Opt{
 	},
 	"local": Opt{
 		Long: "local",
-		Desc: "Inline action on local instance",
+		Desc: "inline action on local instance",
 	},
 	"force": Opt{
 		Long: "force",
