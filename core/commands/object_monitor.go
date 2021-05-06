@@ -53,9 +53,15 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 
 	if t.Watch {
 		getter := cli.NewGetEvents().SetSelector(mergedSelector)
-		m.DoWatch(getter, os.Stdout)
+		if err := m.DoWatch(getter, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	} else {
 		getter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
-		m.Do(getter, os.Stdout)
+		if err := m.Do(getter, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 }

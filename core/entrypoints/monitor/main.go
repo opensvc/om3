@@ -4,14 +4,13 @@ package monitor
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/inancgumus/screen"
-	"github.com/rs/zerolog/log"
+	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
@@ -93,22 +92,32 @@ type EventGetter interface {
 }
 
 // Do renders the cluster status
-func (m T) Do(getter Getter, out io.Writer) {
+func (m T) Do(getter Getter, out io.Writer) error {
 	var err error
 	b, err := getter.Get()
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	var data cluster.Status
 	if err := json.Unmarshal(b, &data); err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	m.doOneShot(data, false, out)
+	return nil
 }
 
 func (m T) DoWatch(eventGetter EventGetter, out io.Writer) error {
+	for {
+		if err := m.watch(eventGetter, out); err != nil {
+			return err
+		}
+		// unexpected: avoid fast looping
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
+}
+
+func (m T) watch(eventGetter EventGetter, out io.Writer) error {
 	var (
 		data   cluster.Status
 		ok     bool
@@ -130,45 +139,42 @@ func (m T) DoWatch(eventGetter EventGetter, out io.Writer) error {
 	}
 	b = *evt.Data
 	if err := json.Unmarshal(*evt.Data, &data); err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	m.doOneShot(data, true, out)
 	for e := range events {
 		evt, err := event.DecodeFromJSON(e)
 		if err != nil {
-			log.Debug().Err(err).Msgf("decode event %v", e)
+			//log.Debug().Err(err).Msgf("decode event %v", e)
 			continue
 		}
+
+		switch evt.Kind {
+		case "event":
+			continue
+		case "patch", "full":
+			// pass
+		default:
+			// unexpected: avoid fast looping
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
 		if err := handleEvent(&b, evt); err != nil {
-			log.Error().Err(err).Msgf("handle event %v", e)
-			return err
+			return errors.Wrap(err, "handle event")
 		}
 		if err := json.Unmarshal(b, &data); err != nil {
-			log.Error().Err(err).Msgf("unmarshal event data %v", e)
-			return err
+			return errors.Wrap(err, "unmarshal event data")
 		}
 		m.doOneShot(data, true, out)
 	}
 	return nil
 }
 
-func handleEvent(b *[]byte, e event.Event) error {
-	var err error
-	switch e.Kind {
-	case "event":
-		return nil
-	case "patch", "full":
-		patch := jsondelta.NewPatch(*e.Data)
-		*b, err = patch.Apply(*b)
-		if err != nil {
-			return err
-		}
-	default:
-		// unexpected: avoid fast looping
-		time.Sleep(100 * time.Millisecond)
-	}
-	return nil
+func handleEvent(b *[]byte, e event.Event) (err error) {
+	patch := jsondelta.NewPatch(*e.Data)
+	*b, err = patch.Apply(*b)
+	return
 }
 
 func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
