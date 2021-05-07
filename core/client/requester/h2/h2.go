@@ -136,15 +136,14 @@ func (t T) GetStream(r request.T) (chan []byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Ensure wait for server side events
+	t.Client.Timeout = 0
 	req.Header.Set("Accept", "text/event-stream")
 	resp, err := t.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	q := make(chan []byte, 1000)
-	if err != nil {
-		return nil, err
-	}
 	go getServerSideEvents(q, resp)
 	return q, nil
 }
