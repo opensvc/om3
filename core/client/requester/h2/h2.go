@@ -136,10 +136,11 @@ func (t T) GetStream(r request.T) (chan []byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Ensure wait for server side events
-	t.Client.Timeout = 0
+	// override default Timeout for server side calm events
+	client := t.Client
+	client.Timeout = 0
 	req.Header.Set("Accept", "text/event-stream")
-	resp, err := t.Client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
