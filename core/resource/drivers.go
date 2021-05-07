@@ -1,5 +1,7 @@
 package resource
 
+import "sort"
+
 type (
 	Drivers []Driver
 )
@@ -31,6 +33,14 @@ func (t Drivers) Less(i, j int) bool {
 //
 func (t Drivers) Has(d Driver) bool {
 	rid := d.RID()
+	return t.HasRID(rid)
+}
+
+//
+// HasRID returns true if t has a driver whose RID() is the same
+// as rid.
+//
+func (t Drivers) HasRID(rid string) bool {
 	for _, r := range t {
 		if r.RID() == rid {
 			return true
@@ -63,6 +73,38 @@ func (t Drivers) Union(other Drivers) Drivers {
 	for _, r := range other {
 		if !l.Has(r) {
 			l = append(l, r)
+		}
+	}
+	return l
+}
+
+//
+// Sort sorts the driver list.
+//
+func (t Drivers) Sort() {
+	sort.Sort(t)
+}
+
+//
+// Reverse reverses the driver list sort.
+//
+func (t Drivers) Reverse() {
+	sort.Sort(sort.Reverse(t))
+}
+
+//
+// Truncate returns the drivers list from 0 to the driver with <rid>.
+// If rid is not set, return the whole driver list.
+//
+func (t Drivers) Truncate(rid string) Drivers {
+	if rid == "" {
+		return t
+	}
+	l := make(Drivers, 0)
+	for _, r := range t {
+		l = append(l, r)
+		if r.RID() == rid {
+			break
 		}
 	}
 	return l

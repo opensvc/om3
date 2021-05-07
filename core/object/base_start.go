@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/ordering"
+	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -77,9 +77,12 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	t.notifyAction("start", "starting", options.Global.DryRun, options.ResourceSelector)
-	resourceLister := t.actionResourceLister(options.ResourceSelector)
-	return t.ResourceSets().Do(resourceLister, ordering.Asc, func(r resource.Driver) error {
+	if err := t.preAction(objectaction.Start, options.Global.DryRun, options.ResourceSelector); err != nil {
+		return err
+	}
+	resourceLister := t.actionResourceLister(options.ResourceSelector, objectaction.Start.Order)
+	barrier := actionBarrier(options.ResourceSelector, objectaction.Start.Order)
+	return t.ResourceSets().Do(resourceLister, barrier, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return resource.Start(r)
 	})

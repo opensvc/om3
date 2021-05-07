@@ -52,5 +52,6 @@ type (
 	// ResourceLister provides a method to list and filter resources
 	ResourceLister interface {
 		Resources() resource.Drivers
+		IsDesc() bool
 	}
 )

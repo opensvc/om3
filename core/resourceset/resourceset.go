@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -24,6 +23,7 @@ type (
 
 	ResourceLister interface {
 		Resources() resource.Drivers
+		IsDesc() bool
 	}
 
 	DoFunc func(resource.Driver) error
@@ -132,15 +132,19 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	return l
 }
 
-func (t T) Do(resourceLister ResourceLister, order ordering.T, fn DoFunc) error {
-	resources := resourceLister.Resources().Intersection(t.Resources())
-	if order.IsDesc() {
-		sort.Sort(sort.Reverse(resources))
+func (t T) Do(resourceLister ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
+	rsetResources := t.Resources()
+	resources := resourceLister.Resources().Intersection(rsetResources)
+	if barrier != "" && resources.HasRID(barrier) {
+		hitBarrier = true
+		resources = resources.Truncate(barrier)
 	}
 	if t.Parallel {
-		return t.doParallel(resources, fn)
+		err = t.doParallel(resources, fn)
+	} else {
+		err = t.doSerial(resources, fn)
 	}
-	return t.doSerial(resources, fn)
+	return
 }
 
 type result struct {
@@ -189,13 +193,18 @@ func (t L) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
-func (t L) Do(resourceLister ResourceLister, order ordering.T, fn DoFunc) error {
-	if order.IsDesc() {
+func (t L) Do(resourceLister ResourceLister, barrier string, fn DoFunc) error {
+	if resourceLister.IsDesc() {
+		// Align the resourceset order with the ResourceLister order.
 		t.Reverse()
 	}
 	for _, rset := range t {
-		if err := rset.Do(resourceLister, order, fn); err != nil {
+		hitBarrier, err := rset.Do(resourceLister, barrier, fn)
+		if err != nil {
 			return err
+		}
+		if hitBarrier {
+			break
 		}
 	}
 	return nil

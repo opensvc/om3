@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/objectaction"
 )
 
 var (
@@ -38,7 +39,17 @@ func (t *Base) setenv(action string, leader bool) {
 	// each Setenv resource Driver will load its own env vars when actioned
 }
 
-func (t *Base) notifyAction(action string, state string, dryRun bool, resourceSelector OptsResourceSelector) error {
+func (t *Base) preAction(action objectaction.T, dryRun bool, resourceSelector OptsResourceSelector) error {
+	if err := t.notifyAction(action, dryRun, resourceSelector); err != nil {
+		return err
+	}
+	if err := t.mayFreeze(action, dryRun, resourceSelector); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Base) notifyAction(action objectaction.T, dryRun bool, resourceSelector OptsResourceSelector) error {
 	if config.HasDaemonOrigin() {
 		return nil
 	}
@@ -51,13 +62,18 @@ func (t *Base) notifyAction(action string, state string, dryRun bool, resourceSe
 	}
 	req := c.NewPostObjectMonitor()
 	req.ObjectSelector = t.Path.String()
-	req.State = state
-	req.LocalExpect = t.actionLocalExpect(action, resourceSelector)
+	req.State = action.Progress
+	if resourceSelector.IsZero() {
+		req.LocalExpect = action.LocalExpect
+	}
 	_, err = req.Do()
 	return err
 }
 
-func (t *Base) mayFreeze(dryRun bool, resourceSelector OptsResourceSelector) error {
+func (t *Base) mayFreeze(action objectaction.T, dryRun bool, resourceSelector OptsResourceSelector) error {
+	if !action.Freeze {
+		return nil
+	}
 	if dryRun {
 		t.log.Debug().Msg("skip freeze: dry run")
 		return nil
@@ -79,17 +95,5 @@ func (t *Base) orchestrateWantsFreeze() bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func (t *Base) actionLocalExpect(action string, resourceSelector OptsResourceSelector) string {
-	if !resourceSelector.IsZero() {
-		return ""
-	}
-	switch action {
-	case "stop", "shutdown", "unprovision", "delete", "rollback", "toc":
-		return ""
-	default:
-		return "unset"
 	}
 }

@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/ordering"
+	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -38,10 +38,12 @@ func (t *Base) lockedStop(options OptsStop) error {
 }
 
 func (t *Base) masterStop(options OptsStop) error {
-	t.notifyAction("stop", "stopping", options.Global.DryRun, options.ResourceSelector)
-	t.mayFreeze(options.Global.DryRun, options.ResourceSelector)
-	resourceLister := t.actionResourceLister(options.ResourceSelector)
-	return t.ResourceSets().Do(resourceLister, ordering.Desc, func(r resource.Driver) error {
+	if err := t.preAction(objectaction.Stop, options.Global.DryRun, options.ResourceSelector); err != nil {
+		return err
+	}
+	resourceLister := t.actionResourceLister(options.ResourceSelector, objectaction.Stop.Order)
+	barrier := actionBarrier(options.ResourceSelector, objectaction.Stop.Order)
+	return t.ResourceSets().Do(resourceLister, barrier, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
 		return resource.Stop(r)
 	})

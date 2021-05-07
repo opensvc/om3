@@ -10,7 +10,6 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
@@ -104,7 +103,7 @@ func (t *Base) subsetsStatus() map[string]instance.SubsetStatus {
 func (t *Base) resourceStatusEval(data *instance.Status) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
 	var mu sync.Mutex
-	return t.ResourceSets().Do(t, ordering.Asc, func(r resource.Driver) error {
+	return t.ResourceSets().Do(t, "", func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
 		xd := resource.GetExposedStatus(r)
 		mu.Lock()

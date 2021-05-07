@@ -14,6 +14,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
@@ -399,11 +400,28 @@ func (t Base) Log() *zerolog.Logger {
 	return &t.log
 }
 
-func (t *Base) actionResourceLister(options OptsResourceSelector) ResourceLister {
+func actionBarrier(options OptsResourceSelector, order ordering.T) string {
+	switch {
+	case order == ordering.Asc:
+		return options.UpTo
+	case order == ordering.Desc:
+		return options.DownTo
+	default:
+		return ""
+	}
+}
+
+func (t *Base) actionResourceLister(options OptsResourceSelector, order ordering.T) ResourceLister {
 	return resourceselector.New(
 		t,
 		resourceselector.WithRID(options.ID),
 		resourceselector.WithSubset(options.Subset),
 		resourceselector.WithTag(options.Tag),
+		resourceselector.WithOrder(order),
 	)
+}
+
+// IsDesc is a requirement of the ResourceLister interface. Base Resources() is always ascending.
+func (t *Base) IsDesc() bool {
+	return false
 }
