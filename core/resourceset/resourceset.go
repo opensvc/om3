@@ -185,9 +185,13 @@ func (t T) doSerial(resources resource.Drivers, fn DoFunc) error {
 	return nil
 }
 
+func (t L) Reverse() {
+	sort.Sort(sort.Reverse(t))
+}
+
 func (t L) Do(resourceLister ResourceLister, order ordering.T, fn DoFunc) error {
 	if order.IsDesc() {
-		sort.Sort(sort.Reverse(t))
+		t.Reverse()
 	}
 	for _, rset := range t {
 		if err := rset.Do(resourceLister, order, fn); err != nil {
