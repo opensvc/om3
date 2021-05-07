@@ -2,6 +2,8 @@
 
 package resfsflag
 
+import "path/filepath"
+
 func (t T) baseDir() string {
-	return tmpBaseDir()
+	return filepath.FromSlash("/var/run/opensvc")
 }
