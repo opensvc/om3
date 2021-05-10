@@ -11,7 +11,7 @@ type OptsStop struct {
 	Async            OptsAsync
 	Lock             OptsLocking
 	ResourceSelector OptsResourceSelector
-	Force            bool `flag:"force"`
+	OptForce
 }
 
 // Stop stops the local instance of the object

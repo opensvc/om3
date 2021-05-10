@@ -14,7 +14,7 @@ type OptsStart struct {
 	Async            OptsAsync
 	Lock             OptsLocking
 	ResourceSelector OptsResourceSelector
-	Force            bool `flag:"force"`
+	OptForce
 }
 
 // Start starts the local instance of the object

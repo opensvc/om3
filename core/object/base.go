@@ -75,6 +75,11 @@ type (
 		UpTo   string `flag:"upto"`
 		DownTo string `flag:"downto"`
 	}
+
+	// OptForce contains the force option
+	OptForce struct {
+		Force bool `flag:"force"`
+	}
 )
 
 func (t OptsResourceSelector) IsZero() bool {
