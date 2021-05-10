@@ -7,20 +7,22 @@ import (
 // PostNodeMonitor describes the daemon object selector expression
 // resolver options.
 type PostNodeMonitor struct {
-	client       Poster `json:"-"`
+	Base
 	GlobalExpect string `json:"global_expect"`
 }
 
 // NewPostNodeMonitor allocates a PostNodeMonitor struct and sets
 // default values to its keys.
 func NewPostNodeMonitor(t Poster) *PostNodeMonitor {
-	return &PostNodeMonitor{
-		client: t,
-	}
+	r := &PostNodeMonitor{}
+	r.SetClient(t)
+	r.SetMethod("POST")
+	r.SetAction("node_monitor")
+	return r
 }
 
 // Do ...
-func (o PostNodeMonitor) Do() ([]byte, error) {
-	req := request.NewFor("node_monitor", o)
-	return o.client.Post(*req)
+func (t PostNodeMonitor) Do() ([]byte, error) {
+	req := request.NewFor(t)
+	return Route(t.client, *req)
 }

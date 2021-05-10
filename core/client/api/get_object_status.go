@@ -7,20 +7,22 @@ import (
 // GetObjectStatus describes the daemon object selector expression
 // resolver options.
 type GetObjectStatus struct {
-	client         Getter `json:"-"`
+	Base
 	ObjectSelector string `json:"selector"`
 }
 
 // NewGetObjectStatus allocates a GetObjectStatus struct and sets
 // default values to its keys.
 func NewGetObjectStatus(t Getter) *GetObjectStatus {
-	return &GetObjectStatus{
-		client: t,
-	}
+	r := &GetObjectStatus{}
+	r.SetClient(t)
+	r.SetAction("object_status")
+	r.SetMethod("GET")
+	return r
 }
 
 // Do fetchs the daemon statistics structure from the agent api
-func (o GetObjectStatus) Do() ([]byte, error) {
-	req := request.NewFor("object_status", o)
-	return o.client.Get(*req)
+func (t GetObjectStatus) Do() ([]byte, error) {
+	req := request.NewFor(t)
+	return Route(t.client, *req)
 }

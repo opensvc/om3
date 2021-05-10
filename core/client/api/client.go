@@ -1,14 +1,17 @@
 package api
 
-import "opensvc.com/opensvc/core/client/request"
+import (
+	"fmt"
+
+	"opensvc.com/opensvc/core/client/request"
+)
 
 type (
-	Getter interface {
-		Get(r request.T) ([]byte, error)
-	}
-
 	GetStreamer interface {
 		GetStream(r request.T) (chan []byte, error)
+	}
+	Getter interface {
+		Get(r request.T) ([]byte, error)
 	}
 	Poster interface {
 		Post(r request.T) ([]byte, error)
@@ -29,3 +32,19 @@ type (
 		GetStreamer
 	}
 )
+
+// Route submits the request via a requester
+func Route(requester Requester, req request.T) ([]byte, error) {
+	switch req.Method {
+	case "GET":
+		return requester.Get(req)
+	case "POST":
+		return requester.Post(req)
+	case "PUT":
+		return requester.Put(req)
+	case "DELETE":
+		return requester.Delete(req)
+	default:
+		return nil, fmt.Errorf("unsupported method: %s", req.Method)
+	}
+}

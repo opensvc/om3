@@ -7,14 +7,16 @@ import (
 
 type (
 	T struct {
-		Name        string
-		Target      string
-		Progress    string
-		Order       ordering.T
-		LocalExpect string
-		Local       bool
-		Freeze      bool
-		Kinds       []kind.T
+		Name                  string
+		Target                string
+		Progress              string
+		Order                 ordering.T
+		LocalExpect           string
+		Local                 bool
+		Freeze                bool
+		Kinds                 []kind.T
+		DisableNodeValidation bool
+		RelayToAny            bool
 	}
 )
 
@@ -25,13 +27,23 @@ var (
 		Progress:    "aborting",
 		LocalExpect: "unset",
 	}
+	Decode = T{
+		Name:       "decode",
+		RelayToAny: true,
+		Kinds:      []kind.T{kind.Usr, kind.Sec, kind.Cfg},
+	}
 	Delete = T{
-		Name:     "delete",
-		Target:   "deleted",
-		Progress: "deleting",
-		Order:    ordering.Desc,
-		Local:    true,
-		Kinds:    []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
+		Name:       "delete",
+		Target:     "deleted",
+		Progress:   "deleting",
+		Order:      ordering.Desc,
+		Local:      true,
+		RelayToAny: true,
+		Kinds:      []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
+	}
+	Eval = T{
+		Name:       "eval",
+		RelayToAny: true,
 	}
 	Freeze = T{
 		Name:        "freeze",
@@ -41,12 +53,36 @@ var (
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
 	}
+	GenCert = T{
+		Name:       "gen_cert",
+		RelayToAny: true,
+	}
+	Get = T{
+		Name:       "get",
+		RelayToAny: true,
+	}
+	Set = T{
+		Name:       "set",
+		RelayToAny: true,
+	}
+	Unset = T{
+		Name:       "unset",
+		RelayToAny: true,
+	}
 	Giveback = T{
 		Name:        "giveback",
 		Target:      "placed",
 		Progress:    "placing",
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc},
+	}
+	Keys = T{
+		Name:       "keys",
+		RelayToAny: true,
+	}
+	ValidateConfig = T{
+		Name:       "validate_config",
+		RelayToAny: true,
 	}
 	Move = T{
 		Name:        "move",

@@ -7,7 +7,7 @@ import (
 // PostObjectMonitor describes the daemon object selector expression
 // resolver options.
 type PostObjectMonitor struct {
-	client         Poster `json:"-"`
+	Base
 	ObjectSelector string `json:"path"`
 	State          string `json:"state,omitempty"`
 	LocalExpect    string `json:"local_expect,omitempty"`
@@ -17,13 +17,15 @@ type PostObjectMonitor struct {
 // NewPostObjectMonitor allocates a PostObjectMonitor struct and sets
 // default values to its keys.
 func NewPostObjectMonitor(t Poster) *PostObjectMonitor {
-	return &PostObjectMonitor{
-		client: t,
-	}
+	r := &PostObjectMonitor{}
+	r.SetClient(t)
+	r.SetAction("object_monitor")
+	r.SetMethod("POST")
+	return r
 }
 
 // Do ...
-func (o PostObjectMonitor) Do() ([]byte, error) {
-	req := request.NewFor("object_monitor", o)
-	return o.client.Post(*req)
+func (t PostObjectMonitor) Do() ([]byte, error) {
+	req := request.NewFor(t)
+	return Route(t.client, *req)
 }

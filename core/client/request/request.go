@@ -24,17 +24,25 @@ func New() *T {
 	return r
 }
 
+type Optioner interface {
+	GetAction() string
+	GetNode() string
+	GetMethod() string
+}
+
 //
 // NewFor allocates a fully configured request and returns its
 // address.
 //
-func NewFor(action string, options interface{}) *T {
+func NewFor(options Optioner) *T {
 	var (
 		b   []byte
 		err error
 	)
 	r := New()
-	r.Action = action
+	r.Action = options.GetAction()
+	r.Node = options.GetNode()
+	r.Method = options.GetMethod()
 	// convert options to the expected json format
 	if b, err = json.Marshal(options); err != nil {
 		return nil

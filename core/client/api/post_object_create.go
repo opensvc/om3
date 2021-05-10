@@ -6,7 +6,7 @@ import (
 
 // PostObjectCreate are options supported by the api handler.
 type PostObjectCreate struct {
-	client         Poster                 `json:"-"`
+	Base
 	ObjectSelector string                 `json:"path,omitempty"`
 	Namespace      string                 `json:"namespace,omitempty"`
 	Template       string                 `json:"template,omitempty"`
@@ -18,14 +18,17 @@ type PostObjectCreate struct {
 // NewPostObjectCreate allocates a PostObjectCreate struct and sets
 // default values to its keys.
 func NewPostObjectCreate(t Poster) *PostObjectCreate {
-	return &PostObjectCreate{
-		client: t,
-		Data:   make(map[string]interface{}),
+	r := &PostObjectCreate{
+		Data: make(map[string]interface{}),
 	}
+	r.SetClient(t)
+	r.SetAction("object_create")
+	r.SetMethod("POST")
+	return r
 }
 
 // Do executes the request and returns the undecoded bytes.
-func (o PostObjectCreate) Do() ([]byte, error) {
-	req := request.NewFor("object_create", o)
-	return o.client.Post(*req)
+func (t PostObjectCreate) Do() ([]byte, error) {
+	req := request.NewFor(t)
+	return Route(t.client, *req)
 }
