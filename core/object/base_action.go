@@ -7,7 +7,13 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/objectaction"
+	"opensvc.com/opensvc/core/resourceset"
 )
+
+type ActionOptioner interface {
+	IsDryRun() bool
+	GetResourceSelector() OptsResourceSelector
+}
 
 var (
 	ErrInvalidNode = errors.New("invalid node")
@@ -39,21 +45,34 @@ func (t *Base) setenv(action string, leader bool) {
 	// each Setenv resource Driver will load its own env vars when actioned
 }
 
-func (t *Base) preAction(action objectaction.T, dryRun bool, resourceSelector OptsResourceSelector) error {
-	if err := t.notifyAction(action, dryRun, resourceSelector); err != nil {
+func (t *Base) preAction(action objectaction.T, options ActionOptioner) error {
+	if err := t.notifyAction(action, options); err != nil {
 		return err
 	}
-	if err := t.mayFreeze(action, dryRun, resourceSelector); err != nil {
+	if err := t.mayFreeze(action, options); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *Base) notifyAction(action objectaction.T, dryRun bool, resourceSelector OptsResourceSelector) error {
+func (t *Base) action(action objectaction.T, options ActionOptioner, fn resourceset.DoFunc) error {
+	if err := t.preAction(objectaction.Start, options); err != nil {
+		return err
+	}
+	resourceSelector := options.GetResourceSelector()
+	resourceLister := t.actionResourceLister(resourceSelector, action.Order)
+	barrier := actionBarrier(resourceSelector, action.Order)
+	if err := t.ResourceSets().Do(resourceLister, barrier, fn); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Base) notifyAction(action objectaction.T, options ActionOptioner) error {
 	if config.HasDaemonOrigin() {
 		return nil
 	}
-	if dryRun {
+	if options.IsDryRun() {
 		return nil
 	}
 	c, err := client.New()
@@ -63,22 +82,22 @@ func (t *Base) notifyAction(action objectaction.T, dryRun bool, resourceSelector
 	req := c.NewPostObjectMonitor()
 	req.ObjectSelector = t.Path.String()
 	req.State = action.Progress
-	if resourceSelector.IsZero() {
+	if options.GetResourceSelector().IsZero() {
 		req.LocalExpect = action.LocalExpect
 	}
 	_, err = req.Do()
 	return err
 }
 
-func (t *Base) mayFreeze(action objectaction.T, dryRun bool, resourceSelector OptsResourceSelector) error {
+func (t *Base) mayFreeze(action objectaction.T, options ActionOptioner) error {
 	if !action.Freeze {
 		return nil
 	}
-	if dryRun {
+	if options.IsDryRun() {
 		t.log.Debug().Msg("skip freeze: dry run")
 		return nil
 	}
-	if !resourceSelector.IsZero() {
+	if !options.GetResourceSelector().IsZero() {
 		t.log.Debug().Msg("skip freeze: resource selection")
 		return nil
 	}

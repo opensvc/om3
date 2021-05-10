@@ -82,6 +82,13 @@ type (
 	}
 )
 
+func (t OptsGlobal) IsDryRun() bool {
+	return t.DryRun
+}
+func (t OptsResourceSelector) GetResourceSelector() OptsResourceSelector {
+	return t
+}
+
 func (t OptsResourceSelector) IsZero() bool {
 	switch {
 	case t.ID != "":

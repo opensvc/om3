@@ -33,16 +33,16 @@ func (t *CmdObjectStop) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectStop) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.OptsGlobal.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocal(t.Global.Local),
-		objectaction.WithFormat(t.Global.Format),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithLocal(t.OptsGlobal.Local),
+		objectaction.WithFormat(t.OptsGlobal.Format),
+		objectaction.WithColor(t.OptsGlobal.Color),
+		objectaction.WithRemoteNodes(t.OptsGlobal.NodeSelector),
 		objectaction.WithRemoteAction("stop"),
 		objectaction.WithAsyncTarget("stopped"),
-		objectaction.WithAsyncWatch(t.Async.Watch),
+		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			intf := object.NewFromPath(p).(object.Starter)
 			return nil, intf.Stop(t.OptsStop)

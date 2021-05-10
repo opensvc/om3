@@ -10,10 +10,10 @@ import (
 
 // OptsStart is the options of the Start object method.
 type OptsStart struct {
-	Global           OptsGlobal
-	Async            OptsAsync
-	Lock             OptsLocking
-	ResourceSelector OptsResourceSelector
+	OptsGlobal
+	OptsAsync
+	OptsLocking
+	OptsResourceSelector
 	OptForce
 }
 
@@ -24,7 +24,7 @@ func (t *Base) Start(options OptsStart) error {
 	}
 	t.setenv("start", false)
 	defer t.postActionStatusEval()
-	return t.lockedAction("", options.Lock, "start", func() error {
+	return t.lockedAction("", options.OptsLocking, "start", func() error {
 		return t.lockedStart(options)
 	})
 }
@@ -77,12 +77,7 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	if err := t.preAction(objectaction.Start, options.Global.DryRun, options.ResourceSelector); err != nil {
-		return err
-	}
-	resourceLister := t.actionResourceLister(options.ResourceSelector, objectaction.Start.Order)
-	barrier := actionBarrier(options.ResourceSelector, objectaction.Start.Order)
-	return t.ResourceSets().Do(resourceLister, barrier, func(r resource.Driver) error {
+	return t.action(objectaction.Start, options, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return resource.Start(r)
 	})

@@ -7,10 +7,10 @@ import (
 
 // OptsStop is the options of the Stop object method.
 type OptsStop struct {
-	Global           OptsGlobal
-	Async            OptsAsync
-	Lock             OptsLocking
-	ResourceSelector OptsResourceSelector
+	OptsGlobal
+	OptsAsync
+	OptsLocking
+	OptsResourceSelector
 	OptForce
 }
 
@@ -21,7 +21,7 @@ func (t *Base) Stop(options OptsStop) error {
 	}
 	t.setenv("stop", false)
 	defer t.postActionStatusEval()
-	return t.lockedAction("", options.Lock, "stop", func() error {
+	return t.lockedAction("", options.OptsLocking, "stop", func() error {
 		return t.lockedStop(options)
 	})
 
@@ -38,12 +38,7 @@ func (t *Base) lockedStop(options OptsStop) error {
 }
 
 func (t *Base) masterStop(options OptsStop) error {
-	if err := t.preAction(objectaction.Stop, options.Global.DryRun, options.ResourceSelector); err != nil {
-		return err
-	}
-	resourceLister := t.actionResourceLister(options.ResourceSelector, objectaction.Stop.Order)
-	barrier := actionBarrier(options.ResourceSelector, objectaction.Stop.Order)
-	return t.ResourceSets().Do(resourceLister, barrier, func(r resource.Driver) error {
+	return t.action(objectaction.Stop, options, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
 		return resource.Stop(r)
 	})
