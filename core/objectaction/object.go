@@ -255,6 +255,7 @@ func (t T) DoAsync() {
 		req := c.NewPostObjectMonitor()
 		req.ObjectSelector = path.String()
 		req.GlobalExpect = t.Target
+		req.SetNode(t.NodeSelector)
 		b, err := req.Do()
 		if err != nil {
 			log.Error().Err(err).Msg("")

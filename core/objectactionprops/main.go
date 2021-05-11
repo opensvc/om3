@@ -1,4 +1,4 @@
-package objectaction
+package objectactionprops
 
 import (
 	"opensvc.com/opensvc/core/kind"

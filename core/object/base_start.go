@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/objectaction"
+	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -77,7 +77,7 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	return t.action(objectaction.Start, options, func(r resource.Driver) error {
+	return t.action(objectactionprops.Start, options, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return resource.Start(r)
 	})

@@ -2,9 +2,9 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/objectaction"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
 )
 

@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/objectaction"
+	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resourceset"
 )
 
@@ -45,7 +45,7 @@ func (t *Base) setenv(action string, leader bool) {
 	// each Setenv resource Driver will load its own env vars when actioned
 }
 
-func (t *Base) preAction(action objectaction.T, options ActionOptioner) error {
+func (t *Base) preAction(action objectactionprops.T, options ActionOptioner) error {
 	if err := t.notifyAction(action, options); err != nil {
 		return err
 	}
@@ -55,8 +55,8 @@ func (t *Base) preAction(action objectaction.T, options ActionOptioner) error {
 	return nil
 }
 
-func (t *Base) action(action objectaction.T, options ActionOptioner, fn resourceset.DoFunc) error {
-	if err := t.preAction(objectaction.Start, options); err != nil {
+func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn resourceset.DoFunc) error {
+	if err := t.preAction(objectactionprops.Start, options); err != nil {
 		return err
 	}
 	resourceSelector := options.GetResourceSelector()
@@ -68,7 +68,7 @@ func (t *Base) action(action objectaction.T, options ActionOptioner, fn resource
 	return nil
 }
 
-func (t *Base) notifyAction(action objectaction.T, options ActionOptioner) error {
+func (t *Base) notifyAction(action objectactionprops.T, options ActionOptioner) error {
 	if config.HasDaemonOrigin() {
 		return nil
 	}
@@ -89,7 +89,7 @@ func (t *Base) notifyAction(action objectaction.T, options ActionOptioner) error
 	return err
 }
 
-func (t *Base) mayFreeze(action objectaction.T, options ActionOptioner) error {
+func (t *Base) mayFreeze(action objectactionprops.T, options ActionOptioner) error {
 	if !action.Freeze {
 		return nil
 	}
