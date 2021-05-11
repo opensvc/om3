@@ -15,8 +15,9 @@ var Tags = map[string]Opt{
 		Desc: "discard the stashed, invalid, configuration file leftover of a previous execution",
 	},
 	"downto": Opt{
-		Long: "downto",
-		Desc: "stop the service down to the specified rid or driver group",
+		Long:       "downto",
+		Desc:       "stop the service down to the specified rid or driver group",
+		Deprecated: "use --to",
 	},
 	"dry-run": Opt{
 		Long: "dry-run",
@@ -120,13 +121,18 @@ var Tags = map[string]Opt{
 		Long: "template",
 		Desc: "the configuration file template name or id, served by the collector",
 	},
+	"to": Opt{
+		Long: "to",
+		Desc: "start or stop the service until the specified rid or driver group included",
+	},
 	"tags": Opt{
 		Long: "tags",
 		Desc: "tag selector expression (t1,t2)",
 	},
 	"upto": Opt{
-		Long: "upto",
-		Desc: "start the service up to the specified rid or driver group",
+		Long:       "upto",
+		Desc:       "start the service up to the specified rid or driver group",
+		Deprecated: "use --to",
 	},
 	"wait": Opt{
 		Long: "wait",

@@ -72,8 +72,9 @@ type (
 		ID     string `flag:"rid"`
 		Subset string `flag:"subsets"`
 		Tag    string `flag:"tags"`
-		UpTo   string `flag:"upto"`
-		DownTo string `flag:"downto"`
+		To     string `flag:"to"`
+		UpTo   string `flag:"upto"`   // Deprecated
+		DownTo string `flag:"downto"` // Deprecated
 	}
 
 	// OptDisableRollback contains the disable-rollback option
@@ -112,6 +113,8 @@ func (t OptsResourceSelector) IsZero() bool {
 	case t.Subset != "":
 		return true
 	case t.Tag != "":
+		return true
+	case t.To != "":
 		return true
 	case t.UpTo != "":
 		return true
@@ -426,17 +429,6 @@ func (t *Base) Node() *Node {
 
 func (t Base) Log() *zerolog.Logger {
 	return &t.log
-}
-
-func actionBarrier(options OptsResourceSelector, order ordering.T) string {
-	switch {
-	case order == ordering.Asc:
-		return options.UpTo
-	case order == ordering.Desc:
-		return options.DownTo
-	default:
-		return ""
-	}
 }
 
 func (t *Base) actionResourceLister(options OptsResourceSelector, order ordering.T) ResourceLister {

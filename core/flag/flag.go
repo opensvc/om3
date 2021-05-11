@@ -22,6 +22,9 @@ type (
 
 		// Default is the default value to initialize the cobra flag with
 		Default string
+
+		// Deprecated is the deprecation message. Empty means not deprecated.
+		Deprecated string
 	}
 )
 
@@ -95,5 +98,13 @@ func (t *Opt) installFlag(cmd *cobra.Command, v reflect.Value) {
 		flagSet.DurationVarP(dest, t.Long, t.Short, dft, t.Desc)
 	default:
 		log.Error().Msgf("unknown flag type: %s", dest)
+	}
+	if t.Deprecated != "" {
+		if t.Short != "" {
+			flagSet.MarkShorthandDeprecated(t.Long, t.Deprecated)
+		}
+		if t.Long != "" {
+			flagSet.MarkDeprecated(t.Long, t.Deprecated)
+		}
 	}
 }

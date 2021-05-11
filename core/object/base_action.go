@@ -61,8 +61,7 @@ func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn res
 	}
 	resourceSelector := options.GetResourceSelector()
 	resourceLister := t.actionResourceLister(resourceSelector, action.Order)
-	barrier := actionBarrier(resourceSelector, action.Order)
-	if err := t.ResourceSets().Do(resourceLister, barrier, fn); err != nil {
+	if err := t.ResourceSets().Do(resourceLister, resourceSelector.To, fn); err != nil {
 		return err
 	}
 	return nil
