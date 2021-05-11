@@ -48,7 +48,7 @@ type (
 
 func setDefaults(root string) {
 	if s, err := os.Hostname(); err == nil {
-		NodeViper.SetDefault("hostname", s)
+		NodeViper.SetDefault("hostname", strings.ToLower(s))
 	} else {
 		panic("can not determine hostname")
 	}
