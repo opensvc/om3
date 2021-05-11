@@ -76,9 +76,25 @@ type (
 		DownTo string `flag:"downto"`
 	}
 
+	// OptDisableRollback contains the disable-rollback option
+	OptDisableRollback struct {
+		DisableRollback bool `flag:"disable-rollback"`
+	}
+
 	// OptForce contains the force option
 	OptForce struct {
 		Force bool `flag:"force"`
+	}
+
+	OptsCreate struct {
+		Template    string `flag:"template"`
+		Config      string `flag:"config"`
+		Keyword     string `flag:"kwops"`
+		Env         string `flag:"env"`
+		Interactive bool   `flag:"interactive"`
+		Provision   bool   `flag:"provision"`
+		Restore     bool   `flag:"restore"`
+		OptsStart
 	}
 )
 
