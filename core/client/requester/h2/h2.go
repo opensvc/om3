@@ -54,33 +54,21 @@ func NewUDS(url string) (*T, error) {
 	r := &T{}
 	tp := &http2.Transport{
 		AllowHTTP: true,
-		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-			errChan := make(chan error)
-			conChan := make(chan net.Conn)
-			go func() {
-				i := 0
-				for {
-					i++
-					dial, err := net.Dial("unix", url)
-					if err == nil {
-						conChan <- dial
-						return
-					}
-					if i >= udsRetryConnect {
-						errChan <- err
-						return
-					}
-					if strings.Contains(err.Error(), "connect: connection refused") {
-						time.Sleep(udsRetryConnectDelay)
-						continue
-					}
+		DialTLS: func(network, addr string, cfg *tls.Config) (con net.Conn, err error) {
+			i := 0
+			for {
+				i++
+				con, err = net.Dial("unix", url)
+				if err == nil {
+					return
 				}
-			}()
-			select {
-			case err := <-errChan:
-				return nil, err
-			case con := <-conChan:
-				return con, nil
+				if i >= udsRetryConnect {
+					return
+				}
+				if strings.Contains(err.Error(), "connect: connection refused") {
+					time.Sleep(udsRetryConnectDelay)
+					continue
+				}
 			}
 		},
 	}
