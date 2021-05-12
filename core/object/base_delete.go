@@ -58,14 +58,20 @@ func (t Base) deleteInstanceFiles() error {
 			continue
 		}
 		for _, fpath := range matches {
-			if err := os.RemoveAll(fpath); err != nil {
-				t.log.Warn().Err(err).Str("path", fpath).Msg("removing")
-			} else {
-				t.log.Info().Str("path", fpath).Msg("removed")
-			}
+			_ = t.tryDeleteInstanceFile(fpath)
 		}
 	}
+	t.tryDeleteInstanceFile(t.ConfigFile())
 	return nil
+}
+
+func (t Base) tryDeleteInstanceFile(fpath string) bool {
+	if err := os.RemoveAll(fpath); err != nil {
+		t.log.Warn().Err(err).Str("path", fpath).Msg("removing")
+		return false
+	}
+	t.log.Info().Str("path", fpath).Msg("removed")
+	return true
 }
 
 func (t Base) deleteInstanceLogs() error {
