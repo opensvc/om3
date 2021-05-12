@@ -136,6 +136,10 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
+	if len(data) == 0 {
+		fmt.Fprintln(os.Stderr, "no match")
+		os.Exit(1)
+	}
 	var render func() string
 	if _, err := path.Parse(*selector); err == nil {
 		render = func() string {
