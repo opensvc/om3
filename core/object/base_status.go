@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/timestamp"
@@ -77,6 +78,11 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.Frozen = t.Frozen()
 	if err = t.resourceStatusEval(&data); err != nil {
 		return
+	}
+	if len(data.Resources) == 0 {
+		data.Avail = status.NotApplicable
+		data.Overall = status.NotApplicable
+		data.Optional = status.NotApplicable
 	}
 	if data.Topology == topology.Flex {
 		data.FlexTarget = t.FlexTarget()
