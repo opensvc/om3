@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"opensvc.com/opensvc/config"
@@ -32,6 +33,11 @@ const (
 	InetPrefix = "https://"
 )
 
+var (
+	udsRetryConnect      = 10
+	udsRetryConnectDelay = 10 * time.Millisecond
+)
+
 func (t T) String() string {
 	b, _ := json.Marshal(t)
 	return "H2" + string(b)
@@ -49,7 +55,33 @@ func NewUDS(url string) (*T, error) {
 	tp := &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial("unix", url)
+			errChan := make(chan error)
+			conChan := make(chan net.Conn)
+			go func() {
+				i := 0
+				for {
+					i++
+					dial, err := net.Dial("unix", url)
+					if err == nil {
+						conChan <- dial
+						return
+					}
+					if i >= udsRetryConnect {
+						errChan <- err
+						return
+					}
+					if strings.Contains(err.Error(), "connect: connection refused") {
+						time.Sleep(udsRetryConnectDelay)
+						continue
+					}
+				}
+			}()
+			select {
+			case err := <-errChan:
+				return nil, err
+			case con := <-conChan:
+				return con, nil
+			}
 		},
 	}
 	r.URL = "http://localhost"
