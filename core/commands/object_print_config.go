@@ -73,19 +73,41 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(selector string, c *client.T) (
 		err error
 		b   []byte
 	)
-	data := make([]config.Raw, 1)
 	handle := c.NewGetObjectConfig()
 	handle.ObjectSelector = selector
 	handle.Evaluate = t.Eval
 	handle.Impersonate = t.Impersonate
+	handle.SetNode(t.Global.NodeSelector)
 	b, err = handle.Do()
 	if err != nil {
 		log.Error().Err(err).Msg("")
+		data := make([]config.Raw, 0)
 		return data, err
+	}
+	data := make([]config.Raw, 1)
+	if data, err := parseRoutedResponse(b); err == nil {
+		return data, nil
 	}
 	err = json.Unmarshal(b, &data[0])
 	if err != nil {
 		return data, err
+	}
+	return data, nil
+}
+
+func parseRoutedResponse(b []byte) ([]config.Raw, error) {
+	data := make([]config.Raw, 0)
+	type routedResponse struct {
+		Nodes  map[string]config.Raw
+		Status int
+	}
+	d := routedResponse{}
+	err := json.Unmarshal(b, &d)
+	if err != nil {
+		return data, err
+	}
+	for _, config := range d.Nodes {
+		data = append(data, config)
 	}
 	return data, nil
 }
