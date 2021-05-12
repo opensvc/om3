@@ -3,7 +3,9 @@ package commands
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -13,6 +15,7 @@ import (
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -40,63 +43,69 @@ func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command
 	}
 }
 
-func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) ([]config.Raw, error) {
-	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		return data, nil
-	}
-	if clientcontext.IsSet() {
-		return []config.Raw{}, errors.New("can not fetch from daemon")
-	}
-	return t.extractLocal(selector)
-}
+type result map[string]config.Raw
 
-func (t *CmdObjectPrintConfig) extractLocal(selector string) ([]config.Raw, error) {
-	data := make([]config.Raw, 0)
-	sel := object.NewSelection(
+func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, error) {
+	paths := object.NewSelection(
 		selector,
 		object.SelectionWithLocal(true),
-	)
-	for _, p := range sel.Expand() {
-		obj := object.NewConfigurerFromPath(p)
-		c := obj.Config()
-		if c == nil {
-			log.Error().Stringer("path", p).Msg("no configuration")
-			continue
+	).Expand()
+	data := make(result)
+	for _, p := range paths {
+		var err error
+		data[p.String()], err = t.extractOne(p, c)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s", p, err)
 		}
-		data = append(data, c.Raw())
 	}
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) extractFromDaemon(selector string, c *client.T) ([]config.Raw, error) {
+func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (config.Raw, error) {
+	if data, err := t.extractFromDaemon(p, c); err == nil {
+		return data, nil
+	}
+	if clientcontext.IsSet() {
+		return config.Raw{}, errors.New("can not fetch from daemon")
+	}
+	return t.extractLocal(p)
+}
+
+func (t *CmdObjectPrintConfig) extractLocal(p path.T) (config.Raw, error) {
+	obj := object.NewConfigurerFromPath(p)
+	c := obj.Config()
+	if c == nil {
+		return config.Raw{}, fmt.Errorf("path %s: no configuration")
+	}
+	return c.Raw(), nil
+}
+
+func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (config.Raw, error) {
 	var (
 		err error
 		b   []byte
 	)
 	handle := c.NewGetObjectConfig()
-	handle.ObjectSelector = selector
+	handle.ObjectSelector = p.String()
 	handle.Evaluate = t.Eval
 	handle.Impersonate = t.Impersonate
 	handle.SetNode(t.Global.NodeSelector)
 	b, err = handle.Do()
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		data := make([]config.Raw, 0)
-		return data, err
+		return config.Raw{}, err
 	}
-	data := make([]config.Raw, 1)
 	if data, err := parseRoutedResponse(b); err == nil {
 		return data, nil
 	}
-	err = json.Unmarshal(b, &data[0])
-	if err != nil {
-		return data, err
+	data := config.Raw{}
+	if err := json.Unmarshal(b, &data); err == nil {
+		return data, nil
+	} else {
+		return config.Raw{}, err
 	}
-	return data, nil
 }
 
-func parseRoutedResponse(b []byte) ([]config.Raw, error) {
-	data := make([]config.Raw, 0)
+func parseRoutedResponse(b []byte) (config.Raw, error) {
 	type routedResponse struct {
 		Nodes  map[string]config.Raw
 		Status int
@@ -104,18 +113,18 @@ func parseRoutedResponse(b []byte) ([]config.Raw, error) {
 	d := routedResponse{}
 	err := json.Unmarshal(b, &d)
 	if err != nil {
-		return data, err
+		return config.Raw{}, err
 	}
 	for _, config := range d.Nodes {
-		data = append(data, config)
+		return config, nil
 	}
-	return data, nil
+	return config.Raw{}, fmt.Errorf("path %s: not found in response")
 }
 
 func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 	var (
 		c    *client.T
-		data []config.Raw
+		data result
 		err  error
 	)
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
@@ -127,16 +136,34 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
-	output.Renderer{
-		Format: t.Global.Format,
-		Color:  t.Global.Color,
-		Data:   data,
-		HumanRenderer: func() string {
+	var render func() string
+	if _, err := path.Parse(*selector); err == nil {
+		render = func() string {
+			return data[*selector].Render()
+		}
+		output.Renderer{
+			Format:        t.Global.Format,
+			Color:         t.Global.Color,
+			Data:          data[*selector],
+			HumanRenderer: render,
+		}.Print()
+	} else {
+		render = func() string {
 			s := ""
-			for _, d := range data {
+			for p, d := range data {
+				s += "#\n"
+				s += "# path: " + p + "\n"
+				s += "#\n"
+				s += strings.Repeat("#", 78) + "\n"
 				s += d.Render()
 			}
 			return s
-		},
-	}.Print()
+		}
+		output.Renderer{
+			Format:        t.Global.Format,
+			Color:         t.Global.Color,
+			Data:          data,
+			HumanRenderer: render,
+		}.Print()
+	}
 }
