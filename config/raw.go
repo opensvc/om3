@@ -35,6 +35,9 @@ func (t Raw) IsZero() bool {
 // Render return a colorized text version of the configuration file
 func (t Raw) Render() string {
 	s := ""
+	if t.Data == nil {
+		return s
+	}
 	for _, section := range t.Data.Keys() {
 		if section == "metadata" {
 			continue
