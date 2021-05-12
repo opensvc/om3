@@ -88,6 +88,11 @@ type (
 	}
 
 	OptsCreate struct {
+		Global OptsGlobal
+		OptsAsync
+		OptsLocking
+		OptsResourceSelector
+		OptForce
 		Template    string `flag:"template"`
 		Config      string `flag:"config"`
 		Keyword     string `flag:"kwops"`
@@ -95,7 +100,6 @@ type (
 		Interactive bool   `flag:"interactive"`
 		Provision   bool   `flag:"provision"`
 		Restore     bool   `flag:"restore"`
-		OptsStart
 	}
 )
 

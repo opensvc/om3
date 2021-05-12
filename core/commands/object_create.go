@@ -1,9 +1,14 @@
 package commands
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/entrypoints/create"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -31,4 +36,28 @@ func (t *CmdObjectCreate) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectCreate) run(selector *string, kind string) {
+	p, err := t.parseSelector(selector, kind)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	create.LocalEmpty(p)
+}
+
+func (t *CmdObjectCreate) parseSelector(selector *string, kind string) (path.T, error) {
+	p, err := path.Parse(*selector)
+	if err != nil {
+		return p, err
+	}
+	// now we know the path is valid. Verify it is non-existing or matches only one object.
+	objectSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "**")
+	paths := object.NewSelection(
+		objectSelector,
+		object.SelectionWithLocal(t.Global.Local),
+		object.SelectionWithServer(t.Global.Server),
+	).Expand()
+	if len(paths) > 1 {
+		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions.")
+	}
+	return p, nil
 }
