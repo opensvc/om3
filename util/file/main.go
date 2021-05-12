@@ -3,8 +3,26 @@ package file
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 )
+
+// IsProtected returns true if the file is too critical to alter or remove
+func IsProtected(fpath string) bool {
+	if fpath == "" {
+		return true
+	}
+	absPath, err := filepath.Abs(fpath)
+	if err != nil {
+		return false
+	}
+	switch absPath {
+	case "/", "/bin", "/boot", "/dev", "/dev/pts", "/dev/shm", "/home", "/opt", "/proc", "/sys", "/tmp", "/usr", "/var":
+		return true
+	default:
+		return false
+	}
+}
 
 // Exists returns true if the file path exists.
 func Exists(path string) bool {
