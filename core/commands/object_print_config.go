@@ -75,7 +75,7 @@ func (t *CmdObjectPrintConfig) extractLocal(p path.T) (config.Raw, error) {
 	obj := object.NewConfigurerFromPath(p)
 	c := obj.Config()
 	if c == nil {
-		return config.Raw{}, fmt.Errorf("path %s: no configuration")
+		return config.Raw{}, fmt.Errorf("path %s: no configuration", p)
 	}
 	return c.Raw(), nil
 }
@@ -115,10 +115,10 @@ func parseRoutedResponse(b []byte) (config.Raw, error) {
 	if err != nil {
 		return config.Raw{}, err
 	}
-	for _, config := range d.Nodes {
-		return config, nil
+	for _, cfg := range d.Nodes {
+		return cfg, nil
 	}
-	return config.Raw{}, fmt.Errorf("path %s: not found in response")
+	return config.Raw{}, fmt.Errorf("no nodes in response")
 }
 
 func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
