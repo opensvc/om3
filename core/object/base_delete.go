@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"opensvc.com/opensvc/util/file"
 )
 
 type OptsDelete struct {
@@ -49,7 +51,7 @@ func (t Base) deleteInstanceFiles() error {
 		filepath.Join(t.logDir(), t.Path.Name+".debug.log*"),
 		filepath.Join(t.logDir(), "."+t.Path.Name+".log*"),
 		filepath.Join(t.logDir(), "."+t.Path.Name+".debug.log*"),
-		filepath.Join(t.varDir(), "frozen"),
+		filepath.Join(t.varDir()),
 	}
 	for _, pattern := range patterns {
 		matches, err := filepath.Glob(pattern)
@@ -66,6 +68,10 @@ func (t Base) deleteInstanceFiles() error {
 }
 
 func (t Base) tryDeleteInstanceFile(fpath string) bool {
+	if file.IsProtected(fpath) {
+		t.log.Warn().Str("path", fpath).Msg("block attempt to remove a protected file")
+		return false
+	}
 	if err := os.RemoveAll(fpath); err != nil {
 		t.log.Warn().Err(err).Str("path", fpath).Msg("removing")
 		return false
