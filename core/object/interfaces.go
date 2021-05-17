@@ -47,6 +47,7 @@ type (
 		Set(OptsSet) error
 		Unset(OptsUnset) error
 		Delete(OptsDelete) error
+		SetStandardConfigFile()
 	}
 
 	// ResourceLister provides a method to list and filter resources

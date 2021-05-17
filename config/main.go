@@ -248,6 +248,9 @@ func (t *T) write() (err error) {
 	var f *os.File
 	ini.DefaultHeader = true
 	dir := filepath.Dir(t.ConfigFilePath)
+	if err = os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
 	base := filepath.Base(t.ConfigFilePath)
 	if f, err = ioutil.TempFile(dir, "."+base+".*"); err != nil {
 		return err
@@ -521,17 +524,27 @@ func renderKey(k string, v interface{}) string {
 	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
 }
 
-func (t T) replaceFile(configData Raw) {
+func (t *T) replaceFile(configData Raw) error {
 	file := ini.Empty()
 	for _, section := range configData.Data.Keys() {
 		m, _ := configData.Data.Get(section)
-		omap := m.(orderedmap.OrderedMap)
+		omap, ok := m.(orderedmap.OrderedMap)
+		if !ok {
+			return fmt.Errorf("invalid section in raw config format: %+v", m)
+		}
 		for _, option := range omap.Keys() {
 			value, _ := omap.Get(option)
-			file.Section(section).Key(option).SetValue(value.(string))
+			var v string
+			if value == nil {
+				v = ""
+			} else {
+				v = value.(string)
+			}
+			file.Section(section).Key(option).SetValue(v)
 		}
 	}
 	t.file = file
+	return nil
 }
 
 func (t T) deleteSection(section string) {
@@ -558,9 +571,11 @@ func (t T) initDefaultSection() error {
 	return nil
 }
 
-func (t T) rawCommit(configData Raw, configPath string, validate bool) error {
+func (t *T) rawCommit(configData Raw, configPath string, validate bool) error {
 	if !configData.IsZero() {
-		t.replaceFile(configData)
+		if err := t.replaceFile(configData); err != nil {
+			return err
+		}
 	}
 	if configPath == "" {
 		configPath = t.ConfigFilePath
@@ -590,31 +605,38 @@ func (t T) validate() error {
 	return nil
 }
 
-func (t T) Commit() error {
+func (t *T) Commit() error {
 	return t.rawCommit(Raw{}, "", true)
 }
 
-func (t T) CommitInvalid() error {
+func (t *T) CommitInvalid() error {
 	return t.rawCommit(Raw{}, "", false)
 }
 
-func (t T) CommitTo(configPath string) error {
+func (t *T) CommitTo(configPath string) error {
 	return t.rawCommit(Raw{}, configPath, true)
 }
 
-func (t T) CommitToInvalid(configPath string) error {
+func (t *T) CommitToInvalid(configPath string) error {
 	return t.rawCommit(Raw{}, configPath, false)
 }
 
-func (t T) CommitDataTo(configData Raw, configPath string) error {
+func (t *T) CommitData(configData Raw) error {
+	return t.rawCommit(configData, "", true)
+}
+
+func (t *T) CommitDataTo(configData Raw, configPath string) error {
 	return t.rawCommit(configData, configPath, true)
 }
 
-func (t T) CommitDataToInvalid(configData Raw, configPath string) error {
+func (t *T) CommitDataToInvalid(configData Raw, configPath string) error {
 	return t.rawCommit(configData, configPath, false)
 }
 
 func (t T) postCommit() error {
+	if t.Referrer == nil {
+		return nil
+	}
 	return nil
 }
 

@@ -36,11 +36,12 @@ type (
 		log      zerolog.Logger
 
 		// caches
-		id        uuid.UUID
-		config    *config.T
-		node      *Node
-		paths     BasePaths
-		resources resource.Drivers
+		id         uuid.UUID
+		configFile string
+		config     *config.T
+		node       *Node
+		paths      BasePaths
+		resources  resource.Drivers
 	}
 
 	// OptsGlobal contains options accepted by all actions
@@ -93,13 +94,14 @@ type (
 		OptsLocking
 		OptsResourceSelector
 		OptForce
-		Template    string `flag:"template"`
-		Config      string `flag:"config"`
-		Keyword     string `flag:"kwops"`
-		Env         string `flag:"env"`
-		Interactive bool   `flag:"interactive"`
-		Provision   bool   `flag:"provision"`
-		Restore     bool   `flag:"restore"`
+		Template    string   `flag:"template"`
+		Config      string   `flag:"config"`
+		Keywords    []string `flag:"kwops"`
+		Env         string   `flag:"env"`
+		Interactive bool     `flag:"interactive"`
+		Provision   bool     `flag:"provision"`
+		Restore     bool     `flag:"restore"`
+		Namespace   string   `flag:"createnamespace"`
 	}
 )
 
@@ -303,6 +305,15 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	return nil
 }
 
+// WithConfigFile sets a non-standard configuration location.
+func WithConfigFile(s string) funcopt.O {
+	return funcopt.F(func(t interface{}) error {
+		base := t.(*Base)
+		base.configFile = s
+		return nil
+	})
+}
+
 // WithVolatile makes sure not data is ever written by the object.
 func WithVolatile(s bool) funcopt.O {
 	return funcopt.F(func(t interface{}) error {
@@ -347,6 +358,22 @@ func NewConfigurerFromPath(p path.T) Configurer {
 // file.
 //
 func (t Base) ConfigFile() string {
+	if t.configFile == "" {
+		t.configFile = t.standardConfigFile()
+	}
+	return t.configFile
+}
+
+//
+// SetStandardConfigFile changes the configuration file currently set
+// usually by NewFromPath(..., WithConfigFile(fpath), ...) with the
+// standard configuration file location.
+//
+func (t Base) SetStandardConfigFile() {
+	t.configFile = t.standardConfigFile()
+}
+
+func (t Base) standardConfigFile() string {
 	p := t.Path.String()
 	switch t.Path.Namespace {
 	case "", "root":

@@ -64,6 +64,10 @@ var Tags = map[string]Opt{
 		Long: "local",
 		Desc: "inline action on local instance",
 	},
+	"createnamespace": Opt{
+		Long: "namespace",
+		Desc: "where to create the new objects",
+	},
 	"node": Opt{
 		Long: "node",
 		Desc: "execute on a list of nodes",
