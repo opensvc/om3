@@ -14,6 +14,11 @@ type (
 		Render() string
 	}
 
+	// Keystorer is implemented by Keystore object kinds (usr, sec, cfg).
+	Keystorer interface {
+		Keys(OptsKeys) ([]string, error)
+	}
+
 	// Baser is implemented by all object kinds.
 	Baser interface {
 		Status(OptsStatus) (instance.Status, error)

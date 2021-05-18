@@ -68,6 +68,11 @@ var Tags = map[string]Opt{
 		Long: "namespace",
 		Desc: "where to create the new objects",
 	},
+	"match": Opt{
+		Long:    "match",
+		Desc:    "a fnmatch key name filter",
+		Default: "**",
+	},
 	"node": Opt{
 		Long: "node",
 		Desc: "execute on a list of nodes",

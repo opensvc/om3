@@ -52,6 +52,15 @@ var (
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
 
+// Keys return the key names available in a section
+func (t *T) Keys(section string) []string {
+	data := make([]string, 0)
+	for _, s := range t.file.Section(section).Keys() {
+		data = append(data, s.Name())
+	}
+	return data
+}
+
 func (t *T) Get(k key.T) string {
 	val := t.file.Section(k.Section).Key(k.Option).Value()
 	return val

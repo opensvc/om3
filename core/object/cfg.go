@@ -20,7 +20,7 @@ type (
 	// changes.
 	//
 	Cfg struct {
-		Base
+		Keystore
 	}
 )
 

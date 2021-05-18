@@ -407,6 +407,12 @@ func (t *Selection) Do(action Action) []ActionResult {
 					return v.String()
 				case string:
 					return v + "\n"
+				case []string:
+					s := ""
+					for _, e := range v {
+						s += e + "\n"
+					}
+					return s
 				default:
 					return ""
 				}
