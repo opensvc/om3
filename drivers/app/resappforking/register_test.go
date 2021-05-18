@@ -4,24 +4,16 @@ import (
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/test_conf_helper"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
-
-func installSvcFile(t *testing.T, sourceName, dstFile string) {
-	srcFile := filepath.Join("test-fixtures", sourceName)
-	data, err := ioutil.ReadFile(srcFile)
-	require.Nil(t, err)
-	err = ioutil.WriteFile(dstFile, data, 0644)
-	require.Nil(t, err)
-}
 
 func getAppRid(rid string, resources []resource.Driver) *T {
 	for _, res := range resources {
@@ -45,7 +37,7 @@ func TestKeywords(t *testing.T) {
 	etc := filepath.Join(td, "etc")
 	require.Nil(t, os.MkdirAll(etc, 0700))
 
-	installSvcFile(t, "svc1.conf", filepath.Join(etc, "svc1.conf"))
+	test_conf_helper.InstallSvcFile(t, "svc1.conf", filepath.Join(etc, "svc1.conf"))
 	p, err := path.New("svc1", "", "")
 	require.Nil(t, err)
 	resources := object.NewSvc(p).Resources()
