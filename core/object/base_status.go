@@ -1,12 +1,18 @@
 package object
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"sync"
 	"time"
 
+	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
@@ -89,8 +95,70 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 		data.FlexMin = t.FlexMin()
 		data.FlexMax = t.FlexMax()
 	}
+	data.Csum = csumStatusData(data)
 	t.statusDump(data)
 	return
+}
+
+func csumStatusDataRecurse(w io.Writer, d interface{}) error {
+	names, err := attr.Names(d)
+	if err != nil {
+		return err
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		kind, err := attr.GetKind(d, name)
+		if err != nil {
+			return err
+		}
+		switch name {
+		case "StatusUpdated", "GlobalExpectUpdated", "Updated", "Mtime", "Csum":
+			continue
+		}
+		val, err := attr.GetValue(d, name)
+		if err != nil {
+			return err
+		}
+		switch kind {
+		case "struct":
+			if err := csumStatusDataRecurse(w, val); err != nil {
+				return err
+			}
+		case "slice":
+			rv := reflect.ValueOf(val)
+			for i := 0; i < rv.Len(); i++ {
+				v := rv.Index(i)
+				if err := csumStatusDataRecurse(w, v); err != nil {
+					return err
+				}
+			}
+		case "map":
+			iter := reflect.ValueOf(val).MapRange()
+			for iter.Next() {
+				// k := iter.Key()
+				v := iter.Value()
+				if err := csumStatusDataRecurse(w, v); err != nil {
+					return err
+				}
+			}
+		default:
+			fmt.Fprint(w, val)
+		}
+	}
+	return nil
+}
+
+//
+// csumStatusData returns the string representation of the checksum of the
+// status.json content, adding recursively all data keys except
+// timestamp and checksum fields.
+//
+func csumStatusData(data instance.Status) string {
+	w := md5.New()
+	if err := csumStatusDataRecurse(w, data); err != nil {
+		fmt.Println(data, err) // TODO: remove me
+	}
+	return fmt.Sprintf("%x", w.Sum(nil))
 }
 
 func (t *Base) subsetsStatus() map[string]instance.SubsetStatus {
