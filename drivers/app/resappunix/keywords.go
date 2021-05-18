@@ -1,30 +1,9 @@
-package app
+package resappunix
 
-import (
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/resource"
-)
-
-// T is the app base driver structure
-type T struct {
-	resource.T
-	RetCodes string   `json:"retcodes"`
-	Path     path.T   `json:"path"`
-	Nodes    []string `json:"nodes"`
-}
+import "opensvc.com/opensvc/core/keywords"
 
 var (
 	Keywords = []keywords.Keyword{
-		{
-			Option:   "retcodes",
-			Attr:     "RetCodes",
-			Scopable: true,
-			Required: false,
-			Text:     "The whitespace separated list of ``<retcode>=<status name>``. All undefined retcodes are mapped to the 'warn' status.",
-			Default:  "0:up 1:down",
-			Example:  "0:up 1:down 3:n/a",
-		},
 		{
 			Option:   "start",
 			Attr:     "StartCmd",
