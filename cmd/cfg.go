@@ -2,14 +2,14 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/commands"
 )
 
-var cfgSelectorFlag string
-
-var cfgCmd = &cobra.Command{
-	Use:   "cfg",
-	Short: "Manage configmaps",
-	Long: ` A configmap is an unencrypted key-value store.
+var (
+	subCfg = &cobra.Command{
+		Use:   "cfg",
+		Short: "Manage configmaps",
+		Long: ` A configmap is an unencrypted key-value store.
 
 Values can be binary or text.
 
@@ -21,12 +21,46 @@ containers.
 
 A signal can be sent to consumer processes upon exposed key value
 changes.
-	
+
 The key names can include the '/' character, interpreted as a path separator
-when installing the key in a volume.
-`,
-}
+when installing the key in a volume.`,
+	}
+)
 
 func init() {
-	rootCmd.AddCommand(cfgCmd)
+	var (
+		cmdCreate      commands.CmdObjectCreate
+		cmdDelete      commands.CmdObjectDelete
+		cmdEditConfig  commands.CmdObjectEditConfig
+		cmdEval        commands.CmdObjectEval
+		cmdGet         commands.CmdObjectGet
+		cmdLs          commands.CmdObjectLs
+		cmdMonitor     commands.CmdObjectMonitor
+		cmdPrintConfig commands.CmdObjectPrintConfig
+		cmdPrintStatus commands.CmdObjectPrintStatus
+		cmdSet         commands.CmdObjectSet
+		cmdStatus      commands.CmdObjectStatus
+		cmdUnset       commands.CmdObjectUnset
+	)
+
+	kind := "cfg"
+	head := subCfg
+	root := rootCmd
+
+	root.AddCommand(head)
+	head.AddCommand(subEdit)
+	head.AddCommand(subPrint)
+
+	cmdCreate.Init(kind, head, &selectorFlag)
+	cmdDelete.Init(kind, head, &selectorFlag)
+	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
+	cmdEval.Init(kind, head, &selectorFlag)
+	cmdGet.Init(kind, head, &selectorFlag)
+	cmdLs.Init(kind, head, &selectorFlag)
+	cmdMonitor.Init(kind, head, &selectorFlag)
+	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
+	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
+	cmdSet.Init(kind, head, &selectorFlag)
+	cmdStatus.Init(kind, head, &selectorFlag)
+	cmdUnset.Init(kind, head, &selectorFlag)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/osagentservice"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/logging"
 
 	"github.com/mitchellh/go-homedir"
@@ -75,7 +76,8 @@ func Execute() {
 		// command not found... try look in args[1] as a selector
 		if len(os.Args) > 1 {
 			selectorFlag = os.Args[1]
-			args := append([]string{"svc"}, os.Args[2:]...)
+			subsystem := guessSubsystem(selectorFlag)
+			args := append([]string{subsystem}, os.Args[2:]...)
 			rootCmd.SetArgs(args)
 		}
 	}
@@ -84,6 +86,13 @@ func Execute() {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func guessSubsystem(s string) string {
+	if p, err := path.Parse(s); err == nil {
+		return p.Kind.String()
+	}
+	return "all"
 }
 
 func init() {

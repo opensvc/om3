@@ -2,20 +2,54 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/commands"
 )
 
-var usrSelectorFlag string
-
-var usrCmd = &cobra.Command{
-	Use:   "usr",
-	Short: "Manage users",
-	Long: `A user stores the grants and credentials of user of the agent API.
+var (
+	subUsr = &cobra.Command{
+		Use:   "usr",
+		Short: "Manage users",
+		Long: ` A user stores the grants and credentials of user of the agent API.
 
 User objects are not necessary with OpenID authentication, as the
-grants are embedded in the trusted bearer tokens.
-`,
-}
+grants are embedded in the trusted bearer tokens.`,
+	}
+)
 
 func init() {
-	rootCmd.AddCommand(usrCmd)
+	var (
+		cmdCreate      commands.CmdObjectCreate
+		cmdDelete      commands.CmdObjectDelete
+		cmdEditConfig  commands.CmdObjectEditConfig
+		cmdEval        commands.CmdObjectEval
+		cmdGet         commands.CmdObjectGet
+		cmdLs          commands.CmdObjectLs
+		cmdMonitor     commands.CmdObjectMonitor
+		cmdPrintConfig commands.CmdObjectPrintConfig
+		cmdPrintStatus commands.CmdObjectPrintStatus
+		cmdSet         commands.CmdObjectSet
+		cmdStatus      commands.CmdObjectStatus
+		cmdUnset       commands.CmdObjectUnset
+	)
+
+	kind := "usr"
+	head := subUsr
+	root := rootCmd
+
+	root.AddCommand(head)
+	head.AddCommand(subEdit)
+	head.AddCommand(subPrint)
+
+	cmdCreate.Init(kind, head, &selectorFlag)
+	cmdDelete.Init(kind, head, &selectorFlag)
+	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
+	cmdEval.Init(kind, head, &selectorFlag)
+	cmdGet.Init(kind, head, &selectorFlag)
+	cmdLs.Init(kind, head, &selectorFlag)
+	cmdMonitor.Init(kind, head, &selectorFlag)
+	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
+	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
+	cmdSet.Init(kind, head, &selectorFlag)
+	cmdStatus.Init(kind, head, &selectorFlag)
+	cmdUnset.Init(kind, head, &selectorFlag)
 }
