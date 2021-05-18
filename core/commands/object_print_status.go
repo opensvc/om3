@@ -53,6 +53,9 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 }
 
 func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) []object.Status {
+	if t.Refresh || t.Global.Local {
+		return t.extractLocal(selector)
+	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		log.Debug().Err(err).Msg("extract cluster status")
 		return data
