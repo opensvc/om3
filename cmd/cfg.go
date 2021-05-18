@@ -29,5 +29,4 @@ when installing the key in a volume.
 
 func init() {
 	rootCmd.AddCommand(cfgCmd)
-	cfgCmd.PersistentFlags().StringVarP(&cfgSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

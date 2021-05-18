@@ -18,5 +18,4 @@ grants are embedded in the trusted bearer tokens.
 
 func init() {
 	rootCmd.AddCommand(usrCmd)
-	usrCmd.PersistentFlags().StringVarP(&usrSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

@@ -29,5 +29,4 @@ when installing the key in a volume.
 
 func init() {
 	rootCmd.AddCommand(secCmd)
-	secCmd.PersistentFlags().StringVarP(&secSelectorFlag, "selector", "s", "", "The name of the object to select")
 }

@@ -22,5 +22,4 @@ A volume can host cfg and sec keys projections.
 
 func init() {
 	rootCmd.AddCommand(volCmd)
-	volCmd.PersistentFlags().StringVarP(&volSelectorFlag, "selector", "s", "", "The name of the object to select")
 }
