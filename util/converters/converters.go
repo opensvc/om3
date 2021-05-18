@@ -3,8 +3,10 @@ package converters
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/golang-collections/collections/set"
@@ -26,6 +28,8 @@ const (
 	ListLowercase
 	Set
 	Shlex
+	Duration
+	Umask
 )
 
 var (
@@ -39,6 +43,8 @@ var (
 		ListLowercase: "list-lowercase",
 		Set:           "set",
 		Shlex:         "Shlex",
+		Duration:      "Duration",
+		Umask:         "Umask",
 	}
 	toID = map[string]T{
 		"string":         String,
@@ -50,6 +56,8 @@ var (
 		"list-lowercase": ListLowercase,
 		"set":            Set,
 		"Shlex":          Shlex,
+		"Duration":       Duration,
+		"Umask":          Umask,
 	}
 	ErrMissConverter = errors.New("conversion not implemented")
 )
@@ -83,15 +91,45 @@ func ToListLowercase(s string) ([]string, error) {
 }
 
 func ToSet(s string) (*set.Set, error) {
-	set := set.New()
+	aSet := set.New()
 	for _, e := range strings.Fields(s) {
-		set.Insert(e)
+		aSet.Insert(e)
 	}
-	return set, nil
+	return aSet, nil
 }
 
 func ToShlex(s string) ([]string, error) {
 	return shlex.Split(s, true)
+}
+
+// ToDuration convert duration string to *time.Duration
+//
+// nil is returned when duration is unset
+// Default unit is second when not specified
+func ToDuration(s string) (*time.Duration, error) {
+	if s == "" {
+		return nil, nil
+	}
+	if _, err := strconv.Atoi(s); err == nil {
+		s = s + "s"
+	}
+	duration, err := time.ParseDuration(s)
+	if err != nil {
+		return nil, err
+	}
+	return &duration, nil
+}
+
+func ToUmask(s string) (*os.FileMode, error) {
+	if s == "" {
+		return nil, nil
+	}
+	i, err := strconv.ParseInt(s, 8, 32)
+	if err != nil {
+		return nil, errors.New("unexpected umask value: " + s + " " + err.Error())
+	}
+	umask := os.FileMode(i)
+	return &umask, nil
 }
 
 func Convert(s string, t T) (interface{}, error) {
@@ -114,6 +152,10 @@ func Convert(s string, t T) (interface{}, error) {
 		return ToSet(s)
 	case Shlex:
 		return ToShlex(s)
+	case Duration:
+		return ToDuration(s)
+	case Umask:
+		return ToUmask(s)
 	default:
 		return nil, fmt.Errorf("unknown converter id %d", t)
 	}
