@@ -83,11 +83,11 @@ func ToListLowercase(s string) ([]string, error) {
 }
 
 func ToSet(s string) (*set.Set, error) {
-	set := set.New()
+	aSet := set.New()
 	for _, e := range strings.Fields(s) {
-		set.Insert(e)
+		aSet.Insert(e)
 	}
-	return set, nil
+	return aSet, nil
 }
 
 func ToShlex(s string) ([]string, error) {
