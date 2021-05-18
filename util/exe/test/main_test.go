@@ -1,27 +1,27 @@
 package exe_test
 
 import (
+	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/test_helper"
 	"opensvc.com/opensvc/util/exe"
 	"testing"
 )
 
 func TestFindExe(t *testing.T) {
 	t.Run("returns no exe path when no exe found", func(t *testing.T) {
-		td, tdCleanup := test_helper.Tempdir(t)
+		td, tdCleanup := testhelper.Tempdir(t)
 		defer tdCleanup()
 		assert.Equal(t, exe.FindExe(td+"/*"), []string{})
 	})
 
 	t.Run("returns non empty path list", func(t *testing.T) {
-		td, tdCleanup := test_helper.Tempdir(t)
+		td, tdCleanup := testhelper.Tempdir(t)
 		defer tdCleanup()
-		_, tfCleanup1 := test_helper.TempFileExec(t, td)
+		_, tfCleanup1 := testhelper.TempFileExec(t, td)
 		defer tfCleanup1()
-		_, tfCleanup2 := test_helper.TempFileExec(t, td)
+		_, tfCleanup2 := testhelper.TempFileExec(t, td)
 		defer tfCleanup2()
-		_, tfCleanup3 := test_helper.TempFile(t, td)
+		_, tfCleanup3 := testhelper.TempFile(t, td)
 		defer tfCleanup3()
 
 		for _, pattern := range []string{"", "/*", "/**"} {
@@ -32,10 +32,10 @@ func TestFindExe(t *testing.T) {
 	})
 
 	t.Run("result contains exec file", func(t *testing.T) {
-		td, tdCleanup := test_helper.Tempdir(t)
+		td, tdCleanup := testhelper.Tempdir(t)
 		defer tdCleanup()
 
-		tf, tfCleanup := test_helper.TempFileExec(t, td)
+		tf, tfCleanup := testhelper.TempFileExec(t, td)
 		defer tfCleanup()
 
 		for _, pattern := range []string{"", "/*", "/**"} {
