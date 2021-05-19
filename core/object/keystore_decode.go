@@ -3,8 +3,6 @@ package object
 import (
 	"fmt"
 	"os"
-
-	"opensvc.com/opensvc/util/key"
 )
 
 const (
@@ -27,7 +25,10 @@ func (t *Keystore) decode(keyname string, cd CustomDecoder) ([]byte, error) {
 	if keyname == "" {
 		return []byte{}, fmt.Errorf("key name can not be empty")
 	}
-	k := key.New(DataSectionName, keyname)
+	if !t.HasKey(keyname) {
+		return []byte{}, fmt.Errorf("key does not exist: %s", keyname)
+	}
+	k := keyFromName(keyname)
 	if s, err = t.config.GetStringStrict(k); err != nil {
 		return []byte{}, err
 	}

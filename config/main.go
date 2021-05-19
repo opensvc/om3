@@ -52,13 +52,18 @@ var (
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
 
-// Keys return the key names available in a section
+// Keys returns the key names available in a section
 func (t *T) Keys(section string) []string {
 	data := make([]string, 0)
 	for _, s := range t.file.Section(section).Keys() {
 		data = append(data, s.Name())
 	}
 	return data
+}
+
+// HasKey returns true if the k exists
+func (t *T) HasKey(k key.T) bool {
+	return t.file.Section(k.Section).HasKey(k.Option)
 }
 
 func (t *T) Get(k key.T) string {
