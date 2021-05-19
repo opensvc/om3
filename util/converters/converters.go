@@ -3,6 +3,7 @@ package converters
 import (
 	"errors"
 	"fmt"
+	"opensvc.com/opensvc/util/converters/sizeconv"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +31,7 @@ const (
 	Shlex
 	Duration
 	Umask
+	Size
 )
 
 var (
@@ -45,6 +47,7 @@ var (
 		Shlex:         "Shlex",
 		Duration:      "Duration",
 		Umask:         "Umask",
+		Size:          "Size",
 	}
 	toID = map[string]T{
 		"string":         String,
@@ -58,6 +61,7 @@ var (
 		"Shlex":          Shlex,
 		"Duration":       Duration,
 		"Umask":          Umask,
+		"Size":           Size,
 	}
 	ErrMissConverter = errors.New("conversion not implemented")
 )
@@ -132,6 +136,18 @@ func ToUmask(s string) (*os.FileMode, error) {
 	return &umask, nil
 }
 
+func ToSize(s string) (pti *int64, err error) {
+	if s == "" {
+		return
+	}
+	var i int64
+	if i, err = sizeconv.FromSize(s); err != nil {
+		return pti, err
+	}
+	pti = &i
+	return
+}
+
 func Convert(s string, t T) (interface{}, error) {
 	switch t {
 	case String:
@@ -156,6 +172,8 @@ func Convert(s string, t T) (interface{}, error) {
 		return ToDuration(s)
 	case Umask:
 		return ToUmask(s)
+	case Size:
+		return ToSize(s)
 	default:
 		return nil, fmt.Errorf("unknown converter id %d", t)
 	}
