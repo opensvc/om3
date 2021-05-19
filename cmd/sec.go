@@ -41,6 +41,9 @@ func init() {
 		cmdSet         commands.CmdObjectSet
 		cmdStatus      commands.CmdObjectStatus
 		cmdUnset       commands.CmdObjectUnset
+
+		cmdDecode commands.CmdKeystoreDecode
+		cmdKeys   commands.CmdKeystoreKeys
 	)
 
 	kind := "sec"
@@ -53,9 +56,11 @@ func init() {
 
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
+	cmdDecode.Init(kind, head, &selectorFlag)
 	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
+	cmdKeys.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)

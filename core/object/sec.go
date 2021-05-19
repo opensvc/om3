@@ -1,6 +1,12 @@
 package object
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -20,7 +26,7 @@ type (
 	// changes.
 	//
 	Sec struct {
-		Base
+		Keystore
 	}
 )
 
@@ -29,4 +35,36 @@ func NewSec(p path.T, opts ...funcopt.O) *Sec {
 	s := &Sec{}
 	s.Base.init(p, opts...)
 	return s
+}
+
+func (t Sec) Decode(options OptsDecode) ([]byte, error) {
+	return t.decode(options.Key, t)
+}
+
+func (t Sec) CustomDecode(s string) ([]byte, error) {
+	if !strings.HasPrefix(s, "crypt:") {
+		return []byte{}, fmt.Errorf("unsupported value (no crypt prefix)")
+	}
+
+	// decode base64
+	b, err := base64.URLEncoding.DecodeString(s[6:])
+	if err != nil {
+		return []byte{}, err
+	}
+
+	// remove the trailing \r
+	b = b[:len(b)-1]
+
+	// decrypt AES
+	m := reqjsonrpc.NewMessage(b)
+	b, err = m.Decrypt()
+	if err != nil {
+		return []byte{}, err
+	}
+
+	err = json.Unmarshal(b, &s)
+	if err != nil {
+		return []byte{}, err
+	}
+	return []byte(s), nil
 }

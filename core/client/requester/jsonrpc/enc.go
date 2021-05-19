@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/config"
 )
 
 type (
@@ -29,6 +30,17 @@ type (
 		Data        string `json:"data"`
 	}
 )
+
+// NewMessage allocates a new Message configured for the local node and cluster context
+func NewMessage(b []byte) *Message {
+	m := &Message{
+		NodeName:    config.Node.Hostname,
+		ClusterName: config.Node.Cluster.Name,
+		Key:         config.Node.Cluster.Secret,
+		Data:        b,
+	}
+	return m
+}
 
 // Decrypt decrypts the message, if the nodename found in the message is a
 // cluster node.

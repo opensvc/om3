@@ -92,12 +92,7 @@ func (t T) doReqReadResponse(method string, req request.T) ([]byte, error) {
 	}
 	b = bytes.TrimRight(b, "\x00")
 	if t.Inet {
-		m := &Message{
-			NodeName:    config.Node.Hostname,
-			ClusterName: config.Node.Cluster.Name,
-			Key:         config.Node.Cluster.Secret,
-			Data:        b,
-		}
+		m := NewMessage(b)
 		b, err = m.Decrypt()
 		if err != nil {
 			return nil, err
