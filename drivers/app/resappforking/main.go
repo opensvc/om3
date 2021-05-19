@@ -1,4 +1,4 @@
-package resappsimple
+package resappforking
 
 import (
 	"opensvc.com/opensvc/core/resource"
