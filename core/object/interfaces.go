@@ -16,6 +16,7 @@ type (
 
 	// Keystorer is implemented by Keystore object kinds (usr, sec, cfg).
 	Keystorer interface {
+		Decode(OptsDecode) ([]byte, error)
 		Keys(OptsKeys) ([]string, error)
 	}
 

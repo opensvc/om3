@@ -10,4 +10,8 @@ type (
 	Keystore struct {
 		Base
 	}
+
+	CustomDecoder interface {
+		CustomDecode(string) ([]byte, error)
+	}
 )

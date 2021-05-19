@@ -1,6 +1,9 @@
 package object
 
 import (
+	"encoding/base64"
+	"strings"
+
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -29,4 +32,19 @@ func NewCfg(p path.T, opts ...funcopt.O) *Cfg {
 	s := &Cfg{}
 	s.Base.init(p, opts...)
 	return s
+}
+
+func (t Cfg) Decode(options OptsDecode) ([]byte, error) {
+	return t.decode(options.Key, t)
+}
+
+func (t Cfg) CustomDecode(s string) ([]byte, error) {
+	switch {
+	case strings.HasPrefix(s, "base64:"):
+		return base64.URLEncoding.DecodeString(s[7:])
+	case strings.HasPrefix(s, "literal:"):
+		return []byte(s[8:]), nil
+	default:
+		return []byte(s), nil
+	}
 }

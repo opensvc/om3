@@ -413,6 +413,8 @@ func (t *Selection) Do(action Action) []ActionResult {
 						s += e + "\n"
 					}
 					return s
+				case []byte:
+					return string(v)
 				default:
 					return ""
 				}

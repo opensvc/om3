@@ -33,7 +33,6 @@ func init() {
 		cmdDelete      commands.CmdObjectDelete
 		cmdEditConfig  commands.CmdObjectEditConfig
 		cmdEval        commands.CmdObjectEval
-		cmdKeys        commands.CmdObjectKeys
 		cmdGet         commands.CmdObjectGet
 		cmdLs          commands.CmdObjectLs
 		cmdMonitor     commands.CmdObjectMonitor
@@ -42,6 +41,9 @@ func init() {
 		cmdSet         commands.CmdObjectSet
 		cmdStatus      commands.CmdObjectStatus
 		cmdUnset       commands.CmdObjectUnset
+
+		cmdDecode commands.CmdKeystoreDecode
+		cmdKeys   commands.CmdKeystoreKeys
 	)
 
 	kind := "cfg"
@@ -54,6 +56,7 @@ func init() {
 
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
+	cmdDecode.Init(kind, head, &selectorFlag)
 	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)

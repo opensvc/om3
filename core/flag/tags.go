@@ -48,6 +48,10 @@ var Tags = map[string]Opt{
 		Long: "interactive",
 		Desc: "prompt the user for env keys override values. fail if no default is defined",
 	},
+	"key": Opt{
+		Long: "key",
+		Desc: "a keystore key name",
+	},
 	"kw": Opt{
 		Long: "kw",
 		Desc: "a configuration keyword, [<section>].<option>",

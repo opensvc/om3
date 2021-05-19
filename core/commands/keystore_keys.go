@@ -9,20 +9,20 @@ import (
 )
 
 type (
-	// CmdObjectKeys is the cobra flag set of the keys command.
-	CmdObjectKeys struct {
+	// CmdKeystoreKeys is the cobra flag set of the keys command.
+	CmdKeystoreKeys struct {
 		object.OptsKeys
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectKeys) Init(kind string, parent *cobra.Command, selector *string) {
+func (t *CmdKeystoreKeys) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
 	flag.Install(cmd, &t.OptsKeys)
 }
 
-func (t *CmdObjectKeys) cmd(kind string, selector *string) *cobra.Command {
+func (t *CmdKeystoreKeys) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "keys",
 		Short: "list the object key names",
@@ -32,7 +32,7 @@ func (t *CmdObjectKeys) cmd(kind string, selector *string) *cobra.Command {
 	}
 }
 
-func (t *CmdObjectKeys) run(selector *string, kind string) {
+func (t *CmdKeystoreKeys) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
