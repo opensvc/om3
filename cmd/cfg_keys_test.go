@@ -78,17 +78,19 @@ func TestCfgDecodeKeys(t *testing.T) {
 	config.Load(map[string]string{"osvc_root_path": td})
 	defer config.Load(map[string]string{})
 
-	test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
+	test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
 
 	cases := map[string]struct {
 		extraArgs       []string
 		expectedResults string
 	}{
-		"decode1": {[]string{"foo/bar"}, "fooBar"},
+		"literal": {[]string{"foo/bar"}, "fooBar"},
+		"base64":  {[]string{"file"}, "line1\nline2\n"},
+		"simple":  {[]string{"simple"}, "foo"},
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"cfg", "-s", "test/cfg/cfg1", "decode", "--key"}
+		args := []string{"cfg", "-s", "test/cfg/cfg2", "decode", "--key"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
