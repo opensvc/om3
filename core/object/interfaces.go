@@ -18,6 +18,7 @@ type (
 	Keystorer interface {
 		Decode(OptsDecode) ([]byte, error)
 		Keys(OptsKeys) ([]string, error)
+		Remove(OptsRemove) error
 	}
 
 	// Baser is implemented by all object kinds.

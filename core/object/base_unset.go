@@ -13,9 +13,16 @@ type OptsUnset struct {
 
 // Unset gets a keyword value
 func (t *Base) Unset(options OptsUnset) error {
-	changes := 0
+	kws := make([]key.T, 0)
 	for _, kw := range options.Keywords {
-		k := key.Parse(kw)
+		kws = append(kws, key.Parse(kw))
+	}
+	return t.unset(kws...)
+}
+
+func (t *Base) unset(kws ...key.T) error {
+	changes := 0
+	for _, k := range kws {
 		changes += t.config.Unset(k)
 	}
 	if changes > 0 {
