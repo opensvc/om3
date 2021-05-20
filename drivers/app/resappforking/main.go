@@ -3,7 +3,6 @@ package resappforking
 import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/drivers/app/resappbase"
 	"opensvc.com/opensvc/drivers/app/resappunix"
 )
 
@@ -29,7 +28,8 @@ func (t T) Start() error {
 		return nil
 	}
 	t.Log().Info().Msgf("starting %s", t.StartCmd)
-	err := resappbase.Command(t.StartCmd).Run()
+	cmd := t.GetCmd(t.StartCmd)
+	err := t.RunOutErr(cmd)
 	if err != nil {
 		return err
 	}

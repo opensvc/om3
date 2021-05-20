@@ -1,10 +1,13 @@
 package resappunix
 
 import (
+	"bufio"
+	"io"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/app/resappbase"
+	"os/exec"
 	"time"
 )
 
@@ -50,17 +53,15 @@ func (t T) Stop() error {
 		return nil
 	}
 	t.Log().Info().Msgf("running %s", t.StopCmd)
-	err := resappbase.Command(t.StopCmd).Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	cmd := t.GetCmd(t.StopCmd)
+	return t.RunOutErr(cmd)
 }
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status() status.T {
 	t.Log().Debug().Msgf("Status() running %s", t.CheckCmd)
-	err := resappbase.Command(t.CheckCmd).Run()
+	cmd := t.GetCmd(t.CheckCmd)
+	err := cmd.Run()
 	if err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
@@ -79,4 +80,52 @@ func (t T) Unprovision() error {
 
 func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
+}
+
+func (t T) logInfo(r io.Reader) {
+	s := bufio.NewScanner(r)
+	for s.Scan() {
+		t.Log().Info().Msgf("| %v", s.Text())
+	}
+}
+
+func (t T) logWarn(r io.Reader) {
+	s := bufio.NewScanner(r)
+	for s.Scan() {
+		t.Log().Error().Msgf("| %v", s.Text())
+	}
+}
+
+func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
+	var stdout, stderr io.ReadCloser
+	closer := func(c io.Closer) {
+		_ = c.Close()
+	}
+	if stdout, err = cmd.StdoutPipe(); err != nil {
+		return err
+	}
+	defer closer(stdout)
+	if stderr, err = cmd.StderrPipe(); err != nil {
+		return err
+	}
+	defer closer(stderr)
+
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+	go t.logInfo(stdout)
+	go t.logWarn(stderr)
+
+	if err = cmd.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) GetCmd(command string) *exec.Cmd {
+	cmd := resappbase.Command(command)
+	if len(t.Env) > 0 {
+		cmd.Env = append([]string{}, t.Env...)
+	}
+	return cmd
 }
