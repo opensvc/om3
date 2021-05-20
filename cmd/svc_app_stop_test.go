@@ -19,7 +19,7 @@ func TestAppStop(t *testing.T) {
 		expectedResults string
 	}{
 		"logInfo":  {[]string{"--rid", "app#1"}, "line1"},
-		"logError": {[]string{"--rid", "app#2"}, "ls: "},
+		"logError": {[]string{"--rid", "app#2"}, "/bin/ls: "},
 		"env":      {[]string{"--rid", "app#env"}, "FOO=foo\nBAR=bar"},
 	}
 
