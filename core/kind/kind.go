@@ -7,12 +7,17 @@ import (
 	"opensvc.com/opensvc/util/xmap"
 )
 
-// T is an integer representing the opensvc object kind.
-type T int
+type (
+	// T is an integer representing the opensvc object kind.
+	T int
+
+	// Mask is the result of a binary Or on T values
+	Mask int
+)
 
 const (
 	// Invalid is for invalid kinds
-	Invalid T = iota
+	Invalid T = iota << 1
 	// Svc is the kind of objects containing app, containers, or volumes resources.
 	Svc
 	// Vol is the kind of objects containing fs, disk resources. Allocated from Pools.
@@ -86,4 +91,32 @@ func (t *T) UnmarshalJSON(b []byte) error {
 
 func Names() []string {
 	return xmap.Keys(toID)
+}
+
+func (t Mask) Has(kind T) bool {
+	if t == 0 {
+		return true
+	}
+	return int(t)&int(kind) != 0
+}
+
+func (t T) Or(ts ...T) Mask {
+	m := Mask(t)
+	return or(m, ts...)
+}
+
+func (t Mask) Or(ts ...T) Mask {
+	return or(t, ts...)
+}
+
+func Or(ts ...T) Mask {
+	return or(Mask(0), ts...)
+}
+
+func or(m Mask, ts ...T) Mask {
+	i := int(m)
+	for _, t := range ts {
+		i |= int(t)
+	}
+	return Mask(i)
 }

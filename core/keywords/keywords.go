@@ -3,6 +3,7 @@ package keywords
 import (
 	"strings"
 
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
@@ -43,14 +44,19 @@ type (
 
 		// Depends is a list of key-value conditions to meet to accept this keyword in a config.
 		//Depends []keyval.T
+
+		Kind kind.Mask
 	}
 
 	Store []Keyword
 )
 
-func (t Store) Lookup(k key.T) Keyword {
+func (t Store) Lookup(k key.T, kd kind.T) Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	for _, kw := range t {
+		if !kw.Kind.Has(kd) {
+			continue
+		}
 		if k.Option != kw.Option {
 			continue
 		}

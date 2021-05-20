@@ -99,5 +99,9 @@ func (t *Keystore) addKey(name string, b []byte, ce CustomEncoder) error {
 		Op:    keyop.Set,
 		Value: s,
 	}
-	return t.config.Set(op)
+	if err := t.config.Set(op); err != nil {
+		return err
+	}
+	t.log.Info().Str("key", name).Int("len", len(s)).Msg("key set")
+	return nil
 }

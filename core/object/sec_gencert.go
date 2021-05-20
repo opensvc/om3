@@ -24,6 +24,30 @@ type OptsGenCert struct {
 
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.
 func (t *Sec) GenCert(options OptsGenCert) error {
+	priv, err := t.getPriv()
+	if err != nil {
+		return err
+	}
+	ca := t.CertInfo("ca")
+	switch ca {
+	case "":
+		err = t.genSelfSigned(priv)
+	default:
+		err = t.genCASigned(priv, ca)
+	}
+	if err != nil {
+		return nil
+	}
+	return t.config.Commit()
+}
+
+func (t *Sec) genSelfSigned(priv *rsa.PrivateKey) error {
+	t.log.Info().Msg("generate a self-signed certificate")
+	return nil
+}
+
+func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
+	t.log.Info().Msgf("generate a certificate signed by the CA in %s", ca)
 	return nil
 }
 
@@ -32,7 +56,8 @@ func (t *Sec) CertInfo(name string) string {
 }
 
 func (t *Sec) CertInfoBits() int {
-	return t.config.GetInt(key.Parse("bits"))
+	sz := t.config.GetSize(key.Parse("bits"))
+	return int(*sz)
 }
 
 func (t *Sec) CertInfoNotAfter() time.Time {
@@ -118,9 +143,13 @@ func (t *Sec) getCAPriv() (*rsa.PrivateKey, error) {
 	if b, err = sec.decode("private_key", t); err != nil {
 		return nil, err
 	}
+	return privFromPEM(b)
+}
+
+func privFromPEM(b []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(b)
 	if block.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("PEM block type of %s private_key is not PRIVATE KEY", sec.Path)
+		return nil, fmt.Errorf("PEM block type is not PRIVATE KEY")
 	}
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
@@ -129,8 +158,33 @@ func (t *Sec) getCAPriv() (*rsa.PrivateKey, error) {
 	return priv.(*rsa.PrivateKey), nil
 }
 
+func (t *Sec) getPriv() (*rsa.PrivateKey, error) {
+	b, err := t.decode("private_key", t)
+	if err != nil {
+		return t.genPriv()
+	}
+	priv, err := privFromPEM(b)
+	if err != nil {
+		return t.genPriv()
+	}
+	return priv, nil
+}
+
+func (t *Sec) genPriv() (*rsa.PrivateKey, error) {
+	bits := t.CertInfoBits()
+	t.log.Info().Int("bits", bits).Msg("generate new private key")
+	priv, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return nil, err
+	}
+	if err := t.setPriv(priv); err != nil {
+		return nil, err
+	}
+	return priv, nil
+}
+
 func (t *Sec) genCA() (*x509.Certificate, []byte, *rsa.PrivateKey, error) {
-	priv, err := rsa.GenerateKey(rand.Reader, t.CertInfoBits())
+	priv, err := t.getPriv()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -146,12 +200,12 @@ func (t *Sec) genCA() (*x509.Certificate, []byte, *rsa.PrivateKey, error) {
 func genCert(template, parent *x509.Certificate, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, publicKey, privateKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create certificate:" + err.Error())
+		return nil, nil, fmt.Errorf("Failed to create certificate: " + err.Error())
 	}
 
 	cert, err := x509.ParseCertificate(certBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse certificate:" + err.Error())
+		return nil, nil, fmt.Errorf("Failed to parse certificate: " + err.Error())
 	}
 
 	b := pem.Block{Type: "CERTIFICATE", Bytes: certBytes}

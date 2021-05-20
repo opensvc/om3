@@ -2,6 +2,7 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
@@ -160,6 +161,101 @@ var keywordStore = keywords.Store{
 		Converter: converters.Bool,
 		Text:      "If set to ``true``, actions are executed in parallel amongst the subset member resources.",
 	},
+
+	// Secrets
+	{
+		Section:  "DEFAULT",
+		Option:   "cn",
+		Scopable: true,
+		Text:     "Certificate Signing Request Common Name.",
+		Example:  "test.opensvc.com",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "c",
+		Scopable: true,
+		Text:     "Certificate Signing Request Country.",
+		Example:  "FR",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "st",
+		Scopable: true,
+		Text:     "Certificate Signing Request State.",
+		Example:  "Oise",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "l",
+		Scopable: true,
+		Text:     "Certificate Signing Request Location.",
+		Example:  "Gouvieux",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "o",
+		Scopable: true,
+		Text:     "Certificate Signing Request Organization.",
+		Example:  "OpenSVC",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "ou",
+		Scopable: true,
+		Text:     "Certificate Signing Request Organizational Unit.",
+		Example:  "Lab",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "email",
+		Scopable: true,
+		Text:     "Certificate Signing Request Email.",
+		Example:  "test@opensvc.com",
+		Kind:     kind.Or(kind.Sec),
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "alt_names",
+		Converter: converters.List,
+		Scopable:  true,
+		Text:      "Certificate Signing Request Alternative Domain Names.",
+		Example:   "www.opensvc.com opensvc.com",
+		Kind:      kind.Or(kind.Sec),
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "bits",
+		Converter: converters.Size,
+		Scopable:  true,
+		Text:      "Certificate Private Key Length.",
+		Default:   "4kib",
+		Example:   "8192",
+		Kind:      kind.Or(kind.Sec),
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "validity",
+		Converter: converters.Duration,
+		Scopable:  true,
+		Text:      "Certificate Validity duration.",
+		Default:   "1y",
+		Example:   "10y",
+		Kind:      kind.Or(kind.Sec),
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "ca",
+		Scopable: true,
+		Text:     "The name of secret containing a certificate to use as a Certificate Authority. This secret must be in the same namespace.",
+		Example:  "ca",
+		Kind:     kind.Or(kind.Sec),
+	},
 }
 
 func (t Base) KeywordLookup(k key.T) keywords.Keyword {
@@ -171,5 +267,5 @@ func (t Base) KeywordLookup(k key.T) keywords.Keyword {
 			Required: false,
 		}
 	}
-	return keywordStore.Lookup(k)
+	return keywordStore.Lookup(k, t.Path.Kind)
 }

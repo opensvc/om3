@@ -150,6 +150,21 @@ func (t *T) GetIntStrict(k key.T) (int, error) {
 	}
 }
 
+func (t *T) GetSize(k key.T) *int64 {
+	val, _ := t.GetSizeStrict(k)
+	return val
+}
+
+func (t *T) GetSizeStrict(k key.T) (*int64, error) {
+	if conv, s, err := t.Eval(k); err != nil {
+		var i int64
+		return &i, err
+	} else {
+		v, e := conv(s)
+		return v.(*int64), e
+	}
+}
+
 // Unset deletes keys and returns the number of deleted keys
 func (t *T) Unset(ks ...key.T) int {
 	deleted := 0
