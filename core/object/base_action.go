@@ -47,7 +47,7 @@ func (t *Base) setenv(action string, leader bool) {
 
 func (t *Base) preAction(action objectactionprops.T, options ActionOptioner) error {
 	if err := t.notifyAction(action, options); err != nil {
-		return err
+		t.Log().Debug().Err(err).Msgf("unable to notify %v preAction", action.Name)
 	}
 	if err := t.mayFreeze(action, options); err != nil {
 		return err
