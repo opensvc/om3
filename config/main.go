@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
@@ -118,6 +119,20 @@ func (t *T) GetBoolStrict(k key.T) (bool, error) {
 	} else {
 		v, e := conv(s)
 		return v.(bool), e
+	}
+}
+
+func (t *T) GetDuration(k key.T) time.Duration {
+	val, _ := t.GetDurationStrict(k)
+	return val
+}
+
+func (t *T) GetDurationStrict(k key.T) (time.Duration, error) {
+	if conv, s, err := t.Eval(k); err != nil {
+		return time.Duration(0), err
+	} else {
+		v, e := conv(s)
+		return v.(time.Duration), e
 	}
 }
 

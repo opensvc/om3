@@ -2,6 +2,7 @@ package file
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -42,6 +43,24 @@ func ExistsNotDir(path string) bool {
 	return !info.IsDir()
 }
 
+// ExistsAndDir returns true if the file path exists and is a directory.
+func ExistsAndDir(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
+
+// ExistsAndRegular returns true if the file path exists and is a regular file.
+func ExistsAndRegular(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.Mode().IsRegular()
+}
+
 //
 // Copy copies the file content from src file path to dst file path.
 // If dst does not exist, it is created.
@@ -65,6 +84,21 @@ func Copy(src string, dst string) (err error) {
 	r.Close()
 	w.Close()
 	return nil
+}
+
+//
+// ReadAll reads and return all content of the file at src
+//
+func ReadAll(src string) ([]byte, error) {
+	var (
+		r   *os.File
+		err error
+	)
+	if r, err = os.Open(src); err != nil {
+		return []byte{}, err
+	}
+	defer r.Close()
+	return ioutil.ReadAll(r)
 }
 
 //

@@ -147,6 +147,14 @@ var Tags = map[string]Opt{
 		Desc:       "start the service up to the specified rid or driver group",
 		Deprecated: "use --to",
 	},
+	"from": Opt{
+		Long: "from",
+		Desc: "the key value source (uri, file, /dev/stdin)",
+	},
+	"value": Opt{
+		Long: "value",
+		Desc: "the key value",
+	},
 	"wait": Opt{
 		Long: "wait",
 		Desc: "wait for the object to reach the target state",

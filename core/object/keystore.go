@@ -16,6 +16,9 @@ type (
 	CustomDecoder interface {
 		CustomDecode(string) ([]byte, error)
 	}
+	CustomEncoder interface {
+		CustomEncode([]byte) (string, error)
+	}
 )
 
 func keyFromName(name string) key.T {

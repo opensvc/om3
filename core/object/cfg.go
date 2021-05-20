@@ -3,6 +3,7 @@ package object
 import (
 	"encoding/base64"
 	"strings"
+	"unicode"
 
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
@@ -34,8 +35,25 @@ func NewCfg(p path.T, opts ...funcopt.O) *Cfg {
 	return s
 }
 
+func (t Cfg) Add(options OptsAdd) error {
+	return t.add(options.Key, options.From, options.Value, t)
+}
+
+func (t Cfg) Change(options OptsAdd) error {
+	return t.change(options.Key, options.From, options.Value, t)
+}
+
 func (t Cfg) Decode(options OptsDecode) ([]byte, error) {
 	return t.decode(options.Key, t)
+}
+
+func (t Cfg) CustomEncode(b []byte) (string, error) {
+	switch {
+	case isAsciiPrintable(b):
+		return "literal:" + string(b), nil
+	default:
+		return "base64:" + base64.RawURLEncoding.EncodeToString(b), nil
+	}
 }
 
 func (t Cfg) CustomDecode(s string) ([]byte, error) {
@@ -47,4 +65,14 @@ func (t Cfg) CustomDecode(s string) ([]byte, error) {
 	default:
 		return []byte(s), nil
 	}
+}
+
+func isAsciiPrintable(bytes []byte) bool {
+	for _, b := range bytes {
+		r := rune(b)
+		if r > unicode.MaxASCII || !unicode.IsPrint(r) {
+			return false
+		}
+	}
+	return true
 }

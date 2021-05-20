@@ -3,10 +3,7 @@ package create
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/iancoleman/orderedmap"
@@ -17,6 +14,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/uri"
 )
 
 type (
@@ -196,18 +194,19 @@ func (t T) rawFromTemplate() (Pivot, error) {
 }
 
 func (t T) rawFromConfig() (Pivot, error) {
+	u := uri.New(t.config)
 	switch {
 	case file.Exists(t.config):
 		return rawFromConfigFile(t.path, t.config)
-	case isValidUrl(t.config):
-		return rawFromConfigURI(t.path, t.config)
+	case u.IsValid():
+		return rawFromConfigURI(t.path, u)
 	default:
 		return nil, fmt.Errorf("invalid configuration: %s is not a file, nor an uri", t.config)
 	}
 }
 
-func rawFromConfigURI(p path.T, uri string) (Pivot, error) {
-	fpath, err := fetchURI(uri)
+func rawFromConfigURI(p path.T, u uri.T) (Pivot, error) {
+	fpath, err := u.Fetch()
 	if err != nil {
 		return make(Pivot), nil
 	}
@@ -322,38 +321,6 @@ func LocalEmpty(p path.T) error {
 	o := object.NewFromPath(p)
 	oc := o.(object.Configurer)
 	return oc.Config().Commit()
-}
-
-func fetchURI(uri string) (string, error) {
-	var (
-		f   *os.File
-		err error
-	)
-	resp, err := http.Get(uri)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if f, err = ioutil.TempFile(config.Node.Paths.Tmp, ".fetch.*"); err != nil {
-		return "", err
-	}
-	fName := f.Name()
-	if _, err = io.Copy(f, resp.Body); err != nil {
-		return "", err
-	}
-	return fName, nil
-}
-
-func isValidUrl(s string) bool {
-	_, err := url.ParseRequestURI(s)
-	if err != nil {
-		return false
-	}
-	u, err := url.Parse(s)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return false
-	}
-	return true
 }
 
 func setKeywords(oc object.Configurer, kws []string) error {

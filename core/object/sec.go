@@ -37,8 +37,25 @@ func NewSec(p path.T, opts ...funcopt.O) *Sec {
 	return s
 }
 
+func (t Sec) Add(options OptsAdd) error {
+	return t.add(options.Key, options.From, options.Value, t)
+}
+
+func (t Sec) Change(options OptsAdd) error {
+	return t.change(options.Key, options.From, options.Value, t)
+}
+
 func (t Sec) Decode(options OptsDecode) ([]byte, error) {
 	return t.decode(options.Key, t)
+}
+
+func (t Sec) CustomEncode(b []byte) (string, error) {
+	m := reqjsonrpc.NewMessage(b)
+	b, err := m.Encrypt()
+	if err != nil {
+		return "", err
+	}
+	return "crypt:" + base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func (t Sec) CustomDecode(s string) ([]byte, error) {
@@ -53,7 +70,10 @@ func (t Sec) CustomDecode(s string) ([]byte, error) {
 	}
 
 	// remove the trailing \r
-	b = b[:len(b)-1]
+	last := len(b) - 1
+	if b[last] == '\x00' {
+		b = b[:last]
+	}
 
 	// decrypt AES
 	m := reqjsonrpc.NewMessage(b)
@@ -64,7 +84,7 @@ func (t Sec) CustomDecode(s string) ([]byte, error) {
 
 	err = json.Unmarshal(b, &s)
 	if err != nil {
-		return []byte{}, err
+		return b, nil
 	}
 	return []byte(s), nil
 }

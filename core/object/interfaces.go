@@ -14,8 +14,15 @@ type (
 		Render() string
 	}
 
+	// SecureKeystorer is implemented by encrypting Keystore object kinds (usr, sec).
+	SecureKeystorer interface {
+		GenCert(OptsGenCert) error
+	}
+
 	// Keystorer is implemented by Keystore object kinds (usr, sec, cfg).
 	Keystorer interface {
+		Add(OptsAdd) error
+		Change(OptsAdd) error
 		Decode(OptsDecode) ([]byte, error)
 		Keys(OptsKeys) ([]string, error)
 		Remove(OptsRemove) error

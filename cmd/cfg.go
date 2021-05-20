@@ -42,6 +42,8 @@ func init() {
 		cmdStatus      commands.CmdObjectStatus
 		cmdUnset       commands.CmdObjectUnset
 
+		cmdAdd    commands.CmdKeystoreAdd
+		cmdChange commands.CmdKeystoreChange
 		cmdDecode commands.CmdKeystoreDecode
 		cmdKeys   commands.CmdKeystoreKeys
 		cmdRemove commands.CmdKeystoreRemove
@@ -55,6 +57,8 @@ func init() {
 	head.AddCommand(subEdit)
 	head.AddCommand(subPrint)
 
+	cmdAdd.Init(kind, head, &selectorFlag)
+	cmdChange.Init(kind, head, &selectorFlag)
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdDecode.Init(kind, head, &selectorFlag)
