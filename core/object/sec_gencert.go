@@ -24,6 +24,7 @@ type OptsGenCert struct {
 
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.
 func (t *Sec) GenCert(options OptsGenCert) error {
+	var err error
 	priv, err := t.getPriv()
 	if err != nil {
 		return err
@@ -36,14 +37,22 @@ func (t *Sec) GenCert(options OptsGenCert) error {
 		err = t.genCASigned(priv, ca)
 	}
 	if err != nil {
-		return nil
+		return err
 	}
 	return t.config.Commit()
 }
 
 func (t *Sec) genSelfSigned(priv *rsa.PrivateKey) error {
 	t.log.Info().Msg("generate a self-signed certificate")
-	return nil
+	tmpl, err := t.template(true, priv)
+	if err != nil {
+		return err
+	}
+	_, pemBytes, err := genCert(&tmpl, &tmpl, priv)
+	if err != nil {
+		return err
+	}
+	return t.addKey("certificate", pemBytes, t)
 }
 
 func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
@@ -60,9 +69,12 @@ func (t *Sec) CertInfoBits() int {
 	return int(*sz)
 }
 
-func (t *Sec) CertInfoNotAfter() time.Time {
-	v := t.config.GetDuration(key.Parse("validity"))
-	return time.Now().Add(v)
+func (t *Sec) CertInfoNotAfter() (time.Time, error) {
+	if v, err := t.config.GetDurationStrict(key.Parse("validity")); err != nil {
+		return time.Now(), err
+	} else {
+		return time.Now().Add(*v), nil
+	}
 }
 
 func getBaseKeyUsage(priv interface{}) x509.KeyUsage {
@@ -79,7 +91,12 @@ func getBaseKeyUsage(priv interface{}) x509.KeyUsage {
 }
 
 // "cn", "c", "st", "l", "o", "ou", "email", "alt_names", "bits", "validity", "ca"
-func (t *Sec) template(isCA bool, keyUsage x509.KeyUsage) x509.Certificate {
+func (t *Sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
+	keyUsage := getBaseKeyUsage(priv)
+	notAfter, err := t.CertInfoNotAfter()
+	if err != nil {
+		return x509.Certificate{}, err
+	}
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
@@ -89,7 +106,7 @@ func (t *Sec) template(isCA bool, keyUsage x509.KeyUsage) x509.Certificate {
 			CommonName:         t.CertInfo("cn"),
 		},
 		NotBefore:             time.Now().Add(-10 * time.Second),
-		NotAfter:              t.CertInfoNotAfter(),
+		NotAfter:              notAfter,
 		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
@@ -101,7 +118,7 @@ func (t *Sec) template(isCA bool, keyUsage x509.KeyUsage) x509.Certificate {
 		template.KeyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage |= x509.KeyUsageCRLSign
 	}
-	return template
+	return template, nil
 }
 
 func (t *Sec) getCASec() (*Sec, error) {
@@ -188,24 +205,26 @@ func (t *Sec) genCA() (*x509.Certificate, []byte, *rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	keyUsage := getBaseKeyUsage(priv)
-	rootTemplate := t.template(true, keyUsage)
-	rootCert, rootPEM, err := genCert(&rootTemplate, &rootTemplate, &priv.PublicKey, priv)
+	rootTemplate, err := t.template(true, priv)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	rootCert, rootPEM, err := genCert(&rootTemplate, &rootTemplate, priv)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	return rootCert, rootPEM, priv, nil
 }
 
-func genCert(template, parent *x509.Certificate, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, publicKey, privateKey)
+func genCert(template, parent *x509.Certificate, priv *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, &priv.PublicKey, priv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create certificate: " + err.Error())
+		return nil, nil, fmt.Errorf("failed to create certificate: " + err.Error())
 	}
 
 	cert, err := x509.ParseCertificate(certBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse certificate: " + err.Error())
+		return nil, nil, fmt.Errorf("failed to parse certificate: " + err.Error())
 	}
 
 	b := pem.Block{Type: "CERTIFICATE", Bytes: certBytes}

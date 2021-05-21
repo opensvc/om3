@@ -122,17 +122,17 @@ func (t *T) GetBoolStrict(k key.T) (bool, error) {
 	}
 }
 
-func (t *T) GetDuration(k key.T) time.Duration {
+func (t *T) GetDuration(k key.T) *time.Duration {
 	val, _ := t.GetDurationStrict(k)
 	return val
 }
 
-func (t *T) GetDurationStrict(k key.T) (time.Duration, error) {
+func (t *T) GetDurationStrict(k key.T) (*time.Duration, error) {
 	if conv, s, err := t.Eval(k); err != nil {
-		return time.Duration(0), err
+		return nil, err
 	} else {
 		v, e := conv(s)
-		return v.(time.Duration), e
+		return v.(*time.Duration), e
 	}
 }
 

@@ -55,7 +55,7 @@ func (t Sec) CustomEncode(b []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return "crypt:" + base64.RawURLEncoding.EncodeToString(b), nil
+	return "crypt:" + base64.URLEncoding.Strict().EncodeToString(b), nil
 }
 
 func (t Sec) CustomDecode(s string) ([]byte, error) {

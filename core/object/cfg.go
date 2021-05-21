@@ -52,7 +52,7 @@ func (t Cfg) CustomEncode(b []byte) (string, error) {
 	case isAsciiPrintable(b):
 		return "literal:" + string(b), nil
 	default:
-		return "base64:" + base64.RawURLEncoding.EncodeToString(b), nil
+		return "base64:" + base64.RawURLEncoding.Strict().EncodeToString(b), nil
 	}
 }
 
