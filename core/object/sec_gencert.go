@@ -129,7 +129,7 @@ func (t *Sec) getCASec() (*Sec, error) {
 	}
 	sec := NewSec(p, WithVolatile(true))
 	if !sec.Exists() {
-		return sec, fmt.Errorf("secret %s does not exist")
+		return sec, fmt.Errorf("secret %s does not exist", p.String())
 	}
 	return sec, nil
 }
