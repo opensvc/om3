@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/key"
 )
@@ -42,21 +44,52 @@ func (t *Sec) GenCert(options OptsGenCert) error {
 	return t.config.Commit()
 }
 
+func CASecPaths() []path.T {
+	ls := strings.Fields(config.Node.Cluster.CASecPaths)
+	l := make([]path.T, 0)
+	for _, s := range ls {
+		p, err := path.Parse(s)
+		if err != nil {
+			continue
+		}
+		l = append(l, p)
+	}
+	return l
+}
+
 func (t *Sec) genSelfSigned(priv *rsa.PrivateKey) error {
-	t.log.Info().Msg("generate a self-signed certificate")
+	t.log.Debug().Msg("generate a self-signed certificate")
 	tmpl, err := t.template(true, priv)
 	if err != nil {
 		return err
 	}
-	_, pemBytes, err := genCert(&tmpl, &tmpl, priv)
+	_, certBytes, err := genCert(&tmpl, &tmpl, priv)
 	if err != nil {
 		return err
 	}
-	return t.addKey("certificate", pemBytes, t)
+	return t.addKey("certificate", certBytes, t)
 }
 
 func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
-	t.log.Info().Msgf("generate a certificate signed by the CA in %s", ca)
+	t.log.Debug().Msgf("generate a certificate signed by the CA in %s", ca)
+	caCert, caCertBytes, err := t.getCACert()
+	if err != nil {
+		return err
+	}
+	tmpl, err := t.template(false, priv)
+	if err != nil {
+		return err
+	}
+	_, certBytes, err := genCert(&tmpl, caCert, priv)
+	if err != nil {
+		return err
+	}
+	if err := t.addKey("certificate", certBytes, t); err != nil {
+		return err
+	}
+	if err := t.addKey("certificate_chain", append(certBytes, caCertBytes...), t); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -90,6 +123,15 @@ func getBaseKeyUsage(priv interface{}) x509.KeyUsage {
 	return keyUsage
 }
 
+func (t *Sec) subject() pkix.Name {
+	return pkix.Name{
+		Country:            []string{t.CertInfo("c")},
+		Organization:       []string{t.CertInfo("o")},
+		OrganizationalUnit: []string{t.CertInfo("ou")},
+		CommonName:         t.CertInfo("cn"),
+	}
+}
+
 // "cn", "c", "st", "l", "o", "ou", "email", "alt_names", "bits", "validity", "ca"
 func (t *Sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 	keyUsage := getBaseKeyUsage(priv)
@@ -98,13 +140,8 @@ func (t *Sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 		return x509.Certificate{}, err
 	}
 	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			Country:            []string{t.CertInfo("c")},
-			Organization:       []string{t.CertInfo("o")},
-			OrganizationalUnit: []string{t.CertInfo("ou")},
-			CommonName:         t.CertInfo("cn"),
-		},
+		SerialNumber:          big.NewInt(1),
+		Subject:               t.subject(),
 		NotBefore:             time.Now().Add(-10 * time.Second),
 		NotAfter:              notAfter,
 		KeyUsage:              keyUsage,
@@ -146,6 +183,37 @@ func (t *Sec) setPriv(priv *rsa.PrivateKey) error {
 func (t *Sec) setCert(derBytes []byte) error {
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	return t.addKey("certificate", pemBytes, t)
+}
+
+func (t *Sec) getCACert() (*x509.Certificate, []byte, error) {
+	var (
+		sec  *Sec
+		b    []byte
+		err  error
+		cert *x509.Certificate
+	)
+	if sec, err = t.getCASec(); err != nil {
+		return nil, nil, err
+	}
+	if b, err = sec.decode("certificate", t); err != nil {
+		return nil, nil, err
+	}
+	if cert, err = certFromPEM(b); err != nil {
+		return nil, nil, err
+	}
+	return cert, b, nil
+}
+
+func certFromPEM(b []byte) (*x509.Certificate, error) {
+	block, _ := pem.Decode(b)
+	if block.Type != "CERTIFICATE" {
+		return nil, fmt.Errorf("certFromPEM: PEM block type is not CERTIFICATE")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("certFromPEM: failed to parse certificate: " + err.Error())
+	}
+	return cert, nil
 }
 
 func (t *Sec) getCAPriv() (*rsa.PrivateKey, error) {
@@ -198,22 +266,6 @@ func (t *Sec) genPriv() (*rsa.PrivateKey, error) {
 		return nil, err
 	}
 	return priv, nil
-}
-
-func (t *Sec) genCA() (*x509.Certificate, []byte, *rsa.PrivateKey, error) {
-	priv, err := t.getPriv()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	rootTemplate, err := t.template(true, priv)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	rootCert, rootPEM, err := genCert(&rootTemplate, &rootTemplate, priv)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return rootCert, rootPEM, priv, nil
 }
 
 func genCert(template, parent *x509.Certificate, priv *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
