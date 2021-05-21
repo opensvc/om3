@@ -125,6 +125,8 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	}
 	go t.logInfo(stdout)
 	go t.logWarn(stderr)
+	// Give time for logger to fetch output of very short life commands
+	time.Sleep(20 * time.Millisecond)
 
 	if err = cmd.Wait(); err != nil {
 		return err
