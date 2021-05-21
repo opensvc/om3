@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/app/resappbase"
+	"opensvc.com/opensvc/util/utilexec"
 	"os/exec"
 	"time"
 )
@@ -105,6 +106,11 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 		t.Log().Debug().Msgf("run command from %v", t.Cwd)
 		cmd.Dir = t.Cwd
 	}
+	if err := utilexec.SetCredential(cmd, t.User, t.Group); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to set credential from user '%v', group '%v'", t.User, t.Group)
+		return err
+	}
+
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		return err
 	}

@@ -34,6 +34,19 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#cwd"},
 			"/usr",
 		},
+		"baduser": {
+			[]string{"--rid", "app#baduser"},
+			"unable to set credential from user 'baduser'",
+		},
+		"badgroup": {
+			[]string{"--rid", "app#badgroup"},
+			"unable to set credential from user '', group 'badgroup'",
+		},
+		"badusergroup": {
+			[]string{"--rid", "app#badusergroup"},
+			"unable to set credential from user 'baduser', group 'badgroup'\n" +
+				"unable to find user info for 'baduser'",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -125,4 +138,18 @@ func TestAppStop(t *testing.T) {
 			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
 		}
 	})
+
+	for _, name := range []string{"baduser", "badgroup", "badusergroup"} {
+		t.Run("invalid credentials "+name, func(t *testing.T) {
+			//name := "baduser"
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			out, err := cmd.CombinedOutput()
+			assert.NotNil(t, err, "got: '\n%v'", string(out))
+			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+				assert.Containsf(t, string(out), expected, "got: '\n%v'", string(out))
+			}
+		})
+	}
 }
