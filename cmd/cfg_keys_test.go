@@ -23,14 +23,6 @@ type (
 )
 
 func TestCfgKeys(t *testing.T) {
-	td, cleanup := testhelper.Tempdir(t)
-	defer cleanup()
-
-	config.Load(map[string]string{"osvc_root_path": td})
-	defer config.Load(map[string]string{})
-
-	test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
-
 	cases := map[string]struct {
 		extraArgs       []string
 		expectedResults string
@@ -47,6 +39,13 @@ func TestCfgKeys(t *testing.T) {
 	}
 
 	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		config.Load(map[string]string{"osvc_root_path": td})
+		defer config.Load(map[string]string{})
+
+		test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
 		rootCmd.SetArgs(getCmd(name))
 		err := rootCmd.Execute()
 		require.Nil(t, err)
@@ -72,14 +71,6 @@ func TestCfgKeys(t *testing.T) {
 }
 
 func TestCfgDecodeKeys(t *testing.T) {
-	td, cleanup := testhelper.Tempdir(t)
-	defer cleanup()
-
-	config.Load(map[string]string{"osvc_root_path": td})
-	defer config.Load(map[string]string{})
-
-	test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
-
 	cases := map[string]struct {
 		extraArgs       []string
 		expectedResults string
@@ -96,6 +87,13 @@ func TestCfgDecodeKeys(t *testing.T) {
 	}
 
 	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		config.Load(map[string]string{"osvc_root_path": td})
+		defer config.Load(map[string]string{})
+
+		test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
 		rootCmd.SetArgs(getCmd(name))
 		err := rootCmd.Execute()
 		require.Nil(t, err)
