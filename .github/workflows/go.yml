@@ -13,6 +13,8 @@ jobs:
     strategy:
       matrix:
         go: [ '1.16', '1.13' ]
+      # fail-fast: false
+
     name: Go ${{ matrix.go }} sample
     steps:
     - uses: actions/checkout@v2
@@ -23,7 +25,10 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Build
-      run: go build -v ./...
+      run: go build -v .
+
+    - name: Test cmd with root
+      run: sudo go test ./... -run TestAppStop
 
     - name: Test
       run: go test ./...

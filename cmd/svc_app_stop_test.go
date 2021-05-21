@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/util/usergroup"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,9 +19,43 @@ func TestAppStop(t *testing.T) {
 		extraArgs       []string
 		expectedResults string
 	}{
-		"logInfo":  {[]string{"--rid", "app#1"}, "line1"},
-		"logError": {[]string{"--rid", "app#2"}, "/bin/ls: "},
-		"env":      {[]string{"--rid", "app#env"}, "FOO=foo\nBAR=bar"},
+		"logInfo": {
+			[]string{"--rid", "app#1"},
+			"line1",
+		},
+		"logError": {
+			[]string{"--rid", "app#2"},
+			"/bin/ls: ",
+		},
+		"env": {
+			[]string{"--rid", "app#env"},
+			"FOO=foo\nBAR=bar",
+		},
+		"cwd": {
+			[]string{"--rid", "app#cwd"},
+			"/usr",
+		},
+		"baduser": {
+			[]string{"--rid", "app#baduser"},
+			"unable to set credential from user 'baduser'",
+		},
+		"badgroup": {
+			[]string{"--rid", "app#badgroup"},
+			"unable to set credential from user '', group 'badgroup'",
+		},
+		"badusergroup": {
+			[]string{"--rid", "app#badusergroup"},
+			"unable to set credential from user 'baduser', group 'badgroup'\n" +
+				"unable to find user info for 'baduser'",
+		},
+		"root": {
+			[]string{"--rid", "app#root"},
+			"uid=0(root) gid=1(daemon)",
+		},
+		"nonRoot": {
+			[]string{"--rid", "app#root"},
+			"operation not permitted",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -98,6 +133,59 @@ func TestAppStop(t *testing.T) {
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
 			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	t.Run("cwd", func(t *testing.T) {
+		name := "cwd"
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		out, err := cmd.CombinedOutput()
+		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	for _, name := range []string{"baduser", "badgroup", "badusergroup"} {
+		t.Run("invalid credentials "+name, func(t *testing.T) {
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			out, err := cmd.CombinedOutput()
+			assert.NotNil(t, err, "got: '\n%v'", string(out))
+			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+				assert.Containsf(t, string(out), expected, "got: '\n%v'", string(out))
+			}
+		})
+	}
+
+	t.Run("valid user and group", func(t *testing.T) {
+		var name string
+		if privUser, err := usergroup.IsPrivileged(); err != nil {
+			t.Fail()
+		} else if privUser {
+			name = "root"
+		} else {
+			name = "nonRoot"
+		}
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+
+		if name == "root" {
+			out, err := cmd.CombinedOutput()
+			assert.Nil(t, err, "got: '\n%v'", string(out))
+			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+				assert.Containsf(t, string(out), expected, "got: '\n%v'", string(out))
+			}
+		} else {
+			out, err := cmd.CombinedOutput()
+			assert.NotNil(t, err, "got: '\n%v'", string(out))
+			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+				assert.Containsf(t, string(out), expected, "got: '\n%v'", string(out))
+			}
 		}
 	})
 }
