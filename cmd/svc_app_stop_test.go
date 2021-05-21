@@ -18,9 +18,22 @@ func TestAppStop(t *testing.T) {
 		extraArgs       []string
 		expectedResults string
 	}{
-		"logInfo":  {[]string{"--rid", "app#1"}, "line1"},
-		"logError": {[]string{"--rid", "app#2"}, "/bin/ls: "},
-		"env":      {[]string{"--rid", "app#env"}, "FOO=foo\nBAR=bar"},
+		"logInfo": {
+			[]string{"--rid", "app#1"},
+			"line1",
+		},
+		"logError": {
+			[]string{"--rid", "app#2"},
+			"/bin/ls: ",
+		},
+		"env": {
+			[]string{"--rid", "app#env"},
+			"FOO=foo\nBAR=bar",
+		},
+		"cwd": {
+			[]string{"--rid", "app#cwd"},
+			"/usr",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -91,6 +104,18 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("environment", func(t *testing.T) {
 		name := "env"
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		out, err := cmd.CombinedOutput()
+		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	t.Run("cwd", func(t *testing.T) {
+		name := "cwd"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
 		cmd.Env = append(os.Environ(), "TC_NAME="+name)

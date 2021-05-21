@@ -101,6 +101,10 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	closer := func(c io.Closer) {
 		_ = c.Close()
 	}
+	if t.Cwd != "" {
+		t.Log().Debug().Msgf("run command from %v", t.Cwd)
+		cmd.Dir = t.Cwd
+	}
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		return err
 	}
