@@ -24,15 +24,15 @@ type (
 	}
 )
 
-func (t Sec) Add(options OptsAdd) error {
+func (t Keystore) Add(options OptsAdd) error {
 	return t.add(options.Key, options.From, options.Value)
 }
 
-func (t Sec) Change(options OptsAdd) error {
+func (t Keystore) Change(options OptsAdd) error {
 	return t.change(options.Key, options.From, options.Value)
 }
 
-func (t Sec) Decode(options OptsDecode) ([]byte, error) {
+func (t Keystore) Decode(options OptsDecode) ([]byte, error) {
 	return t.decode(options.Key)
 }
 
