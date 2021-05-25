@@ -35,6 +35,10 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#cwd"},
 			"/usr",
 		},
+		"cwdWithDefaultType": {
+			[]string{"--rid", "app#cwdWithDefaultType"},
+			"/usr",
+		},
 		"baduser": {
 			[]string{"--rid", "app#baduser"},
 			"unable to set credential from user 'baduser'",
@@ -180,6 +184,18 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("environment", func(t *testing.T) {
 		name := "env"
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		out, err := cmd.CombinedOutput()
+		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	t.Run("default type is forking", func(t *testing.T) {
+		name := "cwdWithDefaultType"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
 		cmd.Env = append(os.Environ(), "TC_NAME="+name)
