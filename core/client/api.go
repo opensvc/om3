@@ -14,6 +14,10 @@ func (t T) NewGetEvents() *api.GetEvents {
 	return api.NewGetEvents(t)
 }
 
+func (t T) NewGetKey() *api.GetKey {
+	return api.NewGetKey(t)
+}
+
 func (t T) NewGetObjectConfig() *api.GetObjectConfig {
 	return api.NewGetObjectConfig(t)
 }
@@ -24,6 +28,10 @@ func (t T) NewGetObjectSelector() *api.GetObjectSelector {
 
 func (t T) NewGetObjectStatus() *api.GetObjectStatus {
 	return api.NewGetObjectStatus(t)
+}
+
+func (t T) NewPostKey() *api.PostKey {
+	return api.NewPostKey(t)
 }
 
 func (t T) NewPostNodeAction() *api.PostNodeAction {

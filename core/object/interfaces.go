@@ -26,6 +26,7 @@ type (
 		Decode(OptsDecode) ([]byte, error)
 		Keys(OptsKeys) ([]string, error)
 		Remove(OptsRemove) error
+		EditKey(OptsEditKey) error
 	}
 
 	// Baser is implemented by all object kinds.

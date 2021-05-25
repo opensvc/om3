@@ -17,7 +17,7 @@ type OptsDecode struct {
 }
 
 // Get returns a keyword value
-func (t *Keystore) decode(keyname string, cd CustomDecoder) ([]byte, error) {
+func (t *Keystore) decode(keyname string) ([]byte, error) {
 	var (
 		s   string
 		err error
@@ -32,5 +32,5 @@ func (t *Keystore) decode(keyname string, cd CustomDecoder) ([]byte, error) {
 	if s, err = t.config.GetStringStrict(k); err != nil {
 		return []byte{}, err
 	}
-	return cd.CustomDecode(s)
+	return t.CustomDecode(s)
 }

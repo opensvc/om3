@@ -11,11 +11,6 @@ var (
 		Use:    "all",
 		Short:  "Manage a mix of objects",
 	}
-	subAllEdit = &cobra.Command{
-		Use:     "edit",
-		Short:   "edit information about the object",
-		Aliases: []string{"edi", "ed"},
-	}
 	subAllPrint = &cobra.Command{
 		Use:     "print",
 		Short:   "print information about the object",
@@ -27,6 +22,7 @@ func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
+		cmdEdit             commands.CmdObjectEdit
 		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdFreeze           commands.CmdObjectFreeze
@@ -46,17 +42,16 @@ func init() {
 
 	kind := ""
 	head := subAll
-	subEdit := subAllEdit
 	subPrint := subAllPrint
 	root := rootCmd
 
 	root.AddCommand(head)
-	head.AddCommand(subEdit)
 	head.AddCommand(subPrint)
 
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
-	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
+	cmdEdit.Init(kind, head, &selectorFlag)
+	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdFreeze.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)

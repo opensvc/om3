@@ -31,23 +31,13 @@ type (
 // NewCfg allocates a cfg kind object.
 func NewCfg(p path.T, opts ...funcopt.O) *Cfg {
 	s := &Cfg{}
+	s.CustomEncode = cfgEncode
+	s.CustomDecode = cfgDecode
 	s.Base.init(p, opts...)
 	return s
 }
 
-func (t Cfg) Add(options OptsAdd) error {
-	return t.add(options.Key, options.From, options.Value, t)
-}
-
-func (t Cfg) Change(options OptsAdd) error {
-	return t.change(options.Key, options.From, options.Value, t)
-}
-
-func (t Cfg) Decode(options OptsDecode) ([]byte, error) {
-	return t.decode(options.Key, t)
-}
-
-func (t Cfg) CustomEncode(b []byte) (string, error) {
+func cfgEncode(b []byte) (string, error) {
 	switch {
 	case isAsciiPrintable(b):
 		return "literal:" + string(b), nil
@@ -56,7 +46,7 @@ func (t Cfg) CustomEncode(b []byte) (string, error) {
 	}
 }
 
-func (t Cfg) CustomDecode(s string) ([]byte, error) {
+func cfgDecode(s string) ([]byte, error) {
 	switch {
 	case strings.HasPrefix(s, "base64:"):
 		return base64.URLEncoding.DecodeString(s[7:])

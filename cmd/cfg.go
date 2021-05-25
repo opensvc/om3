@@ -25,11 +25,6 @@ changes.
 The key names can include the '/' character, interpreted as a path separator
 when installing the key in a volume.`,
 	}
-	subCfgEdit = &cobra.Command{
-		Use:     "edit",
-		Short:   "edit information about the object",
-		Aliases: []string{"edi", "ed"},
-	}
 	subCfgPrint = &cobra.Command{
 		Use:     "print",
 		Short:   "print information about the object",
@@ -41,6 +36,7 @@ func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
+		cmdEdit             commands.CmdObjectEdit
 		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdGet              commands.CmdObjectGet
@@ -62,12 +58,10 @@ func init() {
 
 	kind := "cfg"
 	head := subCfg
-	subEdit := subCfgEdit
 	subPrint := subCfgPrint
 	root := rootCmd
 
 	root.AddCommand(head)
-	head.AddCommand(subEdit)
 	head.AddCommand(subPrint)
 
 	cmdAdd.Init(kind, head, &selectorFlag)
@@ -75,7 +69,8 @@ func init() {
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdDecode.Init(kind, head, &selectorFlag)
-	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
+	cmdEdit.Init(kind, head, &selectorFlag)
+	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdKeys.Init(kind, head, &selectorFlag)

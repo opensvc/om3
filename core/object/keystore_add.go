@@ -18,24 +18,24 @@ type OptsAdd struct {
 	Value  string `flag:"value"`
 }
 
-func (t *Keystore) add(name string, from string, value string, ce CustomEncoder) error {
+func (t *Keystore) add(name string, from string, value string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
 	if t.HasKey(name) {
 		return fmt.Errorf("key already exist: %s. use the change action.", name)
 	}
-	return t.alter(name, from, value, ce)
+	return t.alter(name, from, value)
 }
 
-func (t *Keystore) change(name string, from string, value string, ce CustomEncoder) error {
+func (t *Keystore) change(name string, from string, value string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
-	return t.alter(name, from, value, ce)
+	return t.alter(name, from, value)
 }
 
-func (t *Keystore) alter(name string, from string, value string, ce CustomEncoder) error {
+func (t *Keystore) alter(name string, from string, value string) error {
 	var (
 		err error
 	)
@@ -44,16 +44,16 @@ func (t *Keystore) alter(name string, from string, value string, ce CustomEncode
 		u := uri.New(from)
 		switch {
 		case u.IsValid():
-			err = t.fromURI(name, u, ce)
+			err = t.fromURI(name, u)
 		case file.ExistsAndRegular(from):
-			err = t.fromRegular(name, from, ce)
+			err = t.fromRegular(name, from)
 		case file.ExistsAndDir(from):
-			err = t.fromDir(name, from, ce)
+			err = t.fromDir(name, from)
 		default:
 			err = fmt.Errorf("unexpected value source: %s", from)
 		}
 	default:
-		err = t.fromValue(name, value, ce)
+		err = t.fromValue(name, value)
 	}
 	if err != nil {
 		return err
@@ -61,36 +61,36 @@ func (t *Keystore) alter(name string, from string, value string, ce CustomEncode
 	return t.config.Commit()
 }
 
-func (t *Keystore) fromValue(name string, value string, ce CustomEncoder) error {
+func (t *Keystore) fromValue(name string, value string) error {
 	b := []byte(value)
-	return t.addKey(name, b, ce)
+	return t.addKey(name, b)
 }
 
-func (t *Keystore) fromRegular(name string, p string, ce CustomEncoder) error {
+func (t *Keystore) fromRegular(name string, p string) error {
 	b, err := file.ReadAll(p)
 	if err != nil {
 		return err
 	}
-	return t.addKey(name, b, ce)
+	return t.addKey(name, b)
 }
 
-func (t *Keystore) fromDir(name string, p string, ce CustomEncoder) error {
+func (t *Keystore) fromDir(name string, p string) error {
 	// TODO: walk and call fromRegular
 	return nil
 }
 
-func (t *Keystore) fromURI(name string, u uri.T, ce CustomEncoder) error {
+func (t *Keystore) fromURI(name string, u uri.T) error {
 	fName, err := u.Fetch()
 	if err != nil {
 		return err
 	}
 	defer os.Remove(fName)
-	return t.fromRegular(name, fName, ce)
+	return t.fromRegular(name, fName)
 }
 
 // Note: addKey does not commit, so it can be used multiple times efficiently.
-func (t *Keystore) addKey(name string, b []byte, ce CustomEncoder) error {
-	s, err := ce.CustomEncode(b)
+func (t *Keystore) addKey(name string, b []byte) error {
+	s, err := t.CustomEncode(b)
 	if err != nil {
 		return err
 	}

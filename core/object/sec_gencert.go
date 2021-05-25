@@ -69,7 +69,7 @@ func (t *Sec) genSelfSigned(priv *rsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	return t.addKey("certificate", certBytes, t)
+	return t.addKey("certificate", certBytes)
 }
 
 func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
@@ -86,10 +86,10 @@ func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
 	if err != nil {
 		return err
 	}
-	if err := t.addKey("certificate", certBytes, t); err != nil {
+	if err := t.addKey("certificate", certBytes); err != nil {
 		return err
 	}
-	if err := t.addKey("certificate_chain", append(certBytes, caCertBytes...), t); err != nil {
+	if err := t.addKey("certificate_chain", append(certBytes, caCertBytes...)); err != nil {
 		return err
 	}
 	return nil
@@ -203,12 +203,12 @@ func (t *Sec) setPriv(priv *rsa.PrivateKey) error {
 		return err
 	}
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b})
-	return t.addKey("private_key", pemBytes, t)
+	return t.addKey("private_key", pemBytes)
 }
 
 func (t *Sec) setCert(derBytes []byte) error {
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	return t.addKey("certificate", pemBytes, t)
+	return t.addKey("certificate", pemBytes)
 }
 
 func (t *Sec) getCACert() (*x509.Certificate, []byte, error) {
@@ -221,7 +221,7 @@ func (t *Sec) getCACert() (*x509.Certificate, []byte, error) {
 	if sec, err = t.getCASec(); err != nil {
 		return nil, nil, err
 	}
-	if b, err = sec.decode("certificate", t); err != nil {
+	if b, err = sec.decode("certificate"); err != nil {
 		return nil, nil, err
 	}
 	if cert, err = certFromPEM(b); err != nil {
@@ -251,7 +251,7 @@ func (t *Sec) getCAPriv() (*rsa.PrivateKey, error) {
 	if sec, err = t.getCASec(); err != nil {
 		return nil, err
 	}
-	if b, err = sec.decode("private_key", t); err != nil {
+	if b, err = sec.decode("private_key"); err != nil {
 		return nil, err
 	}
 	return privFromPEM(b)
@@ -270,7 +270,7 @@ func privFromPEM(b []byte) (*rsa.PrivateKey, error) {
 }
 
 func (t *Sec) getPriv() (*rsa.PrivateKey, error) {
-	b, err := t.decode("private_key", t)
+	b, err := t.decode("private_key")
 	if err != nil {
 		return t.genPriv()
 	}

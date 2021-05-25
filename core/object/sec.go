@@ -33,23 +33,13 @@ type (
 // NewSec allocates a sec kind object.
 func NewSec(p path.T, opts ...funcopt.O) *Sec {
 	s := &Sec{}
+	s.CustomEncode = secEncode
+	s.CustomDecode = secDecode
 	s.Base.init(p, opts...)
 	return s
 }
 
-func (t Sec) Add(options OptsAdd) error {
-	return t.add(options.Key, options.From, options.Value, t)
-}
-
-func (t Sec) Change(options OptsAdd) error {
-	return t.change(options.Key, options.From, options.Value, t)
-}
-
-func (t Sec) Decode(options OptsDecode) ([]byte, error) {
-	return t.decode(options.Key, t)
-}
-
-func (t Sec) CustomEncode(b []byte) (string, error) {
+func secEncode(b []byte) (string, error) {
 	m := reqjsonrpc.NewMessage(b)
 	b, err := m.Encrypt()
 	if err != nil {
@@ -58,7 +48,7 @@ func (t Sec) CustomEncode(b []byte) (string, error) {
 	return "crypt:" + base64.URLEncoding.Strict().EncodeToString(b), nil
 }
 
-func (t Sec) CustomDecode(s string) ([]byte, error) {
+func secDecode(s string) ([]byte, error) {
 	if !strings.HasPrefix(s, "crypt:") {
 		return []byte{}, fmt.Errorf("unsupported value (no crypt prefix)")
 	}

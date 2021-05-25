@@ -1,6 +1,11 @@
 package object
 
-import "opensvc.com/opensvc/util/key"
+import (
+	"io/ioutil"
+	"os"
+
+	"opensvc.com/opensvc/util/key"
+)
 
 const (
 	// DataSectionName is the name of the section hosting keys in the sec, cfg and usr objects' configuration file.
@@ -8,18 +13,28 @@ const (
 )
 
 type (
+	EncodeFunc func([]byte) (string, error)
+	DecodeFunc func(string) ([]byte, error)
+
 	// Keystore is the base type of sec, cfg and usr objects
 	Keystore struct {
 		Base
-	}
-
-	CustomDecoder interface {
-		CustomDecode(string) ([]byte, error)
-	}
-	CustomEncoder interface {
-		CustomEncode([]byte) (string, error)
+		CustomEncode EncodeFunc
+		CustomDecode DecodeFunc
 	}
 )
+
+func (t Sec) Add(options OptsAdd) error {
+	return t.add(options.Key, options.From, options.Value)
+}
+
+func (t Sec) Change(options OptsAdd) error {
+	return t.change(options.Key, options.From, options.Value)
+}
+
+func (t Sec) Decode(options OptsDecode) ([]byte, error) {
+	return t.decode(options.Key)
+}
 
 func keyFromName(name string) key.T {
 	return key.New(DataSectionName, name)
@@ -28,4 +43,20 @@ func keyFromName(name string) key.T {
 func (t Keystore) HasKey(name string) bool {
 	k := keyFromName(name)
 	return t.config.HasKey(k)
+}
+
+func (t Keystore) temporaryKeyFile(name string) (f *os.File, err error) {
+	var (
+		b []byte
+	)
+	if b, err = t.decode(name); err != nil {
+		return
+	}
+	if f, err = ioutil.TempFile(t.Base.paths.tmpDir, ".TemporaryKeyFile.*"); err != nil {
+		return
+	}
+	if _, err = f.Write(b); err != nil {
+		return
+	}
+	return
 }
