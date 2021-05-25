@@ -32,22 +32,23 @@ A volume can host cfg and sec keys projections.`,
 
 func init() {
 	var (
-		cmdCreate      commands.CmdObjectCreate
-		cmdDelete      commands.CmdObjectDelete
-		cmdEditConfig  commands.CmdObjectEditConfig
-		cmdEval        commands.CmdObjectEval
-		cmdFreeze      commands.CmdObjectFreeze
-		cmdGet         commands.CmdObjectGet
-		cmdLs          commands.CmdObjectLs
-		cmdMonitor     commands.CmdObjectMonitor
-		cmdPrintConfig commands.CmdObjectPrintConfig
-		cmdPrintStatus commands.CmdObjectPrintStatus
-		cmdSet         commands.CmdObjectSet
-		cmdStart       commands.CmdObjectStart
-		cmdStatus      commands.CmdObjectStatus
-		cmdStop        commands.CmdObjectStop
-		cmdUnfreeze    commands.CmdObjectUnfreeze
-		cmdUnset       commands.CmdObjectUnset
+		cmdCreate           commands.CmdObjectCreate
+		cmdDelete           commands.CmdObjectDelete
+		cmdEditConfig       commands.CmdObjectEditConfig
+		cmdEval             commands.CmdObjectEval
+		cmdFreeze           commands.CmdObjectFreeze
+		cmdGet              commands.CmdObjectGet
+		cmdLs               commands.CmdObjectLs
+		cmdMonitor          commands.CmdObjectMonitor
+		cmdPrintConfig      commands.CmdObjectPrintConfig
+		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
+		cmdPrintStatus      commands.CmdObjectPrintStatus
+		cmdSet              commands.CmdObjectSet
+		cmdStart            commands.CmdObjectStart
+		cmdStatus           commands.CmdObjectStatus
+		cmdStop             commands.CmdObjectStop
+		cmdUnfreeze         commands.CmdObjectUnfreeze
+		cmdUnset            commands.CmdObjectUnset
 	)
 
 	kind := "vol"
@@ -69,6 +70,7 @@ func init() {
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
+	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
 	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStart.Init(kind, head, &selectorFlag)

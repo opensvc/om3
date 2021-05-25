@@ -19,6 +19,7 @@ import (
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/xstrings"
 )
@@ -697,4 +698,8 @@ func (t T) DeleteSections(sections []string) error {
 		t.Commit()
 	}
 	return nil
+}
+
+func (t T) ModTime() time.Time {
+	return file.ModTime(t.ConfigFilePath)
 }

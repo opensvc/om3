@@ -21,15 +21,16 @@ import (
 type (
 	// CmdObjectPrintConfig is the cobra flag set of the print config command.
 	CmdObjectPrintConfig struct {
+		Command *cobra.Command
 		object.OptsPrintConfig
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
 func (t *CmdObjectPrintConfig) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
+	t.Command = t.cmd(kind, selector)
+	parent.AddCommand(t.Command)
+	flag.Install(t.Command, t)
 }
 
 func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command {

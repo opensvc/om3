@@ -28,18 +28,19 @@ grants are embedded in the trusted bearer tokens.`,
 
 func init() {
 	var (
-		cmdCreate      commands.CmdObjectCreate
-		cmdDelete      commands.CmdObjectDelete
-		cmdEditConfig  commands.CmdObjectEditConfig
-		cmdEval        commands.CmdObjectEval
-		cmdGet         commands.CmdObjectGet
-		cmdLs          commands.CmdObjectLs
-		cmdMonitor     commands.CmdObjectMonitor
-		cmdPrintConfig commands.CmdObjectPrintConfig
-		cmdPrintStatus commands.CmdObjectPrintStatus
-		cmdSet         commands.CmdObjectSet
-		cmdStatus      commands.CmdObjectStatus
-		cmdUnset       commands.CmdObjectUnset
+		cmdCreate           commands.CmdObjectCreate
+		cmdDelete           commands.CmdObjectDelete
+		cmdEditConfig       commands.CmdObjectEditConfig
+		cmdEval             commands.CmdObjectEval
+		cmdGet              commands.CmdObjectGet
+		cmdLs               commands.CmdObjectLs
+		cmdMonitor          commands.CmdObjectMonitor
+		cmdPrintConfig      commands.CmdObjectPrintConfig
+		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
+		cmdPrintStatus      commands.CmdObjectPrintStatus
+		cmdSet              commands.CmdObjectSet
+		cmdStatus           commands.CmdObjectStatus
+		cmdUnset            commands.CmdObjectUnset
 	)
 
 	kind := "usr"
@@ -60,6 +61,7 @@ func init() {
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
+	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
 	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)
