@@ -96,6 +96,16 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#stopFalse"},
 			"stop",
 		},
+		"stopEmpty": {
+			extraArgs: []string{"--rid", "app#stopEmpty"},
+		},
+		"stopUndef": {
+			extraArgs: []string{"--rid", "app#stopUndef"},
+		},
+		"stopScriptUndef": {
+			[]string{"--rid", "app#stopScriptUndef"},
+			"action 'stop' as true value but 'script' keyword is empty",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -295,4 +305,43 @@ func TestAppStop(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("when no command stop", func(t *testing.T) {
+		for _, name := range []string{"stopEmpty", "stopUndef"} {
+			t.Run(name, func(t *testing.T) {
+				var msg string
+				t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+				cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+				cmd.Env = append(os.Environ(), "TC_NAME="+name)
+				out, err := cmd.CombinedOutput()
+				exitError, ok := err.(*exec.ExitError)
+				if ok {
+					msg = string(exitError.Stderr)
+				} else {
+					msg = ""
+				}
+				require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+				require.Len(t, out, 0, "expected empty output")
+			})
+		}
+	})
+
+	t.Run("stop value true without script keyword exit non 0", func(t *testing.T) {
+		name := "stopScriptUndef"
+		var msg string
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		out, err := cmd.CombinedOutput()
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			msg = string(exitError.Stderr)
+		} else {
+			msg = ""
+		}
+		require.NotNilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
+		}
+	})
 }

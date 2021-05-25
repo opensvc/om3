@@ -53,14 +53,20 @@ func (t T) Abort() bool {
 
 // Stop the Resource
 func (t T) Stop() error {
+	if len(t.StopCmd) == 0 {
+		return nil
+	}
 	t.Log().Debug().Msg("Stop()")
+	cmd, err := t.GetCmd(t.StopCmd, "stop")
+	if err != nil {
+		return err
+	}
+	if cmd == nil {
+		return nil
+	}
 	appStatus := t.Status()
 	if appStatus == status.Down {
 		t.Log().Info().Msg("already down")
-		return nil
-	}
-	cmd := t.GetCmd(t.StopCmd, "stop")
-	if cmd == nil {
 		return nil
 	}
 	t.Log().Info().Msgf("running %s", cmd.String())
@@ -69,9 +75,15 @@ func (t T) Stop() error {
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status() status.T {
-	cmd := t.GetCmd(t.CheckCmd, "status")
+	cmd, err := t.GetCmd(t.CheckCmd, "status")
+	if err != nil {
+		return status.Undef
+	}
+	if cmd == nil {
+		return status.NotApplicable
+	}
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
@@ -148,17 +160,29 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	return nil
 }
 
-func (t T) GetCmd(command []string, action string) (cmd *exec.Cmd) {
+// GetCmd construct and return *exec.Cmd for action
+// It returns error if validation of keyword fails
+func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+	if len(command) == 0 {
+		t.Log().Debug().Msgf("no command for action '%v' (empty keyword)", action)
+		return nil, nil
+	}
 	if len(command) == 1 {
 		scriptCommand := command[0]
 		if scriptCommandBool, err := converters.ToBool(scriptCommand); err == nil {
 			switch scriptCommandBool {
 			case true:
+				scriptValue := t.getScript()
+				if scriptValue == "" {
+					t.Log().Warn().Msgf("action '%v' as true value but 'script' keyword is empty", action)
+					return nil, fmt.Errorf("unable to get script value")
+				}
 				commandStrings := []string{t.getScript()}
 				commandStrings = append(commandStrings, action)
 				cmd = Command(commandStrings)
 			case false:
-				return
+				return nil, nil
 			}
 		} else {
 			cmd = Command(command)
@@ -167,12 +191,13 @@ func (t T) GetCmd(command []string, action string) (cmd *exec.Cmd) {
 		cmd = Command(command)
 	}
 	if cmd == nil {
-		return
+		t.Log().Debug().Msgf("nil command for action '%v'", action)
+		return nil, nil
 	}
 	if len(t.Env) > 0 {
 		cmd.Env = append([]string{}, t.Env...)
 	}
-	return
+	return cmd, nil
 }
 
 // getScript return script kw value
@@ -182,6 +207,9 @@ func (t T) GetCmd(command []string, action string) (cmd *exec.Cmd) {
 //
 func (t T) getScript() string {
 	s := t.ScriptPath
+	if len(s) == 0 {
+		return ""
+	}
 	if s[0] == os.PathSeparator {
 		return s
 	}

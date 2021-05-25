@@ -21,15 +21,21 @@ func init() {
 
 // Start the Resource
 func (t T) Start() error {
+	cmd, err := t.GetCmd(t.StartCmd, "start")
+	if err != nil {
+		return err
+	}
+	if cmd == nil {
+		return nil
+	}
 	t.Log().Debug().Msg("Starting()")
 	appStatus := t.Status()
 	if appStatus == status.Up {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
-	cmd := t.GetCmd(t.StartCmd, "start")
 	t.Log().Info().Msgf("starting %s", cmd.String())
-	err := t.RunOutErr(cmd)
+	err = t.RunOutErr(cmd)
 	if err != nil {
 		return err
 	}
