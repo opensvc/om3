@@ -56,6 +56,46 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#root"},
 			"operation not permitted",
 		},
+		"stoptruescriptd": {
+			[]string{"--rid", "app#stoptruescriptd"},
+			"noSuchFile.opensvc.test",
+		},
+		"stoptrue": {
+			[]string{"--rid", "app#stoptrue"},
+			"stop",
+		},
+		"stopTrue": {
+			[]string{"--rid", "app#stopTrue"},
+			"stop",
+		},
+		"stopT": {
+			[]string{"--rid", "app#stopT"},
+			"stop",
+		},
+		"stop0": {
+			[]string{"--rid", "app#stop0"},
+			"stop",
+		},
+		"stopf": {
+			[]string{"--rid", "app#stopf"},
+			"stop",
+		},
+		"stopF": {
+			[]string{"--rid", "app#stopF"},
+			"stop",
+		},
+		"stopfalse": {
+			[]string{"--rid", "app#stopfalse"},
+			"stop",
+		},
+		"stopFALSE": {
+			[]string{"--rid", "app#stopFALSE"},
+			"stop",
+		},
+		"stopFalse": {
+			[]string{"--rid", "app#stopFalse"},
+			"stop",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -65,8 +105,12 @@ func TestAppStop(t *testing.T) {
 	}
 
 	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
 		test_conf_helper.InstallSvcFile(t, "svcappforking.conf", filepath.Join(td, "etc", "svcappforking.conf"))
 
 		config.Load(map[string]string{"osvc_root_path": td})
@@ -188,4 +232,67 @@ func TestAppStop(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("when stop is true and script not found into <svcname>.d", func(t *testing.T) {
+		name := "stoptruescriptd"
+		var msg string
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		out, err := cmd.CombinedOutput()
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			msg = string(exitError.Stderr)
+		} else {
+			msg = ""
+		}
+		require.NotNilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), td+"/etc/svcappforking.d/"+expected+": no such file or directory", "got: '%v'", string(out))
+		}
+	})
+
+	for _, name := range []string{"true", "True", "T"} {
+		t.Run("when stop is true like ("+name+")", func(t *testing.T) {
+			name := "stop" + name
+			var msg string
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			out, err := cmd.CombinedOutput()
+			exitError, ok := err.(*exec.ExitError)
+			if ok {
+				msg = string(exitError.Stderr)
+			} else {
+				msg = ""
+			}
+			require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+				assert.Containsf(t, string(out), "| "+expected, "got: '%v'", string(out))
+			}
+		})
+	}
+
+	for _, name := range []string{"0", "f", "F", "false", "FALSE", "False"} {
+		t.Run("when stop is false like ("+name+")", func(t *testing.T) {
+			name := "stop" + name
+			var msg string
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			out, err := cmd.CombinedOutput()
+			exitError, ok := err.(*exec.ExitError)
+			if ok {
+				msg = string(exitError.Stderr)
+			} else {
+				msg = ""
+			}
+			require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
+			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+				assert.NotContainsf(t, string(out), "| "+expected, "got: '%v'", string(out))
+			}
+		})
+	}
 }

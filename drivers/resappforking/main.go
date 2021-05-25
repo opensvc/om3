@@ -27,8 +27,8 @@ func (t T) Start() error {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
-	t.Log().Info().Msgf("starting %s", t.StartCmd)
-	cmd := t.GetCmd(t.StartCmd)
+	cmd := t.GetCmd(t.StartCmd, "start")
+	t.Log().Info().Msgf("starting %s", cmd.String())
 	err := t.RunOutErr(cmd)
 	if err != nil {
 		return err

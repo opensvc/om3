@@ -13,7 +13,7 @@ var (
 			Option:   "script",
 			Attr:     "ScriptPath",
 			Scopable: true,
-			Text:     "Full path to the app launcher script. Or its basename if the file is hosted in the ``<pathetc>/<namespace>/<kind>/<name>.d/`` path. This script must accept as arg0 the activated actions word: ``start`` for start, ``stop`` for stop, ``status`` for check, ``info`` for info.",
+			Text:     "Full path to the app launcher script. Or its basename if the file is hosted in the ``<pathetc>/namespaces/<namespace>/<kind>/<name>.d/`` path. This script must accept as arg0 the activated actions word: ``start`` for start, ``stop`` for stop, ``status`` for check, ``info`` for info.",
 		},
 		{
 			Option:    "start",
