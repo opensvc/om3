@@ -18,10 +18,10 @@ type T struct {
 	Path         path.T         `json:"path"`
 	Nodes        []string       `json:"nodes"`
 	ScriptPath   string         `json:"script"`
-	StartCmd     string         `json:"start"`
-	StopCmd      string         `json:"stop"`
-	CheckCmd     string         `json:"check"`
-	InfoCmd      string         `json:"info"`
+	StartCmd     []string       `json:"start"`
+	StopCmd      []string       `json:"stop"`
+	CheckCmd     []string       `json:"check"`
+	InfoCmd      []string       `json:"info"`
 	StatusLogKw  bool           `json:"status_log"`
 	CheckTimeout *time.Duration `json:"check_timeout"`
 	InfoTimeout  *time.Duration `json:"info_timeout"`
@@ -134,7 +134,7 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	return nil
 }
 
-func (t T) GetCmd(command string) *exec.Cmd {
+func (t T) GetCmd(command []string) *exec.Cmd {
 	cmd := resappbase.Command(command)
 	if len(t.Env) > 0 {
 		cmd.Env = append([]string{}, t.Env...)

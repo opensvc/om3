@@ -21,7 +21,7 @@ func TestAppStop(t *testing.T) {
 	}{
 		"logInfo": {
 			[]string{"--rid", "app#1"},
-			"line1",
+			"line1\nline2",
 		},
 		"logError": {
 			[]string{"--rid", "app#2"},
