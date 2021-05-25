@@ -45,7 +45,11 @@ type (
 		// Depends is a list of key-value conditions to meet to accept this keyword in a config.
 		//Depends []keyval.T
 
+		// Kind limits the scope of this keyword to the object with kind matching this mask.
 		Kind kind.Mask
+
+		// Provisioning is set to true for keywords only used for resource provisioning
+		Provisioning bool
 	}
 
 	Store []Keyword

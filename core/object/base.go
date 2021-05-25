@@ -26,6 +26,13 @@ import (
 	"opensvc.com/opensvc/util/logging"
 )
 
+var (
+	DefaultDriver = map[string]string{
+		"app": "forking",
+		"ip":  "host",
+	}
+)
+
 type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
@@ -251,6 +258,13 @@ func (t *Base) configureResources() resource.Drivers {
 		driverGroup := rid.DriverGroup()
 		typeKey := key.New(k, "type")
 		driverName := t.config.Get(typeKey)
+		if driverName == "" {
+			var ok bool
+			if driverName, ok = DefaultDriver[driverGroup.String()]; !ok {
+				t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
+				continue
+			}
+		}
 		driverID := resource.NewDriverID(driverGroup, driverName)
 		factory := driverID.NewResourceFunc()
 		if factory == nil {

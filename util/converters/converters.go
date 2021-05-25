@@ -3,11 +3,12 @@ package converters
 import (
 	"errors"
 	"fmt"
-	"opensvc.com/opensvc/util/converters/sizeconv"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"opensvc.com/opensvc/util/converters/sizeconv"
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/golang-collections/collections/set"
@@ -79,6 +80,9 @@ func ToFloat64(s string) (float64, error) {
 }
 
 func ToBool(s string) (bool, error) {
+	if s == "" {
+		return false, nil
+	}
 	return strconv.ParseBool(s)
 }
 
