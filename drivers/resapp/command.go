@@ -1,4 +1,4 @@
-package resappbase
+package resapp
 
 import (
 	"os/exec"

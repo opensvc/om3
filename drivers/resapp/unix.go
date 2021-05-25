@@ -1,4 +1,6 @@
-package resappunix
+// +build !windows
+
+package resapp
 
 import (
 	"bufio"
@@ -6,7 +8,6 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/drivers/app/resappbase"
 	"opensvc.com/opensvc/util/utilexec"
 	"os/exec"
 	"time"
@@ -14,7 +15,7 @@ import (
 
 // T is the driver structure for app unix & linux.
 type T struct {
-	resappbase.T
+	BaseT
 	Path         path.T         `json:"path"`
 	Nodes        []string       `json:"nodes"`
 	ScriptPath   string         `json:"script"`
@@ -140,7 +141,7 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 }
 
 func (t T) GetCmd(command []string) *exec.Cmd {
-	cmd := resappbase.Command(command)
+	cmd := Command(command)
 	if len(t.Env) > 0 {
 		cmd.Env = append([]string{}, t.Env...)
 	}

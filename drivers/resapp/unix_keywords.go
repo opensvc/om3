@@ -1,4 +1,6 @@
-package resappunix
+// +build !windows
+
+package resapp
 
 import (
 	"opensvc.com/opensvc/core/keywords"
@@ -6,7 +8,7 @@ import (
 )
 
 var (
-	Keywords = []keywords.Keyword{
+	UnixKeywords = []keywords.Keyword{
 		{
 			Option:   "script",
 			Attr:     "ScriptPath",
