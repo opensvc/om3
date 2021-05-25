@@ -6,18 +6,17 @@ import (
 )
 
 var (
-	subEdit = &cobra.Command{
+	subSvcEdit = &cobra.Command{
 		Use:     "edit",
 		Short:   "edit information about the object",
 		Aliases: []string{"edi", "ed"},
 	}
 
-	subPrint = &cobra.Command{
+	subSvcPrint = &cobra.Command{
 		Use:     "print",
 		Short:   "print information about the object",
 		Aliases: []string{"prin", "pri", "pr"},
 	}
-
 	subSvc = &cobra.Command{
 		Use:   "svc",
 		Short: "Manage services",
@@ -53,6 +52,8 @@ func init() {
 
 	kind := "svc"
 	head := subSvc
+	subEdit := subSvcEdit
+	subPrint := subSvcPrint
 	root := rootCmd
 
 	root.AddCommand(head)

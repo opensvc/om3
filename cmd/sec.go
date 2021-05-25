@@ -25,6 +25,16 @@ changes.
 The key names can include the '/' character, interpreted as a path separator
 when installing the key in a volume.`,
 	}
+	subSecEdit = &cobra.Command{
+		Use:     "edit",
+		Short:   "edit information about the object",
+		Aliases: []string{"edi", "ed"},
+	}
+	subSecPrint = &cobra.Command{
+		Use:     "print",
+		Short:   "print information about the object",
+		Aliases: []string{"prin", "pri", "pr"},
+	}
 )
 
 func init() {
@@ -52,6 +62,8 @@ func init() {
 
 	kind := "sec"
 	head := subSec
+	subPrint := subSecPrint
+	subEdit := subSecEdit
 	root := rootCmd
 
 	root.AddCommand(head)

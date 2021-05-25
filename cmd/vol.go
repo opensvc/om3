@@ -18,6 +18,16 @@ Volumes and their subdirectories can be mounted inside containers.
 
 A volume can host cfg and sec keys projections.`,
 	}
+	subVolEdit = &cobra.Command{
+		Use:     "edit",
+		Short:   "edit information about the object",
+		Aliases: []string{"edi", "ed"},
+	}
+	subVolPrint = &cobra.Command{
+		Use:     "print",
+		Short:   "print information about the object",
+		Aliases: []string{"prin", "pri", "pr"},
+	}
 )
 
 func init() {
@@ -42,6 +52,8 @@ func init() {
 
 	kind := "vol"
 	head := subVol
+	subEdit := subVolEdit
+	subPrint := subVolPrint
 	root := rootCmd
 
 	root.AddCommand(head)

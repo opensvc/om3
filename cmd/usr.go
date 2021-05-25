@@ -14,6 +14,16 @@ var (
 User objects are not necessary with OpenID authentication, as the
 grants are embedded in the trusted bearer tokens.`,
 	}
+	subUsrEdit = &cobra.Command{
+		Use:     "edit",
+		Short:   "edit information about the object",
+		Aliases: []string{"edi", "ed"},
+	}
+	subUsrPrint = &cobra.Command{
+		Use:     "print",
+		Short:   "print information about the object",
+		Aliases: []string{"prin", "pri", "pr"},
+	}
 )
 
 func init() {
@@ -34,6 +44,8 @@ func init() {
 
 	kind := "usr"
 	head := subUsr
+	subEdit := subUsrEdit
+	subPrint := subUsrPrint
 	root := rootCmd
 
 	root.AddCommand(head)
