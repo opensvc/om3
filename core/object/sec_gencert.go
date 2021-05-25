@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/fqdn"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -110,6 +112,29 @@ func (t *Sec) CertInfoNotAfter() (time.Time, error) {
 	}
 }
 
+func (t *Sec) IPAddressesFromAltNames() []net.IP {
+	l := []net.IP{net.ParseIP("127.0.0.1")}
+	for _, word := range t.config.GetSlice(key.Parse("alt_names")) {
+		ip := net.ParseIP(word)
+		if ip == nil {
+			continue
+		}
+		l = append(l, ip)
+	}
+	return l
+}
+
+func (t *Sec) DNSNamesFromAltNames() []string {
+	l := []string{}
+	for _, word := range t.config.GetSlice(key.Parse("alt_names")) {
+		if !fqdn.IsValid(word) && !hostname.IsValid(word) {
+			continue
+		}
+		l = append(l, word)
+	}
+	return l
+}
+
 func getBaseKeyUsage(priv interface{}) x509.KeyUsage {
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
@@ -148,7 +173,8 @@ func (t *Sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 		MaxPathLen:            2,
-		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		IPAddresses:           t.IPAddressesFromAltNames(),
+		DNSNames:              t.DNSNamesFromAltNames(),
 	}
 	if isCA {
 		template.IsCA = true

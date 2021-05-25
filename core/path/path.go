@@ -3,13 +3,13 @@ package path
 import (
 	"bytes"
 	"encoding/json"
-	"regexp"
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -30,9 +30,6 @@ type (
 const (
 	// Separator is the character separating a path's namespace, kind and name
 	Separator = "/"
-
-	hostnameRegexStringRFC952 = `^[a-zA-Z]([a-zA-Z0-9\-]+[\.]?)*[a-zA-Z0-9]$` // https://tools.ietf.org/html/rfc952
-	fqdnRegexStringRFC1123    = `^([a-zA-Z0-9]{1}[a-zA-Z0-9_-]{0,62})(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*?(\.[a-zA-Z]{1}[a-zA-Z0-9]{0,62})\.?$`
 )
 
 var (
@@ -41,9 +38,7 @@ var (
 	// because one of the path element is not valid.
 	ErrInvalid = errors.New("invalid path")
 
-	hostnameRegexRFC952 = regexp.MustCompile(hostnameRegexStringRFC952)
-	fqdnRegexRFC1123    = regexp.MustCompile(fqdnRegexStringRFC1123)
-	forbiddenNames      = append(
+	forbiddenNames = append(
 		kind.Names(),
 		[]string{
 			"node",
@@ -76,10 +71,10 @@ func New(name string, namespace string, kd string) (T, error) {
 	if name == "" {
 		return path, errors.Wrap(ErrInvalid, "name is empty")
 	}
-	if !hostnameRegexRFC952.MatchString(name) {
+	if !hostname.IsValid(name) {
 		return path, errors.Wrapf(ErrInvalid, "invalid name %s (rfc952)", name)
 	}
-	if !hostnameRegexRFC952.MatchString(namespace) {
+	if !hostname.IsValid(namespace) {
 		return path, errors.Wrapf(ErrInvalid, "invalid namespace %s (rfc952)", namespace)
 	}
 	for _, reserved := range forbiddenNames {
