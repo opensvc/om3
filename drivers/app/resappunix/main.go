@@ -18,10 +18,10 @@ type T struct {
 	Path         path.T         `json:"path"`
 	Nodes        []string       `json:"nodes"`
 	ScriptPath   string         `json:"script"`
-	StartCmd     string         `json:"start"`
-	StopCmd      string         `json:"stop"`
-	CheckCmd     string         `json:"check"`
-	InfoCmd      string         `json:"info"`
+	StartCmd     []string       `json:"start"`
+	StopCmd      []string       `json:"stop"`
+	CheckCmd     []string       `json:"check"`
+	InfoCmd      []string       `json:"info"`
 	StatusLogKw  bool           `json:"status_log"`
 	CheckTimeout *time.Duration `json:"check_timeout"`
 	InfoTimeout  *time.Duration `json:"info_timeout"`
@@ -83,18 +83,20 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) logInfo(r io.Reader) {
+func (t T) logInfo(r io.Reader, done chan bool) {
 	s := bufio.NewScanner(r)
 	for s.Scan() {
 		t.Log().Info().Msgf("| %v", s.Text())
 	}
+	done <- true
 }
 
-func (t T) logWarn(r io.Reader) {
+func (t T) logWarn(r io.Reader, done chan bool) {
 	s := bufio.NewScanner(r)
 	for s.Scan() {
 		t.Log().Error().Msgf("| %v", s.Text())
 	}
+	done <- true
 }
 
 func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
@@ -119,14 +121,17 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 		return err
 	}
 	defer closer(stderr)
+	infoChan := make(chan bool)
+	errChan := make(chan bool)
+	go t.logInfo(stdout, infoChan)
+	go t.logWarn(stderr, errChan)
 
 	if err = cmd.Start(); err != nil {
 		return err
 	}
-	go t.logInfo(stdout)
-	go t.logWarn(stderr)
-	// Give time for logger to fetch output of very short life commands
-	time.Sleep(20 * time.Millisecond)
+	// wait for log watchers done
+	<-infoChan
+	<-errChan
 
 	if err = cmd.Wait(); err != nil {
 		return err
@@ -134,7 +139,7 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	return nil
 }
 
-func (t T) GetCmd(command string) *exec.Cmd {
+func (t T) GetCmd(command []string) *exec.Cmd {
 	cmd := resappbase.Command(command)
 	if len(t.Env) > 0 {
 		cmd.Env = append([]string{}, t.Env...)
