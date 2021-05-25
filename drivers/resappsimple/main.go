@@ -3,12 +3,12 @@ package resappsimple
 import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/drivers/app/resappunix"
+	"opensvc.com/opensvc/drivers/resapp"
 )
 
 // T is the driver structure.
 type T struct {
-	resappunix.T
+	resapp.T
 	Kill string `json:"kill"`
 }
 

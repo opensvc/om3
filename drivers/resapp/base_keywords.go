@@ -1,4 +1,4 @@
-package resappbase
+package resapp
 
 import (
 	"opensvc.com/opensvc/core/keywords"
@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	Keywords = []keywords.Keyword{
+	BaseKeywords = []keywords.Keyword{
 		{
 			Option:    "timeout",
 			Attr:      "Timeout",

@@ -1,4 +1,4 @@
-package resappbase
+package resapp
 
 import (
 	"opensvc.com/opensvc/core/path"
@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// T is the app base driver structure
-type T struct {
+// BaseT is the app base driver structure
+type BaseT struct {
 	resource.T
 	RetCodes     string         `json:"retcodes"`
 	Path         path.T         `json:"path"`
