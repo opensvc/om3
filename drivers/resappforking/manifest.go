@@ -4,8 +4,7 @@ import (
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/drivers/app/resappbase"
-	"opensvc.com/opensvc/drivers/app/resappunix"
+	"opensvc.com/opensvc/drivers/resapp"
 )
 
 const (
@@ -16,8 +15,8 @@ const (
 // Manifest ...
 func (t T) Manifest() *manifest.T {
 	var keywordL []keywords.Keyword
-	keywordL = append(keywordL, resappbase.Keywords...)
-	keywordL = append(keywordL, resappunix.Keywords...)
+	keywordL = append(keywordL, resapp.BaseKeywords...)
+	keywordL = append(keywordL, resapp.UnixKeywords...)
 	m := manifest.New(driverGroup, driverName)
 	m.AddContext([]manifest.Context{
 		{
