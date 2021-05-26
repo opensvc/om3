@@ -36,7 +36,7 @@ var (
 			Attr:      "SecretsEnv",
 			Scopable:  true,
 			Converter: converters.Shlex,
-			Text:      "A whitespace separated list of ``<var>=<secret name>/<key path>``. A shell expression splitter is applied, so double quotes can be around ``<secret name>/<key path>`` only or whole ``<var>=<secret name>/<key path>``. Variables are uppercased.",
+			Text:      "A whitespace separated list of ``<var>=<secret name>/<key path>`` or ``<secret name>/<key matcher>``. A shell expression splitter is applied, so double quotes can be around ``<secret name>/<key path>`` only or whole ``<var>=<secret name>/<key path>``.",
 			Example:   "CRT=cert1/server.crt PEM=cert1/server.pem",
 		},
 		{
@@ -44,7 +44,7 @@ var (
 			Attr:      "ConfigsEnv",
 			Scopable:  true,
 			Converter: converters.Shlex,
-			Text:      "The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression splitter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
+			Text:      "The whitespace separated list of ``<var>=<config name>/<key path>`` or ``<config name>/<key matcher>``. A shell expression splitter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``.",
 			Example:   "CRT=cert1/server.crt PEM=cert1/server.pem",
 		},
 		{
@@ -52,7 +52,7 @@ var (
 			Attr:      "Env",
 			Scopable:  true,
 			Converter: converters.Shlex,
-			Text:      "The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression splitter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
+			Text:      "The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression splitter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``.",
 			Example:   "CRT=cert1/server.crt PEM=cert1/server.pem",
 		},
 		{
