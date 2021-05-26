@@ -110,6 +110,14 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#stopScriptUndef"},
 			"action 'stop' as true value but 'script' keyword is empty",
 		},
+		"configEnv": {
+			[]string{"--rid", "app#configEnv"},
+			"FOOCFG1=fooValue1\nFOOCFG2=fooValue2\n",
+		},
+		"secretEnv": {
+			[]string{"--rid", "app#secretEnv"},
+			"FOOSEC1=fooSec1\nFOOSEC2=fooSec2\n",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -125,7 +133,10 @@ func TestAppStop(t *testing.T) {
 			defer cleanup()
 			td = d
 		}
+		test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 		test_conf_helper.InstallSvcFile(t, "svcappforking.conf", filepath.Join(td, "etc", "svcappforking.conf"))
+		test_conf_helper.InstallSvcFile(t, "cfg1_svcappforking.conf", filepath.Join(td, "etc", "cfg", "svcappforking.conf"))
+		test_conf_helper.InstallSvcFile(t, "sec1_svcappforking.conf", filepath.Join(td, "etc", "sec", "svcappforking.conf"))
 
 		config.Load(map[string]string{"osvc_root_path": td})
 		defer config.Load(map[string]string{})
@@ -358,6 +369,36 @@ func TestAppStop(t *testing.T) {
 		require.NotNilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
 			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
+		}
+	})
+
+	t.Run("configs_environment", func(t *testing.T) {
+		name := "configEnv"
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		out, err := cmd.CombinedOutput()
+		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	t.Run("secrets_environment", func(t *testing.T) {
+		name := "secretEnv"
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		out, err := cmd.CombinedOutput()
+		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
 		}
 	})
 }
