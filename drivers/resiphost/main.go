@@ -1,8 +1,11 @@
 package resfsdir
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/drivergroup"
@@ -50,6 +53,8 @@ type (
 
 		// cache
 		_ipaddr net.IP
+		_ipmask net.IPMask
+		_ipnet  *net.IPNet
 	}
 
 	Addrs []net.Addr
@@ -175,6 +180,17 @@ func (t T) Start() error {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
 	}
+	var err error
+	switch {
+	case t.Alias:
+		// TODO
+	default:
+		t.Log().Info().Msgf("add %s to %s", t.ipnet(), t.IpDev)
+		err = netif.AddAddr(t.IpDev, t.ipnet())
+	}
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -183,6 +199,17 @@ func (t T) Stop() error {
 	if initialStatus == status.Down {
 		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
+	}
+	var err error
+	switch {
+	case t.Alias:
+		// TODO
+	default:
+		t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
+		err = netif.DelAddr(t.IpDev, t.ipnet())
+	}
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -287,12 +314,47 @@ func (t T) abortPing() bool {
 	return pinger.Statistics().PacketsRecv > 0
 }
 
+func (t T) ipnet() *net.IPNet {
+	if t._ipnet != nil {
+		return t._ipnet
+	}
+	t._ipnet = t.getIPNet()
+	return t._ipnet
+}
+
 func (t T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
 	t._ipaddr = t.getIPAddr()
 	return t._ipaddr
+}
+
+func (t T) ipmask() net.IPMask {
+	if t._ipmask != nil {
+		return t._ipmask
+	}
+	t._ipmask = t.getIPMask()
+	return t._ipmask
+}
+
+func (t T) getIPNet() *net.IPNet {
+	return &net.IPNet{
+		IP:   t.ipaddr(),
+		Mask: t.ipmask(),
+	}
+}
+
+func (t T) getIPMask() net.IPMask {
+	ip := t.ipaddr()
+	bits := getIPBits(ip)
+	if m, err := parseCIDRMask(t.Netmask, bits); err == nil {
+		return m
+	}
+	if m, err := parseDottedMask(t.Netmask); err == nil {
+		return m
+	}
+	return nil
 }
 
 func (t T) getIPAddr() net.IP {
@@ -324,4 +386,49 @@ func (t T) getIPAddr() net.IP {
 
 func (t T) netInterface() (*net.Interface, error) {
 	return net.InterfaceByName(t.IpDev)
+}
+
+func parseCIDRMask(s string, bits int) (net.IPMask, error) {
+	if bits == 0 {
+		return nil, errors.New("invalid bits: 0")
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid element in dotted mask: %s", err)
+	}
+	return net.CIDRMask(i, bits), nil
+}
+
+func parseDottedMask(s string) (net.IPMask, error) {
+	m := []byte{}
+	l := strings.Split(s, ".")
+	if len(l) != 4 {
+		return nil, errors.New("invalid number of elements in dotted mask")
+	}
+	for _, e := range l {
+		i, err := strconv.Atoi(e)
+		if err != nil {
+			return nil, fmt.Errorf("invalid element in dotted mask: %s", err)
+		}
+		m = append(m, byte(i))
+	}
+	return m, nil
+}
+
+func ipv4MaskString(m []byte) string {
+	if len(m) != 4 {
+		panic("ipv4Mask: len must be 4 bytes")
+	}
+
+	return fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
+}
+
+func getIPBits(ip net.IP) (bits int) {
+	switch {
+	case ip.To4() != nil:
+		bits = 32
+	case ip.To16() != nil:
+		bits = 128
+	}
+	return
 }
