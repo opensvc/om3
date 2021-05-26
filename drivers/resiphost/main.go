@@ -14,6 +14,7 @@ import (
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/fqdn"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/netif"
 
 	"github.com/go-ping/ping"
 )
@@ -29,6 +30,8 @@ const (
 type (
 	T struct {
 		resource.T
+
+		// config
 		IpName        string   `json:"ipname"`
 		IpDev         string   `json:"ipdev"`
 		Netmask       string   `json:"netmask"`
@@ -42,6 +45,10 @@ type (
 		Alias         bool     `json:"alias"`
 		Expose        []string `json:"expose"`
 
+		// context
+		Force bool `json:"force"`
+
+		// cache
 		_ipaddr net.IP
 	}
 
@@ -60,6 +67,13 @@ func New() resource.Driver {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driverGroup, driverName)
+	m.AddContext([]manifest.Context{
+		{
+			Key:  "force",
+			Attr: "Force",
+			Ref:  "action.force",
+		},
+	}...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "ipname",
@@ -185,9 +199,10 @@ func (t Addrs) Has(ip net.IP) bool {
 
 func (t *T) Status() status.T {
 	var (
-		i     *net.Interface
-		err   error
-		addrs Addrs
+		i       *net.Interface
+		err     error
+		addrs   Addrs
+		carrier bool
 	)
 	ip := t.ipaddr()
 	if t.IpName == "" {
@@ -200,6 +215,10 @@ func (t *T) Status() status.T {
 	}
 	if i, err = t.netInterface(); err != nil {
 		t.StatusLog().Error("%s", err)
+		return status.Down
+	}
+	if carrier, err = t.hasCarrier(); err == nil && carrier == false {
+		t.StatusLog().Error("interface %s no-carrier.", t.IpDev)
 		return status.Down
 	}
 	if addrs, err = i.Addrs(); err != nil {
@@ -236,14 +255,21 @@ func (t T) Abort() bool {
 	if t.ipaddr() == nil {
 		return false // let start fail with an explicit error message
 	}
-	initialStatus := t.Status()
-	if initialStatus == status.Up {
+	if initialStatus := t.Status(); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
+	}
+	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !t.Force {
+		t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
+		return true
 	}
 	if t.abortPing() {
 		return true
 	}
 	return false
+}
+
+func (t T) hasCarrier() (bool, error) {
+	return netif.HasCarrier(t.IpDev)
 }
 
 func (t T) abortPing() bool {
