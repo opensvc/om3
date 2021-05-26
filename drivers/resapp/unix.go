@@ -4,12 +4,17 @@ package resapp
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/utilexec"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -48,22 +53,37 @@ func (t T) Abort() bool {
 
 // Stop the Resource
 func (t T) Stop() error {
+	if len(t.StopCmd) == 0 {
+		return nil
+	}
 	t.Log().Debug().Msg("Stop()")
+	cmd, err := t.GetCmd(t.StopCmd, "stop")
+	if err != nil {
+		return err
+	}
+	if cmd == nil {
+		return nil
+	}
 	appStatus := t.Status()
 	if appStatus == status.Down {
 		t.Log().Info().Msg("already down")
 		return nil
 	}
-	t.Log().Info().Msgf("running %s", t.StopCmd)
-	cmd := t.GetCmd(t.StopCmd)
+	t.Log().Info().Msgf("running %s", cmd.String())
 	return t.RunOutErr(cmd)
 }
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status() status.T {
-	t.Log().Debug().Msgf("Status() running %s", t.CheckCmd)
-	cmd := t.GetCmd(t.CheckCmd)
-	err := cmd.Run()
+	cmd, err := t.GetCmd(t.CheckCmd, "status")
+	if err != nil {
+		return status.Undef
+	}
+	if cmd == nil {
+		return status.NotApplicable
+	}
+	t.Log().Debug().Msgf("Status() running %s", cmd.String())
+	err = cmd.Run()
 	if err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
@@ -140,10 +160,64 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	return nil
 }
 
-func (t T) GetCmd(command []string) *exec.Cmd {
-	cmd := Command(command)
+// GetCmd construct and return *exec.Cmd for action
+// It returns error if validation of keyword fails
+func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+	if len(command) == 0 {
+		t.Log().Debug().Msgf("no command for action '%v' (empty keyword)", action)
+		return nil, nil
+	}
+	if len(command) == 1 {
+		scriptCommand := command[0]
+		if scriptCommandBool, err := converters.ToBool(scriptCommand); err == nil {
+			switch scriptCommandBool {
+			case true:
+				scriptValue := t.getScript()
+				if scriptValue == "" {
+					t.Log().Warn().Msgf("action '%v' as true value but 'script' keyword is empty", action)
+					return nil, fmt.Errorf("unable to get script value")
+				}
+				commandStrings := []string{t.getScript()}
+				commandStrings = append(commandStrings, action)
+				cmd = Command(commandStrings)
+			case false:
+				return nil, nil
+			}
+		} else {
+			cmd = Command(command)
+		}
+	} else {
+		cmd = Command(command)
+	}
+	if cmd == nil {
+		t.Log().Debug().Msgf("nil command for action '%v'", action)
+		return nil, nil
+	}
 	if len(t.Env) > 0 {
 		cmd.Env = append([]string{}, t.Env...)
 	}
-	return cmd
+	return cmd, nil
+}
+
+// getScript return script kw value
+// when script is a basename:
+//   <pathetc>/namespaces/<namespace>/<kind>/<svcname>.d/<script> (when namespace is not root)
+//   <pathetc>/<svcname>.d/<script> (when namespace is root)
+//
+func (t T) getScript() string {
+	s := t.ScriptPath
+	if len(s) == 0 {
+		return ""
+	}
+	if s[0] == os.PathSeparator {
+		return s
+	}
+	var p string
+	if t.Path.Namespace != "root" {
+		p = fmt.Sprintf("%s/namespaces/%s/%s/%s.d/%s", config.Node.Paths.Etc, t.Path.Namespace, t.Path.Kind, t.Path.Name, s)
+	} else {
+		p = fmt.Sprintf("%s/%s.d/%s", config.Node.Paths.Etc, t.Path.Name, s)
+	}
+	return filepath.FromSlash(p)
 }
