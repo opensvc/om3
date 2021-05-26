@@ -54,6 +54,7 @@ type (
 		Log() *zerolog.Logger
 		ID() *resourceid.T
 		IsOptional() bool
+		IsDisabled() bool
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -242,6 +243,11 @@ func (t DriverID) NewResourceFunc() func() Driver {
 //
 func (t T) IsOptional() bool {
 	return t.Optional
+}
+
+// IsDisabled returns true if the resource definition container disable=true.
+func (t T) IsDisabled() bool {
+	return t.Disable
 }
 
 // RSubset returns the resource subset name

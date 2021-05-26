@@ -62,6 +62,9 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 	q := make(chan bool, len(t.Resources()))
 	var wg sync.WaitGroup
 	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
 		wg.Add(1)
 		go t.abortWorker(r, q, &wg)
 	}

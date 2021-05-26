@@ -9,6 +9,7 @@ require (
 	github.com/containernetworking/plugins v0.9.1
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/fatih/color v1.10.0
+	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0
 	github.com/google/uuid v1.2.0

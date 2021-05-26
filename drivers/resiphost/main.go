@@ -3,6 +3,7 @@ package resfsdir
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
@@ -13,11 +14,16 @@ import (
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/fqdn"
 	"opensvc.com/opensvc/util/hostname"
+
+	"github.com/go-ping/ping"
 )
 
 const (
 	driverGroup = drivergroup.IP
 	driverName  = "host"
+
+	tagNonRouted = "nonrouted"
+	tagNoAction  = "noaction"
 )
 
 type (
@@ -35,7 +41,11 @@ type (
 		CheckCarrier  bool     `json:"check_carrier"`
 		Alias         bool     `json:"alias"`
 		Expose        []string `json:"expose"`
+
+		_ipaddr net.IP
 	}
+
+	Addrs []net.Addr
 )
 
 func init() {
@@ -146,22 +156,120 @@ func (t T) Manifest() *manifest.T {
 }
 
 func (t T) Start() error {
+	initialStatus := t.Status()
+	if initialStatus == status.Up {
+		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
+		return nil
+	}
 	return nil
 }
 
 func (t T) Stop() error {
+	initialStatus := t.Status()
+	if initialStatus == status.Down {
+		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
+		return nil
+	}
 	return nil
 }
 
-func (t T) Status() status.T {
-	return status.NotApplicable
+func (t Addrs) Has(ip net.IP) bool {
+	for _, addr := range t {
+		listIP, _, _ := net.ParseCIDR(addr.String())
+		if ip.Equal(listIP) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *T) Status() status.T {
+	var (
+		i     *net.Interface
+		err   error
+		addrs Addrs
+	)
+	ip := t.ipaddr()
+	if t.IpName == "" {
+		t.StatusLog().Warn("ipname not set")
+		return status.NotApplicable
+	}
+	if t.IpDev == "" {
+		t.StatusLog().Warn("ipdev not set")
+		return status.NotApplicable
+	}
+	if i, err = t.netInterface(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Down
+	}
+	if addrs, err = i.Addrs(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Down
+	}
+	if !Addrs(addrs).Has(ip) {
+		t.Log().Debug().Msg("ip not found on intf")
+		return status.Down
+	}
+	return status.Up
 }
 
 func (t T) Label() string {
 	return fmt.Sprintf("%s", t.ipaddr())
 }
 
+func (t *T) Provision() error {
+	return nil
+}
+
+func (t *T) Unprovision() error {
+	return nil
+}
+
+func (t T) Provisioned() (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
+}
+
+func (t T) Abort() bool {
+	if t.Tags.Has(tagNonRouted) || t.Tags.Has(tagNoAction) {
+		return false // let start fail with an explicit error message
+	}
+	if t.ipaddr() == nil {
+		return false // let start fail with an explicit error message
+	}
+	initialStatus := t.Status()
+	if initialStatus == status.Up {
+		return false // let start fail with an explicit error message
+	}
+	if t.abortPing() {
+		return true
+	}
+	return false
+}
+
+func (t T) abortPing() bool {
+	ip := t.ipaddr()
+	pinger, err := ping.NewPinger(ip.String())
+	if err != nil {
+		t.Log().Error().Err(err).Msg("abort: ping")
+		return true
+	}
+	pinger.Count = 5
+	pinger.Timeout = 5 * time.Second
+	pinger.Interval = time.Second
+	t.Log().Info().Msgf("checking %s availability (5s)", ip)
+	pinger.Run()
+	return pinger.Statistics().PacketsRecv > 0
+}
+
 func (t T) ipaddr() net.IP {
+	if t._ipaddr != nil {
+		return t._ipaddr
+	}
+	t._ipaddr = t.getIPAddr()
+	return t._ipaddr
+}
+
+func (t T) getIPAddr() net.IP {
 	switch {
 	case fqdn.IsValid(t.IpName) || hostname.IsValid(t.IpName):
 		var (
@@ -188,14 +296,6 @@ func (t T) ipaddr() net.IP {
 	}
 }
 
-func (t *T) Provision() error {
-	return nil
-}
-
-func (t *T) Unprovision() error {
-	return nil
-}
-
-func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+func (t T) netInterface() (*net.Interface, error) {
+	return net.InterfaceByName(t.IpDev)
 }
