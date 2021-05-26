@@ -56,7 +56,7 @@ func TestCfgKeys(t *testing.T) {
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestCfgKeys")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name)
-			out, err := cmd.Output()
+			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			if strings.Contains(name, "json") {
 				var response []jsonOutput
@@ -104,7 +104,7 @@ func TestCfgDecodeKeys(t *testing.T) {
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestCfgDecodeKeys")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name)
-			out, err := cmd.Output()
+			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			assert.Equal(t, tc.expectedResults, string(out))
 		})
