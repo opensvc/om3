@@ -194,9 +194,12 @@ func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
 		t.Log().Debug().Msgf("nil command for action '%v'", action)
 		return nil, nil
 	}
-	if len(t.Env) > 0 {
-		cmd.Env = append([]string{}, t.Env...)
+	if env, err := t.getEnv(); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to create command environment for action '%v'", action)
+	} else if len(env) > 0 {
+		cmd.Env = append(cmd.Env, env...)
 	}
+	t.Log().Debug().Msgf("env for action '%v': '%v'", action, cmd.Env)
 	return cmd, nil
 }
 

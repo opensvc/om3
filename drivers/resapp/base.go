@@ -3,6 +3,7 @@ package resapp
 import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/util/envprovider"
 	"os"
 	"time"
 )
@@ -13,11 +14,31 @@ type BaseT struct {
 	RetCodes     string         `json:"retcodes"`
 	Path         path.T         `json:"path"`
 	Nodes        []string       `json:"nodes"`
-	SecretEnv    []string       `json:"secret_environment"`
-	Timeout      *time.Duration `json:"timeout"`
+	SecretsEnv   []string       `json:"secret_environment"`
 	ConfigsEnv   []string       `json:"configs_environment"`
 	Env          []string       `json:"environment"`
+	Timeout      *time.Duration `json:"timeout"`
 	StartTimeout *time.Duration `json:"start_timeout"`
 	StopTimeout  *time.Duration `json:"stop_timeout"`
 	Umask        *os.FileMode   `json:"umask"`
+}
+
+func (t BaseT) getEnv() (env []string, err error) {
+	var tempEnv []string
+	if len(t.Env) > 0 {
+		env = append(env, t.Env...)
+	}
+	if tempEnv, err = envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to retrieve env from configs_environment: '%v'", t.ConfigsEnv)
+		return nil, err
+	} else {
+		env = append(env, tempEnv...)
+	}
+	if tempEnv, err = envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to retrieve env from secrets_environment: '%v'", t.SecretsEnv)
+		return nil, err
+	} else {
+		env = append(env, tempEnv...)
+	}
+	return env, nil
 }
