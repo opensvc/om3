@@ -1,10 +1,9 @@
 // Package envprovider implement function to construct env vars from
-// sec or cfg envitems
+// sec or cfg env items
 package envprovider
 
 import (
 	"fmt"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"strings"
@@ -13,6 +12,8 @@ import (
 type (
 	decoder interface {
 		Decode(object.OptsDecode) ([]byte, error)
+		Keys(object.OptsKeys) ([]string, error)
+		Exists() bool
 	}
 )
 
@@ -36,7 +37,11 @@ func From(items []string, ns, kd string) (result []string, err error) {
 
 func envVars(envItem, ns, kd string) (result []string, err error) {
 	splitEnvItem := strings.Split(envItem, "=")
-	if len(splitEnvItem) == 2 {
+	switch len(splitEnvItem) {
+	case 1:
+		nameMatch := strings.SplitN(splitEnvItem[0], "/", 2)
+		return getKeys(nameMatch[0], ns, kd, nameMatch[1])
+	case 2:
 		nameKey := strings.SplitN(splitEnvItem[1], "/", 2)
 		if len(nameKey) == 2 {
 			var value string
@@ -49,28 +54,56 @@ func envVars(envItem, ns, kd string) (result []string, err error) {
 	return
 }
 
-func getDecoder(name, ns, kd string) (o decoder, err error) {
-	var p path.T
-	if p, err = path.New(name, ns, kd); err != nil {
+func getKeysDecoder(name, ns, kd string) (decoder, error) {
+	if p, err := path.New(name, ns, kd); err != nil {
 		return nil, err
+	} else if o, ok := object.NewFromPath(p).(decoder); !ok {
+		return nil, fmt.Errorf("unable to get decoder ns:'%v', kind:'%v', name:'%v'", ns, kd, name)
+	} else if !o.Exists() {
+		return nil, fmt.Errorf("'%v' doesn't exists", o)
+	} else {
+		return o, nil
 	}
-	switch p.Kind {
-	case kind.Cfg:
-		o = object.NewCfg(p)
-	case kind.Sec:
-		o = object.NewSec(p)
-	default:
-		return nil, fmt.Errorf("unexpected kind '%v'" + p.Kind.String())
-	}
-	return
 }
 
-func getKey(name, ns, kd, key string) (s string, err error) {
+func getKeys(name, ns, kd, match string) (s []string, err error) {
 	var o decoder
-	var b []byte
-	if o, err = getDecoder(name, ns, kd); err != nil {
-		return "", err
+	var keys []string
+	var value string
+	if o, err = getKeysDecoder(name, ns, kd); err != nil {
+		return nil, err
 	}
+	keysOptions := object.OptsKeys{
+		Global: object.OptsGlobal{},
+		Lock:   object.OptsLocking{},
+		Match:  match,
+	}
+	if keys, err = o.Keys(keysOptions); err != nil {
+		return nil, err
+	}
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("no key found matching '%v' on object '%v'", match, o)
+
+	}
+	for _, key := range keys {
+		if value, err = decodeKey(o, key); err != nil {
+			return nil, err
+		}
+		s = append(s, key+"="+value)
+	}
+	return s, nil
+}
+
+func getKey(name, ns, kd, key string) (string, error) {
+	if o, err := getKeysDecoder(name, ns, kd); err != nil {
+		return "", err
+	} else {
+		return decodeKey(o, key)
+	}
+}
+
+func decodeKey(o decoder, key string) (s string, err error) {
+	var b []byte
 	decodeOption := object.OptsDecode{
 		Global: object.OptsGlobal{},
 		Lock:   object.OptsLocking{},

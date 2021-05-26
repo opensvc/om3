@@ -196,6 +196,7 @@ func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
 	}
 	if env, err := t.getEnv(); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to create command environment for action '%v'", action)
+		return nil, err
 	} else if len(env) > 0 {
 		cmd.Env = append(cmd.Env, env...)
 	}
