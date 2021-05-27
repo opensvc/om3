@@ -49,8 +49,8 @@ type (
 		Alias         bool     `json:"alias"`
 		Expose        []string `json:"expose"`
 
-		// context
-		Force bool `json:"force"`
+		// action context
+		force bool
 
 		// cache
 		_ipaddr net.IP
@@ -70,16 +70,13 @@ func New() resource.Driver {
 	return t
 }
 
+func (t *T) SetForce(v bool) {
+	t.force = v
+}
+
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driverGroup, driverName)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "force",
-			Attr: "Force",
-			Ref:  "action.force",
-		},
-	}...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "ipname",
@@ -176,8 +173,7 @@ func (t T) Manifest() *manifest.T {
 }
 
 func (t T) Start() error {
-	initialStatus := t.Status()
-	if initialStatus == status.Up {
+	if initialStatus := t.Status(); initialStatus == status.Up {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
 	}
@@ -191,8 +187,7 @@ func (t T) Start() error {
 }
 
 func (t T) Stop() error {
-	initialStatus := t.Status()
-	if initialStatus == status.Down {
+	if initialStatus := t.Status(); initialStatus == status.Down {
 		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
 	}
@@ -263,7 +258,7 @@ func (t T) Abort() bool {
 	if initialStatus := t.Status(); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
-	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !t.Force {
+	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !t.force {
 		t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
 		return true
 	}
@@ -422,26 +417,33 @@ func getIPBits(ip net.IP) (bits int) {
 }
 
 func (t T) arpAnnounce() error {
+	ip := t.ipaddr()
+	if ip.IsLoopback() {
+		t.Log().Debug().Msgf("skip arp announce on loopback address %s", ip)
+		return nil
+	}
+	if ip.IsLinkLocalUnicast() {
+		t.Log().Debug().Msgf("skip arp announce on link local unicast address %s", ip)
+		return nil
+	}
+	if ip.To4() == nil {
+		t.Log().Debug().Msgf("skip arp announce on non-ip4 address %s", ip)
+		return nil
+	}
+	if i, err := t.netInterface(); err == nil && i.Flags&net.FlagLoopback != 0 {
+		t.Log().Debug().Msgf("skip arp announce on loopback interface %s", t.IpDev)
+		return nil
+	}
 	t.Log().Info().Msgf("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IpDev)
 	return arping.GratuitousArpOverIfaceByName(t.ipaddr(), t.IpDev)
 }
 
 func (t T) start() error {
-	switch {
-	case t.Alias:
-		return errors.New("alias=true start() not implemented")
-	default:
-		t.Log().Info().Msgf("add %s to %s", t.ipnet(), t.IpDev)
-		return netif.AddAddr(t.IpDev, t.ipnet())
-	}
+	t.Log().Info().Msgf("add %s to %s", t.ipnet(), t.IpDev)
+	return netif.AddAddr(t.IpDev, t.ipnet())
 }
 
 func (t T) stop() error {
-	switch {
-	case t.Alias:
-		return errors.New("alias=true stop() not implemented")
-	default:
-		t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
-		return netif.DelAddr(t.IpDev, t.ipnet())
-	}
+	t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
+	return netif.DelAddr(t.IpDev, t.ipnet())
 }

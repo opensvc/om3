@@ -15,6 +15,26 @@ type ActionOptioner interface {
 	GetResourceSelector() OptsResourceSelector
 }
 
+// Resources implementing setters
+type (
+	confirmer interface {
+		SetConfirm(v bool)
+	}
+	forcer interface {
+		SetForce(v bool)
+	}
+)
+
+// Options structs implementing getters
+type (
+	isConfirmer interface {
+		IsConfirm() bool
+	}
+	isForcer interface {
+		IsForce() bool
+	}
+)
+
 var (
 	ErrInvalidNode = errors.New("invalid node")
 )
@@ -113,5 +133,34 @@ func (t *Base) orchestrateWantsFreeze() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (t *Base) setActionOptions(options interface{}) func() {
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		if a, ok := r.(forcer); ok {
+			a.SetForce(options.(isForcer).IsForce())
+		}
+		if a, ok := r.(confirmer); ok {
+			a.SetConfirm(options.(isConfirmer).IsConfirm())
+		}
+	}
+	return t.unsetActionOptions
+}
+
+func (t *Base) unsetActionOptions() {
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		if a, ok := r.(forcer); ok {
+			a.SetForce(false)
+		}
+		if a, ok := r.(confirmer); ok {
+			a.SetConfirm(false)
+		}
 	}
 }

@@ -16,6 +16,7 @@ type OptsStop struct {
 
 // Stop stops the local instance of the object
 func (t *Base) Stop(options OptsStop) error {
+	defer t.setActionOptions(options)()
 	if err := t.validateAction(); err != nil {
 		return err
 	}

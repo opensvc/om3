@@ -95,6 +95,11 @@ type (
 		Force bool `flag:"force"`
 	}
 
+	// OptConfirm contains the confirm option
+	OptConfirm struct {
+		Confirm bool `flag:"confirm"`
+	}
+
 	OptsCreate struct {
 		Global OptsGlobal
 		OptsAsync
@@ -112,6 +117,12 @@ type (
 	}
 )
 
+func (t OptConfirm) IsConfirm() bool {
+	return t.Confirm
+}
+func (t OptForce) IsForce() bool {
+	return t.Force
+}
 func (t OptsGlobal) IsDryRun() bool {
 	return t.DryRun
 }
