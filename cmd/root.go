@@ -70,7 +70,14 @@ func persistentPreRunE(_ *cobra.Command, _ []string) error {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	_, _, err := rootCmd.Find(os.Args[1:])
+	ExecuteArgs(os.Args[1:])
+}
+
+// ExecuteArgs parses args and executes the cobra command.
+// Example:
+//  ExecuteArgs([]string{"mysvc*", "ls"})
+func ExecuteArgs(args []string) {
+	_, _, err := rootCmd.Find(args)
 
 	if err != nil {
 		// command not found... try look in args[1] as a selector
