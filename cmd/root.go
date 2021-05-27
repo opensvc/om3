@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -10,6 +12,7 @@ import (
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/logging"
 
 	"github.com/mitchellh/go-homedir"
@@ -29,6 +32,28 @@ var rootCmd = &cobra.Command{
 	Use:               "opensvc",
 	Short:             "Manage the opensvc cluster infrastructure and its deployed services.",
 	PersistentPreRunE: persistentPreRunE,
+	ValidArgsFunction: validArgs,
+}
+
+func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
+}
+
+func listObjectPaths() []string {
+	if b, err := file.ReadAll(filepath.Join(config.Node.Paths.Var, "list.services")); err == nil {
+		return strings.Fields(string(b))
+	}
+	return nil
+}
+
+func listNodes() []string {
+	if b, err := file.ReadAll(filepath.Join(config.Node.Paths.Var, "list.nodes")); err == nil {
+		return strings.Fields(string(b))
+	}
+	return nil
 }
 
 func persistentPreRunE(_ *cobra.Command, _ []string) error {
@@ -73,22 +98,47 @@ func Execute() {
 	ExecuteArgs(os.Args[1:])
 }
 
+func setExecuteArgs(args []string) {
+	var lookupArgs, cobraArgs []string
+	if len(args) > 0 && args[0] == "__completeNoDesc" {
+		//
+		// Example:
+		//   args = [__completeNoDesc test/svc/s1 pri]
+		//   => lookupArgs = [test/svc/s1 pri]
+		//   => cobraArgs = [__completeNoDesc]
+		//
+		lookupArgs = args[1:]
+		cobraArgs = args[0:1]
+	} else {
+		//
+		// Example:
+		//   args = [test/svc/s1 pri]
+		//   => lookupArgs = [test/svc/s1 pri]
+		//   => cobraArgs = []
+		//
+		lookupArgs = args
+		cobraArgs = []string{}
+	}
+	_, _, err := rootCmd.Find(lookupArgs)
+
+	if err != nil {
+		// command not found... try with args[1] as a selector.
+		if len(args) > 0 {
+			selectorFlag = args[0]
+			subsystem := guessSubsystem(selectorFlag)
+			args := append([]string{}, cobraArgs...)
+			args = append(args, subsystem)
+			args = append(args, lookupArgs[1:]...)
+			rootCmd.SetArgs(args)
+		}
+	}
+}
+
 // ExecuteArgs parses args and executes the cobra command.
 // Example:
 //  ExecuteArgs([]string{"mysvc*", "ls"})
 func ExecuteArgs(args []string) {
-	_, _, err := rootCmd.Find(args)
-
-	if err != nil {
-		// command not found... try look in args[1] as a selector
-		if len(os.Args) > 1 {
-			selectorFlag = os.Args[1]
-			subsystem := guessSubsystem(selectorFlag)
-			args := append([]string{subsystem}, os.Args[2:]...)
-			rootCmd.SetArgs(args)
-		}
-	}
-
+	setExecuteArgs(args)
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
