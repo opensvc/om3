@@ -20,6 +20,7 @@ import (
 	"opensvc.com/opensvc/util/netif"
 
 	"github.com/go-ping/ping"
+	"github.com/j-keck/arping"
 )
 
 const (
@@ -180,15 +181,10 @@ func (t T) Start() error {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
 	}
-	var err error
-	switch {
-	case t.Alias:
-		// TODO
-	default:
-		t.Log().Info().Msgf("add %s to %s", t.ipnet(), t.IpDev)
-		err = netif.AddAddr(t.IpDev, t.ipnet())
+	if err := t.start(); err != nil {
+		return err
 	}
-	if err != nil {
+	if err := t.arpAnnounce(); err != nil {
 		return err
 	}
 	return nil
@@ -200,28 +196,10 @@ func (t T) Stop() error {
 		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
 	}
-	var err error
-	switch {
-	case t.Alias:
-		// TODO
-	default:
-		t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
-		err = netif.DelAddr(t.IpDev, t.ipnet())
-	}
-	if err != nil {
+	if err := t.stop(); err != nil {
 		return err
 	}
 	return nil
-}
-
-func (t Addrs) Has(ip net.IP) bool {
-	for _, addr := range t {
-		listIP, _, _ := net.ParseCIDR(addr.String())
-		if ip.Equal(listIP) {
-			return true
-		}
-	}
-	return false
 }
 
 func (t *T) Status() status.T {
@@ -388,6 +366,16 @@ func (t T) netInterface() (*net.Interface, error) {
 	return net.InterfaceByName(t.IpDev)
 }
 
+func (t Addrs) Has(ip net.IP) bool {
+	for _, addr := range t {
+		listIP, _, _ := net.ParseCIDR(addr.String())
+		if ip.Equal(listIP) {
+			return true
+		}
+	}
+	return false
+}
+
 func parseCIDRMask(s string, bits int) (net.IPMask, error) {
 	if bits == 0 {
 		return nil, errors.New("invalid bits: 0")
@@ -431,4 +419,29 @@ func getIPBits(ip net.IP) (bits int) {
 		bits = 128
 	}
 	return
+}
+
+func (t T) arpAnnounce() error {
+	t.Log().Info().Msgf("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IpDev)
+	return arping.GratuitousArpOverIfaceByName(t.ipaddr(), t.IpDev)
+}
+
+func (t T) start() error {
+	switch {
+	case t.Alias:
+		return errors.New("alias=true start() not implemented")
+	default:
+		t.Log().Info().Msgf("add %s to %s", t.ipnet(), t.IpDev)
+		return netif.AddAddr(t.IpDev, t.ipnet())
+	}
+}
+
+func (t T) stop() error {
+	switch {
+	case t.Alias:
+		return errors.New("alias=true stop() not implemented")
+	default:
+		t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
+		return netif.DelAddr(t.IpDev, t.ipnet())
+	}
 }
