@@ -9,6 +9,17 @@ type (
 func (t Drivers) Len() int      { return len(t) }
 func (t Drivers) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
 func (t Drivers) Less(i, j int) bool {
+	type sortKeyer interface {
+		SortKey() string
+	}
+	sk := func(d Driver) string {
+		switch i := d.(type) {
+		case sortKeyer:
+			return i.SortKey()
+		default:
+			return d.ID().Name
+		}
+	}
 	id1 := t[i].ID()
 	id2 := t[j].ID()
 	switch {
@@ -23,7 +34,7 @@ func (t Drivers) Less(i, j int) bool {
 		return false
 		// and same subset
 	default:
-		return id1.Name < id2.Name
+		return sk(t[i]) < sk(t[j])
 	}
 }
 
