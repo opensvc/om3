@@ -118,6 +118,14 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#secretEnv"},
 			"FOOSEC1=fooSec1\nFOOSEC2=fooSec2\n",
 		},
+		"secretEnvMatchers": {
+			[]string{"--rid", "app#secretEnvMatchers"},
+			"foo.foo1=fooSec1\nfoo.Foo2=fooSec2\n",
+		},
+		"configEnvMatchers": {
+			[]string{"--rid", "app#configEnvMatchers"},
+			"FOOKEY1=FOOKEYValue1\nFOOkey2=FOOkeyValue2\n",
+		},
 	}
 
 	getCmd := func(name string) []string {
@@ -397,6 +405,36 @@ func TestAppStop(t *testing.T) {
 		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	t.Run("secrets_environment_matcher", func(t *testing.T) {
+		name := "secretEnvMatchers"
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		out, err := cmd.CombinedOutput()
+		require.Nil(t, err)
+		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
+			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+		}
+	})
+
+	t.Run("config_environment_matcher", func(t *testing.T) {
+		name := "configEnvMatchers"
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		out, err := cmd.CombinedOutput()
+		require.Nilf(t, err, "got '%v'", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
 			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
 		}
