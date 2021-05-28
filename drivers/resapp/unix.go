@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -45,6 +46,14 @@ type T struct {
 	LimitRss     *int64         `json:"limit_rss"`
 	LimitStack   *int64         `json:"limit_stack"`
 	LimitVMem    *int64         `json:"limit_vmem"`
+}
+
+func (t T) SortKey() string {
+	if len(t.StartCmd) == 1 && isSequenceNumber(t.StartCmd[0]) {
+		return t.StartCmd[0] + " " + t.RID()
+	} else {
+		return t.RID() + " " + t.RID()
+	}
 }
 
 func (t T) Abort() bool {
@@ -170,7 +179,7 @@ func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
 	}
 	if len(command) == 1 {
 		scriptCommand := command[0]
-		if scriptCommandBool, err := converters.ToBool(scriptCommand); err == nil {
+		if scriptCommandBool, ok := toCommandBool(scriptCommand); ok {
 			switch scriptCommandBool {
 			case true:
 				scriptValue := t.getScript()
@@ -224,4 +233,26 @@ func (t T) getScript() string {
 		p = fmt.Sprintf("%s/%s.d/%s", config.Node.Paths.Etc, t.Path.Name, s)
 	}
 	return filepath.FromSlash(p)
+}
+
+// toCommandBool return bool, ok
+// detect if s is a bool like, or sequence number
+func toCommandBool(s string) (bool, bool) {
+	if v, err := converters.ToBool(s); err == nil {
+		return v, true
+	}
+	if isSequenceNumber(s) {
+		return true, true
+	}
+	return false, false
+}
+
+func isSequenceNumber(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	if _, err := strconv.ParseInt(s, 10, 16); err == nil {
+		return true
+	}
+	return false
 }

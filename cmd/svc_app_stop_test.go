@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -438,5 +439,63 @@ func TestAppStop(t *testing.T) {
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
 			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
 		}
+	})
+}
+
+func TestAppStopSequence(t *testing.T) {
+	cases := map[string]struct {
+		ExtraArgs []string
+		Expected  []string
+	}{
+		"startOrder": {
+			[]string{},
+			[]string{"rid2", "rid3", "rid1"},
+		},
+	}
+	getCmd := func(name string) []string {
+		args := []string{"svc", "-s", "svcapp", "stop", "--color", "auto", "--local"}
+		args = append(args, cases[name].ExtraArgs...)
+		return args
+	}
+
+	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
+
+		test_conf_helper.InstallSvcFile(t, "svcapp1.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+		config.Load(map[string]string{"osvc_root_path": td})
+		defer config.Load(map[string]string{})
+		origHostname := config.Node.Hostname
+		config.Node.Hostname = "node1"
+		defer func() { config.Node.Hostname = origHostname }()
+		config.Node.Hostname = "node1"
+		rootCmd.SetArgs(getCmd(name))
+		err := rootCmd.Execute()
+		require.Nil(t, err)
+	}
+
+	t.Run("stopOrderBasedOnStartId", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
+
+		name := "startOrder"
+		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+		cmd := exec.Command(os.Args[0], "-test.run=TestAppStopSequence")
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		out, err := cmd.CombinedOutput()
+		require.Nilf(t, err, "got '%v'", string(out))
+		compile, err := regexp.Compile("running .*rid.*app#([a-z0-9]+) ")
+		require.Nil(t, err)
+		var foundSequence []string
+		for _, match := range compile.FindAllStringSubmatch(string(out), -1) {
+			foundSequence = append(foundSequence, match[1])
+		}
+
+		assert.Equalf(t, cases[name].Expected, foundSequence, "got: %v", string(out))
 	})
 }
