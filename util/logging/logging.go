@@ -43,12 +43,30 @@ type Logger struct {
 	*zerolog.Logger
 }
 
+var (
+	consoleWriter zerolog.ConsoleWriter
+)
+
+func init() {
+	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr}
+}
+
+// DisableDefaultConsoleWriterColor disable color on defauult console writer
+func DisableDefaultConsoleWriterColor() {
+	consoleWriter.NoColor = true
+}
+
+// SetDefaultConsoleWriter set the default console writer
+func SetDefaultConsoleWriter(w zerolog.ConsoleWriter) {
+	consoleWriter = w
+}
+
 // Configure sets up the logging framework
 func Configure(config Config) *Logger {
 	var writers []io.Writer
 
 	if config.ConsoleLoggingEnabled {
-		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stderr})
+		writers = append(writers, consoleWriter)
 	}
 	if config.FileLoggingEnabled {
 		if fileWriter, err := newRollingFile(config); err == nil {
