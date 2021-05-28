@@ -56,7 +56,7 @@ func listNodes() []string {
 	return nil
 }
 
-func persistentPreRunE(_ *cobra.Command, _ []string) error {
+func configureLogger() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
@@ -83,10 +83,13 @@ func persistentPreRunE(_ *cobra.Command, _ []string) error {
 		Str("sid", config.SessionID).
 		Logger()
 	log.Logger = l
+}
 
+func persistentPreRunE(_ *cobra.Command, _ []string) error {
+	configureLogger()
 	if config.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
-			l.Debug().Err(err).Msg("")
+			log.Logger.Debug().Err(err).Msg("")
 		}
 	}
 	return nil
