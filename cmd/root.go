@@ -36,9 +36,6 @@ var rootCmd = &cobra.Command{
 }
 
 func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if len(args) != 0 {
-		return nil, cobra.ShellCompDirectiveDefault
-	}
 	return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
 }
 
@@ -103,7 +100,11 @@ func Execute() {
 
 func setExecuteArgs(args []string) {
 	var lookupArgs, cobraArgs []string
-	if len(args) > 0 && args[0] == "__completeNoDesc" {
+	//
+	// Note:
+	//   Cobra uses __complete and __completeNoDesc hidden actions
+	//
+	if len(args) > 0 && strings.HasPrefix(args[0], "__complete") {
 		//
 		// Example:
 		//   args = [__completeNoDesc test/svc/s1 pri]
@@ -126,13 +127,14 @@ func setExecuteArgs(args []string) {
 
 	if err != nil {
 		// command not found... try with args[1] as a selector.
-		if len(args) > 0 {
-			selectorFlag = args[0]
+		if len(lookupArgs) > 0 {
+			selectorFlag = lookupArgs[0]
 			subsystem := guessSubsystem(selectorFlag)
 			args := append([]string{}, cobraArgs...)
 			args = append(args, subsystem)
 			args = append(args, lookupArgs[1:]...)
 			rootCmd.SetArgs(args)
+			cobra.CompDebug(fmt.Sprintf("modified args: %s\n", args), false)
 		}
 	}
 }
