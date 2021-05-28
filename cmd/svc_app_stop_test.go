@@ -30,7 +30,7 @@ func TestAppStop(t *testing.T) {
 		},
 		"env": {
 			[]string{"--rid", "app#env"},
-			"FOO=foo\nBAR=bar",
+			"FOO=foo\nacceptMixedCase=value1",
 		},
 		"cwd": {
 			[]string{"--rid", "app#cwd"},
@@ -113,11 +113,11 @@ func TestAppStop(t *testing.T) {
 		},
 		"configEnv": {
 			[]string{"--rid", "app#configEnv"},
-			"FOOCFG1=fooValue1\nFOOCFG2=fooValue2\n",
+			"FOOCFG1=fooValue1\nFooCFG2=fooValue2\n",
 		},
 		"secretEnv": {
 			[]string{"--rid", "app#secretEnv"},
-			"FOOSEC1=fooSec1\nFOOSEC2=fooSec2\n",
+			"FOOSEC1=fooSec1\nFooSEC2=fooSec2\n",
 		},
 		"secretEnvMatchers": {
 			[]string{"--rid", "app#secretEnvMatchers"},
