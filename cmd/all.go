@@ -7,9 +7,9 @@ import (
 
 var (
 	subAll = &cobra.Command{
-		Hidden: true,
+		Hidden: false,
 		Use:    "all",
-		Short:  "Manage a mix of objects",
+		Short:  "Manage a mix of objects, tentatively exposing all commands",
 	}
 	subAllPrint = &cobra.Command{
 		Use:     "print",
