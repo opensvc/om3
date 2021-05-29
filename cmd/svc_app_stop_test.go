@@ -30,7 +30,7 @@ func TestAppStop(t *testing.T) {
 		},
 		"env": {
 			[]string{"--rid", "app#env"},
-			"FOO=foo\nBAR=bar",
+			"FOO=foo\nacceptMixedCase=value1",
 		},
 		"cwd": {
 			[]string{"--rid", "app#cwd"},
@@ -113,11 +113,11 @@ func TestAppStop(t *testing.T) {
 		},
 		"configEnv": {
 			[]string{"--rid", "app#configEnv"},
-			"FOOCFG1=fooValue1\nFOOCFG2=fooValue2\n",
+			"FOOCFG1=fooValue1\nFooCFG2=fooValue2\n",
 		},
 		"secretEnv": {
 			[]string{"--rid", "app#secretEnv"},
-			"FOOSEC1=fooSec1\nFOOSEC2=fooSec2\n",
+			"FOOSEC1=fooSec1\nFooSEC2=fooSec2\n",
 		},
 		"secretEnvMatchers": {
 			[]string{"--rid", "app#secretEnvMatchers"},
@@ -130,7 +130,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"svc", "-s", "svcappforking", "stop", "--color", "no", "--local"}
+		args := []string{"svcappforking", "stop", "--color", "no", "--local"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
@@ -153,9 +153,7 @@ func TestAppStop(t *testing.T) {
 		config.Node.Hostname = "node1"
 		defer func() { config.Node.Hostname = origHostname }()
 		config.Node.Hostname = "node1"
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
-		require.Nil(t, err)
+		ExecuteArgs(getCmd(name))
 	}
 
 	t.Run("logInfo", func(t *testing.T) {
@@ -453,7 +451,7 @@ func TestAppStopSequence(t *testing.T) {
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svc", "-s", "svcapp", "stop", "--color", "auto", "--local"}
+		args := []string{"svcapp", "stop", "--colorlog", "no", "--local"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
@@ -474,9 +472,7 @@ func TestAppStopSequence(t *testing.T) {
 		config.Node.Hostname = "node1"
 		defer func() { config.Node.Hostname = origHostname }()
 		config.Node.Hostname = "node1"
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
-		require.Nil(t, err)
+		ExecuteArgs(getCmd(name))
 	}
 
 	t.Run("stopOrderBasedOnStartId", func(t *testing.T) {
@@ -489,13 +485,13 @@ func TestAppStopSequence(t *testing.T) {
 		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, "got '%v'", string(out))
-		compile, err := regexp.Compile("running .*rid.*app#([a-z0-9]+) ")
+		compile, err := regexp.Compile("running .*rid=app#([a-z0-9]+) ")
 		require.Nil(t, err)
 		var foundSequence []string
 		for _, match := range compile.FindAllStringSubmatch(string(out), -1) {
 			foundSequence = append(foundSequence, match[1])
 		}
 
-		assert.Equalf(t, cases[name].Expected, foundSequence, "got: %v", string(out))
+		assert.Equalf(t, cases[name].Expected, foundSequence, "got:\n%v", string(out))
 	})
 }

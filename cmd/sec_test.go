@@ -72,7 +72,7 @@ func TestSecDecodeKeys(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"sec", "-s", "test/sec/sec1", "decode", "--key"}
+		args := []string{"test/sec/sec1", "decode", "--key"}
 		args = append(args, cases[name].extraArgs...)
 		args = append(args, "--local")
 		return args
@@ -89,9 +89,7 @@ func TestSecDecodeKeys(t *testing.T) {
 		defer func() {
 			config.Load(map[string]string{})
 		}()
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
-		require.Nil(t, err)
+		ExecuteArgs(getCmd(name))
 	}
 
 	for name, tc := range cases {
@@ -143,16 +141,14 @@ func TestKeyActions(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"sec", "-s", "test/sec/sec1"}
+		args := []string{"test/sec/sec1"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
 
 	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
 		config.Load(map[string]string{"osvc_root_path": os.Getenv("TC_PATHSVC")})
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
-		require.Nil(t, err)
+		ExecuteArgs(getCmd(name))
 	}
 
 	td, cleanup := testhelper.Tempdir(t)

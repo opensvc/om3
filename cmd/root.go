@@ -22,6 +22,7 @@ import (
 var (
 	configFlag   string
 	colorFlag    string
+	colorLogFlag string
 	formatFlag   string
 	selectorFlag string
 	serverFlag   string
@@ -59,6 +60,9 @@ func configureLogger() {
 	zerolog.LevelFieldName = "l"
 	zerolog.MessageFieldName = "m"
 
+	if colorLogFlag == "no" {
+		logging.DisableDefaultConsoleWriterColor()
+	}
 	if debugFlag {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
@@ -162,6 +166,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&configFlag, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
+	rootCmd.PersistentFlags().StringVar(&colorLogFlag, "colorlog", "auto", "log output colorization yes|no|auto")
 	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")

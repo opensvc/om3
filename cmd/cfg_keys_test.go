@@ -81,7 +81,7 @@ func TestCfgDecodeKeys(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"cfg", "-s", "test/cfg/cfg2", "decode", "--key"}
+		args := []string{"test/cfg/cfg2", "decode", "--key"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
@@ -94,9 +94,7 @@ func TestCfgDecodeKeys(t *testing.T) {
 		defer config.Load(map[string]string{})
 
 		test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
-		require.Nil(t, err)
+		ExecuteArgs(getCmd(name))
 	}
 
 	for name, tc := range cases {
