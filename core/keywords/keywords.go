@@ -64,7 +64,7 @@ func (t Store) Lookup(k key.T, kd kind.T) Keyword {
 		if k.Option != kw.Option {
 			continue
 		}
-		if k.Section == kw.Section || driverGroup == kw.Section {
+		if kw.Section == "" || k.Section == kw.Section || driverGroup == kw.Section {
 			return kw
 		}
 	}

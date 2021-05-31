@@ -4,6 +4,7 @@ import (
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
@@ -265,6 +266,21 @@ func (t Base) KeywordLookup(k key.T) keywords.Keyword {
 			Option:   "*", // trick IsZero()
 			Scopable: true,
 			Required: false,
+		}
+	}
+	rid := resourceid.Parse(k.Section)
+	driverGroupName := rid.DriverGroup().String()
+	for _, r := range t.Resources() {
+		if r.ID().DriverGroup().String() != driverGroupName {
+			continue
+		}
+		kws := r.Manifest().Keywords
+		if kws == nil {
+			continue
+		}
+		store := keywords.Store(kws)
+		if kw := store.Lookup(k, t.Path.Kind); !kw.IsZero() {
+			return kw
 		}
 	}
 	return keywordStore.Lookup(k, t.Path.Kind)
