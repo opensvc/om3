@@ -5,13 +5,13 @@ package resapp
 import (
 	"bufio"
 	"fmt"
-	"github.com/anmitsu/go-shlex"
 	"io"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/exechelper"
 	"opensvc.com/opensvc/util/utilexec"
 	"os"
 	"os/exec"
@@ -181,11 +181,10 @@ func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
 		t.Log().Debug().Msgf("no command for action '%v'", action)
 		return nil, nil
 	}
-	l, err := shlex.Split(command, true)
-	if err != nil {
+	if cmd, err = exechelper.CommandFromString(command); err != nil {
+		t.Log().Error().Err(err).Msgf("exechelper.CommandFromString error for action '%v'", action)
 		return nil, err
 	}
-	cmd = Command(l)
 	if env, err := t.getEnv(); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to create command environment for action '%v'", action)
 		return nil, err

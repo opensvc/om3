@@ -495,3 +495,63 @@ func TestAppStopSequence(t *testing.T) {
 		assert.Equalf(t, cases[name].Expected, foundSequence, "got:\n%v", string(out))
 	})
 }
+
+func TestAppStopComplexCommand(t *testing.T) {
+	cases := map[string]struct {
+		ExtraArgs   []string
+		Expected    []string
+		NotExpected []string
+	}{
+		"echoOneAndEchoTwo": {
+			ExtraArgs: []string{"--rid", "app#echoOneAndEchoTwo"},
+			Expected:  []string{"One", "Two"},
+		},
+		"echoOneOrEchoTwo": {
+			ExtraArgs:   []string{"--rid", "app#echoOneOrEchoTwo"},
+			Expected:    []string{"One"},
+			NotExpected: []string{"Two"},
+		},
+	}
+	getCmd := func(name string) []string {
+		args := []string{"svcapp", "stop", "no", "--local"}
+		args = append(args, cases[name].ExtraArgs...)
+		return args
+	}
+
+	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
+
+		test_conf_helper.InstallSvcFile(t, "svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+		config.Load(map[string]string{"osvc_root_path": td})
+		defer config.Load(map[string]string{})
+		origHostname := config.Node.Hostname
+		config.Node.Hostname = "node1"
+		defer func() { config.Node.Hostname = origHostname }()
+		config.Node.Hostname = "node1"
+		ExecuteArgs(getCmd(name))
+	}
+
+	for name := range cases {
+		t.Run(name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopComplexCommand")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			out, err := cmd.CombinedOutput()
+			require.Nilf(t, err, "got '%v'", string(out))
+			for _, expected := range cases[name].Expected {
+				assert.Containsf(t, string(out), "| "+expected, "got:\n%v", string(out))
+			}
+			for _, notExpected := range cases[name].NotExpected {
+				assert.NotContainsf(t, string(out), "| "+notExpected, "got:\n%v", string(out))
+			}
+		})
+	}
+}
