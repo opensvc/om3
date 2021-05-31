@@ -28,5 +28,8 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(sSplit) == 0 {
+		return nil, nil
+	}
 	return exec.Command(sSplit[0], sSplit[1:]...), nil
 }
