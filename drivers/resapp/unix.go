@@ -5,6 +5,7 @@ package resapp
 import (
 	"bufio"
 	"fmt"
+	"github.com/anmitsu/go-shlex"
 	"io"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/path"
@@ -25,10 +26,10 @@ type T struct {
 	Path         path.T         `json:"path"`
 	Nodes        []string       `json:"nodes"`
 	ScriptPath   string         `json:"script"`
-	StartCmd     []string       `json:"start"`
-	StopCmd      []string       `json:"stop"`
-	CheckCmd     []string       `json:"check"`
-	InfoCmd      []string       `json:"info"`
+	StartCmd     string         `json:"start"`
+	StopCmd      string         `json:"stop"`
+	CheckCmd     string         `json:"check"`
+	InfoCmd      string         `json:"info"`
 	StatusLogKw  bool           `json:"status_log"`
 	CheckTimeout *time.Duration `json:"check_timeout"`
 	InfoTimeout  *time.Duration `json:"info_timeout"`
@@ -49,8 +50,8 @@ type T struct {
 }
 
 func (t T) SortKey() string {
-	if len(t.StartCmd) == 1 && isSequenceNumber(t.StartCmd[0]) {
-		return t.StartCmd[0] + " " + t.RID()
+	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
+		return t.StartCmd + " " + t.RID()
 	} else {
 		return t.RID() + " " + t.RID()
 	}
@@ -171,38 +172,20 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 
 // GetCmd construct and return *exec.Cmd for action
 // It returns error if validation of keyword fails
-func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
-	var cmd *exec.Cmd
+func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
+	var command string
+	if command, err = t.getCmdStringFromBoolRule(s, action); err != nil {
+		return nil, err
+	}
 	if len(command) == 0 {
-		t.Log().Debug().Msgf("no command for action '%v' (empty keyword)", action)
+		t.Log().Debug().Msgf("no command for action '%v'", action)
 		return nil, nil
 	}
-	if len(command) == 1 {
-		scriptCommand := command[0]
-		if scriptCommandBool, ok := toCommandBool(scriptCommand); ok {
-			switch scriptCommandBool {
-			case true:
-				scriptValue := t.getScript()
-				if scriptValue == "" {
-					t.Log().Warn().Msgf("action '%v' as true value but 'script' keyword is empty", action)
-					return nil, fmt.Errorf("unable to get script value")
-				}
-				commandStrings := []string{t.getScript()}
-				commandStrings = append(commandStrings, action)
-				cmd = Command(commandStrings)
-			case false:
-				return nil, nil
-			}
-		} else {
-			cmd = Command(command)
-		}
-	} else {
-		cmd = Command(command)
+	l, err := shlex.Split(command, true)
+	if err != nil {
+		return nil, err
 	}
-	if cmd == nil {
-		t.Log().Debug().Msgf("nil command for action '%v'", action)
-		return nil, nil
-	}
+	cmd = Command(l)
 	if env, err := t.getEnv(); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to create command environment for action '%v'", action)
 		return nil, err
@@ -211,6 +194,28 @@ func (t T) GetCmd(command []string, action string) (*exec.Cmd, error) {
 	}
 	t.Log().Debug().Msgf("env for action '%v': '%v'", action, cmd.Env)
 	return cmd, nil
+}
+
+// getCmdStringFromBoolRule get command string for 'action' using bool rule on 's'
+// if 's' is a
+//   true like => getScript() + " " + action
+//   false like => ""
+//   other => original value
+func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
+	if scriptCommandBool, ok := boolRule(s); ok {
+		switch scriptCommandBool {
+		case true:
+			scriptValue := t.getScript()
+			if scriptValue == "" {
+				t.Log().Warn().Msgf("action '%v' as true value but 'script' keyword is empty", action)
+				return "", fmt.Errorf("unable to get script value")
+			}
+			return scriptValue + " " + action, nil
+		case false:
+			return "", nil
+		}
+	}
+	return s, nil
 }
 
 // getScript return script kw value
@@ -235,9 +240,9 @@ func (t T) getScript() string {
 	return filepath.FromSlash(p)
 }
 
-// toCommandBool return bool, ok
+// boolRule return bool, ok
 // detect if s is a bool like, or sequence number
-func toCommandBool(s string) (bool, bool) {
+func boolRule(s string) (bool, bool) {
 	if v, err := converters.ToBool(s); err == nil {
 		return v, true
 	}

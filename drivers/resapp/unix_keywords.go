@@ -19,34 +19,30 @@ var (
 				" ``status`` for check, ``info`` for info.",
 		},
 		{
-			Option:    "start",
-			Attr:      "StartCmd",
-			Converter: converters.Shlex,
-			Scopable:  true,
+			Option:   "start",
+			Attr:     "StartCmd",
+			Scopable: true,
 			Text: "``true`` execute :cmd:`<script> start` on start action. ``false`` do nothing on start action." +
 				" ``<shlex expression>`` execute the command on start.",
 		},
 		{
-			Option:    "stop",
-			Attr:      "StopCmd",
-			Converter: converters.Shlex,
-			Scopable:  true,
+			Option:   "stop",
+			Attr:     "StopCmd",
+			Scopable: true,
 			Text: "``true`` execute :cmd:`<script> stop` on stop action. ``false`` do nothing on stop action." +
 				" ``<shlex expression>`` execute the command on stop action.",
 		},
 		{
-			Option:    "check",
-			Attr:      "CheckCmd",
-			Converter: converters.Shlex,
-			Scopable:  true,
+			Option:   "check",
+			Attr:     "CheckCmd",
+			Scopable: true,
 			Text: "``true`` execute :cmd:`<script> status` on status evaluation. ``false`` do nothing on status" +
 				" evaluation. ``<shlex expression>`` execute the command on status evaluation.",
 		},
 		{
-			Option:    "info", // TODO
-			Attr:      "InfoCmd",
-			Converter: converters.Shlex,
-			Scopable:  true,
+			Option:   "info", // TODO
+			Attr:     "InfoCmd",
+			Scopable: true,
 			Text: "``true`` execute :cmd:`<script> info` on info action. ``false`` do nothing on info action." +
 				" ``<shlex expression>`` execute the command on info action.",
 			Default: "false",
