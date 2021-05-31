@@ -104,43 +104,43 @@ var (
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_cpu", // TODO
+			Option:    "limit_cpu",
 			Attr:      "LimitCpu",
 			Converter: converters.Duration,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_core", // TODO
+			Option:    "limit_core",
 			Attr:      "LimitCore",
 			Converter: converters.Size,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_data", // TODO
+			Option:    "limit_data",
 			Attr:      "LimitData",
 			Converter: converters.Size,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_fsize", // TODO
+			Option:    "limit_fsize",
 			Attr:      "LimitFSize",
 			Converter: converters.Size,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_memlock", // TODO
+			Option:    "limit_memlock",
 			Attr:      "LimitMemLock",
 			Converter: converters.Size,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_nofile", // TODO
+			Option:    "limit_nofile",
 			Attr:      "LimitNoFile",
 			Converter: converters.Size,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_nproc", // TODO
+			Option:    "limit_nproc",
 			Attr:      "LimitNProc",
 			Converter: converters.Size,
 			Scopable:  true,
@@ -152,13 +152,13 @@ var (
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_stack", // TODO
+			Option:    "limit_stack",
 			Attr:      "LimitStack",
 			Converter: converters.Size,
 			Scopable:  true,
 		},
 		{
-			Option:    "limit_vmem", // TODO
+			Option:    "limit_vmem",
 			Attr:      "LimitVMem",
 			Converter: converters.Size,
 			Scopable:  true,

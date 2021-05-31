@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -181,6 +182,9 @@ func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
 		t.Log().Debug().Msgf("no command for action '%v'", action)
 		return nil, nil
 	}
+	if ulimitCommands := t.getUlimitCommands(); len(ulimitCommands) > 0 {
+		command = strings.Join(ulimitCommands, " && ") + " && " + command
+	}
 	if cmd, err = exechelper.CommandFromString(command); err != nil {
 		t.Log().Error().Err(err).Msgf("exechelper.CommandFromString error for action '%v'", action)
 		return nil, err
@@ -193,6 +197,39 @@ func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
 	}
 	t.Log().Debug().Msgf("env for action '%v': '%v'", action, cmd.Env)
 	return cmd, nil
+}
+
+func (t T) getUlimitCommands() []string {
+	commands := []string{}
+	if t.LimitNoFile != nil && *t.LimitNoFile > 0 {
+		commands = append(commands, "ulimit -n "+fmt.Sprintf("%d", *t.LimitNoFile))
+	}
+	if t.LimitStack != nil && *t.LimitStack > 0 {
+		commands = append(commands, "ulimit -s "+fmt.Sprintf("%d", *t.LimitStack))
+	}
+	if t.LimitMemLock != nil && *t.LimitMemLock > 0 {
+		commands = append(commands, "ulimit -l "+fmt.Sprintf("%d", *t.LimitMemLock))
+	}
+	if t.LimitNProc != nil && *t.LimitNProc > 0 {
+		commands = append(commands, "ulimit -u "+fmt.Sprintf("%d", *t.LimitNProc))
+	}
+	if t.LimitVMem != nil && *t.LimitVMem > 0 {
+		commands = append(commands, "ulimit -m "+fmt.Sprintf("%d", *t.LimitVMem))
+	}
+	if t.LimitCpu != nil && *t.LimitCpu > 0 {
+		limitCpuSecond := int64((*t.LimitCpu).Seconds())
+		commands = append(commands, "ulimit -t "+fmt.Sprintf("%d", limitCpuSecond))
+	}
+	if t.LimitCore != nil && *t.LimitCore > 0 {
+		commands = append(commands, "ulimit -c "+fmt.Sprintf("%d", *t.LimitCore))
+	}
+	if t.LimitData != nil && *t.LimitData > 0 {
+		commands = append(commands, "ulimit -d "+fmt.Sprintf("%d", *t.LimitData))
+	}
+	if t.LimitFSize != nil && *t.LimitFSize > 0 {
+		commands = append(commands, "ulimit -f "+fmt.Sprintf("%d", *t.LimitFSize))
+	}
+	return commands
 }
 
 // getCmdStringFromBoolRule get command string for 'action' using bool rule on 's'
