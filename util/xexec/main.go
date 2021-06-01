@@ -1,4 +1,4 @@
-package exechelper
+package xexec
 
 import (
 	"github.com/anmitsu/go-shlex"

@@ -1,7 +1,4 @@
-// Package utilexec provide utilities around os/exec package
-//
-
-package utilexec
+package xexec
 
 import (
 	"opensvc.com/opensvc/util/usergroup"

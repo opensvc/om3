@@ -11,8 +11,7 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/exechelper"
-	"opensvc.com/opensvc/util/utilexec"
+	"opensvc.com/opensvc/util/xexec"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -140,7 +139,7 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 		t.Log().Debug().Msgf("run command from %v", t.Cwd)
 		cmd.Dir = t.Cwd
 	}
-	if err := utilexec.SetCredential(cmd, t.User, t.Group); err != nil {
+	if err := xexec.SetCredential(cmd, t.User, t.Group); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to set credential from user '%v', group '%v'", t.User, t.Group)
 		return err
 	}
@@ -185,7 +184,7 @@ func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
 	if ulimitCommands := t.getUlimitCommands(); len(ulimitCommands) > 0 {
 		command = strings.Join(ulimitCommands, " && ") + " && " + command
 	}
-	if cmd, err = exechelper.CommandFromString(command); err != nil {
+	if cmd, err = xexec.CommandFromString(command); err != nil {
 		t.Log().Error().Err(err).Msgf("exechelper.CommandFromString error for action '%v'", action)
 		return nil, err
 	}
