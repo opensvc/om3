@@ -20,7 +20,6 @@ import (
 	"opensvc.com/opensvc/util/netif"
 
 	"github.com/go-ping/ping"
-	"github.com/j-keck/arping"
 )
 
 const (
@@ -435,7 +434,7 @@ func (t T) arpAnnounce() error {
 		return nil
 	}
 	t.Log().Info().Msgf("send gratuitous arp to announce %s over %s", t.ipaddr(), t.IpDev)
-	return arping.GratuitousArpOverIfaceByName(t.ipaddr(), t.IpDev)
+	return t.arpGratuitous()
 }
 
 func (t T) start() error {
