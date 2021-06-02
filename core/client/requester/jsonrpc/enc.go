@@ -12,7 +12,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -36,8 +36,8 @@ type (
 func NewMessage(b []byte) *Message {
 	m := &Message{
 		NodeName:    hostname.Hostname(),
-		ClusterName: config.Node.Cluster.Name,
-		Key:         config.Node.Cluster.Secret,
+		ClusterName: rawconfig.Node.Cluster.Name,
+		Key:         rawconfig.Node.Cluster.Secret,
 		Data:        b,
 	}
 	return m

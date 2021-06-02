@@ -18,10 +18,10 @@ package main
 
 import (
 	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 func main() {
-	config.Load(nil)
+	rawconfig.Load(nil)
 	cmd.Execute()
 }

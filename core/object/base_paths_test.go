@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 func TestConfigFile(t *testing.T) {
@@ -74,7 +74,7 @@ func TestConfigFile(t *testing.T) {
 		},
 	}
 	for testName, test := range tests {
-		config.Load(map[string]string{
+		rawconfig.Load(map[string]string{
 			"osvc_root_path": test.root,
 		})
 		t.Logf("%s", testName)

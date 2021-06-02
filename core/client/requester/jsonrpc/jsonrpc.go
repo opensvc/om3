@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -35,7 +35,7 @@ func (t T) String() string {
 }
 
 func defaultUDSPath() string {
-	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", config.NodeViper.GetString("paths.var")))
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", rawconfig.NodeViper.GetString("paths.var")))
 }
 
 // Get implements the Get interface method for the JSONRPC api
@@ -62,8 +62,8 @@ func (t T) doReq(method string, req request.T) (io.ReadCloser, error) {
 	if t.Inet {
 		m := &Message{
 			NodeName:    hostname.Hostname(),
-			ClusterName: config.Node.Cluster.Name,
-			Key:         config.Node.Cluster.Secret,
+			ClusterName: rawconfig.Node.Cluster.Name,
+			Key:         rawconfig.Node.Cluster.Secret,
 			Data:        b,
 		}
 		b, err = m.Encrypt()

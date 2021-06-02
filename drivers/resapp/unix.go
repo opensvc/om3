@@ -6,17 +6,18 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/utilexec"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/utilexec"
 )
 
 // T is the driver structure for app unix & linux.
@@ -228,9 +229,9 @@ func (t T) getScript() string {
 	}
 	var p string
 	if t.Path.Namespace != "root" {
-		p = fmt.Sprintf("%s/namespaces/%s/%s/%s.d/%s", config.Node.Paths.Etc, t.Path.Namespace, t.Path.Kind, t.Path.Name, s)
+		p = fmt.Sprintf("%s/namespaces/%s/%s/%s.d/%s", rawconfig.Node.Paths.Etc, t.Path.Namespace, t.Path.Kind, t.Path.Name, s)
 	} else {
-		p = fmt.Sprintf("%s/%s.d/%s", config.Node.Paths.Etc, t.Path.Name, s)
+		p = fmt.Sprintf("%s/%s.d/%s", rawconfig.Node.Paths.Etc, t.Path.Name, s)
 	}
 	return filepath.FromSlash(p)
 }

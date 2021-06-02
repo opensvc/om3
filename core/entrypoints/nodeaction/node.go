@@ -8,11 +8,11 @@ import (
 	"reflect"
 
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -200,7 +200,7 @@ func (t T) DoLocal() error {
 		Color:         t.Color,
 		Data:          r,
 		HumanRenderer: human,
-		Colorize:      config.Node.Colorize,
+		Colorize:      rawconfig.Node.Colorize,
 	}.Print()
 	if r.Panic != nil {
 		return errors.New("")
@@ -231,7 +231,7 @@ func (t T) DoAsync() {
 		Color:         t.Color,
 		Data:          b,
 		HumanRenderer: human,
-		Colorize:      config.Node.Colorize,
+		Colorize:      rawconfig.Node.Colorize,
 	}.Print()
 }
 

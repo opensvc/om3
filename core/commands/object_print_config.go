@@ -9,13 +9,13 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 type (
@@ -44,7 +44,7 @@ func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command
 	}
 }
 
-type result map[string]config.Raw
+type result map[string]rawconfig.T
 
 func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, error) {
 	paths := object.NewSelection(
@@ -62,26 +62,26 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, er
 	return data, nil
 }
 
-func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (config.Raw, error) {
+func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (rawconfig.T, error) {
 	if data, err := t.extractFromDaemon(p, c); err == nil {
 		return data, nil
 	}
 	if clientcontext.IsSet() {
-		return config.Raw{}, errors.New("can not fetch from daemon")
+		return rawconfig.T{}, errors.New("can not fetch from daemon")
 	}
 	return t.extractLocal(p)
 }
 
-func (t *CmdObjectPrintConfig) extractLocal(p path.T) (config.Raw, error) {
+func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
 	obj := object.NewConfigurerFromPath(p)
 	c := obj.Config()
 	if c == nil {
-		return config.Raw{}, fmt.Errorf("path %s: no configuration", p)
+		return rawconfig.T{}, fmt.Errorf("path %s: no configuration", p)
 	}
 	return c.Raw(), nil
 }
 
-func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (config.Raw, error) {
+func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconfig.T, error) {
 	var (
 		err error
 		b   []byte
@@ -93,33 +93,33 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (config.
 	handle.SetNode(t.Global.NodeSelector)
 	b, err = handle.Do()
 	if err != nil {
-		return config.Raw{}, err
+		return rawconfig.T{}, err
 	}
 	if data, err := parseRoutedResponse(b); err == nil {
 		return data, nil
 	}
-	data := config.Raw{}
+	data := rawconfig.T{}
 	if err := json.Unmarshal(b, &data); err == nil {
 		return data, nil
 	} else {
-		return config.Raw{}, err
+		return rawconfig.T{}, err
 	}
 }
 
-func parseRoutedResponse(b []byte) (config.Raw, error) {
+func parseRoutedResponse(b []byte) (rawconfig.T, error) {
 	type routedResponse struct {
-		Nodes  map[string]config.Raw
+		Nodes  map[string]rawconfig.T
 		Status int
 	}
 	d := routedResponse{}
 	err := json.Unmarshal(b, &d)
 	if err != nil {
-		return config.Raw{}, err
+		return rawconfig.T{}, err
 	}
 	for _, cfg := range d.Nodes {
 		return cfg, nil
 	}
-	return config.Raw{}, fmt.Errorf("no nodes in response")
+	return rawconfig.T{}, fmt.Errorf("no nodes in response")
 }
 
 func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
@@ -151,7 +151,7 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 			Color:         t.Global.Color,
 			Data:          data[*selector],
 			HumanRenderer: render,
-			Colorize:      config.Node.Colorize,
+			Colorize:      rawconfig.Node.Colorize,
 		}.Print()
 	} else {
 		render = func() string {
@@ -170,7 +170,7 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 			Color:         t.Global.Color,
 			Data:          data,
 			HumanRenderer: render,
-			Colorize:      config.Node.Colorize,
+			Colorize:      rawconfig.Node.Colorize,
 		}.Print()
 	}
 }

@@ -4,10 +4,10 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/objectactionprops"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -42,8 +42,8 @@ var (
 )
 
 func (t *Base) validateAction() error {
-	if t.Env() != "PRD" && config.Node.Node.Env == "PRD" {
-		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), config.Node.Node.Env)
+	if t.Env() != "PRD" && rawconfig.Node.Node.Env == "PRD" {
+		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), rawconfig.Node.Node.Env)
 	}
 	if t.config.IsInNodes(hostname.Hostname()) {
 		return nil

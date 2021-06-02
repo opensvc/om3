@@ -7,11 +7,11 @@ import (
 	"os"
 
 	"github.com/iancoleman/orderedmap"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
@@ -28,7 +28,7 @@ type (
 		keywords  []string
 		restore   bool
 	}
-	Pivot map[string]config.Raw
+	Pivot map[string]rawconfig.T
 )
 
 //
@@ -229,7 +229,7 @@ func rawFromConfigFile(p path.T, fpath string) (Pivot, error) {
 
 func rawFromScratch(p path.T) (Pivot, error) {
 	pivot := make(Pivot)
-	pivot[p.String()] = config.Raw{}
+	pivot[p.String()] = rawconfig.T{}
 	return pivot, nil
 }
 
@@ -290,7 +290,7 @@ func rawFromStdinFlat(p path.T) (Pivot, error) {
 
 func rawFromBytesFlat(p path.T, b []byte) (Pivot, error) {
 	pivot := make(Pivot)
-	c := &config.Raw{}
+	c := &rawconfig.T{}
 	if err := json.Unmarshal(b, c); err != nil {
 		return pivot, err
 	}
@@ -312,7 +312,7 @@ func localFromData(pivot Pivot) error {
 	return nil
 }
 
-func localFromRaw(p path.T, c config.Raw) error {
+func localFromRaw(p path.T, c rawconfig.T) error {
 	o := object.NewFromPath(p)
 	oc := o.(object.Configurer)
 	return oc.Config().CommitData(c)

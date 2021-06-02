@@ -1,18 +1,19 @@
 package resappforking
 
 import (
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/test_conf_helper"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/test_conf_helper"
 )
 
 func getAppRid(rid string, resources []resource.Driver) *T {
@@ -31,8 +32,8 @@ func TestKeywords(t *testing.T) {
 	td, cleanup := testhelper.Tempdir(t)
 	defer cleanup()
 
-	config.Load(map[string]string{"osvc_root_path": td})
-	defer config.Load(map[string]string{})
+	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	defer rawconfig.Load(map[string]string{})
 
 	etc := filepath.Join(td, "etc")
 	require.Nil(t, os.MkdirAll(etc, 0700))

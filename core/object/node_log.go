@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/logging"
 )
 
@@ -11,7 +11,7 @@ func ConfigureLog() *logging.Logger {
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
-		Directory:             config.Node.Paths.Log,
+		Directory:             rawconfig.Node.Paths.Log,
 		Filename:              "node",
 		MaxSize:               5,
 		MaxBackups:            1,

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 // Events hosts the options of the events fetcher/renderer entrypoint.
@@ -51,6 +51,6 @@ func (t Events) doOne(e event.Event) {
 		Color:         t.Color,
 		Data:          e,
 		HumanRenderer: human,
-		Colorize:      config.Node.Colorize,
+		Colorize:      rawconfig.Node.Colorize,
 	}.Print()
 }

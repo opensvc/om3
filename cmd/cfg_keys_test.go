@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"encoding/json"
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/test_conf_helper"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/test_conf_helper"
 )
 
 type (
@@ -42,8 +43,8 @@ func TestCfgKeys(t *testing.T) {
 		td, cleanup := testhelper.Tempdir(t)
 		defer cleanup()
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
 
 		test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
 		rootCmd.SetArgs(getCmd(name))
@@ -90,8 +91,8 @@ func TestCfgDecodeKeys(t *testing.T) {
 		td, cleanup := testhelper.Tempdir(t)
 		defer cleanup()
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
 
 		test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
 		ExecuteArgs(getCmd(name))

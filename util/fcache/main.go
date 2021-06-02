@@ -3,14 +3,15 @@ package fcache
 
 import (
 	"errors"
-	"github.com/opensvc/fcache"
-	"github.com/opensvc/fcntllock"
-	"github.com/opensvc/flock"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/util/xsession"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/opensvc/fcache"
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/xsession"
 )
 
 var (
@@ -33,10 +34,10 @@ func PurgeCache() error {
 
 func outputLockP(name string) fcache.Locker {
 	sessionId := xsession.Id()
-	path := filepath.Join(config.Node.Paths.Lock, sessionId+"-out-"+name)
+	path := filepath.Join(rawconfig.Node.Paths.Lock, sessionId+"-out-"+name)
 	return flock.New(path, sessionId, fcntllock.New)
 }
 
 func cacheDir() string {
-	return filepath.Join(config.Node.Paths.Cache, xsession.Id())
+	return filepath.Join(rawconfig.Node.Paths.Cache, xsession.Id())
 }

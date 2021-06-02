@@ -9,10 +9,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/logging"
@@ -79,14 +79,14 @@ func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 }
 
 func listObjectPaths() []string {
-	if b, err := file.ReadAll(filepath.Join(config.Node.Paths.Var, "list.services")); err == nil {
+	if b, err := file.ReadAll(filepath.Join(rawconfig.Node.Paths.Var, "list.services")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
 }
 
 func listNodes() []string {
-	if b, err := file.ReadAll(filepath.Join(config.Node.Paths.Var, "list.nodes")); err == nil {
+	if b, err := file.ReadAll(filepath.Join(rawconfig.Node.Paths.Var, "list.nodes")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
@@ -111,7 +111,7 @@ func configureLogger() {
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
-		Directory:             config.Node.Paths.Log,
+		Directory:             rawconfig.Node.Paths.Log,
 		Filename:              "node.log",
 		MaxSize:               5,
 		MaxBackups:            1,

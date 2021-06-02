@@ -11,11 +11,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/ssrathi/go-attr"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceselector"
@@ -405,9 +405,9 @@ func (t Base) standardConfigFile() string {
 	p := t.Path.String()
 	switch t.Path.Namespace {
 	case "", "root":
-		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.Etc, p)
+		p = fmt.Sprintf("%s/%s.conf", rawconfig.Node.Paths.Etc, p)
 	default:
-		p = fmt.Sprintf("%s/%s.conf", config.Node.Paths.EtcNs, p)
+		p = fmt.Sprintf("%s/%s.conf", rawconfig.Node.Paths.EtcNs, p)
 	}
 	return filepath.FromSlash(p)
 }
@@ -433,9 +433,9 @@ func (t Base) VarDir() string {
 	p := t.Path.String()
 	switch t.Path.Namespace {
 	case "", "root":
-		p = fmt.Sprintf("%s/%s/%s", config.Node.Paths.Var, t.Path.Kind, t.Path.Name)
+		p = fmt.Sprintf("%s/%s/%s", rawconfig.Node.Paths.Var, t.Path.Kind, t.Path.Name)
 	default:
-		p = fmt.Sprintf("%s/namespaces/%s", config.Node.Paths.Var, p)
+		p = fmt.Sprintf("%s/namespaces/%s", rawconfig.Node.Paths.Var, p)
 	}
 	return filepath.FromSlash(p)
 }
@@ -448,11 +448,11 @@ func (t Base) TmpDir() string {
 	p := t.Path.String()
 	switch {
 	case t.Path.Namespace != "", t.Path.Namespace != "root":
-		p = fmt.Sprintf("%s/namespaces/%s/%s", config.Node.Paths.Tmp, t.Path.Namespace, t.Path.Kind)
+		p = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Node.Paths.Tmp, t.Path.Namespace, t.Path.Kind)
 	case t.Path.Kind == kind.Svc, t.Path.Kind == kind.Ccfg:
-		p = fmt.Sprintf("%s", config.Node.Paths.Tmp)
+		p = fmt.Sprintf("%s", rawconfig.Node.Paths.Tmp)
 	default:
-		p = fmt.Sprintf("%s/%s", config.Node.Paths.Tmp, t.Path.Kind)
+		p = fmt.Sprintf("%s/%s", rawconfig.Node.Paths.Tmp, t.Path.Kind)
 	}
 	return filepath.FromSlash(p)
 }
@@ -465,11 +465,11 @@ func (t Base) LogDir() string {
 	p := t.Path.String()
 	switch {
 	case t.Path.Namespace != "", t.Path.Namespace != "root":
-		p = fmt.Sprintf("%s/namespaces/%s/%s", config.Node.Paths.Log, t.Path.Namespace, t.Path.Kind)
+		p = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Node.Paths.Log, t.Path.Namespace, t.Path.Kind)
 	case t.Path.Kind == kind.Svc, t.Path.Kind == kind.Ccfg:
-		p = fmt.Sprintf("%s", config.Node.Paths.Log)
+		p = fmt.Sprintf("%s", rawconfig.Node.Paths.Log)
 	default:
-		p = fmt.Sprintf("%s/%s", config.Node.Paths.Log, t.Path.Kind)
+		p = fmt.Sprintf("%s/%s", rawconfig.Node.Paths.Log, t.Path.Kind)
 	}
 	return filepath.FromSlash(p)
 }
