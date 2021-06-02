@@ -9,12 +9,12 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/editor"
 	"opensvc.com/opensvc/util/file"
 )
@@ -93,8 +93,8 @@ func fetchConfig(p path.T, c *client.T) (s string, err error) {
 }
 
 func pushConfig(p path.T, fName string, c *client.T) (err error) {
-	var cfg *config.T
-	if cfg, err = config.NewObject(fName); err != nil {
+	var cfg *xconfig.T
+	if cfg, err = xconfig.NewObject(fName); err != nil {
 		return err
 	}
 	req := c.NewPostObjectCreate()

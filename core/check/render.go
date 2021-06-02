@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render/tree"
 )
 
 // Render returns a human friendly string representation of the type.
 func (t ResultSet) Render() string {
 	tree := tree.New()
-	tree.AddColumn().AddText(config.Node.Hostname).SetColor(config.Node.Color.Bold)
+	tree.AddColumn().AddText(hostname.Hostname()).SetColor(config.Node.Color.Bold)
 	tree.AddColumn().AddText("driver")
 	tree.AddColumn().AddText("instance")
 	tree.AddColumn().AddText("value")

@@ -3,6 +3,7 @@ package entrypoints
 import (
 	"encoding/json"
 
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/output"
@@ -38,9 +39,10 @@ func (t DaemonStats) Do() error {
 		return err
 	}
 	renderer := output.Renderer{
-		Format: t.Format,
-		Color:  t.Color,
-		Data:   data,
+		Format:   t.Format,
+		Color:    t.Color,
+		Data:     data,
+		Colorize: config.Node.Colorize,
 	}
 	renderer.Print()
 	return nil

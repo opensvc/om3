@@ -11,6 +11,7 @@ import (
 	"github.com/inancgumus/screen"
 	"github.com/pkg/errors"
 
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
@@ -191,6 +192,7 @@ func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
 		Color:         m.color,
 		Data:          data,
 		HumanRenderer: human,
+		Colorize:      config.Node.Colorize,
 	}.Sprint()
 
 	if clear {

@@ -3,6 +3,7 @@ package entrypoints
 import (
 	"sort"
 
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 )
@@ -40,5 +41,6 @@ func (t List) Do() {
 		Color:         t.Color,
 		Data:          data,
 		HumanRenderer: human,
+		Colorize:      config.Node.Colorize,
 	}.Print()
 }

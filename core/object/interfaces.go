@@ -1,10 +1,10 @@
 package object
 
 import (
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -55,7 +55,7 @@ type (
 	Configurer interface {
 		Exists() bool
 		ConfigFile() string
-		Config() *config.T
+		Config() *xconfig.T
 		EditConfig(OptsEditConfig) error
 		Eval(OptsEval) (interface{}, error)
 		Get(OptsGet) (interface{}, error)

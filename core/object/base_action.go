@@ -6,8 +6,10 @@ import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type ActionOptioner interface {
@@ -43,13 +45,13 @@ func (t *Base) validateAction() error {
 	if t.Env() != "PRD" && config.Node.Node.Env == "PRD" {
 		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), config.Node.Node.Env)
 	}
-	if t.config.IsInNodes(config.Node.Hostname) {
+	if t.config.IsInNodes(hostname.Hostname()) {
 		return nil
 	}
-	if t.config.IsInDRPNodes(config.Node.Hostname) {
+	if t.config.IsInDRPNodes(hostname.Hostname()) {
 		return nil
 	}
-	return errors.Wrapf(ErrInvalidNode, "hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", config.Node.Hostname)
+	return errors.Wrapf(ErrInvalidNode, "hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", hostname.Hostname())
 }
 
 func (t *Base) setenv(action string, leader bool) {
@@ -88,7 +90,7 @@ func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn res
 }
 
 func (t *Base) notifyAction(action objectactionprops.T, options ActionOptioner) error {
-	if config.HasDaemonOrigin() {
+	if env.HasDaemonOrigin() {
 		return nil
 	}
 	if options.IsDryRun() {

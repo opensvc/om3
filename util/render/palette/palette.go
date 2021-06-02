@@ -89,8 +89,8 @@ func toFgColor(s string) color.Attribute {
 }
 
 // New returns a color palette (as C) from a string color palette (as read by viper).
-func New(m StringPalette) ColorPalette {
-	r := ColorPalette{}
+func New(m StringPalette) *ColorPalette {
+	r := &ColorPalette{}
 	r.Primary = toFgColor(m.Primary)
 	r.Secondary = toFgColor(m.Secondary)
 	r.Optimal = toFgColor(m.Optimal)
@@ -102,8 +102,8 @@ func New(m StringPalette) ColorPalette {
 }
 
 // NewFunc returns a color palette (as string colorizer func) from a string color palette (as read by viper).
-func NewFunc(m StringPalette) ColorPaletteFunc {
-	r := ColorPaletteFunc{}
+func NewFunc(m StringPalette) *ColorPaletteFunc {
+	r := &ColorPaletteFunc{}
 	c := New(m)
 	r.Primary = color.New(c.Primary).SprintFunc()
 	r.Secondary = color.New(c.Secondary).SprintFunc()
@@ -113,4 +113,23 @@ func NewFunc(m StringPalette) ColorPaletteFunc {
 	r.Frozen = color.New(c.Frozen).SprintFunc()
 	r.Bold = color.New(c.Bold).SprintFunc()
 	return r
+}
+
+func DefaultPalette() *StringPalette {
+	return &StringPalette{
+		Primary:   DefaultPrimary,
+		Secondary: DefaultSecondary,
+		Optimal:   DefaultOptimal,
+		Error:     DefaultError,
+		Warning:   DefaultWarning,
+		Frozen:    DefaultFrozen,
+	}
+}
+
+func DefaultColorPalette() *ColorPalette {
+	return New(*DefaultPalette())
+}
+
+func DefaultFuncPalette() *ColorPaletteFunc {
+	return NewFunc(*DefaultPalette())
 }

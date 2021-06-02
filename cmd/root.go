@@ -10,10 +10,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/logging"
+	"opensvc.com/opensvc/util/xsession"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -115,15 +118,18 @@ func configureLogger() {
 		MaxAge:                30,
 	}).
 		With().
-		Str("n", config.Node.Hostname).
-		Str("sid", config.SessionID).
+		Str("n", hostname.Hostname()).
+		Str("sid", xsession.ID).
 		Logger()
 	log.Logger = l
 }
 
 func persistentPreRunE(_ *cobra.Command, _ []string) error {
+	if err := hostname.Error(); err != nil {
+		return err
+	}
 	configureLogger()
-	if config.HasDaemonOrigin() {
+	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
 			log.Logger.Debug().Err(err).Msg("")
 		}

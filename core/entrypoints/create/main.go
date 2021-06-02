@@ -9,9 +9,10 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/uri"
@@ -217,7 +218,7 @@ func rawFromConfigURI(p path.T, u uri.T) (Pivot, error) {
 
 func rawFromConfigFile(p path.T, fpath string) (Pivot, error) {
 	pivot := make(Pivot)
-	c, err := config.NewObject(fpath)
+	c, err := xconfig.NewObject(fpath)
 	if err != nil {
 		return pivot, err
 	}

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/colorstatus"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
@@ -29,7 +30,7 @@ func (t InstanceStates) Tree() *tree.Tree {
 func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(config.Node.Color.Bold)
 	head.AddColumn()
-	head.AddColumn().AddText(config.ColoredStatus(t.Status.Avail))
+	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, config.Node.Colorize))
 	head.AddColumn().AddText(t.descString())
 
 	lastSubset := ""
@@ -57,7 +58,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 		n := subsetNode.AddNode()
 		n.AddColumn().AddText(r.ResourceID.Name)
 		n.AddColumn().AddText(t.Status.ResourceFlagsString(r.ResourceID, r))
-		n.AddColumn().AddText(config.ColoredStatus(r.Status))
+		n.AddColumn().AddText(colorstatus.Sprint(r.Status, config.Node.Colorize))
 		desc := n.AddColumn()
 		desc.AddText(r.Label)
 		for _, entry := range r.Log {
@@ -77,7 +78,7 @@ func (t InstanceStates) descString() string {
 
 	// Overall
 	if t.Status.Overall == status.Warn {
-		l = append(l, config.ColoredStatus(t.Status.Overall))
+		l = append(l, colorstatus.Sprint(t.Status.Overall, config.Node.Colorize))
 	}
 
 	// Frozen

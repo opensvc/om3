@@ -1,18 +1,20 @@
 package cmd
 
 import (
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/test_conf_helper"
-	"opensvc.com/opensvc/util/usergroup"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/usergroup"
 )
 
 func TestAppStop(t *testing.T) {
@@ -149,10 +151,8 @@ func TestAppStop(t *testing.T) {
 
 		config.Load(map[string]string{"osvc_root_path": td})
 		defer config.Load(map[string]string{})
-		origHostname := config.Node.Hostname
-		config.Node.Hostname = "node1"
-		defer func() { config.Node.Hostname = origHostname }()
-		config.Node.Hostname = "node1"
+		rollbackHostname := hostname.Impersonate("node1")
+		defer rollbackHostname()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -468,10 +468,8 @@ func TestAppStopSequence(t *testing.T) {
 
 		config.Load(map[string]string{"osvc_root_path": td})
 		defer config.Load(map[string]string{})
-		origHostname := config.Node.Hostname
-		config.Node.Hostname = "node1"
-		defer func() { config.Node.Hostname = origHostname }()
-		config.Node.Hostname = "node1"
+		rollbackHostname := hostname.Impersonate("node1")
+		defer rollbackHostname()
 		ExecuteArgs(getCmd(name))
 	}
 

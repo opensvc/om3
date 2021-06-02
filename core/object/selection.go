@@ -14,10 +14,12 @@ import (
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -193,8 +195,8 @@ func Installed() ([]path.T, error) {
 		fmt.Sprintf("%s/", config.Node.Paths.EtcNs),
 		fmt.Sprintf("%s/", config.Node.Paths.Etc),
 	}
-	envNamespace := config.EnvNamespace()
-	envKind := kind.New(config.EnvKind())
+	envNamespace := env.Namespace()
+	envKind := kind.New(env.Kind())
 	for _, ps := range matches {
 		for _, r := range replacements {
 			ps = strings.Replace(ps, r, "", 1)
@@ -358,7 +360,7 @@ func (t *Selection) daemonExpand() error {
 		Str("selector", t.SelectorExpression).
 		Str("mode", "daemon").
 		Msg("expand selection")
-	if config.HasDaemonOrigin() {
+	if env.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
 	if !t.client.HasRequester() {
@@ -385,7 +387,7 @@ func (t *Selection) Do(action Action) []ActionResult {
 		go func(p path.T) {
 			result := ActionResult{
 				Path:     p,
-				Nodename: config.Node.Hostname,
+				Nodename: hostname.Hostname(),
 			}
 			defer func() {
 				if r := recover(); r != nil {

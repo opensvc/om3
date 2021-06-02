@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/iancoleman/orderedmap"
 )
@@ -11,6 +13,11 @@ type (
 	Raw struct {
 		Data *orderedmap.OrderedMap
 	}
+)
+
+var (
+	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
+	RegexpReference = regexp.MustCompile(`({[\w.-_:]+})`)
 )
 
 // MarshalJSON marshals the enum as a quoted json string
@@ -56,4 +63,24 @@ func (t Raw) Render() string {
 		s += "\n"
 	}
 	return s
+}
+
+func renderComment(k string, v interface{}) string {
+	vs, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return "# " + strings.ReplaceAll(vs, "\n", "\n# ") + "\n"
+}
+
+func renderKey(k string, v interface{}) string {
+	k = RegexpScope.ReplaceAllString(k, Node.Colorize.Error("$1"))
+	vs, ok := v.(string)
+	if ok {
+		vs = RegexpReference.ReplaceAllString(vs, Node.Colorize.Optimal("$1"))
+		vs = strings.ReplaceAll(vs, "\n", "\n\t")
+	} else {
+		vs = ""
+	}
+	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
 }

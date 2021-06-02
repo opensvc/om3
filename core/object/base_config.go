@@ -13,6 +13,8 @@ import (
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/topology"
+	"opensvc.com/opensvc/core/xconfig"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -22,7 +24,7 @@ var (
 
 func (t *Base) loadConfig() error {
 	var err error
-	if t.config, err = config.NewObject(t.ConfigFile()); err != nil {
+	if t.config, err = xconfig.NewObject(t.ConfigFile()); err != nil {
 		return err
 	}
 	t.config.Path = t.Path
@@ -30,7 +32,7 @@ func (t *Base) loadConfig() error {
 	return err
 }
 
-func (t Base) Config() *config.T {
+func (t Base) Config() *xconfig.T {
 	return t.config
 }
 
@@ -99,7 +101,7 @@ func (t Base) Priority() priority.T {
 }
 
 func (t Base) Peers() []string {
-	impersonate := config.Node.Hostname
+	impersonate := hostname.Hostname()
 	switch {
 	case t.config.IsInNodes(impersonate):
 		return t.config.Nodes()

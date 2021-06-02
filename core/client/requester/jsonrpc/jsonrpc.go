@@ -13,6 +13,7 @@ import (
 
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -60,7 +61,7 @@ func (t T) doReq(method string, req request.T) (io.ReadCloser, error) {
 	}
 	if t.Inet {
 		m := &Message{
-			NodeName:    config.Node.Hostname,
+			NodeName:    hostname.Hostname(),
 			ClusterName: config.Node.Cluster.Name,
 			Key:         config.Node.Cluster.Secret,
 			Data:        b,

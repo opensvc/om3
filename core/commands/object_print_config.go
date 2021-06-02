@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
@@ -151,6 +151,7 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 			Color:         t.Global.Color,
 			Data:          data[*selector],
 			HumanRenderer: render,
+			Colorize:      config.Node.Colorize,
 		}.Print()
 	} else {
 		render = func() string {
@@ -169,6 +170,7 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 			Color:         t.Global.Color,
 			Data:          data,
 			HumanRenderer: render,
+			Colorize:      config.Node.Colorize,
 		}.Print()
 	}
 }

@@ -26,7 +26,7 @@ func (t *Base) lockPath(group string) (path string) {
 func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.T, error) {
 	p := t.lockPath(group)
 	t.log.Debug().Msgf("locking %s, timeout %s", p, timeout)
-	lock := flock.New(p, xsession.Id(), fcntllock.New)
+	lock := flock.New(p, xsession.ID, fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (t *Base) lockedAction(group string, options OptsLocking, intent string, f 
 		return nil
 	}
 	p := t.lockPath(group)
-	lock := flock.New(p, xsession.Id(), fcntllock.New)
+	lock := flock.New(p, xsession.ID, fcntllock.New)
 	err := lock.Lock(options.Timeout, intent)
 	if err != nil {
 		return err

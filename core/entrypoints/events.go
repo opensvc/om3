@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
@@ -50,5 +51,6 @@ func (t Events) doOne(e event.Event) {
 		Color:         t.Color,
 		Data:          e,
 		HumanRenderer: human,
+		Colorize:      config.Node.Colorize,
 	}.Print()
 }

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 

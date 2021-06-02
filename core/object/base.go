@@ -20,10 +20,13 @@ import (
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/logging"
+	"opensvc.com/opensvc/util/xsession"
 )
 
 var (
@@ -45,7 +48,7 @@ type (
 		// caches
 		id         uuid.UUID
 		configFile string
-		config     *config.T
+		config     *xconfig.T
 		node       *Node
 		paths      BasePaths
 		resources  resource.Drivers
@@ -172,8 +175,8 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 	}).
 		With().
 		Stringer("o", t.Path).
-		Str("n", config.Node.Hostname).
-		Str("sid", config.SessionID).
+		Str("n", hostname.Hostname()).
+		Str("sid", xsession.ID).
 		Logger()
 
 	if err := t.loadConfig(); err != nil {
