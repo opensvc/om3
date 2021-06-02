@@ -5,13 +5,10 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/core/env"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
-)
-
-const (
-	EnvVar = "OSVC_CONTEXT"
 )
 
 type (
@@ -61,14 +58,14 @@ var (
 
 // IsSet returns true if the OSVC_CONTEXT environment variable is set
 func IsSet() bool {
-	return os.Getenv(EnvVar) != ""
+	return env.Context() != ""
 }
 
 // New return a remote cluster connection context (endpoint and user)
 func New() (T, error) {
 	var cfg config
 	var c T
-	n := os.Getenv(EnvVar)
+	n := env.Context()
 	if n == "" {
 		return c, nil
 	}

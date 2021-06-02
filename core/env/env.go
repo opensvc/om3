@@ -20,3 +20,9 @@ func Namespace() string {
 func Kind() string {
 	return os.Getenv("OSVC_KIND")
 }
+
+// Context returns the identifier of a remote cluster endpoint and credentials
+// configuration via the OSVC_CONTEXT variable.
+func Context() string {
+	return os.Getenv("OSVC_CONTEXT")
+}

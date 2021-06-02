@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"gopkg.in/ini.v1"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/nodeselector"
@@ -413,45 +414,22 @@ func (t T) SectionStrings() []string {
 
 func (t *T) Nodes() []string {
 	v := t.Get(key.Parse("nodes"))
-	l := nodeselector.New(v, nodeselector.WithLocal(true)).Expand()
-	if len(l) == 0 && os.Getenv("OSVC_CONTEXT") == "" {
+	l := nodeselector.LocalExpand(v)
+	if len(l) == 0 && env.Context() == "" {
 		return []string{hostname.Hostname()}
-	}
-	return t.ExpandNodes(l)
-}
-
-func (t *T) DRPNodes() []string {
-	v := t.Get(key.Parse("drpnodes"))
-	l := strings.Fields(v)
-	return t.ExpandNodes(l)
-}
-
-func (t *T) EncapNodes() []string {
-	v := t.Get(key.Parse("encapnodes"))
-	l := strings.Fields(v)
-	return t.ExpandNodes(l)
-}
-
-func (t *T) ExpandNodes(nodes []string) []string {
-	l := make([]string, 0)
-	for _, n := range nodes {
-		if strings.ContainsAny(n, "=") {
-			l = append(l, t.NodesWithLabel(n)...)
-		} else {
-			l = append(l, n)
-		}
 	}
 	return l
 }
 
-func (t *T) NodesWithLabel(label string) []string {
-	l := make([]string, 0)
-	/*
-		e := strings.Split(label, "=")
-		n := e[0]
-		v := e[1]
-	*/
-	// TODO iterate nodes labels
+func (t *T) DRPNodes() []string {
+	v := t.Get(key.Parse("drpnodes"))
+	l := nodeselector.LocalExpand(v)
+	return l
+}
+
+func (t *T) EncapNodes() []string {
+	v := t.Get(key.Parse("encapnodes"))
+	l := nodeselector.LocalExpand(v)
 	return l
 }
 

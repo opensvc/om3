@@ -89,6 +89,14 @@ func (t T) String() string {
 }
 
 //
+// LocalExpand resolves a selector expression into a list of object paths
+// without asking the daemon for nodes information.
+//
+func LocalExpand(s string) []string {
+	return New(s, WithLocal(true)).Expand()
+}
+
+//
 // Expand resolves a selector expression into a list of object paths.
 //
 // First try to resolve using the daemon (remote or local), as the
