@@ -560,15 +560,15 @@ func TestAppStopLimit(t *testing.T) {
 	needPrivUser := []string{"limit_memlock", "limit_nproc"}
 	cases := map[string][]string{
 		"limit_cpu":     {"3602"},
-		"limit_core":    {"2028"},
-		"limit_data":    {"2039"},
-		"limit_fsize":   {"2055"},
+		"limit_core":    {"100"},
+		"limit_data":    {"104"},
+		"limit_fsize":   {"2"},
 		"limit_memlock": {"65530"},
 		"limit_nofile":  {"128"},
 		"limit_nproc":   {"200"},
-		"limit_stack":   {"1029"},
-		"limit_vmem":    {"65538"},
-		"limit_2_items": {"129", "1069"},
+		"limit_stack":   {"101"},
+		"limit_vmem":    {"103"},
+		"limit_2_items": {"129", "108"},
 	}
 	getCmd := func(name string) []string {
 		args := []string{"svcapp", "stop", "no", "--local", "--rid", "app#" + name}
