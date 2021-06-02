@@ -1,21 +1,22 @@
 package xsession
 
 import (
-	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
 
-func TestValue(t *testing.T) {
+func Test_init(t *testing.T) {
 
-	t.Run("have expected len", func(t *testing.T) {
-		id := Id()
-		if len(id) != 36 {
-			t.Fatalf("Unexpected string len returned by Id(): %q, len %v", id, len(id))
+	t.Run("default ID is defined with expected len", func(t *testing.T) {
+		if len(ID) != 36 {
+			t.Fatalf("Unexpected ID value: %q, len %v", ID, len(ID))
 		}
 	})
 
-	t.Run("pickup id from OSVC_SESSION_ID if set", func(t *testing.T) {
+	t.Run("ID value is value of env var OSVC_SESSION_ID when defined", func(t *testing.T) {
+		origId := ID
+		defer func() { ID = origId }()
 		varName := "OSVC_SESSION_ID"
 		envVarValue, ok := os.LookupEnv(varName)
 		if ok {
@@ -25,15 +26,13 @@ func TestValue(t *testing.T) {
 		}
 		expectedValue := "def79ece-b952-4e48-9ec7-23e2ffb47aa7"
 		_ = os.Setenv(varName, expectedValue)
-
-		id = ""
-		id := Id()
-		if id != expectedValue {
-			t.Fatalf("Unexpected string len returned by Id(): %q, len %v", id, len(id))
-		}
+		initID()
+		assert.Equal(t, expectedValue, ID)
 	})
 
-	t.Run("generate valid Id if OSVC_SESSION_ID env var is corrupted", func(t *testing.T) {
+	t.Run("invalid env var OSVC_SESSION_ID value are ignored and a valid ID is created", func(t *testing.T) {
+		origId := ID
+		defer func() { ID = origId }()
 		varName := "OSVC_SESSION_ID"
 		envVarValue, ok := os.LookupEnv(varName)
 		if ok {
@@ -43,10 +42,9 @@ func TestValue(t *testing.T) {
 		}
 		_ = os.Setenv(varName, "bad-uuid")
 
-		id = ""
-		retrievedId := Id()
-		if _, err := uuid.Parse(retrievedId); err != nil {
-			t.Fatalf("Unexpected uuid returned returned by Id(): %q, len %v", retrievedId, len(retrievedId))
+		initID()
+		if len(ID) != 36 {
+			t.Fatalf("Unexpected ID value: %q, len %v", ID, len(ID))
 		}
 	})
 }

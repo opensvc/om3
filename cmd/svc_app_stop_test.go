@@ -132,7 +132,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"svcappforking", "stop", "--color", "no", "--local"}
+		args := []string{"svcappforking", "stop", "--local"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
@@ -151,8 +151,7 @@ func TestAppStop(t *testing.T) {
 
 		rawconfig.Load(map[string]string{"osvc_root_path": td})
 		defer rawconfig.Load(map[string]string{})
-		rollbackHostname := hostname.Impersonate("node1")
-		defer rollbackHostname()
+		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -468,8 +467,7 @@ func TestAppStopSequence(t *testing.T) {
 
 		rawconfig.Load(map[string]string{"osvc_root_path": td})
 		defer rawconfig.Load(map[string]string{})
-		rollbackHostname := hostname.Impersonate("node1")
-		defer rollbackHostname()
+		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -492,4 +490,111 @@ func TestAppStopSequence(t *testing.T) {
 
 		assert.Equalf(t, cases[name].Expected, foundSequence, "got:\n%v", string(out))
 	})
+}
+
+func TestAppStopComplexCommand(t *testing.T) {
+	cases := map[string]struct {
+		ExtraArgs   []string
+		Expected    []string
+		NotExpected []string
+	}{
+		"echoOneAndEchoTwo": {
+			ExtraArgs: []string{"--rid", "app#echoOneAndEchoTwo"},
+			Expected:  []string{"One", "Two"},
+		},
+		"echoOneOrEchoTwo": {
+			ExtraArgs:   []string{"--rid", "app#echoOneOrEchoTwo"},
+			Expected:    []string{"One"},
+			NotExpected: []string{"Two"},
+		},
+	}
+	getCmd := func(name string) []string {
+		args := []string{"svcapp", "stop", "--local"}
+		args = append(args, cases[name].ExtraArgs...)
+		return args
+	}
+
+	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
+
+		test_conf_helper.InstallSvcFile(t, "svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		defer hostname.Impersonate("node1")()
+		ExecuteArgs(getCmd(name))
+	}
+
+	for name := range cases {
+		t.Run(name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopComplexCommand")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			out, err := cmd.CombinedOutput()
+			require.Nilf(t, err, "got '%v'", string(out))
+			for _, expected := range cases[name].Expected {
+				assert.Containsf(t, string(out), "| "+expected, "got:\n%v", string(out))
+			}
+			for _, notExpected := range cases[name].NotExpected {
+				assert.NotContainsf(t, string(out), "| "+notExpected, "got:\n%v", string(out))
+			}
+		})
+	}
+}
+
+func TestAppStopLimit(t *testing.T) {
+	cases := map[string][]string{
+		"limit_cpu":     {"3602"},
+		"limit_core":    {"100"},
+		"limit_data":    {"104"},
+		"limit_fsize":   {"2"},
+		"limit_memlock": {"32"},
+		"limit_nofile":  {"128"},
+		"limit_nproc":   {"200"},
+		"limit_stack":   {"101"},
+		"limit_vmem":    {"103"},
+		"limit_2_items": {"129", "108"},
+	}
+	getCmd := func(name string) []string {
+		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
+		return args
+	}
+
+	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
+
+		test_conf_helper.InstallSvcFile(t, "svcappforking_limit.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		defer hostname.Impersonate("node1")()
+		ExecuteArgs(getCmd(name))
+	}
+
+	for name := range cases {
+		t.Run(name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopLimit")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			out, err := cmd.CombinedOutput()
+			require.Nilf(t, err, "got '%v'", string(out))
+			for _, expected := range cases[name] {
+				assert.Containsf(t, string(out), "| "+expected, "got:\n%v", string(out))
+			}
+		})
+	}
 }

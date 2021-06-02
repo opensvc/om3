@@ -27,7 +27,7 @@ var (
 	ID string
 )
 
-func setID() string {
+func getID() string {
 	id := os.Getenv("OSVC_SESSION_ID")
 	if id == "" {
 		// No uuid set. Generate a new one.
@@ -44,6 +44,11 @@ func newID() string {
 	return uuid.New().String()
 }
 
+// for init() test
+func initID() {
+	ID = getID()
+}
+
 func init() {
-	ID = setID()
+	initID()
 }

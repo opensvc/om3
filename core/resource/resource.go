@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anmitsu/go-shlex"
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -20,6 +19,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/timestamp"
+	"opensvc.com/opensvc/util/xexec"
 )
 
 type (
@@ -345,21 +345,8 @@ func formatResourceLabel(r Driver) string {
 	return fmt.Sprintf("%s %s", formatResourceType(r), r.Label())
 }
 
-func triggerWantsShell(s string) bool {
-	switch {
-	case strings.Contains(s, "|"):
-		return true
-	case strings.Contains(s, "&&"):
-		return true
-	case strings.Contains(s, ";"):
-		return true
-	default:
-		return false
-	}
-}
-
 func (t T) trigger(s string) error {
-	cmd, err := triggerCommand(s)
+	cmd, err := xexec.CommandFromString(s)
 	if err != nil {
 		return err
 	}
@@ -403,21 +390,6 @@ func (t T) trigger(s string) error {
 	}()
 	wg.Wait()
 	return cmd.Wait()
-}
-
-func triggerCommand(s string) (*exec.Cmd, error) {
-	if triggerWantsShell(s) {
-		return exec.Command("/bin/sh", "-c", s), nil
-	}
-	l, err := shlex.Split(s, true)
-	if err != nil {
-		return nil, err
-	}
-	if len(l) == 0 {
-		return nil, nil
-	}
-	name, args := l[0], l[1:]
-	return exec.Command(name, args...), nil
 }
 
 func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
