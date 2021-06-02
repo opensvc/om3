@@ -14,7 +14,7 @@ type GetNodesInfo struct {
 func NewGetNodesInfo(t Getter) *GetNodesInfo {
 	r := &GetNodesInfo{}
 	r.SetClient(t)
-	r.SetAction("nodes")
+	r.SetAction("nodes_info")
 	r.SetMethod("GET")
 	return r
 }

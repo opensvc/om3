@@ -3,6 +3,8 @@ package nodeselector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -12,22 +14,32 @@ import (
 	"gopkg.in/errgo.v2/fmt/errors"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/env"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/xmap"
 )
 
-type T struct {
-	SelectorExpression string
-	hasClient          bool
-	client             *client.T
-	local              bool
-	nodes              []string
-	server             string
-	knownNodes         []string
-	knownNodesSet      *set.Set
-}
+type (
+	NodesInfo map[string]NodeInfo
+
+	NodeInfo struct {
+		Labels  map[string]string
+		Targets interface{}
+	}
+
+	T struct {
+		SelectorExpression string
+		hasClient          bool
+		client             *client.T
+		local              bool
+		nodes              []string
+		server             string
+		knownNodes         []string
+		knownNodesSet      *set.Set
+		info               NodesInfo
+	}
+)
 
 var (
 	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
@@ -88,7 +100,10 @@ func (t *T) Expand() []string {
 	if t.nodes != nil {
 		return t.nodes
 	}
-	t.expand()
+	if err := t.expand(); err != nil {
+		log.Debug().Msg(err.Error())
+		return t.nodes
+	}
 	log.Debug().Msgf("%d nodes selected", len(t.nodes))
 	return t.nodes
 }
@@ -114,36 +129,41 @@ func (t *T) add(node string) {
 	t.nodes = append(t.nodes, node)
 }
 
-func (t *T) expand() {
-	if !t.local {
-		if !t.hasClient {
-			c, _ := client.New(
-				client.WithURL(t.server),
-			)
-			t.client = c
-			t.hasClient = true
-		}
-		if err := t.daemonExpand(); err == nil {
-			return
-		} else if clientcontext.IsSet() {
-			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
-			return
-		} else {
-			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
-		}
+func (t *T) mustHaveClient() error {
+	if t.hasClient {
+		return nil
 	}
-	if err := t.localExpand(); err != nil {
-		log.Debug().Err(err).Msg("")
+	c, err := client.New(
+		client.WithURL(t.server),
+	)
+	if err != nil {
+		return err
 	}
+	t.client = c
+	t.hasClient = true
+	return nil
 }
 
-func (t *T) localExpand() error {
+func (t *T) expand() error {
+	if !t.local {
+		if err := t.mustHaveClient(); err != nil {
+			if clientcontext.IsSet() {
+				return err
+			} else {
+				log.Debug().Msgf("%s daemon expansion error: %s", t, err)
+			}
+		}
+	}
 	log.Debug().
 		Str("selector", t.SelectorExpression).
 		Str("mode", "local").
 		Msg("expand selection")
-	for _, s := range strings.Fields(t.SelectorExpression) {
-		pset, err := t.localExpandOne(s)
+	selector := t.SelectorExpression
+	if selector == "" {
+		selector = "*"
+	}
+	for _, s := range strings.Fields(selector) {
+		pset, err := t.expandOne(s)
 		if err != nil {
 			return err
 		}
@@ -158,14 +178,14 @@ func (t *T) localExpand() error {
 	return nil
 }
 
-func (t *T) localExpandOne(s string) (*set.Set, error) {
+func (t *T) expandOne(s string) (*set.Set, error) {
 	switch {
 	case strings.Contains(s, "="):
-		return t.localLabelExpand(s)
+		return t.labelExpand(s)
 	case fnmatchExpressionRegex.MatchString(s):
-		return t.localFnmatchExpand(s)
+		return t.fnmatchExpand(s)
 	default:
-		return t.localExactExpand(s)
+		return t.exactExpand(s)
 	}
 }
 
@@ -197,19 +217,23 @@ func (t *T) getKnownNodesSet() (*set.Set, error) {
 	return t.knownNodesSet, nil
 }
 
-func (t *T) localExactExpand(s string) (*set.Set, error) {
+func (t *T) exactExpand(s string) (*set.Set, error) {
 	matching := set.New()
 	if hostname.IsValid(s) {
 		return matching, errors.Newf("invalid hostname %s", s)
 	}
-	if !t.knownNodesSet.Has(s) {
+	known, err := t.getKnownNodesSet()
+	if err != nil {
+		return nil, err
+	}
+	if !known.Has(s) {
 		return matching, nil
 	}
 	matching.Insert(s)
 	return matching, nil
 }
 
-func (t *T) localFnmatchExpand(s string) (*set.Set, error) {
+func (t *T) fnmatchExpand(s string) (*set.Set, error) {
 	matching := set.New()
 	nodes, err := t.getKnownNodes()
 	if err != nil {
@@ -224,43 +248,88 @@ func (t *T) localFnmatchExpand(s string) (*set.Set, error) {
 	return matching, nil
 }
 
-func (t *T) localLabelExpand(s string) (*set.Set, error) {
+func (t *T) labelExpand(s string) (*set.Set, error) {
 	matching := set.New()
+	l := strings.SplitN(s, "=", 2)
+	nodesInfo, err := t.getNodesInfo()
+	if err != nil {
+		return nil, err
+	}
+	for node, info := range nodesInfo {
+		v, ok := info.Labels[l[0]]
+		if !ok {
+			continue
+		}
+		if v == l[1] {
+			matching.Insert(node)
+			continue
+		}
+	}
 	return matching, nil
 }
 
-func (t *T) daemonExpand() error {
-	log.Debug().
-		Str("selector", t.SelectorExpression).
-		Str("mode", "daemon").
-		Msg("expand selection")
-	if env.HasDaemonOrigin() {
-		return errors.New("Action origin is daemon")
+func (t T) KnownNodes() ([]string, error) {
+	if t.local {
+		return t.localKnownNodes()
 	}
-	if !t.client.HasRequester() {
-		return errors.New("client has no requester")
-	}
-	return nil
+	return t.daemonKnownNodes()
 }
 
-type (
-	NodesInfo map[string]NodeInfo
+func (t T) localKnownNodes() ([]string, error) {
+	return strings.Fields(rawconfig.Node.Cluster.Nodes), nil
+}
 
-	NodeInfo struct {
-		Labels  map[string]string
-		Targets interface{}
-	}
-)
-
-func (t T) KnownNodes() ([]string, error) {
-	if data, err := t.nodesInfo(); err != nil {
-		return []string{hostname.Hostname()}, err
+func (t T) daemonKnownNodes() ([]string, error) {
+	if data, err := t.getNodesInfo(); err != nil {
+		return []string{}, err
 	} else {
 		return xmap.Keys(data), nil
 	}
 }
 
-func (t T) nodesInfo() (NodesInfo, error) {
+func (t *T) getNodesInfo() (NodesInfo, error) {
+	var err error
+	if t.info != nil {
+		return t.info, nil
+	}
+	if t.local {
+		if t.info, err = t.getLocalNodesInfo(); err == nil {
+			return t.info, nil
+		}
+		if t.info, err = t.getDaemonNodesInfo(); err == nil {
+			return t.info, nil
+		}
+		return nil, err
+	}
+	if t.info, err = t.getDaemonNodesInfo(); err == nil {
+		return t.info, nil
+	} else if clientcontext.IsSet() {
+		return nil, err
+	}
+	if t.info, err = t.getLocalNodesInfo(); err != nil {
+		return nil, err
+	}
+	return t.info, nil
+}
+
+func (t T) getLocalNodesInfo() (NodesInfo, error) {
+	var (
+		err  error
+		b    []byte
+		data NodesInfo
+	)
+	p := filepath.Join(rawconfig.Node.Paths.Var, "nodes_info.json")
+	log.Debug().Msgf("load %s", p)
+	if b, err = ioutil.ReadFile(p); err != nil {
+		return data, err
+	}
+	if err = json.Unmarshal(b, &data); err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+func (t T) getDaemonNodesInfo() (NodesInfo, error) {
 	data := make(NodesInfo)
 	handle := t.client.NewGetNodesInfo()
 	b, err := handle.Do()

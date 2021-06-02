@@ -20,6 +20,7 @@ var (
 	}
 
 	cmdNodeChecks            commands.CmdNodeChecks
+	cmdNodeLs                commands.NodeLs
 	cmdNodePrintCapabilities commands.NodePrintCapabilities
 	cmdNodeScanCapabilities  commands.NodeScanCapabilities
 )
@@ -28,7 +29,9 @@ func init() {
 	rootCmd.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodePrintCmd)
 	nodeCmd.AddCommand(nodeScanCmd)
+
 	cmdNodeChecks.Init(nodeCmd)
+	cmdNodeLs.Init(nodeCmd)
 	cmdNodePrintCapabilities.Init(nodePrintCmd)
 	cmdNodeScanCapabilities.Init(nodeScanCmd)
 }

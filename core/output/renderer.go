@@ -48,6 +48,13 @@ func (t Renderer) Sprint() string {
 	if t.Colorize == nil {
 		t.Colorize = palette.DefaultFuncPalette()
 	}
+	switch data := t.Data.(type) {
+	case []string:
+		if data == nil {
+			// JSON Marshal renders "null" for unallocated empty slices
+			t.Data = make([]string, 0)
+		}
+	}
 	switch format {
 	case Flat:
 		b, _ := json.Marshal(t.Data)
