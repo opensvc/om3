@@ -1,6 +1,6 @@
 // +build !solaris
 
-package resfsdir
+package resiphost
 
 import "github.com/j-keck/arping"
 

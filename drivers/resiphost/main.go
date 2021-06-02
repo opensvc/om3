@@ -1,4 +1,4 @@
-package resfsdir
+package resiphost
 
 import (
 	"errors"

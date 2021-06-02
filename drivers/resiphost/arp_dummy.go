@@ -1,6 +1,6 @@
 // +build solaris
 
-package resfsdir
+package resiphost
 
 func (t T) arpGratuitous() error {
 	return nil
