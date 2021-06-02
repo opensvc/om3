@@ -182,7 +182,7 @@ func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
 		return nil, nil
 	}
 	if cmd, err = xexec.CommandFromLimits(t.toLimits(), command); err != nil {
-		t.Log().Error().Err(err).Msgf("exechelper.CommandFromLimits error for action '%v'", action)
+		t.Log().Error().Err(err).Msgf("CommandFromLimits error for action '%v'", action)
 		return nil, err
 	}
 	if env, err := t.getEnv(); err != nil {
