@@ -4,12 +4,15 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
 
 // Keyword represents a configuration option in an object or node configuration file
 type (
+	Converter interface {
+		Convert(string) (interface{}, error)
+	}
+
 	Keyword struct {
 		Section string
 		Option  string
@@ -24,8 +27,8 @@ type (
 		// Required means the keyword mean be set, and thus disregards the default value.
 		Required bool
 
-		// Converter is the type caster to user.
-		Converter converters.T
+		// Converter is the routine converting from string a the keyword expected type.
+		Converter Converter
 
 		// Text is a text explaining the role of the keyword.
 		Text string

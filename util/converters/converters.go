@@ -2,7 +2,6 @@ package converters
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -15,82 +14,94 @@ import (
 )
 
 type (
-	// T is the integer identifier of a converter
-	T int
-	F func(string) (interface{}, error)
-)
-
-const (
-	String T = iota
-	Int
-	Int64
-	Float64
-	Bool
-	List
-	ListLowercase
-	Set
-	Shlex
-	Duration
-	Umask
-	Size
+	TString        string
+	TInt           string
+	TInt64         string
+	TFloat64       string
+	TBool          string
+	TList          string
+	TListLowercase string
+	TSet           string
+	TShlex         string
+	TDuration      string
+	TUmask         string
+	TSize          string
 )
 
 var (
-	toString = map[T]string{
-		String:        "string",
-		Int:           "int",
-		Int64:         "int64",
-		Float64:       "float64",
-		Bool:          "bool",
-		List:          "list",
-		ListLowercase: "list-lowercase",
-		Set:           "set",
-		Shlex:         "Shlex",
-		Duration:      "Duration",
-		Umask:         "Umask",
-		Size:          "Size",
-	}
-	toID = map[string]T{
-		"string":         String,
-		"int":            Int,
-		"int64":          Int64,
-		"float64":        Float64,
-		"bool":           Bool,
-		"list":           List,
-		"list-lowercase": ListLowercase,
-		"set":            Set,
-		"Shlex":          Shlex,
-		"Duration":       Duration,
-		"Umask":          Umask,
-		"Size":           Size,
-	}
-	ErrMissConverter = errors.New("conversion not implemented")
+	String        TString
+	Int           TInt
+	Int64         TInt64
+	Float64       TFloat64
+	Bool          TBool
+	List          TList
+	ListLowercase TListLowercase
+	Set           TSet
+	Shlex         TShlex
+	Duration      TDuration
+	Umask         TUmask
+	Size          TSize
 )
 
-func ToInt(s string) (int, error) {
+//
+func (t TString) Convert(s string) (interface{}, error) {
+	return s, nil
+}
+
+func (t TString) String() string {
+	return "string"
+}
+
+//
+func (t TInt) Convert(s string) (interface{}, error) {
 	return strconv.Atoi(s)
 }
 
-func ToInt64(s string) (int64, error) {
+func (t TInt) String() string {
+	return "int"
+}
+
+//
+func (t TInt64) Convert(s string) (interface{}, error) {
 	return strconv.ParseInt(s, 10, 64)
 }
 
-func ToFloat64(s string) (float64, error) {
+func (t TInt64) String() string {
+	return "int64"
+}
+
+//
+func (t TFloat64) Convert(s string) (interface{}, error) {
 	return strconv.ParseFloat(s, 64)
 }
 
-func ToBool(s string) (bool, error) {
+func (t TFloat64) String() string {
+	return "float64"
+}
+
+//
+func (t TBool) Convert(s string) (interface{}, error) {
 	if s == "" {
 		return false, nil
 	}
 	return strconv.ParseBool(s)
 }
 
-func ToList(s string) ([]string, error) {
+func (t TBool) String() string {
+	return "bool"
+}
+
+//
+func (t TList) Convert(s string) (interface{}, error) {
 	return strings.Fields(s), nil
 }
 
-func ToListLowercase(s string) ([]string, error) {
+func (t TList) String() string {
+	return "list"
+}
+
+//
+func (t TListLowercase) Convert(s string) (interface{}, error) {
 	l := strings.Fields(s)
 	for i := 0; i < len(l); i++ {
 		l[i] = strings.ToLower(l[i])
@@ -98,7 +109,12 @@ func ToListLowercase(s string) ([]string, error) {
 	return l, nil
 }
 
-func ToSet(s string) (*set.Set, error) {
+func (t TListLowercase) String() string {
+	return "list-lowercase"
+}
+
+//
+func (t TSet) Convert(s string) (interface{}, error) {
 	aSet := set.New()
 	for _, e := range strings.Fields(s) {
 		aSet.Insert(e)
@@ -106,15 +122,26 @@ func ToSet(s string) (*set.Set, error) {
 	return aSet, nil
 }
 
-func ToShlex(s string) ([]string, error) {
+func (t TSet) String() string {
+	return "set"
+}
+
+//
+func (t TShlex) Convert(s string) (interface{}, error) {
 	return shlex.Split(s, true)
 }
 
+func (t TShlex) String() string {
+	return "shlex"
+}
+
+//
 // ToDuration convert duration string to *time.Duration
 //
 // nil is returned when duration is unset
 // Default unit is second when not specified
-func ToDuration(s string) (*time.Duration, error) {
+//
+func (t TDuration) Convert(s string) (interface{}, error) {
 	if s == "" {
 		return nil, nil
 	}
@@ -128,7 +155,12 @@ func ToDuration(s string) (*time.Duration, error) {
 	return &duration, nil
 }
 
-func ToUmask(s string) (*os.FileMode, error) {
+func (t TDuration) String() string {
+	return "duration"
+}
+
+//
+func (t TUmask) Convert(s string) (interface{}, error) {
 	if s == "" {
 		return nil, nil
 	}
@@ -140,45 +172,25 @@ func ToUmask(s string) (*os.FileMode, error) {
 	return &umask, nil
 }
 
-func ToSize(s string) (pti *int64, err error) {
-	if s == "" {
-		return
-	}
-	var i int64
-	if i, err = sizeconv.FromSize(s); err != nil {
-		return pti, err
-	}
-	pti = &i
-	return
+func (t TUmask) String() string {
+	return "umask"
 }
 
-func Convert(s string, t T) (interface{}, error) {
-	switch t {
-	case String:
-		return s, nil
-	case Int:
-		return ToInt(s)
-	case Int64:
-		return ToInt64(s)
-	case Float64:
-		return ToFloat64(s)
-	case Bool:
-		return ToBool(s)
-	case List:
-		return ToList(s)
-	case ListLowercase:
-		return ToListLowercase(s)
-	case Set:
-		return ToSet(s)
-	case Shlex:
-		return ToShlex(s)
-	case Duration:
-		return ToDuration(s)
-	case Umask:
-		return ToUmask(s)
-	case Size:
-		return ToSize(s)
-	default:
-		return nil, fmt.Errorf("unknown converter id %d", t)
+//
+func (t TSize) Convert(s string) (interface{}, error) {
+	var (
+		err error
+		i   int64
+	)
+	if s == "" {
+		return nil, err
 	}
+	if i, err = sizeconv.FromSize(s); err != nil {
+		return nil, err
+	}
+	return &i, err
+}
+
+func (t TSize) String() string {
+	return "size"
 }

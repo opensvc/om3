@@ -21,7 +21,6 @@ import (
 	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -29,6 +28,8 @@ import (
 )
 
 type (
+	Converter func(string) (interface{}, error)
+
 	// T exposes methods to read and write configurations.
 	T struct {
 		ConfigFilePath string
@@ -313,7 +314,7 @@ func (t *T) write() (err error) {
 	return os.Rename(fName, t.ConfigFilePath)
 }
 
-func (t *T) Eval(k key.T) (converters.F, string, error) {
+func (t *T) Eval(k key.T) (Converter, string, error) {
 	return t.EvalAs(k, "")
 }
 
@@ -324,7 +325,7 @@ func (t *T) Eval(k key.T) (converters.F, string, error) {
 // * dereferenced
 // * evaluated
 //
-func (t *T) EvalAs(k key.T, impersonate string) (f converters.F, v string, err error) {
+func (t *T) EvalAs(k key.T, impersonate string) (Converter, string, error) {
 	kw := t.Referrer.KeywordLookup(k)
 	if !kw.IsZero() {
 		return t.EvalKeywordAs(k, kw, impersonate)
@@ -332,9 +333,15 @@ func (t *T) EvalAs(k key.T, impersonate string) (f converters.F, v string, err e
 	return nil, "", errors.Wrapf(ErrNoKeyword, "%s", k)
 }
 
-func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (f converters.F, v string, err error) {
-	f = func(s string) (interface{}, error) {
-		return converters.Convert(s, kw.Converter)
+func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (f Converter, v string, err error) {
+	if kw.Converter != nil {
+		f = func(s string) (interface{}, error) {
+			return kw.Converter.Convert(s)
+		}
+	} else {
+		f = func(s string) (interface{}, error) {
+			return s, nil
+		}
 	}
 	if kw.Scopable {
 		v, err = t.descope(k, impersonate)
