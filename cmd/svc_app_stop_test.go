@@ -151,8 +151,7 @@ func TestAppStop(t *testing.T) {
 
 		rawconfig.Load(map[string]string{"osvc_root_path": td})
 		defer rawconfig.Load(map[string]string{})
-		rollbackHostname := hostname.Impersonate("node1")
-		defer rollbackHostname()
+		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -468,8 +467,7 @@ func TestAppStopSequence(t *testing.T) {
 
 		rawconfig.Load(map[string]string{"osvc_root_path": td})
 		defer rawconfig.Load(map[string]string{})
-		rollbackHostname := hostname.Impersonate("node1")
-		defer rollbackHostname()
+		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -526,12 +524,9 @@ func TestAppStopComplexCommand(t *testing.T) {
 
 		test_conf_helper.InstallSvcFile(t, "svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
-		origHostname := config.Node.Hostname
-		config.Node.Hostname = "node1"
-		defer func() { config.Node.Hostname = origHostname }()
-		config.Node.Hostname = "node1"
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -583,12 +578,9 @@ func TestAppStopLimit(t *testing.T) {
 
 		test_conf_helper.InstallSvcFile(t, "svcappforking_limit.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
-		origHostname := config.Node.Hostname
-		config.Node.Hostname = "node1"
-		defer func() { config.Node.Hostname = origHostname }()
-		config.Node.Hostname = "node1"
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
 	}
 
