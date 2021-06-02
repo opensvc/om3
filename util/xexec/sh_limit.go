@@ -16,11 +16,11 @@ func shLimitCommands(l limits.T) []string {
 	}
 	if l.LimitStack > 0 {
 		// -s the limit on the stack size of a process (in kilobytes)
-		commands = append(commands, "ulimit -s "+fmt.Sprintf("%d", l.LimitStack/1000))
+		commands = append(commands, "ulimit -s "+fmt.Sprintf("%d", l.LimitStack/1024))
 	}
 	if l.LimitMemLock > 0 {
 		// -l the limit on how much memory a process can lock with mlock(2) (in kilobytes)
-		commands = append(commands, "ulimit -l "+fmt.Sprintf("%d", l.LimitMemLock/1000))
+		commands = append(commands, "ulimit -l "+fmt.Sprintf("%d", l.LimitMemLock/1024))
 	}
 	if l.LimitNProc > 0 {
 		var flag string
@@ -34,11 +34,11 @@ func shLimitCommands(l limits.T) []string {
 	}
 	if l.LimitVMem > 0 && l.LimitVMem >= l.LimitAs {
 		// -v set the limit on the total virtual memory that can be in use by a process (in kilobytes)
-		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitVMem/1000))
+		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitVMem/1024))
 	}
 	if l.LimitAs > 0 && l.LimitAs > l.LimitVMem {
 		// -v set the limit on the total virtual memory that can be in use by a process (in kilobytes)
-		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitAs/1000))
+		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitAs/1024))
 	}
 
 	if l.LimitCpu > 0 {
@@ -52,7 +52,7 @@ func shLimitCommands(l limits.T) []string {
 	}
 	if l.LimitData > 0 {
 		// -d show or set the limit on the data segment size of a process (in kilobytes)
-		commands = append(commands, "ulimit -d "+fmt.Sprintf("%d", l.LimitData/1000))
+		commands = append(commands, "ulimit -d "+fmt.Sprintf("%d", l.LimitData/1024))
 	}
 	if l.LimitFSize > 0 {
 		// -f the limit on the largest file that can be created (in 512-byte blocks)
@@ -61,7 +61,7 @@ func shLimitCommands(l limits.T) []string {
 	if l.LimitRss > 0 {
 		// -m the limit on the total physical memory that can be in use by a process
 		// (in kilobytes)
-		commands = append(commands, "ulimit -m "+fmt.Sprintf("%d", l.LimitRss/1000))
+		commands = append(commands, "ulimit -m "+fmt.Sprintf("%d", l.LimitRss/1024))
 	}
 	return commands
 }

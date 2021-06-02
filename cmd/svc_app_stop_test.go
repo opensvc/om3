@@ -553,14 +553,14 @@ func TestAppStopLimit(t *testing.T) {
 	cases := map[string][]string{
 		"limit_cpu":     {"3602"},
 		"limit_core":    {"100"},
-		"limit_data":    {"104"},
-		"limit_fsize":   {"2"},
-		"limit_memlock": {"32"},
+		"limit_data":    {"4000"},
+		"limit_fsize":   {"1000"},
+		"limit_memlock": {"63"},
 		"limit_nofile":  {"128"},
 		"limit_nproc":   {"200"},
-		"limit_stack":   {"101"},
-		"limit_vmem":    {"103"},
-		"limit_2_items": {"129", "108"},
+		"limit_stack":   {"100"},
+		"limit_vmem":    {"3000"},
+		"limit_2_items": {"129", "4000"},
 	}
 	getCmd := func(name string) []string {
 		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
