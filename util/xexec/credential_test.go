@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os/exec"
+	"runtime"
 	"syscall"
 	"testing"
 )
@@ -31,9 +32,13 @@ func TestSetCredential(t *testing.T) {
 
 	t.Run("Update SysProcAttr.Credential from user and group", func(t *testing.T) {
 		cmd := exec.Cmd{}
+		gid := uint32(1)
+		if runtime.GOOS == "solaris" {
+			gid = 12
+		}
 		require.Nil(t, SetCredential(&cmd, "root", "daemon"))
 		assert.Equalf(t, uint32(0), cmd.SysProcAttr.Credential.Uid, "invalid Uid")
-		assert.Equalf(t, uint32(1), cmd.SysProcAttr.Credential.Gid, "invalid Gid")
+		assert.Equalf(t, gid, cmd.SysProcAttr.Credential.Gid, "invalid Gid")
 	})
 
 	t.Run("Preserve existing SysProcAttr attr", func(t *testing.T) {

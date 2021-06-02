@@ -18,11 +18,11 @@ func shLimitCommands(l limits.T) []string {
 		// -s the limit on the stack size of a process (in kilobytes)
 		commands = append(commands, "ulimit -s "+fmt.Sprintf("%d", l.LimitStack/1024))
 	}
-	if l.LimitMemLock > 0 {
+	if l.LimitMemLock > 0 && runtime.GOOS != "solaris" {
 		// -l the limit on how much memory a process can lock with mlock(2) (in kilobytes)
 		commands = append(commands, "ulimit -l "+fmt.Sprintf("%d", l.LimitMemLock/1024))
 	}
-	if l.LimitNProc > 0 {
+	if l.LimitNProc > 0 && runtime.GOOS != "solaris" {
 		var flag string
 		if runtime.GOOS == "darwin" {
 			flag = "-u"

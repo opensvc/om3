@@ -131,7 +131,7 @@ var (
 			Attr:      "LimitMemLock",
 			Converter: converters.Size,
 			Scopable:  true,
-			Text:      "limit on how much memory a process can lock with mlock(2) (unit byte).",
+			Text:      "limit on how much memory a process can lock with mlock(2) (unit byte, no solaris support)",
 		},
 		{
 			Option:    "limit_nofile",
@@ -145,7 +145,7 @@ var (
 			Attr:      "LimitNProc",
 			Converter: converters.Size,
 			Scopable:  true,
-			Text:      "limit on the number of processes this user can have at one time.",
+			Text:      "limit on the number of processes this user can have at one time, no solaris support",
 		},
 		{
 			Option:    "limit_rss",
