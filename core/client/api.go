@@ -18,6 +18,10 @@ func (t T) NewGetKey() *api.GetKey {
 	return api.NewGetKey(t)
 }
 
+func (t T) NewGetNodesInfo() *api.GetNodesInfo {
+	return api.NewGetNodesInfo(t)
+}
+
 func (t T) NewGetObjectConfig() *api.GetObjectConfig {
 	return api.NewGetObjectConfig(t)
 }

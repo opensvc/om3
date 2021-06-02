@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"encoding/json"
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/test_conf_helper"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/test_conf_helper"
 )
 
 func TestSecKeys(t *testing.T) {
@@ -34,8 +35,8 @@ func TestSecKeys(t *testing.T) {
 		td, cleanup := testhelper.Tempdir(t)
 		defer cleanup()
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
 
 		test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 		rootCmd.SetArgs(getCmd(name))
@@ -84,10 +85,10 @@ func TestSecDecodeKeys(t *testing.T) {
 
 		test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 		test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-		config.Load(map[string]string{"osvc_root_path": td})
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
 
 		defer func() {
-			config.Load(map[string]string{})
+			rawconfig.Load(map[string]string{})
 		}()
 		ExecuteArgs(getCmd(name))
 	}
@@ -147,7 +148,7 @@ func TestKeyActions(t *testing.T) {
 	}
 
 	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		config.Load(map[string]string{"osvc_root_path": os.Getenv("TC_PATHSVC")})
+		rawconfig.Load(map[string]string{"osvc_root_path": os.Getenv("TC_PATHSVC")})
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -156,7 +157,7 @@ func TestKeyActions(t *testing.T) {
 
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	test_conf_helper.InstallSvcFile(t, "sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-	config.Load(map[string]string{"osvc_root_path": td})
+	rawconfig.Load(map[string]string{"osvc_root_path": td})
 
 	for _, name := range []string{
 		"add",

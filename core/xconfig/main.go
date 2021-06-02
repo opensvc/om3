@@ -1,4 +1,4 @@
-package config
+package xconfig
 
 import (
 	"fmt"
@@ -17,9 +17,12 @@ import (
 	"gopkg.in/ini.v1"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/xstrings"
 )
@@ -45,9 +48,7 @@ type (
 )
 
 var (
-	RegexpReference = regexp.MustCompile(`({[\w.-_:]+})`)
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
-	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
 	ErrExist        = errors.New("configuration does not exist")
 	ErrNoKeyword    = errors.New("keyword does not exist")
 
@@ -353,7 +354,7 @@ func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (f c
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) string {
-	v = RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
+	v = rawconfig.RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
 		return t.dereference(ref, section, impersonate)
 	})
 	return v
@@ -369,7 +370,7 @@ func (t T) sectionMap(section string) (map[string]string, error) {
 
 func (t *T) descope(k key.T, impersonate string) (string, error) {
 	if impersonate == "" {
-		impersonate = Node.Hostname
+		impersonate = hostname.Hostname()
 	}
 	s, err := t.sectionMap(k.Section)
 	if err != nil {
@@ -393,8 +394,8 @@ func (t *T) descope(k key.T, impersonate string) (string, error) {
 	return "", errors.Wrapf(ErrExist, "key '%s' not found (tried scopes too)", k)
 }
 
-func (t T) Raw() Raw {
-	r := Raw{}
+func (t T) Raw() rawconfig.T {
+	r := rawconfig.T{}
 	r.Data = orderedmap.New()
 	for _, s := range t.file.Sections() {
 		sectionMap := *orderedmap.New()
@@ -412,9 +413,9 @@ func (t T) SectionStrings() []string {
 
 func (t *T) Nodes() []string {
 	v := t.Get(key.Parse("nodes"))
-	l := strings.Fields(v)
+	l := nodeselector.New(v, nodeselector.WithLocal(true)).Expand()
 	if len(l) == 0 && os.Getenv("OSVC_CONTEXT") == "" {
-		return []string{Node.Hostname}
+		return []string{hostname.Hostname()}
 	}
 	return t.ExpandNodes(l)
 }
@@ -538,9 +539,9 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 	case "nodemgr":
 		return os.Args[0] + " node"
 	case "etc":
-		return Node.Paths.Etc
+		return rawconfig.Node.Paths.Etc
 	case "var":
-		return Node.Paths.Var
+		return rawconfig.Node.Paths.Var
 	default:
 		if t.Referrer != nil {
 			return t.Referrer.Dereference(ref)
@@ -549,27 +550,7 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 	return ref
 }
 
-func renderComment(k string, v interface{}) string {
-	vs, ok := v.(string)
-	if !ok {
-		return ""
-	}
-	return "# " + strings.ReplaceAll(vs, "\n", "\n# ") + "\n"
-}
-
-func renderKey(k string, v interface{}) string {
-	k = RegexpScope.ReplaceAllString(k, Node.Colorize.Error("$1"))
-	vs, ok := v.(string)
-	if ok {
-		vs = RegexpReference.ReplaceAllString(vs, Node.Colorize.Optimal("$1"))
-		vs = strings.ReplaceAll(vs, "\n", "\n\t")
-	} else {
-		vs = ""
-	}
-	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
-}
-
-func (t *T) replaceFile(configData Raw) error {
+func (t *T) replaceFile(configData rawconfig.T) error {
 	file := ini.Empty()
 	for _, section := range configData.Data.Keys() {
 		m, _ := configData.Data.Get(section)
@@ -616,7 +597,7 @@ func (t T) initDefaultSection() error {
 	return nil
 }
 
-func (t *T) rawCommit(configData Raw, configPath string, validate bool) error {
+func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) error {
 	if !configData.IsZero() {
 		if err := t.replaceFile(configData); err != nil {
 			return err
@@ -651,30 +632,30 @@ func (t T) validate() error {
 }
 
 func (t *T) Commit() error {
-	return t.rawCommit(Raw{}, "", true)
+	return t.rawCommit(rawconfig.T{}, "", true)
 }
 
 func (t *T) CommitInvalid() error {
-	return t.rawCommit(Raw{}, "", false)
+	return t.rawCommit(rawconfig.T{}, "", false)
 }
 
 func (t *T) CommitTo(configPath string) error {
-	return t.rawCommit(Raw{}, configPath, true)
+	return t.rawCommit(rawconfig.T{}, configPath, true)
 }
 
 func (t *T) CommitToInvalid(configPath string) error {
-	return t.rawCommit(Raw{}, configPath, false)
+	return t.rawCommit(rawconfig.T{}, configPath, false)
 }
 
-func (t *T) CommitData(configData Raw) error {
+func (t *T) CommitData(configData rawconfig.T) error {
 	return t.rawCommit(configData, "", true)
 }
 
-func (t *T) CommitDataTo(configData Raw, configPath string) error {
+func (t *T) CommitDataTo(configData rawconfig.T, configPath string) error {
 	return t.rawCommit(configData, configPath, true)
 }
 
-func (t *T) CommitDataToInvalid(configData Raw, configPath string) error {
+func (t *T) CommitDataToInvalid(configData rawconfig.T, configPath string) error {
 	return t.rawCommit(configData, configPath, false)
 }
 

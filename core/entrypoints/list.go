@@ -5,6 +5,7 @@ import (
 
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 // List is the struct exposing the object selection printing method.
@@ -40,5 +41,6 @@ func (t List) Do() {
 		Color:         t.Color,
 		Data:          data,
 		HumanRenderer: human,
+		Colorize:      rawconfig.Node.Colorize,
 	}.Print()
 }

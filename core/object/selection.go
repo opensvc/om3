@@ -12,12 +12,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -178,9 +180,9 @@ func Installed() ([]path.T, error) {
 	l := make([]path.T, 0)
 	matches := make([]string, 0)
 	patterns := []string{
-		fmt.Sprintf("%s/*.conf", config.Node.Paths.Etc),                // root svc
-		fmt.Sprintf("%s/*/*.conf", config.Node.Paths.Etc),              // root other
-		fmt.Sprintf("%s/namespaces/*/*/*.conf", config.Node.Paths.Etc), // namespaces
+		fmt.Sprintf("%s/*.conf", rawconfig.Node.Paths.Etc),                // root svc
+		fmt.Sprintf("%s/*/*.conf", rawconfig.Node.Paths.Etc),              // root other
+		fmt.Sprintf("%s/namespaces/*/*/*.conf", rawconfig.Node.Paths.Etc), // namespaces
 	}
 	for _, pattern := range patterns {
 		m, err := filepath.Glob(pattern)
@@ -190,11 +192,11 @@ func Installed() ([]path.T, error) {
 		matches = append(matches, m...)
 	}
 	replacements := []string{
-		fmt.Sprintf("%s/", config.Node.Paths.EtcNs),
-		fmt.Sprintf("%s/", config.Node.Paths.Etc),
+		fmt.Sprintf("%s/", rawconfig.Node.Paths.EtcNs),
+		fmt.Sprintf("%s/", rawconfig.Node.Paths.Etc),
 	}
-	envNamespace := config.EnvNamespace()
-	envKind := kind.New(config.EnvKind())
+	envNamespace := env.Namespace()
+	envKind := kind.New(env.Kind())
 	for _, ps := range matches {
 		for _, r := range replacements {
 			ps = strings.Replace(ps, r, "", 1)
@@ -358,7 +360,7 @@ func (t *Selection) daemonExpand() error {
 		Str("selector", t.SelectorExpression).
 		Str("mode", "daemon").
 		Msg("expand selection")
-	if config.HasDaemonOrigin() {
+	if env.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
 	if !t.client.HasRequester() {
@@ -385,7 +387,7 @@ func (t *Selection) Do(action Action) []ActionResult {
 		go func(p path.T) {
 			result := ActionResult{
 				Path:     p,
-				Nodename: config.Node.Hostname,
+				Nodename: hostname.Hostname(),
 			}
 			defer func() {
 				if r := recover(); r != nil {

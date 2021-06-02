@@ -1,18 +1,20 @@
 package cmd
 
 import (
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/test_conf_helper"
-	"opensvc.com/opensvc/util/usergroup"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/usergroup"
 )
 
 func TestAppStop(t *testing.T) {
@@ -147,12 +149,10 @@ func TestAppStop(t *testing.T) {
 		test_conf_helper.InstallSvcFile(t, "cfg1_svcappforking.conf", filepath.Join(td, "etc", "cfg", "svcappforking.conf"))
 		test_conf_helper.InstallSvcFile(t, "sec1_svcappforking.conf", filepath.Join(td, "etc", "sec", "svcappforking.conf"))
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
-		origHostname := config.Node.Hostname
-		config.Node.Hostname = "node1"
-		defer func() { config.Node.Hostname = origHostname }()
-		config.Node.Hostname = "node1"
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		rollbackHostname := hostname.Impersonate("node1")
+		defer rollbackHostname()
 		ExecuteArgs(getCmd(name))
 	}
 
@@ -466,12 +466,10 @@ func TestAppStopSequence(t *testing.T) {
 
 		test_conf_helper.InstallSvcFile(t, "svcapp1.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
-		config.Load(map[string]string{"osvc_root_path": td})
-		defer config.Load(map[string]string{})
-		origHostname := config.Node.Hostname
-		config.Node.Hostname = "node1"
-		defer func() { config.Node.Hostname = origHostname }()
-		config.Node.Hostname = "node1"
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		rollbackHostname := hostname.Impersonate("node1")
+		defer rollbackHostname()
 		ExecuteArgs(getCmd(name))
 	}
 

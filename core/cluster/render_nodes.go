@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/golang-collections/collections/set"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/converters/sizeconv"
 )
 
@@ -161,7 +161,7 @@ func (f Frame) sNodeFrozen(n string) string {
 func (f Frame) sNodeMonTarget(n string) string {
 	if val, ok := f.Current.Monitor.Nodes[n]; ok {
 		if val.Monitor.GlobalExpect != "" {
-			return config.Node.Colorize.Secondary(" >" + val.Monitor.GlobalExpect)
+			return rawconfig.Node.Colorize.Secondary(" >" + val.Monitor.GlobalExpect)
 		}
 	}
 	return ""

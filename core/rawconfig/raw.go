@@ -1,25 +1,32 @@
-package config
+package rawconfig
 
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/iancoleman/orderedmap"
 )
 
 type (
-	Raw struct {
+	T struct {
 		Data *orderedmap.OrderedMap
 	}
 )
 
+var (
+	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
+	RegexpReference = regexp.MustCompile(`({[\w.-_:]+})`)
+)
+
 // MarshalJSON marshals the enum as a quoted json string
-func (t Raw) MarshalJSON() ([]byte, error) {
+func (t T) MarshalJSON() ([]byte, error) {
 	return t.Data.MarshalJSON()
 }
 
 // UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *Raw) UnmarshalJSON(b []byte) error {
+func (t *T) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &t.Data)
 	if err != nil {
 		return err
@@ -28,12 +35,12 @@ func (t *Raw) UnmarshalJSON(b []byte) error {
 }
 
 // IsZero returns true if the Raw data has not been initialized
-func (t Raw) IsZero() bool {
+func (t T) IsZero() bool {
 	return t.Data == nil
 }
 
 // Render return a colorized text version of the configuration file
-func (t Raw) Render() string {
+func (t T) Render() string {
 	s := ""
 	if t.Data == nil {
 		return s
@@ -56,4 +63,24 @@ func (t Raw) Render() string {
 		s += "\n"
 	}
 	return s
+}
+
+func renderComment(k string, v interface{}) string {
+	vs, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return "# " + strings.ReplaceAll(vs, "\n", "\n# ") + "\n"
+}
+
+func renderKey(k string, v interface{}) string {
+	k = RegexpScope.ReplaceAllString(k, Node.Colorize.Error("$1"))
+	vs, ok := v.(string)
+	if ok {
+		vs = RegexpReference.ReplaceAllString(vs, Node.Colorize.Optimal("$1"))
+		vs = strings.ReplaceAll(vs, "\n", "\n\t")
+	} else {
+		vs = ""
+	}
+	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
 }

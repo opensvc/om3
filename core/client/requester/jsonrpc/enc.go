@@ -12,7 +12,8 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -34,9 +35,9 @@ type (
 // NewMessage allocates a new Message configured for the local node and cluster context
 func NewMessage(b []byte) *Message {
 	m := &Message{
-		NodeName:    config.Node.Hostname,
-		ClusterName: config.Node.Cluster.Name,
-		Key:         config.Node.Cluster.Secret,
+		NodeName:    hostname.Hostname(),
+		ClusterName: rawconfig.Node.Cluster.Name,
+		Key:         rawconfig.Node.Cluster.Secret,
 		Data:        b,
 	}
 	return m

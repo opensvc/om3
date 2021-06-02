@@ -2,24 +2,25 @@ package capabilities
 
 import (
 	"errors"
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"opensvc.com/opensvc/config"
 	"os"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 func setup(t *testing.T) (string, func()) {
 	td, tdCleanup := testhelper.Tempdir(t)
-	config.Load(map[string]string{"osvc_root_path": td})
+	rawconfig.Load(map[string]string{"osvc_root_path": td})
 	if err := os.MkdirAll(td+"/var", 0700); err != nil {
 		t.Fail()
 	}
 	scanners = nil
 	caps = nil
 	return td + "/var/capabilities.json", func() {
-		config.Load(map[string]string{})
+		rawconfig.Load(map[string]string{})
 		tdCleanup()
 	}
 }
@@ -107,7 +108,7 @@ func TestScan(t *testing.T) {
 	t.Run("return error is not able to update cache", func(t *testing.T) {
 		capFile, cleanup := setup(t)
 		defer cleanup()
-		config.Load(map[string]string{"osvc_root_path": capFile})
+		rawconfig.Load(map[string]string{"osvc_root_path": capFile})
 		err := Scan()
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "no such file or directory")

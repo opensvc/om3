@@ -2,13 +2,14 @@ package object
 
 import (
 	"encoding/json"
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
-	"opensvc.com/opensvc/config"
-	"opensvc.com/opensvc/core/instance"
 	"path/filepath"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/require"
+	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 func TestInstanceStates_Render(t *testing.T) {
@@ -17,8 +18,8 @@ func TestInstanceStates_Render(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			td, tdCleanup := testhelper.Tempdir(t)
 			defer tdCleanup()
-			config.Load(map[string]string{"osvc_root_path": td})
-			defer config.Load(map[string]string{})
+			rawconfig.Load(map[string]string{"osvc_root_path": td})
+			defer rawconfig.Load(map[string]string{})
 
 			b, err := ioutil.ReadFile(filepath.Join("test-fixtures", name+".json"))
 			require.Nil(t, err)

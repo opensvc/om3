@@ -1,4 +1,4 @@
-package config
+package env
 
 import "os"
 
@@ -9,14 +9,14 @@ func HasDaemonOrigin() bool {
 	return os.Getenv("OSVC_ACTION_ORIGIN") == "daemon"
 }
 
-// EnvNamespace returns the namespace filter forced via the OSVC_NAMESPACE environment
+// Namespace returns the namespace filter forced via the OSVC_NAMESPACE environment
 // variable.
-func EnvNamespace() string {
+func Namespace() string {
 	return os.Getenv("OSVC_NAMESPACE")
 }
 
-// EnvKind returns the object kind filter forced via the OSVC_NAMESPACE environment
+// Kind returns the object kind filter forced via the OSVC_NAMESPACE environment
 // variable.
-func EnvKind() string {
+func Kind() string {
 	return os.Getenv("OSVC_KIND")
 }

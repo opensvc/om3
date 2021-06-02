@@ -1,4 +1,4 @@
-package config
+package rawconfig
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render/palette"
 )
 
@@ -31,14 +32,15 @@ type (
 		Cluster  clusterSection        `mapstructure:"cluster"`
 		Node     nodeSection           `mapstructure:"node"`
 		Palette  palette.StringPalette `mapstructure:"palette"`
-		Colorize palette.ColorPaletteFunc
-		Color    palette.ColorPalette
+		Colorize *palette.ColorPaletteFunc
+		Color    *palette.ColorPalette
 	}
 
 	clusterSection struct {
 		Name       string `mapstructure:"name"`
 		Secret     string `mapstructure:"secret"`
 		CASecPaths string `mapstructure:"ca"`
+		Nodes      string `mapstructure:"nodes"`
 	}
 
 	nodeSection struct {
@@ -48,11 +50,7 @@ type (
 )
 
 func setDefaults(root string) {
-	if s, err := os.Hostname(); err == nil {
-		NodeViper.SetDefault("hostname", strings.ToLower(s))
-	} else {
-		panic("can not determine hostname")
-	}
+	NodeViper.SetDefault("hostname", hostname.Hostname())
 	if root == defPathRoot {
 		NodeViper.SetDefault("paths.root", "")
 		NodeViper.SetDefault("paths.bin", defPathBin)

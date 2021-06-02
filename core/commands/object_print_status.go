@@ -6,14 +6,15 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
-	clientcontext "opensvc.com/opensvc/core/client/context"
+	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -73,6 +74,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 		selector,
 		object.SelectionWithLocal(true),
 	)
+	h := hostname.Hostname()
 	for _, p := range sel.Expand() {
 		obj := object.NewBaserFromPath(p)
 		status, err := obj.Status(t.OptsStatus)
@@ -85,9 +87,9 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 			Compat: true,
 			Object: object.AggregatedStatus{},
 			Instances: map[string]object.InstanceStates{
-				config.Node.Hostname: {
+				h: {
 					Node: object.InstanceNode{
-						Name:   config.Node.Hostname,
+						Name:   h,
 						Frozen: object.NewNode().Frozen(),
 					},
 					Status: status,
@@ -157,5 +159,6 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 			}
 			return s
 		},
+		Colorize: rawconfig.Node.Colorize,
 	}.Print()
 }

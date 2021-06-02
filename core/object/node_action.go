@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -21,7 +21,7 @@ func (t *Node) Do(action NodeAction) ActionResult {
 		Str("action", action.Action).
 		Msg("do")
 	result := ActionResult{
-		Nodename: config.Node.Hostname,
+		Nodename: hostname.Hostname(),
 	}
 	data, err := action.Run()
 	result.Data = data

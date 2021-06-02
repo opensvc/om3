@@ -15,9 +15,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"opensvc.com/opensvc/config"
 	"runtime"
 	"sort"
+
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 type (
@@ -122,5 +123,5 @@ func runScanner(sc scanner, running chan int, result chan []string) {
 }
 
 func getPath() string {
-	return config.Node.Paths.Var + "/capabilities.json"
+	return rawconfig.Node.Paths.Var + "/capabilities.json"
 }

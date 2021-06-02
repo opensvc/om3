@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/ssrathi/go-attr"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -79,7 +79,7 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.Updated = timestamp.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
-	data.DRP = t.config.IsInDRPNodes(config.Node.Hostname)
+	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
 	data.Subsets = t.subsetsStatus()
 	data.Frozen = t.Frozen()
 	if err = t.resourceStatusEval(&data); err != nil {

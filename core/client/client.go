@@ -5,9 +5,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/client/api"
-	clientcontext "opensvc.com/opensvc/core/client/context"
 	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
+	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/util/funcopt"
 )
 

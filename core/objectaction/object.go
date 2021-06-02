@@ -13,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -230,6 +231,7 @@ func (t T) DoLocal() error {
 		Color:         t.Color,
 		Data:          rs,
 		HumanRenderer: human,
+		Colorize:      rawconfig.Node.Colorize,
 	}.Print()
 	for _, ar := range rs {
 		if ar.Panic != nil || ar.Error != nil {
@@ -269,6 +271,7 @@ func (t T) DoAsync() {
 			Color:         t.Color,
 			Data:          b,
 			HumanRenderer: human,
+			Colorize:      rawconfig.Node.Colorize,
 		}.Print()
 	}
 }

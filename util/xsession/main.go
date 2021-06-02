@@ -1,31 +1,49 @@
 package xsession
 
 import (
-	"github.com/google/uuid"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 var (
-	id string
+	//
+	// ID is an uuid identifying the command execution.
+	//
+	// This uuid is embedded in the logs so it's easy to retrieve
+	// the logs of an execution.
+	//
+	// Asynchronous commands posted on the API return a ID,
+	// so logs can be streamed for this execution after posting.
+	//
+	// The opensvc daemon forges an ID and exports it in
+	// the CRM commands it executes.
+	//
+	// The ID is also used as a caching session. Spawned
+	// subprocesses using the "cache" package store and retrieve
+	// their out, err, ret from the session cache identified by
+	// the spawner ID.
+	//
+	ID string
 )
 
-func initValue() {
-	id = os.Getenv("OSVC_SESSION_ID")
+func setID() string {
+	id := os.Getenv("OSVC_SESSION_ID")
 	if id == "" {
 		// No uuid set. Generate a new one.
-		id = uuid.New().String()
-		return
+		return newID()
 	}
 	if _, err := uuid.Parse(id); err != nil {
 		// Invalid uuid format. Generate a new one.
-		id = uuid.New().String()
+		return newID()
 	}
+	return id
 }
 
-func Id() string {
-	if id != "" {
-		return id
-	}
-	initValue()
-	return id
+func newID() string {
+	return uuid.New().String()
+}
+
+func init() {
+	ID = setID()
 }

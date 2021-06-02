@@ -3,8 +3,8 @@ package object
 import (
 	"path/filepath"
 
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/check"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/exe"
 
 	_ "opensvc.com/opensvc/drivers/chkfsidf"
@@ -18,7 +18,7 @@ type OptsNodeChecks struct {
 
 // Checks find and runs the check drivers.
 func (t Node) Checks() check.ResultSet {
-	rootPath := filepath.Join(config.NodeViper.GetString("paths.drivers"), "check", "chk*")
+	rootPath := filepath.Join(rawconfig.NodeViper.GetString("paths.drivers"), "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
 	rs := check.NewRunner(customCheckPaths).Do()
 	return *rs

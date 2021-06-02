@@ -7,7 +7,14 @@ import (
 	"sort"
 	"strings"
 
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/util/render/palette"
+)
+
+type (
+	kv struct {
+		k string
+		v interface{}
+	}
 )
 
 // Flatten accepts a nested struct and returns a flat struct with key like a.'b/c'.d[0].e
@@ -21,7 +28,25 @@ func Flatten(inputJSON interface{}) map[string]interface{} {
 // SprintFlat accepts a JSON formated byte array and returns the sorted
 // "key = val" buffer
 func SprintFlat(b []byte) string {
-	var s string
+	s := ""
+	for _, e := range sprintFlatData(b) {
+		s += fmt.Sprintln(e.k+" =", e.v)
+	}
+	return s
+}
+
+func SprintFlatColor(b []byte, colorize *palette.ColorPaletteFunc) string {
+	if colorize == nil {
+		colorize = palette.DefaultFuncPalette()
+	}
+	s := ""
+	for _, e := range sprintFlatData(b) {
+		s += fmt.Sprintln(colorize.Primary(e.k+" ="), e.v)
+	}
+	return s
+}
+
+func sprintFlatData(b []byte) []kv {
 	var data interface{}
 	json.Unmarshal(b, &data)
 	flattened := Flatten(data)
@@ -30,10 +55,11 @@ func SprintFlat(b []byte) string {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	for _, k := range keys {
-		s += fmt.Sprintln(config.Node.Colorize.Primary(k+" ="), flattened[k])
+	l := make([]kv, len(keys))
+	for i, k := range keys {
+		l[i] = kv{k: k, v: flattened[k]}
 	}
-	return s
+	return l
 }
 
 // PrintFlat accepts a JSON formated byte array and prints to stdout the sorted

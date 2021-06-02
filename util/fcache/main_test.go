@@ -1,13 +1,14 @@
 package fcache
 
 import (
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"opensvc.com/opensvc/config"
 	"os/exec"
 	"testing"
 	"time"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/assert"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 func TestOutput(t *testing.T) {
@@ -15,8 +16,8 @@ func TestOutput(t *testing.T) {
 	defer tdCleanup()
 	tf, cleanup := testhelper.TempFile(t, td)
 	defer cleanup()
-	config.Load(map[string]string{"osvc_root_path": td})
-	defer config.Load(map[string]string{})
+	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	defer rawconfig.Load(map[string]string{})
 
 	getRealCommandOutput := func() ([]byte, error) {
 		value := []byte(time.Now().Format("15:04:05.000000000"))

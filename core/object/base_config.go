@@ -6,13 +6,15 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/topology"
+	"opensvc.com/opensvc/core/xconfig"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -22,7 +24,7 @@ var (
 
 func (t *Base) loadConfig() error {
 	var err error
-	if t.config, err = config.NewObject(t.ConfigFile()); err != nil {
+	if t.config, err = xconfig.NewObject(t.ConfigFile()); err != nil {
 		return err
 	}
 	t.config.Path = t.Path
@@ -30,7 +32,7 @@ func (t *Base) loadConfig() error {
 	return err
 }
 
-func (t Base) Config() *config.T {
+func (t Base) Config() *xconfig.T {
 	return t.config
 }
 
@@ -68,7 +70,7 @@ func (t Base) Env() string {
 	if s := t.config.GetString(k); s != "" {
 		return s
 	}
-	return config.Node.Node.Env
+	return rawconfig.Node.Node.Env
 }
 
 func (t Base) App() string {
@@ -99,7 +101,7 @@ func (t Base) Priority() priority.T {
 }
 
 func (t Base) Peers() []string {
-	impersonate := config.Node.Hostname
+	impersonate := hostname.Hostname()
 	switch {
 	case t.config.IsInNodes(impersonate):
 		return t.config.Nodes()
@@ -221,12 +223,12 @@ func (t Base) Dereference(ref string) string {
 		if t.Path.IsZero() {
 			return ""
 		}
-		return fqdn.New(t.Path, config.Node.Cluster.Name).String()
+		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).String()
 	case "domain":
 		if t.Path.IsZero() {
 			return ""
 		}
-		return fqdn.New(t.Path, config.Node.Cluster.Name).Domain()
+		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).Domain()
 	case "private_var":
 		return t.paths.varDir
 	case "initd":

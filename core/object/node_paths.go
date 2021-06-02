@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 // NodePaths contains lazy initialized object paths on the node filesystem.
@@ -21,7 +21,7 @@ func (t *Node) VarDir() string {
 	if t.paths.varDir != "" {
 		return t.paths.varDir
 	}
-	p := fmt.Sprintf("%s/%s", config.Node.Paths.Var, "node")
+	p := fmt.Sprintf("%s/%s", rawconfig.Node.Paths.Var, "node")
 	t.paths.varDir = filepath.FromSlash(p)
 	if err := os.MkdirAll(t.paths.varDir, os.ModePerm); err != nil {
 		log.Error().Msgf("%s", err)
@@ -33,7 +33,7 @@ func (t *Node) LogDir() string {
 	if t.paths.logDir != "" {
 		return t.paths.logDir
 	}
-	p := fmt.Sprintf("%s", config.Node.Paths.Log)
+	p := fmt.Sprintf("%s", rawconfig.Node.Paths.Log)
 	t.paths.logDir = filepath.FromSlash(p)
 	if err := os.MkdirAll(t.paths.logDir, os.ModePerm); err != nil {
 		log.Error().Msgf("%s", err)
@@ -45,7 +45,7 @@ func (t *Node) TmpDir() string {
 	if t.paths.tmpDir != "" {
 		return t.paths.tmpDir
 	}
-	p := fmt.Sprintf("%s", config.Node.Paths.Tmp)
+	p := fmt.Sprintf("%s", rawconfig.Node.Paths.Tmp)
 	t.paths.tmpDir = filepath.FromSlash(p)
 	if err := os.MkdirAll(t.paths.tmpDir, os.ModePerm); err != nil {
 		log.Error().Msgf("%s", err)

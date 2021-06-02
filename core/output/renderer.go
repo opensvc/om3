@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"regexp"
 
-	"opensvc.com/opensvc/config"
+	"github.com/fatih/color"
 	"opensvc.com/opensvc/util/render"
+	"opensvc.com/opensvc/util/render/palette"
 )
 
 type (
@@ -20,6 +21,7 @@ type (
 		Color         string
 		Data          interface{}
 		HumanRenderer RenderFunc
+		Colorize      *palette.ColorPaletteFunc
 	}
 )
 
@@ -43,20 +45,34 @@ var (
 func (t Renderer) Sprint() string {
 	format := toID[t.Format]
 	render.SetColor(t.Color)
+	if t.Colorize == nil {
+		t.Colorize = palette.DefaultFuncPalette()
+	}
+	switch data := t.Data.(type) {
+	case []string:
+		if data == nil {
+			// JSON Marshal renders "null" for unallocated empty slices
+			t.Data = make([]string, 0)
+		}
+	}
 	switch format {
 	case Flat:
 		b, _ := json.Marshal(t.Data)
-		return SprintFlat(b)
+		if color.NoColor {
+			return SprintFlat(b)
+		} else {
+			return SprintFlatColor(b, t.Colorize)
+		}
 	case JSON:
 		b, _ := json.MarshalIndent(t.Data, "", indent)
 		s := string(b) + "\n"
-		s = regexpJSONKey.ReplaceAllString(s, config.Node.Colorize.Primary("$1"))
-		s = regexpJSONReference.ReplaceAllString(s, config.Node.Colorize.Optimal("$1"))
-		s = regexpJSONScope.ReplaceAllString(s, config.Node.Colorize.Error("$1")+"$2")
-		s = regexpJSONErrors.ReplaceAllString(s, "$1"+config.Node.Colorize.Error("$2")+"$3")
-		s = regexpJSONOptimal.ReplaceAllString(s, "$1"+config.Node.Colorize.Optimal("$2")+"$3")
-		s = regexpJSONWarning.ReplaceAllString(s, "$1"+config.Node.Colorize.Warning("$2")+"$3")
-		s = regexpJSONSecondary.ReplaceAllString(s, "$1"+config.Node.Colorize.Secondary("$2")+"$3")
+		s = regexpJSONKey.ReplaceAllString(s, t.Colorize.Primary("$1"))
+		s = regexpJSONReference.ReplaceAllString(s, t.Colorize.Optimal("$1"))
+		s = regexpJSONScope.ReplaceAllString(s, t.Colorize.Error("$1")+"$2")
+		s = regexpJSONErrors.ReplaceAllString(s, "$1"+t.Colorize.Error("$2")+"$3")
+		s = regexpJSONOptimal.ReplaceAllString(s, "$1"+t.Colorize.Optimal("$2")+"$3")
+		s = regexpJSONWarning.ReplaceAllString(s, "$1"+t.Colorize.Warning("$2")+"$3")
+		s = regexpJSONSecondary.ReplaceAllString(s, "$1"+t.Colorize.Secondary("$2")+"$3")
 		return s
 	case JSONLine:
 		b, _ := json.Marshal(t.Data)

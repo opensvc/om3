@@ -9,11 +9,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/config"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/logging"
+	"opensvc.com/opensvc/util/xsession"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -76,14 +79,14 @@ func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 }
 
 func listObjectPaths() []string {
-	if b, err := file.ReadAll(filepath.Join(config.Node.Paths.Var, "list.services")); err == nil {
+	if b, err := file.ReadAll(filepath.Join(rawconfig.Node.Paths.Var, "list.services")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
 }
 
 func listNodes() []string {
-	if b, err := file.ReadAll(filepath.Join(config.Node.Paths.Var, "list.nodes")); err == nil {
+	if b, err := file.ReadAll(filepath.Join(rawconfig.Node.Paths.Var, "list.nodes")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
@@ -108,22 +111,25 @@ func configureLogger() {
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
-		Directory:             config.Node.Paths.Log,
+		Directory:             rawconfig.Node.Paths.Log,
 		Filename:              "node.log",
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
 	}).
 		With().
-		Str("n", config.Node.Hostname).
-		Str("sid", config.SessionID).
+		Str("n", hostname.Hostname()).
+		Str("sid", xsession.ID).
 		Logger()
 	log.Logger = l
 }
 
 func persistentPreRunE(_ *cobra.Command, _ []string) error {
+	if err := hostname.Error(); err != nil {
+		return err
+	}
 	configureLogger()
-	if config.HasDaemonOrigin() {
+	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
 			log.Logger.Debug().Err(err).Msg("")
 		}

@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"opensvc.com/opensvc/config"
 	"opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/core/rawconfig"
 
 	"golang.org/x/net/http2"
 )
@@ -44,7 +44,7 @@ func (t T) String() string {
 }
 
 func defaultUDSPath() string {
-	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", config.Node.Paths.Var))
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", rawconfig.Node.Paths.Var))
 }
 
 func NewUDS(url string) (*T, error) {
