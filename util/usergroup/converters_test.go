@@ -3,6 +3,7 @@ package usergroup
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"runtime"
 	"testing"
 )
 
@@ -28,6 +29,9 @@ func TestGidFromS(t *testing.T) {
 	cases := map[string]uint32{
 		"daemon": uint32(1),
 		"1":      uint32(1),
+	}
+	if runtime.GOOS == "solaris" {
+		cases["daemon"] = uint32(12)
 	}
 	for s, expected := range cases {
 		t.Run("valid group: "+s, func(t *testing.T) {
