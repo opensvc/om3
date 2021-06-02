@@ -7,6 +7,7 @@ import (
 )
 
 // shLimitCommands provides ulimit commands for sh launcher
+// max value of LimitVMem, LimitAs is used to set virtual memory limit
 func shLimitCommands(l limits.T) []string {
 	commands := make([]string, 0)
 	if l.LimitNoFile > 0 {
@@ -31,10 +32,15 @@ func shLimitCommands(l limits.T) []string {
 		}
 		commands = append(commands, fmt.Sprintf("ulimit %s %d", flag, l.LimitNProc))
 	}
-	if l.LimitVMem > 0 {
+	if l.LimitVMem > 0 && l.LimitVMem >= l.LimitAs {
 		// -v set the limit on the total virtual memory that can be in use by a process (in kilobytes)
 		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitVMem/1000))
 	}
+	if l.LimitAs > 0 && l.LimitAs > l.LimitVMem {
+		// -v set the limit on the total virtual memory that can be in use by a process (in kilobytes)
+		commands = append(commands, "ulimit -v "+fmt.Sprintf("%d", l.LimitAs/1000))
+	}
+
 	if l.LimitCpu > 0 {
 		// -t show or set the limit on CPU time (in seconds)
 		limitCpuSecond := int64(l.LimitCpu.Seconds())

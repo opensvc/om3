@@ -27,9 +27,16 @@ func TestT_shLimitCommands(t *testing.T) {
 			limits.T{LimitNoFile: 64},
 			[]string{"ulimit -n 64"},
 		},
+		"limit_vmem_greater_than_as": {
+			limits.T{LimitAs: 32000, LimitVMem: 64000},
+			[]string{"ulimit -v 64"},
+		},
+		"limit_as_greater_than_limit_vmem": {
+			limits.T{LimitAs: 64000, LimitVMem: 32000},
+			[]string{"ulimit -v 64"},
+		},
 		"all_limits": {
 			limits.T{
-				LimitAs:      1 * 1000,
 				LimitCpu:     2 * time.Hour,
 				LimitCore:    3 * 512,
 				LimitData:    4 * 1000,
