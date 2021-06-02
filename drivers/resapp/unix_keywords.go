@@ -98,70 +98,83 @@ var (
 			Text:     "If the binary is owned by the root user, run it as the specified group instead of root.",
 		},
 		{
-			Option:    "limit_as", // TODO
-			Attr:      "LimitAs",
-			Converter: converters.Size,
-			Scopable:  true,
-		},
-		{
 			Option:    "limit_cpu",
 			Attr:      "LimitCpu",
 			Converter: converters.Duration,
 			Scopable:  true,
+			Text:      "the limit on CPU time (duration).",
+			Example:   "30s",
 		},
 		{
 			Option:    "limit_core",
 			Attr:      "LimitCore",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the largest core dump size that can be produced (unit byte).",
 		},
 		{
 			Option:    "limit_data",
 			Attr:      "LimitData",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the data segment size of a process (unit byte).",
 		},
 		{
 			Option:    "limit_fsize",
 			Attr:      "LimitFSize",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the largest file that can be created (unit byte).",
 		},
 		{
 			Option:    "limit_memlock",
 			Attr:      "LimitMemLock",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on how much memory a process can lock with mlock(2) (unit byte).",
 		},
 		{
 			Option:    "limit_nofile",
 			Attr:      "LimitNoFile",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the number files a process can have open at once.",
 		},
 		{
 			Option:    "limit_nproc",
 			Attr:      "LimitNProc",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the number of processes this user can have at one time.",
 		},
 		{
-			Option:    "limit_rss", // TODO
+			Option:    "limit_rss",
 			Attr:      "LimitRss",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the total physical memory that can be in use by a process (unit byte).",
 		},
 		{
 			Option:    "limit_stack",
 			Attr:      "LimitStack",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the stack size of a process (unit bytes).",
 		},
 		{
 			Option:    "limit_vmem",
 			Attr:      "LimitVMem",
 			Converter: converters.Size,
 			Scopable:  true,
+			Text:      "limit on the total virtual memory that can be in use by a process (unit bytes).",
+		},
+		{
+			Option:    "limit_as",
+			Attr:      "LimitAs",
+			Converter: converters.Size,
+			Scopable:  true,
+			Text: "limit on the total virtual memory that can be in use by a process (unit bytes)" +
+				" (same as limit_vmem). When both limit_vmem and limit_as is used, max value is chosen.",
 		},
 	}
 )
