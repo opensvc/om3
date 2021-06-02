@@ -132,7 +132,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"svcappforking", "stop", "--color", "no", "--local"}
+		args := []string{"svcappforking", "stop", "--local"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
@@ -509,7 +509,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "no", "--local"}
+		args := []string{"svcapp", "stop", "--local"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
@@ -550,13 +550,12 @@ func TestAppStopComplexCommand(t *testing.T) {
 }
 
 func TestAppStopLimit(t *testing.T) {
-	needPrivUser := []string{"limit_memlock", "limit_nproc"}
 	cases := map[string][]string{
 		"limit_cpu":     {"3602"},
 		"limit_core":    {"100"},
 		"limit_data":    {"104"},
 		"limit_fsize":   {"2"},
-		"limit_memlock": {"65530"},
+		"limit_memlock": {"32"},
 		"limit_nofile":  {"128"},
 		"limit_nproc":   {"200"},
 		"limit_stack":   {"101"},
@@ -564,7 +563,7 @@ func TestAppStopLimit(t *testing.T) {
 		"limit_2_items": {"129", "108"},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "no", "--local", "--rid", "app#" + name}
+		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
 		return args
 	}
 
@@ -586,12 +585,6 @@ func TestAppStopLimit(t *testing.T) {
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			for _, k := range needPrivUser {
-				if k == name {
-					t.Skipf("need root test %v skipped", name)
-				}
-			}
-
 			td, cleanup := testhelper.Tempdir(t)
 			defer cleanup()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
