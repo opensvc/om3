@@ -18,6 +18,9 @@ func (t T) toLimits() (l limits.T) {
 	if t.LimitVMem != nil {
 		l.LimitVMem = *t.LimitVMem
 	}
+	if t.LimitAs != nil {
+		l.LimitAs = *t.LimitAs
+	}
 	if t.LimitCpu != nil {
 		l.LimitCpu = *t.LimitCpu
 	}

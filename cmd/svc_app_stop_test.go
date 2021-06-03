@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -57,7 +58,7 @@ func TestAppStop(t *testing.T) {
 		},
 		"root": {
 			[]string{"--rid", "app#root"},
-			"uid=0(root) gid=1(daemon)",
+			"uid=0(root) gid=1", // daemon may be 12 on solaris
 		},
 		"nonRoot": {
 			[]string{"--rid", "app#root"},
@@ -553,14 +554,17 @@ func TestAppStopLimit(t *testing.T) {
 	cases := map[string][]string{
 		"limit_cpu":     {"3602"},
 		"limit_core":    {"100"},
-		"limit_data":    {"104"},
-		"limit_fsize":   {"2"},
-		"limit_memlock": {"32"},
+		"limit_data":    {"4000"},
+		"limit_fsize":   {"1000"},
+		"limit_memlock": {"63"},
 		"limit_nofile":  {"128"},
 		"limit_nproc":   {"200"},
-		"limit_stack":   {"101"},
-		"limit_vmem":    {"103"},
-		"limit_2_items": {"129", "108"},
+		"limit_stack":   {"100"},
+		"limit_vmem":    {"3000"},
+		"limit_2_items": {"129", "4000"},
+	}
+	skipGOOS := map[string][]string{
+		"solaris": {"limit_memlock", "limit_nproc"},
 	}
 	getCmd := func(name string) []string {
 		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
@@ -585,6 +589,13 @@ func TestAppStopLimit(t *testing.T) {
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
+			if toSkip, ok := skipGOOS[runtime.GOOS]; ok {
+				for _, testToSkipp := range toSkip {
+					if name == testToSkipp {
+						t.Skipf("skipped on %v", runtime.GOOS)
+					}
+				}
+			}
 			td, cleanup := testhelper.Tempdir(t)
 			defer cleanup()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))

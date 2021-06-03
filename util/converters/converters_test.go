@@ -33,28 +33,31 @@ var (
 	}
 )
 
-func TestToSize(t *testing.T) {
-	t.Run("Valid String", func(t *testing.T) {
+func TestSizeConvert(t *testing.T) {
+	t.Run("Valid String return expected values", func(t *testing.T) {
 		for s, expected := range validStrings {
-			result, err := ToSize(s)
-			assert.Nilf(t, err, s)
-			assert.Equalf(t, expected, *result, "ToSize('%v') -> %v", s, result)
+			t.Run(s, func(t *testing.T) {
+				result, err := Size.Convert(s)
+				assert.Nilf(t, err, s)
+				result_i := *result.(*int64)
+				assert.Equalf(t, expected, result_i, "ToSize('%v') -> %v", s, result_i)
+			})
 		}
 	})
 
 	t.Run("empty String return nil", func(t *testing.T) {
-		result, err := ToSize("")
+		result, err := Size.Convert("")
 		assert.Nil(t, err)
 		assert.Nil(t, result)
 	})
 
-	t.Run("invalid sizes", func(t *testing.T) {
+	t.Run("invalid size return (nil, error)", func(t *testing.T) {
 		for _, s := range invalidStrings {
-			var pti *int64
-			var err error
-			pti, err = ToSize(s)
-			assert.NotNilf(t, err, "FromSize('%v') error is not nil", s)
-			assert.Nil(t, pti, "FromSize('%v') return pointer is not nil", s)
+			t.Run(s, func(t *testing.T) {
+				result, err := Size.Convert(s)
+				assert.NotNilf(t, err, "FromSize('%v') error is not nil", s)
+				assert.Nil(t, result, "FromSize('%v') return pointer is not nil", s)
+			})
 		}
 	})
 }

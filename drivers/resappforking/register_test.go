@@ -1,7 +1,6 @@
 package resappforking
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -32,16 +31,14 @@ func TestKeywords(t *testing.T) {
 	td, cleanup := testhelper.Tempdir(t)
 	defer cleanup()
 
+	test_conf_helper.InstallSvcFile(t, "svc1.conf", filepath.Join(td, "etc", "svc1.conf"))
 	rawconfig.Load(map[string]string{"osvc_root_path": td})
 	defer rawconfig.Load(map[string]string{})
 
-	etc := filepath.Join(td, "etc")
-	require.Nil(t, os.MkdirAll(etc, 0700))
-
-	test_conf_helper.InstallSvcFile(t, "svc1.conf", filepath.Join(etc, "svc1.conf"))
 	p, err := path.New("svc1", "", "")
 	require.Nil(t, err)
 	resources := object.NewSvc(p).Resources()
+	require.Greater(t, len(resources), 0, "empty resource list for service")
 
 	t.Run("check default keywords value", func(t *testing.T) {
 		app := getAppRid("app#1", resources)

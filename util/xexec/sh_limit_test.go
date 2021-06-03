@@ -9,16 +9,11 @@ import (
 )
 
 func TestT_shLimitCommands(t *testing.T) {
-	var LimitNProcCommand string
-	if runtime.GOOS == "darwin" {
-		LimitNProcCommand = "ulimit -u 8"
-	} else {
-		LimitNProcCommand = "ulimit -p 8"
-	}
-	cases := map[string]struct {
+	type testCase struct {
 		limit    limits.T
 		commands []string
-	}{
+	}
+	cases := map[string]testCase{
 		"null": {
 			limits.T{},
 			[]string{},
@@ -28,39 +23,54 @@ func TestT_shLimitCommands(t *testing.T) {
 			[]string{"ulimit -n 64"},
 		},
 		"limit_vmem_greater_than_as": {
-			limits.T{LimitAs: 32000, LimitVMem: 64000},
-			[]string{"ulimit -v 64"},
+			limits.T{LimitAs: 2048000, LimitVMem: 4096000},
+			[]string{"ulimit -v 4000"},
 		},
 		"limit_as_greater_than_limit_vmem": {
-			limits.T{LimitAs: 64000, LimitVMem: 32000},
-			[]string{"ulimit -v 64"},
+			limits.T{LimitAs: 4096000, LimitVMem: 2048000},
+			[]string{"ulimit -v 4000"},
 		},
 		"all_limits": {
 			limits.T{
-				LimitCpu:     2 * time.Hour,
-				LimitCore:    3 * 512,
-				LimitData:    4 * 1000,
-				LimitFSize:   5 * 512,
-				LimitMemLock: 6 * 1000,
-				LimitNoFile:  7,
-				LimitNProc:   8,
-				LimitRss:     9 * 1000,
-				LimitStack:   10 * 1000,
-				LimitVMem:    11 * 1000,
+				LimitCpu:    2 * time.Hour,
+				LimitCore:   3 * 512,
+				LimitData:   4 * 1024,
+				LimitFSize:  5 * 512,
+				LimitNoFile: 7,
+				LimitRss:    9 * 1024,
+				LimitStack:  10 * 1024,
+				LimitVMem:   11 * 1024,
 			},
 			[]string{
 				"ulimit -n 7",
 				"ulimit -s 10",
-				"ulimit -l 6",
 				"ulimit -v 11",
 				"ulimit -t 7200",
 				"ulimit -c 3",
 				"ulimit -d 4",
 				"ulimit -f 5",
 				"ulimit -m 9",
-				LimitNProcCommand,
 			},
 		},
+	}
+	if runtime.GOOS == "darwin" {
+		cases["limit_nproc"] = testCase{
+			limits.T{LimitNProc: 8},
+			[]string{"ulimit -u 8"},
+		}
+		cases["limit_memlock"] = testCase{
+			limits.T{LimitMemLock: 6 * 1024},
+			[]string{"ulimit -l 6"},
+		}
+	} else if runtime.GOOS == "linux" {
+		cases["limit_nproc"] = testCase{
+			limits.T{LimitNProc: 8},
+			[]string{"ulimit -p 8"},
+		}
+		cases["limit_memlock"] = testCase{
+			limits.T{LimitMemLock: 6 * 1024},
+			[]string{"ulimit -l 6"},
+		}
 	}
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {

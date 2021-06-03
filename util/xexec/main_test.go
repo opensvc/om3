@@ -20,12 +20,12 @@ func TestCommandFromLimits(t *testing.T) {
 		},
 		"command_with_some_limits": {
 			"/bin/ls foo bar",
-			limits.T{LimitMemLock: 2000, LimitNoFile: 9},
+			limits.T{LimitVMem: 2048000, LimitNoFile: 9},
 
 			[]string{
 				"/bin/sh",
 				"-c",
-				"ulimit -n 9 && ulimit -l 2 && /bin/ls foo bar",
+				"ulimit -n 9 && ulimit -v 2000 && /bin/ls foo bar",
 			},
 		},
 	}
