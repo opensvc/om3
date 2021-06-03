@@ -17,7 +17,6 @@ import (
 	"gopkg.in/ini.v1"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
@@ -418,19 +417,21 @@ func (t T) SectionStrings() []string {
 }
 
 func (t *T) Nodes() []string {
-	return t.GetSlice(key.Parse("nodes"))
+	v := t.Get(key.Parse("nodes"))
+	l, _ := NodesConverter.Convert(v)
+	return l.([]string)
 }
 
 func (t *T) DRPNodes() []string {
 	v := t.Get(key.Parse("drpnodes"))
-	l := nodeselector.LocalExpand(v)
-	return l
+	l, _ := OtherNodesConverter.Convert(v)
+	return l.([]string)
 }
 
 func (t *T) EncapNodes() []string {
 	v := t.Get(key.Parse("encapnodes"))
-	l := nodeselector.LocalExpand(v)
-	return l
+	l, _ := OtherNodesConverter.Convert(v)
+	return l.([]string)
 }
 
 func (t *T) IsInNodes(impersonate string) bool {
