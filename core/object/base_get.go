@@ -15,7 +15,7 @@ type OptsGet struct {
 func (t *Base) Get(options OptsGet) (interface{}, error) {
 	k := key.Parse(options.Keyword)
 	if options.Eval {
-		_, v, err := t.config.EvalAs(k, options.Impersonate)
+		v, err := t.config.EvalAs(k, options.Impersonate)
 		return v, err
 	}
 	return t.config.Get(k), nil

@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"gopkg.in/ini.v1"
-	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/nodeselector"
@@ -90,11 +89,10 @@ func (t *T) GetString(k key.T) string {
 }
 
 func (t *T) GetStringStrict(k key.T) (string, error) {
-	if conv, s, err := t.Eval(k); err != nil {
+	if v, err := t.Eval(k); err != nil {
 		return "", err
 	} else {
-		v, e := conv(s)
-		return v.(string), e
+		return v.(string), nil
 	}
 }
 
@@ -104,11 +102,10 @@ func (t *T) GetSlice(k key.T) []string {
 }
 
 func (t *T) GetSliceStrict(k key.T) ([]string, error) {
-	if conv, s, err := t.Eval(k); err != nil {
+	if v, err := t.Eval(k); err != nil {
 		return []string{}, err
 	} else {
-		v, e := conv(s)
-		return v.([]string), e
+		return v.([]string), nil
 	}
 }
 
@@ -118,11 +115,10 @@ func (t *T) GetBool(k key.T) bool {
 }
 
 func (t *T) GetBoolStrict(k key.T) (bool, error) {
-	if conv, s, err := t.Eval(k); err != nil {
+	if v, err := t.Eval(k); err != nil {
 		return false, err
 	} else {
-		v, e := conv(s)
-		return v.(bool), e
+		return v.(bool), nil
 	}
 }
 
@@ -132,11 +128,10 @@ func (t *T) GetDuration(k key.T) *time.Duration {
 }
 
 func (t *T) GetDurationStrict(k key.T) (*time.Duration, error) {
-	if conv, s, err := t.Eval(k); err != nil {
+	if v, err := t.Eval(k); err != nil {
 		return nil, err
 	} else {
-		v, e := conv(s)
-		return v.(*time.Duration), e
+		return v.(*time.Duration), nil
 	}
 }
 
@@ -146,11 +141,10 @@ func (t *T) GetInt(k key.T) int {
 }
 
 func (t *T) GetIntStrict(k key.T) (int, error) {
-	if conv, s, err := t.Eval(k); err != nil {
+	if v, err := t.Eval(k); err != nil {
 		return 0, err
 	} else {
-		v, e := conv(s)
-		return v.(int), e
+		return v.(int), nil
 	}
 }
 
@@ -160,12 +154,11 @@ func (t *T) GetSize(k key.T) *int64 {
 }
 
 func (t *T) GetSizeStrict(k key.T) (*int64, error) {
-	if conv, s, err := t.Eval(k); err != nil {
+	if v, err := t.Eval(k); err != nil {
 		var i int64
 		return &i, err
 	} else {
-		v, e := conv(s)
-		return v.(*int64), e
+		return v.(*int64), nil
 	}
 }
 
@@ -314,7 +307,7 @@ func (t *T) write() (err error) {
 	return os.Rename(fName, t.ConfigFilePath)
 }
 
-func (t *T) Eval(k key.T) (Converter, string, error) {
+func (t *T) Eval(k key.T) (interface{}, error) {
 	return t.EvalAs(k, "")
 }
 
@@ -325,15 +318,20 @@ func (t *T) Eval(k key.T) (Converter, string, error) {
 // * dereferenced
 // * evaluated
 //
-func (t *T) EvalAs(k key.T, impersonate string) (Converter, string, error) {
+func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	kw := t.Referrer.KeywordLookup(k)
 	if !kw.IsZero() {
 		return t.EvalKeywordAs(k, kw, impersonate)
 	}
-	return nil, "", errors.Wrapf(ErrNoKeyword, "%s", k)
+	return nil, errors.Wrapf(ErrNoKeyword, "%s", k)
 }
 
-func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (f Converter, v string, err error) {
+func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (interface{}, error) {
+	var (
+		v   string
+		err error
+		f   func(string) (interface{}, error)
+	)
 	if kw.Converter != nil {
 		f = func(s string) (interface{}, error) {
 			return kw.Converter.Convert(s)
@@ -351,14 +349,14 @@ func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (f C
 	switch {
 	case errors.Is(err, ErrExist):
 		if kw.Required {
-			return nil, "", err
+			return nil, err
 		}
 		v = kw.Default
 		err = nil
 	case err != nil:
-		return nil, "", err
+		return nil, err
 	}
-	return f, t.replaceReferences(v, k.Section, impersonate), nil
+	return f(t.replaceReferences(v, k.Section, impersonate))
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) string {
@@ -420,12 +418,7 @@ func (t T) SectionStrings() []string {
 }
 
 func (t *T) Nodes() []string {
-	v := t.Get(key.Parse("nodes"))
-	l := nodeselector.LocalExpand(v)
-	if len(l) == 0 && env.Context() == "" {
-		return []string{hostname.Hostname()}
-	}
-	return l
+	return t.GetSlice(key.Parse("nodes"))
 }
 
 func (t *T) DRPNodes() []string {

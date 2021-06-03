@@ -304,15 +304,11 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	for _, kw := range m.Keywords {
 		t.log.Debug().Str("kw", kw.Option).Msg("")
 		k := key.New(rid, kw.Option)
-		conv, val, err := t.config.EvalKeywordAs(k, kw, "")
+		val, err := t.config.EvalKeywordAs(k, kw, "")
 		if err != nil {
 			return err
 		}
-		converted, err := conv(val)
-		if err != nil {
-			return err
-		}
-		if err := attr.SetValue(r, kw.Attr, converted); err != nil {
+		if err := attr.SetValue(r, kw.Attr, val); err != nil {
 			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
 		}
 	}

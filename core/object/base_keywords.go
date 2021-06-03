@@ -5,6 +5,7 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/resourceid"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/key"
 )
@@ -44,7 +45,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:     "DEFAULT",
 		Option:      "nodes",
-		Converter:   converters.ListLowercase,
+		Converter:   xconfig.NodesConverter,
 		Text:        "A node selector expression specifying the list of cluster nodes hosting service instances.",
 		DefaultText: "The lowercased hostname of the evaluating node.",
 		Example:     "n1 n*",
@@ -52,14 +53,14 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "drpnodes",
-		Converter: converters.ListLowercase,
+		Converter: xconfig.OtherNodesConverter,
 		Text:      "The backup node where the service is activated in a DRP situation. This node is also a data synchronization target for :c-res:`sync` resources.",
 		Example:   "n1 n2",
 	},
 	{
 		Section:   "DEFAULT",
 		Option:    "encapnodes",
-		Converter: converters.ListLowercase,
+		Converter: xconfig.OtherNodesConverter,
 		Text:      "The list of `containers` handled by this service and with an OpenSVC agent installed to handle the encapsulated resources. With this parameter set, parameters can be scoped with the ``@encapnodes`` suffix.",
 		Example:   "n1 n2",
 	},

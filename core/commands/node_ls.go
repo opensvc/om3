@@ -40,8 +40,9 @@ func (t *NodeLs) cmd() *cobra.Command {
 
 func (t *NodeLs) run() {
 	var (
-		c   *client.T
-		err error
+		c        *client.T
+		err      error
+		selector string
 	)
 	if !t.Global.Local {
 		if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
@@ -49,8 +50,13 @@ func (t *NodeLs) run() {
 			os.Exit(1)
 		}
 	}
+	if t.Global.NodeSelector == "" {
+		selector = "*"
+	} else {
+		selector = t.Global.NodeSelector
+	}
 	nodes := nodeselector.New(
-		t.Global.NodeSelector,
+		selector,
 		nodeselector.WithLocal(t.Global.Local),
 		nodeselector.WithServer(t.Global.Server),
 		nodeselector.WithClient(c),

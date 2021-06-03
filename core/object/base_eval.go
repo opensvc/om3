@@ -1,6 +1,8 @@
 package object
 
-import "opensvc.com/opensvc/util/key"
+import (
+	"opensvc.com/opensvc/util/key"
+)
 
 // OptsEval is the options of the Eval function of all base objects.
 type OptsEval struct {
@@ -13,6 +15,6 @@ type OptsEval struct {
 // Eval returns a keyword value
 func (t *Base) Eval(options OptsEval) (interface{}, error) {
 	k := key.Parse(options.Keyword)
-	_, v, err := t.config.EvalAs(k, options.Impersonate)
+	v, err := t.config.EvalAs(k, options.Impersonate)
 	return v, err
 }

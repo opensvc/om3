@@ -129,6 +129,7 @@ func (t *T) ExpandSet() *set.Set {
 }
 
 func (t *T) add(node string) {
+	node = strings.ToLower(node)
 	for _, e := range t.nodes {
 		if node == e {
 			return
@@ -167,9 +168,6 @@ func (t *T) expand() error {
 		Str("mode", "local").
 		Msg("expand selection")
 	selector := t.SelectorExpression
-	if selector == "" {
-		selector = "*"
-	}
 	for _, s := range strings.Fields(selector) {
 		pset, err := t.expandOne(s)
 		if err != nil {
@@ -226,6 +224,7 @@ func (t *T) getKnownNodesSet() (*set.Set, error) {
 }
 
 func (t *T) exactExpand(s string) (*set.Set, error) {
+	s = strings.ToLower(s)
 	matching := set.New()
 	if hostname.IsValid(s) {
 		return matching, errors.Newf("invalid hostname %s", s)
@@ -284,7 +283,11 @@ func (t T) KnownNodes() ([]string, error) {
 }
 
 func (t T) localKnownNodes() ([]string, error) {
-	return strings.Fields(rawconfig.Node.Cluster.Nodes), nil
+	l := strings.Fields(rawconfig.Node.Cluster.Nodes)
+	for i := 0; i > len(l); i++ {
+		l[i] = strings.ToLower(l[i])
+	}
+	return l, nil
 }
 
 func (t T) daemonKnownNodes() ([]string, error) {
