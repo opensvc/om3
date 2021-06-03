@@ -2,6 +2,7 @@ package converters
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"strconv"
 	"strings"
@@ -142,6 +143,10 @@ func (t TShlex) String() string {
 // Default unit is second when not specified
 //
 func (t TDuration) Convert(s string) (interface{}, error) {
+	return t.convert(s)
+}
+
+func (t TDuration) convert(s string) (*time.Duration, error) {
 	if s == "" {
 		return nil, nil
 	}
@@ -161,6 +166,10 @@ func (t TDuration) String() string {
 
 //
 func (t TUmask) Convert(s string) (interface{}, error) {
+	return t.convert(s)
+}
+
+func (t TUmask) convert(s string) (*fs.FileMode, error) {
 	if s == "" {
 		return nil, nil
 	}
@@ -178,6 +187,10 @@ func (t TUmask) String() string {
 
 //
 func (t TSize) Convert(s string) (interface{}, error) {
+	return t.convert(s)
+}
+
+func (t TSize) convert(s string) (*int64, error) {
 	var (
 		err error
 		i   int64
