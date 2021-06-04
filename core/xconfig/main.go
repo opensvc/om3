@@ -47,7 +47,7 @@ type (
 		Config() *T
 
 		// for reference private to the referrer. ex: path for an object
-		Dereference(string) string
+		Dereference(string) (string, error)
 
 		// for scoping
 		Nodes() []string
@@ -359,7 +359,7 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string) (stri
 	if err != nil {
 		return "", err
 	}
-	return t.replaceReferences(v, k.Section, impersonate), nil
+	return t.replaceReferences(v, k.Section, impersonate)
 }
 
 func (t *T) convert(v string, kw keywords.Keyword) (interface{}, error) {
@@ -393,11 +393,16 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 	return v, nil
 }
 
-func (t *T) replaceReferences(v string, section string, impersonate string) string {
+func (t *T) replaceReferences(v string, section string, impersonate string) (string, error) {
 	v = rawconfig.RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
-		return t.dereference(ref, section, impersonate)
+		var s string
+		s, err := t.dereference(ref, section, impersonate)
+		if err != nil {
+			return ref
+		}
+		return s
 	})
-	return v
+	return v, nil
 }
 
 func (t T) sectionMap(section string) (map[string]string, error) {
@@ -475,9 +480,12 @@ func (t *T) IsInEncapNodes(impersonate string) bool {
 	return s.Has(impersonate)
 }
 
-func (t T) dereference(ref string, section string, impersonate string) string {
+func (t T) dereference(ref string, section string, impersonate string) (string, error) {
 	type f func(string) string
-	var modifier f
+	var (
+		modifier f
+		err      error
+	)
 	val := ""
 	ref = ref[1 : len(ref)-1]
 	l := strings.SplitN(ref, ":", 2)
@@ -497,18 +505,18 @@ func (t T) dereference(ref string, section string, impersonate string) string {
 	}
 	switch {
 	case strings.HasPrefix(ref, "node."):
-		val = t.dereferenceNodeKey(ref, impersonate)
+		if val, err = t.dereferenceNodeKey(ref, impersonate); err != nil {
+			return ref, err
+		}
 	default:
-		val = t.dereferenceWellKnown(ref, section, impersonate)
+		if val, err = t.dereferenceWellKnown(ref, section, impersonate); err != nil {
+			return ref, err
+		}
 	}
-	return modifier(val)
+	return modifier(val), nil
 }
 
-func wrapRef(s string) string {
-	return fmt.Sprintf("{%s}", s)
-}
-
-func (t T) dereferenceNodeKey(ref string, impersonate string) string {
+func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 	t.Referrer.Log().Debug().Msgf("dereference node key %s", ref)
 
 	//
@@ -528,7 +536,7 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) string {
 	nodeKey := key.Parse(nodeRef)
 	kw, err := getKeyword(nodeKey, t.NodeReferrer)
 	if err != nil {
-		return wrapRef(ref)
+		return ref, err
 	}
 
 	// Filter on node key section
@@ -538,17 +546,17 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) string {
 	default:
 		// deny
 		t.Referrer.Log().Debug().Msgf("denied reference to node key %s", ref)
-		return wrapRef(ref)
+		return ref, fmt.Errorf("denied reference to node key %s", ref)
 	}
 
 	val, err := t.NodeReferrer.Config().evalStringAs(nodeKey, kw, impersonate)
 	if err != nil {
-		return wrapRef(ref)
+		return ref, err
 	}
-	return val
+	return val, nil
 }
 
-func (t T) dereferenceKey(ref string, section string, impersonate string) (v string, ok bool) {
+func (t T) dereferenceKey(ref string, section string, impersonate string) (string, error) {
 	t.Referrer.Log().Debug().Msgf("dereference well known key %s", ref)
 	refKey := key.Parse(ref)
 	if refKey.Section == "" {
@@ -556,42 +564,42 @@ func (t T) dereferenceKey(ref string, section string, impersonate string) (v str
 	}
 	key, err := t.file.Section(refKey.Section).GetKey(refKey.Option)
 	if err != nil {
-		return "", false
+		return "", err
 	}
-	return t.replaceReferences(key.String(), refKey.Section, impersonate), true
+	return t.replaceReferences(key.String(), refKey.Section, impersonate)
 }
 
-func (t T) dereferenceWellKnown(ref string, section string, impersonate string) string {
-	if v, ok := t.dereferenceKey(ref, section, impersonate); ok {
-		return v
+func (t T) dereferenceWellKnown(ref string, section string, impersonate string) (string, error) {
+	if v, err := t.dereferenceKey(ref, section, impersonate); err == nil {
+		return v, nil
 	}
 	switch ref {
 	case "nodename":
-		return impersonate
+		return impersonate, nil
 	case "short_nodename":
-		return strings.SplitN(impersonate, ".", 1)[0]
+		return strings.SplitN(impersonate, ".", 1)[0], nil
 	case "rid":
-		return section
+		return section, nil
 	case "rindex":
 		l := strings.SplitN(section, "#", 2)
 		if len(l) != 2 {
-			return section
+			return section, nil
 		}
-		return l[1]
+		return l[1], nil
 	case "svcmgr":
-		return os.Args[0] + " svc"
+		return os.Args[0] + " svc", nil
 	case "nodemgr":
-		return os.Args[0] + " node"
+		return os.Args[0] + " node", nil
 	case "etc":
-		return rawconfig.Node.Paths.Etc
+		return rawconfig.Node.Paths.Etc, nil
 	case "var":
-		return rawconfig.Node.Paths.Var
+		return rawconfig.Node.Paths.Var, nil
 	default:
 		if t.Referrer != nil {
 			return t.Referrer.Dereference(ref)
 		}
 	}
-	return wrapRef(ref)
+	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
 func (t *T) replaceFile(configData rawconfig.T) error {

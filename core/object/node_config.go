@@ -1,6 +1,7 @@
 package object
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -71,24 +72,24 @@ func (t Node) App() string {
 	return t.config.GetString(k)
 }
 
-func (t Node) Dereference(ref string) string {
+func (t Node) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
-		return t.ID().String()
+		return t.ID().String(), nil
 	case "name", "nodename":
-		return hostname.Hostname()
+		return hostname.Hostname(), nil
 	case "short_name", "short_nodename":
-		return strings.SplitN(hostname.Hostname(), ".", 1)[0]
+		return strings.SplitN(hostname.Hostname(), ".", 1)[0], nil
 	case "dnsuxsock":
-		return t.DNSUDSFile()
+		return t.DNSUDSFile(), nil
 	case "dnsuxsockd":
-		return t.DNSUDSDir()
+		return t.DNSUDSDir(), nil
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	}
-	return ref
+	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
 func (t Node) PostCommit() error {

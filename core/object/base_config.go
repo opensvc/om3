@@ -1,6 +1,7 @@
 package object
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -199,65 +200,65 @@ func (t Base) FlexTarget() int {
 	return i
 }
 
-func (t Base) Dereference(ref string) string {
+func (t Base) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
-		return t.ID().String()
+		return t.ID().String(), nil
 	case "name", "{svcname}":
-		return t.Path.Name
+		return t.Path.Name, nil
 	case "short_name", "{short_svcname}":
-		return strings.SplitN(t.Path.Name, ".", 1)[0]
+		return strings.SplitN(t.Path.Name, ".", 1)[0], nil
 	case "scaler_name", "{scaler_svcname}":
-		return RegexpScalerPrefix.ReplaceAllString(t.Path.Name, "")
+		return RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), nil
 	case "scaler_short_name", "{scaler_short_svcname}":
-		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), ".", 1)[0]
+		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), ".", 1)[0], nil
 	case "namespace":
-		return t.Path.Namespace
+		return t.Path.Namespace, nil
 	case "kind":
-		return t.Path.Kind.String()
+		return t.Path.Kind.String(), nil
 	case "path", "{svcpath}":
 		if t.Path.IsZero() {
-			return ""
+			return "", nil
 		}
-		return t.Path.String()
+		return t.Path.String(), nil
 	case "fqdn":
 		if t.Path.IsZero() {
-			return ""
+			return "", nil
 		}
-		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).String()
+		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).String(), nil
 	case "domain":
 		if t.Path.IsZero() {
-			return ""
+			return "", nil
 		}
-		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).Domain()
+		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).Domain(), nil
 	case "private_var":
-		return t.paths.varDir
+		return t.paths.varDir, nil
 	case "initd":
-		return filepath.Join(filepath.Dir(t.ConfigFile()), t.Path.Name+".d")
+		return filepath.Join(filepath.Dir(t.ConfigFile()), t.Path.Name+".d"), nil
 	case "collector_api":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "clusterid":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "clustername":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "clusternodes":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "clusterdrpnodes":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "dns":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "dnsnodes":
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	case "dnsuxsock":
-		return t.Node().DNSUDSFile()
+		return t.Node().DNSUDSFile(), nil
 	case "dnsuxsockd":
-		return t.Node().DNSUDSDir()
+		return t.Node().DNSUDSDir(), nil
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):
-		return "TODO"
+		return ref, fmt.Errorf("TODO")
 	}
-	return ref
+	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
 func (t Base) Nodes() []string {
