@@ -36,6 +36,7 @@ func (t T) Start() error {
 		return nil
 	}
 	t.Log().Info().Msgf("starting %s", cmd.String())
+	// TODO Create PG
 	err = cmd.Start()
 	if err != nil {
 		return err
