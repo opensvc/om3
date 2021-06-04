@@ -230,7 +230,7 @@ func TestAppStop(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
 		cmd.Env = append(os.Environ(), "TC_NAME="+name)
 		out, err := cmd.CombinedOutput()
-		require.Nil(t, err)
+		require.Nilf(t, err, "got: %s", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
 			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
 		}
@@ -355,7 +355,7 @@ func TestAppStop(t *testing.T) {
 					msg = ""
 				}
 				require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
-				require.Len(t, out, 0, "expected empty output")
+				require.NotContains(t, string(out), "running", "expected no running")
 			})
 		}
 	})
@@ -605,6 +605,52 @@ func TestAppStopLimit(t *testing.T) {
 			require.Nilf(t, err, "got '%v'", string(out))
 			for _, expected := range cases[name] {
 				assert.Containsf(t, string(out), "| "+expected, "got:\n%v", string(out))
+			}
+		})
+	}
+}
+
+func TestAppStopTimeout(t *testing.T) {
+	cases := map[string]bool{
+		"no_timeout":           true,
+		"stop_timeout_succeed": true,
+		"stop_timeout_failure": false,
+		"timeout_failure":      false,
+	}
+	getCmd := func(name string) []string {
+		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
+		return args
+	}
+
+	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
+
+		test_conf_helper.InstallSvcFile(t, "svcappforking_timeout.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		defer hostname.Impersonate("node1")()
+		ExecuteArgs(getCmd(name))
+	}
+
+	for name := range cases {
+		t.Run(name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopTimeout")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			out, err := cmd.CombinedOutput()
+			if cases[name] {
+				require.Nilf(t, err, "expected succeed, got '%v'", string(out))
+			} else {
+
+				require.NotNil(t, err, "  expected failure, got '%v'", string(out))
 			}
 		})
 	}

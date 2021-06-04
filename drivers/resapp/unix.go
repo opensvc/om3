@@ -2,8 +2,10 @@
 
 package resapp
 
+import "C"
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -62,17 +64,26 @@ func (t T) Abort() bool {
 }
 
 // Stop the Resource
-func (t T) Stop() error {
-	if len(t.StopCmd) == 0 {
-		return nil
-	}
+func (t T) Stop() (err error) {
 	t.Log().Debug().Msg("Stop()")
-	cmd, err := t.GetCmd(t.StopCmd, "stop")
-	if err != nil {
-		return err
+	var xcmd xexec.T
+	if xcmd, err = t.PrepareXcmd(t.StopCmd, "stop"); err != nil {
+		return
+	} else if len(xcmd.CmdArgs) == 0 {
+		return
 	}
-	if cmd == nil {
-		return nil
+	var cmd *exec.Cmd
+	timeout := t.GetTimeout("stop")
+	if timeout != nil && *timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		t.Log().Debug().Msgf("ctx: %v", ctx)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
+	} else {
+		cmd = exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
+	}
+	if err = xcmd.Update(cmd); err != nil {
+		return
 	}
 	appStatus := t.Status()
 	if appStatus == status.Down {
@@ -85,12 +96,27 @@ func (t T) Stop() error {
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status() status.T {
-	cmd, err := t.GetCmd(t.CheckCmd, "status")
-	if err != nil {
+	t.Log().Debug().Msg("status()")
+	var xcmd xexec.T
+	var err error
+	if xcmd, err = t.PrepareXcmd(t.CheckCmd, "status"); err != nil {
+		t.Log().Error().Err(err).Msg("PrepareXcmd")
 		return status.Undef
-	}
-	if cmd == nil {
+	} else if len(xcmd.CmdArgs) == 0 {
 		return status.NotApplicable
+	}
+	var cmd *exec.Cmd
+	timeout := t.GetTimeout("check")
+	if timeout != nil && *timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		t.Log().Debug().Msgf("ctx: %v", ctx)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
+	} else {
+		cmd = exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
+	}
+	if err = xcmd.Update(cmd); err != nil {
+		return status.Undef
 	}
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
 	err = cmd.Run()
@@ -135,14 +161,6 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	closer := func(c io.Closer) {
 		_ = c.Close()
 	}
-	if t.Cwd != "" {
-		t.Log().Debug().Msgf("run command from %v", t.Cwd)
-		cmd.Dir = t.Cwd
-	}
-	if err := xexec.SetCredential(cmd, t.User, t.Group); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to set credential from user '%v', group '%v'", t.User, t.Group)
-		return err
-	}
 
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		return err
@@ -170,29 +188,43 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	return nil
 }
 
-// GetCmd construct and return *exec.Cmd for action
-// It returns error if validation of keyword fails
-func (t T) GetCmd(s string, action string) (cmd *exec.Cmd, err error) {
-	var command string
-	if command, err = t.getCmdStringFromBoolRule(s, action); err != nil {
-		return nil, err
-	}
-	if len(command) == 0 {
+// PrepareXcmd returns xexec.T for action string 's'
+// It prepare xexec.T CmdArgs for xexec.T.Update(cmd)
+func (t T) PrepareXcmd(s string, action string) (c xexec.T, err error) {
+	if len(s) == 0 {
 		t.Log().Debug().Msgf("no command for action '%v'", action)
-		return nil, nil
+		return
 	}
-	if cmd, err = xexec.CommandFromLimits(t.toLimits(), command); err != nil {
-		t.Log().Error().Err(err).Msgf("CommandFromLimits error for action '%v'", action)
-		return nil, err
+	var baseCommand string
+	if baseCommand, err = t.getCmdStringFromBoolRule(s, action); err != nil {
+		return
 	}
-	if env, err := t.getEnv(); err != nil {
+	if len(baseCommand) == 0 {
+		t.Log().Debug().Msgf("no command for action '%v'", action)
+		return
+	}
+	limitCommands := xexec.ShLimitCommands(t.toLimits())
+	if len(limitCommands) > 0 {
+		baseCommand = limitCommands + " && " + baseCommand
+	}
+	if c.CmdArgs, err = xexec.CommandArgsFromString(baseCommand); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to CommandArgsFromString for action '%v'", action)
+		return
+	}
+	if c.CmdEnv, err = t.getEnv(); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to create command environment for action '%v'", action)
-		return nil, err
-	} else if len(env) > 0 {
-		cmd.Env = append(cmd.Env, env...)
+		return
 	}
-	t.Log().Debug().Msgf("env for action '%v': '%v'", action, cmd.Env)
-	return cmd, nil
+	t.Log().Debug().Msgf("env for action '%v': '%v'", action, c.CmdEnv)
+	if c.Credential, err = xexec.Credential(t.User, t.Group); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to set credential from user '%v', group '%v' for action '%v'", t.User, t.Group, action)
+		return
+	}
+	if t.Cwd != "" {
+		t.Log().Debug().Msgf("set command Dir to '%v'", t.Cwd)
+		c.Cwd = t.Cwd
+	}
+	return
 }
 
 // getCmdStringFromBoolRule get command string for 'action' using bool rule on 's'
@@ -259,4 +291,25 @@ func isSequenceNumber(s string) bool {
 		return true
 	}
 	return false
+}
+
+func (t T) GetTimeout(action string) *time.Duration {
+	var timeout *time.Duration
+	switch action {
+	case "start":
+		timeout = t.StartTimeout
+	case "stop":
+		timeout = t.StopTimeout
+	case "check":
+		timeout = t.CheckTimeout
+	case "info":
+		timeout = t.InfoTimeout
+	}
+	if timeout == nil {
+		timeout = t.Timeout
+	}
+	if timeout == nil {
+		return nil
+	}
+	return timeout
 }
