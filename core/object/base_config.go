@@ -29,6 +29,7 @@ func (t *Base) loadConfig() error {
 	}
 	t.config.Path = t.Path
 	t.config.Referrer = t
+	t.config.NodeReferrer = t.Node()
 	return err
 }
 
@@ -104,9 +105,9 @@ func (t Base) Peers() []string {
 	impersonate := hostname.Hostname()
 	switch {
 	case t.config.IsInNodes(impersonate):
-		return t.config.Nodes()
+		return t.Nodes()
 	case t.config.IsInDRPNodes(impersonate):
-		return t.config.DRPNodes()
+		return t.DRPNodes()
 	default:
 		return []string{}
 	}
@@ -257,6 +258,24 @@ func (t Base) Dereference(ref string) string {
 		return "TODO"
 	}
 	return ref
+}
+
+func (t Base) Nodes() []string {
+	v := t.config.Get(key.Parse("nodes"))
+	l, _ := xconfig.NodesConverter.Convert(v)
+	return l.([]string)
+}
+
+func (t Base) DRPNodes() []string {
+	v := t.config.Get(key.Parse("drpnodes"))
+	l, _ := xconfig.OtherNodesConverter.Convert(v)
+	return l.([]string)
+}
+
+func (t Base) EncapNodes() []string {
+	v := t.config.Get(key.Parse("encapnodes"))
+	l, _ := xconfig.OtherNodesConverter.Convert(v)
+	return l.([]string)
 }
 
 func (t Base) PostCommit() error {

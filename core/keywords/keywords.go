@@ -53,6 +53,9 @@ type (
 
 		// Provisioning is set to true for keywords only used for resource provisioning
 		Provisioning bool
+
+		// Types limits the scope of the keyword to sections with matching type value
+		Types []string
 	}
 
 	Store []Keyword

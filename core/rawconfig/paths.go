@@ -11,6 +11,8 @@ var (
 	defPathVar     = filepath.FromSlash(fmt.Sprintf("/var/lib/%s", Program))
 	defPathLock    = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/lock", Program))
 	defPathCache   = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/cache", Program))
+	defPathCerts   = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs", Program))
+	defPathCACRL   = filepath.FromSlash(fmt.Sprintf("/var/lib/%s/certs/ca_crl", Program))
 	defPathLog     = filepath.FromSlash(fmt.Sprintf("/var/log/%s", Program))
 	defPathEtc     = filepath.FromSlash(fmt.Sprintf("/etc/%s", Program))
 	defPathEtcNs   = filepath.FromSlash(fmt.Sprintf("/etc/%s/namespaces", Program))
@@ -28,6 +30,8 @@ type (
 		Var     string `mapstructure:"var"`
 		Lock    string `mapstructure:"lock"`
 		Cache   string `mapstructure:"cache"`
+		Certs   string `mapstructure:"certs"`
+		CACRL   string
 		Log     string `mapstructure:"log"`
 		Etc     string `mapstructure:"etc"`
 		EtcNs   string

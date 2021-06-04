@@ -1,6 +1,7 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/placement"
@@ -74,7 +75,7 @@ var keywordStore = keywords.Store{
 		Section:     "DEFAULT",
 		Option:      "env",
 		DefaultText: "Same as the node env",
-		Candidates:  []string{"CERT", "DEV", "DRP", "FOR", "INT", "PRA", "PRD", "PRJ", "PPRD", "QUAL", "REC", "STG", "TMP", "TST", "UAT"},
+		Candidates:  envs.List,
 		Text:        "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation). The default value is the node :kw:`env`.",
 	},
 	{

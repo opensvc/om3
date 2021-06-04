@@ -166,7 +166,7 @@ func (t *T) expand() error {
 	log.Debug().
 		Str("selector", t.SelectorExpression).
 		Str("mode", "local").
-		Msg("expand selection")
+		Msgf("expand node selection")
 	selector := t.SelectorExpression
 	for _, s := range strings.Fields(selector) {
 		pset, err := t.expandOne(s)
@@ -226,7 +226,7 @@ func (t *T) getKnownNodesSet() (*set.Set, error) {
 func (t *T) exactExpand(s string) (*set.Set, error) {
 	s = strings.ToLower(s)
 	matching := set.New()
-	if hostname.IsValid(s) {
+	if !hostname.IsValid(s) {
 		return matching, errors.Newf("invalid hostname %s", s)
 	}
 	known, err := t.getKnownNodesSet()

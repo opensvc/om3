@@ -31,8 +31,9 @@ import (
 
 var (
 	DefaultDriver = map[string]string{
-		"app": "forking",
-		"ip":  "host",
+		"app":  "forking",
+		"ip":   "host",
+		"task": "host",
 	}
 )
 
@@ -264,12 +265,15 @@ func (t *Base) Resources() resource.Drivers {
 func (t *Base) configureResources() resource.Drivers {
 	resources := make(resource.Drivers, 0)
 	for _, k := range t.config.SectionStrings() {
+		if k == "env" || k == "data" || k == "DEFAULT" {
+			continue
+		}
 		rid := resourceid.Parse(k)
-		if rid.DriverGroup() == drivergroup.Unknown {
+		driverGroup := rid.DriverGroup()
+		if driverGroup == drivergroup.Unknown {
 			t.log.Debug().Str("rid", k).Str("f", "listResources").Msg("unknown driver group")
 			continue
 		}
-		driverGroup := rid.DriverGroup()
 		typeKey := key.New(k, "type")
 		driverName := t.config.Get(typeKey)
 		if driverName == "" {
@@ -319,7 +323,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 				return err
 			}
 		case c.Ref == "object.nodes":
-			if err := attr.SetValue(r, c.Attr, t.config.Nodes()); err != nil {
+			if err := attr.SetValue(r, c.Attr, t.Nodes()); err != nil {
 				return err
 			}
 		}

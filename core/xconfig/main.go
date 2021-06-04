@@ -33,6 +33,7 @@ type (
 		ConfigFilePath string
 		Path           path.T
 		Referrer       Referrer
+		NodeReferrer   Referrer
 		file           *ini.File
 	}
 
@@ -40,10 +41,18 @@ type (
 	// provide a reference resolver using their private attributes.
 	Referrer interface {
 		KeywordLookup(key.T) keywords.Keyword
-		Dereference(string) string
 		PostCommit() error
 		IsVolatile() bool
 		Log() *zerolog.Logger
+		Config() *T
+
+		// for reference private to the referrer. ex: path for an object
+		Dereference(string) string
+
+		// for scoping
+		Nodes() []string
+		DRPNodes() []string
+		EncapNodes() []string
 	}
 )
 
@@ -318,28 +327,53 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 // * evaluated
 //
 func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
-	kw := t.Referrer.KeywordLookup(k)
-	if !kw.IsZero() {
-		return t.EvalKeywordAs(k, kw, impersonate)
+	kw, err := getKeyword(k, t.Referrer)
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.Wrapf(ErrNoKeyword, "%s", k)
+	return t.EvalKeywordAs(k, kw, impersonate)
 }
 
 func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (interface{}, error) {
+	v, err := t.evalStringAs(k, kw, impersonate)
+	if err != nil {
+		return nil, err
+	}
+	return t.convert(v, kw)
+}
+
+func getKeyword(k key.T, referrer Referrer) (keywords.Keyword, error) {
+	var kw keywords.Keyword
+	if referrer == nil {
+		return kw, errors.Wrapf(ErrNoKeyword, "no referrer")
+	}
+	kw = referrer.KeywordLookup(k)
+	if kw.IsZero() {
+		return kw, errors.Wrapf(ErrNoKeyword, "%s", k)
+	}
+	return kw, nil
+}
+
+func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
+	v, err := t.mayDescope(k, kw, impersonate)
+	if err != nil {
+		return "", err
+	}
+	return t.replaceReferences(v, k.Section, impersonate), nil
+}
+
+func (t *T) convert(v string, kw keywords.Keyword) (interface{}, error) {
+	if kw.Converter == nil {
+		return v, nil
+	}
+	return kw.Converter.Convert(v)
+}
+
+func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
 	var (
 		v   string
 		err error
-		f   func(string) (interface{}, error)
 	)
-	if kw.Converter != nil {
-		f = func(s string) (interface{}, error) {
-			return kw.Converter.Convert(s)
-		}
-	} else {
-		f = func(s string) (interface{}, error) {
-			return s, nil
-		}
-	}
 	if kw.Scopable {
 		v, err = t.descope(k, impersonate)
 	} else {
@@ -347,15 +381,16 @@ func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (int
 	}
 	switch {
 	case errors.Is(err, ErrExist):
-		if kw.Required {
-			return nil, err
+		switch kw.Required {
+		case true:
+			return "", err
+		case false:
+			return kw.Default, nil
 		}
-		v = kw.Default
-		err = nil
 	case err != nil:
-		return nil, err
+		return "", err
 	}
-	return f(t.replaceReferences(v, k.Section, impersonate))
+	return v, nil
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) string {
@@ -396,7 +431,7 @@ func (t *T) descope(k key.T, impersonate string) (string, error) {
 	if v, ok := s[k.Option]; ok {
 		return v, nil
 	}
-	return "", errors.Wrapf(ErrExist, "key '%s' not found (tried scopes too)", k)
+	return "", errors.Wrapf(ErrExist, "key '%s' not found (all scopes tried)", k)
 }
 
 func (t T) Raw() rawconfig.T {
@@ -416,27 +451,9 @@ func (t T) SectionStrings() []string {
 	return t.file.SectionStrings()
 }
 
-func (t *T) Nodes() []string {
-	v := t.Get(key.Parse("nodes"))
-	l, _ := NodesConverter.Convert(v)
-	return l.([]string)
-}
-
-func (t *T) DRPNodes() []string {
-	v := t.Get(key.Parse("drpnodes"))
-	l, _ := OtherNodesConverter.Convert(v)
-	return l.([]string)
-}
-
-func (t *T) EncapNodes() []string {
-	v := t.Get(key.Parse("encapnodes"))
-	l, _ := OtherNodesConverter.Convert(v)
-	return l.([]string)
-}
-
 func (t *T) IsInNodes(impersonate string) bool {
 	s := set.New()
-	for _, n := range t.Nodes() {
+	for _, n := range t.Referrer.Nodes() {
 		s.Insert(n)
 	}
 	return s.Has(impersonate)
@@ -444,7 +461,7 @@ func (t *T) IsInNodes(impersonate string) bool {
 
 func (t *T) IsInDRPNodes(impersonate string) bool {
 	s := set.New()
-	for _, n := range t.DRPNodes() {
+	for _, n := range t.Referrer.DRPNodes() {
 		s.Insert(n)
 	}
 	return s.Has(impersonate)
@@ -452,39 +469,87 @@ func (t *T) IsInDRPNodes(impersonate string) bool {
 
 func (t *T) IsInEncapNodes(impersonate string) bool {
 	s := set.New()
-	for _, n := range t.EncapNodes() {
+	for _, n := range t.Referrer.EncapNodes() {
 		s.Insert(n)
 	}
 	return s.Has(impersonate)
 }
 
 func (t T) dereference(ref string, section string, impersonate string) string {
+	type f func(string) string
+	var modifier f
 	val := ""
 	ref = ref[1 : len(ref)-1]
 	l := strings.SplitN(ref, ":", 2)
 	switch l[0] {
 	case "upper":
-		val = t.dereferenceWellKnown(l[1], section, impersonate)
-		val = strings.ToUpper(val)
+		modifier = strings.ToUpper
 	case "lower":
-		val = t.dereferenceWellKnown(l[1], section, impersonate)
-		val = strings.ToLower(val)
+		modifier = strings.ToLower
 	case "capitalize":
-		val = t.dereferenceWellKnown(l[1], section, impersonate)
-		val = xstrings.Capitalize(val)
+		modifier = xstrings.Capitalize
 	case "title":
-		val = t.dereferenceWellKnown(l[1], section, impersonate)
-		val = strings.Title(val)
+		modifier = strings.Title
 	case "swapcase":
-		val = t.dereferenceWellKnown(l[1], section, impersonate)
-		val = xstrings.SwapCase(val)
+		modifier = xstrings.SwapCase
+	default:
+		modifier = func(s string) string { return s }
+	}
+	switch {
+	case strings.HasPrefix(ref, "node."):
+		val = t.dereferenceNodeKey(ref, impersonate)
 	default:
 		val = t.dereferenceWellKnown(ref, section, impersonate)
+	}
+	return modifier(val)
+}
+
+func wrapRef(s string) string {
+	return fmt.Sprintf("{%s}", s)
+}
+
+func (t T) dereferenceNodeKey(ref string, impersonate string) string {
+	t.Referrer.Log().Debug().Msgf("dereference node key %s", ref)
+
+	//
+	// Extract the key string relative to the node configuration
+	// Examples:
+	//   "node.env" => "env"
+	//   "node.labels.az" => "labels.az"
+	//
+	l := strings.SplitN(ref, ".", 2)
+	nodeRef := l[1]
+
+	// Use "node" as the implicit section instead of "DEFAULT"
+	if !strings.Contains(nodeRef, ".") {
+		nodeRef = "node." + nodeRef
+	}
+
+	nodeKey := key.Parse(nodeRef)
+	kw, err := getKeyword(nodeKey, t.NodeReferrer)
+	if err != nil {
+		return wrapRef(ref)
+	}
+
+	// Filter on node key section
+	switch nodeKey.Section {
+	case "env", "labels", "node":
+		// allow
+	default:
+		// deny
+		t.Referrer.Log().Debug().Msgf("denied reference to node key %s", ref)
+		return wrapRef(ref)
+	}
+
+	val, err := t.NodeReferrer.Config().evalStringAs(nodeKey, kw, impersonate)
+	if err != nil {
+		return wrapRef(ref)
 	}
 	return val
 }
 
 func (t T) dereferenceKey(ref string, section string, impersonate string) (v string, ok bool) {
+	t.Referrer.Log().Debug().Msgf("dereference well known key %s", ref)
 	refKey := key.Parse(ref)
 	if refKey.Section == "" {
 		refKey.Section = section
@@ -526,7 +591,7 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 			return t.Referrer.Dereference(ref)
 		}
 	}
-	return ref
+	return wrapRef(ref)
 }
 
 func (t *T) replaceFile(configData rawconfig.T) error {
