@@ -178,11 +178,11 @@ func (t T) setOwnership() error {
 		return err
 	}
 	if uid != t.uid() {
-		t.Log().Info().Msgf("set %s user to %s (%s)", p, t.User.Username, t.User.Uid)
+		t.Log().Info().Msgf("set %s user to %s (%s)", p, t.User.Uid, t.User.Username)
 		newUID = t.uid()
 	}
 	if gid != t.gid() {
-		t.Log().Info().Msgf("set %s group to %s (%s)", p, t.Group.Name, t.User.Gid)
+		t.Log().Info().Msgf("set %s group to %s (%s)", p, t.User.Gid, t.Group.Name)
 		newGID = t.gid()
 	}
 	if newUID != -1 || newGID != -1 {
