@@ -26,6 +26,7 @@ type (
 	TDuration      string
 	TUmask         string
 	TSize          string
+	TFileMode      string
 )
 
 var (
@@ -41,6 +42,7 @@ var (
 	Duration      TDuration
 	Umask         TUmask
 	Size          TSize
+	FileMode      TFileMode
 )
 
 //
@@ -205,4 +207,21 @@ func (t TSize) convert(s string) (*int64, error) {
 
 func (t TSize) String() string {
 	return "size"
+}
+
+//
+func (t TFileMode) Convert(s string) (interface{}, error) {
+	return t.convert(s)
+}
+
+func (t TFileMode) convert(s string) (os.FileMode, error) {
+	i, err := strconv.ParseInt(s, 8, 32)
+	if err != nil {
+		return 0, err
+	}
+	return os.FileMode(i), nil
+}
+
+func (t TFileMode) String() string {
+	return "file-mode"
 }

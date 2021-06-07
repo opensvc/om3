@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -111,4 +112,42 @@ func ModTime(p string) (mtime time.Time) {
 	}
 	mtime = fi.ModTime()
 	return
+}
+
+//
+// IsMode returns true if the file current mode is the same as the target mode.
+//
+func IsMode(p string, mode os.FileMode) (bool, error) {
+	currentMode, err := Mode(p)
+	if err != nil {
+		return false, err
+	}
+	return currentMode == mode, nil
+}
+
+//
+// Mode returns the FileMode of the file.
+//
+func Mode(p string) (os.FileMode, error) {
+	fileInfo, err := os.Lstat(p)
+	if err != nil {
+		return 0, err
+	}
+	currentMode := fileInfo.Mode()
+	return currentMode, nil
+}
+
+//
+// Ownership return the uid and gid owning the file
+//
+func Ownership(p string) (uid, gid int, err error) {
+	fileInfo, err := os.Lstat(p)
+	if err != nil {
+		return -1, -1, err
+	}
+	if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
+		return int(stat.Uid), int(stat.Gid), nil
+	}
+	// unsupported
+	return -1, -1, nil
 }
