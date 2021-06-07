@@ -118,11 +118,11 @@ func (t *T) Status() status.T {
 	if !ok {
 		return status.Warn
 	}
-	return status.Up
+	return status.NotApplicable
 }
 
 func (t T) Label() string {
-	return fmt.Sprintf("dir %s", t.path())
+	return t.path()
 }
 
 func (t T) path() string {
