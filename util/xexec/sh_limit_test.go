@@ -11,24 +11,24 @@ import (
 func TestT_shLimitCommands(t *testing.T) {
 	type testCase struct {
 		limit    limits.T
-		commands []string
+		commands string
 	}
 	cases := map[string]testCase{
 		"null": {
 			limits.T{},
-			[]string{},
+			"",
 		},
 		"limit_nofile_64": {
 			limits.T{LimitNoFile: 64},
-			[]string{"ulimit -n 64"},
+			"ulimit -n 64",
 		},
 		"limit_vmem_greater_than_as": {
 			limits.T{LimitAs: 2048000, LimitVMem: 4096000},
-			[]string{"ulimit -v 4000"},
+			"ulimit -v 4000",
 		},
 		"limit_as_greater_than_limit_vmem": {
 			limits.T{LimitAs: 4096000, LimitVMem: 2048000},
-			[]string{"ulimit -v 4000"},
+			"ulimit -v 4000",
 		},
 		"all_limits": {
 			limits.T{
@@ -41,41 +41,39 @@ func TestT_shLimitCommands(t *testing.T) {
 				LimitStack:  10 * 1024,
 				LimitVMem:   11 * 1024,
 			},
-			[]string{
-				"ulimit -n 7",
-				"ulimit -s 10",
-				"ulimit -v 11",
-				"ulimit -t 7200",
-				"ulimit -c 3",
-				"ulimit -d 4",
-				"ulimit -f 5",
-				"ulimit -m 9",
-			},
+			"ulimit -n 7" +
+				" && ulimit -s 10" +
+				" && ulimit -v 11" +
+				" && ulimit -t 7200" +
+				" && ulimit -c 3" +
+				" && ulimit -d 4" +
+				" && ulimit -f 5" +
+				" && ulimit -m 9",
 		},
 	}
 	if runtime.GOOS == "darwin" {
 		cases["limit_nproc"] = testCase{
 			limits.T{LimitNProc: 8},
-			[]string{"ulimit -u 8"},
+			"ulimit -u 8",
 		}
 		cases["limit_memlock"] = testCase{
 			limits.T{LimitMemLock: 6 * 1024},
-			[]string{"ulimit -l 6"},
+			"ulimit -l 6",
 		}
 	} else if runtime.GOOS == "linux" {
 		cases["limit_nproc"] = testCase{
 			limits.T{LimitNProc: 8},
-			[]string{"ulimit -p 8"},
+			"ulimit -p 8",
 		}
 		cases["limit_memlock"] = testCase{
 			limits.T{LimitMemLock: 6 * 1024},
-			[]string{"ulimit -l 6"},
+			"ulimit -l 6",
 		}
 	}
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			commands := shLimitCommands(cases[name].limit)
-			assert.ElementsMatch(t, cases[name].commands, commands)
+			commands := ShLimitCommands(cases[name].limit)
+			assert.Equal(t, cases[name].commands, commands)
 		})
 	}
 }

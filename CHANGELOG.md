@@ -11,3 +11,9 @@
         bar=2       was previsouly changed to BAR=2
         Zoo=u       was previously changed to ZOO=u
 
+* **breaking change:** Remove support on some deprecated env var
+
+  Following env var are not anymore added to process env var during actions
+  * OPENSVC_SVCNAME
+  * OPENSVC_SVC_ID
+  

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"opensvc.com/opensvc/util/limits"
 	"runtime"
+	"strings"
 )
 
-// shLimitCommands provides ulimit commands for sh launcher
+// ShLimitCommands provides ulimit commands for sh launcher
 // max value of LimitVMem, LimitAs is used to set virtual memory limit
-func shLimitCommands(l limits.T) []string {
+func ShLimitCommands(l limits.T) string {
 	commands := make([]string, 0)
 	if l.LimitNoFile > 0 {
 		// -n set the limit on the number files a process can have open at once
@@ -63,5 +64,5 @@ func shLimitCommands(l limits.T) []string {
 		// (in kilobytes)
 		commands = append(commands, "ulimit -m "+fmt.Sprintf("%d", l.LimitRss/1024))
 	}
-	return commands
+	return strings.Join(commands, " && ")
 }

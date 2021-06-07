@@ -3,37 +3,42 @@ package xexec
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/util/limits"
+	"os/exec"
+	"runtime"
+	"syscall"
 	"testing"
 )
 
-func TestCommandFromLimits(t *testing.T) {
-	cases := map[string]struct {
-		s            string
-		l            limits.T
-		expectedArgs []string
-	}{
-		"command_with_no_limis": {
-			"/bin/ls foo bar",
-			limits.T{},
-			[]string{"/bin/ls", "foo", "bar"},
-		},
-		"command_with_some_limits": {
-			"/bin/ls foo bar",
-			limits.T{LimitVMem: 2048000, LimitNoFile: 9},
+func TestT_Update(t *testing.T) {
+	t.Run("Update SysProcAttr.Credential from user and group", func(t *testing.T) {
+		cmd := exec.Cmd{}
+		gid := uint32(1)
+		if runtime.GOOS == "solaris" {
+			gid = 12
+		}
+		xCmd := T{}
+		cred, err := Credential("root", "daemon")
+		require.Nil(t, err)
+		xCmd.Credential = cred
+		require.Nil(t, xCmd.Update(&cmd))
+		assert.Equalf(t, uint32(0), cmd.SysProcAttr.Credential.Uid, "invalid Uid")
+		assert.Equalf(t, gid, cmd.SysProcAttr.Credential.Gid, "invalid Gid")
+	})
 
-			[]string{
-				"/bin/sh",
-				"-c",
-				"ulimit -n 9 && ulimit -v 2000 && /bin/ls foo bar",
-			},
-		},
-	}
-	for name := range cases {
-		t.Run(name, func(t *testing.T) {
-			cmd, err := CommandFromLimits(cases[name].l, cases[name].s)
-			require.Nil(t, err)
-			assert.Equal(t, cases[name].expectedArgs, cmd.Args)
-		})
-	}
+	t.Run("Preserve existing SysProcAttr attr", func(t *testing.T) {
+		cmd := exec.Cmd{}
+		cmd.SysProcAttr = &syscall.SysProcAttr{Chroot: "/tmp"}
+		xCmd := T{}
+		cred, err := Credential("root", "")
+		require.Nil(t, err)
+		xCmd.Credential = cred
+		require.Nil(t, xCmd.Update(&cmd))
+		assert.Equalf(t, "/tmp", cmd.SysProcAttr.Chroot, "unexpected change")
+	})
+
+	t.Run("return error when cmd is nil", func(t *testing.T) {
+		var cmd *exec.Cmd
+		xCmd := T{}
+		require.NotNil(t, xCmd.Update(cmd))
+	})
 }

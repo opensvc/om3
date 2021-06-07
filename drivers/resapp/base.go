@@ -25,6 +25,7 @@ type BaseT struct {
 
 func (t BaseT) getEnv() (env []string, err error) {
 	var tempEnv []string
+	// TODO update: OPENSVC_RID, OPENSVC_NAME, OPENSVC_KIND, OPENSVC_ID, OPENSVC_NAMESPACE
 	if len(t.Env) > 0 {
 		env = append(env, t.Env...)
 	}
