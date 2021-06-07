@@ -1,7 +1,6 @@
 package resappforking
 
 import (
-	"context"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -36,23 +35,14 @@ func (t T) Start() (err error) {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
-	var cmd *exec.Cmd
-	timeout := t.GetTimeout("start")
-	if timeout != nil && *timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-		t.Log().Debug().Msgf("ctx: %v", ctx)
-		defer cancel()
-		cmd = exec.CommandContext(ctx, xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	} else {
-		cmd = exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	}
+	cmd := exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
 	if err = xcmd.Update(cmd); err != nil {
 		return
 	}
 	t.Log().Debug().Msg("Starting()")
 	t.Log().Info().Msgf("starting %s", cmd.String())
 	// TODO Create PG
-	err = t.RunOutErr(cmd)
+	err = t.RunOutErr(cmd, "start")
 	if err != nil {
 		return err
 	}
