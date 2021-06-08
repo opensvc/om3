@@ -17,7 +17,7 @@ type (
 
 var (
 	RegexpScope     = regexp.MustCompile(`(@[\w.-_]+)`)
-	RegexpReference = regexp.MustCompile(`({[\w.-_:]+})`)
+	RegexpReference = regexp.MustCompile(`({[\w#.-_:]+})`)
 )
 
 // MarshalJSON marshals the enum as a quoted json string

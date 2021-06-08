@@ -28,7 +28,7 @@ type (
 var (
 	indent              = "    "
 	regexpJSONKey       = regexp.MustCompile(`(".+":)`)
-	regexpJSONReference = regexp.MustCompile(`({[\w.-_:]+})`)
+	regexpJSONReference = regexp.MustCompile(`({[\w.#-_:]+})`)
 	regexpJSONScope     = regexp.MustCompile(`(@.+)(":)`)
 	regexpJSONErrors    = regexp.MustCompile(`(")(down|stdby down|err|error)(")`)
 	regexpJSONOptimal   = regexp.MustCompile(`(")(up|stdby up|ok)(")`)
