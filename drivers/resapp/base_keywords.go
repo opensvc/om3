@@ -8,7 +8,7 @@ import (
 var (
 	BaseKeywords = []keywords.Keyword{
 		{
-			Option:    "timeout", // TODO
+			Option:    "timeout",
 			Attr:      "Timeout",
 			Converter: converters.Duration,
 			Scopable:  true,
@@ -19,7 +19,7 @@ var (
 			Example: "180",
 		},
 		{
-			Option:    "start_timeout", // TODO
+			Option:    "start_timeout",
 			Attr:      "StartTimeout",
 			Converter: converters.Duration,
 			Scopable:  true,
@@ -31,7 +31,7 @@ var (
 			Example: "180",
 		},
 		{
-			Option:    "stop_timeout", // TODO
+			Option:    "stop_timeout",
 			Attr:      "StopTimeout",
 			Converter: converters.Duration,
 			Scopable:  true,

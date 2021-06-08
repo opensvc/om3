@@ -57,7 +57,7 @@ var (
 			Default: "false",
 		},
 		{
-			Option:    "check_timeout", // TODO
+			Option:    "check_timeout",
 			Attr:      "CheckTimeout",
 			Converter: converters.Duration,
 			Scopable:  true,
@@ -69,7 +69,7 @@ var (
 			Example: "180",
 		},
 		{
-			Option:    "info_timeout", // TODO
+			Option:    "info_timeout",
 			Attr:      "InfoTimeout",
 			Converter: converters.Duration,
 			Scopable:  true,
