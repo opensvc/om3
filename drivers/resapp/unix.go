@@ -72,16 +72,7 @@ func (t T) Stop() (err error) {
 	} else if len(xcmd.CmdArgs) == 0 {
 		return
 	}
-	var cmd *exec.Cmd
-	timeout := t.GetTimeout("stop")
-	if timeout != nil && *timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-		t.Log().Debug().Msgf("ctx: %v", ctx)
-		defer cancel()
-		cmd = exec.CommandContext(ctx, xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	} else {
-		cmd = exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	}
+	cmd := exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
 	if err = xcmd.Update(cmd); err != nil {
 		return
 	}
@@ -91,7 +82,7 @@ func (t T) Stop() (err error) {
 		return nil
 	}
 	t.Log().Info().Msgf("running %s", cmd.String())
-	return t.RunOutErr(cmd)
+	return t.RunOutErr(cmd, "stop")
 }
 
 // Status evaluates and display the Resource status and logs
@@ -105,21 +96,12 @@ func (t *T) Status() status.T {
 	} else if len(xcmd.CmdArgs) == 0 {
 		return status.NotApplicable
 	}
-	var cmd *exec.Cmd
-	timeout := t.GetTimeout("check")
-	if timeout != nil && *timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-		t.Log().Debug().Msgf("ctx: %v", ctx)
-		defer cancel()
-		cmd = exec.CommandContext(ctx, xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	} else {
-		cmd = exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	}
+	cmd := exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
 	if err = xcmd.Update(cmd); err != nil {
 		return status.Undef
 	}
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
-	err = cmd.Run()
+	err = t.Run(cmd, "check")
 	if err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
@@ -156,7 +138,38 @@ func (t T) logWarn(r io.Reader, done chan bool) {
 	done <- true
 }
 
-func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
+func (t T) goKillDeadline(cmd *exec.Cmd, action string, done chan bool) func() {
+	timeout := t.GetTimeout(action)
+	if timeout != nil && *timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		go func() {
+			select {
+			case <-ctx.Done():
+				err := ctx.Err()
+				if err == context.DeadlineExceeded && cmd.Process != nil {
+					t.Log().Warn().Msgf("DeadlineExceeded on %ver, killing process %v", action, cmd.Process.Pid)
+					err := cmd.Process.Kill()
+					if err != nil {
+						t.Log().Info().Err(err).Msg("kill proc failed")
+					}
+				} else if err == context.DeadlineExceeded {
+					t.Log().Warn().Err(err).Msgf("DeadlineExceeded on %ver, but cmd.Process is nil, action: %v", action)
+				}
+				done <- true
+			}
+		}()
+		return cancel
+	}
+	return func() {}
+}
+
+func (t T) Run(cmd *exec.Cmd, action string) (err error) {
+	dChan := make(chan bool)
+	defer t.goKillDeadline(cmd, action, dChan)()
+	return cmd.Run()
+}
+
+func (t T) RunOutErr(cmd *exec.Cmd, action string) (err error) {
 	var stdout, stderr io.ReadCloser
 	closer := func(c io.Closer) {
 		_ = c.Close()
@@ -178,14 +191,26 @@ func (t T) RunOutErr(cmd *exec.Cmd) (err error) {
 	if err = cmd.Start(); err != nil {
 		return err
 	}
-	// wait for log watchers done
-	<-infoChan
-	<-errChan
+	killChan := make(chan bool)
+	defer t.goKillDeadline(cmd, action, killChan)()
 
-	if err = cmd.Wait(); err != nil {
-		return err
+	wait := func() error {
+		if err := cmd.Wait(); err != nil {
+			if action != "check" {
+				t.Log().Info().Err(err).Msg("wait exec error")
+			}
+			return err
+		}
+		return nil
 	}
-	return nil
+	// wait for end of log watchers or deadline
+	select {
+	case <-killChan:
+		return wait()
+	case <-infoChan:
+		<-errChan
+		return wait()
+	}
 }
 
 // PrepareXcmd returns xexec.T for action string 's'
