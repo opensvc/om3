@@ -115,6 +115,17 @@ func ModTime(p string) (mtime time.Time) {
 }
 
 //
+// IsPerm returns true if the file current permissions are the same as the target.
+//
+func IsPerm(p string, perm os.FileMode) (bool, error) {
+	currentMode, err := Mode(p)
+	if err != nil {
+		return false, err
+	}
+	return currentMode.Perm() == perm, nil
+}
+
+//
 // IsMode returns true if the file current mode is the same as the target mode.
 //
 func IsMode(p string, mode os.FileMode) (bool, error) {

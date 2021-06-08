@@ -27,7 +27,7 @@ type (
 		Path  string      `json:"path"`
 		User  *user.User  `json:"user"`
 		Group *user.Group `json:"group"`
-		Mode  os.FileMode `json:"perm"`
+		Perm  os.FileMode `json:"perm"`
 		Zone  string      `json:"zone"`
 	}
 )
@@ -70,7 +70,7 @@ func (t T) Manifest() *manifest.T {
 		},
 		{
 			Option:    "perm",
-			Attr:      "Mode",
+			Attr:      "Perm",
 			Scopable:  true,
 			Converter: converters.FileMode,
 			Example:   "1777",
@@ -114,7 +114,7 @@ func (t *T) Status() status.T {
 		return status.Down
 	}
 	ok := t.checkOwnership()
-	ok = ok || t.checkMode()
+	ok = t.checkMode() || ok
 	if !ok {
 		return status.Warn
 	}
@@ -147,7 +147,7 @@ func (t T) create() error {
 		return nil
 	}
 	t.Log().Info().Msgf("create directory %s", p)
-	return os.MkdirAll(p, t.Mode)
+	return os.MkdirAll(p, t.Perm)
 }
 
 func (t *T) checkOwnership() (ok bool) {
@@ -208,26 +208,32 @@ func (t *T) checkMode() (ok bool) {
 	mode, err := file.Mode(p)
 	switch {
 	case err != nil:
-		t.StatusLog().Warn("invalid perm: %s", t.Mode)
+		t.StatusLog().Warn("invalid perm: %s", t.Perm)
 		return false
-	case mode != t.Mode:
-		t.StatusLog().Warn("perm should be %s but is %s", t.Mode, mode)
+	case mode.Perm() != t.Perm:
+		t.StatusLog().Warn("perm should be %s but is %s", t.Perm, mode.Perm())
 		return false
 	}
 	return true
 }
 
+func (t T) mode() os.FileMode {
+	return t.Perm | os.ModeDir
+}
+
 func (t T) setMode() error {
 	p := t.path()
-	v, err := file.IsMode(p, t.Mode)
-	switch {
-	case err != nil:
-		return fmt.Errorf("invalid perm: %s", t.Mode)
-	case v == false:
-		t.Log().Info().Msgf("set %s perm to %s", p, t.Mode)
-		if err := os.Chmod(p, t.Mode); err != nil {
-			return err
-		}
+	currentMode, err := file.Mode(p)
+	if err != nil {
+		return fmt.Errorf("invalid perm: %s", t.Perm)
+	}
+	if currentMode.Perm() == t.Perm {
+		return nil
+	}
+	mode := (currentMode & os.ModeType) | t.Perm
+	t.Log().Info().Msgf("set %s mode to %s", p, mode)
+	if err := os.Chmod(p, mode); err != nil {
+		return err
 	}
 	return nil
 }
