@@ -19,16 +19,17 @@ import (
 const (
 	driverGroup = drivergroup.FS
 	driverName  = "directory"
+	defaultPerm = 0755
 )
 
 type (
 	T struct {
 		resource.T
-		Path  string      `json:"path"`
-		User  *user.User  `json:"user"`
-		Group *user.Group `json:"group"`
-		Perm  os.FileMode `json:"perm"`
-		Zone  string      `json:"zone"`
+		Path  string       `json:"path"`
+		User  *user.User   `json:"user"`
+		Group *user.Group  `json:"group"`
+		Perm  *os.FileMode `json:"perm"`
+		Zone  string       `json:"zone"`
 	}
 )
 
@@ -147,22 +148,31 @@ func (t T) create() error {
 		return nil
 	}
 	t.Log().Info().Msgf("create directory %s", p)
-	return os.MkdirAll(p, t.Perm)
+	var perm os.FileMode
+	if t.Perm != nil {
+		perm = *t.Perm
+	} else {
+		perm = defaultPerm
+	}
+	return os.MkdirAll(p, perm)
 }
 
 func (t *T) checkOwnership() (ok bool) {
 	p := t.path()
+	if t.User == nil && t.Group == nil {
+		return true
+	}
 	uid, gid, err := file.Ownership(p)
 	if err != nil {
 		t.StatusLog().Warn("user lookup error: %s", err)
 		return
 	}
 	ok = true
-	if uid != t.uid() {
+	if t.User != nil && uid != t.uid() {
 		t.StatusLog().Warn("user should be %s (%s) but is %d", t.User.Uid, t.User.Username, uid)
 		ok = false
 	}
-	if gid != t.gid() {
+	if t.Group == nil && gid != t.gid() {
 		t.StatusLog().Warn("group should be %s (%s) but is %d", t.User.Gid, t.Group.Name, gid)
 		ok = false
 	}
@@ -170,6 +180,9 @@ func (t *T) checkOwnership() (ok bool) {
 }
 
 func (t T) setOwnership() error {
+	if t.User == nil && t.Group == nil {
+		return nil
+	}
 	p := t.path()
 	newUID := -1
 	newGID := -1
@@ -194,43 +207,51 @@ func (t T) setOwnership() error {
 }
 
 func (t T) uid() int {
+	if t.User == nil {
+		return -1
+	}
 	i, _ := strconv.Atoi(t.User.Uid)
 	return i
 }
 
 func (t T) gid() int {
+	if t.Group == nil {
+		return -1
+	}
 	i, _ := strconv.Atoi(t.User.Gid)
 	return i
 }
 
 func (t *T) checkMode() (ok bool) {
+	if t.Perm == nil {
+		return true
+	}
 	p := t.path()
 	mode, err := file.Mode(p)
 	switch {
 	case err != nil:
 		t.StatusLog().Warn("invalid perm: %s", t.Perm)
 		return false
-	case mode.Perm() != t.Perm:
+	case mode.Perm() != *t.Perm:
 		t.StatusLog().Warn("perm should be %s but is %s", t.Perm, mode.Perm())
 		return false
 	}
 	return true
 }
 
-func (t T) mode() os.FileMode {
-	return t.Perm | os.ModeDir
-}
-
 func (t T) setMode() error {
+	if t.Perm == nil {
+		return nil
+	}
 	p := t.path()
 	currentMode, err := file.Mode(p)
 	if err != nil {
 		return fmt.Errorf("invalid perm: %s", t.Perm)
 	}
-	if currentMode.Perm() == t.Perm {
+	if currentMode.Perm() == *t.Perm {
 		return nil
 	}
-	mode := (currentMode & os.ModeType) | t.Perm
+	mode := (currentMode & os.ModeType) | *t.Perm
 	t.Log().Info().Msgf("set %s mode to %s", p, mode)
 	if err := os.Chmod(p, mode); err != nil {
 		return err

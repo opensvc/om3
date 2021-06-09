@@ -214,12 +214,13 @@ func (t TFileMode) Convert(s string) (interface{}, error) {
 	return t.convert(s)
 }
 
-func (t TFileMode) convert(s string) (os.FileMode, error) {
+func (t TFileMode) convert(s string) (*os.FileMode, error) {
 	i, err := strconv.ParseInt(s, 8, 32)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return os.FileMode(i), nil
+	mode := os.FileMode(i)
+	return &mode, nil
 }
 
 func (t TFileMode) String() string {
