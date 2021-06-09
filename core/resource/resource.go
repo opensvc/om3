@@ -61,6 +61,7 @@ type (
 		RID() string
 		RSubset() string
 		SetObjectDriver(ObjectDriver)
+		GetObjectDriver() ObjectDriver
 		SetRID(string)
 		StatusLog() *StatusLog
 		TagSet() TagSet
@@ -279,6 +280,11 @@ func (t *T) SetRID(v string) {
 func (t *T) SetObjectDriver(o ObjectDriver) {
 	t.object = o
 	t.log = t.getLogger()
+}
+
+// GetObjectDriver returns the object driver interface set by SetObjectDriver upon configure.
+func (t *T) GetObjectDriver() ObjectDriver {
+	return t.object
 }
 
 func (t *T) getLogger() zerolog.Logger {
