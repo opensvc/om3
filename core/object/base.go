@@ -310,7 +310,11 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 		k := key.New(rid, kw.Option)
 		val, err := t.config.EvalKeywordAs(k, kw, "")
 		if err != nil {
-			return err
+			if kw.Required {
+				return err
+			}
+			t.log.Debug().Msgf("%s keyword eval: %s", k, err)
+			continue
 		}
 		if err := attr.SetValue(r, kw.Attr, val); err != nil {
 			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
