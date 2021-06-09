@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -392,6 +393,7 @@ func (t *Selection) Do(action Action) []ActionResult {
 			defer func() {
 				if r := recover(); r != nil {
 					result.Panic = r
+					fmt.Println(string(debug.Stack()))
 					q <- result
 				}
 			}()
