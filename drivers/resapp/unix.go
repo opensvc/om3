@@ -2,7 +2,6 @@
 
 package resapp
 
-import "C"
 import (
 	"bufio"
 	"context"
@@ -14,11 +13,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/pipelogging"
 	"opensvc.com/opensvc/util/xexec"
 )
 
@@ -92,6 +94,9 @@ func (t *T) Status() status.T {
 	var err error
 	if xcmd, err = t.PrepareXcmd(t.CheckCmd, "status"); err != nil {
 		t.Log().Error().Err(err).Msg("PrepareXcmd")
+		if t.StatusLogKw {
+			t.StatusLog().Error("prepareXcmd %v", err.Error())
+		}
 		return status.Undef
 	} else if len(xcmd.CmdArgs) == 0 {
 		return status.NotApplicable
@@ -101,8 +106,7 @@ func (t *T) Status() status.T {
 		return status.Undef
 	}
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
-	err = t.Run(cmd, "check")
-	if err != nil {
+	if err = t.RunOutErr(cmd, "check"); err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
 	}
@@ -122,38 +126,55 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) logInfo(r io.Reader, done chan bool) {
+func (t *T) statusLogInfo(r io.Reader, done chan bool) {
 	s := bufio.NewScanner(r)
 	for s.Scan() {
-		t.Log().Info().Msgf("| %v", s.Text())
+		t.StatusLog().Info(s.Text())
 	}
 	done <- true
 }
 
-func (t T) logWarn(r io.Reader, done chan bool) {
+func (t *T) statusLogWarn(r io.Reader, done chan bool) {
 	s := bufio.NewScanner(r)
 	for s.Scan() {
-		t.Log().Error().Msgf("| %v", s.Text())
+		t.StatusLog().Warn(s.Text())
 	}
 	done <- true
 }
 
-func (t T) goKillDeadline(cmd *exec.Cmd, action string, done chan bool) func() {
+func (t *T) goKillDeadline(cmd *exec.Cmd, action string, done chan bool) func() {
 	timeout := t.GetTimeout(action)
 	if timeout != nil && *timeout > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 		go func() {
 			select {
 			case <-ctx.Done():
+				var level zerolog.Level
+				switch t.Optional {
+				case true:
+					level = zerolog.WarnLevel
+				default:
+					level = zerolog.ErrorLevel
+				}
 				err := ctx.Err()
-				if err == context.DeadlineExceeded && cmd.Process != nil {
-					t.Log().Warn().Msgf("DeadlineExceeded on %ver, killing process %v", action, cmd.Process.Pid)
-					err := cmd.Process.Kill()
-					if err != nil {
-						t.Log().Info().Err(err).Msg("kill proc failed")
+				if err == context.DeadlineExceeded {
+					if cmd.Process != nil {
+						msg := "DeadlineExceeded on %ver, killing process %v"
+						if action == "check" {
+							t.Log().Debug().Msgf(msg, action, cmd.Process.Pid)
+							if t.StatusLogKw {
+								t.StatusLog().Warn("DeadlineExceeded on checker")
+							}
+						} else {
+							t.Log().WithLevel(level).Msgf(msg, action, cmd.Process.Pid)
+						}
+						err := cmd.Process.Kill()
+						if err != nil {
+							t.Log().Debug().Msg("kill proc failed")
+						}
+					} else {
+						t.Log().WithLevel(level).Err(err).Msgf("DeadlineExceeded on %ver, but cmd.Process is nil", action)
 					}
-				} else if err == context.DeadlineExceeded {
-					t.Log().Warn().Err(err).Msgf("DeadlineExceeded on %ver, but cmd.Process is nil, action: %v", action)
 				}
 				done <- true
 			}
@@ -163,13 +184,7 @@ func (t T) goKillDeadline(cmd *exec.Cmd, action string, done chan bool) func() {
 	return func() {}
 }
 
-func (t T) Run(cmd *exec.Cmd, action string) (err error) {
-	dChan := make(chan bool)
-	defer t.goKillDeadline(cmd, action, dChan)()
-	return cmd.Run()
-}
-
-func (t T) RunOutErr(cmd *exec.Cmd, action string) (err error) {
+func (t *T) RunOutErr(cmd *exec.Cmd, action string) (err error) {
 	var stdout, stderr io.ReadCloser
 	closer := func(c io.Closer) {
 		_ = c.Close()
@@ -185,8 +200,18 @@ func (t T) RunOutErr(cmd *exec.Cmd, action string) (err error) {
 	defer closer(stderr)
 	infoChan := make(chan bool)
 	errChan := make(chan bool)
-	go t.logInfo(stdout, infoChan)
-	go t.logWarn(stderr, errChan)
+	if action == "check" {
+		if t.StatusLogKw {
+			go t.statusLogInfo(stdout, infoChan)
+			go t.statusLogWarn(stderr, errChan)
+		} else {
+			go pipelogging.LogWithPrefix(stdout, infoChan, "| ", t.Log(), zerolog.DebugLevel)
+			go pipelogging.LogWithPrefix(stderr, errChan, "| ", t.Log(), zerolog.DebugLevel)
+		}
+	} else {
+		go pipelogging.LogWithPrefix(stdout, infoChan, "| ", t.Log(), zerolog.InfoLevel)
+		go pipelogging.LogWithPrefix(stderr, errChan, "| ", t.Log(), zerolog.ErrorLevel)
+	}
 
 	if err = cmd.Start(); err != nil {
 		return err
@@ -194,14 +219,11 @@ func (t T) RunOutErr(cmd *exec.Cmd, action string) (err error) {
 	killChan := make(chan bool)
 	defer t.goKillDeadline(cmd, action, killChan)()
 
-	wait := func() error {
-		if err := cmd.Wait(); err != nil {
-			if action != "check" {
-				t.Log().Info().Err(err).Msg("wait exec error")
-			}
-			return err
+	wait := func() (err error) {
+		if err = cmd.Wait(); err != nil {
+			t.Log().Debug().Err(err).Msgf("RunOutErr wait")
 		}
-		return nil
+		return
 	}
 	// wait for end of log watchers or deadline
 	select {
