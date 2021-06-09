@@ -215,6 +215,9 @@ func (t TFileMode) Convert(s string) (interface{}, error) {
 }
 
 func (t TFileMode) convert(s string) (*os.FileMode, error) {
+	if s == "" {
+		return nil, nil
+	}
 	i, err := strconv.ParseInt(s, 8, 32)
 	if err != nil {
 		return nil, err
