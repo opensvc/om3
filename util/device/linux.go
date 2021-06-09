@@ -4,9 +4,11 @@ package device
 
 import (
 	"fmt"
-	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"github.com/yookoala/realpath"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -19,7 +21,11 @@ func (t T) IsReadWrite() (bool, error) {
 }
 
 func (t T) IsReadOnly() (bool, error) {
-	if b, err := file.ReadAll(t.fileRO()); err != nil {
+	p, err := t.sysfsFileRO()
+	if err != nil {
+		return false, err
+	}
+	if b, err := file.ReadAll(p); err != nil {
 		return false, err
 	} else {
 		return strings.TrimSpace(string(b)) == "1", nil
@@ -27,24 +33,38 @@ func (t T) IsReadOnly() (bool, error) {
 }
 
 func (t T) SetReadWrite() error {
-	return t.setRO("0")
+	return t.setRO(false)
 }
 
 func (t T) SetReadOnly() error {
-	return t.setRO("1")
+	return t.setRO(true)
 }
 
-func (t T) fileRO() string {
-	return fmt.Sprintf("/sys/block/%s/ro", t)
-}
-
-func (t T) setRO(s string) error {
-	b := []byte(s)
-	f, err := os.Create(t.fileRO())
+func (t T) sysfsFileRO() (string, error) {
+	canon, err := realpath.Realpath(string(t))
 	if err != nil {
+		return "", err
+	}
+	canon = filepath.Base(canon)
+	return fmt.Sprintf("/sys/block/%s/ro", canon), nil
+}
+
+func (t T) setRO(v bool) error {
+	var action string
+	if v {
+		action = "--setro"
+	} else {
+		action = "--setrw"
+	}
+	cmd := exec.Command("blockdev", action, string(t))
+	cmd.Start()
+	if err := cmd.Wait(); err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = f.Write(b)
-	return err
+	exitCode := cmd.ProcessState.ExitCode()
+	if exitCode != 0 {
+		cmdStr := fmt.Sprintf("blockdev %s %s", action, t)
+		return fmt.Errorf("%s returned %d", cmdStr, exitCode)
+	}
+	return nil
 }

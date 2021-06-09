@@ -16,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resfsdir"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
 	filesystem "opensvc.com/opensvc/util/filesystems"
 )
@@ -45,7 +46,7 @@ type (
 		Perm            *os.FileMode   `json:"perm"`
 		SCSIReservation bool           `json:"scsireserv"`
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
-		PromoteRW       bool           `json:"no_preempt_abort"`
+		PromoteRW       bool           `json:"promote_rw"`
 	}
 )
 
@@ -195,6 +196,7 @@ var (
 		KeywordPRKey,
 		KeywordSCSIReservation,
 		KeywordNoPreemptAbort,
+		KeywordPromoteRW,
 		KeywordMKFSOptions,
 		KeywordCreateOptions,
 		KeywordVG,
@@ -222,13 +224,22 @@ var (
 )
 
 func init() {
-	resource.Register(driverGroup, "ext2", New)
-	resource.Register(driverGroup, "ext3", New)
-	resource.Register(driverGroup, "ext4", New)
-	resource.Register(driverGroup, "shm", New)
-	resource.Register(driverGroup, "shmfs", New)
-	resource.Register(driverGroup, "tmpfs", New)
-	resource.Register(driverGroup, "bind", New)
+	resource.Register(driverGroup, "ext", NewF("ext"))
+	resource.Register(driverGroup, "ext2", NewF("ext2"))
+	resource.Register(driverGroup, "ext3", NewF("ext3"))
+	resource.Register(driverGroup, "ext4", NewF("ext4"))
+	resource.Register(driverGroup, "shm", NewF("shm"))
+	resource.Register(driverGroup, "shmfs", NewF("shmfs"))
+	resource.Register(driverGroup, "tmpfs", NewF("tmpfs"))
+	resource.Register(driverGroup, "bind", NewF("bind"))
+}
+
+func NewF(s string) func() resource.Driver {
+	n := func() resource.Driver {
+		t := &T{Type: s}
+		return t
+	}
+	return n
 }
 
 func New() resource.Driver {
@@ -238,7 +249,7 @@ func New() resource.Driver {
 
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName)
+	m := manifest.New(driverGroup, t.Type)
 	m.AddKeyword(KeywordsBase...)
 	return m
 }
@@ -337,6 +348,9 @@ func (t *T) mount() error {
 	if err := t.validateDevice(); err != nil {
 		return err
 	}
+	if err := t.promoteDevicesReadWrite(); err != nil {
+		return err
+	}
 	if err := t.createMountPoint(); err != nil {
 		return err
 	}
@@ -389,6 +403,42 @@ func (t T) isByUUID() bool {
 
 func (t T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
+}
+
+func (t *T) Devices() ([]device.T, error) {
+	l := make([]device.T, 0)
+	fst := t.fsType()
+	if !fst.IsMultiDevice() {
+		d := device.T(t.device())
+		l = append(l, d)
+		return l, nil
+	}
+	return l, fmt.Errorf("TODO: multi dev Devices()")
+}
+
+func (t *T) promoteDevicesReadWrite() error {
+	if !t.PromoteRW {
+		return nil
+	}
+	devices, err := t.Devices()
+	if err != nil {
+		return err
+	}
+	for _, dev := range devices {
+		currentRO, err := dev.IsReadOnly()
+		if err != nil {
+			return err
+		}
+		if !currentRO {
+			t.Log().Debug().Stringer("dev", dev).Msgf("already read-write")
+			continue
+		}
+		t.Log().Info().Stringer("dev", dev).Msgf("promote read-write")
+		if err := dev.SetReadWrite(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t T) fsType() filesystem.T {
