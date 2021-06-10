@@ -1,6 +1,11 @@
 package filesystem
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+
+	"opensvc.com/opensvc/util/device"
+)
 
 type (
 	T struct {
@@ -9,6 +14,14 @@ type (
 		isMultiDevice bool
 		isFileBacked  bool
 		isVirtual     bool
+		fsck          func(s string) error
+		canFSCK       func() error
+		isFormated    func(s string) (bool, error)
+		mkfs          func(s string) error
+	}
+
+	deviceLister interface {
+		Devices() ([]device.T, error)
 	}
 )
 
@@ -17,13 +30,9 @@ var (
 	T_ShmFS     T = T{name: "shmfs", isVirtual: true}
 	T_TmpFS     T = T{name: "tmpfs", isVirtual: true}
 	T_None      T = T{name: "none", isVirtual: true}
-	T_Bind      T = T{name: "ext", isFileBacked: true}
-	T_LoFS      T = T{name: "ext", isFileBacked: true}
+	T_Bind      T = T{name: "bind", isFileBacked: true}
+	T_LoFS      T = T{name: "lofs", isFileBacked: true}
 	T_Ext       T = T{name: "ext"}
-	T_Ext2      T = T{name: "ext2"}
-	T_Ext3      T = T{name: "ext3"}
-	T_Ext4      T = T{name: "ext4"}
-	T_XFS       T = T{name: "xfs"}
 	T_AdvFS     T = T{name: "btrfs", isMultiDevice: true}
 	T_BtrFS     T = T{name: "btrfs", isMultiDevice: true}
 	T_ZFS       T = T{name: "zfs", isMultiDevice: true}
@@ -146,6 +155,56 @@ func (t T) IsFileBacked() bool {
 
 func (t T) IsMultiDevice() bool {
 	return t.isMultiDevice
+}
+
+func (t T) CanFSCK() error {
+	if t.canFSCK == nil {
+		return nil
+	}
+	return t.canFSCK()
+}
+
+func (t T) HasFSCK() bool {
+	return t.fsck != nil
+}
+
+func (t T) FSCK(dl deviceLister) error {
+	if !t.HasFSCK() {
+		return nil
+	}
+	devices, err := dl.Devices()
+	if err != nil {
+		return err
+	}
+	for _, dev := range devices {
+		if err := t.fsck(dev.String()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t T) IsFormated(dl deviceLister) (bool, error) {
+	if t.isFormated == nil {
+		return false, errors.New("isFormated is not implemented")
+	}
+	devices, err := dl.Devices()
+	if err != nil {
+		return false, err
+	}
+	if len(devices) == 0 {
+		return false, errors.New("no devices")
+	}
+	for _, dev := range devices {
+		v, err := t.isFormated(dev.String())
+		if err != nil {
+			return false, err
+		}
+		if !v {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func FromType(s string) T {

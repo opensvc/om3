@@ -224,14 +224,58 @@ var (
 )
 
 func init() {
+	resource.Register(driverGroup, "shm", NewF("shm"))
+	resource.Register(driverGroup, "shmfs", NewF("shmfs"))
+	resource.Register(driverGroup, "tmpfs", NewF("tmpfs"))
+	resource.Register(driverGroup, "none", NewF("none"))
+	resource.Register(driverGroup, "bind", NewF("bind"))
+	resource.Register(driverGroup, "lofs", NewF("lofs"))
 	resource.Register(driverGroup, "ext", NewF("ext"))
 	resource.Register(driverGroup, "ext2", NewF("ext2"))
 	resource.Register(driverGroup, "ext3", NewF("ext3"))
 	resource.Register(driverGroup, "ext4", NewF("ext4"))
-	resource.Register(driverGroup, "shm", NewF("shm"))
-	resource.Register(driverGroup, "shmfs", NewF("shmfs"))
-	resource.Register(driverGroup, "tmpfs", NewF("tmpfs"))
-	resource.Register(driverGroup, "bind", NewF("bind"))
+	resource.Register(driverGroup, "xfs", NewF("xfs"))
+	resource.Register(driverGroup, "btrfs", NewF("btrfs"))
+	resource.Register(driverGroup, "advfs", NewF("advfs"))
+	resource.Register(driverGroup, "zfs", NewF("zfs"))
+	resource.Register(driverGroup, "vfat", NewF("vfat"))
+	resource.Register(driverGroup, "reiserfs", NewF("reiserfs"))
+	resource.Register(driverGroup, "jfs", NewF("jfs"))
+	resource.Register(driverGroup, "jfs2", NewF("jfs2"))
+	resource.Register(driverGroup, "bfs", NewF("bfs"))
+	resource.Register(driverGroup, "msdos", NewF("msdos"))
+	resource.Register(driverGroup, "ufs", NewF("ufs"))
+	resource.Register(driverGroup, "ufs2", NewF("ufs2"))
+	resource.Register(driverGroup, "minix", NewF("minix"))
+	resource.Register(driverGroup, "xia", NewF("xia"))
+	resource.Register(driverGroup, "umsdos", NewF("umsdos"))
+	resource.Register(driverGroup, "hpfs", NewF("hpfs"))
+	resource.Register(driverGroup, "ntfs", NewF("ntfs"))
+	resource.Register(driverGroup, "reiserfs4", NewF("reiserfs4"))
+	resource.Register(driverGroup, "vxfs", NewF("vxfs"))
+	resource.Register(driverGroup, "hfs", NewF("hfs"))
+	resource.Register(driverGroup, "hfsplus", NewF("hfsplus"))
+	resource.Register(driverGroup, "qnx4", NewF("qnx4"))
+	resource.Register(driverGroup, "ocfs", NewF("ocfs"))
+	resource.Register(driverGroup, "ocfs2", NewF("ocfs2"))
+	resource.Register(driverGroup, "nilfs", NewF("nilfs"))
+	resource.Register(driverGroup, "jffs", NewF("jffs"))
+	resource.Register(driverGroup, "jffs2", NewF("jffs2"))
+	resource.Register(driverGroup, "tux3", NewF("tux3"))
+	resource.Register(driverGroup, "f2fs", NewF("f2fs"))
+	resource.Register(driverGroup, "logfs", NewF("logfs"))
+	resource.Register(driverGroup, "gfs", NewF("gfs"))
+	resource.Register(driverGroup, "gfs2", NewF("gfs2"))
+	resource.Register(driverGroup, "nfs", NewF("nfs"))
+	resource.Register(driverGroup, "nfs4", NewF("nfs4"))
+	resource.Register(driverGroup, "smbfs", NewF("smbfs"))
+	resource.Register(driverGroup, "cifs", NewF("cifs"))
+	resource.Register(driverGroup, "9pfs", NewF("9pfs"))
+	resource.Register(driverGroup, "gpfs", NewF("gpfs"))
+	resource.Register(driverGroup, "afs", NewF("afs"))
+	resource.Register(driverGroup, "ncpfs", NewF("ncpfs"))
+	resource.Register(driverGroup, "glusterfs", NewF("glusterfs"))
+	resource.Register(driverGroup, "cephfs", NewF("cephfs"))
 }
 
 func NewF(s string) func() resource.Driver {
@@ -354,6 +398,9 @@ func (t *T) mount() error {
 	if err := t.createMountPoint(); err != nil {
 		return err
 	}
+	if err := t.fsck(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -443,4 +490,17 @@ func (t *T) promoteDevicesReadWrite() error {
 
 func (t T) fsType() filesystem.T {
 	return filesystem.FromType(t.Type)
+}
+
+func (t *T) fsck() error {
+	fst := t.fsType()
+	if !fst.HasFSCK() {
+		t.Log().Debug().Msgf("skip fsck, not implemented for type %s", fst)
+		return nil
+	}
+	if err := fst.CanFSCK(); err != nil {
+		t.Log().Warn().Msgf("skip fsck: %s", err)
+		return nil
+	}
+	return fst.FSCK(t)
 }
