@@ -177,13 +177,6 @@ func (c *Cmd) Start() (err error) {
 			c.done <- true
 		})
 	}
-	if len(c.goroutine) > 0 {
-		c.done = make(chan bool, len(c.goroutine))
-		for _, f := range c.goroutine {
-			go f()
-		}
-	}
-
 	log.Debug().Str("cmd", cmd.String()).Msg("cmd.Start()")
 	if err = cmd.Start(); err != nil {
 		log.Debug().Err(err).Msgf("cmd.Start() %v,", cmd)

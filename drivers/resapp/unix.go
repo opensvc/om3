@@ -53,6 +53,21 @@ type T struct {
 	LimitVMem    *int64         `json:"limit_vmem"`
 }
 
+type LoggerCheck struct {
+	*xexec.LoggerExec
+	R *T
+}
+
+func (w LoggerCheck) DoOut(s xexec.Bytetexter, pid int) {
+	w.LoggerExec.DoOut(s, pid)
+	w.R.StatusLog().Info(s.Text())
+}
+
+func (w LoggerCheck) DoErr(s xexec.Bytetexter, pid int) {
+	w.LoggerExec.DoErr(s, pid)
+	w.R.StatusLog().Warn(s.Text())
+}
+
 func (t T) SortKey() string {
 	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
 		return t.StartCmd + " " + t.RID()
@@ -83,8 +98,27 @@ func (t T) Stop() (err error) {
 		t.Log().Info().Msg("already down")
 		return nil
 	}
+	c := xexec.NewCmd(t.Log(), cmd, xexec.NewLoggerExec(t.Log(), zerolog.InfoLevel, zerolog.WarnLevel))
+	if timeout := t.GetTimeout("stop"); timeout > 0 {
+		c.SetDuration(timeout)
+	}
 	t.Log().Info().Msgf("running %s", cmd.String())
-	return t.RunOutErr(cmd, "stop")
+	if err = c.Start(); err != nil {
+		return err
+	}
+	return c.Wait()
+}
+
+type msg struct {
+	text string
+}
+
+func (m msg) Text() string {
+	return m.text
+}
+
+func (m msg) Bytes() []byte {
+	return []byte(m.text)
 }
 
 // Status evaluates and display the Resource status and logs
@@ -105,8 +139,22 @@ func (t *T) Status() status.T {
 	if err = xcmd.Update(cmd); err != nil {
 		return status.Undef
 	}
+	var watcher interface{}
+	defaultWatcher := xexec.NewLoggerExec(t.Log(), zerolog.DebugLevel, zerolog.DebugLevel)
+	if t.StatusLogKw {
+		watcher = &LoggerCheck{LoggerExec: defaultWatcher, R: t}
+	} else {
+		watcher = defaultWatcher
+	}
+	c := xexec.NewCmd(t.Log(), cmd, watcher)
+	if timeout := t.GetTimeout("check"); timeout > 0 {
+		c.SetDuration(timeout)
+	}
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
-	if err = t.RunOutErr(cmd, "check"); err != nil {
+	if err = c.Start(); err != nil {
+		return status.Undef
+	}
+	if err = c.Wait(); err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
 	}
@@ -143,9 +191,8 @@ func (t *T) statusLogWarn(r io.Reader, done chan bool) {
 }
 
 func (t *T) goKillDeadline(cmd *exec.Cmd, action string, done chan bool) func() {
-	timeout := t.GetTimeout(action)
-	if timeout != nil && *timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	if timeout := t.GetTimeout(action); timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		go func() {
 			select {
 			case <-ctx.Done():
@@ -340,7 +387,7 @@ func isSequenceNumber(s string) bool {
 	return false
 }
 
-func (t T) GetTimeout(action string) *time.Duration {
+func (t T) GetTimeout(action string) time.Duration {
 	var timeout *time.Duration
 	switch action {
 	case "start":
@@ -356,7 +403,7 @@ func (t T) GetTimeout(action string) *time.Duration {
 		timeout = t.Timeout
 	}
 	if timeout == nil {
-		return nil
+		return 0
 	}
-	return timeout
+	return *timeout
 }
