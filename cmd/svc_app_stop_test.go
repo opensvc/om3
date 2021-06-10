@@ -133,7 +133,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"svcappforking", "stop", "--local"}
+		args := []string{"svcappforking", "stop", "--local", "--colorlog", "no"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
@@ -171,7 +171,7 @@ func TestAppStop(t *testing.T) {
 		}
 		require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '%v'", string(out))
 		}
 	})
 
@@ -182,9 +182,9 @@ func TestAppStop(t *testing.T) {
 		cmd.Env = append(os.Environ(), "TC_NAME="+name)
 		out, _ := cmd.CombinedOutput()
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '%v'", string(out))
+			assert.Containsf(t, string(out), "err=\""+expected, "got: '%v'", string(out))
 			for _, line := range strings.Split(string(out), "\n") {
-				if strings.Contains(line, "| "+expected) {
+				if strings.Contains(line, "out="+expected) {
 					assert.Containsf(t, line, "ERR", "stderr output line not logged with error level")
 				}
 			}
@@ -208,7 +208,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 
@@ -220,7 +220,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 
@@ -232,7 +232,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, "got: %s", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 
@@ -314,7 +314,7 @@ func TestAppStop(t *testing.T) {
 			}
 			require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
 			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-				assert.Containsf(t, string(out), "| "+expected, "got: '%v'", string(out))
+				assert.Containsf(t, string(out), "out="+expected, "got: '%v'", string(out))
 			}
 		})
 	}
@@ -335,7 +335,7 @@ func TestAppStop(t *testing.T) {
 			}
 			require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
 			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-				assert.NotContainsf(t, string(out), "| "+expected, "got: '%v'", string(out))
+				assert.NotContainsf(t, string(out), "out="+expected, "got: '%v'", string(out))
 			}
 		})
 	}
@@ -390,7 +390,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 
@@ -405,7 +405,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 
@@ -420,7 +420,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 
@@ -435,7 +435,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, "got '%v'", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "| "+expected, "got: '\n%v'", string(out))
+			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
 		}
 	})
 }
@@ -510,7 +510,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--local"}
+		args := []string{"svcapp", "stop", "--local", "--colorlog=no"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
@@ -541,10 +541,10 @@ func TestAppStopComplexCommand(t *testing.T) {
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
 			for _, expected := range cases[name].Expected {
-				assert.Containsf(t, string(out), "| "+expected, "got:\n%v", string(out))
+				assert.Containsf(t, string(out), "out="+expected, "got:\n%v", string(out))
 			}
 			for _, notExpected := range cases[name].NotExpected {
-				assert.NotContainsf(t, string(out), "| "+notExpected, "got:\n%v", string(out))
+				assert.NotContainsf(t, string(out), "out="+notExpected, "got:\n%v", string(out))
 			}
 		})
 	}
@@ -567,7 +567,7 @@ func TestAppStopLimit(t *testing.T) {
 		"solaris": {"limit_memlock", "limit_nproc"},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
+		args := []string{"svcapp", "stop", "--local", "--colorlog=no", "--rid", "app#" + name}
 		return args
 	}
 
@@ -604,7 +604,7 @@ func TestAppStopLimit(t *testing.T) {
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
 			for _, expected := range cases[name] {
-				assert.Containsf(t, string(out), "| "+expected, "got:\n%v", string(out))
+				assert.Containsf(t, string(out), "out="+expected, "got:\n%v", string(out))
 			}
 		})
 	}
@@ -649,7 +649,6 @@ func TestAppStopTimeout(t *testing.T) {
 			if cases[name] {
 				require.Nilf(t, err, "expected succeed, got '%v'", string(out))
 			} else {
-
 				require.NotNil(t, err, "  expected failure, got '%v'", string(out))
 			}
 		})
