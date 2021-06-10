@@ -1,33 +1,9 @@
-package filesystem
+package filesystems
 
 import (
 	"errors"
 	"fmt"
 	"os/exec"
-)
-
-var (
-	T_Ext2 T = T{
-		name:       "ext2",
-		fsck:       extFSCK,
-		canFSCK:    extCanFSCK,
-		mkfs:       ext2MKFS,
-		isFormated: extIsFormated,
-	}
-	T_Ext3 T = T{
-		name:       "ext3",
-		fsck:       extFSCK,
-		canFSCK:    extCanFSCK,
-		mkfs:       ext3MKFS,
-		isFormated: extIsFormated,
-	}
-	T_Ext4 T = T{
-		name:       "ext4",
-		fsck:       extFSCK,
-		canFSCK:    extCanFSCK,
-		mkfs:       ext4MKFS,
-		isFormated: extIsFormated,
-	}
 )
 
 func extCanFSCK() error {
@@ -70,18 +46,6 @@ func extIsFormated(s string) (bool, error) {
 	default:
 		return false, nil
 	}
-}
-
-func ext2MKFS(s string) error {
-	return xMKFS("mkfs.ext2", s)
-}
-
-func ext3MKFS(s string) error {
-	return xMKFS("mkfs.ext3", s)
-}
-
-func ext4MKFS(s string) error {
-	return xMKFS("mkfs.ext3", s)
 }
 
 func xMKFS(x string, s string) error {

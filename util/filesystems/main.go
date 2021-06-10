@@ -1,144 +1,112 @@
-package filesystem
+package filesystems
 
 import (
 	"errors"
-	"fmt"
 
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/xmap"
 )
 
 type (
 	T struct {
-		name          string
+		fsType        string
 		isNetworked   bool
 		isMultiDevice bool
 		isFileBacked  bool
 		isVirtual     bool
-		fsck          func(s string) error
-		canFSCK       func() error
-		isFormated    func(s string) (bool, error)
-		mkfs          func(s string) error
 	}
 
 	deviceLister interface {
 		Devices() ([]device.T, error)
 	}
+
+	I interface {
+		String() string
+		Type() string
+		IsZero() bool
+		IsNetworked() bool
+		IsVirtual() bool
+		IsFileBacked() bool
+		IsMultiDevice() bool
+	}
+	FSCKer interface {
+		FSCK(string) error
+	}
+	CanFSCKer interface {
+		CanFSCK() error
+	}
+	IsFormateder interface {
+		IsFormated(string) (bool, error)
+	}
 )
 
 var (
-	T_Shm       T = T{name: "shm", isVirtual: true}
-	T_ShmFS     T = T{name: "shmfs", isVirtual: true}
-	T_TmpFS     T = T{name: "tmpfs", isVirtual: true}
-	T_None      T = T{name: "none", isVirtual: true}
-	T_Bind      T = T{name: "bind", isFileBacked: true}
-	T_LoFS      T = T{name: "lofs", isFileBacked: true}
-	T_Ext       T = T{name: "ext"}
-	T_AdvFS     T = T{name: "btrfs", isMultiDevice: true}
-	T_BtrFS     T = T{name: "btrfs", isMultiDevice: true}
-	T_ZFS       T = T{name: "zfs", isMultiDevice: true}
-	T_VFAT      T = T{name: "vfat"}
-	T_ReiserFS  T = T{name: "reiserfs"}
-	T_JFS       T = T{name: "jfs"}
-	T_JFS2      T = T{name: "jfs2"}
-	T_BFS       T = T{name: "bfs"}
-	T_MSDOS     T = T{name: "msdos"}
-	T_UFS       T = T{name: "ufs"}
-	T_UFS2      T = T{name: "ufs2"}
-	T_Minix     T = T{name: "minix"}
-	T_XIA       T = T{name: "xia"}
-	T_UMSDOS    T = T{name: "umsdos"}
-	T_HPFS      T = T{name: "hpfs"}
-	T_NTFS      T = T{name: "ntfs"}
-	T_ReiserFS4 T = T{name: "reiserfs4"}
-	T_VXFS      T = T{name: "vxfs"}
-	T_HFS       T = T{name: "hfs"}
-	T_HFSPlus   T = T{name: "hfsplus"}
-	T_QNX4      T = T{name: "qnx4"}
-	T_OCFS      T = T{name: "ocfs"}
-	T_OCFS2     T = T{name: "ocfs2"}
-	T_NilFS     T = T{name: "nilfs"}
-	T_JFFS      T = T{name: "jffs"}
-	T_JFFS2     T = T{name: "jffs2"}
-	T_Tux3      T = T{name: "tux3"}
-	T_F2FS      T = T{name: "f2fs"}
-	T_LogFS     T = T{name: "logfs"}
-	T_GFS       T = T{name: "gfs"}
-	T_GFS2      T = T{name: "gfs2"}
-	T_NFS       T = T{name: "nfs", isNetworked: true}
-	T_NFS4      T = T{name: "nfs4", isNetworked: true}
-	T_SmbFS     T = T{name: "smbfs", isNetworked: true}
-	T_CIFS      T = T{name: "cifs", isNetworked: true}
-	T_9PFS      T = T{name: "9pfs", isNetworked: true}
-	T_GPFS      T = T{name: "gpfs", isNetworked: true}
-	T_AFS       T = T{name: "afs", isNetworked: true}
-	T_NCPFS     T = T{name: "ncpfs", isNetworked: true}
-	T_GlusterFS T = T{name: "glusterfs", isNetworked: true}
-	T_CephFS    T = T{name: "cephfs", isNetworked: true}
-
-	fromString = map[string]T{
-		"shm":       T_Shm,
-		"shmfs":     T_ShmFS,
-		"tmpfs":     T_TmpFS,
-		"none":      T_None,
-		"bind":      T_Bind,
-		"lofs":      T_LoFS,
-		"ext":       T_Ext,
-		"ext2":      T_Ext2,
-		"ext3":      T_Ext3,
-		"ext4":      T_Ext4,
-		"xfs":       T_XFS,
-		"btrfs":     T_BtrFS,
-		"advfs":     T_AdvFS,
-		"zfs":       T_ZFS,
-		"vfat":      T_VFAT,
-		"reiserfs":  T_ReiserFS,
-		"jfs":       T_JFS,
-		"jfs2":      T_JFS2,
-		"bfs":       T_BFS,
-		"msdos":     T_MSDOS,
-		"ufs":       T_UFS,
-		"ufs2":      T_UFS2,
-		"minix":     T_Minix,
-		"xia":       T_XIA,
-		"umsdos":    T_UMSDOS,
-		"hpfs":      T_HPFS,
-		"ntfs":      T_NTFS,
-		"reiserfs4": T_ReiserFS4,
-		"vxfs":      T_VXFS,
-		"hfs":       T_HFS,
-		"hfsplus":   T_HFSPlus,
-		"qnx4":      T_QNX4,
-		"ocfs":      T_OCFS,
-		"ocfs2":     T_OCFS2,
-		"nilfs":     T_NilFS,
-		"jffs":      T_JFFS,
-		"jffs2":     T_JFFS2,
-		"tux3":      T_Tux3,
-		"f2fs":      T_F2FS,
-		"logfs":     T_LogFS,
-		"gfs":       T_GFS,
-		"gfs2":      T_GFS2,
-		"nfs":       T_NFS,
-		"nfs4":      T_NFS4,
-		"smbfs":     T_SmbFS,
-		"cifs":      T_CIFS,
-		"9pfs":      T_9PFS,
-		"gpfs":      T_GPFS,
-		"afs":       T_AFS,
-		"ncpfs":     T_NCPFS,
-		"glusterfs": T_GlusterFS,
-		"cephfs":    T_CephFS,
-	}
-
-	Converter T
+	db = make(map[string]interface{})
 )
 
+func init() {
+	registerFS(T{fsType: "shm", isVirtual: true})
+	registerFS(T{fsType: "shmfs", isVirtual: true})
+	registerFS(T{fsType: "tmpfs", isVirtual: true})
+	registerFS(T{fsType: "none", isVirtual: true})
+	registerFS(T{fsType: "bind", isFileBacked: true})
+	registerFS(T{fsType: "lofs", isFileBacked: true})
+	registerFS(T{fsType: "btrfs", isMultiDevice: true})
+	registerFS(T{fsType: "zfs", isMultiDevice: true})
+	registerFS(T{fsType: "vfat"})
+	registerFS(T{fsType: "reiserfs"})
+	registerFS(T{fsType: "jfs"})
+	registerFS(T{fsType: "jfs2"})
+	registerFS(T{fsType: "bfs"})
+	registerFS(T{fsType: "msdos"})
+	registerFS(T{fsType: "ufs"})
+	registerFS(T{fsType: "ufs2"})
+	registerFS(T{fsType: "minix"})
+	registerFS(T{fsType: "xia"})
+	registerFS(T{fsType: "umsdos"})
+	registerFS(T{fsType: "hpfs"})
+	registerFS(T{fsType: "ntfs"})
+	registerFS(T{fsType: "reiserfs4"})
+	registerFS(T{fsType: "vxfs"})
+	registerFS(T{fsType: "hfs"})
+	registerFS(T{fsType: "hfsplus"})
+	registerFS(T{fsType: "qnx4"})
+	registerFS(T{fsType: "ocfs"})
+	registerFS(T{fsType: "ocfs2"})
+	registerFS(T{fsType: "nilfs"})
+	registerFS(T{fsType: "jffs"})
+	registerFS(T{fsType: "jffs2"})
+	registerFS(T{fsType: "tux3"})
+	registerFS(T{fsType: "f2fs"})
+	registerFS(T{fsType: "logfs"})
+	registerFS(T{fsType: "gfs"})
+	registerFS(T{fsType: "gfs2"})
+	registerFS(T{fsType: "nfs", isNetworked: true})
+	registerFS(T{fsType: "nfs4", isNetworked: true})
+	registerFS(T{fsType: "smbfs", isNetworked: true})
+	registerFS(T{fsType: "cifs", isNetworked: true})
+	registerFS(T{fsType: "9pfs", isNetworked: true})
+	registerFS(T{fsType: "gpfs", isNetworked: true})
+	registerFS(T{fsType: "afs", isNetworked: true})
+	registerFS(T{fsType: "ncpfs", isNetworked: true})
+	registerFS(T{fsType: "glusterfs", isNetworked: true})
+	registerFS(T{fsType: "cephfs", isNetworked: true})
+}
+
+func registerFS(fs I) {
+	db[fs.Type()] = fs
+}
+
 func (t T) String() string {
-	return t.name
+	return t.fsType
+}
+
+func (t T) Type() string {
+	return t.fsType
 }
 
 func (t T) IsZero() bool {
-	return t.name == ""
+	return t.fsType == ""
 }
 
 func (t T) IsNetworked() bool {
@@ -157,19 +125,22 @@ func (t T) IsMultiDevice() bool {
 	return t.isMultiDevice
 }
 
-func (t T) CanFSCK() error {
-	if t.canFSCK == nil {
+func CanFSCK(fs interface{}) error {
+	if i, ok := fs.(CanFSCKer); !ok {
 		return nil
+	} else {
+		return i.CanFSCK()
 	}
-	return t.canFSCK()
 }
 
-func (t T) HasFSCK() bool {
-	return t.fsck != nil
+func HasFSCK(fs interface{}) bool {
+	_, ok := fs.(FSCKer)
+	return ok
 }
 
-func (t T) FSCK(dl deviceLister) error {
-	if !t.HasFSCK() {
+func DevicesFSCK(fs interface{}, dl deviceLister) error {
+	i, ok := fs.(FSCKer)
+	if !ok {
 		return nil
 	}
 	devices, err := dl.Devices()
@@ -177,15 +148,16 @@ func (t T) FSCK(dl deviceLister) error {
 		return err
 	}
 	for _, dev := range devices {
-		if err := t.fsck(dev.String()); err != nil {
+		if err := i.FSCK(dev.String()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t T) IsFormated(dl deviceLister) (bool, error) {
-	if t.isFormated == nil {
+func DevicesFormated(fs interface{}, dl deviceLister) (bool, error) {
+	i, ok := fs.(IsFormateder)
+	if !ok {
 		return false, errors.New("isFormated is not implemented")
 	}
 	devices, err := dl.Devices()
@@ -196,7 +168,7 @@ func (t T) IsFormated(dl deviceLister) (bool, error) {
 		return false, errors.New("no devices")
 	}
 	for _, dev := range devices {
-		v, err := t.isFormated(dev.String())
+		v, err := i.IsFormated(dev.String())
 		if err != nil {
 			return false, err
 		}
@@ -207,16 +179,13 @@ func (t T) IsFormated(dl deviceLister) (bool, error) {
 	return true, nil
 }
 
-func FromType(s string) T {
-	if t, ok := fromString[s]; ok {
-		return t
+func FromType(s string) I {
+	if t, ok := db[s]; ok {
+		return t.(I)
 	}
 	return T{}
 }
 
-func (t T) Convert(s string) (interface{}, error) {
-	if t, ok := fromString[s]; ok {
-		return t, nil
-	}
-	return T{}, fmt.Errorf("unknown filesystem: %s", s)
+func Types() []string {
+	return xmap.Keys(db)
 }

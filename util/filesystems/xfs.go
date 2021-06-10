@@ -1,4 +1,4 @@
-package filesystem
+package filesystems
 
 import (
 	"errors"
@@ -6,15 +6,22 @@ import (
 	"os/exec"
 )
 
-var (
-	T_XFS T = T{
-		name:       "xfs",
-		mkfs:       xfsMKFS,
-		isFormated: xfsIsFormated,
-	}
+type (
+	T_XFS struct{ T }
 )
 
-func xfsIsFormated(s string) (bool, error) {
+func init() {
+	registerFS(NewXFS())
+}
+
+func NewXFS() *T_XFS {
+	t := T_XFS{
+		T{fsType: "xfs"},
+	}
+	return &t
+}
+
+func (t T) IsFormated(s string) (bool, error) {
 	if _, err := exec.LookPath("xfs_admin"); err != nil {
 		return false, errors.New("xfs_admin not found")
 	}
@@ -30,7 +37,7 @@ func xfsIsFormated(s string) (bool, error) {
 	}
 }
 
-func xfsMKFS(s string) error {
+func (t T_XFS) MKFS(s string) error {
 	if _, err := exec.LookPath("mkfs.xfs"); err != nil {
 		return fmt.Errorf("mkfs.xfs not found")
 	}
