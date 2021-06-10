@@ -19,6 +19,7 @@ import (
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
+	"opensvc.com/opensvc/util/findmnt"
 )
 
 const (
@@ -264,7 +265,21 @@ func (t T) Stop() error {
 }
 
 func (t *T) Status() status.T {
-	return status.NotApplicable
+	if t.Device == "" {
+		t.StatusLog().Info("dev is not defined")
+		return status.NotApplicable
+	}
+	if t.MountPoint == "" {
+		t.StatusLog().Info("mnt is not defined")
+		return status.NotApplicable
+	}
+	if v, err := t.isMounted(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	} else if !v {
+		return status.Down
+	}
+	return status.Up
 }
 
 func (t T) Label() string {
@@ -454,4 +469,8 @@ func (t *T) fsck() error {
 		return nil
 	}
 	return filesystems.DevicesFSCK(fs, t)
+}
+
+func (t *T) isMounted() (bool, error) {
+	return findmnt.Has(t.device(), t.mountPoint())
 }
