@@ -31,7 +31,7 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 			{"warn", "ls: (.*)/no_such_file_line2.test.*No such"},
 		},
 		"withStatusLogAndTimeout": {
-			{"warn", "DeadlineExceeded on checker"},
+			{"warn", "DeadlineExceeded"},
 		},
 	}
 	getCmd := func() []string {

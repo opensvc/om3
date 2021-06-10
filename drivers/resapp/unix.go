@@ -3,10 +3,7 @@
 package resapp
 
 import (
-	"bufio"
-	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +17,6 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/pipelogging"
 	"opensvc.com/opensvc/util/xexec"
 )
 
@@ -53,6 +49,21 @@ type T struct {
 	LimitVMem    *int64         `json:"limit_vmem"`
 }
 
+type LoggerCheck struct {
+	*xexec.LoggerExec
+	R *T
+}
+
+func (w LoggerCheck) DoOut(s xexec.Bytetexter, pid int) {
+	w.LoggerExec.DoOut(s, pid)
+	w.R.StatusLog().Info(s.Text())
+}
+
+func (w LoggerCheck) DoErr(s xexec.Bytetexter, pid int) {
+	w.LoggerExec.DoErr(s, pid)
+	w.R.StatusLog().Warn(s.Text())
+}
+
 func (t T) SortKey() string {
 	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
 		return t.StartCmd + " " + t.RID()
@@ -83,8 +94,15 @@ func (t T) Stop() (err error) {
 		t.Log().Info().Msg("already down")
 		return nil
 	}
+	c := xexec.NewCmd(t.Log(), cmd, xexec.NewLoggerExec(t.Log(), zerolog.InfoLevel, zerolog.WarnLevel))
+	if timeout := t.GetTimeout("stop"); timeout > 0 {
+		c.SetDuration(timeout)
+	}
 	t.Log().Info().Msgf("running %s", cmd.String())
-	return t.RunOutErr(cmd, "stop")
+	if err = c.Start(); err != nil {
+		return err
+	}
+	return c.Wait()
 }
 
 // Status evaluates and display the Resource status and logs
@@ -105,8 +123,22 @@ func (t *T) Status() status.T {
 	if err = xcmd.Update(cmd); err != nil {
 		return status.Undef
 	}
+	var watcher interface{}
+	defaultWatcher := xexec.NewLoggerExec(t.Log(), zerolog.DebugLevel, zerolog.DebugLevel)
+	if t.StatusLogKw {
+		watcher = &LoggerCheck{LoggerExec: defaultWatcher, R: t}
+	} else {
+		watcher = defaultWatcher
+	}
+	c := xexec.NewCmd(t.Log(), cmd, watcher)
+	if timeout := t.GetTimeout("check"); timeout > 0 {
+		c.SetDuration(timeout)
+	}
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
-	if err = t.RunOutErr(cmd, "check"); err != nil {
+	if err = c.Start(); err != nil {
+		return status.Undef
+	}
+	if err = c.Wait(); err != nil {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
 	}
@@ -124,115 +156,6 @@ func (t T) Unprovision() error {
 
 func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
-}
-
-func (t *T) statusLogInfo(r io.Reader, done chan bool) {
-	s := bufio.NewScanner(r)
-	for s.Scan() {
-		t.StatusLog().Info(s.Text())
-	}
-	done <- true
-}
-
-func (t *T) statusLogWarn(r io.Reader, done chan bool) {
-	s := bufio.NewScanner(r)
-	for s.Scan() {
-		t.StatusLog().Warn(s.Text())
-	}
-	done <- true
-}
-
-func (t *T) goKillDeadline(cmd *exec.Cmd, action string, done chan bool) func() {
-	timeout := t.GetTimeout(action)
-	if timeout != nil && *timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-		go func() {
-			select {
-			case <-ctx.Done():
-				var level zerolog.Level
-				switch t.Optional {
-				case true:
-					level = zerolog.WarnLevel
-				default:
-					level = zerolog.ErrorLevel
-				}
-				err := ctx.Err()
-				if err == context.DeadlineExceeded {
-					if cmd.Process != nil {
-						msg := "DeadlineExceeded on %ver, killing process %v"
-						if action == "check" {
-							t.Log().Debug().Msgf(msg, action, cmd.Process.Pid)
-							if t.StatusLogKw {
-								t.StatusLog().Warn("DeadlineExceeded on checker")
-							}
-						} else {
-							t.Log().WithLevel(level).Msgf(msg, action, cmd.Process.Pid)
-						}
-						err := cmd.Process.Kill()
-						if err != nil {
-							t.Log().Debug().Msg("kill proc failed")
-						}
-					} else {
-						t.Log().WithLevel(level).Err(err).Msgf("DeadlineExceeded on %ver, but cmd.Process is nil", action)
-					}
-				}
-				done <- true
-			}
-		}()
-		return cancel
-	}
-	return func() {}
-}
-
-func (t *T) RunOutErr(cmd *exec.Cmd, action string) (err error) {
-	var stdout, stderr io.ReadCloser
-	closer := func(c io.Closer) {
-		_ = c.Close()
-	}
-
-	if stdout, err = cmd.StdoutPipe(); err != nil {
-		return err
-	}
-	defer closer(stdout)
-	if stderr, err = cmd.StderrPipe(); err != nil {
-		return err
-	}
-	defer closer(stderr)
-	infoChan := make(chan bool)
-	errChan := make(chan bool)
-	if action == "check" {
-		if t.StatusLogKw {
-			go t.statusLogInfo(stdout, infoChan)
-			go t.statusLogWarn(stderr, errChan)
-		} else {
-			go pipelogging.LogWithPrefix(stdout, infoChan, "| ", t.Log(), zerolog.DebugLevel)
-			go pipelogging.LogWithPrefix(stderr, errChan, "| ", t.Log(), zerolog.DebugLevel)
-		}
-	} else {
-		go pipelogging.LogWithPrefix(stdout, infoChan, "| ", t.Log(), zerolog.InfoLevel)
-		go pipelogging.LogWithPrefix(stderr, errChan, "| ", t.Log(), zerolog.ErrorLevel)
-	}
-
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	killChan := make(chan bool)
-	defer t.goKillDeadline(cmd, action, killChan)()
-
-	wait := func() (err error) {
-		if err = cmd.Wait(); err != nil {
-			t.Log().Debug().Err(err).Msgf("RunOutErr wait")
-		}
-		return
-	}
-	// wait for end of log watchers or deadline
-	select {
-	case <-killChan:
-		return wait()
-	case <-infoChan:
-		<-errChan
-		return wait()
-	}
 }
 
 // PrepareXcmd returns xexec.T for action string 's'
@@ -340,7 +263,7 @@ func isSequenceNumber(s string) bool {
 	return false
 }
 
-func (t T) GetTimeout(action string) *time.Duration {
+func (t T) GetTimeout(action string) time.Duration {
 	var timeout *time.Duration
 	switch action {
 	case "start":
@@ -356,7 +279,7 @@ func (t T) GetTimeout(action string) *time.Duration {
 		timeout = t.Timeout
 	}
 	if timeout == nil {
-		return nil
+		return 0
 	}
-	return timeout
+	return *timeout
 }

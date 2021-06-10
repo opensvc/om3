@@ -1,6 +1,7 @@
 package resappforking
 
 import (
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -40,13 +41,16 @@ func (t T) Start() (err error) {
 		return
 	}
 	t.Log().Debug().Msg("Starting()")
+	c := xexec.NewCmd(t.Log(), cmd, xexec.NewLoggerExec(t.Log(), zerolog.InfoLevel, zerolog.WarnLevel))
+	if timeout := t.GetTimeout("start"); timeout > 0 {
+		c.SetDuration(timeout)
+	}
 	t.Log().Info().Msgf("starting %s", cmd.String())
 	// TODO Create PG
-	err = t.RunOutErr(cmd, "start")
-	if err != nil {
+	if err = c.Start(); err != nil {
 		return err
 	}
-	return nil
+	return c.Wait()
 }
 
 // Label returns a formatted short description of the Resource
