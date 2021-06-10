@@ -149,14 +149,9 @@ func (c *Cmd) Start() (err error) {
 		c.ctx = ctx
 		c.cancel = cancel
 		c.Log.Info().Msgf("run with duration=%v", ctx)
-		deadLineDone := false
 		c.goroutine = append(c.goroutine, func() {
 			select {
 			case <-ctx.Done():
-				if deadLineDone {
-					return
-				}
-				deadLineDone = true
 				err := ctx.Err()
 				if err == context.DeadlineExceeded {
 
