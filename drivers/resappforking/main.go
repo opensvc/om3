@@ -1,11 +1,12 @@
 package resappforking
 
 import (
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
-	"opensvc.com/opensvc/util/xexec"
-	"os/exec"
+	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 // T is the driver structure.
@@ -24,29 +25,30 @@ func init() {
 // Start the Resource
 func (t T) Start() (err error) {
 	t.Log().Debug().Msg("Start()")
-	var xcmd xexec.T
-	if xcmd, err = t.PrepareXcmd(t.StartCmd, "start"); err != nil {
-		return
-	} else if len(xcmd.CmdArgs) == 0 {
-		return
+
+	var opts []funcopt.O
+	if opts, err = t.GetFuncOpts(t.StartCmd, "start"); err != nil {
+		return err
 	}
+	if len(opts) == 0 {
+		return nil
+	}
+
+	opts = append(opts,
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	cmd := command.New(opts...)
+
 	appStatus := t.Status()
 	if appStatus == status.Up {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
-	cmd := exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	if err = xcmd.Update(cmd); err != nil {
-		return
-	}
-	t.Log().Debug().Msg("Starting()")
-	t.Log().Info().Msgf("starting %s", cmd.String())
-	// TODO Create PG
-	err = t.RunOutErr(cmd, "start")
-	if err != nil {
-		return err
-	}
-	return nil
+
+	t.Log().Info().Msgf("runnning %s", cmd.String())
+	return cmd.Run()
 }
 
 // Label returns a formatted short description of the Resource

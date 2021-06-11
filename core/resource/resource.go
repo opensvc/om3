@@ -18,8 +18,8 @@ import (
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/trigger"
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/timestamp"
-	"opensvc.com/opensvc/util/xexec"
 )
 
 type (
@@ -352,7 +352,7 @@ func formatResourceLabel(r Driver) string {
 }
 
 func (t T) trigger(s string) error {
-	cmd, err := xexec.CommandFromString(s)
+	cmd, err := command.CommandFromString(s)
 	if err != nil {
 		return err
 	}
