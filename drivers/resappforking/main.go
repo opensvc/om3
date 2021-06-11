@@ -5,8 +5,8 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/xexec"
 )
 
 // T is the driver structure.
@@ -35,11 +35,11 @@ func (t T) Start() (err error) {
 	}
 
 	opts = append(opts,
-		xexec.WithLogger(t.Log()),
-		xexec.WithStdoutLogLevel(zerolog.InfoLevel),
-		xexec.WithStderrLogLevel(zerolog.WarnLevel),
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
 	)
-	cmd := xexec.New(opts...)
+	cmd := command.New(opts...)
 
 	appStatus := t.Status()
 	if appStatus == status.Up {

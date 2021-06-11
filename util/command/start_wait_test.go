@@ -1,4 +1,4 @@
-package xexec
+package command
 
 //func TestXcmd(t *testing.T) {
 //	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})

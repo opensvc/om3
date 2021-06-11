@@ -15,9 +15,9 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/xexec"
 )
 
 // T is the driver structure for app unix & linux.
@@ -73,11 +73,11 @@ func (t T) Stop() (err error) {
 	}
 
 	opts = append(opts,
-		xexec.WithLogger(t.Log()),
-		xexec.WithStdoutLogLevel(zerolog.InfoLevel),
-		xexec.WithStderrLogLevel(zerolog.WarnLevel),
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
 	)
-	cmd := xexec.New(opts...)
+	cmd := command.New(opts...)
 
 	appStatus := t.Status()
 	if appStatus == status.Down {
@@ -106,15 +106,15 @@ func (t *T) Status() status.T {
 	}
 
 	opts = append(opts,
-		xexec.WithLogger(t.Log()),
-		xexec.WithStdoutLogLevel(zerolog.Disabled),
-		xexec.WithStderrLogLevel(zerolog.Disabled),
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.Disabled),
+		command.WithStderrLogLevel(zerolog.Disabled),
 	)
 	if t.StatusLogKw {
-		opts = append(opts, xexec.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
-		opts = append(opts, xexec.WithOnStderrLine(func(s string) { t.StatusLog().Warn(s) }))
+		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
+		opts = append(opts, command.WithOnStderrLine(func(s string) { t.StatusLog().Warn(s) }))
 	}
-	cmd := xexec.New(opts...)
+	cmd := command.New(opts...)
 
 	t.Log().Debug().Msgf("Status() running %s", cmd.String())
 	if err = cmd.Start(); err != nil {
@@ -155,12 +155,12 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		t.Log().Debug().Msgf("no basecommand for action '%v'", action)
 		return nil, nil
 	}
-	limitCommands := xexec.ShLimitCommands(t.toLimits())
+	limitCommands := command.ShLimitCommands(t.toLimits())
 	if len(limitCommands) > 0 {
 		baseCommand = limitCommands + " && " + baseCommand
 	}
 	var cmdArgs []string
-	if cmdArgs, err = xexec.CommandArgsFromString(baseCommand); err != nil {
+	if cmdArgs, err = command.CommandArgsFromString(baseCommand); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to CommandArgsFromString for action '%v'", action)
 		return nil, err
 	}
@@ -171,13 +171,13 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		return nil, err
 	}
 	options := []funcopt.O{
-		xexec.WithName(cmdArgs[0]),
-		xexec.WithArgs(cmdArgs[1:]),
-		xexec.WithUser(t.User),
-		xexec.WithGroup(t.Group),
-		xexec.WithCWD(t.Cwd),
-		xexec.WithEnv(env),
-		xexec.WithTimeout(t.GetTimeout(action)),
+		command.WithName(cmdArgs[0]),
+		command.WithArgs(cmdArgs[1:]),
+		command.WithUser(t.User),
+		command.WithGroup(t.Group),
+		command.WithCWD(t.Cwd),
+		command.WithEnv(env),
+		command.WithTimeout(t.GetTimeout(action)),
 	}
 	return options, nil
 }

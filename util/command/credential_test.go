@@ -1,4 +1,4 @@
-package xexec
+package command
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestCredential(t *testing.T) {
 	for _, tc := range cases {
 		name := "user: '" + tc.user + "' group '" + tc.group + "'"
 		t.Run("return error for "+name, func(t *testing.T) {
-			cred, err := Credential(tc.user, tc.group)
+			cred, err := credential(tc.user, tc.group)
 			assert.NotNil(t, err)
 			assert.Nil(t, cred)
 		})

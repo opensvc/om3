@@ -1,14 +1,14 @@
-package xexec
+package command
 
 import (
 	"opensvc.com/opensvc/util/usergroup"
 	"syscall"
 )
 
-// Credential returns *syscall.Credential for 'user' and 'group' string
+// credential returns *syscall.Credential for 'user' and 'group' string
 // with associated Uid and Gid.
 // when 'user' or 'group' are zero value then nil value is returned
-func Credential(user, group string) (*syscall.Credential, error) {
+func credential(user, group string) (*syscall.Credential, error) {
 	cred := syscall.Credential{}
 	var needCred bool
 	if user != "" {

@@ -4,8 +4,8 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/xexec"
 )
 
 // T is the driver structure.
@@ -38,8 +38,8 @@ func (t T) Start() (err error) {
 		return nil
 	}
 
-	opts = append(opts, xexec.WithLogger(t.Log()))
-	cmd := xexec.New(opts...)
+	opts = append(opts, command.WithLogger(t.Log()))
+	cmd := command.New(opts...)
 	t.Log().Info().Msgf("runnning %s", cmd.String())
 	return cmd.Start()
 }

@@ -1,4 +1,4 @@
-package xexec
+package command
 
 import (
 	"bufio"
@@ -220,7 +220,7 @@ func (t *T) update() error {
 	if len(t.env) > 0 {
 		cmd.Env = append(cmd.Env, t.env...)
 	}
-	if credential, err := Credential(t.user, t.group); err != nil {
+	if credential, err := credential(t.user, t.group); err != nil {
 		t.log.Error().Err(err).Msgf("unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
 		return err
 	} else if credential != nil {

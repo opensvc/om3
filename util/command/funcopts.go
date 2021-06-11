@@ -1,4 +1,4 @@
-package xexec
+package command
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package xexec
+package command
 
 import (
 	"github.com/rs/zerolog"
@@ -11,7 +11,7 @@ import (
 )
 
 func Test_update(t *testing.T) {
-	t.Run("Update SysProcAttr.Credential from user and group", func(t *testing.T) {
+	t.Run("Update SysProcAttr.credential from user and group", func(t *testing.T) {
 		gid := uint32(1)
 		if runtime.GOOS == "solaris" {
 			gid = 12
