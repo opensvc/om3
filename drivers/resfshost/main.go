@@ -261,6 +261,15 @@ func (t T) Start() error {
 }
 
 func (t T) Stop() error {
+	if v, err := t.isMounted(); err != nil {
+		return err
+	} else if !v {
+		t.Log().Info().Msg("already umounted")
+		return nil
+	}
+	if err := t.fs().Umount(t.mountPoint()); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -326,6 +335,11 @@ func (t T) testFile() string {
 	return filepath.Join(t.mountPoint(), ".opensvc")
 }
 
+func (t T) mountOptions() string {
+	// in can we need to mangle options
+	return t.MountOptions
+}
+
 func (t T) mountPoint() string {
 	// add zonepath translation, and cache ?
 	return filepath.Clean(t.MountPoint)
@@ -361,10 +375,19 @@ func (t *T) mount() error {
 	if err := t.promoteDevicesReadWrite(); err != nil {
 		return err
 	}
+	if v, err := t.isMounted(); err != nil {
+		return err
+	} else if v {
+		t.Log().Info().Msg("already mounted")
+		return nil
+	}
 	if err := t.createMountPoint(); err != nil {
 		return err
 	}
 	if err := t.fsck(); err != nil {
+		return err
+	}
+	if err := t.fs().Mount(t.device(), t.mountPoint(), t.mountOptions()); err != nil {
 		return err
 	}
 	return nil

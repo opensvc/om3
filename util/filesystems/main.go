@@ -28,6 +28,8 @@ type (
 		IsVirtual() bool
 		IsFileBacked() bool
 		IsMultiDevice() bool
+		Mount(string, string, string) error
+		Umount(string) error
 	}
 	FSCKer interface {
 		FSCK(string) error
@@ -45,8 +47,6 @@ var (
 )
 
 func init() {
-	registerFS(T{fsType: "shm", isVirtual: true})
-	registerFS(T{fsType: "shmfs", isVirtual: true})
 	registerFS(T{fsType: "tmpfs", isVirtual: true})
 	registerFS(T{fsType: "none", isVirtual: true})
 	registerFS(T{fsType: "bind", isFileBacked: true})
