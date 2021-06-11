@@ -1,6 +1,7 @@
 package xexec
 
 import (
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os/exec"
@@ -9,36 +10,38 @@ import (
 	"testing"
 )
 
-func TestT_Update(t *testing.T) {
+func Test_update(t *testing.T) {
 	t.Run("Update SysProcAttr.Credential from user and group", func(t *testing.T) {
-		cmd := exec.Cmd{}
 		gid := uint32(1)
 		if runtime.GOOS == "solaris" {
 			gid = 12
 		}
-		xCmd := T{}
-		cred, err := Credential("root", "daemon")
-		require.Nil(t, err)
-		xCmd.Credential = cred
-		require.Nil(t, xCmd.Update(&cmd))
-		assert.Equalf(t, uint32(0), cmd.SysProcAttr.Credential.Uid, "invalid Uid")
-		assert.Equalf(t, gid, cmd.SysProcAttr.Credential.Gid, "invalid Gid")
+		cmd := T{
+			cmd:   &exec.Cmd{},
+			user:  "root",
+			group: "daemon",
+		}
+		require.Nil(t, cmd.update())
+		assert.Equalf(t, uint32(0), cmd.cmd.SysProcAttr.Credential.Uid, "invalid Uid")
+		assert.Equalf(t, gid, cmd.cmd.SysProcAttr.Credential.Gid, "invalid Gid")
 	})
 
 	t.Run("Preserve existing SysProcAttr attr", func(t *testing.T) {
 		cmd := exec.Cmd{}
 		cmd.SysProcAttr = &syscall.SysProcAttr{Chroot: "/tmp"}
-		xCmd := T{}
-		cred, err := Credential("root", "")
-		require.Nil(t, err)
-		xCmd.Credential = cred
-		require.Nil(t, xCmd.Update(&cmd))
-		assert.Equalf(t, "/tmp", cmd.SysProcAttr.Chroot, "unexpected change")
+		xCmd := T{
+			cmd:  &cmd,
+			user: "root",
+		}
+		require.Nil(t, xCmd.update())
+		assert.Equalf(t, "/tmp", xCmd.cmd.SysProcAttr.Chroot, "unexpected change")
 	})
+}
 
-	t.Run("return error when cmd is nil", func(t *testing.T) {
-		var cmd *exec.Cmd
-		xCmd := T{}
-		require.NotNil(t, xCmd.Update(cmd))
+func TestNew(t *testing.T) {
+	t.Run("WithLogger", func(t *testing.T) {
+		log := zerolog.Logger{}
+		c := New(WithLogger(&log))
+		assert.Equal(t, &log, c.log)
 	})
 }

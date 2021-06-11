@@ -5,7 +5,6 @@ package resapp
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/xexec"
 )
 
@@ -49,21 +49,6 @@ type T struct {
 	LimitVMem    *int64         `json:"limit_vmem"`
 }
 
-type LoggerCheck struct {
-	*xexec.LoggerExec
-	R *T
-}
-
-func (w LoggerCheck) DoOut(s xexec.Bytetexter, pid int) {
-	w.LoggerExec.DoOut(s, pid)
-	w.R.StatusLog().Info(s.Text())
-}
-
-func (w LoggerCheck) DoErr(s xexec.Bytetexter, pid int) {
-	w.LoggerExec.DoErr(s, pid)
-	w.R.StatusLog().Warn(s.Text())
-}
-
 func (t T) SortKey() string {
 	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
 		return t.StartCmd + " " + t.RID()
@@ -79,62 +64,59 @@ func (t T) Abort() bool {
 // Stop the Resource
 func (t T) Stop() (err error) {
 	t.Log().Debug().Msg("Stop()")
-	var xcmd xexec.T
-	if xcmd, err = t.PrepareXcmd(t.StopCmd, "stop"); err != nil {
-		return
-	} else if len(xcmd.CmdArgs) == 0 {
-		return
+	var opts []funcopt.O
+	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
+		return err
 	}
-	command := exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	if err = xcmd.Update(command); err != nil {
-		return
+	if len(opts) == 0 {
+		return nil
 	}
+
+	opts = append(opts,
+		xexec.WithLogger(t.Log()),
+		xexec.WithStdoutLogLevel(zerolog.InfoLevel),
+		xexec.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	cmd := xexec.New(opts...)
+
 	appStatus := t.Status()
 	if appStatus == status.Down {
 		t.Log().Info().Msg("already down")
 		return nil
 	}
-	cmd := xexec.NewCmd(t.Log(), command, xexec.NewLoggerExec(t.Log(), zerolog.InfoLevel, zerolog.WarnLevel))
-	if timeout := t.GetTimeout("stop"); timeout > 0 {
-		cmd.SetDuration(timeout)
-	}
-	t.Log().Info().Msgf("running %s", command.String())
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	return cmd.Wait()
+
+	t.Log().Info().Msgf("running %s", cmd.String())
+	return cmd.Run()
 }
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status() status.T {
 	t.Log().Debug().Msg("status()")
-	var xcmd xexec.T
+	var opts []funcopt.O
 	var err error
-	if xcmd, err = t.PrepareXcmd(t.CheckCmd, "status"); err != nil {
-		t.Log().Error().Err(err).Msg("PrepareXcmd")
+	if opts, err = t.GetFuncOpts(t.CheckCmd, "check"); err != nil {
+		t.Log().Error().Err(err).Msg("GetFuncOpts")
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepareXcmd %v", err.Error())
 		}
 		return status.Undef
-	} else if len(xcmd.CmdArgs) == 0 {
+	}
+	if len(opts) == 0 {
 		return status.NotApplicable
 	}
-	command := exec.Command(xcmd.CmdArgs[0], xcmd.CmdArgs[1:]...)
-	if err = xcmd.Update(command); err != nil {
-		return status.Undef
-	}
-	var watcher interface{}
-	defaultWatcher := xexec.NewLoggerExec(t.Log(), zerolog.DebugLevel, zerolog.DebugLevel)
+
+	opts = append(opts,
+		xexec.WithLogger(t.Log()),
+		xexec.WithStdoutLogLevel(zerolog.Disabled),
+		xexec.WithStderrLogLevel(zerolog.Disabled),
+	)
 	if t.StatusLogKw {
-		watcher = &LoggerCheck{LoggerExec: defaultWatcher, R: t}
-	} else {
-		watcher = defaultWatcher
+		opts = append(opts, xexec.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
+		opts = append(opts, xexec.WithOnStderrLine(func(s string) { t.StatusLog().Warn(s) }))
 	}
-	cmd := xexec.NewCmd(t.Log(), command, watcher)
-	if timeout := t.GetTimeout("check"); timeout > 0 {
-		cmd.SetDuration(timeout)
-	}
-	t.Log().Debug().Msgf("Status() running %s", command.String())
+	cmd := xexec.New(opts...)
+
+	t.Log().Debug().Msgf("Status() running %s", cmd.String())
 	if err = cmd.Start(); err != nil {
 		return status.Undef
 	}
@@ -158,43 +140,46 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-// PrepareXcmd returns xexec.T for action string 's'
-// It prepare xexec.T CmdArgs for xexec.T.Update(cmd)
-func (t T) PrepareXcmd(s string, action string) (c xexec.T, err error) {
+// GetFuncOpts returns
+func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
+	var err error
 	if len(s) == 0 {
-		t.Log().Debug().Msgf("no command for action '%v'", action)
-		return
+		t.Log().Debug().Msgf("nothing to do for action '%v'", action)
+		return nil, nil
 	}
 	var baseCommand string
 	if baseCommand, err = t.getCmdStringFromBoolRule(s, action); err != nil {
-		return
+		return nil, err
 	}
 	if len(baseCommand) == 0 {
-		t.Log().Debug().Msgf("no command for action '%v'", action)
-		return
+		t.Log().Debug().Msgf("no basecommand for action '%v'", action)
+		return nil, nil
 	}
 	limitCommands := xexec.ShLimitCommands(t.toLimits())
 	if len(limitCommands) > 0 {
 		baseCommand = limitCommands + " && " + baseCommand
 	}
-	if c.CmdArgs, err = xexec.CommandArgsFromString(baseCommand); err != nil {
+	var cmdArgs []string
+	if cmdArgs, err = xexec.CommandArgsFromString(baseCommand); err != nil {
 		t.Log().Error().Err(err).Msgf("unable to CommandArgsFromString for action '%v'", action)
-		return
+		return nil, err
 	}
-	if c.CmdEnv, err = t.getEnv(); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to create command environment for action '%v'", action)
-		return
+	var env []string
+	env, err = t.getEnv()
+	if err != nil {
+		t.Log().Error().Err(err).Msgf("unable to get environment for action '%v'", action)
+		return nil, err
 	}
-	t.Log().Debug().Msgf("env for action '%v': '%v'", action, c.CmdEnv)
-	if c.Credential, err = xexec.Credential(t.User, t.Group); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to set credential from user '%v', group '%v' for action '%v'", t.User, t.Group, action)
-		return
+	options := []funcopt.O{
+		xexec.WithName(cmdArgs[0]),
+		xexec.WithArgs(cmdArgs[1:]),
+		xexec.WithUser(t.User),
+		xexec.WithGroup(t.Group),
+		xexec.WithCWD(t.Cwd),
+		xexec.WithEnv(env),
+		xexec.WithTimeout(t.GetTimeout(action)),
 	}
-	if t.Cwd != "" {
-		t.Log().Debug().Msgf("set command Dir to '%v'", t.Cwd)
-		c.Cwd = t.Cwd
-	}
-	return
+	return options, nil
 }
 
 // getCmdStringFromBoolRule get command string for 'action' using bool rule on 's'

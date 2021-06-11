@@ -3,225 +3,233 @@ package xexec
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"github.com/anmitsu/go-shlex"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"io"
+	"opensvc.com/opensvc/util/funcopt"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 )
 
-// T struct hold attributes that needs to be applied on exec.Cmd by Update func
-type T struct {
-	Cwd        string
-	CmdArgs    []string
-	CmdEnv     []string
-	Credential *syscall.Credential
-}
-
-// Update func set attributes on existing exec.Cmd 'cmd' from T struct settings
-func (t T) Update(cmd *exec.Cmd) error {
-	if cmd == nil {
-		return errors.New("Can't Update nil cmd")
-	}
-	if t.Cwd != "" {
-		cmd.Dir = t.Cwd
-	}
-	if t.Credential != nil {
-		if cmd.SysProcAttr == nil {
-			cmd.SysProcAttr = &syscall.SysProcAttr{}
-		}
-		cmd.SysProcAttr.Credential = t.Credential
-	}
-	if len(t.CmdEnv) > 0 {
-		cmd.Env = append(cmd.Env, t.CmdEnv...)
-	}
-	return nil
-}
-
-// CommandFromString wrapper to exec.Command from a string command 's'
-// When string command 's' contains multiple commands,
-//   exec.Command("/bin/sh", "-c", s)
-// else
-//   exec.Command from shlex.Split(s)
-func CommandFromString(s string) (*exec.Cmd, error) {
-	args, err := commandArgsFromString(s)
-	if err != nil {
-		return nil, err
-	}
-	return exec.Command(args[0], args[1:]...), nil
-}
-
 type (
-	texter interface {
-		Text() string
-	}
-	bytter interface {
-		Bytes() []byte
-	}
-	Bytetexter interface {
-		texter
-		bytter
-	}
-	doOuter interface {
-		DoOut(Bytetexter, int)
-	}
-	doErrer interface {
-		DoErr(Bytetexter, int)
+	T struct {
+		name            string
+		args            []string
+		log             *zerolog.Logger
+		logLevel        zerolog.Level
+		commandLogLevel zerolog.Level
+		stdoutLogLevel  zerolog.Level
+		stderrLogLevel  zerolog.Level
+		bufferStdout    bool
+		bufferStderr    bool
+		user            string
+		group           string
+		cwd             string
+		env             []string
+		cmd             *exec.Cmd
+		label           string
+		timeout         time.Duration
+		onStdoutLine    func(string)
+		onStderrLine    func(string)
+
+		pid             int
+		done            chan string
+		goroutine       []func()
+		cancel          func()
+		ctx             context.Context
+		closeAfterStart []io.Closer
 	}
 )
 
-type Cmd struct {
-	*exec.Cmd
-	Log *zerolog.Logger
-
-	watch     interface{}
-	done      chan bool
-	goroutine []func()
-	ctx       context.Context
-	duration  time.Duration
-	cancel    func()
-	pid       int
+func New(opts ...funcopt.O) *T {
+	t := &T{}
+	_ = funcopt.Apply(t, opts...)
+	return t
 }
 
-// NewCmd Create a helper to call Start() and Wait()
-// with logs.
-func NewCmd(log *zerolog.Logger, cmd *exec.Cmd, watch interface{}) *Cmd {
-	return &Cmd{
-		Log:   log,
-		Cmd:   cmd,
-		watch: watch,
+func (t *T) String() string {
+	return fmt.Sprintf("%v %q", t.name, t.args)
+}
+
+func (t *T) Run() error {
+	if err := t.Start(); err != nil {
+		return err
 	}
+	return t.Wait()
 }
 
-// SetDuration on a Cmd
-func (c *Cmd) SetDuration(d time.Duration) {
-	c.duration = d
-}
-
-// Start is like exec.Cmd Start()
-//
-// When 'watch' is a doOuter, stdout entries are scaned and
-// sent to watch.(DoOouter).DoOut
-//
-// When 'watch' is a doErrer, stderr entries are scaned and
-// sent to watch.(doErrer).Doerr
-//
-func (c *Cmd) Start() (err error) {
-	cmd := c.Cmd
-	log := c.Log
-	watch := c.watch
-	closer := func(c io.Closer) {
-		_ = c.Close()
+// Start
+func (t *T) Start() (err error) {
+	if err = t.valid(); err != nil {
+		return err
 	}
-	if w, ok := watch.(doOuter); ok {
+	cmd := exec.Command(t.name, t.args...)
+	t.cmd = cmd
+	if err = t.update(); err != nil {
+		return err
+	}
+	log := t.log
+	if t.stdoutLogLevel != zerolog.Disabled || t.bufferStdout || t.onStdoutLine != nil {
 		var r io.ReadCloser
 		if r, err = cmd.StdoutPipe(); err != nil {
 			return err
 		}
-		c.goroutine = append(c.goroutine, func() {
-			defer closer(r)
+		t.closeAfterStart = append(t.closeAfterStart, r)
+		t.goroutine = append(t.goroutine, func() {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
-				w.DoOut(s, cmd.Process.Pid)
+				if t.stdoutLogLevel != zerolog.Disabled {
+					log.WithLevel(t.stdoutLogLevel).Str("out", s.Text()).Int("pid", t.pid).Send()
+				}
+				if t.onStdoutLine != nil {
+					t.onStdoutLine(s.Text())
+				}
 			}
-			c.done <- true
+			t.done <- "stdout"
 		})
 	}
-	if w, ok := watch.(doErrer); ok {
+	if t.stderrLogLevel != zerolog.Disabled || t.bufferStderr || t.onStderrLine != nil {
 		var r io.ReadCloser
 		if r, err = cmd.StderrPipe(); err != nil {
 			return err
 		}
-		c.goroutine = append(c.goroutine, func() {
-			defer closer(r)
+		t.closeAfterStart = append(t.closeAfterStart, r)
+		t.goroutine = append(t.goroutine, func() {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
-				w.DoErr(s, cmd.Process.Pid)
+				if t.stderrLogLevel != zerolog.Disabled {
+					log.WithLevel(t.stderrLogLevel).Str("err", s.Text()).Int("pid", t.pid).Send()
+				}
+				if t.onStderrLine != nil {
+					t.onStderrLine(s.Text())
+				}
 			}
-			c.done <- true
+			t.done <- "stderr"
 		})
 	}
-	if c.duration > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), c.duration)
-		c.ctx = ctx
-		c.cancel = cancel
-		c.Log.Debug().Msgf("use context %v", ctx)
-		c.goroutine = append(c.goroutine, func() {
+	if t.timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), t.timeout)
+		t.ctx = ctx
+		t.cancel = cancel
+		if log != nil {
+			log.WithLevel(t.logLevel).Msgf("use context %v", ctx)
+		}
+		t.goroutine = append(t.goroutine, func() {
 			select {
 			case <-ctx.Done():
 				err := ctx.Err()
 				if err == context.DeadlineExceeded {
-
-					if w, ok := watch.(doErrer); ok {
-						w.DoErr(msg{"DeadlineExceeded"}, cmd.Process.Pid)
-					}
-					if cmd.Process != nil {
-						c.Log.Debug().Err(err).Str("cmd", cmd.String()).Int("pid", cmd.Process.Pid).Msg("DeadlineExceeded")
-						err := cmd.Process.Kill()
-						if err != nil {
-							c.Log.Debug().Msg("kill proc failed")
+					if cmd.Process == nil {
+						if log != nil {
+							log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Msg("DeadlineExceeded, but cmd.Process is nil")
 						}
-					} else {
-						c.Log.Debug().Err(err).Msgf("DeadlineExceeded, but cmd.Process is nil")
+						// don't need to wait on other go routines
+						for i := 0; i < len(t.goroutine); i++ {
+							t.done <- "ctx"
+						}
+						return
+					}
+					if t.onStderrLine != nil {
+						t.onStderrLine("DeadlineExceeded")
+					}
+					if t.stderrLogLevel != zerolog.Disabled {
+						log.WithLevel(t.stderrLogLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Send()
+					} else if t.log != nil {
+						log.WithLevel(t.logLevel).Str("err", "DeadlineExceeded").Int("pid", t.pid).Send()
+					}
+					if log != nil {
+						log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msg("kill DeadlineExceeded pid")
+					}
+					err := cmd.Process.Kill()
+					if err != nil && log != nil {
+						log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("pid", t.pid).Msg("kill DeadlineExceeded pid failed")
 					}
 				}
 			}
-			c.done <- true
+			// don't need to wait on other go routines
+			for i := 0; i < len(t.goroutine); i++ {
+				t.done <- "ctx"
+			}
 		})
 	}
-	log.Debug().Str("cmd", cmd.String()).Msg("cmd.Start()")
+	if t.commandLogLevel != zerolog.Disabled {
+		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("cmd.Start()")
+	}
+	if log != nil {
+		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Msg("cmd.Start()")
+	}
 	if err = cmd.Start(); err != nil {
-		log.Debug().Err(err).Msgf("cmd.Start() %v,", cmd)
+		if log != nil {
+			log.WithLevel(t.logLevel).Err(err).Msgf("cmd.Start() %v,", cmd)
+		}
 		return err
 	}
 
-	if len(c.goroutine) > 0 {
-		c.done = make(chan bool, len(c.goroutine))
-		for _, f := range c.goroutine {
+	if len(t.goroutine) > 0 {
+		t.done = make(chan string, len(t.goroutine))
+		for _, f := range t.goroutine {
 			go f()
 		}
 	}
 	return nil
 }
 
-func (c *Cmd) Wait() error {
-	waitCount := len(c.goroutine)
-	if c.cancel != nil {
+func (t *T) Wait() (err error) {
+	waitCount := len(t.goroutine)
+	if t.cancel != nil {
 		waitCount = waitCount - 1
-		defer c.cancel()
+		defer t.cancel()
 	}
+	log := t.log
 	// wait for of goroutines
 	for i := 0; i < waitCount; i++ {
-		<-c.done
+		if log != nil {
+			log.WithLevel(t.logLevel).Msgf("end of goroutine %v", <-t.done)
+		} else {
+			<-t.done
+		}
 	}
 	msg := "cmd.Wait()"
-	cmd := c.Cmd
+	cmd := t.cmd
 	if err := cmd.Wait(); err != nil {
 		cmd.ProcessState.ExitCode()
-		c.Log.Debug().Err(err).Str("cmd", cmd.String()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg(msg)
+		if log != nil {
+			log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg(msg)
+		}
 		return err
 	}
-	c.Log.Debug().Str("cmd", cmd.String()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg(msg)
+	if log != nil {
+		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg(msg)
+	}
 	return nil
 }
 
-type msg struct {
-	text string
-}
-
-func (m msg) Text() string {
-	return m.text
-}
-
-func (m msg) Bytes() []byte {
-	return []byte(m.text)
-}
-
-func CommandArgsFromString(s string) ([]string, error) {
-	return commandArgsFromString(s)
+// Update t.cmd with options
+func (t *T) update() error {
+	cmd := t.cmd
+	if cmd == nil {
+		panic("command.update() called with cmd nil")
+	}
+	if t.cwd != "" {
+		cmd.Dir = t.cwd
+	}
+	if len(t.env) > 0 {
+		cmd.Env = append(cmd.Env, t.env...)
+	}
+	if credential, err := Credential(t.user, t.group); err != nil {
+		t.log.Error().Err(err).Msgf("unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
+		return err
+	} else if credential != nil {
+		if cmd.SysProcAttr == nil {
+			cmd.SysProcAttr = &syscall.SysProcAttr{}
+		}
+		cmd.SysProcAttr.Credential = credential
+	}
+	return nil
 }
 
 func commandArgsFromString(s string) ([]string, error) {
@@ -248,4 +256,21 @@ func commandArgsFromString(s string) ([]string, error) {
 		return nil, errors.New("unexpected empty command args from string")
 	}
 	return sSplit, nil
+}
+
+// CommandFromString wrapper to exec.Command from a string command 's'
+// When string command 's' contains multiple commands,
+//   exec.Command("/bin/sh", "-c", s)
+// else
+//   exec.Command from shlex.Split(s)
+func CommandFromString(s string) (*exec.Cmd, error) {
+	args, err := commandArgsFromString(s)
+	if err != nil {
+		return nil, err
+	}
+	return exec.Command(args[0], args[1:]...), nil
+}
+
+func CommandArgsFromString(s string) ([]string, error) {
+	return commandArgsFromString(s)
 }
