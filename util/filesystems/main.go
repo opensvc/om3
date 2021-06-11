@@ -3,6 +3,7 @@ package filesystems
 import (
 	"errors"
 
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/xmap"
 )
@@ -14,6 +15,7 @@ type (
 		isMultiDevice bool
 		isFileBacked  bool
 		isVirtual     bool
+		log           *zerolog.Logger
 	}
 
 	deviceLister interface {
@@ -30,6 +32,8 @@ type (
 		IsMultiDevice() bool
 		Mount(string, string, string) error
 		Umount(string) error
+		Log() *zerolog.Logger
+		SetLog(*zerolog.Logger)
 	}
 	FSCKer interface {
 		FSCK(string) error
@@ -47,50 +51,50 @@ var (
 )
 
 func init() {
-	registerFS(T{fsType: "tmpfs", isVirtual: true})
-	registerFS(T{fsType: "none", isVirtual: true})
-	registerFS(T{fsType: "bind", isFileBacked: true})
-	registerFS(T{fsType: "lofs", isFileBacked: true})
-	registerFS(T{fsType: "btrfs", isMultiDevice: true})
-	registerFS(T{fsType: "zfs", isMultiDevice: true})
-	registerFS(T{fsType: "vfat"})
-	registerFS(T{fsType: "reiserfs"})
-	registerFS(T{fsType: "jfs"})
-	registerFS(T{fsType: "jfs2"})
-	registerFS(T{fsType: "bfs"})
-	registerFS(T{fsType: "msdos"})
-	registerFS(T{fsType: "ufs"})
-	registerFS(T{fsType: "ufs2"})
-	registerFS(T{fsType: "minix"})
-	registerFS(T{fsType: "xia"})
-	registerFS(T{fsType: "umsdos"})
-	registerFS(T{fsType: "hpfs"})
-	registerFS(T{fsType: "ntfs"})
-	registerFS(T{fsType: "reiserfs4"})
-	registerFS(T{fsType: "vxfs"})
-	registerFS(T{fsType: "hfs"})
-	registerFS(T{fsType: "hfsplus"})
-	registerFS(T{fsType: "qnx4"})
-	registerFS(T{fsType: "ocfs"})
-	registerFS(T{fsType: "ocfs2"})
-	registerFS(T{fsType: "nilfs"})
-	registerFS(T{fsType: "jffs"})
-	registerFS(T{fsType: "jffs2"})
-	registerFS(T{fsType: "tux3"})
-	registerFS(T{fsType: "f2fs"})
-	registerFS(T{fsType: "logfs"})
-	registerFS(T{fsType: "gfs"})
-	registerFS(T{fsType: "gfs2"})
-	registerFS(T{fsType: "nfs", isNetworked: true})
-	registerFS(T{fsType: "nfs4", isNetworked: true})
-	registerFS(T{fsType: "smbfs", isNetworked: true})
-	registerFS(T{fsType: "cifs", isNetworked: true})
-	registerFS(T{fsType: "9pfs", isNetworked: true})
-	registerFS(T{fsType: "gpfs", isNetworked: true})
-	registerFS(T{fsType: "afs", isNetworked: true})
-	registerFS(T{fsType: "ncpfs", isNetworked: true})
-	registerFS(T{fsType: "glusterfs", isNetworked: true})
-	registerFS(T{fsType: "cephfs", isNetworked: true})
+	registerFS(&T{fsType: "tmpfs", isVirtual: true})
+	registerFS(&T{fsType: "none", isVirtual: true})
+	registerFS(&T{fsType: "bind", isFileBacked: true})
+	registerFS(&T{fsType: "lofs", isFileBacked: true})
+	registerFS(&T{fsType: "btrfs", isMultiDevice: true})
+	registerFS(&T{fsType: "zfs", isMultiDevice: true})
+	registerFS(&T{fsType: "vfat"})
+	registerFS(&T{fsType: "reiserfs"})
+	registerFS(&T{fsType: "jfs"})
+	registerFS(&T{fsType: "jfs2"})
+	registerFS(&T{fsType: "bfs"})
+	registerFS(&T{fsType: "msdos"})
+	registerFS(&T{fsType: "ufs"})
+	registerFS(&T{fsType: "ufs2"})
+	registerFS(&T{fsType: "minix"})
+	registerFS(&T{fsType: "xia"})
+	registerFS(&T{fsType: "umsdos"})
+	registerFS(&T{fsType: "hpfs"})
+	registerFS(&T{fsType: "ntfs"})
+	registerFS(&T{fsType: "reiserfs4"})
+	registerFS(&T{fsType: "vxfs"})
+	registerFS(&T{fsType: "hfs"})
+	registerFS(&T{fsType: "hfsplus"})
+	registerFS(&T{fsType: "qnx4"})
+	registerFS(&T{fsType: "ocfs"})
+	registerFS(&T{fsType: "ocfs2"})
+	registerFS(&T{fsType: "nilfs"})
+	registerFS(&T{fsType: "jffs"})
+	registerFS(&T{fsType: "jffs2"})
+	registerFS(&T{fsType: "tux3"})
+	registerFS(&T{fsType: "f2fs"})
+	registerFS(&T{fsType: "logfs"})
+	registerFS(&T{fsType: "gfs"})
+	registerFS(&T{fsType: "gfs2"})
+	registerFS(&T{fsType: "nfs", isNetworked: true})
+	registerFS(&T{fsType: "nfs4", isNetworked: true})
+	registerFS(&T{fsType: "smbfs", isNetworked: true})
+	registerFS(&T{fsType: "cifs", isNetworked: true})
+	registerFS(&T{fsType: "9pfs", isNetworked: true})
+	registerFS(&T{fsType: "gpfs", isNetworked: true})
+	registerFS(&T{fsType: "afs", isNetworked: true})
+	registerFS(&T{fsType: "ncpfs", isNetworked: true})
+	registerFS(&T{fsType: "glusterfs", isNetworked: true})
+	registerFS(&T{fsType: "cephfs", isNetworked: true})
 }
 
 func registerFS(fs I) {
@@ -123,6 +127,14 @@ func (t T) IsFileBacked() bool {
 
 func (t T) IsMultiDevice() bool {
 	return t.isMultiDevice
+}
+
+func (t T) Log() *zerolog.Logger {
+	return t.log
+}
+
+func (t *T) SetLog(log *zerolog.Logger) {
+	t.log = log
 }
 
 func CanFSCK(fs interface{}) error {
@@ -183,7 +195,7 @@ func FromType(s string) I {
 	if t, ok := db[s]; ok {
 		return t.(I)
 	}
-	return T{}
+	return &T{}
 }
 
 func Types() []string {

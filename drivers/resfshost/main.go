@@ -478,7 +478,9 @@ func (t *T) promoteDevicesReadWrite() error {
 }
 
 func (t T) fs() filesystems.I {
-	return filesystems.FromType(t.Type)
+	fs := filesystems.FromType(t.Type)
+	fs.SetLog(t.Log())
+	return fs
 }
 
 func (t *T) fsck() error {

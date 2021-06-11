@@ -4,35 +4,45 @@ package filesystems
 
 import (
 	"fmt"
-	"os/exec"
+	"time"
+
+	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/util/command"
 )
 
 func (t T) Mount(dev string, mnt string, options string) error {
-	/*
-		cmd := xexec.NewVerboseCmd(
-			"mount",
-			xexec.WithArgs("-t", t.Type(), "-o", options, dev, mnt, ...),
-			xexec.WithLogger(t.Log().Str("foo", "bar")),
-		)
-		cmd.Run()
-		exitCode := cmd.ExitCode()
-	*/
-	cmd := exec.Command("mount", "-t", t.Type(), "-o", options, dev, mnt)
-	cmd.Start()
-	cmd.Wait()
-	exitCode := cmd.ProcessState.ExitCode()
-	if cmd.ProcessState.ExitCode() != 0 {
+	timeout, _ := time.ParseDuration("1m")
+	cmd := command.New(
+		command.WithName("mount"),
+		command.WithVarArgs("-t", t.Type(), "-o", options, dev, mnt),
+		command.WithLogger(t.Log()),
+		command.WithTimeout(timeout),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	exitCode := cmd.ExitCode()
+	if exitCode != 0 {
 		return fmt.Errorf("%s exit code %d", cmd, exitCode)
 	}
 	return nil
 }
 
 func (t T) Umount(mnt string) error {
-	cmd := exec.Command("umount", mnt)
-	cmd.Start()
-	cmd.Wait()
-	exitCode := cmd.ProcessState.ExitCode()
-	if cmd.ProcessState.ExitCode() != 0 {
+	timeout, _ := time.ParseDuration("1m")
+	cmd := command.New(
+		command.WithName("umount"),
+		command.WithVarArgs(mnt),
+		command.WithLogger(t.Log()),
+		command.WithTimeout(timeout),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	exitCode := cmd.ExitCode()
+	if exitCode != 0 {
 		return fmt.Errorf("%s exit code %d", cmd, exitCode)
 	}
 	return nil

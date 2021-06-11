@@ -2,9 +2,10 @@ package command
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/funcopt"
-	"time"
 )
 
 // valid ensure T is usable
@@ -35,6 +36,14 @@ func WithName(name string) funcopt.O {
 }
 
 func WithArgs(args []string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.args = args
+		return nil
+	})
+}
+
+func WithVarArgs(args ...string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.args = args

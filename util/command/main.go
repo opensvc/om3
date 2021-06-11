@@ -4,15 +4,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/anmitsu/go-shlex"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"io"
-	"opensvc.com/opensvc/util/funcopt"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/anmitsu/go-shlex"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 type (
@@ -176,6 +177,14 @@ func (t *T) Start() (err error) {
 		}
 	}
 	return nil
+}
+
+func (t *T) Cmd() *exec.Cmd {
+	return t.cmd
+}
+
+func (t *T) ExitCode() int {
+	return t.cmd.ProcessState.ExitCode()
 }
 
 func (t *T) Wait() (err error) {
