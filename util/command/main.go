@@ -169,7 +169,9 @@ func (t *T) Start() (err error) {
 		}
 		return err
 	}
-
+	if cmd.Process != nil {
+		t.pid = cmd.Process.Pid
+	}
 	if len(t.goroutine) > 0 {
 		t.done = make(chan string, len(t.goroutine))
 		for _, f := range t.goroutine {
