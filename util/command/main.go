@@ -38,6 +38,7 @@ type (
 		onStderrLine    func(string)
 
 		pid             int
+		commandString   string
 		done            chan string
 		goroutine       []func()
 		cancel          func()
@@ -53,7 +54,11 @@ func New(opts ...funcopt.O) *T {
 }
 
 func (t *T) String() string {
-	return fmt.Sprintf("%v %q", t.name, t.args)
+	if len(t.commandString) != 0 {
+		return t.commandString
+	}
+	t.commandString = t.toString()
+	return t.commandString
 }
 
 func (t *T) Run() error {
@@ -240,6 +245,7 @@ func (t *T) update() error {
 		}
 		cmd.SysProcAttr.Credential = credential
 	}
+	t.commandString = t.toString()
 	return nil
 }
 
@@ -284,4 +290,15 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 
 func CommandArgsFromString(s string) ([]string, error) {
 	return commandArgsFromString(s)
+}
+
+func (t *T) toString() string {
+	if len(t.args) == 0 {
+		return t.name
+	}
+	args := []string{}
+	for _, arg := range t.args {
+		args = append(args, fmt.Sprintf("%q", arg))
+	}
+	return fmt.Sprintf("%v %s", t.name, strings.Join(args, " "))
 }
