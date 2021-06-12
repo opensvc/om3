@@ -158,14 +158,14 @@ func (t *T) Start() (err error) {
 		})
 	}
 	if t.commandLogLevel != zerolog.Disabled {
-		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("cmd.Start()")
+		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("running")
 	}
 	if log != nil {
-		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Msg("cmd.Start()")
+		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Msg("running")
 	}
 	if err = cmd.Start(); err != nil {
 		if log != nil {
-			log.WithLevel(t.logLevel).Err(err).Msgf("cmd.Start() %v,", cmd)
+			log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("running")
 		}
 		return err
 	}
