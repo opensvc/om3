@@ -56,13 +56,17 @@ func List(dev string, mnt string) ([]MountInfo, error) {
 	}
 	if bind {
 		filtered := newInfo()
-		pattern := fmt.Sprintf("[%s]", mnt)
+		pattern := fmt.Sprintf("[%s]", dev)
 		for _, mi := range data.Filesystems {
+			if mi.Target != mnt {
+				continue
+			}
 			if !strings.Contains(mi.Source, pattern) {
 				continue
 			}
 			filtered.Filesystems = append(filtered.Filesystems, mi)
 		}
+		return filtered.Filesystems, nil
 	}
 	return data.Filesystems, nil
 }
