@@ -38,6 +38,7 @@ type (
 		onStderrLine    func(string)
 
 		pid             int
+		commandString   string
 		done            chan string
 		goroutine       []func()
 		cancel          func()
@@ -53,7 +54,11 @@ func New(opts ...funcopt.O) *T {
 }
 
 func (t *T) String() string {
-	return fmt.Sprintf("%v %q", t.name, t.args)
+	if len(t.commandString) != 0 {
+		return t.commandString
+	}
+	t.commandString = t.toString()
+	return t.commandString
 }
 
 func (t *T) Run() error {
@@ -158,18 +163,20 @@ func (t *T) Start() (err error) {
 		})
 	}
 	if t.commandLogLevel != zerolog.Disabled {
-		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("cmd.Start()")
+		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("running")
 	}
 	if log != nil {
-		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Msg("cmd.Start()")
+		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Msg("running")
 	}
 	if err = cmd.Start(); err != nil {
 		if log != nil {
-			log.WithLevel(t.logLevel).Err(err).Msgf("cmd.Start() %v,", cmd)
+			log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("running")
 		}
 		return err
 	}
-
+	if cmd.Process != nil {
+		t.pid = cmd.Process.Pid
+	}
 	if len(t.goroutine) > 0 {
 		t.done = make(chan string, len(t.goroutine))
 		for _, f := range t.goroutine {
@@ -238,6 +245,7 @@ func (t *T) update() error {
 		}
 		cmd.SysProcAttr.Credential = credential
 	}
+	t.commandString = t.toString()
 	return nil
 }
 
@@ -282,4 +290,15 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 
 func CommandArgsFromString(s string) ([]string, error) {
 	return commandArgsFromString(s)
+}
+
+func (t *T) toString() string {
+	if len(t.args) == 0 {
+		return t.name
+	}
+	args := []string{}
+	for _, arg := range t.args {
+		args = append(args, fmt.Sprintf("%q", arg))
+	}
+	return fmt.Sprintf("%v %s", t.name, strings.Join(args, " "))
 }

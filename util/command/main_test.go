@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -9,6 +10,46 @@ import (
 	"syscall"
 	"testing"
 )
+
+func TestString(t *testing.T) {
+	cases := []struct {
+		Name     string
+		Args     []string
+		Expected string
+	}{
+		{
+			Name:     "",
+			Args:     nil,
+			Expected: "",
+		},
+		{
+			Name:     "/bin/true",
+			Args:     nil,
+			Expected: "/bin/true",
+		},
+		{
+			Name:     "/bin/ls",
+			Args:     []string{"foo", "bar"},
+			Expected: "/bin/ls \"foo\" \"bar\"",
+		},
+		{
+			Name:     "/bin/ls",
+			Args:     []string{"foo bar"},
+			Expected: "/bin/ls \"foo bar\"",
+		},
+		{
+			Name:     "/bin/echo",
+			Args:     []string{"date:", "$(date)"},
+			Expected: "/bin/echo \"date:\" \"$(date)\"",
+		},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("%s %q", c.Name, c.Args), func(t *testing.T) {
+			cmd := T{name: c.Name, args: c.Args}
+			assert.Equal(t, c.Expected, cmd.String())
+		})
+	}
+}
 
 func Test_update(t *testing.T) {
 	t.Run("Update SysProcAttr.credential from user and group", func(t *testing.T) {

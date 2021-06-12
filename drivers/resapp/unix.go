@@ -76,6 +76,7 @@ func (t T) Stop() (err error) {
 		command.WithLogger(t.Log()),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
+		command.WithTimeout(t.GetTimeout("stop")),
 	)
 	cmd := command.New(opts...)
 
@@ -109,6 +110,7 @@ func (t *T) Status() status.T {
 		command.WithLogger(t.Log()),
 		command.WithStdoutLogLevel(zerolog.Disabled),
 		command.WithStderrLogLevel(zerolog.Disabled),
+		command.WithTimeout(t.GetTimeout("check")),
 	)
 	if t.StatusLogKw {
 		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
@@ -177,7 +179,6 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		command.WithGroup(t.Group),
 		command.WithCWD(t.Cwd),
 		command.WithEnv(env),
-		command.WithTimeout(t.GetTimeout(action)),
 	}
 	return options, nil
 }

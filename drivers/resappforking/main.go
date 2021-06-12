@@ -38,6 +38,7 @@ func (t T) Start() (err error) {
 		command.WithLogger(t.Log()),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
+		command.WithTimeout(t.GetTimeout("start")),
 	)
 	cmd := command.New(opts...)
 
