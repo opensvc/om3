@@ -21,8 +21,8 @@ const (
 type (
 	T struct {
 		resdisk.T
-		Name          string   `json:"name"`
-		VG            string   `json:"vg"`
+		LVName        string   `json:"name"`
+		VGName        string   `json:"vg"`
 		Size          *int64   `json:"size"`
 		CreateOptions []string `json:"create_options"`
 	}
@@ -44,7 +44,7 @@ func (t T) Manifest() *manifest.T {
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "name",
-			Attr:     "Name",
+			Attr:     "LVName",
 			Required: true,
 			Scopable: true,
 			Text:     "The name of the logical volume.",
@@ -52,7 +52,7 @@ func (t T) Manifest() *manifest.T {
 		},
 		{
 			Option:   "vg",
-			Attr:     "VG",
+			Attr:     "VGName",
 			Scopable: true,
 			Text:     "The name of the volume group hosting the logical volume.",
 			Example:  "vg1",
@@ -86,13 +86,13 @@ func (t T) Start() error {
 		t.Log().Info().Msgf("%s is already up", t.Label())
 		return nil
 	}
-	return lvm2.LVActivate(t.VG, t.Name, t.Log())
+	return t.lv().Activate()
 }
 
 func (t T) Info() map[string]string {
 	m := make(map[string]string)
-	m["name"] = t.Name
-	m["vg"] = t.VG
+	m["name"] = t.LVName
+	m["vg"] = t.VGName
 	return m
 }
 
@@ -107,11 +107,18 @@ func (t T) Stop() error {
 		return err
 	}
 	udevadm.Settle()
-	return lvm2.LVDeactivate(t.VG, t.Name, t.Log())
+	return t.lv().Deactivate()
+}
+
+func (t T) lv() *lvm2.LV {
+	return lvm2.NewLV(
+		t.VGName, t.LVName,
+		lvm2.WithLogger(t.Log()),
+	)
 }
 
 func (t T) isUp() (bool, error) {
-	return false, nil
+	return t.lv().IsActive()
 }
 
 func (t T) removeHolders() error {
@@ -119,7 +126,7 @@ func (t T) removeHolders() error {
 }
 
 func (t T) fullname() string {
-	return lvm2.FullName(t.VG, t.Name)
+	return t.lv().FullName()
 }
 
 func (t *T) Status() status.T {

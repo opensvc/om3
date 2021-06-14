@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 type (
@@ -30,26 +31,79 @@ type (
 		ConvertPV       string `json:"convert_pv"`
 		MirrorLog       string `json:"mirror_log"`
 	}
+	LV struct {
+		LVName string
+		VGName string
+		log    *zerolog.Logger
+	}
+	LVAttrIndex uint8
+	LVAttrs     string
+	LVAttr      rune
 )
 
-func FullName(vg string, lv string) string {
-	return fmt.Sprintf("%s/%s", vg, lv)
+const (
+	LVAttrIndexType        LVAttrIndex = 0
+	LVAttrIndexPermissions LVAttrIndex = iota
+	LVAttrIndexAllocationPolicy
+	LVAttrIndexAllocationFixedMinor
+	LVAttrIndexState
+	LVAttrIndexDeviceOpen
+	LVAttrIndexTargetType
+	LVAttrIndexZeroDataBlocks
+	LVAttrIndexVolumeHealth
+	LVAttrIndexSkipActivation
+)
+
+const (
+	// State attrs field (index 4)
+	LVAttrStateActive                               LVAttr = 'a'
+	LVAttrStateHistorical                           LVAttr = 'h'
+	LVAttrStateSuspended                            LVAttr = 's'
+	LVAttrStateInvalidSnapshot                      LVAttr = 'I'
+	LVAttrStateSuspendedSnapshot                    LVAttr = 'S'
+	LVAttrStateSnapshotMergeFailed                  LVAttr = 'm'
+	LVAttrStateSuspendedSnapshotMergeFailed         LVAttr = 'M'
+	LVAttrStateMappedDevicePresentWithoutTable      LVAttr = 'd'
+	LVAttrStateMappedDevicePresentWithInactiveTable LVAttr = 'i'
+	LVAttrStateThinPoolCheckNeeded                  LVAttr = 'c'
+	LVAttrStateSuspendedThinPoolCheckNeeded         LVAttr = 'C'
+	LVAttrStateUnknown                              LVAttr = 'X'
+)
+
+func NewLV(vg string, lv string, opts ...funcopt.O) *LV {
+	t := LV{
+		VGName: vg,
+		LVName: lv,
+	}
+	_ = funcopt.Apply(&t, opts...)
+	return &t
+}
+func WithLogger(log *zerolog.Logger) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*LV)
+		t.log = log
+		return nil
+	})
 }
 
-func LVActivate(vg string, lv string, log *zerolog.Logger) error {
-	return lvChange(vg, lv, log, []string{"-ay"})
+func (t LV) FullName() string {
+	return fmt.Sprintf("%s/%s", t.VGName, t.LVName)
 }
 
-func LVDeactivate(vg string, lv string, log *zerolog.Logger) error {
-	return lvChange(vg, lv, log, []string{"-an"})
+func (t *LV) Activate() error {
+	return t.change([]string{"-ay"})
 }
 
-func lvChange(vg string, lv string, log *zerolog.Logger, args []string) error {
-	fullname := FullName(vg, lv)
+func (t *LV) Deactivate() error {
+	return t.change([]string{"-an"})
+}
+
+func (t *LV) change(args []string) error {
+	fullname := t.FullName()
 	cmd := command.New(
 		command.WithName("lvchange"),
 		command.WithArgs(append(args, fullname)),
-		command.WithLogger(log),
+		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -62,16 +116,16 @@ func lvChange(vg string, lv string, log *zerolog.Logger, args []string) error {
 	return nil
 }
 
-func LVAttr(vg string, lv string, log *zerolog.Logger) (*LVInfo, error) {
+func (t *LV) Show() (*LVInfo, error) {
 	data := LVData{}
-	fullname := FullName(vg, lv)
+	fullname := t.FullName()
 	cmd := command.New(
 		command.WithName("lvs"),
-		command.WithVarArgs(fullname),
-		command.WithLogger(log),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
-		command.WithBufferedStdout(),
+		command.WithVarArgs("--reportformat", "json", fullname),
+		command.WithLogger(t.log),
+		//command.WithStdoutLogLevel(zerolog.DebugLevel),
+		//command.WithStderrLogLevel(zerolog.DebugLevel),
+		//command.WithBufferedStdout(),
 	)
 	cmd.Run()
 	b, err := cmd.Cmd().Output()
@@ -85,4 +139,27 @@ func LVAttr(vg string, lv string, log *zerolog.Logger) (*LVInfo, error) {
 		return &data.Report.LV[0], nil
 	}
 	return nil, fmt.Errorf("lv %s not found", fullname)
+}
+
+func (t *LV) Attrs() (LVAttrs, error) {
+	if lvInfo, err := t.Show(); err != nil {
+		return "", err
+	} else {
+		return LVAttrs(lvInfo.LVAttr), nil
+	}
+}
+
+func (t LVAttrs) Attr(index LVAttrIndex) LVAttr {
+	if len(t) < int(index)+1 {
+		return ' '
+	}
+	return LVAttr(t[index])
+}
+
+func (t *LV) IsActive() (bool, error) {
+	if attrs, err := t.Attrs(); err != nil {
+		return false, err
+	} else {
+		return attrs.Attr(LVAttrIndexState) == LVAttrStateActive, nil
+	}
 }
