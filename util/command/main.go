@@ -48,7 +48,12 @@ type (
 )
 
 func New(opts ...funcopt.O) *T {
-	t := &T{}
+	t := &T{
+		stdoutLogLevel:  zerolog.Disabled,
+		stderrLogLevel:  zerolog.Disabled,
+		logLevel:        zerolog.Disabled,
+		commandLogLevel: zerolog.Disabled,
+	}
 	_ = funcopt.Apply(t, opts...)
 	return t
 }
