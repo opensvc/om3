@@ -1,13 +1,11 @@
 package resource
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
@@ -352,50 +350,20 @@ func formatResourceLabel(r Driver) string {
 }
 
 func (t T) trigger(s string) error {
-	cmd, err := command.CmdFromString(s)
+	cmdArgs, err := command.CmdArgsFromString(s)
 	if err != nil {
 		return err
 	}
-	if cmd == nil {
+	if len(cmdArgs) == 0 {
 		return nil
 	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	bufout := bufio.NewReader(stdout)
-	buferr := bufio.NewReader(stderr)
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		for {
-			line, _, _ := bufout.ReadLine()
-			if len(line) == 0 {
-				break
-			}
-			t.log.Info().Msg(string(line))
-		}
-		wg.Done()
-	}()
-	go func() {
-		for {
-			line, _, _ := buferr.ReadLine()
-			if len(line) == 0 {
-				break
-			}
-			t.log.Error().Msg(string(line))
-		}
-		wg.Done()
-	}()
-	wg.Wait()
-	return cmd.Wait()
+	cmd := command.New(
+		command.WithName(cmdArgs[0]),
+		command.WithVarArgs(cmdArgs[1:]...),
+		command.WithLogger(&t.log),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel))
+	return cmd.Run()
 }
 
 func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {

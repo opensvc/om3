@@ -302,19 +302,6 @@ func commandArgsFromString(s string) ([]string, error) {
 	return sSplit, nil
 }
 
-// CmdFromString wrapper to exec.Command from a string command 's'
-// When string command 's' contains multiple commands,
-//   exec.Command("/bin/sh", "-c", s)
-// else
-//   exec.Command from shlex.Split(s)
-func CmdFromString(s string) (*exec.Cmd, error) {
-	args, err := commandArgsFromString(s)
-	if err != nil {
-		return nil, err
-	}
-	return exec.Command(args[0], args[1:]...), nil
-}
-
 // CmdArgsFromString returns args for exec.Command from a string command 's'
 // When string command 's' contains multiple commands,
 //   exec.Command("/bin/sh", "-c", s)
