@@ -292,7 +292,7 @@ func (t *T) Status() status.T {
 }
 
 func (t T) Label() string {
-	s := t.device()
+	s := t.devpath()
 	m := t.mountPoint()
 	if m != "" {
 		s += "@" + m
@@ -314,7 +314,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 
 func (t T) Info() map[string]string {
 	m := make(map[string]string)
-	m["dev"] = t.device()
+	m["dev"] = t.devpath()
 	m["mnt"] = t.mountPoint()
 	m["mnt_opt"] = t.MountOptions
 	return m
@@ -345,7 +345,11 @@ func (t T) mountPoint() string {
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t T) device() string {
+func (t T) device() *device.T {
+	return device.New(t.devpath(), device.WithLogger(t.Log()))
+}
+
+func (t T) devpath() string {
 	// lazy ref
 	switch {
 	case strings.HasPrefix(t.Device, "/"):
@@ -387,7 +391,7 @@ func (t *T) mount() error {
 	if err := t.fsck(); err != nil {
 		return err
 	}
-	if err := t.fs().Mount(t.device(), t.mountPoint(), t.mountOptions()); err != nil {
+	if err := t.fs().Mount(t.devpath(), t.mountPoint(), t.mountOptions()); err != nil {
 		return err
 	}
 	return nil
@@ -441,12 +445,11 @@ func (t T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
-func (t *T) SubDevices() ([]device.T, error) {
-	l := make([]device.T, 0)
+func (t *T) SubDevices() ([]*device.T, error) {
+	l := make([]*device.T, 0)
 	fs := t.fs()
 	if !fs.IsMultiDevice() {
-		d := device.T(t.device())
-		l = append(l, d)
+		l = append(l, t.device())
 		return l, nil
 	}
 	return l, fmt.Errorf("TODO: multi dev SubDevices()")
@@ -497,5 +500,5 @@ func (t *T) fsck() error {
 }
 
 func (t *T) isMounted() (bool, error) {
-	return findmnt.Has(t.device(), t.mountPoint())
+	return findmnt.Has(t.devpath(), t.mountPoint())
 }

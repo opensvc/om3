@@ -1,30 +1,57 @@
 package device
 
-type (
-	T string
+import (
+	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
-func (t T) String() string {
-	return string(t)
+type (
+	T struct {
+		path string
+		log  *zerolog.Logger
+	}
+)
+
+func New(path string, opts ...funcopt.O) *T {
+	t := T{
+		path: path,
+	}
+	_ = funcopt.Apply(&t, opts...)
+	return &t
 }
 
-func (t T) RemoveHolders() error {
-	for _, dev := range t.Holders() {
-		if err := dev.RemoveHolders(); err != nil {
+func WithLogger(log *zerolog.Logger) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.log = log
+		return nil
+	})
+}
+
+func (t T) String() string {
+	return t.path
+}
+
+func (t T) Path() string {
+	return t.path
+}
+
+func (t *T) RemoveHolders() error {
+	return RemoveHolders(t)
+}
+
+func RemoveHolders(head *T) error {
+	holders, err := head.Holders()
+	if err != nil {
+		return err
+	}
+	for _, dev := range holders {
+		if err := RemoveHolders(dev); err != nil {
 			return err
 		}
 		if err := dev.Remove(); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-func (t T) Holders() []T {
-	l := make([]T, 0)
-	return l
-}
-
-func (t T) Remove() error {
 	return nil
 }

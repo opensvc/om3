@@ -160,19 +160,18 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) exposedDevice() device.T {
-	dev := device.T(fmt.Sprintf("/dev/%s", t.fullname()))
-	return device.T(dev)
+func (t T) exposedDevice() *device.T {
+	return device.New(fmt.Sprintf("/dev/%s", t.fullname()), device.WithLogger(t.Log()))
 }
 
-func (t T) ExposedDevices() []device.T {
-	return []device.T{t.exposedDevice()}
+func (t T) ExposedDevices() []*device.T {
+	return []*device.T{t.exposedDevice()}
 }
 
-func (t T) SubDevices() []device.T {
+func (t T) SubDevices() []*device.T {
 	if l, err := t.lv().Devices(); err != nil {
 		t.Log().Debug().Err(err).Msg("")
-		return []device.T{}
+		return []*device.T{}
 	} else {
 		return l
 	}

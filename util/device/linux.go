@@ -4,11 +4,15 @@ package device
 
 import (
 	"fmt"
-	"os/exec"
+	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
+	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
+	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/devicedriver"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -40,13 +44,21 @@ func (t T) SetReadOnly() error {
 	return t.setRO(true)
 }
 
-func (t T) sysfsFileRO() (string, error) {
-	canon, err := realpath.Realpath(string(t))
+func (t T) sysfsFile() (string, error) {
+	canon, err := realpath.Realpath(t.path)
 	if err != nil {
 		return "", err
 	}
 	canon = filepath.Base(canon)
-	return fmt.Sprintf("/sys/block/%s/ro", canon), nil
+	return fmt.Sprintf("/sys/block/%s", canon), nil
+}
+
+func (t T) sysfsFileRO() (string, error) {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/ro", p), nil
 }
 
 func (t T) setRO(v bool) error {
@@ -56,15 +68,85 @@ func (t T) setRO(v bool) error {
 	} else {
 		action = "--setrw"
 	}
-	cmd := exec.Command("blockdev", action, string(t))
-	cmd.Start()
-	if err := cmd.Wait(); err != nil {
+	cmd := command.New(
+		command.WithName("blockdev"),
+		command.WithVarArgs(action, t.path),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
 		return err
 	}
-	exitCode := cmd.ProcessState.ExitCode()
+	exitCode := cmd.ExitCode()
 	if exitCode != 0 {
-		cmdStr := fmt.Sprintf("blockdev %s %s", action, t)
-		return fmt.Errorf("%s returned %d", cmdStr, exitCode)
+		return fmt.Errorf("%s returned %d", cmd, exitCode)
 	}
+	return nil
+}
+
+func (t T) Holders() ([]*T, error) {
+	l := make([]*T, 0)
+	root, err := t.sysfsFile()
+	if err != nil {
+		return l, err
+	}
+	root = root + "/holders"
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		dev := New("/dev/"+filepath.Base(path), WithLogger(t.log))
+		l = append(l, dev)
+		return nil
+	})
+	return l, nil
+}
+
+func (t T) syscallStat() (syscall.Stat_t, error) {
+	stat := syscall.Stat_t{}
+	err := syscall.Stat(t.path, &stat)
+	return stat, err
+}
+
+func (t T) Major() (uint64, error) {
+	stat, err := t.syscallStat()
+	if err != nil {
+		return 0, err
+	}
+	return devicedriver.Major(stat.Rdev), nil
+}
+
+func (t T) Minor() (uint64, error) {
+	stat, err := t.syscallStat()
+	if err != nil {
+		return 0, err
+	}
+	return devicedriver.Minor(stat.Rdev), nil
+}
+
+func (t T) Driver() (interface{}, error) {
+	major, err := t.Major()
+	if err != nil {
+		return nil, err
+	}
+	return devicedriver.NewFromMajor(major, devicedriver.WithLogger(t.log)), nil
+}
+
+func (t T) Remove() error {
+	driver, err := t.Driver()
+	if err != nil {
+		return err
+	}
+	type remover interface {
+		Remove(T) error
+	}
+	driverRemover, ok := driver.(remover)
+	if !ok {
+		t.log.Debug().Msgf("Remove() not implemented for device driver %s", driver)
+		return nil
+	}
+	driverRemover.Remove(t)
 	return nil
 }

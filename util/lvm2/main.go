@@ -164,8 +164,8 @@ func (t *LV) IsActive() (bool, error) {
 	}
 }
 
-func (t *LV) Devices() ([]device.T, error) {
-	l := make([]device.T, 0)
+func (t *LV) Devices() ([]*device.T, error) {
+	l := make([]*device.T, 0)
 	data := LVData{}
 	fullname := t.FullName()
 	cmd := command.New(
@@ -194,8 +194,9 @@ func (t *LV) Devices() ([]device.T, error) {
 		return nil, fmt.Errorf("lv %s has multiple matches", fullname)
 	}
 	for _, s := range strings.Fields(data.Report[0].LV[0].Devices) {
-		dev := strings.Split(s, "(")[0]
-		l = append(l, device.T(dev))
+		path := strings.Split(s, "(")[0]
+		dev := device.New(path, device.WithLogger(t.log))
+		l = append(l, dev)
 	}
 	return l, nil
 }
