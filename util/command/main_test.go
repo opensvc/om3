@@ -86,3 +86,60 @@ func TestNew(t *testing.T) {
 		assert.Equal(t, &log, c.log)
 	})
 }
+
+func TestT_StdoutStderr(t *testing.T) {
+	cases := map[string]struct {
+		name   string
+		args   []string
+		stdout []byte
+		stderr []byte
+	}{
+		"withOnlyStdout": {
+			name:   "bash",
+			args:   []string{"-c", "echo foo; echo bar"},
+			stdout: []byte("foo\nbar"),
+			stderr: nil,
+		},
+		"withWithEmptyLine": {
+			name:   "bash",
+			args:   []string{"-c", "echo; echo >&2"},
+			stdout: []byte("\n"),
+			stderr: []byte("\n"),
+		},
+		"withOnlyStderr": {
+			name:   "bash",
+			args:   []string{"-c", "echo foo >&2; echo bar >&2"},
+			stdout: nil,
+			stderr: []byte("foo\nbar"),
+		},
+		"withStdoutAndStderr": {
+			name:   "bash",
+			args:   []string{"-c", "echo foo >&2; echo bar"},
+			stdout: []byte("bar"),
+			stderr: []byte("foo"),
+		},
+		"withNoStdoutAndStderr": {
+			name:   "bash",
+			args:   []string{"-c", "true"},
+			stdout: nil,
+			stderr: nil,
+		},
+	}
+	for name := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Logf("call %s %q", cases[name].name, cases[name].args)
+			cmd := New(WithName(cases[name].name), WithVarArgs(cases[name].args...), WithBufferedStdout(), WithBufferedStderr())
+			assert.Nil(t, cmd.Run())
+			t.Run("has expected stdout", func(t *testing.T) {
+				got := string(cmd.Stdout())
+				expected := string(cases[name].stdout)
+				assert.Equalf(t, expected, got, "got '%v' instead of '%v'", got, expected)
+			})
+			t.Run("has expected stderr", func(t *testing.T) {
+				got := cmd.Stderr()
+				expected := cases[name].stderr
+				assert.Equalf(t, expected, got, "got '%v' instead of '%v'", got, expected)
+			})
+		})
+	}
+}

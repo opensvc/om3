@@ -44,6 +44,8 @@ type (
 		cancel          func()
 		ctx             context.Context
 		closeAfterStart []io.Closer
+		stdout          []byte
+		stderr          []byte
 	}
 )
 
@@ -73,6 +75,19 @@ func (t *T) Run() error {
 	return t.Wait()
 }
 
+// Stdout returns stdout results of command (meaningful after Wait() or Run()),
+// command created without funcopt WithBufferedStdout() return nil
+// valid results
+func (t T) Stdout() []byte {
+	return stripFistByte(t.stdout)
+}
+
+// Stderr returns stderr results of command (meaningful after Wait() or Run())
+// command created without funcopt WithBufferedStderr() return nil
+func (t T) Stderr() []byte {
+	return stripFistByte(t.stderr)
+}
+
 // Start
 func (t *T) Start() (err error) {
 	if err = t.valid(); err != nil {
@@ -99,6 +114,9 @@ func (t *T) Start() (err error) {
 				if t.onStdoutLine != nil {
 					t.onStdoutLine(s.Text())
 				}
+				if t.bufferStdout {
+					t.stdout = append(t.stdout, append([]byte("\n"), s.Bytes()...)...)
+				}
 			}
 			t.done <- "stdout"
 		})
@@ -117,6 +135,9 @@ func (t *T) Start() (err error) {
 				}
 				if t.onStderrLine != nil {
 					t.onStderrLine(s.Text())
+				}
+				if t.bufferStderr {
+					t.stderr = append(t.stderr, append([]byte("\n"), s.Bytes()...)...)
 				}
 			}
 			t.done <- "stderr"
@@ -306,4 +327,11 @@ func (t *T) toString() string {
 		args = append(args, fmt.Sprintf("%q", arg))
 	}
 	return fmt.Sprintf("%v %s", t.name, strings.Join(args, " "))
+}
+
+func stripFistByte(b []byte) []byte {
+	if len(b) > 1 {
+		return b[1:]
+	}
+	return b
 }
