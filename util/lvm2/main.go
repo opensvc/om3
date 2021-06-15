@@ -5,7 +5,6 @@ package lvm2
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -107,15 +106,14 @@ func (t *LV) change(args []string) error {
 	cmd := command.New(
 		command.WithName("lvchange"),
 		command.WithArgs(append(args, fullname)),
-		//		command.WithLogger(t.log),
-		//		command.WithCommandLogLevel(zerolog.InfoLevel),
-		//		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		//		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
-		//return fmt.Errorf(cmd.GetStderr())
 	}
 	return nil
 }
@@ -123,23 +121,18 @@ func (t *LV) change(args []string) error {
 func (t *LV) Show() (*LVInfo, error) {
 	data := LVData{}
 	fullname := t.FullName()
-	//cmd := command.New(
-	//	command.WithName("lvs"),
-	//	command.WithVarArgs("--reportformat", "json", fullname),
-	//command.WithLogger(t.log),
-	//command.WithStdoutLogLevel(zerolog.DebugLevel),
-	//command.WithStderrLogLevel(zerolog.DebugLevel),
-	//command.WithBufferedStdout(),
-	//)
-	//if err := cmd.Run(); err != nil {
-	//	return nil, err
-	//}
-	cmd := exec.Command("lvs", "--reportformat", "json", fullname)
-	b, err := cmd.Output()
-	if err != nil {
+	cmd := command.New(
+		command.WithName("lvs"),
+		command.WithVarArgs("--reportformat", "json", fullname),
+		command.WithLogger(t.log),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+	)
+	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(b, &data); err != nil {
+	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
 		return nil, err
 	}
 	if len(data.Report) == 1 && len(data.Report[0].LV) == 1 {
@@ -175,23 +168,18 @@ func (t *LV) Devices() ([]device.T, error) {
 	l := make([]device.T, 0)
 	data := LVData{}
 	fullname := t.FullName()
-	//cmd := command.New(
-	//	command.WithName("lvs"),
-	//	command.WithVarArgs("-o", "devices", "--reportformat", "json", fullname),
-	//command.WithLogger(t.log),
-	//command.WithStdoutLogLevel(zerolog.DebugLevel),
-	//command.WithStderrLogLevel(zerolog.DebugLevel),
-	//command.WithBufferedStdout(),
-	//)
-	//if err := cmd.Run(); err != nil {
-	//	return nil, err
-	//}
-	cmd := exec.Command("lvs", "-o", "devices", "--reportformat", "json", fullname)
-	b, err := cmd.Output()
-	if err != nil {
+	cmd := command.New(
+		command.WithName("lvs"),
+		command.WithVarArgs("-o", "devices", "--reportformat", "json", fullname),
+		command.WithLogger(t.log),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+	)
+	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(b, &data); err != nil {
+	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
 		return nil, err
 	}
 	if len(data.Report) == 0 {
