@@ -352,7 +352,7 @@ func formatResourceLabel(r Driver) string {
 }
 
 func (t T) trigger(s string) error {
-	cmd, err := command.CommandFromString(s)
+	cmd, err := command.CmdFromString(s)
 	if err != nil {
 		return err
 	}

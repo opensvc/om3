@@ -162,8 +162,8 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		baseCommand = limitCommands + " && " + baseCommand
 	}
 	var cmdArgs []string
-	if cmdArgs, err = command.CommandArgsFromString(baseCommand); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to CommandArgsFromString for action '%v'", action)
+	if cmdArgs, err = command.CmdArgsFromString(baseCommand); err != nil {
+		t.Log().Error().Err(err).Msgf("unable to CmdArgsFromString for action '%v'", action)
 		return nil, err
 	}
 	var env []string
