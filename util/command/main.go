@@ -46,7 +46,14 @@ type (
 		closeAfterStart []io.Closer
 		stdout          []byte
 		stderr          []byte
+		started         bool // Prevent relaunch
+		waited          bool // Prevent relaunch
 	}
+)
+
+var (
+	ErrAlreadyStarted = errors.New("command: already started")
+	ErrAlreadyWaited  = errors.New("command: already waited")
 )
 
 func New(opts ...funcopt.O) *T {
@@ -91,6 +98,10 @@ func (t T) Stderr() []byte {
 // Start prepare command, then call underlying cmd.Start()
 // it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
+	if t.started {
+		return ErrAlreadyStarted
+	}
+	t.started = true
 	if err = t.valid(); err != nil {
 		return err
 	}
@@ -222,6 +233,10 @@ func (t *T) ExitCode() int {
 }
 
 func (t *T) Wait() (err error) {
+	if t.waited {
+		return ErrAlreadyWaited
+	}
+	t.waited = true
 	waitCount := len(t.goroutine)
 	if t.cancel != nil {
 		waitCount = waitCount - 1
