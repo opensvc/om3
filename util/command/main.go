@@ -44,6 +44,8 @@ type (
 		cancel          func()
 		ctx             context.Context
 		closeAfterStart []io.Closer
+		stdout          []byte
+		stderr          []byte
 	}
 )
 
@@ -73,7 +75,21 @@ func (t *T) Run() error {
 	return t.Wait()
 }
 
-// Start
+// Stdout returns stdout results of command (meaningful after Wait() or Run()),
+// command created without funcopt WithBufferedStdout() return nil
+// valid results
+func (t T) Stdout() []byte {
+	return stripFistByte(t.stdout)
+}
+
+// Stderr returns stderr results of command (meaningful after Wait() or Run())
+// command created without funcopt WithBufferedStderr() return nil
+func (t T) Stderr() []byte {
+	return stripFistByte(t.stderr)
+}
+
+// Start prepare command, then call underlying cmd.Start()
+// it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
 	if err = t.valid(); err != nil {
 		return err
@@ -99,6 +115,9 @@ func (t *T) Start() (err error) {
 				if t.onStdoutLine != nil {
 					t.onStdoutLine(s.Text())
 				}
+				if t.bufferStdout {
+					t.stdout = append(t.stdout, append([]byte("\n"), s.Bytes()...)...)
+				}
 			}
 			t.done <- "stdout"
 		})
@@ -117,6 +136,9 @@ func (t *T) Start() (err error) {
 				}
 				if t.onStderrLine != nil {
 					t.onStderrLine(s.Text())
+				}
+				if t.bufferStderr {
+					t.stderr = append(t.stderr, append([]byte("\n"), s.Bytes()...)...)
 				}
 			}
 			t.done <- "stderr"
@@ -280,12 +302,12 @@ func commandArgsFromString(s string) ([]string, error) {
 	return sSplit, nil
 }
 
-// CommandFromString wrapper to exec.Command from a string command 's'
+// CmdFromString wrapper to exec.Command from a string command 's'
 // When string command 's' contains multiple commands,
 //   exec.Command("/bin/sh", "-c", s)
 // else
 //   exec.Command from shlex.Split(s)
-func CommandFromString(s string) (*exec.Cmd, error) {
+func CmdFromString(s string) (*exec.Cmd, error) {
 	args, err := commandArgsFromString(s)
 	if err != nil {
 		return nil, err
@@ -293,7 +315,12 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	return exec.Command(args[0], args[1:]...), nil
 }
 
-func CommandArgsFromString(s string) ([]string, error) {
+// CmdArgsFromString returns args for exec.Command from a string command 's'
+// When string command 's' contains multiple commands,
+//   exec.Command("/bin/sh", "-c", s)
+// else
+//   exec.Command from shlex.Split(s)
+func CmdArgsFromString(s string) ([]string, error) {
 	return commandArgsFromString(s)
 }
 
@@ -301,9 +328,16 @@ func (t *T) toString() string {
 	if len(t.args) == 0 {
 		return t.name
 	}
-	args := []string{}
+	var args []string
 	for _, arg := range t.args {
 		args = append(args, fmt.Sprintf("%q", arg))
 	}
 	return fmt.Sprintf("%v %s", t.name, strings.Join(args, " "))
+}
+
+func stripFistByte(b []byte) []byte {
+	if len(b) > 1 {
+		return b[1:]
+	}
+	return b
 }
