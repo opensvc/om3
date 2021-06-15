@@ -88,7 +88,8 @@ func (t T) Stderr() []byte {
 	return stripFistByte(t.stderr)
 }
 
-// Start
+// Start prepare command, then call underlying cmd.Start()
+// it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
 	if err = t.valid(); err != nil {
 		return err
@@ -301,12 +302,12 @@ func commandArgsFromString(s string) ([]string, error) {
 	return sSplit, nil
 }
 
-// CommandFromString wrapper to exec.Command from a string command 's'
+// CmdFromString wrapper to exec.Command from a string command 's'
 // When string command 's' contains multiple commands,
 //   exec.Command("/bin/sh", "-c", s)
 // else
 //   exec.Command from shlex.Split(s)
-func CommandFromString(s string) (*exec.Cmd, error) {
+func CmdFromString(s string) (*exec.Cmd, error) {
 	args, err := commandArgsFromString(s)
 	if err != nil {
 		return nil, err
@@ -314,7 +315,12 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	return exec.Command(args[0], args[1:]...), nil
 }
 
-func CommandArgsFromString(s string) ([]string, error) {
+// CmdArgsFromString returns args for exec.Command from a string command 's'
+// When string command 's' contains multiple commands,
+//   exec.Command("/bin/sh", "-c", s)
+// else
+//   exec.Command from shlex.Split(s)
+func CmdArgsFromString(s string) ([]string, error) {
 	return commandArgsFromString(s)
 }
 
@@ -322,7 +328,7 @@ func (t *T) toString() string {
 	if len(t.args) == 0 {
 		return t.name
 	}
-	args := []string{}
+	var args []string
 	for _, arg := range t.args {
 		args = append(args, fmt.Sprintf("%q", arg))
 	}
