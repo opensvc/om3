@@ -18,8 +18,8 @@ type (
 		log           *zerolog.Logger
 	}
 
-	deviceLister interface {
-		Devices() ([]device.T, error)
+	subDeviceLister interface {
+		SubDevices() ([]device.T, error)
 	}
 
 	I interface {
@@ -150,12 +150,12 @@ func HasFSCK(fs interface{}) bool {
 	return ok
 }
 
-func DevicesFSCK(fs interface{}, dl deviceLister) error {
+func DevicesFSCK(fs interface{}, dl subDeviceLister) error {
 	i, ok := fs.(FSCKer)
 	if !ok {
 		return nil
 	}
-	devices, err := dl.Devices()
+	devices, err := dl.SubDevices()
 	if err != nil {
 		return err
 	}
@@ -167,12 +167,12 @@ func DevicesFSCK(fs interface{}, dl deviceLister) error {
 	return nil
 }
 
-func DevicesFormated(fs interface{}, dl deviceLister) (bool, error) {
+func DevicesFormated(fs interface{}, dl subDeviceLister) (bool, error) {
 	i, ok := fs.(IsFormateder)
 	if !ok {
 		return false, errors.New("isFormated is not implemented")
 	}
-	devices, err := dl.Devices()
+	devices, err := dl.SubDevices()
 	if err != nil {
 		return false, err
 	}

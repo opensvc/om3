@@ -441,7 +441,7 @@ func (t T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
-func (t *T) Devices() ([]device.T, error) {
+func (t *T) SubDevices() ([]device.T, error) {
 	l := make([]device.T, 0)
 	fs := t.fs()
 	if !fs.IsMultiDevice() {
@@ -449,14 +449,14 @@ func (t *T) Devices() ([]device.T, error) {
 		l = append(l, d)
 		return l, nil
 	}
-	return l, fmt.Errorf("TODO: multi dev Devices()")
+	return l, fmt.Errorf("TODO: multi dev SubDevices()")
 }
 
 func (t *T) promoteDevicesReadWrite() error {
 	if !t.PromoteRW {
 		return nil
 	}
-	devices, err := t.Devices()
+	devices, err := t.SubDevices()
 	if err != nil {
 		return err
 	}

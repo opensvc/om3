@@ -1,6 +1,8 @@
 package resdisklv
 
 import (
+	"fmt"
+
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
@@ -9,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/lvm2"
 	"opensvc.com/opensvc/util/udevadm"
 )
@@ -122,7 +125,7 @@ func (t T) isUp() (bool, error) {
 }
 
 func (t T) removeHolders() error {
-	return nil
+	return t.exposedDevice().RemoveHolders()
 }
 
 func (t T) fullname() string {
@@ -130,7 +133,13 @@ func (t T) fullname() string {
 }
 
 func (t *T) Status() status.T {
-	return status.NotApplicable
+	if v, err := t.isUp(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	} else if v {
+		return status.Up
+	}
+	return status.Down
 }
 
 func (t T) Label() string {
@@ -147,4 +156,22 @@ func (t T) Unprovision() error {
 
 func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
+}
+
+func (t T) exposedDevice() device.T {
+	dev := device.T(fmt.Sprintf("/dev/%s", t.fullname()))
+	return device.T(dev)
+}
+
+func (t T) ExposedDevices() []device.T {
+	return []device.T{t.exposedDevice()}
+}
+
+func (t T) SubDevices() []device.T {
+	if l, err := t.lv().Devices(); err != nil {
+		t.Log().Debug().Err(err).Msg("")
+		return []device.T{}
+	} else {
+		return l
+	}
 }

@@ -5,15 +5,18 @@ package lvm2
 import (
 	"encoding/json"
 	"fmt"
+	"os/exec"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
 type (
 	LVData struct {
-		Report LVReport `json:"report"`
+		Report []LVReport `json:"report"`
 	}
 	LVReport struct {
 		LV []LVInfo `json:"lv"`
@@ -30,6 +33,7 @@ type (
 		MovePV          string `json:"move_pv"`
 		ConvertPV       string `json:"convert_pv"`
 		MirrorLog       string `json:"mirror_log"`
+		Devices         string `json:"devices"`
 	}
 	LV struct {
 		LVName string
@@ -103,10 +107,10 @@ func (t *LV) change(args []string) error {
 	cmd := command.New(
 		command.WithName("lvchange"),
 		command.WithArgs(append(args, fullname)),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		//		command.WithLogger(t.log),
+		//		command.WithCommandLogLevel(zerolog.InfoLevel),
+		//		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		//		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
 	if cmd.ExitCode() != 0 {
@@ -119,24 +123,27 @@ func (t *LV) change(args []string) error {
 func (t *LV) Show() (*LVInfo, error) {
 	data := LVData{}
 	fullname := t.FullName()
-	cmd := command.New(
-		command.WithName("lvs"),
-		command.WithVarArgs("--reportformat", "json", fullname),
-		command.WithLogger(t.log),
-		//command.WithStdoutLogLevel(zerolog.DebugLevel),
-		//command.WithStderrLogLevel(zerolog.DebugLevel),
-		//command.WithBufferedStdout(),
-	)
-	cmd.Run()
-	b, err := cmd.Cmd().Output()
+	//cmd := command.New(
+	//	command.WithName("lvs"),
+	//	command.WithVarArgs("--reportformat", "json", fullname),
+	//command.WithLogger(t.log),
+	//command.WithStdoutLogLevel(zerolog.DebugLevel),
+	//command.WithStderrLogLevel(zerolog.DebugLevel),
+	//command.WithBufferedStdout(),
+	//)
+	//if err := cmd.Run(); err != nil {
+	//	return nil, err
+	//}
+	cmd := exec.Command("lvs", "--reportformat", "json", fullname)
+	b, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(b, &data); err != nil {
 		return nil, err
 	}
-	if len(data.Report.LV) == 1 {
-		return &data.Report.LV[0], nil
+	if len(data.Report) == 1 && len(data.Report[0].LV) == 1 {
+		return &data.Report[0].LV[0], nil
 	}
 	return nil, fmt.Errorf("lv %s not found", fullname)
 }
@@ -162,4 +169,45 @@ func (t *LV) IsActive() (bool, error) {
 	} else {
 		return attrs.Attr(LVAttrIndexState) == LVAttrStateActive, nil
 	}
+}
+
+func (t *LV) Devices() ([]device.T, error) {
+	l := make([]device.T, 0)
+	data := LVData{}
+	fullname := t.FullName()
+	//cmd := command.New(
+	//	command.WithName("lvs"),
+	//	command.WithVarArgs("-o", "devices", "--reportformat", "json", fullname),
+	//command.WithLogger(t.log),
+	//command.WithStdoutLogLevel(zerolog.DebugLevel),
+	//command.WithStderrLogLevel(zerolog.DebugLevel),
+	//command.WithBufferedStdout(),
+	//)
+	//if err := cmd.Run(); err != nil {
+	//	return nil, err
+	//}
+	cmd := exec.Command("lvs", "-o", "devices", "--reportformat", "json", fullname)
+	b, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	if len(data.Report) == 0 {
+		return nil, fmt.Errorf("%s: no report", cmd)
+	}
+	switch len(data.Report[0].LV) {
+	case 0:
+		return nil, fmt.Errorf("lv %s not found", fullname)
+	case 1:
+		// expected
+	default:
+		return nil, fmt.Errorf("lv %s has multiple matches", fullname)
+	}
+	for _, s := range strings.Fields(data.Report[0].LV[0].Devices) {
+		dev := strings.Split(s, "(")[0]
+		l = append(l, device.T(dev))
+	}
+	return l, nil
 }
