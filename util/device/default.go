@@ -14,6 +14,14 @@ func (t T) IsReadOnly() (bool, error) {
 	return false, ErrNotApplicable
 }
 
+func (t T) Holders() ([]*T, error) {
+	return nil, ErrNotApplicable
+}
+
+func (t T) Remove() error {
+	return ErrNotApplicable
+}
+
 func (t T) SetReadWrite() error {
 	return ErrNotApplicable
 }

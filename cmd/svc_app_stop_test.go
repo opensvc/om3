@@ -45,16 +45,15 @@ func TestAppStop(t *testing.T) {
 		},
 		"baduser": {
 			[]string{"--rid", "app#baduser"},
-			"unable to set credential from user 'baduser'",
+			"unable to find user info for 'baduser'",
 		},
 		"badgroup": {
 			[]string{"--rid", "app#badgroup"},
-			"unable to set credential from user '', group 'badgroup'",
+			"unable to find group info for 'badgroup'",
 		},
 		"badusergroup": {
 			[]string{"--rid", "app#badusergroup"},
-			"unable to set credential from user 'baduser', group 'badgroup'\n" +
-				"unable to find user info for 'baduser'",
+			"unable to find user info for 'baduser'",
 		},
 		"root": {
 			[]string{"--rid", "app#root"},
@@ -154,6 +153,7 @@ func TestAppStop(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	t.Run("logInfo", func(t *testing.T) {
@@ -470,6 +470,7 @@ func TestAppStopSequence(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	t.Run("stopOrderBasedOnStartId", func(t *testing.T) {
@@ -529,6 +530,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	for name := range cases {
@@ -585,6 +587,7 @@ func TestAppStopLimit(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	for name := range cases {
@@ -636,6 +639,7 @@ func TestAppStopTimeout(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	for name := range cases {
