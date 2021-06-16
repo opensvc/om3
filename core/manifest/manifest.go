@@ -57,7 +57,6 @@ var genericKeywords = []keywords.Keyword{
 		Required:  false,
 		Converter: converters.Bool,
 		Text:      "",
-		Default:   "false",
 	},
 	{
 		Option:    "optional",
@@ -66,7 +65,14 @@ var genericKeywords = []keywords.Keyword{
 		Required:  false,
 		Converter: converters.Bool,
 		Text:      "",
-		Default:   "false",
+	},
+	{
+		Option:    "standby",
+		Attr:      "Standby",
+		Scopable:  true,
+		Required:  false,
+		Converter: converters.Bool,
+		Text:      "",
 	},
 	{
 		Option:    "tags",

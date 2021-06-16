@@ -9,6 +9,21 @@ import (
 	"opensvc.com/opensvc/util/timestamp"
 )
 
+type (
+	UnprovisionLeaderer interface {
+		UnprovisionLeader() error
+	}
+	ProvisionLeaderer interface {
+		ProvisionLeader() error
+	}
+	UnprovisionLeadeder interface {
+		UnprovisionLeaded() error
+	}
+	ProvisionLeadeder interface {
+		ProvisionLeaded() error
+	}
+)
+
 // VarDir is the full path of the directory where the resource can write its private variable data.
 func (t T) VarDir() string {
 	return filepath.Join(t.object.VarDir(), t.RID())
@@ -46,12 +61,48 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 	return data
 }
 
-func Provision(t Driver) error {
-	return t.Provision()
+func Provision(t Driver, leader bool) error {
+	if leader || t.IsStandby() {
+		return ProvisionLeader(t)
+	} else {
+		return ProvisionLeaded(t)
+	}
 }
 
-func Unprovision(t Driver) error {
-	return t.Unprovision()
+func ProvisionLeader(t Driver) error {
+	if i, ok := t.(ProvisionLeaderer); ok {
+		return i.ProvisionLeader()
+	}
+	return nil
+}
+
+func ProvisionLeaded(t Driver) error {
+	if i, ok := t.(ProvisionLeadeder); ok {
+		return i.ProvisionLeaded()
+	}
+	return nil
+}
+
+func Unprovision(t Driver, leader bool) error {
+	if leader || t.IsStandby() {
+		return UnprovisionLeader(t)
+	} else {
+		return UnprovisionLeaded(t)
+	}
+}
+
+func UnprovisionLeader(t Driver) error {
+	if i, ok := t.(UnprovisionLeaderer); ok {
+		return i.UnprovisionLeader()
+	}
+	return nil
+}
+
+func UnprovisionLeaded(t Driver) error {
+	if i, ok := t.(UnprovisionLeadeder); ok {
+		return i.UnprovisionLeaded()
+	}
+	return nil
 }
 
 func Provisioned(t Driver) (provisioned.T, error) {

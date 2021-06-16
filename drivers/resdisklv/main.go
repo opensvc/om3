@@ -162,7 +162,7 @@ func (t T) Label() string {
 	return t.fqn()
 }
 
-func (t T) Provision() error {
+func (t T) ProvisionLeader() error {
 	lv := t.lv()
 	lvi, ok := lv.(LVDriverProvisioner)
 	if !ok {
@@ -179,7 +179,7 @@ func (t T) Provision() error {
 	return lvi.Create(t.Size, t.CreateOptions)
 }
 
-func (t T) Unprovision() error {
+func (t T) UnprovisionLeader() error {
 	lv := t.lv()
 	exists, err := lv.Exists()
 	if err != nil {
@@ -222,4 +222,8 @@ func (t T) SubDevices() []*device.T {
 	} else {
 		return l
 	}
+}
+
+func (t T) Boot() error {
+	return t.Stop()
 }

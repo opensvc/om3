@@ -41,7 +41,7 @@ func (t *Base) lockedUnprovision(options OptsUnprovision) error {
 func (t *Base) masterUnprovision(options OptsUnprovision) error {
 	return t.action(objectactionprops.Unprovision, options, func(r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("unprovision resource")
-		return resource.Unprovision(r)
+		return resource.Unprovision(r, options.Leader)
 	})
 }
 

@@ -53,6 +53,7 @@ type (
 		ID() *resourceid.T
 		IsOptional() bool
 		IsDisabled() bool
+		IsStandby() bool
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -77,6 +78,7 @@ type (
 		Subset            string        `json:"subset"`
 		Disable           bool          `json:"disable"`
 		Optional          bool          `json:"optional"`
+		Standby           bool          `json:"standby"`
 		Tags              *set.Set      `json:"tags"`
 		BlockingPreStart  string
 		BlockingPreStop   string
@@ -247,6 +249,11 @@ func (t T) IsOptional() bool {
 // IsDisabled returns true if the resource definition container disable=true.
 func (t T) IsDisabled() bool {
 	return t.Disable
+}
+
+// IsStandby returns true if the resource definition container standby=true.
+func (t T) IsStandby() bool {
+	return t.Standby
 }
 
 // RSubset returns the resource subset name
@@ -458,7 +465,20 @@ func Stop(r Driver) error {
 // Status evaluates the status of a resource interfacer
 func Status(r Driver) status.T {
 	Setenv(r)
-	return r.Status()
+	s := r.Status()
+	if !r.IsStandby() {
+		return s
+	}
+	switch {
+	case !r.IsStandby():
+		return s
+	case s == status.Up:
+		return status.StandbyUp
+	case s == status.Down:
+		return status.StandbyDown
+	default:
+		return s
+	}
 }
 
 // GetExposedStatus returns the resource exposed status data for embedding into the instance status data.
@@ -471,6 +491,10 @@ func GetExposedStatus(r Driver) ExposedStatus {
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),
 		Provisioned: getProvisionStatus(r),
+		Optional:    OptionalFlag(r.IsOptional()),
+		Standby:     StandbyFlag(r.IsStandby()),
+		Disable:     DisableFlag(r.IsDisabled()),
+		//Encap:       EncapFlag(r.IsEncap()),
 	}
 }
 
