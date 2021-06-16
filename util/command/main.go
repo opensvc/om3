@@ -36,6 +36,7 @@ type (
 		timeout         time.Duration
 		onStdoutLine    func(string)
 		onStderrLine    func(string)
+		okExitCodes     []int
 
 		pid             int
 		commandString   string
@@ -48,6 +49,11 @@ type (
 		stderr          []byte
 		started         bool // Prevent relaunch
 		waited          bool // Prevent relaunch
+	}
+
+	ErrExitCode struct {
+		exitCode     int
+		successCodes []int
 	}
 )
 
@@ -62,6 +68,7 @@ func New(opts ...funcopt.O) *T {
 		stderrLogLevel:  zerolog.Disabled,
 		logLevel:        zerolog.Disabled,
 		commandLogLevel: zerolog.Disabled,
+		okExitCodes:     []int{0},
 	}
 	_ = funcopt.Apply(t, opts...)
 	return t
@@ -251,19 +258,49 @@ func (t *T) Wait() (err error) {
 			<-t.done
 		}
 	}
-	msg := "cmd.Wait()"
 	cmd := t.cmd
 	if err := cmd.Wait(); err != nil {
-		cmd.ProcessState.ExitCode()
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return t.checkExitCode(exitError.ExitCode())
+		}
 		if log != nil {
-			log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg(msg)
+			log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("cmd.Wait()")
 		}
 		return err
 	}
-	if log != nil {
-		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg(msg)
+	return t.checkExitCode(t.ExitCode())
+}
+
+func (t T) checkExitCode(exitCode int) error {
+	if len(t.okExitCodes) == 0 {
+		t.logExitCode(exitCode)
+		return nil
 	}
-	return nil
+	for _, validCode := range t.okExitCodes {
+		if exitCode == validCode {
+			t.logExitCode(exitCode)
+			return nil
+		}
+	}
+	err := &ErrExitCode{exitCode: exitCode, successCodes: t.okExitCodes}
+	t.logErrorExitCode(exitCode, err)
+	return err
+}
+
+func (e *ErrExitCode) Error() string {
+	return fmt.Sprintf("command exit code %v not in success codes: %v", e.exitCode, e.successCodes)
+}
+
+func (t T) logExitCode(exitCode int) {
+	if t.log != nil {
+		t.log.WithLevel(t.logLevel).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Send()
+	}
+}
+
+func (t T) logErrorExitCode(exitCode int, err error) {
+	if t.log != nil {
+		t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Send()
+	}
 }
 
 // Update t.cmd with options

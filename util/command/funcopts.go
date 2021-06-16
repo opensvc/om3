@@ -75,6 +75,19 @@ func WithCommandLogLevel(l zerolog.Level) funcopt.O {
 	})
 }
 
+// WithIgnoredExitCodes set alternate list of successful exit codes.
+//   exit codes are checked during Wait().
+//   - default successful exit code is 0 when WithIgnoredExitCodes is not used
+//   - Ignore all exit codes: WithIgnoredExitCodes()
+//   - Accept 0, 1 or 6 exit code: WithIgnoredExitCodes(0, 1, 6)
+func WithIgnoredExitCodes(codes ...int) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.okExitCodes = codes
+		return nil
+	})
+}
+
 func WithStdoutLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
