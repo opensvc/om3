@@ -14,7 +14,6 @@ import (
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/lvm2"
 	"opensvc.com/opensvc/util/udevadm"
 )
 
@@ -30,6 +29,13 @@ type (
 		VGName        string   `json:"vg"`
 		Size          *int64   `json:"size"`
 		CreateOptions []string `json:"create_options"`
+	}
+	LVDriver interface {
+		Activate() error
+		Deactivate() error
+		IsActive() (bool, error)
+		FQN() string
+		Devices() ([]*device.T, error)
 	}
 )
 
@@ -115,13 +121,6 @@ func (t T) Stop() error {
 	return t.lv().Deactivate()
 }
 
-func (t T) lv() *lvm2.LV {
-	return lvm2.NewLV(
-		t.VGName, t.LVName,
-		lvm2.WithLogger(t.Log()),
-	)
-}
-
 func (t T) isUp() (bool, error) {
 	return t.lv().IsActive()
 }
@@ -130,8 +129,8 @@ func (t T) removeHolders() error {
 	return t.exposedDevice().RemoveHolders()
 }
 
-func (t T) fullname() string {
-	return t.lv().FullName()
+func (t T) fqn() string {
+	return t.lv().FQN()
 }
 
 func (t *T) Status() status.T {
@@ -145,7 +144,7 @@ func (t *T) Status() status.T {
 }
 
 func (t T) Label() string {
-	return t.fullname()
+	return t.fqn()
 }
 
 func (t T) Provision() error {
@@ -161,7 +160,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 func (t T) exposedDevice() *device.T {
-	return device.New(fmt.Sprintf("/dev/%s", t.fullname()), device.WithLogger(t.Log()))
+	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
 }
 
 func (t T) ExposedDevices() []*device.T {

@@ -89,7 +89,7 @@ func WithLogger(log *zerolog.Logger) funcopt.O {
 	})
 }
 
-func (t LV) FullName() string {
+func (t LV) FQN() string {
 	return fmt.Sprintf("%s/%s", t.VGName, t.LVName)
 }
 
@@ -102,7 +102,7 @@ func (t *LV) Deactivate() error {
 }
 
 func (t *LV) change(args []string) error {
-	fullname := t.FullName()
+	fullname := t.FQN()
 	cmd := command.New(
 		command.WithName("lvchange"),
 		command.WithArgs(append(args, fullname)),
@@ -120,7 +120,7 @@ func (t *LV) change(args []string) error {
 
 func (t *LV) Show() (*LVInfo, error) {
 	data := LVData{}
-	fullname := t.FullName()
+	fullname := t.FQN()
 	cmd := command.New(
 		command.WithName("lvs"),
 		command.WithVarArgs("--reportformat", "json", fullname),
@@ -167,7 +167,7 @@ func (t *LV) IsActive() (bool, error) {
 func (t *LV) Devices() ([]*device.T, error) {
 	l := make([]*device.T, 0)
 	data := LVData{}
-	fullname := t.FullName()
+	fullname := t.FQN()
 	cmd := command.New(
 		command.WithName("lvs"),
 		command.WithVarArgs("-o", "devices", "--reportformat", "json", fullname),
