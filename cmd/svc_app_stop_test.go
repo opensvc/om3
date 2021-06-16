@@ -45,16 +45,15 @@ func TestAppStop(t *testing.T) {
 		},
 		"baduser": {
 			[]string{"--rid", "app#baduser"},
-			"unable to set credential from user 'baduser'",
+			"unable to find user info for 'baduser'",
 		},
 		"badgroup": {
 			[]string{"--rid", "app#badgroup"},
-			"unable to set credential from user '', group 'badgroup'",
+			"unable to find group info for 'badgroup'",
 		},
 		"badusergroup": {
 			[]string{"--rid", "app#badusergroup"},
-			"unable to set credential from user 'baduser', group 'badgroup'\n" +
-				"unable to find user info for 'baduser'",
+			"unable to find user info for 'baduser'",
 		},
 		"root": {
 			[]string{"--rid", "app#root"},
