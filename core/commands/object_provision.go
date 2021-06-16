@@ -9,30 +9,30 @@ import (
 )
 
 type (
-	// CmdObjectStart is the cobra flag set of the start command.
-	CmdObjectStart struct {
-		object.OptsStart
+	// CmdObjectProvision is the cobra flag set of the start command.
+	CmdObjectProvision struct {
+		object.OptsProvision
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectStart) Init(kind string, parent *cobra.Command, selector *string) {
+func (t *CmdObjectProvision) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
 	flag.Install(cmd, t)
 }
 
-func (t *CmdObjectStart) cmd(kind string, selector *string) *cobra.Command {
+func (t *CmdObjectProvision) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "start",
-		Short: "start the selected objects",
+		Use:   "provision",
+		Short: "allocate new resources",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
 	}
 }
 
-func (t *CmdObjectStart) run(selector *string, kind string) {
+func (t *CmdObjectProvision) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.OptsGlobal.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
@@ -40,11 +40,11 @@ func (t *CmdObjectStart) run(selector *string, kind string) {
 		objectaction.WithFormat(t.OptsGlobal.Format),
 		objectaction.WithColor(t.OptsGlobal.Color),
 		objectaction.WithRemoteNodes(t.OptsGlobal.NodeSelector),
-		objectaction.WithRemoteAction("start"),
-		objectaction.WithAsyncTarget("started"),
+		objectaction.WithRemoteAction("provision"),
+		objectaction.WithAsyncTarget("provisioned"),
 		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return nil, object.NewActorFromPath(p).Start(t.OptsStart)
+			return nil, object.NewActorFromPath(p).Provision(t.OptsProvision)
 		}),
 	).Do()
 }

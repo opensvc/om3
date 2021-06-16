@@ -44,8 +44,7 @@ func (t *CmdObjectStop) run(selector *string, kind string) {
 		objectaction.WithAsyncTarget("stopped"),
 		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			intf := object.NewFromPath(p).(object.Starter)
-			return nil, intf.Stop(t.OptsStop)
+			return nil, object.NewActorFromPath(p).Stop(t.OptsStop)
 		}),
 	).Do()
 }

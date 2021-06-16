@@ -43,11 +43,13 @@ func init() {
 		cmdPrintConfig      commands.CmdObjectPrintConfig
 		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
 		cmdPrintStatus      commands.CmdObjectPrintStatus
+		cmdProvision        commands.CmdObjectProvision
 		cmdSet              commands.CmdObjectSet
 		cmdStart            commands.CmdObjectStart
 		cmdStatus           commands.CmdObjectStatus
 		cmdStop             commands.CmdObjectStop
 		cmdUnfreeze         commands.CmdObjectUnfreeze
+		cmdUnprovision      commands.CmdObjectUnprovision
 		cmdUnset            commands.CmdObjectUnset
 	)
 
@@ -72,10 +74,12 @@ func init() {
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
 	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
 	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
+	cmdProvision.Init(kind, head, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStart.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)
 	cmdStop.Init(kind, head, &selectorFlag)
 	cmdUnfreeze.Init(kind, head, &selectorFlag)
+	cmdUnprovision.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
 }

@@ -64,6 +64,10 @@ var Tags = map[string]Opt{
 		Long: "kw",
 		Desc: "keyword list",
 	},
+	"leader": Opt{
+		Long: "leader",
+		Desc: "provision all resources, including shared resources that are not provisioned by default",
+	},
 	"local": Opt{
 		Long: "local",
 		Desc: "inline action on local instance",

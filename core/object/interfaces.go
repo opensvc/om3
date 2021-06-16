@@ -37,10 +37,13 @@ type (
 		ResourceSets() resourceset.L
 	}
 
-	// Starter is implemented by object kinds supporting start, stop, ...
-	Starter interface {
+	// Actor is implemented by object kinds supporting start, stop, ...
+	Actor interface {
+		Freezer
 		Start(OptsStart) error
 		Stop(OptsStop) error
+		Provision(OptsProvision) error
+		Unprovision(OptsUnprovision) error
 	}
 
 	// Freezer is implemented by object kinds supporting freeze and thaw.
