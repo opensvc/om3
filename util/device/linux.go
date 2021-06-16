@@ -150,3 +150,19 @@ func (t T) Remove() error {
 	driverRemover.Remove(t)
 	return nil
 }
+
+func (t T) Wipe() error {
+	cmd := command.New(
+		command.WithName("wipefs"),
+		command.WithVarArgs("-a", t.path),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}

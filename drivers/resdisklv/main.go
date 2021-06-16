@@ -45,6 +45,9 @@ type (
 	LVDriverUnprovisioner interface {
 		Remove([]string) error
 	}
+	LVDriverWiper interface {
+		Wipe() error
+	}
 )
 
 func init() {
@@ -178,10 +181,6 @@ func (t T) Provision() error {
 
 func (t T) Unprovision() error {
 	lv := t.lv()
-	lvi, ok := lv.(LVDriverUnprovisioner)
-	if !ok {
-		return fmt.Errorf("lv %s %s driver does not implement unprovisioning", lv.FQN(), lv.DriverName())
-	}
 	exists, err := lv.Exists()
 	if err != nil {
 		return err
@@ -189,6 +188,15 @@ func (t T) Unprovision() error {
 	if !exists {
 		t.Log().Info().Msgf("%s is already unprovisioned", lv.FQN())
 		return nil
+	}
+	if lvi, ok := lv.(LVDriverWiper); ok {
+		_ = lvi.Wipe()
+	} else {
+		t.Log().Info().Msgf("%s wipe skipped: not implementing by %s", lv.FQN(), lv.DriverName())
+	}
+	lvi, ok := lv.(LVDriverUnprovisioner)
+	if !ok {
+		return fmt.Errorf("lv %s %s driver does not implement unprovisioning", lv.FQN(), lv.DriverName())
 	}
 	args := []string{"-f"}
 	return lvi.Remove(args)

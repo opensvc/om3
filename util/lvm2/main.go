@@ -104,7 +104,7 @@ func (t LV) FQN() string {
 	return fmt.Sprintf("%s/%s", t.VGName, t.LVName)
 }
 
-func (t LV) BlockDevice() string {
+func (t LV) DevPath() string {
 	return fmt.Sprintf("/dev/%s/%s", t.VGName, t.LVName)
 }
 
@@ -248,8 +248,14 @@ func (t *LV) Create(size string, args []string) error {
 	return nil
 }
 
+func (t *LV) Wipe() error {
+	path := t.DevPath()
+	dev := device.New(path, device.WithLogger(t.log))
+	return dev.Wipe()
+}
+
 func (t *LV) Remove(args []string) error {
-	bdev := t.BlockDevice()
+	bdev := t.DevPath()
 	cmd := command.New(
 		command.WithName("lvremove"),
 		command.WithArgs(append(args, bdev)),
