@@ -54,6 +54,7 @@ type (
 		IsOptional() bool
 		IsDisabled() bool
 		IsStandby() bool
+		IsShared() bool
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -79,6 +80,7 @@ type (
 		Disable           bool          `json:"disable"`
 		Optional          bool          `json:"optional"`
 		Standby           bool          `json:"standby"`
+		Shared            bool          `json:"shared"`
 		Tags              *set.Set      `json:"tags"`
 		BlockingPreStart  string
 		BlockingPreStop   string
@@ -254,6 +256,11 @@ func (t T) IsDisabled() bool {
 // IsStandby returns true if the resource definition container standby=true.
 func (t T) IsStandby() bool {
 	return t.Standby
+}
+
+// IsShared returns true if the resource definition container shared=true.
+func (t T) IsShared() bool {
+	return t.Shared
 }
 
 // RSubset returns the resource subset name

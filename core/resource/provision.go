@@ -62,11 +62,10 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 }
 
 func Provision(t Driver, leader bool) error {
-	if leader || t.IsStandby() {
-		return ProvisionLeader(t)
-	} else {
+	if !t.IsStandby() && !leader && t.IsShared() {
 		return ProvisionLeaded(t)
 	}
+	return ProvisionLeader(t)
 }
 
 func ProvisionLeader(t Driver) error {
@@ -84,6 +83,9 @@ func ProvisionLeaded(t Driver) error {
 }
 
 func Unprovision(t Driver, leader bool) error {
+	if err := t.Stop(); err != nil {
+		return err
+	}
 	if leader || t.IsStandby() {
 		return UnprovisionLeader(t)
 	} else {
