@@ -2,6 +2,10 @@
 
 ## v3.0.0
 
+### core
+
+* **breaking change:** drop backward compatibility for the always_on=<nodes> keyword.
+
 ### driver app
 * **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)
   
