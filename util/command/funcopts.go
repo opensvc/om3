@@ -18,8 +18,6 @@ func (t T) valid() error {
 			return missingLog("WithStdoutLogLevel")
 		case t.stderrLogLevel != disabledLog:
 			return missingLog("WithStderrLogLevel")
-		case t.logLevel != disabledLog:
-			return missingLog("WithLogLevel")
 		case t.commandLogLevel != disabledLog:
 			return missingLog("WithCommandLogLevel")
 		}
@@ -67,6 +65,8 @@ func WithTimeout(timeout time.Duration) funcopt.O {
 	})
 }
 
+// WithCommandLogLevel show command name and args during Start
+//   default zerolog.DebugLevel
 func WithCommandLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)

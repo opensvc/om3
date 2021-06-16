@@ -66,8 +66,8 @@ func New(opts ...funcopt.O) *T {
 	t := &T{
 		stdoutLogLevel:  zerolog.Disabled,
 		stderrLogLevel:  zerolog.Disabled,
-		logLevel:        zerolog.Disabled,
-		commandLogLevel: zerolog.Disabled,
+		logLevel:        zerolog.DebugLevel,
+		commandLogLevel: zerolog.DebugLevel,
 		okExitCodes:     []int{0},
 	}
 	_ = funcopt.Apply(t, opts...)
@@ -121,6 +121,9 @@ func (t *T) Start() (err error) {
 	if t.stdoutLogLevel != zerolog.Disabled || t.bufferStdout || t.onStdoutLine != nil {
 		var r io.ReadCloser
 		if r, err = cmd.StdoutPipe(); err != nil {
+			if log != nil {
+				log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("command.Start() -> StdoutPipe()")
+			}
 			return err
 		}
 		t.closeAfterStart = append(t.closeAfterStart, r)
@@ -143,6 +146,9 @@ func (t *T) Start() (err error) {
 	if t.stderrLogLevel != zerolog.Disabled || t.bufferStderr || t.onStderrLine != nil {
 		var r io.ReadCloser
 		if r, err = cmd.StderrPipe(); err != nil {
+			if log != nil {
+				log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("command.Start() -> StderrPipe()")
+			}
 			return err
 		}
 		t.closeAfterStart = append(t.closeAfterStart, r)
@@ -316,7 +322,9 @@ func (t *T) update() error {
 		cmd.Env = append(cmd.Env, t.env...)
 	}
 	if credential, err := credential(t.user, t.group); err != nil {
-		t.log.Error().Err(err).Msgf("unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
+		if t.log != nil {
+			t.log.WithLevel(t.logLevel).Err(err).Msgf("unable to set credential from user '%v', group '%v' for action '%v'", t.user, t.group, t.label)
+		}
 		return err
 	} else if credential != nil {
 		if cmd.SysProcAttr == nil {
