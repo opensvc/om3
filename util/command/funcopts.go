@@ -18,8 +18,6 @@ func (t T) valid() error {
 			return missingLog("WithStdoutLogLevel")
 		case t.stderrLogLevel != disabledLog:
 			return missingLog("WithStderrLogLevel")
-		case t.logLevel != disabledLog:
-			return missingLog("WithLogLevel")
 		case t.commandLogLevel != disabledLog:
 			return missingLog("WithCommandLogLevel")
 		}
@@ -67,10 +65,25 @@ func WithTimeout(timeout time.Duration) funcopt.O {
 	})
 }
 
+// WithCommandLogLevel show command name and args during Start
+//   default zerolog.DebugLevel
 func WithCommandLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.commandLogLevel = l
+		return nil
+	})
+}
+
+// WithIgnoredExitCodes set alternate list of successful exit codes.
+//   exit codes are checked during Wait().
+//   - default successful exit code is 0 when WithIgnoredExitCodes is not used
+//   - Ignore all exit codes: WithIgnoredExitCodes()
+//   - Accept 0, 1 or 6 exit code: WithIgnoredExitCodes(0, 1, 6)
+func WithIgnoredExitCodes(codes ...int) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.okExitCodes = codes
 		return nil
 	})
 }

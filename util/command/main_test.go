@@ -167,4 +167,46 @@ func TestWait(t *testing.T) {
 		assert.Nil(t, cmd.Wait())
 		assert.Equal(t, ErrAlreadyWaited, cmd.Wait())
 	})
+
+	t.Run("return nil and has correct exit code when exit code in WithIgnoredExitCodes", func(t *testing.T) {
+		t.Run("Without funcopt WithIgnoredExitCodes()", func(t *testing.T) {
+			cmd := New(WithName("pwd"))
+			assert.Nil(t, cmd.Start())
+			assert.Nil(t, cmd.Wait())
+			assert.Equal(t, 0, cmd.ExitCode())
+		})
+		t.Run("exit 2 when WithIgnoredExitCodes(2)", func(t *testing.T) {
+			cmd := New(WithName("bash"), WithVarArgs("-c", "exit 2"), WithIgnoredExitCodes(2))
+			assert.Nil(t, cmd.Start())
+			assert.Nil(t, cmd.Wait())
+			assert.Equal(t, 2, cmd.ExitCode())
+		})
+		t.Run("exit 3 when WithIgnoredExitCodes(2, 3)", func(t *testing.T) {
+			cmd := New(WithName("bash"), WithVarArgs("-c", "exit 3"), WithIgnoredExitCodes(2, 3))
+			assert.Nil(t, cmd.Start())
+			assert.Nil(t, cmd.Wait())
+			assert.Equal(t, 3, cmd.ExitCode())
+		})
+		t.Run("exit 0 when WithIgnoredExitCodes(0, 2, 3)", func(t *testing.T) {
+			cmd := New(WithName("bash"), WithVarArgs("-c", "exit 0"), WithIgnoredExitCodes(0, 2, 3))
+			assert.Nil(t, cmd.Start())
+			assert.Nil(t, cmd.Wait())
+			assert.Equal(t, 0, cmd.ExitCode())
+		})
+		t.Run("exit 66 when WithIgnoredExitCodes() ignore all exit codes", func(t *testing.T) {
+			cmd := New(WithName("bash"), WithVarArgs("-c", "exit 66"), WithIgnoredExitCodes())
+			assert.Nil(t, cmd.Start())
+			assert.Nil(t, cmd.Wait())
+			assert.Equal(t, 66, cmd.ExitCode())
+		})
+	})
+
+	t.Run("exit 0 when WithIgnoredExitCodes(3, 4) return ErrExitCode", func(t *testing.T) {
+		cmd := New(WithName("bash"), WithVarArgs("-c", "exit 0"), WithIgnoredExitCodes(3, 4))
+		assert.Nil(t, cmd.Start())
+		err := cmd.Wait()
+		assert.NotNil(t, err)
+		assert.IsType(t, &ErrExitCode{}, err)
+		assert.Equal(t, 0, cmd.ExitCode())
+	})
 }
