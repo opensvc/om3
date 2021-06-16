@@ -235,7 +235,7 @@ func (t *LV) Devices() ([]*device.T, error) {
 func (t *LV) Create(size string, args []string) error {
 	cmd := command.New(
 		command.WithName("lvcreate"),
-		command.WithArgs(append(args, "-L", size, "-n", t.LVName, t.VGName)),
+		command.WithArgs(append(args, "--yes", "-L", size, "-n", t.LVName, t.VGName)),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
