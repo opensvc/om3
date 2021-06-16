@@ -48,7 +48,7 @@ var (
 			Default: "false",
 		},
 		{
-			Option:    "status_log", // TODO
+			Option:    "status_log",
 			Attr:      "StatusLogKw",
 			Scopable:  true,
 			Converter: converters.Bool,

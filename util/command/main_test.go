@@ -143,3 +143,28 @@ func TestT_StdoutStderr(t *testing.T) {
 		})
 	}
 }
+
+func TestStart(t *testing.T) {
+	t.Run("can not call Start twice", func(t *testing.T) {
+		cmd := New(WithName("pwd"))
+		assert.Nil(t, cmd.Start())
+		assert.Equal(t, ErrAlreadyStarted, cmd.Start())
+	})
+}
+
+func TestRun(t *testing.T) {
+	t.Run("can not call Run twice", func(t *testing.T) {
+		cmd := New(WithName("pwd"))
+		assert.Nil(t, cmd.Run())
+		assert.Equal(t, ErrAlreadyStarted, cmd.Run())
+	})
+}
+
+func TestWait(t *testing.T) {
+	t.Run("can not call Wait twice", func(t *testing.T) {
+		cmd := New(WithName("pwd"))
+		assert.Nil(t, cmd.Start())
+		assert.Nil(t, cmd.Wait())
+		assert.Equal(t, ErrAlreadyWaited, cmd.Wait())
+	})
+}
