@@ -153,6 +153,7 @@ func TestAppStop(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	t.Run("logInfo", func(t *testing.T) {
@@ -469,6 +470,7 @@ func TestAppStopSequence(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	t.Run("stopOrderBasedOnStartId", func(t *testing.T) {
@@ -528,6 +530,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	for name := range cases {
@@ -584,6 +587,7 @@ func TestAppStopLimit(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	for name := range cases {
@@ -635,6 +639,7 @@ func TestAppStopTimeout(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 		defer hostname.Impersonate("node1")()
 		ExecuteArgs(getCmd(name))
+		return
 	}
 
 	for name := range cases {
