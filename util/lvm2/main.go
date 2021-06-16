@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -161,9 +162,13 @@ func (t *LV) Show() (*LVInfo, error) {
 }
 
 func (t *LV) Attrs() (LVAttrs, error) {
-	if lvInfo, err := t.Show(); err != nil {
+	lvInfo, err := t.Show()
+	switch {
+	case errors.Is(err, ErrExist):
+		return "", nil
+	case err != nil:
 		return "", err
-	} else {
+	default:
 		return LVAttrs(lvInfo.LVAttr), nil
 	}
 }
@@ -250,6 +255,10 @@ func (t *LV) Create(size string, args []string) error {
 
 func (t *LV) Wipe() error {
 	path := t.DevPath()
+	if !file.Exists(path) {
+		t.log.Info().Msgf("skip wipe: %s does not exist", path)
+		return nil
+	}
 	dev := device.New(path, device.WithLogger(t.log))
 	return dev.Wipe()
 }

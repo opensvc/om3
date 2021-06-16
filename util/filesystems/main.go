@@ -44,6 +44,9 @@ type (
 	IsFormateder interface {
 		IsFormated(string) (bool, error)
 	}
+	MKFSer interface {
+		MKFS(string, []string) error
+	}
 )
 
 var (

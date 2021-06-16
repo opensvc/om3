@@ -49,6 +49,13 @@ type (
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
 		PromoteRW       bool           `json:"promote_rw"`
 	}
+
+	IsFormateder interface {
+		IsFormated(string) (bool, error)
+	}
+	MKFSer interface {
+		MKFS(string, []string) error
+	}
 )
 
 var (
@@ -501,4 +508,25 @@ func (t *T) fsck() error {
 
 func (t *T) isMounted() (bool, error) {
 	return findmnt.Has(t.devpath(), t.mountPoint())
+}
+
+func (t *T) ProvisionLeader() error {
+	fs := t.fs()
+	i1, ok := fs.(IsFormateder)
+	if !ok {
+		t.Log().Debug().Msgf("skip mkfs, verify not implemented for type %s", fs)
+		return nil
+	}
+	if v, err := i1.IsFormated(t.Device); err != nil {
+		t.Log().Warn().Msgf("skip mkfs: %s", err)
+	} else if v {
+		t.Log().Info().Msgf("%s is already formated", fs)
+		return nil
+	}
+	i2, ok := fs.(filesystems.MKFSer)
+	if ok {
+		return i2.MKFS(t.Device, t.MKFSOptions)
+	}
+	t.Log().Debug().Msgf("skip fsck, not implemented for type %s", fs)
+	return nil
 }
