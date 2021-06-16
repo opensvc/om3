@@ -46,6 +46,14 @@ var bToID = map[bool]T{
 	false: False,
 }
 
+//
+// FromBool is a factory function resource drivers can use to return a
+// provisioned.T from a boolean
+//
+func FromBool(v bool) T {
+	return bToID[v]
+}
+
 func (t T) String() string {
 	return toString[t]
 }

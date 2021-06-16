@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
@@ -34,7 +35,9 @@ type (
 		MirrorLog       string `json:"mirror_log"`
 		Devices         string `json:"devices"`
 	}
-	LV struct {
+	driver struct{}
+	LV     struct {
+		driver
 		LVName string
 		VGName string
 		log    *zerolog.Logger
@@ -73,6 +76,14 @@ const (
 	LVAttrStateUnknown                              LVAttr = 'X'
 )
 
+var (
+	ErrExist = errors.New("lv does not exist")
+)
+
+func (t driver) DriverName() string {
+	return "lvm2"
+}
+
 func NewLV(vg string, lv string, opts ...funcopt.O) *LV {
 	t := LV{
 		VGName: vg,
@@ -93,6 +104,10 @@ func (t LV) FQN() string {
 	return fmt.Sprintf("%s/%s", t.VGName, t.LVName)
 }
 
+func (t LV) BlockDevice() string {
+	return fmt.Sprintf("/dev/%s/%s", t.VGName, t.LVName)
+}
+
 func (t *LV) Activate() error {
 	return t.change([]string{"-ay"})
 }
@@ -102,10 +117,10 @@ func (t *LV) Deactivate() error {
 }
 
 func (t *LV) change(args []string) error {
-	fullname := t.FQN()
+	fqn := t.FQN()
 	cmd := command.New(
 		command.WithName("lvchange"),
-		command.WithArgs(append(args, fullname)),
+		command.WithArgs(append(args, fqn)),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -120,16 +135,20 @@ func (t *LV) change(args []string) error {
 
 func (t *LV) Show() (*LVInfo, error) {
 	data := LVData{}
-	fullname := t.FQN()
+	fqn := t.FQN()
 	cmd := command.New(
 		command.WithName("lvs"),
-		command.WithVarArgs("--reportformat", "json", fullname),
+		command.WithVarArgs("--reportformat", "json", fqn),
 		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
 		command.WithBufferedStdout(),
 	)
 	if err := cmd.Run(); err != nil {
+		if cmd.ExitCode() == 5 {
+			return nil, errors.Wrap(ErrExist, fqn)
+		}
 		return nil, err
 	}
 	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
@@ -138,7 +157,7 @@ func (t *LV) Show() (*LVInfo, error) {
 	if len(data.Report) == 1 && len(data.Report[0].LV) == 1 {
 		return &data.Report[0].LV[0], nil
 	}
-	return nil, fmt.Errorf("lv %s not found", fullname)
+	return nil, errors.Wrap(ErrExist, fqn)
 }
 
 func (t *LV) Attrs() (LVAttrs, error) {
@@ -156,6 +175,18 @@ func (t LVAttrs) Attr(index LVAttrIndex) LVAttr {
 	return LVAttr(t[index])
 }
 
+func (t *LV) Exists() (bool, error) {
+	_, err := t.Show()
+	switch {
+	case errors.Is(err, ErrExist):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return true, nil
+	}
+}
+
 func (t *LV) IsActive() (bool, error) {
 	if attrs, err := t.Attrs(); err != nil {
 		return false, err
@@ -167,10 +198,10 @@ func (t *LV) IsActive() (bool, error) {
 func (t *LV) Devices() ([]*device.T, error) {
 	l := make([]*device.T, 0)
 	data := LVData{}
-	fullname := t.FQN()
+	fqn := t.FQN()
 	cmd := command.New(
 		command.WithName("lvs"),
-		command.WithVarArgs("-o", "devices", "--reportformat", "json", fullname),
+		command.WithVarArgs("-o", "devices", "--reportformat", "json", fqn),
 		command.WithLogger(t.log),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
@@ -187,11 +218,11 @@ func (t *LV) Devices() ([]*device.T, error) {
 	}
 	switch len(data.Report[0].LV) {
 	case 0:
-		return nil, fmt.Errorf("lv %s not found", fullname)
+		return nil, fmt.Errorf("lv %s not found", fqn)
 	case 1:
 		// expected
 	default:
-		return nil, fmt.Errorf("lv %s has multiple matches", fullname)
+		return nil, fmt.Errorf("lv %s has multiple matches", fqn)
 	}
 	for _, s := range strings.Fields(data.Report[0].LV[0].Devices) {
 		path := strings.Split(s, "(")[0]
@@ -199,4 +230,37 @@ func (t *LV) Devices() ([]*device.T, error) {
 		l = append(l, dev)
 	}
 	return l, nil
+}
+
+func (t *LV) Create(size string, args []string) error {
+	cmd := command.New(
+		command.WithName("lvcreate"),
+		command.WithArgs(append(args, "-L", size, "-n", t.LVName, t.VGName)),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
+func (t *LV) Remove(args []string) error {
+	bdev := t.BlockDevice()
+	cmd := command.New(
+		command.WithName("lvremove"),
+		command.WithArgs(append(args, bdev)),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
 }

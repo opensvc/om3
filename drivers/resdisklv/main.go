@@ -27,15 +27,23 @@ type (
 		resdisk.T
 		LVName        string   `json:"name"`
 		VGName        string   `json:"vg"`
-		Size          *int64   `json:"size"`
+		Size          string   `json:"size"`
 		CreateOptions []string `json:"create_options"`
 	}
 	LVDriver interface {
 		Activate() error
 		Deactivate() error
 		IsActive() (bool, error)
+		Exists() (bool, error)
 		FQN() string
 		Devices() ([]*device.T, error)
+		DriverName() string
+	}
+	LVDriverProvisioner interface {
+		Create(string, []string) error
+	}
+	LVDriverUnprovisioner interface {
+		Remove([]string) error
 	}
 )
 
@@ -65,13 +73,13 @@ func (t T) Manifest() *manifest.T {
 			Option:   "vg",
 			Attr:     "VGName",
 			Scopable: true,
+			Required: true,
 			Text:     "The name of the volume group hosting the logical volume.",
 			Example:  "vg1",
 		},
 		{
 			Option:       "size",
 			Attr:         "Size",
-			Converter:    converters.Size,
 			Scopable:     true,
 			Provisioning: true,
 			Text:         "The size of the logical volume to provision. A size expression or <n>%{FREE|PVS|VG}.",
@@ -121,6 +129,10 @@ func (t T) Stop() error {
 	return t.lv().Deactivate()
 }
 
+func (t T) exists() (bool, error) {
+	return t.lv().Exists()
+}
+
 func (t T) isUp() (bool, error) {
 	return t.lv().IsActive()
 }
@@ -148,15 +160,43 @@ func (t T) Label() string {
 }
 
 func (t T) Provision() error {
-	return nil
+	lv := t.lv()
+	lvi, ok := lv.(LVDriverProvisioner)
+	if !ok {
+		return fmt.Errorf("lv %s %s driver does not implement provisioning", lv.FQN(), lv.DriverName())
+	}
+	exists, err := lv.Exists()
+	if err != nil {
+		return err
+	}
+	if exists {
+		t.Log().Info().Msgf("%s is already provisioned", lv.FQN())
+		return nil
+	}
+	return lvi.Create(t.Size, t.CreateOptions)
 }
 
 func (t T) Unprovision() error {
-	return nil
+	lv := t.lv()
+	lvi, ok := lv.(LVDriverUnprovisioner)
+	if !ok {
+		return fmt.Errorf("lv %s %s driver does not implement unprovisioning", lv.FQN(), lv.DriverName())
+	}
+	exists, err := lv.Exists()
+	if err != nil {
+		return err
+	}
+	if !exists {
+		t.Log().Info().Msgf("%s is already unprovisioned", lv.FQN())
+		return nil
+	}
+	args := []string{"-f"}
+	return lvi.Remove(args)
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+	v, err := t.exists()
+	return provisioned.FromBool(v), err
 }
 
 func (t T) exposedDevice() *device.T {
