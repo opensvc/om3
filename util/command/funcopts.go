@@ -18,7 +18,7 @@ func (t T) valid() error {
 			return missingLog("WithStdoutLogLevel")
 		case t.stderrLogLevel != disabledLog:
 			return missingLog("WithStderrLogLevel")
-		case t.commandLogLevel != disabledLog:
+		case t.commandLogLevel != zerolog.DebugLevel:
 			return missingLog("WithCommandLogLevel")
 		}
 	}

@@ -213,7 +213,7 @@ func (t *T) Start() (err error) {
 			}
 		})
 	}
-	if t.commandLogLevel != zerolog.Disabled {
+	if log != nil && t.commandLogLevel != zerolog.Disabled {
 		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("running")
 	}
 	if log != nil {
