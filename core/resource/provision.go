@@ -62,20 +62,30 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 }
 
 func Provision(t Driver, leader bool) error {
-	if !t.IsStandby() && !leader && t.IsShared() {
-		return ProvisionLeaded(t)
+	if err := provisionLeaderSwitch(t, leader); err != nil {
+		return err
 	}
-	return ProvisionLeader(t)
+	if err := t.Start(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func ProvisionLeader(t Driver) error {
+func provisionLeaderSwitch(t Driver, leader bool) error {
+	if !t.IsStandby() && !leader && t.IsShared() {
+		return provisionLeaded(t)
+	}
+	return provisionLeader(t)
+}
+
+func provisionLeader(t Driver) error {
 	if i, ok := t.(ProvisionLeaderer); ok {
 		return i.ProvisionLeader()
 	}
 	return nil
 }
 
-func ProvisionLeaded(t Driver) error {
+func provisionLeaded(t Driver) error {
 	if i, ok := t.(ProvisionLeadeder); ok {
 		return i.ProvisionLeaded()
 	}
@@ -86,21 +96,28 @@ func Unprovision(t Driver, leader bool) error {
 	if err := t.Stop(); err != nil {
 		return err
 	}
+	if err := unprovisionLeaderSwitch(t, leader); err != nil {
+		return err
+	}
+	return nil
+}
+
+func unprovisionLeaderSwitch(t Driver, leader bool) error {
 	if leader || t.IsStandby() {
-		return UnprovisionLeader(t)
+		return unprovisionLeader(t)
 	} else {
-		return UnprovisionLeaded(t)
+		return unprovisionLeaded(t)
 	}
 }
 
-func UnprovisionLeader(t Driver) error {
+func unprovisionLeader(t Driver) error {
 	if i, ok := t.(UnprovisionLeaderer); ok {
 		return i.UnprovisionLeader()
 	}
 	return nil
 }
 
-func UnprovisionLeaded(t Driver) error {
+func unprovisionLeaded(t Driver) error {
 	if i, ok := t.(UnprovisionLeadeder); ok {
 		return i.UnprovisionLeaded()
 	}
