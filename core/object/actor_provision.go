@@ -13,6 +13,7 @@ type OptsProvision struct {
 	OptsResourceSelector
 	OptForce
 	OptLeader
+	OptDisableRollback
 }
 
 // Provision allocates and starts the local instance of the object

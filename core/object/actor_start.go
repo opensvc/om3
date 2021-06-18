@@ -15,6 +15,7 @@ type OptsStart struct {
 	OptsLocking
 	OptsResourceSelector
 	OptForce
+	OptDisableRollback
 }
 
 // Start starts the local instance of the object

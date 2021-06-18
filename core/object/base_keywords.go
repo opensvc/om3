@@ -243,6 +243,14 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Section:   "DEFAULT",
+		Option:    "rollback",
+		Scopable:  true,
+		Default:   "true",
+		Converter: converters.Bool,
+		Text:      "If set to ``false``, the default 'rollback on action error' behaviour is inhibited, leaving the service in its half-started state. The daemon also refuses to takeover a service if rollback is disabled and a peer instance is 'start failed'.",
+	},
+	{
+		Section:   "DEFAULT",
 		Option:    "validity",
 		Converter: converters.Duration,
 		Scopable:  true,

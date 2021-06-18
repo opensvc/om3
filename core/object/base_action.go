@@ -1,6 +1,7 @@
 package object
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
@@ -10,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 )
 
 type ActionOptioner interface {
@@ -34,6 +36,9 @@ type (
 	}
 	isForcer interface {
 		IsForce() bool
+	}
+	isRollbackDisableder interface {
+		IsRollbackDisabled() bool
 	}
 )
 
@@ -77,6 +82,17 @@ func (t *Base) preAction(action objectactionprops.T, options ActionOptioner) err
 	return nil
 }
 
+func (t *Base) needRollback(options ActionOptioner) bool {
+	if options.(isRollbackDisableder).IsRollbackDisabled() {
+		return false
+	}
+	k := key.Parse("disable_rollback")
+	if t.Config().GetBool(k) {
+		return false
+	}
+	return true
+}
+
 func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn resourceset.DoFunc) error {
 	if err := t.preAction(objectactionprops.Start, options); err != nil {
 		return err
@@ -84,6 +100,11 @@ func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn res
 	resourceSelector := options.GetResourceSelector()
 	resourceLister := t.actionResourceLister(resourceSelector, action.Order)
 	if err := t.ResourceSets().Do(resourceLister, resourceSelector.To, fn); err != nil {
+		if t.needRollback(options) {
+			t.Log().Err(err).Msg("")
+			t.Log().Info().Msg("rollback")
+			return fmt.Errorf("rollback not implemented")
+		}
 		return err
 	}
 	return nil

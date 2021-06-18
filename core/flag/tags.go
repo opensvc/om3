@@ -10,6 +10,10 @@ var Tags = map[string]Opt{
 		Long: "config",
 		Desc: "the configuration to use as template when creating or installing a service. the value can be `-` or `/dev/stdin` to read the json-formatted configuration from stdin, or a file path, or uri pointing to a ini-formatted configuration, or a service selector expression (ATTENTION with cloning existing live services that include more than containers, volumes and backend ip addresses ... this could cause disruption on the cloned service)",
 	},
+	"disable-rollback": Opt{
+		Long: "disable-rollback",
+		Desc: "on action error, do not return activated resources to their previous state",
+	},
 	"discard": Opt{
 		Long: "discard",
 		Desc: "discard the stashed, invalid, configuration file leftover of a previous execution",
