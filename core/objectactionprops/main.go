@@ -17,6 +17,7 @@ type (
 		Kinds                 []kind.T
 		DisableNodeValidation bool
 		RelayToAny            bool
+		Rollback              bool
 	}
 )
 
@@ -98,6 +99,7 @@ var (
 		Local:       true,
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		Rollback:    true,
 	}
 	Purge = T{
 		Name:     "purge",
@@ -130,6 +132,7 @@ var (
 		Local:       true,
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		Rollback:    true,
 	}
 	Stop = T{
 		Name:        "stop",
@@ -140,12 +143,6 @@ var (
 		LocalExpect: "",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
 		Freeze:      true,
-	}
-	Rollback = T{
-		Name:        "rollback",
-		Progress:    "rollbacking",
-		LocalExpect: "",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
 	}
 	Switch = T{
 		Name:        "switch",

@@ -82,12 +82,18 @@ func (t *Base) preAction(action objectactionprops.T, options ActionOptioner) err
 	return nil
 }
 
-func (t *Base) needRollback(options ActionOptioner) bool {
-	if options.(isRollbackDisableder).IsRollbackDisabled() {
+func (t *Base) needRollback(action objectactionprops.T, options ActionOptioner) bool {
+	if !action.Rollback {
+		t.Log().Debug().Msgf("skip rollback: not demanded by the %s action", action)
 		return false
 	}
-	k := key.Parse("disable_rollback")
-	if t.Config().GetBool(k) {
+	if options.(isRollbackDisableder).IsRollbackDisabled() {
+		t.Log().Debug().Msg("skip rollback: disabled via the command flag")
+		return false
+	}
+	k := key.Parse("rollback")
+	if !t.Config().GetBool(k) {
+		t.Log().Debug().Msg("skip rollback: disabled via configuration keyword")
 		return false
 	}
 	return true
@@ -100,7 +106,7 @@ func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn res
 	resourceSelector := options.GetResourceSelector()
 	resourceLister := t.actionResourceLister(resourceSelector, action.Order)
 	if err := t.ResourceSets().Do(resourceLister, resourceSelector.To, fn); err != nil {
-		if t.needRollback(options) {
+		if t.needRollback(action, options) {
 			t.Log().Err(err).Msg("")
 			t.Log().Info().Msg("rollback")
 			return fmt.Errorf("rollback not implemented")
