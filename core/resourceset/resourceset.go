@@ -1,6 +1,7 @@
 package resourceset
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -26,7 +27,7 @@ type (
 		IsDesc() bool
 	}
 
-	DoFunc func(resource.Driver) error
+	DoFunc func(context.Context, resource.Driver) error
 )
 
 const (
@@ -132,7 +133,7 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	return l
 }
 
-func (t T) Do(resourceLister ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
+func (t T) Do(ctx context.Context, resourceLister ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
 	rsetResources := t.Resources()
 	resources := resourceLister.Resources().Intersection(rsetResources)
 	if barrier != "" && resources.HasRID(barrier) {
@@ -140,9 +141,9 @@ func (t T) Do(resourceLister ResourceLister, barrier string, fn DoFunc) (hitBarr
 		resources = resources.Truncate(barrier)
 	}
 	if t.Parallel {
-		err = t.doParallel(resources, fn)
+		err = t.doParallel(ctx, resources, fn)
 	} else {
-		err = t.doSerial(resources, fn)
+		err = t.doSerial(ctx, resources, fn)
 	}
 	return
 }
@@ -152,13 +153,13 @@ type result struct {
 	Resource resource.Driver
 }
 
-func (t T) doParallel(resources resource.Drivers, fn DoFunc) error {
+func (t T) doParallel(ctx context.Context, resources resource.Drivers, fn DoFunc) error {
 	var err error
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
 		q <- result{
-			Error:    fn(r),
+			Error:    fn(ctx, r),
 			Resource: r,
 		}
 	}
@@ -175,9 +176,9 @@ func (t T) doParallel(resources resource.Drivers, fn DoFunc) error {
 	return err
 }
 
-func (t T) doSerial(resources resource.Drivers, fn DoFunc) error {
+func (t T) doSerial(ctx context.Context, resources resource.Drivers, fn DoFunc) error {
 	for _, r := range resources {
-		err := fn(r)
+		err := fn(ctx, r)
 		if err == nil {
 			continue
 		}
@@ -193,13 +194,13 @@ func (t L) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
-func (t L) Do(resourceLister ResourceLister, barrier string, fn DoFunc) error {
+func (t L) Do(ctx context.Context, resourceLister ResourceLister, barrier string, fn DoFunc) error {
 	if resourceLister.IsDesc() {
 		// Align the resourceset order with the ResourceLister order.
 		t.Reverse()
 	}
 	for _, rset := range t {
-		hitBarrier, err := rset.Do(resourceLister, barrier, fn)
+		hitBarrier, err := rset.Do(ctx, resourceLister, barrier, fn)
 		if err != nil {
 			return err
 		}

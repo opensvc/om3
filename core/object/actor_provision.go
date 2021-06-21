@@ -1,6 +1,8 @@
 package object
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
@@ -40,9 +42,9 @@ func (t *Base) lockedProvision(options OptsProvision) error {
 }
 
 func (t *Base) masterProvision(options OptsProvision) error {
-	return t.action(objectactionprops.Provision, options, func(r resource.Driver) error {
+	return t.action(objectactionprops.Provision, options, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("provision resource")
-		return resource.Provision(r, options.Leader)
+		return resource.Provision(ctx, r, options.Leader)
 	})
 }
 

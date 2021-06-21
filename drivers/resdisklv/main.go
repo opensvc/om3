@@ -3,8 +3,10 @@
 package resdisklv
 
 import (
+	"context"
 	"fmt"
 
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
@@ -101,14 +103,20 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
-func (t T) Start() error {
+func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
 		t.Log().Info().Msgf("%s is already up", t.Label())
 		return nil
 	}
-	return t.lv().Activate()
+	if err := t.lv().Activate(); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		return t.lv().Deactivate()
+	})
+	return nil
 }
 
 func (t T) Info() map[string]string {
@@ -118,7 +126,7 @@ func (t T) Info() map[string]string {
 	return m
 }
 
-func (t T) Stop() error {
+func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
@@ -162,7 +170,7 @@ func (t T) Label() string {
 	return t.fqn()
 }
 
-func (t T) ProvisionLeader() error {
+func (t T) ProvisionLeader(ctx context.Context) error {
 	lv := t.lv()
 	lvi, ok := lv.(LVDriverProvisioner)
 	if !ok {
@@ -179,7 +187,7 @@ func (t T) ProvisionLeader() error {
 	return lvi.Create(t.Size, t.CreateOptions)
 }
 
-func (t T) UnprovisionLeader() error {
+func (t T) UnprovisionLeader(ctx context.Context) error {
 	lv := t.lv()
 	exists, err := lv.Exists()
 	if err != nil {
@@ -224,6 +232,6 @@ func (t T) SubDevices() []*device.T {
 	}
 }
 
-func (t T) Boot() error {
-	return t.Stop()
+func (t T) Boot(ctx context.Context) error {
+	return t.Stop(ctx)
 }

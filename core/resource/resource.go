@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -40,12 +41,12 @@ type (
 	Driver interface {
 		Label() string
 		Manifest() *manifest.T
-		Start() error
-		Stop() error
+		Start(context.Context) error
+		Stop(context.Context) error
 		Status() status.T
 		Provisioned() (provisioned.T, error)
-		Provision() error
-		Unprovision() error
+		Provision(context.Context) error
+		Unprovision(context.Context) error
 
 		// common
 		Trigger(trigger.Blocking, trigger.Hook, trigger.Action) error
@@ -428,7 +429,7 @@ func Setenv(r Driver) {
 }
 
 // Start activates a resource interfacer
-func Start(r Driver) error {
+func Start(ctx context.Context, r Driver) error {
 	Setenv(r)
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Start); err != nil {
 		return errors.Wrapf(err, "trigger")
@@ -436,7 +437,7 @@ func Start(r Driver) error {
 	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	if err := r.Start(); err != nil {
+	if err := r.Start(ctx); err != nil {
 		return err
 	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Start); err != nil {
@@ -449,7 +450,7 @@ func Start(r Driver) error {
 }
 
 // Stop deactivates a resource interfacer
-func Stop(r Driver) error {
+func Stop(ctx context.Context, r Driver) error {
 	Setenv(r)
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Stop); err != nil {
 		return errors.Wrapf(err, "trigger")
@@ -457,7 +458,7 @@ func Stop(r Driver) error {
 	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	if err := r.Stop(); err != nil {
+	if err := r.Stop(ctx); err != nil {
 		return err
 	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Stop); err != nil {
@@ -530,15 +531,15 @@ Stdin:
 }
 
 // Action calls the resource method set as the RES_ACTION environment variable
-func Action(r Driver) error {
+func Action(ctx context.Context, r Driver) error {
 	action := os.Getenv("RES_ACTION")
 	switch action {
 	case "status":
 		return printStatus(r)
 	case "stop":
-		return Stop(r)
+		return Stop(ctx, r)
 	case "start":
-		return Start(r)
+		return Start(ctx, r)
 	case "manifest":
 		return printManifest(r)
 	default:

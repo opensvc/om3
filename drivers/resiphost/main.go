@@ -1,6 +1,7 @@
 package resiphost
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
@@ -171,7 +173,7 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
-func (t T) Start() error {
+func (t T) Start(ctx context.Context) error {
 	if initialStatus := t.Status(); initialStatus == status.Up {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
@@ -179,13 +181,16 @@ func (t T) Start() error {
 	if err := t.start(); err != nil {
 		return err
 	}
+	actionrollback.Register(ctx, func() error {
+		return t.stop()
+	})
 	if err := t.arpAnnounce(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t T) Stop() error {
+func (t T) Stop(ctx context.Context) error {
 	if initialStatus := t.Status(); initialStatus == status.Down {
 		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
@@ -235,11 +240,11 @@ func (t T) Label() string {
 	return fmt.Sprintf("%s", t.ipaddr())
 }
 
-func (t *T) Provision() error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Unprovision() error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 

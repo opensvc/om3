@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -177,7 +178,7 @@ func (t *Base) subsetsStatus() map[string]instance.SubsetStatus {
 func (t *Base) resourceStatusEval(data *instance.Status) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
 	var mu sync.Mutex
-	return t.ResourceSets().Do(t, "", func(r resource.Driver) error {
+	return t.ResourceSets().Do(context.TODO(), t, "", func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
 		xd := resource.GetExposedStatus(r)
 		mu.Lock()

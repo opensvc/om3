@@ -3,6 +3,7 @@
 package resiproute
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -14,12 +15,12 @@ import (
 )
 
 // Start the Resource
-func (t T) Start() error {
+func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
 // Stop the Resource
-func (t T) Stop() error {
+func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
@@ -69,11 +70,11 @@ func (t *T) makeRoute() ([]*types.Route, error) {
 	return routes, nil
 }
 
-func Provision() error {
+func Provision(ctx context.Context) error {
 	return nil
 }
 
-func Unprovision() error {
+func Unprovision(ctx context.Context) error {
 	return nil
 }
 

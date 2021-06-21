@@ -1,10 +1,12 @@
 package object
 
 import (
-	"fmt"
+	"context"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/objectactionprops"
@@ -99,17 +101,25 @@ func (t *Base) needRollback(action objectactionprops.T, options ActionOptioner) 
 	return true
 }
 
+func (t *Base) rollback(ctx context.Context) error {
+	t.Log().Info().Msg("rollback")
+	actionrollback.Rollback(ctx)
+	return nil
+}
+
 func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn resourceset.DoFunc) error {
 	if err := t.preAction(objectactionprops.Start, options); err != nil {
 		return err
 	}
 	resourceSelector := options.GetResourceSelector()
 	resourceLister := t.actionResourceLister(resourceSelector, action.Order)
-	if err := t.ResourceSets().Do(resourceLister, resourceSelector.To, fn); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	ctx = actionrollback.NewContext(ctx)
+	if err := t.ResourceSets().Do(ctx, resourceLister, resourceSelector.To, fn); err != nil {
 		if t.needRollback(action, options) {
 			t.Log().Err(err).Msg("")
-			t.Log().Info().Msg("rollback")
-			return fmt.Errorf("rollback not implemented")
+			return t.rollback(ctx)
 		}
 		return err
 	}

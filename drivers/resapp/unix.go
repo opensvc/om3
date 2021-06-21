@@ -3,6 +3,7 @@
 package resapp
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,7 +63,7 @@ func (t T) Abort() bool {
 }
 
 // Stop the Resource
-func (t T) Stop() (err error) {
+func (t T) Stop(ctx context.Context) (err error) {
 	t.Log().Debug().Msg("Stop()")
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
@@ -130,11 +131,11 @@ func (t *T) Status() status.T {
 	return status.Up
 }
 
-func (t T) Provision() error {
+func (t T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision() error {
+func (t T) Unprovision(ctx context.Context) error {
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package resfshost
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/user"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
@@ -257,17 +259,17 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
-func (t T) Start() error {
-	if err := t.mount(); err != nil {
+func (t T) Start(ctx context.Context) error {
+	if err := t.mount(ctx); err != nil {
 		return err
 	}
-	if err := t.fsDir().Start(); err != nil {
+	if err := t.fsDir().Start(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t T) Stop() error {
+func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
@@ -307,11 +309,11 @@ func (t T) Label() string {
 	return s
 }
 
-func (t *T) Provision() error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Unprovision() error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
@@ -379,11 +381,11 @@ func (t T) deviceFromVolume(p string) string {
 	return filepath.Join(l...)
 }
 
-func (t *T) mount() error {
+func (t *T) mount(ctx context.Context) error {
 	if err := t.validateDevice(); err != nil {
 		return err
 	}
-	if err := t.promoteDevicesReadWrite(); err != nil {
+	if err := t.promoteDevicesReadWrite(ctx); err != nil {
 		return err
 	}
 	if v, err := t.isMounted(); err != nil {
@@ -392,7 +394,7 @@ func (t *T) mount() error {
 		t.Log().Info().Msg("already mounted")
 		return nil
 	}
-	if err := t.createMountPoint(); err != nil {
+	if err := t.createMountPoint(ctx); err != nil {
 		return err
 	}
 	if err := t.fsck(); err != nil {
@@ -401,10 +403,13 @@ func (t *T) mount() error {
 	if err := t.fs().Mount(t.devpath(), t.mountPoint(), t.mountOptions()); err != nil {
 		return err
 	}
+	actionrollback.Register(ctx, func() error {
+		return t.fs().Umount(t.mountPoint())
+	})
 	return nil
 }
 
-func (t *T) createMountPoint() error {
+func (t *T) createMountPoint(ctx context.Context) error {
 	if file.ExistsAndDir(t.MountPoint) {
 		return nil
 	}
@@ -462,7 +467,7 @@ func (t *T) SubDevices() ([]*device.T, error) {
 	return l, fmt.Errorf("TODO: multi dev SubDevices()")
 }
 
-func (t *T) promoteDevicesReadWrite() error {
+func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 	if !t.PromoteRW {
 		return nil
 	}
@@ -483,6 +488,9 @@ func (t *T) promoteDevicesReadWrite() error {
 		if err := dev.SetReadWrite(); err != nil {
 			return err
 		}
+		actionrollback.Register(ctx, func() error {
+			return dev.SetReadOnly()
+		})
 	}
 	return nil
 }

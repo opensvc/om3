@@ -1,6 +1,8 @@
 package resappforking
 
 import (
+	"context"
+
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -23,7 +25,7 @@ func init() {
 }
 
 // Start the Resource
-func (t T) Start() (err error) {
+func (t T) Start(ctx context.Context) (err error) {
 	t.Log().Debug().Msg("Start()")
 
 	var opts []funcopt.O

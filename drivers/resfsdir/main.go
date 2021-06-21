@@ -1,11 +1,13 @@
 package resfsdir
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/user"
 	"strconv"
 
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
@@ -87,20 +89,20 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
-func (t T) Start() error {
-	if err := t.create(); err != nil {
+func (t T) Start(ctx context.Context) error {
+	if err := t.create(ctx); err != nil {
 		return err
 	}
-	if err := t.setOwnership(); err != nil {
+	if err := t.setOwnership(ctx); err != nil {
 		return err
 	}
-	if err := t.setMode(); err != nil {
+	if err := t.setMode(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t T) Stop() error {
+func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
@@ -130,11 +132,11 @@ func (t T) path() string {
 	return t.Path
 }
 
-func (t T) Provision() error {
+func (t T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision() error {
+func (t T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
@@ -142,7 +144,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) create() error {
+func (t T) create(ctx context.Context) error {
 	p := t.path()
 	if file.ExistsAndDir(p) {
 		return nil
@@ -154,7 +156,14 @@ func (t T) create() error {
 	} else {
 		perm = defaultPerm
 	}
-	return os.MkdirAll(p, perm)
+	if err := os.MkdirAll(p, perm); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		t.Log().Info().Msgf("remove directory %s", p)
+		return os.RemoveAll(p)
+	})
+	return nil
 }
 
 func (t *T) checkOwnership() (ok bool) {
@@ -179,7 +188,7 @@ func (t *T) checkOwnership() (ok bool) {
 	return
 }
 
-func (t T) setOwnership() error {
+func (t T) setOwnership(ctx context.Context) error {
 	if t.User == nil && t.Group == nil {
 		return nil
 	}
@@ -202,6 +211,11 @@ func (t T) setOwnership() error {
 		if err := os.Chown(p, newUID, newGID); err != nil {
 			return err
 		}
+		actionrollback.Register(ctx, func() error {
+			t.Log().Info().Msgf("set %s group back to %s", p, gid)
+			t.Log().Info().Msgf("set %s user back to %s", p, uid)
+			return os.Chown(p, uid, gid)
+		})
 	}
 	return nil
 }
@@ -239,7 +253,7 @@ func (t *T) checkMode() (ok bool) {
 	return true
 }
 
-func (t T) setMode() error {
+func (t T) setMode(ctx context.Context) error {
 	if t.Perm == nil {
 		return nil
 	}
@@ -256,5 +270,9 @@ func (t T) setMode() error {
 	if err := os.Chmod(p, mode); err != nil {
 		return err
 	}
+	actionrollback.Register(ctx, func() error {
+		t.Log().Info().Msgf("set %s mode back to %s", p, mode)
+		return os.Chmod(p, currentMode&os.ModeType)
+	})
 	return nil
 }

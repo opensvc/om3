@@ -1,6 +1,8 @@
 package object
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
@@ -39,9 +41,9 @@ func (t *Base) lockedStop(options OptsStop) error {
 }
 
 func (t *Base) masterStop(options OptsStop) error {
-	return t.action(objectactionprops.Stop, options, func(r resource.Driver) error {
+	return t.action(objectactionprops.Stop, options, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
-		return resource.Stop(r)
+		return resource.Stop(ctx, r)
 	})
 }
 

@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -82,9 +83,9 @@ func (t *Base) abortStart(options OptsStart) (err error) {
 }
 
 func (t *Base) masterStart(options OptsStart) error {
-	return t.action(objectactionprops.Start, options, func(r resource.Driver) error {
+	return t.action(objectactionprops.Start, options, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
-		return resource.Start(r)
+		return resource.Start(ctx, r)
 	})
 }
 

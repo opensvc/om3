@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"path/filepath"
 	"time"
 
@@ -11,16 +12,16 @@ import (
 
 type (
 	UnprovisionLeaderer interface {
-		UnprovisionLeader() error
+		UnprovisionLeader(context.Context) error
 	}
 	ProvisionLeaderer interface {
-		ProvisionLeader() error
+		ProvisionLeader(context.Context) error
 	}
 	UnprovisionLeadeder interface {
-		UnprovisionLeaded() error
+		UnprovisionLeaded(context.Context) error
 	}
 	ProvisionLeadeder interface {
-		ProvisionLeaded() error
+		ProvisionLeaded(context.Context) error
 	}
 )
 
@@ -61,65 +62,65 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 	return data
 }
 
-func Provision(t Driver, leader bool) error {
-	if err := provisionLeaderSwitch(t, leader); err != nil {
+func Provision(ctx context.Context, t Driver, leader bool) error {
+	if err := provisionLeaderSwitch(ctx, t, leader); err != nil {
 		return err
 	}
-	if err := t.Start(); err != nil {
+	if err := t.Start(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func provisionLeaderSwitch(t Driver, leader bool) error {
+func provisionLeaderSwitch(ctx context.Context, t Driver, leader bool) error {
 	if !t.IsStandby() && !leader && t.IsShared() {
-		return provisionLeaded(t)
+		return provisionLeaded(ctx, t)
 	}
-	return provisionLeader(t)
+	return provisionLeader(ctx, t)
 }
 
-func provisionLeader(t Driver) error {
+func provisionLeader(ctx context.Context, t Driver) error {
 	if i, ok := t.(ProvisionLeaderer); ok {
-		return i.ProvisionLeader()
+		return i.ProvisionLeader(ctx)
 	}
 	return nil
 }
 
-func provisionLeaded(t Driver) error {
+func provisionLeaded(ctx context.Context, t Driver) error {
 	if i, ok := t.(ProvisionLeadeder); ok {
-		return i.ProvisionLeaded()
+		return i.ProvisionLeaded(ctx)
 	}
 	return nil
 }
 
-func Unprovision(t Driver, leader bool) error {
-	if err := t.Stop(); err != nil {
+func Unprovision(ctx context.Context, t Driver, leader bool) error {
+	if err := t.Stop(ctx); err != nil {
 		return err
 	}
-	if err := unprovisionLeaderSwitch(t, leader); err != nil {
+	if err := unprovisionLeaderSwitch(ctx, t, leader); err != nil {
 		return err
 	}
 	return nil
 }
 
-func unprovisionLeaderSwitch(t Driver, leader bool) error {
+func unprovisionLeaderSwitch(ctx context.Context, t Driver, leader bool) error {
 	if leader || t.IsStandby() {
-		return unprovisionLeader(t)
+		return unprovisionLeader(ctx, t)
 	} else {
-		return unprovisionLeaded(t)
+		return unprovisionLeaded(ctx, t)
 	}
 }
 
-func unprovisionLeader(t Driver) error {
+func unprovisionLeader(ctx context.Context, t Driver) error {
 	if i, ok := t.(UnprovisionLeaderer); ok {
-		return i.UnprovisionLeader()
+		return i.UnprovisionLeader(ctx)
 	}
 	return nil
 }
 
-func unprovisionLeaded(t Driver) error {
+func unprovisionLeaded(ctx context.Context, t Driver) error {
 	if i, ok := t.(UnprovisionLeadeder); ok {
-		return i.UnprovisionLeaded()
+		return i.UnprovisionLeaded(ctx)
 	}
 	return nil
 }

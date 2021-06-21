@@ -1,6 +1,7 @@
 package resiproute
 
 import (
+	"context"
 	"os"
 
 	"opensvc.com/opensvc/core/resource"
@@ -9,5 +10,5 @@ import (
 func main() {
 	r := &T{}
 	resource.NewLoader(os.Stdin).Load(r)
-	resource.Action(r)
+	resource.Action(context.TODO(), r)
 }

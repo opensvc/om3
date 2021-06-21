@@ -1,6 +1,7 @@
 package resfsflag
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ func (t T) Abort() bool {
 }
 
 // Start the Resource
-func (t T) Start() error {
+func (t T) Start(ctx context.Context) error {
 	if t.file() == "" {
 		return errors.New("empty file path")
 	}
@@ -48,7 +49,7 @@ func (t T) Start() error {
 }
 
 // Stop the Resource
-func (t T) Stop() error {
+func (t T) Stop(ctx context.Context) error {
 	if t.file() == "" {
 		return errors.New("empty file path")
 	}
@@ -80,11 +81,11 @@ func (t *T) Status() status.T {
 	return status.Down
 }
 
-func (t T) Provision() error {
+func (t T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Unprovision() error {
+func (t T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
@@ -132,5 +133,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	resource.Action(r)
+	resource.Action(context.TODO(), r)
 }
