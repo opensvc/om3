@@ -2,7 +2,6 @@ package actionrollback
 
 import (
 	"context"
-	"fmt"
 )
 
 type (
@@ -31,7 +30,6 @@ func Rollback(ctx context.Context) error {
 	n := len(t.stack)
 	for i := n - 1; i >= 0; i-- {
 		fn := t.stack[i]
-		fmt.Println("pop rollback fn")
 		if err := fn(); err != nil {
 			return err
 		}
@@ -40,7 +38,6 @@ func Rollback(ctx context.Context) error {
 }
 
 func Register(ctx context.Context, fn func() error) {
-	fmt.Println("register rollback")
 	t := FromContext(ctx)
 	t.stack = append(t.stack, fn)
 }
