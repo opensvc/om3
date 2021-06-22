@@ -12,12 +12,10 @@ import (
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/file"
@@ -346,16 +344,6 @@ func (t *Base) Node() *Node {
 
 func (t Base) Log() *zerolog.Logger {
 	return &t.log
-}
-
-func (t *Base) actionResourceLister(options OptsResourceSelector, order ordering.T) ResourceLister {
-	return resourceselector.New(
-		t,
-		resourceselector.WithRID(options.ID),
-		resourceselector.WithSubset(options.Subset),
-		resourceselector.WithTag(options.Tag),
-		resourceselector.WithOrder(order),
-	)
 }
 
 // IsDesc is a requirement of the ResourceLister interface. Base Resources() is always ascending.

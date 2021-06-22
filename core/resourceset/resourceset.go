@@ -133,9 +133,9 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	return l
 }
 
-func (t T) Do(ctx context.Context, resourceLister ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
+func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
 	rsetResources := t.Resources()
-	resources := resourceLister.Resources().Intersection(rsetResources)
+	resources := l.Resources().Intersection(rsetResources)
 	if barrier != "" && resources.HasRID(barrier) {
 		hitBarrier = true
 		resources = resources.Truncate(barrier)
@@ -194,13 +194,13 @@ func (t L) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
-func (t L) Do(ctx context.Context, resourceLister ResourceLister, barrier string, fn DoFunc) error {
-	if resourceLister.IsDesc() {
+func (t L) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) error {
+	if l.IsDesc() {
 		// Align the resourceset order with the ResourceLister order.
 		t.Reverse()
 	}
 	for _, rset := range t {
-		hitBarrier, err := rset.Do(ctx, resourceLister, barrier, fn)
+		hitBarrier, err := rset.Do(ctx, l, barrier, fn)
 		if err != nil {
 			return err
 		}

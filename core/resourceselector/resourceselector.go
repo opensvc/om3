@@ -9,20 +9,38 @@ import (
 )
 
 type (
-	T struct {
-		RID    string
-		Tag    string
-		Subset string
-		Order  ordering.T
+	// Options groups the field of T that get exposed via commandline flags
+	Options struct {
+		RID    string `flag:"rid"`
+		Subset string `flag:"subsets"`
+		Tag    string `flag:"tags"`
+	}
 
+	// T contains options accepted by all actions manipulating resources
+	T struct {
+		Options
+		order  ordering.T
 		lister ResourceLister
 	}
 
+	// ResourceLister is the interface required to list resource.T and see the ordering
 	ResourceLister interface {
 		Resources() resource.Drivers
 		IsDesc() bool
 	}
 )
+
+func (t Options) ResourceSelectorOptions() Options {
+	return t
+}
+
+func WithOptions(o Options) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.Options = o
+		return nil
+	})
+}
 
 func WithRID(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
@@ -51,7 +69,7 @@ func WithSubset(s string) funcopt.O {
 func WithOrder(s ordering.T) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.Order = s
+		t.order = s
 		return nil
 	})
 }
@@ -64,13 +82,17 @@ func New(l ResourceLister, opts ...funcopt.O) *T {
 	return t
 }
 
+func (t *T) SetResourceLister(l ResourceLister) {
+	t.lister = l
+}
+
 func (t T) IsDesc() bool {
-	return t.Order.IsDesc()
+	return t.order.IsDesc()
 }
 
 func (t T) Resources() resource.Drivers {
 	l := t.lister.Resources()
-	if t.Order == ordering.Desc {
+	if t.order == ordering.Desc {
 		l.Reverse()
 	} else {
 		l.Sort()
@@ -104,4 +126,17 @@ func (t T) Resources() resource.Drivers {
 		fl = append(fl, r)
 	}
 	return fl
+}
+
+func (t Options) IsZero() bool {
+	switch {
+	case t.RID != "":
+		return true
+	case t.Subset != "":
+		return true
+	case t.Tag != "":
+		return true
+	default:
+		return false
+	}
 }

@@ -1,6 +1,10 @@
 package object
 
-import "time"
+import (
+	"time"
+
+	"opensvc.com/opensvc/core/resourceselector"
+)
 
 type (
 	// OptsGlobal contains options accepted by all actions
@@ -27,16 +31,6 @@ type (
 		Time  time.Duration `flag:"time"`
 	}
 
-	// OptsResourceSelector contains options accepted by all actions manipulating resources
-	OptsResourceSelector struct {
-		ID     string `flag:"rid"`
-		Subset string `flag:"subsets"`
-		Tag    string `flag:"tags"`
-		To     string `flag:"to"`
-		UpTo   string `flag:"upto"`   // Deprecated
-		DownTo string `flag:"downto"` // Deprecated
-	}
-
 	// OptDisableRollback contains the disable-rollback option
 	OptDisableRollback struct {
 		DisableRollback bool `flag:"disable-rollback"`
@@ -50,6 +44,13 @@ type (
 	// OptConfirm contains the confirm option
 	OptConfirm struct {
 		Confirm bool `flag:"confirm"`
+	}
+
+	// OpTo sets a barrier when iterating over a resource lister
+	OptTo struct {
+		To     string `flag:"to"`
+		UpTo   string `flag:"upto"`   // Deprecated
+		DownTo string `flag:"downto"` // Deprecated
 	}
 
 	//
@@ -67,7 +68,8 @@ type (
 		Global OptsGlobal
 		OptsAsync
 		OptsLocking
-		OptsResourceSelector
+		resourceselector.Options
+		OptTo
 		OptForce
 		Template    string   `flag:"template"`
 		Config      string   `flag:"config"`
@@ -89,28 +91,12 @@ func (t OptConfirm) IsConfirm() bool {
 func (t OptForce) IsForce() bool {
 	return t.Force
 }
+func (t OptTo) ToStr() string {
+	return t.To
+}
+func (t OptLeader) IsLeader() bool {
+	return t.Leader
+}
 func (t OptsGlobal) IsDryRun() bool {
 	return t.DryRun
-}
-func (t OptsResourceSelector) GetResourceSelector() OptsResourceSelector {
-	return t
-}
-
-func (t OptsResourceSelector) IsZero() bool {
-	switch {
-	case t.ID != "":
-		return true
-	case t.Subset != "":
-		return true
-	case t.Tag != "":
-		return true
-	case t.To != "":
-		return true
-	case t.UpTo != "":
-		return true
-	case t.DownTo != "":
-		return true
-	default:
-		return false
-	}
 }

@@ -3,23 +3,17 @@ package object
 import (
 	"context"
 	"os"
-	"time"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
-
-type ActionOptioner interface {
-	IsDryRun() bool
-	GetResourceSelector() OptsResourceSelector
-}
 
 // Resources implementing setters
 type (
@@ -28,19 +22,6 @@ type (
 	}
 	forcer interface {
 		SetForce(v bool)
-	}
-)
-
-// Options structs implementing getters
-type (
-	isConfirmer interface {
-		IsConfirm() bool
-	}
-	isForcer interface {
-		IsForce() bool
-	}
-	isRollbackDisableder interface {
-		IsRollbackDisabled() bool
 	}
 )
 
@@ -74,22 +55,24 @@ func (t *Base) setenv(action string, leader bool) {
 	// each Setenv resource Driver will load its own env vars when actioned
 }
 
-func (t *Base) preAction(action objectactionprops.T, options ActionOptioner) error {
-	if err := t.notifyAction(action, options); err != nil {
+func (t *Base) preAction(ctx context.Context) error {
+	if err := t.notifyAction(ctx); err != nil {
+		action := actioncontext.Props(ctx)
 		t.Log().Debug().Err(err).Msgf("unable to notify %v preAction", action.Name)
 	}
-	if err := t.mayFreeze(action, options); err != nil {
+	if err := t.mayFreeze(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *Base) needRollback(action objectactionprops.T, options ActionOptioner) bool {
+func (t *Base) needRollback(ctx context.Context) bool {
+	action := actioncontext.Props(ctx)
 	if !action.Rollback {
 		t.Log().Debug().Msgf("skip rollback: not demanded by the %s action", action)
 		return false
 	}
-	if options.(isRollbackDisableder).IsRollbackDisabled() {
+	if actioncontext.IsRollbackDisabled(ctx) {
 		t.Log().Debug().Msg("skip rollback: disabled via the command flag")
 		return false
 	}
@@ -107,17 +90,14 @@ func (t *Base) rollback(ctx context.Context) error {
 	return nil
 }
 
-func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn resourceset.DoFunc) error {
-	if err := t.preAction(objectactionprops.Start, options); err != nil {
+func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
+	if err := t.preAction(ctx); err != nil {
 		return err
 	}
-	resourceSelector := options.GetResourceSelector()
-	resourceLister := t.actionResourceLister(resourceSelector, action.Order)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-	defer cancel()
-	ctx = actionrollback.NewContext(ctx)
-	if err := t.ResourceSets().Do(ctx, resourceLister, resourceSelector.To, fn); err != nil {
-		if t.needRollback(action, options) {
+	l := actioncontext.NewResourceSelector(ctx, t)
+	b := actioncontext.To(ctx)
+	if err := t.ResourceSets().Do(ctx, l, b, fn); err != nil {
+		if t.needRollback(ctx) {
 			t.Log().Err(err).Msg("")
 			return t.rollback(ctx)
 		}
@@ -126,36 +106,38 @@ func (t *Base) action(action objectactionprops.T, options ActionOptioner, fn res
 	return nil
 }
 
-func (t *Base) notifyAction(action objectactionprops.T, options ActionOptioner) error {
+func (t *Base) notifyAction(ctx context.Context) error {
 	if env.HasDaemonOrigin() {
 		return nil
 	}
-	if options.IsDryRun() {
+	if actioncontext.IsDryRun(ctx) {
 		return nil
 	}
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
+	action := actioncontext.Props(ctx)
 	req := c.NewPostObjectMonitor()
 	req.ObjectSelector = t.Path.String()
 	req.State = action.Progress
-	if options.GetResourceSelector().IsZero() {
+	if actioncontext.ResourceSelectorOptions(ctx).IsZero() {
 		req.LocalExpect = action.LocalExpect
 	}
 	_, err = req.Do()
 	return err
 }
 
-func (t *Base) mayFreeze(action objectactionprops.T, options ActionOptioner) error {
+func (t *Base) mayFreeze(ctx context.Context) error {
+	action := actioncontext.Props(ctx)
 	if !action.Freeze {
 		return nil
 	}
-	if options.IsDryRun() {
+	if actioncontext.IsDryRun(ctx) {
 		t.log.Debug().Msg("skip freeze: dry run")
 		return nil
 	}
-	if !options.GetResourceSelector().IsZero() {
+	if !actioncontext.ResourceSelectorOptions(ctx).IsZero() {
 		t.log.Debug().Msg("skip freeze: resource selection")
 		return nil
 	}
@@ -172,34 +154,5 @@ func (t *Base) orchestrateWantsFreeze() bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func (t *Base) setActionOptions(options interface{}) func() {
-	for _, r := range t.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		if a, ok := r.(forcer); ok {
-			a.SetForce(options.(isForcer).IsForce())
-		}
-		if a, ok := r.(confirmer); ok {
-			a.SetConfirm(options.(isConfirmer).IsConfirm())
-		}
-	}
-	return t.unsetActionOptions
-}
-
-func (t *Base) unsetActionOptions() {
-	for _, r := range t.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		if a, ok := r.(forcer); ok {
-			a.SetForce(false)
-		}
-		if a, ok := r.(confirmer); ok {
-			a.SetConfirm(false)
-		}
 	}
 }
