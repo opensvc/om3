@@ -21,7 +21,7 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t T) Abort() bool {
+func (t T) Abort(ctx context.Context) bool {
 	if len(t.Nodes) > 1 {
 		// TODO
 		return true

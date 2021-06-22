@@ -58,7 +58,7 @@ func (t T) SortKey() string {
 	}
 }
 
-func (t T) Abort() bool {
+func (t T) Abort(ctx context.Context) bool {
 	return false
 }
 

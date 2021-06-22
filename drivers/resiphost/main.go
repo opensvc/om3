@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
@@ -50,9 +51,6 @@ type (
 		Alias         bool     `json:"alias"`
 		Expose        []string `json:"expose"`
 
-		// action context
-		force bool
-
 		// cache
 		_ipaddr net.IP
 		_ipmask net.IPMask
@@ -69,10 +67,6 @@ func init() {
 func New() resource.Driver {
 	t := &T{}
 	return t
-}
-
-func (t *T) SetForce(v bool) {
-	t.force = v
 }
 
 // Manifest exposes to the core the input expected by the driver.
@@ -252,7 +246,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Abort() bool {
+func (t T) Abort(ctx context.Context) bool {
 	if t.Tags.Has(tagNonRouted) || t.Tags.Has(tagNoAction) {
 		return false // let start fail with an explicit error message
 	}
@@ -262,7 +256,7 @@ func (t T) Abort() bool {
 	if initialStatus := t.Status(); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
-	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !t.force {
+	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {
 		t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
 		return true
 	}

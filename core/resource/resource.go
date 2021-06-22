@@ -70,7 +70,7 @@ type (
 	}
 
 	Aborter interface {
-		Abort() bool
+		Abort(ctx context.Context) bool
 	}
 
 	// T is the resource type, embedded in each drivers type

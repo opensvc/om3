@@ -49,14 +49,14 @@ func (t *Base) lockedStart(ctx context.Context) error {
 	return nil
 }
 
-func (t Base) abortWorker(r resource.Driver, q chan bool, wg *sync.WaitGroup) {
+func (t Base) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 	a, ok := r.(resource.Aborter)
 	if !ok {
 		q <- false
 		return
 	}
-	if a.Abort() {
+	if a.Abort(ctx) {
 		t.log.Error().Str("rid", r.RID()).Msg("abort start")
 		q <- true
 		return
@@ -73,7 +73,7 @@ func (t *Base) abortStart(ctx context.Context) (err error) {
 			continue
 		}
 		wg.Add(1)
-		go t.abortWorker(r, q, &wg)
+		go t.abortWorker(ctx, r, q, &wg)
 	}
 	wg.Wait()
 	var ret bool
