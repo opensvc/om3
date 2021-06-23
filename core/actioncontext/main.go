@@ -69,7 +69,12 @@ func Props(ctx context.Context) objectactionprops.T {
 
 func NewResourceSelector(ctx context.Context, l ResourceLister) *resourceselector.T {
 	opts := ResourceSelectorOptions(ctx)
-	return resourceselector.New(l, resourceselector.WithOptions(opts))
+	order := Props(ctx).Order
+	return resourceselector.New(
+		l,
+		resourceselector.WithOptions(opts),
+		resourceselector.WithOrder(order),
+	)
 }
 
 func ResourceSelectorOptions(ctx context.Context) resourceselector.Options {

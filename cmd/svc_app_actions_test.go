@@ -444,18 +444,44 @@ func TestAppStop(t *testing.T) {
 	})
 }
 
-func TestAppStopSequence(t *testing.T) {
+func TestAppStopStartSequence(t *testing.T) {
 	cases := map[string]struct {
 		ExtraArgs []string
 		Expected  []string
 	}{
-		"startOrder": {
+		"start with mixed start sequence numbers and no sequence numbers": {
 			[]string{},
+			[]string{"rid1", "rid3", "rid2", "rid4", "rid5"},
+		},
+		"stop with mixed start sequence numbers and no sequence numbers": {
+			[]string{},
+			[]string{"rid5", "rid4", "rid2", "rid3", "rid1"},
+		},
+		"stop when only start sequence numbers": {
+			[]string{"--rid", "app#rid1,app#rid2,app#rid3"},
 			[]string{"rid2", "rid3", "rid1"},
+		},
+		"start when only start sequence numbers": {
+			[]string{"--rid", "app#rid1,app#rid2,app#rid3"},
+			[]string{"rid1", "rid3", "rid2"},
+		},
+		"stop when no start sequence numbers": {
+			[]string{"--rid", "app#rid5,app#rid4"},
+			[]string{"rid5", "rid4"},
+		},
+		"start when no start sequence numbers": {
+			[]string{"--rid", "app#rid5,app#rid4"},
+			[]string{"rid4", "rid5"},
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--colorlog", "no", "--local"}
+		var action string
+		if strings.HasPrefix(name, "start") {
+			action = "start"
+		} else {
+			action = "stop"
+		}
+		args := []string{"svcapp", action, "--colorlog", "no", "--local"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
@@ -477,25 +503,25 @@ func TestAppStopSequence(t *testing.T) {
 		return
 	}
 
-	t.Run("stopOrderBasedOnStartId", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+	for name := range cases {
+		t.Run("orderBasedOnStartId:"+name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopStartSequence")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			out, err := cmd.CombinedOutput()
+			require.Nilf(t, err, "got '%v'", string(out))
+			compile, err := regexp.Compile("running .*rid=app#([a-z0-9]+) ")
+			require.Nil(t, err)
+			var foundSequence []string
+			for _, match := range compile.FindAllStringSubmatch(string(out), -1) {
+				foundSequence = append(foundSequence, match[1])
+			}
 
-		name := "startOrder"
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStopSequence")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
-		out, err := cmd.CombinedOutput()
-		require.Nilf(t, err, "got '%v'", string(out))
-		compile, err := regexp.Compile("running .*rid=app#([a-z0-9]+) ")
-		require.Nil(t, err)
-		var foundSequence []string
-		for _, match := range compile.FindAllStringSubmatch(string(out), -1) {
-			foundSequence = append(foundSequence, match[1])
-		}
-
-		assert.Equalf(t, cases[name].Expected, foundSequence, "got:\n%v", string(out))
-	})
+			assert.Equalf(t, cases[name].Expected, foundSequence, "got:\n%v", string(out))
+		})
+	}
 }
 
 func TestAppStopComplexCommand(t *testing.T) {

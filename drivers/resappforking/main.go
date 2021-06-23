@@ -50,7 +50,7 @@ func (t T) Start(ctx context.Context) (err error) {
 		return nil
 	}
 
-	t.Log().Info().Msgf("runnning %s", cmd.String())
+	t.Log().Info().Msgf("running %s", cmd.String())
 	return cmd.Run()
 }
 
