@@ -64,6 +64,12 @@ var genericKeywords = []keywords.Keyword{
 		Text:      "Action failures on optional resources are logged but do not stop the action sequence. Also the optional resource status is not aggregated to the instance 'availstatus', but aggregated to the 'overallstatus'. Resource tagged :c-tag:`noaction` and sync resources are automatically considered optional. Useful for resources like dump filesystems for example.",
 	},
 	{
+		Option:    "monitor",
+		Attr:      "Monitor",
+		Converter: converters.Bool,
+		Text:      "A down monitored resource will trigger a the monitor action (crash or reboot the node, freezestop or switch the service) if the monitor thinks the resource should be up and it all restart tries failed.",
+	},
+	{
 		Option:    "shared",
 		Attr:      "Shared",
 		Converter: converters.Bool,

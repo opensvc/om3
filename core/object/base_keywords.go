@@ -267,6 +267,47 @@ var keywordStore = keywords.Store{
 		Example:  "ca",
 		Kind:     kind.Or(kind.Sec),
 	},
+	{
+		Section:  "DEFAULT",
+		Option:   "monitor_schedule",
+		Scopable: true,
+		Text:     "The object's monitored resources status evaluation schedule. See ``usr/share/doc/schedule`` for the schedule syntax.",
+		Default:  "@5m",
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "resinfo_schedule",
+		Scopable: true,
+		Text:     "The object's key-val table emit schedule. See ``usr/share/doc/schedule`` for the schedule syntax.",
+		Default:  "@60m",
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "status_schedule",
+		Scopable: true,
+		Text:     "The object's status evaluation schedule. See ``usr/share/doc/schedule`` for the schedule syntax.",
+		Default:  "@10m",
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "comp_schedule",
+		Scopable: true,
+		Text:     "The object's compliance run schedule. See ``usr/share/doc/schedule`` for the schedule syntax.",
+		Default:  "~00:00-06:00",
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "sync_schedule",
+		Scopable: true,
+		Text:     "The object's sync default schedule. See ``usr/share/doc/schedule`` for the schedule syntax.",
+		Default:  "04:00-06:00",
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "run_schedule",
+		Scopable: true,
+		Text:     "The object's tasks run action default schedule. See ``usr/share/doc/schedule`` for the schedule syntax.",
+	},
 }
 
 func (t Base) KeywordLookup(k key.T) keywords.Keyword {

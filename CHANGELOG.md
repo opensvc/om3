@@ -6,6 +6,15 @@
 
 * **breaking change:** drop backward compatibility for the always_on=<nodes> keyword.
 
+* New fields in print schedule json format: node, path
+
+* **breaking change:**  Renamed fields in print schedule json format:
+
+	config_parameter => key
+	last_run => last
+	next_run => next
+	schedule_definition => definition
+
 ### driver app
 * **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)
   

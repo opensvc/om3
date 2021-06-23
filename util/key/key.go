@@ -3,8 +3,8 @@ package key
 import "strings"
 
 type T struct {
-	Section string
-	Option  string
+	Section string `json:"section"`
+	Option  string `json:"option"`
 }
 
 func New(section, option string) T {

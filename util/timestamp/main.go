@@ -47,14 +47,26 @@ func (t T) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON parses a byte slice and loads this type instance.
 func (t *T) UnmarshalJSON(b []byte) error {
+	ti, err := Parse(string(b))
+	if err != nil {
+		*t = T{}
+		return nil
+	}
+	*t = New(ti)
+	return nil
+}
+
+func Parse(s string) (time.Time, error) {
 	var (
 		sec  int64
 		nsec int64
 	)
-	if n, err := fmt.Sscanf(string(b), "%d.%d", &sec, &nsec); err != nil || n != 2 {
-		*t = T{}
-		return nil
+	n, err := fmt.Sscanf(s, "%d.%d", &sec, &nsec)
+	if err != nil {
+		return time.Unix(0, 0), err
 	}
-	*t = New(time.Unix(sec, nsec))
-	return nil
+	if n != 2 {
+		return time.Unix(0, 0), fmt.Errorf("%s: invalid timestamp format: expecting 2 elements separated by a dot", s)
+	}
+	return time.Unix(sec, nsec), nil
 }

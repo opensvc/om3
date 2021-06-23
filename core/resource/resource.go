@@ -56,6 +56,7 @@ type (
 		IsDisabled() bool
 		IsStandby() bool
 		IsShared() bool
+		IsMonitored() bool
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -79,6 +80,7 @@ type (
 		ResourceID        *resourceid.T `json:"rid"`
 		Subset            string        `json:"subset"`
 		Disable           bool          `json:"disable"`
+		Monitor           bool          `json:"monitor"`
 		Optional          bool          `json:"optional"`
 		Standby           bool          `json:"standby"`
 		Shared            bool          `json:"shared"`
@@ -262,6 +264,11 @@ func (t T) IsStandby() bool {
 // IsShared returns true if the resource definition container shared=true.
 func (t T) IsShared() bool {
 	return t.Shared
+}
+
+// IsMonitored returns true if the resource definition container monitor=true.
+func (t T) IsMonitored() bool {
+	return t.Monitor
 }
 
 // RSubset returns the resource subset name
