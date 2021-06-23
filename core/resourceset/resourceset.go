@@ -136,6 +136,10 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
 	rsetResources := t.Resources()
 	resources := l.Resources().Intersection(rsetResources)
+	if l.IsDesc() {
+		// Align the resources order with the ResourceLister order.
+		resources.Reverse()
+	}
 	if barrier != "" && resources.HasRID(barrier) {
 		hitBarrier = true
 		resources = resources.Truncate(barrier)
