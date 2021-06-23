@@ -19,6 +19,10 @@ import (
 )
 
 func TestAppStop(t *testing.T) {
+	operation_not_permitted_msg := "operation not permitted"
+	if runtime.GOOS == "solaris" {
+		operation_not_permitted_msg = " not owner"
+	}
 	cases := map[string]struct {
 		extraArgs       []string
 		expectedResults string
@@ -61,7 +65,7 @@ func TestAppStop(t *testing.T) {
 		},
 		"nonRoot": {
 			[]string{"--rid", "app#root"},
-			"operation not permitted",
+			operation_not_permitted_msg,
 		},
 		"stoptruescriptd": {
 			[]string{"--rid", "app#stoptruescriptd"},

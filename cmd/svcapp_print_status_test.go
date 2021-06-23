@@ -27,8 +27,8 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 		},
 		"withoutStatusLog": {},
 		"withStatusLogStderr": {
-			{"warn", "ls: (.*)/no_such_file_line1.test.*No such"},
-			{"warn", "ls: (.*)/no_such_file_line2.test.*No such"},
+			{"warn", "line1"},
+			{"warn", "line2"},
 		},
 		"withStatusLogAndTimeout": {
 			{"warn", "DeadlineExceeded"},
