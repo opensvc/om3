@@ -69,7 +69,7 @@ func (t *Base) preAction(ctx context.Context) error {
 func (t *Base) needRollback(ctx context.Context) bool {
 	action := actioncontext.Props(ctx)
 	if !action.Rollback {
-		t.Log().Debug().Msgf("skip rollback: not demanded by the %s action", action)
+		t.Log().Debug().Msgf("skip rollback: not demanded by the %s action", action.Name)
 		return false
 	}
 	if actioncontext.IsRollbackDisabled(ctx) {
