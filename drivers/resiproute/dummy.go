@@ -3,18 +3,19 @@
 package resiproute
 
 import (
+	"context"
 	"fmt"
 
 	"opensvc.com/opensvc/core/status"
 )
 
 // Start the Resource
-func (t T) Start() error {
+func (t T) Start(_ context.Context) error {
 	return nil
 }
 
 // Stop the Resource
-func (t T) Stop() error {
+func (t T) Stop(_ context.Context) error {
 	return nil
 }
 
