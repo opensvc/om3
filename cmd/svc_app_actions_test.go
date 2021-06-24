@@ -19,9 +19,9 @@ import (
 )
 
 func TestAppStop(t *testing.T) {
-	operation_not_permitted_msg := "operation not permitted"
+	operationNotPermittedMsg := "operation not permitted"
 	if runtime.GOOS == "solaris" {
-		operation_not_permitted_msg = " not owner"
+		operationNotPermittedMsg = " not owner"
 	}
 	cases := map[string]struct {
 		extraArgs       []string
@@ -47,17 +47,17 @@ func TestAppStop(t *testing.T) {
 			[]string{"--rid", "app#cwdWithDefaultType"},
 			"/usr",
 		},
-		"baduser": {
-			[]string{"--rid", "app#baduser"},
-			"unable to find user info for 'baduser'",
+		"badUser": {
+			[]string{"--rid", "app#badUser"},
+			"unable to find user info for 'badUser'",
 		},
-		"badgroup": {
-			[]string{"--rid", "app#badgroup"},
-			"unable to find group info for 'badgroup'",
+		"badGroup": {
+			[]string{"--rid", "app#badGroup"},
+			"unable to find group info for 'badGroup'",
 		},
-		"badusergroup": {
-			[]string{"--rid", "app#badusergroup"},
-			"unable to find user info for 'baduser'",
+		"badUserGroup": {
+			[]string{"--rid", "app#badUserGroup"},
+			"unable to find user info for 'badUser'",
 		},
 		"root": {
 			[]string{"--rid", "app#root"},
@@ -65,10 +65,10 @@ func TestAppStop(t *testing.T) {
 		},
 		"nonRoot": {
 			[]string{"--rid", "app#root"},
-			operation_not_permitted_msg,
+			operationNotPermittedMsg,
 		},
-		"stoptruescriptd": {
-			[]string{"--rid", "app#stoptruescriptd"},
+		"stopTrueScript": {
+			[]string{"--rid", "app#stopTrueScript"},
 			"noSuchFile.opensvc.test",
 		},
 		"stoptrue": {
@@ -240,7 +240,7 @@ func TestAppStop(t *testing.T) {
 		}
 	})
 
-	for _, name := range []string{"baduser", "badgroup", "badusergroup"} {
+	for _, name := range []string{"badUser", "badGroup", "badUserGroup"} {
 		t.Run("invalid credentials "+name, func(t *testing.T) {
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -282,7 +282,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("when stop is true and script not found into <svcname>.d", func(t *testing.T) {
-		name := "stoptruescriptd"
+		name := "stopTrueScript"
 		var msg string
 		td, cleanup := testhelper.Tempdir(t)
 		defer cleanup()
