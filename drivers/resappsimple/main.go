@@ -2,6 +2,7 @@ package resappsimple
 
 import (
 	"context"
+	"opensvc.com/opensvc/core/actionrollback"
 
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -42,8 +43,14 @@ func (t T) Start(ctx context.Context) (err error) {
 
 	opts = append(opts, command.WithLogger(t.Log()))
 	cmd := command.New(opts...)
-	t.Log().Info().Msgf("runnning %s", cmd.String())
-	return cmd.Start()
+	t.Log().Info().Msgf("running %s", cmd.String())
+	err = cmd.Start()
+	if err == nil {
+		actionrollback.Register(ctx, func() error {
+			return t.Stop(ctx)
+		})
+	}
+	return
 }
 
 // Label returns a formatted short description of the Resource
