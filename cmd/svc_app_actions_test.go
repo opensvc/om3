@@ -688,3 +688,176 @@ func TestAppStopTimeout(t *testing.T) {
 		})
 	}
 }
+
+func TestAppStartRollback(t *testing.T) {
+	cases := map[string]struct {
+		rids               []string
+		extraArgs          []string
+		expectedStart      []string
+		unexpectedStart    []string
+		expectedRollback   []string
+		unexpectedRollback []string
+		exitCode           int
+	}{
+		"when all app succeed": {
+			rids:               []string{"1ok", "2ok"},
+			expectedStart:      []string{"1ok", "2ok"},
+			unexpectedRollback: []string{"1ok", "2ok"},
+		},
+		"when one app fails": {
+			rids: []string{"1ok", "2ok", "3fail", "6ok"},
+			// start apps until one fails
+			expectedStart: []string{"1ok", "2ok", "3fail"},
+			// do not continue start after one app fails
+			unexpectedStart: []string{"6ok"},
+			// rollback is are only called on success started app
+			expectedRollback: []string{"1ok", "2ok"},
+			// ensure app without succeed cmd start are not rollback
+			unexpectedRollback: []string{"3fail", "6ok"},
+			exitCode:           1,
+		},
+		"when one app fails but rollback is disabled": {
+			rids:          []string{"1ok", "2ok", "3fail", "6ok"},
+			extraArgs:     []string{"--disable-rollback"},
+			expectedStart: []string{"1ok", "2ok", "3fail"},
+			// do not continue start after one app fails
+			unexpectedStart: []string{"6ok"},
+			// no rollback because of --disable-rollback
+			expectedRollback:   []string{},
+			unexpectedRollback: []string{"1ok", "2ok", "3fail", "6ok"},
+			exitCode:           1,
+		},
+		"do not continue rollbacks when one rollback step fails": {
+			rids: []string{"1ok", "2ok", "4rollbackFail", "5fail", "6ok"},
+			// start apps until one fails
+			expectedStart: []string{"1ok", "2ok", "4rollbackFail", "5fail"},
+			// do not continue start after one app fails
+			unexpectedStart:  []string{"6ok"},
+			expectedRollback: []string{"4rollbackFail"},
+			// do not continue  rollbacks when one rollback fails
+			unexpectedRollback: []string{"1ok", "2ok", "5fail", "6ok"},
+			exitCode:           1,
+		},
+	}
+	getCmd := func(name string) []string {
+		args := []string{"svcapp", "start", "--local", "--colorlog", "no"}
+		var rids []string
+		for _, rid := range cases[name].rids {
+			rids = append(rids, "app#"+rid)
+		}
+		if len(rids) > 0 {
+			args = append(args, "--rid", strings.Join(rids, ","))
+		}
+		if len(cases[name].extraArgs) > 0 {
+			args = append(args, cases[name].extraArgs...)
+		}
+		return args
+	}
+
+	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
+		var td string
+		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
+			d, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			td = d
+		}
+
+		test_conf_helper.InstallSvcFile(t, "svcapp-rollback.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+		rawconfig.Load(map[string]string{"osvc_root_path": td})
+		defer rawconfig.Load(map[string]string{})
+		defer hostname.Impersonate("node1")()
+		ExecuteArgs(getCmd(name))
+		return
+	}
+
+	for name := range cases {
+		t.Run(name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
+			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
+			cmd := exec.Command(os.Args[0], "-test.run=TestAppStartRollback")
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			out, err := cmd.CombinedOutput()
+			t.Logf("output:\n%v", string(out))
+			expectedExitCode := cases[name].exitCode
+			if expectedExitCode == 0 {
+				t.Run("expected exit code 0", func(t *testing.T) {
+					t.Logf("from 'om %v'", strings.Join(getCmd(name), " "))
+					require.Nilf(t, err, "unexpected exit code: %v, out: '%v'", err, string(out))
+				})
+			} else {
+				t.Run("expected exit code non 0", func(t *testing.T) {
+					t.Logf("from 'om %v'", strings.Join(getCmd(name), " "))
+					require.IsTypef(t, &exec.ExitError{}, err, "unexpected error type %v, out: '%v'", err, string(out))
+					require.Equalf(
+						t,
+						expectedExitCode,
+						err.(*exec.ExitError).ExitCode(),
+						"unexpected exit code.\nout: '%v'",
+						string(out))
+				})
+			}
+
+			expectedStart := cases[name].expectedStart
+			t.Run("expected start", func(t *testing.T) {
+				t.Logf("from 'om %v'\nexpected starts: %v", strings.Join(getCmd(name), " "), expectedStart)
+				for _, rid := range expectedStart {
+					trace := "app#" + rid + "-start.trace"
+					assert.FileExistsf(
+						t,
+						filepath.Join(td, "var", trace),
+						"expected start not found: %v\nout:'%v'",
+						rid,
+						string(out))
+					t.Logf("check start is called for rid %v", rid)
+				}
+			})
+
+			expectedRollback := cases[name].expectedRollback
+			t.Run("expected rollback", func(t *testing.T) {
+				t.Logf("from 'om %v'\nexpected rollbacks: %v", strings.Join(getCmd(name), " "), expectedRollback)
+				for _, rid := range expectedRollback {
+					trace := "app#" + rid + "-rollback.trace"
+					assert.FileExistsf(
+						t,
+						filepath.Join(td, "var", trace),
+						"expected rollback not found: %v\nout:'%v'",
+						rid,
+						string(out))
+					t.Logf("check rollback is called for rid %v", rid)
+				}
+			})
+
+			unexpectedStart := cases[name].unexpectedStart
+			t.Run("unexpected start", func(t *testing.T) {
+				t.Logf("from 'om %v'\nunexpected starts: %v", strings.Join(getCmd(name), " "), unexpectedStart)
+				for _, rid := range unexpectedStart {
+					trace := "app#" + rid + "-start.trace"
+					assert.NoFileExists(
+						t,
+						filepath.Join(td, "var", trace),
+						"unexpected start found: %v\nout:'%v'",
+						rid,
+						string(out))
+					t.Logf("check start cmd is not called for rid %v", rid)
+				}
+			})
+
+			unexpectedRollback := cases[name].unexpectedRollback
+			t.Run("unexpected rollback", func(t *testing.T) {
+				t.Logf("from 'om %v'\nunexpected rollback: %v", strings.Join(getCmd(name), " "), unexpectedRollback)
+				for _, rid := range unexpectedRollback {
+					trace := "app#" + rid + "-rollback.trace"
+					assert.NoFileExists(
+						t,
+						filepath.Join(td, "var", trace),
+						"unexpected rollback found: %v\nout:'%v'",
+						rid,
+						string(out))
+					t.Logf("check rollback is not called for rid %v", rid)
+				}
+			})
+		})
+	}
+}
