@@ -86,8 +86,7 @@ func (t *Base) needRollback(ctx context.Context) bool {
 
 func (t *Base) rollback(ctx context.Context) error {
 	t.Log().Info().Msg("rollback")
-	actionrollback.Rollback(ctx)
-	return nil
+	return actionrollback.Rollback(ctx)
 }
 
 func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
@@ -97,9 +96,11 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	l := actioncontext.NewResourceSelector(ctx, t)
 	b := actioncontext.To(ctx)
 	if err := t.ResourceSets().Do(ctx, l, b, fn); err != nil {
+		t.Log().Err(err).Msg("")
 		if t.needRollback(ctx) {
-			t.Log().Err(err).Msg("")
-			return t.rollback(ctx)
+			if errRollback := t.rollback(ctx); errRollback != nil {
+				t.Log().Err(errRollback).Msg("rollback")
+			}
 		}
 		return err
 	}
