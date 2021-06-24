@@ -553,3 +553,8 @@ func Action(ctx context.Context, r Driver) error {
 		return printHelp(r)
 	}
 }
+
+// SetLoggerForTest can be used to set resource log for testing purpose
+func (t *T) SetLoggerForTest(l zerolog.Logger) {
+	t.log = l
+}

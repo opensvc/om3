@@ -2,8 +2,8 @@ package resappforking
 
 import (
 	"context"
-
 	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -51,7 +51,13 @@ func (t T) Start(ctx context.Context) (err error) {
 	}
 
 	t.Log().Info().Msgf("running %s", cmd.String())
-	return cmd.Run()
+	err = cmd.Run()
+	if err == nil {
+		actionrollback.Register(ctx, func() error {
+			return t.Stop(ctx)
+		})
+	}
+	return
 }
 
 // Label returns a formatted short description of the Resource
