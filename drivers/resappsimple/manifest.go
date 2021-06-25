@@ -30,6 +30,11 @@ func (t T) Manifest() *manifest.T {
 			Attr: "Nodes",
 			Ref:  "object.nodes",
 		},
+		{
+			Key:  "objectID",
+			Attr: "ObjectID",
+			Ref:  "object.id",
+		},
 	}...)
 	m.AddKeyword(keywordL...)
 	return m
