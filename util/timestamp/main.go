@@ -28,6 +28,10 @@ func NewFromSecondsFloat64(f float64) T {
 	return New(tm)
 }
 
+func (t T) Time() time.Time {
+	return t.tm
+}
+
 func (t T) String() string {
 	return fmt.Sprintf("%d.%d", t.tm.Unix(), t.tm.Nanosecond())
 }
@@ -69,4 +73,9 @@ func Parse(s string) (time.Time, error) {
 		return time.Unix(0, 0), fmt.Errorf("%s: invalid timestamp format: expecting 2 elements separated by a dot", s)
 	}
 	return time.Unix(sec, nsec), nil
+}
+
+func (t T) Render() string {
+	layout := "2006-01-02 15:04:05 Z07:00"
+	return t.tm.Local().Format(layout)
 }
