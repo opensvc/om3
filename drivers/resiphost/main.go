@@ -167,6 +167,15 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
+func (t *T) StatusInfo() map[string]interface{} {
+	netmask, _ := t.ipmask().Size()
+	data := make(map[string]interface{})
+	data["ipaddr"] = t.ipaddr()
+	data["ipdev"] = t.IpDev
+	data["netmask"] = netmask
+	return data
+}
+
 func (t T) Start(ctx context.Context) error {
 	if initialStatus := t.Status(); initialStatus == status.Up {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)

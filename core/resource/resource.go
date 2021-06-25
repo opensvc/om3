@@ -15,6 +15,7 @@ import (
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
+	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/command"
@@ -158,6 +159,16 @@ type (
 	}
 
 	Hook int
+
+	ExposedStatusInfoSchedAction struct {
+		Last timestamp.T `json:"last"`
+	}
+	StatusInfoer interface {
+		StatusInfo() map[string]interface{}
+	}
+	Scheduler interface {
+		Schedules() schedule.Table
+	}
 )
 
 const (
@@ -506,6 +517,7 @@ func GetExposedStatus(r Driver) ExposedStatus {
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),
 		Provisioned: getProvisionStatus(r),
+		Info:        exposedStatusInfo(r),
 		Optional:    OptionalFlag(r.IsOptional()),
 		Standby:     StandbyFlag(r.IsStandby()),
 		Disable:     DisableFlag(r.IsDisabled()),
@@ -557,4 +569,27 @@ func Action(ctx context.Context, r Driver) error {
 // SetLoggerForTest can be used to set resource log for testing purpose
 func (t *T) SetLoggerForTest(l zerolog.Logger) {
 	t.log = l
+}
+
+func exposedStatusInfo(t Driver) (data map[string]interface{}) {
+	if i, ok := t.(StatusInfoer); ok {
+		data = i.StatusInfo()
+	} else {
+		data = make(map[string]interface{})
+	}
+	if i, ok := t.(Scheduler); ok {
+		data["sched"] = exposedStatusInfoSched(i)
+	}
+	return data
+}
+
+func exposedStatusInfoSched(t Scheduler) map[string]ExposedStatusInfoSchedAction {
+	data := make(map[string]ExposedStatusInfoSchedAction)
+	for _, e := range t.Schedules() {
+		ad := ExposedStatusInfoSchedAction{
+			Last: e.Last,
+		}
+		data[e.Action] = ad
+	}
+	return data
 }
