@@ -1,3 +1,5 @@
+// Package timestamp manage Unix timestamps
+
 package timestamp
 
 import (
@@ -11,6 +13,10 @@ import (
 type T struct {
 	tm time.Time
 }
+
+var (
+	zero = time.Unix(0, 0)
+)
 
 // New allocates a timestamp from the given time.
 func New(tm time.Time) T {
@@ -37,9 +43,10 @@ func (t T) String() string {
 	return fmt.Sprintf("%d.%d", t.tm.Unix(), t.tm.Nanosecond())
 }
 
-// IsZero relays time.Time IsZero.
+// IsZero reports whether t represents the Unix zero time instant,
+// January 1, 1970 UTC.
 func (t T) IsZero() bool {
-	return t.tm.IsZero()
+	return t.tm == zero
 }
 
 // MarshalJSON turns this type instance into a byte slice.
