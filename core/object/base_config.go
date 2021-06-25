@@ -43,7 +43,8 @@ func (t *Base) ID() uuid.UUID {
 		return t.id
 	}
 	idKey := key.Parse("id")
-	if idStr := t.config.GetString(idKey); idStr != "" {
+	if t.config.HasKey(idKey) {
+		idStr := t.config.Get(idKey)
 		if id, err := uuid.Parse(idStr); err == nil {
 			t.id = id
 			return t.id
