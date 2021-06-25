@@ -212,7 +212,23 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "out="+expected, "got: '\n%v'", string(out))
+			t.Run(strings.Split(expected, "=")[0], func(t *testing.T) {
+				assert.Containsf(t, string(out), "out="+expected,
+					"'%v' not found in out.\ngot:\n%v", "out="+expected, string(out))
+			})
+		}
+		defaultEnv := []string{
+			"OPENSVC_RID=app#env",
+			"OPENSVC_NAME=svcappforking",
+			"OPENSVC_KIND=svc",
+			"OPENSVC_ID=f8fd968f-3dfd-4a54-a8c8-f5a52bbeb0c1",
+			"OPENSVC_NAMESPACE=root",
+		}
+		for _, expected := range defaultEnv {
+			t.Run("default:"+strings.Split(expected, "=")[0], func(t *testing.T) {
+				assert.Containsf(t, string(out), "out="+expected,
+					"'%v' not found in out.\ngot:\n%v", "out="+expected, string(out))
+			})
 		}
 	})
 

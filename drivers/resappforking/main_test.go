@@ -38,6 +38,7 @@ func getActionContext() (ctx context.Context, cancel context.CancelFunc) {
 }
 func WithLoggerApp(app T) T {
 	app.SetLoggerForTest(log)
+	app.SetRID("foo")
 	return app
 }
 
