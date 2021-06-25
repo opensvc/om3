@@ -4,6 +4,7 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -72,5 +73,9 @@ type (
 	ResourceLister interface {
 		Resources() resource.Drivers
 		IsDesc() bool
+	}
+
+	scheduler interface {
+		Schedules() schedule.Table
 	}
 )

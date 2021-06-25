@@ -17,10 +17,6 @@ type (
 	OptsPrintSchedule struct {
 		Global OptsGlobal
 	}
-
-	scheduler interface {
-		Schedules() schedule.Table
-	}
 )
 
 // PrintSchedule display the object scheduling table
@@ -67,7 +63,7 @@ func (t *Base) newScheduleEntry(action string, keyStr string, base string) sched
 		Node:       hostname.Hostname(),
 		Path:       t.Path,
 		Action:     action,
-		Last:       t.loadLast(action, "", base),
+		Last:       timestamp.New(t.loadLast(action, "", base)),
 		Key:        k.String(),
 		Definition: def,
 	}
