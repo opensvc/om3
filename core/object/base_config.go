@@ -38,7 +38,7 @@ func (t Base) Config() *xconfig.T {
 	return t.config
 }
 
-func (t Base) ID() uuid.UUID {
+func (t *Base) ID() uuid.UUID {
 	if t.id != uuid.Nil {
 		return t.id
 	}
