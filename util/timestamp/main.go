@@ -3,6 +3,7 @@ package timestamp
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -65,6 +66,9 @@ func Parse(s string) (time.Time, error) {
 		sec  int64
 		nsec int64
 	)
+	if !strings.Contains(s, ".") {
+		s = s + ".0"
+	}
 	n, err := fmt.Sscanf(s, "%d.%d", &sec, &nsec)
 	if err != nil {
 		return time.Unix(0, 0), err
