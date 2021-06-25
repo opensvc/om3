@@ -14,6 +14,10 @@ func (t T) NewGetEvents() *api.GetEvents {
 	return api.NewGetEvents(t)
 }
 
+func (t T) NewGetSchedules() *api.GetSchedules {
+	return api.NewGetSchedules(t)
+}
+
 func (t T) NewGetKey() *api.GetKey {
 	return api.NewGetKey(t)
 }
