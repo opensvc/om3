@@ -1,22 +1,21 @@
 package schedule
 
 import (
-	"time"
-
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
 	Table []Entry
 
 	Entry struct {
-		Path       path.T    `json:"path"`
-		Node       string    `json:"node"`
-		Action     string    `json:"action"`
-		Key        string    `json:"key"`
-		Last       time.Time `json:"last"`
-		Next       time.Time `json:"next"`
-		Definition string    `json:"definition"`
+		Path       path.T      `json:"path"`
+		Node       string      `json:"node"`
+		Action     string      `json:"action"`
+		Key        string      `json:"config_parameter"`
+		Last       timestamp.T `json:"last_run"`
+		Next       timestamp.T `json:"next_run"`
+		Definition string      `json:"schedule_definition"`
 	}
 )
 

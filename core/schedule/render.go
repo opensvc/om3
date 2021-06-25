@@ -5,14 +5,14 @@ import (
 
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
-func SprintTime(t time.Time) string {
-	if t == time.Unix(0, 0) || t.IsZero() {
+func SprintTime(t timestamp.T) string {
+	if t.Time() == time.Unix(0, 0) || t.IsZero() {
 		return "-"
 	}
-	layout := "2006-01-02 15:04:05 Z07:00"
-	return t.Local().Format(layout)
+	return t.Render()
 }
 
 func (t Table) Render() string {
