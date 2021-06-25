@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"encoding/json"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -44,7 +44,6 @@ func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) schedule.
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		log.Debug().Err(err).Msg("extract schedules from daemon")
 		return data
 	}
 	if clientcontext.IsSet() {
@@ -77,19 +76,18 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 
 func (t *CmdObjectPrintSchedule) extractFromDaemon(selector string, c *client.T) (schedule.Table, error) {
 	data := schedule.NewTable()
-	/*
-		b, err := c.NewGetDaemonSchedules().
-			SetSelector(selector).
-			Do()
-		if err != nil {
-			return data, err
-		}
-		err = json.Unmarshal(b, &data)
-		if err != nil {
-			return data, err
-		}
-	*/
-	return data, fmt.Errorf("extractFromDaemon() not implemented")
+	req := c.NewGetSchedules()
+	req.ObjectSelector = selector
+	b, err := req.Do()
+	if err != nil {
+		return data, err
+	}
+	err = json.Unmarshal(b, &data)
+	if err != nil {
+		log.Debug().Err(err).Msg("unmarshal GET /schedules")
+		return data, err
+	}
+	return data, nil
 }
 
 func (t *CmdObjectPrintSchedule) run(selector *string, kind string) {
