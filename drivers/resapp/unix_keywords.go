@@ -40,11 +40,13 @@ var (
 				" evaluation. ``<shlex expression>`` execute the command on status evaluation.",
 		},
 		{
-			Option:   "info", // TODO
+			Option:   "info",
 			Attr:     "InfoCmd",
 			Scopable: true,
 			Text: "``true`` execute :cmd:`<script> info` on info action. ``false`` do nothing on info action." +
-				" ``<shlex expression>`` execute the command on info action.",
+				" ``<shlex expression>`` execute the command on info action." +
+				" Stdout lines must contain only one 'key:value'." +
+				" Invalid lines are dropped.",
 			Default: "false",
 		},
 		{
