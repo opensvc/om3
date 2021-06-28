@@ -71,9 +71,10 @@ var (
 			Scopable: true,
 			Required: false,
 			Text: "The whitespace separated list of ``<retcode>:<status name>``." +
-				" All undefined retcodes are mapped to the 'warn' status.",
+				" All undefined retcodes are mapped to the 'warn' status." +
+				" Valid <status names> are 'up', 'down', 'warn', 'n/a', 'undef'.",
 			Default: "0:up 1:down",
-			Example: "0:up 1:down 3:n/a",
+			Example: "0:up 1:down 3:warn 4: n/a 5:undef",
 		},
 		{
 			Option:    "umask",

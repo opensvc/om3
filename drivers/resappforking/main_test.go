@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/file"
 	"os"
@@ -143,5 +144,52 @@ func TestStop(t *testing.T) {
 		defer cancel()
 		require.Nil(t, app.Stop(ctx), "Stop(...) returned value")
 		require.False(t, file.Exists(filename), "stop cmd called !")
+	})
+}
+
+func TestStatus(t *testing.T) {
+	t.Run("execute check command", func(t *testing.T) {
+		td, cleanup := prepareConfig(t)
+		defer cleanup()
+
+		filename := filepath.Join(td, "trace")
+		app := WithLoggerApp(T{resapp.T{CheckCmd: "touch " + filename}})
+		app.Status()
+		require.True(t, file.Exists(filename), "missing status cmd !")
+	})
+
+	t.Run("check returned value", func(t *testing.T) {
+		cases := map[string]struct {
+			exitCode string
+			retcode  string
+			expected status.T
+		}{
+			// when empty retcodes, => use default "0:up 1:down"
+			"Up when exit 0":              {"0", "", status.Up},
+			"Down when exit 1":            {"1", "", status.Down},
+			"Warn when unknown exit code": {"66", "", status.Warn},
+
+			// retcodes
+			"Up when exit 1 and retcode 1:up 0:down":   {"1", "1:up 0:down", status.Up},
+			"Down when exit 0 and retcode 1:up 0:down": {"0", "1:up 0:down", status.Down},
+			"Down when exit 0 and retcode 1:up 0:n/1":  {"0", "1:up 0:n/a", status.NotApplicable},
+
+			// retcodes with multiple spaces
+			"Down when exit 0 and retcode 1:up    0:down": {"0", "1:up    0:down", status.Down},
+
+			// invalid retcodes dropped"
+			"Warn when exit 0 and invalid retcodes 0:foo 1:down": {"0", "0:foo 1:down", status.Warn},
+			"Up when exit 1 and invalid retcodes 1:up 0:foo":     {"1", "1:up 0:foo", status.Up},
+		}
+		for name := range cases {
+			t.Run(name, func(t *testing.T) {
+				_, cleanup := prepareConfig(t)
+				defer cleanup()
+
+				app := WithLoggerApp(T{resapp.T{CheckCmd: "echo && exit " + cases[name].exitCode}})
+				app.RetCodes = cases[name].retcode
+				require.Equal(t, cases[name].expected.String(), app.Status().String())
+			})
+		}
 	})
 }

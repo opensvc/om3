@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -49,6 +50,20 @@ type T struct {
 	LimitStack   *int64         `json:"limit_stack"`
 	LimitVMem    *int64         `json:"limit_vmem"`
 }
+
+var (
+	baseExitToStatusMap = map[int]status.T{
+		0: status.Up,
+		1: status.Down,
+	}
+	stringToStatus = map[string]status.T{
+		"up":    status.Up,
+		"down":  status.Down,
+		"warn":  status.Warn,
+		"n/a":   status.NotApplicable,
+		"undef": status.Undef,
+	}
+)
 
 func (t T) SortKey() string {
 	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
@@ -112,6 +127,7 @@ func (t *T) Status() status.T {
 		command.WithStdoutLogLevel(zerolog.Disabled),
 		command.WithStderrLogLevel(zerolog.Disabled),
 		command.WithTimeout(t.GetTimeout("check")),
+		command.WithIgnoredExitCodes(),
 	)
 	if t.StatusLogKw {
 		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
@@ -127,8 +143,9 @@ func (t *T) Status() status.T {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
 	}
-	t.Log().Debug().Msgf("status is up")
-	return status.Up
+	resultStatus := t.exitCodeToStatus(cmd.ExitCode())
+	t.Log().Debug().Msgf("status is %v", resultStatus)
+	return resultStatus
 }
 
 func (t T) Provision(ctx context.Context) error {
@@ -155,7 +172,7 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		return nil, err
 	}
 	if len(baseCommand) == 0 {
-		t.Log().Debug().Msgf("no basecommand for action '%v'", action)
+		t.Log().Debug().Msgf("no base command for action '%v'", action)
 		return nil, nil
 	}
 	limitCommands := command.ShLimitCommands(t.toLimits())
@@ -269,4 +286,45 @@ func (t T) GetTimeout(action string) time.Duration {
 		return 0
 	}
 	return *timeout
+}
+
+func (t T) exitCodeToStatus(exitCode int) status.T {
+	convertMap := t.exitCodeToStatusMap()
+	if s, ok := convertMap[exitCode]; ok {
+		return s
+	}
+	return status.Warn
+}
+
+// exitCodeToStatusMap return exitCodeToStatus map
+//
+// invalid entry rules are dropped
+func (t T) exitCodeToStatusMap() (m map[int]status.T) {
+	if len(t.RetCodes) == 0 {
+		return baseExitToStatusMap
+	}
+	m = make(map[int]status.T)
+	for _, rule := range strings.Fields(t.RetCodes) {
+		dropMessage := fmt.Sprintf("drop retcodes invalid rule '%v'", rule)
+		ruleSplit := strings.Split(rule, ":")
+		if len(ruleSplit) != 2 {
+			t.Log().Debug().Msg(dropMessage)
+			continue
+		}
+		code, err := strconv.Atoi(ruleSplit[0])
+		if err != nil {
+			t.Log().Debug().Msg(dropMessage)
+			continue
+		}
+		statusValue, ok := stringToStatus[ruleSplit[1]]
+		if !ok {
+			t.Log().Debug().Msg(dropMessage)
+			continue
+		}
+		m[code] = statusValue
+	}
+	if len(m) == 0 {
+		return baseExitToStatusMap
+	}
+	return m
 }
