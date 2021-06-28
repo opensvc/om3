@@ -3,6 +3,7 @@ package status
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 )
 
 // T representing a Resource, Object Instance or Object status
@@ -30,6 +31,8 @@ const (
 	StandbyUpWithUp
 	// StandbyUpWithDown means Instance with standby resources Configured or Active and other resources Down
 	StandbyUpWithDown
+	// Pending is a transient state posted on the statusbus to hint waiters on the bus that a newer status is being computed.
+	Pending
 )
 
 var toString = map[T]string{
@@ -42,6 +45,7 @@ var toString = map[T]string{
 	StandbyDown:       "stdby down",
 	StandbyUpWithUp:   "up",
 	StandbyUpWithDown: "stdby up",
+	Pending:           "pending",
 }
 
 var toID = map[string]T{
@@ -52,6 +56,14 @@ var toID = map[string]T{
 	"undef":      Undef,
 	"stdby up":   StandbyUp,
 	"stdby down": StandbyDown,
+	"pending":    Pending,
+}
+
+func Parse(s string) T {
+	if st, ok := toID[strings.TrimSpace(s)]; ok {
+		return st
+	}
+	return Undef
 }
 
 func (t T) String() string {
