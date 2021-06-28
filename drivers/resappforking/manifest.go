@@ -18,7 +18,7 @@ func (t T) Manifest() *manifest.T {
 	keywordL = append(keywordL, resapp.BaseKeywords...)
 	keywordL = append(keywordL, resapp.UnixKeywords...)
 	keywordL = append(keywordL, Keywords...)
-	m := manifest.New(driverGroup, driverName)
+	m := manifest.New(driverGroup, driverName, t)
 	m.AddContext([]manifest.Context{
 		{
 			Key:  "path",

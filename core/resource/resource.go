@@ -78,22 +78,28 @@ type (
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
-		ResourceID        *resourceid.T `json:"rid"`
-		Subset            string        `json:"subset"`
-		Disable           bool          `json:"disable"`
-		Monitor           bool          `json:"monitor"`
-		Optional          bool          `json:"optional"`
-		Standby           bool          `json:"standby"`
-		Shared            bool          `json:"shared"`
-		Tags              *set.Set      `json:"tags"`
-		BlockingPreStart  string
-		BlockingPreStop   string
-		PreStart          string
-		PreStop           string
-		BlockingPostStart string
-		BlockingPostStop  string
-		PostStart         string
-		PostStop          string
+		ResourceID          *resourceid.T `json:"rid"`
+		Subset              string        `json:"subset"`
+		Disable             bool          `json:"disable"`
+		Monitor             bool          `json:"monitor"`
+		Optional            bool          `json:"optional"`
+		Standby             bool          `json:"standby"`
+		Shared              bool          `json:"shared"`
+		Tags                *set.Set      `json:"tags"`
+		BlockingPreStart    string
+		BlockingPreStop     string
+		PreStart            string
+		PreStop             string
+		BlockingPostStart   string
+		BlockingPostStop    string
+		PostStart           string
+		PostStop            string
+		StartRequires       string
+		StopRequires        string
+		ProvisionRequires   string
+		UnprovisionRequires string
+		SyncRequires        string
+		RunRequires         string
 
 		statusLog StatusLog
 		log       zerolog.Logger

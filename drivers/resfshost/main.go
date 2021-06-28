@@ -254,7 +254,7 @@ func New() resource.Driver {
 
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, t.Type)
+	m := manifest.New(driverGroup, t.Type, t)
 	m.AddKeyword(KeywordsBase...)
 	return m
 }

@@ -1,6 +1,8 @@
 package manifest
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/util/converters"
@@ -48,6 +50,79 @@ type (
 		Ref string
 	}
 )
+
+type (
+	provisioner interface {
+		Provision(context.Context) error
+	}
+	unprovisioner interface {
+		Unprovision(context.Context) error
+	}
+	starter interface {
+		Start(context.Context) error
+	}
+	stopper interface {
+		Stop(context.Context) error
+	}
+	runner interface {
+		Run(context.Context) error
+	}
+	syncer interface {
+		Sync(context.Context) error
+	}
+)
+
+func (t *T) AddInterfacesKeywords(r interface{}) *T {
+	if _, ok := r.(starter); ok {
+		t.AddKeyword(keywords.Keyword{
+			Option:  "start_requires",
+			Attr:    "StartRequires",
+			Example: "ip#0 fs#0(down,stdby down)",
+			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'start' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+		})
+	}
+	if _, ok := r.(stopper); ok {
+		t.AddKeyword(keywords.Keyword{
+			Option:  "stop_requires",
+			Attr:    "StopRequires",
+			Example: "ip#0 fs#0(down,stdby down)",
+			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'stop' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+		})
+	}
+	if _, ok := r.(provisioner); ok {
+		t.AddKeyword(keywords.Keyword{
+			Option:  "provision_requires",
+			Attr:    "ProvisionRequires",
+			Example: "ip#0 fs#0(down,stdby down)",
+			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'start' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+		})
+	}
+	if _, ok := r.(unprovisioner); ok {
+		t.AddKeyword(keywords.Keyword{
+			Option:  "unprovision_requires",
+			Attr:    "UnprovisionRequires",
+			Example: "ip#0 fs#0(down,stdby down)",
+			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'unprovision' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+		})
+	}
+	if _, ok := r.(syncer); ok {
+		t.AddKeyword(keywords.Keyword{
+			Option:  "sync_requires",
+			Attr:    "SyncRequires",
+			Example: "ip#0 fs#0(down,stdby down)",
+			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'sync' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+		})
+	}
+	if _, ok := r.(runner); ok {
+		t.AddKeyword(keywords.Keyword{
+			Option:  "run_requires",
+			Attr:    "RunRequires",
+			Example: "ip#0 fs#0(down,stdby down)",
+			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'run' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+		})
+	}
+	return t
+}
 
 var genericKeywords = []keywords.Keyword{
 	{
@@ -145,12 +220,13 @@ var genericKeywords = []keywords.Keyword{
 	},
 }
 
-func New(group drivergroup.T, name string) *T {
+func New(group drivergroup.T, name string, r interface{}) *T {
 	t := &T{
 		Group: group,
 		Name:  name,
 	}
-	t.Keywords = append(t.Keywords, genericKeywords...)
+	t.AddKeyword(genericKeywords...)
+	t.AddInterfacesKeywords(r)
 	return t
 }
 

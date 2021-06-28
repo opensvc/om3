@@ -23,7 +23,7 @@ type T struct {
 
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName)
+	m := manifest.New(driverGroup, driverName, t)
 	m.AddContext([]manifest.Context{
 		{
 			Key:  "path",
