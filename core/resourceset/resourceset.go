@@ -162,8 +162,16 @@ func (t T) doParallel(ctx context.Context, resources resource.Drivers, fn DoFunc
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
+		c := make(chan error, 1)
+		c <- fn(ctx, r)
+		var err error
+		select {
+		case <-ctx.Done():
+			err = fmt.Errorf("timeout")
+		case err = <-c:
+		}
 		q <- result{
-			Error:    fn(ctx, r),
+			Error:    err,
 			Resource: r,
 		}
 	}
@@ -182,7 +190,14 @@ func (t T) doParallel(ctx context.Context, resources resource.Drivers, fn DoFunc
 
 func (t T) doSerial(ctx context.Context, resources resource.Drivers, fn DoFunc) error {
 	for _, r := range resources {
-		err := fn(ctx, r)
+		c := make(chan error, 1)
+		c <- fn(ctx, r)
+		var err error
+		select {
+		case <-ctx.Done():
+			err = fmt.Errorf("timeout")
+		case err = <-c:
+		}
 		if err == nil {
 			continue
 		}
