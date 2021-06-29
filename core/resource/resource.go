@@ -486,7 +486,14 @@ func checkRequires(ctx context.Context, r Driver) error {
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
-		state = sb.Wait(rid, time.Minute)
+		deadline, ok := ctx.Deadline()
+		var timeout time.Duration
+		if ok {
+			timeout = deadline.Sub(time.Now())
+		} else {
+			timeout = time.Minute
+		}
+		state = sb.Wait(rid, timeout)
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
