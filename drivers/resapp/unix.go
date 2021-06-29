@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -21,34 +22,52 @@ import (
 	"opensvc.com/opensvc/util/funcopt"
 )
 
-// T is the driver structure for app unix & linux.
-type T struct {
-	BaseT
-	Path         path.T         `json:"path"`
-	Nodes        []string       `json:"nodes"`
-	ScriptPath   string         `json:"script"`
-	StartCmd     string         `json:"start"`
-	StopCmd      string         `json:"stop"`
-	CheckCmd     string         `json:"check"`
-	InfoCmd      string         `json:"info"`
-	StatusLogKw  bool           `json:"status_log"`
-	CheckTimeout *time.Duration `json:"check_timeout"`
-	InfoTimeout  *time.Duration `json:"info_timeout"`
-	Cwd          string         `json:"cwd"`
-	User         string         `json:"user"`
-	Group        string         `json:"group"`
-	LimitAs      *int64         `json:"limit_as"`
-	LimitCpu     *time.Duration `json:"limit_cpu"`
-	LimitCore    *int64         `json:"limit_core"`
-	LimitData    *int64         `json:"limit_data"`
-	LimitFSize   *int64         `json:"limit_fsize"`
-	LimitMemLock *int64         `json:"limit_memlock"`
-	LimitNoFile  *int64         `json:"limit_nofile"`
-	LimitNProc   *int64         `json:"limit_nproc"`
-	LimitRss     *int64         `json:"limit_rss"`
-	LimitStack   *int64         `json:"limit_stack"`
-	LimitVMem    *int64         `json:"limit_vmem"`
-}
+type (
+	// T is the driver structure for app unix & linux.
+	T struct {
+		BaseT
+		Path         path.T         `json:"path"`
+		Nodes        []string       `json:"nodes"`
+		ScriptPath   string         `json:"script"`
+		StartCmd     string         `json:"start"`
+		StopCmd      string         `json:"stop"`
+		CheckCmd     string         `json:"check"`
+		InfoCmd      string         `json:"info"`
+		StatusLogKw  bool           `json:"status_log"`
+		CheckTimeout *time.Duration `json:"check_timeout"`
+		InfoTimeout  *time.Duration `json:"info_timeout"`
+		Cwd          string         `json:"cwd"`
+		User         string         `json:"user"`
+		Group        string         `json:"group"`
+		LimitAs      *int64         `json:"limit_as"`
+		LimitCpu     *time.Duration `json:"limit_cpu"`
+		LimitCore    *int64         `json:"limit_core"`
+		LimitData    *int64         `json:"limit_data"`
+		LimitFSize   *int64         `json:"limit_fsize"`
+		LimitMemLock *int64         `json:"limit_memlock"`
+		LimitNoFile  *int64         `json:"limit_nofile"`
+		LimitNProc   *int64         `json:"limit_nproc"`
+		LimitRss     *int64         `json:"limit_rss"`
+		LimitStack   *int64         `json:"limit_stack"`
+		LimitVMem    *int64         `json:"limit_vmem"`
+	}
+
+	infoEntry [2]string
+)
+
+var (
+	baseExitToStatusMap = map[int]status.T{
+		0: status.Up,
+		1: status.Down,
+	}
+	stringToStatus = map[string]status.T{
+		"up":    status.Up,
+		"down":  status.Down,
+		"warn":  status.Warn,
+		"n/a":   status.NotApplicable,
+		"undef": status.Undef,
+	}
+)
 
 func (t T) SortKey() string {
 	if len(t.StartCmd) > 1 && isSequenceNumber(t.StartCmd) {
@@ -112,6 +131,7 @@ func (t *T) Status() status.T {
 		command.WithStdoutLogLevel(zerolog.Disabled),
 		command.WithStderrLogLevel(zerolog.Disabled),
 		command.WithTimeout(t.GetTimeout("check")),
+		command.WithIgnoredExitCodes(),
 	)
 	if t.StatusLogKw {
 		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
@@ -127,8 +147,9 @@ func (t *T) Status() status.T {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
 	}
-	t.Log().Debug().Msgf("status is up")
-	return status.Up
+	resultStatus := t.exitCodeToStatus(cmd.ExitCode())
+	t.Log().Debug().Msgf("status is %v", resultStatus)
+	return resultStatus
 }
 
 func (t T) Provision(ctx context.Context) error {
@@ -155,7 +176,7 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		return nil, err
 	}
 	if len(baseCommand) == 0 {
-		t.Log().Debug().Msgf("no basecommand for action '%v'", action)
+		t.Log().Debug().Msgf("no base command for action '%v'", action)
 		return nil, nil
 	}
 	limitCommands := command.ShLimitCommands(t.toLimits())
@@ -182,6 +203,63 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		command.WithEnv(env),
 	}
 	return options, nil
+}
+
+func (t T) Info(ctx context.Context) ([]infoEntry, error) {
+	t.Log().Debug().Msg("Info()")
+
+	durationToString := func(duration *time.Duration) string {
+		if duration == nil {
+			return ""
+		}
+		return duration.String()
+	}
+	result := append(
+		[]infoEntry{},
+		infoEntry{"script", t.ScriptPath},
+		infoEntry{"start", t.StartCmd},
+		infoEntry{"stop", t.StopCmd},
+		infoEntry{"check", t.CheckCmd},
+		infoEntry{"info", t.InfoCmd},
+		infoEntry{"timeout", durationToString(t.Timeout)},
+		infoEntry{"start_timeout", durationToString(t.StartTimeout)},
+		infoEntry{"stop_timeout", durationToString(t.StopTimeout)},
+		infoEntry{"check_timeout", durationToString(t.CheckTimeout)},
+		infoEntry{"info_timeout", durationToString(t.InfoTimeout)},
+	)
+	var opts []funcopt.O
+	var err error
+	if opts, err = t.GetFuncOpts(t.InfoCmd, "info"); err != nil {
+		t.Log().Error().Err(err).Msg("GetFuncOpts")
+		if t.StatusLogKw {
+			t.StatusLog().Error("prepareXcmd %v", err.Error())
+		}
+		return nil, err
+	}
+	if len(opts) == 0 {
+		return result, nil
+	}
+
+	opts = append(opts,
+		command.WithLogger(t.Log()),
+		command.WithTimeout(t.GetTimeout("info")),
+		command.WithBufferedStdout(),
+	)
+	cmd := command.New(opts...)
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	lines := strings.Split(string(cmd.Stdout()), "\n")
+	for _, line := range lines {
+		lineSplit := strings.Split(line, ":")
+		if len(lineSplit) != 2 {
+			continue
+		}
+		key := strings.Trim(lineSplit[0], "\n ")
+		value := strings.Trim(lineSplit[1], "\n ")
+		result = append(result, infoEntry{key, value})
+	}
+	return result, nil
 }
 
 // getCmdStringFromBoolRule get command string for 'action' using bool rule on 's'
@@ -269,4 +347,45 @@ func (t T) GetTimeout(action string) time.Duration {
 		return 0
 	}
 	return *timeout
+}
+
+func (t T) exitCodeToStatus(exitCode int) status.T {
+	convertMap := t.exitCodeToStatusMap()
+	if s, ok := convertMap[exitCode]; ok {
+		return s
+	}
+	return status.Warn
+}
+
+// exitCodeToStatusMap return exitCodeToStatus map
+//
+// invalid entry rules are dropped
+func (t T) exitCodeToStatusMap() (m map[int]status.T) {
+	if len(t.RetCodes) == 0 {
+		return baseExitToStatusMap
+	}
+	m = make(map[int]status.T)
+	for _, rule := range strings.Fields(t.RetCodes) {
+		dropMessage := fmt.Sprintf("drop retcodes invalid rule '%v'", rule)
+		ruleSplit := strings.Split(rule, ":")
+		if len(ruleSplit) != 2 {
+			t.Log().Debug().Msg(dropMessage)
+			continue
+		}
+		code, err := strconv.Atoi(ruleSplit[0])
+		if err != nil {
+			t.Log().Debug().Msg(dropMessage)
+			continue
+		}
+		statusValue, ok := stringToStatus[ruleSplit[1]]
+		if !ok {
+			t.Log().Debug().Msg(dropMessage)
+			continue
+		}
+		m[code] = statusValue
+	}
+	if len(m) == 0 {
+		return baseExitToStatusMap
+	}
+	return m
 }
