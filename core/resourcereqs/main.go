@@ -1,4 +1,4 @@
-package resourcerequirement
+package resourcereqs
 
 import (
 	"regexp"
@@ -14,7 +14,7 @@ var (
 type (
 	T struct {
 		definition string
-		data       map[string][]status.T
+		data       map[string]status.L
 	}
 )
 
@@ -25,25 +25,25 @@ func New(s string) *T {
 	return &t
 }
 
-func parse(definition string) map[string][]status.T {
-	data := make(map[string][]status.T)
+func parse(definition string) map[string]status.L {
+	data := make(map[string]status.L)
 	for _, match := range reElement.FindAllStringSubmatch(definition, -1) {
 		rid := match[1]
 		states := strings.Trim(match[2], "()")
+		l := status.List()
 		if len(states) == 0 {
-			data[rid] = []status.T{status.Up, status.StandbyUp}
+			l = l.Add(status.Up, status.StandbyUp)
 		} else {
-			l := make([]status.T, 0)
 			for _, s := range strings.Split(states, ",") {
-				l = append(l, status.Parse(s))
+				l = l.Add(status.Parse(s))
 			}
-			data[rid] = l
 		}
+		data[rid] = l
 	}
 	return data
 }
 
-func (t *T) Requirements() map[string][]status.T {
+func (t *T) Requirements() map[string]status.L {
 	if t.data == nil {
 		t.data = parse(t.definition)
 	}

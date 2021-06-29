@@ -10,7 +10,10 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
@@ -93,10 +96,18 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if err := t.preAction(ctx); err != nil {
 		return err
 	}
-	l := actioncontext.NewResourceSelector(ctx, t)
+	ctx, stop := statusbus.WithContext(ctx, t.Path)
+	defer stop()
+	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
+	t.ResourceSets().Do(ctx, l, b, func(ctx context.Context, r resource.Driver) error {
+		sb := statusbus.FromContext(ctx)
+		sb.Post(r.RID(), resource.Status(r), false)
+		return nil
+	})
 	if err := t.ResourceSets().Do(ctx, l, b, fn); err != nil {
 		t.Log().Err(err).Msg("")
+		err = errors.Wrapf(err, "original error")
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
 				t.Log().Err(errRollback).Msg("rollback")
@@ -122,7 +133,7 @@ func (t *Base) notifyAction(ctx context.Context) error {
 	req := c.NewPostObjectMonitor()
 	req.ObjectSelector = t.Path.String()
 	req.State = action.Progress
-	if actioncontext.ResourceSelectorOptions(ctx).IsZero() {
+	if resourceselector.OptionsFromContext(ctx).IsZero() {
 		req.LocalExpect = action.LocalExpect
 	}
 	_, err = req.Do()
@@ -138,7 +149,7 @@ func (t *Base) mayFreeze(ctx context.Context) error {
 		t.log.Debug().Msg("skip freeze: dry run")
 		return nil
 	}
-	if !actioncontext.ResourceSelectorOptions(ctx).IsZero() {
+	if !resourceselector.OptionsFromContext(ctx).IsZero() {
 		t.log.Debug().Msg("skip freeze: resource selection")
 		return nil
 	}

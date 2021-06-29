@@ -1,4 +1,4 @@
-package resourcerequirement
+package resourcereqs
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ func TestResourceRequirements(t *testing.T) {
 	t.Logf("requirement definition: %s", definition)
 	o := New(definition)
 	assert.Equal(t, 3, len(o.Requirements()))
-	assert.Equal(t, []status.T{status.Up}, o.Requirements()["ip#1"])
-	assert.Equal(t, []status.T{status.Up, status.StandbyUp}, o.Requirements()["ip#2"])
-	assert.Equal(t, []status.T{status.Up, status.StandbyUp}, o.Requirements()["ip#3"])
+	assert.Equal(t, status.List(status.Up), o.Requirements()["ip#1"])
+	assert.Equal(t, status.List(status.Up, status.StandbyUp), o.Requirements()["ip#2"])
+	assert.Equal(t, status.List(status.Up, status.StandbyUp), o.Requirements()["ip#3"])
 }

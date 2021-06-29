@@ -6,8 +6,13 @@ import (
 	"strings"
 )
 
-// T representing a Resource, Object Instance or Object status
-type T int
+type (
+	// T representing a Resource, Object Instance or Object status
+	T int
+
+	// L is a list of T
+	L []T
+)
 
 const (
 	// Undef means Undefined
@@ -31,8 +36,6 @@ const (
 	StandbyUpWithUp
 	// StandbyUpWithDown means Instance with standby resources Configured or Active and other resources Down
 	StandbyUpWithDown
-	// Pending is a transient state posted on the statusbus to hint waiters on the bus that a newer status is being computed.
-	Pending
 )
 
 var toString = map[T]string{
@@ -45,7 +48,6 @@ var toString = map[T]string{
 	StandbyDown:       "stdby down",
 	StandbyUpWithUp:   "up",
 	StandbyUpWithDown: "stdby up",
-	Pending:           "pending",
 }
 
 var toID = map[string]T{
@@ -56,7 +58,6 @@ var toID = map[string]T{
 	"undef":      Undef,
 	"stdby up":   StandbyUp,
 	"stdby down": StandbyDown,
-	"pending":    Pending,
 }
 
 func Parse(s string) T {
@@ -161,4 +162,29 @@ func (t *T) Add(o T) {
 	case StandbyUpWithDown | StandbyUpWithDown:
 		*t = StandbyUpWithDown
 	}
+}
+
+func (t L) Has(s T) bool {
+	for _, e := range t {
+		if e == s {
+			return true
+		}
+	}
+	return false
+}
+
+func List(l ...T) L {
+	return L(l)
+}
+
+func (t L) Add(s ...T) L {
+	return L(append(t, s...))
+}
+
+func (t L) String() string {
+	l := make([]string, 0)
+	for _, s := range t {
+		l = append(l, s.String())
+	}
+	return strings.Join(l, ",")
 }

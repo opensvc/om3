@@ -7,16 +7,20 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
+	"opensvc.com/opensvc/core/resourcereqs"
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/timestamp"
@@ -69,6 +73,7 @@ type (
 		StatusLog() *StatusLog
 		TagSet() TagSet
 		VarDir() string
+		Requires(string) *resourcereqs.T
 	}
 
 	Aborter interface {
@@ -436,6 +441,25 @@ func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.
 	return t.trigger(cmd)
 }
 
+func (t T) Requires(action string) *resourcereqs.T {
+	reqs := ""
+	switch action {
+	case "start":
+		reqs = t.StartRequires
+	case "stop":
+		reqs = t.StopRequires
+	case "provision":
+		reqs = t.ProvisionRequires
+	case "unprovision":
+		reqs = t.UnprovisionRequires
+	case "run":
+		reqs = t.RunRequires
+	case "sync":
+		reqs = t.SyncRequires
+	}
+	return resourcereqs.New(reqs)
+}
+
 func exitCode(err error) int {
 	if err == nil {
 		return 0
@@ -452,9 +476,39 @@ func Setenv(r Driver) {
 	}
 }
 
+func checkRequires(ctx context.Context, r Driver) error {
+	props := actioncontext.Props(ctx)
+	reqs := r.Requires(props.Name)
+	sb := statusbus.FromContext(ctx)
+	for rid, reqStates := range reqs.Requirements() {
+		state := sb.Get(rid)
+		r.Log().Info().Msgf("action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
+		if reqStates.Has(state) {
+			continue // requirement met
+		}
+		state = sb.Wait(rid, time.Minute)
+		if reqStates.Has(state) {
+			continue // requirement met
+		}
+		return fmt.Errorf("action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+	}
+	// all requirements met. flag a status transition as pending in the bus.
+	sb.Pending(r.RID())
+	return nil
+}
+
+func updateStatusBus(ctx context.Context, r Driver) {
+	sb := statusbus.FromContext(ctx)
+	sb.Post(r.RID(), Status(r), false)
+}
+
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
+	defer updateStatusBus(ctx, r)
 	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "requires")
+	}
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Start); err != nil {
 		return errors.Wrapf(err, "trigger")
 	}
@@ -475,7 +529,11 @@ func Start(ctx context.Context, r Driver) error {
 
 // Stop deactivates a resource interfacer
 func Stop(ctx context.Context, r Driver) error {
+	defer updateStatusBus(ctx, r)
 	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "requires")
+	}
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Stop); err != nil {
 		return errors.Wrapf(err, "trigger")
 	}

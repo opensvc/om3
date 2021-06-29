@@ -1,8 +1,10 @@
 package resourceselector
 
 import (
+	"context"
 	"strings"
 
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/funcopt"
@@ -28,9 +30,13 @@ type (
 		Resources() resource.Drivers
 		IsDesc() bool
 	}
+
+	OptionsGetter interface {
+		GetOptions() Options
+	}
 )
 
-func (t Options) ResourceSelectorOptions() Options {
+func (t Options) GetOptions() Options {
 	return t
 }
 
@@ -139,4 +145,21 @@ func (t Options) IsZero() bool {
 	default:
 		return false
 	}
+}
+
+func FromContext(ctx context.Context, l ResourceLister) *T {
+	opts := OptionsFromContext(ctx)
+	order := actioncontext.Props(ctx).Order
+	return New(
+		l,
+		WithOptions(opts),
+		WithOrder(order),
+	)
+}
+
+func OptionsFromContext(ctx context.Context) Options {
+	if o, ok := actioncontext.Value(ctx).Options.(OptionsGetter); ok {
+		return o.GetOptions()
+	}
+	return Options{}
 }
