@@ -21,8 +21,7 @@ type OptsStop struct {
 
 // Stop stops the local instance of the object
 func (t *Base) Stop(options OptsStop) error {
-	ctx, cancel := actioncontext.New(options, objectactionprops.Stop)
-	defer cancel()
+	ctx := actioncontext.New(options, objectactionprops.Stop)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

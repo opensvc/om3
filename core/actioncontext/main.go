@@ -2,7 +2,6 @@ package actioncontext
 
 import (
 	"context"
-	"time"
 
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/objectactionprops"
@@ -38,16 +37,15 @@ const (
 	tKey key = 0
 )
 
-func New(options interface{}, props objectactionprops.T) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-	ctx = context.WithValue(ctx, tKey, &T{
+func New(options interface{}, props objectactionprops.T) context.Context {
+	ctx := context.WithValue(context.Background(), tKey, &T{
 		Props:   props,
 		Options: options,
 	})
 	if props.Rollback {
 		ctx = actionrollback.NewContext(ctx)
 	}
-	return ctx, cancel
+	return ctx
 }
 
 func Value(ctx context.Context) *T {

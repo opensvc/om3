@@ -18,6 +18,7 @@ type (
 		DisableNodeValidation bool
 		RelayToAny            bool
 		Rollback              bool
+		TimeoutKeywords       []string
 	}
 )
 
@@ -71,11 +72,12 @@ var (
 		RelayToAny: true,
 	}
 	Giveback = T{
-		Name:        "giveback",
-		Target:      "placed",
-		Progress:    "placing",
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc},
+		Name:            "giveback",
+		Target:          "placed",
+		Progress:        "placing",
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc},
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Keys = T{
 		Name:       "keys",
@@ -86,77 +88,86 @@ var (
 		RelayToAny: true,
 	}
 	Move = T{
-		Name:        "move",
-		Target:      "placed@",
-		Progress:    "placing@",
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc},
+		Name:            "move",
+		Target:          "placed@",
+		Progress:        "placing@",
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc},
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Provision = T{
-		Name:        "provision",
-		Target:      "provisioned",
-		Progress:    "provisioning",
-		Local:       true,
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
-		Rollback:    true,
+		Name:            "provision",
+		Target:          "provisioned",
+		Progress:        "provisioning",
+		Local:           true,
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Rollback:        true,
+		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 	}
 	Purge = T{
-		Name:     "purge",
-		Target:   "purged",
-		Progress: "purging",
-		Order:    ordering.Desc,
-		Local:    true,
-		Kinds:    []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
+		Name:            "purge",
+		Target:          "purged",
+		Progress:        "purging",
+		Order:           ordering.Desc,
+		Local:           true,
+		Kinds:           []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
+		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 	}
 	Restart = T{
-		Name:        "restart",
-		Target:      "restarted",
-		Progress:    "restarting",
-		Local:       true,
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		Name:            "restart",
+		Target:          "restarted",
+		Progress:        "restarting",
+		Local:           true,
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Shutdown = T{
-		Name:     "shutdown",
-		Target:   "shutdown",
-		Progress: "shutting",
-		Local:    true,
-		Order:    ordering.Desc,
-		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Name:            "shutdown",
+		Target:          "shutdown",
+		Progress:        "shutting",
+		Local:           true,
+		Order:           ordering.Desc,
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 	}
 	Start = T{
-		Name:        "start",
-		Target:      "started",
-		Progress:    "starting",
-		Local:       true,
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
-		Rollback:    true,
+		Name:            "start",
+		Target:          "started",
+		Progress:        "starting",
+		Local:           true,
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Rollback:        true,
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Stop = T{
-		Name:        "stop",
-		Target:      "stopped",
-		Progress:    "stopping",
-		Local:       true,
-		Order:       ordering.Desc,
-		LocalExpect: "",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
-		Freeze:      true,
+		Name:            "stop",
+		Target:          "stopped",
+		Progress:        "stopping",
+		Local:           true,
+		Order:           ordering.Desc,
+		LocalExpect:     "",
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Freeze:          true,
+		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 	}
 	Switch = T{
-		Name:        "switch",
-		Target:      "placed@",
-		Progress:    "placing@",
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc},
+		Name:            "switch",
+		Target:          "placed@",
+		Progress:        "placing@",
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc},
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Takeover = T{
-		Name:        "takeover",
-		Target:      "placed@",
-		Progress:    "placing@",
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc},
+		Name:            "takeover",
+		Target:          "placed@",
+		Progress:        "placing@",
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc},
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	Thaw = T{
 		Name:        "thaw",
@@ -173,11 +184,12 @@ var (
 		LocalExpect: "",
 	}
 	Unprovision = T{
-		Name:     "unprovision",
-		Target:   "unprovisioned",
-		Progress: "unprovisioning",
-		Local:    true,
-		Order:    ordering.Desc,
-		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Name:            "unprovision",
+		Target:          "unprovisioned",
+		Progress:        "unprovisioning",
+		Local:           true,
+		Order:           ordering.Desc,
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 	}
 )

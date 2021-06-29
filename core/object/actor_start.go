@@ -24,8 +24,7 @@ type OptsStart struct {
 
 // Start starts the local instance of the object
 func (t *Base) Start(options OptsStart) error {
-	ctx, cancel := actioncontext.New(options, objectactionprops.Start)
-	defer cancel()
+	ctx := actioncontext.New(options, objectactionprops.Start)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

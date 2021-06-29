@@ -22,9 +22,7 @@ type OptsUnprovision struct {
 
 // Unprovision stops and frees the local instance of the object
 func (t *Base) Unprovision(options OptsUnprovision) error {
-	ctx, cancel := actioncontext.New(options, objectactionprops.Unprovision)
-	defer cancel()
-
+	ctx := actioncontext.New(options, objectactionprops.Unprovision)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

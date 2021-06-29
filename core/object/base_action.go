@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/actioncontext"
@@ -92,7 +93,30 @@ func (t *Base) rollback(ctx context.Context) error {
 	return actionrollback.Rollback(ctx)
 }
 
+func (t *Base) withTimeout(ctx context.Context) (context.Context, func()) {
+	props := actioncontext.Props(ctx)
+	timeout := t.actionTimeout(props.TimeoutKeywords)
+	if timeout == 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, timeout)
+}
+
+func (t *Base) actionTimeout(kwNames []string) time.Duration {
+	for _, kwName := range kwNames {
+		k := key.Parse(kwName)
+		timeout := t.Config().GetDuration(k)
+		if timeout != nil {
+			t.log.Debug().Msgf("action timeout set to %s from keyword %s", timeout, kwName)
+			return *timeout
+		}
+	}
+	return 0
+}
+
 func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
+	ctx, cancel := t.withTimeout(ctx)
+	defer cancel()
 	if err := t.preAction(ctx); err != nil {
 		return err
 	}
