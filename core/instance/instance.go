@@ -34,11 +34,11 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Nodename string   `json:"-"`
-		Path     path.T   `json:"-"`
-		Checksum string   `json:"csum"`
-		Scope    []string `json:"scope"`
-		Updated  timestamp.T
+		Nodename string      `json:"-"`
+		Path     path.T      `json:"-"`
+		Checksum string      `json:"csum"`
+		Scope    []string    `json:"scope"`
+		Updated  timestamp.T `json:"updated"`
 	}
 
 	// Status describes the instance status.
