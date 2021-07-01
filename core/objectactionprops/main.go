@@ -67,6 +67,9 @@ var (
 		Name:       "set",
 		RelayToAny: true,
 	}
+	Status = T{
+		Name: "status",
+	}
 	Unset = T{
 		Name:       "unset",
 		RelayToAny: true,

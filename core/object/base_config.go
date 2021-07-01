@@ -205,19 +205,19 @@ func (t Base) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
 		return t.ID().String(), nil
-	case "name", "{svcname}":
+	case "name", "svcname":
 		return t.Path.Name, nil
-	case "short_name", "{short_svcname}":
+	case "short_name", "short_svcname":
 		return strings.SplitN(t.Path.Name, ".", 1)[0], nil
-	case "scaler_name", "{scaler_svcname}":
+	case "scaler_name", "scaler_svcname":
 		return RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), nil
-	case "scaler_short_name", "{scaler_short_svcname}":
+	case "scaler_short_name", "scaler_short_svcname":
 		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), ".", 1)[0], nil
 	case "namespace":
 		return t.Path.Namespace, nil
 	case "kind":
 		return t.Path.Kind.String(), nil
-	case "path", "{svcpath}":
+	case "path", "svcpath":
 		if t.Path.IsZero() {
 			return "", nil
 		}

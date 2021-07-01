@@ -156,7 +156,7 @@ func (t T) fqn() string {
 	return t.lv().FQN()
 }
 
-func (t *T) Status() status.T {
+func (t *T) Status(ctx context.Context) status.T {
 	if v, err := t.isUp(); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef

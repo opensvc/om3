@@ -26,7 +26,7 @@ func (t *Base) Stop(options OptsStop) error {
 		return err
 	}
 	t.setenv("stop", false)
-	defer t.postActionStatusEval()
+	defer t.postActionStatusEval(ctx)
 	return t.lockedAction("", options.OptsLocking, "stop", func() error {
 		return t.lockedStop(ctx)
 	})

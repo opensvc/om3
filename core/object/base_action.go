@@ -126,7 +126,7 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	b := actioncontext.To(ctx)
 	t.ResourceSets().Do(ctx, l, b, func(ctx context.Context, r resource.Driver) error {
 		sb := statusbus.FromContext(ctx)
-		sb.Post(r.RID(), resource.Status(r), false)
+		sb.Post(r.RID(), resource.Status(ctx, r), false)
 		return nil
 	})
 	if err := t.ResourceSets().Do(ctx, l, b, fn); err != nil {

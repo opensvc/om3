@@ -30,7 +30,7 @@ func (t T) Label() string {
 }
 
 // Status evaluates and display the Resource status and logs
-func (t *T) Status() status.T {
+func (t *T) Status(ctx context.Context) status.T {
 	netns, err := ns.GetNS(t.Netns)
 	if err != nil {
 		t.StatusLog().Error("failed to open netns %q: %v", t.Netns, err)

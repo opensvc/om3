@@ -27,7 +27,7 @@ func (t *Base) Unprovision(options OptsUnprovision) error {
 		return err
 	}
 	t.setenv("unprovision", false)
-	defer t.postActionStatusEval()
+	defer t.postActionStatusEval(ctx)
 	return t.lockedAction("", options.OptsLocking, "unprovision", func() error {
 		return t.lockedUnprovision(ctx)
 	})

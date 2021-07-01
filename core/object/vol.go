@@ -2,6 +2,7 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -24,4 +25,12 @@ func NewVol(p path.T, opts ...funcopt.O) *Vol {
 	s := &Vol{}
 	s.Base.init(p, opts...)
 	return s
+}
+
+func (t *Vol) MountPoint() string {
+	return ""
+}
+
+func (t *Vol) Device() *device.T {
+	return nil
 }

@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/ssrathi/go-attr"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
@@ -42,25 +44,26 @@ func (t *Base) Status(options OptsStatus) (instance.Status, error) {
 		data instance.Status
 		err  error
 	)
+	ctx := actioncontext.New(options, objectactionprops.Status)
 	if options.Refresh || t.statusDumpOutdated() {
-		return t.statusEval(options)
+		return t.statusEval(ctx, options)
 	}
 	if data, err = t.statusLoad(); err == nil {
 		return data, nil
 	}
 	// corrupted status.json => eval
-	return t.statusEval(options)
+	return t.statusEval(ctx, options)
 }
 
-func (t *Base) postActionStatusEval() {
-	if _, err := t.statusEval(OptsStatus{}); err != nil {
+func (t *Base) postActionStatusEval(ctx context.Context) {
+	if _, err := t.statusEval(ctx, OptsStatus{}); err != nil {
 		t.log.Debug().Err(err).Msg("a status refresh is already in progress")
 	}
 }
 
-func (t *Base) statusEval(options OptsStatus) (data instance.Status, err error) {
+func (t *Base) statusEval(ctx context.Context, options OptsStatus) (data instance.Status, err error) {
 	lockErr := t.lockedAction("status", options.Lock, "", func() error {
-		data, err = t.lockedStatusEval()
+		data, err = t.lockedStatusEval(ctx)
 		return err
 	})
 	if lockErr != nil {
@@ -69,7 +72,7 @@ func (t *Base) statusEval(options OptsStatus) (data instance.Status, err error) 
 	return
 }
 
-func (t *Base) lockedStatusEval() (data instance.Status, err error) {
+func (t *Base) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
 	data.Orchestrate = t.Orchestrate()
@@ -83,7 +86,7 @@ func (t *Base) lockedStatusEval() (data instance.Status, err error) {
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
 	data.Subsets = t.subsetsStatus()
 	data.Frozen = t.Frozen()
-	if err = t.resourceStatusEval(&data); err != nil {
+	if err = t.resourceStatusEval(ctx, &data); err != nil {
 		return
 	}
 	if len(data.Resources) == 0 {
@@ -175,12 +178,12 @@ func (t *Base) subsetsStatus() map[string]instance.SubsetStatus {
 	return data
 }
 
-func (t *Base) resourceStatusEval(data *instance.Status) error {
+func (t *Base) resourceStatusEval(ctx context.Context, data *instance.Status) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
 	var mu sync.Mutex
-	return t.ResourceSets().Do(context.TODO(), t, "", func(ctx context.Context, r resource.Driver) error {
+	return t.ResourceSets().Do(ctx, t, "", func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
-		xd := resource.GetExposedStatus(r)
+		xd := resource.GetExposedStatus(ctx, r)
 		mu.Lock()
 		data.Resources[r.RID()] = xd
 		data.Overall.Add(xd.Status)

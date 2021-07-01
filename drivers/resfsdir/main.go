@@ -106,7 +106,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Status() status.T {
+func (t *T) Status(ctx context.Context) status.T {
 	p := t.path()
 	if p == "" {
 		t.StatusLog().Error("path is not defined")

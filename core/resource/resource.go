@@ -48,7 +48,7 @@ type (
 		Manifest() *manifest.T
 		Start(context.Context) error
 		Stop(context.Context) error
-		Status() status.T
+		Status(context.Context) status.T
 		Provisioned() (provisioned.T, error)
 		Provision(context.Context) error
 		Unprovision(context.Context) error
@@ -252,6 +252,17 @@ func NewDriverID(group drivergroup.T, name string) *DriverID {
 
 var drivers = make(map[DriverID]func() Driver)
 
+func RegisteredGroupDrivers(s string) map[DriverID]func() Driver {
+	m := make(map[DriverID]func() Driver)
+	for drvID, newDRV := range drivers {
+		if drvID.Group.String() != s {
+			continue
+		}
+		m[drvID] = newDRV
+	}
+	return m
+}
+
 func Register(group drivergroup.T, name string, f func() Driver) {
 	driverID := NewDriverID(group, name)
 	drivers[*driverID] = f
@@ -386,7 +397,12 @@ func (t T) TagSet() TagSet {
 
 func formatResourceType(r Driver) string {
 	m := r.Manifest()
-	return fmt.Sprintf("%s.%s", m.Group, m.Name)
+	switch {
+	case m.Name == "":
+		return fmt.Sprintf("%s", m.Group)
+	default:
+		return fmt.Sprintf("%s.%s", m.Group, m.Name)
+	}
 }
 
 func formatResourceLabel(r Driver) string {
@@ -506,7 +522,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 
 func updateStatusBus(ctx context.Context, r Driver) {
 	sb := statusbus.FromContext(ctx)
-	sb.Post(r.RID(), Status(r), false)
+	sb.Post(r.RID(), Status(ctx, r), false)
 }
 
 // Start activates a resource interfacer
@@ -560,9 +576,9 @@ func Stop(ctx context.Context, r Driver) error {
 }
 
 // Status evaluates the status of a resource interfacer
-func Status(r Driver) status.T {
+func Status(ctx context.Context, r Driver) status.T {
 	Setenv(r)
-	s := r.Status()
+	s := r.Status(ctx)
 	if !r.IsStandby() {
 		return s
 	}
@@ -579,11 +595,11 @@ func Status(r Driver) status.T {
 }
 
 // GetExposedStatus returns the resource exposed status data for embedding into the instance status data.
-func GetExposedStatus(r Driver) ExposedStatus {
+func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 	return ExposedStatus{
 		Label:       formatResourceLabel(r),
 		Type:        formatResourceType(r),
-		Status:      Status(r),
+		Status:      Status(ctx, r),
 		Subset:      r.RSubset(),
 		Tags:        r.TagSet(),
 		Log:         r.StatusLog().Entries(),
@@ -596,8 +612,8 @@ func GetExposedStatus(r Driver) ExposedStatus {
 	}
 }
 
-func printStatus(r Driver) error {
-	data := GetExposedStatus(r)
+func printStatus(ctx context.Context, r Driver) error {
+	data := GetExposedStatus(ctx, r)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")
 	return enc.Encode(data)
@@ -625,7 +641,7 @@ func Action(ctx context.Context, r Driver) error {
 	action := os.Getenv("RES_ACTION")
 	switch action {
 	case "status":
-		return printStatus(r)
+		return printStatus(ctx, r)
 	case "stop":
 		return Stop(ctx, r)
 	case "start":

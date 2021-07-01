@@ -28,9 +28,10 @@ import (
 
 var (
 	DefaultDriver = map[string]string{
-		"app":  "forking",
-		"ip":   "host",
-		"task": "host",
+		"app":    "forking",
+		"ip":     "host",
+		"task":   "host",
+		"volume": "",
 	}
 )
 
@@ -90,6 +91,10 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 
 func (t Base) String() string {
 	return fmt.Sprintf("base object %s", t.Path)
+}
+
+func (t *Base) SetVolatile(v bool) {
+	t.volatile = v
 }
 
 func (t Base) IsVolatile() bool {
@@ -232,6 +237,10 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 			}
 		case c.Ref == "object.id":
 			if err := attr.SetValue(r, c.Attr, t.ID()); err != nil {
+				return err
+			}
+		case c.Ref == "object.topology":
+			if err := attr.SetValue(r, c.Attr, t.Topology()); err != nil {
 				return err
 			}
 		}

@@ -282,7 +282,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Status() status.T {
+func (t *T) Status(ctx context.Context) status.T {
 	if t.Device == "" {
 		t.StatusLog().Info("dev is not defined")
 		return status.NotApplicable

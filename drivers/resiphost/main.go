@@ -177,7 +177,7 @@ func (t *T) StatusInfo() map[string]interface{} {
 }
 
 func (t T) Start(ctx context.Context) error {
-	if initialStatus := t.Status(); initialStatus == status.Up {
+	if initialStatus := t.Status(ctx); initialStatus == status.Up {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
 	}
@@ -194,7 +194,7 @@ func (t T) Start(ctx context.Context) error {
 }
 
 func (t T) Stop(ctx context.Context) error {
-	if initialStatus := t.Status(); initialStatus == status.Down {
+	if initialStatus := t.Status(ctx); initialStatus == status.Down {
 		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
 	}
@@ -204,7 +204,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Status() status.T {
+func (t *T) Status(ctx context.Context) status.T {
 	var (
 		i       *net.Interface
 		err     error
@@ -262,7 +262,7 @@ func (t T) Abort(ctx context.Context) bool {
 	if t.ipaddr() == nil {
 		return false // let start fail with an explicit error message
 	}
-	if initialStatus := t.Status(); initialStatus == status.Up {
+	if initialStatus := t.Status(ctx); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
 	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {

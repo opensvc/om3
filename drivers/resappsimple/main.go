@@ -2,6 +2,7 @@ package resappsimple
 
 import (
 	"context"
+
 	"opensvc.com/opensvc/core/actionrollback"
 
 	"opensvc.com/opensvc/core/resource"
@@ -35,7 +36,7 @@ func (t T) Start(ctx context.Context) (err error) {
 	if len(opts) == 0 {
 		return nil
 	}
-	appStatus := t.Status()
+	appStatus := t.Status(ctx)
 	if appStatus == status.Up {
 		t.Log().Info().Msg("already up")
 		return nil
