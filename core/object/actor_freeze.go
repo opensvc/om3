@@ -22,7 +22,7 @@ func (t *Base) Frozen() timestamp.T {
 	p := t.frozenFile()
 	fi, err := os.Stat(p)
 	if err != nil {
-		return timestamp.T{}
+		return timestamp.NewZero()
 	}
 	return timestamp.New(fi.ModTime())
 }

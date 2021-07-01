@@ -23,6 +23,11 @@ func New(tm time.Time) T {
 	return T{tm: tm}
 }
 
+// NewZero allocates a 0.0 unix timestamp
+func NewZero() T {
+	return T{tm: time.Unix(0, 0)}
+}
+
 // Now return a new timestamp for the present date.
 func Now() T {
 	return T{tm: time.Now()}
