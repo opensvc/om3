@@ -52,6 +52,10 @@ func Value(ctx context.Context) *T {
 	return ctx.Value(tKey).(*T)
 }
 
+func Options(ctx context.Context) interface{} {
+	return Value(ctx).Options
+}
+
 func Props(ctx context.Context) objectactionprops.T {
 	return Value(ctx).Props
 }
