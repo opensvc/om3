@@ -234,12 +234,26 @@ func (t DriverID) String() string {
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
+func (t DriverID) NewGeneric() *DriverID {
+	return NewDriverID(t.Group, "")
+}
+
 func ParseDriverID(s string) *DriverID {
-	l := strings.SplitN(s, ".", 2)
-	g := drivergroup.New(l[0])
-	return &DriverID{
-		Group: g,
-		Name:  l[1],
+	l := strings.Split(s, ".")
+	switch len(l) {
+	case 2:
+		g := drivergroup.New(l[0])
+		return &DriverID{
+			Group: g,
+			Name:  l[1],
+		}
+	case 1:
+		g := drivergroup.New(l[0])
+		return &DriverID{
+			Group: g,
+		}
+	default:
+		return nil
 	}
 }
 
@@ -269,11 +283,17 @@ func Register(group drivergroup.T, name string, f func() Driver) {
 }
 
 func (t DriverID) NewResourceFunc() func() Driver {
-	drv, ok := drivers[t]
-	if !ok {
-		return nil
+	if drv, ok := drivers[t]; ok {
+		return drv
 	}
-	return drv
+	if t.Name != "" {
+		// <group>.<name> driver not found, ... try <group>
+		// used for example by the volume driver, whose
+		// type keyword is not pointing a resource sub driver
+		// but a pool driver.
+		return t.NewGeneric().NewResourceFunc()
+	}
+	return nil
 }
 
 //
