@@ -25,6 +25,11 @@ func FromContext(ctx context.Context) *T {
 	return ctx.Value(tKey).(*T)
 }
 
+func Len(ctx context.Context) int {
+	t := *FromContext(ctx)
+	return len(t.stack)
+}
+
 func Rollback(ctx context.Context) error {
 	t := *FromContext(ctx)
 	n := len(t.stack)

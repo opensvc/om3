@@ -71,6 +71,10 @@ func (t *Base) preAction(ctx context.Context) error {
 }
 
 func (t *Base) needRollback(ctx context.Context) bool {
+	if actionrollback.Len(ctx) == 0 {
+		t.Log().Debug().Msgf("skip rollback: empty stack")
+		return false
+	}
 	action := actioncontext.Props(ctx)
 	if !action.Rollback {
 		t.Log().Debug().Msgf("skip rollback: not demanded by the %s action", action.Name)
