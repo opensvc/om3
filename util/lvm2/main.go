@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/converters/sizeconv"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
@@ -238,6 +239,10 @@ func (t *LV) Devices() ([]*device.T, error) {
 }
 
 func (t *LV) Create(size string, args []string) error {
+	if i, err := sizeconv.FromSize(size); err == nil {
+		// default unit is not "B", explicitely tell
+		size = fmt.Sprintf("%dB", i)
+	}
 	cmd := command.New(
 		command.WithName("lvcreate"),
 		command.WithArgs(append(args, "--yes", "-L", size, "-n", t.LVName, t.VGName)),
