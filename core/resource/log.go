@@ -54,6 +54,16 @@ func (l *StatusLog) Entries() []*StatusLogEntry {
 }
 
 func (t *StatusLogEntry) UnmarshalJSON(data []byte) error {
+	// native format: {"level":"info","message":"foo"}
+	type tempT StatusLogEntry
+	var temp tempT
+	if err := json.Unmarshal(data, &temp); err == nil {
+		t.Level = temp.Level
+		t.Message = temp.Message
+		return nil
+	}
+
+	// deprecated format: "info: foo"
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err

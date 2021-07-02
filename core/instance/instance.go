@@ -105,7 +105,7 @@ func (t *Status) UnmarshalJSON(b []byte) error {
 		Priority: priority.Default,
 	})
 	if err := json.Unmarshal(b, &temp); err != nil {
-		log.Error().Err(err).Msg("unmarshal instance status")
+		log.Error().Err(err).Str("b", string(b)).Msg("unmarshal instance status")
 		return err
 	}
 	*t = Status(temp)
