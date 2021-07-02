@@ -31,6 +31,7 @@ type (
 
 var (
 	ErrInvalidNode = errors.New("invalid node")
+	ErrLogged      = errors.New("already logged")
 )
 
 func (t *Base) validateAction() error {
@@ -134,8 +135,15 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return nil
 	})
 	if err := t.ResourceSets().Do(ctx, l, b, fn); err != nil {
-		t.Log().Err(err).Msg("")
-		err = errors.Wrapf(err, "original error")
+		if !errors.Is(err, ErrLogged) {
+			// avoid logging multiple times the same error.
+			// worst case is an error in a volume object started by
+			// a volume resource, logged once in the volume object
+			// action(), relogged in the parent object action() and
+			// finally relogged in the objectionaction.T
+			t.Log().Err(err).Msg("")
+			err = errors.Wrap(ErrLogged, err.Error())
+		}
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
 				t.Log().Err(errRollback).Msg("rollback")

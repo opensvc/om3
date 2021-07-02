@@ -200,6 +200,8 @@ func (t T) DoLocal() error {
 		s := ""
 		for _, r := range rs {
 			switch {
+			case errors.Is(r.Error, object.ErrLogged):
+				// do not log again
 			case r.Error != nil:
 				log.Error().Err(r.Error).Msg("")
 			case r.Panic != nil:
