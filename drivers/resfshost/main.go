@@ -518,11 +518,11 @@ func (t *T) isMounted() (bool, error) {
 	return findmnt.Has(t.devpath(), t.mountPoint())
 }
 
-func (t *T) ProvisionLeader() error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	fs := t.fs()
 	i1, ok := fs.(IsFormateder)
 	if !ok {
-		t.Log().Debug().Msgf("skip mkfs, verify not implemented for type %s", fs)
+		t.Log().Info().Msgf("skip mkfs, formatted detection is not implemented for type %s", fs)
 		return nil
 	}
 	if v, err := i1.IsFormated(t.Device); err != nil {
@@ -535,6 +535,6 @@ func (t *T) ProvisionLeader() error {
 	if ok {
 		return i2.MKFS(t.Device, t.MKFSOptions)
 	}
-	t.Log().Debug().Msgf("skip fsck, not implemented for type %s", fs)
+	t.Log().Info().Msgf("skip mkfs, not implemented for type %s", fs)
 	return nil
 }

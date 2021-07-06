@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,12 +16,14 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
 
 var (
-	RegexpScalerPrefix = regexp.MustCompile(`^[0-9]+\.`)
+	RegexpScalerPrefix        = regexp.MustCompile(`^[0-9]+\.`)
+	regexpExposedDevicesIndex = regexp.MustCompile(`.*\.exposed_devs\[([0-9]+)\]`)
 )
 
 func (t *Base) loadConfig() error {
@@ -201,6 +204,48 @@ func (t Base) FlexTarget() int {
 	return i
 }
 
+func (t Base) dereferenceExposedDevices(ref string) (string, error) {
+	l := strings.SplitN(ref, ".", 2)
+	type ExposedDeviceser interface {
+		ExposedDevices() []*device.T
+	}
+	if len(l) != 2 {
+		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
+	}
+	rid := l[0]
+	r := t.getConfiguringResourceByID(rid)
+	if r == nil {
+		if t.config.HasSectionString(rid) {
+			return ref, xconfig.NewErrPostponedRef(ref, rid)
+		} else {
+			return ref, fmt.Errorf("resource referenced by %s not found", ref)
+		}
+	}
+	o, ok := r.(ExposedDeviceser)
+	if !ok {
+		return ref, fmt.Errorf("resource referenced by %s has no exposed devices", ref)
+	}
+	s := regexpExposedDevicesIndex.FindString(l[1])
+	if s == "" {
+		xdevs := o.ExposedDevices()
+		ls := make([]string, len(xdevs))
+		for i, xd := range o.ExposedDevices() {
+			ls[i] = xd.String()
+		}
+		return strings.Join(ls, " "), nil
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
+	}
+	xdevs := o.ExposedDevices()
+	n := len(xdevs)
+	if i > n-1 {
+		return ref, fmt.Errorf("ref %s index error: the referenced resource has only %d exposed devices", ref, n)
+	}
+	return xdevs[i].String(), nil
+}
+
 func (t Base) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
@@ -258,6 +303,8 @@ func (t Base) Dereference(ref string) (string, error) {
 	switch {
 	case strings.HasPrefix(ref, "safe://"):
 		return ref, fmt.Errorf("TODO")
+	case strings.Contains(ref, ".exposed_devs"):
+		return t.dereferenceExposedDevices(ref)
 	}
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }

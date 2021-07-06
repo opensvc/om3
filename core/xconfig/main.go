@@ -54,6 +54,11 @@ type (
 		DRPNodes() []string
 		EncapNodes() []string
 	}
+
+	ErrPostponedRef struct {
+		Ref string
+		RID string
+	}
 )
 
 var (
@@ -63,6 +68,17 @@ var (
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
+
+func (t ErrPostponedRef) Error() string {
+	return fmt.Sprintf("ref %s evaluation postponed: resource %s is not configured yet", t.Ref, t.RID)
+}
+
+func NewErrPostponedRef(ref string, rid string) ErrPostponedRef {
+	return ErrPostponedRef{
+		Ref: ref,
+		RID: rid,
+	}
+}
 
 // Keys returns the key names available in a section
 func (t *T) Keys(section string) []string {
@@ -394,14 +410,25 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) (string, error) {
+	errs := make([]error, 0)
 	v = rawconfig.RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
-		var s string
-		s, err := t.dereference(ref, section, impersonate)
-		if err != nil {
+		var (
+			s string
+			e error
+		)
+		s, e = t.dereference(ref, section, impersonate)
+		if e != nil {
+			switch e.(type) {
+			case ErrPostponedRef:
+				errs = append(errs, e)
+			}
 			return ref
 		}
 		return s
 	})
+	for _, e := range errs {
+		return v, e
+	}
 	return v, nil
 }
 
@@ -450,6 +477,15 @@ func (t T) Raw() rawconfig.T {
 		r.Data.Set(s.Name(), sectionMap)
 	}
 	return r
+}
+
+func (t T) HasSectionString(s string) bool {
+	for _, e := range t.SectionStrings() {
+		if s == e {
+			return true
+		}
+	}
+	return false
 }
 
 func (t T) SectionStrings() []string {

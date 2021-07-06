@@ -51,6 +51,7 @@ type (
 		node       *Node
 		paths      BasePaths
 		resources  resource.Drivers
+		_resources resource.Drivers
 	}
 )
 
@@ -159,16 +160,26 @@ func (t *Base) ResourceSets() resourceset.L {
 	return l
 }
 
+func (t *Base) getConfiguringResourceByID(rid string) resource.Driver {
+	for _, r := range t._resources {
+		if r.RID() == rid {
+			return r
+		}
+	}
+	return nil
+}
+
 func (t *Base) Resources() resource.Drivers {
 	if t.resources != nil {
 		return t.resources
 	}
-	t.resources = t.configureResources()
+	t.configureResources()
 	return t.resources
 }
 
-func (t *Base) configureResources() resource.Drivers {
-	resources := make(resource.Drivers, 0)
+func (t *Base) configureResources() {
+	postponed := make(map[string][]resource.Driver)
+	t._resources = make(resource.Drivers, 0)
 	for _, k := range t.config.SectionStrings() {
 		if k == "env" || k == "data" || k == "DEFAULT" {
 			continue
@@ -196,15 +207,39 @@ func (t *Base) configureResources() resource.Drivers {
 		}
 		r := factory()
 		if err := t.configureResource(r, k); err != nil {
-			t.log.Error().
-				Err(err).
-				Str("rid", k).
-				Msg("configureResource")
+			switch o := err.(type) {
+			case xconfig.ErrPostponedRef:
+				if _, ok := postponed[o.RID]; !ok {
+					postponed[o.RID] = make([]resource.Driver, 0)
+				}
+				postponed[o.RID] = append(postponed[o.RID], r)
+			default:
+				t.log.Error().
+					Err(err).
+					Str("rid", k).
+					Msg("configure resource")
+			}
 			continue
 		}
-		resources = append(resources, r)
+		t.log.Debug().Str("rid", r.RID()).Msgf("configure resource: %+v", r)
+		t._resources = append(t._resources, r)
 	}
-	return resources
+	for _, resources := range postponed {
+		for _, r := range resources {
+			if err := t.configureResource(r, r.RID()); err != nil {
+				t.log.Error().
+					Err(err).
+					Str("rid", r.RID()).
+					Msg("configure postponed resource")
+				continue
+			}
+			t.log.Debug().Str("rid", r.RID()).Msgf("configure postponed resource: %+v", r)
+			t._resources = append(t._resources, r)
+		}
+	}
+	t.resources = t._resources
+	t._resources = nil
+	return
 }
 
 func (t Base) configureResource(r resource.Driver, rid string) error {
