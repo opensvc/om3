@@ -31,8 +31,9 @@ func (t *CmdObjectPrintSchedule) Init(kind string, parent *cobra.Command, select
 
 func (t *CmdObjectPrintSchedule) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "schedule",
-		Short: "Print selected objects scheduling table",
+		Use:     "schedule",
+		Short:   "Print selected objects scheduling table",
+		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
