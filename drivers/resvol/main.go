@@ -325,7 +325,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	data, err := t.statusVolume(ctx, volume)
 	if err != nil {
-		t.StatusLog().Error("%", err)
+		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
 	if data.Overall == status.Warn {

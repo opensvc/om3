@@ -2,6 +2,11 @@ package resappforking
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/opensvc/testhelper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
@@ -10,10 +15,6 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/file"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 var (
@@ -148,13 +149,14 @@ func TestStop(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
+	ctx := context.Background()
 	t.Run("execute check command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
 		app := WithLoggerApp(T{resapp.T{CheckCmd: "touch " + filename}})
-		app.Status()
+		app.Status(ctx)
 		require.True(t, file.Exists(filename), "missing status cmd !")
 	})
 
@@ -188,7 +190,7 @@ func TestStatus(t *testing.T) {
 
 				app := WithLoggerApp(T{resapp.T{CheckCmd: "echo && exit " + cases[name].exitCode}})
 				app.RetCodes = cases[name].retcode
-				require.Equal(t, cases[name].expected.String(), app.Status().String())
+				require.Equal(t, cases[name].expected.String(), app.Status(ctx).String())
 			})
 		}
 	})

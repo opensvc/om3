@@ -1,11 +1,12 @@
 package statusbus
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
-	"testing"
 )
 
 func TestRefuseStartTwice(t *testing.T) {
@@ -23,7 +24,7 @@ func TestPanicIfNotStarted(t *testing.T) {
 			t,
 			ErrorNeedStart.Error(),
 			func() {
-				bus.Post(path.T{}, "app#1", status.Warn)
+				bus.Post(path.T{}, "app#1", status.Warn, false)
 			})
 	})
 	t.Run("Post", func(t *testing.T) {
@@ -45,8 +46,8 @@ func TestPost(t *testing.T) {
 		Namespace: "root",
 		Kind:      kind.Svc,
 	}
-	bus.Post(p, "app#1", status.Down)
-	bus.Post(p, "app#2", status.Up)
+	bus.Post(p, "app#1", status.Down, false)
+	bus.Post(p, "app#2", status.Up, false)
 
 	cases := []struct {
 		rid   string
