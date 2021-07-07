@@ -213,7 +213,7 @@ func (t Base) dereferenceExposedDevices(ref string) (string, error) {
 		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
 	}
 	rid := l[0]
-	r := t.getConfiguringResourceByID(rid)
+	r := t.getResourceByID(rid)
 	if r == nil {
 		if t.config.HasSectionString(rid) {
 			return ref, xconfig.NewErrPostponedRef(ref, rid)

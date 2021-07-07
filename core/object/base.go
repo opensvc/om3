@@ -160,13 +160,29 @@ func (t *Base) ResourceSets() resourceset.L {
 	return l
 }
 
-func (t *Base) getConfiguringResourceByID(rid string) resource.Driver {
+func (t Base) getConfiguringResourceByID(rid string) resource.Driver {
 	for _, r := range t._resources {
 		if r.RID() == rid {
 			return r
 		}
 	}
 	return nil
+}
+
+func (t Base) getConfiguredResourceByID(rid string) resource.Driver {
+	for _, r := range t.resources {
+		if r.RID() == rid {
+			return r
+		}
+	}
+	return nil
+}
+
+func (t Base) getResourceByID(rid string) resource.Driver {
+	if r := t.getConfiguredResourceByID(rid); r != nil {
+		return r
+	}
+	return t.getConfiguringResourceByID(rid)
 }
 
 func (t *Base) Resources() resource.Drivers {
