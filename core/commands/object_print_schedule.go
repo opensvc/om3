@@ -64,7 +64,7 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 		PrintSchedule(object.OptsPrintSchedule) schedule.Table
 	}
 	for _, p := range sel.Expand() {
-		obj := object.NewBaserFromPath(p)
+		obj := object.NewFromPath(p)
 		i, ok := obj.(scheduler)
 		if !ok {
 			continue

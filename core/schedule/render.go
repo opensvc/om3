@@ -7,7 +7,7 @@ import (
 )
 
 func SprintTime(t timestamp.T) string {
-	if t.IsZero() {
+	if t.IsZero() || t.Time().IsZero() {
 		return "-"
 	}
 	return t.Render()
