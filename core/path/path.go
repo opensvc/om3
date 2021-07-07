@@ -25,6 +25,9 @@ type (
 
 	// Relation is an object path or an instance path (path@node).
 	Relation string
+
+	// L is a list of path T. This type is a facility to provide a Stringer.
+	L []T
 )
 
 const (
@@ -228,4 +231,38 @@ func (t T) Match(pattern string) bool {
 
 func (t Relation) String() string {
 	return string(t)
+}
+
+func (t Relation) Split() (T, string, error) {
+	p, err := t.Path()
+	return p, t.Node(), err
+}
+
+func (t Relation) Node() string {
+	var s string
+	if strings.Contains(string(t), "@") {
+		s = strings.SplitN(string(t), "@", 1)[1]
+	}
+	return s
+}
+
+func (t Relation) Path() (T, error) {
+	var s string
+	if strings.Contains(string(t), "@") {
+		s = strings.SplitN(string(t), "@", 1)[0]
+	}
+	s = string(t)
+	return Parse(s)
+}
+
+func (t L) Len() int {
+	return len([]T(t))
+}
+
+func (t L) String() string {
+	l := make([]string, len(t))
+	for i, p := range t {
+		l[i] = p.String()
+	}
+	return strings.Join(l, ",")
 }

@@ -227,6 +227,11 @@ func (t T) stopVolume(ctx context.Context, volume *object.Vol, force bool) error
 	options.Force = force
 	//ctxOptions := actioncontext.Options(ctx).(object.OptsStop)
 	//options.Leader = ctxOptions.Leader
+	holders := volume.HoldersExcept(ctx, t.Path)
+	if holders.Len() > 0 {
+		t.Log().Info().Msgf("skip %s stop: active users: %s", volume.Path, holders)
+		return nil
+	}
 	return volume.Stop(options)
 }
 
@@ -269,9 +274,6 @@ func (t T) stopFlag(ctx context.Context) error {
 	if err := t.uninstallFlag(); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
-		return t.installFlag()
-	})
 	return nil
 }
 
@@ -299,9 +301,6 @@ func (t T) Stop(ctx context.Context) error {
 	if err = t.stopVolume(ctx, volume, false); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func() error {
-		return t.startVolume(ctx, volume)
-	})
 	return nil
 }
 
