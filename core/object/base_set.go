@@ -15,8 +15,12 @@ type OptsSet struct {
 
 // Set gets a keyword value
 func (t *Base) Set(options OptsSet) error {
+	return t.SetKeywords(options.KeywordOps)
+}
+
+func (t *Base) SetKeywords(kws []string) error {
 	changes := 0
-	for _, kw := range options.KeywordOps {
+	for _, kw := range kws {
 		op := keyop.Parse(kw)
 		if op.IsZero() {
 			return fmt.Errorf("invalid set expression: %s", kw)
