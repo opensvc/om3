@@ -9,7 +9,7 @@ import (
 )
 
 // NewObject configures and returns a Viper instance
-func NewObject(p string) (t *T, err error) {
+func NewObject(p string, others ...interface{}) (t *T, err error) {
 	cf := filepath.FromSlash(p)
 	t = &T{
 		ConfigFilePath: cf,
@@ -18,7 +18,7 @@ func NewObject(p string) (t *T, err error) {
 		Loose:                      true,
 		AllowPythonMultilineValues: true,
 		SpaceBeforeInlineComment:   true,
-	}, cf)
+	}, cf, others...)
 	if err != nil {
 		return nil, errors.Wrap(err, "load config error")
 	}
