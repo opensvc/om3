@@ -33,6 +33,24 @@ func doDF(args []string) ([]byte, error) {
 	return b, nil
 }
 
+// TypeMountUsage executes and parses a df command for a mount point and a fstype
+func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
+	b, err := doDF([]string{"-lP", "-t", fstype, mnt})
+	if err != nil {
+		return nil, err
+	}
+	return parse(b)
+}
+
+// MountUsage executes and parses a df command for a mount point
+func MountUsage(mnt string) ([]Entry, error) {
+	b, err := doDF([]string{"-lP", mnt})
+	if err != nil {
+		return nil, err
+	}
+	return parse(b)
+}
+
 // Usage executes and parses a df command
 func Usage() ([]Entry, error) {
 	b, err := doDFUsage()

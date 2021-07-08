@@ -8,6 +8,24 @@ import (
 	"strings"
 )
 
+// TypeMountUsage executes and parses a df command for a mount point and a fstype
+func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
+	b, err := doDF([]string{"-lP", "-t", fstype, mnt})
+	if err != nil {
+		return nil, err
+	}
+	return parse(b)
+}
+
+// MountUsage executes and parses a df command for a mount point
+func MountUsage(mnt string) ([]Entry, error) {
+	b, err := doDF([]string{"-lP", mnt})
+	if err != nil {
+		return nil, err
+	}
+	return parse(b)
+}
+
 func doDFInode() ([]byte, error) {
 	return doDF([]string{"-lPi"})
 }
@@ -30,24 +48,6 @@ func doDF(args []string) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
-}
-
-// Usage executes and parses a df command
-func Usage() ([]Entry, error) {
-	b, err := doDFUsage()
-	if err != nil {
-		return nil, err
-	}
-	return parse(b)
-}
-
-// Inode executes and parses a df command
-func Inode() ([]Entry, error) {
-	b, err := doDFInode()
-	if err != nil {
-		return nil, err
-	}
-	return parse(b)
 }
 
 func parse(b []byte) ([]Entry, error) {
