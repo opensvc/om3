@@ -22,7 +22,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -32,6 +35,7 @@ import (
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/pool"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -40,6 +44,7 @@ import (
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/xsession"
 )
 
 const (
@@ -405,6 +410,46 @@ func (t *T) volume() (*object.Vol, error) {
 	return v, nil
 }
 
+func (t *T) createVolume(volume *object.Vol) (*object.Vol, error) {
+	p := filepath.Join(volume.VarDir(), "create_volume.lock")
+	lock := flock.New(p, xsession.ID, fcntllock.New)
+	timeout, err := time.ParseDuration("20s")
+	if err != nil {
+		return nil, err
+	}
+	err = lock.Lock(timeout, "")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = lock.UnLock() }()
+	return t.lockedCreateVolume(volume)
+}
+
+func (t *T) lockedCreateVolume(volume *object.Vol) (*object.Vol, error) {
+	bestPool, err := t.findPool(false, t.Shared)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("xx", bestPool)
+	return volume, nil
+}
+
+func (t *T) findPool(usage bool, shared bool) (pool.Pooler, error) {
+	acs, err := volaccess.Parse(t.Access)
+	if err != nil {
+		return nil, err
+	}
+	return pool.GetPool(
+		t.Pool,
+		t.PoolType,
+		acs,
+		fmt.Sprintf("%db", t.Size),
+		t.Format,
+		shared,
+		usage,
+	), nil
+}
+
 func (t *T) configureVolume(v *object.Vol, option int) error {
 	panic("TODO")
 	return nil
@@ -422,6 +467,8 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if volume.Exists() {
 		t.Log().Info().Msgf("%s is already provisioned", volume.Path)
 		return nil
+	} else if volume, err = t.createVolume(volume); err != nil {
+		return err
 	}
 	return volume.Provision(object.OptsProvision{})
 }

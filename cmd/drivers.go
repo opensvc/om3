@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	_ "opensvc.com/opensvc/drivers/poolshm"
 	_ "opensvc.com/opensvc/drivers/resappforking"
 	_ "opensvc.com/opensvc/drivers/resappsimple"
 	_ "opensvc.com/opensvc/drivers/resdisklv"
