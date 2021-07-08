@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/volaccess"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -15,7 +14,7 @@ type (
 	T struct {
 		Type   string
 		Name   string
-		Config *xconfig.T
+		config *xconfig.T
 	}
 
 	Status struct {
@@ -28,11 +27,13 @@ type (
 		Total        int64    `json:"total"`
 		Errors       []string `json:"errors"`
 	}
+	StatusList []Status
 
 	Pooler interface {
 		Status() Status
+		SetConfig(*xconfig.T)
 		Capabilities() []string
-		ConfigureVolume(vol *object.Vol, size string, format bool, acs volaccess.T, shared bool, nodes []string, env []string) (*object.Vol, error)
+		ConfigureVolume(vol volumer, size string, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error
 	}
 	Translater interface {
 		Translate(name string, size string, shared bool) []string
@@ -40,14 +41,37 @@ type (
 	BlkTranslater interface {
 		BlkTranslate(name string, size string, shared bool) []string
 	}
+	volumer interface {
+		FQDN() string
+		SetKeywords([]string) error
+	}
 )
 
 var (
 	drivers = make(map[string]func(string) Pooler)
 )
 
+func New(name string, config *xconfig.T) Pooler {
+	poolType := config.GetString(key.New("pool#"+name, "type"))
+	fn, ok := drivers[poolType]
+	if !ok {
+		return nil
+	}
+	t := fn(name)
+	t.SetConfig(config)
+	return t.(Pooler)
+}
+
 func Register(t string, fn func(string) Pooler) {
 	drivers[t] = fn
+}
+
+func (t *T) Config() *xconfig.T {
+	return t.config
+}
+
+func (t *T) SetConfig(c *xconfig.T) {
+	t.config = c
 }
 
 func (t T) Key(s string) key.T {
@@ -86,7 +110,7 @@ func (t *T) nodeKeywords(nodes []string) []string {
 }
 
 func (t *T) statusScheduleKeywords() []string {
-	statusSchedule := t.Config.GetString(t.Key("status_schedule"))
+	statusSchedule := t.config.GetString(t.Key("status_schedule"))
 	if statusSchedule == "" {
 		return []string{}
 	}
@@ -105,11 +129,11 @@ func (t *T) syncKeywords() []string {
 	}
 }
 
-func (t *T) ConfigureVolume(vol *object.Vol, size string, format bool, acs volaccess.T, shared bool, nodes []string, env []string) (*object.Vol, error) {
+func (t *T) ConfigureVolume(vol volumer, size string, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
 	name := vol.FQDN()
 	kws, err := t.translate(name, size, format, shared)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	kws = append(kws, env...)
 	kws = append(kws, t.baseKeywords(size, acs)...)
@@ -118,12 +142,9 @@ func (t *T) ConfigureVolume(vol *object.Vol, size string, format bool, acs volac
 	kws = append(kws, t.statusScheduleKeywords()...)
 	kws = append(kws, t.syncKeywords()...)
 	if err := vol.SetKeywords(kws); err != nil {
-		return nil, err
+		return err
 	}
-	if vol.IsVolatile() {
-		return vol, nil
-	}
-	return object.NewVol(vol.Path), nil
+	return nil
 }
 
 func (t *T) translate(name string, size string, format bool, shared bool) ([]string, error) {
@@ -148,4 +169,20 @@ func (t *T) translate(name string, size string, format bool, shared bool) ([]str
 
 func GetPool(name string, t string, acs volaccess.T, size string, format bool, shared bool, usage bool) Pooler {
 	return nil
+}
+
+func NewStatusList() StatusList {
+	l := make([]Status, 0)
+	return StatusList(l)
+}
+
+func (t StatusList) Add(p Pooler) StatusList {
+	s := p.Status()
+	l := []Status(t)
+	l = append(l, s)
+	return StatusList(l)
+}
+
+func (t StatusList) Render() string {
+	return fmt.Sprintf("%+v", t)
 }

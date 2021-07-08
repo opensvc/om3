@@ -20,10 +20,12 @@ var (
 
 func init() {
 	var (
-		cmdPoolLs commands.PoolLs
+		cmdPoolLs     commands.PoolLs
+		cmdPoolStatus commands.PoolStatus
 	)
 	rootCmd.AddCommand(poolCmd)
 	poolCmd.AddCommand(poolCreateCmd)
 
 	cmdPoolLs.Init(poolCmd)
+	cmdPoolStatus.Init(poolCmd)
 }

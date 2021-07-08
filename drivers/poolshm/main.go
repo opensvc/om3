@@ -11,7 +11,7 @@ import (
 
 type (
 	T struct {
-		*pool.T
+		pool.T
 	}
 )
 
@@ -48,7 +48,11 @@ func (t T) usage() (df.Entry, error) {
 }
 
 func (t *T) Status() pool.Status {
+	errs := make([]string, 0)
 	usage, err := t.usage()
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
 	return pool.Status{
 		Type:         t.Type,
 		Name:         t.Name,
@@ -57,13 +61,13 @@ func (t *T) Status() pool.Status {
 		Free:         usage.Free,
 		Used:         usage.Used,
 		Total:        usage.Total,
-		Errors:       []string{err.Error()},
+		Errors:       errs,
 	}
 }
 
 func (t *T) mntOpt(size string) string {
 	sizeOpt := fmt.Sprintf("size=%s", size)
-	opts := t.Config.GetString(t.Key("mnt_opt"))
+	opts := t.Config().GetString(t.Key("mnt_opt"))
 	if opts != "" {
 		opts = strings.Join([]string{opts, sizeOpt}, ",")
 	} else {
