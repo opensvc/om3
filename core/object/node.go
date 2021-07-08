@@ -20,10 +20,11 @@ type (
 		volatile bool
 
 		// caches
-		id         uuid.UUID
-		configFile string
-		config     *xconfig.T
-		paths      NodePaths
+		id           uuid.UUID
+		configFile   string
+		config       *xconfig.T
+		mergedConfig *xconfig.T
+		paths        NodePaths
 	}
 )
 

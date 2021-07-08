@@ -22,17 +22,29 @@ func (t *Node) ConfigFile() string {
 	return filepath.Join(rawconfig.Node.Paths.Etc, "node.conf")
 }
 
+func (t *Node) ClusterConfigFile() string {
+	return filepath.Join(rawconfig.Node.Paths.Etc, "cluster.conf")
+}
+
 func (t *Node) loadConfig() error {
 	var err error
 	if t.config, err = xconfig.NewObject(t.ConfigFile()); err != nil {
 		return err
 	}
 	t.config.Referrer = t
+	if t.mergedConfig, err = xconfig.NewObject(t.ConfigFile(), t.ClusterConfigFile()); err != nil {
+		return err
+	}
+	t.mergedConfig.Referrer = t
 	return err
 }
 
 func (t Node) Config() *xconfig.T {
 	return t.config
+}
+
+func (t Node) MergedConfig() *xconfig.T {
+	return t.mergedConfig
 }
 
 func (t Node) ID() uuid.UUID {
