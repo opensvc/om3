@@ -71,6 +71,10 @@ func (t Base) Orchestrate() string {
 	return t.config.GetString(k)
 }
 
+func (t Base) FQDN() string {
+	return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).String()
+}
+
 func (t Base) Env() string {
 	k := key.Parse("env")
 	if s := t.config.GetString(k); s != "" {
@@ -271,7 +275,7 @@ func (t Base) Dereference(ref string) (string, error) {
 		if t.Path.IsZero() {
 			return "", nil
 		}
-		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).String(), nil
+		return t.FQDN(), nil
 	case "domain":
 		if t.Path.IsZero() {
 			return "", nil
