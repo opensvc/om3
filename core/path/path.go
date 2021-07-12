@@ -74,7 +74,8 @@ func New(name string, namespace string, kd string) (T, error) {
 	if name == "" {
 		return path, errors.Wrap(ErrInvalid, "name is empty")
 	}
-	if !hostname.IsValid(name) {
+	validatedName := strings.TrimLeft(name, "0123456789.") // trim the slice number from the validated name
+	if !hostname.IsValid(validatedName) {
 		return path, errors.Wrapf(ErrInvalid, "invalid name %s (rfc952)", name)
 	}
 	if !hostname.IsValid(namespace) {
