@@ -3,8 +3,10 @@ package pool
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/volaccess"
 	"opensvc.com/opensvc/core/xconfig"
@@ -21,16 +23,29 @@ type (
 	}
 
 	Status struct {
-		Type         string   `json:"type"`
-		Name         string   `json:"name"`
-		Capabilities []string `json:"capabilities"`
-		Head         string   `json:"head"`
-		Free         float64  `json:"free"`
-		Used         float64  `json:"used"`
-		Total        float64  `json:"total"`
-		Errors       []string `json:"errors"`
+		Type         string         `json:"type"`
+		Name         string         `json:"name"`
+		Capabilities []string       `json:"capabilities"`
+		Head         string         `json:"head"`
+		Errors       []string       `json:"errors"`
+		Volumes      []VolumeStatus `json:"volumes"`
+		// Free unit is KiB
+		Free float64 `json:"free"`
+		// Used unit is KiB
+		Used float64 `json:"used"`
+		// Size unit is KiB
+		Size float64 `json:"size"`
 	}
 	StatusList []Status
+
+	VolumeStatus struct {
+		Path     string   `json:"path"`
+		Children []path.T `json:"children"`
+		Orphan   bool     `json:"orphan"`
+		// Size unit is B
+		Size float64 `json:"size"`
+	}
+	VolumeStatusList []VolumeStatus
 
 	Pooler interface {
 		Status() Status
@@ -53,6 +68,13 @@ type (
 var (
 	drivers = make(map[string]func(string) Pooler)
 )
+
+func NewStatus() Status {
+	t := Status{}
+	t.Volumes = make([]VolumeStatus, 0)
+	t.Errors = make([]string, 0)
+	return t
+}
 
 func New(name string, config *xconfig.T) Pooler {
 	poolType := config.GetString(key.New("pool#"+name, "type"))
@@ -219,8 +241,46 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Type)
 	head.AddColumn().AddText(strings.Join(t.Capabilities, ","))
 	head.AddColumn().AddText(t.Head)
+	head.AddColumn().AddText(fmt.Sprint(len(t.Volumes)))
+	if t.Size == 0 {
+		head.AddColumn().AddText("-")
+		head.AddColumn().AddText("-")
+		head.AddColumn().AddText("-")
+	} else {
+		head.AddColumn().AddText(sizeconv.BSize(t.Size * sizeconv.KiB))
+		head.AddColumn().AddText(sizeconv.BSize(t.Used * sizeconv.KiB))
+		head.AddColumn().AddText(sizeconv.BSize(t.Free * sizeconv.KiB))
+	}
+	if len(t.Volumes) > 0 {
+		n := head.AddNode()
+		VolumeStatusList(t.Volumes).LoadTreeNode(n)
+	}
+}
+
+// LoadTreeNode add the tree nodes representing the type instance into another.
+func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
+	head.AddColumn().AddText("volume").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("children").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("orphan").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	for _, data := range t {
+		n := head.AddNode()
+		data.LoadTreeNode(n)
+	}
+}
+
+// LoadTreeNode add the tree nodes representing the type instance into another.
+func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
+	head.AddColumn().AddText(t.Path)
 	head.AddColumn().AddText("")
-	head.AddColumn().AddText(sizeconv.BSize(t.Total))
-	head.AddColumn().AddText(sizeconv.BSize(t.Used))
-	head.AddColumn().AddText(sizeconv.BSize(t.Free))
+	head.AddColumn().AddText(path.L(t.Children).String())
+	head.AddColumn().AddText(strconv.FormatBool(t.Orphan))
+	head.AddColumn().AddText("")
+	head.AddColumn().AddText(sizeconv.BSize(t.Size))
+	head.AddColumn().AddText("")
+	head.AddColumn().AddText("")
 }

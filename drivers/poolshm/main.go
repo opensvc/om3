@@ -48,21 +48,19 @@ func (t T) usage() (df.Entry, error) {
 }
 
 func (t *T) Status() pool.Status {
-	errs := make([]string, 0)
+	data := pool.NewStatus()
 	usage, err := t.usage()
 	if err != nil {
-		errs = append(errs, err.Error())
+		data.Errors = append(data.Errors, err.Error())
 	}
-	return pool.Status{
-		Type:         t.Type,
-		Name:         t.Name,
-		Capabilities: t.Capabilities(),
-		Head:         t.path(),
-		Free:         float64(usage.Free) * 1024,
-		Used:         float64(usage.Used) * 1024,
-		Total:        float64(usage.Total) * 1024,
-		Errors:       errs,
-	}
+	data.Type = t.Type
+	data.Name = t.Name
+	data.Capabilities = t.Capabilities()
+	data.Head = t.path()
+	data.Free = float64(usage.Free)
+	data.Used = float64(usage.Used)
+	data.Size = float64(usage.Total)
+	return data
 }
 
 func (t *T) mntOpt(size string) string {

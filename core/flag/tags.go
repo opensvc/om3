@@ -104,6 +104,14 @@ var Tags = map[string]Opt{
 		Default: "",
 		Desc:    "an object selector expression, '**/s[12]+!*/vol/*'",
 	},
+	"poolstatusname": Opt{
+		Long: "name",
+		Desc: "filter on a pool name",
+	},
+	"poolstatusverbose": Opt{
+		Long: "verbose",
+		Desc: "include pool volumes",
+	},
 	"provision": Opt{
 		Long: "provision",
 		Desc: "provision the object after create",

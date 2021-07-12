@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
@@ -17,7 +19,9 @@ import (
 type (
 	// PoolStatus is the cobra flag set of the command.
 	PoolStatus struct {
-		Global object.OptsGlobal
+		Global  object.OptsGlobal
+		Verbose bool `flag:"poolstatusverbose"`
+		Name    bool `flag:"poolstatusname"`
 	}
 )
 
@@ -40,11 +44,18 @@ func (t *PoolStatus) cmd() *cobra.Command {
 }
 
 func (t *PoolStatus) run() {
-	var data pool.StatusList
-	if t.Global.Local || !clientcontext.IsSet() {
-		data = t.extractLocal()
+	var (
+		err  error
+		data pool.StatusList
+	)
+	if !t.Global.Local || clientcontext.IsSet() {
+		data, err = t.extractDaemon()
 	} else {
-		data = t.extractDaemon()
+		data, err = t.extractLocal()
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
 	}
 	output.Renderer{
 		Format:   t.Global.Format,
@@ -57,20 +68,29 @@ func (t *PoolStatus) run() {
 	}.Print()
 }
 
-func (t *PoolStatus) extractLocal() pool.StatusList {
-	return object.NewNode().ShowPools()
+func (t *PoolStatus) extractLocal() (pool.StatusList, error) {
+	return object.NewNode().ShowPools(), nil
 }
 
-func (t *PoolStatus) extractDaemon() pool.StatusList {
-	var (
-		c   *client.T
-		err error
-	)
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+func (t *PoolStatus) extractDaemon() (pool.StatusList, error) {
+	c, err := client.New(client.WithURL(t.Global.Server))
+	if err != nil {
+		return nil, err
 	}
-	panic("TODO")
-	fmt.Println(c)
-	return pool.NewStatusList()
+	l := pool.NewStatusList()
+	data := make(map[string]pool.Status)
+	req := c.NewGetPools()
+	b, err := req.Do()
+	if err != nil {
+		return l, err
+	}
+	err = json.Unmarshal(b, &data)
+	if err != nil {
+		return l, errors.Wrapf(err, "unmarshal GET /pools")
+	}
+	for name, d := range data {
+		d.Name = name
+		l = append(l, d)
+	}
+	return l, nil
 }

@@ -38,6 +38,10 @@ func (t T) NewGetObjectStatus() *api.GetObjectStatus {
 	return api.NewGetObjectStatus(t)
 }
 
+func (t T) NewGetPools() *api.GetPools {
+	return api.NewGetPools(t)
+}
+
 func (t T) NewPostKey() *api.PostKey {
 	return api.NewPostKey(t)
 }
