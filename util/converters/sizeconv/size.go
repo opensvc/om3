@@ -87,7 +87,7 @@ func BSizeWithPrecision(size float64, precision int) string {
 // BSize returns a human-readable, default precision,
 // representation of size in binary units.
 func BSize(size float64) string {
-	return CustomSize("%.4g%s", defaultPrecision, size, 1024.0, bAbb)
+	return CustomSize("%.*g%s", defaultPrecision, size, 1024.0, bAbb)
 }
 
 // FromSize returns an integer from a human-readable representation of a

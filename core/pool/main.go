@@ -5,9 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/volaccess"
 	"opensvc.com/opensvc/core/xconfig"
+	"opensvc.com/opensvc/util/converters/sizeconv"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/render/tree"
 )
 
 type (
@@ -22,9 +25,9 @@ type (
 		Name         string   `json:"name"`
 		Capabilities []string `json:"capabilities"`
 		Head         string   `json:"head"`
-		Free         int64    `json:"free"`
-		Used         int64    `json:"used"`
-		Total        int64    `json:"total"`
+		Free         float64  `json:"free"`
+		Used         float64  `json:"used"`
+		Total        float64  `json:"total"`
 		Errors       []string `json:"errors"`
 	}
 	StatusList []Status
@@ -184,5 +187,40 @@ func (t StatusList) Add(p Pooler) StatusList {
 }
 
 func (t StatusList) Render() string {
-	return fmt.Sprintf("%+v", t)
+	return t.Tree().Render()
+}
+
+// Tree returns a tree loaded with the type instance.
+func (t StatusList) Tree() *tree.Tree {
+	tree := tree.New()
+	t.LoadTreeNode(tree.Head())
+	return tree
+}
+
+// LoadTreeNode add the tree nodes representing the type instance into another.
+func (t StatusList) LoadTreeNode(head *tree.Node) {
+	head.AddColumn().AddText("name").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("type").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("caps").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("head").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("vols").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("size").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("used").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("free").SetColor(rawconfig.Node.Color.Bold)
+	for _, data := range t {
+		n := head.AddNode()
+		data.LoadTreeNode(n)
+	}
+}
+
+// LoadTreeNode add the tree nodes representing the type instance into another.
+func (t Status) LoadTreeNode(head *tree.Node) {
+	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Node.Color.Primary)
+	head.AddColumn().AddText(t.Type)
+	head.AddColumn().AddText(strings.Join(t.Capabilities, ","))
+	head.AddColumn().AddText(t.Head)
+	head.AddColumn().AddText("")
+	head.AddColumn().AddText(sizeconv.BSize(t.Total))
+	head.AddColumn().AddText(sizeconv.BSize(t.Used))
+	head.AddColumn().AddText(sizeconv.BSize(t.Free))
 }

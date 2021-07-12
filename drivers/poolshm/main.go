@@ -58,9 +58,9 @@ func (t *T) Status() pool.Status {
 		Name:         t.Name,
 		Capabilities: t.Capabilities(),
 		Head:         t.path(),
-		Free:         usage.Free,
-		Used:         usage.Used,
-		Total:        usage.Total,
+		Free:         float64(usage.Free) * 1024,
+		Used:         float64(usage.Used) * 1024,
+		Total:        float64(usage.Total) * 1024,
 		Errors:       errs,
 	}
 }

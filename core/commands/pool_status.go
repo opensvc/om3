@@ -51,6 +51,9 @@ func (t *PoolStatus) run() {
 		Color:    t.Global.Color,
 		Data:     data,
 		Colorize: rawconfig.Node.Colorize,
+		HumanRenderer: func() string {
+			return data.Render()
+		},
 	}.Print()
 }
 
