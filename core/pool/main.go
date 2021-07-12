@@ -3,6 +3,7 @@ package pool
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -39,7 +40,7 @@ type (
 	StatusList []Status
 
 	VolumeStatus struct {
-		Path     string   `json:"path"`
+		Path     path.T   `json:"path"`
 		Children []path.T `json:"children"`
 		Orphan   bool     `json:"orphan"`
 		// Size unit is B
@@ -201,6 +202,18 @@ func NewStatusList() StatusList {
 	return StatusList(l)
 }
 
+func (t StatusList) Len() int {
+	return len(t)
+}
+
+func (t StatusList) Less(i, j int) bool {
+	return t[i].Name < t[j].Name
+}
+
+func (t StatusList) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
 func (t StatusList) Add(p Pooler) StatusList {
 	s := p.Status()
 	l := []Status(t)
@@ -229,6 +242,7 @@ func (t StatusList) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText("size").SetColor(rawconfig.Node.Color.Bold)
 	head.AddColumn().AddText("used").SetColor(rawconfig.Node.Color.Bold)
 	head.AddColumn().AddText("free").SetColor(rawconfig.Node.Color.Bold)
+	sort.Sort(t)
 	for _, data := range t {
 		n := head.AddNode()
 		data.LoadTreeNode(n)
@@ -257,6 +271,18 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	}
 }
 
+func (t VolumeStatusList) Len() int {
+	return len(t)
+}
+
+func (t VolumeStatusList) Less(i, j int) bool {
+	return t[i].Path.String() < t[j].Path.String()
+}
+
+func (t VolumeStatusList) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText("volume").SetColor(rawconfig.Node.Color.Bold)
@@ -267,6 +293,7 @@ func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
 	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
 	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	sort.Sort(t)
 	for _, data := range t {
 		n := head.AddNode()
 		data.LoadTreeNode(n)
@@ -275,7 +302,7 @@ func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Path)
+	head.AddColumn().AddText(t.Path.String())
 	head.AddColumn().AddText("")
 	head.AddColumn().AddText(path.L(t.Children).String())
 	head.AddColumn().AddText(strconv.FormatBool(t.Orphan))
