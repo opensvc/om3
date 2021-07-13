@@ -7,10 +7,21 @@ import (
 	"opensvc.com/opensvc/drivers/poolshm"
 )
 
+func (t *Node) ShowPoolsByName(name string) pool.StatusList {
+	l := pool.NewStatusList()
+	for _, p := range t.Pools() {
+		if name != "" && name != p.Name() {
+			continue
+		}
+		l = l.Add(p, true)
+	}
+	return l
+}
+
 func (t *Node) ShowPools() pool.StatusList {
 	l := pool.NewStatusList()
 	for _, p := range t.Pools() {
-		l = l.Add(p)
+		l = l.Add(p, true)
 	}
 	return l
 }
@@ -18,16 +29,23 @@ func (t *Node) ShowPools() pool.StatusList {
 func (t *Node) Pools() []pool.Pooler {
 	l := make([]pool.Pooler, 0)
 	config := t.MergedConfig()
-
-	p := poolshm.NewPooler("shm")
-	p.SetConfig(t.MergedConfig())
-	l = append(l, p)
+	hasSHM := false
 
 	for _, name := range t.ListPools() {
 		p := pool.New(name, config)
 		if p == nil {
 			continue
 		}
+		if p.Type() == "shm" {
+			hasSHM = true
+		}
+		l = append(l, p)
+	}
+	if !hasSHM {
+		p := poolshm.NewPooler()
+		p.SetName("shm")
+		p.SetDriver("shm")
+		p.SetConfig(config)
 		l = append(l, p)
 	}
 	return l

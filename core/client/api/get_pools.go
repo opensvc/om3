@@ -8,6 +8,7 @@ import (
 type GetPools struct {
 	Base
 	Server string `json:"server"`
+	Name   string `json:"name"`
 }
 
 // NewGetPools allocates a DaemonPoolsCmdConfig struct and sets
@@ -20,6 +21,11 @@ func NewGetPools(t Getter) *GetPools {
 	r.SetAction("pools")
 	r.SetMethod("GET")
 	return r
+}
+
+func (t *GetPools) SetName(name string) *GetPools {
+	t.Name = name
+	return t
 }
 
 // Do fetchs the daemon statistics structure from the agent api

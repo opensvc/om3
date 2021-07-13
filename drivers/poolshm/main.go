@@ -19,53 +19,44 @@ func init() {
 	pool.Register("shm", NewPooler)
 }
 
-func NewPooler(name string) pool.Pooler {
-	p := New(name)
-	var i interface{} = p
+func NewPooler() pool.Pooler {
+	t := New()
+	var i interface{} = t
 	return i.(pool.Pooler)
 }
 
-func New(name string) *T {
+func New() *T {
 	t := T{}
-	t.Type = "shm"
-	t.Name = name
 	return &t
+}
+
+func (t T) Head() string {
+	return t.path()
 }
 
 func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk"}
 }
 
-func (t T) usage() (df.Entry, error) {
+func (t T) Usage() (pool.StatusUsage, error) {
 	entries, err := df.MountUsage(t.path())
 	if err != nil {
-		return df.Entry{}, err
+		return pool.StatusUsage{}, err
 	}
 	if len(entries) == 0 {
-		return df.Entry{}, fmt.Errorf("not mounted")
+		return pool.StatusUsage{}, fmt.Errorf("not mounted")
 	}
-	return entries[0], nil
-}
-
-func (t *T) Status() pool.Status {
-	data := pool.NewStatus()
-	usage, err := t.usage()
-	if err != nil {
-		data.Errors = append(data.Errors, err.Error())
+	usage := pool.StatusUsage{
+		Size: float64(entries[0].Total),
+		Free: float64(entries[0].Free),
+		Used: float64(entries[0].Used),
 	}
-	data.Type = t.Type
-	data.Name = t.Name
-	data.Capabilities = t.Capabilities()
-	data.Head = t.path()
-	data.Free = float64(usage.Free)
-	data.Used = float64(usage.Used)
-	data.Size = float64(usage.Total)
-	return data
+	return usage, nil
 }
 
 func (t *T) mntOpt(size string) string {
 	sizeOpt := fmt.Sprintf("size=%s", size)
-	opts := t.Config().GetString(t.Key("mnt_opt"))
+	opts := t.GetString("mnt_opt")
 	if opts != "" {
 		opts = strings.Join([]string{opts, sizeOpt}, ",")
 	} else {
@@ -78,19 +69,19 @@ func (t *T) loopFile(name string) string {
 	return filepath.Join(t.path(), name+".img")
 }
 
-func (t *T) Translate(name string, size string, shared bool) []string {
+func (t *T) Translate(name string, size float64, shared bool) []string {
 	return []string{
 		"fs#0.type=tmpfs",
 		"fs#0.dev=none",
 		"fs#0.mnt=" + pool.MountPointFromName(name),
-		"fs#0.mnt_opt=" + t.mntOpt(size),
+		fmt.Sprintf("fs#0.mnt_opt=size=%.0f", size),
 	}
 }
 
-func (t *T) BlkTranslate(name string, size string, shared bool) []string {
+func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
 	return []string{
 		"disk#0.type=loop",
 		"disk#0.file=" + t.loopFile(name),
-		"disk#0.size=" + size,
+		fmt.Sprintf("disk#0.size=%.0f", size),
 	}
 }

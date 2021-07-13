@@ -150,8 +150,10 @@ func parseSize(sizeStr string, uMap unitMap) (int64, error) {
 // BSizeCompactFromMB returns a compact human readable version of n
 func BSizeCompactFromMB(n uint64) string {
 	f := float64(n * MiB)
-	s := CustomSize("%.*g%s", defaultPrecision, f, 1024.0, cAbb)
-	//s = strings.ReplaceAll(s, " ", "")
-	//return strings.ToLower(s)
-	return s
+	return BSizeCompact(f)
+}
+
+// BSizeCompact returns a compact human readable version of n
+func BSizeCompact(f float64) string {
+	return CustomSize("%.*g%s", defaultPrecision, f, 1024.0, cAbb)
 }

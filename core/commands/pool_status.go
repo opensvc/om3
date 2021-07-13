@@ -20,8 +20,8 @@ type (
 	// PoolStatus is the cobra flag set of the command.
 	PoolStatus struct {
 		Global  object.OptsGlobal
-		Verbose bool `flag:"poolstatusverbose"`
-		Name    bool `flag:"poolstatusname"`
+		Verbose bool   `flag:"poolstatusverbose"`
+		Name    string `flag:"poolstatusname"`
 	}
 )
 
@@ -69,7 +69,11 @@ func (t *PoolStatus) run() {
 }
 
 func (t *PoolStatus) extractLocal() (pool.StatusList, error) {
-	return object.NewNode().ShowPools(), nil
+	if t.Name == "" {
+		return object.NewNode().ShowPools(), nil
+	} else {
+		return object.NewNode().ShowPoolsByName(t.Name), nil
+	}
 }
 
 func (t *PoolStatus) extractDaemon() (pool.StatusList, error) {
@@ -80,6 +84,7 @@ func (t *PoolStatus) extractDaemon() (pool.StatusList, error) {
 	l := pool.NewStatusList()
 	data := make(map[string]pool.Status)
 	req := c.NewGetPools()
+	req.SetName(t.Name)
 	b, err := req.Do()
 	if err != nil {
 		return l, err

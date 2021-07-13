@@ -18,9 +18,18 @@ import (
 
 type (
 	T struct {
-		Type   string
-		Name   string
+		driver string
+		name   string
 		config *xconfig.T
+	}
+
+	StatusUsage struct {
+		// Free unit is KiB
+		Free float64 `json:"free"`
+		// Used unit is KiB
+		Used float64 `json:"used"`
+		// Size unit is KiB
+		Size float64 `json:"size"`
 	}
 
 	Status struct {
@@ -30,14 +39,10 @@ type (
 		Head         string         `json:"head"`
 		Errors       []string       `json:"errors"`
 		Volumes      []VolumeStatus `json:"volumes"`
-		// Free unit is KiB
-		Free float64 `json:"free"`
-		// Used unit is KiB
-		Used float64 `json:"used"`
-		// Size unit is KiB
-		Size float64 `json:"size"`
+		StatusUsage
 	}
-	StatusList []Status
+	StatusList   []Status
+	Capabilities []string
 
 	VolumeStatus struct {
 		Path     path.T   `json:"path"`
@@ -49,16 +54,22 @@ type (
 	VolumeStatusList []VolumeStatus
 
 	Pooler interface {
-		Status() Status
-		SetConfig(*xconfig.T)
+		SetName(string)
+		SetDriver(string)
+		Name() string
+		Type() string
+		Head() string
+		Mappings() map[string]string
 		Capabilities() []string
-		ConfigureVolume(vol volumer, size string, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error
+		Usage() (StatusUsage, error)
+		SetConfig(*xconfig.T)
+		Config() *xconfig.T
 	}
 	Translater interface {
-		Translate(name string, size string, shared bool) []string
+		Translate(name string, size float64, shared bool) []string
 	}
 	BlkTranslater interface {
-		BlkTranslate(name string, size string, shared bool) []string
+		BlkTranslate(name string, size float64, shared bool) []string
 	}
 	volumer interface {
 		FQDN() string
@@ -67,7 +78,7 @@ type (
 )
 
 var (
-	drivers = make(map[string]func(string) Pooler)
+	drivers = make(map[string]func() Pooler)
 )
 
 func NewStatus() Status {
@@ -77,19 +88,64 @@ func NewStatus() Status {
 	return t
 }
 
+func sectionName(poolName string) string {
+	return "pool#" + poolName
+}
+
+func cKey(poolName string, option string) key.T {
+	section := sectionName(poolName)
+	return key.New(section, option)
+}
+
+func cString(config *xconfig.T, poolName string, option string) string {
+	key := cKey(poolName, option)
+	return config.GetString(key)
+}
+
 func New(name string, config *xconfig.T) Pooler {
-	poolType := config.GetString(key.New("pool#"+name, "type"))
+	poolType := cString(config, name, "type")
 	fn, ok := drivers[poolType]
 	if !ok {
 		return nil
 	}
-	t := fn(name)
+	t := fn()
+	t.SetName(name)
+	t.SetDriver(poolType)
 	t.SetConfig(config)
 	return t.(Pooler)
 }
 
-func Register(t string, fn func(string) Pooler) {
+func (t *T) Mappings() map[string]string {
+	s := cString(t.config, t.name, "mappings")
+	m := make(map[string]string)
+	for _, e := range strings.Fields(s) {
+		l := strings.SplitN(e, ":", 2)
+		if len(l) < 2 {
+			continue
+		}
+		m[l[0]] = l[1]
+	}
+	return m
+}
+
+func Register(t string, fn func() Pooler) {
 	drivers[t] = fn
+}
+
+func (t T) Name() string {
+	return t.name
+}
+
+func (t *T) SetName(name string) {
+	t.name = name
+}
+
+func (t *T) SetDriver(driver string) {
+	t.driver = driver
+}
+
+func (t T) Type() string {
+	return t.driver
 }
 
 func (t *T) Config() *xconfig.T {
@@ -100,24 +156,47 @@ func (t *T) SetConfig(c *xconfig.T) {
 	t.config = c
 }
 
-func (t T) Key(s string) key.T {
-	return key.New("pool#"+t.Name, s)
+func GetStatus(t Pooler, withUsage bool) Status {
+	data := NewStatus()
+	data.Type = t.Type()
+	data.Name = t.Name()
+	data.Capabilities = t.Capabilities()
+	data.Head = t.Head()
+	if withUsage {
+		usage, err := t.Usage()
+		if err != nil {
+			data.Errors = append(data.Errors, err.Error())
+		}
+		data.Free = usage.Free
+		data.Used = usage.Used
+		data.Size = usage.Size
+	}
+	return data
+}
+
+func pKey(p Pooler, s string) key.T {
+	return key.New("pool#"+p.Name(), s)
+}
+
+func (t *T) GetString(s string) string {
+	k := key.New("pool#"+t.name, s)
+	return t.Config().GetString(k)
 }
 
 func MountPointFromName(name string) string {
-	return filepath.Join("srv", name)
+	return filepath.Join(filepath.FromSlash("/srv"), name)
 }
 
-func (t *T) baseKeywords(size string, acs volaccess.T) []string {
+func baseKeywords(p Pooler, size float64, acs volaccess.T) []string {
 	return []string{
-		"pool=" + t.Name,
-		"size=" + size,
-		"access=" + acs.String(),
+		fmt.Sprintf("pool=%s", p.Name()),
+		fmt.Sprintf("size=%.0f", size),
+		fmt.Sprintf("access=%s", acs),
 	}
 }
 
-func (t *T) flexKeywords(acs volaccess.T) []string {
-	if acs.Once {
+func flexKeywords(acs volaccess.T) []string {
+	if acs.IsOnce() {
 		return []string{}
 	}
 	return []string{
@@ -126,7 +205,7 @@ func (t *T) flexKeywords(acs volaccess.T) []string {
 	}
 }
 
-func (t *T) nodeKeywords(nodes []string) []string {
+func nodeKeywords(nodes []string) []string {
 	if len(nodes) <= 0 {
 		return []string{}
 	}
@@ -135,8 +214,8 @@ func (t *T) nodeKeywords(nodes []string) []string {
 	}
 }
 
-func (t *T) statusScheduleKeywords() []string {
-	statusSchedule := t.config.GetString(t.Key("status_schedule"))
+func statusScheduleKeywords(p Pooler) []string {
+	statusSchedule := p.Config().GetString(pKey(p, "status_schedule"))
 	if statusSchedule == "" {
 		return []string{}
 	}
@@ -145,8 +224,7 @@ func (t *T) statusScheduleKeywords() []string {
 	}
 }
 
-func (t *T) syncKeywords() []string {
-	//if t.needSync() {
+func syncKeywords() []string {
 	if true {
 		return []string{}
 	}
@@ -155,46 +233,41 @@ func (t *T) syncKeywords() []string {
 	}
 }
 
-func (t *T) ConfigureVolume(vol volumer, size string, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
+func ConfigureVolume(p Pooler, vol volumer, size float64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
 	name := vol.FQDN()
-	kws, err := t.translate(name, size, format, shared)
+	kws, err := translate(p, name, size, format, shared)
 	if err != nil {
 		return err
 	}
 	kws = append(kws, env...)
-	kws = append(kws, t.baseKeywords(size, acs)...)
-	kws = append(kws, t.flexKeywords(acs)...)
-	kws = append(kws, t.nodeKeywords(nodes)...)
-	kws = append(kws, t.statusScheduleKeywords()...)
-	kws = append(kws, t.syncKeywords()...)
+	kws = append(kws, baseKeywords(p, size, acs)...)
+	kws = append(kws, flexKeywords(acs)...)
+	kws = append(kws, nodeKeywords(nodes)...)
+	kws = append(kws, statusScheduleKeywords(p)...)
+	kws = append(kws, syncKeywords()...)
 	if err := vol.SetKeywords(kws); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) translate(name string, size string, format bool, shared bool) ([]string, error) {
+func translate(p Pooler, name string, size float64, format bool, shared bool) ([]string, error) {
 	var kws []string
-	var i interface{} = t
 	switch format {
 	case true:
-		o, ok := i.(Translater)
+		o, ok := p.(Translater)
 		if !ok {
-			return nil, fmt.Errorf("pool %s does not support formatted volumes", t.Name)
+			return nil, fmt.Errorf("pool %s does not support formatted volumes", p.Name())
 		}
 		kws = o.Translate(name, size, shared)
 	case false:
-		o, ok := i.(BlkTranslater)
+		o, ok := p.(BlkTranslater)
 		if !ok {
-			return nil, fmt.Errorf("pool %s does not support block volumes", t.Name)
+			return nil, fmt.Errorf("pool %s does not support block volumes", p.Name())
 		}
 		kws = o.BlkTranslate(name, size, shared)
 	}
 	return kws, nil
-}
-
-func GetPool(name string, t string, acs volaccess.T, size string, format bool, shared bool, usage bool) Pooler {
-	return nil
 }
 
 func NewStatusList() StatusList {
@@ -214,8 +287,8 @@ func (t StatusList) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
 }
 
-func (t StatusList) Add(p Pooler) StatusList {
-	s := p.Status()
+func (t StatusList) Add(p Pooler, withUsage bool) StatusList {
+	s := GetStatus(p, withUsage)
 	l := []Status(t)
 	l = append(l, s)
 	return StatusList(l)
@@ -261,9 +334,9 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 		head.AddColumn().AddText("-")
 		head.AddColumn().AddText("-")
 	} else {
-		head.AddColumn().AddText(sizeconv.BSize(t.Size * sizeconv.KiB))
-		head.AddColumn().AddText(sizeconv.BSize(t.Used * sizeconv.KiB))
-		head.AddColumn().AddText(sizeconv.BSize(t.Free * sizeconv.KiB))
+		head.AddColumn().AddText(sizeconv.BSizeCompact(t.Size * sizeconv.KiB))
+		head.AddColumn().AddText(sizeconv.BSizeCompact(t.Used * sizeconv.KiB))
+		head.AddColumn().AddText(sizeconv.BSizeCompact(t.Free * sizeconv.KiB))
 	}
 	if len(t.Volumes) > 0 {
 		n := head.AddNode()
@@ -307,7 +380,35 @@ func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(path.L(t.Children).String())
 	head.AddColumn().AddText(strconv.FormatBool(t.Orphan))
 	head.AddColumn().AddText("")
-	head.AddColumn().AddText(sizeconv.BSize(t.Size))
+	head.AddColumn().AddText(sizeconv.BSizeCompact(t.Size))
 	head.AddColumn().AddText("")
 	head.AddColumn().AddText("")
+}
+
+func HasAccess(p Pooler, acs volaccess.T) bool {
+	return HasCapability(p, acs.String())
+}
+
+func HasCapability(p Pooler, s string) bool {
+	for _, capa := range p.Capabilities() {
+		if capa == s {
+			return true
+		}
+	}
+	return false
+
+}
+
+func (t Status) HasAccess(acs volaccess.T) bool {
+	return t.HasCapability(acs.String())
+}
+
+func (t Status) HasCapability(s string) bool {
+	for _, capa := range t.Capabilities {
+		if capa == s {
+			return true
+		}
+	}
+	return false
+
 }

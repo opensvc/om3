@@ -72,6 +72,7 @@ type (
 
 		Path     path.T
 		Topology topology.T
+		Nodes    []string
 	}
 )
 
@@ -204,6 +205,11 @@ func (t T) Manifest() *manifest.T {
 		},
 	}...)
 	m.AddContext([]manifest.Context{
+		{
+			Key:  "nodes",
+			Attr: "Nodes",
+			Ref:  "object.nodes",
+		},
 		{
 			Key:  "path",
 			Attr: "Path",
@@ -385,11 +391,11 @@ func (t T) access() volaccess.T {
 	a, err := volaccess.Parse(t.Access)
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
-		a = volaccess.T{ReadOnly: false, Once: true}
+		a, _ = volaccess.Parse("rwo")
 	}
 	if t.Topology == topology.Flex {
 		// translations: roo => rox, rwo => rwx
-		a.Once = false
+		a.SetOnce(false)
 	}
 	return a
 
@@ -403,7 +409,7 @@ func (t *T) volume() (*object.Vol, error) {
 	v := object.NewVol(p)
 	if !v.Exists() {
 		v.SetVolatile(true)
-		if err := t.configureVolume(v, NoUsage); err != nil {
+		if err := t.configureVolume(v, false); err != nil {
 			return nil, err
 		}
 	}
@@ -426,33 +432,52 @@ func (t *T) createVolume(volume *object.Vol) (*object.Vol, error) {
 }
 
 func (t *T) lockedCreateVolume(volume *object.Vol) (*object.Vol, error) {
-	bestPool, err := t.findPool(false, t.Shared)
+	volume.SetVolatile(false)
+	err := t.configureVolume(volume, true)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("xx", bestPool)
 	return volume, nil
 }
 
-func (t *T) findPool(usage bool, shared bool) (pool.Pooler, error) {
-	acs, err := volaccess.Parse(t.Access)
+//
+// poolLookup exposes some methods like ConfigureVolume, which
+// are relayed to the pool best matching the lookup criteria.
+// The withUsage critierium can be toggled on/off because it
+// may be slow to get fresh usage metrics, and only the
+// provision codepath needs them (others are satisfied with the
+// garanty the pool is of the same type).
+//
+func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
+	var err error
+	node := object.NewNode() // TODO: find a more efficient method
+	l := pool.NewLookup(node)
+	l.Name = t.Pool
+	l.Type = t.PoolType
+	l.Size = float64(*t.Size)
+	l.Format = t.Format
+	l.Shared = t.Shared
+	l.Access, err = volaccess.Parse(t.Access)
 	if err != nil {
 		return nil, err
 	}
-	return pool.GetPool(
-		t.Pool,
-		t.PoolType,
-		acs,
-		fmt.Sprintf("%db", t.Size),
-		t.Format,
-		shared,
-		usage,
-	), nil
+	if withUsage {
+		l.Usage = true
+	}
+	return l, err
 }
 
-func (t *T) configureVolume(v *object.Vol, option int) error {
-	panic("TODO")
-	return nil
+func (t *T) volEnv() []string {
+	return []string{}
+}
+
+func (t *T) configureVolume(v *object.Vol, withUsage bool) error {
+	l, err := t.poolLookup(withUsage)
+	if err != nil {
+		return err
+	}
+	obj := object.NewFromPath(t.Path) // TODO: find a more efficient method
+	return l.ConfigureVolume(v, obj)
 }
 
 func (t T) Label() string {
@@ -467,7 +492,8 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if volume.Exists() {
 		t.Log().Info().Msgf("%s is already provisioned", volume.Path)
 		return nil
-	} else if volume, err = t.createVolume(volume); err != nil {
+	}
+	if volume, err = t.createVolume(volume); err != nil {
 		return err
 	}
 	return volume.Provision(object.OptsProvision{})
