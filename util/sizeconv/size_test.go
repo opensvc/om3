@@ -33,6 +33,12 @@ var (
 		"8EiB",
 		"badValue",
 	}
+	compactBSizeRenderings = map[float64]string{
+		float64(1024 * MB):  "1000000k",
+		float64(1001 * KiB): "1001k",
+		float64(100 * MiB):  "100m",
+		float64(1 * GiB):    "1g",
+	}
 )
 
 func TestFromSize(t *testing.T) {
@@ -47,6 +53,12 @@ func TestFromSize(t *testing.T) {
 		for _, s := range invalidStrings {
 			v, err := FromSize(s)
 			assert.NotNilf(t, err, "FromSize('%v') -> %v", s, v)
+		}
+	})
+	t.Run("compact exact bin size renderings", func(t *testing.T) {
+		for f, expected := range compactBSizeRenderings {
+			result := ExactBSizeCompact(f)
+			assert.Equalf(t, expected, result, "ExactBSizeCompact(%f) -> %s", f, result)
 		}
 	})
 }

@@ -7,6 +7,7 @@ import (
 
 	"opensvc.com/opensvc/core/pool"
 	"opensvc.com/opensvc/util/df"
+	"opensvc.com/opensvc/util/sizeconv"
 )
 
 type (
@@ -54,8 +55,8 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	return usage, nil
 }
 
-func (t *T) mntOpt(size string) string {
-	sizeOpt := fmt.Sprintf("size=%s", size)
+func (t *T) mntOpt(size float64) string {
+	sizeOpt := "size=" + sizeconv.ExactBSizeCompact(size)
 	opts := t.GetString("mnt_opt")
 	if opts != "" {
 		opts = strings.Join([]string{opts, sizeOpt}, ",")
@@ -74,7 +75,7 @@ func (t *T) Translate(name string, size float64, shared bool) []string {
 		"fs#0.type=tmpfs",
 		"fs#0.dev=none",
 		"fs#0.mnt=" + pool.MountPointFromName(name),
-		fmt.Sprintf("fs#0.mnt_opt=size=%.0f", size),
+		"fs#0.mnt_opt=" + t.mntOpt(size),
 	}
 }
 
@@ -82,6 +83,6 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
 	return []string{
 		"disk#0.type=loop",
 		"disk#0.file=" + t.loopFile(name),
-		fmt.Sprintf("disk#0.size=%.0f", size),
+		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
 	}
 }

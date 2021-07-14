@@ -190,7 +190,7 @@ func MountPointFromName(name string) string {
 func baseKeywords(p Pooler, size float64, acs volaccess.T) []string {
 	return []string{
 		fmt.Sprintf("pool=%s", p.Name()),
-		fmt.Sprintf("size=%.0f", size),
+		fmt.Sprintf("size=%s", sizeconv.ExactBSizeCompact(size)),
 		fmt.Sprintf("access=%s", acs),
 	}
 }

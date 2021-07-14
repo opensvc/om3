@@ -30,9 +30,9 @@ const (
 	GiB = 1024 * MiB
 	// TiB is TibiByte
 	TiB = 1024 * GiB
-	// PiB is pebibyte
+	// PiB is Pebibyte
 	PiB = 1024 * TiB
-	// EiB is exbibyte
+	// EiB is Exbibyte
 	EiB = 1024 * PiB
 
 	defaultPrecision = 3
@@ -45,14 +45,17 @@ var (
 	bMap = unitMap{"k": KiB, "m": MiB, "g": GiB, "t": TiB, "p": PiB, "e": EiB}
 	dAbb = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
 	bAbb = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
-	cAbb = []string{"", "b", "m", "g", "t", "p", "e", "z", "y"}
+	cAbb = []string{"", "k", "m", "g", "t", "p", "e", "z", "y"}
 	sReg = regexp.MustCompile(`^(\d+(\.\d+)*) ?([kKmMgGtTpPeE])?([iI])?([bB])?$`)
 )
 
-func getSizeAndUnit(size float64, base float64, _map []string) (float64, string) {
+func getSizeAndUnit(size float64, base float64, _map []string, exact bool) (float64, string) {
 	i := 0
 	unitsLimit := len(_map) - 1
 	for size >= base && i < unitsLimit {
+		if exact && math.Mod(size, base) != 0 {
+			break
+		}
 		size = size / base
 		i++
 	}
@@ -62,7 +65,12 @@ func getSizeAndUnit(size float64, base float64, _map []string) (float64, string)
 // CustomSize returns a human-readable approximation of a size
 // using custom format and precision.
 func CustomSize(format string, precision int, size float64, base float64, _map []string) string {
-	size, unit := getSizeAndUnit(size, base, _map)
+	size, unit := getSizeAndUnit(size, base, _map, false)
+	return fmt.Sprintf(format, precision, size, unit)
+}
+
+func CustomExactSize(format string, precision int, size float64, base float64, _map []string) string {
+	size, unit := getSizeAndUnit(size, base, _map, true)
 	return fmt.Sprintf(format, precision, size, unit)
 }
 
@@ -90,6 +98,21 @@ func BSize(size float64) string {
 	return CustomSize("%.*g%s", defaultPrecision, size, 1024.0, bAbb)
 }
 
+// BSizeCompact returns a compact human readable version of n
+func BSizeCompact(f float64) string {
+	return CustomSize("%.*g%s", defaultPrecision, f, 1024.0, cAbb)
+}
+
+func ExactBSizeCompact(f float64) string {
+	size, unit := getSizeAndUnit(f, 1024.0, cAbb, true)
+	return fmt.Sprintf("%.0f%s", size, unit)
+}
+
+func ExactDSizeCompact(f float64) string {
+	size, unit := getSizeAndUnit(f, 1000.0, dAbb, true)
+	return fmt.Sprintf("%.0f%s", size, unit)
+}
+
 // FromSize returns an integer from a human-readable representation of a
 // size using Metric and IEC standard (eg. "44KiB", "17MiB", "20MB", "7.5EiB").
 // Max possible value is MaxInt64 (< 8EiB)
@@ -100,7 +123,6 @@ func FromSize(sizeStr string) (int64, error) {
 	}
 
 	var convertMap unitMap
-	fmt.Println("xx", sizeStr, matches)
 	if strings.ToLower(matches[4]) == "i" {
 		convertMap = bMap
 	} else if strings.ToLower(matches[5]) == "" {
@@ -155,9 +177,4 @@ func parseSize(sizeStr string, uMap unitMap) (int64, error) {
 func BSizeCompactFromMB(n uint64) string {
 	f := float64(n * MiB)
 	return BSizeCompact(f)
-}
-
-// BSizeCompact returns a compact human readable version of n
-func BSizeCompact(f float64) string {
-	return CustomSize("%.*g%s", defaultPrecision, f, 1024.0, cAbb)
 }
