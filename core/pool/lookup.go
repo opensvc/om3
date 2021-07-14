@@ -7,8 +7,8 @@ import (
 
 	"opensvc.com/opensvc/core/volaccess"
 	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/converters/sizeconv"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/sizeconv"
 )
 
 type (

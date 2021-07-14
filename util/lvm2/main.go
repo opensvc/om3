@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/converters/sizeconv"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/sizeconv"
 )
 
 type (

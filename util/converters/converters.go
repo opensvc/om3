@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"opensvc.com/opensvc/util/converters/sizeconv"
+	"opensvc.com/opensvc/util/sizeconv"
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/golang-collections/collections/set"
