@@ -46,7 +46,7 @@ var (
 	dAbb = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
 	bAbb = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
 	cAbb = []string{"", "b", "m", "g", "t", "p", "e", "z", "y"}
-	sReg = regexp.MustCompile(`^(\d+(\.\d+)*) ?([kKmMgGtTpPeE])?([iI])?[bB]?$`)
+	sReg = regexp.MustCompile(`^(\d+(\.\d+)*) ?([kKmMgGtTpPeE])?([iI])?([bB])?$`)
 )
 
 func getSizeAndUnit(size float64, base float64, _map []string) (float64, string) {
@@ -95,12 +95,16 @@ func BSize(size float64) string {
 // Max possible value is MaxInt64 (< 8EiB)
 func FromSize(sizeStr string) (int64, error) {
 	matches := sReg.FindStringSubmatch(sizeStr)
-	if len(matches) != 5 {
+	if len(matches) != 6 {
 		return -1, fmt.Errorf("invalid size: '%s'", sizeStr)
 	}
 
 	var convertMap unitMap
+	fmt.Println("xx", sizeStr, matches)
 	if strings.ToLower(matches[4]) == "i" {
+		convertMap = bMap
+	} else if strings.ToLower(matches[5]) == "" {
+		// eg. "100m" interpreted implicitely as "100MiB"
 		convertMap = bMap
 	} else {
 		convertMap = dMap
@@ -130,7 +134,7 @@ func FromDSize(size string) (int64, error) {
 // Parses the human-readable size string into a bytes count.
 func parseSize(sizeStr string, uMap unitMap) (int64, error) {
 	matches := sReg.FindStringSubmatch(sizeStr)
-	if len(matches) != 5 {
+	if len(matches) != 6 {
 		return -1, fmt.Errorf("invalid size: '%s'", sizeStr)
 	}
 

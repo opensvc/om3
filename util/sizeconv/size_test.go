@@ -1,8 +1,9 @@
 package sizeconv
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -10,6 +11,7 @@ var (
 		"0":     int64(0),
 		"1":     int64(1),
 		"1000":  int64(1000),
+		"100m":  int64(100 * MiB),
 		"1KB":   int64(1000),
 		"1KiB":  int64(1024),
 		"2MiB":  int64(2 * 1024 * 1024),
