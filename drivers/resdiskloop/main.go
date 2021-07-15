@@ -14,6 +14,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/capabilities"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/df"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/loop"
@@ -245,4 +246,21 @@ func (t T) provision(ctx context.Context) error {
 func (t T) unprovision(ctx context.Context) error {
 	t.Log().Info().Msgf("unlink %s", t.File)
 	return os.RemoveAll(t.File)
+}
+
+func (t T) exposedDevice(lo *loop.T) *device.T {
+	i, err := lo.FileGet(t.File)
+	if err != nil {
+		return nil
+	}
+	return device.New(i.Name, device.WithLogger(t.Log()))
+}
+
+func (t T) ExposedDevices() []*device.T {
+	lo := t.loop()
+	dev := t.exposedDevice(lo)
+	if dev == nil {
+		return make([]*device.T, 0)
+	}
+	return []*device.T{dev}
 }
