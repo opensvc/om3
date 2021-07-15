@@ -17,6 +17,14 @@ func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
 	return parse(b)
 }
 
+func HasTypeMount(fstype string, mnt string) bool {
+	l, err := TypeMountUsage(fstype, mnt)
+	if err != nil {
+		return false
+	}
+	return len(l) > 0
+}
+
 // MountUsage executes and parses a df command for a mount point
 func MountUsage(mnt string) ([]Entry, error) {
 	b, err := doDF([]string{"-lP", mnt})

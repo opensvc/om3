@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"time"
 
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
@@ -101,6 +104,21 @@ func (t T) Data() (InfoEntries, error) {
 }
 
 func (t T) Add(filePath string) error {
+	p := "/var/lock/opensvc.losetup.lock"
+	lock := flock.New(p, "", fcntllock.New)
+	timeout, err := time.ParseDuration("20s")
+	if err != nil {
+		return err
+	}
+	err = lock.Lock(timeout, "")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lock.UnLock() }()
+	return t.lockedAdd(filePath)
+}
+
+func (t T) lockedAdd(filePath string) error {
 	cmd := command.New(
 		command.WithName(losetup),
 		command.WithVarArgs("-f", filePath),

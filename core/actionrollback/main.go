@@ -22,11 +22,18 @@ func NewContext(ctx context.Context) context.Context {
 }
 
 func FromContext(ctx context.Context) *T {
-	return ctx.Value(tKey).(*T)
+	v := ctx.Value(tKey)
+	if v == nil {
+		return nil
+	}
+	return v.(*T)
 }
 
 func Len(ctx context.Context) int {
-	t := *FromContext(ctx)
+	t := FromContext(ctx)
+	if t == nil {
+		return 0
+	}
 	return len(t.stack)
 }
 

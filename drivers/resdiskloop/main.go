@@ -2,6 +2,8 @@ package resdiskloop
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -12,8 +14,10 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/capabilities"
+	"opensvc.com/opensvc/util/df"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/loop"
+	"opensvc.com/opensvc/util/sizeconv"
 )
 
 const (
@@ -90,6 +94,9 @@ func (t T) Start(ctx context.Context) error {
 		t.Log().Info().Msgf("%s is already up", t.Label())
 		return nil
 	}
+	if err := t.autoProvision(ctx); err != nil {
+		return err
+	}
 	if err := lo.Add(t.File); err != nil {
 		return err
 	}
@@ -105,9 +112,10 @@ func (t T) Stop(ctx context.Context) error {
 		return err
 	} else if !v {
 		t.Log().Info().Msgf("%s is already down", t.Label())
-		return nil
+	} else if err := lo.FileDelete(t.File); err != nil {
+		return err
 	}
-	if err := lo.FileDelete(t.File); err != nil {
+	if err := t.autoUnprovision(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -124,10 +132,117 @@ func (t T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
+func (t T) fileExists() bool {
+	return file.ExistsAndRegular(t.File)
+}
+
 func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.FromBool(file.ExistsAndRegular(t.File)), nil
+	return provisioned.FromBool(t.fileExists()), nil
 }
 
 func (t T) Label() string {
 	return t.File
+}
+
+func (t T) Info() map[string]string {
+	m := make(map[string]string)
+	m["file"] = t.File
+	return m
+}
+
+func (t T) isVolatile() bool {
+	return df.HasTypeMount("tmpfs", t.File)
+}
+
+//
+// autoProvision provisions the loop on start if the backing file is
+// hosted on a tmpfs
+//
+func (t T) autoProvision(ctx context.Context) error {
+	if t.fileExists() {
+		return nil
+	}
+	if !t.isVolatile() {
+		return nil
+	}
+	return t.provision(ctx)
+}
+
+//
+// autoUnprovision unprovisions the loop on stop if the backing file is
+// hosted on a tmpfs
+//
+func (t T) autoUnprovision(ctx context.Context) error {
+	if !t.fileExists() {
+		return nil
+	}
+	if !t.isVolatile() {
+		return nil
+	}
+	return t.unprovision(ctx)
+}
+
+func (t T) ProvisionLeader(ctx context.Context) error {
+	if t.fileExists() {
+		return nil
+	}
+	return t.provision(ctx)
+}
+
+func (t T) UnprovisionLeader(ctx context.Context) error {
+	if !t.fileExists() {
+		return nil
+	}
+	return t.unprovision(ctx)
+}
+
+func (t T) provisionBase(ctx context.Context) error {
+	base := filepath.Base(t.File)
+	if file.ExistsAndDir(base) {
+		return nil
+	}
+	t.Log().Info().Msgf("create dir %s", base)
+	if err := os.MkdirAll(base, os.ModePerm); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		return os.Remove(base)
+	})
+	return nil
+}
+
+func (t T) provision(ctx context.Context) error {
+	var (
+		err  error
+		f    *os.File
+		size int64
+	)
+	if err = t.provisionBase(ctx); err != nil {
+		return err
+	}
+	t.Log().Info().Msgf("create file %s", t.File)
+	if f, err = os.Create(t.File); err != nil {
+		return err
+	}
+	defer f.Close()
+	actionrollback.Register(ctx, func() error {
+		return os.Remove(t.File)
+	})
+	if size, err = sizeconv.FromSize(t.Size); err != nil {
+		return err
+	}
+	offset := (size / 512 * 512) - 1
+	t.Log().Info().Msgf("seek/write file, offset %d", offset)
+	if _, err = f.Seek(offset, 0); err != nil {
+		return err
+	}
+	if _, err = f.Write([]byte{0}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) unprovision(ctx context.Context) error {
+	t.Log().Info().Msgf("unlink %s", t.File)
+	return os.RemoveAll(t.File)
 }
