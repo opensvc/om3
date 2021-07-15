@@ -368,7 +368,7 @@ var keywordStore = keywords.Store{
 	},
 }
 
-func (t Base) KeywordLookup(k key.T) keywords.Keyword {
+func (t Base) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	switch k.Section {
 	case "data", "env":
 		return keywords.Keyword{
@@ -380,7 +380,7 @@ func (t Base) KeywordLookup(k key.T) keywords.Keyword {
 	rid := resourceid.Parse(k.Section)
 	driverGroupName := rid.DriverGroup().String()
 
-	if kw := keywordStore.Lookup(k, t.Path.Kind); !kw.IsZero() {
+	if kw := keywordStore.Lookup(k, t.Path.Kind, sectionType); !kw.IsZero() {
 		// base keyword
 		return kw
 	}
@@ -391,7 +391,7 @@ func (t Base) KeywordLookup(k key.T) keywords.Keyword {
 			continue
 		}
 		store := keywords.Store(kws)
-		if kw := store.Lookup(k, t.Path.Kind); !kw.IsZero() {
+		if kw := store.Lookup(k, t.Path.Kind, sectionType); !kw.IsZero() {
 			return kw
 		}
 	}

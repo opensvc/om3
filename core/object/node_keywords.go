@@ -1579,7 +1579,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 
 var nodeKeywordStore = keywords.Store(append(privateKeywords, commonKeywords...))
 
-func (t Node) KeywordLookup(k key.T) keywords.Keyword {
+func (t Node) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	switch k.Section {
 	case "data", "env", "labels":
 		return keywords.Keyword{
@@ -1588,5 +1588,5 @@ func (t Node) KeywordLookup(k key.T) keywords.Keyword {
 			Required: false,
 		}
 	}
-	return nodeKeywordStore.Lookup(k, kind.Invalid)
+	return nodeKeywordStore.Lookup(k, kind.Invalid, sectionType)
 }

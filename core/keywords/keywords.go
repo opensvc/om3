@@ -5,6 +5,7 @@ import (
 
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 // Keyword represents a configuration option in an object or node configuration file
@@ -61,13 +62,16 @@ type (
 	Store []Keyword
 )
 
-func (t Store) Lookup(k key.T, kd kind.T) Keyword {
+func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	for _, kw := range t {
 		if !kw.Kind.Has(kd) {
 			continue
 		}
 		if k.Option != kw.Option {
+			continue
+		}
+		if sectionType != "" && !stringslice.Has(sectionType, kw.Types) {
 			continue
 		}
 		if kw.Section == "" || k.Section == kw.Section || driverGroup == kw.Section {

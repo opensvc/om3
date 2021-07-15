@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/core/pool"
+	"opensvc.com/opensvc/drivers/pooldirectory"
 	"opensvc.com/opensvc/drivers/poolshm"
 )
 
@@ -30,6 +31,7 @@ func (t *Node) Pools() []pool.Pooler {
 	l := make([]pool.Pooler, 0)
 	config := t.MergedConfig()
 	hasSHM := false
+	hasDefault := false
 
 	for _, name := range t.ListPools() {
 		p := pool.New(name, config)
@@ -39,12 +41,22 @@ func (t *Node) Pools() []pool.Pooler {
 		if p.Type() == "shm" {
 			hasSHM = true
 		}
+		if p.Name() == "default" {
+			hasDefault = true
+		}
 		l = append(l, p)
 	}
 	if !hasSHM {
 		p := poolshm.NewPooler()
 		p.SetName("shm")
 		p.SetDriver("shm")
+		p.SetConfig(config)
+		l = append(l, p)
+	}
+	if !hasDefault {
+		p := pooldirectory.NewPooler()
+		p.SetName("default")
+		p.SetDriver("directory")
 		p.SetConfig(config)
 		l = append(l, p)
 	}

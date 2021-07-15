@@ -40,7 +40,7 @@ type (
 	// Referer is the interface implemented by node and object to
 	// provide a reference resolver using their private attributes.
 	Referrer interface {
-		KeywordLookup(key.T) keywords.Keyword
+		KeywordLookup(key.T, string) keywords.Keyword
 		PostCommit() error
 		IsVolatile() bool
 		Log() *zerolog.Logger
@@ -343,11 +343,19 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 // * evaluated
 //
 func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
-	kw, err := getKeyword(k, t.Referrer)
+	sectionType := t.sectionType(k)
+	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
 		return nil, err
 	}
 	return t.EvalKeywordAs(k, kw, impersonate)
+}
+
+func (t *T) sectionType(k key.T) string {
+	if k.Option == "type" {
+		return ""
+	}
+	return t.GetString(key.New(k.Section, "type"))
 }
 
 func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (interface{}, error) {
@@ -358,12 +366,12 @@ func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (int
 	return t.convert(v, kw)
 }
 
-func getKeyword(k key.T, referrer Referrer) (keywords.Keyword, error) {
+func getKeyword(k key.T, sectionType string, referrer Referrer) (keywords.Keyword, error) {
 	var kw keywords.Keyword
 	if referrer == nil {
 		return kw, errors.Wrapf(ErrNoKeyword, "no referrer")
 	}
-	kw = referrer.KeywordLookup(k)
+	kw = referrer.KeywordLookup(k, sectionType)
 	if kw.IsZero() {
 		return kw, errors.Wrapf(ErrNoKeyword, "%s", k)
 	}
@@ -570,7 +578,8 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 	}
 
 	nodeKey := key.Parse(nodeRef)
-	kw, err := getKeyword(nodeKey, t.NodeReferrer)
+	sectionType := t.sectionType(nodeKey)
+	kw, err := getKeyword(nodeKey, sectionType, t.NodeReferrer)
 	if err != nil {
 		return ref, err
 	}
