@@ -4,6 +4,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/poolshm"
 	_ "opensvc.com/opensvc/drivers/resappforking"
 	_ "opensvc.com/opensvc/drivers/resappsimple"
+	_ "opensvc.com/opensvc/drivers/resdiskloop"
 	_ "opensvc.com/opensvc/drivers/resdisklv"
 	_ "opensvc.com/opensvc/drivers/resfsdir"
 	_ "opensvc.com/opensvc/drivers/resfsflag"
