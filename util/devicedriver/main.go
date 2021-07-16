@@ -80,6 +80,16 @@ func Minor(rdev uint64) uint64 {
 	return uint64(rdev % 256)
 }
 
+func DriverMajors(s string) []uint64 {
+	l := make([]uint64, 0)
+	for i, n := range ProcDevices() {
+		if n == s {
+			l = append(l, i)
+		}
+	}
+	return l
+}
+
 func ProcDevices() map[uint64]string {
 	m := make(map[uint64]string)
 	f, err := os.Open("/proc/devices")

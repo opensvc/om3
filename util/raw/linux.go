@@ -202,6 +202,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 		return 0, err
 	}
 	if e := data.BDevPath(bDevPath); e != nil {
+		t.log.Info().Msgf("%s already bound to %s", bDevPath, e.CDevPath())
 		return e.Index, nil
 	}
 	m := data.NextMinor()
@@ -224,8 +225,26 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 	return m, nil
 }
 
-func (t T) Unbind(minor int) error {
+func (t T) UnbindBDevPath(bDevPath string) error {
+	data, err := t.Data()
+	if err != nil {
+		return err
+	}
+	e := data.BDevPath(bDevPath)
+	if e == nil {
+		t.log.Info().Msgf("%s already unbound from its raw device", bDevPath)
+		return nil
+	}
+	cDevPath := e.CDevPath()
+	return t.Unbind(cDevPath)
+}
+
+func (t T) UnbindMinor(minor int) error {
 	cDevPath := CDevPath(minor)
+	return t.Unbind(cDevPath)
+}
+
+func (t T) Unbind(cDevPath string) error {
 	cmd := command.New(
 		command.WithName(raw),
 		command.WithVarArgs(cDevPath, "0", "0"),

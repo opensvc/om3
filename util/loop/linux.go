@@ -80,7 +80,11 @@ func (t T) FileGet(filePath string) (*InfoEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return data.File(filePath), nil
+	e := data.File(filePath)
+	if e == nil {
+		return nil, fmt.Errorf("no loop info for %s", filePath)
+	}
+	return e, nil
 }
 
 func (t T) Data() (InfoEntries, error) {
