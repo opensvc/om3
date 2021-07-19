@@ -188,6 +188,7 @@ func (t T) stopCharDevices(ctx context.Context) error {
 }
 
 func (t *T) statusCharDevices() status.T {
+	down := make([]string, 0)
 	s := status.NotApplicable
 	if !t.CreateCharDevices {
 		return s
@@ -202,8 +203,15 @@ func (t *T) statusCharDevices() status.T {
 		if v {
 			s.Add(status.Up)
 		} else {
-			t.StatusLog().Warn("%s down", pair.Src.Path())
+			if dev := pair.Src.Path(); len(dev) > 0 {
+				down = append(down, dev)
+			}
 			s.Add(status.Down)
+		}
+	}
+	if s == status.Warn {
+		for _, dev := range down {
+			t.StatusLog().Warn("%s down", dev)
 		}
 	}
 	return s
