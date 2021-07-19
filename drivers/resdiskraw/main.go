@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"opensvc.com/opensvc/core/actionrollback"
@@ -32,12 +34,12 @@ const (
 type (
 	T struct {
 		resdisk.T
-		Devices           []string `json:"devs"`
-		User              string   `json:"user"`
-		Group             string   `json:"group"`
-		Perm              string   `json:"perm"`
-		CreateCharDevices bool     `json:"create_char_devices"`
-		Zone              string   `json:"zone"`
+		Devices           []string     `json:"devs"`
+		User              *user.User   `json:"user"`
+		Group             *user.Group  `json:"group"`
+		Perm              *os.FileMode `json:"perm"`
+		CreateCharDevices bool         `json:"create_char_devices"`
+		Zone              string       `json:"zone"`
 	}
 	DevPair struct {
 		Src *device.T
@@ -84,25 +86,28 @@ func (t T) Manifest() *manifest.T {
 			Example:   "false",
 		},
 		{
-			Option:   "user",
-			Attr:     "User",
-			Scopable: true,
-			Text:     "The user that should own the device. Either in numeric or symbolic form.",
-			Example:  "root",
+			Option:    "user",
+			Attr:      "User",
+			Scopable:  true,
+			Converter: converters.User,
+			Text:      "The user that should own the device. Either in numeric or symbolic form.",
+			Example:   "root",
 		},
 		{
-			Option:   "group",
-			Attr:     "Group",
-			Scopable: true,
-			Text:     "The group that should own the device. Either in numeric or symbolic form.",
-			Example:  "sys",
+			Option:    "group",
+			Attr:      "Group",
+			Scopable:  true,
+			Converter: converters.Group,
+			Text:      "The group that should own the device. Either in numeric or symbolic form.",
+			Example:   "sys",
 		},
 		{
-			Option:   "perm",
-			Attr:     "Perm",
-			Scopable: true,
-			Text:     "The permissions the device should have. A string representing the octal permissions.",
-			Example:  "600",
+			Option:    "perm",
+			Attr:      "Perm",
+			Scopable:  true,
+			Converter: converters.FileMode,
+			Text:      "The permissions the device should have. A string representing the octal permissions.",
+			Example:   "600",
 		},
 		{
 			Option:   "zone",
@@ -166,6 +171,14 @@ func (t T) stopBlockDevice(ctx context.Context, pair DevPair) error {
 }
 
 func (t *T) statusBlockDevice(pair DevPair) (status.T, []string) {
+	p := pair.Dst.Path()
+	s, issues := t.statusCreateBlockDevice(pair)
+	issues = t.checkMode(p)
+	issues = append(issues, t.checkOwnership(p)...)
+	return s, issues
+}
+
+func (t *T) statusCreateBlockDevice(pair DevPair) (status.T, []string) {
 	issues := make([]string, 0)
 	if pair.Dst == nil {
 		return status.NotApplicable, issues
@@ -192,8 +205,10 @@ func (t *T) statusBlockDevice(pair DevPair) (status.T, []string) {
 				majorCur, minorCur,
 				major, minor,
 			))
-			return status.Warn, issues
 		}
+	}
+	if len(issues) > 0 {
+		return status.Warn, issues
 	}
 	return status.Down, issues
 }
@@ -205,6 +220,121 @@ func (t T) startBlockDevice(ctx context.Context, pair DevPair) error {
 	if pair.Dst.Path() == "" {
 		return nil
 	}
+	if err := t.createBlockDevice(ctx, pair); err != nil {
+		return err
+	}
+	p := pair.Dst.Path()
+	if err := t.setOwnership(ctx, p); err != nil {
+		return err
+	}
+	if err := t.setMode(ctx, p); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) setOwnership(ctx context.Context, p string) error {
+	if t.User == nil && t.Group == nil {
+		return nil
+	}
+	newUID := -1
+	newGID := -1
+	uid, gid, err := file.Ownership(p)
+	if err != nil {
+		return err
+	}
+	if uid != t.uid() {
+		t.Log().Info().Msgf("set %s user to %d (%s)", p, t.uid(), t.User.Username)
+		newUID = t.uid()
+	}
+	if gid != t.gid() {
+		t.Log().Info().Msgf("set %s group to %d (%s)", p, t.gid(), t.Group.Name)
+		newGID = t.gid()
+	}
+	if newUID != -1 || newGID != -1 {
+		if err := os.Chown(p, newUID, newGID); err != nil {
+			return err
+		}
+		actionrollback.Register(ctx, func() error {
+			t.Log().Info().Msgf("set %s group back to %s", p, gid)
+			t.Log().Info().Msgf("set %s user back to %s", p, uid)
+			return os.Chown(p, uid, gid)
+		})
+	}
+	return nil
+}
+
+func (t T) uid() int {
+	if t.User == nil {
+		return -1
+	}
+	i, _ := strconv.Atoi(t.User.Uid)
+	return i
+}
+
+func (t T) gid() int {
+	if t.Group == nil {
+		return -1
+	}
+	i, _ := strconv.Atoi(t.Group.Gid)
+	return i
+}
+
+func (t *T) checkMode(p string) []string {
+	if t.Perm == nil {
+		return []string{}
+	}
+	mode, err := file.Mode(p)
+	switch {
+	case err != nil:
+		return []string{fmt.Sprintf("%s has invalid perm %s", p, t.Perm)}
+	case mode.Perm() != *t.Perm:
+		return []string{fmt.Sprintf("%s perm should be %s but is %s", p, t.Perm, mode.Perm())}
+	}
+	return []string{}
+}
+
+func (t *T) checkOwnership(p string) []string {
+	if t.User == nil && t.Group == nil {
+		return []string{}
+	}
+	uid, gid, err := file.Ownership(p)
+	if err != nil {
+		return []string{fmt.Sprintf("%s user lookup error: %s", p, err)}
+	}
+	if t.User != nil && uid != t.uid() {
+		return []string{fmt.Sprintf("%s user should be %s (%s) but is %d", p, t.User.Uid, t.User.Username, uid)}
+	}
+	if t.Group == nil && gid != t.gid() {
+		return []string{fmt.Sprintf("%s group should be %s (%s) but is %d", p, t.User.Gid, t.Group.Name, gid)}
+	}
+	return []string{}
+}
+
+func (t T) setMode(ctx context.Context, p string) error {
+	if t.Perm == nil {
+		return nil
+	}
+	currentMode, err := file.Mode(p)
+	if err != nil {
+		return fmt.Errorf("invalid perm: %s", t.Perm)
+	}
+	if currentMode.Perm() == *t.Perm {
+		return nil
+	}
+	mode := (currentMode & os.ModeType) | *t.Perm
+	t.Log().Info().Msgf("set %s mode to %s", p, mode)
+	if err := os.Chmod(p, mode); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		t.Log().Info().Msgf("set %s mode back to %s", p, mode)
+		return os.Chmod(p, currentMode&os.ModeType)
+	})
+	return nil
+}
+
+func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
 	major, minor, err := pair.Src.MajorMinor()
 	if err != nil {
 		return err
@@ -225,8 +355,8 @@ func (t T) startBlockDevice(ctx context.Context, pair DevPair) error {
 		} else {
 			t.Log().Info().Msgf("block device %s already exists", p)
 			t.Log().Warn().Msgf("failed to verify current major:minor of %s: %s", p, err)
+			return nil
 		}
-		return nil
 	}
 	if err = pair.Dst.MknodBlock(major, minor); err != nil {
 		return err
@@ -303,11 +433,11 @@ func (t *T) statusBlockDevices() status.T {
 	var issues []string
 	s := status.NotApplicable
 	for _, pair := range t.devices() {
-		var sp status.T
-		sp, issues = t.statusBlockDevice(pair)
-		s.Add(sp)
+		devStatus, devIssues := t.statusBlockDevice(pair)
+		s.Add(devStatus)
+		issues = append(issues, devIssues...)
 	}
-	if s == status.Warn {
+	if s != status.Down {
 		for _, issue := range issues {
 			t.StatusLog().Warn(issue)
 		}
@@ -375,7 +505,7 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+	return provisioned.FromBool(true), nil
 }
 
 func (t T) Label() string {
