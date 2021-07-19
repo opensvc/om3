@@ -31,7 +31,7 @@ type (
 )
 
 var (
-	procDevicesCache map[uint64]string
+	procDevicesCache map[uint32]string
 )
 
 func (t *logT) SetLog(log *zerolog.Logger) {
@@ -46,7 +46,7 @@ func WithLogger(log *zerolog.Logger) funcopt.O {
 	})
 }
 
-func NewFromMajor(major uint64, opts ...funcopt.O) interface{} {
+func NewFromMajor(major uint32, opts ...funcopt.O) interface{} {
 	if procDevicesCache == nil {
 		procDevicesCache = ProcDevices()
 	}
@@ -72,16 +72,8 @@ func NewFromName(name string, opts ...funcopt.O) interface{} {
 	}
 }
 
-func Major(rdev uint64) uint64 {
-	return uint64(rdev / 256)
-}
-
-func Minor(rdev uint64) uint64 {
-	return uint64(rdev % 256)
-}
-
-func DriverMajors(s string) []uint64 {
-	l := make([]uint64, 0)
+func DriverMajors(s string) []uint32 {
+	l := make([]uint32, 0)
 	for i, n := range ProcDevices() {
 		if n == s {
 			l = append(l, i)
@@ -90,8 +82,8 @@ func DriverMajors(s string) []uint64 {
 	return l
 }
 
-func ProcDevices() map[uint64]string {
-	m := make(map[uint64]string)
+func ProcDevices() map[uint32]string {
+	m := make(map[uint32]string)
 	f, err := os.Open("/proc/devices")
 	if err != nil {
 		return m
@@ -103,11 +95,11 @@ func ProcDevices() map[uint64]string {
 		if len(l) != 2 {
 			continue
 		}
-		major, err := strconv.ParseUint(l[0], 10, 64)
+		major, err := strconv.ParseUint(l[0], 10, 32)
 		if err != nil {
 			continue
 		}
-		m[major] = l[1]
+		m[uint32(major)] = l[1]
 	}
 	return m
 }

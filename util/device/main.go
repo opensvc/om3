@@ -1,6 +1,8 @@
 package device
 
 import (
+	"syscall"
+
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -10,6 +12,11 @@ type (
 		path string
 		log  *zerolog.Logger
 	}
+)
+
+const (
+	ModeBlock uint = syscall.S_IFBLK
+	ModeChar  uint = syscall.S_IFCHR
 )
 
 func New(path string, opts ...funcopt.O) *T {

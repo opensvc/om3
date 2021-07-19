@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
@@ -102,28 +101,6 @@ func (t T) Holders() ([]*T, error) {
 		return nil
 	})
 	return l, nil
-}
-
-func (t T) syscallStat() (syscall.Stat_t, error) {
-	stat := syscall.Stat_t{}
-	err := syscall.Stat(t.path, &stat)
-	return stat, err
-}
-
-func (t T) Major() (uint64, error) {
-	stat, err := t.syscallStat()
-	if err != nil {
-		return 0, err
-	}
-	return devicedriver.Major(stat.Rdev), nil
-}
-
-func (t T) Minor() (uint64, error) {
-	stat, err := t.syscallStat()
-	if err != nil {
-		return 0, err
-	}
-	return devicedriver.Minor(stat.Rdev), nil
 }
 
 func (t T) Driver() (interface{}, error) {

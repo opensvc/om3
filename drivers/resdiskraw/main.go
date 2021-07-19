@@ -2,7 +2,9 @@ package resdiskraw
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -18,6 +20,7 @@ import (
 	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/raw"
 )
 
@@ -146,8 +149,112 @@ func (t T) devices() DevPairs {
 	return l
 }
 
-func (t T) isUp(ra *raw.T) (bool, error) {
-	return false, nil
+func (t T) stopBlockDevice(ctx context.Context, pair DevPair) error {
+	if pair.Dst == nil {
+		return nil
+	}
+	if pair.Dst.Path() == "" {
+		return nil
+	}
+	p := pair.Dst.Path()
+	if !file.Exists(p) {
+		t.Log().Info().Msgf("block device %s already removed", p)
+		return nil
+	}
+	t.Log().Info().Msgf("remove block device %s", p)
+	return os.Remove(p)
+}
+
+func (t *T) statusBlockDevice(pair DevPair) (status.T, []string) {
+	issues := make([]string, 0)
+	if pair.Dst == nil {
+		return status.NotApplicable, issues
+	}
+	if pair.Dst.Path() == "" {
+		return status.NotApplicable, issues
+	}
+	major, minor, err := pair.Src.MajorMinor()
+	if err != nil {
+		issues = append(issues, fmt.Sprintf("%s: %s", err))
+		return status.Undef, issues
+	}
+	p := pair.Dst.Path()
+	if !file.Exists(p) {
+		issues = append(issues, fmt.Sprintf("%s does not exist", p))
+		return status.Down, issues
+	}
+	if majorCur, minorCur, err := pair.Dst.MajorMinor(); err == nil {
+		switch {
+		case majorCur == major && minorCur == minor:
+			return status.Up, issues
+		default:
+			issues = append(issues, fmt.Sprintf("%s is %d:%d instead of %d:%d", p,
+				majorCur, minorCur,
+				major, minor,
+			))
+			return status.Warn, issues
+		}
+	}
+	return status.Down, issues
+}
+
+func (t T) startBlockDevice(ctx context.Context, pair DevPair) error {
+	if pair.Dst == nil {
+		return nil
+	}
+	if pair.Dst.Path() == "" {
+		return nil
+	}
+	major, minor, err := pair.Src.MajorMinor()
+	if err != nil {
+		return err
+	}
+	p := pair.Dst.Path()
+	if file.Exists(p) {
+		if majorCur, minorCur, err := pair.Dst.MajorMinor(); err == nil {
+			switch {
+			case majorCur == major && minorCur == minor:
+				t.Log().Info().Msgf("block device %s %d:%d already exists", p, major, minor)
+				return nil
+			default:
+				return fmt.Errorf("block device %s already exists, but is %d:%d instead of %d:%d", p,
+					majorCur, minorCur,
+					major, minor,
+				)
+			}
+		} else {
+			t.Log().Info().Msgf("block device %s already exists", p)
+			t.Log().Warn().Msgf("failed to verify current major:minor of %s: %s", p, err)
+		}
+		return nil
+	}
+	if err = pair.Dst.MknodBlock(major, minor); err != nil {
+		return err
+	}
+	t.Log().Info().Msgf("create block device %s %d:%d", p, major, minor)
+	actionrollback.Register(ctx, func() error {
+		t.Log().Info().Msgf("remove block device %s %d:%d", p, major, minor)
+		return os.Remove(p)
+	})
+	return nil
+}
+
+func (t T) startBlockDevices(ctx context.Context) error {
+	for _, pair := range t.devices() {
+		if err := t.startBlockDevice(ctx, pair); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t T) stopBlockDevices(ctx context.Context) error {
+	for _, pair := range t.devices() {
+		if err := t.stopBlockDevice(ctx, pair); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t T) startCharDevices(ctx context.Context) error {
@@ -160,12 +267,17 @@ func (t T) startCharDevices(ctx context.Context) error {
 	}
 	for _, pair := range t.devices() {
 		minor, err := ra.Bind(pair.Src.Path())
-		if err != nil {
+		switch {
+		case errors.Is(err, raw.ErrExist):
+			t.Log().Info().Msgf("%s", err)
+			return nil
+		case err != nil:
 			return err
+		default:
+			actionrollback.Register(ctx, func() error {
+				return ra.UnbindMinor(minor)
+			})
 		}
-		actionrollback.Register(ctx, func() error {
-			return ra.UnbindMinor(minor)
-		})
 	}
 	return nil
 }
@@ -185,6 +297,22 @@ func (t T) stopCharDevices(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (t *T) statusBlockDevices() status.T {
+	var issues []string
+	s := status.NotApplicable
+	for _, pair := range t.devices() {
+		var sp status.T
+		sp, issues = t.statusBlockDevice(pair)
+		s.Add(sp)
+	}
+	if s == status.Warn {
+		for _, issue := range issues {
+			t.StatusLog().Warn(issue)
+		}
+	}
+	return s
 }
 
 func (t *T) statusCharDevices() status.T {
@@ -221,10 +349,16 @@ func (t T) Start(ctx context.Context) error {
 	if err := t.startCharDevices(ctx); err != nil {
 		return err
 	}
+	if err := t.startBlockDevices(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (t T) Stop(ctx context.Context) error {
+	if err := t.stopBlockDevices(ctx); err != nil {
+		return err
+	}
 	if err := t.stopCharDevices(ctx); err != nil {
 		return err
 	}
@@ -236,6 +370,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	s := t.statusCharDevices()
+	s.Add(t.statusBlockDevices())
 	return s
 }
 

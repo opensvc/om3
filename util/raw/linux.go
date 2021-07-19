@@ -15,6 +15,7 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
@@ -29,6 +30,7 @@ const (
 
 var (
 	regexpQueryLine = regexp.MustCompile(`/dev/raw/raw([0-9]+):  bound to major ([0-9]+), minor ([0-9]+)`)
+	ErrExist        = errors.New("raw device is already bound")
 )
 
 type (
@@ -213,8 +215,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 		return 0, err
 	}
 	if e := data.BDevPath(bDevPath); e != nil {
-		t.log.Info().Msgf("%s already bound to %s", bDevPath, e.CDevPath())
-		return e.Index, nil
+		return e.Index, errors.Wrapf(ErrExist, "%s -> %s", bDevPath, e.CDevPath())
 	}
 	m := data.NextMinor()
 	if m == 0 {
