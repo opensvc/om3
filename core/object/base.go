@@ -242,7 +242,7 @@ func (t *Base) configureResources() {
 	}
 	for _, resources := range postponed {
 		for _, r := range resources {
-			if err := t.configureResource(r, r.RID()); err != nil {
+			if err := t.ReconfigureResource(r); err != nil {
 				t.log.Error().
 					Err(err).
 					Str("rid", r.RID()).
@@ -256,6 +256,10 @@ func (t *Base) configureResources() {
 	t.resources = t._resources
 	t._resources = nil
 	return
+}
+
+func (t Base) ReconfigureResource(r resource.Driver) error {
+	return t.configureResource(r, r.RID())
 }
 
 func (t Base) configureResource(r resource.Driver, rid string) error {

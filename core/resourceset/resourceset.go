@@ -24,6 +24,7 @@ type (
 
 	ResourceLister interface {
 		Resources() resource.Drivers
+		ReconfigureResource(resource.Driver) error
 		IsDesc() bool
 	}
 
@@ -119,6 +120,10 @@ func (t T) Resources() resource.Drivers {
 	return t.filterResources(t.ResourceLister)
 }
 
+func (t T) ReconfigureResource(r resource.Driver) error {
+	return t.ResourceLister.ReconfigureResource(r)
+}
+
 func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	l := make(resource.Drivers, 0)
 	for _, r := range resourceLister.Resources() {
@@ -145,9 +150,9 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) 
 		resources = resources.Truncate(barrier)
 	}
 	if t.Parallel {
-		err = t.doParallel(ctx, resources, fn)
+		err = t.doParallel(ctx, l, resources, fn)
 	} else {
-		err = t.doSerial(ctx, resources, fn)
+		err = t.doSerial(ctx, l, resources, fn)
 	}
 	return
 }
@@ -157,14 +162,16 @@ type result struct {
 	Resource resource.Driver
 }
 
-func (t T) doParallel(ctx context.Context, resources resource.Drivers, fn DoFunc) error {
+func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
 	var err error
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
-		c := make(chan error, 1)
-		c <- fn(ctx, r)
 		var err error
+		c := make(chan error, 1)
+		if err = l.ReconfigureResource(r); err == nil {
+			c <- fn(ctx, r)
+		}
 		select {
 		case <-ctx.Done():
 			err = fmt.Errorf("timeout")
@@ -188,11 +195,13 @@ func (t T) doParallel(ctx context.Context, resources resource.Drivers, fn DoFunc
 	return err
 }
 
-func (t T) doSerial(ctx context.Context, resources resource.Drivers, fn DoFunc) error {
+func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
 	for _, r := range resources {
-		c := make(chan error, 1)
-		c <- fn(ctx, r)
 		var err error
+		c := make(chan error, 1)
+		if err = l.ReconfigureResource(r); err == nil {
+			c <- fn(ctx, r)
+		}
 		select {
 		case <-ctx.Done():
 			err = fmt.Errorf("timeout")

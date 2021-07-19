@@ -28,6 +28,7 @@ type (
 	// ResourceLister is the interface required to list resource.T and see the ordering
 	ResourceLister interface {
 		Resources() resource.Drivers
+		ReconfigureResource(r resource.Driver) error
 		IsDesc() bool
 	}
 
@@ -94,6 +95,10 @@ func (t *T) SetResourceLister(l ResourceLister) {
 
 func (t T) IsDesc() bool {
 	return t.order.IsDesc()
+}
+
+func (t T) ReconfigureResource(r resource.Driver) error {
+	return t.lister.ReconfigureResource(r)
 }
 
 func (t T) Resources() resource.Drivers {
