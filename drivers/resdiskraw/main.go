@@ -36,6 +36,11 @@ type (
 		CreateCharDevices bool     `json:"create_char_devices"`
 		Zone              string   `json:"zone"`
 	}
+	DevPair struct {
+		Src *device.T
+		Dst *device.T
+	}
+	DevPairs []DevPair
 )
 
 func capabilitiesScanner() ([]string, error) {
@@ -119,13 +124,14 @@ func (t T) raw() *raw.T {
 	return l
 }
 
-func (t T) devices() []*device.T {
-	l := make([]*device.T, 0)
+func (t T) devices() DevPairs {
+	l := NewDevPairs()
 	for _, e := range t.Devices {
 		x := strings.SplitN(e, ":", 2)
 		if len(x) == 2 {
-			dev := device.New(x[0], device.WithLogger(t.Log()))
-			l = append(l, dev)
+			src := device.New(x[0], device.WithLogger(t.Log()))
+			dst := device.New(x[1], device.WithLogger(t.Log()))
+			l = l.Add(src, dst)
 			continue
 		}
 		matches, err := filepath.Glob(e)
@@ -133,8 +139,8 @@ func (t T) devices() []*device.T {
 			continue
 		}
 		for _, p := range matches {
-			dev := device.New(p, device.WithLogger(t.Log()))
-			l = append(l, dev)
+			src := device.New(p, device.WithLogger(t.Log()))
+			l = l.Add(src, nil)
 		}
 	}
 	return l
@@ -152,8 +158,8 @@ func (t T) startCharDevices(ctx context.Context) error {
 	if !raw.IsCapable() {
 		return fmt.Errorf("not raw capable")
 	}
-	for _, dev := range t.devices() {
-		minor, err := ra.Bind(dev.Path())
+	for _, pair := range t.devices() {
+		minor, err := ra.Bind(pair.Src.Path())
 		if err != nil {
 			return err
 		}
@@ -172,13 +178,35 @@ func (t T) stopCharDevices(ctx context.Context) error {
 	if !raw.IsCapable() {
 		return nil
 	}
-	for _, dev := range t.devices() {
-		p := dev.Path()
+	for _, pair := range t.devices() {
+		p := pair.Src.Path()
 		if err := ra.UnbindBDevPath(p); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (t *T) statusCharDevices() status.T {
+	s := status.NotApplicable
+	if !t.CreateCharDevices {
+		return s
+	}
+	ra := t.raw()
+	for _, pair := range t.devices() {
+		v, err := ra.Has(pair.Src.Path())
+		if err != nil {
+			t.StatusLog().Warn("%s", err)
+			continue
+		}
+		if v {
+			s.Add(status.Up)
+		} else {
+			t.StatusLog().Warn("%s down", pair.Src.Path())
+			s.Add(status.Down)
+		}
+	}
+	return s
 }
 
 func (t T) Start(ctx context.Context) error {
@@ -195,12 +223,16 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Status(ctx context.Context) status.T {
-	return status.Down
+func (t *T) Status(ctx context.Context) status.T {
+	if len(t.Devices) == 0 {
+		return status.NotApplicable
+	}
+	s := t.statusCharDevices()
+	return s
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.FromBool(false), nil
+	return provisioned.NotApplicable, nil
 }
 
 func (t T) Label() string {
@@ -222,5 +254,23 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 
 func (t T) ExposedDevices() []*device.T {
 	l := make([]*device.T, 0)
+	for _, pair := range t.devices() {
+		if pair.Dst != nil {
+			l = append(l, pair.Dst)
+		} else {
+			l = append(l, pair.Src)
+		}
+	}
 	return l
+}
+
+func NewDevPairs() DevPairs {
+	return DevPairs(make([]DevPair, 0))
+}
+
+func (t DevPairs) Add(src *device.T, dst *device.T) DevPairs {
+	return append(t, DevPair{
+		Src: src,
+		Dst: dst,
+	})
 }

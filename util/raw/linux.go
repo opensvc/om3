@@ -181,6 +181,17 @@ func (t T) Data() (Entries, error) {
 	return Entries(data), nil
 }
 
+func (t T) Has(bDevPath string) (bool, error) {
+	data, err := t.Data()
+	if err != nil {
+		return false, err
+	}
+	if e := data.BDevPath(bDevPath); e != nil {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (t T) Bind(bDevPath string) (int, error) {
 	p := "/var/lock/opensvc.raw.lock"
 	lock := flock.New(p, "", fcntllock.New)
