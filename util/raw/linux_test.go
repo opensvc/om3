@@ -3,6 +3,7 @@
 package raw
 
 import (
+	"os"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -15,6 +16,9 @@ func TestRaw(t *testing.T) {
 		WithLogger(log),
 	)
 	t.Logf("data")
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	data, err := ra.Data()
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(data), 0)
