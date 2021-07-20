@@ -26,6 +26,7 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
+
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -239,7 +240,7 @@ func (t T) stopVolume(ctx context.Context, volume *object.Vol, force bool) error
 	//ctxOptions := actioncontext.Options(ctx).(object.OptsStop)
 	//options.Leader = ctxOptions.Leader
 	holders := volume.HoldersExcept(ctx, t.Path)
-	if holders.Len() > 0 {
+	if len(holders) > 0 {
 		t.Log().Info().Msgf("skip %s stop: active users: %s", volume.Path, holders)
 		return nil
 	}
