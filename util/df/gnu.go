@@ -3,59 +3,20 @@
 package df
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
 
-// TypeMountUsage executes and parses a df command for a mount point and a fstype
-func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
-	b, err := doDF([]string{"-lP", "-t", fstype, mnt})
-	if err != nil {
-		return nil, err
-	}
-	return parse(b)
+const (
+	typeOption = "-t"
+)
+
+func doDFInode(args ...string) ([]byte, error) {
+	return doDF(append([]string{"-lPi"}, args...))
 }
 
-func HasTypeMount(fstype string, mnt string) bool {
-	l, err := TypeMountUsage(fstype, mnt)
-	if err != nil {
-		return false
-	}
-	return len(l) > 0
-}
-
-// MountUsage executes and parses a df command for a mount point
-func MountUsage(mnt string) ([]Entry, error) {
-	b, err := doDF([]string{"-lP", mnt})
-	if err != nil {
-		return nil, err
-	}
-	return parse(b)
-}
-
-func doDFInode() ([]byte, error) {
-	return doDF([]string{"-lPi"})
-}
-
-func doDFUsage() ([]byte, error) {
-	return doDF([]string{"-lP"})
-}
-
-func doDF(args []string) ([]byte, error) {
-	df, err := exec.LookPath("df")
-	if err != nil {
-		return nil, err
-	}
-	cmd := &exec.Cmd{
-		Path: df,
-		Args: args,
-	}
-	b, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
+func doDFUsage(args ...string) ([]byte, error) {
+	return doDF(append([]string{"-lP"}, args...))
 }
 
 func parse(b []byte) ([]Entry, error) {
@@ -88,4 +49,12 @@ func parse(b []byte) ([]Entry, error) {
 		})
 	}
 	return r, nil
+}
+
+func parseUsage(b []byte) ([]Entry, error) {
+	return parse(b)
+}
+
+func parseInode(b []byte) ([]Entry, error) {
+	return parse(b)
 }
