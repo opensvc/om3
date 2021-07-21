@@ -185,6 +185,20 @@ func (t Base) getResourceByID(rid string) resource.Driver {
 	return t.getConfiguringResourceByID(rid)
 }
 
+func (t Base) getResourcesByDrivergroups(drvgrps []drivergroup.T) resource.Drivers {
+	l := make([]resource.Driver, 0)
+	for _, r := range t.Resources() {
+		drvgrp := r.ID().DriverGroup()
+		for _, d := range drvgrps {
+			if drvgrp == d {
+				l = append(l, r)
+				break
+			}
+		}
+	}
+	return resource.Drivers(l)
+}
+
 func (t *Base) Resources() resource.Drivers {
 	if t.resources != nil {
 		return t.resources
