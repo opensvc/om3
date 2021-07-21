@@ -1,16 +1,14 @@
-// +build linux
-
 package loop
 
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"time"
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -50,13 +48,6 @@ func WithLogger(log *zerolog.Logger) funcopt.O {
 		t.log = log
 		return nil
 	})
-}
-
-func IsCapable() bool {
-	if _, err := exec.LookPath(losetup); err != nil {
-		return false
-	}
-	return true
 }
 
 func (t T) FileExists(filePath string) (bool, error) {
