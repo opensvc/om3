@@ -8,11 +8,11 @@ import (
 )
 
 type (
-	T map[syscall.Signal][]string
+	T map[syscall.Signal]map[string]interface{}
 )
 
 func Parse(s string) T {
-	t := make(map[syscall.Signal][]string)
+	t := make(map[syscall.Signal]map[string]interface{})
 	for _, e := range strings.Fields(s) {
 		l := strings.SplitN(e, ":", 2)
 		if len(l) != 2 {
@@ -26,8 +26,12 @@ func Parse(s string) T {
 		if sigNum == 0 {
 			continue
 		}
-		rids := strings.Split(l[1], ",")
-		t[sigNum] = rids
+		if _, ok := t[sigNum]; !ok {
+			t[sigNum] = make(map[string]interface{})
+		}
+		for _, rid := range strings.Split(l[1], ",") {
+			t[sigNum][rid] = nil
+		}
 	}
 	return T(t)
 }
