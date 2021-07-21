@@ -130,7 +130,7 @@ func (t Entries) NextMinor() int {
 }
 
 func (t T) Data() (Entries, error) {
-	data := make([]Entry, 0)
+	data := make(Entries, 0)
 	if err := t.modprobe(); err != nil {
 		return data, err
 	}
@@ -171,7 +171,7 @@ func (t T) Data() (Entries, error) {
 			BDevMinor: minor,
 		})
 	}
-	return Entries(data), nil
+	return data, nil
 }
 
 func (t T) Has(bDevPath string) (bool, error) {
@@ -221,7 +221,10 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		return 0, fmt.Errorf("%s Run error %v", cmd, err)
+	}
 	if cmd.ExitCode() != 0 {
 		return 0, fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -256,7 +259,10 @@ func (t T) Unbind(cDevPath string) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("%s Run error %v", cmd, err)
+	}
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
