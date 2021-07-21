@@ -1,5 +1,3 @@
-// +build linux
-
 package raw
 
 import (
@@ -7,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -17,6 +14,7 @@ import (
 	"github.com/opensvc/flock"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/devicedriver"
@@ -77,13 +75,6 @@ func WithLogger(log *zerolog.Logger) funcopt.O {
 		t.log = log
 		return nil
 	})
-}
-
-func IsCapable() bool {
-	if _, err := exec.LookPath(raw); err != nil {
-		return false
-	}
-	return true
 }
 
 func (t T) modprobe() error {
