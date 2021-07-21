@@ -538,3 +538,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	t.Log().Info().Msgf("skip mkfs, not implemented for type %s", fs)
 	return nil
 }
+
+func (t T) Head() string {
+	return t.MountPoint
+}

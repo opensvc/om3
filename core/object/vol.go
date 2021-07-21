@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"sort"
 
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/path"
@@ -32,8 +33,45 @@ func NewVol(p path.T, opts ...funcopt.O) *Vol {
 	return s
 }
 
-func (t *Vol) MountPoint() string {
-	return ""
+//
+// Head returns the shortest service fs resource mount point.
+// Volume resources in the consumer services use this function return
+// value as the prefix of their own mount_point property.
+//
+// The candidates are sort from shallowest to deepest mountpoint, so
+// the shallowest candidate is returned.
+//
+// Callers must check the returned value is not empty.
+//
+func (t *Vol) Head() string {
+	head := ""
+	heads := make([]string, 0)
+	type header interface {
+		Head() string
+	}
+	drvgrps := []drivergroup.T{
+		drivergroup.FS,
+		drivergroup.Volume,
+	}
+	l := t.getResourcesByDrivergroups(drvgrps)
+	for _, r := range l {
+		var i interface{} = r
+		o, ok := i.(header)
+		if !ok {
+			continue
+		}
+		heads = append(heads, o.Head())
+	}
+	switch len(heads) {
+	case 0:
+		head = ""
+	case 1:
+		head = heads[0]
+	default:
+		sort.Strings(heads)
+		head = heads[0]
+	}
+	return head
 }
 
 func (t *Vol) Device() *device.T {

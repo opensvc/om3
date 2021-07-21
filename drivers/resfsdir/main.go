@@ -276,3 +276,7 @@ func (t T) setMode(ctx context.Context) error {
 	})
 	return nil
 }
+
+func (t T) Head() string {
+	return t.Path
+}
