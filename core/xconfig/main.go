@@ -70,7 +70,7 @@ var (
 )
 
 func (t ErrPostponedRef) Error() string {
-	return fmt.Sprintf("ref %s evaluation postponed: resource %s is not configured yet", t.Ref, t.RID)
+	return fmt.Sprintf("ref %s evaluation postponed: resource %s is not configured", t.Ref, t.RID)
 }
 
 func NewErrPostponedRef(ref string, rid string) ErrPostponedRef {
