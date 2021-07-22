@@ -188,7 +188,7 @@ func (t *T) statusCreateBlockDevice(pair DevPair) (status.T, []string) {
 	}
 	major, minor, err := pair.Src.MajorMinor()
 	if err != nil {
-		issues = append(issues, fmt.Sprintf("%s: %s", err))
+		issues = append(issues, fmt.Sprintf("%s: %s", pair.Dst, err))
 		return status.Undef, issues
 	}
 	p := pair.Dst.Path()
@@ -256,8 +256,8 @@ func (t T) setOwnership(ctx context.Context, p string) error {
 			return err
 		}
 		actionrollback.Register(ctx, func() error {
-			t.Log().Info().Msgf("set %s group back to %s", p, gid)
-			t.Log().Info().Msgf("set %s user back to %s", p, uid)
+			t.Log().Info().Msgf("set %s group back to %d", p, gid)
+			t.Log().Info().Msgf("set %s user back to %d", p, uid)
 			return os.Chown(p, uid, gid)
 		})
 	}

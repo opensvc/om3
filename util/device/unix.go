@@ -22,7 +22,7 @@ func (t T) MajorMinor() (uint32, uint32, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	return unix.Major(stat.Rdev), unix.Minor(stat.Rdev), nil
+	return unix.Major(uint64(stat.Rdev)), unix.Minor(uint64(stat.Rdev)), nil
 }
 
 func (t T) Major() (uint32, error) {
@@ -30,7 +30,7 @@ func (t T) Major() (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return unix.Major(stat.Rdev), nil
+	return unix.Major(uint64(stat.Rdev)), nil
 }
 
 func (t T) Minor() (uint32, error) {
@@ -38,7 +38,7 @@ func (t T) Minor() (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return unix.Minor(stat.Rdev), nil
+	return unix.Minor(uint64(stat.Rdev)), nil
 }
 
 func (t T) MknodBlock(major, minor uint32) error {

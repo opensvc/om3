@@ -101,8 +101,18 @@ func TestNew(t *testing.T) {
 		output := path.String()
 		assert.Equal(t, test.output, output)
 	}
-
 }
+
+func TestL_len(t *testing.T) {
+	p1, _ := New("n1", "ns1", "svc")
+	p2, _ := New("n2", "ns1", "svc")
+	assert.Equal(t, 0, len(L{}))
+	assert.Equal(t, 1, len(L{p1}))
+	assert.Equal(t, 2, len(L{p1, p2}))
+	var l L
+	assert.Equal(t, 0, len(l))
+}
+
 func TestParse(t *testing.T) {
 	tests := map[string]struct {
 		name      string
