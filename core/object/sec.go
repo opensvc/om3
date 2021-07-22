@@ -36,6 +36,7 @@ func NewSec(p path.T, opts ...funcopt.O) *Sec {
 	s.CustomEncode = secEncode
 	s.CustomDecode = secDecode
 	s.Base.init(p, opts...)
+	s.Config().RegisterPostCommit(s.postCommit)
 	return s
 }
 

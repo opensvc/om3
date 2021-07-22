@@ -60,3 +60,7 @@ func (t Keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	}
 	return
 }
+
+func (t Keystore) postCommit() error {
+	return t.postInstall("")
+}

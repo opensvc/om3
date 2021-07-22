@@ -53,7 +53,7 @@ func (t *Vol) Head() string {
 		drivergroup.FS,
 		drivergroup.Volume,
 	}
-	l := t.getResourcesByDrivergroups(drvgrps)
+	l := t.ResourcesByDrivergroups(drvgrps)
 	for _, r := range l {
 		var i interface{} = r
 		o, ok := i.(header)

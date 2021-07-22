@@ -264,7 +264,7 @@ func (t T) statusVolume(ctx context.Context, volume *object.Vol) (instance.Statu
 }
 
 func (t T) Start(ctx context.Context) error {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		t.Log().Error().Err(err).Msg("")
 		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
@@ -314,7 +314,7 @@ func (t T) Stop(ctx context.Context) error {
 	if err := t.stopFlag(ctx); err != nil {
 		return err
 	}
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func (t T) name() string {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		t.StatusLog().Info("vol %s does not exist (and no pool can provision it)", t.name())
 		t.StatusLog().Info("%s", err)
@@ -411,7 +411,7 @@ func (t T) access() volaccess.T {
 
 }
 
-func (t *T) volume() (*object.Vol, error) {
+func (t *T) Volume() (*object.Vol, error) {
 	p, err := path.New(t.name(), t.Path.Namespace, kind.Vol.String())
 	if err != nil {
 		return nil, err
@@ -495,7 +495,7 @@ func (t T) Label() string {
 }
 
 func (t T) ProvisionLeader(ctx context.Context) error {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		return err
 	}
@@ -510,7 +510,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 }
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		return err
 	}
@@ -522,7 +522,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		return provisioned.False, err
 	}
@@ -530,7 +530,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 func (t T) Head() string {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		return ""
 	}
@@ -538,7 +538,7 @@ func (t T) Head() string {
 }
 
 func (t T) exposedDevice() *device.T {
-	volume, err := t.volume()
+	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}

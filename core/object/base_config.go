@@ -330,7 +330,3 @@ func (t Base) EncapNodes() []string {
 	l, _ := xconfig.OtherNodesConverter.Convert(v)
 	return l.([]string)
 }
-
-func (t Base) PostCommit() error {
-	return nil
-}

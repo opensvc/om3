@@ -45,16 +45,16 @@ func NewFromPath(p path.T, opts ...funcopt.O) interface{} {
 }
 
 // NewBaserFromPath returns a Baser interface from an object path
-func NewBaserFromPath(p path.T) Baser {
-	return NewFromPath(p).(Baser)
+func NewBaserFromPath(p path.T, opts ...funcopt.O) Baser {
+	return NewFromPath(p, opts...).(Baser)
 }
 
 // NewConfigurerFromPath returns a Configurer interface from an object path
-func NewConfigurerFromPath(p path.T) Configurer {
-	return NewFromPath(p).(Configurer)
+func NewConfigurerFromPath(p path.T, opts ...funcopt.O) Configurer {
+	return NewFromPath(p, opts...).(Configurer)
 }
 
 // NewActorFromPath returns a Actor interface from an object path
-func NewActorFromPath(p path.T) Actor {
-	return NewFromPath(p).(Actor)
+func NewActorFromPath(p path.T, opts ...funcopt.O) Actor {
+	return NewFromPath(p, opts...).(Actor)
 }

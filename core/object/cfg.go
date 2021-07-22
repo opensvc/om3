@@ -34,6 +34,7 @@ func NewCfg(p path.T, opts ...funcopt.O) *Cfg {
 	s.CustomEncode = cfgEncode
 	s.CustomDecode = cfgDecode
 	s.Base.init(p, opts...)
+	s.Config().RegisterPostCommit(s.postCommit)
 	return s
 }
 

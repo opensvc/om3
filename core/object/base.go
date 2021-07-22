@@ -52,8 +52,22 @@ type (
 		paths      BasePaths
 		resources  resource.Drivers
 		_resources resource.Drivers
+
+		// method plugs
+		postCommit func() error
 	}
 )
+
+func (t *Base) PostCommit() error {
+	if t.postCommit == nil {
+		return nil
+	}
+	return t.postCommit()
+}
+
+func (t *Base) SetPostCommit(fn func() error) {
+	t.postCommit = fn
+}
 
 // List returns the stringified path as data
 func (t *Base) List() (string, error) {
@@ -185,7 +199,7 @@ func (t Base) getResourceByID(rid string) resource.Driver {
 	return t.getConfiguringResourceByID(rid)
 }
 
-func (t Base) getResourcesByDrivergroups(drvgrps []drivergroup.T) resource.Drivers {
+func (t Base) ResourcesByDrivergroups(drvgrps []drivergroup.T) resource.Drivers {
 	l := make([]resource.Driver, 0)
 	for _, r := range t.Resources() {
 		drvgrp := r.ID().DriverGroup()

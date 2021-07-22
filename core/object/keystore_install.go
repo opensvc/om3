@@ -11,6 +11,10 @@ import (
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -244,6 +248,56 @@ func (t Keystore) InstallKey(k string, dst string, mode *os.FileMode, dirmode *o
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (t Keystore) postInstall(k string) error {
+	changedVolumes := make(map[path.T]interface{})
+	sel := NewSelection(t.Path.Namespace+"/svc/*", SelectionWithLocal(true))
+	type resvoler interface {
+		InstallDataByKind(kind.T) (bool, error)
+		HasMetadata(p path.T, k string) bool
+		Volume() (*Vol, error)
+		SendSignals() error
+	}
+	for _, p := range sel.Expand() {
+		o := NewBaserFromPath(p, WithVolatile(true))
+		for _, r := range o.ResourcesByDrivergroups([]drivergroup.T{drivergroup.Volume}) {
+			var i interface{} = r
+			v := i.(resvoler)
+			if !v.HasMetadata(t.Path, k) {
+				continue
+			}
+			vol, err := v.Volume()
+			if err != nil {
+				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
+				continue
+			}
+			st, err := vol.Status(OptsStatus{})
+			if err != nil {
+				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
+				continue
+			}
+			if st.Avail != status.Up {
+				continue
+			}
+			changed, err := v.InstallDataByKind(t.Path.Kind)
+			if err != nil {
+				return err
+			}
+			if changed {
+				changedVolumes[vol.Path] = nil
+			}
+			if _, ok := changedVolumes[vol.Path]; !ok {
+				continue
+			}
+			t.log.Debug().Msgf("signal %s %s referrer: %s (%s)", t.Path, k, p, r.RID())
+			if err := v.SendSignals(); err != nil {
+				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
+				continue
+			}
 		}
 	}
 	return nil

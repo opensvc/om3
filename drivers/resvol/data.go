@@ -26,9 +26,6 @@ type (
 		FromStore path.T
 	}
 
-	// MetadataFilter is used in functions having common code for configs and secrets management.
-	MetadataFilter int
-
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
 	SigRoute struct {
 		Signum syscall.Signal
@@ -36,35 +33,27 @@ type (
 	}
 )
 
-const (
-	// MDSec is the secrets Metadata filter. Secrets in Usr-kind object is also filtered-in.
-	MDSec MetadataFilter = 1
-
-	// MDCfg is the configs Metadata filter
-	MDCfg MetadataFilter = 2
-)
-
 func (t Metadata) IsEmpty() bool {
 	return t.ToPath == "" && t.FromKey == ""
 }
 
-func (t T) getRefs(filter MetadataFilter) []string {
+func (t T) getRefs() []string {
 	refs := make([]string, 0)
-	refs = append(refs, t.getFilteredRefs(MDSec)...)
-	refs = append(refs, t.getFilteredRefs(MDCfg)...)
+	refs = append(refs, t.getRefsByKind(kind.Sec)...)
+	refs = append(refs, t.getRefsByKind(kind.Cfg)...)
 	return refs
 }
 
-func (t T) getFilteredRefs(filter MetadataFilter) []string {
+func (t T) getRefsByKind(filter kind.T) []string {
 	refs := make([]string, 0)
 	if t.Head() == "" {
 		// not yet provisioned
 		return refs
 	}
 	switch filter {
-	case MDSec:
+	case kind.Sec:
 		refs = append(refs, t.Secrets...)
-	case MDCfg:
+	case kind.Cfg:
 		refs = append(refs, t.Configs...)
 	}
 	return refs
@@ -72,26 +61,19 @@ func (t T) getFilteredRefs(filter MetadataFilter) []string {
 
 func (t T) getMetadata() []Metadata {
 	l := make([]Metadata, 0)
-	l = append(l, t.getFilteredMetadata(MDSec)...)
-	l = append(l, t.getFilteredMetadata(MDCfg)...)
+	l = append(l, t.getMetadataByKind(kind.Sec)...)
+	l = append(l, t.getMetadataByKind(kind.Cfg)...)
 	return l
 }
 
-func (t T) getFilteredMetadata(filter MetadataFilter) []Metadata {
+func (t T) getMetadataByKind(filter kind.T) []Metadata {
 	l := make([]Metadata, 0)
 	mnt := t.Head()
 	if mnt == "" {
 		return []Metadata{}
 	}
-	for _, ref := range t.getFilteredRefs(filter) {
-		var kd kind.T
-		switch filter {
-		case MDSec:
-			kd = kind.Sec
-		default:
-			kd = kind.Cfg
-		}
-		md := t.parseReference(ref, kd, mnt)
+	for _, ref := range t.getRefsByKind(filter) {
+		md := t.parseReference(ref, filter, mnt)
 		if md.IsEmpty() {
 			continue
 		}
@@ -100,7 +82,21 @@ func (t T) getFilteredMetadata(filter MetadataFilter) []Metadata {
 	return l
 }
 
-func (t T) parseReference(s string, kd kind.T, mnt string) Metadata {
+// HasMetadata returns true if the volume has a configs or secrets reference to
+// <namespace>/<kind>/<name>[/<key>]
+func (t T) HasMetadata(p path.T, k string) bool {
+	for _, md := range t.getMetadataByKind(p.Kind) {
+		if md.FromStore.Name != p.Name {
+			continue
+		}
+		if k == "" || md.FromKey == k {
+			return true
+		}
+	}
+	return false
+}
+
+func (t T) parseReference(s string, filter kind.T, mnt string) Metadata {
 	// s = "sec/s1/k[12]:/here/"
 	l := strings.SplitN(s, ":", 2)
 	if len(l) != 2 {
@@ -115,23 +111,25 @@ func (t T) parseReference(s string, kd kind.T, mnt string) Metadata {
 	from := strings.TrimLeft(l[0], "/")
 	// from = "sec/s1/k[12]"
 
+	kd := filter
+
 	switch {
 	case strings.HasPrefix(from, "usr/"):
 		kd = kind.Usr
 		from = from[4:]
-		if kd == kind.Cfg {
+		if filter == kind.Cfg {
 			return Metadata{}
 		}
 	case strings.HasPrefix(from, "sec/"):
 		kd = kind.Sec
 		from = from[4:]
-		if kd == kind.Cfg {
+		if filter == kind.Cfg {
 			return Metadata{}
 		}
 	case strings.HasPrefix(from, "cfg/"):
 		kd = kind.Cfg
 		from = from[4:]
-		if kd == kind.Sec {
+		if filter == kind.Sec {
 			return Metadata{}
 		}
 	}
@@ -178,18 +176,18 @@ func (t T) installData() error {
 	if err := t.installDirs(); err != nil {
 		return err
 	}
-	if v, err := t.installSecrets(); err != nil {
+	if v, err := t.InstallDataByKind(kind.Sec); err != nil {
 		return err
 	} else {
 		changed = v || changed
 	}
-	if v, err := t.installConfigs(); err != nil {
+	if v, err := t.InstallDataByKind(kind.Cfg); err != nil {
 		return err
 	} else {
 		changed = v || changed
 	}
 	if changed {
-		return t.sendSignals()
+		return t.SendSignals()
 	}
 	return nil
 }
@@ -207,7 +205,7 @@ func (t T) signalData() []SigRoute {
 	return routes
 }
 
-func (t T) sendSignals() error {
+func (t T) SendSignals() error {
 	type signaler interface {
 		SignalResource(string, syscall.Signal) error
 	}
@@ -225,21 +223,13 @@ func (t T) sendSignals() error {
 	return nil
 }
 
-func (t T) installSecrets() (bool, error) {
-	return t.installFilteredData(MDSec)
-}
-
-func (t T) installConfigs() (bool, error) {
-	return t.installFilteredData(MDCfg)
-}
-
-func (t T) installFilteredData(filter MetadataFilter) (bool, error) {
+func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 	var (
 		changed bool
 		err     error
 	)
 
-	for _, md := range t.getFilteredMetadata(filter) {
+	for _, md := range t.getMetadataByKind(filter) {
 		o := object.NewFromPath(md.FromStore, object.WithVolatile(true))
 		base, _ := o.(object.Baser)
 		if !base.Exists() {

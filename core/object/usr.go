@@ -22,5 +22,6 @@ type (
 func NewUsr(p path.T, opts ...funcopt.O) *Usr {
 	s := &Usr{}
 	s.Base.init(p, opts...)
+	s.Config().RegisterPostCommit(s.postCommit)
 	return s
 }

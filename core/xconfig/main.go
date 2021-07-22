@@ -35,13 +35,13 @@ type (
 		Referrer       Referrer
 		NodeReferrer   Referrer
 		file           *ini.File
+		postCommit     func() error
 	}
 
 	// Referer is the interface implemented by node and object to
 	// provide a reference resolver using their private attributes.
 	Referrer interface {
 		KeywordLookup(key.T, string) keywords.Keyword
-		PostCommit() error
 		IsVolatile() bool
 		Log() *zerolog.Logger
 		Config() *T
@@ -87,6 +87,10 @@ func (t *T) Keys(section string) []string {
 		data = append(data, s.Name())
 	}
 	return data
+}
+
+func (t *T) RegisterPostCommit(fn func() error) {
+	t.postCommit = fn
 }
 
 // HasKey returns true if the k exists
@@ -721,7 +725,10 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		}
 	}
 	//t.clearRefCache()
-	return t.postCommit()
+	if t.postCommit != nil {
+		return t.postCommit()
+	}
+	return nil
 }
 
 func (t T) validate() error {
@@ -754,13 +761,6 @@ func (t *T) CommitDataTo(configData rawconfig.T, configPath string) error {
 
 func (t *T) CommitDataToInvalid(configData rawconfig.T, configPath string) error {
 	return t.rawCommit(configData, configPath, false)
-}
-
-func (t T) postCommit() error {
-	if t.Referrer == nil {
-		return nil
-	}
-	return nil
 }
 
 func (t T) DeleteSections(sections []string) error {
