@@ -53,6 +53,7 @@ func init() {
 		cmdChange  commands.CmdKeystoreChange
 		cmdDecode  commands.CmdKeystoreDecode
 		cmdKeys    commands.CmdKeystoreKeys
+		cmdInstall commands.CmdKeystoreInstall
 		cmdRemove  commands.CmdKeystoreRemove
 		cmdGenCert commands.CmdSecGenCert
 	)
@@ -76,6 +77,7 @@ func init() {
 	cmdGenCert.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdKeys.Init(kind, head, &selectorFlag)
+	cmdInstall.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)

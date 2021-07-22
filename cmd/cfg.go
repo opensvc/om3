@@ -49,11 +49,12 @@ func init() {
 		cmdStatus           commands.CmdObjectStatus
 		cmdUnset            commands.CmdObjectUnset
 
-		cmdAdd    commands.CmdKeystoreAdd
-		cmdChange commands.CmdKeystoreChange
-		cmdDecode commands.CmdKeystoreDecode
-		cmdKeys   commands.CmdKeystoreKeys
-		cmdRemove commands.CmdKeystoreRemove
+		cmdAdd     commands.CmdKeystoreAdd
+		cmdChange  commands.CmdKeystoreChange
+		cmdDecode  commands.CmdKeystoreDecode
+		cmdKeys    commands.CmdKeystoreKeys
+		cmdInstall commands.CmdKeystoreInstall
+		cmdRemove  commands.CmdKeystoreRemove
 	)
 
 	kind := "cfg"
@@ -74,6 +75,7 @@ func init() {
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdKeys.Init(kind, head, &selectorFlag)
+	cmdInstall.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)

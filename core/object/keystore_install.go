@@ -19,6 +19,11 @@ import (
 )
 
 type (
+	OptsInstall struct {
+		Global OptsGlobal
+		Key    string `flag:"key"`
+	}
+
 	vKeyType int
 
 	vKey struct {
@@ -234,6 +239,10 @@ func (t Keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 		return true, err
 	}
 	return true, os.Chtimes(dst, mtime, mtime)
+}
+
+func (t Keystore) Install(options OptsInstall) error {
+	return t.postInstall(options.Key)
 }
 
 func (t Keystore) InstallKey(k string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) error {

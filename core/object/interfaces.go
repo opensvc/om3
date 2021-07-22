@@ -33,6 +33,7 @@ type (
 		MatchingKeys(string) ([]string, error)
 		Remove(OptsRemove) error
 		EditKey(OptsEditKey) error
+		Install(OptsInstall) error
 
 		InstallKey(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
 	}
