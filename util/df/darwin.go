@@ -3,70 +3,20 @@
 package df
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
 
-func doDFInode() ([]byte, error) {
-	return doDF([]string{"-i"})
+const (
+	typeOption = "-T"
+)
+
+func doDFInode(args ...string) ([]byte, error) {
+	return doDF(append([]string{"-i"}, args...))
 }
 
-func doDFUsage() ([]byte, error) {
-	return doDF([]string{"-k", "-P"})
-}
-
-func doDF(args []string) ([]byte, error) {
-	df, err := exec.LookPath("df")
-	if err != nil {
-		return nil, err
-	}
-	cmd := &exec.Cmd{
-		Path: df,
-		Args: args,
-	}
-	b, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
-// TypeMountUsage executes and parses a df command for a mount point and a fstype
-func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
-	b, err := doDF([]string{"-lP", "-t", fstype, mnt})
-	if err != nil {
-		return nil, err
-	}
-	return parse(b)
-}
-
-// MountUsage executes and parses a df command for a mount point
-func MountUsage(mnt string) ([]Entry, error) {
-	b, err := doDF([]string{"-lP", mnt})
-	if err != nil {
-		return nil, err
-	}
-	return parse(b)
-}
-
-// Usage executes and parses a df command
-func Usage() ([]Entry, error) {
-	b, err := doDFUsage()
-	if err != nil {
-		return nil, err
-	}
-	return parseUsage(b)
-}
-
-// Inode executes and parses a df command
-func Inode() ([]Entry, error) {
-	b, err := doDFInode()
-	if err != nil {
-		return nil, err
-	}
-	return parseInodes(b)
+func doDFUsage(args ...string) ([]byte, error) {
+	return doDF(append([]string{"-k", "-P"}, args...))
 }
 
 func parseUsage(b []byte) ([]Entry, error) {
@@ -101,7 +51,7 @@ func parseUsage(b []byte) ([]Entry, error) {
 	return r, nil
 }
 
-func parseInodes(b []byte) ([]Entry, error) {
+func parseInode(b []byte) ([]Entry, error) {
 	r := make([]Entry, 0)
 	text := string(b)
 	for _, line := range strings.Split(text, "\n")[1:] {

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
-
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -254,10 +254,6 @@ func (t Relation) Path() (T, error) {
 	}
 	s = string(t)
 	return Parse(s)
-}
-
-func (t L) Len() int {
-	return len([]T(t))
 }
 
 func (t L) String() string {

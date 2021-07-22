@@ -41,7 +41,7 @@ func (t *Vol) Device() *device.T {
 }
 
 func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
-	l := make([]path.T, 0)
+	l := make(path.L, 0)
 	type VolNamer interface {
 		VolName() string
 	}
@@ -74,5 +74,5 @@ func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 		}
 
 	}
-	return path.L(l)
+	return l
 }

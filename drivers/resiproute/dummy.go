@@ -25,7 +25,7 @@ func (t T) Label() string {
 }
 
 // Status evaluates and display the Resource status and logs
-func (t T) Status() status.T {
+func (t T) Status(ctx context.Context) status.T {
 	//r.Log.Error("not implemented on %s", runtime.GOOS)
 	return status.NotApplicable
 }
