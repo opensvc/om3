@@ -1,6 +1,7 @@
 package df
 
 import (
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,9 @@ import (
 
 func TestUsage(t *testing.T) {
 	entries, err := Usage()
+	if exitError, ok := err.(*exec.ExitError); ok {
+		t.Logf("got error with stderr: %v", string(exitError.Stderr))
+	}
 	require.Nil(t, err)
 	require.Greater(t, len(entries), 0)
 	nbWithFree := 0
