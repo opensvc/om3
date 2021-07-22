@@ -62,6 +62,15 @@ func ExistsAndRegular(path string) bool {
 	return info.Mode().IsRegular()
 }
 
+// ExistsAndSymlink returns true if the file path exists and is a symbolic link.
+func ExistsAndSymlink(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.Mode()&os.ModeSymlink != 0
+}
+
 //
 // Copy copies the file content from src file path to dst file path.
 // If dst does not exist, it is created.

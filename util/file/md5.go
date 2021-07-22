@@ -8,16 +8,17 @@ import (
 
 // MD5 returns the []byte format md5 of the content of the file at path p.
 func MD5(p string) ([]byte, error) {
-	var (
-		f   *os.File
-		err error
-	)
-	if f, err = os.Open(p); err != nil {
+	if f, err := os.Open(p); err != nil {
 		return nil, err
+	} else {
+		defer f.Close()
+		return MD5Reader(f)
 	}
-	defer f.Close()
+}
+
+func MD5Reader(r io.Reader) ([]byte, error) {
 	h := md5.New()
-	if _, err = io.Copy(h, f); err != nil {
+	if _, err := io.Copy(h, r); err != nil {
 		return nil, err
 	}
 	return h.Sum(nil), nil

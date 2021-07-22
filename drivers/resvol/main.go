@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"time"
 
@@ -55,20 +56,20 @@ const (
 type (
 	T struct {
 		resource.T
-		Name        string   `json:"name"`
-		Access      string   `json:"access"`
-		Pool        string   `json:"pool"`
-		PoolType    string   `json:"type"`
-		Size        *int64   `json:"size"`
-		Format      bool     `json:"format"`
-		Configs     []string `json:"configs"`
-		Secrets     []string `json:"secrets"`
-		Directories []string `json:"directories"`
-		User        string   `json:"user"`
-		Group       string   `json:"group"`
-		Perm        string   `json:"perm"`
-		DirPerm     string   `json:"dirperm"`
-		Signal      string   `json:"signal"`
+		Name        string       `json:"name"`
+		Access      string       `json:"access"`
+		Pool        string       `json:"pool"`
+		PoolType    string       `json:"type"`
+		Size        *int64       `json:"size"`
+		Format      bool         `json:"format"`
+		Configs     []string     `json:"configs"`
+		Secrets     []string     `json:"secrets"`
+		Directories []string     `json:"directories"`
+		User        *user.User   `json:"user"`
+		Group       *user.Group  `json:"group"`
+		Perm        *os.FileMode `json:"perm"`
+		DirPerm     *os.FileMode `json:"dirperm"`
+		Signal      string       `json:"signal"`
 
 		Path     path.T
 		Topology topology.T
@@ -169,32 +170,36 @@ func (t T) Manifest() *manifest.T {
 			Example:   "a/b/c d /e",
 		},
 		{
-			Option:   "user",
-			Attr:     "User",
-			Scopable: true,
-			Text:     "The user name or id that will own the volume root and installed files and directories.",
-			Example:  "1001",
+			Option:    "user",
+			Attr:      "User",
+			Scopable:  true,
+			Converter: converters.User,
+			Text:      "The user name or id that will own the volume root and installed files and directories.",
+			Example:   "1001",
 		},
 		{
-			Option:   "group",
-			Attr:     "Group",
-			Scopable: true,
-			Text:     "The group name or id that will own the volume root and installed files and directories.",
-			Example:  "1001",
+			Option:    "group",
+			Attr:      "Group",
+			Scopable:  true,
+			Converter: converters.Group,
+			Text:      "The group name or id that will own the volume root and installed files and directories.",
+			Example:   "1001",
 		},
 		{
-			Option:   "perm",
-			Attr:     "Perm",
-			Scopable: true,
-			Text:     "The permissions, in octal notation, to apply to the installed files.",
-			Example:  "660",
+			Option:    "perm",
+			Attr:      "Perm",
+			Scopable:  true,
+			Converter: converters.FileMode,
+			Text:      "The permissions, in octal notation, to apply to the installed files.",
+			Example:   "660",
 		},
 		{
-			Option:   "dirperm",
-			Attr:     "DirPerm",
-			Scopable: true,
-			Text:     "The permissions, in octal notation, to apply to the volume root and installed directories.",
-			Example:  "750",
+			Option:    "dirperm",
+			Attr:      "DirPerm",
+			Scopable:  true,
+			Converter: converters.FileMode,
+			Text:      "The permissions, in octal notation, to apply to the volume root and installed directories.",
+			Example:   "750",
 		},
 		{
 			Option:   "signal",
@@ -275,6 +280,9 @@ func (t T) Start(ctx context.Context) error {
 	if err = t.startFlag(ctx); err != nil {
 		return err
 	}
+	if err = t.installData(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -341,6 +349,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if data.Overall == status.Warn {
 		t.StatusLog().Error("vol %s has warnings", volume.Path)
 	}
+	t.statusData()
 	if !t.flagInstalled() {
 		if data.Avail == status.Warn {
 			t.StatusLog().Error("%s avail %s", volume.Path, data.Avail)
@@ -519,12 +528,12 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(volume.Exists()), nil
 }
 
-func (t T) MountPoint() string {
+func (t T) Head() string {
 	volume, err := t.volume()
 	if err != nil {
 		return ""
 	}
-	return volume.MountPoint()
+	return volume.Head()
 }
 
 func (t T) exposedDevice() *device.T {

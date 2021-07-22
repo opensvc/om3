@@ -1,6 +1,9 @@
 package object
 
 import (
+	"os"
+	"os/user"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
@@ -26,8 +29,11 @@ type (
 		Change(OptsAdd) error
 		Decode(OptsDecode) ([]byte, error)
 		Keys(OptsKeys) ([]string, error)
+		MatchingKeys(string) ([]string, error)
 		Remove(OptsRemove) error
 		EditKey(OptsEditKey) error
+
+		InstallKey(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
 	}
 
 	// Baser is implemented by all object kinds.

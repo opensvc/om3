@@ -201,7 +201,7 @@ func (t *Base) statusDumpOutdated() bool {
 }
 
 func (t *Base) configModTime() time.Time {
-	p := t.statusFile()
+	p := t.ConfigFile()
 	return file.ModTime(p)
 }
 
