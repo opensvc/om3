@@ -11,7 +11,6 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/device"
 )
 
 const (
@@ -110,15 +109,22 @@ func (t T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	if t.DiskID == "" {
+		return status.NotApplicable
+	}
+	if t.devPath() == "" {
+		t.StatusLog().Warn("%s does not exist", t.expectedDevPath())
+		return status.Down
+	}
 	return status.NotApplicable
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.FromBool(true), nil
+	return provisioned.FromBool(t.DiskID != ""), nil
 }
 
 func (t T) Label() string {
-	return ""
+	return t.DiskID
 }
 
 func (t T) Info() map[string]string {
@@ -132,9 +138,4 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
 	return nil
-}
-
-func (t T) ExposedDevices() []*device.T {
-	l := make([]*device.T, 0)
-	return l
 }
