@@ -63,7 +63,7 @@ func HasTypeMount(fstype string, mnt string) bool {
 }
 
 func doDF(args []string) ([]byte, error) {
-	df, err := exec.LookPath("df")
+	df, err := exec.LookPath(dfPath)
 	if err != nil {
 		return nil, err
 	}
