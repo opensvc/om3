@@ -46,10 +46,6 @@ func (t T) getRefs() []string {
 
 func (t T) getRefsByKind(filter kind.T) []string {
 	refs := make([]string, 0)
-	if t.Head() == "" {
-		// not yet provisioned
-		return refs
-	}
 	switch filter {
 	case kind.Sec:
 		refs = append(refs, t.Secrets...)
@@ -66,14 +62,19 @@ func (t T) getMetadata() []Metadata {
 	return l
 }
 
-func (t T) getMetadataByKind(filter kind.T) []Metadata {
+func (t T) getMetadataByKind(kd kind.T) []Metadata {
 	l := make([]Metadata, 0)
-	mnt := t.Head()
-	if mnt == "" {
+	refs := t.getRefsByKind(kd)
+	if len(refs) == 0 {
+		// avoid the Head() call when possible
 		return []Metadata{}
 	}
-	for _, ref := range t.getRefsByKind(filter) {
-		md := t.parseReference(ref, filter, mnt)
+	head := t.Head()
+	if head == "" {
+		return []Metadata{}
+	}
+	for _, ref := range refs {
+		md := t.parseReference(ref, kd, head)
 		if md.IsEmpty() {
 			continue
 		}
@@ -96,16 +97,17 @@ func (t T) HasMetadata(p path.T, k string) bool {
 	return false
 }
 
-func (t T) parseReference(s string, filter kind.T, mnt string) Metadata {
+func (t T) parseReference(s string, filter kind.T, head string) Metadata {
+	if head == "" {
+		return Metadata{}
+	}
+
 	// s = "sec/s1/k[12]:/here/"
 	l := strings.SplitN(s, ":", 2)
 	if len(l) != 2 {
 		return Metadata{}
 	}
-	if mnt == "" {
-		return Metadata{}
-	}
-	toPath := filepath.Join(mnt, l[1])
+	toPath := filepath.Join(head, l[1])
 	// toPath = "/here"
 
 	from := strings.TrimLeft(l[0], "/")
@@ -258,6 +260,9 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 }
 
 func (t T) installDir(dir string, head string, mode *os.FileMode) error {
+	if head == "" {
+		return fmt.Errorf("refuse to install dir %s in /", dir)
+	}
 	p := filepath.Join(head, dir)
 	var perm os.FileMode
 	if mode == nil {
@@ -277,6 +282,9 @@ func (t T) installDir(dir string, head string, mode *os.FileMode) error {
 
 func (t T) installDirs() error {
 	head := t.Head()
+	if head == "" {
+		return fmt.Errorf("refuse to install dirs in empty (ie /) head")
+	}
 	for _, dir := range t.Directories {
 		if err := t.installDir(dir, head, t.DirPerm); err != nil {
 			return err
