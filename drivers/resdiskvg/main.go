@@ -40,6 +40,7 @@ type (
 		FQN() string
 		Devices() ([]*device.T, error)
 		PVs() ([]*device.T, error)
+		ActiveLVs() ([]*device.T, error)
 		DriverName() string
 		AddTag(string) error
 		DelTag(string) error
@@ -223,7 +224,11 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 func (t T) ExposedDevices() []*device.T {
-	return []*device.T{}
+	if l, err := t.vg().ActiveLVs(); err == nil {
+		return l
+	} else {
+		return []*device.T{}
+	}
 }
 
 func (t T) SubDevices() []*device.T {

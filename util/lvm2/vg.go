@@ -5,6 +5,7 @@ package lvm2
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -329,6 +330,25 @@ func (t *VG) PVs() ([]*device.T, error) {
 	}
 	for _, s := range strings.Split(vgInfo.PVName, ",") {
 		l = append(l, device.New(s, device.WithLogger(t.Log())))
+	}
+	return l, nil
+}
+
+func (t *VG) ActiveLVs() ([]*device.T, error) {
+	l := make([]*device.T, 0)
+	pattern := fmt.Sprintf("/dev/mapper/%s-*", t.VGName)
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return l, err
+	}
+	for _, p := range matches {
+		switch {
+		case strings.Contains(p, "_rimage_"), strings.Contains(p, "_rmeta_"):
+			continue
+		case strings.Contains(p, "_mimage_"), strings.Contains(p, "_mlog_"), strings.HasSuffix(p, "_mlog"):
+			continue
+		}
+		l = append(l, device.New(p, device.WithLogger(t.Log())))
 	}
 	return l, nil
 }
