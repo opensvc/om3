@@ -8,6 +8,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/resdiskloop"
 	_ "opensvc.com/opensvc/drivers/resdisklv"
 	_ "opensvc.com/opensvc/drivers/resdiskraw"
+	_ "opensvc.com/opensvc/drivers/resdiskvg"
 	_ "opensvc.com/opensvc/drivers/resfsdir"
 	_ "opensvc.com/opensvc/drivers/resfsflag"
 	_ "opensvc.com/opensvc/drivers/resfshost"
