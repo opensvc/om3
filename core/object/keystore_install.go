@@ -273,7 +273,7 @@ func (t Keystore) postInstall(k string) error {
 	}
 	for _, p := range sel.Expand() {
 		o := NewBaserFromPath(p, WithVolatile(true))
-		for _, r := range o.ResourcesByDrivergroups([]drivergroup.T{drivergroup.Volume}) {
+		for _, r := range ResourcesByDrivergroups(o, []drivergroup.T{drivergroup.Volume}) {
 			var i interface{} = r
 			v := i.(resvoler)
 			if !v.HasMetadata(t.Path, k) {

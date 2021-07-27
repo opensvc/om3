@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/user"
 
-	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
@@ -45,7 +44,6 @@ type (
 		IsVolatile() bool
 		ResourceSets() resourceset.L
 		Resources() resource.Drivers
-		ResourcesByDrivergroups(drvgrps []drivergroup.T) resource.Drivers
 	}
 
 	// Actor is implemented by object kinds supporting start, stop, ...

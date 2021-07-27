@@ -199,7 +199,8 @@ func (t Base) getResourceByID(rid string) resource.Driver {
 	return t.getConfiguringResourceByID(rid)
 }
 
-func (t Base) ResourcesByDrivergroups(drvgrps []drivergroup.T) resource.Drivers {
+func ResourcesByDrivergroups(i interface{}, drvgrps []drivergroup.T) resource.Drivers {
+	t, _ := i.(Baser)
 	l := make([]resource.Driver, 0)
 	for _, r := range t.Resources() {
 		drvgrp := r.ID().DriverGroup()
