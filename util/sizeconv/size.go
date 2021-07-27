@@ -46,7 +46,7 @@ var (
 	dAbb = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
 	bAbb = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
 	cAbb = []string{"", "k", "m", "g", "t", "p", "e", "z", "y"}
-	sReg = regexp.MustCompile(`^(\d+(\.\d+)*) ?([kKmMgGtTpPeE])?([iI])?([bB])?$`)
+	sReg = regexp.MustCompile(`^(\d+([\.,]\d+)*) ?([kKmMgGtTpPeE])?([iI])?([bB])?$`)
 )
 
 func getSizeAndUnit(size float64, base float64, _map []string, exact bool) (float64, string) {
@@ -131,7 +131,8 @@ func FromSize(sizeStr string) (int64, error) {
 	} else {
 		convertMap = dMap
 	}
-	size, err := strconv.ParseFloat(matches[1], 64)
+	dotted := strings.ReplaceAll(matches[1], ",", ".")
+	size, err := strconv.ParseFloat(dotted, 64)
 	if err != nil {
 		return -1, err
 	}

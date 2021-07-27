@@ -183,6 +183,56 @@ func (t *T) GetString(s string) string {
 	return t.Config().GetString(k)
 }
 
+func (t *T) MkfsOptions() string {
+	return t.GetString("mkfs_opt")
+}
+
+func (t *T) MkblkOptions() string {
+	return t.GetString("mkblk_opt")
+}
+
+func (t *T) FSType() string {
+	return t.GetString("fs_type")
+}
+
+func (t *T) MntOptions() string {
+	return t.GetString("mnt_opt")
+}
+
+func (t *T) AddFS(name string, shared bool, fsIndex int, diskIndex int, onDisk string) []string {
+	data := make([]string, 0)
+	fsType := t.FSType()
+	switch fsType {
+	case "zfs":
+		data = append(data, []string{
+			fmt.Sprintf("disk#%d.type=zpool", diskIndex),
+			fmt.Sprintf("disk#%d.name=%s", diskIndex, name),
+			fmt.Sprintf("disk#%d.vdev={%s.exposed_devs[0]}", diskIndex, onDisk),
+			fmt.Sprintf("disk#%d.shared=%t", diskIndex, shared),
+			fmt.Sprintf("fs#%d.type=zfs", fsIndex),
+			fmt.Sprintf("fs#%d.dev=%s/root", fsIndex, name),
+			fmt.Sprintf("fs#%d.mnt=%s", fsIndex, MountPointFromName(name)),
+			fmt.Sprintf("fs#%d.shared=%s", fsIndex, shared),
+		}...)
+	case "":
+		panic("fsType should not be empty at this point")
+	default:
+		data = append(data, []string{
+			fmt.Sprintf("fs#%d.type=%s", fsIndex, fsType),
+			fmt.Sprintf("fs#%d.dev={%s.exposed_devs[0]}", fsIndex, onDisk),
+			fmt.Sprintf("fs#%d.mnt=%s", fsIndex, MountPointFromName(name)),
+			fmt.Sprintf("fs#%d.shared=%t", fsIndex, shared),
+		}...)
+	}
+	if opts := t.MkfsOptions(); opts != "" {
+		data = append(data, fmt.Sprintf("fs#%d.mkfs_opt=%s", fsIndex, opts))
+	}
+	if opts := t.MntOptions(); opts != "" {
+		data = append(data, fmt.Sprintf("fs#%d.mnt_opt=%s", fsIndex, opts))
+	}
+	return data
+}
+
 func MountPointFromName(name string) string {
 	return filepath.Join(filepath.FromSlash("/srv"), name)
 }

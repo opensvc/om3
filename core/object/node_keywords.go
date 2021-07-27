@@ -1116,6 +1116,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 	{
 		Section: "pool",
 		Option:  "fs_type",
+		Types:   []string{"freenas", "dorado", "hcs", "symmetrix", "drbd", "loop", "vg"},
 		Default: "xfs",
 		Text:    "The filesystem to format the pool devices with.",
 	},

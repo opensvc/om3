@@ -109,9 +109,6 @@ func (t *T) Start() (err error) {
 		return ErrAlreadyStarted
 	}
 	t.started = true
-	if err = t.valid(); err != nil {
-		return err
-	}
 	cmd := exec.Command(t.name, t.args...)
 	t.cmd = cmd
 	if err = t.update(); err != nil {
@@ -130,7 +127,7 @@ func (t *T) Start() (err error) {
 		t.goroutine = append(t.goroutine, func() {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
-				if t.stdoutLogLevel != zerolog.Disabled {
+				if log != nil && t.stdoutLogLevel != zerolog.Disabled {
 					log.WithLevel(t.stdoutLogLevel).Str("out", s.Text()).Int("pid", t.pid).Send()
 				}
 				if t.onStdoutLine != nil {
@@ -155,7 +152,7 @@ func (t *T) Start() (err error) {
 		t.goroutine = append(t.goroutine, func() {
 			s := bufio.NewScanner(r)
 			for s.Scan() {
-				if t.stderrLogLevel != zerolog.Disabled {
+				if log != nil && t.stderrLogLevel != zerolog.Disabled {
 					log.WithLevel(t.stderrLogLevel).Str("err", s.Text()).Int("pid", t.pid).Send()
 				}
 				if t.onStderrLine != nil {
