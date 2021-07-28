@@ -1,6 +1,8 @@
 package device
 
 import (
+	"bytes"
+	"encoding/json"
 	"syscall"
 
 	"github.com/rs/zerolog"
@@ -60,5 +62,24 @@ func RemoveHolders(head *T) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// MarshalJSON marshals the data as a quoted json string
+func (t T) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(t.String())
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+// UnmarshalJSON unmashals a quoted json string to value
+func (t *T) UnmarshalJSON(b []byte) error {
+	var j string
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	*t = *New(j)
 	return nil
 }

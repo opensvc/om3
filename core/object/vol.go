@@ -75,6 +75,36 @@ func (t *Vol) Head() string {
 }
 
 func (t *Vol) Device() *device.T {
+	type devicer interface {
+		ExposedDevices() []*device.T
+	}
+	rids := make([]string, 0)
+	candidates := make(map[string]devicer)
+	l := ResourcesByDrivergroups(t, []drivergroup.T{
+		drivergroup.Disk,
+		drivergroup.Volume,
+	})
+	for _, r := range l {
+		if r.Manifest().Name == "scsireserv" {
+			continue
+		}
+		var i interface{} = r
+		o, ok := i.(devicer)
+		if !ok {
+			continue
+		}
+		rid := r.RID()
+		candidates[rid] = o
+		rids = append(rids, rid)
+	}
+	sort.Strings(rids)
+	for _, rid := range rids {
+		devs := candidates[rid].ExposedDevices()
+		if len(devs) == 0 {
+			continue
+		}
+		return devs[0]
+	}
 	return nil
 }
 
