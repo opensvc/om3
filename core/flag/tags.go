@@ -129,6 +129,11 @@ var Tags = map[string]Opt{
 		Long: "restore",
 		Desc: "keep the same object id as the origin template or config file. the default is to generate a new id",
 	},
+	"devroles": Opt{
+		Long:    "roles",
+		Desc:    "display only devices matching these roles all=exposed,sub,base",
+		Default: "all",
+	},
 	"rid": Opt{
 		Long: "rid",
 		Desc: "resource selector expression (ip#1,app,disk.type=zvol)",
