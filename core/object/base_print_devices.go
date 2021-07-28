@@ -25,11 +25,14 @@ func (t *Base) PrintDevices(options OptsPrintDevices) objectdevice.L {
 			continue
 		}
 		for _, dev := range o.ExposedDevices() {
+			manifest := r.Manifest()
 			l = l.Add(objectdevice.T{
-				Device:     dev,
-				Role:       objectdevice.RoleExposed,
-				RID:        r.RID(),
-				ObjectPath: t.Path,
+				Device:      dev,
+				Role:        objectdevice.RoleExposed,
+				RID:         r.RID(),
+				DriverGroup: manifest.Group,
+				DriverName:  manifest.Name,
+				ObjectPath:  t.Path,
 			})
 		}
 	}

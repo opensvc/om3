@@ -31,6 +31,7 @@ func init() {
 		cmdMonitor          commands.CmdObjectMonitor
 		cmdPrintConfig      commands.CmdObjectPrintConfig
 		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
+		cmdPrintDevices     commands.CmdObjectPrintDevices
 		cmdPrintSchedule    commands.CmdObjectPrintSchedule
 		cmdPrintStatus      commands.CmdObjectPrintStatus
 		cmdProvision        commands.CmdObjectProvision
@@ -62,6 +63,7 @@ func init() {
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
 	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
+	cmdPrintDevices.Init(kind, subPrint, &selectorFlag)
 	cmdPrintSchedule.Init(kind, subPrint, &selectorFlag)
 	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
 	cmdProvision.Init(kind, head, &selectorFlag)
