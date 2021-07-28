@@ -403,7 +403,7 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 		err error
 	)
 	if kw.Scopable {
-		v, err = t.descope(k, impersonate)
+		v, err = t.descope(k, kw, impersonate)
 	} else {
 		v, err = t.GetStrict(k)
 	}
@@ -452,7 +452,7 @@ func (t T) sectionMap(section string) (map[string]string, error) {
 	return s.KeysHash(), nil
 }
 
-func (t *T) descope(k key.T, impersonate string) (string, error) {
+func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
 	if impersonate == "" {
 		impersonate = hostname.Hostname()
 	}
@@ -460,20 +460,31 @@ func (t *T) descope(k key.T, impersonate string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if v, ok := s[k.Option+"@"+impersonate]; ok {
-		return v, nil
+	l := append(kw.Aliases, kw.Option)
+	for _, o := range l {
+		if v, ok := s[o+"@"+impersonate]; ok {
+			return v, nil
+		}
 	}
-	if v, ok := s[k.Option+"@nodes"]; ok && t.IsInNodes(impersonate) {
-		return v, nil
+	for _, o := range l {
+		if v, ok := s[o+"@nodes"]; ok && t.IsInNodes(impersonate) {
+			return v, nil
+		}
 	}
-	if v, ok := s[k.Option+"@drpnodes"]; ok && t.IsInDRPNodes(impersonate) {
-		return v, nil
+	for _, o := range l {
+		if v, ok := s[o+"@drpnodes"]; ok && t.IsInDRPNodes(impersonate) {
+			return v, nil
+		}
 	}
-	if v, ok := s[k.Option+"@encapnodes"]; ok && t.IsInEncapNodes(impersonate) {
-		return v, nil
+	for _, o := range l {
+		if v, ok := s[o+"@encapnodes"]; ok && t.IsInEncapNodes(impersonate) {
+			return v, nil
+		}
 	}
-	if v, ok := s[k.Option]; ok {
-		return v, nil
+	for _, o := range l {
+		if v, ok := s[o]; ok {
+			return v, nil
+		}
 	}
 	return "", errors.Wrapf(ErrExist, "key '%s' not found (all scopes tried)", k)
 }

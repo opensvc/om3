@@ -57,6 +57,9 @@ type (
 
 		// Types limits the scope of the keyword to sections with matching type value
 		Types []string
+
+		// Aliases
+		Aliases []string
 	}
 
 	Store []Keyword
@@ -68,7 +71,7 @@ func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 		if !kw.Kind.Has(kd) {
 			continue
 		}
-		if k.Option != kw.Option {
+		if k.Option != kw.Option && !stringslice.Has(k.Option, kw.Aliases) {
 			continue
 		}
 		if sectionType != "" && !stringslice.Has(sectionType, kw.Types) {

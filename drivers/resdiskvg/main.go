@@ -79,6 +79,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     "The name of the logical volume group.",
 			Example:  "vg1",
+			Aliases:  []string{"vgname"},
 		},
 		{
 			Option:       "pvs",
