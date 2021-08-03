@@ -522,12 +522,12 @@ func (t *T) statusCharDevices() status.T {
 	}
 	ra := t.raw()
 	for _, pair := range t.devices() {
-		v, err := ra.Has(pair.Src.Path())
+		has, err := ra.HasBlockDev(pair.Src.Path())
 		if err != nil {
 			t.StatusLog().Warn("%s", err)
 			continue
 		}
-		if v {
+		if has {
 			s.Add(status.Up)
 		} else {
 			if dev := pair.Src.Path(); len(dev) > 0 {
