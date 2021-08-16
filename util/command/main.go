@@ -89,6 +89,16 @@ func (t *T) Run() error {
 	return t.Wait()
 }
 
+// Output returns stdout results of command (meaningful after Wait() or Run()),
+// command created without funcopt WithBufferedStdout() return nil
+// valid results
+func (t T) Output() ([]byte, error) {
+	if err := t.Run(); err != nil {
+		return []byte{}, err
+	}
+	return stripFistByte(t.stdout), nil
+}
+
 // Stdout returns stdout results of command (meaningful after Wait() or Run()),
 // command created without funcopt WithBufferedStdout() return nil
 // valid results
