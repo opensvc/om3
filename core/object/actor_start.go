@@ -76,7 +76,10 @@ func (t *Base) abortStart(ctx context.Context) (err error) {
 	}
 	wg.Wait()
 	var ret bool
-	for range t.Resources() {
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
 		ret = ret || <-q
 	}
 	if ret {
