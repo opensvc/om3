@@ -171,10 +171,12 @@ func (t T) stopBlockDevice(ctx context.Context, pair DevPair) error {
 }
 
 func (t *T) statusBlockDevice(pair DevPair) (status.T, []string) {
-	p := pair.Dst.Path()
 	s, issues := t.statusCreateBlockDevice(pair)
-	issues = t.checkMode(p)
-	issues = append(issues, t.checkOwnership(p)...)
+	if pair.Dst != nil {
+		p := pair.Dst.Path()
+		issues = t.checkMode(p)
+		issues = append(issues, t.checkOwnership(p)...)
+	}
 	return s, issues
 }
 
