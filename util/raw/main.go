@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/devicedriver"
+	"opensvc.com/opensvc/util/fcache"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -130,6 +131,10 @@ func (t Entries) NextMinor() int {
 }
 
 func (t T) Data() (Entries, error) {
+	var (
+		out []byte
+		err error
+	)
 	data := make(Entries, 0)
 	if err := t.modprobe(); err != nil {
 		return data, err
@@ -144,10 +149,10 @@ func (t T) Data() (Entries, error) {
 		command.WithBufferedStdout(),
 		command.WithEnv([]string{"LANG=C"}),
 	)
-	if err := cmd.Run(); err != nil {
+	if out, err = fcache.Output(cmd, "raw"); err != nil {
 		return nil, err
 	}
-	sc := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
+	sc := bufio.NewScanner(bytes.NewReader(out))
 	for sc.Scan() {
 		subs := regexpQueryLine.FindStringSubmatch(sc.Text())
 		if len(subs) != 4 {
@@ -222,6 +227,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	err = cmd.Run()
+	fcache.Clear("raw")
 	if err != nil {
 		return 0, fmt.Errorf("%s Run error %v", cmd, err)
 	}
@@ -260,6 +266,7 @@ func (t T) Unbind(cDevPath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	err := cmd.Run()
+	fcache.Clear("raw")
 	if err != nil {
 		return fmt.Errorf("%s Run error %v", cmd, err)
 	}
