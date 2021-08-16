@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/fcache"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -79,6 +80,10 @@ func (t T) FileGet(filePath string) (*InfoEntry, error) {
 }
 
 func (t T) Data() (InfoEntries, error) {
+	var (
+		out []byte
+		err error
+	)
 	data := Info{}
 	cmd := command.New(
 		command.WithName(losetup),
@@ -89,10 +94,10 @@ func (t T) Data() (InfoEntries, error) {
 		command.WithStderrLogLevel(zerolog.DebugLevel),
 		command.WithBufferedStdout(),
 	)
-	if err := cmd.Run(); err != nil {
+	if out, err = fcache.Output(cmd, "losetup"); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
+	if err = json.Unmarshal(out, &data); err != nil {
 		return nil, err
 	}
 	return InfoEntries(data.LoopDevices), nil
@@ -123,6 +128,7 @@ func (t T) lockedAdd(filePath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("losetup")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -139,6 +145,7 @@ func (t T) Delete(devPath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("losetup")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
