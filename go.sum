@@ -223,6 +223,10 @@ github.com/opencontainers/runtime-spec v1.0.2 h1:UfAcuLBJB9Coz72x1hgl8O5RVzTdNia
 github.com/opencontainers/runtime-spec v1.0.2/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opensvc/fcache v1.0.1 h1:hhTurgMsm0plmPdmELSato/xXUBdawE2Bi78LDWAX5g=
 github.com/opensvc/fcache v1.0.1/go.mod h1:ZhT3qik+Ui2HLX5rsDJhC21saUPRnhYZdIqNsMJzt/g=
+github.com/opensvc/fcache v1.0.2 h1:O30x2CCXQHvXPNT2TZ51X5XIa0e6r7xUUeGLFcYr49I=
+github.com/opensvc/fcache v1.0.2/go.mod h1:ZhT3qik+Ui2HLX5rsDJhC21saUPRnhYZdIqNsMJzt/g=
+github.com/opensvc/fcache v1.0.3 h1:PgFMAaGiVbyFYhCPFYMj1WfdKG7CNgh+monyBodN/mU=
+github.com/opensvc/fcache v1.0.3/go.mod h1:ZhT3qik+Ui2HLX5rsDJhC21saUPRnhYZdIqNsMJzt/g=
 github.com/opensvc/fcntllock v1.0.2 h1:4AjuDU14tWGlmhTAKzJXDkVTzUWTBT9VaSmneVgw78g=
 github.com/opensvc/fcntllock v1.0.2/go.mod h1:ndysKduGcYDhhXReVIc/G3GGnAFajeAlA8ivMGBqW2I=
 github.com/opensvc/flock v1.0.3 h1:2OOtLbUZbxxHPD3x9Hc9SGVpL/k601+6jmBC6WaEtD0=

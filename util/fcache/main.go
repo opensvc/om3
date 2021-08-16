@@ -23,6 +23,11 @@ func Output(o fcache.Outputter, sig string) (out []byte, err error) {
 	return fcache.Output(o, sig, cacheDir(), maxLockDuration, outputLockP)
 }
 
+// Clear removes the current cached output
+func Clear(sig string) error {
+	return fcache.Clear(sig, cacheDir(), maxLockDuration, outputLockP)
+}
+
 // Purge session function cache
 func PurgeCache() error {
 	cacheDir := cacheDir()
