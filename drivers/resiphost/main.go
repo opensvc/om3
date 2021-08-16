@@ -224,9 +224,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Down
 	}
-	if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-		t.StatusLog().Error("interface %s no-carrier.", t.IpDev)
-		return status.Down
+	if t.CheckCarrier {
+		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
+			t.StatusLog().Error("interface %s no-carrier.", t.IpDev)
+			return status.Down
+		}
 	}
 	if addrs, err = i.Addrs(); err != nil {
 		t.StatusLog().Error("%s", err)
@@ -265,9 +267,11 @@ func (t T) Abort(ctx context.Context) bool {
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
-	if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {
-		t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
-		return true
+	if t.CheckCarrier {
+		if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {
+			t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
+			return true
+		}
 	}
 	if t.abortPing() {
 		return true
