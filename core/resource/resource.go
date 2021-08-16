@@ -301,6 +301,9 @@ func (t DriverID) NewResourceFunc() func() Driver {
 // An optional resource does not break an object action on error.
 //
 func (t T) IsOptional() bool {
+	if t.MatchTag("noaction") {
+		return true
+	}
 	return t.Optional
 }
 
