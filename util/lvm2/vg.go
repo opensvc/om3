@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/fcache"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/sizeconv"
@@ -95,6 +96,8 @@ func (t *VG) change(args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -119,6 +122,8 @@ func (t *VG) DelTag(s string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -135,10 +140,76 @@ func (t *VG) AddTag(s string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
 	return nil
+}
+
+func (t *VG) CachedDevicesShow() (*VGInfo, error) {
+	var (
+		err error
+		out []byte
+	)
+	data := ShowData{}
+	cmd := command.New(
+		command.WithName("vgs"),
+		command.WithVarArgs("--reportformat", "json", "-o", "devices"),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+	)
+	if out, err = fcache.Output(cmd, "vgs-devices"); err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(out, &data); err != nil {
+		return nil, err
+	}
+	if len(data.Report) != 1 {
+		return nil, fmt.Errorf("vgs: no report")
+	}
+	for _, d := range data.Report[0].VG {
+		if d.VGName == t.VGName {
+			return &d, nil
+		}
+	}
+	return nil, errors.Wrap(ErrExist, t.VGName)
+}
+
+func (t *VG) CachedNormalShow() (*VGInfo, error) {
+	var (
+		err error
+		out []byte
+	)
+	data := ShowData{}
+	cmd := command.New(
+		command.WithName("vgs"),
+		command.WithVarArgs("--reportformat", "json", "-o", "+tags,pv_name"),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+	)
+	if out, err = fcache.Output(cmd, "vgs"); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(out, &data); err != nil {
+		return nil, err
+	}
+	if len(data.Report) != 1 {
+		return nil, fmt.Errorf("vgs: no report")
+	}
+	for _, d := range data.Report[0].VG {
+		if d.VGName == t.VGName {
+			return &d, nil
+		}
+	}
+	return nil, errors.Wrap(ErrExist, t.VGName)
 }
 
 func (t *VG) Show(fields string) (*VGInfo, error) {
@@ -168,7 +239,7 @@ func (t *VG) Show(fields string) (*VGInfo, error) {
 }
 
 func (t *VG) Attrs() (VGAttrs, error) {
-	vgInfo, err := t.Show("vg_attr")
+	vgInfo, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return "", nil
@@ -180,7 +251,7 @@ func (t *VG) Attrs() (VGAttrs, error) {
 }
 
 func (t *VG) Tags() ([]string, error) {
-	vgInfo, err := t.Show("vg_tags")
+	vgInfo, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return []string{}, nil
@@ -216,7 +287,7 @@ func (t VGAttrs) Attr(index VGAttrIndex) VGAttr {
 }
 
 func (t *VG) Exists() (bool, error) {
-	_, err := t.Show("vg_name")
+	_, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return false, nil
@@ -240,33 +311,11 @@ func (t *VG) IsActive() (bool, error) {
 
 func (t *VG) Devices() ([]*device.T, error) {
 	l := make([]*device.T, 0)
-	data := ShowData{}
-	cmd := command.New(
-		command.WithName("vgs"),
-		command.WithVarArgs("-o", "devices", "--reportformat", "json", t.VGName),
-		command.WithLogger(t.Log()),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
-		command.WithBufferedStdout(),
-	)
-	if err := cmd.Run(); err != nil {
+	data, err := t.CachedDevicesShow()
+	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
-		return nil, err
-	}
-	if len(data.Report) == 0 {
-		return nil, fmt.Errorf("%s: no report", cmd)
-	}
-	switch len(data.Report[0].VG) {
-	case 0:
-		return nil, fmt.Errorf("lv %s not found", t.VGName)
-	case 1:
-		// expected
-	default:
-		return nil, fmt.Errorf("lv %s has multiple matches", t.VGName)
-	}
-	for _, s := range strings.Fields(data.Report[0].VG[0].Devices) {
+	for _, s := range strings.Fields(data.Devices) {
 		path := strings.Split(s, "(")[0]
 		dev := device.New(path, device.WithLogger(t.Log()))
 		l = append(l, dev)
@@ -293,6 +342,8 @@ func (t *VG) Create(size string, pvs []string, options []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -313,6 +364,8 @@ func (t *VG) Remove(args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -321,7 +374,7 @@ func (t *VG) Remove(args []string) error {
 
 func (t *VG) PVs() ([]*device.T, error) {
 	l := make([]*device.T, 0)
-	vgInfo, err := t.Show("pv_name")
+	vgInfo, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return l, nil
