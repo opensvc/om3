@@ -82,7 +82,8 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "CreateCharDevices",
 			Scopable:  true,
 			Converter: converters.Bool,
-			Text:      "On Linux, char devices are not automatically created when devices are discovered. If set to True (the default), the raw resource driver will create and delete them using the raw kernel driver.",
+			Default:   "true",
+			Text:      "On Linux, char devices are not automatically created when devices are discovered. If set to true (the default), the raw resource driver will create and delete them using the raw kernel driver.",
 			Example:   "false",
 		},
 		{
@@ -174,21 +175,47 @@ func (t *T) statusBlockDevice(pair DevPair) (status.T, []string) {
 	s, issues := t.statusCreateBlockDevice(pair)
 	if pair.Dst != nil {
 		p := pair.Dst.Path()
-		issues = t.checkMode(p)
-		issues = append(issues, t.checkOwnership(p)...)
+		if file.Exists(p) {
+			issues = t.checkMode(p)
+			issues = append(issues, t.checkOwnership(p)...)
+			issues = append(issues, t.checkSource(pair)...)
+		}
 	}
 	return s, issues
 }
 
+func (t T) RealSrc(pair DevPair) (*device.T, error) {
+	if !t.CreateCharDevices {
+		return pair.Src, nil
+	}
+	e, err := t.raw().Find(pair.Src.Path())
+	if err != nil {
+		return nil, err
+	}
+	if e == nil {
+		return nil, nil
+	}
+	return device.New(e.CDevPath(), device.WithLogger(t.Log())), nil
+}
+
 func (t *T) statusCreateBlockDevice(pair DevPair) (status.T, []string) {
 	issues := make([]string, 0)
+	src, err := t.RealSrc(pair)
+	if err != nil {
+		issues = append(issues, fmt.Sprintf("%s: %s", pair.Src, err))
+		return status.NotApplicable, issues
+	}
+	if src == nil {
+		// absence of the char dev will be reported from statusCharDevice()
+		return status.NotApplicable, issues
+	}
 	if pair.Dst == nil {
 		return status.NotApplicable, issues
 	}
 	if pair.Dst.Path() == "" {
 		return status.NotApplicable, issues
 	}
-	major, minor, err := pair.Src.MajorMinor()
+	major, minor, err := src.MajorMinor()
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("%s: %s", pair.Dst, err))
 		return status.Undef, issues
@@ -282,6 +309,28 @@ func (t T) gid() int {
 	return i
 }
 
+func (t *T) checkSource(pair DevPair) []string {
+	src, err := t.RealSrc(pair)
+	if err != nil {
+		return []string{fmt.Sprintf("%s real src path err: %s", pair.Dst.Path(), err)}
+	}
+	major, minor, err := src.MajorMinor()
+	if err != nil {
+		return []string{fmt.Sprintf("%s real src maj:min err: %s", pair.Dst.Path(), err)}
+	}
+	if majorCur, minorCur, err := pair.Dst.MajorMinor(); err == nil {
+		switch {
+		case majorCur == major && minorCur == minor:
+			return []string{}
+		default:
+			return []string{fmt.Sprintf("%s already exists, but is %d:%d instead of %d:%d", pair.Dst.Path(), majorCur, minorCur, major, minor)}
+		}
+	} else {
+		return []string{fmt.Sprintf("%s cur src maj:min err: %s", pair.Dst.Path(), err)}
+	}
+	return []string{}
+}
+
 func (t *T) checkMode(p string) []string {
 	if t.Perm == nil {
 		return []string{}
@@ -337,7 +386,11 @@ func (t T) setMode(ctx context.Context, p string) error {
 }
 
 func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
-	major, minor, err := pair.Src.MajorMinor()
+	src, err := t.RealSrc(pair)
+	if err != nil {
+		return err
+	}
+	major, minor, err := src.MajorMinor()
 	if err != nil {
 		return err
 	}

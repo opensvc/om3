@@ -179,15 +179,20 @@ func (t T) Data() (Entries, error) {
 	return data, nil
 }
 
-func (t T) Has(bDevPath string) (bool, error) {
+func (t T) Find(bDevPath string) (*Entry, error) {
 	data, err := t.Data()
+	if err != nil {
+		return nil, err
+	}
+	return data.BDevPath(bDevPath), nil
+}
+
+func (t T) Has(bDevPath string) (bool, error) {
+	data, err := t.Find(bDevPath)
 	if err != nil {
 		return false, err
 	}
-	if e := data.BDevPath(bDevPath); e != nil {
-		return true, nil
-	}
-	return false, nil
+	return data != nil, nil
 }
 
 func (t T) Bind(bDevPath string) (int, error) {
