@@ -70,14 +70,14 @@ func (t *T) makeRoute() ([]*types.Route, error) {
 	return routes, nil
 }
 
-func Provision(ctx context.Context) error {
+func (t *T) Provision(ctx context.Context) error {
 	return nil
 }
 
-func Unprovision(ctx context.Context) error {
+func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func Provisioned() (provisioned.T, error) {
+func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
