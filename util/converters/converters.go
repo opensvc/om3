@@ -57,7 +57,12 @@ func (t TString) String() string {
 
 //
 func (t TInt) Convert(s string) (interface{}, error) {
-	return strconv.Atoi(s)
+	if i, err := strconv.Atoi(s); err != nil {
+		//fmt.Println(string(debug.Stack()))
+		return 0, fmt.Errorf("int convert error: %s", err)
+	} else {
+		return i, nil
+	}
 }
 
 func (t TInt) String() string {

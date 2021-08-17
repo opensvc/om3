@@ -103,7 +103,7 @@ func (t Base) Placement() placement.T {
 func (t Base) Priority() priority.T {
 	k := key.Parse("priority")
 	if i, err := t.config.GetIntStrict(k); err != nil {
-		t.log.Error().Err(err).Msg("")
+		//t.log.Error().Err(err).Msg("")
 		return *priority.New()
 	} else {
 		return priority.T(i)
@@ -157,7 +157,7 @@ func (t Base) FlexMin() int {
 	)
 	k := key.Parse("flex_min")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		t.log.Error().Err(err).Msg("")
+		//t.log.Error().Err(err).Msg("")
 		return 0
 	}
 	if i < 0 {
@@ -175,14 +175,17 @@ func (t Base) FlexMax() int {
 		i   int
 		err error
 	)
+	max := len(t.Peers())
 	k := key.Parse("flex_max")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		t.log.Error().Err(err).Msg("")
-		return len(t.Peers())
+		//t.log.Error().Err(err).Msg("")
+		return max
 	}
-	max := len(t.Peers())
 	if i > max {
 		return max
+	}
+	if i < 0 {
+		return 0
 	}
 	return i
 }
@@ -194,7 +197,7 @@ func (t Base) FlexTarget() int {
 	)
 	k := key.Parse("flex_target")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		t.log.Error().Err(err).Msg("")
+		//t.log.Error().Err(err).Msg("")
 		return t.FlexMin()
 	}
 	min := t.FlexMin()
