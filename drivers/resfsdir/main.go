@@ -242,15 +242,17 @@ func (t *T) checkMode() (ok bool) {
 	}
 	p := t.path()
 	mode, err := file.Mode(p)
-	switch {
-	case err != nil:
-		t.StatusLog().Warn("invalid perm: %s", t.Perm)
-		return false
-	case mode.Perm() != *t.Perm:
-		t.StatusLog().Warn("perm should be %s but is %s", t.Perm, mode.Perm())
+	if err != nil {
+		t.StatusLog().Warn("%s mode error: %s", err)
 		return false
 	}
-	return true
+	v := true
+	mode = ExtPerm(mode)
+	if mode != *t.Perm {
+		t.StatusLog().Warn("mode should be %s but is %s", t.Perm, mode)
+		v = false
+	}
+	return v
 }
 
 func (t T) setMode(ctx context.Context) error {
@@ -262,21 +264,28 @@ func (t T) setMode(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("invalid perm: %s", t.Perm)
 	}
-	if currentMode.Perm() == *t.Perm {
+	currentExtMode := ExtPerm(currentMode)
+	mode := (currentExtMode & os.ModeType) | *t.Perm
+	if currentExtMode == mode {
 		return nil
 	}
-	mode := (currentMode & os.ModeType) | *t.Perm
 	t.Log().Info().Msgf("set %s mode to %s", p, mode)
 	if err := os.Chmod(p, mode); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
 		t.Log().Info().Msgf("set %s mode back to %s", p, mode)
-		return os.Chmod(p, currentMode&os.ModeType)
+		return os.Chmod(p, currentMode)
 	})
 	return nil
 }
 
 func (t T) Head() string {
 	return t.Path
+}
+
+// ExtPerm returns the bits of mode m relevant to ugo permissions, plus sticky,
+// setuid and setgid bits.
+func ExtPerm(m os.FileMode) os.FileMode {
+	return m & (os.ModePerm | os.ModeSticky | os.ModeSetuid | os.ModeSetgid)
 }
