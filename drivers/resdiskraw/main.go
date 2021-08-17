@@ -188,12 +188,17 @@ func (t T) RealSrc(pair DevPair) (*device.T, error) {
 	if !t.CreateCharDevices {
 		return pair.Src, nil
 	}
-	e, err := t.raw().Find(pair.Src.Path())
+	p := pair.Src.Path()
+	if p == "" {
+		// relay as-is (dyn ref on down instance)
+		return nil, nil
+	}
+	e, err := t.raw().Find(p)
 	if err != nil {
 		return nil, err
 	}
 	if e == nil {
-		return nil, nil
+		return nil, fmt.Errorf("%s: bound raw not found", p)
 	}
 	return device.New(e.CDevPath(), device.WithLogger(t.Log())), nil
 }
@@ -314,6 +319,12 @@ func (t *T) checkSource(pair DevPair) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("%s real src path err: %s", pair.Dst.Path(), err)}
 	}
+	if src == nil {
+		return []string{}
+	}
+	if !file.Exists(src.Path()) {
+		return []string{}
+	}
 	major, minor, err := src.MajorMinor()
 	if err != nil {
 		return []string{fmt.Sprintf("%s real src maj:min err: %s", pair.Dst.Path(), err)}
@@ -389,6 +400,9 @@ func (t T) createBlockDevice(ctx context.Context, pair DevPair) error {
 	src, err := t.RealSrc(pair)
 	if err != nil {
 		return err
+	}
+	if src == nil {
+		return fmt.Errorf("raw device not found")
 	}
 	major, minor, err := src.MajorMinor()
 	if err != nil {
