@@ -63,6 +63,9 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 }
 
 func Provision(ctx context.Context, t Driver, leader bool) error {
+	if t.IsDisabled() {
+		return nil
+	}
 	if err := provisionLeaderSwitch(ctx, t, leader); err != nil {
 		return err
 	}
@@ -94,6 +97,9 @@ func provisionLeaded(ctx context.Context, t Driver) error {
 }
 
 func Unprovision(ctx context.Context, t Driver, leader bool) error {
+	if t.IsDisabled() {
+		return nil
+	}
 	if err := t.Stop(ctx); err != nil {
 		return err
 	}
@@ -126,5 +132,8 @@ func unprovisionLeaded(ctx context.Context, t Driver) error {
 }
 
 func Provisioned(t Driver) (provisioned.T, error) {
+	if t.IsDisabled() {
+		return provisioned.NotApplicable, nil
+	}
 	return t.Provisioned()
 }

@@ -551,6 +551,9 @@ func updateStatusBus(ctx context.Context, r Driver) {
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
 	defer updateStatusBus(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "requires")
@@ -576,6 +579,9 @@ func Start(ctx context.Context, r Driver) error {
 // Stop deactivates a resource interfacer
 func Stop(ctx context.Context, r Driver) error {
 	defer updateStatusBus(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "requires")
@@ -600,6 +606,9 @@ func Stop(ctx context.Context, r Driver) error {
 
 // Status evaluates the status of a resource interfacer
 func Status(ctx context.Context, r Driver) status.T {
+	if r.IsDisabled() {
+		return status.NotApplicable
+	}
 	Setenv(r)
 	s := r.Status(ctx)
 	if !r.IsStandby() {
