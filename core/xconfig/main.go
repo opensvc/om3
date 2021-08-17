@@ -383,6 +383,47 @@ func getKeyword(k key.T, sectionType string, referrer Referrer) (keywords.Keywor
 }
 
 func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
+	var (
+		v   string
+		err error
+	)
+	switch kw.Inherit {
+	case keywords.InheritHead2Leaf:
+		firstKey := key.New("DEFAULT", k.Option)
+		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate); err == nil {
+			return v, err
+		}
+		if v, err = t.evalDescopeStringAs(k, kw, impersonate); err == nil {
+			return v, err
+		}
+	case keywords.InheritLeaf:
+		if v, err = t.evalDescopeStringAs(k, kw, impersonate); err == nil {
+			return v, err
+		}
+	default:
+		if v, err = t.evalDescopeStringAs(k, kw, impersonate); err == nil {
+			return v, err
+		}
+		firstKey := key.New("DEFAULT", k.Option)
+		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate); err == nil {
+			return v, err
+		}
+	}
+	switch {
+	case errors.Is(err, ErrExist):
+		switch kw.Required {
+		case true:
+			return "", err
+		case false:
+			return kw.Default, nil
+		}
+	case err != nil:
+		return "", err
+	}
+	return v, nil
+}
+
+func (t *T) evalDescopeStringAs(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
 	v, err := t.mayDescope(k, kw, impersonate)
 	if err != nil {
 		return "", err
@@ -407,18 +448,7 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 	} else {
 		v, err = t.GetStrict(k)
 	}
-	switch {
-	case errors.Is(err, ErrExist):
-		switch kw.Required {
-		case true:
-			return "", err
-		case false:
-			return kw.Default, nil
-		}
-	case err != nil:
-		return "", err
-	}
-	return v, nil
+	return v, err
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) (string, error) {

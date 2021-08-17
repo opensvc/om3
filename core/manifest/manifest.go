@@ -136,6 +136,7 @@ var genericKeywords = []keywords.Keyword{
 		Attr:      "Optional",
 		Scopable:  true,
 		Converter: converters.Bool,
+		Inherit:   keywords.InheritHead2Leaf,
 		Text:      "Action failures on optional resources are logged but do not stop the action sequence. Also the optional resource status is not aggregated to the instance 'availstatus', but aggregated to the 'overallstatus'. Resource tagged :c-tag:`noaction` and sync resources are automatically considered optional. Useful for resources like dump filesystems for example.",
 	},
 	{

@@ -58,11 +58,23 @@ type (
 		// Types limits the scope of the keyword to sections with matching type value
 		Types []string
 
-		// Aliases
+		// Aliases defines alternate names of the keyword.
 		Aliases []string
+
+		// Inherit defines weither DEFAULT.<name> overrides <rid>.<name> (Head2Leaf), or
+		// <rid>.<name> overrides DEFAULT.<name> (Leaf2Head, the default), or only <rid>.<name>
+		// is used (Leaf).
+		Inherit Inherit
 	}
 
-	Store []Keyword
+	Store   []Keyword
+	Inherit int
+)
+
+const (
+	InheritLeaf2Head Inherit = iota
+	InheritHead2Leaf
+	InheritLeaf
 )
 
 func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
