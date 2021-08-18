@@ -17,10 +17,10 @@ func (t *Base) Unset(options OptsUnset) error {
 	for _, kw := range options.Keywords {
 		kws = append(kws, key.Parse(kw))
 	}
-	return t.unset(kws...)
+	return t.UnsetKeys(kws...)
 }
 
-func (t *Base) unset(kws ...key.T) error {
+func (t *Base) UnsetKeys(kws ...key.T) error {
 	changes := 0
 	for _, k := range kws {
 		changes += t.config.Unset(k)

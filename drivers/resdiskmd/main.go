@@ -9,6 +9,7 @@ import (
 
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/object"
@@ -19,6 +20,8 @@ import (
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/udevadm"
 )
 
@@ -52,11 +55,7 @@ type (
 	}
 	MDDriverProvisioner interface {
 		Create(name string, level string, devs []string, spares int, layout string, chunk int64) error
-	}
-	MDDriverUnprovisioner interface {
 		Remove() error
-	}
-	MDDriverWiper interface {
 		Wipe() error
 	}
 )
@@ -163,7 +162,7 @@ func (t T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("%s is already up", t.Label())
+		t.Log().Info().Msgf("md %s is already assembled", t.Label())
 		return nil
 	}
 	if err := dev.Activate(); err != nil {
@@ -172,6 +171,7 @@ func (t T) Start(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return dev.Deactivate()
 	})
+	// drop the create_static_name(devpath) py code ??
 	return nil
 }
 
@@ -238,7 +238,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	dev := t.md()
 	devIntf, ok := dev.(MDDriverProvisioner)
 	if !ok {
-		return fmt.Errorf("md driver does not implement provisioning")
+		return fmt.Errorf("md driver does not implement the provisioner interface")
 	}
 	exists, err := dev.Exists()
 	if err != nil {
@@ -251,10 +251,27 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if err := devIntf.Create(t.Name(), t.Level, t.Devs, t.Spares, t.Layout, *t.Chunk); err != nil {
 		return err
 	}
+	actionrollback.Register(ctx, func() error {
+		return devIntf.Remove()
+	})
 	if err := t.SetUUID(dev.UUID()); err != nil {
 		return err
 	}
+	actionrollback.Register(ctx, func() error {
+		return t.UnsetUUID()
+	})
 	return nil
+}
+
+func (t T) uuidKey() key.T {
+	k := key.T{
+		Section: t.RID(),
+		Option:  "uuid",
+	}
+	if t.Shared {
+		k.Section = k.Section + "@" + hostname.Hostname()
+	}
+	return k
 }
 
 func (t T) SetUUID(uuid string) error {
@@ -262,9 +279,28 @@ func (t T) SetUUID(uuid string) error {
 	t.UUID = t.md().UUID()
 
 	// set in the object config file
-	op := fmt.Sprintf("%s.uuid=%s", t.RID(), uuid)
 	obj := object.NewConfigurerFromPath(t.Path)
-	return obj.SetKeywords([]string{op})
+	op := keyop.T{
+		Key:   t.uuidKey(),
+		Op:    keyop.Set,
+		Value: uuid,
+	}
+	if err := obj.SetKeys(op); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) UnsetUUID() error {
+	// unset in the object config file
+	obj := object.NewConfigurerFromPath(t.Path)
+	if err := obj.UnsetKeys(t.uuidKey()); err != nil {
+		return err
+	}
+
+	// unset in this driver
+	t.UUID = t.md().UUID()
+	return nil
 }
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
@@ -277,16 +313,17 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("already unprovisioned")
 		return nil
 	}
-	if devIntf, ok := dev.(MDDriverWiper); ok {
-		_ = devIntf.Wipe()
-	} else {
-		t.Log().Info().Msgf("wipe skipped: not implemented by the md driver")
-	}
-	devIntf, ok := dev.(MDDriverUnprovisioner)
+	devIntf, ok := dev.(MDDriverProvisioner)
 	if !ok {
-		return fmt.Errorf("driver does not implement unprovisioning")
+		return fmt.Errorf("driver does not implement the provisioner interface")
 	}
-	return devIntf.Remove()
+	if err := devIntf.Remove(); err != nil {
+		return err
+	}
+	if err := t.UnsetUUID(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t T) Provisioned() (provisioned.T, error) {

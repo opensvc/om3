@@ -5,10 +5,12 @@ import (
 	"os/user"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -75,7 +77,8 @@ type (
 		Unset(OptsUnset) error
 		Delete(OptsDelete) error
 		SetStandardConfigFile()
-		SetKeywords([]string) error
+		SetKeys(kops ...keyop.T) error
+		UnsetKeys(kws ...key.T) error
 	}
 
 	// ResourceLister provides a method to list and filter resources

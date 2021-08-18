@@ -14,5 +14,5 @@ type OptsRemove struct {
 // Remove gets a keyword value
 func (t *Keystore) Remove(options OptsRemove) error {
 	k := key.New(DataSectionName, options.Key)
-	return t.unset(k)
+	return t.UnsetKeys(k)
 }

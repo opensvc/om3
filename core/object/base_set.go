@@ -18,19 +18,18 @@ func (t *Base) Set(options OptsSet) error {
 	return t.SetKeywords(options.KeywordOps)
 }
 
-func (t *Base) SetKeywords(kws []string) error {
+func (t *Base) SetKeys(kops ...keyop.T) error {
 	changes := 0
-	for _, kw := range kws {
-		op := keyop.Parse(kw)
+	for _, op := range kops {
 		if op.IsZero() {
-			return fmt.Errorf("invalid set expression: %s", kw)
+			return fmt.Errorf("invalid set expression: %s", op)
 		}
 		t.log.Debug().
 			Stringer("key", op.Key).
 			Stringer("op", op.Op).
 			Str("val", op.Value).
 			Msg("set")
-		if err := t.config.Set(*op); err != nil {
+		if err := t.config.Set(op); err != nil {
 			return err
 		}
 		changes++
@@ -39,4 +38,13 @@ func (t *Base) SetKeywords(kws []string) error {
 		return t.config.Commit()
 	}
 	return nil
+}
+
+func (t *Base) SetKeywords(kws []string) error {
+	l := make([]keyop.T, len(kws))
+	for i, kw := range kws {
+		op := keyop.Parse(kw)
+		l[i] = *op
+	}
+	return t.SetKeys(l...)
 }
