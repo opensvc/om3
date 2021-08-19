@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/golang-collections/collections/set"
@@ -14,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
@@ -27,12 +27,6 @@ import (
 )
 
 type (
-	// DriverID identifies a driver.
-	DriverID struct {
-		Group drivergroup.T
-		Name  string
-	}
-
 	ObjectDriver interface {
 		Log() *zerolog.Logger
 		VarDir() string
@@ -227,47 +221,10 @@ func (t StandbyFlag) FlagString() string {
 	return "."
 }
 
-func (t DriverID) String() string {
-	if t.Name == "" {
-		return t.Group.String()
-	}
-	return fmt.Sprintf("%s.%s", t.Group, t.Name)
-}
+var drivers = make(map[driverid.T]func() Driver)
 
-func (t DriverID) NewGeneric() *DriverID {
-	return NewDriverID(t.Group, "")
-}
-
-func ParseDriverID(s string) *DriverID {
-	l := strings.Split(s, ".")
-	switch len(l) {
-	case 2:
-		g := drivergroup.New(l[0])
-		return &DriverID{
-			Group: g,
-			Name:  l[1],
-		}
-	case 1:
-		g := drivergroup.New(l[0])
-		return &DriverID{
-			Group: g,
-		}
-	default:
-		return nil
-	}
-}
-
-func NewDriverID(group drivergroup.T, name string) *DriverID {
-	return &DriverID{
-		Group: group,
-		Name:  name,
-	}
-}
-
-var drivers = make(map[DriverID]func() Driver)
-
-func RegisteredGroupDrivers(s string) map[DriverID]func() Driver {
-	m := make(map[DriverID]func() Driver)
+func RegisteredGroupDrivers(s string) map[driverid.T]func() Driver {
+	m := make(map[driverid.T]func() Driver)
 	for drvID, newDRV := range drivers {
 		if drvID.Group.String() != s {
 			continue
@@ -278,11 +235,11 @@ func RegisteredGroupDrivers(s string) map[DriverID]func() Driver {
 }
 
 func Register(group drivergroup.T, name string, f func() Driver) {
-	driverID := NewDriverID(group, name)
+	driverID := driverid.New(group, name)
 	drivers[*driverID] = f
 }
 
-func (t DriverID) NewResourceFunc() func() Driver {
+func NewResourceFunc(t driverid.T) func() Driver {
 	if drv, ok := drivers[t]; ok {
 		return drv
 	}
@@ -291,7 +248,7 @@ func (t DriverID) NewResourceFunc() func() Driver {
 		// used for example by the volume driver, whose
 		// type keyword is not pointing a resource sub driver
 		// but a pool driver.
-		return t.NewGeneric().NewResourceFunc()
+		return NewResourceFunc(*t.NewGeneric())
 	}
 	return nil
 }

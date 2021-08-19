@@ -54,7 +54,7 @@ type (
 		DisableAutoActivation() error
 	}
 	MDDriverProvisioner interface {
-		Create(name string, level string, devs []string, spares int, layout string, chunk int64) error
+		Create(level string, devs []string, spares int, layout string, chunk *int64) error
 		Remove() error
 		Wipe() error
 	}
@@ -94,7 +94,7 @@ func (t T) Manifest() *manifest.T {
 			Example:  "dev1",
 		},
 		{
-			Option:       "devs²",
+			Option:       "devs",
 			Attr:         "Devs",
 			Scopable:     true,
 			Converter:    converters.List,
@@ -245,10 +245,10 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		t.Log().Info().Msgf("md is already provisioned")
+		t.Log().Info().Msgf("md is already created")
 		return nil
 	}
-	if err := devIntf.Create(t.Name(), t.Level, t.Devs, t.Spares, t.Layout, *t.Chunk); err != nil {
+	if err := devIntf.Create(t.Level, t.Devs, t.Spares, t.Layout, t.Chunk); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {

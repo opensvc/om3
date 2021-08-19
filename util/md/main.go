@@ -3,7 +3,9 @@ package md
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -95,8 +97,20 @@ func (t T) examineScanVerbose() (string, error) {
 	}
 }
 
+func (t T) Wipe() error {
+	devs, err := t.Devices()
+	if err != nil {
+		return err
+	}
+	for _, d := range devs {
+		if err := t.wipeDevice(d.Path()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t T) Remove() error {
-	panic("not implemented")
 	return nil
 }
 
@@ -152,11 +166,55 @@ func (t T) Exists() (bool, error) {
 
 func (t T) Devices() ([]*device.T, error) {
 	l := make([]*device.T, 0)
+	if t.uuid == "" {
+		return l, nil
+	}
+	buff, err := t.examineScanVerbose()
+	if err != nil {
+		return l, nil
+	}
+	scanner := bufio.NewScanner(strings.NewReader(buff))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.Contains(line, "UUID="+t.uuid) {
+			scanner.Scan()
+			line := strings.TrimSpace(scanner.Text())
+			words := strings.SplitN(line, "devices=", 2)
+			if len(words) != 2 {
+				return l, nil
+			}
+			for _, d := range strings.Split(words[1], ",") {
+				l = append(l, device.New(d, device.WithLogger(t.log)))
+			}
+			return l, nil
+		}
+	}
 	return l, nil
 }
 
 func (t T) UUID() string {
 	return t.uuid
+}
+
+func (t T) wipeDevice(devpath string) error {
+	args := []string{"--brief", "--zero-superblock", devpath}
+	cmd := command.New(
+		command.WithName(mdadm),
+		command.WithArgs(args),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	fcache.Clear("mdadm-E-scan-v")
+	switch cmd.ExitCode() {
+	case 0:
+		// ok
+	default:
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
 }
 
 func (t T) Deactivate() error {
@@ -227,8 +285,7 @@ func (t T) devpathFromName() string {
 	return "/dev/md/" + t.name
 }
 
-func (t T) Create(level string, devs []string, spares int, layout string, chunk int64) error {
-	args := []string{"--create", t.devpathFromName()}
+func (t T) Create(level string, devs []string, spares int, layout string, chunk *int64) error {
 	dataDevsCount := len(devs) - spares
 	if dataDevsCount < 1 {
 		return fmt.Errorf("at least 1 device must be set in the 'devs' provisioning")
@@ -236,6 +293,24 @@ func (t T) Create(level string, devs []string, spares int, layout string, chunk 
 	if err := t.validateName(); err != nil {
 		return err
 	}
+	args := []string{"--create", t.devpathFromName(), "--force", "--quiet", "--metadata=default", "-n", strconv.Itoa(dataDevsCount)}
+	if level != "" {
+		args = append(args, "-l", level)
+	}
+	if spares > 0 {
+		args = append(args, "-x", strconv.Itoa(spares))
+	}
+	if chunk != nil && *chunk > 0 {
+		// convert to kb and round to the greater multiple of 4
+		n := int(math.Round(float64(*chunk)/1024/4)) * 4
+		c := strconv.Itoa(n)
+		args = append(args, "-c", c)
+	}
+	if layout != "" {
+		args = append(args, "-p", layout)
+	}
+	args = append(args, devs...)
+
 	cmd := command.New(
 		command.WithName(mdadm),
 		command.WithArgs(args),

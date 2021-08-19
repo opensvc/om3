@@ -20,13 +20,13 @@ func (t T_Ext2) CanFSCK() error {
 }
 
 func (t T_Ext2) FSCK(s string) error {
-	return extFSCK(t.String())
+	return extFSCK(s)
 }
 
 func (t T_Ext2) IsFormated(s string) (bool, error) {
 	return extIsFormated(s)
 }
 
-func (t T_Ext2) MKFS(s string) error {
-	return xMKFS("mkfs.ext2", s)
+func (t T_Ext2) MKFS(s string, args []string) error {
+	return xMKFS("mkfs.ext2", s, args, t.log)
 }

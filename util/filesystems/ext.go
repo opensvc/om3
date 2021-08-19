@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+
+	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/util/command"
 )
 
 func extCanFSCK() error {
@@ -48,18 +51,19 @@ func extIsFormated(s string) (bool, error) {
 	}
 }
 
-func xMKFS(x string, s string) error {
+func xMKFS(x string, s string, xargs []string, log *zerolog.Logger) error {
 	if _, err := exec.LookPath(x); err != nil {
 		return fmt.Errorf("%s not found", x)
 	}
-	cmd := exec.Command(x, "-F", "-q", s)
-	cmd.Start()
-	cmd.Wait()
-	exitCode := cmd.ProcessState.ExitCode()
-	switch exitCode {
-	case 0: // All good
-		return nil
-	default:
-		return fmt.Errorf("%s exit code %d", cmd, exitCode)
-	}
+	args := []string{"-F", "-q", s}
+	args = append(args, xargs...)
+	cmd := command.New(
+		command.WithName(x),
+		command.WithArgs(args),
+		command.WithLogger(log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
 }

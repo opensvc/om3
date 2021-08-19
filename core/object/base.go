@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -244,8 +245,8 @@ func (t *Base) configureResources() {
 				continue
 			}
 		}
-		driverID := resource.NewDriverID(driverGroup, driverName)
-		factory := driverID.NewResourceFunc()
+		driverID := driverid.New(driverGroup, driverName)
+		factory := resource.NewResourceFunc(*driverID)
 		if factory == nil {
 			t.log.Debug().Stringer("driver", driverID).Msg("driver not found")
 			continue
