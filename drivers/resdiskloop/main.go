@@ -197,17 +197,17 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t T) provisionBase(ctx context.Context) error {
-	base := filepath.Base(t.File)
-	if file.ExistsAndDir(base) {
+func (t T) provisionDir(ctx context.Context) error {
+	dir := filepath.Dir(t.File)
+	if file.ExistsAndDir(dir) {
 		return nil
 	}
-	t.Log().Info().Msgf("create dir %s", base)
-	if err := os.MkdirAll(base, os.ModePerm); err != nil {
+	t.Log().Info().Msgf("create dir %s", dir)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		return os.Remove(base)
+		return os.Remove(dir)
 	})
 	return nil
 }
@@ -218,7 +218,7 @@ func (t T) provision(ctx context.Context) error {
 		f    *os.File
 		size int64
 	)
-	if err = t.provisionBase(ctx); err != nil {
+	if err = t.provisionDir(ctx); err != nil {
 		return err
 	}
 	t.Log().Info().Msgf("create file %s", t.File)
