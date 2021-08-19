@@ -234,7 +234,7 @@ func (t T) Label() string {
 	return t.UUID
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
+func (t *T) ProvisionLeader(ctx context.Context) error {
 	dev := t.md()
 	devIntf, ok := dev.(MDDriverProvisioner)
 	if !ok {
@@ -254,6 +254,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return devIntf.Remove()
 	})
+	t.Log().Info().Msgf("md uuid is %s", dev.UUID())
 	if err := t.SetUUID(dev.UUID()); err != nil {
 		return err
 	}
@@ -274,9 +275,9 @@ func (t T) uuidKey() key.T {
 	return k
 }
 
-func (t T) SetUUID(uuid string) error {
+func (t *T) SetUUID(uuid string) error {
 	// set in this driver
-	t.UUID = t.md().UUID()
+	t.UUID = uuid
 
 	// set in the object config file
 	obj := object.NewConfigurerFromPath(t.Path)
@@ -291,7 +292,7 @@ func (t T) SetUUID(uuid string) error {
 	return nil
 }
 
-func (t T) UnsetUUID() error {
+func (t *T) UnsetUUID() error {
 	// unset in the object config file
 	obj := object.NewConfigurerFromPath(t.Path)
 	if err := obj.UnsetKeys(t.uuidKey()); err != nil {
@@ -299,11 +300,11 @@ func (t T) UnsetUUID() error {
 	}
 
 	// unset in this driver
-	t.UUID = t.md().UUID()
+	t.UUID = ""
 	return nil
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t *T) UnprovisionLeader(ctx context.Context) error {
 	dev := t.md()
 	exists, err := dev.Exists()
 	if err != nil {

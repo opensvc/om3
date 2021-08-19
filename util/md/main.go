@@ -63,6 +63,26 @@ func (t T) detailState() (string, error) {
 	return "", fmt.Errorf("md state not found in details")
 }
 
+func (t T) detailUUID() (string, error) {
+	buff, err := t.detail()
+	if err != nil {
+		return "", nil
+	}
+	scanner := bufio.NewScanner(strings.NewReader(buff))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "UUID :") {
+			continue
+		}
+		l := strings.SplitN(line, " : ", 2)
+		if len(l) != 2 {
+			return "", fmt.Errorf("md uuid unexpected format in details: %s", line)
+		}
+		return l[1], nil
+	}
+	return "", fmt.Errorf("md uuid not found in details")
+}
+
 func (t T) detail() (string, error) {
 	cmd := command.New(
 		command.WithName(mdadm),
@@ -285,7 +305,7 @@ func (t T) devpathFromName() string {
 	return "/dev/md/" + t.name
 }
 
-func (t T) Create(level string, devs []string, spares int, layout string, chunk *int64) error {
+func (t *T) Create(level string, devs []string, spares int, layout string, chunk *int64) error {
 	dataDevsCount := len(devs) - spares
 	if dataDevsCount < 1 {
 		return fmt.Errorf("at least 1 device must be set in the 'devs' provisioning")
@@ -324,7 +344,11 @@ func (t T) Create(level string, devs []string, spares int, layout string, chunk 
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
-	// TODO: set t.uuid
+	if uuid, err := t.detailUUID(); err != nil {
+		return err
+	} else {
+		t.uuid = uuid
+	}
 	return nil
 }
 

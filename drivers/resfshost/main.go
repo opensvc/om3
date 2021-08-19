@@ -515,7 +515,8 @@ func (t *T) fsck() error {
 }
 
 func (t *T) isMounted() (bool, error) {
-	return findmnt.Has(t.devpath(), t.mountPoint())
+	v, err := findmnt.Has(t.devpath(), t.mountPoint())
+	return v, err
 }
 
 func (t *T) ProvisionLeader(ctx context.Context) error {

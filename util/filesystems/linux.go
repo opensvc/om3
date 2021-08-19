@@ -12,9 +12,14 @@ import (
 
 func (t T) Mount(dev string, mnt string, options string) error {
 	timeout, _ := time.ParseDuration("1m")
+	args := []string{"-t", t.Type()}
+	if len(options) > 0 {
+		args = append(args, "-o", options)
+	}
+	args = append(args, dev, mnt)
 	cmd := command.New(
 		command.WithName("mount"),
-		command.WithVarArgs("-t", t.Type(), "-o", options, dev, mnt),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(timeout),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
