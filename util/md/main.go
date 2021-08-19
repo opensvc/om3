@@ -117,6 +117,47 @@ func (t T) examineScanVerbose() (string, error) {
 	}
 }
 
+func (t T) ReSync() error {
+	buff, err := t.detail()
+	if err != nil {
+		return err
+	}
+	added := 0
+	removed := strings.Count(buff, "removed")
+	if removed == 0 {
+		t.log.Info().Msgf("skip: no removed device")
+		return nil
+	}
+	if !strings.Contains(buff, "Raid Level : raid1") {
+		t.log.Info().Msgf("skip: non-raid1 md")
+		return nil
+	}
+	v, _, err := t.IsActive()
+	if err != nil {
+		return err
+	}
+	if !v {
+		t.log.Info().Msgf("skip: non-assembed md")
+		return nil
+	}
+	scanner := bufio.NewScanner(strings.NewReader(buff))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.Contains(line, "faulty=") {
+			l := strings.Fields(line)
+			faultyDev := l[len(l)-1]
+			if err := t.reAdd(faultyDev); err != nil {
+				return err
+			}
+			added = added + 1
+		}
+	}
+	if removed > added {
+		return fmt.Errorf("no faulty device found to re-add to %s remaining %d removed legs", t.devpathFromUUID(), removed-added)
+	}
+	return nil
+}
+
 func (t T) Wipe() error {
 	devs, err := t.Devices()
 	if err != nil {
@@ -214,6 +255,27 @@ func (t T) Devices() ([]*device.T, error) {
 
 func (t T) UUID() string {
 	return t.uuid
+}
+
+func (t T) reAdd(devpath string) error {
+	args := []string{"--re-add", t.devpathFromUUID(), devpath}
+	cmd := command.New(
+		command.WithName(mdadm),
+		command.WithArgs(args),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	fcache.Clear("mdadm-E-scan-v")
+	switch cmd.ExitCode() {
+	case 0:
+		// ok
+	default:
+		return fmt.Errorf("failed to re-add %s to %s", devpath, t.devpathFromUUID())
+	}
+	return nil
 }
 
 func (t T) wipeDevice(devpath string) error {

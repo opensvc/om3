@@ -143,3 +143,7 @@ func (t T) Wipe() error {
 	}
 	return nil
 }
+
+func (t T) WWID() (string, error) {
+	return "", nil
+}

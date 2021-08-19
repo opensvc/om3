@@ -29,3 +29,7 @@ func (t T) SetReadWrite() error {
 func (t T) SetReadOnly() error {
 	return ErrNotApplicable
 }
+
+func (t T) WWID() (string, error) {
+	return "", nil
+}

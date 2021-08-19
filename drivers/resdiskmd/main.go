@@ -4,7 +4,10 @@ package resdiskmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"opensvc.com/opensvc/core/actionrollback"
@@ -20,6 +23,7 @@ import (
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/udevadm"
@@ -46,6 +50,7 @@ type (
 	MDDriver interface {
 		Activate() error
 		Deactivate() error
+		ReSync() error
 		IsActive() (bool, string, error)
 		Exists() (bool, error)
 		Devices() ([]*device.T, error)
@@ -227,6 +232,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if v {
 		return status.Up
 	}
+	t.downStateAlerts()
 	return status.Down
 }
 
@@ -357,4 +363,74 @@ func (t T) Boot(ctx context.Context) error {
 
 func (t T) PostSync() error {
 	return t.md().DisableAutoActivation()
+}
+
+func (t T) PreSync() error {
+	return t.dumpCacheFile()
+}
+
+func (t T) ReSync() error {
+	return t.md().ReSync()
+}
+
+func (t T) ToSync() []string {
+	if t.UUID == "" {
+		return []string{}
+	}
+	if !t.IsShared() {
+		return []string{}
+	}
+	return []string{t.cacheFile()}
+}
+
+func (t T) cacheFile() string {
+	return filepath.Join(t.VarDir(), "disks")
+}
+
+func (t T) dumpCacheFile() error {
+	p := t.cacheFile()
+	dids := make([]string, 0)
+	for _, dev := range t.SubDevices() {
+		if did, err := dev.WWID(); did != "" && err != nil {
+			dids = append(dids, did)
+		}
+	}
+	f, err := os.Create(p)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	b, err := json.Marshal(dids)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) loadCacheFile() ([]string, error) {
+	p := t.cacheFile()
+	data := make([]string, 0)
+	b, err := file.ReadAll(p)
+	if err != nil {
+		return data, err
+	}
+	if err := json.Unmarshal(b, &data); err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+func (t T) downStateAlerts() error {
+	if !t.IsShared() {
+		return nil
+	}
+	dids, err := t.loadCacheFile()
+	if err != nil {
+		return err
+	}
+	t.Log().Debug().Msgf("loaded disk ids from cache: %s", dids)
+	return nil
 }
