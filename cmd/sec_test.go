@@ -39,8 +39,8 @@ func TestSecKeys(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 
 		test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
+		root.SetArgs(getCmd(name))
+		err := root.Execute()
 		require.Nil(t, err)
 	}
 

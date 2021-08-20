@@ -5,19 +5,8 @@ import (
 	"opensvc.com/opensvc/core/commands"
 )
 
-var (
-	subSvcEdit = &cobra.Command{
-		Use:     "edit",
-		Short:   "edit information about the object",
-		Aliases: []string{"edi", "ed"},
-	}
-
-	subSvcPrint = &cobra.Command{
-		Use:     "print",
-		Short:   "print information about the object",
-		Aliases: []string{"prin", "pri", "pr"},
-	}
-	subSvc = &cobra.Command{
+func makeSubSVC() *cobra.Command {
+	return &cobra.Command{
 		Use:   "svc",
 		Short: "Manage services",
 		Long: `Service objects subsystem.
@@ -28,7 +17,7 @@ They can use support objects like volumes, secrets and configmaps to
 isolate lifecycles or to abstract cluster-specific knowledge.
 `,
 	}
-)
+}
 
 func init() {
 	var (
@@ -50,40 +39,48 @@ func init() {
 		cmdStart            commands.CmdObjectStart
 		cmdStatus           commands.CmdObjectStatus
 		cmdStop             commands.CmdObjectStop
+		cmdSyncResync       commands.CmdObjectSyncResync
 		cmdUnfreeze         commands.CmdObjectUnfreeze
 		cmdUnprovision      commands.CmdObjectUnprovision
 		cmdUnset            commands.CmdObjectUnset
 	)
 
 	kind := "svc"
-	head := subSvc
-	subEdit := subSvcEdit
-	subPrint := subSvcPrint
-	root := rootCmd
+	if head := makeSubSVC(); head != nil {
+		root.AddCommand(head)
+		cmdCreate.Init(kind, head, &selectorFlag)
+		cmdDelete.Init(kind, head, &selectorFlag)
+		cmdEval.Init(kind, head, &selectorFlag)
+		cmdFreeze.Init(kind, head, &selectorFlag)
+		cmdGet.Init(kind, head, &selectorFlag)
+		cmdLs.Init(kind, head, &selectorFlag)
+		cmdMonitor.Init(kind, head, &selectorFlag)
+		cmdProvision.Init(kind, head, &selectorFlag)
+		cmdSet.Init(kind, head, &selectorFlag)
+		cmdStart.Init(kind, head, &selectorFlag)
+		cmdStatus.Init(kind, head, &selectorFlag)
+		cmdStop.Init(kind, head, &selectorFlag)
+		cmdUnfreeze.Init(kind, head, &selectorFlag)
+		cmdUnprovision.Init(kind, head, &selectorFlag)
+		cmdUnset.Init(kind, head, &selectorFlag)
 
-	root.AddCommand(head)
-	head.AddCommand(subEdit)
-	head.AddCommand(subPrint)
+		if sub := makeSubEdit(); sub != nil {
+			head.AddCommand(sub)
+			cmdEditConfig.Init(kind, sub, &selectorFlag)
+		}
 
-	cmdCreate.Init(kind, head, &selectorFlag)
-	cmdDelete.Init(kind, head, &selectorFlag)
-	cmdEditConfig.Init(kind, subEdit, &selectorFlag)
-	cmdEval.Init(kind, head, &selectorFlag)
-	cmdFreeze.Init(kind, head, &selectorFlag)
-	cmdGet.Init(kind, head, &selectorFlag)
-	cmdLs.Init(kind, head, &selectorFlag)
-	cmdMonitor.Init(kind, head, &selectorFlag)
-	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
-	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
-	cmdPrintDevices.Init(kind, subPrint, &selectorFlag)
-	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
-	cmdPrintSchedule.Init(kind, subPrint, &selectorFlag)
-	cmdProvision.Init(kind, head, &selectorFlag)
-	cmdSet.Init(kind, head, &selectorFlag)
-	cmdStart.Init(kind, head, &selectorFlag)
-	cmdStatus.Init(kind, head, &selectorFlag)
-	cmdStop.Init(kind, head, &selectorFlag)
-	cmdUnfreeze.Init(kind, head, &selectorFlag)
-	cmdUnprovision.Init(kind, head, &selectorFlag)
-	cmdUnset.Init(kind, head, &selectorFlag)
+		if sub := makeSubPrint(); sub != nil {
+			head.AddCommand(sub)
+			cmdPrintConfig.Init(kind, sub, &selectorFlag)
+			cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
+			cmdPrintDevices.Init(kind, sub, &selectorFlag)
+			cmdPrintStatus.Init(kind, sub, &selectorFlag)
+			cmdPrintSchedule.Init(kind, sub, &selectorFlag)
+		}
+
+		if sub := makeSubSync(); sub != nil {
+			head.AddCommand(sub)
+			cmdSyncResync.Init(kind, sub, &selectorFlag)
+		}
+	}
 }

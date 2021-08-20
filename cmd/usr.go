@@ -5,8 +5,8 @@ import (
 	"opensvc.com/opensvc/core/commands"
 )
 
-var (
-	subUsr = &cobra.Command{
+func makeSubUsr() *cobra.Command {
+	return &cobra.Command{
 		Use:   "usr",
 		Short: "Manage users",
 		Long: ` A user stores the grants and credentials of user of the agent API.
@@ -14,12 +14,7 @@ var (
 User objects are not necessary with OpenID authentication, as the
 grants are embedded in the trusted bearer tokens.`,
 	}
-	subUsrPrint = &cobra.Command{
-		Use:     "print",
-		Short:   "print information about the object",
-		Aliases: []string{"prin", "pri", "pr"},
-	}
-)
+}
 
 func init() {
 	var (
@@ -40,13 +35,8 @@ func init() {
 	)
 
 	kind := "usr"
-	head := subUsr
-	subPrint := subUsrPrint
-	root := rootCmd
-
+	head := makeSubUsr()
 	root.AddCommand(head)
-	head.AddCommand(subPrint)
-
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdEdit.Init(kind, head, &selectorFlag)
@@ -55,10 +45,14 @@ func init() {
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
-	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
-	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
-	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
+
+	if sub := makeSubPrint(); sub != nil {
+		head.AddCommand(sub)
+		cmdPrintConfig.Init(kind, sub, &selectorFlag)
+		cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
+		cmdPrintStatus.Init(kind, sub, &selectorFlag)
+	}
 }

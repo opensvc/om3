@@ -32,7 +32,7 @@ var (
 	debugFlag    bool
 )
 
-var rootCmd = &cobra.Command{
+var root = &cobra.Command{
 	Use:               "opensvc",
 	Short:             "Manage the opensvc cluster infrastructure and its deployed services.",
 	PersistentPreRunE: persistentPreRunE,
@@ -138,7 +138,7 @@ func persistentPreRunE(_ *cobra.Command, _ []string) error {
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// This is called by main.main(). It only needs to happen once to the root command.
 func Execute() {
 	ExecuteArgs(os.Args[1:])
 }
@@ -168,7 +168,7 @@ func setExecuteArgs(args []string) {
 		lookupArgs = args
 		cobraArgs = []string{}
 	}
-	_, _, err := rootCmd.Find(lookupArgs)
+	_, _, err := root.Find(lookupArgs)
 
 	if err != nil {
 		// command not found... try with args[1] as a selector.
@@ -178,7 +178,7 @@ func setExecuteArgs(args []string) {
 			args := append([]string{}, cobraArgs...)
 			args = append(args, subsystem)
 			args = append(args, lookupArgs[1:]...)
-			rootCmd.SetArgs(args)
+			root.SetArgs(args)
 			cobra.CompDebug(fmt.Sprintf("modified args: %s\n", args), false)
 		}
 	}
@@ -189,7 +189,7 @@ func setExecuteArgs(args []string) {
 //  ExecuteArgs([]string{"mysvc*", "ls"})
 func ExecuteArgs(args []string) {
 	setExecuteArgs(args)
-	if err := rootCmd.Execute(); err != nil {
+	if err := root.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -205,12 +205,12 @@ func guessSubsystem(s string) string {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&configFlag, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
-	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
-	rootCmd.PersistentFlags().StringVar(&colorLogFlag, "colorlog", "auto", "log output colorization yes|no|auto")
-	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
-	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
-	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")
+	root.PersistentFlags().StringVar(&configFlag, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
+	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
+	root.PersistentFlags().StringVar(&colorLogFlag, "colorlog", "auto", "log output colorization yes|no|auto")
+	root.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
+	root.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
+	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -117,7 +117,7 @@ func (t T) examineScanVerbose() (string, error) {
 	}
 }
 
-func (t T) ReSync() error {
+func (t T) Resync() error {
 	buff, err := t.detail()
 	if err != nil {
 		return err
@@ -143,7 +143,7 @@ func (t T) ReSync() error {
 	scanner := bufio.NewScanner(strings.NewReader(buff))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if strings.Contains(line, "faulty=") {
+		if strings.Contains(line, "faulty") {
 			l := strings.Fields(line)
 			faultyDev := l[len(l)-1]
 			if err := t.reAdd(faultyDev); err != nil {

@@ -50,7 +50,7 @@ type (
 	MDDriver interface {
 		Activate() error
 		Deactivate() error
-		ReSync() error
+		Resync() error
 		IsActive() (bool, string, error)
 		Exists() (bool, error)
 		Devices() ([]*device.T, error)
@@ -369,8 +369,8 @@ func (t T) PreSync() error {
 	return t.dumpCacheFile()
 }
 
-func (t T) ReSync() error {
-	return t.md().ReSync()
+func (t T) Resync(ctx context.Context) error {
+	return t.md().Resync()
 }
 
 func (t T) ToSync() []string {

@@ -9,5 +9,5 @@ var (
 )
 
 func init() {
-	rootCreate.Init("*", rootCmd, &selectorFlag)
+	rootCreate.Init("*", root, &selectorFlag)
 }

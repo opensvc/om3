@@ -55,6 +55,7 @@ type (
 		Stop(OptsStop) error
 		Provision(OptsProvision) error
 		Unprovision(OptsUnprovision) error
+		SyncResync(OptsSyncResync) error
 	}
 
 	// Freezer is implemented by object kinds supporting freeze and thaw.

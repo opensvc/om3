@@ -47,8 +47,8 @@ func TestCfgKeys(t *testing.T) {
 		defer rawconfig.Load(map[string]string{})
 
 		test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
-		rootCmd.SetArgs(getCmd(name))
-		err := rootCmd.Execute()
+		root.SetArgs(getCmd(name))
+		err := root.Execute()
 		require.Nil(t, err)
 	}
 

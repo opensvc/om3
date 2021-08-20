@@ -174,6 +174,9 @@ type (
 	Scheduler interface {
 		Schedules() schedule.Table
 	}
+	resyncer interface {
+		Resync(context.Context) error
+	}
 )
 
 const (
@@ -529,6 +532,24 @@ func Start(ctx context.Context, r Driver) error {
 	}
 	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	return nil
+}
+
+// Resync deactivates a resource interfacer
+func Resync(ctx context.Context, r Driver) error {
+	var i interface{} = r
+	s, ok := i.(resyncer)
+	if !ok {
+		return nil
+	}
+	defer updateStatusBus(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
+	Setenv(r)
+	if err := s.Resync(ctx); err != nil {
+		return err
 	}
 	return nil
 }

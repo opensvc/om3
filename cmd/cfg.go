@@ -5,8 +5,8 @@ import (
 	"opensvc.com/opensvc/core/commands"
 )
 
-var (
-	subCfg = &cobra.Command{
+func makeSubCfg() *cobra.Command {
+	return &cobra.Command{
 		Use:   "cfg",
 		Short: "Manage configmaps",
 		Long: ` A configmap is an unencrypted key-value store.
@@ -25,12 +25,7 @@ changes.
 The key names can include the '/' character, interpreted as a path separator
 when installing the key in a volume.`,
 	}
-	subCfgPrint = &cobra.Command{
-		Use:     "print",
-		Short:   "print information about the object",
-		Aliases: []string{"prin", "pri", "pr"},
-	}
-)
+}
 
 func init() {
 	var (
@@ -58,12 +53,8 @@ func init() {
 	)
 
 	kind := "cfg"
-	head := subCfg
-	subPrint := subCfgPrint
-	root := rootCmd
-
+	head := makeSubCfg()
 	root.AddCommand(head)
-	head.AddCommand(subPrint)
 
 	cmdAdd.Init(kind, head, &selectorFlag)
 	cmdChange.Init(kind, head, &selectorFlag)
@@ -78,11 +69,15 @@ func init() {
 	cmdInstall.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
-	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
-	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
-	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
 	cmdRemove.Init(kind, head, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
+
+	if sub := makeSubPrint(); sub != nil {
+		head.AddCommand(sub)
+		cmdPrintConfig.Init(kind, sub, &selectorFlag)
+		cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
+		cmdPrintStatus.Init(kind, sub, &selectorFlag)
+	}
 }

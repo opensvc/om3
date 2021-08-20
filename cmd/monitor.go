@@ -23,7 +23,7 @@ var monCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(monCmd)
+	root.AddCommand(monCmd)
 	monCmd.Flags().StringVarP(&monSelectorFlag, "selector", "s", "*", "An object selector expression")
 	monCmd.Flags().BoolVarP(&monWatchFlag, "watch", "w", false, "Watch the monitor changes")
 }

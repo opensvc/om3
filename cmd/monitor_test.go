@@ -9,12 +9,12 @@ import (
 func Test_ExecuteCommand(t *testing.T) {
 	var err error
 	b := bytes.NewBufferString("")
-	rootCmd.SetOut(b)
+	root.SetOut(b)
 	stderr := bytes.NewBufferString("")
-	rootCmd.SetErr(stderr)
-	rootCmd.SetArgs([]string{"monitor", "--help"})
+	root.SetErr(stderr)
+	root.SetArgs([]string{"monitor", "--help"})
 
-	if err = rootCmd.Execute(); err != nil {
+	if err = root.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	_, err = ioutil.ReadAll(b)

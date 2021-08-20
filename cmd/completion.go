@@ -66,5 +66,5 @@ PowerShell:
 }
 
 func init() {
-	rootCmd.AddCommand(completionCmd)
+	root.AddCommand(completionCmd)
 }

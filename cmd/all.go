@@ -5,18 +5,36 @@ import (
 	"opensvc.com/opensvc/core/commands"
 )
 
-var (
-	subAll = &cobra.Command{
+func makeHead() *cobra.Command {
+	return &cobra.Command{
 		Hidden: false,
 		Use:    "all",
-		Short:  "Manage a mix of objects, tentatively exposing all commands",
+		Short:  "manage a mix of objects, tentatively exposing all commands",
 	}
-	subAllPrint = &cobra.Command{
+}
+func makeSubPrint() *cobra.Command {
+	return &cobra.Command{
 		Use:     "print",
 		Short:   "print information about the object",
 		Aliases: []string{"prin", "pri", "pr"},
 	}
-)
+}
+
+func makeSubSync() *cobra.Command {
+	return &cobra.Command{
+		Use:     "sync",
+		Short:   "group data synchronization commands",
+		Aliases: []string{"syn", "sy"},
+	}
+}
+
+func makeSubEdit() *cobra.Command {
+	return &cobra.Command{
+		Use:     "edit",
+		Short:   "edit information about the object",
+		Aliases: []string{"edi", "ed"},
+	}
+}
 
 func init() {
 	var (
@@ -39,19 +57,15 @@ func init() {
 		cmdStart            commands.CmdObjectStart
 		cmdStatus           commands.CmdObjectStatus
 		cmdStop             commands.CmdObjectStop
+		cmdSyncResync       commands.CmdObjectSyncResync
 		cmdUnfreeze         commands.CmdObjectUnfreeze
 		cmdUnprovision      commands.CmdObjectUnprovision
 		cmdUnset            commands.CmdObjectUnset
 	)
 
 	kind := ""
-	head := subAll
-	subPrint := subAllPrint
-	root := rootCmd
-
+	head := makeHead()
 	root.AddCommand(head)
-	head.AddCommand(subPrint)
-
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdEdit.Init(kind, head, &selectorFlag)
@@ -61,11 +75,6 @@ func init() {
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
-	cmdPrintConfig.Init(kind, subPrint, &selectorFlag)
-	cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
-	cmdPrintDevices.Init(kind, subPrint, &selectorFlag)
-	cmdPrintSchedule.Init(kind, subPrint, &selectorFlag)
-	cmdPrintStatus.Init(kind, subPrint, &selectorFlag)
 	cmdProvision.Init(kind, head, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStart.Init(kind, head, &selectorFlag)
@@ -74,4 +83,18 @@ func init() {
 	cmdUnfreeze.Init(kind, head, &selectorFlag)
 	cmdUnprovision.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
+
+	if sub := makeSubPrint(); sub != nil {
+		head.AddCommand(sub)
+		cmdPrintConfig.Init(kind, sub, &selectorFlag)
+		cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
+		cmdPrintDevices.Init(kind, sub, &selectorFlag)
+		cmdPrintSchedule.Init(kind, sub, &selectorFlag)
+		cmdPrintStatus.Init(kind, sub, &selectorFlag)
+	}
+
+	if sub := makeSubSync(); sub != nil {
+		head.AddCommand(sub)
+		cmdSyncResync.Init(kind, sub, &selectorFlag)
+	}
 }

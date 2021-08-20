@@ -164,6 +164,11 @@ var (
 		Kinds:           []kind.T{kind.Svc},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
+	SyncResync = T{
+		Name:  "sync_resync",
+		Local: true,
+		Kinds: []kind.T{kind.Svc, kind.Vol},
+	}
 	Takeover = T{
 		Name:            "takeover",
 		Target:          "placed@",

@@ -23,7 +23,7 @@ func init() {
 		cmdPoolLs     commands.PoolLs
 		cmdPoolStatus commands.PoolStatus
 	)
-	rootCmd.AddCommand(poolCmd)
+	root.AddCommand(poolCmd)
 	poolCmd.AddCommand(poolCreateCmd)
 
 	cmdPoolLs.Init(poolCmd)

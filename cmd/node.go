@@ -26,7 +26,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(nodeCmd)
+	root.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodePrintCmd)
 	nodeCmd.AddCommand(nodeScanCmd)
 
