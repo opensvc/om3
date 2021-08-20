@@ -14,6 +14,10 @@ var (
 		Use:   "print",
 		Short: "Print node",
 	}
+	nodePushCmd = &cobra.Command{
+		Use:   "push",
+		Short: "Data pushing commands",
+	}
 	nodeScanCmd = &cobra.Command{
 		Use:   "scan",
 		Short: "Scan node",
@@ -22,16 +26,19 @@ var (
 	cmdNodeChecks            commands.CmdNodeChecks
 	cmdNodeLs                commands.NodeLs
 	cmdNodePrintCapabilities commands.NodePrintCapabilities
+	cmdNodePushAsset         commands.NodePushAsset
 	cmdNodeScanCapabilities  commands.NodeScanCapabilities
 )
 
 func init() {
 	root.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodePrintCmd)
+	nodeCmd.AddCommand(nodePushCmd)
 	nodeCmd.AddCommand(nodeScanCmd)
 
 	cmdNodeChecks.Init(nodeCmd)
 	cmdNodeLs.Init(nodeCmd)
 	cmdNodePrintCapabilities.Init(nodePrintCmd)
+	cmdNodePushAsset.Init(nodePushCmd)
 	cmdNodeScanCapabilities.Init(nodeScanCmd)
 }
