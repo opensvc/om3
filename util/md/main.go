@@ -303,6 +303,14 @@ func (t T) Deactivate() error {
 	if t.name == "" {
 		return fmt.Errorf("name is required")
 	}
+	filterStderrFunc := func(s string) {
+		switch {
+		case strings.Contains(s, "stopped"):
+			t.log.Info().Msg(s)
+			return
+		}
+		t.log.Error().Msg(s)
+	}
 	args := []string{"--stop", t.devpathFromName()}
 	cmd := command.New(
 		command.WithName(mdadm),
@@ -310,7 +318,7 @@ func (t T) Deactivate() error {
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithOnStderrLine(filterStderrFunc),
 	)
 	cmd.Run()
 	fcache.Clear("mdadm-E-scan-v")
@@ -327,6 +335,14 @@ func (t T) Activate() error {
 	if t.name == "" {
 		return fmt.Errorf("name is required")
 	}
+	filterStderrFunc := func(s string) {
+		switch {
+		case strings.Contains(s, "has been started"):
+			t.log.Info().Msg(s)
+			return
+		}
+		t.log.Error().Msg(s)
+	}
 	args := []string{"--assemble", t.devpathFromName(), "-u", t.uuid}
 	cmd := command.New(
 		command.WithName(mdadm),
@@ -334,7 +350,7 @@ func (t T) Activate() error {
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithOnStderrLine(filterStderrFunc),
 	)
 	cmd.Run()
 	fcache.Clear("mdadm-E-scan-v")
