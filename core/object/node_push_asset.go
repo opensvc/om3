@@ -1,6 +1,8 @@
 package object
 
 import (
+	"fmt"
+
 	"opensvc.com/opensvc/util/asset"
 	"opensvc.com/opensvc/util/key"
 )
@@ -15,6 +17,7 @@ type (
 		Source string      `json:"source"`
 		Title  string      `json:"title"`
 		Value  interface{} `json:"value"`
+		Error  string      `json:"error,omitempty"`
 	}
 
 	AssetData struct {
@@ -46,6 +49,8 @@ type (
 		LAN          map[string][]asset.LAN `json:"lan"`
 		FQDN         AssetValue             `json:"fqdn"`
 		SecZone      AssetValue             `json:"sec_zone"`
+		LastBoot     AssetValue             `json:"last_boot"`
+		BootID       AssetValue             `json:"boot_id"`
 	}
 
 	Prober interface {
@@ -76,6 +81,7 @@ func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt in
 		data.Value = s
 		return
 	}
+	data.Error = fmt.Sprint(err)
 	data.Source = AssetSrcDefault
 	data.Value = dflt
 	return
@@ -131,6 +137,8 @@ func (t Node) PushAsset() AssetData {
 	data.MemBanks = t.assetValueFromProbe("node.mem_banks", "mem banks", probe, nil)
 	data.ConnectTo = t.assetValueFromProbe("node.connect_to", "connect to", probe, nil)
 	data.FQDN = t.assetValueFromProbe("node.fqdn", "fqdn", probe, nil)
+	data.LastBoot = t.assetValueFromProbe("node.last_boot", "last boot", probe, nil)
+	data.BootID = t.assetValueFromProbe("node.boot_id", "boot id", probe, nil)
 	data.UIDS, _ = asset.Users()
 	data.GIDS, _ = asset.Groups()
 	data.Hardware, _ = asset.Hardware()

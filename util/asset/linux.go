@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jaypipes/pcidb"
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -62,6 +64,10 @@ func (t T) Get(s string) (interface{}, error) {
 		return si.Memory.Size, nil
 	case "fqdn":
 		return os.Hostname()
+	case "last_boot":
+		return LastBoot()
+	case "boot_id":
+		return BootID()
 	default:
 		return nil, fmt.Errorf("unknown asset key: %s", s)
 	}
@@ -242,4 +248,44 @@ func hardwarePCIDevices() ([]Device, error) {
 		devs = append(devs, *dev)
 	}
 	return devs, nil
+}
+
+func LastBoot() (string, error) {
+	p := "/proc/uptime"
+	b, err := file.ReadAll(p)
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to get last boot time from /proc/uptime")
+	}
+	l := strings.Fields(string(b))
+	secs, err := strconv.ParseFloat(l[0], 64)
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to get last boot time from /proc/uptime")
+	}
+	now := time.Now()
+	last := now.Add(time.Duration(-int(secs * float64(time.Second))))
+	return last.Format(time.RFC3339), nil
+}
+
+func BootID() (string, error) {
+	p := "/proc/sys/kernel/random/boot_id"
+	b, err := file.ReadAll(p)
+	if err == nil {
+		s := string(b)
+		s = strings.TrimRight(s, "\n\r")
+		return s, nil
+	}
+	p = "/proc/stat"
+	file, err := os.Open(p)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	s := bufio.NewScanner(file)
+	for s.Scan() {
+		lineFields := strings.Fields(s.Text())
+		if len(lineFields) == 2 && lineFields[0] == "btime" {
+			return lineFields[1], nil
+		}
+	}
+	return "", fmt.Errorf("unable to format a boot id from /proc/sys/kernel/random/boot_id nor /proc/stat")
 }
