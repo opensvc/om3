@@ -18,6 +18,7 @@ require (
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/j-keck/arping v0.0.0-20160618110441-2cf9dc699c56
+	github.com/jaypipes/pcidb v0.6.0
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.12
@@ -35,6 +36,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/yookoala/realpath v1.0.0
+	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
