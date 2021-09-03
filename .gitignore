@@ -6,3 +6,4 @@
 !LICENSE
 !.gitignore
 .idea
+core/version/version.go
