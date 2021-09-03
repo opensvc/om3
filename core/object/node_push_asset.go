@@ -3,8 +3,11 @@ package object
 import (
 	"fmt"
 
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/asset"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/render/tree"
 )
 
 type (
@@ -148,4 +151,88 @@ func (t Node) PushAsset() AssetData {
 	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", probe, nil)
 
 	return data
+}
+
+func (t AssetData) Render() string {
+	tr := tree.New()
+	tr.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Node.Color.Bold)
+	tr.AddColumn().AddText("Value").SetColor(rawconfig.Node.Color.Bold)
+	tr.AddColumn().AddText("Source").SetColor(rawconfig.Node.Color.Bold)
+
+	node := func(v AssetValue) *tree.Node {
+		n := tr.AddNode()
+		n.AddColumn().AddText(v.Title).SetColor(rawconfig.Node.Color.Primary)
+		n.AddColumn().AddText(fmt.Sprint(v.Value))
+		n.AddColumn().AddText(v.Source)
+		return n
+	}
+
+	_ = node(t.BIOSVersion)
+	_ = node(t.ClusterID)
+	_ = node(t.CPUModel)
+	_ = node(t.CPUFreq)
+	_ = node(t.CPUThreads)
+	_ = node(t.CPUCores)
+	_ = node(t.CPUDies)
+	_ = node(t.OSVendor)
+	_ = node(t.OSRelease)
+	_ = node(t.OSKernel)
+	_ = node(t.OSArch)
+	_ = node(t.OSName)
+	_ = node(t.Serial)
+	_ = node(t.SPVersion)
+	_ = node(t.Enclosure)
+	_ = node(t.TZ)
+	_ = node(t.Manufacturer)
+	_ = node(t.Model)
+	_ = node(t.MemBytes)
+	_ = node(t.MemSlots)
+	_ = node(t.MemBanks)
+	_ = node(t.ConnectTo)
+	_ = node(t.SecZone)
+	_ = node(t.FQDN)
+	_ = node(t.LastBoot)
+	_ = node(t.BootID)
+
+	n := tr.AddNode()
+	n.AddColumn().AddText("hardware").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText(fmt.Sprint(len(t.Hardware)))
+	n.AddColumn().AddText(AssetSrcProbe)
+	for _, e := range t.Hardware {
+		l := n.AddNode()
+		l.AddColumn().AddText(e.Type + " " + e.Path)
+		l.AddColumn().AddText(e.Description)
+	}
+
+	n = tr.AddNode()
+	n.AddColumn().AddText("uids").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText(fmt.Sprint(len(t.UIDS)))
+	n.AddColumn().AddText(AssetSrcProbe)
+
+	n = tr.AddNode()
+	n.AddColumn().AddText("gids").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText(fmt.Sprint(len(t.GIDS)))
+	n.AddColumn().AddText(AssetSrcProbe)
+
+	nbAddr := 0
+	for _, v := range t.LAN {
+		nbAddr = nbAddr + len(v)
+	}
+	n = tr.AddNode()
+	n.AddColumn().AddText("ip addresses").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText(fmt.Sprint(nbAddr))
+	n.AddColumn().AddText(AssetSrcProbe)
+	for _, v := range t.LAN {
+		for _, e := range v {
+			s := e.Address
+			if e.Mask != "" {
+				s = s + "/" + e.Mask
+			}
+			l := n.AddNode()
+			l.AddColumn().AddText(s)
+			l.AddColumn().AddText(e.Intf)
+		}
+	}
+
+	return tr.Render()
 }
