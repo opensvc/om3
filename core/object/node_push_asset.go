@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/san"
 )
 
 type (
@@ -26,51 +27,53 @@ type (
 	}
 
 	AssetData struct {
-		Nodename     AssetValue             `json:"nodename"`
-		FQDN         AssetValue             `json:"fqdn"`
-		Version      AssetValue             `json:"version"`
-		OSName       AssetValue             `json:"os_name"`
-		OSVendor     AssetValue             `json:"os_vendor"`
-		OSRelease    AssetValue             `json:"os_release"`
-		OSKernel     AssetValue             `json:"os_kernel"`
-		OSArch       AssetValue             `json:"os_arch"`
-		MemBytes     AssetValue             `json:"mem_bytes"`
-		MemSlots     AssetValue             `json:"mem_slots"`
-		MemBanks     AssetValue             `json:"mem_banks"`
-		CPUFreq      AssetValue             `json:"cpu_freq"`
-		CPUThreads   AssetValue             `json:"cpu_threads"`
-		CPUCores     AssetValue             `json:"cpu_cores"`
-		CPUDies      AssetValue             `json:"cpu_dies"`
-		CPUModel     AssetValue             `json:"cpu_model"`
-		Serial       AssetValue             `json:"serial"`
-		Model        AssetValue             `json:"model"`
-		Manufacturer AssetValue             `json:"manufacturer"`
-		BIOSVersion  AssetValue             `json:"bios_version"`
-		SPVersion    AssetValue             `json:"sp_version"`
-		NodeEnv      AssetValue             `json:"node_env"`
-		AssetEnv     AssetValue             `json:"asset_env"`
-		ListenerPort AssetValue             `json:"listener_port"`
-		ClusterID    AssetValue             `json:"cluster_id"`
-		Enclosure    AssetValue             `json:"enclosure"`
-		TZ           AssetValue             `json:"tz"`
-		ConnectTo    AssetValue             `json:"connect_to"`
-		GIDS         []asset.Group          `json:"gids"`
-		UIDS         []asset.User           `json:"uids"`
-		Hardware     []asset.Device         `json:"hardware"`
-		LAN          map[string][]asset.LAN `json:"lan"`
-		SecZone      AssetValue             `json:"sec_zone"`
-		LastBoot     AssetValue             `json:"last_boot"`
-		BootID       AssetValue             `json:"boot_id"`
-		LocCountry   AssetValue             `json:"loc_country"`
-		LocCity      AssetValue             `json:"loc_city"`
-		LocBuilding  AssetValue             `json:"loc_building"`
-		LocRoom      AssetValue             `json:"loc_room"`
-		LocRack      AssetValue             `json:"loc_rack"`
-		LocAddr      AssetValue             `json:"loc_addr"`
-		LocFloor     AssetValue             `json:"loc_floor"`
-		LocZIP       AssetValue             `json:"loc_zip"`
-		TeamInteg    AssetValue             `json:"team_integ"`
-		TeamSupport  AssetValue             `json:"team_support"`
+		Nodename     AssetValue `json:"nodename"`
+		FQDN         AssetValue `json:"fqdn"`
+		Version      AssetValue `json:"version"`
+		OSName       AssetValue `json:"os_name"`
+		OSVendor     AssetValue `json:"os_vendor"`
+		OSRelease    AssetValue `json:"os_release"`
+		OSKernel     AssetValue `json:"os_kernel"`
+		OSArch       AssetValue `json:"os_arch"`
+		MemBytes     AssetValue `json:"mem_bytes"`
+		MemSlots     AssetValue `json:"mem_slots"`
+		MemBanks     AssetValue `json:"mem_banks"`
+		CPUFreq      AssetValue `json:"cpu_freq"`
+		CPUThreads   AssetValue `json:"cpu_threads"`
+		CPUCores     AssetValue `json:"cpu_cores"`
+		CPUDies      AssetValue `json:"cpu_dies"`
+		CPUModel     AssetValue `json:"cpu_model"`
+		Serial       AssetValue `json:"serial"`
+		Model        AssetValue `json:"model"`
+		Manufacturer AssetValue `json:"manufacturer"`
+		BIOSVersion  AssetValue `json:"bios_version"`
+		SPVersion    AssetValue `json:"sp_version"`
+		NodeEnv      AssetValue `json:"node_env"`
+		AssetEnv     AssetValue `json:"asset_env"`
+		ListenerPort AssetValue `json:"listener_port"`
+		ClusterID    AssetValue `json:"cluster_id"`
+		Enclosure    AssetValue `json:"enclosure"`
+		TZ           AssetValue `json:"tz"`
+		ConnectTo    AssetValue `json:"connect_to"`
+		SecZone      AssetValue `json:"sec_zone"`
+		LastBoot     AssetValue `json:"last_boot"`
+		BootID       AssetValue `json:"boot_id"`
+		LocCountry   AssetValue `json:"loc_country"`
+		LocCity      AssetValue `json:"loc_city"`
+		LocBuilding  AssetValue `json:"loc_building"`
+		LocRoom      AssetValue `json:"loc_room"`
+		LocRack      AssetValue `json:"loc_rack"`
+		LocAddr      AssetValue `json:"loc_addr"`
+		LocFloor     AssetValue `json:"loc_floor"`
+		LocZIP       AssetValue `json:"loc_zip"`
+		TeamInteg    AssetValue `json:"team_integ"`
+		TeamSupport  AssetValue `json:"team_support"`
+
+		GIDS     []asset.Group          `json:"gids"`
+		UIDS     []asset.User           `json:"uids"`
+		Hardware []asset.Device         `json:"hardware"`
+		LAN      map[string][]asset.LAN `json:"lan"`
+		HBA      []san.HostBusAdapter   `json:"hba"`
 	}
 
 	Prober interface {
@@ -183,6 +186,7 @@ func (t Node) PushAsset() AssetData {
 	data.GIDS, _ = asset.Groups()
 	data.Hardware, _ = asset.Hardware()
 	data.LAN, _ = asset.GetLANS()
+	data.HBA, _ = san.HostBusAdapters()
 
 	// from config only
 	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)
