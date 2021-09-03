@@ -32,7 +32,7 @@ func (t *Node) loadConfig() error {
 		return err
 	}
 	t.config.Referrer = t
-	if t.mergedConfig, err = xconfig.NewObject(t.ConfigFile(), t.ClusterConfigFile()); err != nil {
+	if t.mergedConfig, err = xconfig.NewObject(t.ClusterConfigFile(), t.ConfigFile()); err != nil {
 		return err
 	}
 	t.mergedConfig.Referrer = t
