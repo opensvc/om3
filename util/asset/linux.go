@@ -18,8 +18,6 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-var ErrNotImpl = fmt.Errorf("not implemented")
-
 func (t T) Get(s string) (interface{}, error) {
 	switch s {
 	case "bios_version":
@@ -68,6 +66,8 @@ func (t T) Get(s string) (interface{}, error) {
 		return LastBoot()
 	case "boot_id":
 		return BootID()
+	case "connect_to":
+		return ConnectTo()
 	default:
 		return nil, fmt.Errorf("unknown asset key: %s", s)
 	}

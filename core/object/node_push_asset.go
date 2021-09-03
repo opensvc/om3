@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/version"
 	"opensvc.com/opensvc/util/asset"
@@ -60,6 +61,16 @@ type (
 		SecZone      AssetValue             `json:"sec_zone"`
 		LastBoot     AssetValue             `json:"last_boot"`
 		BootID       AssetValue             `json:"boot_id"`
+		LocCountry   AssetValue             `json:"loc_country"`
+		LocCity      AssetValue             `json:"loc_city"`
+		LocBuilding  AssetValue             `json:"loc_building"`
+		LocRoom      AssetValue             `json:"loc_room"`
+		LocRack      AssetValue             `json:"loc_rack"`
+		LocAddr      AssetValue             `json:"loc_addr"`
+		LocFloor     AssetValue             `json:"loc_floor"`
+		LocZIP       AssetValue             `json:"loc_zip"`
+		TeamInteg    AssetValue             `json:"team_integ"`
+		TeamSupport  AssetValue             `json:"team_support"`
 	}
 
 	Prober interface {
@@ -84,13 +95,17 @@ func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt in
 		}
 		return
 	}
-	s, err := probe.Get(k.Option)
-	if err == nil {
-		data.Source = AssetSrcProbe
-		data.Value = s
-		return
+	if probe != nil {
+		s, err := probe.Get(k.Option)
+		if err == nil {
+			data.Source = AssetSrcProbe
+			data.Value = s
+			return
+		}
+		if !errors.Is(err, asset.ErrIgnore) {
+			data.Error = fmt.Sprint(err)
+		}
 	}
-	data.Error = fmt.Sprint(err)
 	data.Source = AssetSrcDefault
 	data.Value = dflt
 	return
@@ -161,7 +176,7 @@ func (t Node) PushAsset() AssetData {
 	data.TZ = t.assetValueFromProbe("node.tz", "timezone", probe, nil)
 	data.Manufacturer = t.assetValueFromProbe("node.manufacturer", "manufacturer", probe, nil)
 	data.Model = t.assetValueFromProbe("node.model", "model", probe, nil)
-	data.ConnectTo = t.assetValueFromProbe("node.connect_to", "connect to", probe, nil)
+	data.ConnectTo = t.assetValueFromProbe("node.connect_to", "connect to", probe, "")
 	data.LastBoot = t.assetValueFromProbe("node.last_boot", "last boot", probe, nil)
 	data.BootID = t.assetValueFromProbe("node.boot_id", "boot id", probe, nil)
 	data.UIDS, _ = asset.Users()
@@ -170,10 +185,20 @@ func (t Node) PushAsset() AssetData {
 	data.LAN, _ = asset.GetLANS()
 
 	// from config only
-	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", probe, nil)
-	data.NodeEnv = t.assetValueFromProbe("node.env", "environment", probe, nil)
-	data.AssetEnv = t.assetValueFromProbe("node.asset_env", "asset environment", probe, nil)
-	data.ListenerPort = t.assetValueFromProbe("listener.port", "listener port", probe, nil)
+	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)
+	data.NodeEnv = t.assetValueFromProbe("node.env", "environment", nil, nil)
+	data.AssetEnv = t.assetValueFromProbe("node.asset_env", "asset environment", nil, nil)
+	data.ListenerPort = t.assetValueFromProbe("listener.port", "listener port", nil, nil)
+	data.LocCountry = t.assetValueFromProbe("node.loc_country", "loc, country", nil, nil)
+	data.LocCity = t.assetValueFromProbe("node.loc_country", "loc, city", nil, nil)
+	data.LocBuilding = t.assetValueFromProbe("node.loc_country", "loc, building", nil, nil)
+	data.LocRoom = t.assetValueFromProbe("node.loc_country", "loc, room", nil, nil)
+	data.LocRack = t.assetValueFromProbe("node.loc_country", "loc, rack", nil, nil)
+	data.LocAddr = t.assetValueFromProbe("node.loc_country", "loc, address", nil, nil)
+	data.LocFloor = t.assetValueFromProbe("node.loc_country", "loc, floor", nil, nil)
+	data.LocZIP = t.assetValueFromProbe("node.loc_country", "loc, zip", nil, nil)
+	data.TeamInteg = t.assetValueFromProbe("node.loc_country", "team, integration", nil, nil)
+	data.TeamSupport = t.assetValueFromProbe("node.loc_country", "team, support", nil, nil)
 
 	return data
 }
@@ -185,9 +210,13 @@ func (t AssetData) Render() string {
 	tr.AddColumn().AddText("Source").SetColor(rawconfig.Node.Color.Bold)
 
 	node := func(v AssetValue) *tree.Node {
+		val := ""
+		if v.Value != nil {
+			val = fmt.Sprint(v.Value)
+		}
 		n := tr.AddNode()
 		n.AddColumn().AddText(v.Title).SetColor(rawconfig.Node.Color.Primary)
-		n.AddColumn().AddText(fmt.Sprint(v.Value))
+		n.AddColumn().AddText(val)
 		n.AddColumn().AddText(v.Source)
 		return n
 	}
@@ -223,6 +252,16 @@ func (t AssetData) Render() string {
 	_ = node(t.SecZone)
 	_ = node(t.LastBoot)
 	_ = node(t.BootID)
+	_ = node(t.LocCountry)
+	_ = node(t.LocCity)
+	_ = node(t.LocBuilding)
+	_ = node(t.LocRoom)
+	_ = node(t.LocRack)
+	_ = node(t.LocAddr)
+	_ = node(t.LocFloor)
+	_ = node(t.LocZIP)
+	_ = node(t.TeamInteg)
+	_ = node(t.TeamSupport)
 
 	n := tr.AddNode()
 	n.AddColumn().AddText("hardware").SetColor(rawconfig.Node.Color.Primary)

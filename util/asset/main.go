@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -11,6 +12,8 @@ import (
 var (
 	si          sysinfo.SysInfo
 	initialized bool
+	ErrNotImpl  = fmt.Errorf("not implemented")
+	ErrIgnore   = fmt.Errorf("ignore")
 )
 
 type (
@@ -99,4 +102,9 @@ func GetLANS() (map[string][]LAN, error) {
 		}
 	}
 	return m, nil
+}
+
+func ConnectTo() (string, error) {
+	// TODO: port gcloud address detection ?
+	return "", ErrIgnore
 }
