@@ -307,5 +307,15 @@ func (t AssetData) Render() string {
 		}
 	}
 
+	n = tr.AddNode()
+	n.AddColumn().AddText("host bus adapters").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText(fmt.Sprint(len(t.HBA)))
+	n.AddColumn().AddText(AssetSrcProbe)
+	for _, v := range t.HBA {
+		l := n.AddNode()
+		l.AddColumn().AddText(v.ID)
+		l.AddColumn().AddText(v.Type)
+	}
+
 	return tr.Render()
 }
