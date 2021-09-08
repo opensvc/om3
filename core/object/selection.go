@@ -16,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/env"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -324,7 +325,18 @@ func (t *Selection) getInstalledSet() (*set.Set, error) {
 
 func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 	matching := set.New()
-	log.Warn().Msg("TODO: localConfigExpand")
+	kop := keyop.Parse(s)
+	paths, err := t.getInstalled()
+	if err != nil {
+		return matching, err
+	}
+	for _, p := range paths {
+		o := NewConfigurerFromPath(p, WithVolatile(true))
+		if o.Config().HasKeyMatchingOp(*kop) {
+			matching.Insert(p.String())
+			continue
+		}
+	}
 	return matching, nil
 }
 

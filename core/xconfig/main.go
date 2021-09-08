@@ -22,6 +22,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/stringslice"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -91,6 +92,224 @@ func (t *T) Keys(section string) []string {
 
 func (t *T) RegisterPostCommit(fn func() error) {
 	t.postCommit = fn
+}
+
+//
+// keysLike returns the slice of key.T if
+// * k=app#1.type and option app#1.type exists (same as HasKey)
+// -or-
+// * k=app.type and option app#1.type exists
+// -or-
+// * k=app and section app#1 exists
+//
+func (t *T) keysLike(k key.T) []key.T {
+	if k.Option == "" {
+		if strings.Contains(k.Section, "#") {
+			if t.HasSectionString(k.Section) {
+				return []key.T{k}
+			}
+		}
+		prefix := k.Section + "#"
+		l := make([]key.T, 0)
+		for _, s := range t.SectionStrings() {
+			if strings.HasPrefix(s, prefix) {
+				l = append(l, key.T{Section: s})
+			}
+		}
+		return l
+	}
+	prefix := k.Section + "#"
+	l := make([]key.T, 0)
+	for _, s := range t.SectionStrings() {
+		if s != k.Section && !strings.HasPrefix(s, prefix) {
+			continue
+		}
+		if t.HasKey(key.T{Section: s, Option: k.Option}) {
+			l = append(l, key.T{Section: s, Option: k.Option})
+		}
+	}
+	return l
+}
+
+func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
+	compString := func(v1, v2 string, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return v1 == v2
+		case op.Is(keyop.NotEqual):
+			return v1 != v2
+		case op.Is(keyop.Greater):
+			return v1 > v2
+		case op.Is(keyop.Lesser):
+			return v1 < v2
+		case op.Is(keyop.GreaterOrEqual):
+			return v1 >= v2
+		case op.Is(keyop.LesserOrEqual):
+			return v1 <= v2
+		}
+		return false
+	}
+	compStringSlice := func(v1, v2 []string, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return stringslice.Equal(v1, v2)
+		case op.Is(keyop.NotEqual):
+			return !stringslice.Equal(v1, v2)
+		}
+		return false
+	}
+	compFloat64 := func(v1, v2 float64, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return v1 == v2
+		case op.Is(keyop.NotEqual):
+			return v1 != v2
+		case op.Is(keyop.Greater):
+			return v1 > v2
+		case op.Is(keyop.Lesser):
+			return v1 < v2
+		case op.Is(keyop.GreaterOrEqual):
+			return v1 >= v2
+		case op.Is(keyop.LesserOrEqual):
+			return v1 <= v2
+		}
+		return false
+	}
+	compBool := func(v1, v2 bool, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return v1 == v2
+		case op.Is(keyop.NotEqual):
+			return v1 != v2
+		}
+		return false
+	}
+	compInt := func(v1, v2 int, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return v1 == v2
+		case op.Is(keyop.NotEqual):
+			return v1 != v2
+		case op.Is(keyop.Greater):
+			return v1 > v2
+		case op.Is(keyop.Lesser):
+			return v1 < v2
+		case op.Is(keyop.GreaterOrEqual):
+			return v1 >= v2
+		case op.Is(keyop.LesserOrEqual):
+			return v1 <= v2
+		}
+		return false
+	}
+	compInt64 := func(v1, v2 int64, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return v1 == v2
+		case op.Is(keyop.NotEqual):
+			return v1 != v2
+		case op.Is(keyop.Greater):
+			return v1 > v2
+		case op.Is(keyop.Lesser):
+			return v1 < v2
+		case op.Is(keyop.GreaterOrEqual):
+			return v1 >= v2
+		case op.Is(keyop.LesserOrEqual):
+			return v1 <= v2
+		}
+		return false
+	}
+	compInt64Ptr := func(v1, v2 *int64, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return *v1 == *v2
+		case op.Is(keyop.NotEqual):
+			return *v1 != *v2
+		case op.Is(keyop.Greater):
+			return *v1 > *v2
+		case op.Is(keyop.Lesser):
+			return *v1 < *v2
+		case op.Is(keyop.GreaterOrEqual):
+			return *v1 >= *v2
+		case op.Is(keyop.LesserOrEqual):
+			return *v1 <= *v2
+		}
+		return false
+	}
+	compDurationPtr := func(v1, v2 *time.Duration, op keyop.Op) bool {
+		switch {
+		case op.Is(keyop.Equal):
+			return *v1 == *v2
+		case op.Is(keyop.NotEqual):
+			return *v1 != *v2
+		case op.Is(keyop.Greater):
+			return *v1 > *v2
+		case op.Is(keyop.Lesser):
+			return *v1 < *v2
+		case op.Is(keyop.GreaterOrEqual):
+			return *v1 >= *v2
+		case op.Is(keyop.LesserOrEqual):
+			return *v1 <= *v2
+		}
+		return false
+	}
+	comp := func(v1, v2 interface{}, op keyop.Op) bool {
+		switch i := v1.(type) {
+		case string:
+			return compString(i, v2.(string), op)
+		case []string:
+			return compStringSlice(i, v2.([]string), op)
+		case float64:
+			return compFloat64(i, v2.(float64), op)
+		case bool:
+			return compBool(i, v2.(bool), op)
+		case int:
+			return compInt(i, v2.(int), op)
+		case int64:
+			return compInt64(i, v2.(int64), op)
+		case *int64:
+			return compInt64Ptr(i, v2.(*int64), op)
+		case *time.Duration:
+			return compDurationPtr(i, v2.(*time.Duration), op)
+		default:
+			return false
+		}
+	}
+
+	for _, k := range t.keysLike(kop.Key) {
+		if kop.Op.Is(keyop.Exist) {
+			return true
+		}
+		v := t.Get(k)
+		sectionType := t.sectionType(k)
+		kw, err := getKeyword(k, sectionType, t.Referrer)
+		if err != nil {
+			iv := v
+			it := kop.Value
+			if comp(iv, it, kop.Op) {
+				return true
+			}
+		}
+		if kw.Converter == nil {
+			iv := v
+			it := kop.Value
+			if comp(iv, it, kop.Op) {
+				return true
+			}
+		} else {
+			iv, err := kw.Converter.Convert(v)
+			if err != nil {
+				continue
+			}
+			it, err := kw.Converter.Convert(kop.Value)
+			if err != nil {
+				continue
+			}
+			if comp(iv, it, kop.Op) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // HasKey returns true if the k exists

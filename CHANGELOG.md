@@ -4,6 +4,8 @@
 
 ### core
 
+* **breaking change:** stop matching DEFAULT.<string> for "<string>:" object selector expressions. Match only sections basename (like in [<basename>#<index>]).
+
 * **breaking change:** drop backward compatibility for the always_on=<nodes> keyword.
 
 * New fields in print schedule json format: node, path

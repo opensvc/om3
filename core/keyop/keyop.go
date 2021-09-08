@@ -40,16 +40,37 @@ const (
 	Toggle
 	// Insert adds an element at the position specified by Index
 	Insert
+	// Exist tests the existance of a key
+	Exist
+	// Equal tests if the current value of the key is equal to the keyop.T value
+	Equal
+	// NotEqual tests if the current value of the key is not equal to the keyop.T value
+	NotEqual
+	// GreaterOrEqual tests if the current value of the key is greater or equal to the keyop.T value
+	GreaterOrEqual
+	// LesserOrEqual tests if the current value of the key is lesser or equal to the keyop.T value
+	LesserOrEqual
+	// Greater tests if the current value of the key is greater to the keyop.T value
+	Greater
+	// Lesser tests if the current value of the key is lesser to the keyop.T value
+	Lesser
 )
 
 var (
 	toString = map[Op]string{
-		Set:    "=",
-		Insert: "=",
-		Append: "+=",
-		Remove: "-=",
-		Merge:  "|=",
-		Toggle: "^=",
+		Set:            "=",
+		Insert:         "=",
+		Append:         "+=",
+		Remove:         "-=",
+		Merge:          "|=",
+		Toggle:         "^=",
+		Exist:          ":",
+		Equal:          "=",
+		NotEqual:       "!=",
+		GreaterOrEqual: ">=",
+		LesserOrEqual:  "<=",
+		Greater:        ">",
+		Lesser:         "<",
 	}
 
 	toID = map[string]Op{
@@ -58,9 +79,17 @@ var (
 		"-=": Remove,
 		"|=": Merge,
 		"^=": Toggle,
+		":":  Exist,
+		"!=": NotEqual,
+		">=": GreaterOrEqual,
+		"<=": LesserOrEqual,
+		">":  Greater,
+		"<":  Lesser,
 	}
 
 	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)\]`)
+	regexpOp1   = regexp.MustCompile(`(.+)([><=:])(.*)`)
+	regexpOp2   = regexp.MustCompile(`(.+)([\-+|^><!]=)(.*)`)
 )
 
 func (t Op) String() string {
@@ -74,6 +103,10 @@ func ParseOp(s string) Op {
 		return t
 	}
 	return Set
+}
+
+func (t Op) Is(op Op) bool {
+	return op.String() == t.String()
 }
 
 // MarshalJSON marshals the enum as a quoted json string
@@ -106,31 +139,57 @@ func (t T) IsZero() bool {
 
 func Parse(s string) *T {
 	t := &T{}
-	l := strings.SplitN(s, "=", 2)
-	if len(l) != 2 {
+	l := regexpOp2.FindStringSubmatch(s)
+	// Example submatch result:
+	//   []string{
+	//     "env.foo[0]>=1",   /* original string */
+	//     "env.foo[0]",      /* key with optional index */
+	//     ">",              /* op1 */
+	//     "=",              /* op2 */
+	//     "1",               /* value */
+	//   }
+	if len(l) != 4 {
+		l = regexpOp1.FindStringSubmatch(s)
+	}
+	if len(l) != 4 {
 		return t
 	}
-	k := l[0]
-	t.Value = l[1]
-	end := len(k) - 1
-	opStr := fmt.Sprintf("%c=", k[end])
-	t.Op = ParseOp(opStr)
-	if t.Op != Set {
-		k = k[:end]
-	}
-	subs := regexpIndex.FindStringSubmatch(k)
-	// Example subs:
-	//   env.foo[0] => {"env.foo[0]", "env.foo", "0"}
+	k := l[1]
+	t.Op = ParseOp(l[2])
+	t.Value = l[3]
+
+	subs := regexpIndex.FindStringSubmatch(s)
+	// Example submatch result:
+	//   []string{
+	//     "env.foo[0]",   /* original string */
+	//     "env.foo",      /* key */
+	//     "0",            /* index */
+	//   }
 	if len(subs) == 3 {
 		k = subs[1]
 		t.Index, _ = strconv.Atoi(subs[2])
 		switch t.Op {
 		case Set:
-			t.Op = Insert
+			if t.Value != "" {
+				t.Op = Insert
+			} else {
+				t.Op = Remove
+			}
 		default:
 			// invalid
 			return &T{}
 		}
+	}
+	if t.Op == Exist && !strings.Contains(k, ".") {
+		//
+		// "task" must be interpreted as the section name by the Exist operator
+		// instead of DEFAULT.task.
+		//
+		// Matching DEFAULT options requires a "DEFAULT.<option>:" expression.
+		// Note this is a breaking change from b2.1, where we matched if either
+		// section or DEFAULT option was found.
+		//
+		k = k + "."
 	}
 	t.Key = key.Parse(k)
 	return t
@@ -138,6 +197,8 @@ func Parse(s string) *T {
 
 func (t T) String() string {
 	switch t.Op {
+	case Exist:
+		return fmt.Sprintf("%s:", t.Key)
 	case Insert:
 		return fmt.Sprintf("%s[%d]=%s", t.Key, t.Index, t.Value)
 	default:

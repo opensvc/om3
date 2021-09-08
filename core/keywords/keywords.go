@@ -86,10 +86,13 @@ func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 		if k.Option != kw.Option && !stringslice.Has(k.Option, kw.Aliases) {
 			continue
 		}
+		if kw.Section == "" {
+			return kw
+		}
 		if sectionType != "" && !stringslice.Has(sectionType, kw.Types) {
 			continue
 		}
-		if kw.Section == "" || k.Section == kw.Section || driverGroup == kw.Section {
+		if k.Section == kw.Section || driverGroup == kw.Section {
 			return kw
 		}
 	}
