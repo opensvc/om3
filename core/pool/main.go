@@ -212,7 +212,7 @@ func (t *T) AddFS(name string, shared bool, fsIndex int, diskIndex int, onDisk s
 			fmt.Sprintf("fs#%d.type=zfs", fsIndex),
 			fmt.Sprintf("fs#%d.dev=%s/root", fsIndex, name),
 			fmt.Sprintf("fs#%d.mnt=%s", fsIndex, MountPointFromName(name)),
-			fmt.Sprintf("fs#%d.shared=%s", fsIndex, shared),
+			fmt.Sprintf("fs#%d.shared=%t", fsIndex, shared),
 		}...)
 	case "":
 		panic("fsType should not be empty at this point")

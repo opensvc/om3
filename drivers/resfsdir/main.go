@@ -243,7 +243,7 @@ func (t *T) checkMode() (ok bool) {
 	p := t.path()
 	mode, err := file.Mode(p)
 	if err != nil {
-		t.StatusLog().Warn("%s mode error: %s", err)
+		t.StatusLog().Warn("%s mode error: %s", p, err)
 		return false
 	}
 	v := true
