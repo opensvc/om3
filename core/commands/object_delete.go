@@ -46,7 +46,11 @@ func (t *CmdObjectDelete) run(selector *string, kind string) {
 			"rid":         t.ResourceSelector,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return nil, object.NewConfigurerFromPath(p).Delete(t.OptsDelete)
+			o, err := object.NewConfigurerFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			return nil, o.Delete(t.OptsDelete)
 		}),
 	).Do()
 }

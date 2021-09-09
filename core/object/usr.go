@@ -19,9 +19,9 @@ type (
 )
 
 // NewUsr allocates a usr kind object.
-func NewUsr(p path.T, opts ...funcopt.O) *Usr {
+func NewUsr(p path.T, opts ...funcopt.O) (*Usr, error) {
 	s := &Usr{}
-	s.Base.init(p, opts...)
 	s.Config().RegisterPostCommit(s.postCommit)
-	return s
+	err := s.Base.init(p, opts...)
+	return s, err
 }

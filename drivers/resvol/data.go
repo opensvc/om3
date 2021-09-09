@@ -155,7 +155,11 @@ func (t T) parseReference(s string, filter kind.T, head string) Metadata {
 
 func (t *T) statusData() {
 	for _, md := range t.getMetadata() {
-		o := object.NewFromPath(md.FromStore, object.WithVolatile(true))
+		o, err := object.NewFromPath(md.FromStore, object.WithVolatile(true))
+		if err != nil {
+			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
+			continue
+		}
 		base, _ := o.(object.Baser)
 		if !base.Exists() {
 			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
@@ -211,7 +215,10 @@ func (t T) SendSignals() error {
 	type signaler interface {
 		SignalResource(string, syscall.Signal) error
 	}
-	i := object.NewFromPath(t.Path)
+	i, err := object.NewFromPath(t.Path)
+	if err != nil {
+		return err
+	}
 	o, ok := i.(signaler)
 	if !ok {
 		return fmt.Errorf("%s does not implement SignalResource()", t.Path)
@@ -226,13 +233,13 @@ func (t T) SendSignals() error {
 }
 
 func (t T) InstallDataByKind(filter kind.T) (bool, error) {
-	var (
-		changed bool
-		err     error
-	)
+	var changed bool
 
 	for _, md := range t.getMetadataByKind(filter) {
-		o := object.NewFromPath(md.FromStore, object.WithVolatile(true))
+		o, err := object.NewFromPath(md.FromStore, object.WithVolatile(true))
+		if err != nil {
+			t.Log().Warn().Msgf("store %s init error: %s", md.FromStore, err)
+		}
 		base, _ := o.(object.Baser)
 		if !base.Exists() {
 			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)

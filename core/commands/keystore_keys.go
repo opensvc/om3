@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -46,7 +48,15 @@ func (t *CmdKeystoreKeys) run(selector *string, kind string) {
 			"match": t.Match,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return object.NewFromPath(p).(object.Keystorer).Keys(t.OptsKeys)
+			o, err := object.NewFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			store, ok := o.(object.Keystorer)
+			if !ok {
+				return nil, fmt.Errorf("%s is not a keystore", o)
+			}
+			return store.Keys(t.OptsKeys)
 		}),
 	).Do()
 }

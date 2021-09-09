@@ -286,13 +286,16 @@ func (t *T) SetUUID(uuid string) error {
 	t.UUID = uuid
 
 	// set in the object config file
-	obj := object.NewConfigurerFromPath(t.Path)
+	obj, err := object.NewConfigurerFromPath(t.Path)
+	if err != nil {
+		return err
+	}
 	op := keyop.T{
 		Key:   t.uuidKey(),
 		Op:    keyop.Set,
 		Value: uuid,
 	}
-	if err := obj.SetKeys(op); err != nil {
+	if err = obj.SetKeys(op); err != nil {
 		return err
 	}
 	return nil
@@ -300,8 +303,11 @@ func (t *T) SetUUID(uuid string) error {
 
 func (t *T) UnsetUUID() error {
 	// unset in the object config file
-	obj := object.NewConfigurerFromPath(t.Path)
-	if err := obj.UnsetKeys(t.uuidKey()); err != nil {
+	obj, err := object.NewConfigurerFromPath(t.Path)
+	if err != nil {
+		return err
+	}
+	if err = obj.UnsetKeys(t.uuidKey()); err != nil {
 		return err
 	}
 

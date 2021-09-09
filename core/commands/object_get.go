@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -48,7 +50,15 @@ func (t *CmdObjectGet) run(selector *string, kind string) {
 			"eval":        t.Eval,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return object.NewFromPath(p).(object.Configurer).Get(t.OptsGet)
+			o, err := object.NewFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			c, ok := o.(object.Configurer)
+			if !ok {
+				return nil, fmt.Errorf("%s is not a configurer", o)
+			}
+			return c.Get(t.OptsGet)
 		}),
 	).Do()
 }

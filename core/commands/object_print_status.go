@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -75,8 +76,17 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 		object.SelectionWithLocal(true),
 	)
 	h := hostname.Hostname()
-	for _, p := range sel.Expand() {
-		obj := object.NewBaserFromPath(p)
+	paths, err := sel.Expand()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return data
+	}
+	for _, p := range paths {
+		obj, err := object.NewBaserFromPath(p)
+		if err != nil {
+			log.Debug().Err(err).Stringer("path", p).Msg("extract local")
+			continue
+		}
 		status, err := obj.Status(t.OptsStatus)
 		if err != nil {
 			log.Debug().Err(err).Stringer("path", p).Msg("extract local")
@@ -142,7 +152,11 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 		mergedSelector,
 		object.SelectionWithClient(c),
 	)
-	paths := sel.ExpandSet()
+	paths, err := sel.ExpandSet()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 	data = t.extract(mergedSelector, c)
 
 	output.Renderer{

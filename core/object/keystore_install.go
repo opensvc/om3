@@ -271,8 +271,15 @@ func (t Keystore) postInstall(k string) error {
 		Volume() (*Vol, error)
 		SendSignals() error
 	}
-	for _, p := range sel.Expand() {
-		o := NewBaserFromPath(p, WithVolatile(true))
+	paths, err := sel.Expand()
+	if err != nil {
+		return err
+	}
+	for _, p := range paths {
+		o, err := NewBaserFromPath(p, WithVolatile(true))
+		if err != nil {
+			return err
+		}
 		for _, r := range ResourcesByDrivergroups(o, []drivergroup.T{drivergroup.Volume}) {
 			var i interface{} = r
 			v := i.(resvoler)

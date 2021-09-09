@@ -123,25 +123,29 @@ func (t Selection) String() string {
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
 //
-func (t *Selection) Expand() []path.T {
+func (t *Selection) Expand() ([]path.T, error) {
 	if t.paths != nil {
-		return t.paths
+		return t.paths, nil
 	}
-	t.expand()
+	err := t.expand()
 	log.Debug().Msgf("%d objects selected", len(t.paths))
-	return t.paths
+	return t.paths, err
 }
 
 //
 // ExpandSet returns a set of the paths returned by Expand. Usually to
 // benefit from the .Has() function.
 //
-func (t *Selection) ExpandSet() *set.Set {
+func (t *Selection) ExpandSet() (*set.Set, error) {
 	s := set.New()
-	for _, p := range t.Expand() {
+	paths, err := t.Expand()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range paths {
 		s.Insert(p)
 	}
-	return s
+	return s, nil
 }
 
 func (t *Selection) add(p path.T) {
@@ -154,7 +158,7 @@ func (t *Selection) add(p path.T) {
 	t.paths = append(t.paths, p)
 }
 
-func (t *Selection) expand() {
+func (t *Selection) expand() error {
 	if !t.local {
 		if !t.hasClient {
 			c, _ := client.New(
@@ -164,17 +168,14 @@ func (t *Selection) expand() {
 			t.hasClient = true
 		}
 		if err := t.daemonExpand(); err == nil {
-			return
+			return nil
 		} else if clientcontext.IsSet() {
-			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
-			return
+			return errors.Wrapf(err, "daemon expansion fatal error")
 		} else {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
 	}
-	if err := t.localExpand(); err != nil {
-		log.Debug().Err(err).Msg("")
-	}
+	return t.localExpand()
 }
 
 // Installed returns a list Path of every object with a locally installed configuration file.
@@ -331,7 +332,10 @@ func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 		return matching, err
 	}
 	for _, p := range paths {
-		o := NewConfigurerFromPath(p, WithVolatile(true))
+		o, err := NewConfigurerFromPath(p, WithVolatile(true))
+		if err != nil {
+			return nil, err
+		}
 		if o.Config().HasKeyMatchingOp(*kop) {
 			matching.Insert(p.String())
 			continue
@@ -346,7 +350,10 @@ func (t *Selection) localExactExpand(s string) (*set.Set, error) {
 	if err != nil {
 		return matching, err
 	}
-	o := NewBaserFromPath(p)
+	o, err := NewBaserFromPath(p)
+	if err != nil {
+		return nil, err
+	}
 	if !o.Exists() {
 		return matching, nil
 	}
@@ -390,13 +397,18 @@ func (t *Selection) daemonExpand() error {
 
 // Do executes in parallel the action on all selected objects supporting
 // the action.
-func (t *Selection) Do(action Action) []ActionResult {
-	t.Expand()
-	q := make(chan ActionResult, len(t.paths))
+func (t *Selection) Do(action Action) ([]ActionResult, error) {
 	results := make([]ActionResult, 0)
+
+	paths, err := t.Expand()
+	if err != nil {
+		return results, err
+	}
+
+	q := make(chan ActionResult, len(t.paths))
 	started := 0
 
-	for _, p := range t.paths {
+	for _, p := range paths {
 		go func(p path.T) {
 			result := ActionResult{
 				Path:     p,
@@ -444,5 +456,5 @@ func (t *Selection) Do(action Action) []ActionResult {
 		r := <-q
 		results = append(results, r)
 	}
-	return results
+	return results, nil
 }

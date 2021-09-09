@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
@@ -47,11 +46,14 @@ func (t *CmdObjectPrintConfig) cmd(kind string, selector *string) *cobra.Command
 type result map[string]rawconfig.T
 
 func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, error) {
-	paths := object.NewSelection(
+	data := make(result)
+	paths, err := object.NewSelection(
 		selector,
 		object.SelectionWithLocal(true),
 	).Expand()
-	data := make(result)
+	if err != nil {
+		return data, err
+	}
 	for _, p := range paths {
 		var err error
 		data[p.String()], err = t.extractOne(p, c)
@@ -73,7 +75,10 @@ func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (rawconfig.T, e
 }
 
 func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
-	obj := object.NewConfigurerFromPath(p)
+	obj, err := object.NewConfigurerFromPath(p)
+	if err != nil {
+		return rawconfig.T{}, err
+	}
 	c := obj.Config()
 	if c == nil {
 		return rawconfig.T{}, fmt.Errorf("path %s: no configuration", p)
@@ -130,11 +135,11 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 	)
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
 	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
-		log.Error().Err(err).Msg("")
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	if data, err = t.extract(mergedSelector, c); err != nil {
-		log.Error().Err(err).Msg("")
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	if len(data) == 0 {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -63,8 +64,16 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 	type scheduler interface {
 		PrintSchedule(object.OptsPrintSchedule) schedule.Table
 	}
-	for _, p := range sel.Expand() {
-		obj := object.NewFromPath(p)
+	paths, err := sel.Expand()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return data
+	}
+	for _, p := range paths {
+		obj, err := object.NewFromPath(p)
+		if err != nil {
+			continue
+		}
 		i, ok := obj.(scheduler)
 		if !ok {
 			continue

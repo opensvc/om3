@@ -18,8 +18,8 @@ type (
 )
 
 // NewCcfg allocates a ccfg kind object.
-func NewCcfg(p path.T, opts ...funcopt.O) *Ccfg {
+func NewCcfg(p path.T, opts ...funcopt.O) (*Ccfg, error) {
 	s := &Ccfg{}
-	s.Base.init(p, opts...)
-	return s
+	err := s.Base.init(p, opts...)
+	return s, err
 }

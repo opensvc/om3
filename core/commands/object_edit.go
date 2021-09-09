@@ -47,8 +47,16 @@ func (t *CmdObjectEdit) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 	sel := object.NewSelection(selector)
 	wc := clientcontext.IsSet()
-	for _, p := range sel.Expand() {
-		obj := object.NewFromPath(p)
+	paths, err := sel.Expand()
+	if err != nil {
+		return err
+	}
+	for _, p := range paths {
+		obj, err := object.NewFromPath(p)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "skip %s: %s\n", p, err)
+			continue
+		}
 		var (
 			ks object.Keystorer
 			ok bool

@@ -195,7 +195,10 @@ func (t T) DoLocal() error {
 		t.ObjectSelector,
 		object.SelectionWithLocal(true),
 	)
-	rs := sel.Do(t.Object)
+	rs, err := sel.Do(t.Object)
+	if err != nil {
+		return err
+	}
 	human := func() string {
 		s := ""
 		for _, r := range rs {
@@ -255,7 +258,12 @@ func (t T) DoAsync() {
 		t.ObjectSelector,
 		object.SelectionWithClient(c),
 	)
-	for _, path := range sel.Expand() {
+	paths, err := sel.Expand()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	for _, path := range paths {
 		req := c.NewPostObjectMonitor()
 		req.ObjectSelector = path.String()
 		req.GlobalExpect = t.Target
@@ -307,6 +315,7 @@ func (t T) DoRemote() {
 func (t T) Do() {
 	err := action.Do(t)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	os.Exit(0)

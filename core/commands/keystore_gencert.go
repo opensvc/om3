@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -44,7 +46,15 @@ func (t *CmdSecGenCert) run(selector *string, kind string) {
 		objectaction.WithRemoteAction("gencert"),
 		//objectaction.WithRemoteOptions(map[string]interface{}{}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return nil, object.NewFromPath(p).(object.SecureKeystorer).GenCert(t.OptsGenCert)
+			o, err := object.NewFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			store, ok := o.(object.SecureKeystorer)
+			if !ok {
+				return nil, fmt.Errorf("%s is not a secure keystore", o)
+			}
+			return nil, store.GenCert(t.OptsGenCert)
 		}),
 	).Do()
 }

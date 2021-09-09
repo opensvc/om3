@@ -56,8 +56,11 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.Global.NodeSelector),
 		objectaction.WithRemoteAction("status"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			intf := object.NewBaserFromPath(p)
-			return intf.Status(t.OptsStatus)
+			o, err := object.NewBaserFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			return o.Status(t.OptsStatus)
 		}),
 	).Do()
 }

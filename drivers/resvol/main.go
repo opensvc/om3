@@ -416,7 +416,10 @@ func (t *T) Volume() (*object.Vol, error) {
 	if err != nil {
 		return nil, err
 	}
-	v := object.NewVol(p)
+	v, err := object.NewVol(p)
+	if err != nil {
+		return nil, err
+	}
 	if !v.Exists() {
 		v.SetVolatile(true)
 		if err := t.configureVolume(v, false); err != nil {
@@ -486,7 +489,10 @@ func (t *T) configureVolume(v *object.Vol, withUsage bool) error {
 	if err != nil {
 		return err
 	}
-	obj := object.NewFromPath(t.Path) // TODO: find a more efficient method
+	obj, err := object.NewFromPath(t.Path) // TODO: find a more efficient method
+	if err != nil {
+		return err
+	}
 	return l.ConfigureVolume(v, obj)
 }
 

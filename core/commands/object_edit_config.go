@@ -48,8 +48,15 @@ func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	sel := object.NewSelection(selector)
 	wc := clientcontext.IsSet()
-	for _, p := range sel.Expand() {
-		obj := object.NewConfigurerFromPath(p)
+	paths, err := sel.Expand()
+	if err != nil {
+		return err
+	}
+	for _, p := range paths {
+		obj, err := object.NewConfigurerFromPath(p)
+		if err != nil {
+			return err
+		}
 		if !wc && obj.Exists() {
 			if err := t.doLocal(obj, c); err != nil {
 				return err

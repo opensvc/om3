@@ -44,7 +44,11 @@ func (t *CmdObjectUnprovision) run(selector *string, kind string) {
 		objectaction.WithAsyncTarget("unprovisioned"),
 		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return nil, object.NewActorFromPath(p).Unprovision(t.OptsUnprovision)
+			o, err := object.NewActorFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			return nil, o.Unprovision(t.OptsUnprovision)
 		}),
 	).Do()
 }

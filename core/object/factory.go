@@ -1,6 +1,8 @@
 package object
 
 import (
+	"fmt"
+
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
@@ -25,7 +27,7 @@ func WithVolatile(s bool) funcopt.O {
 }
 
 // NewFromPath allocates a new kinded object
-func NewFromPath(p path.T, opts ...funcopt.O) interface{} {
+func NewFromPath(p path.T, opts ...funcopt.O) (interface{}, error) {
 	switch p.Kind {
 	case kind.Svc:
 		return NewSvc(p, opts...)
@@ -40,21 +42,33 @@ func NewFromPath(p path.T, opts ...funcopt.O) interface{} {
 	case kind.Ccfg:
 		return NewCcfg(p, opts...)
 	default:
-		return nil
+		return nil, fmt.Errorf("unsupported kind: %s", p.Kind)
 	}
 }
 
 // NewBaserFromPath returns a Baser interface from an object path
-func NewBaserFromPath(p path.T, opts ...funcopt.O) Baser {
-	return NewFromPath(p, opts...).(Baser)
+func NewBaserFromPath(p path.T, opts ...funcopt.O) (Baser, error) {
+	if o, err := NewFromPath(p, opts...); err != nil {
+		return nil, err
+	} else {
+		return o.(Baser), nil
+	}
 }
 
 // NewConfigurerFromPath returns a Configurer interface from an object path
-func NewConfigurerFromPath(p path.T, opts ...funcopt.O) Configurer {
-	return NewFromPath(p, opts...).(Configurer)
+func NewConfigurerFromPath(p path.T, opts ...funcopt.O) (Configurer, error) {
+	if o, err := NewFromPath(p, opts...); err != nil {
+		return nil, err
+	} else {
+		return o.(Configurer), nil
+	}
 }
 
 // NewActorFromPath returns a Actor interface from an object path
-func NewActorFromPath(p path.T, opts ...funcopt.O) Actor {
-	return NewFromPath(p, opts...).(Actor)
+func NewActorFromPath(p path.T, opts ...funcopt.O) (Actor, error) {
+	if o, err := NewFromPath(p, opts...); err != nil {
+		return nil, err
+	} else {
+		return o.(Actor), nil
+	}
 }

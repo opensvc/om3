@@ -29,13 +29,13 @@ type (
 )
 
 // NewCfg allocates a cfg kind object.
-func NewCfg(p path.T, opts ...funcopt.O) *Cfg {
+func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
 	s := &Cfg{}
 	s.CustomEncode = cfgEncode
 	s.CustomDecode = cfgDecode
-	s.Base.init(p, opts...)
 	s.Config().RegisterPostCommit(s.postCommit)
-	return s
+	err := s.Base.init(p, opts...)
+	return s, err
 }
 
 func cfgEncode(b []byte) (string, error) {

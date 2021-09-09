@@ -1,6 +1,8 @@
 package entrypoints
 
 import (
+	"fmt"
+	"os"
 	"sort"
 
 	"opensvc.com/opensvc/core/object"
@@ -25,7 +27,11 @@ func (t List) Do() {
 		object.SelectionWithServer(t.Server),
 	)
 	data := make([]string, 0)
-	for _, path := range selection.Expand() {
+	paths, err := selection.Expand()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	for _, path := range paths {
 		data = append(data, path.String())
 	}
 	sort.Strings(data)

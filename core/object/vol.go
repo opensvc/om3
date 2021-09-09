@@ -27,10 +27,10 @@ type (
 )
 
 // NewVol allocates a vol kind object.
-func NewVol(p path.T, opts ...funcopt.O) *Vol {
+func NewVol(p path.T, opts ...funcopt.O) (*Vol, error) {
 	s := &Vol{}
-	s.Base.init(p, opts...)
-	return s
+	err := s.Base.init(p, opts...)
+	return s, err
 }
 
 //
@@ -121,7 +121,11 @@ func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 		if node != "" && node != hostname.Hostname() {
 			continue
 		}
-		i := NewFromPath(p, WithVolatile(true))
+		i, err := NewFromPath(p, WithVolatile(true))
+		if err != nil {
+			t.log.Error().Err(err).Msg("")
+			continue
+		}
 		o, ok := i.(ResourceLister)
 		if !ok {
 			continue

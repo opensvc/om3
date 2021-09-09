@@ -78,12 +78,12 @@ func (t *CmdObjectCreate) parseSelector(selector *string, kind string) (path.T, 
 	}
 	// now we know the path is valid. Verify it is non-existing or matches only one object.
 	objectSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "**")
-	paths := object.NewSelection(
+	paths, err := object.NewSelection(
 		objectSelector,
 		object.SelectionWithLocal(t.Global.Local),
 		object.SelectionWithServer(t.Global.Server),
 	).Expand()
-	if len(paths) > 1 {
+	if err == nil && len(paths) > 1 {
 		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions.")
 	}
 	return p, nil

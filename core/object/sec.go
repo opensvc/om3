@@ -31,13 +31,13 @@ type (
 )
 
 // NewSec allocates a sec kind object.
-func NewSec(p path.T, opts ...funcopt.O) *Sec {
+func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 	s := &Sec{}
 	s.CustomEncode = secEncode
 	s.CustomDecode = secDecode
-	s.Base.init(p, opts...)
 	s.Config().RegisterPostCommit(s.postCommit)
-	return s
+	err := s.Base.init(p, opts...)
+	return s, err
 }
 
 func secEncode(b []byte) (string, error) {

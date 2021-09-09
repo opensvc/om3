@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -45,7 +47,15 @@ func (t *CmdObjectPrintConfigMtime) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.OptsGlobal.NodeSelector),
 		objectaction.WithRemoteAction("print_config_mtime"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			tm := object.NewFromPath(p).(object.Configurer).Config().ModTime()
+			o, err := object.NewFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			c, ok := o.(object.Configurer)
+			if !ok {
+				return nil, fmt.Errorf("%s is not a configurer", o)
+			}
+			tm := c.Config().ModTime()
 			return timestamp.New(tm).String(), nil
 		}),
 	).Do()

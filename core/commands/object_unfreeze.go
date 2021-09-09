@@ -46,7 +46,11 @@ func (t *CmdObjectUnfreeze) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.Global.NodeSelector),
 		objectaction.WithRemoteAction("unfreeze"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			return nil, object.NewActorFromPath(p).Unfreeze()
+			o, err := object.NewActorFromPath(p)
+			if err != nil {
+				return nil, err
+			}
+			return nil, o.Unfreeze()
 		}),
 	).Do()
 }

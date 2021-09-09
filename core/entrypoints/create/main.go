@@ -313,13 +313,19 @@ func localFromData(pivot Pivot) error {
 }
 
 func localFromRaw(p path.T, c rawconfig.T) error {
-	o := object.NewFromPath(p)
+	o, err := object.NewFromPath(p)
+	if err != nil {
+		return err
+	}
 	oc := o.(object.Configurer)
 	return oc.Config().CommitData(c)
 }
 
 func LocalEmpty(p path.T) error {
-	o := object.NewFromPath(p)
+	o, err := object.NewFromPath(p)
+	if err != nil {
+		return err
+	}
 	oc := o.(object.Configurer)
 	return oc.Config().Commit()
 }

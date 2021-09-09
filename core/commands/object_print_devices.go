@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -62,8 +63,16 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
 		selector,
 		object.SelectionWithLocal(true),
 	)
-	for _, p := range sel.Expand() {
-		obj := object.NewFromPath(p)
+	paths, err := sel.Expand()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return data
+	}
+	for _, p := range paths {
+		obj, err := object.NewFromPath(p)
+		if err != nil {
+			continue
+		}
 		i, ok := obj.(devicer)
 		if !ok {
 			continue
