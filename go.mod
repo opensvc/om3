@@ -24,6 +24,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/msoap/byline v1.1.1
+	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/opensvc/fcache v1.0.3
 	github.com/opensvc/fcntllock v1.0.2
 	github.com/opensvc/flock v1.0.3
