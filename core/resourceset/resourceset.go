@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/util/pg"
 )
 
 type (
@@ -17,7 +19,10 @@ type (
 		SectionName    string
 		DriverGroup    drivergroup.T
 		Parallel       bool
+		PG             *pg.Config
 		ResourceLister ResourceLister
+
+		log *zerolog.Logger
 	}
 
 	L []*T
@@ -63,6 +68,24 @@ func New() *T {
 	return &T{}
 }
 
+// Log returns the resource logger
+func (t *T) Log() *zerolog.Logger {
+	if t.log == nil {
+		log := zerolog.New(nil)
+		return &log
+	}
+	return t.log
+}
+
+// SetLogger configures a logger from a parent logger, adding the "rs" metadata key
+func (t *T) SetLogger(parent *zerolog.Logger) {
+	if parent == nil {
+		return
+	}
+	log := parent.With().Str("rs", t.Name).Logger()
+	t.log = &log
+}
+
 //
 // Generic allocates and initializes a new resourceset for a given
 // drivergroup name, and return an error if this name is not valid.
@@ -106,7 +129,11 @@ func (t T) Fullname() string {
 }
 
 func (t T) String() string {
-	return t.SectionName
+	s := prefix + t.DriverGroup.String()
+	if t.Name != "" {
+		s = s + "." + t.Name
+	}
+	return s
 }
 
 //
@@ -148,6 +175,10 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) 
 	if barrier != "" && resources.HasRID(barrier) {
 		hitBarrier = true
 		resources = resources.Truncate(barrier)
+	}
+	pg.FromContext(ctx).Register(t.PG)
+	for _, r := range resources {
+		pg.FromContext(ctx).Register(r.GetPG())
 	}
 	if t.Parallel {
 		err = t.doParallel(ctx, l, resources, fn)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 )
@@ -113,7 +114,7 @@ func decodeKey(o decoder, key string) (s string, err error) {
 		Key:    key,
 	}
 	if b, err = o.Decode(decodeOption); err != nil {
-		return "", fmt.Errorf("unable to decode key '%v' on object '%v'", key, o)
+		return "", errors.Wrapf(err, "env decode from %s", o)
 	}
 	return string(b), nil
 }

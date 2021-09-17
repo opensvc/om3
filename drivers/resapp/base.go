@@ -1,12 +1,13 @@
 package resapp
 
 import (
+	"os"
+	"time"
+
 	"github.com/google/uuid"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/envprovider"
-	"os"
-	"time"
 )
 
 // BaseT is the app base driver structure
@@ -38,12 +39,10 @@ func (t T) getEnv() (env []string, err error) {
 		env = append(env, t.Env...)
 	}
 	if tempEnv, err = envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to retrieve env from configs_environment: '%v'", t.ConfigsEnv)
 		return nil, err
 	}
 	env = append(env, tempEnv...)
 	if tempEnv, err = envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to retrieve env from secrets_environment: '%v'", t.SecretsEnv)
 		return nil, err
 	}
 	env = append(env, tempEnv...)

@@ -110,6 +110,12 @@ func (t T) parseReference(s string, filter kind.T, head string) Metadata {
 	toPath := filepath.Join(head, l[1])
 	// toPath = "/here"
 
+	if strings.HasSuffix(l[1], "/") {
+		// BEWARE: do not drop the trailing /, as it's the directory marker
+		//         filepath.Join() drops it, so let's restore it.
+		toPath = toPath + "/"
+	}
+
 	from := strings.TrimLeft(l[0], "/")
 	// from = "sec/s1/k[12]"
 

@@ -191,7 +191,6 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 	var env []string
 	env, err = t.getEnv()
 	if err != nil {
-		t.Log().Error().Err(err).Msgf("unable to get environment for action '%v'", action)
 		return nil, err
 	}
 	options := []funcopt.O{

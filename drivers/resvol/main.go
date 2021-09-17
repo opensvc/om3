@@ -200,6 +200,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.FileMode,
 			Text:      "The permissions, in octal notation, to apply to the volume root and installed directories.",
+			Default:   "700",
 			Example:   "750",
 		},
 		{

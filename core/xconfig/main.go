@@ -574,6 +574,19 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	return t.EvalKeywordAs(k, kw, impersonate)
 }
 
+func (t *T) EvalNoConv(k key.T) (string, error) {
+	return t.EvalAsNoConv(k, "")
+}
+
+func (t *T) EvalAsNoConv(k key.T, impersonate string) (string, error) {
+	sectionType := t.sectionType(k)
+	kw, err := getKeyword(k, sectionType, t.Referrer)
+	if err != nil {
+		return "", err
+	}
+	return t.evalStringAs(k, kw, impersonate)
+}
+
 func (t *T) sectionType(k key.T) string {
 	if k.Option == "type" {
 		return ""

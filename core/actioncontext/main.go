@@ -5,6 +5,7 @@ import (
 
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/objectactionprops"
+	"opensvc.com/opensvc/util/pg"
 )
 
 type (
@@ -45,6 +46,7 @@ func New(options interface{}, props objectactionprops.T) context.Context {
 	if props.Rollback {
 		ctx = actionrollback.NewContext(ctx)
 	}
+	ctx = pg.NewContext(ctx)
 	return ctx
 }
 

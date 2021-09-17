@@ -17,6 +17,7 @@ import (
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/pg"
 )
 
 // Resources implementing setters
@@ -120,6 +121,7 @@ func (t *Base) actionTimeout(kwNames []string) time.Duration {
 }
 
 func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
+	pg.FromContext(ctx).Register(t.PG)
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
 	if err := t.preAction(ctx); err != nil {
@@ -151,6 +153,7 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 		return err
 	}
+	t.CleanPG(ctx)
 	return nil
 }
 

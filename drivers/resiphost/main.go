@@ -450,11 +450,23 @@ func (t T) arpAnnounce() error {
 }
 
 func (t T) start() error {
-	t.Log().Info().Msgf("add %s to %s", t.ipnet(), t.IpDev)
-	return netif.AddAddr(t.IpDev, t.ipnet())
+	ipnet := t.ipnet()
+	if ipnet.Mask == nil {
+		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
+		t.Log().Error().Err(err).Msg("")
+		return err
+	}
+	t.Log().Info().Msgf("add %s to %s", ipnet, t.IpDev)
+	return netif.AddAddr(t.IpDev, ipnet)
 }
 
 func (t T) stop() error {
+	ipnet := t.ipnet()
+	if ipnet.Mask == nil {
+		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
+		t.Log().Error().Err(err).Msg("")
+		return err
+	}
 	t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)
 	return netif.DelAddr(t.IpDev, t.ipnet())
 }

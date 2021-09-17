@@ -35,9 +35,11 @@ func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 	s := &Sec{}
 	s.CustomEncode = secEncode
 	s.CustomDecode = secDecode
+	if err := s.Base.init(p, opts...); err != nil {
+		return s, err
+	}
 	s.Config().RegisterPostCommit(s.postCommit)
-	err := s.Base.init(p, opts...)
-	return s, err
+	return s, nil
 }
 
 func secEncode(b []byte) (string, error) {

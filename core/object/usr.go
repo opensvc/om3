@@ -21,7 +21,9 @@ type (
 // NewUsr allocates a usr kind object.
 func NewUsr(p path.T, opts ...funcopt.O) (*Usr, error) {
 	s := &Usr{}
+	if err := s.Base.init(p, opts...); err != nil {
+		return s, err
+	}
 	s.Config().RegisterPostCommit(s.postCommit)
-	err := s.Base.init(p, opts...)
-	return s, err
+	return s, nil
 }

@@ -41,7 +41,9 @@ func (t T) Start(ctx context.Context) (err error) {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
-
+	if err := t.ApplyPGChain(ctx); err != nil {
+		return err
+	}
 	opts = append(opts, command.WithLogger(t.Log()))
 	cmd := command.New(opts...)
 	t.Log().Info().Msgf("running %s", cmd.String())

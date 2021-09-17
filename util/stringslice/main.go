@@ -22,3 +22,11 @@ func Equal(a, b []string) bool {
 	}
 	return true
 }
+
+func Map(a []string, fn func(string) string) []string {
+	var b []string
+	for _, e := range a {
+		b = append(b, fn(e))
+	}
+	return b
+}

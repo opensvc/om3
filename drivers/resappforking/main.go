@@ -36,6 +36,9 @@ func (t T) Start(ctx context.Context) (err error) {
 	if len(opts) == 0 {
 		return nil
 	}
+	if err := t.ApplyPGChain(ctx); err != nil {
+		return err
+	}
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),

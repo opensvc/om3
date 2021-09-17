@@ -23,6 +23,7 @@ import (
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -64,6 +65,10 @@ type (
 		SetObjectDriver(ObjectDriver)
 		GetObjectDriver() ObjectDriver
 		SetRID(string)
+		SetPG(*pg.Config)
+		GetPG() *pg.Config
+		GetPGID() string
+		ApplyPGChain(context.Context) error
 		StatusLog() *StatusLog
 		TagSet() TagSet
 		VarDir() string
@@ -103,6 +108,7 @@ type (
 		statusLog StatusLog
 		log       zerolog.Logger
 		object    ObjectDriver
+		pg        *pg.Config
 	}
 
 	// ProvisionStatus define if and when the resource became provisioned.
@@ -310,6 +316,46 @@ func (t T) ID() *resourceid.T {
 // SetRID sets the resource identifier
 func (t *T) SetRID(v string) {
 	t.ResourceID = resourceid.Parse(v)
+}
+
+// SetPG sets the process group config parsed from the config
+func (t *T) SetPG(v *pg.Config) {
+	t.pg = v
+}
+
+// GetPG returns the private pg resource field
+func (t *T) GetPG() *pg.Config {
+	return t.pg
+}
+
+// GetPGID returns the pg id configured via SetPG, or "" if unset
+func (t *T) GetPGID() string {
+	if t.pg == nil {
+		return ""
+	}
+	return t.pg.ID
+}
+
+//
+// ApplyPGChain fetches the pg manager from the action context and
+// apply the pg configuration to all unconfigured pg on the pg id
+// hierarchy (resource=>subset=>object).
+//
+// The pg manager remembers which pg have been configured to avoid
+// doing the config twice.
+//
+func (t *T) ApplyPGChain(ctx context.Context) error {
+	for _, run := range pg.FromContext(ctx).Apply(t.GetPGID()) {
+		if !run.Changed {
+			continue
+		}
+		if run.Err != nil {
+			return run.Err
+		} else {
+			t.log.Info().Msgf("applied %s", run.Config)
+		}
+	}
+	return nil
 }
 
 // SetObjectDriver holds the useful interface of the parent object of the resource.
@@ -525,7 +571,7 @@ func Start(ctx context.Context, r Driver) error {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	if err := r.Start(ctx); err != nil {
-		return err
+		return errors.Wrapf(err, r.RID())
 	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Start); err != nil {
 		return errors.Wrapf(err, "trigger")

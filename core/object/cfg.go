@@ -33,9 +33,11 @@ func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
 	s := &Cfg{}
 	s.CustomEncode = cfgEncode
 	s.CustomDecode = cfgDecode
+	if err := s.Base.init(p, opts...); err != nil {
+		return s, err
+	}
 	s.Config().RegisterPostCommit(s.postCommit)
-	err := s.Base.init(p, opts...)
-	return s, err
+	return s, nil
 }
 
 func cfgEncode(b []byte) (string, error) {

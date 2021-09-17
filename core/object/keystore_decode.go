@@ -29,7 +29,7 @@ func (t *Keystore) decode(keyname string) ([]byte, error) {
 		return []byte{}, fmt.Errorf("key does not exist: %s", keyname)
 	}
 	k := keyFromName(keyname)
-	if s, err = t.config.GetStringStrict(k); err != nil {
+	if s, err = t.config.GetStrict(k); err != nil {
 		return []byte{}, err
 	}
 	return t.CustomDecode(s)

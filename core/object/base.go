@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 
-	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -24,6 +24,7 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/logging"
+	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/xsession"
 )
 
@@ -40,6 +41,7 @@ type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
 		Path path.T
+		PG   *pg.Config
 
 		// private
 		volatile bool
@@ -101,12 +103,13 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}
+	t.PG = t.pgConfig("")
 	t.log.Debug().Msgf("%s initialized", t)
 	return nil
 }
 
 func (t Base) String() string {
-	return fmt.Sprintf("base object %s", t.Path)
+	return t.Path.String()
 }
 
 func (t *Base) SetVolatile(v bool) {
@@ -119,58 +122,80 @@ func (t Base) IsVolatile() bool {
 
 func (t *Base) ResourceSets() resourceset.L {
 	l := resourceset.NewList()
-	s := set.New()
-	referenced := set.New()
+	done := make(map[string]*resourceset.T)
+	//
+	// subsetSectionString returns the existing section name found in the
+	// config file
+	//   [subset#fs:g1]   (most precise)
+	//   [subset#g1]      (less precise)
+	//
+	subsetSectionString := func(g drivergroup.T, name string) string {
+		s := resourceset.FormatSectionName(g.String(), name)
+		if t.config.HasSectionString(s) {
+			return s
+		}
+		return "subset#" + s
+	}
+	//
+	// configureResourceSet allocates and configures the resourceset, looking
+	// for keywords in the following sections:
+	//   [subset#fs:g1]   (most precise)
+	//   [subset#g1]      (less precise)
+	//
+	// If the rset is already configured, avoid doing the job twice.
+	//
+	configureResourceSet := func(g drivergroup.T, name string) *resourceset.T {
+		id := resourceset.FormatSectionName(g.String(), name)
+		if rset, ok := done[id]; ok {
+			return rset
+		}
+		k := subsetSectionString(g, name)
+		rset := resourceset.New()
+		rset.DriverGroup = g
+		rset.Name = name
+		rset.SectionName = k
+		rset.ResourceLister = t
+		parallelKey := key.New(k, "parallel")
+		rset.Parallel = t.config.GetBool(parallelKey)
+		rset.PG = t.pgConfig(k)
+		rset.SetLogger(&t.log)
+		done[id] = rset
+		l = append(l, rset)
+		return rset
+	}
 
-	// add resourcesets found as section
 	for _, k := range t.config.SectionStrings() {
-		if s.Has(k) {
+		if strings.HasPrefix(k, "subset#") {
+			// discard subset#... section
 			continue
 		}
-		// [subset#fs:g1]
-		if rset, err := resourceset.Parse(k); err == nil {
-			rset.ResourceLister = t
-			parallelKey := key.New(k, "parallel")
-			rset.Parallel = t.config.GetBool(parallelKey)
-			l = append(l, rset)
-			s.Insert(k)
-			continue
-		}
-		//
-		// here we have a non-subset section... keep track of the subset referenced, if any.
-		//
-		// [fs#1]
-		// subset = g1
-		//
 		subsetKey := key.New(k, "subset")
-		name := t.config.Get(subsetKey)
-		if name != "" {
-			resourceID := resourceid.Parse(k)
-			sectionName := resourceset.FormatSectionName(resourceID.DriverGroup().String(), name)
-			referenced.Insert(sectionName)
+		subsetName := t.config.Get(subsetKey)
+		if subsetName == "" {
+			// discard section with no 'subset' keyword
+			continue
 		}
+		//
+		// here we have a non-subset section, for example
+		//   [fs#1]
+		//   subset = g1
+		//
+		g := resourceid.Parse(k).DriverGroup()
+		configureResourceSet(g, subsetName)
 	}
 
 	// add generic resourcesets not already found as a section
 	for _, k := range drivergroup.Names() {
-		if s.Has(k) {
+		if _, ok := done[k]; ok {
 			continue
 		}
 		if rset, err := resourceset.Generic(k); err == nil {
 			rset.ResourceLister = t
 			l = append(l, rset)
-			s.Insert(k)
 		} else {
 			t.log.Debug().Err(err)
 		}
 	}
-	// add subsets referenced but not found as a section
-	referenced.Difference(s).Do(func(k interface{}) {
-		if rset, err := resourceset.Parse(k.(string)); err == nil {
-			rset.ResourceLister = t
-			l = append(l, rset)
-		}
-	})
 	sort.Sort(l)
 	return l
 }
@@ -331,6 +356,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 		}
 	}
 	r.SetObjectDriver(t)
+	r.SetPG(t.pgConfig(rid))
 	t.log.Debug().Msgf("configured resource: %+v", r)
 	return nil
 }

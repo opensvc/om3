@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
@@ -99,7 +100,7 @@ func (t Keystore) _install(k string, dst string) error {
 		return err
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key %s not found", t, k)
+		return fmt.Errorf("%s key=%s not found", t, k)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, nil, nil, nil, nil); err != nil {
@@ -141,20 +142,20 @@ func (t Keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 		return false, err
 	}
 	if file.ExistsAndDir(dst) {
-		t.Log().Info().Msgf("remove %s key %s directory at location %s", t, vk.Key, dst)
+		t.Log().Info().Msgf("remove %s key=%s directory at location %s", t, vk.Key, dst)
 		if err := os.RemoveAll(dst); err != nil {
 			return false, err
 		}
 	}
 	vdir := filepath.Dir(dst)
 	if file.ExistsAndRegular(vdir) || file.ExistsAndSymlink(vdir) {
-		t.Log().Info().Msgf("remove %s key %s file at parent location %s", t, vk.Key, vdir)
+		t.Log().Info().Msgf("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
 		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
 	}
 	if !file.Exists(vdir) {
-		t.Log().Info().Msgf("create directory %s to host %s key %s", vdir, t, vk.Key)
+		t.Log().Info().Msgf("create directory %s to host %s key=%s", vdir, t, vk.Key)
 		if err := os.MkdirAll(vdir, *dirmode); err != nil {
 			return false, err
 		}
@@ -246,17 +247,17 @@ func (t Keystore) Install(options OptsInstall) error {
 }
 
 func (t Keystore) InstallKey(k string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) error {
-	t.log.Debug().Msgf("install key %s to %s", k, dst)
+	t.log.Debug().Msgf("install key=%s to %s", k, dst)
 	keys, err := t.resolveKey(k)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "%s", t.Path)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key %s not found", t, k)
+		return fmt.Errorf("%s key=%s not found", t.Path, k)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
-			return err
+			return errors.Wrapf(err, "%s: %s", t.Path, vk.Key)
 		}
 	}
 	return nil
