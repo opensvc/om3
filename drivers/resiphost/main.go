@@ -176,7 +176,7 @@ func (t *T) StatusInfo() map[string]interface{} {
 	return data
 }
 
-func (t T) Start(ctx context.Context) error {
+func (t *T) Start(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
 		t.Log().Info().Msgf("%s is already up on %s", t.IpName, t.IpDev)
 		return nil
@@ -193,7 +193,7 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Stop(ctx context.Context) error {
+func (t *T) Stop(ctx context.Context) error {
 	if initialStatus := t.Status(ctx); initialStatus == status.Down {
 		t.Log().Info().Msgf("%s is already down on %s", t.IpName, t.IpDev)
 		return nil
@@ -314,7 +314,7 @@ func (t T) ipaddr() net.IP {
 	return t._ipaddr
 }
 
-func (t T) ipmask() net.IPMask {
+func (t *T) ipmask() net.IPMask {
 	if t._ipmask != nil {
 		return t._ipmask
 	}
@@ -322,14 +322,14 @@ func (t T) ipmask() net.IPMask {
 	return t._ipmask
 }
 
-func (t T) getIPNet() *net.IPNet {
+func (t *T) getIPNet() *net.IPNet {
 	return &net.IPNet{
 		IP:   t.ipaddr(),
 		Mask: t.ipmask(),
 	}
 }
 
-func (t T) getIPMask() net.IPMask {
+func (t *T) getIPMask() net.IPMask {
 	ip := t.ipaddr()
 	bits := getIPBits(ip)
 	if m, err := parseCIDRMask(t.Netmask, bits); err == nil {
@@ -338,7 +338,30 @@ func (t T) getIPMask() net.IPMask {
 	if m, err := parseDottedMask(t.Netmask); err == nil {
 		return m
 	}
+	// fallback to the mask of the first found ip on the intf
+	if m, err := t.defaultMask(); err == nil {
+		return m
+	}
 	return nil
+}
+
+func (t *T) defaultMask() (net.IPMask, error) {
+	intf, err := t.netInterface()
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := intf.Addrs()
+	if err != nil {
+		return nil, err
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("no addr to guess mask from")
+	}
+	_, net, err := net.ParseCIDR(addrs[0].String())
+	if err != nil {
+		return nil, err
+	}
+	return net.Mask, nil
 }
 
 func (t T) getIPAddr() net.IP {
@@ -449,7 +472,7 @@ func (t T) arpAnnounce() error {
 	return t.arpGratuitous()
 }
 
-func (t T) start() error {
+func (t *T) start() error {
 	ipnet := t.ipnet()
 	if ipnet.Mask == nil {
 		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
@@ -460,7 +483,7 @@ func (t T) start() error {
 	return netif.AddAddr(t.IpDev, ipnet)
 }
 
-func (t T) stop() error {
+func (t *T) stop() error {
 	ipnet := t.ipnet()
 	if ipnet.Mask == nil {
 		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
