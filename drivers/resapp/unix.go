@@ -111,7 +111,7 @@ func (t T) Stop(ctx context.Context) (err error) {
 }
 
 // Status evaluates and display the Resource status and logs
-func (t *T) Status(ctx context.Context) status.T {
+func (t *T) CommonStatus(ctx context.Context) status.T {
 	t.Log().Debug().Msg("status()")
 	var opts []funcopt.O
 	var err error

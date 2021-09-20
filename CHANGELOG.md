@@ -10,6 +10,8 @@
 
 * New fields in print schedule json format: node, path
 
+* **breaking change:** new cgroup layout. The previous organization allowed conflicts between different object types, and was hard to read.
+
 ### driver app
 * **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)
   

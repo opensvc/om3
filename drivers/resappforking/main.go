@@ -64,6 +64,14 @@ func (t T) Start(ctx context.Context) (err error) {
 	return
 }
 
+func (t *T) Status(ctx context.Context) status.T {
+	if t.CheckCmd == "" {
+		t.StatusLog().Info("check is not set")
+		return status.NotApplicable
+	}
+	return t.CommonStatus(ctx)
+}
+
 // Label returns a formatted short description of the Resource
 func (t T) Label() string {
 	return driverGroup.String()

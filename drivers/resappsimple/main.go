@@ -56,6 +56,14 @@ func (t T) Start(ctx context.Context) (err error) {
 	return
 }
 
+func (t *T) Status(ctx context.Context) status.T {
+	if t.CheckCmd != "" {
+		return t.CommonStatus(ctx)
+	}
+	t.StatusLog().Warn("TODO: simple ran pid check")
+	return status.Undef
+}
+
 // Label returns a formatted short description of the Resource
 func (t T) Label() string {
 	return driverGroup.String()
