@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/proc"
 )
 
 // T is the driver structure.
@@ -60,11 +61,42 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.CheckCmd != "" {
 		return t.CommonStatus(ctx)
 	}
-	t.StatusLog().Warn("TODO: simple ran pid check")
-	return status.Undef
+	return t.status()
 }
 
 // Label returns a formatted short description of the Resource
 func (t T) Label() string {
 	return driverGroup.String()
+}
+
+func (t *T) status() status.T {
+	cmdArgs, err := t.CmdArgs(t.StartCmd, "start")
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
+	procs, err := t.getRunning(cmdArgs, true)
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
+	switch procs.Len() {
+	case 0:
+		return status.Down
+	case 1:
+		return status.Up
+	default:
+		t.StatusLog().Warn("too many process (%d)", procs.Len())
+		return status.Up
+	}
+}
+
+func (t T) getRunning(cmdArgs []string, withChildren bool) (*proc.L, error) {
+	procs, err := proc.ByCmdline(cmdArgs)
+	if err != nil {
+		return procs, err
+	}
+	procs = procs.FilterByEnv("OPENSVC_ID", t.ObjectID.String())
+	procs = procs.FilterByEnv("OPENSVC_RID", t.RID())
+	return procs, nil
 }

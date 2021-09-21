@@ -164,8 +164,8 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-// GetFuncOpts returns
-func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
+// cmdArgs returns the command argv of an action
+func (t T) CmdArgs(s string, action string) ([]string, error) {
 	var err error
 	if len(s) == 0 {
 		t.Log().Debug().Msgf("nothing to do for action '%v'", action)
@@ -188,8 +188,16 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 		t.Log().Error().Err(err).Msgf("unable to CmdArgsFromString for action '%v'", action)
 		return nil, err
 	}
-	var env []string
-	env, err = t.getEnv()
+	return cmdArgs, nil
+}
+
+// GetFuncOpts returns a list of functional options to use with command.New()
+func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
+	cmdArgs, err := t.CmdArgs(s, action)
+	if err != nil {
+		return nil, err
+	}
+	env, err := t.getEnv()
 	if err != nil {
 		return nil, err
 	}

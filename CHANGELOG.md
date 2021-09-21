@@ -26,4 +26,9 @@
   Following env var are not anymore added to process env var during actions
   * OPENSVC_SVCNAME
   * OPENSVC_SVC_ID
+
+* **breaking change:** Fix OPENSVC_ID var value on app resources
+
+  In the app drivers, the object id is now exposed as the OPENSVC_ID environment variable.
+  In 2.1, OPENSVC_ID was set to the object path name (for example "foo" from "test/svc/foo").
   
