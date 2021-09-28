@@ -345,7 +345,12 @@ func (t *T) GetPGID() string {
 // doing the config twice.
 //
 func (t *T) ApplyPGChain(ctx context.Context) error {
-	for _, run := range pg.FromContext(ctx).Apply(t.GetPGID()) {
+	mgr := pg.FromContext(ctx)
+	if mgr == nil {
+		// probably testing
+		return nil
+	}
+	for _, run := range mgr.Apply(t.GetPGID()) {
 		if !run.Changed {
 			continue
 		}

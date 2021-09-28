@@ -1,8 +1,12 @@
 package keywords
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/stringslice"
@@ -101,4 +105,57 @@ func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 
 func (t Keyword) IsZero() bool {
 	return t.Option == ""
+}
+
+func (t *Keyword) SetValue(r, v interface{}) error {
+	elements := strings.Split(t.Attr, ".")
+	n := len(elements)
+	if n == 0 {
+		return fmt.Errorf("set keyword %s: no Attr in keyword definition", t.Option)
+	}
+	o := r
+	var err error
+	for i := 0; i < n-1; i = i + 1 {
+		o, err = getValueAddr(o, elements[i])
+		if err != nil {
+			return errors.Wrapf(err, "set keyword %s: %s", t.Option, elements[i])
+		}
+	}
+	if err := attr.SetValue(o, elements[n-1], v); err != nil {
+		return errors.Wrapf(err, "set keyword %s: %s", t.Option, elements[n-1])
+	}
+	return nil
+}
+
+func getReflectValue(obj interface{}) (reflect.Value, error) {
+	value := reflect.ValueOf(obj)
+
+	if value.Kind() == reflect.Struct {
+		return value, nil
+	}
+
+	if value.Kind() == reflect.Ptr && value.Elem().Kind() == reflect.Struct {
+		return value.Elem(), nil
+	}
+
+	var retval reflect.Value
+	return retval, attr.ErrNotStruct
+}
+
+func getValueAddr(obj interface{}, fieldName string) (interface{}, error) {
+	objValue, err := getReflectValue(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	fieldValue := objValue.FieldByName(fieldName)
+	if !fieldValue.IsValid() {
+		return nil, attr.ErrNoField
+	}
+
+	if !fieldValue.CanInterface() {
+		return nil, attr.ErrUnexportedField
+	}
+
+	return fieldValue.Addr().Interface(), nil
 }

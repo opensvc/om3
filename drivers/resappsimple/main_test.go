@@ -2,6 +2,11 @@ package resappsimple
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/opensvc/testhelper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -9,10 +14,6 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/file"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 var (
@@ -78,6 +79,7 @@ func TestStart(t *testing.T) {
 		app := WithLoggerApp(
 			T{T: resapp.T{
 				StartCmd: "echo",
+				CheckCmd: "exit 2",
 				StopCmd:  "touch " + filename,
 			}})
 		ctx, cancel := getActionContext()
@@ -129,7 +131,10 @@ func TestStop(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{T: resapp.T{StopCmd: "touch " + filename}})
+		app := WithLoggerApp(T{T: resapp.T{
+			CheckCmd: "exit 2",
+			StopCmd:  "touch " + filename,
+		}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")

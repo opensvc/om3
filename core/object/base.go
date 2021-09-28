@@ -331,7 +331,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 			t.log.Debug().Msgf("%s keyword eval: %s", k, err)
 			continue
 		}
-		if err := attr.SetValue(r, kw.Attr, val); err != nil {
+		if err := kw.SetValue(r, val); err != nil {
 			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
 		}
 	}

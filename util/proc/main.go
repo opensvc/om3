@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,7 +18,7 @@ type (
 		env map[string]string
 	}
 	L struct {
-		procs []*T
+		procs []T
 	}
 )
 
@@ -40,7 +41,24 @@ func parseFile(p string) ([]string, error) {
 	return l, nil
 }
 
-func ByCmdline(c []string) (*L, error) {
+func All() (L, error) {
+	l := NewList()
+	matches, err := filepath.Glob("/proc/*/cmdline")
+	if err != nil {
+		return l, err
+	}
+	for _, p := range matches {
+		pidStr := filepath.Base(filepath.Dir(p))
+		pid, err := strconv.Atoi(pidStr)
+		if err != nil {
+			continue
+		}
+		l.AddPID(pid)
+	}
+	return l, nil
+}
+
+func ByCmdline(c []string) (L, error) {
 	l := NewList()
 	if len(c) == 0 {
 		return l, nil
@@ -67,13 +85,13 @@ func ByCmdline(c []string) (*L, error) {
 	return l, nil
 }
 
-func New(pid int) *T {
+func New(pid int) T {
 	t := T{pid: pid}
-	return &t
+	return t
 }
 
 func (t T) String() string {
-	return fmt.Sprintf("%i", t.pid)
+	return fmt.Sprintf("%d", t.pid)
 }
 
 func (t T) PID() int {
@@ -82,6 +100,30 @@ func (t T) PID() int {
 
 func (t T) Head() string {
 	return fmt.Sprintf("/proc/%d", t.pid)
+}
+
+func (t T) Process() (*os.Process, error) {
+	return os.FindProcess(t.pid)
+}
+
+func (t T) Signal(sig os.Signal) error {
+	proc, err := t.Process()
+	if err != nil {
+		return err
+	}
+	return proc.Signal(sig)
+}
+
+func (t T) CommandLine() string {
+	p := t.Head() + "/cmdline"
+	l, err := parseFile(p)
+	if err != nil {
+		return ""
+	}
+	if len(l) == 0 {
+		return ""
+	}
+	return l[0]
 }
 
 func (t *T) Env() map[string]string {
@@ -114,7 +156,7 @@ func (t L) String() string {
 
 }
 
-func (t L) Procs() []*T {
+func (t L) Procs() []T {
 	return t.procs
 }
 
@@ -122,22 +164,31 @@ func (t L) Len() int {
 	return len(t.procs)
 }
 
-func NewList() *L {
+func NewList() L {
 	t := L{
-		procs: make([]*T, 0),
+		procs: make([]T, 0),
 	}
-	return &t
+	return t
 }
 
 func (t *L) AddPID(pid int) {
 	t.Add(New(pid))
 }
 
-func (t *L) Add(proc *T) {
+func (t L) HasPID(pid int) bool {
+	for _, p := range t.procs {
+		if p.pid == pid {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *L) Add(proc T) {
 	t.procs = append(t.procs, proc)
 }
 
-func (t *L) FilterByEnv(key string, value string) *L {
+func (t *L) FilterByEnv(key string, value string) L {
 	l := NewList()
 	for _, p := range t.Procs() {
 		v, ok := p.Env()[key]

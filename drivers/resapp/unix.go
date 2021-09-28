@@ -16,10 +16,13 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/pg"
+	"opensvc.com/opensvc/util/ulimit"
 )
 
 type (
@@ -39,17 +42,8 @@ type (
 		Cwd          string         `json:"cwd"`
 		User         string         `json:"user"`
 		Group        string         `json:"group"`
-		LimitAs      *int64         `json:"limit_as"`
-		LimitCpu     *time.Duration `json:"limit_cpu"`
-		LimitCore    *int64         `json:"limit_core"`
-		LimitData    *int64         `json:"limit_data"`
-		LimitFSize   *int64         `json:"limit_fsize"`
-		LimitMemLock *int64         `json:"limit_memlock"`
-		LimitNoFile  *int64         `json:"limit_nofile"`
-		LimitNProc   *int64         `json:"limit_nproc"`
-		LimitRss     *int64         `json:"limit_rss"`
-		LimitStack   *int64         `json:"limit_stack"`
-		LimitVMem    *int64         `json:"limit_vmem"`
+		PG           pg.Config      `json:"pg"`
+		Limit        ulimit.Config  `json:"limit"`
 	}
 
 	infoEntry [2]string
@@ -82,8 +76,8 @@ func (t T) Abort(ctx context.Context) bool {
 }
 
 // Stop the Resource
-func (t T) Stop(ctx context.Context) (err error) {
-	t.Log().Debug().Msg("Stop()")
+func (t *T) CommonStop(ctx context.Context, r resource.Driver) (err error) {
+	t.Log().Debug().Msg("CommonStop()")
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
 		return err
@@ -100,13 +94,13 @@ func (t T) Stop(ctx context.Context) (err error) {
 	)
 	cmd := command.New(opts...)
 
-	appStatus := t.Status(ctx)
+	appStatus := r.Status(ctx)
 	if appStatus == status.Down {
 		t.Log().Info().Msg("already down")
 		return nil
 	}
 
-	t.Log().Info().Msgf("running %s", cmd.String())
+	t.Log().Info().Stringer("cmd", cmd).Msg("run")
 	return cmd.Run()
 }
 
@@ -164,13 +158,8 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-// cmdArgs returns the command argv of an action
-func (t T) CmdArgs(s string, action string) ([]string, error) {
+func (t T) BaseCmdArgs(s string, action string) ([]string, error) {
 	var err error
-	if len(s) == 0 {
-		t.Log().Debug().Msgf("nothing to do for action '%v'", action)
-		return nil, nil
-	}
 	var baseCommand string
 	if baseCommand, err = t.getCmdStringFromBoolRule(s, action); err != nil {
 		return nil, err
@@ -179,27 +168,40 @@ func (t T) CmdArgs(s string, action string) ([]string, error) {
 		t.Log().Debug().Msgf("no base command for action '%v'", action)
 		return nil, nil
 	}
-	limitCommands := command.ShLimitCommands(t.toLimits())
-	if len(limitCommands) > 0 {
-		baseCommand = limitCommands + " && " + baseCommand
+	return command.CmdArgsFromString(baseCommand)
+}
+
+// cmdArgs returns the command argv of an action
+func (t T) CmdArgs(s string, action string) ([]string, error) {
+	if len(s) == 0 {
+		t.Log().Debug().Msgf("nothing to do for action '%v'", action)
+		return nil, nil
 	}
-	var cmdArgs []string
-	if cmdArgs, err = command.CmdArgsFromString(baseCommand); err != nil {
-		t.Log().Error().Err(err).Msgf("unable to CmdArgsFromString for action '%v'", action)
+	baseCommandSlice, err := t.BaseCmdArgs(s, action)
+	if err != nil {
 		return nil, err
 	}
-	return cmdArgs, nil
+	wrapArgs := t.toCaps().Argv()
+	if len(wrapArgs) > 0 {
+		wrap := append([]string{os.Args[0], "exec"}, wrapArgs...)
+		wrap = append(wrap, "--")
+		return append(wrap, baseCommandSlice...), nil
+	}
+	return baseCommandSlice, nil
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
 func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 	cmdArgs, err := t.CmdArgs(s, action)
-	if err != nil {
+	if err != nil || cmdArgs == nil {
 		return nil, err
 	}
 	env, err := t.getEnv()
 	if err != nil {
 		return nil, err
+	}
+	if len(cmdArgs) == 0 {
+		return nil, fmt.Errorf("no command for action %s", action)
 	}
 	options := []funcopt.O{
 		command.WithName(cmdArgs[0]),

@@ -5,12 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/anmitsu/go-shlex"
+	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/funcopt"
@@ -221,14 +224,14 @@ func (t *T) Start() (err error) {
 		})
 	}
 	if log != nil && t.commandLogLevel != zerolog.Disabled {
-		log.WithLevel(t.commandLogLevel).Str("cmd", cmd.String()).Msg("running")
+		log.WithLevel(t.commandLogLevel).Stringer("cmd", cmd).Msg("run")
 	}
 	if log != nil {
-		log.WithLevel(t.logLevel).Str("cmd", cmd.String()).Msg("running")
+		log.WithLevel(t.logLevel).Stringer("cmd", cmd).Msg("run")
 	}
 	if err = cmd.Start(); err != nil {
 		if log != nil {
-			log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("running")
+			log.WithLevel(t.logLevel).Err(err).Stringer("cmd", cmd).Msg("run")
 		}
 		return err
 	}
@@ -325,6 +328,7 @@ func (t *T) update() error {
 	if t.cwd != "" {
 		cmd.Dir = t.cwd
 	}
+	cmd.Env = os.Environ()
 	if len(t.env) > 0 {
 		cmd.Env = append(cmd.Env, t.env...)
 	}
@@ -379,14 +383,13 @@ func CmdArgsFromString(s string) ([]string, error) {
 }
 
 func (t *T) toString() string {
-	if len(t.args) == 0 {
-		return t.name
+	if t.name == "" {
+		return ""
 	}
-	var args []string
-	for _, arg := range t.args {
-		args = append(args, fmt.Sprintf("%q", arg))
-	}
-	return fmt.Sprintf("%v %s", t.name, strings.Join(args, " "))
+	fp, _ := exec.LookPath(t.name)
+	fp, _ = filepath.Abs(fp)
+	argv := append([]string{fp}, t.args...)
+	return shellquote.Join(argv...)
 }
 
 func stripFistByte(b []byte) []byte {

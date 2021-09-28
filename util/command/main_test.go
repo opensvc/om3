@@ -2,13 +2,14 @@ package command
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os/exec"
 	"runtime"
 	"syscall"
 	"testing"
+
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestString(t *testing.T) {
@@ -30,17 +31,17 @@ func TestString(t *testing.T) {
 		{
 			Name:     "/bin/ls",
 			Args:     []string{"foo", "bar"},
-			Expected: "/bin/ls \"foo\" \"bar\"",
+			Expected: "/bin/ls foo bar",
 		},
 		{
 			Name:     "/bin/ls",
 			Args:     []string{"foo bar"},
-			Expected: "/bin/ls \"foo bar\"",
+			Expected: "/bin/ls 'foo bar'",
 		},
 		{
-			Name:     "/bin/echo",
-			Args:     []string{"date:", "$(date)"},
-			Expected: "/bin/echo \"date:\" \"$(date)\"",
+			Name:     "/bin/bash",
+			Args:     []string{"-c", "test `date +%Y` -eq 2020 && echo so dated"},
+			Expected: "/bin/bash -c 'test `date +%Y` -eq 2020 && echo so dated'",
 		},
 	}
 	for _, c := range cases {
@@ -51,7 +52,7 @@ func TestString(t *testing.T) {
 	}
 }
 
-func Test_update(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	t.Run("Update SysProcAttr.credential from user and group", func(t *testing.T) {
 		gid := uint32(1)
 		if runtime.GOOS == "solaris" {

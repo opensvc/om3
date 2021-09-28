@@ -169,6 +169,37 @@ func (t Mgr) Apply(id string) []run {
 	return runs
 }
 
+func (c Config) needApply() bool {
+	if c.Cpus != "" {
+		return true
+	}
+	if c.Mems != "" {
+		return true
+	}
+	if c.CpuShares != "" {
+		return true
+	}
+	if c.CpuQuota != "" {
+		return true
+	}
+	if c.MemOOMControl != "" {
+		return true
+	}
+	if c.MemLimit != "" {
+		return true
+	}
+	if c.VMemLimit != "" {
+		return true
+	}
+	if c.MemSwappiness != "" {
+		return true
+	}
+	if c.BlkioWeight != "" {
+		return true
+	}
+	return false
+}
+
 func (c Config) String() string {
 	buff := "pg " + c.ID
 	l := make([]string, 0)
@@ -213,6 +244,7 @@ func (c Config) String() string {
 //
 func (t CpuQuota) Convert(period uint64) (int64, error) {
 	maxCpus := runtime.NumCPU()
+	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 1000, 50%%@all, 10%%@2)"
 	parsePct := func(s string) (int, error) {
 		if strings.HasSuffix(s, "%") {
 			s = strings.TrimRight(s, "%")
@@ -223,7 +255,7 @@ func (t CpuQuota) Convert(period uint64) (int64, error) {
 		if s == "all" {
 			return maxCpus, nil
 		} else if cpus, err := strconv.Atoi(s); err != nil {
-			return 0, errors.Wrapf(err, "invalid cpu quota format: %s (accepted expressions: 1000, 50%@all, 10%@2)", t)
+			return 0, errors.Wrapf(err, invalidFmtError, t)
 		} else if cpus > maxCpus {
 			return maxCpus, nil
 		} else {
@@ -240,7 +272,7 @@ func (t CpuQuota) Convert(period uint64) (int64, error) {
 	case 2:
 		cpusString = l[1]
 	default:
-		return 0, fmt.Errorf("invalid cpu quota format: %s (accepted expressions: 1000, 50%@all, 10%@2)", t)
+		return 0, fmt.Errorf(invalidFmtError, t)
 	}
 
 	var (
@@ -248,10 +280,10 @@ func (t CpuQuota) Convert(period uint64) (int64, error) {
 		err       error
 	)
 	if cpus, err = parseCpus(cpusString); err != nil {
-		return 0, errors.Wrapf(err, "invalid cpu quota format: %s (accepted expressions: 1000, 50%@all, 10%@2)", t)
+		return 0, errors.Wrapf(err, invalidFmtError, t)
 	}
 	if pct, err = parsePct(l[0]); err != nil {
-		return 0, errors.Wrapf(err, "invalid cpu quota format: %s (accepted expressions: 1000, 50%@all, 10%@2)", t)
+		return 0, errors.Wrapf(err, invalidFmtError, t)
 	}
 	return int64(pct) * int64(cpus) * int64(period) / 100, nil
 }
@@ -268,8 +300,11 @@ func (c Config) Apply() error {
 
 // ApplyProc creates the cgroup, set caps, and add the specified process
 func (c Config) ApplyProc(pid int) error {
+	if !c.needApply() {
+		return nil
+	}
 	if c.ID == "" {
-		return fmt.Errorf("Config Path is mandatory")
+		return fmt.Errorf("pg config application requires a non empty pg id")
 	}
 	r := specs.LinuxResources{
 		CPU:     &specs.LinuxCPU{},

@@ -79,7 +79,8 @@ func TestConfigFile(t *testing.T) {
 		})
 		t.Logf("%s", testName)
 		p, _ := path.New(test.name, test.namespace, test.kind)
-		o := NewFromPath(p)
+		o, err := NewFromPath(p)
+		assert.Nil(t, err, "NewFromPath(p) mustn't return an error")
 		assert.Equal(t, test.cf, o.(Configurer).ConfigFile())
 	}
 

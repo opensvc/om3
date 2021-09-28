@@ -54,7 +54,7 @@ func (t T) Start(ctx context.Context) (err error) {
 		return nil
 	}
 
-	t.Log().Info().Msgf("running %s", cmd.String())
+	t.Log().Info().Stringer("cmd", cmd).Msg("run")
 	err = cmd.Run()
 	if err == nil {
 		actionrollback.Register(ctx, func() error {
@@ -62,6 +62,10 @@ func (t T) Start(ctx context.Context) (err error) {
 		})
 	}
 	return
+}
+
+func (t *T) Stop(ctx context.Context) error {
+	return t.CommonStop(ctx, t)
 }
 
 func (t *T) Status(ctx context.Context) status.T {

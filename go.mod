@@ -20,6 +20,7 @@ require (
 	github.com/j-keck/arping v0.0.0-20160618110441-2cf9dc699c56
 	github.com/jaypipes/pcidb v0.6.0
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mitchellh/go-homedir v1.1.0

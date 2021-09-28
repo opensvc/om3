@@ -1,8 +1,9 @@
 package converters
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 		"1":     int64(1),
 		"1000":  int64(1000),
 		"1KB":   int64(1000),
+		"1,3KB": int64(1300),
 		"1KiB":  int64(1024),
 		"2MiB":  int64(2 * 1024 * 1024),
 		"3GiB":  int64(3 * 1024 * 1024 * 1024),
@@ -27,7 +29,6 @@ var (
 		"-1",
 		"-1000",
 		"-1KB",
-		"1,3KB",
 		"8EiB",
 		"badValue",
 	}

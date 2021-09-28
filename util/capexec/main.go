@@ -5,107 +5,304 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
 	"github.com/spf13/pflag"
 	"opensvc.com/opensvc/util/pg"
+	"opensvc.com/opensvc/util/sizeconv"
 	"opensvc.com/opensvc/util/ulimit"
 )
 
-type T struct {
-	PG    pg.Config
-	Limit ulimit.Config
-}
+type (
+	T struct {
+		PGID            *string
+		PGCpus          *string
+		PGMems          *string
+		PGCpuShares     *string
+		PGCpuQuota      *string
+		PGMemOOMControl *string
+		PGMemLimit      *string
+		PGVMemLimit     *string
+		PGMemSwappiness *string
+		PGBlkioWeight   *string
+		LimitAS         *string
+		LimitCPU        *string
+		LimitCore       *string
+		LimitData       *string
+		LimitFSize      *string
+		LimitMemLock    *string
+		LimitNoFile     *string
+		LimitNProc      *string
+		LimitRSS        *string
+		LimitStack      *string
+		LimitVMem       *string
+	}
+)
 
 func (t T) Argv() []string {
 	argv := make([]string, 0)
-	if t.PG.ID != "" {
-		argv = append(argv, "--pg", t.PG.ID)
+	if t.PGID != nil {
+		argv = append(argv, "--pg", *t.PGID)
 	}
-	if t.PG.Cpus != "" {
-		argv = append(argv, "--pg-cpus", t.PG.Cpus)
+	if t.PGCpus != nil {
+		argv = append(argv, "--pg-cpus", *t.PGCpus)
 	}
-	if t.PG.Mems != "" {
-		argv = append(argv, "--pg-mems", t.PG.Mems)
+	if t.PGMems != nil {
+		argv = append(argv, "--pg-mems", *t.PGMems)
 	}
-	if t.PG.CpuShares != "" {
-		argv = append(argv, "--pg-cpu-shares", t.PG.CpuShares)
+	if t.PGCpuShares != nil {
+		argv = append(argv, "--pg-cpu-shares", *t.PGCpuShares)
 	}
-	if t.PG.CpuQuota != "" {
-		argv = append(argv, "--pg-cpu-quota", t.PG.CpuQuota)
+	if t.PGCpuQuota != nil {
+		argv = append(argv, "--pg-cpu-quota", *t.PGCpuQuota)
 	}
-	if t.PG.MemOOMControl != "" {
-		argv = append(argv, "--pg-mem-oom-control", t.PG.MemOOMControl)
+	if t.PGMemOOMControl != nil {
+		argv = append(argv, "--pg-mem-oom-control", *t.PGMemOOMControl)
 	}
-	if t.PG.MemLimit != "" {
-		argv = append(argv, "--pg-mem-limit", t.PG.MemLimit)
+	if t.PGMemLimit != nil {
+		argv = append(argv, "--pg-mem-limit", *t.PGMemLimit)
 	}
-	if t.PG.VMemLimit != "" {
-		argv = append(argv, "--pg-vmem-limit", t.PG.VMemLimit)
+	if t.PGVMemLimit != nil {
+		argv = append(argv, "--pg-vmem-limit", *t.PGVMemLimit)
 	}
-	if t.PG.MemSwappiness != "" {
-		argv = append(argv, "--pg-mem-swappiness", t.PG.MemSwappiness)
+	if t.PGMemSwappiness != nil {
+		argv = append(argv, "--pg-mem-swappiness", *t.PGMemSwappiness)
 	}
-	if t.PG.BlkioWeight != "" {
-		argv = append(argv, "--pg-blkio-weight", t.PG.BlkioWeight)
+	if t.PGBlkioWeight != nil {
+		argv = append(argv, "--pg-blkio-weight", *t.PGBlkioWeight)
 	}
-	if t.Limit.AS != "" {
-		argv = append(argv, "--limit-as", t.Limit.AS)
+	if t.LimitAS != nil {
+		argv = append(argv, "--limit-as", *t.LimitAS)
 	}
-	if t.Limit.CPU != "" {
-		argv = append(argv, "--limit-cpu", t.Limit.CPU)
+	if t.LimitCPU != nil {
+		argv = append(argv, "--limit-cpu", *t.LimitCPU)
 	}
-	if t.Limit.Core != "" {
-		argv = append(argv, "--limit-core", t.Limit.Core)
+	if t.LimitCore != nil {
+		argv = append(argv, "--limit-core", *t.LimitCore)
 	}
-	if t.Limit.Data != "" {
-		argv = append(argv, "--limit-data", t.Limit.Data)
+	if t.LimitData != nil {
+		argv = append(argv, "--limit-data", *t.LimitData)
 	}
-	if t.Limit.FSize != "" {
-		argv = append(argv, "--limit-fsize", t.Limit.FSize)
+	if t.LimitFSize != nil {
+		argv = append(argv, "--limit-fsize", *t.LimitFSize)
 	}
-	if t.Limit.MemLock != "" {
-		argv = append(argv, "--limit-memlock", t.Limit.MemLock)
+	if t.LimitMemLock != nil {
+		argv = append(argv, "--limit-memlock", *t.LimitMemLock)
 	}
-	if t.Limit.NoFile != "" {
-		argv = append(argv, "--limit-nofile", t.Limit.NoFile)
+	if t.LimitNoFile != nil {
+		argv = append(argv, "--limit-nofile", *t.LimitNoFile)
 	}
-	if t.Limit.NProc != "" {
-		argv = append(argv, "--limit-nproc", t.Limit.NProc)
+	if t.LimitNProc != nil {
+		argv = append(argv, "--limit-nproc", *t.LimitNProc)
 	}
-	if t.Limit.RSS != "" {
-		argv = append(argv, "--limit-rss", t.Limit.RSS)
+	if t.LimitRSS != nil {
+		argv = append(argv, "--limit-rss", *t.LimitRSS)
 	}
-	if t.Limit.Stack != "" {
-		argv = append(argv, "--limit-stack", t.Limit.Stack)
+	if t.LimitStack != nil {
+		argv = append(argv, "--limit-stack", *t.LimitStack)
 	}
-	if t.Limit.VMem != "" {
-		argv = append(argv, "--limit-vmem", t.Limit.VMem)
+	if t.LimitVMem != nil {
+		argv = append(argv, "--limit-vmem", *t.LimitVMem)
 	}
 	return argv
 }
 
+func (t T) toLimit() ulimit.Config {
+	limit := ulimit.Config{}
+	if t.LimitAS != nil {
+		if i, err := sizeconv.FromSize(*t.LimitAS); err == nil {
+			limit.AS = &i
+		}
+	}
+	if t.LimitCPU != nil {
+		if i, err := time.ParseDuration(*t.LimitCPU); err == nil {
+			limit.CPU = &i
+		}
+	}
+	if t.LimitCore != nil {
+		if i, err := sizeconv.FromSize(*t.LimitCore); err == nil {
+			limit.Core = &i
+		}
+	}
+	if t.LimitData != nil {
+		if i, err := sizeconv.FromSize(*t.LimitData); err == nil {
+			limit.Data = &i
+		}
+	}
+	if t.LimitFSize != nil {
+		if i, err := sizeconv.FromSize(*t.LimitFSize); err == nil {
+			limit.FSize = &i
+		}
+	}
+	if t.LimitMemLock != nil {
+		if i, err := sizeconv.FromSize(*t.LimitMemLock); err == nil {
+			limit.MemLock = &i
+		}
+	}
+	if t.LimitNoFile != nil {
+		if i, err := sizeconv.FromSize(*t.LimitNoFile); err == nil {
+			limit.NoFile = &i
+		}
+	}
+	if t.LimitNProc != nil {
+		if i, err := sizeconv.FromSize(*t.LimitNProc); err == nil {
+			limit.NProc = &i
+		}
+	}
+	if t.LimitRSS != nil {
+		if i, err := sizeconv.FromSize(*t.LimitRSS); err == nil {
+			limit.RSS = &i
+		}
+	}
+	if t.LimitStack != nil {
+		if i, err := sizeconv.FromSize(*t.LimitStack); err == nil {
+			limit.Stack = &i
+		}
+	}
+	if t.LimitVMem != nil {
+		if i, err := sizeconv.FromSize(*t.LimitVMem); err == nil {
+			limit.VMem = &i
+		}
+	}
+	return limit
+}
+
+func (t T) toPG() pg.Config {
+	pg := pg.Config{}
+	if t.PGID != nil {
+		pg.ID = *t.PGID
+	}
+	if t.PGCpus != nil {
+		pg.Cpus = *t.PGCpus
+	}
+	if t.PGMems != nil {
+		pg.Mems = *t.PGMems
+	}
+	if t.PGCpuShares != nil {
+		pg.CpuShares = *t.PGCpuShares
+	}
+	if t.PGCpuQuota != nil {
+		pg.CpuQuota = *t.PGCpuQuota
+	}
+	if t.PGMemOOMControl != nil {
+		pg.MemOOMControl = *t.PGMemOOMControl
+	}
+	if t.PGMemLimit != nil {
+		pg.MemLimit = *t.PGMemLimit
+	}
+	if t.PGVMemLimit != nil {
+		pg.VMemLimit = *t.PGVMemLimit
+	}
+	if t.PGMemSwappiness != nil {
+		pg.MemSwappiness = *t.PGMemSwappiness
+	}
+	if t.PGBlkioWeight != nil {
+		pg.BlkioWeight = *t.PGBlkioWeight
+	}
+	return pg
+}
+
+func (t *T) LoadLimit(g ulimit.Config) {
+	if g.AS != nil {
+		*t.LimitAS = sizeconv.ExactDSizeCompact(float64(*g.AS))
+	}
+	if g.CPU != nil {
+		v := g.CPU.String()
+		t.LimitCPU = &v
+	}
+	if g.Core != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.Core))
+		t.LimitCore = &v
+	}
+	if g.Data != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.Data))
+		t.LimitData = &v
+	}
+	if g.FSize != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.FSize))
+		t.LimitFSize = &v
+	}
+	if g.MemLock != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.MemLock))
+		t.LimitMemLock = &v
+	}
+	if g.NoFile != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.NoFile))
+		t.LimitNoFile = &v
+	}
+	if g.NProc != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.NProc))
+		t.LimitNProc = &v
+	}
+	if g.RSS != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.RSS))
+		t.LimitRSS = &v
+	}
+	if g.Stack != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.Stack))
+		t.LimitStack = &v
+	}
+	if g.VMem != nil {
+		v := sizeconv.ExactDSizeCompact(float64(*g.VMem))
+		t.LimitVMem = &v
+	}
+}
+
+func (t *T) LoadPG(g pg.Config) {
+	if g.ID != "" {
+		*t.PGID = g.ID
+	}
+	if g.Cpus != "" {
+		*t.PGCpus = g.Cpus
+	}
+	if g.Mems != "" {
+		*t.PGMems = g.Mems
+	}
+	if g.CpuShares != "" {
+		*t.PGCpuShares = g.CpuShares
+	}
+	if g.CpuQuota != "" {
+		*t.PGCpuQuota = g.CpuQuota
+	}
+	if g.MemOOMControl != "" {
+		*t.PGMemOOMControl = g.MemOOMControl
+	}
+	if g.MemLimit != "" {
+		*t.PGMemLimit = g.MemLimit
+	}
+	if g.VMemLimit != "" {
+		*t.PGVMemLimit = g.VMemLimit
+	}
+	if g.MemSwappiness != "" {
+		*t.PGMemSwappiness = g.MemSwappiness
+	}
+	if g.BlkioWeight != "" {
+		*t.PGBlkioWeight = g.BlkioWeight
+	}
+}
+
 func (t *T) FlagSet(flags *pflag.FlagSet) {
-	flags.StringVar(&t.PG.ID, "pg", "", "the process group to attach to")
-	flags.StringVar(&t.PG.Cpus, "pg-cpus", "", "the cpus to pin the process group to (ex: 1-3,5)")
-	flags.StringVar(&t.PG.Mems, "pg-mems", "", "the memories to pin the process group to (ex: 1-3,5)")
-	flags.StringVar(&t.PG.CpuShares, "pg-cpu-shares", "", "the cpu shares granted to the process group to (ex: 100)")
-	flags.StringVar(&t.PG.CpuQuota, "pg-cpu-quota", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	flags.StringVar(&t.PG.MemOOMControl, "pg-mem-oom-control", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	flags.StringVar(&t.PG.MemLimit, "pg-mem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	flags.StringVar(&t.PG.VMemLimit, "pg-vmem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	flags.StringVar(&t.PG.MemSwappiness, "pg-mem-swappiness", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	flags.StringVar(&t.PG.BlkioWeight, "pg-blkio-weight", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	flags.StringVar(&t.Limit.AS, "limit-as", "", "the maximum area (in bytes) of address space which may be taken by the process")
-	flags.StringVar(&t.Limit.CPU, "limit-cpu", "", "the maximum amount of processor time (in seconds) that a process can use")
-	flags.StringVar(&t.Limit.Core, "limit-core", "", "the maximum size (in bytes) of a core file that the current process can create")
-	flags.StringVar(&t.Limit.Data, "limit-data", "", "the maximum size (in bytes) of the process’s heap")
-	flags.StringVar(&t.Limit.FSize, "limit-fsize", "", "the maximum size of a file which the process may create")
-	flags.StringVar(&t.Limit.MemLock, "limit-memlock", "", "the maximum address space which may be locked in memory")
-	flags.StringVar(&t.Limit.NoFile, "limit-nofile", "", "the maximum number of open file descriptors for the current process")
-	flags.StringVar(&t.Limit.NProc, "limit-nproc", "", "the maximum number of processes the current process may create")
-	flags.StringVar(&t.Limit.RSS, "limit-rss", "", "the maximum resident set size that should be made available to the process")
-	flags.StringVar(&t.Limit.Stack, "limit-stack", "", "the maximum size (in bytes) of the call stack for the current process")
-	flags.StringVar(&t.Limit.VMem, "limit-vmem", "", "the largest area of mapped memory which the process may occupy")
+	t.PGID = flags.String("pg", "", "the process group to attach to")
+	t.PGCpus = flags.String("pg-cpus", "", "the cpus to pin the process group to (ex: 1-3,5)")
+	t.PGMems = flags.String("pg-mems", "", "the memories to pin the process group to (ex: 1-3,5)")
+	t.PGCpuShares = flags.String("pg-cpu-shares", "", "the cpu shares granted to the process group to (ex: 100)")
+	t.PGCpuQuota = flags.String("pg-cpu-quota", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGMemOOMControl = flags.String("pg-mem-oom-control", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGMemLimit = flags.String("pg-mem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGVMemLimit = flags.String("pg-vmem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGMemSwappiness = flags.String("pg-mem-swappiness", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGBlkioWeight = flags.String("pg-blkio-weight", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.LimitAS = flags.String("limit-as", "", "the maximum area (in bytes) of address space which may be taken by the process")
+	t.LimitCPU = flags.String("limit-cpu", "", "the maximum amount of processor time (in seconds) that a process can use")
+	t.LimitCore = flags.String("limit-core", "", "the maximum size (in bytes) of a core file that the current process can create")
+	t.LimitData = flags.String("limit-data", "", "the maximum size (in bytes) of the process’s heap")
+	t.LimitFSize = flags.String("limit-fsize", "", "the maximum size of a file which the process may create")
+	t.LimitMemLock = flags.String("limit-memlock", "", "the maximum address space which may be locked in memory")
+	t.LimitNoFile = flags.String("limit-nofile", "", "the maximum number of open file descriptors for the current process")
+	t.LimitNProc = flags.String("limit-nproc", "", "the maximum number of processes the current process may create")
+	t.LimitRSS = flags.String("limit-rss", "", "the maximum resident set size that should be made available to the process")
+	t.LimitStack = flags.String("limit-stack", "", "the maximum size (in bytes) of the call stack for the current process")
+	t.LimitVMem = flags.String("limit-vmem", "", "the largest area of mapped memory which the process may occupy")
 }
 
 func (t T) Exec(args []string) {
@@ -119,11 +316,11 @@ func (t T) Exec(args []string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := t.Limit.Apply(); err != nil {
+	if err := t.toLimit().Apply(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := t.PG.Apply(); err != nil {
+	if err := t.toPG().Apply(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

@@ -43,7 +43,7 @@ type unitMap map[string]int64
 var (
 	dMap = unitMap{"k": KB, "m": MB, "g": GB, "t": TB, "p": PB, "e": EB}
 	bMap = unitMap{"k": KiB, "m": MiB, "g": GiB, "t": TiB, "p": PiB, "e": EiB}
-	dAbb = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
+	dAbb = []string{"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
 	bAbb = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
 	cAbb = []string{"", "k", "m", "g", "t", "p", "e", "z", "y"}
 	sReg = regexp.MustCompile(`^(\d+([\.,]\d+)*) ?([kKmMgGtTpPeE])?([iI])?([bB])?$`)
@@ -109,7 +109,7 @@ func ExactBSizeCompact(f float64) string {
 }
 
 func ExactDSizeCompact(f float64) string {
-	size, unit := getSizeAndUnit(f, 1000.0, dAbb, true)
+	size, unit := getSizeAndUnit(f, 1000.0, cAbb, true)
 	return fmt.Sprintf("%.0f%s", size, unit)
 }
 

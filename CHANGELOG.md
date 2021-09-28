@@ -32,3 +32,6 @@
   In the app drivers, the object id is now exposed as the OPENSVC_ID environment variable.
   In 2.1, OPENSVC_ID was set to the object path name (for example "foo" from "test/svc/foo").
   
+* The kill keyword is removed. The default behaviour is now to kill all processes with the matching OPENSVC_ID and OPENSVC_RID variables in their environment.
+  In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
+  If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.

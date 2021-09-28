@@ -2,6 +2,9 @@ package resappsimple
 
 import (
 	"context"
+	"fmt"
+	"syscall"
+	"time"
 
 	"opensvc.com/opensvc/core/actionrollback"
 
@@ -16,7 +19,6 @@ import (
 // T is the driver structure.
 type T struct {
 	resapp.T
-	Kill string `json:"kill"`
 }
 
 func New() resource.Driver {
@@ -47,14 +49,58 @@ func (t T) Start(ctx context.Context) (err error) {
 	}
 	opts = append(opts, command.WithLogger(t.Log()))
 	cmd := command.New(opts...)
-	t.Log().Info().Msgf("running %s", cmd.String())
+	t.Log().Info().Stringer("cmd", cmd).Msg("run")
 	err = cmd.Start()
 	if err == nil {
 		actionrollback.Register(ctx, func() error {
 			return t.Stop(ctx)
 		})
 	}
-	return
+	return err
+}
+
+func (t *T) Stop(ctx context.Context) error {
+	if t.StopCmd != "" {
+		return t.CommonStop(ctx, t)
+	}
+	return t.stop(ctx)
+}
+
+func (t *T) stop(ctx context.Context) error {
+	cmdArgs, err := t.BaseCmdArgs(t.StartCmd, "stop")
+	if err != nil {
+		return err
+	}
+	procs, err := t.getRunning(cmdArgs)
+	if err != nil {
+		return err
+	}
+	if procs.Len() == 0 {
+		t.Log().Info().Msg("already stopped")
+		return nil
+	}
+	for _, p := range procs.Procs() {
+		t.Log().Info().Str("cmd", p.CommandLine()).Msgf("send termination signal to process %d", p.PID())
+		p.Signal(syscall.SIGTERM)
+	}
+	prev := procs
+	for i := 0; i < 5; i++ {
+		procs, err := t.getRunning(cmdArgs)
+		if err != nil {
+			return err
+		}
+		for _, p := range prev.Procs() {
+			if !procs.HasPID(p.PID()) {
+				t.Log().Info().Str("cmd", p.CommandLine()).Msgf("process %d is now terminated", p.PID())
+			}
+		}
+		if procs.Len() == 0 {
+			return nil
+		}
+		prev = procs
+		time.Sleep(1 * time.Second)
+	}
+	return fmt.Errorf("waited too long for process %s to disappear", procs)
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -70,12 +116,12 @@ func (t T) Label() string {
 }
 
 func (t *T) status() status.T {
-	cmdArgs, err := t.CmdArgs(t.StartCmd, "start")
+	cmdArgs, err := t.BaseCmdArgs(t.StartCmd, "start")
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
-	procs, err := t.getRunning(cmdArgs, true)
+	procs, err := t.getRunning(cmdArgs)
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
@@ -91,8 +137,8 @@ func (t *T) status() status.T {
 	}
 }
 
-func (t T) getRunning(cmdArgs []string, withChildren bool) (*proc.L, error) {
-	procs, err := proc.ByCmdline(cmdArgs)
+func (t T) getRunning(cmdArgs []string) (proc.L, error) {
+	procs, err := proc.All()
 	if err != nil {
 		return procs, err
 	}
