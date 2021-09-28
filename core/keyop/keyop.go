@@ -87,9 +87,9 @@ var (
 		"<":  Lesser,
 	}
 
+	// ":" is a suffixer, not a spliter
+	splitOps    = []string{"+=", "-=", "|=", "^=", "!=", ">=", "<=", ">", "<", "=", ":"}
 	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)\]`)
-	regexpOp1   = regexp.MustCompile(`(.+)([><=:])(.*)`)
-	regexpOp2   = regexp.MustCompile(`(.+)([\-+|^><!]=)(.*)`)
 )
 
 func (t Op) String() string {
@@ -139,32 +139,40 @@ func (t T) IsZero() bool {
 
 func Parse(s string) *T {
 	t := &T{}
-	l := regexpOp2.FindStringSubmatch(s)
-	// Example submatch result:
-	//   []string{
-	//     "env.foo[0]>=1",   /* original string */
-	//     "env.foo[0]",      /* key with optional index */
-	//     ">",              /* op1 */
-	//     "=",              /* op2 */
-	//     "1",               /* value */
-	//   }
-	if len(l) != 4 {
-		l = regexpOp1.FindStringSubmatch(s)
+	i := len(s)
+	bestOp := ""
+	for _, op := range splitOps {
+		if pos := strings.Index(s, op); pos >= 0 && pos < i {
+			i = pos
+			bestOp = op
+		}
 	}
-	if len(l) != 4 {
-		return t
+	if bestOp == "" {
+		return &T{}
 	}
-	k := l[1]
-	t.Op = ParseOp(l[2])
-	t.Value = l[3]
 
-	subs := regexpIndex.FindStringSubmatch(s)
+	//
+	// "env.foo[0]>=1",   /* original string */
+	// =>
+	//     "env.foo[0]"      /* key with optional index */
+	//     ">="              /* op */
+	//     "1"               /* value */
+	//
+	k := s[0:i]
+	t.Op = ParseOp(bestOp)
+	t.Value = s[i+len(bestOp):]
+
+	fmt.Println(s, t, k)
+	//
 	// Example submatch result:
 	//   []string{
 	//     "env.foo[0]",   /* original string */
 	//     "env.foo",      /* key */
 	//     "0",            /* index */
 	//   }
+	//
+	subs := regexpIndex.FindStringSubmatch(s)
+
 	if len(subs) == 3 {
 		k = subs[1]
 		t.Index, _ = strconv.Atoi(subs[2])

@@ -46,6 +46,18 @@ func TestKeyopParse(t *testing.T) {
 			val:  "",
 		},
 		{
+			expr: "ab:",
+			key:  key.Parse("ab."),
+			op:   Exist,
+			val:  "",
+		},
+		{
+			expr: "a.b:",
+			key:  key.Parse("a.b"),
+			op:   Exist,
+			val:  "",
+		},
+		{
 			expr:  "env.abc[0]=bb8",
 			key:   key.T{Section: "env", Option: "abc"},
 			op:    Insert,
