@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -165,8 +164,13 @@ func (t *Base) ResourceSets() resourceset.L {
 	}
 
 	for _, k := range t.config.SectionStrings() {
-		if strings.HasPrefix(k, "subset#") {
-			// discard subset#... section
+		//
+		// look for resource sections with a defined subset
+		//   [fs#1]
+		//   subset = g1
+		//
+		rid, err := resourceid.Parse(k)
+		if err != nil {
 			continue
 		}
 		subsetKey := key.New(k, "subset")
@@ -175,13 +179,7 @@ func (t *Base) ResourceSets() resourceset.L {
 			// discard section with no 'subset' keyword
 			continue
 		}
-		//
-		// here we have a non-subset section, for example
-		//   [fs#1]
-		//   subset = g1
-		//
-		g := resourceid.Parse(k).DriverGroup()
-		configureResourceSet(g, subsetName)
+		configureResourceSet(rid.DriverGroup(), subsetName)
 	}
 
 	// add generic resourcesets not already found as a section
@@ -252,10 +250,10 @@ func (t *Base) configureResources() {
 	postponed := make(map[string][]resource.Driver)
 	t._resources = make(resource.Drivers, 0)
 	for _, k := range t.config.SectionStrings() {
-		if k == "env" || k == "data" || k == "DEFAULT" {
+		rid, err := resourceid.Parse(k)
+		if err != nil {
 			continue
 		}
-		rid := resourceid.Parse(k)
 		driverGroup := rid.DriverGroup()
 		if driverGroup == drivergroup.Unknown {
 			t.log.Debug().Str("rid", k).Str("f", "listResources").Msg("unknown driver group")

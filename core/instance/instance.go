@@ -121,7 +121,11 @@ func (t *Status) UnmarshalJSON(b []byte) error {
 func (t *Status) SortedResources() []resource.ExposedStatus {
 	l := make([]resource.ExposedStatus, 0)
 	for k, v := range t.Resources {
-		v.ResourceID = *resourceid.Parse(k)
+		rid, err := resourceid.Parse(k)
+		if err != nil {
+			continue
+		}
+		v.ResourceID = rid
 		l = append(l, v)
 	}
 	sort.Sort(ResourceOrder(l))

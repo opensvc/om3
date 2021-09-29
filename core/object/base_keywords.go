@@ -35,9 +35,8 @@ var keywordStore = keywords.Store{
 		Text:      "Use process containers when possible. Containers allow capping memory, swap and cpu usage per service. Lxc containers are naturally containerized, so skip containerization of their startapp.",
 	},
 	{
-		Generic:  true,
 		Option:   "pg_cpus",
-		Attr:     "PGCpus",
+		Attr:     "PG.Cpus",
 		Scopable: true,
 		Inherit:  keywords.InheritLeaf,
 		//Depends: []keyval.T{
@@ -47,18 +46,16 @@ var keywordStore = keywords.Store{
 		Example: "0-2",
 	},
 	{
-		Generic:  true,
 		Option:   "pg_mems",
-		Attr:     "PGMems",
+		Attr:     "PG.Mems",
 		Scopable: true,
 		Inherit:  keywords.InheritLeaf,
 		Text:     "Allow service process to bind only the specified memory nodes. Memory nodes are specified as list or range : 0,1,2 or 0-2",
 		Example:  "0-2",
 	},
 	{
-		Generic:   true,
 		Option:    "pg_cpu_shares",
-		Attr:      "PGCpuShares",
+		Attr:      "PG.CpuShares",
 		Scopable:  true,
 		Converter: converters.Size,
 		Inherit:   keywords.InheritLeaf,
@@ -66,27 +63,24 @@ var keywordStore = keywords.Store{
 		Example:   "512",
 	},
 	{
-		Generic:  true,
 		Option:   "pg_cpu_quota",
-		Attr:     "PGCpuQuota",
+		Attr:     "PG.CpuQuota",
 		Scopable: true,
 		Inherit:  keywords.InheritLeaf,
 		Text:     "The percent ratio of one core to allocate to the process group if % is specified, else the absolute value to set in the process group parameter. For example, on Linux cgroups, ``-1`` means unlimited, and a positive absolute value means the number of microseconds to allocate each period. ``50%@all`` means 50% of all cores, and ``50%@2`` means 50% of two cores.",
 		Example:  "50%@all",
 	},
 	{
-		Generic:  true,
 		Option:   "pg_oom_control",
-		Attr:     "PGOOMControl",
+		Attr:     "PG.OOMControl",
 		Scopable: true,
 		Inherit:  keywords.InheritLeaf,
 		Text:     "A flag (0 or 1) that enables or disables the Out of Memory killer for a cgroup. If enabled (0), tasks that attempt to consume more memory than they are allowed are immediately killed by the OOM killer. The OOM killer is enabled by default in every cgroup using the memory subsystem; to disable it, write 1.",
 		Example:  "1",
 	},
 	{
-		Generic:   true,
 		Option:    "pg_mem_limit",
-		Attr:      "PGMemLimit",
+		Attr:      "PG.MemLimit",
 		Scopable:  true,
 		Converter: converters.Size,
 		Inherit:   keywords.InheritLeaf,
@@ -94,9 +88,8 @@ var keywordStore = keywords.Store{
 		Example:   "512m",
 	},
 	{
-		Generic:   true,
 		Option:    "pg_vmem_limit",
-		Attr:      "PGVMemLimit",
+		Attr:      "PG.VMemLimit",
 		Scopable:  true,
 		Converter: converters.Size,
 		Inherit:   keywords.InheritLeaf,
@@ -104,18 +97,16 @@ var keywordStore = keywords.Store{
 		Example:   "1g",
 	},
 	{
-		Generic:  true,
 		Option:   "pg_mem_swappiness",
-		Attr:     "PGMemSwappiness",
+		Attr:     "PG.MemSwappiness",
 		Scopable: true,
 		Inherit:  keywords.InheritLeaf,
 		Text:     "Set a swappiness percentile value for the process group.",
 		Example:  "40",
 	},
 	{
-		Generic:  true,
 		Option:   "pg_blkio_weight",
-		Attr:     "PGBlkioWeight",
+		Attr:     "PG.BlkioWeight",
 		Scopable: true,
 		Inherit:  keywords.InheritLeaf,
 		Text:     "Block IO relative weight. Value: between 10 and 1000. Kernel default: 1000.",
@@ -454,8 +445,11 @@ func (t Base) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 			Required: false,
 		}
 	}
-	rid := resourceid.Parse(k.Section)
-	driverGroupName := rid.DriverGroup().String()
+	driverGroupName := ""
+	rid, err := resourceid.Parse(k.Section)
+	if err == nil {
+		driverGroupName = rid.DriverGroup().String()
+	}
 
 	if kw := keywordStore.Lookup(k, t.Path.Kind, sectionType); !kw.IsZero() {
 		// base keyword

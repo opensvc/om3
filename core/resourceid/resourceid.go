@@ -19,8 +19,15 @@ func (t T) String() string {
 	return t.Name
 }
 
-func Parse(s string) *T {
-	return &T{Name: s}
+func Parse(s string) (*T, error) {
+	if s == "env" || s == "data" || s == "DEFAULT" || strings.HasPrefix(s, "subset#") {
+		return nil, fmt.Errorf("invalid resource id: %s", s)
+	}
+	return &T{Name: s}, nil
+}
+
+func (t *T) IsZero() bool {
+	return t == nil || t.Name == ""
 }
 
 func (t *T) splitName() {

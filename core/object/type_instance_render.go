@@ -57,7 +57,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 		}
 		n := subsetNode.AddNode()
 		n.AddColumn().AddText(r.ResourceID.Name)
-		n.AddColumn().AddText(t.Status.ResourceFlagsString(r.ResourceID, r))
+		n.AddColumn().AddText(t.Status.ResourceFlagsString(*r.ResourceID, r))
 		n.AddColumn().AddText(colorstatus.Sprint(r.Status, rawconfig.Node.Colorize))
 		desc := n.AddColumn()
 		desc.AddText(r.Label)

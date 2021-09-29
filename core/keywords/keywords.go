@@ -23,9 +23,6 @@ type (
 		Option  string
 		Attr    string
 
-		// Generic means the keyword can be set in any section.
-		Generic bool
-
 		// Scopable means the keyword can have a different value on nodes, drpnodes, encapnodes or a specific node.
 		Scopable bool
 

@@ -64,7 +64,7 @@ type (
 		RSubset() string
 		SetObjectDriver(ObjectDriver)
 		GetObjectDriver() ObjectDriver
-		SetRID(string)
+		SetRID(string) error
 		SetPG(*pg.Config)
 		GetPG() *pg.Config
 		GetPGID() string
@@ -143,7 +143,7 @@ type (
 	// ExposedStatus is the structure representing the resource status,
 	// which is embedded in the instance status.
 	ExposedStatus struct {
-		ResourceID  resourceid.T      `json:"-"`
+		ResourceID  *resourceid.T     `json:"-"`
 		Label       string            `json:"label"`
 		Log         []*StatusLogEntry `json:"log,omitempty"`
 		Status      status.T          `json:"status"`
@@ -314,8 +314,13 @@ func (t T) ID() *resourceid.T {
 }
 
 // SetRID sets the resource identifier
-func (t *T) SetRID(v string) {
-	t.ResourceID = resourceid.Parse(v)
+func (t *T) SetRID(v string) error {
+	rid, err := resourceid.Parse(v)
+	if err != nil {
+		return err
+	}
+	t.ResourceID = rid
+	return nil
 }
 
 // SetPG sets the process group config parsed from the config
@@ -397,7 +402,10 @@ func (t *T) Log() *zerolog.Logger {
 //   ex: fs#1 matches fs#1
 //
 func (t T) MatchRID(s string) bool {
-	rid := resourceid.Parse(s)
+	rid, err := resourceid.Parse(s)
+	if err != nil {
+		return false
+	}
 	if !rid.DriverGroup().IsValid() {
 		return false
 	}

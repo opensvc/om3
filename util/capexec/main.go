@@ -250,34 +250,34 @@ func (t *T) LoadLimit(g ulimit.Config) {
 
 func (t *T) LoadPG(g pg.Config) {
 	if g.ID != "" {
-		*t.PGID = g.ID
+		t.PGID = &g.ID
 	}
 	if g.Cpus != "" {
-		*t.PGCpus = g.Cpus
+		t.PGCpus = &g.Cpus
 	}
 	if g.Mems != "" {
-		*t.PGMems = g.Mems
+		t.PGMems = &g.Mems
 	}
 	if g.CpuShares != "" {
-		*t.PGCpuShares = g.CpuShares
+		t.PGCpuShares = &g.CpuShares
 	}
 	if g.CpuQuota != "" {
-		*t.PGCpuQuota = g.CpuQuota
+		t.PGCpuQuota = &g.CpuQuota
 	}
 	if g.MemOOMControl != "" {
-		*t.PGMemOOMControl = g.MemOOMControl
+		t.PGMemOOMControl = &g.MemOOMControl
 	}
 	if g.MemLimit != "" {
-		*t.PGMemLimit = g.MemLimit
+		t.PGMemLimit = &g.MemLimit
 	}
 	if g.VMemLimit != "" {
-		*t.PGVMemLimit = g.VMemLimit
+		t.PGVMemLimit = &g.VMemLimit
 	}
 	if g.MemSwappiness != "" {
-		*t.PGMemSwappiness = g.MemSwappiness
+		t.PGMemSwappiness = &g.MemSwappiness
 	}
 	if g.BlkioWeight != "" {
-		*t.PGBlkioWeight = g.BlkioWeight
+		t.PGBlkioWeight = &g.BlkioWeight
 	}
 }
 
