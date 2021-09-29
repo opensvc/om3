@@ -319,14 +319,14 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
-		t.log.Debug().Str("kw", kw.Option).Msg("")
+		r.Log().Debug().Str("kw", kw.Option).Msg("")
 		k := key.New(rid, kw.Option)
 		val, err := t.config.EvalKeywordAs(k, kw, "")
 		if err != nil {
 			if kw.Required {
 				return err
 			}
-			t.log.Debug().Msgf("%s keyword eval: %s", k, err)
+			r.Log().Debug().Msgf("%s keyword eval: %s", k, err)
 			continue
 		}
 		if err := kw.SetValue(r, val); err != nil {
@@ -355,7 +355,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	}
 	r.SetObjectDriver(t)
 	r.SetPG(t.pgConfig(rid))
-	t.log.Debug().Msgf("configured resource: %+v", r)
+	r.Log().Debug().Msgf("configured resource: %#v", r)
 	return nil
 }
 
