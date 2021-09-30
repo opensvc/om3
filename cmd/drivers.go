@@ -5,6 +5,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/poolvg"
 	_ "opensvc.com/opensvc/drivers/resappforking"
 	_ "opensvc.com/opensvc/drivers/resappsimple"
+	_ "opensvc.com/opensvc/drivers/rescontainerdocker"
 	_ "opensvc.com/opensvc/drivers/resdiskdisk"
 	_ "opensvc.com/opensvc/drivers/resdiskloop"
 	_ "opensvc.com/opensvc/drivers/resdisklv"
