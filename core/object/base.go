@@ -216,7 +216,7 @@ func (t Base) getConfiguredResourceByID(rid string) resource.Driver {
 	return nil
 }
 
-func (t Base) getResourceByID(rid string) resource.Driver {
+func (t Base) ResourceByID(rid string) resource.Driver {
 	if r := t.getConfiguredResourceByID(rid); r != nil {
 		return r
 	}

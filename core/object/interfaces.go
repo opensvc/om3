@@ -46,6 +46,7 @@ type (
 		IsVolatile() bool
 		ResourceSets() resourceset.L
 		Resources() resource.Drivers
+		ResourceByID(rid string) resource.Driver
 	}
 
 	// Actor is implemented by object kinds supporting start, stop, ...

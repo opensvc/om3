@@ -31,6 +31,7 @@ type (
 	ObjectDriver interface {
 		Log() *zerolog.Logger
 		VarDir() string
+		ResourceByID(string) Driver
 	}
 
 	Setenver interface {

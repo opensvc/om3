@@ -7,6 +7,7 @@ require (
 	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
+	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/fatih/color v1.10.0
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020

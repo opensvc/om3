@@ -2,8 +2,12 @@ package rescontainerdocker
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
+	"github.com/cpuguy83/go-docker"
+	"github.com/kballard/go-shellquote"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
@@ -11,9 +15,11 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/rescontainer"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 const (
@@ -34,9 +40,9 @@ type (
 		Hostname           string         `json:"hostname"`
 		Image              string         `json:"image"`
 		ImagePullPolicy    string         `json:"image_pull_policy"`
-		Command            string         `json:"command"`
-		RunArgs            string         `json:"run_args"`
-		Entrypoint         string         `json:"entrypoint"`
+		Command            []string       `json:"command"`
+		RunArgs            []string       `json:"run_args"`
+		Entrypoint         []string       `json:"entrypoint"`
 		Detach             bool           `json:"detach"`
 		Remove             bool           `json:"remove"`
 		Privileged         bool           `json:"privileged"`
@@ -57,7 +63,25 @@ type (
 		StartTimeout       *time.Duration `json:"start_timeout"`
 		StopTimeout        *time.Duration `json:"stop_timeout"`
 	}
+
+	containerNamer interface {
+		ContainerName() string
+	}
 )
+
+var (
+	// Allocate a single client socket for all container.docker resources
+	// Get/Init it via cli()
+	clientCache *docker.Client
+)
+
+func cli() *docker.Client {
+	if clientCache != nil {
+		return clientCache
+	}
+	clientCache = docker.NewClient()
+	return clientCache
+}
 
 func init() {
 	resource.Register(driverGroup, driverName, New)
@@ -113,26 +137,29 @@ func (t T) Manifest() *manifest.T {
 			Text:       "The docker image pull policy. ``always`` pull upon each container start, ``once`` pull if not already pulled (default).",
 		},
 		{
-			Option:   "command",
-			Attr:     "Command",
-			Aliases:  []string{"run_command"},
-			Scopable: true,
-			Example:  "/opt/tomcat/bin/catalina.sh",
-			Text:     "The command to execute in the docker container on run.",
+			Option:    "command",
+			Attr:      "Command",
+			Aliases:   []string{"run_command"},
+			Scopable:  true,
+			Converter: converters.Shlex,
+			Example:   "/opt/tomcat/bin/catalina.sh",
+			Text:      "The command to execute in the docker container on run.",
 		},
 		{
-			Option:   "run_args",
-			Attr:     "RunArgs",
-			Scopable: true,
-			Example:  "-v /opt/docker.opensvc.com/vol1:/vol1:rw -p 37.59.71.25:8080:8080",
-			Text:     "Extra arguments to pass to the docker run command, like volume and port mappings.",
+			Option:    "run_args",
+			Attr:      "RunArgs",
+			Scopable:  true,
+			Converter: converters.Shlex,
+			Example:   "-v /opt/docker.opensvc.com/vol1:/vol1:rw -p 37.59.71.25:8080:8080",
+			Text:      "Extra arguments to pass to the docker run command, like volume and port mappings.",
 		},
 		{
-			Option:   "entrypoint",
-			Attr:     "Entrypoint",
-			Scopable: true,
-			Example:  "/bin/sh",
-			Text:     "The script or binary executed in the container. Args must be set in :kw:`command`.",
+			Option:    "entrypoint",
+			Attr:      "Entrypoint",
+			Scopable:  true,
+			Converter: converters.Shlex,
+			Example:   "/bin/sh",
+			Text:      "The script or binary executed in the container. Args must be set in :kw:`command`.",
 		},
 		{
 			Option:    "detach",
@@ -291,8 +318,85 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
+func (t T) warnAttrDiff(attr, current, target string) {
+	t.StatusLog().Warn("%s is %s, should be %s", attr, current, target)
+}
+
 func (t *T) Status(ctx context.Context) status.T {
-	return status.NotApplicable
+	if !t.Detach {
+		return status.NotApplicable
+	}
+	if err := t.isDockerdPinging(ctx); err != nil {
+		t.Log().Debug().Err(err).Msg("ping")
+		t.StatusLog().Info("docker daemon is not running")
+		return status.Down
+	}
+	inspect, err := cli().ContainerService().Inspect(ctx, t.ContainerName())
+	if err != nil {
+		fmt.Println("inspect:", err)
+		return status.Down
+	}
+	if t.Hostname != "" && inspect.Config.Hostname != t.Hostname {
+		t.warnAttrDiff("hostname", inspect.Config.Hostname, t.Hostname)
+	}
+	if inspect.Config.OpenStdin != t.Interactive {
+		t.warnAttrDiff("interactive", fmt.Sprint(inspect.Config.OpenStdin), fmt.Sprint(t.Interactive))
+	}
+	if len(t.Entrypoint) > 0 && !stringslice.Equal(inspect.Config.Entrypoint, t.Entrypoint) {
+		t.warnAttrDiff("entrypoint", shellquote.Join(inspect.Config.Entrypoint...), shellquote.Join(t.Entrypoint...))
+	}
+	if inspect.Config.Tty != t.TTY {
+		t.warnAttrDiff("tty", fmt.Sprint(inspect.Config.Tty), fmt.Sprint(t.TTY))
+	}
+	if inspect.HostConfig.Privileged != t.Privileged {
+		t.warnAttrDiff("privileged", fmt.Sprint(inspect.HostConfig.Privileged), fmt.Sprint(t.Privileged))
+	}
+	t.statusInspectNS(ctx, "netns", inspect.HostConfig.NetworkMode, t.NetNS)
+	t.statusInspectNS(ctx, "pidns", inspect.HostConfig.PidMode, t.PIDNS)
+	t.statusInspectNS(ctx, "ipcns", inspect.HostConfig.IpcMode, t.IPCNS)
+	t.statusInspectNS(ctx, "utsns", inspect.HostConfig.UTSMode, t.UTSNS)
+	t.statusInspectNS(ctx, "userns", inspect.HostConfig.UsernsMode, t.UserNS)
+	if !inspect.State.Running {
+		return status.Down
+	}
+	return status.Up
+}
+
+func (t T) statusInspectNS(ctx context.Context, attr, current, target string) {
+	rid, err := resourceid.Parse(target)
+	if err != nil {
+		// target value is not a rid ("host", "none" for ex)
+		//  => simple string comparison
+		if current != target {
+			t.warnAttrDiff(attr, current, target)
+		}
+		return
+	}
+	r := t.GetObjectDriver().ResourceByID(rid.String())
+	if r == nil {
+		t.StatusLog().Warn("%s: %s resource not found", attr, target)
+	}
+	if i, ok := r.(containerNamer); ok {
+		name := i.ContainerName()
+		switch {
+		case "container:"+name == current:
+			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, target, current)
+		case "container:"+containerID(ctx, name) == current:
+			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, target, current)
+		default:
+			t.warnAttrDiff(attr, current, target)
+		}
+	} else {
+		fmt.Println("not a containerNamer", r)
+	}
+}
+
+func (t T) isDockerdPinging(ctx context.Context) error {
+	_, err := cli().SystemService().Ping(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t T) Label() string {
@@ -319,6 +423,14 @@ func (t T) create(ctx context.Context) error {
 	return nil
 }
 
+func containerID(ctx context.Context, name string) string {
+	inspect, err := cli().ContainerService().Inspect(ctx, name)
+	if err != nil {
+		return ""
+	}
+	return inspect.ID
+}
+
 // ContainerName formats a docker container name
 func (t T) ContainerName() string {
 	if t.Name != "" {
@@ -328,6 +440,6 @@ func (t T) ContainerName() string {
 	if t.Path.Namespace != "" {
 		s = t.Path.Namespace + ".."
 	}
-	s = s + t.Path.Name + "." + t.ResourceID.String()
+	s = s + t.Path.Name + "." + strings.ReplaceAll(t.ResourceID.String(), "#", ".")
 	return s
 }

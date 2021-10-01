@@ -20,7 +20,17 @@ func (t T) String() string {
 }
 
 func Parse(s string) (*T, error) {
-	if s == "env" || s == "data" || s == "DEFAULT" || strings.HasPrefix(s, "subset#") {
+	valid := false
+	switch {
+	case s == "":
+	case s == "env":
+	case s == "data":
+	case s == "DEFAULT":
+	case strings.HasPrefix(s, "subset#"):
+	default:
+		valid = true
+	}
+	if !valid {
 		return nil, fmt.Errorf("invalid resource id: %s", s)
 	}
 	return &T{Name: s}, nil

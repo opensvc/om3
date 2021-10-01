@@ -14,7 +14,7 @@ type (
 )
 
 func (t *Base) SignalResource(rid string, sig syscall.Signal) error {
-	r := t.getResourceByID(rid)
+	r := t.ResourceByID(rid)
 	if r == nil {
 		return fmt.Errorf("can not find resource %s to send %s to", rid, unix.SignalName(sig))
 	}
