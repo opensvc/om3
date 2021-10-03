@@ -2,11 +2,16 @@ package rescontainerdocker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/cpuguy83/go-docker"
+	"github.com/cpuguy83/go-docker/container"
+	"github.com/cpuguy83/go-docker/container/containerapi"
+	"github.com/cpuguy83/go-docker/errdefs"
 	"github.com/kballard/go-shellquote"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -19,17 +24,22 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/rescontainer"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/stringslice"
 )
 
 const (
 	driverGroup = drivergroup.Container
 	driverName  = "docker"
+
+	AlwaysPolicy = "always"
+	OncePolicy   = "once"
 )
 
 type (
 	T struct {
 		resource.T
+		PG                 pg.Config      `json:"pg"`
 		Path               path.T         `json:"path"`
 		SCSIReserv         bool           `json:"scsireserv"`
 		PromoteRW          bool           `json:"promote_rw"`
@@ -40,6 +50,7 @@ type (
 		Hostname           string         `json:"hostname"`
 		Image              string         `json:"image"`
 		ImagePullPolicy    string         `json:"image_pull_policy"`
+		CWD                string         `json:"cwd"`
 		Command            []string       `json:"command"`
 		RunArgs            []string       `json:"run_args"`
 		Entrypoint         []string       `json:"entrypoint"`
@@ -86,6 +97,17 @@ func cli() *docker.Client {
 func init() {
 	resource.Register(driverGroup, driverName, New)
 	resource.Register(driverGroup, "oci", New)
+}
+
+func capabilitiesScanner() ([]string, error) {
+	l := make([]string, 0)
+	if _, err := exec.LookPath("docker"); err == nil {
+		return l, nil
+	}
+	l = append(l, "drivers.resource.container.docker")
+	l = append(l, "drivers.resource.container.docker.registry_creds")
+	l = append(l, "drivers.resource.container.docker.signal")
+	return l, nil
 }
 
 func New() resource.Driver {
@@ -137,6 +159,13 @@ func (t T) Manifest() *manifest.T {
 			Text:       "The docker image pull policy. ``always`` pull upon each container start, ``once`` pull if not already pulled (default).",
 		},
 		{
+			Option:   "cwd",
+			Attr:     "CWD",
+			Scopable: true,
+			Example:  "/opt/foo",
+			Text:     "The current working directory set for the executed command.",
+		},
+		{
 			Option:    "command",
 			Attr:      "Command",
 			Aliases:   []string{"run_command"},
@@ -170,7 +199,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "Run container in background. Set to ``false`` only for init containers, alongside :kw:`start_timeout` and the :c-tag:`nostatus` tag.",
 		},
 		{
-			Option:    "remove",
+			Option:    "rm",
 			Attr:      "Remove",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -310,11 +339,155 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
+func (t T) pull(ctx context.Context) error {
+	return fmt.Errorf("TODO: pull()")
+}
+
+func (t T) env() ([]string, error) {
+	data := make([]string, 0)
+	t.Log().Warn().Msg("TODO: env()")
+	return data, nil
+}
+
+func (t T) labels() (map[string]string, error) {
+	data := make(map[string]string)
+	t.Log().Warn().Msg("TODO: labels()")
+	return data, nil
+}
+
+func (t T) devices() ([]containerapi.DeviceMapping, error) {
+	data := make([]containerapi.DeviceMapping, 0)
+	for _, s := range t.Devices {
+		l := strings.Split(s, ":")
+		dm := containerapi.DeviceMapping{}
+		n := len(l)
+		switch {
+		case n <= 3:
+			dm.PathOnHost = l[0]
+			dm.PathInContainer = l[1]
+			fallthrough
+		case n == 3:
+			dm.CgroupPermissions = l[2]
+		}
+		data = append(data, dm)
+	}
+	return data, nil
+}
+
 func (t T) Start(ctx context.Context) error {
+	cs := cli().ContainerService()
+	inspect, err := cs.Inspect(ctx, t.ContainerName())
+	if err == nil {
+		if inspect.State.Running {
+			t.Log().Info().Msg("already running")
+			return nil
+		} else {
+			if t.Remove {
+				if err := cs.Remove(ctx, t.ContainerName()); err != nil {
+					return err
+				}
+			}
+			return cs.NewContainer(ctx, inspect.ID).Start(ctx)
+		}
+	} else {
+		if t.ImagePullPolicy == AlwaysPolicy {
+			t.pull(ctx)
+		}
+		if _, err := t.create(ctx); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
+func (t T) create(ctx context.Context) (*container.Container, error) {
+	var (
+		env     []string
+		labels  map[string]string
+		devices []containerapi.DeviceMapping
+		err     error
+	)
+	if env, err = t.env(); err != nil {
+		return nil, err
+	}
+	if labels, err = t.labels(); err != nil {
+		return nil, err
+	}
+	if devices, err = t.devices(); err != nil {
+		return nil, err
+	}
+
+	config := containerapi.Config{
+		Hostname:   t.Hostname,
+		Tty:        t.TTY,
+		Env:        env,
+		Cmd:        t.Command,
+		Entrypoint: t.Entrypoint,
+		Image:      t.Image,
+		WorkingDir: t.CWD,
+		Labels:     labels,
+	}
+
+	hostConfig := containerapi.HostConfig{}
+	hostConfig.Privileged = t.Privileged
+	hostConfig.AutoRemove = t.Remove
+	hostConfig.Cgroup = t.PG.ID
+	hostConfig.Devices = devices
+	// DNS go here
+
+	name := t.ContainerName()
+
+	configStr, _ := json.Marshal(config)
+	hostConfigStr, _ := json.Marshal(hostConfig)
+
+	t.Log().Info().
+		Str("name", name).
+		Bytes("config", configStr).
+		Bytes("hostConfig", hostConfigStr).
+		Msgf("start")
+	c, err := cli().ContainerService().Create(
+		ctx,
+		container.WithCreateName(name),
+		container.WithCreateConfig(config),
+		container.WithCreateHostConfig(hostConfig),
+	)
+	if err != nil {
+		return nil, err
+	}
+	actionrollback.Register(ctx, func() error {
+		var xc int
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+		if x, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionNotRunning)); err != nil {
+			return err
+		} else {
+			xc = x.ExitCode()
+		}
+		t.Log().Info().Msgf("exited with code %d", xc)
+		return nil
+	})
+	return c, nil
+}
+
 func (t T) Stop(ctx context.Context) error {
+	name := t.ContainerName()
+	inspect, err := cli().ContainerService().Inspect(ctx, name)
+	if (err == nil && !inspect.State.Running) || errdefs.IsNotFound(err) {
+		t.Log().Info().Str("name", name).Msg("already stopped")
+	} else {
+		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("stop")
+		c := cli().ContainerService().NewContainer(ctx, inspect.ID)
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+	}
+	if t.Remove && !errdefs.IsNotFound(err) {
+		t.Log().Info().Str("name", name).Msgf("remove")
+		return cli().ContainerService().Remove(ctx, name)
+	} else {
+		t.Log().Info().Msg("already removed")
+	}
 	return nil
 }
 
@@ -332,8 +505,12 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Down
 	}
 	inspect, err := cli().ContainerService().Inspect(ctx, t.ContainerName())
-	if err != nil {
-		fmt.Println("inspect:", err)
+	switch {
+	case err == nil:
+	case errdefs.IsNotFound(err):
+		return status.Down
+	default:
+		t.StatusLog().Error("inspect: %s", err)
 		return status.Down
 	}
 	if t.Hostname != "" && inspect.Config.Hostname != t.Hostname {
@@ -413,14 +590,6 @@ func (t T) Unprovision(ctx context.Context) error {
 
 func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
-}
-
-func (t T) create(ctx context.Context) error {
-	actionrollback.Register(ctx, func() error {
-		t.Log().Info().Msgf("rollback")
-		return nil
-	})
-	return nil
 }
 
 func containerID(ctx context.Context, name string) string {
