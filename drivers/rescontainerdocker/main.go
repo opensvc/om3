@@ -376,26 +376,40 @@ func (t T) devices() ([]containerapi.DeviceMapping, error) {
 
 func (t T) Start(ctx context.Context) error {
 	cs := cli().ContainerService()
-	inspect, err := cs.Inspect(ctx, t.ContainerName())
+	name := t.ContainerName()
+	inspect, err := cs.Inspect(ctx, name)
 	if err == nil {
 		if inspect.State.Running {
 			t.Log().Info().Msg("already running")
 			return nil
 		} else {
 			if t.Remove {
-				if err := cs.Remove(ctx, t.ContainerName()); err != nil {
+				t.Log().Info().Str("name", name).Msgf("remove leftover")
+				if err := cs.Remove(ctx, name); err != nil {
 					return err
 				}
+				if t.ImagePullPolicy == AlwaysPolicy {
+					t.pull(ctx)
+				}
+				c, err := t.create(ctx)
+				if err != nil {
+					return err
+				}
+				return c.Start(ctx)
+			} else {
+				t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("start")
+				return cs.NewContainer(ctx, inspect.ID).Start(ctx)
 			}
-			return cs.NewContainer(ctx, inspect.ID).Start(ctx)
 		}
 	} else {
 		if t.ImagePullPolicy == AlwaysPolicy {
 			t.pull(ctx)
 		}
-		if _, err := t.create(ctx); err != nil {
+		c, err := t.create(ctx)
+		if err != nil {
 			return err
 		}
+		return c.Start(ctx)
 	}
 	return nil
 }
@@ -444,7 +458,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Str("name", name).
 		Bytes("config", configStr).
 		Bytes("hostConfig", hostConfigStr).
-		Msgf("start")
+		Msgf("create")
 	c, err := cli().ContainerService().Create(
 		ctx,
 		container.WithCreateName(name),
@@ -473,18 +487,21 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 func (t T) Stop(ctx context.Context) error {
 	name := t.ContainerName()
 	inspect, err := cli().ContainerService().Inspect(ctx, name)
+	c := cli().ContainerService().NewContainer(ctx, inspect.ID)
 	if (err == nil && !inspect.State.Running) || errdefs.IsNotFound(err) {
 		t.Log().Info().Str("name", name).Msg("already stopped")
 	} else {
 		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("stop")
-		c := cli().ContainerService().NewContainer(ctx, inspect.ID)
 		if err := c.Stop(ctx); err != nil {
 			return err
 		}
 	}
 	if t.Remove && !errdefs.IsNotFound(err) {
-		t.Log().Info().Str("name", name).Msgf("remove")
-		return cli().ContainerService().Remove(ctx, name)
+		if !inspect.HostConfig.AutoRemove {
+			t.Log().Info().Str("name", name).Msgf("remove")
+			return cli().ContainerService().Remove(ctx, name)
+		}
+		xs, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionRemoved))
 	} else {
 		t.Log().Info().Msg("already removed")
 	}
