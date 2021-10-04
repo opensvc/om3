@@ -25,6 +25,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/rescontainer"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/envprovider"
 	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/stringslice"
 )
@@ -40,41 +41,41 @@ const (
 type (
 	T struct {
 		resource.T
-		PG                 pg.Config      `json:"pg"`
-		Path               path.T         `json:"path"`
-		ObjectID           uuid.UUID      `json:"object_id"`
-		SCSIReserv         bool           `json:"scsireserv"`
-		PromoteRW          bool           `json:"promote_rw"`
-		NoPreemptAbort     bool           `json:"NoPreemptAbort"`
-		OsvcRootPath       string         `json:"osvc_root_path"`
-		GuestOS            string         `json:"guest_os"`
-		Name               string         `json:"name"`
-		Hostname           string         `json:"hostname"`
-		Image              string         `json:"image"`
-		ImagePullPolicy    string         `json:"image_pull_policy"`
-		CWD                string         `json:"cwd"`
-		Command            []string       `json:"command"`
-		RunArgs            []string       `json:"run_args"`
-		Entrypoint         []string       `json:"entrypoint"`
-		Detach             bool           `json:"detach"`
-		Remove             bool           `json:"remove"`
-		Privileged         bool           `json:"privileged"`
-		Interactive        bool           `json:"interactive"`
-		TTY                bool           `json:"tty"`
-		VolumeMounts       []string       `json:"volume_mounts"`
-		Environment        []string       `json:"environment"`
-		SecretsEnvironment []string       `json:"secrets_environment"`
-		ConfigsEnvironment []string       `json:"configs_environment"`
-		Devices            []string       `json:"devices"`
-		NetNS              string         `json:"netns"`
-		UserNS             string         `json:"userns"`
-		PIDNS              string         `json:"pidns"`
-		IPCNS              string         `json:"ipcns"`
-		UTSNS              string         `json:"utsns"`
-		RegistryCreds      string         `json:"registry_creds"`
-		PullTimeout        *time.Duration `json:"pull_timeout"`
-		StartTimeout       *time.Duration `json:"start_timeout"`
-		StopTimeout        *time.Duration `json:"stop_timeout"`
+		PG              pg.Config      `json:"pg"`
+		Path            path.T         `json:"path"`
+		ObjectID        uuid.UUID      `json:"object_id"`
+		SCSIReserv      bool           `json:"scsireserv"`
+		PromoteRW       bool           `json:"promote_rw"`
+		NoPreemptAbort  bool           `json:"NoPreemptAbort"`
+		OsvcRootPath    string         `json:"osvc_root_path"`
+		GuestOS         string         `json:"guest_os"`
+		Name            string         `json:"name"`
+		Hostname        string         `json:"hostname"`
+		Image           string         `json:"image"`
+		ImagePullPolicy string         `json:"image_pull_policy"`
+		CWD             string         `json:"cwd"`
+		Command         []string       `json:"command"`
+		RunArgs         []string       `json:"run_args"`
+		Entrypoint      []string       `json:"entrypoint"`
+		Detach          bool           `json:"detach"`
+		Remove          bool           `json:"remove"`
+		Privileged      bool           `json:"privileged"`
+		Interactive     bool           `json:"interactive"`
+		TTY             bool           `json:"tty"`
+		VolumeMounts    []string       `json:"volume_mounts"`
+		Env             []string       `json:"environment"`
+		SecretsEnv      []string       `json:"secrets_environment"`
+		ConfigsEnv      []string       `json:"configs_environment"`
+		Devices         []string       `json:"devices"`
+		NetNS           string         `json:"netns"`
+		UserNS          string         `json:"userns"`
+		PIDNS           string         `json:"pidns"`
+		IPCNS           string         `json:"ipcns"`
+		UTSNS           string         `json:"utsns"`
+		RegistryCreds   string         `json:"registry_creds"`
+		PullTimeout     *time.Duration `json:"pull_timeout"`
+		StartTimeout    *time.Duration `json:"start_timeout"`
+		StopTimeout     *time.Duration `json:"stop_timeout"`
 	}
 
 	containerNamer interface {
@@ -244,7 +245,7 @@ func (t T) Manifest() *manifest.T {
 		},
 		{
 			Option:    "environment",
-			Attr:      "Environment",
+			Attr:      "Env",
 			Scopable:  true,
 			Converter: converters.Shlex,
 			Text:      "A whitespace separated list of ``<var>=<secret name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<secret name>/<key path>`` only or whole ``<var>=<secret name>/<key path>``. Variables are uppercased.",
@@ -252,7 +253,7 @@ func (t T) Manifest() *manifest.T {
 		},
 		{
 			Option:    "configs_environment",
-			Attr:      "ConfigsEnvironment",
+			Attr:      "ConfigsEnv",
 			Scopable:  true,
 			Converter: converters.Shlex,
 			Text:      "A whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
@@ -337,6 +338,31 @@ func (t T) Manifest() *manifest.T {
 			Example:   "2m",
 			Default:   "2m30s",
 		},
+		{
+			Option:    "secrets_environment",
+			Attr:      "SecretsEnv",
+			Scopable:  true,
+			Converter: converters.Shlex,
+			Text: "A whitespace separated list of ``<var>=<sec name>/<key path>`` or ``<sec name>/<key matcher>``." +
+				" If secret object or secret key doesn't exist then start, stop, ... actions on resource will fail" +
+				" with non 0 exit code." +
+				" A shell expression splitter is applied, so double quotes can be around ``<secret name>/<key path>``" +
+				" only or whole ``<var>=<secret name>/<key path>``.",
+			Example: "``CRT=cert1/server.pem sec1/*`` to create following env vars CRT=< <ns>/sec/cert1 decoded" +
+				" value of key server.pem> <key1>=< <ns>/sec/sec1 decoded value of <key1> ...",
+		},
+		{
+			Option:    "configs_environment",
+			Attr:      "ConfigsEnv",
+			Scopable:  true,
+			Converter: converters.Shlex,
+			Text: "The whitespace separated list of ``<var>=<cfg name>/<key path>`` or ``<cfg name>/<key matcher>``." +
+				" If config object or config key doesn't exist then start, stop, ... actions on resource will fail" +
+				" with non 0 exit code." +
+				" A shell expression splitter is applied, so double quotes can be around ``<config name>/<key path>``" +
+				" only or whole ``<var>=<config name>/<key path>``.",
+			Example: "``PORT=http/port webapp/app1* {name}/* {name}-debug/settings``",
+		},
 		rescontainer.KWSCSIReserv,
 		rescontainer.KWPromoteRW,
 		rescontainer.KWNoPreemptAbort,
@@ -348,12 +374,6 @@ func (t T) Manifest() *manifest.T {
 
 func (t T) pull(ctx context.Context) error {
 	return fmt.Errorf("TODO: pull()")
-}
-
-func (t T) env() ([]string, error) {
-	data := make([]string, 0)
-	t.Log().Warn().Msg("TODO: env()")
-	return data, nil
 }
 
 func (t T) labels() (map[string]string, error) {
@@ -648,4 +668,27 @@ func (t T) ContainerName() string {
 
 func (t T) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
+}
+
+func (t T) env() (env []string, err error) {
+	var tempEnv []string
+	env = []string{
+		"OPENSVC_RID=" + t.RID(),
+		"OPENSVC_NAME=" + t.Path.String(),
+		"OPENSVC_KIND=" + t.Path.Kind.String(),
+		"OPENSVC_ID=" + t.ObjectID.String(),
+		"OPENSVC_NAMESPACE=" + t.Path.Namespace,
+	}
+	if len(t.Env) > 0 {
+		env = append(env, t.Env...)
+	}
+	if tempEnv, err = envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
+		return nil, err
+	}
+	env = append(env, tempEnv...)
+	if tempEnv, err = envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
+		return nil, err
+	}
+	env = append(env, tempEnv...)
+	return env, nil
 }
