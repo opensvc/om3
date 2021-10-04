@@ -12,6 +12,7 @@ import (
 	"github.com/cpuguy83/go-docker/container"
 	"github.com/cpuguy83/go-docker/container/containerapi"
 	"github.com/cpuguy83/go-docker/errdefs"
+	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -41,6 +42,7 @@ type (
 		resource.T
 		PG                 pg.Config      `json:"pg"`
 		Path               path.T         `json:"path"`
+		ObjectID           uuid.UUID      `json:"object_id"`
 		SCSIReserv         bool           `json:"scsireserv"`
 		PromoteRW          bool           `json:"promote_rw"`
 		NoPreemptAbort     bool           `json:"NoPreemptAbort"`
@@ -123,6 +125,11 @@ func (t T) Manifest() *manifest.T {
 			Key:  "path",
 			Attr: "Path",
 			Ref:  "object.path",
+		},
+		{
+			Key:  "object_id",
+			Attr: "ObjectID",
+			Ref:  "object.id",
 		},
 	}...)
 	m.AddKeyword([]keywords.Keyword{
@@ -351,7 +358,12 @@ func (t T) env() ([]string, error) {
 
 func (t T) labels() (map[string]string, error) {
 	data := make(map[string]string)
-	t.Log().Warn().Msg("TODO: labels()")
+	data["com.opensvc.id"] = t.containerLabelID()
+	data["com.opensvc.path"] = t.Path.String()
+	data["com.opensvc.namespace"] = t.Path.Namespace
+	data["com.opensvc.kind"] = t.Path.Kind.String()
+	data["com.opensvc.name"] = t.Path.Name
+	data["com.opensvc.rid"] = t.ResourceID.String()
 	return data, nil
 }
 
@@ -502,6 +514,10 @@ func (t T) Stop(ctx context.Context) error {
 			return cli().ContainerService().Remove(ctx, name)
 		}
 		xs, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionRemoved))
+		if err != nil {
+			return err
+		}
+		t.Log().Debug().Msgf("wait removed condition ended with exit code %d", xs.ExitCode())
 	} else {
 		t.Log().Info().Msg("already removed")
 	}
@@ -628,4 +644,8 @@ func (t T) ContainerName() string {
 	}
 	s = s + t.Path.Name + "." + strings.ReplaceAll(t.ResourceID.String(), "#", ".")
 	return s
+}
+
+func (t T) containerLabelID() string {
+	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
