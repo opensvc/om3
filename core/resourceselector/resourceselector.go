@@ -142,13 +142,13 @@ func (t T) Resources() resource.Drivers {
 func (t Options) IsZero() bool {
 	switch {
 	case t.RID != "":
-		return true
-	case t.Subset != "":
-		return true
-	case t.Tag != "":
-		return true
-	default:
 		return false
+	case t.Subset != "":
+		return false
+	case t.Tag != "":
+		return false
+	default:
+		return true
 	}
 }
 
