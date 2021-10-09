@@ -34,8 +34,9 @@ func (t *CmdObjectPrintStatus) Init(kind string, parent *cobra.Command, selector
 
 func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "status",
-		Short: "Print selected service and instance status",
+		Use:     "status",
+		Aliases: []string{"statu", "stat", "sta", "st"},
+		Short:   "Print selected service and instance status",
 		Long: `Resources Flags:
 
 (1) R   Running,           . Not Running
