@@ -36,6 +36,7 @@ func (t *CmdObjectStop) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.OptsGlobal.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithResourceSelectorOptions(t.OptsResourceSelector.Options),
 		objectaction.WithLocal(t.OptsGlobal.Local),
 		objectaction.WithFormat(t.OptsGlobal.Format),
 		objectaction.WithColor(t.OptsGlobal.Color),

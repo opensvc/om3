@@ -14,6 +14,7 @@ import (
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -55,6 +56,18 @@ func WithRemoteNodes(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.NodeSelector = s
+		return nil
+	})
+}
+
+//
+// WithResourceSelector expands into a selection of resources to execute the
+// action on.
+//
+func WithResourceSelectorOptions(o resourceselector.Options) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.ResourceSelectorOptions = o
 		return nil
 	})
 }

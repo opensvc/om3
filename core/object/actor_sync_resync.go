@@ -6,14 +6,13 @@ import (
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceselector"
 )
 
 // OptsSyncResync is the options of the SyncResync object method.
 type OptsSyncResync struct {
 	OptsGlobal
 	OptsLocking
-	resourceselector.Options
+	OptsResourceSelector
 	OptForce
 }
 

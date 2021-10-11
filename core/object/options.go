@@ -18,6 +18,10 @@ type (
 		DryRun         bool   `flag:"dry-run"`
 	}
 
+	OptsResourceSelector struct {
+		resourceselector.Options
+	}
+
 	// OptsLocking contains options accepted by all actions using an action lock
 	OptsLocking struct {
 		Disable bool          `flag:"nolock"`
@@ -68,7 +72,7 @@ type (
 		Global OptsGlobal
 		OptsAsync
 		OptsLocking
-		resourceselector.Options
+		OptsResourceSelector
 		OptTo
 		OptForce
 		Template    string   `flag:"template"`

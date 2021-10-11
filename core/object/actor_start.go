@@ -8,7 +8,6 @@ import (
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceselector"
 )
 
 // OptsStart is the options of the Start object method.
@@ -16,7 +15,7 @@ type OptsStart struct {
 	OptsGlobal
 	OptsAsync
 	OptsLocking
-	resourceselector.Options
+	OptsResourceSelector
 	OptTo
 	OptForce
 	OptDisableRollback

@@ -6,7 +6,6 @@ import (
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceselector"
 )
 
 // OptsUnprovision is the options of the Unprovision object method.
@@ -14,7 +13,7 @@ type OptsUnprovision struct {
 	OptsGlobal
 	OptsAsync
 	OptsLocking
-	resourceselector.Options
+	OptsResourceSelector
 	OptTo
 	OptForce
 	OptLeader
