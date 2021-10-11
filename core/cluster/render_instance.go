@@ -81,10 +81,14 @@ func sObjectInstanceFrozen(instance instance.Status) string {
 }
 
 func sObjectInstanceUnprovisioned(instance instance.Status) string {
-	if instance.Provisioned == provisioned.False {
+	switch instance.Provisioned {
+	case provisioned.False:
 		return iconProvisionAlert
+	case provisioned.Mixed:
+		return iconProvisionAlert
+	default:
+		return ""
 	}
-	return ""
 }
 
 func sObjectInstanceMonitorStatus(instance instance.Status) string {
