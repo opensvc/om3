@@ -410,7 +410,7 @@ func (t T) MatchRID(s string) bool {
 	if !rid.DriverGroup().IsValid() {
 		return false
 	}
-	if rid.Name == "" {
+	if rid.Index() == "" {
 		// ex: fs#1 matches fs
 		return t.ResourceID.DriverGroup().String() == rid.DriverGroup().String()
 	}
