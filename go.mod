@@ -50,3 +50,5 @@ require (
 )
 
 replace github.com/spf13/viper => github.com/opensvc/viper v1.7.0-osvc.1
+
+replace github.com/cpuguy83/go-docker => github.com/opensvc/go-docker v0.0.0-20211017135555-65a1ec774c95

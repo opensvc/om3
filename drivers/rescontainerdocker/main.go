@@ -12,6 +12,7 @@ import (
 	"github.com/cpuguy83/go-docker/container"
 	"github.com/cpuguy83/go-docker/container/containerapi"
 	"github.com/cpuguy83/go-docker/errdefs"
+	"github.com/cpuguy83/go-docker/image"
 	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
 	"opensvc.com/opensvc/core/actionrollback"
@@ -87,6 +88,7 @@ var (
 	// Allocate a single client socket for all container.docker resources
 	// Get/Init it via cli()
 	clientCache *docker.Client
+	imageCache  = make(map[string]*image.Image)
 )
 
 func cli() *docker.Client {
@@ -449,6 +451,7 @@ func (t T) Start(ctx context.Context) error {
 func (t T) create(ctx context.Context) (*container.Container, error) {
 	var (
 		env     []string
+		command []string
 		labels  map[string]string
 		devices []containerapi.DeviceMapping
 		err     error
@@ -462,12 +465,15 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	if devices, err = t.devices(); err != nil {
 		return nil, err
 	}
+	if command, err = t.command(); err != nil {
+		return nil, err
+	}
 
 	config := containerapi.Config{
 		Hostname:   t.Hostname,
 		Tty:        t.TTY,
 		Env:        env,
-		Cmd:        t.Command,
+		Cmd:        command,
 		Entrypoint: t.Entrypoint,
 		Image:      t.Image,
 		WorkingDir: t.CWD,
@@ -668,6 +674,36 @@ func (t T) ContainerName() string {
 
 func (t T) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
+}
+
+func (t T) command() (env []string, err error) {
+	if len(t.Command) > 0 {
+		return t.Command, nil
+	}
+	img, err := t.image()
+	if err != nil {
+		return nil, err
+	}
+	inspect, err := img.Inspect(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if len(inspect.Config.Cmd) > 0 {
+		return inspect.Config.Cmd, nil
+	}
+	return inspect.Config.Entrypoint, nil
+}
+
+func (t T) image() (*image.Image, error) {
+	if img, ok := imageCache[t.Image]; ok {
+		return img, nil
+	}
+	img, err := cli().ImageService().FindImage(context.Background(), t.Image)
+	if err != nil {
+		return nil, err
+	}
+	imageCache[t.Image] = img
+	return img, nil
 }
 
 func (t T) env() (env []string, err error) {

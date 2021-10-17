@@ -239,6 +239,8 @@ github.com/opensvc/fcntllock v1.0.2 h1:4AjuDU14tWGlmhTAKzJXDkVTzUWTBT9VaSmneVgw7
 github.com/opensvc/fcntllock v1.0.2/go.mod h1:ndysKduGcYDhhXReVIc/G3GGnAFajeAlA8ivMGBqW2I=
 github.com/opensvc/flock v1.0.3 h1:2OOtLbUZbxxHPD3x9Hc9SGVpL/k601+6jmBC6WaEtD0=
 github.com/opensvc/flock v1.0.3/go.mod h1:Yt5jRr3ntVN5i6nquxfE/GJaIRx6gcRnaPIiaJwnr4o=
+github.com/opensvc/go-docker v0.0.0-20211017135555-65a1ec774c95 h1:Q7Jyk5Uspgbudybs4mWBsTNmD9zsMzVKxTZEmxlqcJA=
+github.com/opensvc/go-docker v0.0.0-20211017135555-65a1ec774c95/go.mod h1:1rCFFxYwW5hFsCFL1TvIa/u0OKAnGFyyp339244qVN8=
 github.com/opensvc/locker v1.0.3 h1:YvkVbCKrMeiilX+aD+BuBzVqFWhkkoCcDY5U0rlq/sA=
 github.com/opensvc/locker v1.0.3/go.mod h1:H/QSU7f5bULf/5PVOHZ58uEkyMF7RNkPfSEmP+E8qoM=
 github.com/opensvc/testhelper v1.0.0 h1:CRljLMvKpwxJQbmj5poejY55JusV/H5MtDibA+vpD5M=
