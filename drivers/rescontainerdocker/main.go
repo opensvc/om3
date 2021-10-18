@@ -489,7 +489,11 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 
 	name := t.ContainerName()
 
-	configStr, _ := json.Marshal(config)
+	configObf := config
+	if configObf.Env, err = t.obfuscatedEnv(); err != nil {
+		return nil, err
+	}
+	configStr, _ := json.Marshal(configObf)
 	hostConfigStr, _ := json.Marshal(hostConfig)
 
 	t.Log().Info().
@@ -676,7 +680,7 @@ func (t T) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
 
-func (t T) command() (env []string, err error) {
+func (t T) command() ([]string, error) {
 	if len(t.Command) > 0 {
 		return t.Command, nil
 	}
@@ -707,6 +711,14 @@ func (t T) image() (*image.Image, error) {
 }
 
 func (t T) env() (env []string, err error) {
+	return t.obfuscatableEnv(false)
+}
+
+func (t T) obfuscatedEnv() (env []string, err error) {
+	return t.obfuscatableEnv(true)
+}
+
+func (t T) obfuscatableEnv(obfuscate bool) (env []string, err error) {
 	var tempEnv []string
 	env = []string{
 		"OPENSVC_RID=" + t.RID(),
@@ -724,6 +736,15 @@ func (t T) env() (env []string, err error) {
 	env = append(env, tempEnv...)
 	if tempEnv, err = envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
 		return nil, err
+	}
+	if obfuscate {
+		for i, s := range tempEnv {
+			l := strings.SplitN(s, "=", 2)
+			if len(l) != 2 {
+				continue
+			}
+			tempEnv[i] = l[0] + "=xxx"
+		}
 	}
 	env = append(env, tempEnv...)
 	return env, nil
