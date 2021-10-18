@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/cpuguy83/go-docker"
 	"github.com/cpuguy83/go-docker/container"
 	"github.com/cpuguy83/go-docker/container/containerapi"
+	"github.com/cpuguy83/go-docker/container/containerapi/mount"
 	"github.com/cpuguy83/go-docker/errdefs"
 	"github.com/cpuguy83/go-docker/image"
 	"github.com/google/uuid"
@@ -27,6 +29,7 @@ import (
 	"opensvc.com/opensvc/drivers/rescontainer"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/envprovider"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/stringslice"
 )
@@ -389,6 +392,50 @@ func (t T) labels() (map[string]string, error) {
 	return data, nil
 }
 
+func (t T) mounts() ([]mount.Mount, error) {
+	mounts := make([]mount.Mount, 0)
+	for _, s := range t.VolumeMounts {
+		l := strings.Split(s, ":")
+		n := len(l)
+		m := mount.Mount{
+			Type:        mount.TypeBind,
+			Consistency: mount.ConsistencyDefault,
+		}
+		var opt string
+		switch n {
+		case 2:
+			m.Source = l[0]
+			m.Target = l[1]
+			opt = "rw"
+		case 3:
+			m.Source = l[0]
+			m.Target = l[1]
+			opt = l[2]
+		default:
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: 1-2 column-characters allowed", s)
+		}
+		optM := make(map[string]interface{})
+		for _, e := range strings.Split(opt, ",") {
+			optM[e] = nil
+		}
+		if _, ok := optM["ro"]; ok {
+			m.ReadOnly = true
+		}
+		if len(m.Source) == 0 {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty source", s)
+		}
+		if len(m.Target) == 0 {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
+		}
+		if !strings.HasPrefix(m.Source, "/") {
+			// TODO: opensvc volume source translation
+			continue
+		}
+		mounts = append(mounts, m)
+	}
+	return mounts, nil
+}
+
 func (t T) devices() ([]containerapi.DeviceMapping, error) {
 	data := make([]containerapi.DeviceMapping, 0)
 	for _, s := range t.Devices {
@@ -454,6 +501,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		command []string
 		labels  map[string]string
 		devices []containerapi.DeviceMapping
+		mounts  []mount.Mount
 		err     error
 	)
 	if env, err = t.env(); err != nil {
@@ -466,6 +514,9 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		return nil, err
 	}
 	if command, err = t.command(); err != nil {
+		return nil, err
+	}
+	if mounts, err = t.mounts(); err != nil {
 		return nil, err
 	}
 
@@ -485,6 +536,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	hostConfig.AutoRemove = t.Remove
 	hostConfig.Cgroup = t.PG.ID
 	hostConfig.Devices = devices
+	hostConfig.Mounts = mounts
 	// DNS go here
 
 	name := t.ContainerName()
@@ -495,6 +547,20 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	}
 	configStr, _ := json.Marshal(configObf)
 	hostConfigStr, _ := json.Marshal(hostConfig)
+
+	// create missing mount sources
+	for _, m := range mounts {
+		if file.ExistsAndDir(m.Source) {
+			continue
+		}
+		if file.Exists(m.Source) {
+			return nil, fmt.Errorf("mount source %s exists but is not a directory", m.Source)
+		}
+		t.Log().Info().Str("path", m.Source).Msg("create missing mount source")
+		if err := os.MkdirAll(m.Source, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
 
 	t.Log().Info().
 		Str("name", name).
