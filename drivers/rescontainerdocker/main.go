@@ -21,6 +21,7 @@ import (
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
@@ -427,10 +428,12 @@ func (t T) mounts() ([]mount.Mount, error) {
 		if len(m.Target) == 0 {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
 		}
-		if !strings.HasPrefix(m.Source, "/") {
-			// TODO: opensvc volume source translation
-			continue
+		if srcRealpath, err := object.Realpath(m.Source, t.Path.Namespace); err != nil {
+			return mounts, err
+		} else {
+			m.Source = srcRealpath
 		}
+
 		mounts = append(mounts, m)
 	}
 	return mounts, nil
