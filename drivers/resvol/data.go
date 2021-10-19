@@ -7,6 +7,7 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/sys/unix"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -233,7 +234,7 @@ func (t T) SendSignals() error {
 		if err := o.SignalResource(sd.RID, sd.Signum); err != nil {
 			return err
 		}
-		t.Log().Info().Msgf("resource %s has been sent a signal %d", sd.RID, sd.Signum)
+		t.Log().Debug().Msgf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
 	}
 	return nil
 }

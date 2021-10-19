@@ -52,7 +52,7 @@ func cfgEncode(b []byte) (string, error) {
 func cfgDecode(s string) ([]byte, error) {
 	switch {
 	case strings.HasPrefix(s, "base64:"):
-		return base64.URLEncoding.DecodeString(s[7:])
+		return base64.RawURLEncoding.DecodeString(s[7:])
 	case strings.HasPrefix(s, "literal:"):
 		return []byte(s[8:]), nil
 	default:

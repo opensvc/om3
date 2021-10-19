@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cpuguy83/go-docker"
@@ -17,6 +18,7 @@ import (
 	"github.com/cpuguy83/go-docker/image"
 	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
+	"golang.org/x/sys/unix"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/keywords"
@@ -817,4 +819,24 @@ func (t T) obfuscatableEnv(obfuscate bool) (env []string, err error) {
 	}
 	env = append(env, tempEnv...)
 	return env, nil
+}
+
+func (t T) Signal(sig syscall.Signal) error {
+	cs := cli().ContainerService()
+	name := t.ContainerName()
+	inspect, err := cs.Inspect(context.Background(), name)
+	switch {
+	case err == nil:
+	case errdefs.IsNotFound(err):
+		t.Log().Info().Msgf("skip signal: container not found")
+		return nil
+	default:
+		return err
+	}
+	if !inspect.State.Running {
+		t.Log().Info().Msgf("skip signal: container not running")
+		return nil
+	}
+	t.Log().Info().Int("pid", inspect.State.Pid).Str("signal", unix.SignalName(sig)).Msg("signal container")
+	return syscall.Kill(inspect.State.Pid, sig)
 }
