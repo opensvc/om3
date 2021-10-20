@@ -38,7 +38,7 @@ var (
 		"vhost":       "envoy",
 		"certificate": "tls",
 		"route":       "envoy",
-		"expoe":       "envoy",
+		"expose":      "envoy",
 	}
 )
 
