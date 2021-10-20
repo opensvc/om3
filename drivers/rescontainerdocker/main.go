@@ -840,3 +840,20 @@ func (t T) Signal(sig syscall.Signal) error {
 	t.Log().Info().Int("pid", inspect.State.Pid).Str("signal", unix.SignalName(sig)).Msg("signal container")
 	return syscall.Kill(inspect.State.Pid, sig)
 }
+
+func (t T) Enter() error {
+	sh := "/bin/bash"
+	name := t.ContainerName()
+	cmd := exec.Command("docker", "exec", name, "/bin/bash")
+	_ = cmd.Run()
+
+	switch cmd.ProcessState.ExitCode() {
+	case 126, 127:
+		sh = "/bin/sh"
+	}
+	cmd = exec.Command("docker", "exec", "-it", name, sh)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}

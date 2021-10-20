@@ -42,6 +42,7 @@ func init() {
 		cmdDelete           commands.CmdObjectDelete
 		cmdEdit             commands.CmdObjectEdit
 		cmdEditConfig       commands.CmdObjectEditConfig
+		cmdEnter            commands.CmdObjectEnter
 		cmdEval             commands.CmdObjectEval
 		cmdFreeze           commands.CmdObjectFreeze
 		cmdGet              commands.CmdObjectGet
@@ -71,6 +72,7 @@ func init() {
 	cmdEdit.Init(kind, head, &selectorFlag)
 	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
+	cmdEnter.Init(kind, head, &selectorFlag)
 	cmdFreeze.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)

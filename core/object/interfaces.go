@@ -59,6 +59,10 @@ type (
 		SyncResync(OptsSyncResync) error
 	}
 
+	Enterer interface {
+		Enter(OptsEnter) error
+	}
+
 	// Freezer is implemented by object kinds supporting freeze and thaw.
 	Freezer interface {
 		Freeze() error
