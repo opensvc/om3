@@ -12,6 +12,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/resdiskmd"
 	_ "opensvc.com/opensvc/drivers/resdiskraw"
 	_ "opensvc.com/opensvc/drivers/resdiskvg"
+	_ "opensvc.com/opensvc/drivers/resexposeenvoy"
 	_ "opensvc.com/opensvc/drivers/resfsdir"
 	_ "opensvc.com/opensvc/drivers/resfsflag"
 	_ "opensvc.com/opensvc/drivers/resfshost"
