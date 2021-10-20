@@ -33,6 +33,12 @@ var (
 		"ip":     "host",
 		"task":   "host",
 		"volume": "",
+
+		// data resources
+		"vhost":       "envoy",
+		"certificate": "tls",
+		"route":       "envoy",
+		"expoe":       "envoy",
 	}
 )
 

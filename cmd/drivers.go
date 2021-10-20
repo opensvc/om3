@@ -17,5 +17,6 @@ import (
 	_ "opensvc.com/opensvc/drivers/resfshost"
 	_ "opensvc.com/opensvc/drivers/resiphost"
 	_ "opensvc.com/opensvc/drivers/resiproute"
+	_ "opensvc.com/opensvc/drivers/resvhostenvoy"
 	_ "opensvc.com/opensvc/drivers/resvol"
 )

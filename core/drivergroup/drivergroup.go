@@ -24,30 +24,42 @@ const (
 	App
 	Sync
 	Task
+	Certificate
+	Expose
+	Route
+	Vhost
 )
 
 var (
 	toID = map[string]T{
-		"ip":        IP,
-		"volume":    Volume,
-		"disk":      Disk,
-		"fs":        FS,
-		"share":     Share,
-		"container": Container,
-		"app":       App,
-		"sync":      Sync,
-		"task":      Task,
+		"ip":          IP,
+		"volume":      Volume,
+		"disk":        Disk,
+		"fs":          FS,
+		"share":       Share,
+		"container":   Container,
+		"app":         App,
+		"sync":        Sync,
+		"task":        Task,
+		"certificate": Certificate,
+		"expose":      Expose,
+		"route":       Route,
+		"vhost":       Vhost,
 	}
 	toString = map[T]string{
-		IP:        "ip",
-		Volume:    "volume",
-		Disk:      "disk",
-		FS:        "fs",
-		Share:     "share",
-		Container: "container",
-		App:       "app",
-		Sync:      "sync",
-		Task:      "task",
+		IP:          "ip",
+		Volume:      "volume",
+		Disk:        "disk",
+		FS:          "fs",
+		Share:       "share",
+		Container:   "container",
+		App:         "app",
+		Sync:        "sync",
+		Task:        "task",
+		Certificate: "certificate",
+		Expose:      "expose",
+		Route:       "route",
+		Vhost:       "vhost",
 	}
 )
 
