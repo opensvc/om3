@@ -58,6 +58,7 @@ type (
 		IsStandby() bool
 		IsShared() bool
 		IsMonitored() bool
+		RestartCount() int
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -90,6 +91,7 @@ type (
 		Optional            bool          `json:"optional"`
 		Standby             bool          `json:"standby"`
 		Shared              bool          `json:"shared"`
+		Restart             int           `json:"restart"`
 		Tags                *set.Set      `json:"tags"`
 		BlockingPreStart    string
 		BlockingPreStop     string
@@ -121,6 +123,10 @@ type (
 	// MonitorFlag tells the daemon if it should trigger a monitor action
 	// when the resource is not up.
 	MonitorFlag bool
+
+	// RestartFlag is the number of times the monitor will try restarting a
+	// resource gone down in a well-known started instance.
+	RestartFlag int
 
 	// DisableFlag hints the resource ignores all state transition actions
 	DisableFlag bool
@@ -164,7 +170,7 @@ type (
 		Info map[string]interface{} `json:"info,omitempty"`
 
 		// Restart is the number of restart to be tried before giving up.
-		Restart int `json:"restart,omitempty"`
+		Restart RestartFlag `json:"restart,omitempty"`
 
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
@@ -205,6 +211,22 @@ func (t DisableFlag) FlagString() string {
 		return "D"
 	}
 	return "."
+}
+
+// FlagString returns a one character representation of the type instance.
+func (t RestartFlag) FlagString(retries int) string {
+	restart := int(t)
+	remaining := restart - retries
+	switch {
+	case restart <= 0:
+		return "."
+	case remaining < 0:
+		return "0"
+	case remaining < 10:
+		return fmt.Sprintf("%d", remaining)
+	default:
+		return "+"
+	}
 }
 
 // FlagString returns a one character representation of the type instance.
@@ -292,6 +314,11 @@ func (t T) IsShared() bool {
 // IsMonitored returns true if the resource definition container monitor=true.
 func (t T) IsMonitored() bool {
 	return t.Monitor
+}
+
+// RestartCount returns the value of the Restart field
+func (t T) RestartCount() int {
+	return t.Restart
 }
 
 // RSubset returns the resource subset name
@@ -675,6 +702,7 @@ func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 		Log:         r.StatusLog().Entries(),
 		Provisioned: getProvisionStatus(r),
 		Info:        exposedStatusInfo(r),
+		Restart:     RestartFlag(r.RestartCount()),
 		Optional:    OptionalFlag(r.IsOptional()),
 		Standby:     StandbyFlag(r.IsStandby()),
 		Disable:     DisableFlag(r.IsDisabled()),

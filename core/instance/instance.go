@@ -2,7 +2,6 @@ package instance
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 
 	"github.com/guregu/null"
@@ -172,26 +171,18 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 		flags += "."
 	}
 
+	// Restart and retries
+	retries, ok := t.Monitor.Restart[rid.Name]
+	if !ok {
+		retries = 0
+	}
+
 	flags += r.Monitor.FlagString()
 	flags += r.Disable.FlagString()
 	flags += r.Optional.FlagString()
 	flags += r.Encap.FlagString()
 	flags += r.Provisioned.State.FlagString()
 	flags += r.Standby.FlagString()
-
-	// Restart and retries
-	retries := 0
-	retries, _ = t.Monitor.Restart[rid.Name]
-	remaining := r.Restart - retries
-	switch {
-	case r.Restart <= 0:
-		flags += "."
-	case remaining < 0:
-		flags += "0"
-	case remaining < 10:
-		flags += fmt.Sprintf("%d", remaining)
-	default:
-		flags += "+"
-	}
+	flags += r.Restart.FlagString(retries)
 	return flags
 }

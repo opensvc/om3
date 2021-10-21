@@ -140,6 +140,24 @@ var genericKeywords = []keywords.Keyword{
 		Text:      "Action failures on optional resources are logged but do not stop the action sequence. Also the optional resource status is not aggregated to the instance 'availstatus', but aggregated to the 'overallstatus'. Resource tagged :c-tag:`noaction` and sync resources are automatically considered optional. Useful for resources like dump filesystems for example.",
 	},
 	{
+		Option:    "restart",
+		Attr:      "Restart",
+		Scopable:  true,
+		Converter: converters.Int,
+		Default:   "0",
+		Text: "The agent will try to restart a resource <n> times before falling back to the monitor action. A resource restart is triggered if:" +
+			"the resource is not disabled and its status is not up, " +
+			"and the node is not frozen, " +
+			"and the service instance is not frozen " +
+			"and its local expect is set to ``started``. " +
+			"If a resource has a restart set to a value greater than zero, its status is evaluated " +
+			"at the frequency defined by :kw:`DEFAULT.monitor_schedule` " +
+			"instead of the frequency defined by :kw:`DEFAULT.status_schedule`. " +
+			":kw:`restart_delay` defines the interval between two restarts. " +
+			"Standby resources have a particular value to ensure best effort to restart standby resources, " +
+			"default value is 2, and value lower than 2 are changed to 2.",
+	},
+	{
 		Option:    "monitor",
 		Attr:      "Monitor",
 		Converter: converters.Bool,
