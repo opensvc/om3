@@ -93,8 +93,8 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
-		Directory:             t.logDir(),
-		Filename:              t.Path.String() + ".log",
+		Directory:             t.logDir(), // contains the ns/kind
+		Filename:              t.Path.Name + ".log",
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
