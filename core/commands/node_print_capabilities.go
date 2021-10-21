@@ -23,8 +23,9 @@ func (t *NodePrintCapabilities) Init(parent *cobra.Command) {
 
 func (t *NodePrintCapabilities) cmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "capabilities",
-		Short: "print the node capabilities",
+		Use:     "capabilities",
+		Short:   "print the node capabilities",
+		Aliases: []string{"capa", "cap", "ca", "caps"},
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
