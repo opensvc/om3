@@ -29,10 +29,11 @@ import (
 
 var (
 	DefaultDriver = map[string]string{
-		"app":    "forking",
-		"ip":     "host",
-		"task":   "host",
-		"volume": "",
+		"app":       "forking",
+		"container": "oci",
+		"ip":        "host",
+		"task":      "host",
+		"volume":    "",
 
 		// data resources
 		"vhost":       "envoy",
