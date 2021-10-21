@@ -94,7 +94,16 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t T) Label() string {
-	return "tls certificate"
+	if t.CertificateSecret != "" {
+		return "from sec " + t.CertificateSecret
+	}
+	if t.CertificateChainFilename != "" {
+		return "from host file"
+	}
+	if t.CertificateChainInlineString != "" {
+		return "from conf"
+	}
+	return "empty"
 }
 
 func (t T) Provision(ctx context.Context) error {

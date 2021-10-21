@@ -73,7 +73,18 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t T) Label() string {
-	return strings.Join(t.Domains, " ")
+	var s string
+	if len(t.Domains) > 0 {
+		s = strings.Join(t.Domains, " ")
+	} else {
+		s = "no domains"
+	}
+	if len(t.Routes) > 0 {
+		s += " to " + strings.Join(t.Routes, " ")
+	} else {
+		s += " to no route"
+	}
+	return s
 }
 
 func (t T) Provision(ctx context.Context) error {
