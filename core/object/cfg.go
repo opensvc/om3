@@ -45,14 +45,14 @@ func cfgEncode(b []byte) (string, error) {
 	case isAsciiPrintable(b):
 		return "literal:" + string(b), nil
 	default:
-		return "base64:" + base64.RawURLEncoding.Strict().EncodeToString(b), nil
+		return "base64:" + base64.URLEncoding.Strict().EncodeToString(b), nil
 	}
 }
 
 func cfgDecode(s string) ([]byte, error) {
 	switch {
 	case strings.HasPrefix(s, "base64:"):
-		return base64.RawURLEncoding.DecodeString(s[7:])
+		return base64.URLEncoding.DecodeString(s[7:])
 	case strings.HasPrefix(s, "literal:"):
 		return []byte(s[8:]), nil
 	default:
