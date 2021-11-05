@@ -16,7 +16,7 @@ const (
 type T struct {
 	Destination string `json:"destination"`
 	Gateway     string `json:"gateway"`
-	Netns       string `json:"netns"`
+	NetNS       string `json:"netns"`
 	resource.T
 }
 
@@ -34,7 +34,7 @@ func (t T) Manifest() *manifest.T {
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "netns",
-			Attr:     "Netns",
+			Attr:     "NetNS",
 			Scopable: true,
 			Required: true,
 			Text:     "the resource id of the container to plumb the ip into.",

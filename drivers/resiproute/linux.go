@@ -31,9 +31,9 @@ func (t T) Label() string {
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status(ctx context.Context) status.T {
-	netns, err := ns.GetNS(t.Netns)
+	netns, err := ns.GetNS(t.NetNS)
 	if err != nil {
-		t.StatusLog().Error("failed to open netns %q: %v", t.Netns, err)
+		t.StatusLog().Error("failed to open netns %q: %v", t.NetNS, err)
 		return status.Down
 	}
 	defer netns.Close()
