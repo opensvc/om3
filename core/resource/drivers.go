@@ -1,17 +1,27 @@
 package resource
 
-import "sort"
+import (
+	"sort"
+
+	"opensvc.com/opensvc/util/stringslice"
+)
 
 type (
-	Drivers []Driver
+	Drivers   []Driver
+	sortKeyer interface {
+		SortKey() string
+	}
+	LinkToer interface {
+		LinkTo() string
+	}
+	LinkNameser interface {
+		LinkNames() []string
+	}
 )
 
 func (t Drivers) Len() int      { return len(t) }
 func (t Drivers) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
 func (t Drivers) Less(i, j int) bool {
-	type sortKeyer interface {
-		SortKey() string
-	}
 	sk := func(d Driver) string {
 		switch i := d.(type) {
 		case sortKeyer:
@@ -20,6 +30,7 @@ func (t Drivers) Less(i, j int) bool {
 			return d.ID().Name
 		}
 	}
+
 	id1 := t[i].ID()
 	id2 := t[j].ID()
 	switch {
@@ -61,6 +72,47 @@ func (t Drivers) HasRID(rid string) bool {
 }
 
 //
+// ResolveLink returns the driver intstance targeted by <to>
+//
+func (t Drivers) ResolveLink(to string) (Driver, bool) {
+	for _, r := range t {
+		i, ok := r.(LinkNameser)
+		if !ok {
+			continue
+		}
+		names := i.LinkNames()
+		if stringslice.Has(to, names) {
+			return r, true
+		}
+	}
+	return nil, false
+}
+
+func (t Drivers) LinkersRID(names []string) []string {
+	l := t.Linkers(names)
+	rids := make([]string, len(l))
+	for i, r := range l {
+		rids[i] = r.RID()
+	}
+	return rids
+}
+
+func (t Drivers) Linkers(names []string) Drivers {
+	l := make(Drivers, 0)
+	for _, r := range t {
+		i, ok := r.(LinkToer)
+		if !ok {
+			continue
+		}
+		to := i.LinkTo()
+		if stringslice.Has(to, names) {
+			l = append(l, r)
+		}
+	}
+	return l
+}
+
+//
 // Intersection returns a list of drivers ordered like t and
 // purged from drivers in other.
 //
@@ -87,6 +139,22 @@ func (t Drivers) Union(other Drivers) Drivers {
 		}
 	}
 	return l
+}
+
+func (t Drivers) GetRID(rid string) Driver {
+	for _, r := range t {
+		if r.RID() == rid {
+			return r
+		}
+	}
+	return nil
+}
+
+func (t Drivers) Add(r Driver) Drivers {
+	if t.Has(r) {
+		return t
+	}
+	return append(t, r)
 }
 
 //

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/core/actioncontext"
+	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/ordering"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/funcopt"
@@ -23,6 +24,7 @@ type (
 		Options
 		order  ordering.T
 		lister ResourceLister
+		action string
 	}
 
 	// ResourceLister is the interface required to list resource.T and see the ordering
@@ -34,6 +36,10 @@ type (
 
 	OptionsGetter interface {
 		GetOptions() Options
+	}
+
+	depser interface {
+		GetActionResDeps() *actionresdeps.Store
 	}
 )
 
@@ -81,6 +87,14 @@ func WithOrder(s ordering.T) funcopt.O {
 	})
 }
 
+func WithAction(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.action = s
+		return nil
+	})
+}
+
 func New(l ResourceLister, opts ...funcopt.O) *T {
 	t := &T{
 		lister: l,
@@ -103,15 +117,14 @@ func (t T) ReconfigureResource(r resource.Driver) error {
 
 func (t T) Resources() resource.Drivers {
 	l := t.lister.Resources()
-	if t.order == ordering.Desc {
-		l.Reverse()
-	} else {
-		l.Sort()
-	}
 	if t.RID == "" && t.Tag == "" && t.Subset == "" {
 		return l
 	}
-	fl := make([]resource.Driver, 0)
+	var dp *actionresdeps.Store
+	if i, ok := t.lister.(depser); ok {
+		dp = i.GetActionResDeps()
+	}
+	fl := make(resource.Drivers, 0)
 	f := func(c rune) bool { return c == ',' }
 	rids := strings.FieldsFunc(t.RID, f)
 	tags := strings.FieldsFunc(t.Tag, f)
@@ -134,7 +147,21 @@ func (t T) Resources() resource.Drivers {
 		}
 		continue
 	add:
-		fl = append(fl, r)
+		fl = fl.Add(r)
+		if dp != nil {
+			deps := dp.SelectDependencies(t.action, r.RID())
+			for _, rid := range deps {
+				if dep := l.GetRID(rid); dep != nil {
+					r.Log().Debug().Msgf("add %s to satisfy %s dependency", dep.RID(), t.action)
+					fl = fl.Add(dep)
+				}
+			}
+		}
+	}
+	if t.order == ordering.Desc {
+		fl.Reverse()
+	} else {
+		fl.Sort()
 	}
 	return fl
 }
@@ -154,11 +181,12 @@ func (t Options) IsZero() bool {
 
 func FromContext(ctx context.Context, l ResourceLister) *T {
 	opts := OptionsFromContext(ctx)
-	order := actioncontext.Props(ctx).Order
+	props := actioncontext.Props(ctx)
 	return New(
 		l,
 		WithOptions(opts),
-		WithOrder(order),
+		WithOrder(props.Order),
+		WithAction(props.Name),
 	)
 }
 

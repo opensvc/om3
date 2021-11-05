@@ -854,3 +854,7 @@ func (t T) Enter() error {
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
+
+func (t T) LinkNames() []string {
+	return []string{t.RID()}
+}

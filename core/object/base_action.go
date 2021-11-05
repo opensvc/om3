@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pg"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 // Resources implementing setters
@@ -131,12 +132,49 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer stop()
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
+	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
+		return func(ctx context.Context, r resource.Driver) error {
+			linkToer, ok := r.(resource.LinkToer)
+			if ok && linkToer.LinkTo() != "" {
+				// will be handled by the targeted LinkNameser resource
+				return nil
+			}
+			linkNameser, ok := r.(resource.LinkNameser)
+			if !ok {
+				return fn(ctx, r)
+			}
+			names := linkNameser.LinkNames()
+			rids := t.Resources().LinkersRID(names)
+			filter := func(fn resourceset.DoFunc) resourceset.DoFunc {
+				return func(ctx context.Context, r resource.Driver) error {
+					if !stringslice.Has(r.RID(), rids) {
+						return nil
+					}
+					return fn(ctx, r)
+				}
+			}
+			if l.IsDesc() {
+				if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
+					return err
+				}
+			}
+			if err := fn(ctx, r); err != nil {
+				return err
+			}
+			if !l.IsDesc() {
+				if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
 	t.ResourceSets().Do(ctx, l, b, func(ctx context.Context, r resource.Driver) error {
 		sb := statusbus.FromContext(ctx)
 		sb.Post(r.RID(), resource.Status(ctx, r), false)
 		return nil
 	})
-	if err := t.ResourceSets().Do(ctx, l, b, fn); err != nil {
+	if err := t.ResourceSets().Do(ctx, l, b, linkWrap(fn)); err != nil {
 		if !errors.Is(err, ErrLogged) {
 			// avoid logging multiple times the same error.
 			// worst case is an error in a volume object started by

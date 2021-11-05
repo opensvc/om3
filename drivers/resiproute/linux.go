@@ -10,17 +10,34 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
 
+func (t T) ActionResourceDeps() []actionresdeps.Dep {
+	return []actionresdeps.Dep{
+		{Action: "start", Kind: actionresdeps.KindSelect, A: t.RID(), B: t.NetNS},
+		{Action: "start", Kind: actionresdeps.KindSelect, A: t.NetNS, B: t.RID()},
+		{Action: "stop", Kind: actionresdeps.KindSelect, A: t.NetNS, B: t.RID()},
+		{Action: "start", Kind: actionresdeps.KindAct, A: t.RID(), B: t.NetNS},
+		{Action: "stop", Kind: actionresdeps.KindAct, A: t.NetNS, B: t.RID()},
+	}
+}
+
+func (t T) LinkTo() string {
+	return t.NetNS
+}
+
 // Start the Resource
 func (t T) Start(ctx context.Context) error {
+	t.Log().Warn().Msg("TODO")
 	return nil
 }
 
 // Stop the Resource
 func (t T) Stop(ctx context.Context) error {
+	t.Log().Warn().Msg("TODO")
 	return nil
 }
 

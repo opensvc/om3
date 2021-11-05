@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/ssrathi/go-attr"
+	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/kind"
@@ -54,13 +55,14 @@ type (
 		log      zerolog.Logger
 
 		// caches
-		id         uuid.UUID
-		configFile string
-		config     *xconfig.T
-		node       *Node
-		paths      BasePaths
-		resources  resource.Drivers
-		_resources resource.Drivers
+		id                 uuid.UUID
+		configFile         string
+		config             *xconfig.T
+		node               *Node
+		paths              BasePaths
+		resources          resource.Drivers
+		_resources         resource.Drivers
+		actionResourceDeps *actionresdeps.Store
 
 		// method plugs
 		postCommit func() error
@@ -110,6 +112,7 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 		return err
 	}
 	t.PG = t.pgConfig("")
+	t.actionResourceDeps = actionresdeps.NewStore()
 	t.log.Debug().Msgf("%s initialized", t)
 	return nil
 }
@@ -362,8 +365,16 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 	}
 	r.SetObjectDriver(t)
 	r.SetPG(t.pgConfig(rid))
+	if i, ok := r.(resource.ActionResourceDepser); ok {
+		deps := i.ActionResourceDeps()
+		t.actionResourceDeps.RegisterSlice(deps)
+	}
 	r.Log().Debug().Msgf("configured resource: %#v", r)
 	return nil
+}
+
+func (t Base) GetActionResDeps() *actionresdeps.Store {
+	return t.actionResourceDeps
 }
 
 //

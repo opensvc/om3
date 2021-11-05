@@ -18,7 +18,6 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourcereqs"
-	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/trigger"
@@ -75,10 +74,6 @@ type (
 		TagSet() TagSet
 		VarDir() string
 		Requires(string) *resourcereqs.T
-	}
-
-	Aborter interface {
-		Abort(ctx context.Context) bool
 	}
 
 	// T is the resource type, embedded in each drivers type
@@ -180,15 +175,6 @@ type (
 
 	ExposedStatusInfoSchedAction struct {
 		Last timestamp.T `json:"last"`
-	}
-	StatusInfoer interface {
-		StatusInfo() map[string]interface{}
-	}
-	Scheduler interface {
-		Schedules() schedule.Table
-	}
-	resyncer interface {
-		Resync(context.Context) error
 	}
 )
 

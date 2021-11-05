@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/stringslice"
@@ -48,7 +49,7 @@ type (
 		Candidates []string
 
 		// Depends is a list of key-value conditions to meet to accept this keyword in a config.
-		//Depends []keyval.T
+		Depends []keyop.T
 
 		// Kind limits the scope of this keyword to the object with kind matching this mask.
 		Kind kind.Mask
