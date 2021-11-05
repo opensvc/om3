@@ -686,8 +686,7 @@ func (t T) statusInspectNS(ctx context.Context, attr, current, target string) {
 	r := t.GetObjectDriver().ResourceByID(rid.String())
 	if r == nil {
 		t.StatusLog().Warn("%s: %s resource not found", attr, target)
-	}
-	if i, ok := r.(containerNamer); ok {
+	} else if i, ok := r.(containerNamer); ok {
 		name := i.ContainerName()
 		switch {
 		case "container:"+name == current:
@@ -697,8 +696,6 @@ func (t T) statusInspectNS(ctx context.Context, attr, current, target string) {
 		default:
 			t.warnAttrDiff(attr, current, target)
 		}
-	} else {
-		fmt.Println("not a containerNamer", r)
 	}
 }
 
