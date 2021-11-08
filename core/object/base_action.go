@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -121,6 +123,54 @@ func (t *Base) actionTimeout(kwNames []string) time.Duration {
 	return 0
 }
 
+func (t Base) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	a, ok := r.(resource.Aborter)
+	if !ok {
+		q <- false
+		return
+	}
+	if a.Abort(ctx) {
+		t.log.Error().Str("rid", r.RID()).Msg("abort start")
+		q <- true
+		return
+	}
+	q <- false
+}
+
+func (t *Base) abortStart(ctx context.Context, l ResourceLister) (err error) {
+	if actioncontext.Props(ctx).Name != "start" {
+		return nil
+	}
+	t.log.Debug().Msg("abort start check")
+	sb := statusbus.FromContext(ctx)
+	resources := l.Resources()
+	added := 0
+	q := make(chan bool, len(resources))
+	var wg sync.WaitGroup
+	for _, r := range resources {
+		currentState := sb.Get(r.RID())
+		if currentState.Is(status.Up, status.StandbyUp) {
+			continue
+		}
+		if r.IsDisabled() {
+			continue
+		}
+		wg.Add(1)
+		added = added + 1
+		go t.abortWorker(ctx, r, q, &wg)
+	}
+	wg.Wait()
+	var ret bool
+	for i := 0; i < added; i = i + 1 {
+		ret = ret || <-q
+	}
+	if ret {
+		return errors.New("abort start")
+	}
+	return nil
+}
+
 func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	pg.FromContext(ctx).Register(t.PG)
 	ctx, cancel := t.withTimeout(ctx)
@@ -174,6 +224,9 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 		sb.Post(r.RID(), resource.Status(ctx, r), false)
 		return nil
 	})
+	if err := t.abortStart(ctx, l); err != nil {
+		return err
+	}
 	if err := t.ResourceSets().Do(ctx, l, b, linkWrap(fn)); err != nil {
 		if !errors.Is(err, ErrLogged) {
 			// avoid logging multiple times the same error.

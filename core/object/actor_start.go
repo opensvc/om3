@@ -2,9 +2,7 @@ package object
 
 import (
 	"context"
-	"sync"
 
-	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
@@ -35,54 +33,11 @@ func (t *Base) Start(options OptsStart) error {
 }
 
 func (t *Base) lockedStart(ctx context.Context) error {
-	if err := t.abortStart(ctx); err != nil {
-		return err
-	}
 	if err := t.masterStart(ctx); err != nil {
 		return err
 	}
 	if err := t.slaveStart(ctx); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (t Base) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
-	defer wg.Done()
-	a, ok := r.(resource.Aborter)
-	if !ok {
-		q <- false
-		return
-	}
-	if a.Abort(ctx) {
-		t.log.Error().Str("rid", r.RID()).Msg("abort start")
-		q <- true
-		return
-	}
-	q <- false
-}
-
-func (t *Base) abortStart(ctx context.Context) (err error) {
-	t.log.Debug().Msg("abort start check")
-	q := make(chan bool, len(t.Resources()))
-	var wg sync.WaitGroup
-	for _, r := range t.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		wg.Add(1)
-		go t.abortWorker(ctx, r, q, &wg)
-	}
-	wg.Wait()
-	var ret bool
-	for _, r := range t.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		ret = ret || <-q
-	}
-	if ret {
-		return errors.New("abort start")
 	}
 	return nil
 }

@@ -71,6 +71,15 @@ func (t T) String() string {
 	return toString[t]
 }
 
+func (t T) Is(l ...T) bool {
+	for _, s := range l {
+		if t == s {
+			return true
+		}
+	}
+	return false
+}
+
 // MarshalJSON marshals the enum as a quoted json string
 func (t T) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString(`"`)
