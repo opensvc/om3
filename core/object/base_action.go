@@ -184,39 +184,46 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	b := actioncontext.To(ctx)
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
-			linkToer, ok := r.(resource.LinkToer)
-			if ok && linkToer.LinkTo() != "" {
-				// will be handled by the targeted LinkNameser resource
+			if linkToer, ok := r.(resource.LinkToer); ok {
+				if name := linkToer.LinkTo(); name != "" && l.Resources().HasRID(name) {
+					// will be handled by the targeted LinkNameser resource
+					return nil
+				}
+			}
+			if linkNameser, ok := r.(resource.LinkNameser); !ok {
+				// normal action for a non-linkable resource
+				return fn(ctx, r)
+			} else {
+				// Here, we handle a resource other resources can link to.
+				names := linkNameser.LinkNames()
+				rids := l.Resources().LinkersRID(names)
+				filter := func(fn resourceset.DoFunc) resourceset.DoFunc {
+					// filter applies the action only on linkers
+					return func(ctx context.Context, r resource.Driver) error {
+						if !stringslice.Has(r.RID(), rids) {
+							return nil
+						}
+						return fn(ctx, r)
+					}
+				}
+
+				// On descending action, do action on linkers first.
+				if l.IsDesc() {
+					if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
+						return err
+					}
+				}
+				if err := fn(ctx, r); err != nil {
+					return err
+				}
+				// On ascending action, do action on linkers last.
+				if !l.IsDesc() {
+					if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
+						return err
+					}
+				}
 				return nil
 			}
-			linkNameser, ok := r.(resource.LinkNameser)
-			if !ok {
-				return fn(ctx, r)
-			}
-			names := linkNameser.LinkNames()
-			rids := t.Resources().LinkersRID(names)
-			filter := func(fn resourceset.DoFunc) resourceset.DoFunc {
-				return func(ctx context.Context, r resource.Driver) error {
-					if !stringslice.Has(r.RID(), rids) {
-						return nil
-					}
-					return fn(ctx, r)
-				}
-			}
-			if l.IsDesc() {
-				if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
-					return err
-				}
-			}
-			if err := fn(ctx, r); err != nil {
-				return err
-			}
-			if !l.IsDesc() {
-				if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
-					return err
-				}
-			}
-			return nil
 		}
 	}
 	t.ResourceSets().Do(ctx, l, b, func(ctx context.Context, r resource.Driver) error {
