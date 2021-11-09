@@ -10,8 +10,10 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/vishvananda/netlink"
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -31,26 +33,68 @@ func (t T) LinkTo() string {
 
 // Start the Resource
 func (t T) Start(ctx context.Context) error {
-	t.Log().Warn().Msg("TODO")
+	netns, err := t.getNS()
+	if err != nil {
+		return err
+	}
+	defer netns.Close()
+	if err := netns.Do(func(_ ns.NetNS) error {
+		routes, errM := t.makeRoute()
+		if errM != nil {
+			return errM
+		}
+		if err := t.addRoutes(routes); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
 // Stop the Resource
 func (t T) Stop(ctx context.Context) error {
-	t.Log().Warn().Msg("TODO")
+	netns, err := t.getNS()
+	if err != nil {
+		return err
+	}
+	defer netns.Close()
+	if err := netns.Do(func(_ ns.NetNS) error {
+		routes, errM := t.makeRoute()
+		if errM != nil {
+			return errM
+		}
+		if err := t.delRoutes(routes); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
-	return fmt.Sprintf("%s via %s", t.Destination, t.Gateway)
+func (t T) getNS() (ns.NetNS, error) {
+	r := t.GetObjectDriver().ResourceByID(t.NetNS)
+	if r == nil {
+		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+	}
+	i, ok := r.(resource.NetNSPather)
+	if !ok {
+		return nil, fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
+	}
+	path, err := i.NetNSPath()
+	if err != nil {
+		return nil, err
+	}
+	return ns.GetNS(path)
 }
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status(ctx context.Context) status.T {
-	netns, err := ns.GetNS(t.NetNS)
+	netns, err := t.getNS()
 	if err != nil {
-		t.StatusLog().Error("failed to open netns %q: %v", t.NetNS, err)
 		return status.Down
 	}
 	defer netns.Close()
@@ -73,9 +117,56 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Up
 }
 
-func (t *T) makeRoute() ([]*types.Route, error) {
+func delRoute(ipn *net.IPNet, gw net.IP, dev netlink.Link) error {
+	return netlink.RouteDel(&netlink.Route{
+		LinkIndex: dev.Attrs().Index,
+		Scope:     netlink.SCOPE_UNIVERSE,
+		Dst:       ipn,
+		Gw:        gw,
+	})
+}
+
+func (t T) delRoutes(routes []*types.Route) error {
+	dev, errl := t.dev()
+	if errl != nil {
+		return errl
+	}
+	for _, route := range routes {
+		if route == nil {
+			continue
+		}
+		if err := ip.ValidateExpectedRoute([]*types.Route{route}); err != nil {
+			t.Log().Info().Msgf("route to %s dev %s already down", route.Dst.String(), dev.Attrs().Name)
+			return nil
+		}
+		t.Log().Info().Msgf("del route to %s dev %s", route.Dst.String(), dev.Attrs().Name)
+		return delRoute(&route.Dst, route.GW, dev)
+	}
+	return nil
+}
+
+func (t T) addRoutes(routes []*types.Route) error {
+	dev, errl := t.dev()
+	if errl != nil {
+		return errl
+	}
+	for _, route := range routes {
+		if route == nil {
+			continue
+		}
+		if err := ip.ValidateExpectedRoute([]*types.Route{route}); err == nil {
+			t.Log().Info().Msgf("route to %s dev %s already up", route.Dst.String(), dev.Attrs().Name)
+			return nil
+		}
+		t.Log().Info().Msgf("add route to %s dev %s", route.Dst.String(), dev.Attrs().Name)
+		return ip.AddRoute(&route.Dst, route.GW, dev)
+	}
+	return nil
+}
+
+func (t T) makeRoute() ([]*types.Route, error) {
 	var routes []*types.Route
-	_, dst, err := net.ParseCIDR(t.Destination)
+	_, dst, err := net.ParseCIDR(t.To)
 	if err != nil {
 		return routes, err
 	}
@@ -85,6 +176,37 @@ func (t *T) makeRoute() ([]*types.Route, error) {
 		&types.Route{Dst: *dst, GW: gw},
 	)
 	return routes, nil
+}
+
+func (t T) dev() (netlink.Link, error) {
+	if t.Dev != "" {
+		return netlink.LinkByName(t.Dev)
+	}
+	return t.defaultDev()
+}
+
+func (t T) defaultDev() (netlink.Link, error) {
+	gw := net.ParseIP(t.Gateway)
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	for _, iface := range ifaces {
+		ips, err := iface.Addrs()
+		if err != nil {
+			return nil, err
+		}
+		for _, ip := range ips {
+			_, n, err := net.ParseCIDR(ip.String())
+			if err != nil {
+				continue
+			}
+			if n.Contains(gw) {
+				return netlink.LinkByName(iface.Name)
+			}
+		}
+	}
+	return nil, fmt.Errorf("could not find a netdev to reach the gateway %s", t.Gateway)
 }
 
 func (t *T) Provision(ctx context.Context) error {

@@ -629,6 +629,16 @@ func (t T) warnAttrDiff(attr, current, target string) {
 	t.StatusLog().Warn("%s is %s, should be %s", attr, current, target)
 }
 
+// NetNSPath implements the resource.NetNSPather optional interface.
+// Used by ip.netns and ip.route to configure network stuff in the container.
+func (t *T) NetNSPath() (string, error) {
+	inspect, err := cli().ContainerService().Inspect(context.Background(), t.ContainerName())
+	if err != nil {
+		return "", err
+	}
+	return inspect.NetworkSettings.SandboxKey, nil
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	if !t.Detach {
 		return status.NotApplicable

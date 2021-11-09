@@ -1,14 +1,8 @@
 package resiproute
 
-import (
-	"context"
-	"os"
+import "fmt"
 
-	"opensvc.com/opensvc/core/resource"
-)
-
-func main() {
-	r := &T{}
-	resource.NewLoader(os.Stdin).Load(r)
-	resource.Action(context.TODO(), r)
+// Label returns a formatted short description of the Resource
+func (t T) Label() string {
+	return fmt.Sprintf("%s via %s", t.To, t.Gateway)
 }

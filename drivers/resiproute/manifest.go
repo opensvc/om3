@@ -14,9 +14,10 @@ const (
 
 // T ...
 type T struct {
-	Destination string `json:"destination"`
-	Gateway     string `json:"gateway"`
-	NetNS       string `json:"netns"`
+	To      string `json:"destination"`
+	Gateway string `json:"gateway"`
+	NetNS   string `json:"netns"`
+	Dev     string `json:"dev"`
 	resource.T
 }
 
@@ -47,6 +48,23 @@ func (t T) Manifest() *manifest.T {
 			Required: true,
 			Text:     "the gateway ip address.",
 			Example:  "1.2.3.4",
+		},
+		{
+			Option:   "to",
+			Attr:     "To",
+			Scopable: true,
+			Required: true,
+			Text:     "The route destination node.",
+			Example:  "192.168.100.0/24",
+		},
+		{
+			Option:      "dev",
+			Attr:        "Dev",
+			Scopable:    true,
+			Required:    false,
+			DefaultText: "Any first dev with an addr in the same network than the gateway.",
+			Text:        "The network link to add the route on.",
+			Example:     "eth1",
 		},
 	}...)
 	return m
