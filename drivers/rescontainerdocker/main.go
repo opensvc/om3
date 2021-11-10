@@ -534,6 +534,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Image:      t.Image,
 		WorkingDir: t.CWD,
 		Labels:     labels,
+		OpenStdin:  t.Interactive,
 	}
 
 	hostConfig := containerapi.HostConfig{}
@@ -625,7 +626,7 @@ func (t T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t T) warnAttrDiff(attr, current, target string) {
+func (t *T) warnAttrDiff(attr, current, target string) {
 	t.StatusLog().Warn("%s is %s, should be %s", attr, current, target)
 }
 
