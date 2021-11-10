@@ -52,6 +52,7 @@ type (
 	// Actor is implemented by object kinds supporting start, stop, ...
 	Actor interface {
 		Freezer
+		Restart(OptsStart) error
 		Start(OptsStart) error
 		Stop(OptsStop) error
 		Provision(OptsProvision) error
