@@ -543,6 +543,21 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	hostConfig.Cgroup = t.PG.ID
 	hostConfig.Devices = devices
 	hostConfig.Mounts = mounts
+	if hostConfig.NetworkMode, err = t.formatNS(t.NetNS); err != nil {
+		return nil, err
+	}
+	if hostConfig.PidMode, err = t.formatNS(t.PIDNS); err != nil {
+		return nil, err
+	}
+	if hostConfig.IpcMode, err = t.formatNS(t.IPCNS); err != nil {
+		return nil, err
+	}
+	if hostConfig.UTSMode, err = t.formatNS(t.UTSNS); err != nil {
+		return nil, err
+	}
+	if hostConfig.UsernsMode, err = t.formatNS(t.UserNS); err != nil {
+		return nil, err
+	}
 	// DNS go here
 
 	name := t.ContainerName()
@@ -673,6 +688,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if inspect.HostConfig.Privileged != t.Privileged {
 		t.warnAttrDiff("privileged", fmt.Sprint(inspect.HostConfig.Privileged), fmt.Sprint(t.Privileged))
 	}
+	t.statusInspectImage(ctx, inspect)
 	t.statusInspectNS(ctx, "netns", inspect.HostConfig.NetworkMode, t.NetNS)
 	t.statusInspectNS(ctx, "pidns", inspect.HostConfig.PidMode, t.PIDNS)
 	t.statusInspectNS(ctx, "ipcns", inspect.HostConfig.IpcMode, t.IPCNS)
@@ -684,14 +700,32 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Up
 }
 
-func (t T) statusInspectNS(ctx context.Context, attr, current, target string) {
-	rid, err := resourceid.Parse(target)
-	if err != nil {
-		// target value is not a rid ("host", "none" for ex)
-		//  => simple string comparison
+func (t *T) statusInspectImage(ctx context.Context, inspect containerapi.ContainerInspect) {
+	var tgtID, curID string
+	if img, err := t.image(); err == nil {
+		tgtID = img.ID()
+	}
+	if img, err := getImage(ctx, inspect.Config.Image); err == nil {
+		curID = img.ID()
+	}
+	if curID != tgtID {
+		t.warnAttrDiff("image", curID, tgtID)
+	}
+}
+
+func (t *T) statusInspectNS(ctx context.Context, attr, current, target string) {
+	switch target {
+	case "":
+		return
+	case "none", "host":
 		if current != target {
 			t.warnAttrDiff(attr, current, target)
 		}
+		return
+	}
+	rid, err := resourceid.Parse(target)
+	if err != nil {
+		t.StatusLog().Warn("%s: invalid value %s (must be none, host or container#<n>)", attr, target)
 		return
 	}
 	r := t.GetObjectDriver().ResourceByID(rid.String())
@@ -699,15 +733,37 @@ func (t T) statusInspectNS(ctx context.Context, attr, current, target string) {
 		t.StatusLog().Warn("%s: %s resource not found", attr, target)
 	} else if i, ok := r.(containerNamer); ok {
 		name := i.ContainerName()
+		tgt1 := "container:" + name
+		tgt2 := "container:" + containerID(ctx, name)
 		switch {
-		case "container:"+name == current:
-			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, target, current)
-		case "container:"+containerID(ctx, name) == current:
-			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, target, current)
+		case tgt1 == current:
+			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, tgt1, current)
+		case tgt2 == current:
+			t.Log().Debug().Msgf("valid %s cross-resource reference to %s: %s", attr, tgt2, current)
 		default:
-			t.warnAttrDiff(attr, current, target)
+			t.warnAttrDiff(attr, current, tgt1)
 		}
 	}
+}
+
+func (t T) formatNS(s string) (string, error) {
+	switch s {
+	case "", "none", "host":
+		return s, nil
+	}
+	rid, err := resourceid.Parse(s)
+	if err != nil {
+		return "", fmt.Errorf("invalid value %s (must be none, host or container#<n>)", s)
+	}
+	r := t.GetObjectDriver().ResourceByID(rid.String())
+	if r == nil {
+		return "", fmt.Errorf("resource %s not found", s)
+	}
+	if i, ok := r.(containerNamer); ok {
+		name := i.ContainerName()
+		return "container:" + name, nil
+	}
+	return "", fmt.Errorf("resource %s has no ns", s)
 }
 
 func (t T) isDockerdPinging(ctx context.Context) error {
@@ -747,8 +803,11 @@ func (t T) ContainerName() string {
 	if t.Name != "" {
 		return t.Name
 	}
-	s := ""
-	if t.Path.Namespace != "" {
+	var s string
+	switch t.Path.Namespace {
+	case "root", "":
+		s = ""
+	default:
 		s = t.Path.Namespace + ".."
 	}
 	s = s + t.Path.Name + "." + strings.ReplaceAll(t.ResourceID.String(), "#", ".")
@@ -778,14 +837,18 @@ func (t T) command() ([]string, error) {
 }
 
 func (t T) image() (*image.Image, error) {
-	if img, ok := imageCache[t.Image]; ok {
+	return getImage(context.Background(), t.Image)
+}
+
+func getImage(ctx context.Context, name string) (*image.Image, error) {
+	if img, ok := imageCache[name]; ok {
 		return img, nil
 	}
-	img, err := cli().ImageService().FindImage(context.Background(), t.Image)
+	img, err := cli().ImageService().FindImage(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	imageCache[t.Image] = img
+	imageCache[name] = img
 	return img, nil
 }
 
