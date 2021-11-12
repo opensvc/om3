@@ -45,3 +45,22 @@ func DelAddr(ifName string, ipnet *net.IPNet) error {
 	}
 	return nil
 }
+
+func InterfaceNameByIP(ref *net.IPNet) (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, iface := range ifaces {
+		ips, err := iface.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, ip := range ips {
+			if ref.String() == ip.String() {
+				return iface.Name, nil
+			}
+		}
+	}
+	return "", nil
+}

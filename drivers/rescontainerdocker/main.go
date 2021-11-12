@@ -655,6 +655,18 @@ func (t *T) NetNSPath() (string, error) {
 	return inspect.NetworkSettings.SandboxKey, nil
 }
 
+// PID implements the resource.PIDer optional interface.
+// Used by ip.netns to name the veth pair devices.
+func (t *T) PID() int {
+	cs := cli().ContainerService()
+	name := t.ContainerName()
+	inspect, err := cs.Inspect(context.Background(), name)
+	if err != nil {
+		return 0
+	}
+	return inspect.State.Pid
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	if !t.Detach {
 		return status.NotApplicable

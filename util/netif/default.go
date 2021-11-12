@@ -18,3 +18,7 @@ func AddAddr(_ string, _ *net.IPNet) error {
 func DelAddr(_ string, _ *net.IPNet) error {
 	return errors.New("netif.DelAddr() not implemented")
 }
+
+func InterfaceNameByIP(ref net.IP) (string, error) {
+	return errors.New("netif.InterfaceNameByIP() not implemented")
+}
