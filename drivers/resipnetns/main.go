@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/actionrollback"
@@ -377,6 +378,12 @@ func (t *T) startBridge(ctx context.Context) error {
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
 	}
+	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
+		return err
+	}
+	if err := t.startARP(netns, guestDev); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -409,6 +416,12 @@ func (t *T) startOVS(ctx context.Context) error {
 		return err
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
+		return err
+	}
+	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
+		return err
+	}
+	if err := t.startARP(netns, guestDev); err != nil {
 		return err
 	}
 	return nil
@@ -532,10 +545,12 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 		if err != nil {
 			return err
 		}
-		if curGuestDev, err := t.curGuestDev(netns); err != nil {
+		if iface, err := net.InterfaceByName(guestDev); err != nil {
 			return err
-		} else if curGuestDev != "" {
-			t.Log().Info().Msgf("%s is already up (on %s)", ipnet, curGuestDev)
+		} else if addrs, err := iface.Addrs(); err != nil {
+			return err
+		} else if Addrs(addrs).Has(ipnet.IP) {
+			t.Log().Info().Msgf("%s is already up (on %s)", ipnet, guestDev)
 			return nil
 		}
 		t.Log().Info().Msgf("add %s to netns %s", ipnet, guestDev)
@@ -545,10 +560,95 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 		actionrollback.Register(ctx, func() error {
 			return t.stopIP(netns, guestDev)
 		})
-		if err := t.arpAnnounce(guestDev); err != nil {
-			return err
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
+	if err := netns.Do(func(_ ns.NetNS) error {
+		_, defNet, _ := net.ParseCIDR("0.0.0.0/0")
+		routes, err := netlink.RouteListFiltered(unix.AF_UNSPEC, &netlink.Route{Dst: nil}, netlink.RT_FILTER_DST)
+		if err != nil {
+			return errors.Wrap(err, "ip route list default")
+		}
+		if len(routes) == 0 {
+			if t.Gateway == "" {
+				dev, err := netlink.LinkByName(guestDev)
+				if err != nil {
+					return errors.Wrapf(err, "route add default dev %s", guestDev)
+				}
+				t.Log().Info().Msgf("route add default dev %s", guestDev)
+				err = netlink.RouteAdd(&netlink.Route{
+					LinkIndex: dev.Attrs().Index,
+					Scope:     netlink.SCOPE_UNIVERSE,
+					Dst:       defNet,
+					Gw:        nil,
+				})
+				if err != nil {
+					return errors.Wrapf(err, "route add default dev %s", guestDev)
+				}
+				return nil
+			} else {
+				t.Log().Info().Msgf("route add default via %s", t.Gateway)
+				err = netlink.RouteAdd(&netlink.Route{
+					LinkIndex: 0,
+					Scope:     netlink.SCOPE_UNIVERSE,
+					Dst:       defNet,
+					Gw:        net.ParseIP(t.Gateway),
+				})
+				if err != nil {
+					return errors.Wrapf(err, "route add default via %s", t.Gateway)
+				}
+				return nil
+			}
+		}
+		curRoute := routes[0]
+		if t.Gateway == "" {
+			dev, err := netlink.LinkByName(guestDev)
+			if err != nil {
+				return errors.Wrapf(err, "route replace default dev %s", guestDev)
+			}
+			if curRoute.LinkIndex == dev.Attrs().Index {
+				t.Log().Info().Msgf("route already up: default dev %s", guestDev)
+				return nil
+			}
+			t.Log().Info().Msgf("route replace default dev %s", guestDev)
+			curRoute.Dst = defNet
+			curRoute.Gw = nil
+			curRoute.LinkIndex = dev.Attrs().Index
+			err = netlink.RouteReplace(&curRoute)
+			if err != nil {
+				return errors.Wrapf(err, "route replace default dev %s", guestDev)
+			}
+			return nil
+		} else {
+			if net.ParseIP(t.Gateway).Equal(curRoute.Gw) {
+				t.Log().Info().Msgf("route already up: default via %s", t.Gateway)
+				return nil
+			}
+			t.Log().Info().Msgf("route replace default via %s", t.Gateway)
+			curRoute.Dst = defNet
+			curRoute.Gw = net.ParseIP(t.Gateway)
+			curRoute.LinkIndex = 0
+			err = netlink.RouteReplace(&curRoute)
+			if err != nil {
+				return errors.Wrapf(err, "route replace default via %s", t.Gateway)
+			}
+			return nil
 		}
 		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startARP(netns ns.NetNS, guestDev string) error {
+	if err := netns.Do(func(_ ns.NetNS) error {
+		return t.arpAnnounce(guestDev)
 	}); err != nil {
 		return err
 	}
@@ -1015,7 +1115,7 @@ func (t T) curGuestDev(netns ns.NetNS) (string, error) {
 	return s, nil
 }
 
-func (t T) guestDev(netns ns.NetNS) (string, error) {
+func (t T) newGuestDev(netns ns.NetNS) (string, error) {
 	var (
 		name string
 		i    int
@@ -1035,4 +1135,13 @@ func (t T) guestDev(netns ns.NetNS) (string, error) {
 		return nil
 	})
 	return name, err
+}
+
+func (t T) guestDev(netns ns.NetNS) (string, error) {
+	if dev, err := t.curGuestDev(netns); err != nil {
+		return "", err
+	} else if dev != "" {
+		return dev, nil
+	}
+	return t.newGuestDev(netns)
 }
