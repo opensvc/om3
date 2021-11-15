@@ -19,7 +19,6 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/fqdn"
 	"opensvc.com/opensvc/util/hostname"
@@ -30,7 +29,6 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/go-ping/ping"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/vishvananda/netlink"
 )
 
@@ -315,9 +313,9 @@ func (t *T) Start(ctx context.Context) error {
 	case "dedicated":
 		return t.startDedicated(ctx)
 	case "ipvlan-l2":
-		return t.startIPVLANL2(ctx)
+		return t.startIPVLAN(ctx)
 	case "ipvlan-l3":
-		return t.startIPVLANL3(ctx)
+		return t.startIPVLAN(ctx)
 	case "macvlan":
 		return t.startMACVLAN(ctx)
 	case "ovs":
@@ -327,107 +325,8 @@ func (t *T) Start(ctx context.Context) error {
 	}
 }
 
-func (t *T) startDedicated(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
-func (t *T) startMACVLAN(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
-func (t *T) startIPVLANL2(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
-func (t *T) startIPVLANL3(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
 func formatHostDevName(guestDev string, pid int) string {
 	return fmt.Sprintf("v%spl%d", guestDev, pid)
-}
-
-func (t *T) startBridge(ctx context.Context) error {
-	pid, err := t.getNSPID()
-	if err != nil {
-		return err
-	}
-	netns, err := t.getNS()
-	if err != nil {
-		return err
-	}
-	defer netns.Close()
-
-	guestDev, err := t.guestDev(netns)
-	if err != nil {
-		return err
-	}
-	hostDev := formatHostDevName(guestDev, pid)
-
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
-
-	if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
-		return err
-	}
-	if err := t.startBridgePort(ctx, hostDev); err != nil {
-		return err
-	}
-	if err := t.startIP(ctx, netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.startRoutesDel(ctx, netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.startARP(netns, guestDev); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *T) startOVS(ctx context.Context) error {
-	pid, err := t.getNSPID()
-	if err != nil {
-		return err
-	}
-	netns, err := t.getNS()
-	if err != nil {
-		return err
-	}
-	defer netns.Close()
-
-	guestDev, err := t.guestDev(netns)
-	if err != nil {
-		return err
-	}
-	hostDev := formatHostDevName(guestDev, pid)
-
-	mtu, err := t.devMTU()
-	if err != nil {
-		return err
-	}
-
-	if err := t.startVEthPair(ctx, netns, hostDev, guestDev, mtu); err != nil {
-		return err
-	}
-	if err := t.startOVSPort(ctx, hostDev); err != nil {
-		return err
-	}
-	if err := t.startIP(ctx, netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.startARP(netns, guestDev); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (t *T) stopVEthPair(hostDev string) error {
@@ -466,79 +365,6 @@ func (t *T) startVEthPair(ctx context.Context, netns ns.NetNS, hostDev, guestDev
 	actionrollback.Register(ctx, func() error {
 		return t.stopVEthPair(hostDev)
 	})
-	return nil
-}
-
-func (t *T) startBridgePort(ctx context.Context, dev string) error {
-	masterLink, err := netlink.LinkByName(t.IpDev)
-	if err != nil {
-		return errors.Wrap(err, t.IpDev)
-	}
-	link, err := netlink.LinkByName(dev)
-	if err != nil {
-		return errors.Wrap(err, dev)
-	}
-	actionrollback.Register(ctx, func() error {
-		return t.stopBridgePort(dev)
-	})
-	t.Log().Info().Msgf("set %s master %s", dev, t.IpDev)
-	return netlink.LinkSetMaster(link, masterLink)
-}
-
-func (t *T) stopBridgePort(dev string) error {
-	link, err := netlink.LinkByName(dev)
-	if err != nil {
-		return nil
-	}
-	t.Log().Info().Msgf("unset %s master %s", dev, t.IpDev)
-	return netlink.LinkSetMaster(link, nil)
-}
-
-func (t *T) startOVSPort(ctx context.Context, dev string) error {
-	args := []string{
-		"--may-exist",
-		"add-port", t.IpDev, dev,
-		fmt.Sprintf("vlan_mode=%s", t.VLANMode),
-	}
-	cmd := command.New(
-		command.WithName("ovs-vsctl"),
-		command.WithArgs(args),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	cmd.Run()
-	if cmd.ExitCode() != 0 {
-		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
-	}
-
-	actionrollback.Register(ctx, func() error {
-		return t.stopOVSPort(dev)
-	})
-	return nil
-}
-
-func (t *T) stopOVSPort(dev string) error {
-	if dev == "" {
-		return nil
-	}
-	args := []string{
-		"--if-exist",
-		"del-port", t.IpDev, dev,
-	}
-	cmd := command.New(
-		command.WithName("ovs-vsctl"),
-		command.WithArgs(args),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	cmd.Run()
-	if cmd.ExitCode() != 0 {
-		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
-	}
 	return nil
 }
 
@@ -615,7 +441,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 				return errors.Wrapf(err, "route replace default dev %s", guestDev)
 			}
 			if curRoute.LinkIndex == dev.Attrs().Index {
-				t.Log().Info().Msgf("route already up: default dev %s", guestDev)
+				t.Log().Info().Msgf("route already added: default dev %s", guestDev)
 				return nil
 			}
 			t.Log().Info().Msgf("route replace default dev %s", guestDev)
@@ -629,7 +455,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 			return nil
 		} else {
 			if net.ParseIP(t.Gateway).Equal(curRoute.Gw) {
-				t.Log().Info().Msgf("route already up: default via %s", t.Gateway)
+				t.Log().Info().Msgf("route already added: default via %s", t.Gateway)
 				return nil
 			}
 			t.Log().Info().Msgf("route replace default via %s", t.Gateway)
@@ -717,9 +543,9 @@ func (t *T) Stop(ctx context.Context) error {
 	case "dedicated":
 		return t.stopDedicated(ctx)
 	case "ipvlan-l2":
-		return t.stopIPVLANL2(ctx)
+		return t.stopIPVLAN(ctx)
 	case "ipvlan-l3":
-		return t.stopIPVLANL3(ctx)
+		return t.stopIPVLAN(ctx)
 	case "macvlan":
 		return t.stopMACVLAN(ctx)
 	case "ovs":
@@ -729,104 +555,12 @@ func (t *T) Stop(ctx context.Context) error {
 	}
 }
 
-func (t *T) stopDedicated(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
-func (t *T) stopMACVLAN(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
-func (t *T) stopIPVLANL2(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
-func (t *T) stopIPVLANL3(ctx context.Context) error {
-	return fmt.Errorf("TODO")
-}
-
 func (t T) devMTU() (int, error) {
 	iface, err := net.InterfaceByName(t.IpDev)
 	if err != nil {
 		return 0, errors.Wrapf(err, "%s mtu", t.IpDev)
 	}
 	return iface.MTU, nil
-}
-
-func (t *T) stopBridge(ctx context.Context) error {
-	var hostDev string
-
-	pid, err := t.getNSPID()
-	if err != nil {
-		return err
-	}
-	netns, err := t.getNS()
-	if err != nil {
-		return err
-	}
-	defer netns.Close()
-
-	guestDev, err := t.curGuestDev(netns)
-	if err != nil {
-		return err
-	}
-	if guestDev != "" {
-		hostDev = fmt.Sprintf("v%spl%d", guestDev, pid)
-	} else if t.NSDev != "" {
-		hostDev = fmt.Sprintf("v%spl%d", t.NSDev, pid)
-	}
-
-	if err := t.stopIP(netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.stopLink(netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.stopBridgePort(hostDev); err != nil {
-		return err
-	}
-	if err := t.stopVEthPair(hostDev); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *T) stopOVS(ctx context.Context) error {
-	var hostDev string
-
-	pid, err := t.getNSPID()
-	if err != nil {
-		return err
-	}
-	netns, err := t.getNS()
-	if err != nil {
-		return err
-	}
-	defer netns.Close()
-
-	guestDev, err := t.curGuestDev(netns)
-	if err != nil {
-		return err
-	}
-	if guestDev != "" {
-		hostDev = fmt.Sprintf("v%spl%d", guestDev, pid)
-	} else if t.NSDev != "" {
-		hostDev = fmt.Sprintf("v%spl%d", t.NSDev, pid)
-	}
-
-	if err := t.stopIP(netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.stopLink(netns, guestDev); err != nil {
-		return err
-	}
-	if err := t.stopOVSPort(hostDev); err != nil {
-		return err
-	}
-	if err := t.stopVEthPair(hostDev); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (t *T) Status(ctx context.Context) status.T {
