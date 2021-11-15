@@ -381,6 +381,9 @@ func (t *T) startBridge(ctx context.Context) error {
 	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
 		return err
 	}
+	if err := t.startRoutesDel(ctx, netns, guestDev); err != nil {
+		return err
+	}
 	if err := t.startARP(netns, guestDev); err != nil {
 		return err
 	}
@@ -638,6 +641,53 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 				return errors.Wrapf(err, "route replace default via %s", t.Gateway)
 			}
 			return nil
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string) error {
+	if !t.DelNetRoute {
+		return nil
+	}
+	mask := t.ipnet().Mask
+	n := &net.IPNet{
+		IP:   t.ipaddr().Mask(mask),
+		Mask: mask,
+	}
+	if err := netns.Do(func(_ ns.NetNS) error {
+		dev, err := netlink.LinkByName(guestDev)
+		if err != nil {
+			return errors.Wrapf(err, "route del %s dev %s", n, guestDev)
+		}
+		route := &netlink.Route{
+			LinkIndex: dev.Attrs().Index,
+			Scope:     netlink.SCOPE_UNIVERSE,
+			Dst:       n,
+			Gw:        nil,
+		}
+		routes, err := netlink.RouteListFiltered(unix.AF_UNSPEC, route, netlink.RT_FILTER_DST|netlink.RT_FILTER_IIF)
+		if err != nil {
+			return errors.Wrapf(err, "ip route list %s dev %s", n, guestDev)
+		}
+		if len(routes) > 0 {
+			for _, r := range routes {
+				t.Log().Info().Msgf("route del %s dev %s", r.Dst, guestDev)
+				err := netlink.RouteDel(&r)
+				if err != nil {
+					return errors.Wrapf(err, "route del %s dev %s", r.Dst, guestDev)
+				}
+				actionrollback.Register(ctx, func() error {
+					return netns.Do(func(_ ns.NetNS) error {
+						return netlink.RouteAdd(&r)
+					})
+				})
+			}
+		} else {
+			t.Log().Info().Msgf("route already deleted: %s dev %s", n, guestDev)
 		}
 		return nil
 	}); err != nil {
