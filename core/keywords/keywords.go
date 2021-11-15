@@ -77,6 +77,7 @@ const (
 	InheritLeaf2Head Inherit = iota
 	InheritHead2Leaf
 	InheritLeaf
+	InheritHead
 )
 
 func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {

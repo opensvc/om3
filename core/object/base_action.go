@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/env"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceselector"
@@ -142,7 +144,66 @@ func (t *Base) abortStart(ctx context.Context, l ResourceLister) (err error) {
 	if actioncontext.Props(ctx).Name != "start" {
 		return nil
 	}
-	t.log.Debug().Msg("abort start check")
+	if err := t.abortStartAffinity(ctx); err != nil {
+		return err
+	}
+	return t.abortStartDrivers(ctx, l)
+}
+
+func (t *Base) abortStartAffinity(ctx context.Context) (err error) {
+	if env.HasDaemonOrigin() {
+		return nil
+	}
+	if actioncontext.IsForce(ctx) {
+		return nil
+	}
+	for _, pStr := range t.HardAffinity() {
+		p, err := path.Parse(pStr)
+		if err != nil {
+			return errors.Wrapf(err, "hard affinity object %s parse path", p)
+		}
+		baser, err := NewBaserFromPath(p, WithVolatile(true))
+		if err != nil {
+			return errors.Wrapf(err, "hard affinity object %s init", p)
+		}
+		instanceStatus, err := baser.Status(OptsStatus{})
+		if err != nil {
+			return errors.Wrapf(err, "hard affinity object %s status", p)
+		}
+		switch instanceStatus.Avail {
+		case status.Up:
+		case status.NotApplicable:
+		default:
+			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+		}
+	}
+	for _, pStr := range t.HardAntiAffinity() {
+		p, err := path.Parse(pStr)
+		if err != nil {
+			return errors.Wrapf(err, "hard affinity object %s parse path", p)
+		}
+		baser, err := NewBaserFromPath(p, WithVolatile(true))
+		if err != nil {
+			return errors.Wrapf(err, "hard affinity object %s init", p)
+		}
+		instanceStatus, err := baser.Status(OptsStatus{})
+		if err != nil {
+			return errors.Wrapf(err, "hard affinity object %s status", p)
+		}
+		switch instanceStatus.Avail {
+		case status.Down:
+		case status.StandbyUp:
+		case status.StandbyDown:
+		case status.NotApplicable:
+		default:
+			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+		}
+	}
+	return nil
+}
+
+func (t *Base) abortStartDrivers(ctx context.Context, l ResourceLister) (err error) {
+	t.log.Debug().Msg("call resource drivers abort start")
 	sb := statusbus.FromContext(ctx)
 	resources := l.Resources()
 	added := 0

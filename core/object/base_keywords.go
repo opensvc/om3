@@ -14,6 +14,40 @@ import (
 
 var keywordStore = keywords.Store{
 	{
+		Section:   "DEFAULT",
+		Option:    "hard_affinity",
+		Inherit:   keywords.InheritHead,
+		Converter: converters.ListLowercase,
+		Aliases:   []string{"affinity"},
+		Text:      "A whitespace separated list of services that must be started on the node to allow the monitor to start this service.",
+		Example:   "svc1 svc2",
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "hard_anti_affinity",
+		Inherit:   keywords.InheritHead,
+		Converter: converters.ListLowercase,
+		Aliases:   []string{"anti_affinity"},
+		Text:      "A whitespace separated list of services that must not be started on the node to allow the monitor to start this service.",
+		Example:   "svc1 svc2",
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "soft_affinity",
+		Inherit:   keywords.InheritHead,
+		Converter: converters.ListLowercase,
+		Text:      "A whitespace separated list of services that must be started on the node to allow the monitor to start this service. If the local node is the only candidate ignore this constraint and allow start.",
+		Example:   "svc1 svc2",
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "soft_anti_affinity",
+		Inherit:   keywords.InheritHead,
+		Converter: converters.ListLowercase,
+		Text:      "A whitespace separated list of services that must not be started on the node to allow the monitor to start this service. If the local node is the only candidate ignore this constraint and allow start.",
+		Example:   "svc1 svc2",
+	},
+	{
 		Section:     "DEFAULT",
 		Option:      "id",
 		DefaultText: "<random uuid>",

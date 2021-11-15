@@ -333,3 +333,23 @@ func (t Base) EncapNodes() []string {
 	l, _ := xconfig.OtherNodesConverter.Convert(v)
 	return l.([]string)
 }
+
+func (t Base) HardAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("hard_affinity"))
+	return l.([]string)
+}
+
+func (t Base) HardAntiAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
+	return l.([]string)
+}
+
+func (t Base) SoftAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("soft_affinity"))
+	return l.([]string)
+}
+
+func (t Base) SoftAntiAffinity() []string {
+	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
+	return l.([]string)
+}
