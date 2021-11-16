@@ -57,7 +57,13 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 		netlink.LinkDel(link)
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
-		return netlink.LinkSetName(link, dev)
+		if err := netlink.LinkSetName(link, dev); err != nil {
+			return errors.Wrapf(err, "ip link set %s name %s", tmpDev, dev)
+		}
+		if err := netlink.LinkSetUp(link); err != nil {
+			return errors.Wrapf(err, "ip link set %s up", dev)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}

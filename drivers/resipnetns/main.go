@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
-	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
@@ -630,12 +629,6 @@ func (t T) Abort(ctx context.Context) bool {
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
-	if t.CheckCarrier {
-		if carrier, err := t.hasCarrier(); err == nil && carrier == false && !actioncontext.IsForce(ctx) {
-			t.Log().Error().Msgf("interface %s no-carrier.", t.IpDev)
-			return true
-		}
-	}
 	if t.abortPing() {
 		return true
 	}
@@ -832,7 +825,10 @@ func (t T) arpAnnounce(dev string) error {
 		return nil
 	}
 	t.Log().Info().Msgf("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)
-	return t.arpGratuitous(ip, dev)
+	if err := t.arpGratuitous(ip, dev); err != nil {
+		return errors.Wrapf(err, "arping -i %s %s", dev, ip)
+	}
+	return nil
 }
 
 func (t T) LinkTo() string {
