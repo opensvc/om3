@@ -110,7 +110,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 		return nil
 	}); err != nil {
-		t.StatusLog().Error("%v", err)
+		//t.StatusLog().Error("%v", err)
 		return status.Down
 	}
 
