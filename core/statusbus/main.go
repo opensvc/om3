@@ -321,5 +321,9 @@ func WithContext(ctx context.Context, p path.T) (context.Context, func()) {
 }
 
 func FromContext(ctx context.Context) *ObjT {
-	return ctx.Value(key).(*ObjT)
+	obj, ok := ctx.Value(key).(*ObjT)
+	if !ok {
+		return nil
+	}
+	return obj
 }

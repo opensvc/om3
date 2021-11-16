@@ -63,8 +63,9 @@ type (
 		MatchTag(string) bool
 		RID() string
 		RSubset() string
-		SetObjectDriver(ObjectDriver)
 		GetObjectDriver() ObjectDriver
+		SetObject(interface{})
+		GetObject() interface{}
 		SetRID(string) error
 		SetPG(*pg.Config)
 		GetPG() *pg.Config
@@ -103,10 +104,11 @@ type (
 		SyncRequires        string
 		RunRequires         string
 
-		statusLog StatusLog
-		log       zerolog.Logger
-		object    ObjectDriver
-		pg        *pg.Config
+		statusLog    StatusLog
+		log          zerolog.Logger
+		object       interface{}
+		objectDriver ObjectDriver
+		pg           *pg.Config
 	}
 
 	// ProvisionStatus define if and when the resource became provisioned.
@@ -382,19 +384,27 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 	return nil
 }
 
-// SetObjectDriver holds the useful interface of the parent object of the resource.
-func (t *T) SetObjectDriver(o ObjectDriver) {
+// SetObject holds the useful interface of the parent object of the resource.
+func (t *T) SetObject(o interface{}) {
+	if _, ok := o.(ObjectDriver); !ok {
+		panic("SetObject accepts only ObjectDriver")
+	}
 	t.object = o
 	t.log = t.getLogger()
 }
 
-// GetObjectDriver returns the object driver interface set by SetObjectDriver upon configure.
-func (t *T) GetObjectDriver() ObjectDriver {
+// GetObject returns the object interface set by SetObjectriver upon configure.
+func (t T) GetObject() interface{} {
 	return t.object
 }
 
+// GetObjectDriver returns the object driver interface of the object set by SetObject upon configure.
+func (t *T) GetObjectDriver() ObjectDriver {
+	return t.object.(ObjectDriver)
+}
+
 func (t *T) getLogger() zerolog.Logger {
-	l := t.object.Log().With().Stringer("rid", t.ResourceID)
+	l := t.object.(ObjectDriver).Log().With().Stringer("rid", t.ResourceID)
 	if t.Subset != "" {
 		l = l.Str("rs", t.Subset)
 	}
@@ -576,14 +586,9 @@ func checkRequires(ctx context.Context, r Driver) error {
 	return nil
 }
 
-func updateStatusBus(ctx context.Context, r Driver) {
-	sb := statusbus.FromContext(ctx)
-	sb.Post(r.RID(), Status(ctx, r), false)
-}
-
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
-	defer updateStatusBus(ctx, r)
+	defer Status(ctx, r)
 	if r.IsDisabled() {
 		return nil
 	}
@@ -616,7 +621,7 @@ func Resync(ctx context.Context, r Driver) error {
 	if !ok {
 		return nil
 	}
-	defer updateStatusBus(ctx, r)
+	defer Status(ctx, r)
 	if r.IsDisabled() {
 		return nil
 	}
@@ -629,7 +634,7 @@ func Resync(ctx context.Context, r Driver) error {
 
 // Stop deactivates a resource interfacer
 func Stop(ctx context.Context, r Driver) error {
-	defer updateStatusBus(ctx, r)
+	defer Status(ctx, r)
 	if r.IsDisabled() {
 		return nil
 	}
@@ -657,24 +662,22 @@ func Stop(ctx context.Context, r Driver) error {
 
 // Status evaluates the status of a resource interfacer
 func Status(ctx context.Context, r Driver) status.T {
-	if r.IsDisabled() {
-		return status.NotApplicable
+	s := status.NotApplicable
+	if !r.IsDisabled() {
+		Setenv(r)
+		s = r.Status(ctx)
 	}
-	Setenv(r)
-	s := r.Status(ctx)
-	if !r.IsStandby() {
-		return s
+	if r.IsStandby() {
+		switch {
+		case s == status.Up:
+			s = status.StandbyUp
+		case s == status.Down:
+			s = status.StandbyDown
+		}
 	}
-	switch {
-	case !r.IsStandby():
-		return s
-	case s == status.Up:
-		return status.StandbyUp
-	case s == status.Down:
-		return status.StandbyDown
-	default:
-		return s
-	}
+	sb := statusbus.FromContext(ctx)
+	sb.Post(r.RID(), s, false)
+	return s
 }
 
 // GetExposedStatus returns the resource exposed status data for embedding into the instance status data.

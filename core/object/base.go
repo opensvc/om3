@@ -321,11 +321,11 @@ func (t *Base) configureResources() {
 	return
 }
 
-func (t Base) ReconfigureResource(r resource.Driver) error {
+func (t *Base) ReconfigureResource(r resource.Driver) error {
 	return t.configureResource(r, r.RID())
 }
 
-func (t Base) configureResource(r resource.Driver, rid string) error {
+func (t *Base) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
@@ -363,7 +363,7 @@ func (t Base) configureResource(r resource.Driver, rid string) error {
 			}
 		}
 	}
-	r.SetObjectDriver(t)
+	r.SetObject(t)
 	r.SetPG(t.pgConfig(rid))
 	if i, ok := r.(resource.ActionResourceDepser); ok {
 		deps := i.ActionResourceDeps()

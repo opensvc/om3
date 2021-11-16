@@ -23,7 +23,6 @@ func (t *Base) SyncResync(options OptsSyncResync) error {
 		return err
 	}
 	t.setenv("sync_resync", false)
-	defer t.postActionStatusEval(ctx)
 	return t.lockedAction("", options.OptsLocking, "sync_resync", func() error {
 		return t.lockedSyncResync(ctx)
 	})

@@ -26,10 +26,10 @@ func (t *Base) Start(options OptsStart) error {
 		return err
 	}
 	t.setenv("start", false)
-	defer t.postActionStatusEval(ctx)
-	return t.lockedAction("", options.OptsLocking, "start", func() error {
+	err := t.lockedAction("", options.OptsLocking, "start", func() error {
 		return t.lockedStart(ctx)
 	})
+	return err
 }
 
 func (t *Base) lockedStart(ctx context.Context) error {

@@ -27,7 +27,6 @@ func (t *Base) Provision(options OptsProvision) error {
 		return err
 	}
 	t.setenv("provision", false)
-	defer t.postActionStatusEval(ctx)
 	return t.lockedAction("", options.OptsLocking, "provision", func() error {
 		return t.lockedProvision(ctx)
 	})

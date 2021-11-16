@@ -27,7 +27,7 @@ type (
 
 // VarDir is the full path of the directory where the resource can write its private variable data.
 func (t T) VarDir() string {
-	return filepath.Join(t.object.VarDir(), t.RID())
+	return filepath.Join(t.object.(ObjectDriver).VarDir(), t.RID())
 }
 
 // provisionedFile is the full path to the provisioned state cache file.

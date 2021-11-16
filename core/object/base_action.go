@@ -241,6 +241,7 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	ctx, stop := statusbus.WithContext(ctx, t.Path)
 	defer stop()
+	defer t.postActionStatusEval(ctx)
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {

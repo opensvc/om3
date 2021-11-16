@@ -13,11 +13,14 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/funcopt"
@@ -104,6 +107,48 @@ func (t *T) CommonStop(ctx context.Context, r resource.Driver) (err error) {
 	return cmd.Run()
 }
 
+func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
+	sb := statusbus.FromContext(ctx)
+	o, ok := t.GetObject().(object.Baser)
+	if !ok {
+		panic("an object with app resources must be a Baser")
+	}
+	l := object.ResourcesByDrivergroups(o, []drivergroup.T{
+		drivergroup.IP,
+		drivergroup.FS,
+		drivergroup.Share,
+		drivergroup.Disk,
+		drivergroup.Container,
+	})
+	for _, r := range l {
+		switch r.ID().DriverGroup() {
+		case drivergroup.IP:
+		case drivergroup.FS:
+		case drivergroup.Share:
+		case drivergroup.Disk:
+			switch r.Manifest().Name {
+			case "drbd":
+				continue
+			case "scsireserv":
+				continue
+			}
+		case drivergroup.Container:
+		default:
+			continue
+		}
+		st := sb.Get(r.RID())
+		switch st {
+		case status.Up:
+		case status.NotApplicable:
+		default:
+			// required resource is not up
+			t.StatusLog().Info("not evaluated (%s is %s)", r.RID(), st)
+			return false
+		}
+	}
+	return true
+}
+
 // Status evaluates and display the Resource status and logs
 func (t *T) CommonStatus(ctx context.Context) status.T {
 	t.Log().Debug().Msg("status()")
@@ -117,6 +162,9 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 		return status.Undef
 	}
 	if len(opts) == 0 {
+		return status.NotApplicable
+	}
+	if !t.isInstanceSufficientlyStarted(ctx) {
 		return status.NotApplicable
 	}
 

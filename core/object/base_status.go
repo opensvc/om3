@@ -20,6 +20,7 @@ import (
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -45,6 +46,9 @@ func (t *Base) Status(options OptsStatus) (instance.Status, error) {
 		err  error
 	)
 	ctx := actioncontext.New(options, objectactionprops.Status)
+	ctx, stop := statusbus.WithContext(ctx, t.Path)
+	defer stop()
+
 	if options.Refresh || t.statusDumpOutdated() {
 		return t.statusEval(ctx, options)
 	}

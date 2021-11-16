@@ -332,7 +332,7 @@ func (t T) Info() map[string]string {
 func (t T) fsDir() *resfsdir.T {
 	r := resfsdir.New().(*resfsdir.T)
 	r.SetRID(t.RID())
-	r.SetObjectDriver(t.GetObjectDriver())
+	r.SetObject(t.GetObject())
 	r.Path = t.MountPoint
 	r.User = t.User
 	r.Group = t.Group
