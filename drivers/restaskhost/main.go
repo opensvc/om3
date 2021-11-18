@@ -2,7 +2,6 @@ package restaskhost
 
 // TODO
 // * snooze
-// * (R)unning status flag
 // * notify_done
 
 import (
