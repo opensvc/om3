@@ -275,6 +275,16 @@ func Register(group drivergroup.T, name string, f func() Driver) {
 	drivers[*driverID] = f
 }
 
+func DriverIDList() driverid.L {
+	l := make(driverid.L, len(drivers))
+	i := 0
+	for did, _ := range drivers {
+		l[i] = did
+		i = i + 1
+	}
+	return l
+}
+
 func NewResourceFunc(t driverid.T) func() Driver {
 	if drv, ok := drivers[t]; ok {
 		return drv

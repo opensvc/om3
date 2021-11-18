@@ -3,6 +3,7 @@ package driverid
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"opensvc.com/opensvc/core/drivergroup"
@@ -15,7 +16,24 @@ type (
 		Group drivergroup.T
 		Name  string
 	}
+	L []T
 )
+
+func (t L) Len() int      { return len(t) }
+func (t L) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (t L) Less(i, j int) bool {
+	return t[i].String() < t[j].String()
+}
+
+// Render is a human rendered representation of the driver list
+func (t L) Render() string {
+	s := ""
+	sort.Sort(t)
+	for _, did := range t {
+		s = s + did.String() + "\n"
+	}
+	return s
+}
 
 func (t T) String() string {
 	if t.Name == "" {

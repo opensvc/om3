@@ -36,6 +36,17 @@ const (
 	KindAct
 )
 
+func (t kind) String() string {
+	switch t {
+	case KindSelect:
+		return "select"
+	case KindAct:
+		return "act"
+	default:
+		return fmt.Sprintf("unknown (%d)", t)
+	}
+}
+
 func (t Dep) Key() depKey {
 	o := depKey{
 		Action: t.Action,
