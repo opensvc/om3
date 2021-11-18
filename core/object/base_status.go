@@ -90,6 +90,7 @@ func (t *Base) lockedStatusEval(ctx context.Context) (data instance.Status, err 
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
 	data.Subsets = t.subsetsStatus()
 	data.Frozen = t.Frozen()
+	data.Running = t.RunningRIDList()
 	if err = t.resourceStatusEval(ctx, &data); err != nil {
 		return
 	}
@@ -106,6 +107,19 @@ func (t *Base) lockedStatusEval(ctx context.Context) (data instance.Status, err 
 	data.Csum = csumStatusData(data)
 	t.statusDump(data)
 	return
+}
+
+func (t *Base) RunningRIDList() []string {
+	l := make([]string, 0)
+	for _, r := range t.Resources() {
+		if i, ok := r.(resource.IsRunninger); !ok {
+			continue
+		} else if !i.IsRunning() {
+			continue
+		}
+		l = append(l, r.RID())
+	}
+	return l
 }
 
 func csumStatusDataRecurse(w io.Writer, d interface{}) error {
@@ -186,7 +200,6 @@ func (t *Base) resourceStatusEval(ctx context.Context, data *instance.Status) er
 	data.Resources = make(map[string]resource.ExposedStatus)
 	var mu sync.Mutex
 	return t.ResourceSets().Do(ctx, t, "", func(ctx context.Context, r resource.Driver) error {
-		t.log.Debug().Str("rid", r.RID()).Msg("stat resource")
 		xd := resource.GetExposedStatus(ctx, r)
 		mu.Lock()
 		data.Resources[r.RID()] = xd

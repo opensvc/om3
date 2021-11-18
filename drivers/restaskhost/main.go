@@ -1,5 +1,10 @@
 package restaskhost
 
+// TODO
+// * snooze
+// * (R)unning status flag
+// * notify_done
+
 import (
 	"context"
 	"fmt"
@@ -43,6 +48,13 @@ func New() resource.Driver {
 
 func init() {
 	resource.Register(driverGroup, driverName, New)
+}
+
+func (t T) IsRunning() bool {
+	err := t.DoWithLock(false, time.Second*0, "run", func() error {
+		return nil
+	})
+	return err != nil
 }
 
 // Start the Resource
@@ -211,6 +223,9 @@ func (t *T) statusLastRun(ctx context.Context) status.T {
 		if err != nil {
 			t.StatusLog().Info("%s", err)
 		}
+		if s != status.Up {
+			t.StatusLog().Info("last run failed (%d)", i)
+		}
 		return s
 	}
 }
@@ -227,7 +242,7 @@ func (t *T) running(ctx context.Context) bool {
 
 // Label returns a formatted short description of the Resource
 func (t T) Label() string {
-	return driverGroup.String()
+	return ""
 }
 
 func (t *T) status() status.T {

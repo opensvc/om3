@@ -34,6 +34,15 @@ type (
 	}
 
 	//
+	// IsRunninger implements the IsRunning func, which the core calls
+	// when evaluating an object instance status to build the "running"
+	// rid list.
+	//
+	IsRunninger interface {
+		IsRunning() bool
+	}
+
+	//
 	// Scheduler implements the Schedules func, which returns the list of
 	// schedulable job definition on behalf of the resource.
 	//
