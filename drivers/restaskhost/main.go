@@ -2,7 +2,7 @@ package restaskhost
 
 // TODO
 // * snooze
-// * notify_done
+// * status.json rewrite after lock acquire
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/actioncontext"
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -71,6 +72,7 @@ func (t T) Run(ctx context.Context) error {
 }
 
 func (t T) lockedRun(ctx context.Context) (err error) {
+	defer t.notifyRunDone()
 	var opts []funcopt.O
 	if err := t.handleConfirmation(ctx); err != nil {
 		return err
@@ -393,4 +395,22 @@ func Readln(timeout time.Duration) (string, error) {
 	}
 	fmt.Println("")
 	return "", nil
+}
+
+func (t T) notifyRunDone() error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	req := c.NewPostRunDone()
+	req.RIDs = []string{t.RID()}
+	req.Action = "run"
+	req.Path = t.Path.String()
+	_, err = req.Do()
+	if err != nil {
+		t.Log().Warn().Msgf("failed to notify the daemon the run is done: %s", err)
+		return err
+	}
+	t.Log().Debug().Msg("daemon notified the run is done")
+	return nil
 }

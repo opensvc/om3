@@ -69,3 +69,7 @@ func (t T) NewPostObjectMonitor() *api.PostObjectMonitor {
 func (t T) NewPostObjectStatus() *api.PostObjectStatus {
 	return api.NewPostObjectStatus(t)
 }
+
+func (t T) NewPostRunDone() *api.PostRunDone {
+	return api.NewPostRunDone(t)
+}
