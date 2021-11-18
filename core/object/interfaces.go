@@ -53,6 +53,7 @@ type (
 	Actor interface {
 		Freezer
 		Restart(OptsStart) error
+		Run(OptsRun) error
 		Start(OptsStart) error
 		Stop(OptsStop) error
 		Provision(OptsProvision) error

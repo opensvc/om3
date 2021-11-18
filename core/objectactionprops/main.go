@@ -126,6 +126,12 @@ var (
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
+	Run = T{
+		Name:            "run",
+		Local:           true,
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		TimeoutKeywords: []string{"run_timeout", "timeout"},
+	}
 	Shutdown = T{
 		Name:            "shutdown",
 		Target:          "shutdown",

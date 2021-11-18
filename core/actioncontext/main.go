@@ -2,6 +2,7 @@ package actioncontext
 
 import (
 	"context"
+	"time"
 
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/objectactionprops"
@@ -31,6 +32,12 @@ type (
 	}
 	isRollbackDisableder interface {
 		IsRollbackDisabled() bool
+	}
+	isLockDisableder interface {
+		IsLockDisabled() bool
+	}
+	lockTimeouter interface {
+		LockTimeout() time.Duration
 	}
 )
 
@@ -102,4 +109,18 @@ func IsLeader(ctx context.Context) bool {
 		return o.IsLeader()
 	}
 	return false
+}
+
+func IsLockDisabled(ctx context.Context) bool {
+	if o, ok := Value(ctx).Options.(isLockDisableder); ok {
+		return o.IsLockDisabled()
+	}
+	return false
+}
+
+func LockTimeout(ctx context.Context) time.Duration {
+	if o, ok := Value(ctx).Options.(lockTimeouter); ok {
+		return o.LockTimeout()
+	}
+	return time.Second * 0
 }

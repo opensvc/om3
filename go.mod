@@ -4,13 +4,16 @@ go 1.13
 
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
+	github.com/atomicgo/cursor v0.0.1
 	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
 	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
+	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
 	github.com/fatih/color v1.10.0
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
+	github.com/gofrs/flock v0.8.1
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0
 	github.com/google/uuid v1.2.0

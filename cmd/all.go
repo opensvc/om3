@@ -55,6 +55,7 @@ func init() {
 		cmdPrintStatus      commands.CmdObjectPrintStatus
 		cmdProvision        commands.CmdObjectProvision
 		cmdRestart          commands.CmdObjectRestart
+		cmdRun              commands.CmdObjectRun
 		cmdSet              commands.CmdObjectSet
 		cmdStart            commands.CmdObjectStart
 		cmdStatus           commands.CmdObjectStatus
@@ -80,6 +81,7 @@ func init() {
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdProvision.Init(kind, head, &selectorFlag)
 	cmdRestart.Init(kind, head, &selectorFlag)
+	cmdRun.Init(kind, head, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStart.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)

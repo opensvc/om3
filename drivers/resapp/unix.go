@@ -189,7 +189,10 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 		t.Log().Debug().Msg("status is down")
 		return status.Down
 	}
-	resultStatus := t.exitCodeToStatus(cmd.ExitCode())
+	resultStatus, err := t.ExitCodeToStatus(cmd.ExitCode())
+	if err != nil {
+		t.StatusLog().Warn("%s", err)
+	}
 	t.Log().Debug().Msgf("status is %v", resultStatus)
 	return resultStatus
 }
@@ -406,43 +409,48 @@ func (t T) GetTimeout(action string) time.Duration {
 	return *timeout
 }
 
-func (t T) exitCodeToStatus(exitCode int) status.T {
-	convertMap := t.exitCodeToStatusMap()
+func (t T) ExitCodeToStatus(exitCode int) (status.T, error) {
+	convertMap, err := t.exitCodeToStatusMap()
 	if s, ok := convertMap[exitCode]; ok {
-		return s
+		return s, err
 	}
-	return status.Warn
+	return status.Warn, err
 }
 
 // exitCodeToStatusMap return exitCodeToStatus map
 //
 // invalid entry rules are dropped
-func (t T) exitCodeToStatusMap() (m map[int]status.T) {
+func (t T) exitCodeToStatusMap() (map[int]status.T, error) {
 	if len(t.RetCodes) == 0 {
-		return baseExitToStatusMap
+		return baseExitToStatusMap, nil
 	}
-	m = make(map[int]status.T)
+	dropMessages := make([]string, 0)
+	m := make(map[int]status.T)
 	for _, rule := range strings.Fields(t.RetCodes) {
-		dropMessage := fmt.Sprintf("drop retcodes invalid rule '%v'", rule)
+		dropMessage := fmt.Sprintf("retcodes invalid rule '%v'", rule)
 		ruleSplit := strings.Split(rule, ":")
 		if len(ruleSplit) != 2 {
-			t.Log().Debug().Msg(dropMessage)
+			dropMessages = append(dropMessages, dropMessage)
 			continue
 		}
 		code, err := strconv.Atoi(ruleSplit[0])
 		if err != nil {
-			t.Log().Debug().Msg(dropMessage)
+			dropMessages = append(dropMessages, dropMessage)
 			continue
 		}
 		statusValue, ok := stringToStatus[ruleSplit[1]]
 		if !ok {
-			t.Log().Debug().Msg(dropMessage)
+			dropMessages = append(dropMessages, dropMessage)
 			continue
 		}
 		m[code] = statusValue
 	}
-	if len(m) == 0 {
-		return baseExitToStatusMap
+	var err error
+	if len(dropMessages) > 0 {
+		err = fmt.Errorf("%s", strings.Join(dropMessages, "\n"))
 	}
-	return m
+	if len(m) == 0 {
+		return baseExitToStatusMap, err
+	}
+	return m, err
 }

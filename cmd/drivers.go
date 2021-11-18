@@ -21,6 +21,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/resipnetns"
 	_ "opensvc.com/opensvc/drivers/resiproute"
 	_ "opensvc.com/opensvc/drivers/resrouteenvoy"
+	_ "opensvc.com/opensvc/drivers/restaskhost"
 	_ "opensvc.com/opensvc/drivers/resvhostenvoy"
 	_ "opensvc.com/opensvc/drivers/resvol"
 )

@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/golang-collections/collections/set"
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/actioncontext"
@@ -24,6 +27,7 @@ import (
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/timestamp"
+	"opensvc.com/opensvc/util/xsession"
 )
 
 type (
@@ -80,29 +84,41 @@ type (
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
-		ResourceID          *resourceid.T `json:"rid"`
-		Subset              string        `json:"subset"`
-		Disable             bool          `json:"disable"`
-		Monitor             bool          `json:"monitor"`
-		Optional            bool          `json:"optional"`
-		Standby             bool          `json:"standby"`
-		Shared              bool          `json:"shared"`
-		Restart             int           `json:"restart"`
-		Tags                *set.Set      `json:"tags"`
-		BlockingPreStart    string
-		BlockingPreStop     string
-		PreStart            string
-		PreStop             string
-		BlockingPostStart   string
-		BlockingPostStop    string
-		PostStart           string
-		PostStop            string
-		StartRequires       string
-		StopRequires        string
-		ProvisionRequires   string
-		UnprovisionRequires string
-		SyncRequires        string
-		RunRequires         string
+		ResourceID              *resourceid.T `json:"rid"`
+		Subset                  string        `json:"subset"`
+		Disable                 bool          `json:"disable"`
+		Monitor                 bool          `json:"monitor"`
+		Optional                bool          `json:"optional"`
+		Standby                 bool          `json:"standby"`
+		Shared                  bool          `json:"shared"`
+		Restart                 int           `json:"restart"`
+		Tags                    *set.Set      `json:"tags"`
+		BlockingPreStart        string
+		BlockingPreStop         string
+		BlockingPreRun          string
+		BlockingPreProvision    string
+		BlockingPreUnprovision  string
+		PreStart                string
+		PreStop                 string
+		PreRun                  string
+		PreProvision            string
+		PreUnprovision          string
+		BlockingPostStart       string
+		BlockingPostStop        string
+		BlockingPostRun         string
+		BlockingPostProvision   string
+		BlockingPostUnprovision string
+		PostStart               string
+		PostStop                string
+		PostRun                 string
+		PostProvision           string
+		PostUnprovision         string
+		StartRequires           string
+		StopRequires            string
+		ProvisionRequires       string
+		UnprovisionRequires     string
+		SyncRequires            string
+		RunRequires             string
 
 		statusLog    StatusLog
 		log          zerolog.Logger
@@ -494,25 +510,51 @@ func (t T) trigger(s string) error {
 
 func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
 	var cmd string
-	switch {
-	//
-	case action == trigger.Start && hook == trigger.Pre && blocking == trigger.Block:
+	switch trigger.Format(blocking, hook, action) {
+	case "blocking_pre_start":
 		cmd = t.BlockingPreStart
-	case action == trigger.Start && hook == trigger.Pre && blocking == trigger.NoBlock:
+	case "pre_start":
 		cmd = t.PreStart
-	case action == trigger.Start && hook == trigger.Post && blocking == trigger.Block:
+	case "blocking_post_start":
 		cmd = t.BlockingPostStart
-	case action == trigger.Start && hook == trigger.Post && blocking == trigger.NoBlock:
+	case "post_start":
 		cmd = t.PostStart
 	//
-	case action == trigger.Stop && hook == trigger.Pre && blocking == trigger.Block:
+	case "blocking_pre_stop":
 		cmd = t.BlockingPreStop
-	case action == trigger.Stop && hook == trigger.Pre && blocking == trigger.NoBlock:
+	case "pre_stop":
 		cmd = t.PreStop
-	case action == trigger.Stop && hook == trigger.Post && blocking == trigger.Block:
+	case "blocking_post_stop":
 		cmd = t.BlockingPostStop
-	case action == trigger.Stop && hook == trigger.Post && blocking == trigger.NoBlock:
+	case "post_stop":
 		cmd = t.PostStop
+	//
+	case "blocking_pre_run":
+		cmd = t.BlockingPreRun
+	case "pre_run":
+		cmd = t.PreRun
+	case "blocking_post_run":
+		cmd = t.BlockingPostRun
+	case "post_run":
+		cmd = t.PostRun
+	//
+	case "blocking_pre_provision":
+		cmd = t.BlockingPreProvision
+	case "pre_provision":
+		cmd = t.PreProvision
+	case "blocking_post_provision":
+		cmd = t.BlockingPostProvision
+	case "post_provision":
+		cmd = t.PostProvision
+	//
+	case "blocking_pre_unprovision":
+		cmd = t.BlockingPreUnprovision
+	case "pre_unprovision":
+		cmd = t.PreUnprovision
+	case "blocking_post_unprovision":
+		cmd = t.BlockingPostUnprovision
+	case "post_unprovision":
+		cmd = t.PostUnprovision
 	default:
 		return nil
 	}
@@ -558,12 +600,33 @@ func Setenv(r Driver) {
 	}
 }
 
+func StatusCheckRequires(ctx context.Context, r Driver) error {
+	props := actioncontext.Props(ctx)
+	reqs := r.Requires(props.Name)
+	sb := statusbus.FromContext(ctx)
+	for rid, reqStates := range reqs.Requirements() {
+		state := sb.Get(rid)
+		if state == status.Undef {
+			return fmt.Errorf("invalid requirement: resource '%s' does not exist (syntax: <rid>(<state>[,<state])", rid)
+		}
+		if reqStates.Has(state) {
+			continue // requirement met
+		}
+		return fmt.Errorf("action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+	}
+	// all requirements met
+	return nil
+}
+
 func checkRequires(ctx context.Context, r Driver) error {
 	props := actioncontext.Props(ctx)
 	reqs := r.Requires(props.Name)
 	sb := statusbus.FromContext(ctx)
 	for rid, reqStates := range reqs.Requirements() {
 		state := sb.Get(rid)
+		if state == status.Undef {
+			return fmt.Errorf("invalid requirement: resource '%s' does not exist (syntax: <rid>(<state>[,<state])", rid)
+		}
 		r.Log().Info().Msgf("action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
 		if reqStates.Has(state) {
 			continue // requirement met
@@ -575,6 +638,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 		} else {
 			timeout = time.Minute
 		}
+		r.Log().Info().Msgf("requirement not met yet. wait %s", timeout.Round(time.Second))
 		state = sb.Wait(rid, timeout)
 		if reqStates.Has(state) {
 			continue // requirement met
@@ -583,6 +647,38 @@ func checkRequires(ctx context.Context, r Driver) error {
 	}
 	// all requirements met. flag a status transition as pending in the bus.
 	sb.Pending(r.RID())
+	return nil
+}
+
+// Run calls Run() if the resource is a Runner
+func Run(ctx context.Context, r Driver) error {
+	runner, ok := r.(Runner)
+	if !ok {
+		return nil
+	}
+	defer Status(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "requires")
+	}
+	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Run); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	if err := runner.Run(ctx); err != nil {
+		return errors.Wrapf(err, r.RID())
+	}
+	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Run); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
 	return nil
 }
 
@@ -743,6 +839,21 @@ func Action(ctx context.Context, r Driver) error {
 // SetLoggerForTest can be used to set resource log for testing purpose
 func (t *T) SetLoggerForTest(l zerolog.Logger) {
 	t.log = l
+}
+
+func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f func() error) error {
+	if disable {
+		// --nolock
+		return nil
+	}
+	p := filepath.Join(t.VarDir(), intent)
+	lock := flock.New(p, xsession.ID, fcntllock.New)
+	err := lock.Lock(timeout, intent)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lock.UnLock() }()
+	return f()
 }
 
 func exposedStatusInfo(t Driver) (data map[string]interface{}) {

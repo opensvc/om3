@@ -25,6 +25,15 @@ type (
 	}
 
 	//
+	// Runner implements the Run func, which runs a one-shot process
+	// Implemented by the resource. The object "run" action causes
+	// selected Runners to call Run().
+	//
+	Runner interface {
+		Run(ctx context.Context) error
+	}
+
+	//
 	// Scheduler implements the Schedules func, which returns the list of
 	// schedulable job definition on behalf of the resource.
 	//

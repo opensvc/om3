@@ -104,3 +104,9 @@ func (t OptLeader) IsLeader() bool {
 func (t OptsGlobal) IsDryRun() bool {
 	return t.DryRun
 }
+func (t OptsLocking) IsLockDisabled() bool {
+	return t.Disable
+}
+func (t OptsLocking) LockTimeout() time.Duration {
+	return t.Timeout
+}

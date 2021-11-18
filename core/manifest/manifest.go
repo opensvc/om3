@@ -239,6 +239,33 @@ var genericKeywords = []keywords.Keyword{
 	},
 }
 
+var RunTriggerKeywords = []keywords.Keyword{
+	{
+		Option:   "blocking_pre_run",
+		Attr:     "BlockingPreRun",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`run` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_run",
+		Attr:     "BlockingPostRun",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`run` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_run",
+		Attr:     "PreRun",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`run` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_run",
+		Attr:     "PostRun",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`run` action. Errors do not interrupt the action.",
+	},
+}
+
 func New(group drivergroup.T, name string, r interface{}) *T {
 	t := &T{
 		Group: group,

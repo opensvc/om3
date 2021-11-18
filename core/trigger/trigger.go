@@ -1,5 +1,7 @@
 package trigger
 
+import "fmt"
+
 type (
 	Blocking int
 	Hook     int
@@ -82,4 +84,12 @@ func (t Action) String() string {
 		return s
 	}
 	return "unknown action"
+}
+
+func Format(blocking Blocking, hook Hook, action Action) string {
+	if blocking == Block {
+		return fmt.Sprintf("%s_%s_%s", blocking, hook, action)
+	} else {
+		return fmt.Sprintf("%s_%s", hook, action)
+	}
 }

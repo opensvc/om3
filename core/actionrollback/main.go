@@ -51,5 +51,8 @@ func Rollback(ctx context.Context) error {
 
 func Register(ctx context.Context, fn func() error) {
 	t := FromContext(ctx)
+	if t == nil {
+		return
+	}
 	t.stack = append(t.stack, fn)
 }
