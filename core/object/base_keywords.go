@@ -1,6 +1,7 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
@@ -468,6 +469,23 @@ var keywordStore = keywords.Store{
 		Text:      "Wait for <duration> before declaring the action a failure. Takes precedence over :kw:`timeout`.",
 		Example:   "1m30s",
 	},
+}
+
+func driverIDFromRID(t Configurer, section string) (driverid.T, error) {
+	sectionTypeKey := key.T{
+		Section: section,
+		Option:  "type",
+	}
+	sectionType := t.Config().Get(sectionTypeKey)
+	rid, err := resourceid.Parse(section)
+	if err != nil {
+		return driverid.T{}, err
+	}
+	did := driverid.T{
+		Group: rid.DriverGroup(),
+		Name:  sectionType,
+	}
+	return did, nil
 }
 
 func (t Base) KeywordLookup(k key.T, sectionType string) keywords.Keyword {

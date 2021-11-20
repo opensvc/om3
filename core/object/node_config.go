@@ -18,6 +18,10 @@ func (t Node) Log() *zerolog.Logger {
 	return &t.log
 }
 
+func (t Node) Exists() bool {
+	return true
+}
+
 func (t *Node) ConfigFile() string {
 	return filepath.Join(rawconfig.Node.Paths.Etc, "node.conf")
 }

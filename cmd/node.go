@@ -24,6 +24,7 @@ var (
 	}
 
 	cmdNodeChecks            commands.CmdNodeChecks
+	cmdNodeDoc               commands.NodeDoc
 	cmdNodeDrivers           commands.NodeDrivers
 	cmdNodeLs                commands.NodeLs
 	cmdNodeGet               commands.NodeGet
@@ -40,6 +41,7 @@ func init() {
 	nodeCmd.AddCommand(nodeScanCmd)
 
 	cmdNodeChecks.Init(nodeCmd)
+	cmdNodeDoc.Init(nodeCmd)
 	cmdNodeDrivers.Init(nodeCmd)
 	cmdNodeLs.Init(nodeCmd)
 	cmdNodeGet.Init(nodeCmd)

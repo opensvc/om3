@@ -38,12 +38,15 @@ func Diff(a, b string) (string, error) {
 	return fmt.Sprint(gotextdiff.ToUnified(a, b, string(ab), edits)), nil
 }
 
-func (t Base) EditConfig(opts OptsEditConfig) (err error) {
+func (t Base) EditConfig(opts OptsEditConfig) error {
+	return editConfig(t.ConfigFile(), opts)
+}
+
+func editConfig(src string, opts OptsEditConfig) (err error) {
 	var (
 		refSum []byte
 	)
-	src := t.ConfigFile()
-	dst := t.editedConfigFile()
+	dst := src + ".tmp"
 	if file.Exists(dst) {
 		switch {
 		case opts.Discard && opts.Recover:

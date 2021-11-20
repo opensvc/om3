@@ -71,3 +71,7 @@ func (t Node) String() string {
 func (t Node) IsVolatile() bool {
 	return t.volatile
 }
+
+func (t Node) SetStandardConfigFile() {
+	return
+}

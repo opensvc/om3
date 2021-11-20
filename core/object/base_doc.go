@@ -7,7 +7,6 @@ import (
 	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -16,23 +15,6 @@ type OptsDoc struct {
 	Global  OptsGlobal
 	Keyword string `flag:"kw"`
 	Driver  string `flag:"driver"`
-}
-
-func (t Base) driverIDFromRID(section string) (driverid.T, error) {
-	sectionTypeKey := key.T{
-		Section: section,
-		Option:  "type",
-	}
-	sectionType := t.config.Get(sectionTypeKey)
-	rid, err := resourceid.Parse(section)
-	if err != nil {
-		return driverid.T{}, err
-	}
-	did := driverid.T{
-		Group: rid.DriverGroup(),
-		Name:  sectionType,
-	}
-	return did, nil
 }
 
 // Get returns a keyword value
@@ -81,7 +63,7 @@ func (t *Base) Doc(options OptsDoc) (string, error) {
 	case k.Section == "DEFAULT":
 		return defaultDoc()
 	case k.Section != "":
-		did, _ := t.driverIDFromRID(k.Section)
+		did, _ := driverIDFromRID(t, k.Section)
 		return drvDoc(did, "")
 	default:
 		return "?", nil

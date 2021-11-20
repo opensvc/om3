@@ -1,6 +1,7 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -13,20 +14,28 @@ type OptsUnset struct {
 
 // Unset gets a keyword value
 func (t *Base) Unset(options OptsUnset) error {
+	return unset(t.config, options)
+}
+
+func (t *Base) UnsetKeys(kws ...key.T) error {
+	return unsetKeys(t.config, kws...)
+}
+
+func unset(cf *xconfig.T, options OptsUnset) error {
 	kws := make([]key.T, 0)
 	for _, kw := range options.Keywords {
 		kws = append(kws, key.Parse(kw))
 	}
-	return t.UnsetKeys(kws...)
+	return unsetKeys(cf, kws...)
 }
 
-func (t *Base) UnsetKeys(kws ...key.T) error {
+func unsetKeys(cf *xconfig.T, kws ...key.T) error {
 	changes := 0
 	for _, k := range kws {
-		changes += t.config.Unset(k)
+		changes += cf.Unset(k)
 	}
 	if changes > 0 {
-		return t.config.Commit()
+		return cf.Commit()
 	}
 	return nil
 }
