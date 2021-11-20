@@ -2,8 +2,10 @@ package object
 
 import (
 	"fmt"
+	"sort"
 
 	"opensvc.com/opensvc/core/driverid"
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/util/key"
@@ -16,6 +18,23 @@ type OptsDoc struct {
 	Driver  string `flag:"driver"`
 }
 
+func (t Base) driverIDFromRID(section string) (driverid.T, error) {
+	sectionTypeKey := key.T{
+		Section: section,
+		Option:  "type",
+	}
+	sectionType := t.config.Get(sectionTypeKey)
+	rid, err := resourceid.Parse(section)
+	if err != nil {
+		return driverid.T{}, err
+	}
+	did := driverid.T{
+		Group: rid.DriverGroup(),
+		Name:  sectionType,
+	}
+	return did, nil
+}
+
 // Get returns a keyword value
 func (t *Base) Doc(options OptsDoc) (string, error) {
 	drvDoc := func(did driverid.T, kwName string) (string, error) {
@@ -25,7 +44,9 @@ func (t *Base) Doc(options OptsDoc) (string, error) {
 		}
 		r := factory()
 		buff := ""
-		for _, kw := range r.Manifest().Keywords {
+		store := keywords.Store(r.Manifest().Keywords)
+		sort.Sort(store)
+		for _, kw := range store {
 			if (kwName != "") && kw.Option != kwName {
 				continue
 			}
@@ -34,32 +55,36 @@ func (t *Base) Doc(options OptsDoc) (string, error) {
 		}
 		return buff, nil
 	}
+	defaultDoc := func() (string, error) {
+		buff := ""
+		sort.Sort(keywordStore)
+		for _, kw := range keywordStore {
+			if kw.Section != "DEFAULT" {
+				continue
+			}
+			if !kw.Kind.Has(t.Path.Kind) {
+				continue
+			}
+			buff += kw.Doc()
+			buff += "\n"
+		}
+		return buff, nil
+	}
 
+	k := key.Parse(options.Keyword)
 	switch {
 	case options.Driver != "":
 		did := driverid.Parse(options.Driver)
 		return drvDoc(*did, options.Keyword)
-	case options.Keyword != "":
-		k := key.Parse(options.Keyword)
-		if k.Option != "" {
-			return t.config.Doc(k)
-		}
-		sectionTypeKey := key.T{
-			Section: k.Section,
-			Option:  "type",
-		}
-		sectionType := t.config.Get(sectionTypeKey)
-		rid, err := resourceid.Parse(k.Section)
-		if err != nil {
-			return "", err
-		}
-		did := driverid.T{
-			Group: rid.DriverGroup(),
-			Name:  sectionType,
-		}
+	case k.Option != "":
+		return t.config.Doc(k)
+	case k.Section == "DEFAULT":
+		return defaultDoc()
+	case k.Section != "":
+		did, _ := t.driverIDFromRID(k.Section)
 		return drvDoc(did, "")
 	default:
-		return "TODO", nil
+		return "?", nil
 	}
 	return "", nil
 }

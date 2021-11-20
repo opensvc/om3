@@ -83,6 +83,23 @@ const (
 	InheritHead
 )
 
+func (t Store) Len() int {
+	return len(t)
+}
+
+func (t Store) Less(i, j int) bool {
+	if t[i].Section < t[j].Section {
+		return true
+	} else if t[i].Section > t[j].Section {
+		return false
+	}
+	return t[i].Option < t[j].Option
+}
+
+func (t Store) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
 func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	for _, kw := range t {
