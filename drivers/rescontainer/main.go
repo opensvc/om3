@@ -40,6 +40,7 @@ var (
 		Scopable:   true,
 		Candidates: []string{"unix", "windows"},
 		Text:       "The operating system in the virtual machine.",
-		Example:    "/opt/opensvc",
+		Example:    "unix",
+		Default:    "unix",
 	}
 )

@@ -30,6 +30,7 @@ when installing the key in a volume.`,
 func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
+		cmdDoc              commands.CmdObjectDoc
 		cmdDelete           commands.CmdObjectDelete
 		cmdEdit             commands.CmdObjectEdit
 		cmdEditConfig       commands.CmdObjectEditConfig
@@ -59,6 +60,7 @@ func init() {
 	cmdAdd.Init(kind, head, &selectorFlag)
 	cmdChange.Init(kind, head, &selectorFlag)
 	cmdCreate.Init(kind, head, &selectorFlag)
+	cmdDoc.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdDecode.Init(kind, head, &selectorFlag)
 	cmdEdit.Init(kind, head, &selectorFlag)

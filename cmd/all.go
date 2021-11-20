@@ -40,6 +40,7 @@ func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
+		cmdDoc              commands.CmdObjectDoc
 		cmdEdit             commands.CmdObjectEdit
 		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEnter            commands.CmdObjectEnter
@@ -71,6 +72,7 @@ func init() {
 	root.AddCommand(head)
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
+	cmdDoc.Init(kind, head, &selectorFlag)
 	cmdEdit.Init(kind, head, &selectorFlag)
 	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)

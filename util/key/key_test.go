@@ -56,6 +56,13 @@ func TestKey(t *testing.T) {
 			render:  "data.a.b/C.D",
 			scope:   "",
 		},
+		{
+			s:       "container#1",
+			section: "container#1",
+			option:  "",
+			render:  "container#1",
+			scope:   "",
+		},
 	}
 	for _, test := range tests {
 		t.Logf("%s", test.s)

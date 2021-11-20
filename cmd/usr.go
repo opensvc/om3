@@ -19,6 +19,7 @@ grants are embedded in the trusted bearer tokens.`,
 func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
+		cmdDoc              commands.CmdObjectDoc
 		cmdDelete           commands.CmdObjectDelete
 		cmdEdit             commands.CmdObjectEdit
 		cmdEditConfig       commands.CmdObjectEditConfig
@@ -38,6 +39,7 @@ func init() {
 	head := makeSubUsr()
 	root.AddCommand(head)
 	cmdCreate.Init(kind, head, &selectorFlag)
+	cmdDoc.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdEdit.Init(kind, head, &selectorFlag)
 	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)

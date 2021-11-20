@@ -18,16 +18,17 @@ func New(section, option string) T {
 }
 
 func Parse(s string) T {
-	l := strings.Split(s, ".")
+	l := strings.SplitN(s, ".", 2)
 	switch len(l) {
-	case 0:
-		return T{}
 	case 1:
+		if strings.Index(s, "#") >= 0 {
+			return T{s, ""}
+		}
 		return T{"DEFAULT", s}
 	case 2:
 		return T{l[0], l[1]}
 	default:
-		return T{l[0], strings.Join(l[1:], ".")}
+		return T{}
 	}
 }
 
@@ -49,6 +50,9 @@ func (t T) Scope() string {
 func (t T) String() string {
 	if t.Section == "DEFAULT" {
 		return t.Option
+	}
+	if t.Option == "" {
+		return t.Section
 	}
 	return t.Section + "." + t.Option
 }

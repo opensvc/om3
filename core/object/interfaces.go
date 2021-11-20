@@ -87,6 +87,7 @@ type (
 		SetStandardConfigFile()
 		SetKeys(kops ...keyop.T) error
 		UnsetKeys(kws ...key.T) error
+		Doc(OptsDoc) (string, error)
 	}
 
 	// ResourceLister provides a method to list and filter resources

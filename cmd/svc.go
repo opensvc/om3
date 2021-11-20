@@ -23,6 +23,7 @@ func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
+		cmdDoc              commands.CmdObjectDoc
 		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdEnter            commands.CmdObjectEnter
@@ -52,6 +53,7 @@ func init() {
 	if head := makeSubSVC(); head != nil {
 		root.AddCommand(head)
 		cmdCreate.Init(kind, head, &selectorFlag)
+		cmdDoc.Init(kind, head, &selectorFlag)
 		cmdDelete.Init(kind, head, &selectorFlag)
 		cmdEval.Init(kind, head, &selectorFlag)
 		cmdEnter.Init(kind, head, &selectorFlag)

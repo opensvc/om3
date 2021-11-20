@@ -11,6 +11,7 @@ require (
 	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
+	github.com/eidolon/wordwrap v0.0.0-20161011182207-e0f54129b8bb
 	github.com/fatih/color v1.10.0
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/gofrs/flock v0.8.1

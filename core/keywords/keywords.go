@@ -2,11 +2,14 @@ package keywords
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
+	"github.com/eidolon/wordwrap"
 	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
+	"golang.org/x/term"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/util/key"
@@ -104,6 +107,49 @@ func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 
 func (t Keyword) IsZero() bool {
 	return t.Option == ""
+}
+
+func (t Keyword) Doc() string {
+	columns, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if (err != nil) || (columns > 78) {
+		columns = 78
+	}
+	pad := 12
+	wrapper := wordwrap.Wrapper(columns-pad, false)
+	fmt1 := func(a, b string) string {
+		prefix := fmt.Sprintf("#   %-"+fmt.Sprintf("%d", pad)+"s", a+":")
+		return wordwrap.Indent(wrapper(b), prefix, false) + "\n"
+	}
+	buff := "#\n"
+	buff = buff + wordwrap.Indent(wrapper(t.Option), "# keyword:       ", false) + "\n"
+	buff = buff + "# " + strings.Repeat("-", columns-2) + "\n"
+	buff = buff + fmt1("required", fmt.Sprint(t.Required))
+	buff = buff + fmt1("scopable", fmt.Sprint(t.Scopable))
+	if len(t.Candidates) > 0 {
+		buff = buff + fmt1("candidates", strings.Join(t.Candidates, ", "))
+	}
+	if len(t.Depends) > 0 {
+		l := make([]string, len(t.Depends))
+		for i, kop := range t.Depends {
+			l[i] = kop.String()
+		}
+		buff = buff + fmt1("depends", strings.Join(l, ", "))
+	}
+	if t.DefaultText != "" {
+		buff = buff + fmt1("default", t.DefaultText)
+	} else if t.Default != "" {
+		buff = buff + fmt1("default", t.Default)
+	}
+	if t.Converter != nil {
+		buff = buff + fmt1("convert", fmt.Sprint(t.Converter))
+	}
+	buff = buff + "#\n"
+	buff = buff + wordwrap.Indent(wordwrap.Wrapper(columns-4, false)(t.Text), "#   ", true) + "\n"
+	buff = buff + "#\n"
+	if t.Example != "" {
+		buff = buff + ";" + t.Option + " = " + t.Example + "\n"
+	}
+	return buff
 }
 
 func (t *Keyword) SetValue(r, v interface{}) error {

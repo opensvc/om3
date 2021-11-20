@@ -27,6 +27,10 @@ var Tags = map[string]Opt{
 		Desc:       "stop the service down to the specified rid or driver group",
 		Deprecated: "use --to",
 	},
+	"driver": Opt{
+		Long: "driver",
+		Desc: "a driver identifier, <group>.<name> (ex: ip.host)",
+	},
 	"dry-run": Opt{
 		Long: "dry-run",
 		Desc: "show the action execution plan",

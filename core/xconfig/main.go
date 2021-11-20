@@ -559,7 +559,7 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 }
 
 //
-// Get returns a key value,
+// EvalAs returns a key value,
 // * contextualized for a node (by default the local node, customized by the
 //   impersonate option)
 // * dereferenced
@@ -572,6 +572,15 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 		return nil, err
 	}
 	return t.EvalKeywordAs(k, kw, impersonate)
+}
+
+func (t *T) Doc(k key.T) (string, error) {
+	sectionType := t.sectionType(k)
+	kw, err := getKeyword(k, sectionType, t.Referrer)
+	if err != nil {
+		return "", err
+	}
+	return kw.Doc(), nil
 }
 
 func (t *T) EvalNoConv(k key.T) (string, error) {
