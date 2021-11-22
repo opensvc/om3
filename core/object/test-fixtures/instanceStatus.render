@@ -1,8 +1,8 @@
-node1                 up    warn idle started          
-|- fs#1     ........  up    fs.flag                    
-|- fs#2     ........  up    fs.flag                    
-|                           info: info msg             
-|                           warn: warning msg1         
-|                           error: warning msg         
-`- sync#i0  ...O./..  down  rsync svc config to nodes  
-                            warn: need update          
+node1                up    warn idle started
+├ fs#1     ........  up    fs.flag
+├ fs#2     ........  up    fs.flag
+│                          info: info msg
+│                          warn: warning msg1
+│                          error: warning msg
+└ sync#i0  ...O./..  down  rsync svc config to nodes
+                           warn: need update
