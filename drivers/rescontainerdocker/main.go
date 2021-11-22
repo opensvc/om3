@@ -21,11 +21,13 @@ import (
 	"golang.org/x/sys/unix"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
@@ -62,6 +64,7 @@ type (
 		ImagePullPolicy string         `json:"image_pull_policy"`
 		CWD             string         `json:"cwd"`
 		Command         []string       `json:"command"`
+		DNS             []string       `json:"-"`
 		RunArgs         []string       `json:"run_args"`
 		Entrypoint      []string       `json:"entrypoint"`
 		Detach          bool           `json:"detach"`
@@ -139,6 +142,11 @@ func (t T) Manifest() *manifest.T {
 			Key:  "object_id",
 			Attr: "ObjectID",
 			Ref:  "object.id",
+		},
+		{
+			Key:  "dns",
+			Attr: "DNS",
+			Ref:  "node.dns",
 		},
 	}...)
 	m.AddKeyword([]keywords.Keyword{
@@ -543,6 +551,9 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	hostConfig.Cgroup = t.PG.ID
 	hostConfig.Devices = devices
 	hostConfig.Mounts = mounts
+	hostConfig.DNS = t.dns()
+	hostConfig.DNSOptions = t.dnsOptions()
+	hostConfig.DNSSearch = t.dnsSearch()
 	if hostConfig.NetworkMode, err = t.formatNS(t.NetNS); err != nil {
 		return nil, err
 	}
@@ -558,7 +569,6 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	if hostConfig.UsernsMode, err = t.formatNS(t.UserNS); err != nil {
 		return nil, err
 	}
-	// DNS go here
 
 	name := t.ContainerName()
 
@@ -943,4 +953,37 @@ func (t T) Enter() error {
 
 func (t T) LinkNames() []string {
 	return []string{t.RID()}
+}
+
+func (t T) needDNS() bool {
+	switch t.NetNS {
+	case "", "none":
+		return true
+	default:
+		return false
+	}
+}
+
+func (t T) dns() []string {
+	if !t.needDNS() {
+		return []string{}
+	}
+	return t.DNS
+}
+
+func (t T) dnsOptions() []string {
+	if !t.needDNS() {
+		return []string{}
+	}
+	return []string{"ndots:2", "edns0", "use-vc"}
+}
+
+func (t T) dnsSearch() []string {
+	if !t.needDNS() {
+		return []string{}
+	}
+	dom0 := fqdn.New(t.Path, rawconfig.Node.Cluster.Name).Domain()
+	dom1 := strings.SplitN(dom0, ".", 2)[1]
+	dom2 := strings.SplitN(dom1, ".", 2)[1]
+	return []string{dom0, dom1, dom2}
 }

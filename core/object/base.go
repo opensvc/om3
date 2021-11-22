@@ -343,6 +343,11 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
 		}
 	}
+	getDNS := func() ([]string, error) {
+		dns, err := t.Node().MergedConfig().Eval(key.T{Section: "cluster", Option: "dns"})
+		return dns.([]string), err
+	}
+
 	for _, c := range m.Context {
 		switch {
 		case c.Ref == "object.path":
@@ -359,6 +364,12 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 			}
 		case c.Ref == "object.topology":
 			if err := attr.SetValue(r, c.Attr, t.Topology()); err != nil {
+				return err
+			}
+		case c.Ref == "node.dns":
+			if dns, err := getDNS(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, dns); err != nil {
 				return err
 			}
 		}
