@@ -72,6 +72,30 @@ var (
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
 
+func defaultHumanRenderer(data interface{}) string {
+	if data == nil {
+		return ""
+	}
+	switch v := data.(type) {
+	case Renderer:
+		return v.Render()
+	case fmt.Stringer:
+		return v.String()
+	case string:
+		return v + "\n"
+	case []string:
+		s := ""
+		for _, e := range v {
+			s += e + "\n"
+		}
+		return s
+	case []byte:
+		return string(v)
+	default:
+		return ""
+	}
+}
+
 // NewSelection allocates a new object selection
 func NewSelection(selector string, opts ...funcopt.O) *Selection {
 	t := &Selection{
@@ -424,29 +448,7 @@ func (t *Selection) Do(action Action) ([]ActionResult, error) {
 			data, err := action.Run(p)
 			result.Data = data
 			result.Error = err
-			result.HumanRenderer = func() string {
-				if data == nil {
-					return ""
-				}
-				switch v := data.(type) {
-				case Renderer:
-					return v.Render()
-				case fmt.Stringer:
-					return v.String()
-				case string:
-					return v + "\n"
-				case []string:
-					s := ""
-					for _, e := range v {
-						s += e + "\n"
-					}
-					return s
-				case []byte:
-					return string(v)
-				default:
-					return ""
-				}
-			}
+			result.HumanRenderer = func() string { return defaultHumanRenderer(data) }
 			q <- result
 		}(p)
 		started++

@@ -1,8 +1,6 @@
 package object
 
 import (
-	"fmt"
-
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -20,10 +18,11 @@ func (t *Node) Do(action NodeAction) ActionResult {
 	log.Debug().
 		Str("action", action.Action).
 		Msg("do")
-	result := ActionResult{
-		Nodename: hostname.Hostname(),
-	}
 	data, err := action.Run()
+	result := ActionResult{
+		Nodename:      hostname.Hostname(),
+		HumanRenderer: func() string { return defaultHumanRenderer(data) },
+	}
 	result.Data = data
 	result.Error = err
 	if result.Error != nil {
@@ -31,16 +30,6 @@ func (t *Node) Do(action NodeAction) ActionResult {
 			Str("action", action.Action).
 			Err(result.Error).
 			Msg("do")
-	}
-	result.HumanRenderer = func() string {
-		if data == nil {
-			return ""
-		}
-		r, ok := data.(Renderer)
-		if ok {
-			return r.Render()
-		}
-		return fmt.Sprintln(data)
 	}
 	return result
 }
