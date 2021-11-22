@@ -198,7 +198,7 @@ func (t T) DoLocal() error {
 	output.Renderer{
 		Format:        t.Format,
 		Color:         t.Color,
-		Data:          r,
+		Data:          []object.ActionResult{r},
 		HumanRenderer: human,
 		Colorize:      rawconfig.Node.Colorize,
 	}.Print()
