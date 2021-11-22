@@ -10,19 +10,18 @@ import (
 
 func TestForest(t *testing.T) {
 	widthToExpected := map[int]string{
-		35: "svc1          \n" +
-			"`- avail            up  \n" +
-			"   `- res#id  ....  up  label      \n" +
-			"                        warn: some \n" +
-			"                        long warnin\n" +
-			"                        g descripti\n" +
-			"                        on         \n" +
-			"                        err        \n",
-		55: "svc1          \n" +
-			"`- avail            up  \n" +
-			"   `- res#id  ....  up  label                                \n" +
-			"                        warn: some long warning description  \n" +
-			"                        err                                  \n",
+		35: "svc1        \n" +
+			"└ avail           up  \n" +
+			"  └ res#id  ....  up  label        \n" +
+			"                      warn: some lo\n" +
+			"                      ng warning de\n" +
+			"                      scription    \n" +
+			"                      err          \n",
+		55: "svc1        \n" +
+			"└ avail           up  \n" +
+			"  └ res#id  ....  up  label                                \n" +
+			"                      warn: some long warning description  \n" +
+			"                      err                                  \n",
 	}
 	for width, expected := range widthToExpected {
 
