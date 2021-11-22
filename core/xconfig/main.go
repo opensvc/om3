@@ -318,8 +318,11 @@ func (t *T) HasKey(k key.T) bool {
 }
 
 func (t *T) Get(k key.T) string {
-	val := t.file.Section(k.Section).Key(k.Option).Value()
-	return val
+	fk := t.file.Section(k.Section).Key(k.Option)
+	if fk == nil {
+		return ""
+	}
+	return fk.Value()
 }
 
 func (t *T) GetStrict(k key.T) (string, error) {

@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
@@ -35,11 +37,15 @@ func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 	s := &Sec{}
 	s.CustomEncode = secEncode
 	s.CustomDecode = secDecode
-	if err := s.Base.init(p, opts...); err != nil {
+	if err := s.Base.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
 	return s, nil
+}
+
+func (t Sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
 }
 
 func secEncode(b []byte) (string, error) {

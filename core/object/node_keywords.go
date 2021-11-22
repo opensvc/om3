@@ -1589,5 +1589,5 @@ func (t Node) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 			Required: false,
 		}
 	}
-	return nodeKeywordStore.Lookup(k, kind.Invalid, sectionType)
+	return keywordLookup(nodeKeywordStore, k, kind.Invalid, sectionType)
 }

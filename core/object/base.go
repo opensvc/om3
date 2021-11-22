@@ -85,7 +85,7 @@ func (t *Base) List() (string, error) {
 	return t.Path.String(), nil
 }
 
-func (t *Base) init(p path.T, opts ...funcopt.O) error {
+func (t *Base) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) error {
 	t.Path = p
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Debug().Msgf("%s init error: %s", t, err)
@@ -107,7 +107,7 @@ func (t *Base) init(p path.T, opts ...funcopt.O) error {
 		Str("sid", xsession.ID).
 		Logger()
 
-	if err := t.loadConfig(); err != nil {
+	if err := t.loadConfig(referrer); err != nil {
 		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}

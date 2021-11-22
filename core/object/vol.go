@@ -5,11 +5,13 @@ import (
 	"sort"
 
 	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
@@ -29,8 +31,12 @@ type (
 // NewVol allocates a vol kind object.
 func NewVol(p path.T, opts ...funcopt.O) (*Vol, error) {
 	s := &Vol{}
-	err := s.Base.init(p, opts...)
+	err := s.Base.init(s, p, opts...)
 	return s, err
+}
+
+func (t Vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
 }
 
 //

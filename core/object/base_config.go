@@ -26,13 +26,13 @@ var (
 	regexpExposedDevicesIndex = regexp.MustCompile(`.*\.exposed_devs\[([0-9]+)\]`)
 )
 
-func (t *Base) loadConfig() error {
+func (t *Base) loadConfig(referrer xconfig.Referrer) error {
 	var err error
 	if t.config, err = xconfig.NewObject(t.ConfigFile()); err != nil {
 		return err
 	}
 	t.config.Path = t.Path
-	t.config.Referrer = t
+	t.config.Referrer = referrer
 	t.config.NodeReferrer = t.Node()
 	return err
 }

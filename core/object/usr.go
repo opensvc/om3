@@ -1,8 +1,10 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
@@ -21,9 +23,13 @@ type (
 // NewUsr allocates a usr kind object.
 func NewUsr(p path.T, opts ...funcopt.O) (*Usr, error) {
 	s := &Usr{}
-	if err := s.Base.init(p, opts...); err != nil {
+	if err := s.Base.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
 	return s, nil
+}
+
+func (t Usr) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
 }
