@@ -37,7 +37,7 @@ func (t *CmdObjectEditConfig) Init(kind string, parent *cobra.Command, selector 
 func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "config",
-		Short:   "Edit selected object and instance configuration",
+		Short:   "edit selected object and instance configuration",
 		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)

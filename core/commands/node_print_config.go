@@ -8,30 +8,31 @@ import (
 )
 
 type (
-	// NodeGet is the cobra flag set of the start command.
-	NodeGet struct {
-		object.OptsGet
+	// NodePrintConfig is the cobra flag set of the start command.
+	NodePrintConfig struct {
+		object.OptsPrintConfig
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *NodeGet) Init(parent *cobra.Command) {
+func (t *NodePrintConfig) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsGet)
+	flag.Install(cmd, &t.OptsPrintConfig)
 }
 
-func (t *NodeGet) cmd() *cobra.Command {
+func (t *NodePrintConfig) cmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get",
-		Short: "get a configuration key value",
+		Use:     "config",
+		Short:   "get a configuration key value",
+		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
 	}
 }
 
-func (t *NodeGet) run() {
+func (t *NodePrintConfig) run() {
 	nodeaction.New(
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Global.Local),
@@ -39,14 +40,13 @@ func (t *NodeGet) run() {
 		nodeaction.WithFormat(t.Global.Format),
 		nodeaction.WithColor(t.Global.Color),
 		nodeaction.WithServer(t.Global.Server),
-		nodeaction.WithRemoteAction("get"),
+		nodeaction.WithRemoteAction("print config"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw":          t.Keyword,
 			"impersonate": t.Impersonate,
 			"eval":        t.Eval,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Get(t.OptsGet)
+			return object.NewNode().PrintConfig(t.OptsPrintConfig)
 		}),
 	).Do()
 }

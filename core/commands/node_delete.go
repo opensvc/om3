@@ -8,30 +8,30 @@ import (
 )
 
 type (
-	// NodeGet is the cobra flag set of the start command.
-	NodeGet struct {
-		object.OptsGet
+	// NodeDelete is the cobra flag set of the delete command.
+	NodeDelete struct {
+		object.OptsDelete
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *NodeGet) Init(parent *cobra.Command) {
+func (t *NodeDelete) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsGet)
+	flag.Install(cmd, &t.OptsDelete)
 }
 
-func (t *NodeGet) cmd() *cobra.Command {
+func (t *NodeDelete) cmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get",
-		Short: "get a configuration key value",
+		Use:   "delete",
+		Short: "delete a configuration section",
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
 	}
 }
 
-func (t *NodeGet) run() {
+func (t *NodeDelete) run() {
 	nodeaction.New(
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Global.Local),
@@ -39,14 +39,13 @@ func (t *NodeGet) run() {
 		nodeaction.WithFormat(t.Global.Format),
 		nodeaction.WithColor(t.Global.Color),
 		nodeaction.WithServer(t.Global.Server),
-		nodeaction.WithRemoteAction("get"),
+		nodeaction.WithRemoteAction("delete"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw":          t.Keyword,
-			"impersonate": t.Impersonate,
-			"eval":        t.Eval,
+			"rid":         t.OptsDelete.ResourceSelector,
+			"unprovision": t.OptsDelete.Unprovision,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Get(t.OptsGet)
+			return nil, object.NewNode().Delete(t.OptsDelete)
 		}),
 	).Do()
 }

@@ -8,30 +8,30 @@ import (
 )
 
 type (
-	// NodeGet is the cobra flag set of the start command.
-	NodeGet struct {
-		object.OptsGet
+	// NodeSet is the cobra flag set of the start command.
+	NodeSet struct {
+		object.OptsSet
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *NodeGet) Init(parent *cobra.Command) {
+func (t *NodeSet) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsGet)
+	flag.Install(cmd, t)
 }
 
-func (t *NodeGet) cmd() *cobra.Command {
+func (t *NodeSet) cmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get",
-		Short: "get a configuration key value",
+		Use:   "set",
+		Short: "set a configuration key value",
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
 	}
 }
 
-func (t *NodeGet) run() {
+func (t *NodeSet) run() {
 	nodeaction.New(
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Global.Local),
@@ -39,14 +39,12 @@ func (t *NodeGet) run() {
 		nodeaction.WithFormat(t.Global.Format),
 		nodeaction.WithColor(t.Global.Color),
 		nodeaction.WithServer(t.Global.Server),
-		nodeaction.WithRemoteAction("get"),
+		nodeaction.WithRemoteAction("set"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw":          t.Keyword,
-			"impersonate": t.Impersonate,
-			"eval":        t.Eval,
+			"kw": t.KeywordOps,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Get(t.OptsGet)
+			return nil, object.NewNode().Set(t.OptsSet)
 		}),
 	).Do()
 }
