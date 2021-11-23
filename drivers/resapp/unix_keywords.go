@@ -154,7 +154,8 @@ var (
 			Attr:      "Limit.RSS",
 			Converter: converters.Size,
 			Scopable:  true,
-			Text:      "limit on the total physical memory that can be in use by a process (unit byte).",
+			Text: "limit on the total physical memory that can be in use by a process" +
+				" (unit byte, no solaris support)",
 		},
 		{
 			Option:    "limit_stack",
