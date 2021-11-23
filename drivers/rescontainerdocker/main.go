@@ -342,8 +342,8 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.Duration,
 			Text:      "Wait for <duration> before declaring the container action a failure.",
-			Example:   "5s",
-			Default:   "1m5s",
+			Example:   "1m5s",
+			Default:   "5s",
 		},
 		{
 			Option:    "stop_timeout",
@@ -489,10 +489,11 @@ func (t T) Start(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
-				return c.Start(ctx)
+				return t.start(ctx, c)
 			} else {
 				t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("start")
-				return cs.NewContainer(ctx, inspect.ID).Start(ctx)
+				c := cs.NewContainer(ctx, inspect.ID)
+				return t.start(ctx, c)
 			}
 		}
 	} else {
@@ -503,7 +504,31 @@ func (t T) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		return c.Start(ctx)
+		return t.start(ctx, c)
+	}
+	return nil
+}
+
+func (t T) start(ctx context.Context, c *container.Container) error {
+	errs := make(chan error, 1)
+	go func() {
+		t.Log().Info().Msgf("start container (timeout %s)", t.StartTimeout)
+		if err := c.Start(ctx); err != nil {
+			errs <- err
+			return
+		}
+		if t.Detach {
+			errs <- nil
+			return
+		}
+		_, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionNotRunning))
+		errs <- err
+	}()
+	select {
+	case err := <-errs:
+		return err
+	case <-time.After(*t.StartTimeout):
+		return fmt.Errorf("timeout")
 	}
 	return nil
 }
@@ -534,15 +559,16 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	}
 
 	config := containerapi.Config{
-		Hostname:   t.Hostname,
-		Tty:        t.TTY,
-		Env:        env,
-		Cmd:        command,
-		Entrypoint: t.Entrypoint,
-		Image:      t.Image,
-		WorkingDir: t.CWD,
-		Labels:     labels,
-		OpenStdin:  t.Interactive,
+		Hostname:    t.hostname(),
+		Tty:         t.TTY,
+		Env:         env,
+		Cmd:         command,
+		Entrypoint:  t.Entrypoint,
+		Image:       t.Image,
+		WorkingDir:  t.CWD,
+		Labels:      labels,
+		OpenStdin:   t.Interactive,
+		StopTimeout: t.stopTimeout(),
 	}
 
 	hostConfig := containerapi.HostConfig{}
@@ -990,4 +1016,19 @@ func (t T) dnsSearch() []string {
 
 func (t T) needRemove() bool {
 	return t.Remove || !t.Detach
+}
+
+func (t T) hostname() string {
+	if !t.needDNS() {
+		return ""
+	}
+	return t.Hostname
+}
+
+func (t T) stopTimeout() *int {
+	if t.StopTimeout == nil {
+		return nil
+	}
+	i := int(t.StopTimeout.Seconds())
+	return &i
 }
