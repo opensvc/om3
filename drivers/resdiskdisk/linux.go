@@ -3,11 +3,13 @@
 package resdiskraw
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 
 	"github.com/yookoala/realpath"
 
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/device"
 )
 
