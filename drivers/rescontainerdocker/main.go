@@ -477,7 +477,7 @@ func (t T) Start(ctx context.Context) error {
 			t.Log().Info().Msg("already running")
 			return nil
 		} else {
-			if t.Remove {
+			if t.needRemove() {
 				t.Log().Info().Str("name", name).Msgf("remove leftover")
 				if err := cs.Remove(ctx, name); err != nil {
 					return err
@@ -547,7 +547,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 
 	hostConfig := containerapi.HostConfig{}
 	hostConfig.Privileged = t.Privileged
-	hostConfig.AutoRemove = t.Remove
+	hostConfig.AutoRemove = t.needRemove()
 	hostConfig.Cgroup = t.PG.ID
 	hostConfig.Devices = devices
 	hostConfig.Mounts = mounts
@@ -635,7 +635,7 @@ func (t T) Stop(ctx context.Context) error {
 			return err
 		}
 	}
-	if t.Remove && !errdefs.IsNotFound(err) {
+	if t.needRemove() && !errdefs.IsNotFound(err) {
 		if !inspect.HostConfig.AutoRemove {
 			t.Log().Info().Str("name", name).Msgf("remove")
 			return cli().ContainerService().Remove(ctx, name)
@@ -986,4 +986,8 @@ func (t T) dnsSearch() []string {
 	dom1 := strings.SplitN(dom0, ".", 2)[1]
 	dom2 := strings.SplitN(dom1, ".", 2)[1]
 	return []string{dom0, dom1, dom2}
+}
+
+func (t T) needRemove() bool {
+	return t.Remove || !t.Detach
 }
