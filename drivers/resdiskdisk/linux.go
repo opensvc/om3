@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/yookoala/realpath"
+
 	"opensvc.com/opensvc/util/device"
 )
 
@@ -35,4 +36,15 @@ func (t T) ExposedDevices() []*device.T {
 	}
 	l = append(l, device.New(p))
 	return l
+}
+
+func (t *T) Status(ctx context.Context) status.T {
+	if t.DiskID == "" {
+		return status.NotApplicable
+	}
+	if t.devPath() == "" {
+		t.StatusLog().Warn("%s does not exist", t.expectedDevPath())
+		return status.Down
+	}
+	return status.NotApplicable
 }
