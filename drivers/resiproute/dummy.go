@@ -4,7 +4,6 @@ package resiproute
 
 import (
 	"context"
-	"fmt"
 
 	"opensvc.com/opensvc/core/status"
 )
@@ -17,11 +16,6 @@ func (t T) Start(_ context.Context) error {
 // Stop the Resource
 func (t T) Stop(_ context.Context) error {
 	return nil
-}
-
-// Label returns a formatted short description of the Resource
-func (t T) Label() string {
-	return fmt.Sprintf("%s via %s", t.Destination, t.Gateway)
 }
 
 // Status evaluates and display the Resource status and logs

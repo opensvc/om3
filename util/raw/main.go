@@ -33,31 +33,39 @@ var (
 )
 
 type (
+	// T holds the actions for raw device
 	T struct {
 		log *zerolog.Logger
 	}
-	Entry struct {
+
+	// Bind hold a raw bind detail
+	Bind struct {
 		Index     int
 		BDevMajor int
 		BDevMinor int
 	}
-	Entries []Entry
+
+	// Binds is a list of Bind
+	Binds []Bind
 )
 
 var (
 	probed bool = false
 )
 
-func CDevPath(i int) string {
+// cDevPath returns raw device path with Index 'i'
+func cDevPath(i int) string {
 	return fmt.Sprintf("/dev/raw/raw%d", i)
 }
 
-func (t Entry) CDevPath() string {
-	return CDevPath(t.Index)
+// CDevPath returns raw device path for a bind entry
+func (b Bind) CDevPath() string {
+	return cDevPath(b.Index)
 }
 
-func (t Entry) BDevPath() string {
-	sys := fmt.Sprintf("/sys/dev/block/%d:%d", t.BDevMajor, t.BDevMinor)
+// BDevPath returns block device path associated with a bind entry
+func (b Bind) BDevPath() string {
+	sys := fmt.Sprintf("/sys/dev/block/%d:%d", b.BDevMajor, b.BDevMinor)
 	p, err := os.Readlink(sys)
 	if err != nil {
 		return ""
@@ -70,6 +78,7 @@ func New(opts ...funcopt.O) *T {
 	_ = funcopt.Apply(&t, opts...)
 	return &t
 }
+
 func WithLogger(log *zerolog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -109,33 +118,34 @@ func RawMajor() int {
 	return int(l[0])
 }
 
+// nextMinor returns the next available raw device driver free minor.
 //
-// NextMinor returns the next available raw device driver free minor.
 // It must be called from a locked code section.
 //
-func (t T) NextMinor() int {
-	data, err := t.Data()
+func (t T) nextMinor() int {
+	binds, err := t.QueryAll()
 	if err != nil {
 		return 0
 	}
-	return data.NextMinor()
+	return binds.nextMinor()
 }
 
-func (t Entries) NextMinor() int {
+func (bl Binds) nextMinor() int {
 	for i := 1; i < 2^20; i++ {
-		if !t.HasIndex(i) {
+		if !bl.HasIndex(i) {
 			return i
 		}
 	}
 	return 0
 }
 
-func (t T) Data() (Entries, error) {
+// QueryAll returns list of current binds
+func (t T) QueryAll() (Binds, error) {
 	var (
 		out []byte
 		err error
 	)
-	data := make(Entries, 0)
+	data := make(Binds, 0)
 	if err := t.modprobe(); err != nil {
 		return data, err
 	}
@@ -170,7 +180,7 @@ func (t T) Data() (Entries, error) {
 		if err != nil {
 			continue
 		}
-		data = append(data, Entry{
+		data = append(data, Bind{
 			Index:     i,
 			BDevMajor: major,
 			BDevMinor: minor,
@@ -179,22 +189,28 @@ func (t T) Data() (Entries, error) {
 	return data, nil
 }
 
-func (t T) Find(bDevPath string) (*Entry, error) {
-	data, err := t.Data()
+// Find returns bind entry handled by raw if current raw devices handle block device 'path'
+func (t T) Find(path string) (*Bind, error) {
+	binds, err := t.QueryAll()
 	if err != nil {
 		return nil, err
 	}
-	return data.BDevPath(bDevPath), nil
+	return binds.FromBDevPath(path), nil
 }
 
-func (t T) Has(bDevPath string) (bool, error) {
-	data, err := t.Find(bDevPath)
+// HasBlockDev returns true if current raw devices handle block device 'path'
+func (t T) HasBlockDev(path string) (bool, error) {
+	bind, err := t.Find(path)
 	if err != nil {
 		return false, err
 	}
-	return data != nil, nil
+	return bind != nil, nil
 }
 
+// Bind create a new raw device for block dev 'bDevPath'
+//
+// it returns device minor of created raw device
+//
 func (t T) Bind(bDevPath string) (int, error) {
 	p := "/var/lock/opensvc.raw.lock"
 	lock := flock.New(p, "", fcntllock.New)
@@ -211,14 +227,14 @@ func (t T) Bind(bDevPath string) (int, error) {
 }
 
 func (t T) lockedBind(bDevPath string) (int, error) {
-	data, err := t.Data()
+	data, err := t.QueryAll()
 	if err != nil {
 		return 0, err
 	}
-	if e := data.BDevPath(bDevPath); e != nil {
+	if e := data.FromBDevPath(bDevPath); e != nil {
 		return e.Index, errors.Wrapf(ErrExist, "%s -> %s", bDevPath, e.CDevPath())
 	}
-	m := data.NextMinor()
+	m := data.nextMinor()
 	if m == 0 {
 		return 0, fmt.Errorf("unable to allocate a free minor")
 	}
@@ -242,25 +258,31 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 	return m, nil
 }
 
+// UnbindBDevPath unbind raw device associated with block device path 'bDevPath'
+//
+// It return nil if succeed or if no raw device for block 'bDevPath'
+//
 func (t T) UnbindBDevPath(bDevPath string) error {
-	data, err := t.Data()
+	binds, err := t.QueryAll()
 	if err != nil {
 		return err
 	}
-	e := data.BDevPath(bDevPath)
-	if e == nil {
+	b := binds.FromBDevPath(bDevPath)
+	if b == nil {
 		t.log.Info().Msgf("%s already unbound from its raw device", bDevPath)
 		return nil
 	}
-	cDevPath := e.CDevPath()
+	cDevPath := b.CDevPath()
 	return t.Unbind(cDevPath)
 }
 
+// UnbindMinor unbind raw device with 'minor'
 func (t T) UnbindMinor(minor int) error {
-	cDevPath := CDevPath(minor)
+	cDevPath := cDevPath(minor)
 	return t.Unbind(cDevPath)
 }
 
+// Unbind unbinds raw device 'cDevPath'
 func (t T) Unbind(cDevPath string) error {
 	cmd := command.New(
 		command.WithName(raw),
@@ -282,8 +304,9 @@ func (t T) Unbind(cDevPath string) error {
 
 }
 
-func (t Entries) BDev(major, minor int) *Entry {
-	for _, e := range t {
+// BDev returns pointer to bind entry that match 'major' and 'minor' or returns nil
+func (bl Binds) BDev(major, minor int) *Bind {
+	for _, e := range bl {
 		if e.BDevMajor == major && e.BDevMinor == minor {
 			return &e
 		}
@@ -291,8 +314,8 @@ func (t Entries) BDev(major, minor int) *Entry {
 	return nil
 }
 
-func (t Entries) Index(i int) *Entry {
-	for _, e := range t {
+func (bl Binds) Index(i int) *Bind {
+	for _, e := range bl {
 		if e.Index == i {
 			return &e
 		}
@@ -300,16 +323,18 @@ func (t Entries) Index(i int) *Entry {
 	return nil
 }
 
-func (t Entries) CDevPath(s string) *Entry {
-	for _, e := range t {
-		if e.CDevPath() == s {
-			return &e
+// FromCDevPath returns pointer to bind entry matching raw dev path 's' or returns nil
+func (bl Binds) FromCDevPath(s string) *Bind {
+	for _, b := range bl {
+		if b.CDevPath() == s {
+			return &b
 		}
 	}
 	return nil
 }
 
-func (t Entries) BDevPath(s string) *Entry {
+// FromBDevPath returns pointer to the bind entry that match block dev path 's' or returns nil
+func (bl Binds) FromBDevPath(s string) *Bind {
 	dev := device.New(s)
 	major, err := dev.Major()
 	if err != nil {
@@ -319,22 +344,24 @@ func (t Entries) BDevPath(s string) *Entry {
 	if err != nil {
 		return nil
 	}
-	return t.BDev(int(major), int(minor))
+	return bl.BDev(int(major), int(minor))
 }
 
-func (t Entries) HasBDevPath(s string) bool {
-	e := t.CDevPath(s)
-	return e != nil
+// HasBDevPath returns true if a raw device is bound to block device 's'
+func (bl Binds) HasBDevPath(s string) bool {
+	return bl.FromBDevPath(s) != nil
 }
 
-func (t Entries) HasBDev(major, minor int) bool {
-	return t.BDev(major, minor) != nil
+// HasBDevMajorMinor returns true if a raw device is bound to block device 'major' and 'minor'
+func (bl Binds) HasBDevMajorMinor(major, minor int) bool {
+	return bl.BDev(major, minor) != nil
 }
 
-func (t Entries) HasCDevPath(s string) bool {
-	return t.CDevPath(s) != nil
+// HasCDevPath returns true if
+func (bl Binds) HasCDevPath(s string) bool {
+	return bl.FromCDevPath(s) != nil
 }
 
-func (t Entries) HasIndex(i int) bool {
-	return t.Index(i) != nil
+func (bl Binds) HasIndex(i int) bool {
+	return bl.Index(i) != nil
 }

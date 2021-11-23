@@ -19,7 +19,7 @@ func TestRaw(t *testing.T) {
 	if os.Getpid() != 0 {
 		t.Skip("skipped for non root user")
 	}
-	data, err := ra.Data()
+	data, err := ra.QueryAll()
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(data), 0)
 	//

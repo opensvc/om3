@@ -8,7 +8,6 @@ import (
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
 )
@@ -106,17 +105,6 @@ func (t T) Start(ctx context.Context) error {
 
 func (t T) Stop(ctx context.Context) error {
 	return nil
-}
-
-func (t *T) Status(ctx context.Context) status.T {
-	if t.DiskID == "" {
-		return status.NotApplicable
-	}
-	if t.devPath() == "" {
-		t.StatusLog().Warn("%s does not exist", t.expectedDevPath())
-		return status.Down
-	}
-	return status.NotApplicable
 }
 
 func (t T) Provisioned() (provisioned.T, error) {

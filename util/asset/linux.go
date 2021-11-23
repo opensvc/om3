@@ -5,7 +5,6 @@ package asset
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,8 +14,23 @@ import (
 
 	"github.com/jaypipes/pcidb"
 	"github.com/pkg/errors"
+	"github.com/zcalusic/sysinfo"
+
 	"opensvc.com/opensvc/util/file"
 )
+
+var (
+	si          sysinfo.SysInfo
+	initialized bool
+)
+
+func New() *T {
+	t := T{}
+	if !initialized {
+		si.GetSysInfo()
+	}
+	return &t
+}
 
 func (t T) Get(s string) (interface{}, error) {
 	switch s {
@@ -71,77 +85,6 @@ func (t T) Get(s string) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("unknown asset key: %s", s)
 	}
-}
-
-func Users() ([]User, error) {
-	l := make([]User, 0)
-	data, err := parseColumned("/etc/passwd")
-	if err != nil {
-		return l, err
-	}
-	for _, lineSlice := range data {
-		if len(lineSlice) < 3 {
-			continue
-		}
-		uid, err := strconv.Atoi(lineSlice[2])
-		if err != nil {
-			continue
-		}
-		l = append(l, User{
-			Name: lineSlice[0],
-			ID:   uid,
-		})
-	}
-	return l, nil
-}
-func Groups() ([]Group, error) {
-	l := make([]Group, 0)
-	data, err := parseColumned("/etc/group")
-	if err != nil {
-		return l, err
-	}
-	for _, lineSlice := range data {
-		if len(lineSlice) < 3 {
-			continue
-		}
-		gid, err := strconv.Atoi(lineSlice[2])
-		if err != nil {
-			continue
-		}
-		l = append(l, Group{
-			Name: lineSlice[0],
-			ID:   gid,
-		})
-	}
-	return l, nil
-}
-func parseColumned(p string) ([][]string, error) {
-	l := make([][]string, 0)
-	file, err := os.Open(p)
-	if err != nil {
-		return l, err
-	}
-	defer file.Close()
-	reader := bufio.NewReader(file)
-	for {
-		line, err := reader.ReadString('\n')
-
-		// skip all line starting with #
-		if equal := strings.Index(line, "#"); equal < 0 {
-			lineSlice := strings.FieldsFunc(line, func(divide rune) bool {
-				return divide == ':'
-			})
-			l = append(l, lineSlice)
-		}
-
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return l, err
-		}
-	}
-	return l, nil
 }
 
 func getPCIDevice(address string, db *pcidb.PCIDB) *Device {

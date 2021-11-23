@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"golang.org/x/sys/unix"
 )
 
 type Config struct {
@@ -44,13 +43,13 @@ func (c Config) Apply() error {
 	if err := setSizeRlimit(c.AS, syscall.RLIMIT_AS); err != nil {
 		return errors.Wrapf(err, "as")
 	}
-	if err := setSizeRlimit(c.NProc, unix.RLIMIT_NPROC); err != nil {
+	if err := setNProc(c.NProc); err != nil {
 		return errors.Wrapf(err, "nproc")
 	}
-	if err := setSizeRlimit(c.RSS, unix.RLIMIT_RSS); err != nil {
+	if err := setRss(c.RSS); err != nil {
 		return errors.Wrapf(err, "rss")
 	}
-	if err := setSizeRlimit(c.MemLock, unix.RLIMIT_MEMLOCK); err != nil {
+	if err := setMemLock(c.MemLock); err != nil {
 		return errors.Wrapf(err, "memlock")
 	}
 	if err := setSizeRlimit(c.VMem, syscall.RLIMIT_AS); err != nil {

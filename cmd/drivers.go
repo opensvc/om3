@@ -2,11 +2,9 @@ package cmd
 
 import (
 	_ "opensvc.com/opensvc/drivers/poolshm"
-	_ "opensvc.com/opensvc/drivers/poolvg"
 	_ "opensvc.com/opensvc/drivers/resappforking"
 	_ "opensvc.com/opensvc/drivers/resappsimple"
 	_ "opensvc.com/opensvc/drivers/rescertificatetls"
-	_ "opensvc.com/opensvc/drivers/rescontainerdocker"
 	_ "opensvc.com/opensvc/drivers/resdiskdisk"
 	_ "opensvc.com/opensvc/drivers/resdiskloop"
 	_ "opensvc.com/opensvc/drivers/resdisklv"
@@ -18,7 +16,6 @@ import (
 	_ "opensvc.com/opensvc/drivers/resfsflag"
 	_ "opensvc.com/opensvc/drivers/resfshost"
 	_ "opensvc.com/opensvc/drivers/resiphost"
-	_ "opensvc.com/opensvc/drivers/resipnetns"
 	_ "opensvc.com/opensvc/drivers/resiproute"
 	_ "opensvc.com/opensvc/drivers/resrouteenvoy"
 	_ "opensvc.com/opensvc/drivers/restaskhost"

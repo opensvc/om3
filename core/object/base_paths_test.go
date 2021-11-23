@@ -3,7 +3,8 @@ package object
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 )
@@ -74,14 +75,14 @@ func TestConfigFile(t *testing.T) {
 		},
 	}
 	for testName, test := range tests {
-		rawconfig.Load(map[string]string{
-			"osvc_root_path": test.root,
+		t.Run(testName, func(t *testing.T) {
+			rawconfig.Load(map[string]string{
+				"osvc_root_path": test.root,
+			})
+			p, _ := path.New(test.name, test.namespace, test.kind)
+			o, err := NewFromPath(p)
+			require.Nil(t, err, "NewFromPath(p) mustn't return an error")
+			require.Equal(t, test.cf, o.(Configurer).ConfigFile())
 		})
-		t.Logf("%s", testName)
-		p, _ := path.New(test.name, test.namespace, test.kind)
-		o, err := NewFromPath(p)
-		assert.Nil(t, err, "NewFromPath(p) mustn't return an error")
-		assert.Equal(t, test.cf, o.(Configurer).ConfigFile())
 	}
-
 }

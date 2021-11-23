@@ -1,19 +1,19 @@
 package asset
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"net"
+	"os"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/zcalusic/sysinfo"
 )
 
 var (
-	si          sysinfo.SysInfo
-	initialized bool
-	ErrNotImpl  = fmt.Errorf("not implemented")
-	ErrIgnore   = fmt.Errorf("ignore")
+	ErrNotImpl = fmt.Errorf("not implemented")
+	ErrIgnore  = fmt.Errorf("ignore")
 )
 
 type (
@@ -45,14 +45,6 @@ type (
 		Type string `json:"type"`
 	}
 )
-
-func New() *T {
-	t := T{}
-	if !initialized {
-		si.GetSysInfo()
-	}
-	return &t
-}
 
 func TZ() (string, error) {
 	now := time.Now()
@@ -107,4 +99,77 @@ func GetLANS() (map[string][]LAN, error) {
 func ConnectTo() (string, error) {
 	// TODO: port gcloud address detection ?
 	return "", ErrIgnore
+}
+
+func Users() ([]User, error) {
+	l := make([]User, 0)
+	data, err := parseColumned("/etc/passwd")
+	if err != nil {
+		return l, err
+	}
+	for _, lineSlice := range data {
+		if len(lineSlice) < 3 {
+			continue
+		}
+		uid, err := strconv.Atoi(lineSlice[2])
+		if err != nil {
+			continue
+		}
+		l = append(l, User{
+			Name: lineSlice[0],
+			ID:   uid,
+		})
+	}
+	return l, nil
+}
+
+func Groups() ([]Group, error) {
+	l := make([]Group, 0)
+	data, err := parseColumned("/etc/group")
+	if err != nil {
+		return l, err
+	}
+	for _, lineSlice := range data {
+		if len(lineSlice) < 3 {
+			continue
+		}
+		gid, err := strconv.Atoi(lineSlice[2])
+		if err != nil {
+			continue
+		}
+		l = append(l, Group{
+			Name: lineSlice[0],
+			ID:   gid,
+		})
+	}
+	return l, nil
+}
+
+func parseColumned(p string) ([][]string, error) {
+	l := make([][]string, 0)
+	file, err := os.Open(p)
+	if err != nil {
+		return l, err
+	}
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+
+		// skip all line starting with #
+		if equal := strings.Index(line, "#"); equal < 0 {
+			lineSlice := strings.FieldsFunc(line, func(divide rune) bool {
+				return divide == ':'
+			})
+			l = append(l, lineSlice)
+		}
+
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return l, err
+		}
+	}
+	return l, nil
 }
