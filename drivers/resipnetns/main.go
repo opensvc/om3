@@ -1,3 +1,5 @@
+// +build linux
+
 package resipnetns
 
 import (
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/drivergroup"
