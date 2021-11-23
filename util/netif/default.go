@@ -20,5 +20,5 @@ func DelAddr(_ string, _ *net.IPNet) error {
 }
 
 func InterfaceNameByIP(ref net.IP) (string, error) {
-	return errors.New("netif.InterfaceNameByIP() not implemented")
+	return "", errors.New("netif.InterfaceNameByIP() not implemented")
 }
