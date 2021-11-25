@@ -12,9 +12,7 @@ import (
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/test_conf_helper"
-	"opensvc.com/opensvc/util/hostname"
+
 	"opensvc.com/opensvc/util/usergroup"
 )
 
@@ -33,7 +31,7 @@ func TestAppStop(t *testing.T) {
 		},
 		"logError": {
 			[]string{"--rid", "app#2"},
-			"/bin/ls: ",
+			"unrecognized option",
 		},
 		"env": {
 			[]string{"--rid", "app#env"},
@@ -141,31 +139,24 @@ func TestAppStop(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-		test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-		test_conf_helper.InstallSvcFile(t, "svcappforking.conf", filepath.Join(td, "etc", "svcappforking.conf"))
-		test_conf_helper.InstallSvcFile(t, "cfg1_svcappforking.conf", filepath.Join(td, "etc", "cfg", "svcappforking.conf"))
-		test_conf_helper.InstallSvcFile(t, "sec1_svcappforking.conf", filepath.Join(td, "etc", "sec", "svcappforking.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{
+		{"cluster.conf", "cluster.conf"},
+		{"svcappforking.conf", "svcappforking.conf"},
+		{"cfg1_svcappforking.conf", "cfg/svcappforking.conf"},
+		{"sec1_svcappforking.conf", "sec/svcappforking.conf"},
+	}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 
 	t.Run("logInfo", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "logInfo"
 		var msg string
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
@@ -180,13 +171,15 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("logError", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "logError"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, _ := cmd.CombinedOutput()
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
-			assert.Containsf(t, string(out), "err=\""+expected, "got: '%v'", string(out))
+			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
 			for _, line := range strings.Split(string(out), "\n") {
 				if strings.Contains(line, "out="+expected) {
 					assert.Containsf(t, line, "ERR", "stderr output line not logged with error level")
@@ -196,19 +189,23 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("exit with error", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "logError"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		_, err := cmd.CombinedOutput()
 		assert.NotNil(t, err)
 	})
 
 	t.Run("environment", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "env"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -233,10 +230,12 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("default type is forking", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "cwdWithDefaultType"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -245,10 +244,12 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("cwd", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "cwd"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, "got: %s", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -258,9 +259,11 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"badUser", "badGroup", "badUserGroup"} {
 		t.Run("invalid credentials "+name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 			out, err := cmd.CombinedOutput()
 			assert.NotNil(t, err, "got: '\n%v'", string(out))
 			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -270,6 +273,8 @@ func TestAppStop(t *testing.T) {
 	}
 
 	t.Run("valid user and group", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		var name string
 		if privUser, err := usergroup.IsPrivileged(); err != nil {
 			t.Fail()
@@ -280,7 +285,7 @@ func TestAppStop(t *testing.T) {
 		}
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 
 		if name == "root" {
 			out, err := cmd.CombinedOutput()
@@ -320,11 +325,13 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"true", "True", "T"} {
 		t.Run("when stop is true like ("+name+")", func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
 			name := "stop" + name
 			var msg string
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 			out, err := cmd.CombinedOutput()
 			exitError, ok := err.(*exec.ExitError)
 			if ok {
@@ -341,11 +348,13 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"0", "f", "F", "false", "FALSE", "False"} {
 		t.Run("when stop is false like ("+name+")", func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
 			name := "stop" + name
 			var msg string
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 			out, err := cmd.CombinedOutput()
 			exitError, ok := err.(*exec.ExitError)
 			if ok {
@@ -363,10 +372,12 @@ func TestAppStop(t *testing.T) {
 	t.Run("when no command stop", func(t *testing.T) {
 		for _, name := range []string{"stopEmpty", "stopUndef"} {
 			t.Run(name, func(t *testing.T) {
+				td, cleanup := testhelper.Tempdir(t)
+				defer cleanup()
 				var msg string
 				t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 				cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-				cmd.Env = append(os.Environ(), "TC_NAME="+name)
+				cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 				out, err := cmd.CombinedOutput()
 				exitError, ok := err.(*exec.ExitError)
 				if ok {
@@ -381,11 +392,13 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("stop value true without script keyword exit non 0", func(t *testing.T) {
+		td, cleanup := testhelper.Tempdir(t)
+		defer cleanup()
 		name := "stopScriptUndef"
 		var msg string
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name)
+		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 		out, err := cmd.CombinedOutput()
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
@@ -502,20 +515,8 @@ func TestAppStopStartSequence(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-
-		test_conf_helper.InstallSvcFile(t, "svcapp1.conf", filepath.Join(td, "etc", "svcapp.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{{"svcapp1.conf", "svcapp.conf"}}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 
@@ -528,7 +529,7 @@ func TestAppStopStartSequence(t *testing.T) {
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
-			compile, err := regexp.Compile("running .*rid=app#([a-z0-9]+) ")
+			compile, err := regexp.Compile("out=.app#([a-z0-9]+) ")
 			require.Nil(t, err)
 			var foundSequence []string
 			for _, match := range compile.FindAllStringSubmatch(string(out), -1) {
@@ -562,20 +563,8 @@ func TestAppStopComplexCommand(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-
-		test_conf_helper.InstallSvcFile(t, "svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{{"svcappComplexCommand.conf", "svcapp.conf"}}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 
@@ -619,20 +608,8 @@ func TestAppStopLimit(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-
-		test_conf_helper.InstallSvcFile(t, "svcappforking_limit.conf", filepath.Join(td, "etc", "svcapp.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{{"svcappforking_limit.conf", "svcapp.conf"}}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 
@@ -650,6 +627,7 @@ func TestAppStopLimit(t *testing.T) {
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopLimit")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
 			for _, expected := range cases[name] {
@@ -671,20 +649,8 @@ func TestAppStopTimeout(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-
-		test_conf_helper.InstallSvcFile(t, "svcappforking_timeout.conf", filepath.Join(td, "etc", "svcapp.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{{"svcappforking_timeout.conf", "svcapp.conf"}}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 
@@ -770,20 +736,8 @@ func TestAppStartRollback(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-
-		test_conf_helper.InstallSvcFile(t, "svcapp-rollback.conf", filepath.Join(td, "etc", "svcapp.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{{"svcapp-rollback.conf", "svcapp.conf"}}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 
