@@ -1,16 +1,13 @@
 package cmd
 
 import (
-	"github.com/opensvc/testhelper"
-	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/test_conf_helper"
-	"opensvc.com/opensvc/util/hostname"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/opensvc/testhelper"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppStopTrigger(t *testing.T) {
@@ -27,20 +24,10 @@ func TestAppStopTrigger(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		var td string
-		if td, ok = os.LookupEnv("TC_PATHSVC"); ok != true {
-			d, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
-			td = d
-		}
-
-		test_conf_helper.InstallSvcFile(t, "svcappforking_trigger.conf", filepath.Join(td, "etc", "svcapp.conf"))
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-		defer hostname.Impersonate("node1")()
-		ExecuteArgs(getCmd(name))
+	confs := []configs{
+		{"svcappforking_trigger.conf", "svcapp.conf"},
+	}
+	if executeArgsTest(t, getCmd, confs) {
 		return
 	}
 

@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/core/rawconfig"
+
 	"opensvc.com/opensvc/test_conf_helper"
 )
 
@@ -26,36 +26,39 @@ func TestSecKeys(t *testing.T) {
 	}
 
 	getCmd := func(name string) []string {
-		args := []string{"sec", "-s", "test/sec/sec1", "keys"}
+		args := []string{"test/sec/sec1", "keys"}
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
-
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-		defer rawconfig.Load(map[string]string{})
-
-		test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-		root.SetArgs(getCmd(name))
-		err := root.Execute()
-		require.Nil(t, err)
+	configurations := []configs{
+		{"sec1.conf", "namespaces/test/sec/sec1.conf"},
+	}
+	if executeArgsTest(t, getCmd, configurations) {
+		return
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
+			td, cleanup := testhelper.Tempdir(t)
+			defer cleanup()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestSecKeys")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			if strings.Contains(name, "json") {
-				var response []jsonOutput
+				type (
+					jsonResponse struct {
+						Nodename string   `json:"nodename"`
+						Path     string   `json:"path"`
+						Data     []string `json:"data"`
+					}
+				)
+				var response []jsonResponse
 				err := json.Unmarshal(out, &response)
 				require.Nil(t, err)
-				assert.Equalf(t, strings.Split(tc.expectedResults, "\n"), response[0].Data, string(out))
+				assert.Equalf(t, strings.Split(tc.expectedResults, "\n"), response[0].Data, "got:\n%v", string(out))
 			} else {
 				assert.Equal(t, tc.expectedResults, string(out))
 			}
@@ -79,29 +82,22 @@ func TestSecDecodeKeys(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
-
-		test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-		test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-		rawconfig.Load(map[string]string{"osvc_root_path": td})
-
-		defer func() {
-			rawconfig.Load(map[string]string{})
-		}()
-		ExecuteArgs(getCmd(name))
+	if executeArgsTest(t, getCmd, []configs{}) {
+		return
 	}
+	td, cleanup := testhelper.Tempdir(t)
+	defer cleanup()
+	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestSecDecodeKeys")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name)
+			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			assert.Equal(t, tc.expectedResults, string(out))
-
 		})
 	}
 }
@@ -147,17 +143,13 @@ func TestKeyActions(t *testing.T) {
 		return args
 	}
 
-	if name, ok := os.LookupEnv("TC_NAME"); ok == true {
-		rawconfig.Load(map[string]string{"osvc_root_path": os.Getenv("TC_PATHSVC")})
-		ExecuteArgs(getCmd(name))
+	if executeArgsTest(t, getCmd, []configs{}) {
+		return
 	}
-
 	td, cleanup := testhelper.Tempdir(t)
-	defer cleanup()
-
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	test_conf_helper.InstallSvcFile(t, "sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	defer cleanup()
 
 	for _, name := range []string{
 		"add",
