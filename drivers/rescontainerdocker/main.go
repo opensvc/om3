@@ -607,11 +607,8 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 
 	// create missing mount sources
 	for _, m := range mounts {
-		if file.ExistsAndDir(m.Source) {
-			continue
-		}
 		if file.Exists(m.Source) {
-			return nil, fmt.Errorf("mount source %s exists but is not a directory", m.Source)
+			continue
 		}
 		t.Log().Info().Str("path", m.Source).Msg("create missing mount source")
 		if err := os.MkdirAll(m.Source, os.ModePerm); err != nil {
@@ -867,8 +864,10 @@ func (t T) containerLabelID() string {
 }
 
 func (t T) command() ([]string, error) {
-	if len(t.Command) > 0 {
-		return t.Command, nil
+	hasCommand := len(t.Command) > 0
+	hasEntrypoint := len(t.Entrypoint) > 0
+	if hasCommand && hasEntrypoint {
+		return append(t.Entrypoint, t.Command...), nil
 	}
 	img, err := t.image()
 	if err != nil {
@@ -878,10 +877,14 @@ func (t T) command() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(inspect.Config.Cmd) > 0 {
-		return inspect.Config.Cmd, nil
+	switch {
+	case hasEntrypoint:
+		return append(t.Entrypoint, inspect.Config.Cmd...), nil
+	case hasCommand:
+		return append(inspect.Config.Entrypoint, t.Command...), nil
+	default:
+		return append(inspect.Config.Entrypoint, inspect.Config.Cmd...), nil
 	}
-	return inspect.Config.Entrypoint, nil
 }
 
 func (t T) image() (*image.Image, error) {
