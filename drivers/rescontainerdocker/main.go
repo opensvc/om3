@@ -16,6 +16,7 @@ import (
 	"github.com/cpuguy83/go-docker/container/containerapi/mount"
 	"github.com/cpuguy83/go-docker/errdefs"
 	"github.com/cpuguy83/go-docker/image"
+	"github.com/cpuguy83/go-docker/image/imageapi"
 	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/sys/unix"
@@ -536,12 +537,15 @@ func (t T) start(ctx context.Context, c *container.Container) error {
 func (t T) create(ctx context.Context) (*container.Container, error) {
 	var (
 		env     []string
-		command []string
 		labels  map[string]string
 		devices []containerapi.DeviceMapping
 		mounts  []mount.Mount
 		err     error
+		inspect imageapi.ImageInspect
 	)
+	if inspect, err = t.imageInspect(); err != nil {
+		return nil, err
+	}
 	if env, err = t.env(); err != nil {
 		return nil, err
 	}
@@ -549,9 +553,6 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		return nil, err
 	}
 	if devices, err = t.devices(); err != nil {
-		return nil, err
-	}
-	if command, err = t.command(); err != nil {
 		return nil, err
 	}
 	if mounts, err = t.mounts(); err != nil {
@@ -562,8 +563,8 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Hostname:    t.hostname(),
 		Tty:         t.TTY,
 		Env:         env,
-		Cmd:         command,
-		Entrypoint:  t.Entrypoint,
+		Cmd:         t.command(inspect),
+		Entrypoint:  t.entrypoint(inspect),
 		Image:       t.Image,
 		WorkingDir:  t.CWD,
 		Labels:      labels,
@@ -863,28 +864,26 @@ func (t T) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
 
-func (t T) command() ([]string, error) {
-	hasCommand := len(t.Command) > 0
-	hasEntrypoint := len(t.Entrypoint) > 0
-	if hasCommand && hasEntrypoint {
-		return append(t.Entrypoint, t.Command...), nil
+func (t T) entrypoint(inspect imageapi.ImageInspect) []string {
+	if len(t.Entrypoint) > 0 {
+		return t.Entrypoint
 	}
+	return inspect.Config.Entrypoint
+}
+
+func (t T) command(inspect imageapi.ImageInspect) []string {
+	if len(t.Command) > 0 {
+		return t.Command
+	}
+	return inspect.Config.Cmd
+}
+
+func (t T) imageInspect() (imageapi.ImageInspect, error) {
 	img, err := t.image()
 	if err != nil {
-		return nil, err
+		return imageapi.ImageInspect{}, err
 	}
-	inspect, err := img.Inspect(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	switch {
-	case hasEntrypoint:
-		return append(t.Entrypoint, inspect.Config.Cmd...), nil
-	case hasCommand:
-		return append(inspect.Config.Entrypoint, t.Command...), nil
-	default:
-		return append(inspect.Config.Entrypoint, inspect.Config.Cmd...), nil
-	}
+	return img.Inspect(context.Background())
 }
 
 func (t T) image() (*image.Image, error) {
