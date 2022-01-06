@@ -13,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
@@ -347,8 +348,22 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 		dns, err := t.Node().MergedConfig().Eval(key.T{Section: "cluster", Option: "dns"})
 		return dns.([]string), err
 	}
+	getCNIConfig := func() (string, error) {
+		if s, err := t.Node().MergedConfig().Eval(key.T{Section: "cni", Option: "config"}); err != nil {
+			return "", err
+		} else {
+			return s.(string), nil
+		}
+	}
+	getCNIPlugins := func() (string, error) {
+		if s, err := t.Node().MergedConfig().Eval(key.T{Section: "cni", Option: "plugins"}); err != nil {
+			return "", err
+		} else {
+			return s.(string), nil
+		}
+	}
 
-	for _, c := range m.Context {
+	setAttr := func(c manifest.Context) error {
 		switch {
 		case c.Ref == "object.path":
 			if err := attr.SetValue(r, c.Attr, t.Path); err != nil {
@@ -372,6 +387,24 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 			} else if err := attr.SetValue(r, c.Attr, dns); err != nil {
 				return err
 			}
+		case c.Ref == "cni.config":
+			if s, err := getCNIConfig(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, s); err != nil {
+				return err
+			}
+		case c.Ref == "cni.plugins":
+			if s, err := getCNIPlugins(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, c := range m.Context {
+		if err := setAttr(c); err != nil {
+			return errors.Wrapf(err, "%s", c.Attr)
 		}
 	}
 	r.SetObject(t)
