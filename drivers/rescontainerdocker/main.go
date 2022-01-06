@@ -65,7 +65,8 @@ type (
 		ImagePullPolicy string         `json:"image_pull_policy"`
 		CWD             string         `json:"cwd"`
 		Command         []string       `json:"command"`
-		DNS             []string       `json:"-"`
+		DNS             []string       `json:"dns"`
+		DNSSearch       []string       `json:"dns_search"`
 		RunArgs         []string       `json:"run_args"`
 		Entrypoint      []string       `json:"entrypoint"`
 		Detach          bool           `json:"detach"`
@@ -165,6 +166,16 @@ func (t T) Manifest() *manifest.T {
 			Scopable: true,
 			Example:  "nginx1",
 			Text:     "Set the container hostname. If not set, a unique id is used.",
+		},
+		{
+			Option:    "dns_search",
+			Attr:      "DNSSearch",
+			Converter: converters.List,
+			Aliases:   []string{},
+			Scopable:  true,
+			Required:  false,
+			Example:   "opensvc.com",
+			Text:      "The whitespace separated list of dns domains to search for shortname lookups. If empty or not set, the list will be <name>.<namespace>.svc.<clustername> <namespace>.svc.<clustername> svc.<clustername>.",
 		},
 		{
 			Option:   "image",
@@ -1007,6 +1018,9 @@ func (t T) dnsOptions() []string {
 }
 
 func (t T) dnsSearch() []string {
+	if len(t.DNSSearch) > 0 {
+		return t.DNSSearch
+	}
 	if !t.needDNS() {
 		return []string{}
 	}
