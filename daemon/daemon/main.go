@@ -79,7 +79,41 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-//
+// RunDaemon() starts main daemon
+func RunDaemon() (*T, error) {
+	main := New(WithRoutineTracer(routinehelper.NewTracer()))
+
+	if err := main.Init(); err != nil {
+		main.log.Error().Err(err).Msg("daemon Init")
+		return main, err
+	}
+	if err := main.Start(); err != nil {
+		main.log.Error().Err(err).Msg("daemon Start")
+		return main, err
+	}
+	return main, nil
+}
+
+// StopDaemon() stop main daemon and wait
+func (t *T) StopDaemon() error {
+	if err := t.Stop(); err != nil {
+		t.log.Error().Err(err).Msg("daemon Stop")
+		return err
+	}
+	done := make(chan bool)
+	go func() {
+		t.WaitDone()
+		done <- true
+	}()
+	if err := t.Quit(); err != nil {
+		t.log.Error().Err(err).Msg("daemon Quit")
+		return err
+	}
+	<-done
+	return nil
+}
+
+// MainStart() starts loop, mandatory subdaemons
 func (t *T) MainStart() error {
 	t.log.Info().Msg("mgr starting")
 	started := make(chan bool)

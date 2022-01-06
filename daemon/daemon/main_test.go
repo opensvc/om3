@@ -69,7 +69,10 @@ func TestDaemon(t *testing.T) {
 									require.False(t, main.Running(), "Running()")
 									require.Equalf(t, 2, main.TraceRDump().Count, "found %#v", main.TraceRDump())
 									t.Run("Quit after Stop", func(t *testing.T) {
-										require.Nil(t, main.Quit())
+										go func() {
+											require.Nil(t, main.Quit())
+										}()
+										main.WaitDone()
 										require.False(t, main.Enabled(), "Enable()")
 										require.False(t, main.Running(), "Running()")
 										require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
@@ -81,5 +84,17 @@ func TestDaemon(t *testing.T) {
 				})
 			})
 		})
+	})
+
+	t.Run("RunDaemon", func(t *testing.T) {
+		main, err := RunDaemon()
+		require.NotNil(t, main)
+		require.Nil(t, err)
+		require.True(t, main.Enabled(), "Enable()")
+		require.True(t, main.Running(), "Running()")
+		require.Nil(t, main.StopDaemon())
+		require.False(t, main.Enabled(), "Enable()")
+		require.False(t, main.Running(), "Running()")
+		require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
 	})
 }
