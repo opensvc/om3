@@ -122,8 +122,7 @@ func (t *T) Start() (err error) {
 		return ErrAlreadyStarted
 	}
 	t.started = true
-	cmd := exec.Command(t.name, t.args...)
-	t.cmd = cmd
+	cmd := t.Cmd()
 	if err = t.update(); err != nil {
 		return err
 	}
@@ -248,6 +247,9 @@ func (t *T) Start() (err error) {
 }
 
 func (t *T) Cmd() *exec.Cmd {
+	if t.cmd == nil {
+		t.cmd = exec.Command(t.name, t.args...)
+	}
 	return t.cmd
 }
 
