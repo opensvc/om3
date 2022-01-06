@@ -659,7 +659,10 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string) (stri
 		case true:
 			return "", err
 		case false:
-			return kw.Default, nil
+			if kw.Default == "" {
+				return "", nil
+			}
+			return t.replaceReferences(kw.Default, k.Section, impersonate)
 		}
 	case err != nil:
 		return "", err
