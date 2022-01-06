@@ -34,3 +34,8 @@ func (t *Keystore) decode(keyname string) ([]byte, error) {
 	}
 	return t.CustomDecode(s)
 }
+
+// DecodeKey returns the decoded bytes of the key value
+func (t *Keystore) DecodeKey(keyname string) ([]byte, error) {
+	return t.decode(keyname)
+}

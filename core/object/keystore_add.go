@@ -105,3 +105,11 @@ func (t *Keystore) addKey(name string, b []byte) error {
 	t.log.Info().Str("key", name).Int("len", len(s)).Msg("key set")
 	return nil
 }
+
+// AddKey sets a key and commits immediately
+func (t *Keystore) AddKey(name string, b []byte) error {
+	if err := t.addKey(name, b); err != nil {
+		return err
+	}
+	return t.config.Commit()
+}
