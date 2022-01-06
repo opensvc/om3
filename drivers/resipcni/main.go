@@ -168,7 +168,6 @@ func (t T) hasNetNS() bool {
 		return true
 	}
 	if _, err := netns.GetFromPath(t.NSPIDFile()); err != nil {
-		fmt.Println("xx", t.RID(), err, t.NSPIDFile())
 		return false
 	}
 	return true
