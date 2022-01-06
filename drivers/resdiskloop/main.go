@@ -240,6 +240,12 @@ func (t T) provision(ctx context.Context) error {
 	if _, err = f.Write([]byte{0}); err != nil {
 		return err
 	}
+	if err := t.setFileMode(); err != nil {
+		return err
+	}
+	if err := t.setFileOwner(); err != nil {
+		return err
+	}
 	return nil
 }
 
