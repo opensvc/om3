@@ -66,7 +66,7 @@ func New(opts ...funcopt.O) *T {
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Error().Err(err).Msgf("Apply error")
+		t.log.Error().Err(err).Msg("daemon main funcopt.Apply")
 		return nil
 	}
 	t.T = subdaemon.New(

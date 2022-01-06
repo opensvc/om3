@@ -133,7 +133,7 @@ func New(opts ...funcopt.O) *T {
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Debug().Msgf("%s init error: %s", t, err)
+		t.log.Error().Err(err).Msg("subdaemon funcopt.Apply")
 		return nil
 	}
 	t.log = logging.Configure(logging.Config{
