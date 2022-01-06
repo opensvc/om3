@@ -61,7 +61,7 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay:   10000 * time.Microsecond,
+		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
