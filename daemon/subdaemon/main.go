@@ -36,6 +36,7 @@ type (
 		regActionEnable *enable.T
 		enabled         *enable.T
 		running         *enable.T
+		done            chan bool
 		routinehelper.TT
 	}
 
@@ -56,6 +57,7 @@ type (
 		MainStop() error
 		Running() bool
 		Quit() error
+		WaitDone()
 	}
 )
 
@@ -90,6 +92,7 @@ func (t *T) Init() error {
 		t.log.Error().Err(err).Msg("Init failed")
 		return err
 	}
+	t.done = make(chan bool)
 	if err := t.subRegister(); err != nil {
 		t.log.Error().Err(err).Msg("Init")
 		return err
@@ -100,6 +103,13 @@ func (t *T) Init() error {
 	}
 	t.enabled.Enable()
 	return nil
+}
+
+func (t *T) WaitDone() {
+	t.log.Debug().Msg("WaitDone for Daemon ended")
+	<-t.done
+	close(t.done)
+	t.log.Info().Msg("Daemon ended")
 }
 
 // Quit will stop the 2 daemon routines
@@ -120,6 +130,7 @@ func (t *T) Quit() error {
 		return err
 	}
 	t.enabled.Disable()
+	t.done <- true
 	return nil
 }
 

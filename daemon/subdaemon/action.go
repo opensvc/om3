@@ -100,6 +100,10 @@ func (t *T) stop() (done chan string) {
 		sub := sub
 		name := sub.Name()
 		go func() {
+			defer t.Trace(t.Name() + "-WaitDone")()
+			sub.WaitDone()
+		}()
+		go func() {
 			defer t.Trace(t.Name() + "-stopping-sub")()
 			t.log.Debug().Msgf("stopping sub %s", name)
 			if err := sub.Stop(); err != nil {
@@ -147,7 +151,7 @@ func (t *T) start() (done chan string) {
 }
 
 func (t *T) callAction(do, wanted string) error {
-	t.log.Info().Msg(do)
+	t.log.Info().Msgf("callAction do: %s", do)
 	if !t.actionsEnabled() {
 		err := errors.New("callAction " + do + " on disabled action main")
 		t.log.Error().Err(err).Msg("callAction")
@@ -160,6 +164,6 @@ func (t *T) callAction(do, wanted string) error {
 		t.log.Error().Msgf("%s failed got %s instead of %s", do, result, wanted)
 		return errors.New(result)
 	}
-	t.log.Info().Msg(wanted)
+	t.log.Info().Msgf("callAction done: %s => %s", do, wanted)
 	return nil
 }
