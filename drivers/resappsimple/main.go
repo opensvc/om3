@@ -142,7 +142,11 @@ func (t T) getRunning(cmdArgs []string) (proc.L, error) {
 	if err != nil {
 		return procs, err
 	}
-	procs = procs.FilterByEnv("OPENSVC_ID", t.ObjectID.String())
+	ids := []string{
+		"OPENSVC_ID",
+		"OPENSVC_SVC_ID", // compat
+	}
+	procs = procs.FilterByEnvList(ids, t.ObjectID.String())
 	procs = procs.FilterByEnv("OPENSVC_RID", t.RID())
 	return procs, nil
 }

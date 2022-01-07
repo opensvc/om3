@@ -188,6 +188,21 @@ func (t *L) Add(proc T) {
 	t.procs = append(t.procs, proc)
 }
 
+func (t *L) FilterByEnvList(keys []string, value string) L {
+	l := NewList()
+	for _, p := range t.Procs() {
+		for _, key := range keys {
+			v, ok := p.Env()[key]
+			if !ok || v != value {
+				continue
+			}
+			l.Add(p)
+			break
+		}
+	}
+	return l
+}
+
 func (t *L) FilterByEnv(key string, value string) L {
 	l := NewList()
 	for _, p := range t.Procs() {
