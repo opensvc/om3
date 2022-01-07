@@ -73,7 +73,7 @@ var (
 		Converter:    converters.Shlex,
 		Scopable:     true,
 		Provisioning: true,
-		Text:         "Additional options to pass to the logical volume create command. Size and name are alread set.",
+		Text:         "Additional options to pass to the logical volume create command. Size and name are already set.",
 		Example:      "--contiguous y",
 	}
 	KeywordSCSIReservation = keywords.Keyword{
@@ -273,7 +273,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msg("already umounted")
+		t.Log().Info().Msgf("%s already umounted from %s", t.devpath(), t.mountPoint())
 		return nil
 	}
 	if err := t.fs().Umount(t.mountPoint()); err != nil {
@@ -391,7 +391,7 @@ func (t *T) mount(ctx context.Context) error {
 	if v, err := t.isMounted(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msg("already mounted")
+		t.Log().Info().Msgf("%s already mounted on %s", t.devpath(), t.mountPoint())
 		return nil
 	}
 	if err := t.createMountPoint(ctx); err != nil {
@@ -529,7 +529,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := i1.IsFormated(t.Device); err != nil {
 		t.Log().Warn().Msgf("skip mkfs: %s", err)
 	} else if v {
-		t.Log().Info().Msgf("%s is already formated", fs)
+		t.Log().Info().Msgf("%s is already formated", t.Device)
 		return nil
 	}
 	i2, ok := fs.(filesystems.MKFSer)
