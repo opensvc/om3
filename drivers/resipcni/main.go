@@ -204,7 +204,18 @@ func (t T) delNetNS() error {
 
 func (t *T) StatusInfo() map[string]interface{} {
 	data := make(map[string]interface{})
-	data["ipaddr"] = t.ipaddr()
+	if ip, _, err := t.ipnet(); err == nil {
+		data["ipaddr"] = ip.String()
+	}
+	/*
+	   if self.container:
+	       if self.container.vm_hostname != self.container.name:
+	           data["hostname"] = self.container.vm_hostname
+	       else:
+	           data["hostname"] = self.container.name
+	       if self.dns_name_suffix:
+	           data["hostname"] += self.dns_name_suffix
+	*/
 	return data
 }
 
@@ -244,12 +255,24 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.NetNS == "" && !hasNetNS {
 		return status.Down
 	}
-	// TODO: more
-	return status.NotApplicable
+	if _, ipnet, err := t.ipnet(); err != nil {
+		t.StatusLog().Warn("%s", err)
+		return status.Undef
+	} else if ipnet != nil {
+		return status.Up
+	} else {
+		return status.Down
+	}
 }
 
 func (t T) Label() string {
-	s := fmt.Sprintf("%s %s", t.Network, t.ipaddr())
+	var s string
+	if ip, ipnet, err := t.ipnet(); err == nil {
+		ones, _ := ipnet.Mask.Size()
+		s = fmt.Sprintf("%s %s/%d", t.Network, ip, ones)
+	} else {
+		s = fmt.Sprintf("%s", t.Network)
+	}
 	return s
 }
 
@@ -269,8 +292,30 @@ func (t T) LinkTo() string {
 	return t.NetNS
 }
 
-func (t T) ipaddr() net.IP {
-	return net.ParseIP("0.0.0.0/0")
+func (t T) ipnet() (net.IP, *net.IPNet, error) {
+	var (
+		ipnet *net.IPNet
+		netip net.IP
+	)
+	netns, err := t.getNS()
+	if err != nil {
+		return netip, ipnet, err
+	}
+	if err := netns.Do(func(_ ns.NetNS) error {
+		if iface, err := net.InterfaceByName(t.NSDev); err != nil {
+			return err
+		} else if addrs, err := iface.Addrs(); err != nil {
+			return err
+		} else if len(addrs) == 0 {
+			return nil
+		} else if netip, ipnet, err = net.ParseCIDR(addrs[0].String()); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return netip, ipnet, err
+	}
+	return netip, ipnet, nil
 }
 
 func (t T) netConfFile() string {
