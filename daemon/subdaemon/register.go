@@ -11,8 +11,10 @@ func (t *T) Register(sub MainManager) error {
 		return err
 	}
 	subC := make(chan MainManager)
-	t.regActionC <- registerAction{"register", subC}
+	done := make(chan string)
+	t.regActionC <- registerAction{"register", subC, done}
 	subC <- sub
+	<-done
 	return nil
 }
 
@@ -23,8 +25,10 @@ func (t *T) UnRegister(sub MainManager) error {
 		return err
 	}
 	subC := make(chan MainManager)
-	t.regActionC <- registerAction{"unregister", subC}
+	done := make(chan string)
+	t.regActionC <- registerAction{"unregister", subC, done}
 	subC <- sub
+	<-done
 	return nil
 }
 
@@ -44,7 +48,7 @@ func (t *T) subRegister() error {
 				switch m.action {
 				case "quit":
 					t.regActionEnable.Disable()
-					close(m.managerC)
+					m.done <- "done"
 					return
 				case "get":
 					for _, element := range t.subSvc {
@@ -56,13 +60,13 @@ func (t *T) subRegister() error {
 					name := sub.Name()
 					t.log.Debug().Msgf("registering new sub %s", name)
 					t.subSvc[name] = sub
-					close(m.managerC)
+					m.done <- "done"
 				case "unregister":
 					sub := <-m.managerC
 					name := sub.Name()
 					delete(t.subSvc, name)
 					t.log.Debug().Msgf("unregistering sub %s", sub.Name())
-					close(m.managerC)
+					m.done <- "done"
 				}
 			}
 		}
@@ -81,9 +85,9 @@ func (t *T) subRegisterQuit() error {
 		t.log.Error().Err(err).Msg("RegisterQuit failed")
 		return err
 	}
-	subC := make(chan MainManager)
-	t.regActionC <- registerAction{"quit", subC}
-	<-subC
+	done := make(chan string)
+	t.regActionC <- registerAction{"quit", nil, done}
+	<-done
 	return nil
 }
 
@@ -92,10 +96,9 @@ func (t *T) subs() chan MainManager {
 	if !t.regActionEnabled() {
 		err := errors.New("can't get subs from disabled subRegister")
 		t.log.Error().Err(err).Msg("subs failed")
-		close(c)
 		return c
 	}
-	m := registerAction{"get", c}
+	m := registerAction{"get", c, nil}
 	t.regActionC <- m
 	return c
 }

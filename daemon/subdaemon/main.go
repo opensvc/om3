@@ -43,6 +43,7 @@ type (
 	registerAction struct {
 		action   string
 		managerC chan MainManager
+		done     chan string
 	}
 
 	mgrAction struct {
@@ -108,7 +109,6 @@ func (t *T) Init() error {
 func (t *T) WaitDone() {
 	t.log.Debug().Msg("WaitDone for Daemon ended")
 	<-t.done
-	close(t.done)
 	t.log.Info().Msg("Daemon ended")
 }
 
