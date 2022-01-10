@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/pg"
 )
 
 var (
@@ -41,9 +42,11 @@ func getActionContext() (ctx context.Context, cancel context.CancelFunc) {
 	ctx = actionrollback.NewContext(ctx)
 	return
 }
-func WithLoggerApp(app T) T {
+
+func WithLoggerAndPgApp(app T) T {
 	app.SetLoggerForTest(log)
 	app.SetRID("foo")
+	app.SetPG(&pg.Config{})
 	return app
 }
 
@@ -55,7 +58,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{StartCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{resapp.T{StartCmd: "touch " + filename}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Start(ctx), startReturnMsg)
@@ -69,7 +72,7 @@ func TestStart(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		createdFileFromStart := filepath.Join(td, "succeed")
-		app := WithLoggerApp(T{resapp.T{StartCmd: "touch " + createdFileFromStart, CheckCmd: "echo"}})
+		app := WithLoggerAndPgApp(T{resapp.T{StartCmd: "touch " + createdFileFromStart, CheckCmd: "echo"}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Start(ctx), startReturnMsg)
@@ -81,7 +84,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{resapp.T{
 				StartCmd: "echo",
 				StopCmd:  "touch " + filename,
@@ -98,7 +101,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{resapp.T{
 				StartCmd: "echo && exit 1",
 				StopCmd:  "touch " + filename,
@@ -118,7 +121,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{resapp.T{
 				StartCmd: "echo",
 				CheckCmd: "echo",
@@ -138,7 +141,7 @@ func TestStop(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{StopCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{resapp.T{StopCmd: "touch " + filename}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Stop(ctx), "Stop(...) returned value")
@@ -152,7 +155,7 @@ func TestStop(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{StopCmd: "touch " + filename, CheckCmd: "bash -c false"}})
+		app := WithLoggerAndPgApp(T{resapp.T{StopCmd: "touch " + filename, CheckCmd: "bash -c false"}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Stop(ctx), "Stop(...) returned value")
@@ -170,7 +173,7 @@ func TestStatus(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{CheckCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{resapp.T{CheckCmd: "touch " + filename}})
 		app.Status(ctx)
 		require.True(t, file.Exists(filename), "missing status cmd !")
 	})
@@ -206,7 +209,7 @@ func TestStatus(t *testing.T) {
 				_, cleanup := prepareConfig(t)
 				defer cleanup()
 
-				app := WithLoggerApp(T{resapp.T{CheckCmd: "echo && exit " + cases[name].exitCode}})
+				app := WithLoggerAndPgApp(T{resapp.T{CheckCmd: "echo && exit " + cases[name].exitCode}})
 				app.RetCodes = cases[name].retcode
 				assert.Equal(t, cases[name].expected.String(), app.Status(ctx).String())
 			})

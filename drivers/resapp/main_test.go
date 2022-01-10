@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"opensvc.com/opensvc/util/pg"
 )
 
 func TestT_Info(t *testing.T) {
@@ -28,6 +30,7 @@ func TestT_Info(t *testing.T) {
 			ScriptPath:   "scriptPath",
 		}
 		app.SetRID("app#1")
+		app.SetPG(&pg.Config{})
 		app.Timeout = &duration
 		app.StartTimeout = &startDuration
 		app.StopTimeout = &stopDuration
@@ -60,6 +63,7 @@ func TestT_Info(t *testing.T) {
 	t.Run("from zero app", func(t *testing.T) {
 		app := T{}
 		app.SetRID("app#1")
+		app.SetPG(&pg.Config{})
 		info, err := app.Info(ctx)
 		assert.Nil(t, err)
 		expected := []infoEntry{
