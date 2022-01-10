@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/testhelper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -61,6 +62,9 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("does not execute start command if status is already up", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		createdFileFromStart := filepath.Join(td, "trace")
@@ -72,6 +76,9 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when start succeed stop is added to rollback stack", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
@@ -107,6 +114,9 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when already started stop is not added to rollback stack", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
@@ -126,6 +136,9 @@ func TestStart(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	t.Run("execute stop command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
