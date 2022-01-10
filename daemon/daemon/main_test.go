@@ -100,6 +100,7 @@ func TestDaemon(t *testing.T) {
 		require.Nil(t, main.StopDaemon())
 		require.False(t, main.Enabled(), "Enable()")
 		require.False(t, main.Running(), "Running()")
+		time.Sleep(10 * time.Millisecond)
 		require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
 	})
 }
