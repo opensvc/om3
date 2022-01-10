@@ -1,3 +1,5 @@
+// +build linux
+
 package resipnetns
 
 import (
@@ -6,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
 	"opensvc.com/opensvc/core/actionrollback"
 )
 

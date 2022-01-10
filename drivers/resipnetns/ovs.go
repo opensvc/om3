@@ -1,3 +1,5 @@
+// +build linux
+
 package resipnetns
 
 import (
@@ -5,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/util/command"
 )
