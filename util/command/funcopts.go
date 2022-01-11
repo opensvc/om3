@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/util/funcopt"
 )
 
+// WithName sets the process args[0]
 func WithName(name string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -15,6 +16,7 @@ func WithName(name string) funcopt.O {
 	})
 }
 
+// WithArgs sets the process args[1:] from a string slice
 func WithArgs(args []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -23,6 +25,7 @@ func WithArgs(args []string) funcopt.O {
 	})
 }
 
+// WithVarArgs sets the process args[1:] from a variadic string slice
 func WithVarArgs(args ...string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -31,6 +34,7 @@ func WithVarArgs(args ...string) funcopt.O {
 	})
 }
 
+// WithLogger defines the Logger that will receive this pkg logs and process outputs
 func WithLogger(l *zerolog.Logger) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -39,6 +43,8 @@ func WithLogger(l *zerolog.Logger) funcopt.O {
 	})
 }
 
+// WithTimeout sets the max duration the process is allowed to run. After this duration,
+// the process is killed and an error is reported.
 func WithTimeout(timeout time.Duration) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -70,6 +76,8 @@ func WithIgnoredExitCodes(codes ...int) funcopt.O {
 	})
 }
 
+// WithStdoutLogLevel sets the level of the log entries coming from the process stdout.
+// If not set, stdout lines are not logged.
 func WithStdoutLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -78,6 +86,8 @@ func WithStdoutLogLevel(l zerolog.Level) funcopt.O {
 	})
 }
 
+// WithStdoutLogLevel sets the level of the log entries coming from the process stderr
+// If not set, stderr lines are not logged.
 func WithStderrLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -86,6 +96,7 @@ func WithStderrLogLevel(l zerolog.Level) funcopt.O {
 	})
 }
 
+// WithBufferedStdout activates the buffering of the lines emited by the process on stdout
 func WithBufferedStdout() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -94,6 +105,7 @@ func WithBufferedStdout() funcopt.O {
 	})
 }
 
+// WithBufferedStderr activates the buffering of the lines emited by the process on stderr
 func WithBufferedStderr() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
