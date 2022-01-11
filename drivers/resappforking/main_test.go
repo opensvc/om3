@@ -4,17 +4,21 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/opensvc/testhelper"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/pg"
 )
 
 var (
@@ -38,9 +42,11 @@ func getActionContext() (ctx context.Context, cancel context.CancelFunc) {
 	ctx = actionrollback.NewContext(ctx)
 	return
 }
-func WithLoggerApp(app T) T {
+
+func WithLoggerAndPgApp(app T) T {
 	app.SetLoggerForTest(log)
 	app.SetRID("foo")
+	app.SetPG(&pg.Config{})
 	return app
 }
 
@@ -52,7 +58,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{StartCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{resapp.T{StartCmd: "touch " + filename}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Start(ctx), startReturnMsg)
@@ -60,10 +66,13 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("does not execute start command if status is already up", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		createdFileFromStart := filepath.Join(td, "succeed")
-		app := WithLoggerApp(T{resapp.T{StartCmd: "touch " + createdFileFromStart, CheckCmd: "echo"}})
+		app := WithLoggerAndPgApp(T{resapp.T{StartCmd: "touch " + createdFileFromStart, CheckCmd: "echo"}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Start(ctx), startReturnMsg)
@@ -75,7 +84,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{resapp.T{
 				StartCmd: "echo",
 				StopCmd:  "touch " + filename,
@@ -92,7 +101,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{resapp.T{
 				StartCmd: "echo && exit 1",
 				StopCmd:  "touch " + filename,
@@ -105,11 +114,14 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when already started stop is not added to rollback stack", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{resapp.T{
 				StartCmd: "echo",
 				CheckCmd: "echo",
@@ -129,7 +141,7 @@ func TestStop(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{StopCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{resapp.T{StopCmd: "touch " + filename}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Stop(ctx), "Stop(...) returned value")
@@ -137,10 +149,13 @@ func TestStop(t *testing.T) {
 	})
 
 	t.Run("does not execute stop command if status is already down", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{StopCmd: "touch " + filename, CheckCmd: "bash -c false"}})
+		app := WithLoggerAndPgApp(T{resapp.T{StopCmd: "touch " + filename, CheckCmd: "bash -c false"}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		require.Nil(t, app.Stop(ctx), "Stop(...) returned value")
@@ -149,13 +164,16 @@ func TestStop(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	ctx := context.Background()
 	t.Run("execute check command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{resapp.T{CheckCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{resapp.T{CheckCmd: "touch " + filename}})
 		app.Status(ctx)
 		require.True(t, file.Exists(filename), "missing status cmd !")
 	})
@@ -185,12 +203,15 @@ func TestStatus(t *testing.T) {
 		}
 		for name := range cases {
 			t.Run(name, func(t *testing.T) {
+				if strings.Contains("Down when exit 0 and retcode 1:up 0:down", name) && os.Getpid() != 0 {
+					t.Skip("skipped for non root user")
+				}
 				_, cleanup := prepareConfig(t)
 				defer cleanup()
 
-				app := WithLoggerApp(T{resapp.T{CheckCmd: "echo && exit " + cases[name].exitCode}})
+				app := WithLoggerAndPgApp(T{resapp.T{CheckCmd: "echo && exit " + cases[name].exitCode}})
 				app.RetCodes = cases[name].retcode
-				require.Equal(t, cases[name].expected.String(), app.Status(ctx).String())
+				assert.Equal(t, cases[name].expected.String(), app.Status(ctx).String())
 			})
 		}
 	})

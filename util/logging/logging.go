@@ -48,7 +48,7 @@ var (
 )
 
 func init() {
-	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr}
+	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"}
 }
 
 // DisableDefaultConsoleWriterColor disable color on defauult console writer

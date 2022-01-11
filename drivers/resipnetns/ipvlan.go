@@ -1,3 +1,5 @@
+// +build linux
+
 package resipnetns
 
 import (
@@ -8,6 +10,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
 	"opensvc.com/opensvc/core/actionrollback"
 )
 

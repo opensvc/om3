@@ -1,4 +1,4 @@
-// +build !solaris
+// +build linux
 
 package resipnetns
 

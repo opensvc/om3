@@ -10,10 +10,12 @@ import (
 	"github.com/opensvc/testhelper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/drivers/resapp"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/pg"
 )
 
 var (
@@ -37,9 +39,10 @@ func getActionContext() (ctx context.Context, cancel context.CancelFunc) {
 	ctx = actionrollback.NewContext(ctx)
 	return
 }
-func WithLoggerApp(app T) T {
+func WithLoggerAndPgApp(app T) T {
 	app.SetLoggerForTest(log)
 	app.SetRID("foo")
+	app.SetPG(&pg.Config{})
 	return app
 }
 
@@ -51,7 +54,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{T: resapp.T{StartCmd: "touch " + filename}})
+		app := WithLoggerAndPgApp(T{T: resapp.T{StartCmd: "touch " + filename}})
 
 		ctx, cancel := getActionContext()
 		defer cancel()
@@ -61,10 +64,13 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("does not execute start command if status is already up", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		createdFileFromStart := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{T: resapp.T{StartCmd: "touch " + createdFileFromStart, CheckCmd: "echo"}})
+		app := WithLoggerAndPgApp(T{T: resapp.T{StartCmd: "touch " + createdFileFromStart, CheckCmd: "echo"}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		assert.Nil(t, app.Start(ctx), startReturnMsg)
@@ -72,11 +78,14 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when start succeed stop is added to rollback stack", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{T: resapp.T{
 				StartCmd: "echo",
 				CheckCmd: "exit 2",
@@ -94,7 +103,7 @@ func TestStart(t *testing.T) {
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{T: resapp.T{
 				StartCmd: "noSuchAppTest",
 				StopCmd:  "touch " + filename,
@@ -107,11 +116,14 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when already started stop is not added to rollback stack", func(t *testing.T) {
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(
+		app := WithLoggerAndPgApp(
 			T{T: resapp.T{
 				StartCmd: "echo",
 				CheckCmd: "echo",
@@ -126,12 +138,15 @@ func TestStart(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	t.Run("execute stop command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
-		app := WithLoggerApp(T{T: resapp.T{
+		app := WithLoggerAndPgApp(T{T: resapp.T{
 			CheckCmd: "exit 2",
 			StopCmd:  "touch " + filename,
 		}})
@@ -145,7 +160,7 @@ func TestStop(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 		filename := filepath.Join(td, "succeed")
-		app := WithLoggerApp(T{T: resapp.T{StopCmd: "touch " + filename, CheckCmd: "bash -c false"}})
+		app := WithLoggerAndPgApp(T{T: resapp.T{StopCmd: "touch " + filename, CheckCmd: "bash -c false"}})
 		ctx, cancel := getActionContext()
 		defer cancel()
 		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")

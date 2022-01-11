@@ -24,9 +24,9 @@ func TestString(t *testing.T) {
 			Expected: "",
 		},
 		{
-			Name:     "/bin/true",
+			Name:     "/bin/ls",
 			Args:     nil,
-			Expected: "/bin/true",
+			Expected: "/bin/ls",
 		},
 		{
 			Name:     "/bin/ls",

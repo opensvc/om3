@@ -1,6 +1,8 @@
 package object
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -76,6 +78,9 @@ func TestConfigFile(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
+			if strings.Contains(testName, "cluster cfg, package install") && os.Getpid() != 0 {
+				t.Skip("skipped for non root user")
+			}
 			rawconfig.Load(map[string]string{
 				"osvc_root_path": test.root,
 			})
