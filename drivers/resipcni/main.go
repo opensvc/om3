@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"os/exec"
 	"path/filepath"
 
 	"opensvc.com/opensvc/core/actionresdeps"
@@ -18,6 +17,7 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/file"
 
 	"github.com/containernetworking/cni/pkg/types"
@@ -121,10 +121,41 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
-func (t T) getNSPID() (string, error) {
-	if t.NetNS == "" {
-		return t.NSPIDFile(), nil
+// getCNINetNS returns the value of the CNI_NETNS env var of cni commands
+func (t T) getCNINetNS() (string, error) {
+	if t.NetNS != "" {
+		return t.getResourceNSPath()
+	} else {
+		return t.getObjectNSPIDFile()
 	}
+}
+
+// getCNIContainerID returns the value of the CNI_CONTAINERID env var of cni commands
+func (t T) getCNIContainerID() (string, error) {
+	if t.NetNS != "" {
+		return t.getResourceNSPID()
+	} else {
+		return t.getObjectNSPID()
+	}
+}
+
+func (t T) objectNSPID() string {
+	return t.ObjectID.String()
+}
+
+func (t T) objectNSPIDFile() string {
+	return "/var/run/netns/" + t.objectNSPID()
+}
+
+func (t T) getObjectNSPID() (string, error) {
+	return t.objectNSPID(), nil
+}
+
+func (t T) getObjectNSPIDFile() (string, error) {
+	return t.objectNSPIDFile(), nil
+}
+
+func (t T) getResourceNSPID() (string, error) {
 	r := t.GetObjectDriver().ResourceByID(t.NetNS)
 	if r == nil {
 		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
@@ -136,69 +167,64 @@ func (t T) getNSPID() (string, error) {
 	return fmt.Sprint(i.PID()), nil
 }
 
-func (t T) getNS() (ns.NetNS, error) {
-	if t.NetNS == "" {
-		return ns.GetNS(t.NSPIDFile())
-	}
+func (t T) getResourceNSPath() (string, error) {
 	r := t.GetObjectDriver().ResourceByID(t.NetNS)
 	if r == nil {
-		return nil, fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
 	}
 	i, ok := r.(resource.NetNSPather)
 	if !ok {
-		return nil, fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
+		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
 	}
-	path, err := i.NetNSPath()
-	if err != nil {
+	return i.NetNSPath()
+}
+
+func (t T) getNS() (ns.NetNS, error) {
+	if path, err := t.getCNINetNS(); err != nil {
 		return nil, err
+	} else {
+		return ns.GetNS(path)
 	}
-	return ns.GetNS(path)
-}
-
-func (t T) NSPID() string {
-	return t.ObjectID.String()
-}
-
-func (t T) NSPIDFile() string {
-	return "/var/run/netns/" + t.NSPID()
 }
 
 func (t T) hasNetNS() bool {
 	if t.NetNS != "" {
 		return true
 	}
-	if _, err := netns.GetFromPath(t.NSPIDFile()); err != nil {
+	if _, err := netns.GetFromPath(t.objectNSPIDFile()); err != nil {
 		return false
 	}
 	return true
 }
 
-func (t T) addNetNS() error {
+func (t T) addObjectNetNS() error {
 	if t.NetNS != "" {
 		// the container is expected to already have a netns. don't even care to log info.
 		return nil
 	}
-	nsPIDFile := t.NSPIDFile()
+	nsPID := t.objectNSPID()
 	if t.hasNetNS() {
-		t.Log().Info().Msgf("netns %s already added", nsPIDFile)
+		t.Log().Info().Msgf("netns %s already added", nsPID)
 		return nil
 	}
-	if _, err := netns.NewNamed(nsPIDFile); err != nil {
+	t.Log().Info().Msgf("create new netns %s", nsPID)
+	if _, err := netns.NewNamed(nsPID); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t T) delNetNS() error {
+func (t T) delObjectNetNS() error {
 	if t.NetNS != "" {
 		// the container is expected to already have a netns. don't even care to log info.
 		return nil
 	}
+	nsPIDFile := t.objectNSPIDFile()
 	if !t.hasNetNS() {
-		t.Log().Info().Msgf("netns %s already deleted", t.NSPIDFile())
+		t.Log().Info().Msgf("netns %s already deleted", nsPIDFile)
 		return nil
 	}
-	_ = netns.DeleteNamed(t.NSPID())
+	_ = netns.DeleteNamed(t.objectNSPID())
 	return nil
 }
 
@@ -234,6 +260,12 @@ func (t *T) Start(ctx context.Context) error {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
+	if err := t.addObjectNetNS(); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		return t.delObjectNetNS()
+	})
 	if err := t.start(); err != nil {
 		return err
 	}
@@ -244,6 +276,16 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	if t.Status(ctx) == status.Down {
+		t.Log().Info().Msg("already down")
+		return nil
+	}
+	if err := t.stop(); err != nil {
+		return err
+	}
+	if err := t.delObjectNetNS(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -255,19 +297,23 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.NetNS == "" && !hasNetNS {
 		return status.Down
 	}
-	if _, ipnet, err := t.ipnet(); err != nil {
+	if netip, ipnet, err := t.ipnet(); err != nil {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
-	} else if ipnet != nil {
-		return status.Up
-	} else {
+	} else if ipnet == nil {
+		t.StatusLog().Warn("%s not found", t.NSDev)
 		return status.Down
+	} else if len(netip) == 0 {
+		t.StatusLog().Info("ip not found")
+		return status.Down
+	} else {
+		return status.Up
 	}
 }
 
 func (t T) Label() string {
 	var s string
-	if ip, ipnet, err := t.ipnet(); err == nil {
+	if ip, ipnet, _ := t.ipnet(); ipnet != nil {
 		ones, _ := ipnet.Mask.Size()
 		s = fmt.Sprintf("%s %s/%d", t.Network, ip, ones)
 	} else {
@@ -302,9 +348,23 @@ func (t T) ipnet() (net.IP, *net.IPNet, error) {
 		return netip, ipnet, err
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
-		if iface, err := net.InterfaceByName(t.NSDev); err != nil {
+		var iface *net.Interface
+		ifaces, err := net.Interfaces()
+		if err != nil {
 			return err
-		} else if addrs, err := iface.Addrs(); err != nil {
+		}
+		for _, i := range ifaces {
+			if i.Name == t.NSDev {
+				// found
+				iface = &i
+				break
+			}
+		}
+		if iface == nil {
+			// not found. not an error, because we want a clean Down state
+			return nil
+		}
+		if addrs, err := iface.Addrs(); err != nil {
 			return err
 		} else if len(addrs) == 0 {
 			return nil
@@ -340,16 +400,6 @@ func (t T) netConf() (types.NetConf, error) {
 }
 
 func (t T) stop() error {
-	if err := t.delNetNS(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t T) start() error {
-	if err := t.addNetNS(); err != nil {
-		return err
-	}
 	netConf, err := t.netConf()
 	if err != nil {
 		return err
@@ -359,37 +409,115 @@ func (t T) start() error {
 		return fmt.Errorf("plugin %s not found", netConf.Type)
 	}
 	bin := t.pluginFile(netConf.Type)
-	cmd := exec.Command(bin)
 
-	nsPath, err := t.getNS()
+	cniNetNS, err := t.getCNINetNS()
 	if err != nil {
 		return err
 	}
 
-	nsPID, err := t.getNSPID()
+	containerID, err := t.getCNIContainerID()
 	if err != nil {
 		return err
 	}
 
-	//args := fmt.Sprintf("DEBUG=%s;FOO=BAR", debugFileName)
-	cmd.Env = []string{
-		"CNI_COMMAND=ADD",
-		fmt.Sprintf("CNI_CONTAINERID=%s", nsPID),
-		fmt.Sprintf("CNI_NETNS=%s", nsPath),
+	env := []string{
+		"CNI_COMMAND=DEL",
+		fmt.Sprintf("CNI_CONTAINERID=%s", containerID),
+		fmt.Sprintf("CNI_NETNS=%s", cniNetNS),
 		fmt.Sprintf("CNI_IFNAME=%s", t.NSDev),
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
-		// Keep this last
-		//"CNI_ARGS=" + args,
 	}
 
-	// `{"name": "noop-test", "some":"stdin-json", "cniVersion": "0.3.1"}`
+	cmd := command.New(
+		command.WithName(bin),
+		command.WithEnv(env),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+	)
+
+	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
 	stdinData, err := t.netConfBytes()
 	if err != nil {
 		return err
 	}
-	cmd.Stdin = bytes.NewReader(stdinData)
-	if err := cmd.Run(); err != nil {
+	cmd.Cmd().Stdin = bytes.NewReader(stdinData)
+	t.Log().Info().
+		Stringer("cmd", cmd.Cmd()).
+		Str("input", string(stdinData)).
+		Strs("env", env).
+		Msg("run")
+	err = cmd.Run()
+	if outB := cmd.Stdout(); len(outB) > 0 {
+		t.Log().Info().Msg(string(outB))
+	}
+	if errB := cmd.Stderr(); len(errB) > 0 {
+		t.Log().Info().Msg(string(errB))
+	}
+	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (t T) start() error {
+	netConf, err := t.netConf()
+	if err != nil {
+		return err
+	}
+	plugin := t.pluginFile(netConf.Type)
+	if plugin == "" {
+		return fmt.Errorf("plugin %s not found", netConf.Type)
+	}
+	bin := t.pluginFile(netConf.Type)
+
+	cniNetNS, err := t.getCNINetNS()
+	if err != nil {
+		return err
+	}
+
+	containerID, err := t.getCNIContainerID()
+	if err != nil {
+		return err
+	}
+
+	env := []string{
+		"CNI_COMMAND=ADD",
+		fmt.Sprintf("CNI_CONTAINERID=%s", containerID),
+		fmt.Sprintf("CNI_NETNS=%s", cniNetNS),
+		fmt.Sprintf("CNI_IFNAME=%s", t.NSDev),
+		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
+	}
+
+	cmd := command.New(
+		command.WithName(bin),
+		command.WithEnv(env),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+	)
+
+	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
+	stdinData, err := t.netConfBytes()
+	if err != nil {
+		return err
+	}
+	cmd.Cmd().Stdin = bytes.NewReader(stdinData)
+	t.Log().Info().
+		Stringer("cmd", cmd.Cmd()).
+		Str("input", string(stdinData)).
+		Strs("env", env).
+		Msg("run")
+	err = cmd.Run()
+	if outB := cmd.Stdout(); len(outB) > 0 {
+		t.Log().Info().Msg(string(outB))
+	}
+	if errB := cmd.Stderr(); len(errB) > 0 {
+		t.Log().Info().Msg(string(errB))
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
