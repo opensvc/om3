@@ -303,7 +303,7 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 			// a volume resource, logged once in the volume object
 			// action(), relogged in the parent object action() and
 			// finally relogged in the objectionaction.T
-			t.Log().Error().Err(err).Msg("")
+			t.Log().Error().Stack().Err(err).Msg("")
 			err = errors.Wrap(ErrLogged, err.Error())
 		}
 		if t.needRollback(ctx) {

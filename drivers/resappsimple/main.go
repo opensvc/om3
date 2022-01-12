@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/actionrollback"
-
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -50,13 +49,14 @@ func (t T) Start(ctx context.Context) (err error) {
 	opts = append(opts, command.WithLogger(t.Log()))
 	cmd := command.New(opts...)
 	t.Log().Info().Stringer("cmd", cmd).Msg("run")
-	err = cmd.Start()
-	if err == nil {
+	if err := cmd.Start(); err != nil {
+		return err
+	} else {
 		actionrollback.Register(ctx, func() error {
 			return t.Stop(ctx)
 		})
 	}
-	return err
+	return nil
 }
 
 func (t *T) Stop(ctx context.Context) error {

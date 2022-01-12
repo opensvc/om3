@@ -1,9 +1,11 @@
 package logging
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -55,6 +57,32 @@ var (
 
 func init() {
 	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"}
+	zerolog.ErrorStackMarshaler = marshalStack
+}
+
+func marshalStack(err error) interface{} {
+	if !WithCaller {
+		return nil
+	}
+	s := fmt.Sprintf("%+v", err)
+	l := strings.Split(s, "\n")
+	n := len(l)
+	if n < 3 {
+		return nil
+	}
+
+	// drop msg line
+	n = n - 1
+	l = l[1:]
+
+	f := make([]string, 0)
+	for i := 0; i < n-1; i = i + 2 {
+		if l[i] == "\n" {
+			break
+		}
+		f = append(f, l[i]+" "+l[i+1][1:])
+	}
+	return f
 }
 
 // DisableDefaultConsoleWriterColor disable color on defauult console writer

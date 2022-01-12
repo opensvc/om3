@@ -119,7 +119,7 @@ func (t T) Stderr() []byte {
 // it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
 	if t.started {
-		return ErrAlreadyStarted
+		return errors.WithStack(ErrAlreadyStarted)
 	}
 	t.started = true
 	cmd := t.Cmd()
@@ -133,7 +133,7 @@ func (t *T) Start() (err error) {
 			if log != nil {
 				log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("command.Start() -> StdoutPipe()")
 			}
-			return err
+			return errors.WithStack(err)
 		}
 		t.closeAfterStart = append(t.closeAfterStart, r)
 		t.goroutine = append(t.goroutine, func() {
@@ -158,7 +158,7 @@ func (t *T) Start() (err error) {
 			if log != nil {
 				log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("command.Start() -> StderrPipe()")
 			}
-			return err
+			return errors.WithStack(err)
 		}
 		t.closeAfterStart = append(t.closeAfterStart, r)
 		t.goroutine = append(t.goroutine, func() {
@@ -232,7 +232,7 @@ func (t *T) Start() (err error) {
 		if log != nil {
 			log.WithLevel(t.logLevel).Err(err).Stringer("cmd", cmd).Msg("run")
 		}
-		return err
+		return errors.WithStack(err)
 	}
 	if cmd.Process != nil {
 		t.pid = cmd.Process.Pid
