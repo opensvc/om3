@@ -50,6 +50,7 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return listener.New(
 					listener.WithRoutineTracer(&t.TT),
+					listener.WithRootDaemon(t),
 				)
 			},
 		},
