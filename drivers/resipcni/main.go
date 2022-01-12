@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package resipcni
@@ -184,6 +185,8 @@ func (t T) getResourceNSPath() (string, error) {
 func (t T) getNS() (ns.NetNS, error) {
 	if path, err := t.getCNINetNS(); err != nil {
 		return nil, err
+	} else if path == "" {
+		return nil, nil
 	} else {
 		return ns.GetNS(path)
 	}
@@ -232,7 +235,7 @@ func (t T) delObjectNetNS() error {
 
 func (t *T) StatusInfo() map[string]interface{} {
 	data := make(map[string]interface{})
-	if ip, _, err := t.ipnet(); err == nil {
+	if ip, _, err := t.ipNet(); err == nil {
 		data["ipaddr"] = ip.String()
 	}
 	/*
@@ -295,11 +298,14 @@ func (t *T) Status(ctx context.Context) status.T {
 	if _, err := t.netConf(); err != nil {
 		t.StatusLog().Warn(fmt.Sprint(err))
 	}
-	hasNetNS := t.hasNetNS()
-	if t.NetNS == "" && !hasNetNS {
+	netns, err := t.getNS()
+	if err != nil {
 		return status.Down
 	}
-	if netip, ipnet, err := t.ipnet(); err != nil {
+	if netns == nil {
+		return status.Down
+	}
+	if netip, ipnet, err := t.nsIPNet(netns); err != nil {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
 	} else if ipnet == nil {
@@ -315,7 +321,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 func (t T) Label() string {
 	var s string
-	if ip, ipnet, _ := t.ipnet(); ipnet != nil {
+	if ip, ipnet, _ := t.ipNet(); ipnet != nil {
 		ones, _ := ipnet.Mask.Size()
 		s = fmt.Sprintf("%s %s/%d", t.Network, ip, ones)
 	} else {
@@ -340,7 +346,7 @@ func (t T) LinkTo() string {
 	return t.NetNS
 }
 
-func (t T) ipnet() (net.IP, *net.IPNet, error) {
+func (t T) ipNet() (net.IP, *net.IPNet, error) {
 	var (
 		ipnet *net.IPNet
 		netip net.IP
@@ -348,6 +354,17 @@ func (t T) ipnet() (net.IP, *net.IPNet, error) {
 	netns, err := t.getNS()
 	if err != nil {
 		return netip, ipnet, err
+	}
+	return t.nsIPNet(netns)
+}
+
+func (t T) nsIPNet(netns ns.NetNS) (net.IP, *net.IPNet, error) {
+	var (
+		ipnet *net.IPNet
+		netip net.IP
+	)
+	if netns == nil {
+		return netip, ipnet, nil
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
 		var iface *net.Interface

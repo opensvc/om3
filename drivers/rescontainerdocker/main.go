@@ -694,10 +694,14 @@ func (t *T) warnAttrDiff(attr, current, target string) {
 // Used by ip.netns and ip.route to configure network stuff in the container.
 func (t *T) NetNSPath() (string, error) {
 	inspect, err := cli().ContainerService().Inspect(context.Background(), t.ContainerName())
-	if err != nil {
+	switch {
+	case err == nil:
+		return inspect.NetworkSettings.SandboxKey, nil
+	case errdefs.IsNotFound(err):
+		return "", nil
+	default:
 		return "", err
 	}
-	return inspect.NetworkSettings.SandboxKey, nil
 }
 
 // PID implements the resource.PIDer optional interface.
