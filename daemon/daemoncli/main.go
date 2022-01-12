@@ -5,6 +5,10 @@ import (
 	"opensvc.com/opensvc/daemon/daemon"
 )
 
+var (
+	socketPathUds = "/tmp/lsnr_ux"
+)
+
 func Run() error {
 	main, err := daemon.RunDaemon()
 	if err != nil {
@@ -23,7 +27,23 @@ func Start() error {
 }
 
 func Stop() error {
-	cli, err := client.New(client.WithURL("raw:///tmp/lsnr_ux"))
+	cli, err := client.New(client.WithURL("raw://" + socketPathUds))
 	_, err = cli.NewPostDaemonStop().Do()
 	return err
+}
+
+func Running() bool {
+	var data []byte
+	cli, err := client.New(client.WithURL("raw://" + socketPathUds))
+	if err != nil {
+		return false
+	}
+	data, err = cli.NewGetDaemonRunning().Do()
+	if err != nil || string(data) != "running" {
+		return false
+	}
+	if string(data) == "running" {
+		return true
+	}
+	return false
 }
