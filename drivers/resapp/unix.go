@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package resapp
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/drivergroup"
@@ -233,8 +235,12 @@ func (t T) CmdArgs(s string, action string) ([]string, error) {
 		return nil, err
 	}
 	wrapArgs := t.toCaps().Argv()
+	prog := ""
+	if prog, err = os.Executable(); err != nil {
+		return nil, errors.Wrap(err, "lookup prog")
+	}
 	if len(wrapArgs) > 0 {
-		wrap := append([]string{os.Args[0], "exec"}, wrapArgs...)
+		wrap := append([]string{prog, "exec"}, wrapArgs...)
 		wrap = append(wrap, "--")
 		return append(wrap, baseCommandSlice...), nil
 	}
