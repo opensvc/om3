@@ -12,4 +12,9 @@ type (
 		MainStop() error
 		WaitDone()
 	}
+
+	RootManager interface {
+		Running() bool
+		StopAndQuit() error
+	}
 )
