@@ -36,6 +36,9 @@ type Config struct {
 
 	// MaxAge the max age in days to keep a logfile
 	MaxAge int
+
+	// WithCaller adds the file:line information of the logger caller
+	WithCaller bool
 }
 
 // Logger is the opensvc specific zerolog logger
@@ -44,6 +47,9 @@ type Logger struct {
 }
 
 var (
+	// WithCaller adds the file:line information of the logger caller
+	WithCaller bool
+
 	consoleWriter zerolog.ConsoleWriter
 )
 
@@ -76,11 +82,16 @@ func Configure(config Config) *Logger {
 	mw := io.MultiWriter(writers...)
 
 	// zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	logger := zerolog.New(mw).With().Timestamp().Logger()
+	l := zerolog.New(mw).With().Timestamp()
+	if config.WithCaller {
+		l = l.Caller()
+	}
+	logger := l.Logger()
 
 	logger.Debug().
 		Bool("fileLogging", config.FileLoggingEnabled).
 		Bool("jsonLogOutput", config.EncodeLogsAsJSON).
+		Bool("withCaller", config.WithCaller).
 		Str("logDirectory", config.Directory).
 		Str("fileName", config.Filename).
 		Int("maxSizeMB", config.MaxSize).
@@ -91,6 +102,7 @@ func Configure(config Config) *Logger {
 	return &Logger{
 		Logger: &logger,
 	}
+
 }
 
 func newRollingFile(config Config) (io.Writer, error) {

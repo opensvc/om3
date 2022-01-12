@@ -16,5 +16,6 @@ func ConfigureLog() *logging.Logger {
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
+		WithCaller:            logging.WithCaller,
 	})
 }

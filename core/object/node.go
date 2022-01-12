@@ -50,6 +50,7 @@ func (t *Node) init(opts ...funcopt.O) error {
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
+		WithCaller:            logging.WithCaller,
 	}).
 		With().
 		Str("n", hostname.Hostname()).

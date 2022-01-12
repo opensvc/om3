@@ -30,6 +30,7 @@ var (
 	selectorFlag string
 	serverFlag   string
 	debugFlag    bool
+	callerFlag   bool
 )
 
 var root = &cobra.Command{
@@ -93,10 +94,12 @@ func listNodes() []string {
 }
 
 func configureLogger() {
+
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
 	zerolog.MessageFieldName = "m"
+	logging.WithCaller = callerFlag
 
 	if colorLogFlag == "no" {
 		logging.DisableDefaultConsoleWriterColor()
@@ -116,6 +119,7 @@ func configureLogger() {
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
+		WithCaller:            logging.WithCaller,
 	}).
 		With().
 		Str("n", hostname.Hostname()).
@@ -211,6 +215,7 @@ func init() {
 	root.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")
+	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show caller <file>:<line> in logs")
 }
 
 // initConfig reads in config file and ENV variables if set.
