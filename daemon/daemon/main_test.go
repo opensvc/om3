@@ -91,16 +91,19 @@ func TestDaemon(t *testing.T) {
 		})
 	})
 
-	t.Run("RunDaemon", func(t *testing.T) {
+	t.Run("RunDaemon then StopDaemon", func(t *testing.T) {
 		main, err := RunDaemon()
 		require.NotNil(t, main)
 		require.Nil(t, err)
 		require.True(t, main.Enabled(), "Enable()")
 		require.True(t, main.Running(), "Running()")
-		require.Nil(t, main.StopDaemon())
-		require.False(t, main.Enabled(), "Enable()")
-		require.False(t, main.Running(), "Running()")
-		time.Sleep(10 * time.Millisecond)
-		require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
+		t.Run("StopDaemon", func(t *testing.T) {
+			require.Nil(t, main.StopDaemon())
+			require.False(t, main.Enabled(), "Enable()")
+			require.False(t, main.Running(), "Running()")
+			t.Run("ensure no more daemon routine", func(t *testing.T) {
+				require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
+			})
+		})
 	})
 }
