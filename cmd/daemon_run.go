@@ -4,7 +4,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"opensvc.com/opensvc/daemon/daemon"
+	"opensvc.com/opensvc/daemon/daemoncli"
 )
 
 var daemonRunCmd = &cobra.Command{
@@ -17,16 +17,10 @@ func init() {
 	daemonCmd.AddCommand(daemonRunCmd)
 }
 
-func runDaemon() error {
-	main, err := daemon.RunDaemon()
-	if err != nil {
-		log.Logger.Error().Err(err).Msg("RunDaemon")
+func daemonRunCmdRun(_ *cobra.Command, _ []string) error {
+	if err := daemoncli.Run(); err != nil {
+		log.Logger.Error().Err(err).Msg("daemoncli.Run")
 		return err
 	}
-	main.WaitDone()
 	return nil
-}
-
-func daemonRunCmdRun(_ *cobra.Command, _ []string) error {
-	return runDaemon()
 }
