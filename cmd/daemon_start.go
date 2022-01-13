@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"opensvc.com/opensvc/daemon/daemoncli"
 	"opensvc.com/opensvc/util/command"
 )
 
@@ -32,7 +33,10 @@ func init() {
 
 func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
 	if daemonStartForeground {
-		return runDaemon()
+		if err := daemoncli.Run(); err != nil {
+			log.Logger.Error().Err(err).Msg("daemoncli.Run")
+			return err
+		}
 	} else {
 		args := []string{"daemon", "run"}
 		if debugFlag {

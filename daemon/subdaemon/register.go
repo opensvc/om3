@@ -4,29 +4,29 @@ import (
 	"errors"
 )
 
-func (t *T) Register(sub MainManager) error {
+func (t *T) Register(sub Manager) error {
 	if !t.regActionEnabled() {
 		err := errors.New("can't register " + sub.Name() + " on disabled subRegister")
 		t.log.Error().Err(err).Msg("Register failed")
 		return err
 	}
-	subC := make(chan MainManager)
+	subC := make(chan Manager)
 	done := make(chan string)
-	t.regActionC <- registerAction{"register", subC, done}
+	t.regActionC <- registerAction{action: "register", managerC: subC, done: done}
 	subC <- sub
 	<-done
 	return nil
 }
 
-func (t *T) UnRegister(sub MainManager) error {
+func (t *T) UnRegister(sub Manager) error {
 	if !t.regActionEnabled() {
 		err := errors.New("can't unregister " + sub.Name() + " on disabled subRegister")
 		t.log.Error().Err(err).Msg("UnRegister failed")
 		return err
 	}
-	subC := make(chan MainManager)
+	subC := make(chan Manager)
 	done := make(chan string)
-	t.regActionC <- registerAction{"unregister", subC, done}
+	t.regActionC <- registerAction{action: "unregister", managerC: subC, done: done}
 	subC <- sub
 	<-done
 	return nil
@@ -91,8 +91,8 @@ func (t *T) subRegisterQuit() error {
 	return nil
 }
 
-func (t *T) subs() chan MainManager {
-	c := make(chan MainManager)
+func (t *T) subs() chan Manager {
+	c := make(chan Manager)
 	if !t.regActionEnabled() {
 		err := errors.New("can't get subs from disabled subRegister")
 		t.log.Error().Err(err).Msg("subs failed")

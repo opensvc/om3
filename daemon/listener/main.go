@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/enable"
+	"opensvc.com/opensvc/daemon/listener/lsnrraw"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -19,6 +20,7 @@ type (
 		loopDelay    time.Duration
 		loopEnabled  *enable.T
 		routineTrace routineTracer
+		rootDaemon   subdaemon.RootManager
 		routinehelper.TT
 	}
 	action struct {
@@ -28,6 +30,24 @@ type (
 	routineTracer interface {
 		Trace(string) func()
 		Stats() routinehelper.Stat
+	}
+
+	sub struct {
+		new        func(t *T) subdaemon.Manager
+		subActions subdaemon.Manager
+	}
+)
+
+var (
+	mandatorySubs = map[string]sub{
+		"listenerRaw": {
+			new: func(t *T) subdaemon.Manager {
+				return lsnrraw.New(
+					lsnrraw.WithRoutineTracer(&t.TT),
+					lsnrraw.WithRootDaemon(t.rootDaemon),
+				)
+			},
+		},
 	}
 )
 
@@ -59,6 +79,22 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	<-started
+	for subName, sub := range mandatorySubs {
+		sub.subActions = sub.new(t)
+		if err := sub.subActions.Init(); err != nil {
+			t.log.Err(err).Msgf("%s Init", subName)
+			return err
+		}
+		if err := t.Register(sub.subActions); err != nil {
+			t.log.Err(err).Msgf("%s register", subName)
+			return err
+		}
+		if err := sub.subActions.Start(); err != nil {
+			t.log.Err(err).Msgf("%s start", subName)
+			return err
+		}
+	}
+
 	t.log.Info().Msg("mgr started")
 	return nil
 }

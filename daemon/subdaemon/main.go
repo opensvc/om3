@@ -28,8 +28,8 @@ type (
 		name            string
 		log             zerolog.Logger
 		logName         string
-		subSvc          map[string]MainManager
-		main            MainManager
+		subSvc          map[string]Manager
+		main            Manager
 		mgrActionC      chan mgrAction
 		mgrActionEnable *enable.T
 		regActionC      chan registerAction
@@ -42,23 +42,13 @@ type (
 
 	registerAction struct {
 		action   string
-		managerC chan MainManager
+		managerC chan Manager
 		done     chan string
 	}
 
 	mgrAction struct {
 		do   string
 		done chan string
-	}
-
-	MainManager interface {
-		Name() string
-		Stop() error
-		MainStart() error
-		MainStop() error
-		Running() bool
-		Quit() error
-		WaitDone()
 	}
 )
 
@@ -134,6 +124,25 @@ func (t *T) Quit() error {
 	return nil
 }
 
+// StopAndQuit() stop and quit daemon
+func (t *T) StopAndQuit() error {
+	if err := t.Stop(); err != nil {
+		t.log.Error().Err(err).Msg("daemon Stop")
+		return err
+	}
+	done := make(chan bool)
+	go func() {
+		t.WaitDone()
+		done <- true
+	}()
+	if err := t.Quit(); err != nil {
+		t.log.Error().Err(err).Msg("daemon Quit")
+		return err
+	}
+	<-done
+	return nil
+}
+
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		regActionEnable: enable.New(),
@@ -163,6 +172,6 @@ func New(opts ...funcopt.O) *T {
 		Str("sid", xsession.ID).
 		Str("name", t.name).
 		Logger()
-	t.subSvc = make(map[string]MainManager)
+	t.subSvc = make(map[string]Manager)
 	return t
 }

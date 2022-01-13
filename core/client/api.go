@@ -10,6 +10,14 @@ func (t T) NewGetDaemonStatus() *api.GetDaemonStatus {
 	return api.NewGetDaemonStatus(t)
 }
 
+func (t T) NewGetDaemonRunning() *api.GetDaemonRunning {
+	return api.NewGetDaemonRunning(t)
+}
+
+func (t T) NewPostDaemonStop() *api.PostDaemonStop {
+	return api.NewPostDaemonStop(t)
+}
+
 func (t T) NewGetEvents() *api.GetEvents {
 	return api.NewGetEvents(t)
 }
