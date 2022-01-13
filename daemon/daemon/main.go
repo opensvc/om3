@@ -34,26 +34,24 @@ type (
 		done chan string
 	}
 	sub struct {
-		new        func(t *T) subber
-		subActions subber
-	}
-	subber interface {
-		subdaemon.MainManager
-		Init() error
-		Start() error
+		new        func(t *T) subdaemon.Manager
+		subActions subdaemon.Manager
 	}
 )
 
 var (
 	mandatorySubs = map[string]sub{
 		"monitor": {
-			new: func(t *T) subber {
+			new: func(t *T) subdaemon.Manager {
 				return monitor.New(monitor.WithRoutineTracer(&t.TT))
 			},
 		},
 		"listener": {
-			new: func(t *T) subber {
-				return listener.New(listener.WithRoutineTracer(&t.TT))
+			new: func(t *T) subdaemon.Manager {
+				return listener.New(
+					listener.WithRoutineTracer(&t.TT),
+					listener.WithRootDaemon(t),
+				)
 			},
 		},
 	}
@@ -79,7 +77,7 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-// RunDaemon() starts main daemon
+// RunDaemon starts main daemon
 func RunDaemon() (*T, error) {
 	main := New(WithRoutineTracer(routinehelper.NewTracer()))
 
@@ -94,26 +92,7 @@ func RunDaemon() (*T, error) {
 	return main, nil
 }
 
-// StopDaemon() stop main daemon and wait
-func (t *T) StopDaemon() error {
-	if err := t.Stop(); err != nil {
-		t.log.Error().Err(err).Msg("daemon Stop")
-		return err
-	}
-	done := make(chan bool)
-	go func() {
-		t.WaitDone()
-		done <- true
-	}()
-	if err := t.Quit(); err != nil {
-		t.log.Error().Err(err).Msg("daemon Quit")
-		return err
-	}
-	<-done
-	return nil
-}
-
-// MainStart() starts loop, mandatory subdaemons
+// MainStart starts loop, mandatory subdaemons
 func (t *T) MainStart() error {
 	t.log.Info().Msg("mgr starting")
 	started := make(chan bool)

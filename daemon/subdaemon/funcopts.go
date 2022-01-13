@@ -13,7 +13,7 @@ func WithName(name string) funcopt.O {
 	})
 }
 
-func WithMainManager(mgr MainManager) funcopt.O {
+func WithMainManager(mgr Manager) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.main = mgr

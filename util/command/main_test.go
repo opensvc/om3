@@ -149,7 +149,7 @@ func TestStart(t *testing.T) {
 	t.Run("can not call Start twice", func(t *testing.T) {
 		cmd := New(WithName("pwd"))
 		assert.Nil(t, cmd.Start())
-		assert.Equal(t, ErrAlreadyStarted, cmd.Start())
+		assert.Error(t, ErrAlreadyStarted, cmd.Start())
 	})
 }
 
@@ -157,7 +157,7 @@ func TestRun(t *testing.T) {
 	t.Run("can not call Run twice", func(t *testing.T) {
 		cmd := New(WithName("pwd"))
 		assert.Nil(t, cmd.Run())
-		assert.Equal(t, ErrAlreadyStarted, cmd.Run())
+		assert.Error(t, ErrAlreadyStarted, cmd.Run())
 	})
 }
 
