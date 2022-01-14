@@ -22,6 +22,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
+	"opensvc.com/opensvc/util/loop"
 )
 
 const (
@@ -360,12 +361,18 @@ func (t T) device() *device.T {
 
 func (t T) devpath() string {
 	// lazy ref
-	switch {
-	case strings.HasPrefix(t.Device, "/"):
-		return t.Device
-	default:
+	if !strings.HasPrefix(t.Device, "/") {
 		return t.deviceFromVolume(t.Device)
 	}
+	if file.ExistsAndRegular(t.Device) {
+		if lo, err := loop.New().FileGet(t.Device); err != nil {
+			t.Log().Debug().Err(err).Msg("get loop info")
+			return ""
+		} else {
+			return lo.Name
+		}
+	}
+	return t.Device
 }
 
 func (t T) deviceFromVolume(p string) string {
