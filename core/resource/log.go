@@ -33,6 +33,10 @@ func push(l *StatusLog, lvl Level, s string, args ...interface{}) {
 	l.entries = append(l.entries, entry)
 }
 
+func (l *StatusLog) Reset() {
+	l.entries = l.entries[:0]
+}
+
 // Error append an error message to the log
 func (l *StatusLog) Error(s string, args ...interface{}) {
 	push(l, "error", s, args...)
