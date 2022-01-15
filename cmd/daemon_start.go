@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -27,18 +29,18 @@ func init() {
 		"foreground",
 		"f",
 		false,
-		"Run the deamon in foreground mode.")
+		"Run the daemon in foreground mode.")
 
 }
 
 func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
 	if daemonStartForeground {
-		if err := daemoncli.Run(); err != nil {
+		if err := daemoncli.Start(); err != nil {
 			log.Logger.Error().Err(err).Msg("daemoncli.Run")
-			return err
+			os.Exit(1)
 		}
 	} else {
-		args := []string{"daemon", "run"}
+		args := []string{"daemon", "start", "--foreground"}
 		if debugFlag {
 			args = append(args, "--debug")
 		}
@@ -46,9 +48,14 @@ func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
 			command.WithName(os.Args[0]),
 			command.WithArgs(args),
 		)
-		if err := cmd.Start(); err != nil {
-			log.Logger.Error().Err(err).Msg("daemon run")
+		checker := func() error {
+			time.Sleep(60 * time.Millisecond)
+			if err := daemoncli.WaitRunning(); err != nil {
+				return errors.New("daemon not running")
+			}
+			return nil
 		}
+		daemoncli.LockCmdExit(cmd, checker, "daemon start")
 	}
 	return nil
 }
