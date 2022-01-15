@@ -52,6 +52,21 @@ func Stop() error {
 	return stop()
 }
 
+// ReStart function will restart daemon with internal lock protection
+func ReStart() error {
+	release, err := getLock("Restart")
+	if err != nil {
+		return err
+	}
+	d, err := restart()
+	release()
+	if err != nil {
+		return err
+	}
+	d.WaitDone()
+	return nil
+}
+
 // Running function detect daemon status using api
 //
 // it returns true is daemon is running, else false
@@ -139,6 +154,17 @@ func start() (waitDowner, error) {
 		return nil, err
 	}
 	log.Debug().Msg("cli-start daemon started")
+	return d, nil
+}
+
+func restart() (waitDowner, error) {
+	if err := stop(); err != nil {
+		return nil, err
+	}
+	d, err := start()
+	if err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
