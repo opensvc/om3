@@ -331,7 +331,7 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
-		r.Log().Debug().Str("kw", kw.Option).Msg("")
+		//r.Log().Debug().Str("kw", kw.Option).Msg("")
 		k := key.New(rid, kw.Option)
 		val, err := t.config.EvalKeywordAs(k, kw, "")
 		if err != nil {
@@ -414,7 +414,7 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 		deps := i.ActionResourceDeps()
 		t.actionResourceDeps.RegisterSlice(deps)
 	}
-	r.Log().Debug().Msgf("configured resource: %#v", r)
+	r.Log().Debug().Msgf("configured resource: %+v", r)
 	return nil
 }
 

@@ -768,6 +768,7 @@ func Stop(ctx context.Context, r Driver) error {
 
 // Status evaluates the status of a resource interfacer
 func Status(ctx context.Context, r Driver) status.T {
+	r.StatusLog().Reset()
 	s := status.NotApplicable
 	if !r.IsDisabled() {
 		Setenv(r)

@@ -71,16 +71,12 @@ func marshalStack(err error) interface{} {
 		return nil
 	}
 
-	// drop msg line
-	n = n - 1
-	l = l[1:]
-
 	f := make([]string, 0)
-	for i := 0; i < n-1; i = i + 2 {
-		if l[i] == "\n" {
-			break
+	for i := 0; i < n-1; i = i + 1 {
+		if !strings.HasPrefix(l[i], "\t") || i == 0 {
+			continue
 		}
-		f = append(f, l[i]+" "+l[i+1][1:])
+		f = append(f, l[i-1]+" "+l[i][1:])
 	}
 	return f
 }

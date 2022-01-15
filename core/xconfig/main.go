@@ -894,7 +894,7 @@ func (t T) dereferenceNodeKey(ref string, impersonate string) (string, error) {
 }
 
 func (t T) dereferenceKey(ref string, section string, impersonate string) (string, error) {
-	t.Referrer.Log().Debug().Msgf("dereference well known key %s", ref)
+	t.Referrer.Log().Debug().Msgf("dereference well known key %s from section %s context", ref, section)
 	refKey := key.Parse(ref)
 	if refKey.Section == "" {
 		refKey.Section = section

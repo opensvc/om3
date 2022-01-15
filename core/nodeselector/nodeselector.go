@@ -112,7 +112,11 @@ func (t *T) Expand() []string {
 		log.Debug().Msg(err.Error())
 		return t.nodes
 	}
-	log.Debug().Msgf("%d nodes selected", len(t.nodes))
+	log.Debug().
+		Bool("local", t.local).
+		Str("selector", t.SelectorExpression).
+		Strs("result", t.nodes).
+		Msg("expand node selector")
 	return t.nodes
 }
 
@@ -163,10 +167,6 @@ func (t *T) expand() error {
 			}
 		}
 	}
-	log.Debug().
-		Str("selector", t.SelectorExpression).
-		Str("mode", "local").
-		Msgf("expand node selection")
 	selector := t.SelectorExpression
 	for _, s := range strings.Fields(selector) {
 		pset, err := t.expandOne(s)
