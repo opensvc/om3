@@ -78,7 +78,6 @@ func (t *T) MainStart() error {
 		defer t.Trace(t.Name() + "-loop")()
 		t.loop(started)
 	}()
-	<-started
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
 		if err := sub.subActions.Init(); err != nil {
@@ -94,7 +93,7 @@ func (t *T) MainStart() error {
 			return err
 		}
 	}
-
+	<-started
 	t.log.Info().Msg("mgr started")
 	return nil
 }
