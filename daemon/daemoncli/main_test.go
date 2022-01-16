@@ -2,17 +2,28 @@ package daemoncli
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"opensvc.com/opensvc/util/usergroup"
 )
 
+func privileged() bool {
+	ok, err := usergroup.IsPrivileged()
+	if err == nil && ok {
+		return true
+	}
+	return false
+}
+
 func TestDaemonStartThenStop(t *testing.T) {
+	if !privileged() {
+		t.Skip("need root")
+	}
 	require.False(t, Running())
 	go func() {
 		require.Nil(t, Start())
 	}()
-	time.Sleep(100 * time.Millisecond)
 	require.Nil(t, WaitRunning())
 	require.True(t, Running())
 	require.Nil(t, Stop())
@@ -20,11 +31,13 @@ func TestDaemonStartThenStop(t *testing.T) {
 }
 
 func TestDaemonReStartThenStop(t *testing.T) {
+	if !privileged() {
+		t.Skip("need root")
+	}
 	require.False(t, Running())
 	go func() {
 		require.Nil(t, ReStart())
 	}()
-	time.Sleep(100 * time.Millisecond)
 	require.Nil(t, WaitRunning())
 	require.True(t, Running())
 	require.Nil(t, Stop())
@@ -32,6 +45,9 @@ func TestDaemonReStartThenStop(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
+	if !privileged() {
+		t.Skip("need root")
+	}
 	require.False(t, Running())
 	require.Nil(t, Stop())
 	require.False(t, Running())
