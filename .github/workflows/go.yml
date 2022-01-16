@@ -52,8 +52,5 @@ jobs:
       - name: chown cache
         run: sudo chown -R runner:docker $GOPATH $GOCACHE
 
-      - name: Build
-        run: GOCACHE=$GOCACHE GOPATH=$GOPATH go build -v .
-
       - name: Test
         run: GOCACHE=$GOCACHE GOPATH=$GOPATH go test ./...
