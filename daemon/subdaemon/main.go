@@ -99,6 +99,12 @@ func (t *T) Init() error {
 func (t *T) WaitDone() {
 	t.log.Debug().Msg("WaitDone for Daemon ended")
 	<-t.done
+	select {
+	case <-t.done:
+	default:
+		// Don't block other waiters
+		close(t.done)
+	}
 	t.log.Info().Msg("Daemon ended")
 }
 
