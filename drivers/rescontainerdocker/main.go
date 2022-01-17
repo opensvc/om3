@@ -400,8 +400,50 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
+func parseImage(s string) (repo string, img string, tag string, err error) {
+	l := strings.SplitN(s, "/", 2)
+	switch len(l) {
+	case 1:
+		repo = "dockerhub.io"
+		s = l[0]
+	case 2:
+		repo = l[0]
+		s = l[1]
+	default:
+		err = fmt.Errorf("image must contain 0 or 1 slash")
+		return
+	}
+	l = strings.SplitN(s, ":", 2)
+	switch len(l) {
+	case 1:
+		img = l[0]
+		tag = "latest"
+	case 2:
+		img = l[0]
+		tag = l[1]
+	default:
+		err = fmt.Errorf("image must contain 0 or 1 column")
+		return
+	}
+	return
+}
+
 func (t T) pull(ctx context.Context) error {
-	return fmt.Errorf("TODO: pull()")
+	repo, img, tag, err := parseImage(t.Image)
+	if err != nil {
+		return err
+	}
+	t.Log().Info().
+		Str("repo", repo).
+		Str("image", img).
+		Str("tag", tag).
+		Msg("pull image")
+	_, err = cli().ImageService().Pull(ctx, func(config *image.PullConfig) {
+		config.Image = img
+		config.Tag = tag
+		config.Repo = repo
+	})
+	return err
 }
 
 func (t T) labels() (map[string]string, error) {
@@ -490,12 +532,14 @@ func (t T) Start(ctx context.Context) error {
 			return nil
 		} else {
 			if t.needRemove() {
-				t.Log().Info().Str("name", name).Msgf("remove leftover")
+				t.Log().Info().Str("name", name).Msgf("remove leftover container")
 				if err := cs.Remove(ctx, name); err != nil {
 					return err
 				}
 				if t.ImagePullPolicy == AlwaysPolicy {
-					t.pull(ctx)
+					if err := t.pull(ctx); err != nil {
+						return err
+					}
 				}
 				c, err := t.create(ctx)
 				if err != nil {
@@ -503,14 +547,20 @@ func (t T) Start(ctx context.Context) error {
 				}
 				return t.start(ctx, c)
 			} else {
-				t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("start")
+				t.Log().Info().Str("name", name).Str("id", inspect.ID).Msg("start container")
 				c := cs.NewContainer(ctx, inspect.ID)
 				return t.start(ctx, c)
 			}
 		}
 	} else {
 		if t.ImagePullPolicy == AlwaysPolicy {
-			t.pull(ctx)
+			if err := t.pull(ctx); err != nil {
+				return err
+			}
+		} else if _, err = t.imageInspect(); err != nil {
+			if err := t.pull(ctx); err != nil {
+				return err
+			}
 		}
 		c, err := t.create(ctx)
 		if err != nil {
@@ -632,7 +682,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Str("name", name).
 		Bytes("config", configStr).
 		Bytes("hostConfig", hostConfigStr).
-		Msgf("create")
+		Msg("create container")
 	c, err := cli().ContainerService().Create(
 		ctx,
 		container.WithCreateName(name),
@@ -665,14 +715,14 @@ func (t T) Stop(ctx context.Context) error {
 	if (err == nil && !inspect.State.Running) || errdefs.IsNotFound(err) {
 		t.Log().Info().Str("name", name).Msg("already stopped")
 	} else {
-		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("stop")
+		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msg("stop container")
 		if err := c.Stop(ctx); err != nil {
 			return err
 		}
 	}
 	if t.needRemove() && !errdefs.IsNotFound(err) {
 		if !inspect.HostConfig.AutoRemove {
-			t.Log().Info().Str("name", name).Msgf("remove")
+			t.Log().Info().Str("name", name).Msg("remove container")
 			return cli().ContainerService().Remove(ctx, name)
 		}
 		xs, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionRemoved))
