@@ -45,8 +45,8 @@ func (t *T) start() error {
 			go t.handle(conn)
 		}
 	}()
-	<-c
 	t.listener = &listener
+	<-c
 	t.log.Info().Msg("listener started")
 	return nil
 }

@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -13,37 +13,38 @@ import (
 )
 
 var (
-	daemonStartCmd = &cobra.Command{
-		Use:     "start",
+	daemonRestartCmd = &cobra.Command{
+		Use:     "restart",
 		Short:   "Start the daemon or a daemon thread pointed by '--thread-id'.",
-		Aliases: []string{"star"},
-		RunE:    daemonStartCmdRun,
+		Aliases: []string{"restart"},
+		RunE:    daemonRestartCmdRun,
 	}
-	daemonStartForeground bool
+	daemonRestartForeground bool
 )
 
 func init() {
-	daemonCmd.AddCommand(daemonStartCmd)
-	daemonStartCmd.Flags().BoolVarP(
-		&daemonStartForeground,
+	daemonCmd.AddCommand(daemonRestartCmd)
+	daemonRestartCmd.Flags().BoolVarP(
+		&daemonRestartForeground,
 		"foreground",
 		"f",
 		false,
-		"Run the daemon in foreground mode.")
+		"Restart the daemon in foreground mode.")
 
 }
 
-func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
-	if daemonStartForeground {
-		if err := daemoncli.Start(); err != nil {
-			log.Logger.Error().Err(err).Msg("daemoncli.Run")
+func daemonRestartCmdRun(_ *cobra.Command, _ []string) error {
+	if daemonRestartForeground {
+		if err := daemoncli.ReStart(); err != nil {
+			log.Logger.Error().Err(err).Msg("daemoncli.Restart")
 			os.Exit(1)
 		}
 	} else {
-		args := []string{"daemon", "start", "--foreground"}
+		args := []string{"daemon", "restart"}
 		if debugFlag {
 			args = append(args, "--debug")
 		}
+		args = append(args, "--foreground")
 		cmd := command.New(
 			command.WithName(os.Args[0]),
 			command.WithArgs(args),
@@ -55,7 +56,7 @@ func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
 			}
 			return nil
 		}
-		daemoncli.LockCmdExit(cmd, checker, "daemon start")
+		daemoncli.LockCmdExit(cmd, checker, "daemon restart")
 	}
 	return nil
 }
