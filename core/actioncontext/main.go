@@ -15,6 +15,9 @@ type (
 		Options interface{}
 		Props   objectactionprops.T
 	}
+	isCroner interface {
+		IsCron() bool
+	}
 	isConfirmer interface {
 		IsConfirm() bool
 	}
@@ -79,6 +82,13 @@ func To(ctx context.Context) string {
 func IsConfirm(ctx context.Context) bool {
 	if o, ok := Value(ctx).Options.(isConfirmer); ok {
 		return o.IsConfirm()
+	}
+	return false
+}
+
+func IsCron(ctx context.Context) bool {
+	if o, ok := Value(ctx).Options.(isCroner); ok {
+		return o.IsCron()
 	}
 	return false
 }

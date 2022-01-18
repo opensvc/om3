@@ -283,11 +283,15 @@ func (t T) handleConfirmation(ctx context.Context) error {
 		return nil
 	}
 	if actioncontext.IsConfirm(ctx) {
-		t.Log().Info().Msg("run confirmed by command line option")
+		t.Log().Info().Msg("run confirmed by --confirm command line option")
 		return nil
 	}
-	if !isatty.IsTerminal(os.Stdout.Fd()) {
-		return nil
+	if actioncontext.IsCron(ctx) {
+		// as set by the daemon scheduler subsystem
+		return fmt.Errorf("run aborted (--cron)")
+	}
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		return fmt.Errorf("run aborted (stdin is not a tty)")
 	}
 	description := fmt.Sprintf(`The resource %s requires a run confirmation.
 Please make sure you fully understand its role and effects before confirming the run.

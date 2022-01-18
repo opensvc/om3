@@ -94,6 +94,9 @@ type (
 func (t OptDisableRollback) IsRollbackDisabled() bool {
 	return t.DisableRollback
 }
+func (t OptCron) IsCron() bool {
+	return t.Cron
+}
 func (t OptConfirm) IsConfirm() bool {
 	return t.Confirm
 }
