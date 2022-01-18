@@ -30,7 +30,6 @@ const (
 	driverName  = "host"
 
 	tagNonRouted = "nonrouted"
-	tagNoAction  = "noaction"
 )
 
 type (
@@ -258,7 +257,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 func (t T) Abort(ctx context.Context) bool {
-	if t.Tags.Has(tagNonRouted) || t.Tags.Has(tagNoAction) {
+	if t.Tags.Has(tagNonRouted) || t.IsActionDisabled() {
 		return false // let start fail with an explicit error message
 	}
 	if t.ipaddr() == nil {

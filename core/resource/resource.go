@@ -61,6 +61,7 @@ type (
 		IsStandby() bool
 		IsShared() bool
 		IsMonitored() bool
+		IsStatusDisabled() bool
 		RestartCount() int
 		MatchRID(string) bool
 		MatchSubset(string) bool
@@ -303,8 +304,12 @@ func NewResourceFunc(t driverid.T) func() Driver {
 // IsOptional returns true if the resource definition contains optional=true.
 // An optional resource does not break an object action on error.
 //
+// Resource having actions disabled are always considered optional, because
+// there is nothing we can do to change the state, which would cause
+// orchestration loops.
+//
 func (t T) IsOptional() bool {
-	if t.MatchTag("noaction") {
+	if t.IsActionDisabled() {
 		return true
 	}
 	return t.Optional
@@ -328,6 +333,18 @@ func (t T) IsShared() bool {
 // IsMonitored returns true if the resource definition container monitor=true.
 func (t T) IsMonitored() bool {
 	return t.Monitor
+}
+
+// IsStatusDisabled returns true if the resource definition contains tag=nostatus ...
+// In this case, the resource status is always n/a
+func (t T) IsStatusDisabled() bool {
+	return t.MatchTag("nostatus")
+}
+
+// IsActionDisabled returns true if the resource definition contains tag=noaction ...
+// In this case, the resource actions like stop and start are skipped.
+func (t T) IsActionDisabled() bool {
+	return t.MatchTag("noaction")
 }
 
 // RestartCount returns the value of the Restart field
@@ -769,6 +786,9 @@ func Stop(ctx context.Context, r Driver) error {
 // Status evaluates the status of a resource interfacer
 func Status(ctx context.Context, r Driver) status.T {
 	r.StatusLog().Reset()
+	if r.IsStatusDisabled() {
+		r.StatusLog().Info("nostatus")
+	}
 	s := status.NotApplicable
 	if !r.IsDisabled() {
 		Setenv(r)
