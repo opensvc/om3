@@ -14,6 +14,10 @@ var Tags = map[string]Opt{
 		Long: "confirm",
 		Desc: "confirm a run action configured to ask for confirmation. this can be used when scripting the run or triggering it from the api.",
 	},
+	"cron": Opt{
+		Long: "cron",
+		Desc: "run the action as if executed by the daemon. for example, the run action requirements error message are disabled.",
+	},
 	"disable-rollback": Opt{
 		Long: "disable-rollback",
 		Desc: "on action error, do not return activated resources to their previous state",

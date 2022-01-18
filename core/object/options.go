@@ -50,6 +50,11 @@ type (
 		Confirm bool `flag:"confirm"`
 	}
 
+	// OptCron contains the cron option
+	OptCron struct {
+		Cron bool `flag:"cron"`
+	}
+
 	// OpTo sets a barrier when iterating over a resource lister
 	OptTo struct {
 		To     string `flag:"to"`

@@ -202,6 +202,10 @@ const (
 	Post
 )
 
+var (
+	ErrReqNotMet = errors.New("")
+)
+
 // FlagString returns a one character representation of the type instance.
 func (t MonitorFlag) FlagString() string {
 	if t {
@@ -639,7 +643,7 @@ func StatusCheckRequires(ctx context.Context, r Driver) error {
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
-		return fmt.Errorf("action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+		return errors.Wrapf(ErrReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met
 	return nil
@@ -665,12 +669,15 @@ func checkRequires(ctx context.Context, r Driver) error {
 		} else {
 			timeout = time.Minute
 		}
-		r.Log().Info().Msgf("requirement not met yet. wait %s", timeout.Round(time.Second))
-		state = sb.Wait(rid, timeout)
-		if reqStates.Has(state) {
-			continue // requirement met
+		switch props.Name {
+		case "start", "stop", "provision", "unprovision", "deploy", "purge":
+			r.Log().Info().Msgf("requirement not met yet. wait %s", timeout.Round(time.Second))
+			state = sb.Wait(rid, timeout)
+			if reqStates.Has(state) {
+				continue // requirement met
+			}
 		}
-		return fmt.Errorf("action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+		return errors.Wrapf(ErrReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met. flag a status transition as pending in the bus.
 	sb.Pending(r.RID())
