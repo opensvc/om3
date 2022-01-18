@@ -44,6 +44,7 @@ func init() {
 		cmdStatus           commands.CmdObjectStatus
 		cmdStop             commands.CmdObjectStop
 		cmdSyncResync       commands.CmdObjectSyncResync
+		cmdThaw             commands.CmdObjectThaw
 		cmdUnfreeze         commands.CmdObjectUnfreeze
 		cmdUnprovision      commands.CmdObjectUnprovision
 		cmdUnset            commands.CmdObjectUnset
@@ -68,6 +69,7 @@ func init() {
 		cmdStart.Init(kind, head, &selectorFlag)
 		cmdStatus.Init(kind, head, &selectorFlag)
 		cmdStop.Init(kind, head, &selectorFlag)
+		cmdThaw.Init(kind, head, &selectorFlag)
 		cmdUnfreeze.Init(kind, head, &selectorFlag)
 		cmdUnprovision.Init(kind, head, &selectorFlag)
 		cmdUnset.Init(kind, head, &selectorFlag)
