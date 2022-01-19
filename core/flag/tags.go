@@ -97,6 +97,14 @@ var Tags = map[string]Opt{
 		Desc:    "a fnmatch key name filter",
 		Default: "**",
 	},
+	"networkstatusname": Opt{
+		Long: "name",
+		Desc: "filter on a network name",
+	},
+	"networkstatusverbose": Opt{
+		Long: "verbose",
+		Desc: "include network addresses",
+	},
 	"node": Opt{
 		Long: "node",
 		Desc: "execute on a list of nodes",

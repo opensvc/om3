@@ -344,7 +344,13 @@ func (t StatusList) Add(p Pooler, withUsage bool) StatusList {
 	return StatusList(l)
 }
 
-func (t StatusList) Render() string {
+func (t StatusList) Render(verbose bool) string {
+	nt := t
+	if !verbose {
+		for i, _ := range nt {
+			nt[i].Volumes = []VolumeStatus{}
+		}
+	}
 	return t.Tree().Render()
 }
 
