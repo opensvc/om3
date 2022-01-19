@@ -50,6 +50,10 @@ func (t T) NewGetPools() *api.GetPools {
 	return api.NewGetPools(t)
 }
 
+func (t T) NewGetNetworks() *api.GetNetworks {
+	return api.NewGetNetworks(t)
+}
+
 func (t T) NewPostKey() *api.PostKey {
 	return api.NewPostKey(t)
 }
