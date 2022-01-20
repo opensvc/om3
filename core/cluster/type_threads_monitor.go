@@ -83,27 +83,27 @@ func (t Status) GetObjectStatus(p path.T) object.Status {
 	data.Object, _ = t.Monitor.Services[ps]
 	for nodename, ndata := range t.Monitor.Nodes {
 		var ok bool
-		instance := object.InstanceStates{}
-		instance.Node.Frozen = ndata.Frozen
-		instance.Node.Name = nodename
-		instance.Status, ok = ndata.Services.Status[ps]
+		instanceStates := instance.States{}
+		instanceStates.Node.Frozen = ndata.Frozen
+		instanceStates.Node.Name = nodename
+		instanceStates.Status, ok = ndata.Services.Status[ps]
 		if !ok {
 			continue
 		}
-		instance.Config, ok = ndata.Services.Config[ps]
+		instanceStates.Config, ok = ndata.Services.Config[ps]
 		if !ok {
 			continue
 		}
-		data.Instances[nodename] = instance
-		for _, relative := range instance.Status.Parents {
+		data.Instances[nodename] = instanceStates
+		for _, relative := range instanceStates.Status.Parents {
 			ps := relative.String()
 			data.Parents[ps] = t.Monitor.Services[ps]
 		}
-		for _, relative := range instance.Status.Children {
+		for _, relative := range instanceStates.Status.Children {
 			ps := relative.String()
 			data.Children[ps] = t.Monitor.Services[ps]
 		}
-		for _, relative := range instance.Status.Slaves {
+		for _, relative := range instanceStates.Status.Slaves {
 			ps := relative.String()
 			data.Slaves[ps] = t.Monitor.Services[ps]
 		}

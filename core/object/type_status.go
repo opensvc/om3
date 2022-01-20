@@ -11,7 +11,6 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/render/tree"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -21,7 +20,7 @@ type (
 		Path      path.T                      `json:"path"`
 		Compat    bool                        `json:"compat"`
 		Object    AggregatedStatus            `json:"service"`
-		Instances map[string]InstanceStates   `json:"instances"`
+		Instances map[string]instance.States  `json:"instances"`
 		Parents   map[string]AggregatedStatus `json:"parents,omitempty"`
 		Children  map[string]AggregatedStatus `json:"children,omitempty"`
 		Slaves    map[string]AggregatedStatus `json:"slaves,omitempty"`
@@ -35,19 +34,6 @@ type (
 		Frozen      string        `json:"frozen,omitempty"`
 		Placement   string        `json:"placement,omitempty"`
 		Provisioned provisioned.T `json:"provisioned,omitempty"`
-	}
-
-	// InstanceStates groups config and status of the object as seen by the daemon.
-	InstanceStates struct {
-		Node   InstanceNode    `json:"node,omitempty"`
-		Config instance.Config `json:"config,omitempty"`
-		Status instance.Status `json:"status,omitempty"`
-	}
-
-	// InstanceNode contains the node information displayed in print status.
-	InstanceNode struct {
-		Name   string      `json:"name"`
-		Frozen timestamp.T `json:"frozen,omitempty"`
 	}
 )
 
@@ -153,7 +139,7 @@ func (t Status) descString() string {
 // NewObjectStatus allocates and return a struct to host an objet full state dataset.
 func NewObjectStatus() *Status {
 	t := &Status{}
-	t.Instances = make(map[string]InstanceStates)
+	t.Instances = make(map[string]instance.States)
 	t.Parents = make(map[string]AggregatedStatus)
 	t.Children = make(map[string]AggregatedStatus)
 	t.Slaves = make(map[string]AggregatedStatus)

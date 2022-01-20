@@ -1,4 +1,4 @@
-package object
+package instance
 
 import (
 	"strings"
@@ -11,13 +11,13 @@ import (
 )
 
 // Render returns a human friendly string representation of the type instance.
-func (t InstanceStates) Render() string {
+func (t States) Render() string {
 	newTree := t.Tree()
 	return newTree.Render()
 }
 
 // Tree returns a tree loaded with the type instance.
-func (t InstanceStates) Tree() *tree.Tree {
+func (t States) Tree() *tree.Tree {
 	newTree := tree.New()
 	t.LoadTreeNode(newTree.Head())
 	return newTree
@@ -27,7 +27,7 @@ func (t InstanceStates) Tree() *tree.Tree {
 // LoadTreeNode add the tree nodes representing the type instance into another
 // tree, at the specified node.
 //
-func (t InstanceStates) LoadTreeNode(head *tree.Node) {
+func (t States) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Node.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Node.Colorize))
@@ -73,7 +73,7 @@ func (t InstanceStates) LoadTreeNode(head *tree.Node) {
 	}
 }
 
-func (t InstanceStates) descString() string {
+func (t States) descString() string {
 	l := make([]string, 0)
 
 	// Overall

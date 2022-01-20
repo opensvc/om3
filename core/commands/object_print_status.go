@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/flag"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
@@ -97,9 +98,9 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 			Path:   p,
 			Compat: true,
 			Object: object.AggregatedStatus{},
-			Instances: map[string]object.InstanceStates{
+			Instances: map[string]instance.States{
 				h: {
-					Node: object.InstanceNode{
+					Node: instance.Node{
 						Name:   h,
 						Frozen: object.NewNode().Frozen(),
 					},

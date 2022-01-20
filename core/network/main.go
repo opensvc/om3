@@ -1,10 +1,17 @@
 package network
 
 import (
+	"encoding/json"
 	"fmt"
+	"math"
+	"net"
 	"sort"
+	"strings"
 
-	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/clusterip"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -26,22 +33,14 @@ type (
 	}
 
 	Status struct {
-		Name    string       `json:"name"`
-		Type    string       `json:"type"`
-		Network string       `json:"network"`
-		IPs     IPStatusList `json:"ips"`
-		Errors  []string     `json:"errors,omitempty"`
+		Name    string      `json:"name"`
+		Type    string      `json:"type"`
+		Network string      `json:"network"`
+		IPs     clusterip.L `json:"ips"`
+		Errors  []string    `json:"errors,omitempty"`
 		StatusUsage
 	}
 	StatusList []Status
-
-	IPStatus struct {
-		IP   string `json:"ip"`
-		Node string `json:"node"`
-		Path path.T `json:"path"`
-		RID  string `json:"rid"`
-	}
-	IPStatusList []IPStatus
 
 	Networker interface {
 		SetName(string)
@@ -52,6 +51,7 @@ type (
 		Usage() (StatusUsage, error)
 		SetConfig(*xconfig.T)
 		Config() *xconfig.T
+		FilterIPs(clusterip.L) clusterip.L
 	}
 )
 
@@ -61,7 +61,7 @@ var (
 
 func NewStatus() Status {
 	t := Status{}
-	t.IPs = make(IPStatusList, 0)
+	t.IPs = make(clusterip.L, 0)
 	t.Errors = make([]string, 0)
 	return t
 }
@@ -80,8 +80,7 @@ func cString(config *xconfig.T, networkName string, option string) string {
 	return config.GetString(network)
 }
 
-func New(name string, config *xconfig.T) Networker {
-	networkType := cString(config, name, "type")
+func NewTyped(name string, networkType string, config *xconfig.T) Networker {
 	fn, ok := drivers[networkType]
 	if !ok {
 		return nil
@@ -91,6 +90,11 @@ func New(name string, config *xconfig.T) Networker {
 	t.SetDriver(networkType)
 	t.SetConfig(config)
 	return t.(Networker)
+}
+
+func New(name string, config *xconfig.T) Networker {
+	networkType := cString(config, name, "type")
+	return NewTyped(name, networkType, config)
 }
 
 func Register(t string, fn func() Networker) {
@@ -121,6 +125,15 @@ func (t *T) SetConfig(c *xconfig.T) {
 	t.config = c
 }
 
+func (t T) FilterIPs(ips clusterip.L) clusterip.L {
+	l := make(clusterip.L, 0)
+	_, n, err := net.ParseCIDR(t.Network())
+	if err != nil {
+		return l
+	}
+	return ips.ByNetwork(n)
+}
+
 func GetStatus(t Networker, withUsage bool) Status {
 	data := NewStatus()
 	data.Type = t.Type()
@@ -131,9 +144,12 @@ func GetStatus(t Networker, withUsage bool) Status {
 		if err != nil {
 			data.Errors = append(data.Errors, err.Error())
 		}
+		if _, n, err := net.ParseCIDR(data.Network); err == nil {
+			ones, _ := n.Mask.Size()
+			data.Size = int(math.Pow(2.0, float64(ones)))
+		}
 		data.Free = usage.Free
 		data.Used = usage.Used
-		data.Size = usage.Size
 		if usage.Size == 0 {
 			data.Pct = 100.0
 		} else {
@@ -231,45 +247,90 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	}
 	if len(t.IPs) > 0 {
 		n := head.AddNode()
-		IPStatusList(t.IPs).LoadTreeNode(n)
+		t.IPs.LoadTreeNode(n)
 	}
 }
 
-func (t IPStatusList) Len() int {
-	return len(t)
-}
-
-func (t IPStatusList) Less(i, j int) bool {
-	return t[i].Path.String() < t[j].Path.String()
-}
-
-func (t IPStatusList) Swap(i, j int) {
-	t[i], t[j] = t[j], t[i]
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t IPStatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("ip").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("node").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("object").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("resource").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	sort.Sort(t)
-	for _, data := range t {
-		n := head.AddNode()
-		data.LoadTreeNode(n)
+func ShowNetworksByName(n *object.Node, name string) StatusList {
+	l := NewStatusList()
+	for _, p := range Networks(n) {
+		if name != "" && name != p.Name() {
+			continue
+		}
+		l = l.Add(p, true)
 	}
+	return l
 }
 
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t IPStatus) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.IP)
-	head.AddColumn().AddText(t.Node)
-	head.AddColumn().AddText(t.Path.String())
-	head.AddColumn().AddText(t.RID)
-	head.AddColumn().AddText("")
-	head.AddColumn().AddText("")
-	head.AddColumn().AddText("")
+func ShowNetworks(n *object.Node) StatusList {
+	return ShowNetworksByName(n, "")
+}
+
+func Networks(n *object.Node) []Networker {
+	l := make([]Networker, 0)
+	config := n.MergedConfig()
+	hasLO := false
+	hasDefault := false
+
+	for _, name := range namesInConfig(n) {
+		p := New(name, config)
+		if p == nil {
+			continue
+		}
+		if p.Type() == "shm" {
+			hasLO = true
+		}
+		if p.Name() == "default" {
+			hasDefault = true
+		}
+		l = append(l, p)
+	}
+	if !hasLO {
+		p := NewTyped("lo", "lo", config)
+		l = append(l, p)
+	}
+	if !hasDefault {
+		p := NewTyped("default", "bridge", config)
+		l = append(l, p)
+	}
+	return l
+}
+
+func List(n *object.Node) []string {
+	l := make([]string, 0)
+	for _, n := range Networks(n) {
+		l = append(l, n.Name())
+	}
+	sort.Strings(l)
+	return l
+}
+
+func namesInConfig(n *object.Node) []string {
+	l := make([]string, 0)
+	for _, s := range n.MergedConfig().SectionStrings() {
+		if !strings.HasPrefix(s, "network#") {
+			continue
+		}
+		l = append(l, s[8:])
+	}
+	return l
+}
+
+func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
+	var (
+		err           error
+		b             []byte
+		clusterStatus cluster.Status
+	)
+	b, err = c.NewGetDaemonStatus().
+		SetSelector(selector).
+		Do()
+	if err != nil {
+		return clusterip.L{}, err
+	}
+	err = json.Unmarshal(b, &clusterStatus)
+	if err != nil {
+		return clusterip.L{}, err
+	}
+	return clusterip.NewL().Load(clusterStatus), nil
 }

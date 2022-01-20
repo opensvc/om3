@@ -30,8 +30,8 @@ func TestInstanceStates_Render(t *testing.T) {
 			err = json.Unmarshal(b, &instanceStatus)
 			require.Nil(t, err)
 			timestampZero := timestamp.New(time.Unix(0, 0))
-			instanceState := InstanceStates{
-				Node:   InstanceNode{Name: "node1", Frozen: timestampZero},
+			instanceState := instance.States{
+				Node:   instance.Node{Name: "node1", Frozen: timestampZero},
 				Status: instanceStatus,
 			}
 			goldenFile := filepath.Join("test-fixtures", name+".render")

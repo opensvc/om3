@@ -69,11 +69,8 @@ func (t *NetworkStatus) run() {
 }
 
 func (t *NetworkStatus) extractLocal() (network.StatusList, error) {
-	if t.Name == "" {
-		return object.NewNode().ShowNetworks(), nil
-	} else {
-		return object.NewNode().ShowNetworksByName(t.Name), nil
-	}
+	n := object.NewNode()
+	return network.ShowNetworksByName(n, t.Name), nil
 }
 
 func (t *NetworkStatus) extractDaemon() (network.StatusList, error) {
@@ -94,7 +91,7 @@ func (t *NetworkStatus) extractDaemon() (network.StatusList, error) {
 		return l, errors.Wrapf(err, "unmarshal GET /networks")
 	}
 	for name, d := range data {
-		if name != t.Name {
+		if t.Name != "" && name != t.Name {
 			// TODO: api handler should honor the name filter set in request
 			continue
 		}

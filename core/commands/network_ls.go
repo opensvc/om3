@@ -8,6 +8,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
+	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -60,7 +61,8 @@ func (t *NetworkLs) run() {
 }
 
 func (t *NetworkLs) extractLocal() []string {
-	return object.NewNode().ListNetworks()
+	n := object.NewNode()
+	return network.List(n)
 }
 
 func (t *NetworkLs) extractDaemon() []string {
