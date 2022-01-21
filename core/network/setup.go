@@ -41,8 +41,11 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 			Msgf("skip setup of invalid network")
 		return nil
 	}
-	if err := setupNetworkCNI(n, nw, dir); err != nil {
+	if err := SetupNetworkCNI(n, dir, nw); err != nil {
 		return err
+	}
+	if i, ok := nw.(Setuper); ok {
+		return i.Setup(n)
 	}
 	return nil
 }
@@ -61,19 +64,32 @@ func mkCNIConfigDir(n *object.Node) (string, error) {
 	return dir, nil
 }
 
-func setupNetworkCNI(n *object.Node, nw Networker, dir string) error {
-	p := filepath.Join(dir, nw.Name()+".conf")
+func CNIConfigFile(dir string, nw Networker) string {
+	return filepath.Join(dir, nw.Name()+".conf")
+}
+
+func SetupNetworkCNI(n *object.Node, dir string, nw Networker) error {
+	i, ok := nw.(CNIer)
+	if !ok {
+		return nil
+	}
+	data, err := i.CNIConfigData()
+	if err != nil {
+		return err
+	}
+	p := CNIConfigFile(dir, nw)
 	if file.Exists(p) {
 		n.Log().Info().Msgf("preserve %s", p)
 		return nil
 	}
 	n.Log().Info().Msgf("create %s", p)
-	if data, err := nw.CNIConfigData(); err != nil {
-		return err
-	} else if b, err := json.MarshalIndent(data, "", "   "); err != nil {
+	return writeCNIConfig(p, data)
+}
+
+func writeCNIConfig(fpath string, data interface{}) error {
+	if b, err := json.MarshalIndent(data, "", "   "); err != nil {
 		return err
 	} else {
-		return ioutil.WriteFile(p, b, 0644)
+		return ioutil.WriteFile(fpath, b, 0644)
 	}
-
 }

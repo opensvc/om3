@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/vishvananda/netlink"
 	"opensvc.com/opensvc/core/network"
+	"opensvc.com/opensvc/core/object"
 )
 
 type (
@@ -109,4 +111,29 @@ func (t T) bridgeIP() (string, error) {
 	}
 	ip[len(ip)-1]++
 	return ip.String(), nil
+}
+
+func (t T) Setup(n *object.Node) error {
+	if err := t.setupBridge(n); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) setupBridge(n *object.Node) error {
+	la := netlink.NewLinkAttrs()
+	la.Name = "obr_" + t.Name()
+	if intf, err := net.InterfaceByName(la.Name); err != nil {
+		return err
+	} else if intf != nil {
+		n.Log().Info().Msgf("bridge link %s already exists", la.Name)
+		return nil
+	}
+	br := &netlink.Bridge{LinkAttrs: la}
+	err := netlink.LinkAdd(br)
+	if err != nil {
+		return fmt.Errorf("could not add bridge link %s: %v", la.Name, err)
+	}
+	n.Log().Info().Msgf("added bridge link %s")
+	return nil
 }

@@ -36,6 +36,11 @@ type (
 		Config() *xconfig.T
 		FilterIPs(clusterip.L) clusterip.L
 		AllowEmptyNetwork() bool
+	}
+	Setuper interface {
+		Setup(*object.Node) error
+	}
+	CNIer interface {
 		CNIConfigData() (interface{}, error)
 	}
 )
