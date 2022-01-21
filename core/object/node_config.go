@@ -123,3 +123,24 @@ func (t Node) DRPNodes() []string {
 func (t Node) EncapNodes() []string {
 	return []string{}
 }
+
+func (t *Node) Nameservers() ([]string, error) {
+	dns, err := t.MergedConfig().Eval(key.T{Section: "cluster", Option: "dns"})
+	return dns.([]string), err
+}
+
+func (t *Node) CNIConfig() (string, error) {
+	if s, err := t.MergedConfig().Eval(key.T{Section: "cni", Option: "config"}); err != nil {
+		return "", err
+	} else {
+		return s.(string), nil
+	}
+}
+
+func (t *Node) CNIPlugins() (string, error) {
+	if s, err := t.MergedConfig().Eval(key.T{Section: "cni", Option: "plugins"}); err != nil {
+		return "", err
+	} else {
+		return s.(string), nil
+	}
+}

@@ -17,10 +17,12 @@ var (
 func init() {
 	var (
 		cmdNetworkLs     commands.NetworkLs
+		cmdNetworkSetup  commands.NetworkSetup
 		cmdNetworkStatus commands.NetworkStatus
 	)
 	root.AddCommand(networkCmd)
 
 	cmdNetworkLs.Init(networkCmd)
+	cmdNetworkSetup.Init(networkCmd)
 	cmdNetworkStatus.Init(networkCmd)
 }

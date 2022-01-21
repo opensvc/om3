@@ -1,6 +1,9 @@
 package networkroutedbridge
 
 import (
+	"fmt"
+	"net"
+
 	"opensvc.com/opensvc/core/network"
 )
 
@@ -28,4 +31,82 @@ func New() *T {
 func (t T) Usage() (network.StatusUsage, error) {
 	usage := network.StatusUsage{}
 	return usage, nil
+}
+
+// CNIConfigData returns a cni network configuration, like
+// {
+//    "cniVersion": "0.3.0",
+//    "name": "net1",
+//    "type": "bridge",
+//    "bridge": "obr_net1",
+//    "isGateway": true,
+//    "ipMasq": false,
+//    "ipam": {
+//        "type": "host-local",
+//        "subnet": "10.23.0.0/26",
+//        "routes": [
+//            {
+//                "dst": "0.0.0.0/0"
+//            },
+//            {
+//                "dst": "10.23.0.0/24",
+//                "gw": "10.23.0.1"
+//            }
+//        ]
+//    }
+//}
+func (t T) CNIConfigData() (interface{}, error) {
+	name := t.Name()
+	nwStr := t.Network()
+	brName := "obr_" + name
+	brIP, err := t.bridgeIP()
+	if err != nil {
+		return nil, err
+	}
+	m := map[string]interface{}{
+		"cniVersion": network.CNIVersion,
+		"name":       name,
+		"type":       "bridge",
+		"bridge":     brName,
+		"isGateway":  true,
+		"ipMasq":     false,
+		"ipam": map[string]interface{}{
+			"type": "host-local",
+			"routes": []map[string]interface{}{
+				{"dst": defaultRouteDst(nwStr)},
+				{"dst": nwStr, "gw": brIP},
+			},
+			"subnet": t.GetString("subnet"),
+		},
+	}
+	return m, nil
+}
+
+func defaultRouteDst(cidr string) string {
+	if isIP6(cidr) {
+		return "::/0"
+	} else {
+		return "0.0.0.0/0"
+	}
+}
+
+func isIP6(cidr string) bool {
+	ip, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return false
+	}
+	return ip.To4() == nil
+}
+
+func (t T) bridgeIP() (string, error) {
+	subnetStr := t.GetString("subnet")
+	if subnetStr == "" {
+		return "", fmt.Errorf("network#%s.subnet is required", t.Name())
+	}
+	ip, _, err := net.ParseCIDR(subnetStr)
+	if err != nil {
+		return "", err
+	}
+	ip[len(ip)-1]++
+	return ip.String(), nil
 }

@@ -346,22 +346,13 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 		}
 	}
 	getDNS := func() ([]string, error) {
-		dns, err := t.Node().MergedConfig().Eval(key.T{Section: "cluster", Option: "dns"})
-		return dns.([]string), err
+		return t.Node().Nameservers()
 	}
 	getCNIConfig := func() (string, error) {
-		if s, err := t.Node().MergedConfig().Eval(key.T{Section: "cni", Option: "config"}); err != nil {
-			return "", err
-		} else {
-			return s.(string), nil
-		}
+		return t.Node().CNIConfig()
 	}
 	getCNIPlugins := func() (string, error) {
-		if s, err := t.Node().MergedConfig().Eval(key.T{Section: "cni", Option: "plugins"}); err != nil {
-			return "", err
-		} else {
-			return s.(string), nil
-		}
+		return t.Node().CNIPlugins()
 	}
 
 	setAttr := func(c manifest.Context) error {
