@@ -78,7 +78,7 @@ func (t T) CNIConfigData() (interface{}, error) {
 				{"dst": defaultRouteDst(nwStr)},
 				{"dst": nwStr, "gw": brIP},
 			},
-			"subnet": t.GetString("subnet"),
+			"subnet": t.subnet(),
 		},
 	}
 	return m, nil
@@ -101,7 +101,7 @@ func isIP6(cidr string) bool {
 }
 
 func (t T) bridgeIP() (string, error) {
-	subnetStr := t.GetString("subnet")
+	subnetStr := t.subnet()
 	if subnetStr == "" {
 		return "", fmt.Errorf("network#%s.subnet is required", t.Name())
 	}
@@ -115,6 +115,9 @@ func (t T) bridgeIP() (string, error) {
 
 func (t T) Setup(n *object.Node) error {
 	if err := t.setupBridge(n); err != nil {
+		return err
+	}
+	if err := t.setupBridgeIP(n); err != nil {
 		return err
 	}
 	return nil
@@ -132,8 +135,51 @@ func (t T) setupBridge(n *object.Node) error {
 	br := &netlink.Bridge{LinkAttrs: la}
 	err := netlink.LinkAdd(br)
 	if err != nil {
-		return fmt.Errorf("could not add bridge link %s: %v", la.Name, err)
+		return fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
 	n.Log().Info().Msgf("added bridge link %s")
+	return nil
+}
+
+func (t T) subnet() string {
+	return t.GetString("subnet")
+}
+
+func (t T) setupBridgeIP(n *object.Node) error {
+	brIP, err := t.bridgeIP()
+	brName := "obr_" + t.Name()
+	br, err := netlink.LinkByName(brName)
+	if err != nil {
+		return err
+	}
+	if br == nil {
+		return fmt.Errorf("bridge %s not found", brName)
+	}
+
+	subnetStr := t.subnet()
+	_, ipnet, err := net.ParseCIDR(subnetStr)
+	if err != nil {
+		return err
+	}
+	ipnet.IP = net.ParseIP(brIP)
+	ipnetStr := ipnet.String()
+
+	if intf, err := net.InterfaceByName(brName); err != nil {
+		return err
+	} else if addrs, err := intf.Addrs(); err != nil {
+		return err
+	} else {
+		for _, addr := range addrs {
+			if addr.String() == ipnetStr {
+				n.Log().Info().Msgf("%s already added to %s", ipnet, brName)
+				return nil
+			}
+		}
+	}
+	addr := &netlink.Addr{IPNet: ipnet}
+	if err := netlink.AddrAdd(br, addr); err != nil {
+		return err
+	}
+	n.Log().Info().Msgf("added %s to %s", ipnet, brName)
 	return nil
 }
