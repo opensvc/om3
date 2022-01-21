@@ -2,7 +2,9 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -25,9 +27,38 @@ func Setup(n *object.Node) error {
 	if err != nil {
 		return err
 	}
-	for _, nw := range Networks(n) {
+	nws := Networks(n)
+	for _, nw := range nws {
+		if err := checkOverlap(nw, nws); err != nil {
+			n.Log().Warn().Msgf("skip network %s setup: %s", nw.Name(), err)
+			continue
+		}
 		if err := setupNetwork(n, nw, dir); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func intersect(n1, n2 *net.IPNet) bool {
+	return n2.Contains(n1.IP) || n1.Contains(n2.IP)
+}
+
+func checkOverlap(nw Networker, nws []Networker) error {
+	_, refIPNet, err := net.ParseCIDR(nw.Network())
+	if err != nil {
+		return nil
+	}
+	for _, other := range nws {
+		if nw == other {
+			continue
+		}
+		_, otherIPNet, err := net.ParseCIDR(other.Network())
+		if err != nil {
+			continue
+		}
+		if intersect(refIPNet, otherIPNet) {
+			return fmt.Errorf("%s overlaps %s (%s)", refIPNet, otherIPNet, other.Name())
 		}
 	}
 	return nil
