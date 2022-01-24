@@ -7,6 +7,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -60,7 +61,7 @@ func (t T) Usage() (network.StatusUsage, error) {
 func (t T) CNIConfigData() (interface{}, error) {
 	name := t.Name()
 	nwStr := t.Network()
-	brName := "obr_" + name
+	brName := t.brName()
 	brIP, err := t.bridgeIP()
 	if err != nil {
 		return nil, err
@@ -120,12 +121,24 @@ func (t T) Setup(n *object.Node) error {
 	if err := t.setupBridgeIP(n); err != nil {
 		return err
 	}
+	if err := t.setupRoutes(n); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (t T) setupRoutes(n *object.Node) error {
+	if l, err := t.Routes(n); err != nil {
+		n.Log().Err(err).Str("name", t.Name()).Msg("setup routes")
+		return err
+	} else {
+		return l.Add()
+	}
 }
 
 func (t T) setupBridge(n *object.Node) error {
 	la := netlink.NewLinkAttrs()
-	la.Name = "obr_" + t.Name()
+	la.Name = t.brName()
 	if intf, err := net.InterfaceByName(la.Name); err != nil {
 		return err
 	} else if intf != nil {
@@ -145,9 +158,13 @@ func (t T) subnet() string {
 	return t.GetString("subnet")
 }
 
+func (t T) brName() string {
+	return "obr_" + t.Name()
+}
+
 func (t T) setupBridgeIP(n *object.Node) error {
 	brIP, err := t.bridgeIP()
-	brName := "obr_" + t.Name()
+	brName := t.brName()
 	br, err := netlink.LinkByName(brName)
 	if err != nil {
 		return err
@@ -182,4 +199,73 @@ func (t T) setupBridgeIP(n *object.Node) error {
 	}
 	n.Log().Info().Msgf("added %s to %s", ipnet, brName)
 	return nil
+}
+
+func (t T) Routes(n *object.Node) (network.Routes, error) {
+	/*
+		// getLocalIP returns the addr set in the network config.
+		// Defaults to the first resolved ip address with the network address family (ip4 or ip6).
+		getLocalIP := func(af string) (addr string, err error) {
+			addr = t.GetString("addr")
+			if addr != "" {
+				return
+			}
+			addr, err = network.GetNodeAddr(hostname.Hostname(), af)
+			return
+		}
+	*/
+
+	// getAF returns the network address family (ip4 or ip6).
+	getAF := func(nwStr string) (af string) {
+		if t.IsIPv6() {
+			af = "ip6"
+		} else {
+			af = "ip4"
+		}
+		return
+	}
+
+	// getGW returns the addr of the peer node set in the network config.
+	// Defaults to the first resolved ip address with the network address family (ip4 or ip6).
+	getGW := func(nodename, af string) (addr string, err error) {
+		addr = t.GetString("addr@" + nodename)
+		if addr != "" {
+			return
+		}
+		addr, err = network.GetNodeAddr(nodename, af)
+		return
+	}
+
+	routes := make(network.Routes, 0)
+	nwStr := t.Network()
+	af := getAF(nwStr)
+	/*
+		localIP, err := getLocalIP(af)
+		if err != nil {
+			return routes, err
+		}
+	*/
+	for _, nodename := range n.Nodes() {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		for _, table := range t.Tables() {
+			gw, err := getGW(nodename, af)
+			if err != nil {
+				return routes, err
+			}
+			dst, err := t.NodeSubnet(nodename, n.Nodes())
+			if err != nil {
+				return routes, err
+			}
+			routes = append(routes, network.Route{
+				Nodename: nodename,
+				Dev:      t.brName(),
+				Dst:      dst.String(),
+				Gateway:  gw,
+				Table:    table,
+			})
+		}
+	}
+	return routes, nil
 }

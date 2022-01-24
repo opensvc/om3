@@ -2,7 +2,9 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
+	"strconv"
 	"strings"
 
 	"opensvc.com/opensvc/core/client"
@@ -11,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 type (
@@ -27,6 +30,7 @@ type (
 		SetImplicit()
 		IsImplicit() bool
 		IsValid() bool
+		IsIPv6() bool
 		Name() string
 		Network() string
 		Type() string
@@ -125,6 +129,15 @@ func (t *T) GetString(s string) string {
 	return t.Config().GetString(k)
 }
 
+func (t *T) GetSlice(s string) []string {
+	k := key.New("network#"+t.name, s)
+	return t.Config().GetSlice(k)
+}
+
+func (t *T) Tables() []string {
+	return t.GetSlice("tables")
+}
+
 func (t T) AllowEmptyNetwork() bool {
 	return false
 }
@@ -141,8 +154,21 @@ func (t T) IsValid() bool {
 	return true
 }
 
+func (t T) IsIPv6() bool {
+	ip, _, err := net.ParseCIDR(t.Network())
+	if err != nil {
+		return false
+	}
+	return ip.To4() == nil
+}
+
 func (t *T) Network() string {
 	return t.GetString("network")
+}
+
+func (t *T) IPsPerNode() (int, error) {
+	s := t.GetString("ips_per_node")
+	return strconv.Atoi(s)
 }
 
 func (t *T) SetImplicit() {
@@ -213,4 +239,49 @@ func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
 		return clusterip.L{}, err
 	}
 	return clusterip.NewL().Load(clusterStatus), nil
+}
+
+func (t T) IPNet() (*net.IPNet, error) {
+	_, ipnet, err := net.ParseCIDR(t.Network())
+	return ipnet, err
+}
+
+func IncIP(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
+func (t T) NodeSubnet(nodename string, nodenames []string) (*net.IPNet, error) {
+	if nodename == "" {
+		return nil, fmt.Errorf("empty nodename")
+	}
+	subnet := t.GetString("subnet#" + nodename)
+	if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
+		return nil, err
+	} else if ipnet != nil {
+		return ipnet, nil
+	}
+	// no configured subnet yet => allocate one
+
+	idx := stringslice.Index(nodename, nodenames)
+	ipsPerNode, err := t.IPsPerNode()
+	if err != nil {
+		return nil, err
+	}
+	ipnet, err := t.IPNet()
+	if err != nil {
+		return nil, err
+	}
+	ip := ipnet.IP
+	fmt.Println("node idx", idx)
+	fmt.Println("ipsPerNode", ipsPerNode)
+	fmt.Println("ip", ip)
+	IncIP(ip)
+	fmt.Println("inc'ed ip", ip)
+	return nil, nil
+
 }
