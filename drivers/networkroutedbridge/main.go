@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/core/object"
@@ -252,11 +253,14 @@ func (t T) Routes(n *object.Node) (network.Routes, error) {
 		for _, table := range t.Tables() {
 			gw, err := getGW(nodename, af)
 			if err != nil {
-				return routes, err
+				return routes, errors.Wrapf(err, "route to %s: gw", nodename)
 			}
 			dst, err := t.NodeSubnet(nodename, n.Nodes())
 			if err != nil {
-				return routes, err
+				return routes, errors.Wrapf(err, "route to %s: dst", nodename)
+			}
+			if dst == nil {
+				return routes, fmt.Errorf("route to %s: no dst subnet", nodename)
 			}
 			routes = append(routes, network.Route{
 				Nodename: nodename,
@@ -267,5 +271,6 @@ func (t T) Routes(n *object.Node) (network.Routes, error) {
 			})
 		}
 	}
+	n.Log().Debug().Interface("routes", routes).Msg("routes")
 	return routes, nil
 }

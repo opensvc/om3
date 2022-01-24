@@ -113,7 +113,12 @@ func (t Node) PostCommit() error {
 }
 
 func (t Node) Nodes() []string {
-	return []string{hostname.Hostname()}
+	k := key.T{Section: "cluster", Option: "nodes"}
+	nodes := t.MergedConfig().GetSlice(k)
+	if len(nodes) == 0 {
+		return []string{hostname.Hostname()}
+	}
+	return nodes
 }
 
 func (t Node) DRPNodes() []string {

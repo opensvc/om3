@@ -3,8 +3,8 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"math/bits"
 	"net"
-	"strconv"
 	"strings"
 
 	"opensvc.com/opensvc/core/client"
@@ -167,8 +167,11 @@ func (t *T) Network() string {
 }
 
 func (t *T) IPsPerNode() (int, error) {
-	s := t.GetString("ips_per_node")
-	return strconv.Atoi(s)
+	i, err := t.Config().Eval(cKey(t.Name(), "ips_per_node"))
+	if err != nil {
+		return 0, err
+	}
+	return i.(int), nil
 }
 
 func (t *T) SetImplicit() {
@@ -246,6 +249,12 @@ func (t T) IPNet() (*net.IPNet, error) {
 	return ipnet, err
 }
 
+func IncIPN(ip net.IP, n int) {
+	for i := 0; i < n; i++ {
+		IncIP(ip)
+	}
+}
+
 func IncIP(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
 		ip[j]++
@@ -260,15 +269,17 @@ func (t T) NodeSubnet(nodename string, nodenames []string) (*net.IPNet, error) {
 		return nil, fmt.Errorf("empty nodename")
 	}
 	subnet := t.GetString("subnet#" + nodename)
-	if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
+	if subnet == "" {
+		// no configured subnet yet => allocate one
+	} else if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
 		return nil, err
 	} else if ipnet != nil {
 		return ipnet, nil
 	}
-	// no configured subnet yet => allocate one
 
 	idx := stringslice.Index(nodename, nodenames)
 	ipsPerNode, err := t.IPsPerNode()
+	ipsPerNode = 1 << bits.Len(uint(ipsPerNode)-1)
 	if err != nil {
 		return nil, err
 	}
@@ -276,12 +287,18 @@ func (t T) NodeSubnet(nodename string, nodenames []string) (*net.IPNet, error) {
 	if err != nil {
 		return nil, err
 	}
+	if ipnet == nil {
+		return nil, fmt.Errorf("node %s subnet: empty network", nodename)
+	}
 	ip := ipnet.IP
-	fmt.Println("node idx", idx)
-	fmt.Println("ipsPerNode", ipsPerNode)
-	fmt.Println("ip", ip)
-	IncIP(ip)
-	fmt.Println("inc'ed ip", ip)
-	return nil, nil
+	IncIPN(ip, ipsPerNode*idx)
+	_, ipnetBits := ipnet.Mask.Size()
+	subnetOnes := ipnetBits - bits.Len(uint(ipsPerNode)-1)
+	mask := net.CIDRMask(subnetOnes, ipnetBits)
+	subnetIPNet := &net.IPNet{
+		IP:   ip,
+		Mask: mask,
+	}
+	return subnetIPNet, nil
 
 }
