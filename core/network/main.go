@@ -3,7 +3,6 @@ package network
 import (
 	"encoding/json"
 	"net"
-	"sort"
 	"strings"
 
 	"opensvc.com/opensvc/core/client"
@@ -183,15 +182,6 @@ func Networks(n *object.Node) []Networker {
 		p.SetImplicit()
 		l = append(l, p)
 	}
-	return l
-}
-
-func List(n *object.Node) []string {
-	l := make([]string, 0)
-	for _, n := range Networks(n) {
-		l = append(l, n.Name())
-	}
-	sort.Strings(l)
 	return l
 }
 
