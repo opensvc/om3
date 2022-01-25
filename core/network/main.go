@@ -7,10 +7,11 @@ import (
 	"net"
 	"strings"
 
+	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/clusterip"
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/stringslice"
@@ -21,27 +22,84 @@ type (
 		driver     string
 		name       string
 		isImplicit bool
-		config     *xconfig.T
+		needCommit bool
+		log        *zerolog.Logger
+		noder      Noder
 	}
 
+	Noder interface {
+		MergedConfig() *xconfig.T
+		Log() *zerolog.Logger
+		Nodes() []string
+	}
 	Networker interface {
-		SetName(string)
+		// SetDriver sets the driver name, which is obtained from the
+		// "type" keyword in the network configuration.
 		SetDriver(string)
-		SetImplicit()
+
+		// SetName sets the network name. See Name().
+		SetName(string)
+
+		// SetImplicit sets isImplicit. See IsImplicit().
+		SetImplicit(bool)
+
+		// SetNeedCommit can be called by drivers to signal network
+		// configuration changes are staged and // need to be written
+		// to file.
+		SetNeedCommit(bool)
+
+		// SetNoder stores the Noder
+		SetNoder(Noder)
+
+		// IsImplicit returns true if the network is a builtin with
+		// no override section in the configuration.
 		IsImplicit() bool
+
+		// IsValid returns true if the network is a valid CIDR string.
 		IsValid() bool
-		IsIPv6() bool
+
+		// IsIP6 returns true if the network is a CIDR representation
+		// of a IPv6 network.
+		IsIP6() bool
+
+		// Name returns the name of the network. Which is the part
+		// after the dash in the configuration section name.
 		Name() string
+
+		// Network returns the CIDR representation of the network.
 		Network() string
+
+		// NeedCommit return true if the network configuration cache
+		// has staged changes. This can be used by Networks() users to
+		// do one commit per action instead of one per network.
+		NeedCommit() bool
+
+		// Type return the driver name.
 		Type() string
+
+		// Usage returns the usage metrics of the network.
 		Usage() (StatusUsage, error)
-		SetConfig(*xconfig.T)
-		Config() *xconfig.T
+
 		FilterIPs(clusterip.L) clusterip.L
+
+		// AllowEmptyNetwork can be defined by a specific driver to
+		// announce the network core that empty network option is fine.
+		// For one, the loopback driver uses that.
 		AllowEmptyNetwork() bool
+
+		// Config is a wrapper for the noder MergedConfig
+		Config() *xconfig.T
+
+		// Log returns a zerolog Logger configured to add the network
+		// name to log entries.
+		Log() *zerolog.Logger
+
+		// Nodes is a wrapper for the noder Nodes, which returns the
+		// list of cluster nodes to make the network available on.
+		Nodes() []string
 	}
 	Setuper interface {
-		Setup(*object.Node) error
+		Setup() error
 	}
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
@@ -52,21 +110,19 @@ var (
 	drivers = make(map[string]func() Networker)
 )
 
-func sectionName(networkName string) string {
-	return "network#" + networkName
+func (t *T) Log() *zerolog.Logger {
+	if t.log == nil {
+		log := t.noder.Log().With().Str("name", t.name).Logger()
+		t.log = &log
+	}
+	return t.log
 }
 
-func cKey(networkName string, option string) key.T {
-	section := sectionName(networkName)
-	return key.New(section, option)
+func (t T) Nodes() []string {
+	return t.noder.Nodes()
 }
 
-func cString(config *xconfig.T, networkName string, option string) string {
-	network := cKey(networkName, option)
-	return config.GetString(network)
-}
-
-func NewTyped(name string, networkType string, config *xconfig.T) Networker {
+func NewTyped(name string, networkType string, noder Noder) Networker {
 	fn, ok := drivers[networkType]
 	if !ok {
 		return nil
@@ -74,13 +130,13 @@ func NewTyped(name string, networkType string, config *xconfig.T) Networker {
 	t := fn()
 	t.SetName(name)
 	t.SetDriver(networkType)
-	t.SetConfig(config)
+	t.SetNoder(noder)
 	return t.(Networker)
 }
 
-func New(name string, config *xconfig.T) Networker {
-	networkType := cString(config, name, "type")
-	return NewTyped(name, networkType, config)
+func New(name string, noder Noder) Networker {
+	networkType := cString(noder.MergedConfig(), name, "type")
+	return NewTyped(name, networkType, noder)
 }
 
 func Register(t string, fn func() Networker) {
@@ -95,6 +151,14 @@ func (t *T) SetName(name string) {
 	t.name = name
 }
 
+func (t T) NeedCommit() bool {
+	return t.needCommit
+}
+
+func (t *T) SetNeedCommit(v bool) {
+	t.needCommit = v
+}
+
 func (t *T) SetDriver(driver string) {
 	t.driver = driver
 }
@@ -104,29 +168,39 @@ func (t T) Type() string {
 }
 
 func (t *T) Config() *xconfig.T {
-	return t.config
+	return t.noder.MergedConfig()
 }
 
-func (t *T) SetConfig(c *xconfig.T) {
-	t.config = c
+func (t *T) SetNoder(noder Noder) {
+	t.noder = noder
 }
 
 func (t T) FilterIPs(ips clusterip.L) clusterip.L {
 	l := make(clusterip.L, 0)
-	_, n, err := net.ParseCIDR(t.Network())
-	if err != nil {
+	if ipnet, err := t.IPNet(); err != nil {
 		return l
+	} else {
+		return ips.ByNetwork(ipnet)
 	}
-	return ips.ByNetwork(n)
-}
-
-func pKey(p Networker, s string) key.T {
-	return key.New("network#"+p.Name(), s)
 }
 
 func (t *T) GetString(s string) string {
 	k := key.New("network#"+t.name, s)
 	return t.Config().GetString(k)
+}
+
+func (t *T) Set(option, value string) error {
+	k := key.New("network#"+t.name, option)
+	kop := keyop.T{
+		Key:   k,
+		Op:    keyop.Set,
+		Value: value,
+	}
+	if err := t.Config().Set(kop); err != nil {
+		return err
+	}
+	t.needCommit = true
+	return nil
 }
 
 func (t *T) GetSlice(s string) []string {
@@ -154,7 +228,7 @@ func (t T) IsValid() bool {
 	return true
 }
 
-func (t T) IsIPv6() bool {
+func (t T) IsIP6() bool {
 	ip, _, err := net.ParseCIDR(t.Network())
 	if err != nil {
 		return false
@@ -174,49 +248,17 @@ func (t *T) IPsPerNode() (int, error) {
 	return i.(int), nil
 }
 
-func (t *T) SetImplicit() {
-	t.isImplicit = true
+func (t *T) SetImplicit(v bool) {
+	t.isImplicit = v
 }
 
 func (t *T) IsImplicit() bool {
 	return t.isImplicit
 }
 
-func Networks(n *object.Node) []Networker {
-	l := make([]Networker, 0)
-	config := n.MergedConfig()
-	hasLO := false
-	hasDefault := false
-
-	for _, name := range namesInConfig(n) {
-		p := New(name, config)
-		if p == nil {
-			continue
-		}
-		if p.Type() == "shm" {
-			hasLO = true
-		}
-		if p.Name() == "default" {
-			hasDefault = true
-		}
-		l = append(l, p)
-	}
-	if !hasLO {
-		p := NewTyped("lo", "lo", config)
-		p.SetImplicit()
-		l = append(l, p)
-	}
-	if !hasDefault {
-		p := NewTyped("default", "bridge", config)
-		p.SetImplicit()
-		l = append(l, p)
-	}
-	return l
-}
-
-func namesInConfig(n *object.Node) []string {
+func namesInConfig(noder Noder) []string {
 	l := make([]string, 0)
-	for _, s := range n.MergedConfig().SectionStrings() {
+	for _, s := range noder.MergedConfig().SectionStrings() {
 		if !strings.HasPrefix(s, "network#") {
 			continue
 		}
@@ -225,59 +267,48 @@ func namesInConfig(n *object.Node) []string {
 	return l
 }
 
-func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
-	var (
-		err           error
-		b             []byte
-		clusterStatus cluster.Status
-	)
-	b, err = c.NewGetDaemonStatus().
-		SetSelector(selector).
-		Do()
-	if err != nil {
-		return clusterip.L{}, err
-	}
-	err = json.Unmarshal(b, &clusterStatus)
-	if err != nil {
-		return clusterip.L{}, err
-	}
-	return clusterip.NewL().Load(clusterStatus), nil
-}
-
 func (t T) IPNet() (*net.IPNet, error) {
 	_, ipnet, err := net.ParseCIDR(t.Network())
 	return ipnet, err
 }
 
-func IncIPN(ip net.IP, n int) {
-	for i := 0; i < n; i++ {
-		IncIP(ip)
-	}
-}
-
-func IncIP(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
-	}
-}
-
-func (t T) NodeSubnet(nodename string, nodenames []string) (*net.IPNet, error) {
+//
+// NodeSubnet returns the network subnet assigned to a cluster node, as a *net.IPNet.
+// This subnet is usually found in the network configuration, as a subnet@<nodename>
+// option. If not found there, allocate and write one.
+//
+// The subnet allocator uses ips_per_node to compute a netmask (narrower than the
+// network mask).
+// The subnet first ip is computed using the position of the node in the cluster
+// nodes list.
+//
+// Example:
+// With
+//    cluster.nodes = n1 n2 n3
+//    net1.network = 10.0.0.0/24
+//    net1.ips_per_node = 64
+// =>
+//    subnet@n1 = 10.0.0.0/26
+//    subnet@n2 = 10.0.0.64/26
+//    subnet@n3 = 10.0.0.128/26
+//
+func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	if nodename == "" {
 		return nil, fmt.Errorf("empty nodename")
 	}
-	subnet := t.GetString("subnet#" + nodename)
+	option := "subnet@" + nodename
+	subnet := t.GetString(option)
+	fmt.Println("xx", t.Name(), option, subnet)
 	if subnet == "" {
 		// no configured subnet yet => allocate one
 	} else if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
 		return nil, err
 	} else if ipnet != nil {
+		t.Log().Debug().Msgf("subnet %s previously assigned to node %s", ipnet, nodename)
 		return ipnet, nil
 	}
 
-	idx := stringslice.Index(nodename, nodenames)
+	idx := stringslice.Index(nodename, t.Nodes())
 	ipsPerNode, err := t.IPsPerNode()
 	ipsPerNode = 1 << bits.Len(uint(ipsPerNode)-1)
 	if err != nil {
@@ -299,6 +330,60 @@ func (t T) NodeSubnet(nodename string, nodenames []string) (*net.IPNet, error) {
 		IP:   ip,
 		Mask: mask,
 	}
+	if err := t.Set(option, subnetIPNet.String()); err != nil {
+		t.Log().Warn().Err(err).Msgf("assign subnet %s to node %s", subnetIPNet, nodename)
+	} else {
+		t.Log().Info().Msgf("assign subnet %s to node %s", subnetIPNet, nodename)
+	}
 	return subnetIPNet, nil
+}
 
+func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
+	var (
+		err           error
+		b             []byte
+		clusterStatus cluster.Status
+	)
+	b, err = c.NewGetDaemonStatus().
+		SetSelector(selector).
+		Do()
+	if err != nil {
+		return clusterip.L{}, err
+	}
+	err = json.Unmarshal(b, &clusterStatus)
+	if err != nil {
+		return clusterip.L{}, err
+	}
+	return clusterip.NewL().Load(clusterStatus), nil
+}
+
+func Networks(noder Noder) []Networker {
+	l := make([]Networker, 0)
+	hasLO := false
+	hasDefault := false
+
+	for _, name := range namesInConfig(noder) {
+		p := New(name, noder)
+		if p == nil {
+			continue
+		}
+		if p.Type() == "shm" {
+			hasLO = true
+		}
+		if p.Name() == "default" {
+			hasDefault = true
+		}
+		l = append(l, p)
+	}
+	if !hasLO {
+		p := NewTyped("lo", "lo", noder)
+		p.SetImplicit(true)
+		l = append(l, p)
+	}
+	if !hasDefault {
+		p := NewTyped("default", "bridge", noder)
+		p.SetImplicit(true)
+		l = append(l, p)
+	}
+	return l
 }

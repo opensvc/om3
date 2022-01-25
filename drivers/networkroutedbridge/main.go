@@ -3,11 +3,11 @@ package networkroutedbridge
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"opensvc.com/opensvc/core/network"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -115,35 +115,117 @@ func (t T) bridgeIP() (string, error) {
 	return ip.String(), nil
 }
 
-func (t T) Setup(n *object.Node) error {
-	if err := t.setupBridge(n); err != nil {
+func (t *T) Setup() error {
+	if err := t.setupBridge(); err != nil {
 		return err
 	}
-	if err := t.setupBridgeIP(n); err != nil {
+	if err := t.setupBridgeIP(); err != nil {
 		return err
 	}
-	if err := t.setupRoutes(n); err != nil {
+	if err := t.setupTunnels(); err != nil {
+		return err
+	}
+	if err := t.setupRoutes(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t T) setupRoutes(n *object.Node) error {
-	if l, err := t.Routes(n); err != nil {
-		n.Log().Err(err).Str("name", t.Name()).Msg("setup routes")
+func isSameNetwork(localIP, peerIP net.IP) (bool, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false, err
+	}
+	for _, addr := range addrs {
+		if ip, ipnet, _ := net.ParseCIDR(addr.String()); ip.Equal(localIP) {
+			return ipnet.Contains(peerIP), nil
+		}
+	}
+	return false, nil
+}
+
+func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex int, auto bool) error {
+	if nodename == hostname.Hostname() {
+		return nil
+	}
+	peerIP, err := t.getNodeIP(nodename, af)
+	if err != nil {
+		return err
+	}
+	if auto {
+		if same, err := isSameNetwork(localIP, peerIP); err != nil {
+			return err
+		} else if same {
+			t.Log().Debug().Msgf("%s (%s) and %s (%s) are in the same network. skip tunnel setup", hostname.Hostname(), localIP, nodename, peerIP)
+			return nil
+		}
+	}
+	dst, err := t.NodeSubnet(nodename)
+	if err != nil {
+		return errors.Wrapf(err, "tun to %s: dst", nodename)
+	}
+	name := tunName(dst.IP, nodeIndex)
+	if err := t.addTunnel(name, localIP, peerIP); err != nil {
+		return errors.Wrapf(err, "setup tunnel to %s", nodename)
+	}
+	return nil
+}
+
+func (t T) addTunnel(name string, localIP, peerIP net.IP) error {
+	link, _ := netlink.LinkByName("tun192168987")
+	fmt.Printf("%+v\n", link)
+	fmt.Println(name, localIP, peerIP)
+
+	//link := netlink.Link{}
+	netlink.LinkAdd(link)
+	return nil
+}
+
+func tunName(dstIP net.IP, nodeIndex int) string {
+	if dstIP.To4() == nil {
+		return fmt.Sprintf("otun%d", nodeIndex)
+	} else {
+		return fmt.Sprintf("tun%s", strings.ReplaceAll(dstIP.String(), ".", ""))
+	}
+}
+
+func (t *T) setupTunnels() error {
+	tunnel := t.tunnel()
+	if tunnel == "never" {
+		t.Log().Debug().Msg("skip tunnel setup: tunnel=never")
+		return nil
+	}
+	auto := tunnel == "auto"
+	af := t.getAF()
+	localIP, err := t.getLocalIP(af)
+	if err != nil {
+		t.Log().Debug().Err(err).Msg("skip tunnel setup")
+		return err
+	}
+	for idx, nodename := range t.Nodes() {
+		if err := t.setupTunnel(nodename, localIP, af, idx, auto); err != nil {
+			return errors.Wrapf(err, "setup tunnel to %s", nodename)
+		}
+	}
+	return nil
+}
+
+func (t *T) setupRoutes() error {
+	if l, err := t.Routes(); err != nil {
+		t.Log().Err(err).Msg("setup routes")
 		return err
 	} else {
 		return l.Add()
 	}
 }
 
-func (t T) setupBridge(n *object.Node) error {
+func (t T) setupBridge() error {
 	la := netlink.NewLinkAttrs()
 	la.Name = t.brName()
 	if intf, err := net.InterfaceByName(la.Name); err != nil {
 		return err
 	} else if intf != nil {
-		n.Log().Info().Msgf("bridge link %s already exists", la.Name)
+		t.Log().Info().Msgf("bridge link %s already exists", la.Name)
 		return nil
 	}
 	br := &netlink.Bridge{LinkAttrs: la}
@@ -151,7 +233,7 @@ func (t T) setupBridge(n *object.Node) error {
 	if err != nil {
 		return fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
-	n.Log().Info().Msgf("added bridge link %s")
+	t.Log().Info().Msgf("added bridge link %s")
 	return nil
 }
 
@@ -159,11 +241,23 @@ func (t T) subnet() string {
 	return t.GetString("subnet")
 }
 
+func (t T) subnetMap() map[string]string {
+	m := make(map[string]string)
+	for _, nodename := range t.Nodes() {
+		m[nodename] = t.GetString("subnet@" + nodename)
+	}
+	return m
+}
+
+func (t T) tunnel() string {
+	return t.GetString("tunnel")
+}
+
 func (t T) brName() string {
 	return "obr_" + t.Name()
 }
 
-func (t T) setupBridgeIP(n *object.Node) error {
+func (t T) setupBridgeIP() error {
 	brIP, err := t.bridgeIP()
 	brName := t.brName()
 	br, err := netlink.LinkByName(brName)
@@ -189,7 +283,7 @@ func (t T) setupBridgeIP(n *object.Node) error {
 	} else {
 		for _, addr := range addrs {
 			if addr.String() == ipnetStr {
-				n.Log().Info().Msgf("%s already added to %s", ipnet, brName)
+				t.Log().Info().Msgf("%s already added to %s", ipnet, brName)
 				return nil
 			}
 		}
@@ -198,64 +292,54 @@ func (t T) setupBridgeIP(n *object.Node) error {
 	if err := netlink.AddrAdd(br, addr); err != nil {
 		return err
 	}
-	n.Log().Info().Msgf("added %s to %s", ipnet, brName)
+	t.Log().Info().Msgf("added %s to %s", ipnet, brName)
 	return nil
 }
 
-func (t T) Routes(n *object.Node) (network.Routes, error) {
-	/*
-		// getLocalIP returns the addr set in the network config.
-		// Defaults to the first resolved ip address with the network address family (ip4 or ip6).
-		getLocalIP := func(af string) (addr string, err error) {
-			addr = t.GetString("addr")
-			if addr != "" {
-				return
-			}
-			addr, err = network.GetNodeAddr(hostname.Hostname(), af)
-			return
-		}
-	*/
-
-	// getAF returns the network address family (ip4 or ip6).
-	getAF := func(nwStr string) (af string) {
-		if t.IsIPv6() {
-			af = "ip6"
-		} else {
-			af = "ip4"
-		}
-		return
+// getNodeIP returns the addr scoped for nodename from the network config.
+// Defaults to the first resolved ip address with the network address family (ip4 or ip6).
+func (t T) getNodeIP(nodename, af string) (net.IP, error) {
+	var keyName string
+	if nodename == hostname.Hostname() {
+		keyName = "addr"
+	} else {
+		keyName = "addr@" + nodename
 	}
-
-	// getGW returns the addr of the peer node set in the network config.
-	// Defaults to the first resolved ip address with the network address family (ip4 or ip6).
-	getGW := func(nodename, af string) (addr string, err error) {
-		addr = t.GetString("addr@" + nodename)
-		if addr != "" {
-			return
-		}
-		addr, err = network.GetNodeAddr(nodename, af)
-		return
+	if addr := t.GetString(keyName); addr != "" {
+		return net.ParseIP(addr), nil
 	}
+	return network.GetNodeAddr(nodename, af)
+}
 
+// getLocalIP returns the addr set in the network config.
+// Defaults to the first resolved ip address with the network address family (ip4 or ip6).
+func (t T) getLocalIP(af string) (net.IP, error) {
+	return t.getNodeIP(hostname.Hostname(), af)
+}
+
+// getAF returns the network address family (ip4 or ip6).
+func (t T) getAF() (af string) {
+	if t.IsIP6() {
+		af = "ip6"
+	} else {
+		af = "ip4"
+	}
+	return
+}
+
+func (t *T) Routes() (network.Routes, error) {
 	routes := make(network.Routes, 0)
-	nwStr := t.Network()
-	af := getAF(nwStr)
-	/*
-		localIP, err := getLocalIP(af)
-		if err != nil {
-			return routes, err
-		}
-	*/
-	for _, nodename := range n.Nodes() {
+	af := t.getAF()
+	for _, nodename := range t.Nodes() {
 		if nodename == hostname.Hostname() {
 			continue
 		}
 		for _, table := range t.Tables() {
-			gw, err := getGW(nodename, af)
+			gw, err := t.getNodeIP(nodename, af)
 			if err != nil {
 				return routes, errors.Wrapf(err, "route to %s: gw", nodename)
 			}
-			dst, err := t.NodeSubnet(nodename, n.Nodes())
+			dst, err := t.NodeSubnet(nodename)
 			if err != nil {
 				return routes, errors.Wrapf(err, "route to %s: dst", nodename)
 			}
@@ -265,12 +349,12 @@ func (t T) Routes(n *object.Node) (network.Routes, error) {
 			routes = append(routes, network.Route{
 				Nodename: nodename,
 				Dev:      t.brName(),
-				Dst:      dst.String(),
+				Dst:      dst,
 				Gateway:  gw,
 				Table:    table,
 			})
 		}
 	}
-	n.Log().Debug().Interface("routes", routes).Msg("routes")
+	t.Log().Debug().Interface("routes", routes).Msg("routes")
 	return routes, nil
 }

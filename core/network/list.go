@@ -2,13 +2,11 @@ package network
 
 import (
 	"sort"
-
-	"opensvc.com/opensvc/core/object"
 )
 
-func List(n *object.Node) []string {
+func List(noder Noder) []string {
 	l := make([]string, 0)
-	for _, n := range Networks(n) {
+	for _, n := range Networks(noder) {
 		l = append(l, n.Name())
 	}
 	sort.Strings(l)

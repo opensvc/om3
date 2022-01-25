@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"opensvc.com/opensvc/core/clusterip"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/render/tree"
 )
@@ -142,9 +141,9 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	}
 }
 
-func ShowNetworksByName(n *object.Node, name string) StatusList {
+func ShowNetworksByName(noder Noder, name string) StatusList {
 	l := NewStatusList()
-	for _, p := range Networks(n) {
+	for _, p := range Networks(noder) {
 		if name != "" && name != p.Name() {
 			continue
 		}
@@ -153,6 +152,6 @@ func ShowNetworksByName(n *object.Node, name string) StatusList {
 	return l
 }
 
-func ShowNetworks(n *object.Node) StatusList {
-	return ShowNetworksByName(n, "")
+func ShowNetworks(noder Noder) StatusList {
+	return ShowNetworksByName(noder, "")
 }

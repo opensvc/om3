@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/object"
@@ -23,19 +24,33 @@ var (
 )
 
 func Setup(n *object.Node) error {
+	errs := make([]error, 0)
 	dir, err := mkCNIConfigDir(n)
 	if err != nil {
 		return err
 	}
 	nws := Networks(n)
+	needCommit := make([]string, 0)
 	for _, nw := range nws {
 		if err := checkOverlap(nw, nws); err != nil {
-			n.Log().Warn().Msgf("skip network %s setup: %s", nw.Name(), err)
+			nw.Log().Error().Err(err).Msgf("setup network")
+			errs = append(errs, err)
 			continue
 		}
 		if err := setupNetwork(n, nw, dir); err != nil {
-			return err
+			nw.Log().Error().Err(err).Msgf("setup network")
+			errs = append(errs, err)
 		}
+		if nw.NeedCommit() {
+			needCommit = append(needCommit, nw.Name())
+		}
+	}
+	if len(needCommit) > 0 {
+		n.Log().Info().Msgf("commit changes on networks %s", strings.Join(needCommit, ","))
+		n.MergedConfig().Commit()
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d network setups failed", len(errs))
 	}
 	return nil
 }
@@ -76,7 +91,7 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 		return err
 	}
 	if i, ok := nw.(Setuper); ok {
-		return i.Setup(n)
+		return i.Setup()
 	}
 	return nil
 }
