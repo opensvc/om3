@@ -184,13 +184,17 @@ func (t T) FilterIPs(ips clusterip.L) clusterip.L {
 	}
 }
 
+func (t T) key(option string) key.T {
+	return key.New("network#"+t.name, option)
+}
+
 func (t *T) GetString(s string) string {
-	k := key.New("network#"+t.name, s)
+	k := t.key(s)
 	return t.Config().GetString(k)
 }
 
 func (t *T) Set(option, value string) error {
-	k := key.New("network#"+t.name, option)
+	k := t.key(option)
 	kop := keyop.T{
 		Key:   k,
 		Op:    keyop.Set,
@@ -204,7 +208,7 @@ func (t *T) Set(option, value string) error {
 }
 
 func (t *T) GetSlice(s string) []string {
-	k := key.New("network#"+t.name, s)
+	k := t.key(s)
 	return t.Config().GetSlice(k)
 }
 
@@ -296,10 +300,7 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	if nodename == "" {
 		return nil, fmt.Errorf("empty nodename")
 	}
-	option := "subnet@" + nodename
-	subnet := t.GetString(option)
-	fmt.Println("xx", t.Name(), option, subnet)
-	if subnet == "" {
+	if subnet := t.GetSubnetAs(nodename); subnet == "" {
 		// no configured subnet yet => allocate one
 	} else if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
 		return nil, err
@@ -330,12 +331,24 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 		IP:   ip,
 		Mask: mask,
 	}
-	if err := t.Set(option, subnetIPNet.String()); err != nil {
+	if err := t.Set("subnet@"+nodename, subnetIPNet.String()); err != nil {
 		t.Log().Warn().Err(err).Msgf("assign subnet %s to node %s", subnetIPNet, nodename)
 	} else {
 		t.Log().Info().Msgf("assign subnet %s to node %s", subnetIPNet, nodename)
 	}
 	return subnetIPNet, nil
+}
+
+func (t *T) GetSubnetAs(nodename string) string {
+	k := t.key("subnet")
+	i, err := t.Config().EvalAs(k, nodename)
+	if err != nil {
+		return ""
+	}
+	if subnet, ok := i.(string); ok {
+		return subnet
+	}
+	return ""
 }
 
 func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {

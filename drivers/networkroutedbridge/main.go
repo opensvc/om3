@@ -160,32 +160,144 @@ func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex in
 			return nil
 		}
 	}
-	dst, err := t.NodeSubnet(nodename)
-	if err != nil {
-		return errors.Wrapf(err, "tun to %s: dst", nodename)
+	name := tunName(peerIP, nodeIndex)
+
+	link, err := netlink.LinkByName(name)
+	switch {
+	case err != nil:
+		if _, ok := err.(netlink.LinkNotFoundError); !ok {
+			return err
+		}
+		fallthrough
+	case link == nil:
+		if err := t.addTunnel(name, localIP, peerIP); err != nil {
+			return errors.Wrapf(err, "add tunnel to %s", nodename)
+		}
+	case link != nil && t.isSameTunnel(link, localIP, peerIP):
+		t.Log().Info().Msgf("preserve tunnel to %s: already configured", nodename)
+		return nil
+	default:
+		if err := t.modTunnel(name, localIP, peerIP); err != nil {
+			return errors.Wrapf(err, "modify tunnel to %s", nodename)
+		}
 	}
-	name := tunName(dst.IP, nodeIndex)
-	if err := t.addTunnel(name, localIP, peerIP); err != nil {
-		return errors.Wrapf(err, "setup tunnel to %s", nodename)
-	}
+
 	return nil
+}
+
+func (t T) isSameTunnel(link netlink.Link, localIP, peerIP net.IP) bool {
+	name := link.Attrs().Name
+	var local, remote net.IP
+	switch tun := link.(type) {
+	case *netlink.Iptun:
+		if localIP.To4() == nil {
+			t.Log().Info().Msgf("link %s is not a ipip tunnel", name)
+			return false
+		}
+		local = tun.Local
+		remote = tun.Remote
+	case *netlink.Ip6tnl:
+		if localIP.To4() != nil {
+			t.Log().Info().Msgf("link %s is not a ip6ip6 tunnel", name)
+			return false
+		}
+		local = tun.Local
+		remote = tun.Remote
+	}
+	if !local.Equal(localIP) {
+		t.Log().Info().Msgf("tunnel %s local ip is %s, should be %s", name, local, localIP)
+		return false
+	}
+	if !remote.Equal(peerIP) {
+		t.Log().Info().Msgf("tunnel %s remote ip is %s, should be %s", name, remote, peerIP)
+		return false
+	}
+	return true
+}
+
+func (t T) modTunnel(name string, localIP, peerIP net.IP) error {
+	if localIP.To4() == nil {
+		return t.modTunnel6(name, localIP, peerIP)
+	} else {
+		return t.modTunnel4(name, localIP, peerIP)
+	}
 }
 
 func (t T) addTunnel(name string, localIP, peerIP net.IP) error {
-	link, _ := netlink.LinkByName("tun192168987")
-	fmt.Printf("%+v\n", link)
-	fmt.Println(name, localIP, peerIP)
-
-	//link := netlink.Link{}
-	netlink.LinkAdd(link)
-	return nil
+	if localIP.To4() == nil {
+		return t.addTunnel6(name, localIP, peerIP)
+	} else {
+		return t.addTunnel4(name, localIP, peerIP)
+	}
 }
 
-func tunName(dstIP net.IP, nodeIndex int) string {
-	if dstIP.To4() == nil {
+func (t T) modTunnel6(name string, localIP, peerIP net.IP) error {
+	link := &netlink.Ip6tnl{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:      name,
+			EncapType: "ip6tnl",
+		},
+		Local:  localIP,
+		Remote: peerIP,
+	}
+	t.Log().Info().Interface("link", link).Msgf("modify ipip tun %s", name)
+	if h, err := netlink.NewHandle(); err != nil {
+		defer h.Delete()
+		return h.LinkModify(link)
+	} else {
+		return err
+	}
+}
+
+func (t T) modTunnel4(name string, localIP, peerIP net.IP) error {
+	link := &netlink.Iptun{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:      name,
+			EncapType: "ipip",
+		},
+		Local:  localIP,
+		Remote: peerIP,
+	}
+	t.Log().Info().Interface("link", link).Msgf("modify ipip tun %s", name)
+	if h, err := netlink.NewHandle(); err != nil {
+		defer h.Delete()
+		return h.LinkModify(link)
+	} else {
+		return err
+	}
+}
+
+func (t T) addTunnel6(name string, localIP, peerIP net.IP) error {
+	link := &netlink.Ip6tnl{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:      name,
+			EncapType: "ip6tnl",
+		},
+		Local:  localIP,
+		Remote: peerIP,
+	}
+	t.Log().Info().Interface("link", link).Msgf("add ipip tun %s", name)
+	return netlink.LinkAdd(link)
+}
+
+func (t T) addTunnel4(name string, localIP, peerIP net.IP) error {
+	link := &netlink.Iptun{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:      name,
+			EncapType: "ipip",
+		},
+		Local:  localIP,
+		Remote: peerIP,
+	}
+	t.Log().Info().Interface("link", link).Msgf("add ipip tun %s", name)
+	return netlink.LinkAdd(link)
+}
+
+func tunName(peerIP net.IP, nodeIndex int) string {
+	if peerIP.To4() == nil {
 		return fmt.Sprintf("otun%d", nodeIndex)
 	} else {
-		return fmt.Sprintf("tun%s", strings.ReplaceAll(dstIP.String(), ".", ""))
+		return fmt.Sprintf("tun%s", strings.ReplaceAll(peerIP.String(), ".", ""))
 	}
 }
 
@@ -283,7 +395,7 @@ func (t T) setupBridgeIP() error {
 	} else {
 		for _, addr := range addrs {
 			if addr.String() == ipnetStr {
-				t.Log().Info().Msgf("%s already added to %s", ipnet, brName)
+				t.Log().Info().Msgf("bridge ip %s already added to %s", ipnet, brName)
 				return nil
 			}
 		}
@@ -292,7 +404,7 @@ func (t T) setupBridgeIP() error {
 	if err := netlink.AddrAdd(br, addr); err != nil {
 		return err
 	}
-	t.Log().Info().Msgf("added %s to %s", ipnet, brName)
+	t.Log().Info().Msgf("added ip %s to bridge %s", ipnet, brName)
 	return nil
 }
 
