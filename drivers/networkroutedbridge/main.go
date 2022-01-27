@@ -162,7 +162,26 @@ func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex in
 	}
 	name := tunName(peerIP, nodeIndex)
 
-	link, err := netlink.LinkByName(name)
+	// clean up existing tunnels with same endpoints but different name
+	link, err := t.getTunnelByEndpoints(localIP, peerIP)
+	if err != nil {
+		return errors.Wrapf(err, "get tunnel from %s to %s", localIP, peerIP)
+	}
+	if link != nil {
+		if link.Attrs().Name == name {
+			t.Log().Info().Msgf("preserve tunnel to %s: already configured", nodename)
+			return nil
+		} else {
+			t.Log().Info().Msgf("delete conflicting tunnel %s from %s to %s", link.Attrs().Name, localIP, peerIP)
+			if err := netlink.LinkDel(link); err != nil {
+				return err
+			}
+		}
+	}
+
+	// modify up existing tunnels with same name but different endpoints
+	// or add a new tunnel
+	link, err = netlink.LinkByName(name)
 	switch {
 	case err != nil:
 		if _, ok := err.(netlink.LinkNotFoundError); !ok {
@@ -183,6 +202,28 @@ func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex in
 	}
 
 	return nil
+}
+
+func (t T) getTunnelByEndpoints(localIP, peerIP net.IP) (netlink.Link, error) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		return nil, err
+	}
+	for _, link := range links {
+		var local, remote net.IP
+		switch tun := link.(type) {
+		case *netlink.Iptun:
+			local = tun.Local
+			remote = tun.Remote
+		case *netlink.Ip6tnl:
+			local = tun.Local
+			remote = tun.Remote
+		}
+		if local.Equal(localIP) && remote.Equal(peerIP) {
+			return link, nil
+		}
+	}
+	return nil, nil
 }
 
 func (t T) isSameTunnel(link netlink.Link, localIP, peerIP net.IP) bool {
@@ -323,12 +364,18 @@ func (t *T) setupTunnels() error {
 }
 
 func (t *T) setupRoutes() error {
-	if l, err := t.Routes(); err != nil {
+	l, err := t.Routes()
+	if err != nil {
 		t.Log().Err(err).Msg("setup routes")
 		return err
-	} else {
-		return l.Add()
 	}
+	for _, route := range l {
+		t.Log().Info().Stringer("route", route).Msg("route add")
+		if err := route.Add(); err != nil {
+			return errors.Wrap(err, "route add")
+		}
+	}
+	return nil
 }
 
 func (t T) setupBridge() error {
@@ -458,15 +505,16 @@ func (t *T) Routes() (network.Routes, error) {
 			if dst == nil {
 				return routes, fmt.Errorf("route to %s: no dst subnet", nodename)
 			}
-			routes = append(routes, network.Route{
+			route := network.Route{
 				Nodename: nodename,
 				Dev:      t.brName(),
 				Dst:      dst,
 				Gateway:  gw,
 				Table:    table,
-			})
+			}
+			routes = append(routes, route)
+			t.Log().Debug().Stringer("route", route).Msg("routes")
 		}
 	}
-	t.Log().Debug().Interface("routes", routes).Msg("routes")
 	return routes, nil
 }
