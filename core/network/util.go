@@ -1,7 +1,10 @@
 package network
 
 import (
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -38,4 +41,27 @@ func IncIP(ip net.IP) {
 			break
 		}
 	}
+}
+
+/*
+MACFromIP4 returns a mac address using a 0a:58 prefix followed by the bridge
+ipv4 address converted to hexa (same algorithm used in k8s).
+
+When the device with the lowest mac is removed from the bridge or when
+a new device with the lowest mac is added to the bridge, all containers
+can experience tcp hangs while the arp table resynchronizes.
+
+Setting a mac address to the bridge explicitely avoids these mac address
+changes.
+*/
+func MACFromIP4(ip net.IP) (net.HardwareAddr, error) {
+	mac := "0a:58"
+	for _, s := range strings.Split(ip.String(), ".") {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, err
+		}
+		mac += fmt.Sprintf(":%.2x", i)
+	}
+	return net.ParseMAC(mac)
 }
