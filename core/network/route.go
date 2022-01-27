@@ -14,12 +14,6 @@ type (
 		Dst      *net.IPNet `json:"dst"`
 		Gateway  net.IP     `json:"gw"`
 		Table    string     `json:"table"`
-		/*
-			LocalIP string `json:"local_ip"`
-			BridgeIP string `json:"brip"`
-			BridgeDev string `json:"brdev"`
-			Tunnel string `json:"tunnel"`
-		*/
 	}
 	Routes []Route
 )
@@ -31,6 +25,24 @@ func (t Routes) Add() error {
 		}
 	}
 	return nil
+}
+
+func (t Route) String() string {
+	if t.Dst == nil {
+		return ""
+	}
+	s := t.Dst.String()
+	gw := t.Gateway.String()
+	if gw != "" {
+		s = s + " gw " + gw
+	}
+	if t.Dev != "" {
+		s = s + " dev " + t.Dev
+	}
+	if t.Table != "" {
+		s = s + " table " + t.Table
+	}
+	return s
 }
 
 func (t Route) Add() error {
