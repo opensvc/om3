@@ -5,11 +5,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/logging"
-	"opensvc.com/opensvc/util/xsession"
 )
 
 type (
@@ -41,21 +39,27 @@ func (t *Node) init(opts ...funcopt.O) error {
 		return err
 	}
 
-	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: true,
-		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    true,
-		Directory:             t.LogDir(),
-		Filename:              "node.log",
-		MaxSize:               5,
-		MaxBackups:            1,
-		MaxAge:                30,
-		WithCaller:            logging.WithCaller,
-	}).
-		With().
-		Str("n", hostname.Hostname()).
-		Str("sid", xsession.ID).
-		Logger()
+	// log.Logger is configured in cmd/root.go
+	t.log = log.Logger
+
+	/*
+			t.log = logging.Configure(logging.Config{
+				ConsoleLoggingEnabled: true,
+				EncodeLogsAsJSON:      true,
+				FileLoggingEnabled:    true,
+				Directory:             t.LogDir(),
+				Filename:              "node.log",
+				MaxSize:               5,
+				MaxBackups:            1,
+				MaxAge:                30,
+				WithCaller:            logging.WithCaller,
+			}).
+				With().
+				Str("n", hostname.Hostname()).
+				Str("sid", xsession.ID).
+				Logger()
+		}
+	*/
 
 	if err := t.loadConfig(); err != nil {
 		t.log.Debug().Msgf("%s init error: %s", t, err)
