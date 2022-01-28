@@ -78,7 +78,7 @@ func (t T) CNIConfigData() (interface{}, error) {
 			"type": "host-local",
 			"routes": []map[string]interface{}{
 				{"dst": defaultRouteDst(nwStr)},
-				{"dst": nwStr, "gw": brIP},
+				{"dst": nwStr, "gw": brIP.String()},
 			},
 			"subnet": t.subnet(),
 		},
@@ -102,24 +102,34 @@ func isIP6(cidr string) bool {
 	return ip.To4() == nil
 }
 
-func (t T) bridgeIP() (string, error) {
+func (t T) bridgeIP() (net.IP, error) {
 	subnetStr := t.subnet()
 	if subnetStr == "" {
-		return "", fmt.Errorf("network#%s.subnet is required", t.Name())
+		return nil, fmt.Errorf("network#%s.subnet is required", t.Name())
 	}
 	ip, _, err := net.ParseCIDR(subnetStr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	ip[len(ip)-1]++
-	return ip.String(), nil
+	return ip, nil
 }
 
 func (t *T) Setup() error {
-	if err := t.setupBridge(); err != nil {
+	var (
+		link netlink.Link
+		err  error
+	)
+	if link, err = t.setupBridge(); err != nil {
 		return err
 	}
-	if err := t.setupBridgeIP(); err != nil {
+	if err := t.setupBridgeIP(link); err != nil {
+		return err
+	}
+	if err := t.setupBridgeMAC(link); err != nil {
+		return err
+	}
+	if err := netlink.LinkSetUp(link); err != nil {
 		return err
 	}
 	if err := t.setupTunnels(); err != nil {
@@ -378,22 +388,22 @@ func (t *T) setupRoutes() error {
 	return nil
 }
 
-func (t T) setupBridge() error {
+func (t T) setupBridge() (netlink.Link, error) {
 	la := netlink.NewLinkAttrs()
 	la.Name = t.brName()
-	if intf, err := net.InterfaceByName(la.Name); err != nil {
-		return err
-	} else if intf != nil {
+	if link, err := netlink.LinkByName(la.Name); err != nil {
+		return nil, err
+	} else if link != nil {
 		t.Log().Info().Msgf("bridge link %s already exists", la.Name)
-		return nil
+		return link, nil
 	}
 	br := &netlink.Bridge{LinkAttrs: la}
 	err := netlink.LinkAdd(br)
 	if err != nil {
-		return fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
+		return nil, fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
 	t.Log().Info().Msgf("added bridge link %s")
-	return nil
+	return br, nil
 }
 
 func (t T) subnet() string {
@@ -416,23 +426,42 @@ func (t T) brName() string {
 	return "obr_" + t.Name()
 }
 
-func (t T) setupBridgeIP() error {
-	brIP, err := t.bridgeIP()
-	brName := t.brName()
-	br, err := netlink.LinkByName(brName)
-	if err != nil {
+func (t T) setupBridgeMAC(br netlink.Link) error {
+	var (
+		mac  net.HardwareAddr
+		brIP net.IP
+		err  error
+	)
+	if br == nil {
+		return nil
+	}
+	if brIP, err = t.bridgeIP(); err != nil {
 		return err
 	}
-	if br == nil {
-		return fmt.Errorf("bridge %s not found", brName)
+	if mac, err = network.MACFromIP4(brIP); err != nil {
+		return err
 	}
+	if br.Attrs().HardwareAddr.String() == mac.String() {
+		t.Log().Info().Msgf("bridge %s mac is already %s", br.Attrs().Name, mac)
+		return nil
+	}
+	t.Log().Info().Msgf("bridge %s set mac to %s", br.Attrs().Name, mac)
+	return netlink.LinkSetHardwareAddr(br, mac)
+}
+
+func (t T) setupBridgeIP(br netlink.Link) error {
+	if br == nil {
+		return nil
+	}
+	brIP, err := t.bridgeIP()
+	brName := t.brName()
 
 	subnetStr := t.subnet()
 	_, ipnet, err := net.ParseCIDR(subnetStr)
 	if err != nil {
 		return err
 	}
-	ipnet.IP = net.ParseIP(brIP)
+	ipnet.IP = brIP
 	ipnetStr := ipnet.String()
 
 	if intf, err := net.InterfaceByName(brName); err != nil {
