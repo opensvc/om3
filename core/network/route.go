@@ -12,6 +12,7 @@ type (
 		Nodename string     `json:"node"`
 		Dev      string     `json:"dev"`
 		Dst      *net.IPNet `json:"dst"`
+		Src      net.IP     `json:"ip"`
 		Gateway  net.IP     `json:"gw"`
 		Table    string     `json:"table"`
 	}
@@ -32,12 +33,14 @@ func (t Route) String() string {
 		return ""
 	}
 	s := t.Dst.String()
-	gw := t.Gateway.String()
-	if gw != "" {
-		s = s + " gw " + gw
+	if t.Gateway != nil {
+		s = s + " gw " + t.Gateway.String()
 	}
 	if t.Dev != "" {
 		s = s + " dev " + t.Dev
+	}
+	if t.Src != nil {
+		s = s + " src " + t.Src.String()
 	}
 	if t.Table != "" {
 		s = s + " table " + t.Table

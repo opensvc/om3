@@ -86,3 +86,35 @@ func IsValid(t Networker) bool {
 	}
 	return true
 }
+
+func IPReachableFrom(peerIP net.IP) (net.IP, *net.IPNet, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, addr := range addrs {
+		s := addr.String()
+		ip, ipnet, err := net.ParseCIDR(s)
+		if err != nil {
+			continue
+		}
+		if !ipnet.Contains(peerIP) {
+			continue
+		}
+		return ip, ipnet, nil
+	}
+	return nil, nil, nil
+}
+
+func IsSameNetwork(localIP, peerIP net.IP) (bool, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false, err
+	}
+	for _, addr := range addrs {
+		if ip, ipnet, _ := net.ParseCIDR(addr.String()); ip.Equal(localIP) {
+			return ipnet.Contains(peerIP), nil
+		}
+	}
+	return false, nil
+}

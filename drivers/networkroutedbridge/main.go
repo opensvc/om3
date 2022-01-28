@@ -117,61 +117,96 @@ func (t T) bridgeIP() (net.IP, error) {
 
 func (t *T) Setup() error {
 	var (
-		link netlink.Link
-		err  error
+		localIP net.IP
+		link    netlink.Link
+		err     error
 	)
 	if link, err = t.setupBridge(); err != nil {
-		return err
+		return errors.Wrap(err, "setup br")
 	}
 	if err := t.setupBridgeIP(link); err != nil {
-		return err
+		return errors.Wrap(err, "setup br ip")
 	}
 	if err := t.setupBridgeMAC(link); err != nil {
-		return err
+		return errors.Wrap(err, "setup mac")
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
-		return err
+		return errors.Wrap(err, "link up")
 	}
-	if err := t.setupTunnels(); err != nil {
-		return err
+	if localIP, err = t.getLocalIP(); err != nil {
+		return errors.Wrap(err, "get local ip")
 	}
-	if err := t.setupRoutes(); err != nil {
-		return err
+	for idx, nodename := range t.Nodes() {
+		if err := t.setupNode(nodename, idx, localIP); err != nil {
+			return errors.Wrapf(err, "setup network to node %s", nodename)
+		}
 	}
 	return nil
 }
 
-func isSameNetwork(localIP, peerIP net.IP) (bool, error) {
-	addrs, err := net.InterfaceAddrs()
+func (t *T) setupNode(nodename string, nodeIndex int, localIP net.IP) error {
+	var route network.Route
+	tunnel := t.tunnel()
+	peerIP, err := t.getNodeIP(nodename)
 	if err != nil {
-		return false, err
+		return errors.Wrap(err, "get peer ip")
 	}
-	for _, addr := range addrs {
-		if ip, ipnet, _ := net.ParseCIDR(addr.String()); ip.Equal(localIP) {
-			return ipnet.Contains(peerIP), nil
+	dst, err := t.NodeSubnet(nodename)
+	if err != nil {
+		return errors.Wrap(err, "get peer subnet")
+	}
+	if dst == nil {
+		return errors.Wrap(err, "no peer subnet")
+	}
+	if hostname.Hostname() == nodename {
+		route = network.Route{
+			Nodename: nodename,
+			Dst:      dst,
+			Dev:      t.brName(),
+		}
+	} else if v, err := t.mustTunnel(tunnel, peerIP); err != nil {
+		return errors.Wrap(err, "must tunnel")
+	} else if v {
+		name := tunName(peerIP, nodeIndex)
+		if err := t.setupNodeTunnelLink(nodename, name, localIP, peerIP); err != nil {
+			return errors.Wrap(err, "setup tunnel")
+		}
+		route = network.Route{
+			Nodename: nodename,
+			Dst:      dst,
+			Dev:      name,
+			Src:      localIP,
+		}
+	} else {
+		route = network.Route{
+			Nodename: nodename,
+			Dst:      dst,
+			Gateway:  peerIP,
 		}
 	}
-	return false, nil
+	if err := t.setupNodeRoutes(route); err != nil {
+		return errors.Wrap(err, "setup route")
+	}
+	return nil
 }
 
-func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex int, auto bool) error {
-	if nodename == hostname.Hostname() {
-		return nil
+func (t T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
+	if tunnel == "never" {
+		return true, nil
 	}
-	peerIP, err := t.getNodeIP(nodename, af)
-	if err != nil {
-		return err
+	if tunnel == "always" {
+		return false, nil
 	}
-	if auto {
-		if same, err := isSameNetwork(localIP, peerIP); err != nil {
-			return err
-		} else if same {
-			t.Log().Debug().Msgf("%s (%s) and %s (%s) are in the same network. skip tunnel setup", hostname.Hostname(), localIP, nodename, peerIP)
-			return nil
-		}
+	if _, ipnet, err := network.IPReachableFrom(peerIP); err != nil {
+		return false, err
+	} else if ipnet != nil {
+		t.Log().Debug().Msgf("%s is reachable from %s. tunnel not needed", peerIP, ipnet)
+		return false, nil
 	}
-	name := tunName(peerIP, nodeIndex)
+	return true, nil
+}
 
+func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) error {
 	// clean up existing tunnels with same endpoints but different name
 	link, err := t.getTunnelByEndpoints(localIP, peerIP)
 	if err != nil {
@@ -179,7 +214,7 @@ func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex in
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
-			t.Log().Info().Msgf("tunnel to %s is already setup", nodename)
+			t.Log().Info().Msg("already setup")
 			return nil
 		} else {
 			t.Log().Info().Msgf("delete conflicting tunnel %s from %s to %s", link.Attrs().Name, localIP, peerIP)
@@ -200,10 +235,10 @@ func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex in
 		fallthrough
 	case link == nil:
 		if err := t.addTunnel(name, localIP, peerIP); err != nil {
-			return errors.Wrapf(err, "add tunnel to %s", nodename)
+			return errors.Wrap(err, "add tunnel")
 		}
 	case link != nil && t.isSameTunnel(link, localIP, peerIP):
-		t.Log().Info().Msgf("preserve tunnel to %s: already configured", nodename)
+		t.Log().Info().Msgf("tunnel to %s is already configured", nodename)
 		return nil
 	default:
 		if err := t.modTunnel(name, localIP, peerIP); err != nil {
@@ -352,42 +387,6 @@ func tunName(peerIP net.IP, nodeIndex int) string {
 	}
 }
 
-func (t *T) setupTunnels() error {
-	tunnel := t.tunnel()
-	if tunnel == "never" {
-		t.Log().Debug().Msg("skip tunnel setup: tunnel=never")
-		return nil
-	}
-	auto := tunnel == "auto"
-	af := t.getAF()
-	localIP, err := t.getLocalIP(af)
-	if err != nil {
-		t.Log().Debug().Err(err).Msg("skip tunnel setup")
-		return err
-	}
-	for idx, nodename := range t.Nodes() {
-		if err := t.setupTunnel(nodename, localIP, af, idx, auto); err != nil {
-			return errors.Wrapf(err, "setup tunnel to %s", nodename)
-		}
-	}
-	return nil
-}
-
-func (t *T) setupRoutes() error {
-	l, err := t.Routes()
-	if err != nil {
-		t.Log().Err(err).Msg("setup routes")
-		return err
-	}
-	for _, route := range l {
-		t.Log().Info().Msgf("route add %s", route)
-		if err := route.Add(); err != nil {
-			return errors.Wrapf(err, "route add %s", route)
-		}
-	}
-	return nil
-}
-
 func (t T) setupBridge() (netlink.Link, error) {
 	la := netlink.NewLinkAttrs()
 	la.Name = t.brName()
@@ -486,7 +485,7 @@ func (t T) setupBridgeIP(br netlink.Link) error {
 
 // getNodeIP returns the addr scoped for nodename from the network config.
 // Defaults to the first resolved ip address with the network address family (ip4 or ip6).
-func (t T) getNodeIP(nodename, af string) (net.IP, error) {
+func (t T) getNodeIP(nodename string) (net.IP, error) {
 	var keyName string
 	if nodename == hostname.Hostname() {
 		keyName = "addr"
@@ -496,13 +495,14 @@ func (t T) getNodeIP(nodename, af string) (net.IP, error) {
 	if addr := t.GetString(keyName); addr != "" {
 		return net.ParseIP(addr), nil
 	}
+	af := t.getAF()
 	return network.GetNodeAddr(nodename, af)
 }
 
 // getLocalIP returns the addr set in the network config.
 // Defaults to the first resolved ip address with the network address family (ip4 or ip6).
-func (t T) getLocalIP(af string) (net.IP, error) {
-	return t.getNodeIP(hostname.Hostname(), af)
+func (t T) getLocalIP() (net.IP, error) {
+	return t.getNodeIP(hostname.Hostname())
 }
 
 // getAF returns the network address family (ip4 or ip6).
@@ -515,34 +515,13 @@ func (t T) getAF() (af string) {
 	return
 }
 
-func (t *T) Routes() (network.Routes, error) {
-	routes := make(network.Routes, 0)
-	af := t.getAF()
-	for _, nodename := range t.Nodes() {
-		if nodename == hostname.Hostname() {
-			continue
-		}
-		for _, table := range t.Tables() {
-			gw, err := t.getNodeIP(nodename, af)
-			if err != nil {
-				return routes, errors.Wrapf(err, "route to %s: gw", nodename)
-			}
-			dst, err := t.NodeSubnet(nodename)
-			if err != nil {
-				return routes, errors.Wrapf(err, "route to %s: dst", nodename)
-			}
-			if dst == nil {
-				return routes, fmt.Errorf("route to %s: no dst subnet", nodename)
-			}
-			route := network.Route{
-				Nodename: nodename,
-				Dev:      t.brName(),
-				Dst:      dst,
-				Gateway:  gw,
-				Table:    table,
-			}
-			routes = append(routes, route)
+func (t *T) setupNodeRoutes(route network.Route) error {
+	for _, table := range t.Tables() {
+		route.Table = table
+		t.Log().Info().Msgf("route add %s", route)
+		if err := route.Add(); err != nil {
+			return errors.Wrapf(err, "%s", route)
 		}
 	}
-	return routes, nil
+	return nil
 }
