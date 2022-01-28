@@ -80,7 +80,11 @@ func checkOverlap(nw Networker, nws []Networker) error {
 }
 
 func setupNetwork(n *object.Node, nw Networker, dir string) error {
-	if !nw.IsValid() {
+	if IsDisabled(nw) {
+		nw.Log().Debug().Msgf("network setup: skip disabled network")
+		return nil
+	}
+	if !IsValid(nw) {
 		nw.Log().Info().Msgf("network setup: skip invalid network")
 		return nil
 	}

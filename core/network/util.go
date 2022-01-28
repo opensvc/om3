@@ -65,3 +65,24 @@ func MACFromIP4(ip net.IP) (net.HardwareAddr, error) {
 	}
 	return net.ParseMAC(mac)
 }
+
+// IsDisabled returns true if the network keyword value is "none"
+func IsDisabled(t Networker) bool {
+	s := t.Network()
+	if strings.ToLower(s) == "none" {
+		return true
+	}
+	return false
+}
+
+// IsValid returns true if the network configuration is sane enough to setup.
+func IsValid(t Networker) bool {
+	s := t.Network()
+	if s == "" && t.AllowEmptyNetwork() {
+		return true
+	}
+	if _, _, err := net.ParseCIDR(s); err != nil {
+		return false
+	}
+	return true
+}

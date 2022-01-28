@@ -60,9 +60,6 @@ type (
 		// no override section in the configuration.
 		IsImplicit() bool
 
-		// IsValid returns true if the network is a valid CIDR string.
-		IsValid() bool
-
 		// IsIP6 returns true if the network is a CIDR representation
 		// of a IPv6 network.
 		IsIP6() bool
@@ -231,18 +228,6 @@ func (t *T) Tables() []string {
 
 func (t T) AllowEmptyNetwork() bool {
 	return false
-}
-
-// IsValidNetwork returns true if the network configuration is sane enough to setup.
-func (t T) IsValid() bool {
-	s := t.Network()
-	if s == "" && t.AllowEmptyNetwork() {
-		return true
-	}
-	if _, _, err := net.ParseCIDR(s); err != nil {
-		return false
-	}
-	return true
 }
 
 func (t T) IsIP6() bool {
