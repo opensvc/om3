@@ -21,6 +21,7 @@ type (
 	T struct {
 		driver     string
 		name       string
+		network    string
 		isImplicit bool
 		needCommit bool
 		log        *zerolog.Logger
@@ -42,6 +43,10 @@ type (
 
 		// SetImplicit sets isImplicit. See IsImplicit().
 		SetImplicit(bool)
+
+		// SetNetwork sets the network CIDR. Normally read from the
+		// merged cluster configuration.
+		SetNetwork(string)
 
 		// SetNeedCommit can be called by drivers to signal network
 		// configuration changes are staged and // need to be written
@@ -112,7 +117,12 @@ var (
 
 func (t *T) Log() *zerolog.Logger {
 	if t.log == nil {
-		log := t.noder.Log().With().Str("name", t.name).Logger()
+		log := t.noder.Log().With().
+			Str("netName", t.name).
+			Str("netDriver", t.driver).
+			Str("netNetwork", t.network).
+			Bool("netImplicit", t.isImplicit).
+			Logger()
 		t.log = &log
 	}
 	return t.log
@@ -122,7 +132,7 @@ func (t T) Nodes() []string {
 	return t.noder.Nodes()
 }
 
-func NewTyped(name string, networkType string, noder Noder) Networker {
+func NewTyped(name, networkType, networkNetwork string, noder Noder) Networker {
 	fn, ok := drivers[networkType]
 	if !ok {
 		return nil
@@ -130,13 +140,16 @@ func NewTyped(name string, networkType string, noder Noder) Networker {
 	t := fn()
 	t.SetName(name)
 	t.SetDriver(networkType)
+	t.SetNetwork(networkNetwork)
 	t.SetNoder(noder)
 	return t.(Networker)
 }
 
-func New(name string, noder Noder) Networker {
-	networkType := cString(noder.MergedConfig(), name, "type")
-	return NewTyped(name, networkType, noder)
+func NewFromNoder(name string, noder Noder) Networker {
+	config := noder.MergedConfig()
+	networkType := cString(config, name, "type")
+	networkNetwork := cString(config, name, "network")
+	return NewTyped(name, networkType, networkNetwork, noder)
 }
 
 func Register(t string, fn func() Networker) {
@@ -241,7 +254,7 @@ func (t T) IsIP6() bool {
 }
 
 func (t *T) Network() string {
-	return t.GetString("network")
+	return t.network
 }
 
 func (t *T) IPsPerNode() (int, error) {
@@ -252,11 +265,15 @@ func (t *T) IPsPerNode() (int, error) {
 	return i.(int), nil
 }
 
+func (t *T) SetNetwork(s string) {
+	t.network = s
+}
+
 func (t *T) SetImplicit(v bool) {
 	t.isImplicit = v
 }
 
-func (t *T) IsImplicit() bool {
+func (t T) IsImplicit() bool {
 	return t.isImplicit
 }
 
@@ -305,7 +322,7 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	} else if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
 		return nil, err
 	} else if ipnet != nil {
-		t.Log().Debug().Msgf("subnet %s previously assigned to node %s", ipnet, nodename)
+		t.Log().Debug().Msgf("node %s subnet %s read from config", nodename, ipnet)
 		return ipnet, nil
 	}
 
@@ -376,7 +393,7 @@ func Networks(noder Noder) []Networker {
 	hasDefault := false
 
 	for _, name := range namesInConfig(noder) {
-		p := New(name, noder)
+		p := NewFromNoder(name, noder)
 		if p == nil {
 			continue
 		}
@@ -389,12 +406,12 @@ func Networks(noder Noder) []Networker {
 		l = append(l, p)
 	}
 	if !hasLO {
-		p := NewTyped("lo", "lo", noder)
+		p := NewTyped("lo", "lo", "127.0.0.1/32", noder)
 		p.SetImplicit(true)
 		l = append(l, p)
 	}
 	if !hasDefault {
-		p := NewTyped("default", "bridge", noder)
+		p := NewTyped("default", "bridge", "10.22.0.0/16", noder)
 		p.SetImplicit(true)
 		l = append(l, p)
 	}

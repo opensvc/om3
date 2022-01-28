@@ -1203,15 +1203,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 		Section: "network",
 		Types:   []string{"bridge", "routed_bridge"},
 		Option:  "network",
-		Default: "10.22.0.0/16",
 		Text:    "The cluster backend network. The routed_bridge driver fragments this network into :kw:`ips_per_nodes` blocks subnets.",
-	},
-	{
-		Section: "network",
-		Types:   []string{"weave"},
-		Option:  "network",
-		Default: "10.32.0.0/12",
-		Text:    "The cluster backend network.",
 	},
 	{
 		Section:    "switch",

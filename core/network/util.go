@@ -20,8 +20,8 @@ func cKey(networkName string, option string) key.T {
 }
 
 func cString(config *xconfig.T, networkName string, option string) string {
-	network := cKey(networkName, option)
-	return config.GetString(network)
+	k := cKey(networkName, option)
+	return config.GetString(k)
 }
 
 func pKey(p Networker, s string) key.T {

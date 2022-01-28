@@ -169,7 +169,7 @@ func (t *T) setupTunnel(nodename string, localIP net.IP, af string, nodeIndex in
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
-			t.Log().Info().Msgf("preserve tunnel to %s: already configured", nodename)
+			t.Log().Info().Msgf("tunnel to %s is already setup", nodename)
 			return nil
 		} else {
 			t.Log().Info().Msgf("delete conflicting tunnel %s from %s to %s", link.Attrs().Name, localIP, peerIP)
@@ -370,9 +370,9 @@ func (t *T) setupRoutes() error {
 		return err
 	}
 	for _, route := range l {
-		t.Log().Info().Stringer("route", route).Msg("route add")
+		t.Log().Info().Msgf("route add %s", route)
 		if err := route.Add(); err != nil {
-			return errors.Wrap(err, "route add")
+			return errors.Wrapf(err, "route add %s", route)
 		}
 	}
 	return nil
@@ -513,7 +513,6 @@ func (t *T) Routes() (network.Routes, error) {
 				Table:    table,
 			}
 			routes = append(routes, route)
-			t.Log().Debug().Stringer("route", route).Msg("routes")
 		}
 	}
 	return routes, nil
