@@ -118,16 +118,20 @@ func (t T) bridgeIP() (net.IP, error) {
 func (t *T) Setup() error {
 	var (
 		localIP net.IP
+		brIP    net.IP
 		link    netlink.Link
 		err     error
 	)
+	if brIP, err = t.bridgeIP(); err != nil {
+		return err
+	}
 	if link, err = t.setupBridge(); err != nil {
 		return errors.Wrap(err, "setup br")
 	}
-	if err := t.setupBridgeIP(link); err != nil {
+	if err := t.setupBridgeIP(link, brIP); err != nil {
 		return errors.Wrap(err, "setup br ip")
 	}
-	if err := t.setupBridgeMAC(link); err != nil {
+	if err := t.setupBridgeMAC(link, brIP); err != nil {
 		return errors.Wrap(err, "setup mac")
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
@@ -137,14 +141,14 @@ func (t *T) Setup() error {
 		return errors.Wrap(err, "get local ip")
 	}
 	for idx, nodename := range t.Nodes() {
-		if err := t.setupNode(nodename, idx, localIP); err != nil {
+		if err := t.setupNode(nodename, idx, localIP, brIP); err != nil {
 			return errors.Wrapf(err, "setup network to node %s", nodename)
 		}
 	}
 	return nil
 }
 
-func (t *T) setupNode(nodename string, nodeIndex int, localIP net.IP) error {
+func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) error {
 	var route network.Route
 	tunnel := t.tunnel()
 	peerIP, err := t.getNodeIP(nodename)
@@ -171,11 +175,14 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP net.IP) error {
 		if err := t.setupNodeTunnelLink(nodename, name, localIP, peerIP); err != nil {
 			return errors.Wrap(err, "setup tunnel")
 		}
+		if err := t.setupNodeTunnelLinkUp(name); err != nil {
+			return errors.Wrap(err, "setup tunnel")
+		}
 		route = network.Route{
 			Nodename: nodename,
 			Dst:      dst,
 			Dev:      name,
-			Src:      localIP,
+			Src:      brIP,
 		}
 	} else {
 		route = network.Route{
@@ -214,7 +221,7 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
-			t.Log().Info().Msg("already setup")
+			t.Log().Info().Msgf("tunnel to %s is already setup", nodename)
 			return nil
 		} else {
 			t.Log().Info().Msgf("delete conflicting tunnel %s from %s to %s", link.Attrs().Name, localIP, peerIP)
@@ -244,6 +251,16 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 		if err := t.modTunnel(name, localIP, peerIP); err != nil {
 			return errors.Wrapf(err, "modify tunnel to %s", nodename)
 		}
+	}
+	return nil
+}
+
+func (t *T) setupNodeTunnelLinkUp(name string) error {
+	if link, err := netlink.LinkByName(name); err != nil {
+		return errors.Wrapf(err, "link up")
+	} else if link != nil {
+		t.Log().Info().Msgf("link up %s", name)
+		netlink.LinkSetUp(link)
 	}
 
 	return nil
@@ -425,17 +442,13 @@ func (t T) brName() string {
 	return "obr_" + t.Name()
 }
 
-func (t T) setupBridgeMAC(br netlink.Link) error {
+func (t T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 	var (
-		mac  net.HardwareAddr
-		brIP net.IP
-		err  error
+		mac net.HardwareAddr
+		err error
 	)
 	if br == nil {
 		return nil
-	}
-	if brIP, err = t.bridgeIP(); err != nil {
-		return err
 	}
 	if mac, err = network.MACFromIP4(brIP); err != nil {
 		return err
@@ -448,13 +461,11 @@ func (t T) setupBridgeMAC(br netlink.Link) error {
 	return netlink.LinkSetHardwareAddr(br, mac)
 }
 
-func (t T) setupBridgeIP(br netlink.Link) error {
+func (t T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 	if br == nil {
 		return nil
 	}
-	brIP, err := t.bridgeIP()
 	brName := t.brName()
-
 	subnetStr := t.subnet()
 	_, ipnet, err := net.ParseCIDR(subnetStr)
 	if err != nil {

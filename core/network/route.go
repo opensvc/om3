@@ -51,6 +51,7 @@ func (t Route) String() string {
 func (t Route) Add() error {
 	nlRoute := &netlink.Route{
 		Dst: t.Dst,
+		Src: t.Src,
 		Gw:  t.Gateway,
 	}
 	if intf, err := net.InterfaceByName(t.Dev); err != nil {
@@ -63,5 +64,5 @@ func (t Route) Add() error {
 	} else {
 		nlRoute.Table = i
 	}
-	return netlink.RouteAdd(nlRoute)
+	return netlink.RouteReplace(nlRoute)
 }
