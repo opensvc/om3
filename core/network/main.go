@@ -19,13 +19,15 @@ import (
 
 type (
 	T struct {
-		driver     string
-		name       string
-		network    string
-		isImplicit bool
-		needCommit bool
-		log        *zerolog.Logger
-		noder      Noder
+		driver            string
+		name              string
+		network           string
+		isImplicit        bool
+		needCommit        bool
+		allowEmptyNetwork bool
+
+		log   *zerolog.Logger
+		noder Noder
 	}
 
 	Noder interface {
@@ -84,9 +86,6 @@ type (
 
 		FilterIPs(clusterip.L) clusterip.L
 
-		// AllowEmptyNetwork can be defined by a specific driver to
-		// announce the network core that empty network option is fine.
-		// For one, the loopback driver uses that.
 		AllowEmptyNetwork() bool
 
 		// Config is a wrapper for the noder MergedConfig
@@ -169,10 +168,6 @@ func (t *T) SetNeedCommit(v bool) {
 	t.needCommit = v
 }
 
-func (t *T) SetDriver(driver string) {
-	t.driver = driver
-}
-
 func (t T) Type() string {
 	return t.driver
 }
@@ -226,8 +221,15 @@ func (t *T) Tables() []string {
 	return t.GetSlice("tables")
 }
 
+// AllowEmptyNetwork returns true if the driver supports
+// empty "network" keywork value.
+// For one, the loopback driver does support that.
 func (t T) AllowEmptyNetwork() bool {
-	return false
+	return t.allowEmptyNetwork
+}
+
+func (t T) SetAllowEmptyNetwork(v bool) {
+	t.allowEmptyNetwork = v
 }
 
 func (t T) IsIP6() bool {

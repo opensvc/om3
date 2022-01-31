@@ -16,6 +16,7 @@ func init() {
 
 func NewNetworker() network.Networker {
 	t := New()
+	t.SetAllowEmptyNetwork(true)
 	var i interface{} = t
 	return i.(network.Networker)
 }
@@ -35,10 +36,6 @@ func (t *T) Network() string {
 func (t T) Usage() (network.StatusUsage, error) {
 	usage := network.StatusUsage{}
 	return usage, nil
-}
-
-func (t T) AllowEmptyNetwork() bool {
-	return true
 }
 
 // CNIConfigData returns a cni network configuration, like
