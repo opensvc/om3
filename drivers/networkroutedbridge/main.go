@@ -421,7 +421,7 @@ func (t T) setupBridge() (netlink.Link, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
-	t.Log().Info().Msgf("added bridge link %s")
+	t.Log().Info().Msgf("added bridge link %s", la.Name)
 	return br, nil
 }
 
