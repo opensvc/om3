@@ -1,3 +1,5 @@
+// +build linux
+
 package networkroutedbridge
 
 import (
@@ -7,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/util/hostname"
 )
