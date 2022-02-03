@@ -4,7 +4,7 @@
 package ressharenfs
 
 import (
-	"opensvc.com/opensvc/util/capabilities"
+	"context"
 )
 
 func capabilitiesScanner() ([]string, error) {
@@ -15,10 +15,14 @@ func (t T) stop() error {
 	return nil
 }
 
-func (t T) start() error {
+func (t T) start(_ context.Context) error {
 	return nil
 }
 
 func (t T) isUp() (bool, error) {
+	return false, nil
+}
+
+func (t *T) isPathExported() (bool, error) {
 	return false, nil
 }

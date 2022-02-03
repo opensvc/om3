@@ -1,3 +1,5 @@
+// +build linux
+
 package networkroutedbridge
 
 import (
@@ -7,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -418,7 +421,7 @@ func (t T) setupBridge() (netlink.Link, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
-	t.Log().Info().Msgf("added bridge link %s")
+	t.Log().Info().Msgf("added bridge link %s", la.Name)
 	return br, nil
 }
 

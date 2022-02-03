@@ -1,9 +1,12 @@
+// +build linux
+
 package network
 
 import (
 	"net"
 
 	"github.com/vishvananda/netlink"
+
 	"opensvc.com/opensvc/util/rttables"
 )
 
