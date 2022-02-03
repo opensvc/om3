@@ -445,6 +445,10 @@ func (t T) brName() string {
 	return "obr_" + t.Name()
 }
 
+func (t T) BackendDevName() string {
+	return t.brName()
+}
+
 func (t T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 	var (
 		mac net.HardwareAddr

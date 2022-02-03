@@ -49,6 +49,9 @@ func Setup(n *object.Node) error {
 		n.Log().Info().Msgf("network setup: commit config changes on %s", strings.Join(needCommit, ","))
 		n.MergedConfig().Commit()
 	}
+	if err := setupFW(n, nws); err != nil {
+		errs = append(errs, err)
+	}
 	if len(errs) > 0 {
 		return fmt.Errorf("network setup: %d failed", len(errs))
 	}
@@ -88,7 +91,7 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 		nw.Log().Info().Msgf("network setup: skip invalid network")
 		return nil
 	}
-	if err := SetupNetworkCNI(n, dir, nw); err != nil {
+	if err := setupNetworkCNI(n, dir, nw); err != nil {
 		return err
 	}
 	if i, ok := nw.(Setuper); ok {
@@ -115,7 +118,7 @@ func CNIConfigFile(dir string, nw Networker) string {
 	return filepath.Join(dir, nw.Name()+".conf")
 }
 
-func SetupNetworkCNI(n *object.Node, dir string, nw Networker) error {
+func setupNetworkCNI(n *object.Node, dir string, nw Networker) error {
 	i, ok := nw.(CNIer)
 	if !ok {
 		return nil

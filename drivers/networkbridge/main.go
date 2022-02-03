@@ -30,6 +30,14 @@ func (t T) Usage() (network.StatusUsage, error) {
 	return usage, nil
 }
 
+func (t T) brName() string {
+	return "obr_" + t.Name()
+}
+
+func (t T) BackendDevName() string {
+	return t.brName()
+}
+
 // CNIConfigData returns a cni network configuration, like
 // {
 //   "bridge": "cni0",
@@ -47,12 +55,11 @@ func (t T) Usage() (network.StatusUsage, error) {
 //   "type": "bridge"
 // }
 func (t T) CNIConfigData() (interface{}, error) {
-	name := t.Name()
 	m := map[string]interface{}{
 		"cniVersion": network.CNIVersion,
-		"name":       name,
+		"name":       t.Name(),
 		"type":       "bridge",
-		"bridge":     "obr_" + name,
+		"bridge":     t.brName(),
 		"isGateway":  true,
 		"ipMasq":     true,
 		"ipam": map[string]interface{}{

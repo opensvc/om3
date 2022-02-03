@@ -73,6 +73,10 @@ type (
 		// Network returns the CIDR representation of the network.
 		Network() string
 
+		// IPNet returns the result of ParseCIDR() on the Network()
+		// CIDR string, without the net.IP
+		IPNet() (*net.IPNet, error)
+
 		// NeedCommit return true if the network configuration cache
 		// has staged changes. This can be used by Networks() users to
 		// do one commit per action instead of one per network.
@@ -158,6 +162,10 @@ func (t T) Name() string {
 
 func (t *T) SetName(name string) {
 	t.name = name
+}
+
+func (t *T) SetDriver(name string) {
+	t.driver = name
 }
 
 func (t T) NeedCommit() bool {
