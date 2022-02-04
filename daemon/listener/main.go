@@ -8,6 +8,7 @@ import (
 
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttp"
+	"opensvc.com/opensvc/daemon/listener/lsnrraw"
 	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -47,7 +48,8 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrraw.New(
 					lsnrraw.WithRoutineTracer(&t.TT),
-					lsnrraw.WithRootDaemon(t.rootDaemon),
+					lsnrraw.WithHttpHandler(t.httpHandler),
+					lsnrraw.WithAddr(socketPathUds),
 				)
 			},
 		},
@@ -63,6 +65,8 @@ var (
 			},
 		},
 	}
+
+	socketPathUds = "/tmp/lsnr_ux"
 )
 
 func New(opts ...funcopt.O) *T {

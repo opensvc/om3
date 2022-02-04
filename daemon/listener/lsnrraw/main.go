@@ -2,9 +2,12 @@ package lsnrraw
 
 import (
 	"net"
+	"net/http"
+	"time"
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -17,12 +20,18 @@ type (
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
-		rootDaemon   subdaemon.RootManager
+		mux          rawServer
+		httpHandler  http.Handler
+		addr         string
 	}
 
 	routineTracer interface {
 		Trace(string) func()
 		Stats() routinehelper.Stat
+	}
+
+	rawServer interface {
+		Serve(rawmux.ReadWriteCloseSetDeadliner)
 	}
 )
 
@@ -39,6 +48,7 @@ func New(opts ...funcopt.O) *T {
 		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	t.log = t.Log()
+	t.mux = rawmux.New(t.httpHandler, t.log, 5*time.Second)
 	return t
 }
 
@@ -48,7 +58,7 @@ func (t *T) MainStart() error {
 	go func() {
 		defer t.Trace(t.Name() + "-lsnr-raw")()
 		if err := t.start(); err != nil {
-			t.log.Error().Err(err).Msg("starting usd")
+			t.log.Error().Err(err).Msgf("starting raw listener")
 		}
 		started <- true
 	}()

@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-var (
-	socketPathUds = "/tmp/lsnr_ux"
-)
-
 func (t *T) stop() error {
 	if err := (*t.listener).Close(); err != nil {
 		t.log.Error().Err(err).Msg("close failed")
@@ -20,11 +16,11 @@ func (t *T) stop() error {
 }
 
 func (t *T) start() error {
-	if err := os.RemoveAll(socketPathUds); err != nil {
+	if err := os.RemoveAll(t.addr); err != nil {
 		t.log.Error().Err(err).Msg("RemoveAll")
 		return err
 	}
-	listener, err := net.Listen("unix", socketPathUds)
+	listener, err := net.Listen("unix", t.addr)
 	if err != nil {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
@@ -42,11 +38,11 @@ func (t *T) start() error {
 					continue
 				}
 			}
-			go t.handle(conn)
+			go t.mux.Serve(conn)
 		}
 	}()
 	t.listener = &listener
 	<-c
-	t.log.Info().Msg("listener started")
+	t.log.Info().Msg("listener started " + t.addr)
 	return nil
 }
