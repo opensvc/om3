@@ -39,6 +39,11 @@ func New(log zerolog.Logger, rootDaemon subdaemon.RootManager) *T {
 	return t
 }
 
+// ServerHTTP implement http.Handler interface for T
+func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	t.mux.ServeHTTP(w, r)
+}
+
 func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(daemonMiddleWare(t.rootDaemon))
