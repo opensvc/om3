@@ -58,6 +58,8 @@ type (
 		Stop(OptsStop) error
 		Provision(OptsProvision) error
 		Unprovision(OptsUnprovision) error
+		SetProvisioned(OptsSetProvisioned) error
+		SetUnprovisioned(OptsSetUnprovisioned) error
 		SyncResync(OptsSyncResync) error
 	}
 

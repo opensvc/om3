@@ -11,15 +11,16 @@ import (
 type (
 	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectSet struct {
+		Command *cobra.Command
 		object.OptsSet
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
 func (t *CmdObjectSet) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
+	t.Command = t.cmd(kind, selector)
+	parent.AddCommand(t.Command)
+	flag.Install(t.Command, t)
 }
 
 func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {

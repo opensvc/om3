@@ -2,6 +2,8 @@ package resource
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -136,4 +138,55 @@ func Provisioned(t Driver) (provisioned.T, error) {
 		return provisioned.NotApplicable, nil
 	}
 	return t.Provisioned()
+}
+
+func hasAnyProvInterface(r Driver) bool {
+	if _, ok := r.(ProvisionLeaderer); ok {
+		return true
+	}
+	if _, ok := r.(ProvisionLeadeder); ok {
+		return true
+	}
+	if _, ok := r.(UnprovisionLeaderer); ok {
+		return true
+	}
+	if _, ok := r.(UnprovisionLeadeder); ok {
+		return true
+	}
+	return false
+}
+
+func setProvisionedValue(v bool, r Driver) error {
+	if !hasAnyProvInterface(r) {
+		return nil
+	}
+	p := provisionedFile(r)
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	if err := enc.Encode(v); err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetProvisioned creates a flag file in the resource var dir to remember that the provision is done.
+func SetProvisioned(ctx context.Context, r Driver) error {
+	if err := setProvisionedValue(true, r); err != nil {
+		return err
+	}
+	r.Log().Info().Msg("set provisioned")
+	return nil
+}
+
+// SetUnprovisioned removes the flag file in the resource var dir to forget that the provision is done.
+func SetUnprovisioned(ctx context.Context, r Driver) error {
+	if err := setProvisionedValue(false, r); err != nil {
+		return err
+	}
+	r.Log().Info().Msg("set unprovisioned")
+	return nil
 }

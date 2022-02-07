@@ -67,6 +67,14 @@ var (
 		Name:       "set",
 		RelayToAny: true,
 	}
+	SetProvisioned = T{
+		Name:  "set provisioned",
+		Local: true,
+	}
+	SetUnprovisioned = T{
+		Name:  "set unprovisioned",
+		Local: true,
+	}
 	Status = T{
 		Name: "status",
 	}

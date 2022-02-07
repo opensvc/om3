@@ -58,6 +58,8 @@ func init() {
 		cmdRestart          commands.CmdObjectRestart
 		cmdRun              commands.CmdObjectRun
 		cmdSet              commands.CmdObjectSet
+		cmdSetProvisioned   commands.CmdObjectSetProvisioned
+		cmdSetUnprovisioned commands.CmdObjectSetUnprovisioned
 		cmdStart            commands.CmdObjectStart
 		cmdStatus           commands.CmdObjectStatus
 		cmdStop             commands.CmdObjectStop
@@ -86,6 +88,8 @@ func init() {
 	cmdRestart.Init(kind, head, &selectorFlag)
 	cmdRun.Init(kind, head, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
+	cmdSetProvisioned.Init(kind, cmdSet.Command, &selectorFlag)
+	cmdSetUnprovisioned.Init(kind, cmdSet.Command, &selectorFlag)
 	cmdStart.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)
 	cmdStop.Init(kind, head, &selectorFlag)
