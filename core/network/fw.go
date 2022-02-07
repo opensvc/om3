@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package network
@@ -241,6 +242,7 @@ func debugRules() error {
 
 func setupFW(n logger, nws []Networker) error {
 	h := newNFTHandle()
+	h.FlushChains()
 	for _, other := range nws {
 		cidr := other.Network()
 		h.AddRuleDestinationReturn(cidr)
@@ -282,6 +284,29 @@ func ipFamily(ip net.IP) nftables.TableFamily {
 		return nftables.TableFamilyIPv6
 	} else {
 		return nftables.TableFamilyIPv4
+	}
+}
+
+func (t *nftHandle) FlushChains() {
+	families := []nftables.TableFamily{
+		nftables.TableFamilyIPv4,
+		nftables.TableFamilyIPv6,
+	}
+	chainNames := []struct {
+		Table string
+		Chain string
+	}{
+		{"nat", "osvc-masq"},
+		{"nat", "osvc-postrouting"},
+		{"filter", "osvc-forward"},
+	}
+	for _, family := range families {
+		for _, data := range chainNames {
+			if chain, _ := t.GetChain(family, data.Table, data.Chain); chain != nil {
+				t.Msgf("nft flush chain %s %s %s", fmtFamily(family), data.Table, data.Chain)
+				t.conn.FlushChain(chain)
+			}
+		}
 	}
 }
 
