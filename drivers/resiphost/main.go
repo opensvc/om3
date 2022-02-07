@@ -220,7 +220,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	if i, err = t.netInterface(); err != nil {
-		t.StatusLog().Error("%s", err)
+		if fmt.Sprint(err.(*net.OpError).Unwrap()) == "no such network interface" {
+			t.StatusLog().Warn("interface %s not found", t.IpDev)
+		} else {
+			t.StatusLog().Error("%s", err)
+		}
 		return status.Down
 	}
 	if t.CheckCarrier {
@@ -241,7 +245,7 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t T) Label() string {
-	return fmt.Sprintf("%s", t.ipaddr())
+	return fmt.Sprintf("%s %s", t.ipnet(), t.IpDev)
 }
 
 func (t *T) Provision(ctx context.Context) error {
