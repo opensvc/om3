@@ -1,4 +1,4 @@
-package lsnrraw
+package lsnrhttp
 
 import (
 	"net/http"
@@ -15,10 +15,10 @@ func WithRoutineTracer(o routinehelper.Tracer) funcopt.O {
 	})
 }
 
-func WithHttpHandler(o http.Handler) funcopt.O {
+func WithHandler(o http.Handler) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.httpHandler = o
+		t.handler = o
 		return nil
 	})
 }
@@ -27,6 +27,22 @@ func WithAddr(o string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.addr = o
+		return nil
+	})
+}
+
+func WithCertFile(o string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.certFile = o
+		return nil
+	})
+}
+
+func WithKeyFile(o string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.keyFile = o
 		return nil
 	})
 }

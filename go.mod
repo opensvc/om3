@@ -14,6 +14,7 @@ require (
 	github.com/eidolon/wordwrap v0.0.0-20161011182207-e0f54129b8bb
 	github.com/fatih/color v1.10.0
 	github.com/gdamore/tcell/v2 v2.3.1 // indirect
+	github.com/go-chi/chi/v5 v5.0.7 // indirect
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0

@@ -1,12 +1,15 @@
 package listener
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/enable"
+	"opensvc.com/opensvc/daemon/listener/lsnrhttp"
 	"opensvc.com/opensvc/daemon/listener/lsnrraw"
+	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -21,6 +24,7 @@ type (
 		loopEnabled  *enable.T
 		routineTrace routineTracer
 		rootDaemon   subdaemon.RootManager
+		httpHandler  http.Handler
 		routinehelper.TT
 	}
 	action struct {
@@ -44,11 +48,25 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrraw.New(
 					lsnrraw.WithRoutineTracer(&t.TT),
-					lsnrraw.WithRootDaemon(t.rootDaemon),
+					lsnrraw.WithHttpHandler(t.httpHandler),
+					lsnrraw.WithAddr(socketPathUds),
+				)
+			},
+		},
+		"listenerHttp": {
+			new: func(t *T) subdaemon.Manager {
+				return lsnrhttp.New(
+					lsnrhttp.WithRoutineTracer(&t.TT),
+					lsnrhttp.WithHandler(t.httpHandler),
+					lsnrhttp.WithAddr(":1225"),
+					lsnrhttp.WithCertFile("/tmp/certificate_chain"),
+					lsnrhttp.WithKeyFile("/tmp/private_key"),
 				)
 			},
 		},
 	}
+
+	socketPathUds = "/tmp/lsnr_ux"
 )
 
 func New(opts ...funcopt.O) *T {
@@ -78,6 +96,7 @@ func (t *T) MainStart() error {
 		defer t.Trace(t.Name() + "-loop")()
 		t.loop(started)
 	}()
+	t.httpHandler = httpmux.New(t.log, t.rootDaemon)
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
 		if err := sub.subActions.Init(); err != nil {

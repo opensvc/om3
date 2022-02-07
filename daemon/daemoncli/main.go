@@ -38,7 +38,9 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	d.WaitDone()
+	if d != nil {
+		d.WaitDone()
+	}
 	return nil
 }
 

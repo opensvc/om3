@@ -1,13 +1,10 @@
-package lsnrraw
+package lsnrhttp
 
 import (
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -17,21 +14,18 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		listener     *net.Listener
+		listener     *http.Server
 		log          zerolog.Logger
 		routineTrace routineTracer
-		mux          rawServer
-		httpHandler  http.Handler
+		handler      http.Handler
 		addr         string
+		certFile     string
+		keyFile      string
 	}
 
 	routineTracer interface {
 		Trace(string) func()
 		Stats() routinehelper.Stat
-	}
-
-	rawServer interface {
-		Serve(rawmux.ReadWriteCloseSetDeadliner)
 	}
 )
 
@@ -43,12 +37,11 @@ func New(opts ...funcopt.O) *T {
 		return nil
 	}
 	t.T = subdaemon.New(
-		subdaemon.WithName("listenerRaw"),
+		subdaemon.WithName("listenerhttp"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	t.log = t.Log()
-	t.mux = rawmux.New(t.httpHandler, t.log, 5*time.Second)
 	return t
 }
 
@@ -56,9 +49,9 @@ func (t *T) MainStart() error {
 	t.log.Debug().Msg("mgr starting")
 	started := make(chan bool)
 	go func() {
-		defer t.Trace(t.Name() + "-lsnr-raw")()
+		defer t.Trace(t.Name() + "-lsnr-http")()
 		if err := t.start(); err != nil {
-			t.log.Error().Err(err).Msgf("starting raw listener")
+			t.log.Error().Err(err).Msg("starting http")
 		}
 		started <- true
 	}()
@@ -73,5 +66,30 @@ func (t *T) MainStop() error {
 		t.log.Error().Err(err).Msg("stop")
 	}
 	t.log.Debug().Msg("mgr stopped")
+	return nil
+}
+
+func (t *T) stop() error {
+	if err := (*t.listener).Close(); err != nil {
+		t.log.Error().Err(err).Msg("http listener close failed " + t.addr)
+		return err
+	}
+	t.log.Info().Msg("http listener stopped " + t.addr)
+	return nil
+}
+
+func (t *T) start() error {
+	t.log.Info().Msg("http listener starting " + t.addr)
+	started := make(chan bool)
+	t.listener = &http.Server{Addr: t.addr, Handler: t.handler}
+	go func() {
+		started <- true
+		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
+		if err != http.ErrServerClosed {
+			t.log.Error().Err(err).Msg("http listener ends with unexpected error " + t.addr)
+		}
+	}()
+	<-started
+	t.log.Info().Msg("http listener started " + t.addr)
 	return nil
 }
