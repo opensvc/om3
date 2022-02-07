@@ -4,6 +4,8 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 func (f Frame) sObjectInstance(path string, node string) string {
@@ -19,6 +21,10 @@ func (f Frame) sObjectInstance(path string, node string) string {
 		s += sObjectInstanceMonitorStatus(instance)
 		s += sObjectInstanceMonitorGlobalExpect(instance)
 		s += "\t"
+	} else if cf, ok := f.Current.Monitor.Nodes[hostname.Hostname()].Services.Config[path]; !ok {
+		return s
+	} else if stringslice.Has(node, cf.Scope) {
+		s += iconUndef + "\t"
 	}
 	return s
 }
