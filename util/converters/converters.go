@@ -28,6 +28,7 @@ type (
 	TUmask         string
 	TSize          string
 	TFileMode      string
+	TTristate      string
 )
 
 var (
@@ -44,7 +45,24 @@ var (
 	Umask         TUmask
 	Size          TSize
 	FileMode      TFileMode
+	Tristate      TTristate
 )
+
+//
+func (t TTristate) Convert(s string) (interface{}, error) {
+	if s == "" {
+		return "", nil
+	}
+	v, err := strconv.ParseBool(s)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprint(v), nil
+}
+
+func (t TTristate) String() string {
+	return "tristate"
+}
 
 //
 func (t TString) Convert(s string) (interface{}, error) {
