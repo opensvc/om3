@@ -15,7 +15,7 @@ type (
 	// Options groups the field of T that get exposed via commandline flags
 	Options struct {
 		RID    string `flag:"rid"`
-		Subset string `flag:"subsets"`
+		Subset string `flag:"subset"`
 		Tag    string `flag:"tags"`
 	}
 

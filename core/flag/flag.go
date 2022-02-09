@@ -25,6 +25,12 @@ type (
 
 		// Deprecated is the deprecation message. Empty means not deprecated.
 		Deprecated string
+
+		// Aliases is a list of hidden flags names synomyms of the primary long name.
+		Aliases []string
+
+		// Hidden controls the option visibility in the help text
+		Hidden bool
 	}
 )
 
@@ -62,6 +68,13 @@ func installFlag(cmd *cobra.Command, ft reflect.StructField, fv reflect.Value) {
 	}
 	//log.Info().Msgf("%s %s has flag tag %s and opt %s", cmd.Use, ft.Name, flag, opt)
 	opt.installFlag(cmd, fv)
+
+	for _, alias := range opt.Aliases {
+		optAlias := opt
+		optAlias.Hidden = true
+		optAlias.Long = alias
+		optAlias.installFlag(cmd, fv)
+	}
 }
 
 func (t *Opt) installFlag(cmd *cobra.Command, v reflect.Value) {
@@ -106,5 +119,8 @@ func (t *Opt) installFlag(cmd *cobra.Command, v reflect.Value) {
 		if t.Long != "" {
 			flagSet.MarkDeprecated(t.Long, t.Deprecated)
 		}
+	}
+	if t.Hidden {
+		flagSet.MarkHidden(t.Long)
 	}
 }

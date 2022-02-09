@@ -167,9 +167,10 @@ var Tags = map[string]Opt{
 		Default: "5m",
 		Desc:    "stop waiting for the object to reach the target state after a duration",
 	},
-	"subsets": Opt{
-		Long: "subsets",
-		Desc: "subset selector expression (g1,g2)",
+	"subset": Opt{
+		Long:    "subset",
+		Desc:    "subset selector expression (g1,g2)",
+		Aliases: []string{"subsets"},
 	},
 	"template": Opt{
 		Long: "template",
