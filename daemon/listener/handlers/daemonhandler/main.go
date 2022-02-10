@@ -11,18 +11,22 @@ import (
 
 func Running(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Running"
+	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	daemon := muxctx.Daemon(r.Context())
+	logger.Debug().Msg("starting")
 	if daemon.Running() {
-		write(w, r, funcName, "running")
+		logger.Info().Msg("daemon is running")
+		_, _ = write(w, r, funcName, []byte("running"))
 	} else {
-		write(w, r, funcName, "not running")
+		logger.Info().Msg("daemon is stopped")
+		_, _ = write(w, r, funcName, []byte("not running"))
 	}
 }
 
 func Stop(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Stop"
-	logger := muxctx.Logger(r.Context())
-	logger.Info().Msg(funcName + "...")
+	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	logger.Debug().Msg("starting")
 	daemon := muxctx.Daemon(r.Context())
 	if daemon.Running() {
 		msg := funcName + ": stopping"
@@ -30,19 +34,21 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 		if err := daemon.StopAndQuit(); err != nil {
 			msg := funcName + ": StopAndQuit error"
 			logger.Error().Err(err).Msg(msg)
-			write(w, r, funcName, msg+" "+err.Error())
+			_, _ = write(w, r, funcName, []byte(msg+" "+err.Error()))
 		}
 	} else {
 		msg := funcName + ": no daemon to stop"
 		logger.Info().Msg(msg)
-		write(w, r, funcName, msg)
+		_, _ = write(w, r, funcName, []byte(msg))
 	}
 }
 
-func write(w http.ResponseWriter, r *http.Request, funcName, msg string) {
-	_, err := w.Write([]byte(msg))
+func write(w http.ResponseWriter, r *http.Request, funcName string, b []byte) (int, error) {
+	written, err := w.Write(b)
 	if err != nil {
 		logger := muxctx.Logger(r.Context())
 		logger.Debug().Err(err).Msg(funcName + " write error")
+		return written, err
 	}
+	return written, nil
 }
