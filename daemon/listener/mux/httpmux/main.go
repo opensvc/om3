@@ -49,6 +49,7 @@ func (t *T) newDaemonRouter() *chi.Mux {
 	r.Use(daemonMiddleWare(t.rootDaemon))
 	r.Get("/running", daemonhandler.Running)
 	r.Post("/stop", daemonhandler.Stop)
+	r.Get("/eventsdemo", daemonhandler.Events)
 	return r
 }
 
