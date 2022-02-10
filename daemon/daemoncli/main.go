@@ -1,7 +1,9 @@
 package daemoncli
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -110,6 +112,31 @@ func Running() bool {
 // It needs to be called from a cli lock protection
 func WaitRunning() error {
 	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, running)
+}
+
+// Events function is a cli for daemon/eventsdemo
+func Events() error {
+	if !running() {
+		log.Debug().Msg("not running")
+		return nil
+	}
+	cli, err := client.New(clientOptions...)
+	if err != nil {
+		return err
+	}
+	eventC, err := cli.NewGetEventsDemo().Do()
+	if err != nil {
+		return err
+	}
+	for ev := range eventC {
+		log.Debug().Msgf("Events receive ev: %#v", ev)
+		if b, err := json.MarshalIndent(ev, "", "  "); err != nil {
+			return err
+		} else {
+			fmt.Printf("%s\n", b)
+		}
+	}
+	return nil
 }
 
 // LockFuncExit calls f() with cli lock protection
