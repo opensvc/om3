@@ -184,9 +184,11 @@ func (t T) poolListVDevs() ([]string, error) {
 }
 
 func (t T) poolListZDevs() ([]string, error) {
-	fmt.Println("tpoolListZDevs: todo")
-	l := make([]string, 0)
-	return l, nil
+	if zvols, err := t.pool().ListVolumes(); err != nil {
+		return nil, err
+	} else {
+		return zvols.Paths(), nil
+	}
 }
 
 func (t T) setMultihost() error {
