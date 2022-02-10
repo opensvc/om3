@@ -152,32 +152,48 @@ func (t T) Delete(r request.T) ([]byte, error) {
 
 // GetStream returns a chan of raw json messages
 func (t T) GetStream(r request.T) (chan []byte, error) {
-	req, err := t.newRequest("GET", r)
-	if err != nil {
-		return nil, err
-	}
-	// override default Timeout for server side calm events
-	client := t.Client
-	client.Timeout = 0
-	req.Header.Set("Accept", "text/event-stream")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	// TODO add a stopper to allow GetStream clients to stop sse retries
 	q := make(chan []byte, 1000)
-	go getServerSideEvents(q, resp)
-	return q, nil
+	errChan := make(chan error)
+	delayRestart := 500 * time.Millisecond
+	go func() {
+		defer close(q)
+		defer close(errChan)
+		hasRunOnce := false
+		for {
+			req, err := t.newRequest("GET", r)
+			if err != nil {
+				if !hasRunOnce {
+					// Notify initial create request failure
+					errChan <- err
+				}
+				return
+			}
+			if !hasRunOnce {
+				hasRunOnce = true
+				errChan <- nil
+			}
+			// override default Timeout for server side calm events
+			client := t.Client
+			client.Timeout = 0
+			req.Header.Set("Accept", "text/event-stream")
+			resp, _ := client.Do(req)
+			_ = getServerSideEvents(q, resp)
+			time.Sleep(delayRestart)
+		}
+	}()
+	err := <-errChan
+	return q, err
 }
 
 func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
 	br := bufio.NewReader(resp.Body)
 	delim := []byte{':', ' '}
 	defer resp.Body.Close()
-	defer close(q)
 	for {
 		bs, err := br.ReadBytes('\n')
 
-		if err != nil && err != io.EOF {
+		if err != nil {
 			return err
 		}
 
