@@ -33,7 +33,9 @@ type (
 	// response struct that implement http.ResponseWriter
 	response struct {
 		http.Response
-		Body *bytes.Buffer
+
+		// writer is holder for raw conn writer
+		writer io.Writer
 	}
 
 	// request struct holds the translated raw request for http mux
@@ -77,8 +79,8 @@ func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 		t.log.Error().Err(err).Msg("rawunix.Serve can't analyse request")
 		return
 	}
-	resp, err := req.do()
-	if err != nil {
+	resp := newResponse(w)
+	if err := req.do(resp); err != nil {
 		t.log.Error().Err(err).Msgf("rawunix.Serve request.do error for %s %s",
 			req.method, req.path)
 		return
@@ -89,10 +91,6 @@ func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 		return
 	}
 	t.log.Info().Msgf("status code is %d", resp.StatusCode)
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		t.log.Debug().Err(err).Msgf("rawunix.Serve write response failure for %s %s",
-			req.method, req.path)
-	}
 }
 
 // newRequestFrom functions returns *request from w
@@ -122,32 +120,39 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 	}, nil
 }
 
-// do function execute http mux handler on translated request and returns response
-func (r *request) do() (*response, error) {
+// do function execute http mux handler on translated request and returns error
+func (r *request) do(resp *response) error {
 	body := r.body
 	if r.method == "GET" {
 		body = nil
 	}
 	request, err := http.NewRequest(r.method, r.path, body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	resp := &response{
-		Response: http.Response{StatusCode: 200},
-		Body:     new(bytes.Buffer),
-	}
+
 	r.handler(resp, request)
-	return resp, nil
+	return nil
+}
+
+func newResponse(w io.Writer) *response {
+	return &response{
+		Response: http.Response{
+			StatusCode: 200,
+			Header:     make(map[string][]string),
+		},
+		writer: w,
+	}
 }
 
 // Header function implements http.ResponseWriter Header() for response
 func (resp response) Header() http.Header {
-	return resp.Header()
+	return resp.Response.Header
 }
 
 // Write function implements Write([]byte) (int, error) for response
 func (resp *response) Write(b []byte) (int, error) {
-	return resp.Body.Write(b)
+	return resp.writer.Write(b)
 }
 
 // WriteHeader function implements WriteHeader(int) for response
