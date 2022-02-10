@@ -7,11 +7,12 @@ import (
 )
 
 func Test(t *testing.T) {
-	s := "-f -d /tmp/foo --comment 'bad trip' --comment 'good trap'"
-	l1 := []string{"-f", "-d", "/tmp/foo", "--comment", "bad trip", "--comment", "good trap"}
-	l2 := []string{"-d", "/tmp/foo", "--comment", "bad trip", "--comment", "good trap"}
-	l3 := []string{"--comment", "bad trip", "--comment", "good trap"}
-	l4 := []string{}
+	s := "-o a=b -o b=c --comment 'bad trip' --comment 'good trap' -d /tmp/foo -f"
+	l1 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap", "-d", "/tmp/foo", "-f"}
+	l2 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap", "-d", "/tmp/foo"}
+	l3 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap"}
+	l4 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip"}
+	l5 := []string{"-o", "a=b", "--comment", "bad trip"}
 	args, err := Parse(s)
 	t.Run("Parse", func(t *testing.T) {
 		assert.NoError(t, err, "")
@@ -25,13 +26,17 @@ func Test(t *testing.T) {
 		args.DropOption("-f")
 		assert.Equal(t, l2, args.Get(), "")
 	})
-	t.Run("DropOptionAndValue", func(t *testing.T) {
-		args.DropOptionAndValue("-d")
+	t.Run("DropOptionAndAnyValue", func(t *testing.T) {
+		args.DropOptionAndAnyValue("-d")
 		assert.Equal(t, l3, args.Get(), "")
 	})
-	t.Run("DropMultiOptionAndValue", func(t *testing.T) {
-		args.DropOptionAndValue("--comment")
+	t.Run("DropOptionAndExactValue", func(t *testing.T) {
+		args.DropOptionAndExactValue("--comment", "good trap")
 		assert.Equal(t, l4, args.Get(), "")
+	})
+	t.Run("DropMultiOptionAndMatchingValue", func(t *testing.T) {
+		args.DropOptionAndMatchingValue("-o", "^b=.*")
+		assert.Equal(t, l5, args.Get(), "")
 	})
 
 }
