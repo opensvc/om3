@@ -37,6 +37,13 @@ const (
 	dropMatching
 )
 
+// New allocates a new T and returns its address
+func New() *T {
+	t := &T{}
+	t.args = make([]string, 0)
+	return t
+}
+
 // Parse splits the string using the shlex splitter and store the
 // resulting string slice.
 func Parse(s string) (*T, error) {

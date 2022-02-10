@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
+	"opensvc.com/opensvc/util/args"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
@@ -128,7 +130,7 @@ func (t T) updateSubDevsFile() ([]string, error) {
 	} else if !v {
 		return nil, nil
 	}
-	l, err := t.listPoolVDevs()
+	l, err := t.poolListVDevs()
 	if err != nil {
 		return nil, errors.Wrap(err, "update sub devs cache")
 	}
@@ -173,14 +175,16 @@ func (t T) hasIt() (bool, error) {
 	return t.pool().Exists()
 }
 
-func (t T) listPoolVDevs() ([]string, error) {
-	panic("todo")
-	l := make([]string, 0)
-	return l, nil
+func (t T) poolListVDevs() ([]string, error) {
+	if status, err := t.pool().Status(); err != nil {
+		return nil, err
+	} else {
+		return status.VDevs.Paths(), nil
+	}
 }
 
-func (t T) listPoolZDevs() ([]string, error) {
-	panic("todo")
+func (t T) poolListZDevs() ([]string, error) {
+	fmt.Println("tpoolListZDevs: todo")
 	l := make([]string, 0)
 	return l, nil
 }
@@ -329,7 +333,7 @@ func (t T) poolImport() error {
 		if err == nil {
 			return nil
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 2)
 	}
 	return err
 }
@@ -378,14 +382,30 @@ func (t T) poolExport() error {
 	return pool.Export(zfs.PoolExportWithForce())
 }
 
-func (t T) createPool() error {
-	panic("todo")
-	return nil
+func (t T) poolCreate() error {
+	a := args.New()
+	a.Append(t.CreateOptions...)
+	a.DropOptionAndAnyValue("-m")
+	a.DropOptionAndMatchingValue("-o", "^cachefile=.*")
+	a.DropOptionAndMatchingValue("-o", "^multihost=.*")
+	a.Append("-m", "legacy")
+	a.Append("-o", "cachefile="+t.poolImportCacheFile())
+	if runtime.GOOS == "linux" && t.Multihost == "true" {
+		a.Append("-o", "multihost=on")
+		if err := t.genHostID(); err != nil {
+			return err
+		}
+	}
+	return t.pool().Create(
+		zfs.PoolCreateWithVDevs(t.VDev),
+		zfs.PoolCreateWithArgs(a.Get()),
+	)
 }
 
-func (t T) destroyPool() error {
-	panic("todo")
-	return nil
+func (t T) poolDestroy() error {
+	return t.pool().Destroy(
+		zfs.PoolDestroyWithForce(),
+	)
 }
 
 func (t T) pool() *zfs.Pool {
@@ -395,24 +415,40 @@ func (t T) pool() *zfs.Pool {
 	}
 }
 
+func (t T) UnprovisionLeader(ctx context.Context) error {
+	return t.unprovision(ctx)
+}
+
+func (t T) UnprovisionLeaded(ctx context.Context) error {
+	return t.unprovision(ctx)
+}
+
 func (t T) ProvisionLeader(ctx context.Context) error {
+	return t.provision(ctx)
+}
+
+func (t T) ProvisionLeaded(ctx context.Context) error {
+	return t.provision(ctx)
+}
+
+func (t T) provision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if v {
 		t.Log().Info().Msgf("%s is already provisioned", t.Name)
 		return nil
 	}
-	return t.createPool()
+	return t.poolCreate()
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t T) unprovision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if !v {
 		t.Log().Info().Msgf("%s is already unprovisioned", t.Name)
 		return nil
 	}
-	return t.destroyPool()
+	return t.poolDestroy()
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
@@ -424,7 +460,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 }
 
 func (t T) ExposedDevices() []*device.T {
-	if l, err := t.listPoolZDevs(); err == nil {
+	if l, err := t.poolListZDevs(); err == nil {
 		return t.toDevices(l)
 	} else {
 		return []*device.T{}
@@ -432,7 +468,7 @@ func (t T) ExposedDevices() []*device.T {
 }
 
 func (t T) SubDevices() []*device.T {
-	if l, err := t.listPoolVDevs(); err == nil {
+	if l, err := t.poolListVDevs(); err == nil {
 		return t.toDevices(l)
 	} else {
 		return []*device.T{}
