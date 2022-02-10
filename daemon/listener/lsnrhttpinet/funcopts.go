@@ -1,4 +1,4 @@
-package lsnrhttp
+package lsnrhttpinet
 
 import (
 	"net/http"
