@@ -35,6 +35,8 @@ func New(log zerolog.Logger, rootDaemon subdaemon.RootManager) *T {
 	mux := chi.NewRouter()
 	mux.Use(logMiddleWare(t.log))
 	mux.Mount("/daemon", t.newDaemonRouter())
+
+	mux.Post("/daemon_stop", daemonhandler.Stop)
 	t.mux = mux
 	return t
 }
