@@ -140,3 +140,7 @@ func (t *T) dropOption(opt dropOpt) {
 	}
 	t.args = l
 }
+
+func (t *T) Append(s ...string) {
+	t.args = append(t.args, s...)
+}

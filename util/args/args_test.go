@@ -13,6 +13,7 @@ func Test(t *testing.T) {
 	l3 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip", "--comment", "good trap"}
 	l4 := []string{"-o", "a=b", "-o", "b=c", "--comment", "bad trip"}
 	l5 := []string{"-o", "a=b", "--comment", "bad trip"}
+	l6 := []string{"-o", "a=b", "--comment", "bad trip", "-o", "b=d"}
 	args, err := Parse(s)
 	t.Run("Parse", func(t *testing.T) {
 		assert.NoError(t, err, "")
@@ -37,6 +38,10 @@ func Test(t *testing.T) {
 	t.Run("DropMultiOptionAndMatchingValue", func(t *testing.T) {
 		args.DropOptionAndMatchingValue("-o", "^b=.*")
 		assert.Equal(t, l5, args.Get(), "")
+	})
+	t.Run("Append", func(t *testing.T) {
+		args.Append("-o", "b=d")
+		assert.Equal(t, l6, args.Get(), "")
 	})
 
 }
