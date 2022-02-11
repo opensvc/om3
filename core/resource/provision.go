@@ -25,6 +25,9 @@ type (
 	ProvisionLeadeder interface {
 		ProvisionLeaded(context.Context) error
 	}
+	UnprovisionStoper interface {
+		UnprovisionStop(context.Context) error
+	}
 )
 
 // VarDir is the full path of the directory where the resource can write its private variable data.
@@ -102,13 +105,21 @@ func Unprovision(ctx context.Context, t Driver, leader bool) error {
 	if t.IsDisabled() {
 		return nil
 	}
-	if err := t.Stop(ctx); err != nil {
+	if err := unprovisionStop(ctx, t); err != nil {
 		return err
 	}
 	if err := unprovisionLeaderSwitch(ctx, t, leader); err != nil {
 		return err
 	}
 	return nil
+}
+
+func unprovisionStop(ctx context.Context, t Driver) error {
+	if i, ok := t.(UnprovisionStoper); ok {
+		return i.UnprovisionStop(ctx)
+	} else {
+		return t.Stop(ctx)
+	}
 }
 
 func unprovisionLeaderSwitch(ctx context.Context, t Driver, leader bool) error {
