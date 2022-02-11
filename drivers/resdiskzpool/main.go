@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -142,15 +143,21 @@ func (t T) updateSubDevsFile() ([]string, error) {
 
 func (t T) writeSubDevsFile(l []string) error {
 	path := t.subDevsFilePath()
-	f, err := os.Open(path)
+	f, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
-		return errors.Wrap(err, "write sub devs cache")
+		return errors.Wrap(err, "open temp sub devs cache")
 	}
-	defer f.Close()
 	enc := json.NewEncoder(f)
 	err = enc.Encode(l)
 	if err != nil {
-		return errors.Wrap(err, "write sub devs cache")
+		_ = f.Close()
+		return errors.Wrap(err, "json encode in sub devs cache")
+	}
+	if err := f.Close(); err != nil {
+		return errors.Wrap(err, "close temp sub devs cache")
+	}
+	if err := os.Rename(f.Name(), path); err != nil {
+		return errors.Wrap(err, "install sub devs cache")
 	}
 	return nil
 }
@@ -160,13 +167,13 @@ func (t T) loadSubDevsFile() ([]string, error) {
 	l := make([]string, 0)
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "load sub devs cache")
+		return nil, errors.Wrap(err, "open sub devs cache")
 	}
 	defer f.Close()
 	dec := json.NewDecoder(f)
-	err = dec.Decode(l)
+	err = dec.Decode(&l)
 	if err != nil {
-		return nil, errors.Wrap(err, "load sub devs cache")
+		return nil, errors.Wrap(err, "decode sub devs cache")
 	}
 	return l, nil
 }
@@ -481,9 +488,13 @@ func (t T) ExposedDevices() []*device.T {
 }
 
 func (t T) SubDevices() []*device.T {
-	if l, err := t.poolListVDevs(); err == nil {
+	if l, errUpd := t.updateSubDevsFile(); errUpd == nil && l != nil {
+		return t.toDevices(l)
+	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
+		t.Log().Debug().Err(errUpd).Msg("update sub devs cache")
 		return t.toDevices(l)
 	} else {
+		t.Log().Debug().Err(errLoad).Msg("load sub devs cache")
 		return []*device.T{}
 	}
 }
