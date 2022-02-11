@@ -1,20 +1,25 @@
 package daemoncli
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/daemon/daemon"
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/lock"
 )
 
 var (
-	socketPathUds      = "/tmp/lsnr_ux"
+	clientOptions      []funcopt.O
 	lockPath           = "/tmp/locks/main"
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 4 * time.Second
@@ -26,6 +31,32 @@ type (
 		WaitDone()
 	}
 )
+
+func init() {
+	var proto int
+	proto = time.Now().Second() % 3
+	switch proto {
+	case 0:
+		clientOptions = append(clientOptions, client.WithURL(daemonenv.UrlUxRaw))
+	case 1:
+		clientOptions = append(clientOptions, client.WithURL(daemonenv.UrlUxHttp))
+	case 2:
+		clientOptions = append(
+			clientOptions,
+			client.WithURL(daemonenv.UrlInetHttp))
+
+		clientOptions = append(clientOptions,
+			client.WithInsecureSkipVerify())
+
+		clientOptions = append(clientOptions,
+			client.WithCertificate(daemonenv.CertFile))
+
+		clientOptions = append(clientOptions,
+
+			client.WithKey(daemonenv.KeyFile),
+		)
+	}
+}
 
 // Start function will start daemon with internal lock protection
 func Start() error {
@@ -83,6 +114,31 @@ func WaitRunning() error {
 	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, running)
 }
 
+// Events function is a cli for daemon/eventsdemo
+func Events() error {
+	if !running() {
+		log.Debug().Msg("not running")
+		return nil
+	}
+	cli, err := client.New(clientOptions...)
+	if err != nil {
+		return err
+	}
+	eventC, err := cli.NewGetEventsDemo().Do()
+	if err != nil {
+		return err
+	}
+	for ev := range eventC {
+		log.Debug().Msgf("Events receive ev: %#v", ev)
+		if b, err := json.MarshalIndent(ev, "", "  "); err != nil {
+			return err
+		} else {
+			fmt.Printf("%s\n", b)
+		}
+	}
+	return nil
+}
+
 // LockFuncExit calls f() with cli lock protection
 //
 // os.exit(1) when lock failed or f() returns error
@@ -129,12 +185,12 @@ func stop() error {
 		log.Debug().Msg("Already stopped")
 		return nil
 	}
-	cli, err := client.New(client.WithURL("raw://" + socketPathUds))
+	cli, err := client.New(clientOptions...)
 	if err != nil {
 		return err
 	}
 	_, err = cli.NewPostDaemonStop().Do()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "unexpected EOF") {
 		return err
 	}
 	if running() {
@@ -172,7 +228,7 @@ func restart() (waitDowner, error) {
 
 func running() bool {
 	var data []byte
-	cli, err := client.New(client.WithURL("raw://" + socketPathUds))
+	cli, err := client.New(clientOptions...)
 	if err != nil {
 		log.Error().Err(err).Msg("Running client.New")
 		return false

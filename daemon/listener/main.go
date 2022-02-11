@@ -6,8 +6,10 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/enable"
-	"opensvc.com/opensvc/daemon/listener/lsnrhttp"
+	"opensvc.com/opensvc/daemon/listener/lsnrhttpinet"
+	"opensvc.com/opensvc/daemon/listener/lsnrhttpux"
 	"opensvc.com/opensvc/daemon/listener/lsnrraw"
 	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
@@ -49,24 +51,33 @@ var (
 				return lsnrraw.New(
 					lsnrraw.WithRoutineTracer(&t.TT),
 					lsnrraw.WithHttpHandler(t.httpHandler),
-					lsnrraw.WithAddr(socketPathUds),
+					lsnrraw.WithAddr(daemonenv.PathUxRaw),
 				)
 			},
 		},
-		"listenerHttp": {
+		"listenerHttpInet": {
 			new: func(t *T) subdaemon.Manager {
-				return lsnrhttp.New(
-					lsnrhttp.WithRoutineTracer(&t.TT),
-					lsnrhttp.WithHandler(t.httpHandler),
-					lsnrhttp.WithAddr(":1225"),
-					lsnrhttp.WithCertFile("/tmp/certificate_chain"),
-					lsnrhttp.WithKeyFile("/tmp/private_key"),
+				return lsnrhttpinet.New(
+					lsnrhttpinet.WithRoutineTracer(&t.TT),
+					lsnrhttpinet.WithHandler(t.httpHandler),
+					lsnrhttpinet.WithAddr(":"+daemonenv.HttpPort),
+					lsnrhttpinet.WithCertFile(daemonenv.CertFile),
+					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile),
+				)
+			},
+		},
+		"listenerHttpUx": {
+			new: func(t *T) subdaemon.Manager {
+				return lsnrhttpux.New(
+					lsnrhttpux.WithRoutineTracer(&t.TT),
+					lsnrhttpux.WithHandler(t.httpHandler),
+					lsnrhttpux.WithAddr(daemonenv.PathUxHttp),
+					lsnrhttpux.WithCertFile(daemonenv.CertFile),
+					lsnrhttpux.WithKeyFile(daemonenv.KeyFile),
 				)
 			},
 		},
 	}
-
-	socketPathUds = "/tmp/lsnr_ux"
 )
 
 func New(opts ...funcopt.O) *T {

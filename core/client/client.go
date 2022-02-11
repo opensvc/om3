@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/client/api"
 	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
@@ -133,6 +134,7 @@ func (t *T) newRequester() (err error) {
 	case strings.HasPrefix(t.url, reqjsonrpc.InetPrefix):
 		t.requester, err = reqjsonrpc.New(t.url)
 	case strings.HasPrefix(t.url, reqh2.UDSPrefix):
+		t.url = t.url[7:]
 		t.requester, err = reqh2.NewUDS(t.url)
 	case strings.HasSuffix(t.url, "h2.sock"):
 		t.requester, err = reqh2.NewUDS(t.url)

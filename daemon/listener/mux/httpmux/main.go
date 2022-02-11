@@ -33,8 +33,11 @@ func New(log zerolog.Logger, rootDaemon subdaemon.RootManager) *T {
 		rootDaemon: rootDaemon,
 	}
 	mux := chi.NewRouter()
+	mux.Use(daemonMiddleWare(t.rootDaemon))
 	mux.Use(logMiddleWare(t.log))
+	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Mount("/daemon", t.newDaemonRouter())
+
 	t.mux = mux
 	return t
 }
@@ -46,9 +49,9 @@ func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(daemonMiddleWare(t.rootDaemon))
 	r.Get("/running", daemonhandler.Running)
 	r.Post("/stop", daemonhandler.Stop)
+	r.Get("/eventsdemo", daemonhandler.Events)
 	return r
 }
 
