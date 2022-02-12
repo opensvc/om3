@@ -11,35 +11,18 @@ import (
 	"opensvc.com/opensvc/util/funcopt"
 )
 
-type (
-	Zvol struct {
-		Name      ZfsName
-		Size      uint64
-		BlockSize uint64
-	}
-	Zvols []Zvol
-)
-
-func (t Zvols) Paths() []string {
-	l := make([]string, 0)
-	for _, zvol := range t {
-		l = append(l, "/dev/zvol/"+string(zvol.Name))
-	}
-	return l
-}
-
-func parseZfsListVolumes(b []byte) Zvols {
-	data := make(Zvols, 0)
+func parseZfsListVolumes(b []byte) Vols {
+	data := make(Vols, 0)
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		words := strings.Split(line, "\t")
-		zvol := Zvol{}
+		zvol := Vol{}
 		n := len(words)
 		if n != 3 {
 			continue
 		}
-		zvol.Name = ZfsName(words[0])
+		zvol.Name = words[0]
 		if i, err := strconv.ParseUint(words[1], 10, 64); err == nil {
 			zvol.Size = i
 		}
@@ -51,7 +34,7 @@ func parseZfsListVolumes(b []byte) Zvols {
 	return data
 }
 
-func (t *Pool) ZfsListVolumes(fopts ...funcopt.O) (Zvols, error) {
+func (t *Pool) ZfsListVolumes(fopts ...funcopt.O) (Vols, error) {
 	opts := &poolStatusOpts{}
 	funcopt.Apply(opts, fopts...)
 	cmd := command.New(

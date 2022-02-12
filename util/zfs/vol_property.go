@@ -1,0 +1,40 @@
+package zfs
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/util/command"
+)
+
+// GetProperty returns a dataset property value
+func (t *Vol) GetProperty(prop string) (string, error) {
+	cmd := command.New(
+		command.WithName("zfs"),
+		command.WithVarArgs("get", "-Hp", "-o", "value", prop, t.Name),
+		command.WithBufferedStdout(),
+		command.WithLogger(t.Log),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
+}
+
+func (t *Vol) SetProperty(prop, value string) error {
+	s := fmt.Sprintf("%s=%s", prop, value)
+	cmd := command.New(
+		command.WithName("zfs"),
+		command.WithVarArgs("set", s, t.Name),
+		command.WithLogger(t.Log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}

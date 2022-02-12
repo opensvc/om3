@@ -1,35 +1,20 @@
 package zfs
 
 import (
-	"strings"
-
 	"opensvc.com/opensvc/util/funcopt"
 )
 
-type (
-	ZfsName string
-)
-
-func (t ZfsName) String() string {
-	return string(t)
-}
-
-func (t ZfsName) PoolName() string {
-	l := strings.Split(string(t), "/")
-	return l[0]
-}
-
-func (t *Pool) ListVolumes(fopts ...funcopt.O) (Zvols, error) {
-	zvols, err := t.ZfsListVolumes()
+func (t *Pool) ListVolumes(fopts ...funcopt.O) (Vols, error) {
+	vols, err := t.ListVolumes()
 	if err != nil {
 		return nil, err
 	}
-	data := make(Zvols, 0)
-	for _, zvol := range zvols {
-		if zvol.Name.PoolName() != t.Name {
+	data := make(Vols, 0)
+	for _, vol := range vols {
+		if vol.PoolName() != t.Name {
 			continue
 		}
-		data = append(data, zvol)
+		data = append(data, vol)
 	}
 	return data, nil
 }
