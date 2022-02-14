@@ -130,7 +130,13 @@ func (t T) GetStream(req request.T) (chan []byte, error) {
 		return q, err
 	}
 	go getMessages(q, rc)
-	return q, nil
+	if t.Inet {
+		clearChan := make(chan []byte, 1000)
+		go decryptChan(q, clearChan)
+		return clearChan, nil
+	} else {
+		return q, nil
+	}
 }
 
 func New(url string) (*T, error) {
@@ -188,5 +194,21 @@ func getMessages(q chan []byte, rc io.ReadCloser) {
 			break
 		}
 		q <- b
+	}
+}
+
+func decryptChan(encC <-chan []byte, clearC chan<- []byte) {
+	for {
+		select {
+		case enc := <-encC:
+			m := NewMessage(enc)
+			clear, err := m.Decrypt()
+			if err != nil {
+				close(clearC)
+				return
+			}
+			clear = bytes.TrimRight(clear, "\x00")
+			clearC <- clear
+		}
 	}
 }
