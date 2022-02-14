@@ -34,6 +34,11 @@ type (
 	}
 
 	DoFunc func(context.Context, resource.Driver) error
+
+	result struct {
+		Error    error
+		Resource resource.Driver
+	}
 )
 
 const (
@@ -188,11 +193,6 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) 
 	return
 }
 
-type result struct {
-	Error    error
-	Resource resource.Driver
-}
-
 func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
 	var err error
 	q := make(chan result, len(resources))
@@ -221,7 +221,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		if res.Resource.IsOptional() {
 			continue
 		}
-		err = res.Error
+		err = errors.Wrap(res.Error, res.Resource.RID())
 	}
 	return err
 }
@@ -244,7 +244,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		if r.IsOptional() {
 			continue
 		}
-		return err
+		return errors.Wrap(err, r.RID())
 	}
 	return nil
 }
