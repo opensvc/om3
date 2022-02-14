@@ -19,7 +19,8 @@ func init() {
 }
 
 func daemonEventsCmdRun(_ *cobra.Command, _ []string) {
-	if daemoncli.Events() == nil {
+	cli, err := newClient()
+	if err == nil && daemoncli.New(cli).Events() == nil {
 		os.Exit(0)
 	}
 	os.Exit(1)
