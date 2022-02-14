@@ -3,7 +3,6 @@ package zfs
 import (
 	"fmt"
 
-	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
 )
@@ -12,6 +11,7 @@ type (
 	poolImportOpts struct {
 		CacheFile string
 		Force     bool
+		Quiet     bool
 		Options   []string
 		Devices   []string
 	}
@@ -64,6 +64,15 @@ func PoolImportWithForce() funcopt.O {
 	})
 }
 
+// PoolImportWithQuiet sets debug level for error and output logging
+func PoolImportWithQuiet() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*poolImportOpts)
+		t.Quiet = true
+		return nil
+	})
+}
+
 func poolImportOptsToArgs(t poolImportOpts) []string {
 	l := []string{"import"}
 	if t.Force {
@@ -93,10 +102,30 @@ func (t *Pool) Import(fopts ...funcopt.O) error {
 		command.WithName("zpool"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
 		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.WarnLevel),
 	)
-	return cmd.Run()
+	err := cmd.Run()
+	if err != nil && opts.Quiet {
+		return err
+	}
+	t.Log.Info().Stringer("cmd", cmd).Msg("run")
+	stdout := string(cmd.Stdout())
+	stderr := string(cmd.Stderr())
+	if err != nil {
+		if stdout != "" {
+			t.Log.Info().Msg(stdout)
+		}
+		if stderr != "" {
+			t.Log.Error().Msg(stderr)
+		}
+	} else {
+		if stdout != "" {
+			t.Log.Info().Msg(stdout)
+		}
+		if stderr != "" {
+			t.Log.Error().Msg(stderr)
+		}
+	}
+	return err
 }
