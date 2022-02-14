@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package resdiskvg
@@ -60,6 +61,7 @@ type (
 
 func init() {
 	resource.Register(driverGroup, driverName, New)
+	resource.Register(driverGroup, "lvm", New) // deprecated, backward compat
 }
 
 func New() resource.Driver {
