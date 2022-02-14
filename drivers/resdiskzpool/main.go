@@ -31,6 +31,7 @@ import (
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/zfs"
 )
 
@@ -347,7 +348,7 @@ func (t T) Label() string {
 func (t T) poolImport() error {
 	var err error
 	for i := 0; i < 10; i += 1 {
-		err = t.poolImportTryDevice()
+		err = t.poolImportTryDevice(false)
 		if err == nil {
 			return nil
 		}
@@ -364,32 +365,40 @@ func (t T) poolImportDeviceDir() string {
 	return filepath.Join(t.VarDir(), "dev", "dsk")
 }
 
-func (t T) poolImportTryDevice() error {
-	if err := t.poolImportWithDevice(); err == nil {
+func (t T) poolImportTryDevice(quiet bool) error {
+	if err := t.poolImportWithDevice(quiet); err == nil {
 		return nil
 	}
-	return t.poolImportWithoutDevice()
+	return t.poolImportWithoutDevice(quiet)
 }
 
-func (t T) poolImportWithoutDevice() error {
+func (t T) poolImportWithoutDevice(quiet bool) error {
 	c := t.poolImportCacheFile()
-	return t.pool().Import(
+	fopts := []funcopt.O{
 		zfs.PoolImportWithForce(),
 		zfs.PoolImportWithOption("cachefile", c),
-	)
+	}
+	if quiet && t.Log().GetLevel() != zerolog.DebugLevel {
+		fopts = append(fopts, zfs.PoolImportWithQuiet())
+	}
+	return t.pool().Import(fopts...)
 }
 
-func (t T) poolImportWithDevice() error {
+func (t T) poolImportWithDevice(quiet bool) error {
 	d := t.poolImportDeviceDir()
 	if !file.Exists(d) {
 		return fmt.Errorf("%s does not exist", d)
 	}
 	c := t.poolImportCacheFile()
-	return t.pool().Import(
+	fopts := []funcopt.O{
 		zfs.PoolImportWithForce(),
 		zfs.PoolImportWithOption("cachefile", c),
 		zfs.PoolImportWithDevice(d),
-	)
+	}
+	if quiet && t.Log().GetLevel() != zerolog.DebugLevel {
+		fopts = append(fopts, zfs.PoolImportWithQuiet())
+	}
+	return t.pool().Import(fopts...)
 }
 
 func (t T) poolExport() error {
@@ -437,15 +446,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t T) UnprovisionLeaded(ctx context.Context) error {
-	return t.unprovision(ctx)
-}
-
 func (t T) ProvisionLeader(ctx context.Context) error {
-	return t.provision(ctx)
-}
-
-func (t T) ProvisionLeaded(ctx context.Context) error {
 	return t.provision(ctx)
 }
 
@@ -463,7 +464,7 @@ func (t T) unprovision(ctx context.Context) error {
 	if v, err := t.hasIt(); err != nil {
 		return err
 	} else if !v {
-		if err := t.poolImportTryDevice(); err != nil {
+		if err := t.poolImportTryDevice(true); err != nil {
 			t.Log().Debug().Err(err).Msg("try import before destroy")
 			return nil
 		}
