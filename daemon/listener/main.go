@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpinet"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpux"
+	"opensvc.com/opensvc/daemon/listener/lsnrrawinet"
 	"opensvc.com/opensvc/daemon/listener/lsnrrawux"
 	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
@@ -52,6 +53,15 @@ var (
 					lsnrrawux.WithRoutineTracer(&t.TT),
 					lsnrrawux.WithHttpHandler(t.httpHandler),
 					lsnrrawux.WithAddr(daemonenv.PathUxRaw),
+				)
+			},
+		},
+		"listenerRawInet": {
+			new: func(t *T) subdaemon.Manager {
+				return lsnrrawinet.New(
+					lsnrrawinet.WithRoutineTracer(&t.TT),
+					lsnrrawinet.WithHttpHandler(t.httpHandler),
+					lsnrrawinet.WithAddr(":"+daemonenv.RawPort),
 				)
 			},
 		},
