@@ -152,6 +152,11 @@ func (t T) getStartedProp() (string, error) {
 }
 
 func (t T) isUp() (bool, error) {
+	if v, err := t.hasIt(); err != nil {
+		return false, err
+	} else if !v {
+		return false, nil
+	}
 	if v, err := t.getStartedProp(); err != nil {
 		return false, err
 	} else if v == "true" {
@@ -196,15 +201,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t T) UnprovisionLeaded(ctx context.Context) error {
-	return t.unprovision(ctx)
-}
-
 func (t T) ProvisionLeader(ctx context.Context) error {
-	return t.provision(ctx)
-}
-
-func (t T) ProvisionLeaded(ctx context.Context) error {
 	return t.provision(ctx)
 }
 
@@ -219,6 +216,12 @@ func (t T) provision(ctx context.Context) error {
 }
 
 func (t T) unprovision(ctx context.Context) error {
+	if v, err := t.hasIt(); err != nil {
+		return err
+	} else if !v {
+		t.Log().Info().Msgf("%s is already unprovisioned", t.Name)
+		return nil
+	}
 	return t.zvolDestroy()
 }
 
