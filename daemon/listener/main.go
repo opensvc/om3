@@ -10,7 +10,7 @@ import (
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpinet"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpux"
-	"opensvc.com/opensvc/daemon/listener/lsnrraw"
+	"opensvc.com/opensvc/daemon/listener/lsnrrawux"
 	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -48,10 +48,10 @@ var (
 	mandatorySubs = map[string]sub{
 		"listenerRaw": {
 			new: func(t *T) subdaemon.Manager {
-				return lsnrraw.New(
-					lsnrraw.WithRoutineTracer(&t.TT),
-					lsnrraw.WithHttpHandler(t.httpHandler),
-					lsnrraw.WithAddr(daemonenv.PathUxRaw),
+				return lsnrrawux.New(
+					lsnrrawux.WithRoutineTracer(&t.TT),
+					lsnrrawux.WithHttpHandler(t.httpHandler),
+					lsnrrawux.WithAddr(daemonenv.PathUxRaw),
 				)
 			},
 		},
