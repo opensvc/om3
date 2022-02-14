@@ -1,8 +1,6 @@
 package zfs
 
 import (
-	"fmt"
-
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/args"
 	"opensvc.com/opensvc/util/command"
@@ -52,11 +50,13 @@ func VolCreateWithBlockSize(size uint64) funcopt.O {
 
 func volCreateOptsToArgs(t volCreateOpts) []string {
 	a := args.New()
-	a.Append("create", "-V")
+	a.Append("create")
 	if t.BlockSize > 0 {
 		a.DropOption("-b")
-		a.Append("-b", sizeconv.ExactBSizeCompact(float64(t.Size)))
+		a.DropOptionAndMatchingValue("-o", "^volblocksize=.*")
+		a.Append("-b", sizeconv.ExactBSizeCompact(float64(t.BlockSize)))
 	}
+	a.Append("-V")
 
 	// zvol create -V <options> <size> <name>
 	//                ^^^^^^^^^
@@ -78,7 +78,6 @@ func (t *Vol) Create(fopts ...funcopt.O) error {
 	opts := &volCreateOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := volCreateOptsToArgs(*opts)
-	fmt.Println(opts, args)
 	cmd := command.New(
 		command.WithName("zfs"),
 		command.WithArgs(args),
