@@ -302,7 +302,7 @@ func (t T) checkExitCode(exitCode int) error {
 	}
 	err := &ErrExitCode{exitCode: exitCode, successCodes: t.okExitCodes}
 	t.logErrorExitCode(exitCode, err)
-	return err
+	return errors.WithStack(err)
 }
 
 func (e *ErrExitCode) Error() string {
