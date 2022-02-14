@@ -129,7 +129,7 @@ func (t T) GetStream(req request.T) (chan []byte, error) {
 	if err != nil {
 		return q, err
 	}
-	go getMessages(q, rc)
+	go GetMessages(q, rc)
 	if t.Inet {
 		clearChan := make(chan []byte, 1000)
 		go decryptChan(q, clearChan)
@@ -179,7 +179,7 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func getMessages(q chan []byte, rc io.ReadCloser) {
+func GetMessages(q chan []byte, rc io.ReadCloser) {
 	scanner := bufio.NewScanner(rc)
 	min := 1000     // usual event size
 	max := 10000000 // max kind=full event size
