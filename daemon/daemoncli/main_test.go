@@ -8,7 +8,19 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/usergroup"
+)
+
+var (
+	cases = []string{
+		daemonenv.UrlInetHttp,
+		daemonenv.UrlUxHttp,
+		//daemonenv.UrlInetRaw,
+		daemonenv.UrlUxRaw,
+	}
 )
 
 func privileged() bool {
@@ -19,66 +31,118 @@ func privileged() bool {
 	return false
 }
 
-func TestDaemonStartThenStop(t *testing.T) {
-	if !privileged() {
-		t.Skip("need root")
+func newClient(serverUrl string) (*client.T, error) {
+	clientOptions := []funcopt.O{client.WithURL(serverUrl)}
+	if serverUrl == daemonenv.UrlInetHttp {
+		clientOptions = append(clientOptions,
+			client.WithInsecureSkipVerify())
+
+		clientOptions = append(clientOptions,
+			client.WithCertificate(daemonenv.CertFile))
+
+		clientOptions = append(clientOptions,
+
+			client.WithKey(daemonenv.KeyFile),
+		)
 	}
-	require.False(t, Running())
-	go func() {
-		require.Nil(t, Start())
-	}()
-	require.Nil(t, WaitRunning())
-	require.True(t, Running())
-	require.Nil(t, Stop())
-	require.False(t, Running())
+	return client.New(clientOptions...)
+}
+
+func TestDaemonStartThenStop(t *testing.T) {
+	for _, url := range cases {
+		//if !privileged() {
+		//	t.Skip("need root")
+		//}
+		t.Run(url, func(t *testing.T) {
+			//setupTest()
+			cli, err := newClient(url)
+			require.Nil(t, err)
+			daemonCli := New(cli)
+			require.False(t, daemonCli.Running())
+			go func() {
+				require.Nil(t, daemonCli.Start())
+			}()
+			require.Nil(t, daemonCli.WaitRunning())
+			require.True(t, daemonCli.Running())
+			require.Nil(t, daemonCli.Stop())
+			require.False(t, daemonCli.Running())
+		})
+	}
 }
 
 func TestDaemonReStartThenStop(t *testing.T) {
-	if !privileged() {
-		t.Skip("need root")
+	for _, url := range cases {
+		t.Run(url, func(t *testing.T) {
+			cli, err := newClient(url)
+			require.Nil(t, err)
+			daemonCli := New(cli)
+			//if !privileged() {
+			//	t.Skip("need root")
+			//}
+			require.False(t, daemonCli.Running())
+			go func() {
+				require.Nil(t, daemonCli.ReStart())
+			}()
+			require.Nil(t, daemonCli.WaitRunning())
+			require.True(t, daemonCli.Running())
+			require.Nil(t, daemonCli.Stop())
+			require.False(t, daemonCli.Running())
+		})
 	}
-	require.False(t, Running())
-	go func() {
-		require.Nil(t, ReStart())
-	}()
-	require.Nil(t, WaitRunning())
-	require.True(t, Running())
-	require.Nil(t, Stop())
-	require.False(t, Running())
 }
 
 func TestStop(t *testing.T) {
-	if !privileged() {
-		t.Skip("need root")
+	for _, url := range cases {
+		t.Run(url, func(t *testing.T) {
+			cli, err := newClient(url)
+			require.Nil(t, err)
+			daemonCli := New(cli)
+			//if !privileged() {
+			//	t.Skip("need root")
+			//}
+			require.False(t, daemonCli.Running())
+			require.Nil(t, daemonCli.Stop())
+			require.False(t, daemonCli.Running())
+		})
 	}
-	require.False(t, Running())
-	require.Nil(t, Stop())
-	require.False(t, Running())
 }
 
 func TestDaemonStartThenEventsReadAtLeastOneEvent(t *testing.T) {
-	//if !privileged() {
-	//	t.Skip("need root")
-	//}
-	go func() {
-		require.Nil(t, Start())
-	}()
-	require.Nil(t, WaitRunning())
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	// smallest size of event to read
-	b := make([]byte, 87)
-	go func() {
-		require.Nil(t, Events())
-	}()
-	_, err := r.Read(b)
+	setupCli, err := newClient(daemonenv.UrlUxRaw)
 	require.Nil(t, err)
-	os.Stdout = old
-	readString := string(bytes.TrimRight(b, "\x00"))
-	fmt.Printf("Read: %s\n", readString)
+	go func() {
+		require.Nil(t, New(setupCli).Start())
+	}()
+	require.Nil(t, New(setupCli).WaitRunning())
 
-	require.Containsf(t, readString, "demo msg xxx",
-		"Expected '%s' in \n%s\n", "demo msg xxx", readString)
+	for _, url := range cases {
+		t.Run(url, func(t *testing.T) {
+			//if !privileged() {
+			//	t.Skip("need root")
+			//}
+			cli, err := newClient(url)
+			require.Nil(t, err)
+			daemonCli := New(cli)
+			go func() {
+				require.Nil(t, daemonCli.Start())
+			}()
+			require.Nil(t, daemonCli.WaitRunning())
+			old := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			// smallest size of event to read
+			b := make([]byte, 87)
+			go func() {
+				require.Nil(t, daemonCli.Events())
+			}()
+			_, err = r.Read(b)
+			require.Nil(t, err)
+			os.Stdout = old
+			readString := string(bytes.TrimRight(b, "\x00"))
+			fmt.Printf("Read: %s\n", readString)
+
+			require.Containsf(t, readString, "demo msg xxx",
+				"Expected '%s' in \n%s\n", "demo msg xxx", readString)
+		})
+	}
 }

@@ -19,7 +19,11 @@ func init() {
 }
 
 func daemonRunningCmdRun(_ *cobra.Command, _ []string) {
-	if daemoncli.Running() {
+	cli, err := newClient()
+	if err != nil {
+		os.Exit(1)
+	}
+	if daemoncli.New(cli).Running() {
 		os.Exit(0)
 	}
 	os.Exit(1)
