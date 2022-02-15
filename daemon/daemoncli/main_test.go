@@ -4,13 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/test_conf_helper"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/usergroup"
 )
 
@@ -18,7 +23,7 @@ var (
 	cases = []string{
 		daemonenv.UrlInetHttp,
 		daemonenv.UrlUxHttp,
-		//daemonenv.UrlInetRaw,
+		daemonenv.UrlInetRaw,
 		daemonenv.UrlUxRaw,
 	}
 )
@@ -29,6 +34,21 @@ func privileged() bool {
 		return true
 	}
 	return false
+}
+
+func setupClusterConf(t *testing.T) func() {
+	td, tdCleanup := testhelper.Tempdir(t)
+	test_conf_helper.InstallSvcFile(
+		t,
+		"cluster.conf",
+		filepath.Join(td, "etc", "cluster.conf"))
+	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	cleanup := func() {
+		tdCleanup()
+		rawconfig.Load(map[string]string{})
+		hostname.Impersonate("node1")()
+	}
+	return cleanup
 }
 
 func newClient(serverUrl string) (*client.T, error) {
@@ -54,7 +74,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 		//	t.Skip("need root")
 		//}
 		t.Run(url, func(t *testing.T) {
-			//setupTest()
+			defer setupClusterConf(t)()
 			cli, err := newClient(url)
 			require.Nil(t, err)
 			daemonCli := New(cli)
@@ -73,6 +93,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 func TestDaemonReStartThenStop(t *testing.T) {
 	for _, url := range cases {
 		t.Run(url, func(t *testing.T) {
+			defer setupClusterConf(t)()
 			cli, err := newClient(url)
 			require.Nil(t, err)
 			daemonCli := New(cli)
@@ -81,7 +102,8 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			//}
 			require.False(t, daemonCli.Running())
 			go func() {
-				require.Nil(t, daemonCli.ReStart())
+				//require.Nil(t, daemonCli.ReStart())
+				fmt.Printf("restart= %s\n", daemonCli.Start())
 			}()
 			require.Nil(t, daemonCli.WaitRunning())
 			require.True(t, daemonCli.Running())
@@ -120,6 +142,7 @@ func TestDaemonStartThenEventsReadAtLeastOneEvent(t *testing.T) {
 			//if !privileged() {
 			//	t.Skip("need root")
 			//}
+			defer setupClusterConf(t)()
 			cli, err := newClient(url)
 			require.Nil(t, err)
 			daemonCli := New(cli)
