@@ -50,6 +50,9 @@ func (t *T) Read(b []byte) (n int, err error) {
 	encBytes := <-encByteChan
 	encMsg := reqjsonrpc.NewMessage(encBytes)
 	data, err := encMsg.Decrypt()
+	if err != nil {
+		return 0, err
+	}
 	i := copy(b, data)
 	return i, nil
 }
