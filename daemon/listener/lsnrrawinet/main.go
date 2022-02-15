@@ -1,4 +1,4 @@
-package lsnrraw
+package lsnrrawinet
 
 import (
 	"net"
@@ -43,11 +43,14 @@ func New(opts ...funcopt.O) *T {
 		return nil
 	}
 	t.T = subdaemon.New(
-		subdaemon.WithName("listenerRaw"),
+		subdaemon.WithName("lsnr-raw-inet"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
 	)
-	t.log = t.Log()
+	t.log = t.Log().With().
+		Str("addr", t.addr).
+		Str("sub", t.Name()).
+		Logger()
 	t.mux = rawmux.New(t.httpHandler, t.log, 5*time.Second)
 	return t
 }
@@ -56,21 +59,21 @@ func (t *T) MainStart() error {
 	t.log.Debug().Msg("mgr starting")
 	started := make(chan bool)
 	go func() {
-		defer t.Trace(t.Name() + "-lsnr-raw")()
+		defer t.Trace(t.Name())()
 		if err := t.start(); err != nil {
-			t.log.Error().Err(err).Msgf("starting raw listener")
+			t.log.Error().Err(err).Msgf("mgr start failure")
 		}
 		started <- true
 	}()
 	<-started
-	t.log.Debug().Msg(" started")
+	t.log.Debug().Msg("mgr started")
 	return nil
 }
 
 func (t *T) MainStop() error {
 	t.log.Debug().Msg("mgr stopping")
 	if err := t.stop(); err != nil {
-		t.log.Error().Err(err).Msg("stop")
+		t.log.Error().Err(err).Msg("mgr stop failure")
 	}
 	t.log.Debug().Msg("mgr stopped")
 	return nil

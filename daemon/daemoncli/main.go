@@ -12,7 +12,6 @@ import (
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/daemon/daemon"
-	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/lock"
@@ -27,44 +26,25 @@ var (
 )
 
 type (
+	T struct {
+		client *client.T
+	}
 	waitDowner interface {
 		WaitDone()
 	}
 )
 
-func init() {
-	var proto int
-	proto = time.Now().Second() % 3
-	switch proto {
-	case 0:
-		clientOptions = append(clientOptions, client.WithURL(daemonenv.UrlUxRaw))
-	case 1:
-		clientOptions = append(clientOptions, client.WithURL(daemonenv.UrlUxHttp))
-	case 2:
-		clientOptions = append(
-			clientOptions,
-			client.WithURL(daemonenv.UrlInetHttp))
-
-		clientOptions = append(clientOptions,
-			client.WithInsecureSkipVerify())
-
-		clientOptions = append(clientOptions,
-			client.WithCertificate(daemonenv.CertFile))
-
-		clientOptions = append(clientOptions,
-
-			client.WithKey(daemonenv.KeyFile),
-		)
-	}
+func New(c *client.T) *T {
+	return &T{c}
 }
 
 // Start function will start daemon with internal lock protection
-func Start() error {
+func (t *T) Start() error {
 	release, err := getLock("Start")
 	if err != nil {
 		return err
 	}
-	d, err := start()
+	d, err := t.start()
 	release()
 	if err != nil {
 		return err
@@ -76,22 +56,22 @@ func Start() error {
 }
 
 // Stop function will stop daemon with internal lock protection
-func Stop() error {
+func (t *T) Stop() error {
 	release, err := getLock("Stop")
 	if err != nil {
 		return err
 	}
 	defer release()
-	return stop()
+	return t.stop()
 }
 
 // ReStart function will restart daemon with internal lock protection
-func ReStart() error {
+func (t *T) ReStart() error {
 	release, err := getLock("Restart")
 	if err != nil {
 		return err
 	}
-	d, err := restart()
+	d, err := t.restart()
 	release()
 	if err != nil {
 		return err
@@ -103,28 +83,24 @@ func ReStart() error {
 // Running function detect daemon status using api
 //
 // it returns true is daemon is running, else false
-func Running() bool {
-	return running()
+func (t *T) Running() bool {
+	return t.running()
 }
 
 // WaitRunning function waits for daemon running
 //
 // It needs to be called from a cli lock protection
-func WaitRunning() error {
-	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, running)
+func (t *T) WaitRunning() error {
+	return waitForBool(WaitRunningTimeout, WaitRunningDelay, true, t.running)
 }
 
 // Events function is a cli for daemon/eventsdemo
-func Events() error {
-	if !running() {
+func (t *T) Events() error {
+	if !t.running() {
 		log.Debug().Msg("not running")
 		return nil
 	}
-	cli, err := client.New(clientOptions...)
-	if err != nil {
-		return err
-	}
-	eventC, err := cli.NewGetEventsDemo().Do()
+	eventC, err := t.client.NewGetEventsDemo().Do()
 	if err != nil {
 		return err
 	}
@@ -179,30 +155,28 @@ func getLock(desc string) (func(), error) {
 	return lock.Lock(lockPath, lockTimeout, desc)
 }
 
-func stop() error {
+func (t *T) stop() error {
 	log.Debug().Msg("cli-stop check running")
-	if !running() {
+	if !t.running() {
 		log.Debug().Msg("Already stopped")
 		return nil
 	}
-	cli, err := client.New(clientOptions...)
-	if err != nil {
+	_, err := t.client.NewPostDaemonStop().Do()
+	if err != nil &&
+		!strings.Contains(err.Error(), "unexpected EOF") &&
+		!strings.Contains(err.Error(), "unexpected end of JSON input") {
 		return err
 	}
-	_, err = cli.NewPostDaemonStop().Do()
-	if err != nil && !strings.Contains(err.Error(), "unexpected EOF") {
-		return err
-	}
-	if running() {
+	if t.running() {
 		log.Debug().Msg("cli-stop still running after stop")
 		return errors.New("daemon still running after stop")
 	}
 	return nil
 }
 
-func start() (waitDowner, error) {
+func (t *T) start() (waitDowner, error) {
 	log.Debug().Msg("cli-start check if not already running")
-	if running() {
+	if t.running() {
 		log.Debug().Msg("Already started")
 		return nil, nil
 	}
@@ -215,25 +189,19 @@ func start() (waitDowner, error) {
 	return d, nil
 }
 
-func restart() (waitDowner, error) {
-	if err := stop(); err != nil {
+func (t *T) restart() (waitDowner, error) {
+	if err := t.stop(); err != nil {
 		return nil, err
 	}
-	d, err := start()
+	d, err := t.start()
 	if err != nil {
 		return nil, err
 	}
 	return d, nil
 }
 
-func running() bool {
-	var data []byte
-	cli, err := client.New(clientOptions...)
-	if err != nil {
-		log.Error().Err(err).Msg("Running client.New")
-		return false
-	}
-	data, err = cli.NewGetDaemonRunning().Do()
+func (t *T) running() bool {
+	data, err := t.client.NewGetDaemonRunning().Do()
 	if err != nil || string(data) != "running" {
 		return false
 	}
