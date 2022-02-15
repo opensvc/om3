@@ -1,8 +1,6 @@
 package zfs
 
 import (
-	"fmt"
-
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
@@ -66,7 +64,6 @@ func (t *Pool) Create(fopts ...funcopt.O) error {
 	opts := &poolCreateOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := poolCreateOptsToArgs(*opts)
-	fmt.Println(opts, args)
 	cmd := command.New(
 		command.WithName("zpool"),
 		command.WithArgs(args),
