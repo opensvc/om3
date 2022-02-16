@@ -184,18 +184,6 @@ func (t T) Label() string {
 	return s
 }
 
-func (t *T) Provision(ctx context.Context) error {
-	return nil
-}
-
-func (t *T) Unprovision(ctx context.Context) error {
-	return nil
-}
-
-func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
-}
-
 func (t T) Info() map[string]string {
 	m := make(map[string]string)
 	m["dev"] = t.Device
@@ -423,6 +411,8 @@ func factor(size *int64, expr string) (*int64, error) {
 
 func parseNoneOrFactorOrSize(size *int64, expr string) (*int64, error) {
 	switch {
+	case expr == "":
+		return nil, nil
 	case expr == "none":
 		return nil, nil
 	case strings.HasPrefix(expr, "x"):
@@ -484,6 +474,41 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (t *T) UnprovisionLeader(ctx context.Context) error {
+	fs := t.fs()
+	if v, err := fs.Exists(); err != nil {
+		return err
+	} else if !v {
+		return nil
+	}
+	if err := fs.Destroy(zfs.FilesystemDestroyWithRemoveSnapshots(true)); err != nil {
+		return err
+	}
+	if err := t.removeMountPoint(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) Provisioned() (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
+}
+
+func (t T) removeMountPoint() error {
+	mnt := t.mountPoint()
+	if mnt == "" {
+		return nil
+	}
+	if file.IsProtected(mnt) {
+		return fmt.Errorf("dir %s is protected: refuse to remove", mnt)
+	}
+	if !file.Exists(mnt) {
+		t.Log().Info().Msgf("dir %s is already removed", mnt)
+		return nil
+	}
+	return os.RemoveAll(mnt)
 }
 
 func (t T) isLegacy() (bool, error) {
