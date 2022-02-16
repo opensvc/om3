@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -119,7 +121,7 @@ func ExactDSizeCompact(f float64) string {
 func FromSize(sizeStr string) (int64, error) {
 	matches := sReg.FindStringSubmatch(sizeStr)
 	if len(matches) != 6 {
-		return -1, fmt.Errorf("invalid size: '%s'", sizeStr)
+		return -1, errors.Errorf("invalid size: '%s'", sizeStr)
 	}
 
 	var convertMap unitMap
@@ -143,7 +145,7 @@ func FromSize(sizeStr string) (int64, error) {
 		size *= float64(mul)
 	}
 	if size > math.MaxInt64 || int64(size) < 0 {
-		return -1, fmt.Errorf("max size for int64: '%s'", sizeStr)
+		return -1, errors.Errorf("max size for int64: '%s'", sizeStr)
 	}
 	return int64(size), nil
 }
@@ -158,7 +160,7 @@ func FromDSize(size string) (int64, error) {
 func parseSize(sizeStr string, uMap unitMap) (int64, error) {
 	matches := sReg.FindStringSubmatch(sizeStr)
 	if len(matches) != 6 {
-		return -1, fmt.Errorf("invalid size: '%s'", sizeStr)
+		return -1, errors.Errorf("invalid size: '%s'", sizeStr)
 	}
 
 	size, err := strconv.ParseFloat(matches[1], 64)
