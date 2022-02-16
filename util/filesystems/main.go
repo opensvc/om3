@@ -59,7 +59,6 @@ func init() {
 	registerFS(&T{fsType: "bind", isFileBacked: true})
 	registerFS(&T{fsType: "lofs", isFileBacked: true})
 	registerFS(&T{fsType: "btrfs", isMultiDevice: true})
-	registerFS(&T{fsType: "zfs", isMultiDevice: true})
 	registerFS(&T{fsType: "vfat"})
 	registerFS(&T{fsType: "reiserfs"})
 	registerFS(&T{fsType: "jfs"})

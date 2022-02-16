@@ -20,5 +20,8 @@ func (t ZfsName) PoolName() string {
 // BaseName returns the basename extracted from a <pool>/<basename> string.
 func (t ZfsName) BaseName() string {
 	l := strings.SplitN(string(t), "/", 2)
+	if len(l) < 2 {
+		return ""
+	}
 	return l[1]
 }
