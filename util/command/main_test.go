@@ -203,11 +203,16 @@ func TestWait(t *testing.T) {
 	})
 
 	t.Run("exit 0 when WithIgnoredExitCodes(3, 4) return ErrExitCode", func(t *testing.T) {
+		type unwrapper interface {
+			Unwrap() error
+		}
 		cmd := New(WithName("bash"), WithVarArgs("-c", "exit 0"), WithIgnoredExitCodes(3, 4))
 		assert.Nil(t, cmd.Start())
 		err := cmd.Wait()
 		assert.NotNil(t, err)
-		assert.IsType(t, &ErrExitCode{}, err)
+		assert.IsType(t, &ErrExitCode{}, err.(unwrapper).Unwrap())
+		assert.Error(t, err)
+		assert.EqualError(t, err, "command exit code 0 not in success codes: [3 4]")
 		assert.Equal(t, 0, cmd.ExitCode())
 	})
 }
