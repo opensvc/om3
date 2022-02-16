@@ -24,8 +24,9 @@ func (t *CmdObjectProvision) Init(kind string, parent *cobra.Command, selector *
 
 func (t *CmdObjectProvision) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "provision",
-		Short: "allocate new resources",
+		Use:     "provision",
+		Short:   "allocate new resources",
+		Aliases: []string{"prov"},
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
