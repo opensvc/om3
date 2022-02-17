@@ -22,19 +22,19 @@ type (
 	T struct {
 		args []string
 	}
-	dropType int
-	dropOpt  struct {
-		Type   dropType
+	matchType int
+	matchOpt  struct {
+		Type   matchType
 		Value  string
 		Option string
 	}
 )
 
 const (
-	dropNone dropType = iota
-	dropAny
-	dropExact
-	dropMatching
+	matchNone matchType = iota
+	matchAny
+	matchExact
+	matchRegexp
 )
 
 // New allocates a new T and returns its address
@@ -73,7 +73,7 @@ func (t T) Get() []string {
 // DropOption removes from args the elements matching s. If multiple
 // elements match, they are all removed.
 func (t *T) DropOption(s string) {
-	t.dropOption(dropOpt{
+	t.dropOption(matchOpt{
 		Option: s,
 	})
 }
@@ -82,18 +82,18 @@ func (t *T) DropOption(s string) {
 // following element, considered the value of the option. If multiple
 // elements match, they are all removed.
 func (t *T) DropOptionAndAnyValue(s string) {
-	t.dropOption(dropOpt{
+	t.dropOption(matchOpt{
 		Option: s,
-		Type:   dropAny,
+		Type:   matchAny,
 	})
 }
 
 // DropOptionAndExactValue removes from args the elements matching s
 // and the following element exactly matching v.
 func (t *T) DropOptionAndExactValue(s, v string) {
-	t.dropOption(dropOpt{
+	t.dropOption(matchOpt{
 		Option: s,
-		Type:   dropExact,
+		Type:   matchExact,
 		Value:  v,
 	})
 }
@@ -101,40 +101,79 @@ func (t *T) DropOptionAndExactValue(s, v string) {
 // DropOptionAndMatchingValue removes from args the elements matching s
 // and the following element matching the v regular expression.
 func (t *T) DropOptionAndMatchingValue(s, v string) {
-	t.dropOption(dropOpt{
+	t.dropOption(matchOpt{
 		Option: s,
-		Type:   dropMatching,
+		Type:   matchRegexp,
 		Value:  v,
 	})
 }
 
-func (t *T) dropOption(opt dropOpt) {
+// HasOption returns true if any of the elements is matching s
+func (t *T) HasOption(s string) bool {
+	return t.hasOption(matchOpt{
+		Option: s,
+	})
+}
+
+// HasOptionAndMatchingValue returns true if any of the elements is matching s
+// and the following element is matching the v regular expression.
+func (t *T) HasOptionAndMatchingValue(s, v string) bool {
+	return t.hasOption(matchOpt{
+		Option: s,
+		Type:   matchRegexp,
+		Value:  v,
+	})
+}
+func strMatchArg(arg string, opt matchOpt, r *regexp.Regexp) bool {
+	switch opt.Type {
+	case matchAny:
+		return true
+	case matchExact:
+		if arg == opt.Value {
+			return true
+		}
+	case matchRegexp:
+		if r.Match([]byte(arg)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *T) hasOption(opt matchOpt) bool {
+	var (
+		undecidedArg string
+		r            *regexp.Regexp
+	)
+	if opt.Type == matchRegexp {
+		r = regexp.MustCompile(opt.Value)
+	}
+	for _, arg := range t.args {
+		if undecidedArg != "" {
+			if strMatchArg(arg, opt, r) {
+				return true
+			}
+			undecidedArg = ""
+		} else if arg == opt.Option {
+			// arm to be able to drop depending on the value during the next loop iteration
+			undecidedArg = arg
+		}
+	}
+	return false
+}
+
+func (t *T) dropOption(opt matchOpt) {
 	var (
 		undecidedArg string
 		r            *regexp.Regexp
 	)
 	l := make([]string, 0)
-	if opt.Type == dropMatching {
+	if opt.Type == matchRegexp {
 		r = regexp.MustCompile(opt.Value)
-	}
-	match := func(arg string) bool {
-		switch opt.Type {
-		case dropAny:
-			return true
-		case dropExact:
-			if arg == opt.Value {
-				return true
-			}
-		case dropMatching:
-			if r.Match([]byte(arg)) {
-				return true
-			}
-		}
-		return false
 	}
 	for _, arg := range t.args {
 		if undecidedArg != "" {
-			if !match(arg) {
+			if !strMatchArg(arg, opt, r) {
 				l = append(l, undecidedArg, arg)
 			}
 			undecidedArg = ""
