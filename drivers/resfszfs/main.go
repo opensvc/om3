@@ -442,6 +442,21 @@ func (t T) reservation() (*int64, error) {
 	return parseNoneOrFactorOrSize(t.Size, t.Reservation)
 }
 
+func (t T) mkfsOptions() []string {
+	a := args.New()
+	a.Set(t.MKFSOptions)
+	if !a.HasOption("-p") {
+		a.Append("-p")
+	}
+	if !a.HasOptionAndMatchingValue("-o", "^mountpoint=") {
+		a.Append("-o", "mountpoint="+t.mountPoint())
+	}
+	if !a.HasOptionAndMatchingValue("-o", "^canmount=") {
+		a.Append("-o", "canmount=noauto")
+	}
+	return a.Get()
+}
+
 func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := t.fs().Exists(); err != nil {
 		return errors.Wrap(err, "fs existance check")
@@ -450,6 +465,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		return nil
 	}
 	fopts := make([]funcopt.O, 0)
+	fopts = append(fopts, zfs.FilesystemCreateWithArgs(t.mkfsOptions()))
 	if v, err := t.refquota(); err != nil {
 		return err
 	} else {
@@ -481,6 +497,7 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	if v, err := fs.Exists(); err != nil {
 		return err
 	} else if !v {
+		t.Log().Info().Msgf("dataset %s is already destroyed", t.Device)
 		return nil
 	}
 	if err := fs.Destroy(zfs.FilesystemDestroyWithRemoveSnapshots(true)); err != nil {
