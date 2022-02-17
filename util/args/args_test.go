@@ -43,5 +43,12 @@ func Test(t *testing.T) {
 		args.Append("-o", "b=d")
 		assert.Equal(t, l6, args.Get(), "")
 	})
-
+	t.Run("HasOptionAndMatchingValue", func(t *testing.T) {
+		v := args.HasOptionAndMatchingValue("-o", "^a=")
+		assert.True(t, v, "")
+	})
+	t.Run("HasOptionAndMatchingValue", func(t *testing.T) {
+		v := args.HasOptionAndMatchingValue("-o", "^a=c")
+		assert.False(t, v, "")
+	})
 }
