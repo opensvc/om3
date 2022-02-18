@@ -401,11 +401,12 @@ func factor(size *int64, expr string) (*int64, error) {
 		return nil, fmt.Errorf("can not multiply empty size")
 	}
 	expr = strings.TrimLeft(expr, "x")
-	multiplier, err := strconv.ParseInt(expr, 10, 64)
+	multiplier, err := strconv.ParseFloat(expr, 10)
 	if err != nil {
 		return nil, err
 	}
-	i := *size * multiplier
+	f := float64(*size) * multiplier
+	i := int64(f)
 	return &i, nil
 }
 
@@ -418,7 +419,7 @@ func parseNoneOrFactorOrSize(size *int64, expr string) (*int64, error) {
 	case strings.HasPrefix(expr, "x"):
 		return factor(size, expr)
 	default:
-		i, err := sizeconv.FromDSize(expr)
+		i, err := sizeconv.FromSize(expr)
 		if err != nil {
 			return nil, err
 		}
