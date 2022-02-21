@@ -162,7 +162,6 @@ func Parse(s string) *T {
 	t.Op = ParseOp(bestOp)
 	t.Value = s[i+len(bestOp):]
 
-	fmt.Println(s, t, k)
 	//
 	// Example submatch result:
 	//   []string{
