@@ -25,6 +25,12 @@ type OptsDelete struct {
 // sections in the configuration file.
 //
 func (t Base) Delete(opts OptsDelete) error {
+	return t.lockedAction("", opts.Lock, "delete", func() error {
+		return t.lockedDelete(opts)
+	})
+}
+
+func (t Base) lockedDelete(opts OptsDelete) error {
 	if opts.ResourceSelector != "" {
 		return t.deleteSections(opts.ResourceSelector)
 	}

@@ -15,9 +15,11 @@ type OptsSet struct {
 	KeywordOps []string `flag:"kwops"`
 }
 
-// Set gets a keyword value
+// Set changes or adds a keyword and its value in the configuration file.
 func (t *Base) Set(options OptsSet) error {
-	return setKeywords(t.config, options.KeywordOps)
+	return t.lockedAction("", options.Lock, "set", func() error {
+		return setKeywords(t.config, options.KeywordOps)
+	})
 }
 
 func (t *Base) SetKeywords(kws []string) error {

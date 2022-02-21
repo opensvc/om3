@@ -2,7 +2,6 @@ package object
 
 import (
 	"path/filepath"
-	"time"
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
@@ -17,24 +16,6 @@ func (t *Base) lockPath(group string) (path string) {
 	return
 }
 
-//
-// Lock acquires the action lock.
-//
-// A custom lock group can be specified to prevent parallel run of a subset
-// of object actions.
-//
-func (t *Base) Lock(group string, timeout time.Duration, intent string) (*flock.T, error) {
-	p := t.lockPath(group)
-	t.log.Debug().Msgf("locking %s, timeout %s", p, timeout)
-	lock := flock.New(p, xsession.ID, fcntllock.New)
-	err := lock.Lock(timeout, intent)
-	if err != nil {
-		return nil, err
-	}
-	t.log.Debug().Msgf("locked %s", p)
-	return lock, nil
-}
-
 func (t *Base) lockedAction(group string, options OptsLocking, intent string, f func() error) error {
 	if options.Disable {
 		// --nolock handling
@@ -47,5 +28,15 @@ func (t *Base) lockedAction(group string, options OptsLocking, intent string, f 
 		return err
 	}
 	defer func() { _ = lock.UnLock() }()
+
+	// the config may have changed since we first read it.
+	// ex:
+	//  set --kw env.a=a &
+	//  set --kw env.b=b
+	//
+	// These parallel commands end up with either a or b set,
+	// because the 2 process load the config cache before locking.
+	t.reloadConfig()
+
 	return f()
 }

@@ -14,7 +14,9 @@ type OptsUnset struct {
 
 // Unset gets a keyword value
 func (t *Base) Unset(options OptsUnset) error {
-	return unset(t.config, options)
+	return t.lockedAction("", options.Lock, "unset", func() error {
+		return unset(t.config, options)
+	})
 }
 
 func (t *Base) UnsetKeys(kws ...key.T) error {
