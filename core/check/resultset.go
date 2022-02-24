@@ -18,6 +18,11 @@ func NewResultSet() *ResultSet {
 	return rs
 }
 
+// Len returns the number of results in the set.
+func (t *ResultSet) Len() int {
+	return len(t.Data)
+}
+
 // Add appends another ResultSet to this ResultSet
 func (t *ResultSet) Add(rs *ResultSet) {
 	t.Data = append(t.Data, rs.Data...)
