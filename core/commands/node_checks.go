@@ -44,7 +44,7 @@ func (t *CmdNodeChecks) run() {
 			"format": t.Global.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Checks(), nil
+			return object.NewNode().Checks()
 		}),
 	).Do()
 }

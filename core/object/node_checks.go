@@ -1,11 +1,14 @@
 package object
 
 import (
+	"fmt"
 	"path/filepath"
+	"time"
 
 	"opensvc.com/opensvc/core/check"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/exe"
+	"opensvc.com/opensvc/util/hostname"
 
 	_ "opensvc.com/opensvc/drivers/chkfsidf"
 	_ "opensvc.com/opensvc/drivers/chkfsudf"
@@ -16,10 +19,46 @@ type OptsNodeChecks struct {
 	Global OptsGlobal
 }
 
-// Checks find and runs the check drivers.
-func (t Node) Checks() check.ResultSet {
+// Checks finds and runs the check drivers.
+// Results are aggregated and sent to the collector.
+func (t Node) Checks() (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.NodeViper.GetString("paths.drivers"), "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
 	rs := check.NewRunner(customCheckPaths).Do()
-	return *rs
+	if err := t.pushChecks(rs); err != nil {
+		return *rs, err
+	}
+	return *rs, nil
+}
+
+func (t Node) pushChecks(rs *check.ResultSet) error {
+	client, err := t.collectorClient()
+	if err != nil {
+		return err
+	}
+	vars := []string{
+		"chk_nodename",
+		"chk_svcname",
+		"chk_type",
+		"chk_instance",
+		"chk_value",
+		"chk_updated",
+	}
+	vals := make([][]string, rs.Len())
+	hn := hostname.Hostname()
+	now := time.Now().Format("2006-01-02 15:04:05")
+	for i, e := range rs.Data {
+		vals[i] = []string{
+			hn,
+			e.Path,
+			e.DriverGroup,
+			e.Instance,
+			fmt.Sprint(e.Value),
+			now,
+		}
+	}
+	if _, err := client.Call("push_checks", vars, vals); err != nil {
+		return err
+	}
+	return nil
 }

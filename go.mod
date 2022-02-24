@@ -48,6 +48,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
+	github.com/ybbus/jsonrpc v2.1.2+incompatible // indirect
+	github.com/ybbus/jsonrpc/v3 v3.0.0-alpha.1 // indirect
 	github.com/yookoala/realpath v1.0.0
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
 	golang.org/x/exp v0.0.0-20191030013958-a1ab85dbe136
