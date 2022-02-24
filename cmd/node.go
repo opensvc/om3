@@ -64,6 +64,7 @@ func init() {
 	cmdNodePrintCapabilities.Init(nodePrintCmd)
 	cmdNodePrintConfig.Init(nodePrintCmd)
 	cmdNodePushAsset.Init(nodePushCmd)
+	cmdNodePushAsset.InitAlt(nodeCmd)
 	cmdNodeScanCapabilities.Init(nodeScanCmd)
 	cmdNodeSet.Init(nodeCmd)
 	cmdNodeUnset.Init(nodeCmd)

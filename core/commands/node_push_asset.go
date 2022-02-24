@@ -21,11 +21,29 @@ func (t *NodePushAsset) Init(parent *cobra.Command) {
 	flag.Install(cmd, &t.OptsNodePushAsset)
 }
 
+func (t *NodePushAsset) InitAlt(parent *cobra.Command) {
+	cmd := t.cmdAlt()
+	parent.AddCommand(cmd)
+	flag.Install(cmd, &t.OptsNodePushAsset)
+}
+
 func (t *NodePushAsset) cmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "asset",
 		Short:   "Run the node discovery, push and print the result",
 		Aliases: []string{"asse", "ass", "as"},
+		Run: func(_ *cobra.Command, _ []string) {
+			t.run()
+		},
+	}
+}
+
+func (t *NodePushAsset) cmdAlt() *cobra.Command {
+	return &cobra.Command{
+		Use:     "pushasset",
+		Hidden:  true,
+		Short:   "Run the node discovery, push and print the result",
+		Aliases: []string{"pushasse", "pushass", "pushas", "pusha"},
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
