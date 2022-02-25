@@ -14,6 +14,7 @@ func (t ResultSet) Render() string {
 	tree.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Node.Color.Bold)
 	tree.AddColumn().AddText("driver")
 	tree.AddColumn().AddText("instance")
+	tree.AddColumn().AddText("object")
 	tree.AddColumn().AddText("value")
 	tree.AddColumn().AddText("unit")
 	for _, r := range t.Data {
@@ -21,6 +22,7 @@ func (t ResultSet) Render() string {
 		n.AddColumn().AddText(r.DriverGroup).SetColor(rawconfig.Node.Color.Primary)
 		n.AddColumn().AddText(r.DriverName).SetColor(rawconfig.Node.Color.Primary)
 		n.AddColumn().AddText(r.Instance).SetColor(rawconfig.Node.Color.Secondary)
+		n.AddColumn().AddText(r.Path)
 		n.AddColumn().AddText(fmt.Sprintf("%d", r.Value))
 		n.AddColumn().AddText(r.Unit)
 	}
