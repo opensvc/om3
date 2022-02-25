@@ -16,14 +16,13 @@ type PostDaemonStop struct {
 // default values to its keys.
 func NewPostDaemonStop(t Getter) *PostDaemonStop {
 	r := &PostDaemonStop{
-		NodeSelector:   "*",
-		ObjectSelector: "**",
+		NodeSelector:   "",
+		ObjectSelector: "",
 		Server:         "",
 	}
 	r.SetClient(t)
 	r.SetAction("daemon_stop")
 	r.SetMethod("POST")
-	r.SetNode("*")
 	return r
 }
 

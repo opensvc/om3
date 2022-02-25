@@ -16,14 +16,13 @@ type GetDaemonRunning struct {
 // default values to its keys.
 func NewGetDaemonRunning(t Getter) *GetDaemonRunning {
 	r := &GetDaemonRunning{
-		NodeSelector:   "*",
-		ObjectSelector: "**",
+		NodeSelector:   "",
+		ObjectSelector: "",
 		Server:         "",
 	}
 	r.SetClient(t)
 	r.SetAction("daemon/running")
 	r.SetMethod("GET")
-	r.SetNode("*")
 	return r
 }
 
