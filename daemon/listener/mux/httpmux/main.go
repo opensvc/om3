@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/listener/handlers/daemonhandler"
+	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
 	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/daemon/subdaemon"
 )
@@ -49,7 +50,7 @@ func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/running", daemonhandler.Running)
+	r.Get("/running", dispatchhandler.New(daemonhandler.Running))
 	r.Post("/stop", daemonhandler.Stop)
 	r.Get("/eventsdemo", daemonhandler.Events)
 	return r
