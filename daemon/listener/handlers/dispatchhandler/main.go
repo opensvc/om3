@@ -115,7 +115,7 @@ func (d *dispatch) prepareResponses() error {
 		requestCount = requestCount + 1
 		if node == "localhost" {
 			go func() {
-				d.log.Debug().Msgf("local srcRequest %s", newRequest.URL)
+				d.log.Debug().Msgf("local %s %s", newRequest.Method, newRequest.URL)
 				resp := muxresponse.NewByteResponse()
 				d.srcHandler(resp, newRequest)
 				rChan <- &dispatchResponse{
@@ -125,11 +125,11 @@ func (d *dispatch) prepareResponses() error {
 			}()
 		} else {
 			go func() {
-				d.log.Debug().Msgf("forward srcRequest %s", newRequest.URL)
+				d.log.Debug().Msgf("forward %s %s", newRequest.Method, newRequest.URL)
 				client := getClient()
 				resp, err := client.Do(newRequest)
 				if err != nil {
-					d.log.Error().Err(err).Msgf("do srcRequest: %s", newRequest)
+					d.log.Error().Err(err).Msgf("do %s %s", newRequest.Method, newRequest.URL)
 					rChan <- nil
 					return
 				}
