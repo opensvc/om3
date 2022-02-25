@@ -38,11 +38,11 @@ type (
 	}
 
 	LAN struct {
-		Address string `json:"addr"`
-		//FlagDeprecated bool   `json:"flag_deprecated"`
-		Intf string `json:"intf"`
-		Mask string `json:"mask"`
-		Type string `json:"type"`
+		Address        string `json:"addr"`
+		FlagDeprecated bool   `json:"flag_deprecated"`
+		Intf           string `json:"intf"`
+		Mask           string `json:"mask"`
+		Type           string `json:"type"`
 	}
 )
 

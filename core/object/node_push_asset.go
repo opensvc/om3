@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/version"
 	"opensvc.com/opensvc/util/asset"
@@ -20,6 +21,7 @@ type (
 	}
 
 	AssetValue struct {
+		Name   string      `json:"-"`
 		Source string      `json:"source"`
 		Title  string      `json:"title"`
 		Value  interface{} `json:"value"`
@@ -74,6 +76,7 @@ type (
 		Hardware []asset.Device         `json:"hardware"`
 		LAN      map[string][]asset.LAN `json:"lan"`
 		HBA      []san.HostBusAdapter   `json:"hba"`
+		Targets  []san.Path             `json:"targets"`
 	}
 
 	Prober interface {
@@ -86,6 +89,20 @@ const (
 	AssetSrcDefault string = "default"
 	AssetSrcConfig  string = "config"
 )
+
+func (t AssetData) AssetValues() []AssetValue {
+	l := make([]AssetValue, 0)
+	m, _ := attr.Values(t)
+	for k, v := range m {
+		av, ok := v.(AssetValue)
+		if !ok {
+			continue
+		}
+		av.Name, _ = attr.GetTag(t, k, "json")
+		l = append(l, av)
+	}
+	return l
+}
 
 func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt interface{}) (data AssetValue) {
 	data.Title = title
@@ -148,7 +165,18 @@ func NewAssetData() AssetData {
 // * probes
 // * default (code)
 //
-func (t Node) PushAsset() AssetData {
+func (t Node) PushAsset() (AssetData, error) {
+	data, err := t.getAsset()
+	if err != nil {
+		return data, err
+	}
+	if err := t.pushAsset(data); err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+func (t Node) getAsset() (AssetData, error) {
 	data := NewAssetData()
 
 	// from core
@@ -187,6 +215,7 @@ func (t Node) PushAsset() AssetData {
 	data.Hardware, _ = asset.Hardware()
 	data.LAN, _ = asset.GetLANS()
 	data.HBA, _ = san.HostBusAdapters()
+	data.Targets, _ = san.Paths()
 
 	// from config only
 	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)
@@ -204,7 +233,7 @@ func (t Node) PushAsset() AssetData {
 	data.TeamInteg = t.assetValueFromProbe("node.loc_country", "team, integration", nil, nil)
 	data.TeamSupport = t.assetValueFromProbe("node.loc_country", "team, support", nil, nil)
 
-	return data
+	return data, nil
 }
 
 func (t AssetData) Render() string {
@@ -318,4 +347,127 @@ func (t AssetData) Render() string {
 	}
 
 	return tr.Render()
+}
+
+func (t Node) pushAsset(data AssetData) error {
+	//hn := hostname.Hostname()
+	hba := func() []interface{} {
+		vars := []string{
+			"nodename",
+			"hba_id",
+			"hba_type",
+		}
+		vals := make([][]string, len(data.HBA))
+		for i, e := range data.HBA {
+			vals[i] = []string{
+				e.Host,
+				e.ID,
+				e.Type,
+			}
+		}
+		return []interface{}{vars, vals}
+	}
+	targets := func() []interface{} {
+		vars := []string{
+			"hba_id",
+			"tgt_id",
+		}
+		vals := make([][]string, len(data.Targets))
+		for i, e := range data.Targets {
+			vals[i] = []string{
+				e.HostBusAdapter.ID,
+				e.TargetPort.ID,
+			}
+		}
+		return []interface{}{vars, vals}
+	}
+	lan := func() []interface{} {
+		vars := []string{
+			"mac",
+			"intf",
+			"type",
+			"addr",
+			"mask",
+			"flag_deprecated",
+		}
+		vals := make([][]string, 0)
+		for mac, ips := range data.LAN {
+			for _, ip := range ips {
+				val := []string{
+					mac,
+					ip.Intf,
+					ip.Type,
+					ip.Address,
+					ip.Mask,
+					fmt.Sprint(ip.FlagDeprecated),
+				}
+				vals = append(vals, val)
+			}
+		}
+		return []interface{}{vars, vals}
+	}
+	uids := func() []interface{} {
+		vars := []string{
+			"user_name",
+			"user_id",
+		}
+		vals := make([][]string, len(data.UIDS))
+		for i, e := range data.UIDS {
+			vals[i] = []string{
+				e.Name,
+				fmt.Sprint(e.ID),
+			}
+		}
+		return []interface{}{vars, vals}
+	}
+	gids := func() []interface{} {
+		vars := []string{
+			"group_name",
+			"group_id",
+		}
+		vals := make([][]string, len(data.GIDS))
+		for i, e := range data.GIDS {
+			vals[i] = []string{
+				e.Name,
+				fmt.Sprint(e.ID),
+			}
+		}
+		return []interface{}{vars, vals}
+	}
+	props := func() []interface{} {
+		vars := make([]string, 0)
+		vals := make([]string, 0)
+		for _, av := range data.AssetValues() {
+			if av.Name == "boot_id" {
+				continue
+			}
+			vars = append(vars, av.Name)
+			val := ""
+			if av.Value != nil {
+				val = fmt.Sprint(av.Value)
+			}
+			vals = append(vals, val)
+		}
+		return []interface{}{vars, vals}
+	}
+	client, err := t.collectorClient()
+	if err != nil {
+		return err
+	}
+	gen := make(map[string]interface{})
+	gen["hardware"] = data.Hardware
+	gen["hba"] = hba()
+	gen["targets"] = targets()
+	gen["lan"] = lan()
+	gen["uids"] = uids()
+	gen["gids"] = gids()
+	if _, err := client.Call("insert_generic", gen); err != nil {
+		return err
+	}
+
+	args := props()
+	if _, err := client.Call("update_asset", args...); err != nil {
+		return err
+	}
+	return nil
 }
