@@ -14,4 +14,6 @@ var (
 
 	CertFile = "/tmp/certificate_chain"
 	KeyFile  = "/tmp/private_key"
+
+	HeaderNode = "o-node"
 )

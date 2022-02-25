@@ -4,6 +4,7 @@
 package muxresponse
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 )
@@ -16,6 +17,10 @@ type (
 		// writer is holder for raw conn writer
 		writer io.Writer
 	}
+
+	byteBuffer struct {
+		*bytes.Buffer
+	}
 )
 
 func NewResponse(w io.Writer) *Response {
@@ -26,6 +31,14 @@ func NewResponse(w io.Writer) *Response {
 		},
 		writer: w,
 	}
+}
+
+// NewByteResponse() returns *Response where writer and Body is a bytes.Buffer{}
+func NewByteResponse() *Response {
+	body := byteBuffer{Buffer: &bytes.Buffer{}}
+	response := NewResponse(body)
+	response.Response.Body = body
+	return response
 }
 
 // Header function implements http.ResponseWriter Header() for Response
@@ -41,4 +54,10 @@ func (resp *Response) Write(b []byte) (int, error) {
 // WriteHeader function implements WriteHeader(int) for Response
 func (resp *Response) WriteHeader(statusCode int) {
 	resp.StatusCode = statusCode
+}
+
+// Close function implements Close() error for byteBuffer
+func (b byteBuffer) Close() error {
+	b.Reset()
+	return nil
 }
