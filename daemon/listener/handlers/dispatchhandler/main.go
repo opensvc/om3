@@ -37,6 +37,8 @@ type (
 )
 
 var (
+	httpClientC       = make(chan chan *http.Client)
+	httpClientRenew   = make(chan bool)
 	httpClientTimeout = 5 * time.Second
 )
 
@@ -77,6 +79,11 @@ func New(srcHandler http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 	}
+}
+
+// RefreshClient ask for client renewal
+func RefreshClient() {
+	httpClientRenew <- true
 }
 
 func getNodeHeader(r *http.Request) []string {
@@ -174,7 +181,28 @@ func (d *dispatch) writeResponses(w http.ResponseWriter) error {
 }
 
 func getClient() *http.Client {
-	return newClient()
+	c := make(chan *http.Client)
+	httpClientC <- c
+	return <-c
+}
+
+func httpClientServer() {
+	httpClient := newClient()
+	for {
+		select {
+		case c := <-httpClientC:
+			c <- httpClient
+		case <-httpClientRenew:
+			previous := httpClient
+			go func() {
+				<-time.After(2 * httpClientTimeout)
+				previous.CloseIdleConnections()
+			}()
+			httpClient = newClient()
+		case <-time.After(httpClientTimeout + time.Second):
+			httpClient.CloseIdleConnections()
+		}
+	}
 }
 
 func newClient() *http.Client {
@@ -198,4 +226,8 @@ func newClient() *http.Client {
 		Timeout:   httpClientTimeout,
 		Transport: tp,
 	}
+}
+
+func init() {
+	go httpClientServer()
 }
