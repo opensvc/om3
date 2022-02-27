@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 
 	clientrequest "opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/daemon/listener/mux/muxresponse"
 )
 
 type (
@@ -28,14 +29,6 @@ type (
 	ReadWriteCloseSetDeadliner interface {
 		io.ReadWriteCloser
 		SetDeadline(time.Time) error
-	}
-
-	// response struct that implement http.ResponseWriter
-	response struct {
-		http.Response
-
-		// writer is holder for raw conn writer
-		writer io.Writer
 	}
 
 	// request struct holds the translated raw request for http mux
@@ -62,7 +55,7 @@ func New(mux http.Handler, log zerolog.Logger, timeout time.Duration) *T {
 //
 // 1- raw request will be decoded to create to http request
 // 2- http request will be served from http mux ServeHTTP
-// 3- response is sent to w
+// 3- Response is sent to w
 func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 	defer func() {
 		err := w.Close()
@@ -79,7 +72,7 @@ func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 		t.log.Error().Err(err).Msg("rawunix.Serve can't analyse request")
 		return
 	}
-	resp := newResponse(w)
+	resp := muxresponse.NewResponse(w)
 	if err := req.do(resp); err != nil {
 		t.log.Error().Err(err).Msgf("rawunix.Serve request.do error for %s %s",
 			req.method, req.path)
@@ -107,6 +100,7 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 		t.log.Warn().Err(err).Msgf("newRequestFrom invalid message: %s", string(b))
 		return nil, err
 	}
+	t.log.Warn().Msgf("newRequestFrom: %s, options: %s", srcRequest, srcRequest.Options)
 	matched, ok := actionToPath[srcRequest.Action]
 	if !ok {
 		msg := "no matched rules for action: " + srcRequest.Action
@@ -121,7 +115,7 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 }
 
 // do function execute http mux handler on translated request and returns error
-func (r *request) do(resp *response) error {
+func (r *request) do(resp *muxresponse.Response) error {
 	body := r.body
 	if r.method == "GET" {
 		body = nil
@@ -133,29 +127,4 @@ func (r *request) do(resp *response) error {
 
 	r.handler(resp, request)
 	return nil
-}
-
-func newResponse(w io.Writer) *response {
-	return &response{
-		Response: http.Response{
-			StatusCode: 200,
-			Header:     make(map[string][]string),
-		},
-		writer: w,
-	}
-}
-
-// Header function implements http.ResponseWriter Header() for response
-func (resp response) Header() http.Header {
-	return resp.Response.Header
-}
-
-// Write function implements Write([]byte) (int, error) for response
-func (resp *response) Write(b []byte) (int, error) {
-	return resp.writer.Write(b)
-}
-
-// WriteHeader function implements WriteHeader(int) for response
-func (resp *response) WriteHeader(statusCode int) {
-	resp.StatusCode = statusCode
 }
