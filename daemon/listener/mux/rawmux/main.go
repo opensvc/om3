@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 
 	clientrequest "opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/listener/mux/muxresponse"
 )
 
@@ -37,6 +38,7 @@ type (
 		path    string
 		handler http.HandlerFunc
 		body    io.Reader
+		header  http.Header
 	}
 )
 
@@ -106,11 +108,16 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 		msg := "no matched rules for action: " + srcRequest.Action
 		return nil, errors.New(msg)
 	}
+	httpHeader := http.Header{}
+	if srcRequest.Node != "" {
+		httpHeader.Set(daemonenv.HeaderNode, srcRequest.Node)
+	}
 	return &request{
 		method:  matched.method,
 		path:    matched.path,
 		handler: t.httpMux.ServeHTTP,
 		body:    bytes.NewReader(b),
+		header:  httpHeader,
 	}, nil
 }
 
@@ -121,10 +128,10 @@ func (r *request) do(resp *muxresponse.Response) error {
 		body = nil
 	}
 	request, err := http.NewRequest(r.method, r.path, body)
+	request.Header = r.header
 	if err != nil {
 		return err
 	}
-
 	r.handler(resp, request)
 	return nil
 }
