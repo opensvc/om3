@@ -1,16 +1,29 @@
 package api
 
 import (
+	"opensvc.com/opensvc/core/api/apimodel"
 	"opensvc.com/opensvc/core/client/request"
 )
 
-// GetDaemonRunning describes the daemon running api handler options.
-type GetDaemonRunning struct {
-	Base
-	NodeSelector   string `json:"node"`
-	ObjectSelector string `json:"selector"`
-	Server         string `json:"server"`
-}
+type (
+	// GetDaemonRunning describes the daemon running api handler options.
+	GetDaemonRunning struct {
+		Base
+		NodeSelector   string `json:"node"`
+		ObjectSelector string `json:"selector"`
+		Server         string `json:"server"`
+	}
+
+	GetDaemonRunningData []struct {
+		apimodel.BaseResponseMuxData
+		Data bool `json:"data,omitempty"`
+	}
+	// GetDaemonRunningResponse
+	GetDaemonRunningResponse struct {
+		apimodel.BaseResponseMux
+		Data GetDaemonRunningData `json:"data"`
+	}
+)
 
 // NewGetDaemonRunning allocates a GetDaemonRunning struct and sets
 // default values to its keys.

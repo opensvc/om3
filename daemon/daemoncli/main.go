@@ -11,9 +11,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/client/api"
 	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/lock"
 )
 
@@ -28,6 +30,7 @@ var (
 type (
 	T struct {
 		client *client.T
+		node   string
 	}
 	waitDowner interface {
 		WaitDone()
@@ -35,7 +38,11 @@ type (
 )
 
 func New(c *client.T) *T {
-	return &T{c}
+	return &T{client: c}
+}
+
+func (t *T) SetNode(node string) {
+	t.node = node
 }
 
 // Start function will start daemon with internal lock protection
@@ -167,10 +174,12 @@ func (t *T) stop() error {
 		!strings.Contains(err.Error(), "unexpected end of JSON input") {
 		return err
 	}
+	log.Debug().Msg("Check if still running")
 	if t.running() {
 		log.Debug().Msg("cli-stop still running after stop")
 		return errors.New("daemon still running after stop")
 	}
+	log.Debug().Msg("Check if still running done")
 	return nil
 }
 
@@ -201,15 +210,30 @@ func (t *T) restart() (waitDowner, error) {
 }
 
 func (t *T) running() bool {
-	data, err := t.client.NewGetDaemonRunning().Do()
-	if err != nil || string(data) != "running" {
+	request := t.client.NewGetDaemonRunning()
+	request.SetNode(t.node)
+	b, err := request.Do()
+	if err != nil {
+		log.Debug().Err(err).Msg("daemon is not running")
 		return false
 	}
-	running := string(data)
-	log.Debug().Msgf("Running is %s", string(data))
-	if running == "running" {
-		return true
+	var nodesData api.GetDaemonRunningData
+	if err := json.Unmarshal(b, &nodesData); err != nil {
+		log.Error().Err(err).Msgf("Unmarshal b: %s", b)
+		return false
 	}
+	nodename := t.node
+	if nodename == "" {
+		nodename = hostname.Hostname()
+	}
+	for _, item := range nodesData {
+		if item.Endpoint == nodename {
+			val := item.Data
+			log.Debug().Msgf("daemon running is %v", val)
+			return val
+		}
+	}
+	log.Debug().Msgf("daemon is not running")
 	return false
 }
 
