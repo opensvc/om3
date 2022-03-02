@@ -9,22 +9,27 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
 	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
-func Running(w http.ResponseWriter, r *http.Request) {
+var (
+	Running = dispatchhandler.New(running, http.StatusOK, 1)
+)
+
+func running(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Running"
 	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	daemon := muxctx.Daemon(r.Context())
 	logger.Debug().Msg("starting")
-	if daemon.Running() {
-		logger.Info().Msg("daemon is running")
-		_, _ = write(w, r, funcName, []byte("running"))
-	} else {
-		logger.Info().Msg("daemon is stopped")
-		_, _ = write(w, r, funcName, []byte("not running"))
+	response := daemon.Running()
+	b, err := json.Marshal(response)
+	if err != nil {
+		logger.Error().Err(err).Msg("Marshal response")
+		return
 	}
+	_, _ = write(w, r, funcName, b)
 }
 
 func Stop(w http.ResponseWriter, r *http.Request) {
