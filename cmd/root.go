@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
@@ -29,6 +30,7 @@ var (
 	formatFlag   string
 	selectorFlag string
 	serverFlag   string
+	nodeFlag     string
 	debugFlag    bool
 	callerFlag   bool
 )
