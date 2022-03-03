@@ -569,6 +569,9 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 // * evaluated
 //
 func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
+	if k.Section == "env" {
+		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
+	}
 	sectionType := t.sectionType(k)
 	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
