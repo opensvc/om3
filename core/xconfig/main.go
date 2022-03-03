@@ -788,6 +788,7 @@ func (t T) HasSectionString(s string) bool {
 	return false
 }
 
+// SectionStrings returns list of section names.
 func (t T) SectionStrings() []string {
 	return t.file.SectionStrings()
 }

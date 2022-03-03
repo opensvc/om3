@@ -16,7 +16,9 @@ const (
 	DriverName = "df"
 )
 
-type fsChecker struct{}
+type (
+	fsChecker struct{}
+)
 
 func init() {
 	check.Register(&fsChecker{})
@@ -26,14 +28,8 @@ func (t *fsChecker) Entries() ([]df.Entry, error) {
 	return df.Inode()
 }
 
-// ObjectPath returns the path of the first object using the mount point
-// passed as argument
-func (t *fsChecker) objectPath(_ string) string {
-	return ""
-}
-
-func (t *fsChecker) ResultSet(entry *df.Entry) *check.ResultSet {
-	path := t.objectPath(entry.MountPoint)
+func (t *fsChecker) ResultSet(entry *df.Entry, objs []interface{}) *check.ResultSet {
+	path := check.ObjectPathClaimingDir(entry.MountPoint, objs)
 	rs := check.NewResultSet()
 	rs.Push(check.Result{
 		Instance:    entry.MountPoint,
@@ -62,13 +58,13 @@ func (t *fsChecker) ResultSet(entry *df.Entry) *check.ResultSet {
 	return rs
 }
 
-func (t *fsChecker) Check() (*check.ResultSet, error) {
-	return checkdf.Check(t)
+func (t *fsChecker) Check(objs []interface{}) (*check.ResultSet, error) {
+	return checkdf.Check(t, objs)
 }
 
 func main() {
 	checker := &fsChecker{}
-	if err := check.Check(checker); err != nil {
+	if err := check.Check(checker, []interface{}{}); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

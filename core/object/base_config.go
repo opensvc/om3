@@ -240,7 +240,7 @@ func (t Base) dereferenceExposedDevices(ref string) (string, error) {
 	if s == "" {
 		xdevs := o.ExposedDevices()
 		ls := make([]string, len(xdevs))
-		for i, xd := range o.ExposedDevices() {
+		for i, xd := range xdevs {
 			ls[i] = xd.String()
 		}
 		return strings.Join(ls, " "), nil

@@ -24,7 +24,16 @@ type OptsNodeChecks struct {
 func (t Node) Checks() (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.NodeViper.GetString("paths.drivers"), "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
-	rs := check.NewRunner(customCheckPaths).Do()
+	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))
+	objs, err := sel.Objects(WithVolatile(true))
+	if err != nil {
+		return *check.NewResultSet(), err
+	}
+	runner := check.NewRunner(
+		check.RunnerWithCustomCheckPaths(customCheckPaths...),
+		check.RunnerWithObjects(objs...),
+	)
+	rs := runner.Do()
 	if err := t.pushChecks(rs); err != nil {
 		return *rs, err
 	}

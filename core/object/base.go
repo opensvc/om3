@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -64,6 +66,7 @@ type (
 		resources          resource.Drivers
 		_resources         resource.Drivers
 		actionResourceDeps *actionresdeps.Store
+		mu                 sync.Mutex
 
 		// method plugs
 		postCommit func() error
@@ -259,6 +262,9 @@ func (t *Base) Resources() resource.Drivers {
 }
 
 func (t *Base) configureResources() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	begin := time.Now()
 	postponed := make(map[string][]resource.Driver)
 	t._resources = make(resource.Drivers, 0)
 	for _, k := range t.config.SectionStrings() {
@@ -287,6 +293,7 @@ func (t *Base) configureResources() {
 			continue
 		}
 		r := factory()
+		rBegin := time.Now()
 		if err := t.configureResource(r, k); err != nil {
 			switch o := err.(type) {
 			case xconfig.ErrPostponedRef:
@@ -302,7 +309,7 @@ func (t *Base) configureResources() {
 			}
 			continue
 		}
-		t.log.Debug().Str("rid", r.RID()).Msgf("configure resource: %+v", r)
+		t.log.Debug().Str("rid", r.RID()).Dur("duration", time.Now().Sub(rBegin)).Msg("configure resource")
 		t._resources = append(t._resources, r)
 	}
 	for _, resources := range postponed {
@@ -320,6 +327,7 @@ func (t *Base) configureResources() {
 	}
 	t.resources = t._resources
 	t._resources = nil
+	t.log.Debug().Dur("duration", time.Now().Sub(begin)).Msg("configure resources")
 	return
 }
 

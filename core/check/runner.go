@@ -2,9 +2,11 @@ package check
 
 import (
 	"encoding/json"
-	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
+
+	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/util/funcopt"
 )
 
 var ExecCommand = exec.Command
@@ -13,32 +15,55 @@ type (
 	// aggregate results and format the output.
 	runner struct {
 		customCheckPaths []string
+		objects          []interface{}
+		q                chan *ResultSet
 	}
 )
 
-func NewRunner(customCheckPaths []string) *runner {
-	return &runner{
-		customCheckPaths: customCheckPaths,
+func NewRunner(opts ...funcopt.O) *runner {
+	r := &runner{
+		q: make(chan *ResultSet),
 	}
+	_ = funcopt.Apply(r, opts...)
+	return r
+}
+
+// RunnerWithCustomCheckPaths adds paths where additionnal check
+// driver are installed.
+func RunnerWithCustomCheckPaths(paths ...string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*runner)
+		t.customCheckPaths = append(t.customCheckPaths, paths...)
+		return nil
+	})
+}
+
+// RunnerWithObjects sets the list of objects the checkers can
+// use to correlate a check instance to an object.
+func RunnerWithObjects(objs ...interface{}) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*runner)
+		t.objects = append(t.objects, objs...)
+		return nil
+	})
 }
 
 // Do runs the check drivers, aggregates results and format
 // the output.
-func (r runner) Do() *ResultSet {
+func (r runner) Do(opts ...funcopt.O) *ResultSet {
 	rs := NewResultSet()
-	q := make(chan *ResultSet)
 	for _, path := range r.customCheckPaths {
-		go doCustomCheck(q, path)
+		go r.doCustomCheck(path)
 	}
 	for _, c := range checkers {
-		go doRegisteredCheck(q, c)
+		go r.doRegisteredCheck(c)
 	}
 	for range r.customCheckPaths {
-		d := <-q
+		d := <-r.q
 		rs.Add(d)
 	}
 	for range checkers {
-		d := <-q
+		d := <-r.q
 		rs.Add(d)
 	}
 	log.Debug().
@@ -49,28 +74,28 @@ func (r runner) Do() *ResultSet {
 	return rs
 }
 
-func doRegisteredCheck(q chan *ResultSet, c Checker) {
-	rs, err := c.Check()
+func (r *runner) doRegisteredCheck(c Checker) {
+	rs, err := c.Check(r.objects)
 	if err != nil {
 		log.Error().Err(err).Msg("execution")
-		q <- rs
+		r.q <- rs
 		return
 	}
 	log.Debug().
 		Str("c", "checks").
 		Int("instances", len(rs.Data)).
 		Msg("")
-	q <- rs
+	r.q <- rs
 }
 
-func doCustomCheck(q chan *ResultSet, path string) {
+func (r *runner) doCustomCheck(path string) {
 	rs := NewResultSet()
 	cmd := ExecCommand(path)
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {
 		log.Error().Str("checker", path).Err(err).Msg("execution")
-		q <- rs
+		r.q <- rs
 		return
 	}
 	log.Error().Str("checker", path).Err(err).Msg(string(b))
@@ -82,5 +107,5 @@ func doCustomCheck(q chan *ResultSet, path string) {
 		Str("driver", path).
 		Int("instances", len(rs.Data)).
 		Msg("")
-	q <- rs
+	r.q <- rs
 }
