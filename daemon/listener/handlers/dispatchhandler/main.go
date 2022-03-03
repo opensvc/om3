@@ -6,33 +6,52 @@ package dispatchhandler
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/net/http2"
 
+	"opensvc.com/opensvc/core/api/apimodel"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/daemon/listener/mux/muxresponse"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
+	EndpointResponse struct {
+		apimodel.BaseResponseMuxData
+		Data json.RawMessage `json:"data,omitempty"`
+	}
+
+	EntrypointResponse struct {
+		apimodel.BaseResponseMux
+		Data []EndpointResponse `json:"data"`
+	}
+
 	// dispatch holds srcRequest, nodes, responses for srcHandler HandlerFunc
 	dispatch struct {
 		srcRequest *http.Request
 		srcHandler http.HandlerFunc
 		nodes      []string
-		responses  []*dispatchResponse
+		entrypoint string
+		okStatus   int
+		minSuccess int // minimum number of okStatus forwarded responses
 		log        zerolog.Logger
+		responseC  chan *dispatchResponse
 	}
 
 	// dispatchResponse holds dispatched response for node
 	dispatchResponse struct {
 		node     string
 		response *muxresponse.Response
+		err      error
 	}
 )
 
@@ -43,19 +62,48 @@ var (
 )
 
 /*
-	New returns http.HandlerFunc from srcHandler can mux requests to nodes
+	New returns http.HandlerFunc that dispatch srcHandler to nodes
 
-	The returned handler will directly call srcHandler when node dispatch is
-	not required.
+	When request is already multiplexed: handler is srcHandler
 
-	When node dispatch is required, forward request to nodes, then send responses
-	when node is local use srcHandler to create response, else forward request to
-	remote
+	When request is not multiplexed:
+
+		request is cloned with multiplexed header set
+		cloned request is forwarded to nodes in //:
+			if node is local srcHandler is used
+    		else forward request to external node.
+
+		EntrypointResponse is created from endpoint responses
+		{
+			"entrypoint": "initial receiver of non multiplexed request",
+			"data": [ <EndpointResponse>, ... ],
+			"status": int,
+
+			// optional: when number of endpoint responses without error is lower
+			// than minSuccess
+			"errors": "not enough succeed status"
+		}
+
+		EndpointResponse:
+		{
+			"endpoint": "the endpoint node",
+
+			// data or error depending on succeed
+			"data": written []bytes from srcHandler when srcHandler status code
+					is equal successHttp
+			"error": "unexpected status code/read response error/client error"
+		}
+
+		status code:
+			'successHttp' value: at least 'minSuccess' responses has successHttp
+
+			502 bad gateway:
+				number of endpoint responses without error is lower than minSuccess
 */
-func New(srcHandler http.HandlerFunc) http.HandlerFunc {
+func New(srcHandler http.HandlerFunc, successHttp int, minSuccess int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		nodes := getNodeHeader(r)
-		if len(nodes) == 0 {
+		if muxctx.Multiplexed(r.Context()) || r.Header.Get(daemonenv.HeaderMultiplexed) == "true" {
 			srcHandler(w, r)
 			return
 		}
@@ -68,6 +116,9 @@ func New(srcHandler http.HandlerFunc) http.HandlerFunc {
 			nodes:      nodes,
 			srcHandler: srcHandler,
 			log:        log,
+			entrypoint: hostname.Hostname(),
+			okStatus:   successHttp,
+			minSuccess: minSuccess,
 		}
 		if err := dispatch.prepareResponses(); err != nil {
 			log.Error().Err(err).Msg("prepareResponses")
@@ -90,13 +141,16 @@ func getNodeHeader(r *http.Request) []string {
 	// TODO: evaluate nodes from path and node headers
 	nodeHeader := r.Header.Get(daemonenv.HeaderNode)
 	if nodeHeader == "" {
-		return []string{}
+		return []string{hostname.Hostname()}
 	}
 	return strings.Split(nodeHeader, ",")
 }
 
 func (d *dispatch) httpRequest(node string) *http.Request {
-	newRequest := d.srcRequest.Clone(d.srcRequest.Context())
+	newRequest := d.srcRequest.Clone(
+		muxctx.WithMultiplexed(d.srcRequest.Context(), true),
+	)
+	newRequest.Header.Set(daemonenv.HeaderMultiplexed, "true")
 	newRequest.Header.Del(daemonenv.HeaderNode)
 	newRequest.URL.Host = node + ":" + daemonenv.HttpPort
 
@@ -108,18 +162,16 @@ func (d *dispatch) httpRequest(node string) *http.Request {
 
 func (d *dispatch) prepareResponses() error {
 	rChan := make(chan *dispatchResponse)
-	requestCount := 0
 	for _, n := range d.nodes {
 		node := n
 		newRequest := d.httpRequest(node)
-		requestCount = requestCount + 1
-		if node == "localhost" {
+		if node == d.entrypoint {
 			go func() {
 				d.log.Debug().Msgf("local %s %s", newRequest.Method, newRequest.URL)
 				resp := muxresponse.NewByteResponse()
 				d.srcHandler(resp, newRequest)
 				rChan <- &dispatchResponse{
-					node:     "localhost",
+					node:     d.entrypoint,
 					response: resp,
 				}
 			}()
@@ -129,8 +181,10 @@ func (d *dispatch) prepareResponses() error {
 				client := getClient()
 				resp, err := client.Do(newRequest)
 				if err != nil {
-					d.log.Error().Err(err).Msgf("do %s %s", newRequest.Method, newRequest.URL)
-					rChan <- nil
+					rChan <- &dispatchResponse{
+						node: node,
+						err:  err,
+					}
 					return
 				}
 				rChan <- &dispatchResponse{
@@ -140,41 +194,57 @@ func (d *dispatch) prepareResponses() error {
 			}()
 		}
 	}
-	for i := 0; i < requestCount; i = i + 1 {
-		resp := <-rChan
-		d.responses = append(d.responses, resp)
-	}
+	d.responseC = rChan
 	return nil
 }
 
 func (d *dispatch) writeResponses(w http.ResponseWriter) error {
-	status := 0
-
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write([]byte("{\"nodes\":[")); err != nil {
-		d.log.Debug().Err(err).Msg("write")
-		return err
+	response := EntrypointResponse{
+		BaseResponseMux: apimodel.BaseResponseMux{EntryPoint: d.entrypoint},
 	}
-	for i, muxR := range d.responses {
-		if muxR == nil {
+	okCount := 0
+	requestCount := len(d.nodes)
+	for i := 0; i < requestCount; i++ {
+		muxR := <-d.responseC
+		var respError error
+		endPointResponse := EndpointResponse{
+			BaseResponseMuxData: apimodel.BaseResponseMuxData{Endpoint: muxR.node},
+		}
+		if muxR.err != nil {
+			respError = muxR.err
+		} else if muxR.response.StatusCode != d.okStatus {
+			respError = errors.New("unexpected status code " + strconv.Itoa(muxR.response.StatusCode))
+		} else if data, err := io.ReadAll(muxR.response.Body); err != nil {
+			respError = errors.New("read response error")
+		} else {
+			endPointResponse.Data = data
+			response.Data = append(response.Data, endPointResponse)
+			okCount++
 			continue
 		}
-		if muxR.response.StatusCode != http.StatusOK {
-			status = status + 1
-		}
-		if i > 0 {
-			if _, err := w.Write([]byte(",")); err != nil {
-				d.log.Debug().Err(err).Msg("write")
-				return err
-			}
-		}
-		if _, err := io.Copy(w, muxR.response.Body); err != nil {
-			d.log.Debug().Err(err).Msgf("copy error")
-			return err
-		}
+		d.log.Debug().Err(respError).Msgf("response from node %s", muxR.node)
+		endPointResponse.Error = respError.Error()
+		response.Data = append(response.Data, endPointResponse)
 	}
-	if _, err := w.Write([]byte("], \"status\": 0}")); err != nil {
-		d.log.Debug().Err(err).Msgf("write error: status")
+
+	if okCount < d.minSuccess {
+		err := errors.New("not enough succeed status")
+		d.log.Debug().Err(err).Msgf("found %d wants %d", okCount, d.minSuccess)
+		response.Error = err.Error()
+		response.Status = 1
+		w.WriteHeader(http.StatusBadGateway)
+	}
+	b, err := json.Marshal(response)
+	if err != nil {
+		d.log.Debug().Err(err).Msg("Marshal response")
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
+	}
+
+	if _, err := w.Write(b); err != nil {
+		d.log.Debug().Err(err).Msg("write response")
+		w.WriteHeader(http.StatusInternalServerError)
 		return err
 	}
 	return nil

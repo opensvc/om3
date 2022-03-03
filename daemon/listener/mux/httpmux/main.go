@@ -10,10 +10,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/listener/handlers/daemonhandler"
-	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
 	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/daemon/subdaemon"
 )
@@ -50,7 +50,7 @@ func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/running", dispatchhandler.New(daemonhandler.Running))
+	r.Get("/running", daemonhandler.Running)
 	r.Post("/stop", daemonhandler.Stop)
 	r.Get("/eventsdemo", daemonhandler.Events)
 	return r
@@ -59,7 +59,8 @@ func (t *T) newDaemonRouter() *chi.Mux {
 func logMiddleWare(logger zerolog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := muxctx.WithLogger(r.Context(), logger)
+			uuid := uuid.New()
+			ctx := muxctx.WithLogger(r.Context(), logger.With().Str("request-uuid", uuid.String()).Logger())
 			logger.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

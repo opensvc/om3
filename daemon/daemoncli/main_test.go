@@ -102,8 +102,7 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			//}
 			require.False(t, daemonCli.Running())
 			go func() {
-				//require.Nil(t, daemonCli.ReStart())
-				fmt.Printf("restart= %s\n", daemonCli.Start())
+				require.Nil(t, daemonCli.ReStart())
 			}()
 			require.Nil(t, daemonCli.WaitRunning())
 			require.True(t, daemonCli.Running())

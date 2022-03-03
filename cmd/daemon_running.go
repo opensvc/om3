@@ -16,6 +16,7 @@ var daemonRunningCmd = &cobra.Command{
 
 func init() {
 	daemonCmd.AddCommand(daemonRunningCmd)
+	daemonRunningCmd.Flags().StringVarP(&nodeFlag, "node", "", "", "the nodes to execute the action on")
 }
 
 func daemonRunningCmdRun(_ *cobra.Command, _ []string) {
@@ -23,7 +24,13 @@ func daemonRunningCmdRun(_ *cobra.Command, _ []string) {
 	if err != nil {
 		os.Exit(1)
 	}
-	if daemoncli.New(cli).Running() {
+	dCli := daemoncli.New(cli)
+	if nodeFlag == "" {
+		dCli.SetNode(nodeFlag)
+	} else {
+		dCli.SetNode(nodeFlag)
+	}
+	if dCli.Running() {
 		os.Exit(0)
 	}
 	os.Exit(1)
