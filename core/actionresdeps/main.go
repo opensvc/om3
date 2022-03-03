@@ -3,6 +3,7 @@ package actionresdeps
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"opensvc.com/opensvc/util/xmap"
 )
@@ -24,7 +25,8 @@ type (
 
 	// Store is the action resource dependencies data store.
 	Store struct {
-		m map[depKey]bMap
+		m  map[depKey]bMap
+		mu sync.Mutex
 	}
 
 	bMap map[string]interface{}
@@ -77,6 +79,8 @@ func (t *Store) RegisterSlice(deps []Dep) {
 }
 
 func (t *Store) Register(dep Dep) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	key := dep.Key()
 	bs, ok := t.m[key]
 	if !ok {
