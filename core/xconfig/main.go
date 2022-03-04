@@ -314,6 +314,9 @@ func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
 
 // HasKey returns true if the k exists
 func (t *T) HasKey(k key.T) bool {
+	if t == nil {
+		return false
+	}
 	return t.file.Section(k.Section).HasKey(k.Option)
 }
 
@@ -569,6 +572,9 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 // * evaluated
 //
 func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
+	if t == nil {
+		return nil, errors.New("unreadable config")
+	}
 	if k.Section == "env" {
 		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
 	}
