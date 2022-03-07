@@ -303,7 +303,7 @@ func (t AssetData) Render() string {
 	for _, e := range t.Hardware {
 		l := n.AddNode()
 		l.AddColumn().AddText(e.Type + " " + e.Path)
-		l.AddColumn().AddText(e.Description)
+		l.AddColumn().AddText(e.Class + ": " + e.Description)
 	}
 
 	n = tr.AddNode()
