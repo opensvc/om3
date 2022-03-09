@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render/listener"
 )
 
@@ -102,7 +103,27 @@ func (f Frame) wThreadHeartbeat(name string, data HeartbeatThreadStatus) string 
 	}
 	s += "\t"
 	s += f.info.separator + "\t"
-	s += f.info.emptyNodes
+	for _, peer := range f.Current.Cluster.Nodes {
+		if peer == hostname.Hostname() {
+			s += iconNotApplicable + "\t"
+			continue
+		}
+		hb, ok := f.Current.Heartbeats[name]
+		if !ok {
+			s += iconUndef + "\t"
+			continue
+		}
+		peerData, ok := hb.Peers[peer]
+		if !ok {
+			s += iconUndef + "\t"
+			continue
+		}
+		if peerData.Beating {
+			s += iconUp + "\t"
+		} else {
+			s += iconDownIssue + "\t"
+		}
+	}
 	return s
 }
 
