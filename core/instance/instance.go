@@ -21,13 +21,20 @@ import (
 type (
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
-		GlobalExpect        string         `json:"global_expect"`
-		LocalExpect         string         `json:"local_expect"`
-		Status              string         `json:"status"`
-		StatusUpdated       timestamp.T    `json:"status_updated"`
-		GlobalExpectUpdated timestamp.T    `json:"global_expect_updated"`
-		Placement           string         `json:"placement"`
-		Restart             map[string]int `json:"restart,omitempty"`
+		GlobalExpect        string                    `json:"global_expect"`
+		LocalExpect         string                    `json:"local_expect"`
+		Status              string                    `json:"status"`
+		StatusUpdated       timestamp.T               `json:"status_updated"`
+		GlobalExpectUpdated timestamp.T               `json:"global_expect_updated"`
+		Placement           string                    `json:"placement"`
+		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
+	}
+
+	// MonitorRestart describes the restart states maintained by the daemon
+	// for an object instance.
+	MonitorRestart struct {
+		Retries int         `json:"retries"`
+		Updated timestamp.T `json:"updateed"`
 	}
 
 	// Config describes a configuration file content checksum,
@@ -172,9 +179,9 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 	}
 
 	// Restart and retries
-	retries, ok := t.Monitor.Restart[rid.Name]
-	if !ok {
-		retries = 0
+	retries := 0
+	if restart, ok := t.Monitor.Restart[rid.Name]; ok {
+		retries = restart.Retries
 	}
 
 	flags += r.Monitor.FlagString()

@@ -27,7 +27,7 @@ func (t T) MarshalJSON() ([]byte, error) {
 	return t.Data.MarshalJSON()
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
+// UnmarshalJSON unmarshals a quoted json string to the enum value
 func (t *T) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &t.Data)
 	if err != nil {
