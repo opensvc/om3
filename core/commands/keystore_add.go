@@ -29,6 +29,12 @@ func (t *CmdKeystoreAdd) cmd(kind string, selector *string) *cobra.Command {
 		Use:   "add",
 		Short: "add new keys",
 		Run: func(cmd *cobra.Command, args []string) {
+			if !cmd.Flags().Changed("value") {
+				t.Value = nil
+			}
+			if !cmd.Flags().Changed("from") {
+				t.From = nil
+			}
 			t.run(selector, kind)
 		},
 	}

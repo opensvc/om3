@@ -13,44 +13,47 @@ import (
 type OptsAdd struct {
 	Global OptsGlobal
 	Lock   OptsLocking
-	Key    string `flag:"key"`
-	From   string `flag:"from"`
-	Value  string `flag:"value"`
+	Key    string  `flag:"key"`
+	From   *string `flag:"from"`
+	Value  *string `flag:"value"`
 }
 
-func (t *Keystore) add(name string, from string, value string) error {
+func (t *Keystore) add(name string, from, value *string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
 	if t.HasKey(name) {
+		if value == nil && from == nil {
+			return nil
+		}
 		return fmt.Errorf("key already exist: %s. use the change action.", name)
 	}
 	return t.alter(name, from, value)
 }
 
-func (t *Keystore) change(name string, from string, value string) error {
+func (t *Keystore) change(name string, from, value *string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
 	return t.alter(name, from, value)
 }
 
-func (t *Keystore) alter(name string, from string, value string) error {
+func (t *Keystore) alter(name string, from, value *string) error {
 	var (
 		err error
 	)
 	switch {
-	case from != "":
-		u := uri.New(from)
+	case from != nil && *from != "":
+		u := uri.New(*from)
 		switch {
 		case u.IsValid():
 			err = t.fromURI(name, u)
-		case file.ExistsAndRegular(from):
-			err = t.fromRegular(name, from)
-		case file.ExistsAndDir(from):
-			err = t.fromDir(name, from)
+		case file.ExistsAndRegular(*from):
+			err = t.fromRegular(name, *from)
+		case file.ExistsAndDir(*from):
+			err = t.fromDir(name, *from)
 		default:
-			err = fmt.Errorf("unexpected value source: %s", from)
+			err = fmt.Errorf("unexpected value source: %s", *from)
 		}
 	default:
 		err = t.fromValue(name, value)
@@ -61,8 +64,13 @@ func (t *Keystore) alter(name string, from string, value string) error {
 	return t.config.Commit()
 }
 
-func (t *Keystore) fromValue(name string, value string) error {
-	b := []byte(value)
+func (t *Keystore) fromValue(name string, value *string) error {
+	var b []byte
+	if value == nil {
+		b = []byte{}
+	} else {
+		b = []byte(*value)
+	}
 	return t.addKey(name, b)
 }
 
@@ -102,7 +110,9 @@ func (t *Keystore) addKey(name string, b []byte) error {
 	if err := t.config.Set(op); err != nil {
 		return err
 	}
-	t.log.Info().Str("key", name).Int("len", len(s)).Msg("key set")
+	if t.config.Changed() {
+		t.log.Info().Str("key", name).Int("len", len(s)).Msg("key set")
+	}
 	return nil
 }
 
