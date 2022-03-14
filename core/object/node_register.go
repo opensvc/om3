@@ -56,6 +56,37 @@ type (
 // If app is not set, the node is added to any app under the user's
 // responsibility.
 func (t Node) Register(options OptsNodeRegister) error {
+	if err := t.register(options); err != nil {
+		return err
+	}
+	if _, err := t.PushAsset(); err != nil {
+		return err
+	} else {
+		t.Log().Info().Msg("sent initial asset discovery")
+	}
+	if _, err := t.Checks(); err != nil {
+		return err
+	} else {
+		t.Log().Info().Msg("sent initial checks")
+	}
+	/*
+		if _, err := t.PushDisks(); err != nil {
+			return err
+		}
+		if _, err := t.PushPkg(); err != nil {
+			return err
+		}
+		if _, err := t.PushPatch(); err != nil {
+			return err
+		}
+		if _, err := t.SysReport(); err != nil {
+			return err
+		}
+	*/
+	return nil
+}
+
+func (t Node) register(options OptsNodeRegister) error {
 	if options.User == "" {
 		return t.registerAsNode()
 	} else {
