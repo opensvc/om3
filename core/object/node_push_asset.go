@@ -461,13 +461,17 @@ func (t Node) pushAsset(data AssetData) error {
 	gen["lan"] = lan()
 	gen["uids"] = uids()
 	gen["gids"] = gids()
-	if _, err := client.Call("insert_generic", gen); err != nil {
+	if response, err := client.Call("insert_generic", gen); err != nil {
 		return err
+	} else if response.Error != nil {
+		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 
 	args := props()
-	if _, err := client.Call("update_asset", args...); err != nil {
+	if response, err := client.Call("update_asset", args...); err != nil {
 		return err
+	} else if response.Error != nil {
+		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

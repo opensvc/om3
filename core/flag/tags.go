@@ -167,6 +167,18 @@ var Tags = map[string]Opt{
 		Default: "5m",
 		Desc:    "stop waiting for the object to reach the target state after a duration",
 	},
+	"collector_user": Opt{
+		Long: "user",
+		Desc: "authenticate with the collector using the specified user credentials instead of the node credentials. required with 'om node register' when the collector is configured to refuse anonymous register",
+	},
+	"collector_password": Opt{
+		Long: "password",
+		Desc: "authenticate with the collector using the specified user credentials instead of the node credentials. prompted if necessary but not specified",
+	},
+	"collector_app": Opt{
+		Long: "app",
+		Desc: "optional. register the node in the specified app. if not specified, the node is registered in the first registering user's app found",
+	},
 	"subset": Opt{
 		Long:    "subset",
 		Desc:    "subset selector expression (g1,g2)",

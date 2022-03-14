@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/check"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/exe"
@@ -66,8 +67,10 @@ func (t Node) pushChecks(rs *check.ResultSet) error {
 			now,
 		}
 	}
-	if _, err := client.Call("push_checks", vars, vals); err != nil {
+	if response, err := client.Call("push_checks", vars, vals); err != nil {
 		return err
+	} else if response.Error != nil {
+		return errors.Errorf("rpc: %s: %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

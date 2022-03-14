@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/ybbus/jsonrpc"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -48,7 +49,7 @@ func RestURL(s string) (*url.URL, error) {
 func BaseURL(s string) (*url.URL, error) {
 	url, err := url.Parse(s)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 
 	// sanitize
@@ -121,6 +122,9 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 	response, err := t.client.Call(method, t.paramsWithAuth(params))
 	if err != nil {
 		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msg("call")
+	}
+	if response != nil && response.Error != nil {
+		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msg(response.Error.Message)
 	}
 	return response, err
 }
