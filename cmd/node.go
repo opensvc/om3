@@ -41,6 +41,7 @@ var (
 	cmdNodePrintCapabilities commands.NodePrintCapabilities
 	cmdNodePrintConfig       commands.NodePrintConfig
 	cmdNodePushAsset         commands.NodePushAsset
+	cmdNodePushPkg           commands.NodePushPkg
 	cmdNodeRegister          commands.CmdNodeRegister
 	cmdNodeScanCapabilities  commands.NodeScanCapabilities
 	cmdNodeSet               commands.NodeSet
@@ -66,6 +67,8 @@ func init() {
 	cmdNodePrintConfig.Init(nodePrintCmd)
 	cmdNodePushAsset.Init(nodePushCmd)
 	cmdNodePushAsset.InitAlt(nodeCmd)
+	cmdNodePushPkg.Init(nodePushCmd)
+	cmdNodePushPkg.InitAlt(nodeCmd)
 	cmdNodeRegister.Init(nodeCmd)
 	cmdNodeScanCapabilities.Init(nodeScanCmd)
 	cmdNodeSet.Init(nodeCmd)
