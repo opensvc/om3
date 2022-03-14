@@ -3,11 +3,14 @@ package object
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
+	"golang.org/x/term"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -61,6 +64,15 @@ func (t Node) Register(options OptsNodeRegister) error {
 }
 
 func (t Node) registerAsUser(options OptsNodeRegister) error {
+	if options.Password == "" {
+		fmt.Printf("Password: ")
+		if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
+			return err
+		} else {
+			options.Password = string(b)
+			fmt.Println("")
+		}
+	}
 	client := t.collectorRestAPIClient()
 	url, err := t.CollectorRestAPIURL()
 	if err != nil {
