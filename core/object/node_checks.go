@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/check"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/exe"
@@ -24,7 +25,16 @@ type OptsNodeChecks struct {
 func (t Node) Checks() (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.NodeViper.GetString("paths.drivers"), "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
-	rs := check.NewRunner(customCheckPaths).Do()
+	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))
+	objs, err := sel.Objects(WithVolatile(true))
+	if err != nil {
+		return *check.NewResultSet(), err
+	}
+	runner := check.NewRunner(
+		check.RunnerWithCustomCheckPaths(customCheckPaths...),
+		check.RunnerWithObjects(objs...),
+	)
+	rs := runner.Do()
 	if err := t.pushChecks(rs); err != nil {
 		return *rs, err
 	}
@@ -57,8 +67,10 @@ func (t Node) pushChecks(rs *check.ResultSet) error {
 			now,
 		}
 	}
-	if _, err := client.Call("push_checks", vars, vals); err != nil {
+	if response, err := client.Call("push_checks", vars, vals); err != nil {
 		return err
+	} else if response.Error != nil {
+		return errors.Errorf("rpc: %s: %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

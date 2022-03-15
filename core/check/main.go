@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resource"
 )
 
 type (
 	// Checker exposes what can be done with a check
 	Checker interface {
-		Check() (*ResultSet, error)
+		Check(objs []interface{}) (*ResultSet, error)
 	}
 
 	// T is the check type
@@ -25,6 +28,13 @@ type (
 		Instance    string `json:"instance"`
 		Unit        string `json:"unit"`
 		Value       int64  `json:"value"`
+	}
+
+	header interface {
+		Head() string
+	}
+	resourceLister interface {
+		Resources() resource.Drivers
 	}
 )
 
@@ -44,8 +54,8 @@ func (r T) String() string {
 }
 
 // Check returns a result list
-func Check(r Checker) error {
-	data, err := r.Check()
+func Check(r Checker, objs []interface{}) error {
+	data, err := r.Check(objs)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		return err
@@ -54,4 +64,38 @@ func Check(r Checker) error {
 	enc.SetIndent("", "    ")
 	enc.Encode(data)
 	return nil
+}
+
+// ObjectPathClaimingDir returns the first object using the directory
+func ObjectPathClaimingDir(p string, objs []interface{}) string {
+	for _, obj := range objs {
+		h, ok := obj.(header)
+		if !ok {
+			continue
+		}
+		if h.Head() == p {
+			return fmt.Sprint(obj)
+		}
+	}
+	for _, obj := range objs {
+		b, ok := obj.(resourceLister)
+		if !ok {
+			continue
+		}
+		for _, r := range b.Resources() {
+			h, ok := r.(header)
+			if !ok {
+				continue
+			}
+			if v, err := r.Provisioned(); err != nil {
+				continue
+			} else if v == provisioned.False {
+				continue
+			}
+			if h.Head() == p {
+				return fmt.Sprint(obj)
+			}
+		}
+	}
+	return ""
 }

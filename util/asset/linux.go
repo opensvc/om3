@@ -1,9 +1,11 @@
+//go:build linux
 // +build linux
 
 package asset
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,8 +14,10 @@ import (
 	"strings"
 	"time"
 
+	dosmbios "github.com/digitalocean/go-smbios/smbios"
 	"github.com/jaypipes/pcidb"
 	"github.com/pkg/errors"
+	"github.com/talos-systems/go-smbios/smbios"
 	"github.com/zcalusic/sysinfo"
 
 	"opensvc.com/opensvc/util/file"
@@ -21,6 +25,7 @@ import (
 
 var (
 	si          sysinfo.SysInfo
+	smb         *smbios.SMBIOS
 	initialized bool
 )
 
@@ -30,6 +35,14 @@ func New() *T {
 		si.GetSysInfo()
 	}
 	return &t
+}
+
+func SMBIOS() (*smbios.SMBIOS, error) {
+	if smb != nil {
+		return smb, nil
+	}
+	smb, err := smbios.New()
+	return smb, err
 }
 
 func (t T) Get(s string) (interface{}, error) {
@@ -69,9 +82,9 @@ func (t T) Get(s string) (interface{}, error) {
 	case "model":
 		return si.Product.Name, nil
 	case "mem_banks":
-		return 0, ErrNotImpl
+		return memBanks()
 	case "mem_slots":
-		return 0, ErrNotImpl
+		return memSlots()
 	case "mem_bytes":
 		return si.Memory.Size, nil
 	case "fqdn":
@@ -158,17 +171,98 @@ func getPCIDevice(address string, db *pcidb.PCIDB) *Device {
 func Hardware() ([]Device, error) {
 	all := make([]Device, 0)
 
-	devs, _ := hardwarePCIDevices()
+	devs, err := hardwarePCIDevices()
+	if err != nil {
+		return all, err
+	}
 	all = append(all, devs...)
 
 	mems, _ := hardwareMemDevices()
+	if err != nil {
+		return all, err
+	}
 	all = append(all, mems...)
 
 	return all, nil
 }
 
+func memSlots() (int, error) {
+	smb, err := SMBIOS()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to parse smbios")
+	}
+	n := 0
+	for _, s := range smb.Structures {
+		if s.Header.Type != 17 {
+			continue
+		}
+		n += 1
+	}
+	return n, nil
+}
+
+func memBanks() (int, error) {
+	smb, err := SMBIOS()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to parse smbios")
+	}
+	n := 0
+	for _, s := range smb.Structures {
+		if s.Header.Type != 17 {
+			continue
+		}
+		if fmtSize(s) == "" {
+			continue
+		}
+		n += 1
+	}
+	return n, nil
+}
+
+// pkg Size() is buggy wrt to extended support ...
+// define a size formatter here.
+func fmtSize(s *dosmbios.Structure) string {
+	size := int(binary.LittleEndian.Uint16(s.Formatted[8:10]))
+	if size == 0 {
+		return ""
+	}
+
+	// An extended uint32 DIMM size field appears if 0x7fff is present in size.
+	if size == 0x7fff {
+		size = int(binary.LittleEndian.Uint32(s.Formatted[24:28]))
+	}
+
+	// Size units depend on MSB.  Little endian MSB for uint16 is in second byte.
+	// 0 means megabytes, 1 means kilobytes.
+	unit := "KB"
+	if s.Formatted[9]&0x80 == 0 {
+		unit = "MB"
+	}
+	return fmt.Sprintf("%d %s", size, unit)
+}
+
 func hardwareMemDevices() ([]Device, error) {
 	devs := make([]Device, 0)
+	smb, err := SMBIOS()
+	if err != nil {
+		return devs, errors.Wrap(err, "failed to parse smbios")
+	}
+
+	for _, s := range smb.Structures {
+		if s.Header.Type != 17 {
+			continue
+		}
+		mdev := smbios.MemoryDeviceStructure{Structure: s}
+		path := fmt.Sprintf("%s %s", mdev.Locator(), mdev.BankLocator())
+		clas := fmt.Sprintf("%s %s %s %s", fmtSize(s), mdev.MemoryType(), mdev.TypeDetail(), mdev.Speed())
+		desc := fmt.Sprintf("%s %s", mdev.Manufacturer(), mdev.PartNumber())
+		devs = append(devs, Device{
+			Path:        path,
+			Description: desc,
+			Class:       clas,
+			Type:        "mem",
+		})
+	}
 	return devs, nil
 }
 

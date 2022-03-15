@@ -37,6 +37,7 @@ type (
 		NodeReferrer   Referrer
 		file           *ini.File
 		postCommit     func() error
+		changed        bool
 	}
 
 	// Referer is the interface implemented by node and object to
@@ -79,6 +80,10 @@ func NewErrPostponedRef(ref string, rid string) ErrPostponedRef {
 		Ref: ref,
 		RID: rid,
 	}
+}
+
+func (t T) Changed() bool {
+	return t.changed
 }
 
 // Keys returns the key names available in a section
@@ -314,6 +319,9 @@ func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
 
 // HasKey returns true if the k exists
 func (t *T) HasKey(k key.T) bool {
+	if t == nil {
+		return false
+	}
 	return t.file.Section(k.Section).HasKey(k.Option)
 }
 
@@ -421,6 +429,7 @@ func (t *T) Unset(ks ...key.T) int {
 		}
 		t.file.Section(k.Section).DeleteKey(k.Option)
 		deleted += 1
+		t.changed = true
 	}
 	return deleted
 }
@@ -449,7 +458,12 @@ func (t *T) DriverGroupSet(op keyop.T) error {
 func (t *T) set(op keyop.T) error {
 	t.Referrer.Log().Debug().Stringer("op", op).Msg("set")
 	setSet := func(op keyop.T) error {
+		current := t.file.Section(op.Key.Section).Key(op.Key.Option).Value()
+		if current == op.Value {
+			return nil
+		}
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(op.Value)
+		t.changed = true
 		return nil
 	}
 	setAppend := func(op keyop.T) error {
@@ -461,6 +475,7 @@ func (t *T) set(op keyop.T) error {
 			target = fmt.Sprintf("%s %s", current, op.Value)
 		}
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(target)
+		t.changed = true
 		return nil
 	}
 	setMerge := func(op keyop.T) error {
@@ -490,6 +505,7 @@ func (t *T) set(op keyop.T) error {
 			return nil
 		}
 		t.file.Section(op.Key.Section).Key(op.Key.Option).SetValue(strings.Join(target, " "))
+		t.changed = true
 		return nil
 	}
 
@@ -554,7 +570,11 @@ func (t *T) write() (err error) {
 	if _, err = t.file.WriteTo(f); err != nil {
 		return err
 	}
-	return os.Rename(fName, t.ConfigFilePath)
+	if err := os.Rename(fName, t.ConfigFilePath); err != nil {
+		return err
+	}
+	t.changed = false
+	return nil
 }
 
 func (t *T) Eval(k key.T) (interface{}, error) {
@@ -569,6 +589,12 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 // * evaluated
 //
 func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
+	if t == nil {
+		return nil, errors.New("unreadable config")
+	}
+	if k.Section == "env" {
+		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
+	}
 	sectionType := t.sectionType(k)
 	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
@@ -788,6 +814,7 @@ func (t T) HasSectionString(s string) bool {
 	return false
 }
 
+// SectionStrings returns list of section names.
 func (t T) SectionStrings() []string {
 	return t.file.SectionStrings()
 }
@@ -987,6 +1014,9 @@ func (t T) initDefaultSection() error {
 }
 
 func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) error {
+	if !t.changed {
+		return nil
+	}
 	if !configData.IsZero() {
 		if err := t.replaceFile(configData); err != nil {
 			return err

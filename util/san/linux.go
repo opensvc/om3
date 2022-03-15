@@ -1,17 +1,123 @@
+//go:build linux
 // +build linux
 
 package san
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/file"
 )
 
+func isPortPresent(tp string) bool {
+	p := filepath.Dir(tp) + "/port_state"
+	buff, err := ioutil.ReadFile(p)
+	if err != nil {
+		return false
+	}
+	return !strings.Contains(string(buff), "Not Present")
+}
+
 func Paths() ([]Path, error) {
-	return []Path{}, nil
+	l := make([]Path, 0)
+	if paths, err := FCPaths(); err == nil {
+		l = append(l, paths...)
+	} else {
+		return l, err
+	}
+	if paths, err := ISCSIPaths(); err == nil {
+		l = append(l, paths...)
+	} else {
+		return l, err
+	}
+	return l, nil
+}
+
+func FCPaths() ([]Path, error) {
+	l := make([]Path, 0)
+	hbas, err := HostBusAdapters()
+	if err != nil {
+		return l, err
+	}
+	for _, hba := range hbas {
+		if hba.Type != "fc" {
+			continue
+		}
+		tps := make([]string, 0)
+		p := fmt.Sprintf("/sys/class/fc_transport/target%s:*/port_name", hba.Host)
+		if some, err := filepath.Glob(p); err == nil {
+			tps = append(tps, some...)
+		}
+		p = fmt.Sprintf("/sys/class/fc_remote_ports/rport-%s:*/port_name", hba.Host)
+		if some, err := filepath.Glob(p); err == nil {
+			tps = append(tps, some...)
+		}
+		for _, tp := range tps {
+			b, err := ioutil.ReadFile(tp)
+			if err != nil {
+				continue
+			}
+			id := string(b)
+			id = strings.TrimSpace(id)
+			id = strings.Replace(id, "0x", "", 1)
+			if !isPortPresent(tp) {
+				continue
+			}
+			l = append(l, Path{
+				HostBusAdapter: hba,
+				TargetPort: TargetPort{
+					ID: id,
+				},
+			})
+		}
+	}
+	return l, nil
+}
+
+func ISCSIPaths() ([]Path, error) {
+	l := make([]Path, 0)
+	hbas, err := ISCSIHostBusAdapters()
+	if err != nil {
+		return l, err
+	}
+	if len(hbas) == 0 {
+		return l, nil
+	}
+	hba := hbas[0]
+	buff, err := iscsiadmSession()
+	if err != nil {
+		return l, err
+	}
+	for _, line := range strings.Split(buff, "\n") {
+		v := strings.Fields(line)
+		for i := len(v); i > 0; i -= 1 {
+			id := v[i]
+			if !strings.HasPrefix(id, "iqn.") {
+				continue
+			}
+			l = append(l, Path{
+				HostBusAdapter: hba,
+				TargetPort: TargetPort{
+					ID: id,
+				},
+			})
+		}
+	}
+	return l, nil
+}
+
+func iscsiadmSession() (string, error) {
+	cmd := command.New(
+		command.WithName("iscsiadm"),
+		command.WithVarArgs("-m", "session"),
+	)
+	b, err := cmd.Output()
+	return string(b), err
 }
 
 func HostBusAdapters() ([]HostBusAdapter, error) {

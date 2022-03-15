@@ -50,11 +50,11 @@ func skipper(dfEntry df.Entry) bool {
 
 type translator interface {
 	Entries() ([]df.Entry, error)
-	ResultSet(*df.Entry) *check.ResultSet
+	ResultSet(*df.Entry, []interface{}) *check.ResultSet
 }
 
 // Check returns a list of check result
-func Check(trans translator) (*check.ResultSet, error) {
+func Check(trans translator, objs []interface{}) (*check.ResultSet, error) {
 	rs := check.NewResultSet()
 	data, err := trans.Entries()
 	if err != nil {
@@ -65,7 +65,7 @@ func Check(trans translator) (*check.ResultSet, error) {
 		if skipper(dfEntry) {
 			continue
 		}
-		rs.Add(trans.ResultSet(&dfEntry))
+		rs.Add(trans.ResultSet(&dfEntry, objs))
 	}
 	return rs, nil
 }

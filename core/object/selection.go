@@ -460,3 +460,23 @@ func (t *Selection) Do(action Action) ([]ActionResult, error) {
 	}
 	return results, nil
 }
+
+// Objects returns the selected list of objects. This function relays its
+// funcopts to the object.NewFromPath() function.
+func (t *Selection) Objects(opts ...funcopt.O) ([]interface{}, error) {
+	objs := make([]interface{}, 0)
+
+	paths, err := t.Expand()
+	if err != nil {
+		return objs, err
+	}
+
+	for _, p := range paths {
+		obj, err := NewFromPath(p, opts...)
+		if err != nil {
+			return objs, err
+		}
+		objs = append(objs, obj)
+	}
+	return objs, nil
+}

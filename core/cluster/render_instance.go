@@ -40,7 +40,7 @@ func sObjectInstanceAvail(objectAvail status.T, instance instance.Status) string
 		return iconUp
 	case status.Down:
 		if objectAvail == status.Up {
-			return iconDownIssue
+			return iconDown
 		}
 		return iconDownIssue
 	case status.Warn:

@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/ybbus/jsonrpc"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -21,10 +22,34 @@ type Client struct {
 	log    zerolog.Logger
 }
 
-func parseCollectorURL(s string) (*url.URL, error) {
+func FeedURL(s string) (*url.URL, error) {
+	if url, err := BaseURL(s); err != nil {
+		return nil, err
+	} else {
+		// default path
+		if url.Path == "" {
+			url.Path = "/feed/default/call/jsonrpc2"
+			url.RawPath = "/feed/default/call/jsonrpc2"
+		}
+		return url, nil
+	}
+}
+
+func RestURL(s string) (*url.URL, error) {
+	if url, err := BaseURL(s); err != nil {
+		return nil, err
+	} else {
+		// default path
+		url.Path = "/init/rest/api"
+		url.RawPath = "/init/rest/api"
+		return url, nil
+	}
+}
+
+func BaseURL(s string) (*url.URL, error) {
 	url, err := url.Parse(s)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 
 	// sanitize
@@ -48,17 +73,12 @@ func parseCollectorURL(s string) (*url.URL, error) {
 		url.RawPath = ""
 	}
 
-	// default path
-	if url.Path == "" {
-		url.Path = "/feed/default/call/jsonrpc2"
-		url.RawPath = "/feed/default/call/jsonrpc2"
-	}
 	return url, nil
 }
 
 // NewClient returns a Client to call the collector jsonrpc2 methods.
 func NewClient(endpoint, secret string) (*Client, error) {
-	url, err := parseCollectorURL(endpoint)
+	url, err := FeedURL(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +122,9 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 	response, err := t.client.Call(method, t.paramsWithAuth(params))
 	if err != nil {
 		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msg("call")
+	}
+	if response != nil && response.Error != nil {
+		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msg(response.Error.Message)
 	}
 	return response, err
 }

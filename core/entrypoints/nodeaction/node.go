@@ -173,15 +173,16 @@ func (t T) Options() action.T {
 func (t T) DoLocal() error {
 	r := object.NewNode().Do(t.Node)
 	human := func() string {
-		s := ""
-		switch {
-		case r.Error != nil:
+		if r.Error != nil {
 			log.Error().Msgf("%s", r.Error)
-		case r.Panic != nil:
+		}
+		if r.Panic != nil {
 			log.Fatal().Msgf("%s", r.Panic)
-		case r.HumanRenderer != nil:
+		}
+		s := ""
+		if r.HumanRenderer != nil {
 			s += r.HumanRenderer()
-		case r.Data != nil:
+		} else if r.Data != nil {
 			switch v := r.Data.(type) {
 			case string:
 				s += fmt.Sprintln(v)

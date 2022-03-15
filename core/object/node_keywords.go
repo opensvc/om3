@@ -433,6 +433,12 @@ var commonKeywords = []keywords.Keyword{
 		Text:    "Set the uri of the collector main xmlrpc server. The path part of the uri can be left unspecified. If not set, the agent does not try to communicate with a collector.",
 	},
 	{
+		Section:   "node",
+		Option:    "dbinsecure",
+		Converter: converters.Bool,
+		Text:      "Set to true to disable the collector x509 certificate verification. This should only be done for testing.",
+	},
+	{
 		Section:     "node",
 		Option:      "dbcompliance",
 		Example:     "https://collector.opensvc.com/init/compliance/call/xmlrpc",

@@ -240,7 +240,7 @@ func (t Base) dereferenceExposedDevices(ref string) (string, error) {
 	if s == "" {
 		xdevs := o.ExposedDevices()
 		ls := make([]string, len(xdevs))
-		for i, xd := range o.ExposedDevices() {
+		for i, xd := range xdevs {
 			ls[i] = xd.String()
 		}
 		return strings.Join(ls, " "), nil
@@ -293,7 +293,11 @@ func (t Base) Dereference(ref string) (string, error) {
 	case "initd":
 		return filepath.Join(filepath.Dir(t.ConfigFile()), t.Path.Name+".d"), nil
 	case "collector_api":
-		return ref, fmt.Errorf("TODO")
+		if url, err := t.Node().CollectorRestAPIURL(); err != nil {
+			return "", err
+		} else {
+			return url.String(), nil
+		}
 	case "clusterid":
 		return ref, fmt.Errorf("TODO")
 	case "clustername":

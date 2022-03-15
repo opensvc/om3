@@ -303,7 +303,7 @@ func (t AssetData) Render() string {
 	for _, e := range t.Hardware {
 		l := n.AddNode()
 		l.AddColumn().AddText(e.Type + " " + e.Path)
-		l.AddColumn().AddText(e.Description)
+		l.AddColumn().AddText(e.Class + ": " + e.Description)
 	}
 
 	n = tr.AddNode()
@@ -461,13 +461,17 @@ func (t Node) pushAsset(data AssetData) error {
 	gen["lan"] = lan()
 	gen["uids"] = uids()
 	gen["gids"] = gids()
-	if _, err := client.Call("insert_generic", gen); err != nil {
+	if response, err := client.Call("insert_generic", gen); err != nil {
 		return err
+	} else if response.Error != nil {
+		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 
 	args := props()
-	if _, err := client.Call("update_asset", args...); err != nil {
+	if response, err := client.Call("update_asset", args...); err != nil {
 		return err
+	} else if response.Error != nil {
+		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

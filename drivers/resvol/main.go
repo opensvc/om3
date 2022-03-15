@@ -468,7 +468,13 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	l := pool.NewLookup(node)
 	l.Name = t.Pool
 	l.Type = t.PoolType
-	l.Size = float64(*t.Size)
+	if t.Size == nil {
+		// unprovisionned volume should be able to access vol.Head()
+		// avoid stacking in this situation.
+		l.Size = 0.0
+	} else {
+		l.Size = float64(*t.Size)
+	}
 	l.Format = t.Format
 	l.Shared = t.Shared
 	l.Access, err = volaccess.Parse(t.Access)
@@ -553,5 +559,9 @@ func (t T) exposedDevice() *device.T {
 }
 
 func (t T) ExposedDevices() []*device.T {
-	return []*device.T{t.exposedDevice()}
+	dev := t.exposedDevice()
+	if dev == nil {
+		return []*device.T{}
+	}
+	return []*device.T{dev}
 }

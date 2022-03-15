@@ -98,6 +98,8 @@ func (t *Opt) installFlag(cmd *cobra.Command, v reflect.Value) {
 			dft, _ = strconv.ParseBool(t.Default)
 		}
 		flagSet.BoolVarP(dest, t.Long, t.Short, dft, t.Desc)
+	case **string:
+		*dest = flagSet.StringP(t.Long, t.Short, t.Default, t.Desc)
 	case *string:
 		flagSet.StringVarP(dest, t.Long, t.Short, t.Default, t.Desc)
 	case *[]string:
