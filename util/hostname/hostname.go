@@ -36,6 +36,18 @@ func Hostname() string {
 	return h
 }
 
+// OtherNodes returns list of nodes without local hostname
+func OtherNodes(nodes []string) []string {
+	var oNodes []string
+	for _, node := range nodes {
+		if node == Hostname() {
+			continue
+		}
+		oNodes = append(oNodes, node)
+	}
+	return oNodes
+}
+
 func Error() error {
 	if _, err := StrictHostname(); err != nil {
 		return err
