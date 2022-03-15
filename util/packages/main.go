@@ -2,6 +2,8 @@ package packages
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -29,7 +31,7 @@ type (
 //
 func List() (Pkgs, error) {
 	l := make(Pkgs, 0)
-	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap} {
+	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap, ListIPS, ListPkginfo} {
 		if more, err := fn(); err != nil {
 			return l, err
 		} else {
@@ -137,6 +139,95 @@ func ListDeb() (Pkgs, error) {
 	}
 	cmd := command.New(
 		command.WithName("dpkg"),
+		command.WithVarArgs("-l"),
+		command.WithOnStdoutLine(parse),
+	)
+	if err := cmd.Run(); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+//
+// ListIPS returns the list of installed ips packages (solaris).
+// Example output:
+//   x11/library/libsm                                 1.2.2-11.4.0.0.1.14.0      i--
+//
+func ListIPS() (Pkgs, error) {
+	l := make(Pkgs, 0)
+	if runtime.GOOS != "solaris" {
+		return l, nil
+	}
+	if _, err := exec.LookPath("pkg"); err != nil {
+		return l, nil
+	}
+	parse := func(line string) {
+		v := strings.Fields(line)
+		if len(v) != 3 {
+			return
+		}
+		p := Pkg{
+			Name:    v[0],
+			Version: v[1],
+			Arch:    runtime.GOARCH,
+			Type:    "ips",
+		}
+		l = append(l, p)
+	}
+	cmd := command.New(
+		command.WithName("pkg"),
+		command.WithVarArgs("list", "-H"),
+		command.WithOnStdoutLine(parse),
+	)
+	if err := cmd.Run(); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+//
+// ListPkginfo returns the list of installed pkginfo packages (solaris).
+// Example output:
+//   PKGINST:  SUNWzoneu
+//      NAME:  Solaris Zones (Usr)
+//  CATEGORY:  system
+//      ARCH:  i386
+//   VERSION:  11.11,REV=2009.04.08.17.26
+//    VENDOR:  Sun Microsystems, Inc.
+//      DESC:  Solaris Zones Configuration and Administration
+//   HOTLINE:  Please contact your local service provider
+//    STATUS:  completely installed
+//
+func ListPkginfo() (Pkgs, error) {
+	l := make(Pkgs, 0)
+	if runtime.GOOS != "solaris" {
+		return l, nil
+	}
+	if _, err := exec.LookPath("pkg"); err != nil {
+		return l, nil
+	}
+	parse := func(line string) {
+		v := strings.SplitN(line, ":", 2)
+		if len(v) != 2 {
+			return
+		}
+		key := strings.TrimSpace(v[0])
+		val := strings.TrimSpace(v[1])
+		p := Pkg{}
+		switch key {
+		case "NAME":
+			p.Name = val
+		case "VERSION":
+			p.Version = val
+		case "ARCH":
+			p.Arch = val
+		}
+		path := fmt.Sprintf("/var/sadm/pkg/%s", p.Name)
+		p.InstalledAt = file.ModTime(path)
+		l = append(l, p)
+	}
+	cmd := command.New(
+		command.WithName("pkginfo"),
 		command.WithVarArgs("-l"),
 		command.WithOnStdoutLine(parse),
 	)
