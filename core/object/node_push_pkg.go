@@ -27,13 +27,17 @@ func (t Node) PushPkg() ([]packages.Pkg, error) {
 func (t Node) pushPkg(data []packages.Pkg) error {
 	nodename := hostname.Hostname()
 	pkgAsList := func(t packages.Pkg) []string {
+		installedAt := ""
+		if !t.InstalledAt.IsZero() {
+			installedAt = t.InstalledAt.Format("2006-01-02 15:04:05")
+		}
 		return []string{
 			nodename,
 			t.Name,
 			t.Version,
 			t.Arch,
 			t.Type,
-			t.InstalledAt.Format("2006-01-02 15:04:05"),
+			installedAt,
 			t.Sig,
 		}
 	}
