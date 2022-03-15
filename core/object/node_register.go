@@ -64,19 +64,23 @@ func (t Node) Register(options OptsNodeRegister) error {
 	} else {
 		t.Log().Info().Msg("sent initial asset discovery")
 	}
-	if _, err := t.Checks(); err != nil {
+	if data, err := t.Checks(); err != nil {
 		return err
 	} else {
-		t.Log().Info().Msg("sent initial checks")
+		t.Log().Info().Msgf("sent initial checks (%d)", data.Len())
+	}
+	if data, err := t.PushPkg(); err != nil {
+		return err
+	} else {
+		t.Log().Info().Msgf("sent initial package inventory (%d)", len(data))
+	}
+	if data, err := t.PushPatch(); err != nil {
+		return err
+	} else {
+		t.Log().Info().Msgf("sent initial patch inventory (%d)", len(data))
 	}
 	/*
 		if _, err := t.PushDisks(); err != nil {
-			return err
-		}
-		if _, err := t.PushPkg(); err != nil {
-			return err
-		}
-		if _, err := t.PushPatch(); err != nil {
 			return err
 		}
 		if _, err := t.SysReport(); err != nil {
