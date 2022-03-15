@@ -31,7 +31,7 @@ type (
 //
 func List() (Pkgs, error) {
 	l := make(Pkgs, 0)
-	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap, ListIPS, ListPkginfo} {
+	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap, ListIPS, ListPkginfo, ListPkgutil} {
 		if more, err := fn(); err != nil {
 			return l, err
 		} else {
@@ -229,6 +229,81 @@ func ListPkginfo() (Pkgs, error) {
 	cmd := command.New(
 		command.WithName("pkginfo"),
 		command.WithVarArgs("-l"),
+		command.WithOnStdoutLine(parse),
+	)
+	if err := cmd.Run(); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+//
+// ListPkgutil returns the list of packages installed with pkgutil (darwin).
+// Example output:
+//
+//   $ pkgutil --packages
+//   com.apple.pkg.HP_Scan
+//   com.apple.pkg.HP_Scan3
+//   ...
+//
+// Example output:
+//   $ pkgutil --pkg-info com.apple.pkg.X11User
+//   package-id: com.apple.pkg.X11User
+//   version: 10.6.0.1.1.1238328574
+//   volume: /
+//   location: /
+//   install-time: 1285389505
+//   groups: com.apple.snowleopard-repair-permissions.pkg-group com.apple.FindSystemFiles.pkg-group
+//
+func ListPkgutil() (Pkgs, error) {
+	l := make(Pkgs, 0)
+	if runtime.GOOS != "darwin" {
+		return l, nil
+	}
+	if _, err := exec.LookPath("pkgutil"); err != nil {
+		return l, nil
+	}
+	parseInfo := func(line string) {
+		v := strings.SplitN(line, ": ", 2)
+		if len(v) != 2 {
+			return
+		}
+		key := strings.TrimSpace(v[0])
+		val := strings.TrimSpace(v[1])
+		p := Pkg{}
+		switch key {
+		case "version":
+			p.Version = val
+		case "install-time":
+			if ts, err := strconv.ParseInt(val, 10, 64); err == nil {
+				p.InstalledAt = time.Unix(ts, 0)
+			}
+		}
+	}
+	info := func(name string) error {
+		cmd := command.New(
+			command.WithName("pkgutil"),
+			command.WithVarArgs("--pkg-info", name),
+			command.WithOnStdoutLine(parseInfo),
+		)
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+		return nil
+	}
+	parse := func(line string) {
+		p := Pkg{
+			Name: line,
+			Arch: runtime.GOARCH,
+		}
+		if err := info(line); err != nil {
+			return
+		}
+		l = append(l, p)
+	}
+	cmd := command.New(
+		command.WithName("pkgutil"),
+		command.WithVarArgs("--packages"),
 		command.WithOnStdoutLine(parse),
 	)
 	if err := cmd.Run(); err != nil {
