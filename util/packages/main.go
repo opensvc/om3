@@ -31,7 +31,7 @@ type (
 //
 func List() (Pkgs, error) {
 	l := make(Pkgs, 0)
-	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap, ListIPS, ListPkginfo, ListPkgutil} {
+	for _, fn := range []Lister{ListDeb, ListRpm, ListSnap, ListIPS, ListPkginfo, ListPkgutil, ListLPP, ListFreeBSDPkgInfo, ListFreeBSDPkgQuery} {
 		if more, err := fn(); err != nil {
 			return l, err
 		} else {
@@ -309,6 +309,113 @@ func ListPkgutil() (Pkgs, error) {
 	cmd := command.New(
 		command.WithName("pkgutil"),
 		command.WithVarArgs("--packages"),
+		command.WithOnStdoutLine(parse),
+	)
+	if err := cmd.Run(); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+//
+// ListLPP returns the list of installed lpp packages (aix).
+//
+func ListLPP() (Pkgs, error) {
+	l := make(Pkgs, 0)
+	if runtime.GOOS != "aix" {
+		return l, nil
+	}
+	if _, err := exec.LookPath("lslpp"); err != nil {
+		return l, nil
+	}
+	parse := func(line string) {
+		v := strings.Split(line, ":")
+		if len(v) < 5 {
+			return
+		}
+		p := Pkg{
+			Name:    strings.ReplaceAll(v[1], "-"+v[2], ""),
+			Version: v[2],
+			Arch:    runtime.GOARCH,
+			Type:    "lpp",
+		}
+		l = append(l, p)
+	}
+	cmd := command.New(
+		command.WithName("lslpp"),
+		command.WithVarArgs("-Lc"),
+		command.WithOnStdoutLine(parse),
+	)
+	if err := cmd.Run(); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+//
+// ListFreeBSDPkgInfo returns the list of installed pkg_info packages (FreeBSD).
+//
+func ListFreeBSDPkgInfo() (Pkgs, error) {
+	l := make(Pkgs, 0)
+	if runtime.GOOS != "freebsd" {
+		return l, nil
+	}
+	if _, err := exec.LookPath("pkg_info"); err != nil {
+		return l, nil
+	}
+	parse := func(line string) {
+		v := strings.Fields(line)
+		if len(v) < 2 {
+			return
+		}
+		w := strings.Split(v[0], "-")
+		version := w[len(w)-1]
+		name := strings.Join(w[0:len(w)-1], "-")
+		p := Pkg{
+			Name:    name,
+			Version: version,
+			Arch:    runtime.GOARCH,
+			Type:    "pkg",
+		}
+		l = append(l, p)
+	}
+	cmd := command.New(
+		command.WithName("pkg_info"),
+		command.WithOnStdoutLine(parse),
+	)
+	if err := cmd.Run(); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+//
+// ListFreeBSDPkgQuery returns the list of installed packages (FreeBSD).
+//
+func ListFreeBSDPkgQuery() (Pkgs, error) {
+	l := make(Pkgs, 0)
+	if runtime.GOOS != "freebsd" {
+		return l, nil
+	}
+	if _, err := exec.LookPath("pkg"); err != nil {
+		return l, nil
+	}
+	parse := func(line string) {
+		v := strings.Split(line, ";;")
+		if len(v) < 3 {
+			return
+		}
+		p := Pkg{
+			Name:    v[0],
+			Version: v[1],
+			Arch:    v[2],
+			Type:    "pkg",
+		}
+		l = append(l, p)
+	}
+	cmd := command.New(
+		command.WithName("pkg"),
+		command.WithVarArgs("query", "-a", "%n;;%v;;%q"),
 		command.WithOnStdoutLine(parse),
 	)
 	if err := cmd.Run(); err != nil {
