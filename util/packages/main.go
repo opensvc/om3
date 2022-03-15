@@ -101,7 +101,7 @@ func ListRpm() (Pkgs, error) {
 	}
 	cmd := command.New(
 		command.WithName("rpm"),
-		command.WithVarArgs("-qa", "--queryformat='%{n} %{v}-%{r} %{arch} %{installtime}\n'"),
+		command.WithVarArgs("-qa", "--queryformat=%{n} %{v}-%{r} %{arch} %{installtime}\n"),
 		command.WithOnStdoutLine(parse),
 	)
 	if err := cmd.Run(); err != nil {
