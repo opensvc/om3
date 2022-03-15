@@ -206,6 +206,7 @@ func ListPkginfo() (Pkgs, error) {
 	if _, err := exec.LookPath("pkg"); err != nil {
 		return l, nil
 	}
+	p := Pkg{}
 	parse := func(line string) {
 		v := strings.SplitN(line, ":", 2)
 		if len(v) != 2 {
@@ -213,18 +214,22 @@ func ListPkginfo() (Pkgs, error) {
 		}
 		key := strings.TrimSpace(v[0])
 		val := strings.TrimSpace(v[1])
-		p := Pkg{}
 		switch key {
-		case "NAME":
+		case "PKGINST":
 			p.Name = val
 		case "VERSION":
 			p.Version = val
 		case "ARCH":
-			p.Arch = val
+			path := fmt.Sprintf("/var/sadm/pkg/%s", p.Name)
+			l = append(l, Pkg{
+				Name:        p.Name,
+				Version:     p.Version,
+				Arch:        val,
+				Type:        "pkg",
+				InstalledAt: file.ModTime(path),
+			})
+
 		}
-		path := fmt.Sprintf("/var/sadm/pkg/%s", p.Name)
-		p.InstalledAt = file.ModTime(path)
-		l = append(l, p)
 	}
 	cmd := command.New(
 		command.WithName("pkginfo"),
