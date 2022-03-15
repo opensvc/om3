@@ -93,6 +93,7 @@ func ListRpm() (Pkgs, error) {
 			Version: v[1],
 			Arch:    v[2],
 			Type:    "rpm",
+			Sig:     v[len(v)-1],
 		}
 		if ts, err := strconv.ParseInt(v[3], 10, 64); err == nil {
 			p.InstalledAt = time.Unix(ts, 0)
@@ -101,7 +102,7 @@ func ListRpm() (Pkgs, error) {
 	}
 	cmd := command.New(
 		command.WithName("rpm"),
-		command.WithVarArgs("-qa", "--queryformat=%{n} %{v}-%{r} %{arch} %{installtime}\n"),
+		command.WithVarArgs("-qa", "--queryformat=%{n} %{v}-%{r} %{arch} %{installtime} %|DSAHEADER?{%{DSAHEADER:pgpsig}}:{%|RSAHEADER?{%{RSAHEADER:pgpsig}}:{%|SIGGPG?{%{SIGGPG:pgpsig}}:{%|SIGPGP?{%{SIGPGP:pgpsig}}:{(none)}|}|}|}|\n"),
 		command.WithOnStdoutLine(parse),
 	)
 	if err := cmd.Run(); err != nil {
