@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/enable"
+	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/routinehelper"
@@ -51,6 +52,14 @@ var (
 				return listener.New(
 					listener.WithRoutineTracer(&t.TT),
 					listener.WithRootDaemon(t),
+				)
+			},
+		},
+		"hb": {
+			new: func(t *T) subdaemon.Manager {
+				return hb.New(
+					hb.WithRoutineTracer(&t.TT),
+					hb.WithRootDaemon(t),
 				)
 			},
 		},
