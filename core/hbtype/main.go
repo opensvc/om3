@@ -22,4 +22,18 @@ type (
 
 	// Patches is a slice of jsondelta.Patch
 	Patches []jsondelta.Patch
+
+	// Transmitter is the interface that wraps the basic methods for hb driver to send hb messages
+	Transmitter interface {
+		Start(cmdC chan<- interface{}, dataC <-chan []byte) error
+		Stop() error
+		Id() string
+	}
+
+	// Receiver is the interface that wraps the basic methods for hb driver to receive hb messages
+	Receiver interface {
+		Start(cmdC chan<- interface{}, msgC chan<- *Msg) error
+		Stop() error
+		Id() string
+	}
 )
