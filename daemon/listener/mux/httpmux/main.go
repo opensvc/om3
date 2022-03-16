@@ -30,6 +30,7 @@ func New(ctx context.Context) *T {
 	mux := chi.NewRouter()
 	mux.Use(daemonMiddleWare(ctx))
 	mux.Use(logMiddleWare(ctx))
+	mux.Use(eventbusCmdCMiddleWare(ctx))
 	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Mount("/daemon", t.newDaemonRouter())
 
@@ -48,6 +49,15 @@ func (t *T) newDaemonRouter() *chi.Mux {
 	r.Post("/stop", daemonhandler.Stop)
 	r.Get("/eventsdemo", daemonhandler.Events)
 	return r
+}
+
+func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := daemonctx.WithEventBusCmd(r.Context(), daemonctx.EventBusCmd(parent))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {

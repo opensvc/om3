@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
+	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -56,6 +57,9 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Events"
 	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	logger.Debug().Msg("starting")
+	ctx := r.Context()
+	evCmdC := daemonctx.EventBusCmd(ctx)
+	done := make(chan bool)
 	var httpBody bool
 	if r.Header.Get("accept") == "text/event-stream" {
 		httpBody = true
@@ -66,15 +70,11 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	for i := 0; i < 3; i++ {
-		rawMsg := json.RawMessage("\"demo msg xxx\"")
-		ev := event.Event{
-			Kind:      "demo",
-			ID:        uint64(i),
-			Timestamp: timestamp.Now(),
-			Data:      &rawMsg,
-		}
+	evChan := make(chan event.Event)
+	getEvent := func(ev event.Event) {
+		evChan <- ev
+	}
+	writeEvent := func(ev event.Event) {
 		b, err := json.Marshal(ev)
 		if err != nil {
 			logger.Error().Err(err).Interface("event", ev).Msg("Marshal")
@@ -92,6 +92,11 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		}
 
 		msg = append(msg, endMsg...)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		if _, err := write(w, r, funcName, msg); err != nil {
 			logger.Error().Err(err).Msg("write failure")
 			return
@@ -99,8 +104,43 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
-		time.Sleep(1000 * time.Millisecond)
 	}
+	subId := eventbus.Sub(evCmdC, "lsnr-event", getEvent)
+	defer eventbus.UnSub(evCmdC, subId)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				done <- true
+				return
+			case ev := <-evChan:
+				writeEvent(ev)
+			}
+		}
+	}()
+
+	// demo pub fake events
+	go func() {
+		for i := 0; i < 3; i++ {
+			select {
+			case <-ctx.Done():
+				logger.Error().Msg("Done return")
+				done <- true
+				return
+			default:
+			}
+			rawMsg := json.RawMessage("\"demo msg xxx\"")
+			ev := event.Event{
+				Kind:      "demo",
+				ID:        uint64(i),
+				Timestamp: timestamp.Now(),
+				Data:      &rawMsg,
+			}
+			eventbus.Pub(evCmdC, ev)
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
+	<-done
 	logger.Debug().Msg("done")
 }
 
