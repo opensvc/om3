@@ -10,6 +10,12 @@ import (
 )
 
 type (
+	// TCtx holds Context and CancelFunc for daemons
+	TCtx struct {
+		Ctx        context.Context
+		CancelFunc context.CancelFunc
+	}
+
 	contextKey string
 )
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpinet"
@@ -21,6 +22,7 @@ import (
 type (
 	T struct {
 		*subdaemon.T
+		daemonctx.TCtx
 		log          zerolog.Logger
 		loopC        chan action
 		loopDelay    time.Duration
@@ -53,6 +55,7 @@ var (
 					lsnrrawux.WithRoutineTracer(&t.TT),
 					lsnrrawux.WithHttpHandler(t.httpHandler),
 					lsnrrawux.WithAddr(daemonenv.PathUxRaw),
+					lsnrrawux.WithContext(t.Ctx),
 				)
 			},
 		},
@@ -62,6 +65,7 @@ var (
 					lsnrrawinet.WithRoutineTracer(&t.TT),
 					lsnrrawinet.WithHttpHandler(t.httpHandler),
 					lsnrrawinet.WithAddr(":"+daemonenv.RawPort),
+					lsnrrawinet.WithContext(t.Ctx),
 				)
 			},
 		},
@@ -73,6 +77,7 @@ var (
 					lsnrhttpinet.WithAddr(":"+daemonenv.HttpPort),
 					lsnrhttpinet.WithCertFile(daemonenv.CertFile),
 					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile),
+					lsnrhttpinet.WithContext(t.Ctx),
 				)
 			},
 		},
@@ -84,6 +89,7 @@ var (
 					lsnrhttpux.WithAddr(daemonenv.PathUxHttp),
 					lsnrhttpux.WithCertFile(daemonenv.CertFile),
 					lsnrhttpux.WithKeyFile(daemonenv.KeyFile),
+					lsnrhttpux.WithContext(t.Ctx),
 				)
 			},
 		},
@@ -92,6 +98,7 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
+		TCtx:        daemonctx.TCtx{},
 		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
 	}

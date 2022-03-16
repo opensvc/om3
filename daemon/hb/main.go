@@ -9,6 +9,7 @@ import (
 
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/util/hostname"
 
@@ -20,6 +21,7 @@ import (
 type (
 	T struct {
 		*subdaemon.T
+		daemonctx.TCtx
 		log          zerolog.Logger
 		routineTrace routineTracer
 		rootDaemon   subdaemon.RootManager
@@ -35,7 +37,7 @@ type (
 )
 
 func New(opts ...funcopt.O) *T {
-	t := &T{}
+	t := &T{TCtx: daemonctx.TCtx{}}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("hb funcopt.Apply")
