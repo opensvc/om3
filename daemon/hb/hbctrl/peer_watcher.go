@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -32,7 +32,7 @@ func (t *T) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 	started := make(chan bool)
 	go func() {
 		defer cancel()
-		log := muxctx.Logger(ctx).With().Str("Name", "peerWatch-"+hbId+"-"+nodename).Logger()
+		log := daemonctx.Logger(ctx).With().Str("Name", "peerWatch-"+hbId+"-"+nodename).Logger()
 		log.Info().Msg("watching")
 		started <- true
 		for {

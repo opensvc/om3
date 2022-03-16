@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/daemonhandler"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/daemon/subdaemon"
 )
 
@@ -60,7 +60,7 @@ func logMiddleWare(logger zerolog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			uuid := uuid.New()
-			ctx := muxctx.WithLogger(r.Context(), logger.With().Str("request-uuid", uuid.String()).Logger())
+			ctx := daemonctx.WithLogger(r.Context(), logger.With().Str("request-uuid", uuid.String()).Logger())
 			logger.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -70,7 +70,7 @@ func logMiddleWare(logger zerolog.Logger) func(http.Handler) http.Handler {
 func daemonMiddleWare(manager subdaemon.RootManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := muxctx.WithDaemon(r.Context(), manager)
+			ctx := daemonctx.WithDaemon(r.Context(), manager)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

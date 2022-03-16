@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/hbcfg"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
@@ -48,7 +48,7 @@ func init() {
 
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
-	log := muxctx.Logger(ctx).With().Str("id", t.Name()+".tx").Logger()
+	log := daemonctx.Logger(ctx).With().Str("id", t.Name()+".tx").Logger()
 	timeout := t.GetDuration("timeout", 5*time.Second)
 	portI := t.GetInt("port")
 	port := strconv.Itoa(portI)

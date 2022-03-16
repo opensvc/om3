@@ -39,7 +39,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
+	"opensvc.com/opensvc/daemon/daemonctx"
 )
 
 type (
@@ -117,7 +117,7 @@ func New(parent context.Context) *T {
 	return &T{
 		cmd:    make(chan interface{}),
 		ctx:    ctx,
-		log:    muxctx.Logger(parent).With().Str("Name", "hbctrl").Logger(),
+		log:    daemonctx.Logger(parent).With().Str("Name", "hbctrl").Logger(),
 		cancel: cancel,
 	}
 }

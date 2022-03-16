@@ -18,6 +18,7 @@ import (
 	"golang.org/x/net/http2"
 
 	"opensvc.com/opensvc/core/api/apimodel"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/daemon/listener/mux/muxresponse"
@@ -107,7 +108,7 @@ func New(srcHandler http.HandlerFunc, successHttp int, minSuccess int) http.Hand
 			srcHandler(w, r)
 			return
 		}
-		log := muxctx.Logger(r.Context()).
+		log := daemonctx.Logger(r.Context()).
 			With().
 			Str("pkg", "dispatchhandler").
 			Logger()

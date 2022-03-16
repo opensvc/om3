@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -20,8 +20,8 @@ var (
 
 func running(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Running"
-	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
-	daemon := muxctx.Daemon(r.Context())
+	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	daemon := daemonctx.Daemon(r.Context())
 	logger.Debug().Msg("starting")
 	response := daemon.Running()
 	b, err := json.Marshal(response)
@@ -34,9 +34,9 @@ func running(w http.ResponseWriter, r *http.Request) {
 
 func Stop(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Stop"
-	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	logger.Debug().Msg("starting")
-	daemon := muxctx.Daemon(r.Context())
+	daemon := daemonctx.Daemon(r.Context())
 	if daemon.Running() {
 		msg := funcName + ": stopping"
 		logger.Info().Msg(msg)
@@ -54,7 +54,7 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 
 func Events(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Events"
-	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	logger.Debug().Msg("starting")
 	var httpBody bool
 	if r.Header.Get("accept") == "text/event-stream" {
@@ -107,7 +107,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 func write(w http.ResponseWriter, r *http.Request, funcName string, b []byte) (int, error) {
 	written, err := w.Write(b)
 	if err != nil {
-		logger := muxctx.Logger(r.Context())
+		logger := daemonctx.Logger(r.Context())
 		logger.Debug().Err(err).Msg(funcName + " write error")
 		return written, err
 	}
