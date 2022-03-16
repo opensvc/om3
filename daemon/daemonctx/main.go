@@ -14,12 +14,28 @@ type (
 )
 
 var (
-	contextDaemon = contextKey("daemon")
-	contextLogger = contextKey("logger")
+	contextDaemon      = contextKey("daemon")
+	contextEventBusCmd = contextKey("eventbus-cmd")
+	contextLogger      = contextKey("logger")
 )
 
 func (c contextKey) String() string {
 	return "daemonctx." + string(c)
+}
+
+// EventBusCmd function returns EventBusCmd from context
+func EventBusCmd(ctx context.Context) (cmdC chan<- interface{}) {
+	var ok bool
+	cmdC, ok = ctx.Value(contextEventBusCmd).(chan<- interface{})
+	if ok {
+		return
+	}
+	panic("unable to retrieve context EventBusCmd")
+}
+
+// WithEventBusCmd function returns copy of parent with eventbus.
+func WithEventBusCmd(parent context.Context, evBusCmd chan<- interface{}) context.Context {
+	return context.WithValue(parent, contextEventBusCmd, evBusCmd)
 }
 
 // WithLogger function returns copy of parent with logger.
