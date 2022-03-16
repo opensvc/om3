@@ -58,7 +58,6 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return listener.New(
 					listener.WithRoutineTracer(&t.TT),
-					listener.WithRootDaemon(t),
 					listener.WithContext(t.Ctx),
 				)
 			},
@@ -120,7 +119,7 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	t.Ctx, t.CancelFunc = context.WithCancel(context.Background())
-
+	t.Ctx = daemonctx.WithDaemon(t.Ctx, t)
 	evBus := eventbus.T{}
 	evBusCmdC, err := evBus.Run(t.Ctx, "daemon event bus")
 	if err != nil {

@@ -124,7 +124,7 @@ func (t *T) MainStart() error {
 		defer t.Trace(t.Name() + "-loop")()
 		t.loop(started)
 	}()
-	t.httpHandler = httpmux.New(t.log, t.rootDaemon)
+	t.httpHandler = httpmux.New(t.Ctx)
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
 		if err := sub.subActions.Init(); err != nil {
