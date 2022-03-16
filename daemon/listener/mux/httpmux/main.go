@@ -7,35 +7,30 @@
 package httpmux
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/daemonhandler"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
-	"opensvc.com/opensvc/daemon/subdaemon"
 )
 
 type (
 	T struct {
-		log        zerolog.Logger
-		mux        *chi.Mux
-		rootDaemon subdaemon.RootManager
+		mux *chi.Mux
 	}
 )
 
 // New returns *T with log, rootDaemon
 // it prepares middlewares and routes for Opensvc daemon listeners
-func New(log zerolog.Logger, rootDaemon subdaemon.RootManager) *T {
-	t := &T{
-		log:        log,
-		rootDaemon: rootDaemon,
-	}
+func New(ctx context.Context) *T {
+	t := &T{}
 	mux := chi.NewRouter()
-	mux.Use(daemonMiddleWare(t.rootDaemon))
-	mux.Use(logMiddleWare(t.log))
+	mux.Use(daemonMiddleWare(ctx))
+	mux.Use(logMiddleWare(ctx))
+	mux.Use(eventbusCmdCMiddleWare(ctx))
 	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Mount("/daemon", t.newDaemonRouter())
 
@@ -56,21 +51,31 @@ func (t *T) newDaemonRouter() *chi.Mux {
 	return r
 }
 
-func logMiddleWare(logger zerolog.Logger) func(http.Handler) http.Handler {
+func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			uuid := uuid.New()
-			ctx := muxctx.WithLogger(r.Context(), logger.With().Str("request-uuid", uuid.String()).Logger())
-			logger.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
+			ctx := daemonctx.WithEventBusCmd(r.Context(), daemonctx.EventBusCmd(parent))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func daemonMiddleWare(manager subdaemon.RootManager) func(http.Handler) http.Handler {
+func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := muxctx.WithDaemon(r.Context(), manager)
+			reqUuid := uuid.New()
+			log := daemonctx.Logger(parent)
+			ctx := daemonctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
+			log.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func daemonMiddleWare(parent context.Context) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := daemonctx.WithDaemon(r.Context(), daemonctx.Daemon(parent))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

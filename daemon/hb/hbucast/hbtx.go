@@ -8,9 +8,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/daemon/listener/encryptconn"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 )
 
 type (
@@ -107,7 +107,7 @@ func (t *tx) send(node string, b []byte) {
 
 func newTx(ctx context.Context, name string, nodes []string, port, intf string, timeout time.Duration) *tx {
 	id := name + ".tx"
-	log := muxctx.Logger(ctx).With().Str("id", id).Logger()
+	log := daemonctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
 		ctx:     ctx,
 		id:      id,

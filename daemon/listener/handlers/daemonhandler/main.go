@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
+	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -20,8 +21,8 @@ var (
 
 func running(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Running"
-	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
-	daemon := muxctx.Daemon(r.Context())
+	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	daemon := daemonctx.Daemon(r.Context())
 	logger.Debug().Msg("starting")
 	response := daemon.Running()
 	b, err := json.Marshal(response)
@@ -34,9 +35,9 @@ func running(w http.ResponseWriter, r *http.Request) {
 
 func Stop(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Stop"
-	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	logger.Debug().Msg("starting")
-	daemon := muxctx.Daemon(r.Context())
+	daemon := daemonctx.Daemon(r.Context())
 	if daemon.Running() {
 		msg := funcName + ": stopping"
 		logger.Info().Msg(msg)
@@ -54,8 +55,11 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 
 func Events(w http.ResponseWriter, r *http.Request) {
 	funcName := "daemonhandler.Events"
-	logger := muxctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	logger.Debug().Msg("starting")
+	ctx := r.Context()
+	evCmdC := daemonctx.EventBusCmd(ctx)
+	done := make(chan bool)
 	var httpBody bool
 	if r.Header.Get("accept") == "text/event-stream" {
 		httpBody = true
@@ -66,15 +70,11 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	for i := 0; i < 3; i++ {
-		rawMsg := json.RawMessage("\"demo msg xxx\"")
-		ev := event.Event{
-			Kind:      "demo",
-			ID:        uint64(i),
-			Timestamp: timestamp.Now(),
-			Data:      &rawMsg,
-		}
+	evChan := make(chan event.Event)
+	getEvent := func(ev event.Event) {
+		evChan <- ev
+	}
+	writeEvent := func(ev event.Event) {
 		b, err := json.Marshal(ev)
 		if err != nil {
 			logger.Error().Err(err).Interface("event", ev).Msg("Marshal")
@@ -92,6 +92,11 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		}
 
 		msg = append(msg, endMsg...)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		if _, err := write(w, r, funcName, msg); err != nil {
 			logger.Error().Err(err).Msg("write failure")
 			return
@@ -99,15 +104,50 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
-		time.Sleep(1000 * time.Millisecond)
 	}
+	subId := eventbus.Sub(evCmdC, "lsnr-event", getEvent)
+	defer eventbus.UnSub(evCmdC, subId)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				done <- true
+				return
+			case ev := <-evChan:
+				writeEvent(ev)
+			}
+		}
+	}()
+
+	// demo pub fake events
+	go func() {
+		for i := 0; i < 3; i++ {
+			select {
+			case <-ctx.Done():
+				logger.Error().Msg("Done return")
+				done <- true
+				return
+			default:
+			}
+			rawMsg := json.RawMessage("\"demo msg xxx\"")
+			ev := event.Event{
+				Kind:      "demo",
+				ID:        uint64(i),
+				Timestamp: timestamp.Now(),
+				Data:      &rawMsg,
+			}
+			eventbus.Pub(evCmdC, ev)
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
+	<-done
 	logger.Debug().Msg("done")
 }
 
 func write(w http.ResponseWriter, r *http.Request, funcName string, b []byte) (int, error) {
 	written, err := w.Write(b)
 	if err != nil {
-		logger := muxctx.Logger(r.Context())
+		logger := daemonctx.Logger(r.Context())
 		logger.Debug().Err(err).Msg(funcName + " write error")
 		return written, err
 	}

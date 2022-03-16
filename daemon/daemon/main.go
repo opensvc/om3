@@ -6,22 +6,26 @@
 package daemon
 
 import (
+	"context"
 	"time"
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
+	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
 type (
 	T struct {
 		*subdaemon.T
+		daemonctx.TCtx
 		log           zerolog.Logger
 		loopC         chan action
 		loopDelay     time.Duration
@@ -44,14 +48,17 @@ var (
 	mandatorySubs = map[string]sub{
 		"monitor": {
 			new: func(t *T) subdaemon.Manager {
-				return monitor.New(monitor.WithRoutineTracer(&t.TT))
+				return monitor.New(
+					monitor.WithRoutineTracer(&t.TT),
+					monitor.WithContext(t.Ctx),
+				)
 			},
 		},
 		"listener": {
 			new: func(t *T) subdaemon.Manager {
 				return listener.New(
 					listener.WithRoutineTracer(&t.TT),
-					listener.WithRootDaemon(t),
+					listener.WithContext(t.Ctx),
 				)
 			},
 		},
@@ -60,6 +67,7 @@ var (
 				return hb.New(
 					hb.WithRoutineTracer(&t.TT),
 					hb.WithRootDaemon(t),
+					hb.WithContext(t.Ctx),
 				)
 			},
 		},
@@ -68,6 +76,7 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
+		TCtx:        daemonctx.TCtx{},
 		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
 	}
@@ -109,6 +118,16 @@ func (t *T) MainStart() error {
 		defer t.Trace(t.Name() + "-loop")()
 		t.loop(started)
 	}()
+	t.Ctx, t.CancelFunc = context.WithCancel(context.Background())
+	t.Ctx = daemonctx.WithDaemon(t.Ctx, t)
+	evBus := eventbus.T{}
+	evBusCmdC, err := evBus.Run(t.Ctx, "daemon event bus")
+	if err != nil {
+		t.log.Err(err).Msg("event bus start")
+		return err
+	}
+	t.Ctx = daemonctx.WithEventBusCmd(t.Ctx, evBusCmdC)
+
 	<-started
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
@@ -136,6 +155,7 @@ func (t *T) MainStop() error {
 		t.loopC <- action{"stop", done}
 		<-done
 	}
+	t.CancelFunc()
 	t.log.Info().Msg("mgr stopped")
 	return nil
 }

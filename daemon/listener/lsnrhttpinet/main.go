@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -14,6 +15,7 @@ import (
 type (
 	T struct {
 		*subdaemon.T
+		daemonctx.TCtx
 		routinehelper.TT
 		listener     *http.Server
 		log          zerolog.Logger
@@ -31,7 +33,7 @@ type (
 )
 
 func New(opts ...funcopt.O) *T {
-	t := &T{}
+	t := &T{TCtx: daemonctx.TCtx{}}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")

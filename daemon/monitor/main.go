@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -14,6 +15,7 @@ import (
 type (
 	T struct {
 		*subdaemon.T
+		daemonctx.TCtx
 		log          zerolog.Logger
 		loopC        chan action
 		loopDelay    time.Duration
@@ -33,6 +35,7 @@ type (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
+		TCtx:        daemonctx.TCtx{},
 		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
 	}

@@ -10,9 +10,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/daemon/listener/encryptconn"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
 )
 
 type (
@@ -129,13 +129,12 @@ func (r *rx) handle(conn net.Conn) {
 		HbId:     r.id,
 		Success:  true,
 	}
-	r.log.Info().Msgf("receive msg from %s", msg.Nodename)
 	r.msgC <- msg
 }
 
 func newRx(ctx context.Context, name string, nodes []string, addr, port, intf string, timeout time.Duration) *rx {
 	id := name + ".rx"
-	log := muxctx.Logger(ctx).With().Str("id", id).Logger()
+	log := daemonctx.Logger(ctx).With().Str("id", id).Logger()
 	return &rx{
 		ctx:     ctx,
 		id:      id,
