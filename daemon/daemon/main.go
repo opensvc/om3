@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
+	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -120,6 +121,14 @@ func (t *T) MainStart() error {
 	}()
 	t.Ctx, t.CancelFunc = context.WithCancel(context.Background())
 
+	evBus := eventbus.T{}
+	evBusCmdC, err := evBus.Run(t.Ctx, "daemon event bus")
+	if err != nil {
+		t.log.Err(err).Msg("event bus start")
+		return err
+	}
+	t.Ctx = daemonctx.WithEventBusCmd(t.Ctx, evBusCmdC)
+
 	<-started
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
@@ -147,6 +156,7 @@ func (t *T) MainStop() error {
 		t.loopC <- action{"stop", done}
 		<-done
 	}
+	t.CancelFunc()
 	t.log.Info().Msg("mgr stopped")
 	return nil
 }
