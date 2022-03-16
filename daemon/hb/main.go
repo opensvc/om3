@@ -65,12 +65,11 @@ func pingMsg() ([]byte, error) {
 
 func (t *T) MainStart() error {
 	t.log.Info().Msg("mgr starting")
-	ctx := context.Background()
-	data := hbctrl.New(ctx)
+	data := hbctrl.New(t.Ctx)
 	go data.Start()
 	msgC := make(chan *hbtype.Msg)
 
-	err := t.start(ctx, data, msgC)
+	err := t.start(t.Ctx, data, msgC)
 	if err != nil {
 		return err
 	}

@@ -33,13 +33,17 @@ package hbctrl
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/util/eventbus"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -135,6 +139,7 @@ func (t *T) Start() {
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	hbBeatings := make(map[string]map[string]cluster.HeartbeatPeerStatus)
+	evBusCmd := daemonctx.EventBusCmd(t.ctx)
 	defer t.log.Info().Msgf("done: %v", events)
 	for {
 		select {
@@ -157,6 +162,14 @@ func (t *T) Start() {
 				} else {
 					events[o.Name] = 1
 				}
+				var data json.RawMessage
+				data = []byte("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
+				eventbus.Pub(evBusCmd, event.Event{
+					Kind:      o.Name,
+					ID:        0,
+					Timestamp: timestamp.Now(),
+					Data:      &data,
+				})
 				t.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 			case GetEventStats:
 				o.result <- events
