@@ -53,7 +53,6 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrrawux.New(
 					lsnrrawux.WithRoutineTracer(&t.TT),
-					lsnrrawux.WithHttpHandler(t.httpHandler),
 					lsnrrawux.WithAddr(daemonenv.PathUxRaw),
 					lsnrrawux.WithContext(t.Ctx),
 				)
@@ -63,7 +62,6 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrrawinet.New(
 					lsnrrawinet.WithRoutineTracer(&t.TT),
-					lsnrrawinet.WithHttpHandler(t.httpHandler),
 					lsnrrawinet.WithAddr(":"+daemonenv.RawPort),
 					lsnrrawinet.WithContext(t.Ctx),
 				)
@@ -73,7 +71,6 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpinet.New(
 					lsnrhttpinet.WithRoutineTracer(&t.TT),
-					lsnrhttpinet.WithHandler(t.httpHandler),
 					lsnrhttpinet.WithAddr(":"+daemonenv.HttpPort),
 					lsnrhttpinet.WithCertFile(daemonenv.CertFile),
 					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile),
@@ -85,7 +82,6 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpux.New(
 					lsnrhttpux.WithRoutineTracer(&t.TT),
-					lsnrhttpux.WithHandler(t.httpHandler),
 					lsnrhttpux.WithAddr(daemonenv.PathUxHttp),
 					lsnrhttpux.WithCertFile(daemonenv.CertFile),
 					lsnrhttpux.WithKeyFile(daemonenv.KeyFile),

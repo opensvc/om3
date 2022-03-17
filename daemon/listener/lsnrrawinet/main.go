@@ -2,8 +2,6 @@ package lsnrrawinet
 
 import (
 	"net"
-	"net/http"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -22,8 +20,6 @@ type (
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
-		mux          rawServer
-		httpHandler  http.Handler
 		addr         string
 	}
 
@@ -53,7 +49,7 @@ func New(opts ...funcopt.O) *T {
 		Str("addr", t.addr).
 		Str("sub", t.Name()).
 		Logger()
-	t.mux = rawmux.New(t.httpHandler, t.log, 5*time.Second)
+	t.Ctx = daemonctx.WithLogger(t.Ctx, t.log)
 	return t
 }
 

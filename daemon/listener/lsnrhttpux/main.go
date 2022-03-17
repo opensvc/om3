@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -24,7 +25,6 @@ type (
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
-		handler      http.Handler
 		addr         string
 		certFile     string
 		keyFile      string
@@ -52,6 +52,7 @@ func New(opts ...funcopt.O) *T {
 		Str("addr", t.addr).
 		Str("sub", t.Name()).
 		Logger()
+	t.Ctx = daemonctx.WithLogger(t.Ctx, t.log)
 	return t
 }
 
@@ -97,7 +98,7 @@ func (t *T) start() error {
 	started := make(chan bool)
 	s := &http2.Server{}
 	server := http.Server{
-		Handler: h2c.NewHandler(t.handler, s),
+		Handler: h2c.NewHandler(httpmux.New(t.Ctx), s),
 	}
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {

@@ -4,6 +4,10 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
+
+	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
+	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
 )
 
 func (t *T) stop() error {
@@ -20,6 +24,7 @@ func (t *T) start() error {
 		t.log.Error().Err(err).Msg("RemoveAll")
 		return err
 	}
+	mux := rawmux.New(httpmux.New(t.Ctx), t.log, 5*time.Second)
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {
 		t.log.Error().Err(err).Msg("listen failed")
@@ -38,7 +43,7 @@ func (t *T) start() error {
 					continue
 				}
 			}
-			go t.mux.Serve(conn)
+			go mux.Serve(conn)
 		}
 	}()
 	t.listener = &listener
