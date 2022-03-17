@@ -3,6 +3,7 @@ package daemonctx
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -23,6 +24,7 @@ var (
 	contextDaemon      = contextKey("daemon")
 	contextEventBusCmd = contextKey("eventbus-cmd")
 	contextLogger      = contextKey("logger")
+	contextUuid        = contextKey("uuid")
 )
 
 func (c contextKey) String() string {
@@ -70,4 +72,18 @@ func Daemon(ctx context.Context) subdaemon.RootManager {
 		return daemon
 	}
 	panic("unable to retrieve context daemon")
+}
+
+// WithUuid function returns copy of parent with uuid.
+func WithUuid(parent context.Context, uuid uuid.UUID) context.Context {
+	return context.WithValue(parent, contextUuid, uuid)
+}
+
+// Uuid function returns uuid from context
+func Uuid(ctx context.Context) uuid.UUID {
+	id, ok := ctx.Value(contextUuid).(uuid.UUID)
+	if ok {
+		return id
+	}
+	return uuid.UUID{}
 }
