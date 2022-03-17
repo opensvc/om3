@@ -28,9 +28,9 @@ func Sub(cmdC chan<- interface{}, name string, fn func(event.Event)) uuid.UUID {
 		Kind:      "event-subscribe",
 		ID:        0,
 		Timestamp: timestamp.Now(),
-		Data:      jsonMsg(name),
+		Data:      jsonMsg("subscribe name: " + name),
 	})
-	return pubsub.Sub(cmdC, "subscribe name: "+name, f)
+	return pubsub.Sub(cmdC, name, f)
 }
 
 func UnSub(cmdC chan<- interface{}, id uuid.UUID) {
