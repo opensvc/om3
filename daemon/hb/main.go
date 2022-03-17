@@ -3,6 +3,7 @@ package hb
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -124,8 +125,18 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	}()
 	go func() {
 		// for demo handle received messages
+		count := 0.0
+		bgCtx := context.Background()
+		ctx, _ := context.WithTimeout(bgCtx, 10*time.Second)
 		for {
-			<-msgC
+			select {
+			case <-ctx.Done():
+				t.log.Info().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+				ctx, _ = context.WithTimeout(bgCtx, 10*time.Second)
+				count = 0
+			case <-msgC:
+				count++
+			}
 		}
 	}()
 	return nil
