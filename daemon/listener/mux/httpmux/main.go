@@ -66,6 +66,7 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 			reqUuid := uuid.New()
 			log := daemonctx.Logger(parent)
 			ctx := daemonctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
+			ctx = daemonctx.WithUuid(ctx, reqUuid)
 			log.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
