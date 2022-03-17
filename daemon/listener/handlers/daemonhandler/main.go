@@ -99,6 +99,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		}
 		if _, err := write(w, r, funcName, msg); err != nil {
 			logger.Error().Err(err).Msg("write failure")
+			done <- true
 			return
 		}
 		if f, ok := w.(http.Flusher); ok {
