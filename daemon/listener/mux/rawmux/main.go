@@ -30,6 +30,7 @@ type (
 	ReadWriteCloseSetDeadliner interface {
 		io.ReadWriteCloser
 		SetDeadline(time.Time) error
+		SetWriteDeadline(time.Time) error
 	}
 
 	// request struct holds the translated raw request for http mux
@@ -66,7 +67,7 @@ func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 			return
 		}
 	}()
-	if err := w.SetDeadline(time.Now().Add(t.timeOut)); err != nil {
+	if err := w.SetWriteDeadline(time.Now().Add(t.timeOut)); err != nil {
 		t.log.Error().Err(err).Msg("rawunix.Serve can't set SetDeadline")
 	}
 	req, err := t.newRequestFrom(w)
