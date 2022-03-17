@@ -179,11 +179,26 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
+var (
+	msgBufferCount = 2
+	msgUsualSize   = 1000     // usual event size
+	msgMaxSize     = 10000000 // max kind=full event size
+	msgBufferChan  = make(chan *[]byte, msgBufferCount)
+)
+
+func init() {
+	// Use cached buffers to reduce cpu when many message are scanned
+	for i := 0; i < msgBufferCount; i++ {
+		b := make([]byte, msgUsualSize, msgMaxSize)
+		msgBufferChan <- &b
+	}
+}
+
 func GetMessages(q chan []byte, rc io.ReadCloser) {
 	scanner := bufio.NewScanner(rc)
-	min := 1000     // usual event size
-	max := 10000000 // max kind=full event size
-	scanner.Buffer(make([]byte, min, max), max)
+	b := <-msgBufferChan
+	defer func() { msgBufferChan <- b }()
+	scanner.Buffer(*b, msgMaxSize)
 	scanner.Split(splitFunc)
 	defer rc.Close()
 	defer close(q)
