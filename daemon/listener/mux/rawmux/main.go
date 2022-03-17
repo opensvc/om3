@@ -67,9 +67,10 @@ func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 			return
 		}
 	}()
-	if err := w.SetWriteDeadline(time.Now().Add(t.timeOut)); err != nil {
-		t.log.Error().Err(err).Msg("rawunix.Serve can't set SetDeadline")
-	}
+	// TODO some handlers needs no deadline
+	//if err := w.SetWriteDeadline(time.Now().Add(t.timeOut)); err != nil {
+	//	t.log.Error().Err(err).Msg("rawunix.Serve can't set SetDeadline")
+	//}
 	req, err := t.newRequestFrom(w)
 	if err != nil {
 		t.log.Error().Err(err).Msg("rawunix.Serve can't analyse request")
