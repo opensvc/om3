@@ -104,7 +104,7 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 		t.log.Warn().Err(err).Msgf("newRequestFrom invalid message: %s", string(b))
 		return nil, err
 	}
-	t.log.Warn().Msgf("newRequestFrom: %s, options: %s", srcRequest, srcRequest.Options)
+	t.log.Debug().Msgf("newRequestFrom: %s, options: %s", srcRequest, srcRequest.Options)
 	matched, ok := actionToPath[srcRequest.Action]
 	if !ok {
 		msg := "no matched rules for action: " + srcRequest.Action
