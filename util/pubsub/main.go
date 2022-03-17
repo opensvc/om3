@@ -99,7 +99,7 @@ func (t *T) Run(parent context.Context, name string) (chan<- interface{}, error)
 					subs[id] = c.fn
 					subNames[id] = c.name
 					c.resp <- id
-					log.Info().Msgf("new subscriber %s", c.name)
+					log.Info().Msgf("subscribe %s", c.name)
 				case cmdUnsub:
 					name, ok := subNames[c.subId]
 					if !ok {
@@ -108,7 +108,7 @@ func (t *T) Run(parent context.Context, name string) (chan<- interface{}, error)
 					delete(subs, c.subId)
 					delete(subNames, c.subId)
 					c.resp <- name
-					log.Info().Msgf("unregister subscriber %s", name)
+					log.Info().Msgf("unsubscribe %s", name)
 				}
 			}
 		}
