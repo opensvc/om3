@@ -6,13 +6,11 @@ package daemonhandler
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
 	"opensvc.com/opensvc/util/eventbus"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 var (
@@ -106,7 +104,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := eventbus.Sub(evCmdC, "lsnr-event", getEvent)
+	subId := eventbus.Sub(evCmdC, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
 	defer eventbus.UnSub(evCmdC, subId)
 	go func() {
 		for {
@@ -120,27 +118,6 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// demo pub fake events
-	go func() {
-		for i := 0; i < 3; i++ {
-			select {
-			case <-ctx.Done():
-				logger.Error().Msg("Done return")
-				done <- true
-				return
-			default:
-			}
-			rawMsg := json.RawMessage("\"demo msg xxx\"")
-			ev := event.Event{
-				Kind:      "demo",
-				ID:        uint64(i),
-				Timestamp: timestamp.Now(),
-				Data:      &rawMsg,
-			}
-			eventbus.Pub(evCmdC, ev)
-			time.Sleep(1000 * time.Millisecond)
-		}
-	}()
 	<-done
 	logger.Debug().Msg("done")
 }
