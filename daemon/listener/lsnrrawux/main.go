@@ -2,8 +2,6 @@ package lsnrrawux
 
 import (
 	"net"
-	"net/http"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -22,8 +20,6 @@ type (
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
-		mux          rawServer
-		httpHandler  http.Handler
 		addr         string
 	}
 
@@ -45,12 +41,16 @@ func New(opts ...funcopt.O) *T {
 		return nil
 	}
 	t.T = subdaemon.New(
-		subdaemon.WithName("listenerRaw"),
+		subdaemon.WithName("lsnr-raw-ux"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
 	)
-	t.log = t.Log()
-	t.mux = rawmux.New(t.httpHandler, t.log, 5*time.Second)
+	t.log = t.Log().
+		With().
+		Str("addr", t.addr).
+		Str("sub", t.Name()).
+		Logger()
+	t.Ctx = daemonctx.WithLogger(t.Ctx, t.log)
 	return t
 }
 

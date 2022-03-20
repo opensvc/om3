@@ -3,8 +3,11 @@ package lsnrrawinet
 import (
 	"net"
 	"strings"
+	"time"
 
 	"opensvc.com/opensvc/daemon/listener/encryptconn"
+	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
+	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
 )
 
 func (t *T) stop() error {
@@ -22,6 +25,7 @@ func (t *T) start() error {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
 	}
+	mux := rawmux.New(httpmux.New(t.Ctx), t.log, 5*time.Second)
 	c := make(chan bool)
 	go func() {
 		c <- true
@@ -36,7 +40,7 @@ func (t *T) start() error {
 				}
 			}
 			clearConn := encryptconn.New(conn)
-			go t.mux.Serve(clearConn)
+			go mux.Serve(clearConn)
 		}
 	}()
 	t.listener = &listener

@@ -163,8 +163,8 @@ func TestDaemonStartThenEventsReadAtLeastOneEvent(t *testing.T) {
 			readString := string(bytes.TrimRight(b, "\x00"))
 			fmt.Printf("Read: %s\n", readString)
 
-			require.Containsf(t, readString, "demo msg xxx",
-				"Expected '%s' in \n%s\n", "demo msg xxx", readString)
+			require.Containsf(t, readString, "event-subscribe",
+				"Expected '%s' in \n%s\n", "event-subscribe", readString)
 		})
 	}
 }

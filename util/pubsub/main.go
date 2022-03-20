@@ -30,7 +30,7 @@ type (
 
 	cmdUnsub struct {
 		subId uuid.UUID
-		resp  chan<- bool
+		resp  chan<- string
 	}
 )
 
@@ -85,15 +85,13 @@ func (t *T) Run(parent context.Context, name string) (chan<- interface{}, error)
 			case cmd := <-cmdC:
 				switch c := cmd.(type) {
 				case cmdPub:
-					log.Info().Msgf("pub %s", c.data)
-					for id, fn := range subs {
+					for _, fn := range subs {
 						running := make(chan bool)
 						go func() {
 							running <- true
 							fn(c.data)
 						}()
 						<-running
-						log.Info().Msgf("pub %s published on %s", c.data, subNames[id])
 					}
 					c.resp <- true
 				case cmdSub:
@@ -101,7 +99,7 @@ func (t *T) Run(parent context.Context, name string) (chan<- interface{}, error)
 					subs[id] = c.fn
 					subNames[id] = c.name
 					c.resp <- id
-					log.Info().Msgf("new subscriber %s", c.name)
+					log.Info().Msgf("subscribe %s", c.name)
 				case cmdUnsub:
 					name, ok := subNames[c.subId]
 					if !ok {
@@ -109,8 +107,8 @@ func (t *T) Run(parent context.Context, name string) (chan<- interface{}, error)
 					}
 					delete(subs, c.subId)
 					delete(subNames, c.subId)
-					c.resp <- true
-					log.Info().Msgf("unregister subscriber %s", name)
+					c.resp <- name
+					log.Info().Msgf("unsubscribe %s", name)
 				}
 			}
 		}
@@ -136,11 +134,11 @@ func Sub(cmdC chan<- interface{}, name string, fn func(interface{})) uuid.UUID {
 	return <-respC
 }
 
-func Unsub(cmdC chan<- interface{}, id uuid.UUID) {
-	respC := make(chan bool)
+func Unsub(cmdC chan<- interface{}, id uuid.UUID) string {
+	respC := make(chan string)
 	cmdC <- cmdUnsub{
 		subId: id,
 		resp:  respC,
 	}
-	<-respC
+	return <-respC
 }
