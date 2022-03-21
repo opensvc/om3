@@ -1,6 +1,8 @@
 package disks
 
-import "opensvc.com/opensvc/util/command"
+import (
+	"opensvc.com/opensvc/util/command"
+)
 
 type (
 	//
@@ -60,13 +62,20 @@ func (t Relations) leavesOf(parent string) map[string]interface{} {
 //   rootOf(lv1): sda
 //
 func (t Relations) rootOf(leaf string) string {
+	if d, ok := _devices[leaf]; ok {
+		if d.Type == "mpath" {
+			return leaf
+		}
+	}
 	for parent, pm := range t {
+		if parent == "" {
+			continue
+		}
 		for child, _ := range pm {
 			if child == leaf {
 				return t.rootOf(parent)
 			}
 		}
-		return leaf
 	}
 	return leaf
 }
