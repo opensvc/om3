@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package lvm2
@@ -26,6 +27,7 @@ type (
 		DataPercent     string `json:"data_percent"`
 		CopyPercent     string `json:"copy_percent"`
 		MetadataPercent string `json:"metadata_percent"`
+		MetadataDevices string `json:"metadata_devices"`
 		MovePV          string `json:"move_pv"`
 		ConvertPV       string `json:"convert_pv"`
 		MirrorLog       string `json:"mirror_log"`
@@ -69,6 +71,16 @@ const (
 	LVAttrStateSuspendedThinPoolCheckNeeded         LVAttr = 'C'
 	LVAttrStateUnknown                              LVAttr = 'X'
 )
+
+func DMDevPath(vg, lv string) string {
+	return "/dev/mapper/" + DMName(vg, lv)
+}
+
+func DMName(vg, lv string) string {
+	lv = strings.ReplaceAll(lv, "-", "--")
+	vg = strings.ReplaceAll(vg, "-", "--")
+	return vg + "-" + lv
+}
 
 func NewLV(vg string, lv string, opts ...funcopt.O) *LV {
 	t := LV{
@@ -184,7 +196,7 @@ func (t *LV) Devices() ([]*device.T, error) {
 	fqn := t.FQN()
 	cmd := command.New(
 		command.WithName("lvs"),
-		command.WithVarArgs("-o", "devices", "--reportformat", "json", fqn),
+		command.WithVarArgs("-o", "devices,metadata_devices", "--reportformat", "json", fqn),
 		command.WithLogger(t.Log()),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
@@ -207,8 +219,19 @@ func (t *LV) Devices() ([]*device.T, error) {
 	default:
 		return nil, fmt.Errorf("lv %s has multiple matches", fqn)
 	}
-	for _, s := range strings.Fields(data.Report[0].LV[0].Devices) {
+	devices := strings.Split(data.Report[0].LV[0].Devices, ",")
+	devices = append(devices, strings.Split(data.Report[0].LV[0].MetadataDevices, ",")...)
+	for _, s := range devices {
+		if s == "" {
+			continue
+		}
 		path := strings.Split(s, "(")[0]
+		if !strings.HasPrefix(path, "/") {
+			// implicitely a lv name in the same vg
+			// convert to a DeviceMapper devpath
+			// (rmeta are not exposed as /dev/<vg>/<lv>)
+			path = DMDevPath(t.VGName, path)
+		}
 		dev := device.New(path, device.WithLogger(t.Log()))
 		l = append(l, dev)
 	}

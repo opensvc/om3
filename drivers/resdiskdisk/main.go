@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/device"
 )
 
 const (
@@ -126,4 +127,8 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
 	return nil
+}
+
+func (t T) ClaimedDevices() []*device.T {
+	return t.ExposedDevices()
 }

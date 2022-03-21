@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package resdisklv
@@ -217,6 +218,10 @@ func (t T) Provisioned() (provisioned.T, error) {
 
 func (t T) exposedDevice() *device.T {
 	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
+}
+
+func (t T) ClaimedDevices() []*device.T {
+	return t.ExposedDevices()
 }
 
 func (t T) ExposedDevices() []*device.T {

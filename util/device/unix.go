@@ -1,3 +1,4 @@
+//go:build linux || solaris || freebsd || darwin
 // +build linux solaris freebsd darwin
 
 package device
@@ -15,6 +16,14 @@ func (t T) Stat() (unix.Stat_t, error) {
 	stat := unix.Stat_t{}
 	err := unix.Stat(t.path, &stat)
 	return stat, err
+}
+
+func (t T) MajorMinorStr() (string, error) {
+	major, minor, err := t.MajorMinor()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d:%d", major, minor), nil
 }
 
 func (t T) MajorMinor() (uint32, uint32, error) {

@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package resdiskmd
@@ -361,6 +362,10 @@ func (t T) SubDevices() []*device.T {
 	} else {
 		return l
 	}
+}
+
+func (t T) ClaimedDevices() []*device.T {
+	return t.SubDevices()
 }
 
 func (t T) Boot(ctx context.Context) error {

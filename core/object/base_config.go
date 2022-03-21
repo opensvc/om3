@@ -76,7 +76,7 @@ func (t Base) Orchestrate() string {
 }
 
 func (t Base) FQDN() string {
-	return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).String()
+	return fqdn.New(t.Path, t.Node().Config().GetString(key.Parse("cluster.name"))).String()
 }
 
 func (t Base) Env() string {
