@@ -35,7 +35,7 @@ func (t *CmdObjectPrintDevices) Init(kind string, parent *cobra.Command, selecto
 func (t *CmdObjectPrintDevices) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "devices",
-		Short:   "Print selected objects exposed, used and base block devices",
+		Short:   "Print selected objects and resources exposed, used, base and claimed block devices",
 		Aliases: []string{"device", "devic", "devi", "dev", "devs", "de"},
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)

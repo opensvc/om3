@@ -26,6 +26,7 @@ const (
 	RoleExposed Role = iota
 	RoleSub
 	RoleBase
+	RoleClaimed
 )
 
 var (
@@ -33,11 +34,13 @@ var (
 		RoleExposed: "exposed",
 		RoleSub:     "sub",
 		RoleBase:    "base",
+		RoleClaimed: "claimed",
 	}
 	stringToRole = map[string]Role{
 		"exposed": RoleExposed,
 		"sub":     RoleSub,
 		"base":    RoleBase,
+		"claimed": RoleClaimed,
 	}
 )
 

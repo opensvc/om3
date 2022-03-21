@@ -23,6 +23,9 @@ type (
 	devBaser interface {
 		BaseDevices() []*device.T
 	}
+	devClaimer interface {
+		ClaimedDevices() []*device.T
+	}
 )
 
 func (t *Base) newObjectdevice(dev *device.T, role objectdevice.Role, r resource.Driver) objectdevice.T {
@@ -39,13 +42,13 @@ func (t *Base) newObjectdevice(dev *device.T, role objectdevice.Role, r resource
 
 // PrintDevices display the object base, sub and exposed devices
 func (t *Base) PrintDevices(options OptsPrintDevices) objectdevice.L {
-	var exposed, sub, base bool
+	var exposed, sub, base, claimed bool
 	m := make(map[string]interface{})
 	for _, role := range strings.Split(options.Roles, ",") {
 		m[role] = nil
 	}
 	if _, ok := m["all"]; ok {
-		return t.printDevices(true, true, true)
+		return t.printDevices(true, true, true, true)
 	}
 	if _, ok := m["exposed"]; ok {
 		exposed = true
@@ -56,10 +59,13 @@ func (t *Base) PrintDevices(options OptsPrintDevices) objectdevice.L {
 	if _, ok := m["base"]; ok {
 		base = true
 	}
-	return t.printDevices(exposed, sub, base)
+	if _, ok := m["claimed"]; ok {
+		claimed = true
+	}
+	return t.printDevices(exposed, sub, base, claimed)
 }
 
-func (t *Base) printDevices(exposed bool, sub bool, base bool) objectdevice.L {
+func (t *Base) printDevices(exposed, sub, base, claimed bool) objectdevice.L {
 	l := objectdevice.NewList()
 	for _, r := range t.Resources() {
 		var i interface{} = r
@@ -81,6 +87,13 @@ func (t *Base) printDevices(exposed bool, sub bool, base bool) objectdevice.L {
 			if o, ok := i.(devBaser); ok {
 				for _, dev := range o.BaseDevices() {
 					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleBase, r))
+				}
+			}
+		}
+		if claimed {
+			if o, ok := i.(devClaimer); ok {
+				for _, dev := range o.ClaimedDevices() {
+					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleClaimed, r))
 				}
 			}
 		}
