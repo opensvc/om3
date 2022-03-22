@@ -464,24 +464,26 @@ func (t T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
-func (t *T) SubDevices() ([]*device.T, error) {
+func (t *T) ClaimedDevices() []*device.T {
+	return t.SubDevices()
+}
+
+func (t *T) SubDevices() []*device.T {
 	l := make([]*device.T, 0)
 	fs := t.fs()
 	if !fs.IsMultiDevice() {
 		l = append(l, t.device())
-		return l, nil
+		return l
 	}
-	return l, fmt.Errorf("TODO: multi dev SubDevices()")
+	t.Log().Warn().Msg("TODO: multi dev SubDevices()")
+	return l
 }
 
 func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 	if !t.PromoteRW {
 		return nil
 	}
-	devices, err := t.SubDevices()
-	if err != nil {
-		return err
-	}
+	devices := t.SubDevices()
 	for _, dev := range devices {
 		currentRO, err := dev.IsReadOnly()
 		if err != nil {

@@ -385,12 +385,6 @@ func (t *T) validateDevice() error {
 	return nil
 }
 
-/*
-func (t *T) SubDevices() ([]*device.T, error) {
-	return []*device.T{}
-}
-*/
-
 func (t *T) isMounted() (bool, error) {
 	v, err := findmnt.Has(t.Device, t.mountPoint())
 	return v, err

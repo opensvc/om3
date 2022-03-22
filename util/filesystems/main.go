@@ -19,7 +19,7 @@ type (
 	}
 
 	subDeviceLister interface {
-		SubDevices() ([]*device.T, error)
+		SubDevices() []*device.T
 	}
 
 	I interface {
@@ -157,10 +157,7 @@ func DevicesFSCK(fs interface{}, dl subDeviceLister) error {
 	if !ok {
 		return nil
 	}
-	devices, err := dl.SubDevices()
-	if err != nil {
-		return err
-	}
+	devices := dl.SubDevices()
 	for _, dev := range devices {
 		if err := i.FSCK(dev.Path()); err != nil {
 			return err
@@ -174,10 +171,7 @@ func DevicesFormated(fs interface{}, dl subDeviceLister) (bool, error) {
 	if !ok {
 		return false, errors.New("isFormated is not implemented")
 	}
-	devices, err := dl.SubDevices()
-	if err != nil {
-		return false, err
-	}
+	devices := dl.SubDevices()
 	if len(devices) == 0 {
 		return false, errors.New("no devices")
 	}
