@@ -132,7 +132,7 @@ func (t T) updateSubDevsFile() ([]string, error) {
 	} else if !v {
 		return nil, nil
 	}
-	l, err := t.poolListVDevs()
+	l, err := t.pool().VDevPaths()
 	if err != nil {
 		return nil, errors.Wrap(err, "update sub devs cache")
 	}
@@ -181,14 +181,6 @@ func (t T) loadSubDevsFile() ([]string, error) {
 
 func (t T) hasIt() (bool, error) {
 	return t.pool().Exists()
-}
-
-func (t T) poolListVDevs() ([]string, error) {
-	if status, err := t.pool().Status(); err != nil {
-		return nil, err
-	} else {
-		return status.VDevs.Paths(), nil
-	}
 }
 
 func (t T) poolListZDevs() ([]string, error) {

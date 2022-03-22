@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -127,4 +128,24 @@ func (t *Pool) Status(fopts ...funcopt.O) (PoolStatusData, error) {
 		return PoolStatusData{}, err
 	}
 	return parsePoolStatus(b), nil
+}
+
+func (t *Pool) VDevPaths() ([]string, error) {
+	if status, err := t.Status(); err != nil {
+		return nil, err
+	} else {
+		return status.VDevs.Paths(), nil
+	}
+}
+
+func (t *Pool) VDevDevices() ([]*device.T, error) {
+	paths, err := t.VDevPaths()
+	if err != nil {
+		return []*device.T{}, err
+	}
+	l := make([]*device.T, len(paths))
+	for i, path := range paths {
+		l[i] = device.New(path)
+	}
+	return l, nil
 }

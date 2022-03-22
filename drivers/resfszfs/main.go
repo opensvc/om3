@@ -548,3 +548,12 @@ func (t T) getMountPointProperty() (string, error) {
 func (t T) Head() string {
 	return t.MountPoint
 }
+
+func (t T) ClaimedDevices() []*device.T {
+	return t.SubDevices()
+}
+
+func (t T) SubDevices() []*device.T {
+	devs, _ := t.pool().VDevDevices()
+	return devs
+}
