@@ -44,7 +44,7 @@ func (t *CmdObjectPrintDevices) cmd(kind string, selector *string) *cobra.Comman
 }
 
 func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) objectdevice.L {
-	if t.Global.Local {
+	if t.Global.Local || (t.Global.NodeSelector == "" && !clientcontext.IsSet()) {
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
