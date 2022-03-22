@@ -137,7 +137,7 @@ func (t Disks) Render() string {
 				regClaimer = reg.Object
 			}
 			n.AddColumn().AddText(regClaimer).SetColor(rawconfig.Node.Color.Secondary)
-			n.AddColumn().AddText(sizeconv.BSizeCompact(float64(reg.Size)))
+			n.AddColumn().AddText(sizeconv.BSizeCompact(float64(reg.Size))).SetColor(rawconfig.Node.Color.Secondary)
 		}
 	}
 	return tree.Render()
