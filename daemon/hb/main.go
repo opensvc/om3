@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/util/hostname"
 
@@ -56,10 +57,11 @@ func New(opts ...funcopt.O) *T {
 }
 
 // pingMsg function is for demo
-func pingMsg() ([]byte, error) {
+func pingMsg(gen map[string]uint64) ([]byte, error) {
 	msg := hbtype.Msg{
 		Kind:     "ping",
 		Nodename: hostname.Hostname(),
+		Gen:      gen,
 	}
 	return json.Marshal(msg)
 }
@@ -117,8 +119,13 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	}()
 	go func() {
 		// for demo loop on sending ping messages
+		dataBus := daemondatactx.DaemonData(t.Ctx)
 		for {
-			d, _ := pingMsg()
+			gen := dataBus.GetLocalNodeStatus().Gen
+			d, err := pingMsg(gen)
+			if err != nil {
+				return
+			}
 			dataC <- d
 			time.Sleep(time.Second)
 		}
@@ -127,14 +134,15 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		// for demo handle received messages
 		count := 0.0
 		bgCtx := context.Background()
-		ctx, _ := context.WithTimeout(bgCtx, 10*time.Second)
+		ctx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
+		defer cancel()
 		for {
 			select {
 			case <-ctx.Done():
 				t.log.Info().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
-				ctx, _ = context.WithTimeout(bgCtx, 10*time.Second)
 				count = 0
-			case <-msgC:
+			case msg := <-msgC:
+				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				count++
 			}
 		}
