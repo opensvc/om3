@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
@@ -62,6 +63,17 @@ func pingMsg(gen map[string]uint64) ([]byte, error) {
 		Kind:     "ping",
 		Nodename: hostname.Hostname(),
 		Gen:      gen,
+	}
+	return json.Marshal(msg)
+}
+
+// fullMsg function is for demo
+func fullMsg(nodeStatus *cluster.NodeStatus) ([]byte, error) {
+	msg := hbtype.Msg{
+		Kind:     "full",
+		Nodename: hostname.Hostname(),
+		Full:     *nodeStatus,
+		Gen:      nodeStatus.Gen,
 	}
 	return json.Marshal(msg)
 }
@@ -128,6 +140,19 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 			}
 			dataC <- d
 			time.Sleep(time.Second)
+		}
+	}()
+	go func() {
+		// for demo loop on sending full messages
+		dataBus := daemondatactx.DaemonData(t.Ctx)
+		for {
+			nodeStatus := dataBus.GetLocalNodeStatus()
+			d, err := fullMsg(nodeStatus)
+			if err != nil {
+				return
+			}
+			dataC <- d
+			time.Sleep(5 * time.Second)
 		}
 	}()
 	go func() {
