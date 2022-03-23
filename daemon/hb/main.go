@@ -159,13 +159,14 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		// for demo handle received messages
 		count := 0.0
 		bgCtx := context.Background()
-		ctx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
+		demoCtx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
 		defer cancel()
 		dataBus := daemondatactx.DaemonData(ctx)
 		for {
 			select {
-			case <-ctx.Done():
+			case <-demoCtx.Done():
 				t.log.Info().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+				demoCtx, cancel = context.WithTimeout(bgCtx, 10*time.Second)
 				count = 0
 			case msg := <-msgC:
 				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
