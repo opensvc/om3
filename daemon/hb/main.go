@@ -136,6 +136,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		bgCtx := context.Background()
 		ctx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
 		defer cancel()
+		dataBus := daemondatactx.DaemonData(ctx)
 		for {
 			select {
 			case <-ctx.Done():
@@ -143,6 +144,11 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 				count = 0
 			case msg := <-msgC:
 				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				switch msg.Kind {
+				case "full":
+					t.log.Info().Msgf("Full msg from %s gens: %v", msg.Nodename, msg.Full.Gen)
+					dataBus.ApplyFull(msg.Nodename, &msg.Full)
+				}
 				count++
 			}
 		}
