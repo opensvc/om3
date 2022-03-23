@@ -33,6 +33,27 @@ func NewPatch(b []byte) Patch {
 	return ps
 }
 
+func NewPatchFromOperations(ops []Operation) *Patch {
+	patch := make(Patch, 0)
+	for _, op := range ops {
+		patch = append(patch, op)
+	}
+	return &patch
+}
+
+func (o *Operation) UnmarshalJSON(b []byte) error {
+	var data []*json.RawMessage
+	json.Unmarshal(b, &data)
+	json.Unmarshal(*data[0], &o.OpPath)
+	if len(data) == 2 {
+		o.OpValue = data[1]
+		o.OpKind = "replace"
+	} else {
+		o.OpKind = "remove"
+	}
+	return nil
+}
+
 // NewOperation allocates and initializes a patch
 func NewOperation(b *json.RawMessage) Operation {
 	o := Operation{}
