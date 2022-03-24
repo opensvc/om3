@@ -69,13 +69,16 @@ func pingMsg(gen map[string]uint64) ([]byte, error) {
 
 // fullMsg function is for demo
 func fullMsg(nodeStatus *cluster.NodeStatus) ([]byte, error) {
-	msg := hbtype.Msg{
-		Kind:     "full",
-		Nodename: hostname.Hostname(),
-		Full:     *nodeStatus,
-		Gen:      nodeStatus.Gen,
-	}
-	return json.Marshal(msg)
+	// TODO for 3
+	//msg := hbtype.Msg{
+	//	Kind:     "full",
+	//	Nodename: hostname.Hostname(),
+	//	Full:     *nodeStatus,
+	//	Gen:      nodeStatus.Gen,
+	//}
+	//return json.Marshal(msg)
+	// For b2.1
+	return json.Marshal(*nodeStatus)
 }
 
 func (t *T) MainStart() error {
@@ -149,6 +152,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 			nodeStatus := dataBus.GetLocalNodeStatus()
 			d, err := fullMsg(nodeStatus)
 			if err != nil {
+				t.log.Debug().Err(err).Msg("create fullMsg")
 				return
 			}
 			dataC <- d
