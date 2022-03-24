@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -43,17 +44,27 @@ func NewMessage(b []byte) *Message {
 	return m
 }
 
-// Decrypt decrypts the message, if the nodename found in the message is a
-// cluster node.
-func (m *Message) Decrypt() ([]byte, error) {
+// DecryptWithNode Decrypt the message
+//
+// returns decodedMsg []byte, nodename string, error
+func (m *Message) DecryptWithNode() ([]byte, string, error) {
+	var b []byte
 	key := []byte(m.Key)
 	msg := &encryptedMessage{}
 	err := json.Unmarshal(m.Data, msg)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// TODO: test nodename and clustername, plug blacklist
-	return decode(msg.Data, msg.IV, key)
+	b, err = decode(msg.Data, msg.IV, key)
+	return b, msg.NodeName, err
+}
+
+// Decrypt decrypts the message, if the nodename found in the message is a
+// cluster node.
+func (m *Message) Decrypt() (b []byte, err error) {
+	b, _, err = m.DecryptWithNode()
+	return
 }
 
 // Encrypt encrypts the message and returns a json with head keys describing
