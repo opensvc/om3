@@ -165,15 +165,16 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		for {
 			select {
 			case <-demoCtx.Done():
-				t.log.Info().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+				t.log.Debug().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 				demoCtx, cancel = context.WithTimeout(bgCtx, 10*time.Second)
 				count = 0
 			case msg := <-msgC:
 				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				switch msg.Kind {
 				case "full":
-					t.log.Info().Msgf("Full msg from %s gens: %v", msg.Nodename, msg.Full.Gen)
 					dataBus.ApplyFull(msg.Nodename, &msg.Full)
+				case "patch":
+					dataBus.ApplyPatch(msg.Nodename, msg)
 				}
 				count++
 			}
