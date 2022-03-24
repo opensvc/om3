@@ -2,8 +2,10 @@ package daemondata
 
 import (
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 func newData(counterCmd chan<- interface{}) *data {
@@ -35,10 +37,23 @@ func newData(counterCmd chan<- interface{}) *data {
 
 func newNodeStatus(localNode string) cluster.NodeStatus {
 	nodeStatus := cluster.NodeStatus{
-		Gen:      map[string]uint64{localNode: 0},
-		Monitor:  cluster.NodeMonitor{},
-		Services: cluster.NodeServices{},
-		Stats:    cluster.NodeStatusStats{},
+		Agent:           "omg2",
+		Speaker:         false,
+		API:             7,
+		Arbitrators:     map[string]cluster.ArbitratorStatus{},
+		Compat:          10,
+		Env:             "",
+		Frozen:          timestamp.T{},
+		Gen:             map[string]uint64{localNode: 2},
+		Labels:          map[string]string{},
+		MinAvailMemPct:  0,
+		MinAvailSwapPct: 0,
+		Monitor:         cluster.NodeMonitor{},
+		Services: cluster.NodeServices{
+			Config: map[string]instance.Config{},
+			Status: map[string]instance.Status{},
+		},
+		Stats: cluster.NodeStatusStats{},
 	}
 	return nodeStatus
 }
