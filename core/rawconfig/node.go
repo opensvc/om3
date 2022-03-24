@@ -90,7 +90,12 @@ func setDefaults(root string) {
 	NodeViper.SetDefault("palette.frozen", palette.DefaultFrozen)
 }
 
-// Load initializes the Viper and Config globals
+func init() {
+	Load(nil)
+}
+
+// Load initializes the Viper and Config globals.
+// Done once in package init(), but can be called again to force env variables or detect changes.
 func Load(env map[string]string) {
 	NodeViper = viper.New()
 	NodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

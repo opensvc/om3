@@ -112,16 +112,18 @@ func Configure(config Config) *Logger {
 	}
 	logger := l.Logger()
 
-	logger.Debug().
-		Bool("fileLogging", config.FileLoggingEnabled).
-		Bool("jsonLogOutput", config.EncodeLogsAsJSON).
-		Bool("withCaller", config.WithCaller).
-		Str("logDirectory", config.Directory).
-		Str("fileName", config.Filename).
-		Int("maxSizeMB", config.MaxSize).
-		Int("maxBackups", config.MaxBackups).
-		Int("maxAgeInDays", config.MaxAge).
-		Msg("logging configured")
+	/*
+		logger.Debug().
+			Bool("fileLogging", config.FileLoggingEnabled).
+			Bool("jsonLogOutput", config.EncodeLogsAsJSON).
+			Bool("withCaller", config.WithCaller).
+			Str("logDirectory", config.Directory).
+			Str("fileName", config.Filename).
+			Int("maxSizeMB", config.MaxSize).
+			Int("maxBackups", config.MaxBackups).
+			Int("maxAgeInDays", config.MaxAge).
+			Msg("logging configured")
+	*/
 
 	return &Logger{
 		Logger: &logger,

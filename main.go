@@ -18,10 +18,8 @@ package main
 
 import (
 	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/rawconfig"
 )
 
 func main() {
-	rawconfig.Load(nil)
 	cmd.Execute()
 }

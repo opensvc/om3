@@ -96,13 +96,6 @@ func listNodes() []string {
 }
 
 func configureLogger() {
-
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	zerolog.TimestampFieldName = "t"
-	zerolog.LevelFieldName = "l"
-	zerolog.MessageFieldName = "m"
-	logging.WithCaller = callerFlag
-
 	if colorLogFlag == "no" {
 		logging.DisableDefaultConsoleWriterColor()
 	}
@@ -111,6 +104,14 @@ func configureLogger() {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+}
+
+func initLogger() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimestampFieldName = "t"
+	zerolog.LevelFieldName = "l"
+	zerolog.MessageFieldName = "m"
+	logging.WithCaller = callerFlag
 
 	l := logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
@@ -209,6 +210,7 @@ func guessSubsystem(s string) string {
 }
 
 func init() {
+	initLogger()
 	cobra.OnInitialize(initConfig)
 
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
