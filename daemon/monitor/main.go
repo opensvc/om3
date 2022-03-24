@@ -6,10 +6,12 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -97,4 +99,13 @@ func (t *T) loop(c chan bool) {
 
 func (t *T) aLoop() {
 	t.log.Debug().Msg("loop")
+	// For demo
+	dataCmd := daemondatactx.DaemonData(t.Ctx)
+	dataCmd.CommitPending()
+	nodeData := dataCmd.GetLocalNodeStatus()
+	localhost := hostname.Hostname()
+	gen := nodeData.Gen[localhost]
+	nodeData.Gen[localhost] = gen + 1
+	dataCmd.ApplyFull(localhost, nodeData)
+	dataCmd.CommitPending()
 }

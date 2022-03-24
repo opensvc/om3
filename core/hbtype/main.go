@@ -10,18 +10,15 @@ import (
 type (
 	// Msg struct holds hb message
 	Msg struct {
-		Kind     string              `json:"kind"`
-		Compat   int                 `json:"compat"`
-		Gen      map[string]uint64   `json:"gen"`
-		Updated  timestamp.T         `json:"updated"`
-		Ping     cluster.NodeMonitor `json:"monitor"` // monitor from 2.1
-		Deltas   map[string]Patches  `json:"deltas"`
-		Full     cluster.NodeStatus  `json:"full"` // Msg from 2.1
-		Nodename string              `json:"nodename"`
+		Kind     string                     `json:"kind"`
+		Compat   int                        `json:"compat"`
+		Gen      map[string]uint64          `json:"gen"`
+		Updated  timestamp.T                `json:"updated"`
+		Ping     cluster.NodeMonitor        `json:"monitor"` // monitor from 2.1
+		Deltas   map[string]jsondelta.Patch `json:"deltas"`
+		Full     cluster.NodeStatus         `json:"full"` // Msg from 2.1
+		Nodename string                     `json:"nodename"`
 	}
-
-	// Patches is a slice of jsondelta.Patch
-	Patches []jsondelta.Patch
 
 	// Transmitter is the interface that wraps the basic methods for hb driver to send hb messages
 	Transmitter interface {

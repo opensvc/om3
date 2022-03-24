@@ -8,9 +8,11 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/util/hostname"
 
@@ -56,10 +58,22 @@ func New(opts ...funcopt.O) *T {
 }
 
 // pingMsg function is for demo
-func pingMsg() ([]byte, error) {
+func pingMsg(gen map[string]uint64) ([]byte, error) {
 	msg := hbtype.Msg{
 		Kind:     "ping",
 		Nodename: hostname.Hostname(),
+		Gen:      gen,
+	}
+	return json.Marshal(msg)
+}
+
+// fullMsg function is for demo
+func fullMsg(nodeStatus *cluster.NodeStatus) ([]byte, error) {
+	msg := hbtype.Msg{
+		Kind:     "full",
+		Nodename: hostname.Hostname(),
+		Full:     *nodeStatus,
+		Gen:      nodeStatus.Gen,
 	}
 	return json.Marshal(msg)
 }
@@ -117,24 +131,50 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	}()
 	go func() {
 		// for demo loop on sending ping messages
+		dataBus := daemondatactx.DaemonData(t.Ctx)
 		for {
-			d, _ := pingMsg()
+			gen := dataBus.GetLocalNodeStatus().Gen
+			d, err := pingMsg(gen)
+			if err != nil {
+				return
+			}
 			dataC <- d
 			time.Sleep(time.Second)
+		}
+	}()
+	go func() {
+		// for demo loop on sending full messages
+		dataBus := daemondatactx.DaemonData(t.Ctx)
+		for {
+			nodeStatus := dataBus.GetLocalNodeStatus()
+			d, err := fullMsg(nodeStatus)
+			if err != nil {
+				return
+			}
+			dataC <- d
+			time.Sleep(5 * time.Second)
 		}
 	}()
 	go func() {
 		// for demo handle received messages
 		count := 0.0
 		bgCtx := context.Background()
-		ctx, _ := context.WithTimeout(bgCtx, 10*time.Second)
+		demoCtx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
+		defer cancel()
+		dataBus := daemondatactx.DaemonData(ctx)
 		for {
 			select {
-			case <-ctx.Done():
+			case <-demoCtx.Done():
 				t.log.Info().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
-				ctx, _ = context.WithTimeout(bgCtx, 10*time.Second)
+				demoCtx, cancel = context.WithTimeout(bgCtx, 10*time.Second)
 				count = 0
-			case <-msgC:
+			case msg := <-msgC:
+				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				switch msg.Kind {
+				case "full":
+					t.log.Info().Msgf("Full msg from %s gens: %v", msg.Nodename, msg.Full.Gen)
+					dataBus.ApplyFull(msg.Nodename, &msg.Full)
+				}
 				count++
 			}
 		}
