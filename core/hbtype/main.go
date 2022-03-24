@@ -86,14 +86,14 @@ func New(b []byte, nodename string) (*Msg, error) {
 			}
 		}
 	} else {
-		full := &cluster.NodeStatus{}
+		full := cluster.NodeStatus{}
 		if err := json.Unmarshal(b, &full); err != nil {
 			return nil, err
 		}
 		msg = &Msg{
 			Kind:     "full",
 			Gen:      full.Gen,
-			Full:     *full,
+			Full:     full,
 			Nodename: nodename,
 		}
 	}
