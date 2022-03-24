@@ -99,9 +99,15 @@ func (t *T) loop(c chan bool) {
 
 var (
 	// For demo
-	demoAvail  string
-	demoRemote = "u2004-local-2"
-	demoSvc    = "demo"
+	demoAvails = map[string]string{
+		"dev1n1":        "",
+		"dev1n2":        "",
+		"dev1n3":        "",
+		"u2004-local-1": "",
+		"u2004-local-2": "",
+		"u2004-local-3": "",
+	}
+	demoSvc = "demo"
 )
 
 func (t *T) aLoop() {
@@ -110,12 +116,14 @@ func (t *T) aLoop() {
 	dataCmd := daemondatactx.DaemonData(t.Ctx)
 	dataCmd.CommitPending()
 	status := dataCmd.GetStatus()
-	remoteNodeStatus := daemondata.GetNodeStatus(status, demoRemote)
-	if remoteNodeStatus != nil {
-		if demoStatus, ok := remoteNodeStatus.Services.Status[demoSvc]; ok {
-			if demoAvail != demoStatus.Avail.String() {
-				t.log.Info().Msgf("%s %s status changed from %s -> %s", demoRemote, demoSvc, demoAvail, demoStatus.Avail.String())
-				demoAvail = demoStatus.Avail.String()
+	for remote, v := range demoAvails {
+		remoteNodeStatus := daemondata.GetNodeStatus(status, remote)
+		if remoteNodeStatus != nil {
+			if demoStatus, ok := remoteNodeStatus.Services.Status[demoSvc]; ok {
+				if v != demoStatus.Avail.String() {
+					t.log.Info().Msgf("%s@%s status changed from %s -> %s", demoSvc, remote, v, demoStatus.Avail.String())
+					demoAvails[remote] = demoStatus.Avail.String()
+				}
 			}
 		}
 	}
