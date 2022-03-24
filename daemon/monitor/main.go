@@ -6,12 +6,12 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -38,7 +38,7 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		TCtx:        daemonctx.TCtx{},
-		loopDelay:   1 * time.Second,
+		loopDelay:   5 * time.Second,
 		loopEnabled: enable.New(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
@@ -97,15 +97,32 @@ func (t *T) loop(c chan bool) {
 	}
 }
 
+var (
+	// For demo
+	demoAvail  string
+	demoRemote = "u2004-local-2"
+	demoSvc    = "demo"
+)
+
 func (t *T) aLoop() {
 	t.log.Debug().Msg("loop")
 	// For demo
 	dataCmd := daemondatactx.DaemonData(t.Ctx)
 	dataCmd.CommitPending()
-	nodeData := dataCmd.GetLocalNodeStatus()
-	localhost := hostname.Hostname()
-	gen := nodeData.Gen[localhost]
-	nodeData.Gen[localhost] = gen + 1
-	dataCmd.ApplyFull(localhost, nodeData)
-	dataCmd.CommitPending()
+	status := dataCmd.GetStatus()
+	remoteNodeStatus := daemondata.GetNodeStatus(status, demoRemote)
+	if remoteNodeStatus != nil {
+		if demoStatus, ok := remoteNodeStatus.Services.Status[demoSvc]; ok {
+			if demoAvail != demoStatus.Avail.String() {
+				t.log.Info().Msgf("%s %s status changed from %s -> %s", demoRemote, demoSvc, demoAvail, demoStatus.Avail.String())
+				demoAvail = demoStatus.Avail.String()
+			}
+		}
+	}
+	//nodeData := dataCmd.GetLocalNodeStatus()
+	//localhost := hostname.Hostname()
+	//gen := nodeData.Gen[localhost]
+	//nodeData.Gen[localhost] = gen + 1
+	//dataCmd.ApplyFull(localhost, nodeData)
+	//dataCmd.CommitPending()
 }
