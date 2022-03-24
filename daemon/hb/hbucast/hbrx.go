@@ -109,17 +109,16 @@ func (r *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 }
 
 var (
-	msgBufferCount = 2
-	msgUsualSize   = 1000     // usual event size
-	msgMaxSize     = 10000000 // max kind=full event size
-	msgBufferChan  = make(chan *[]byte, msgBufferCount)
+	msgBufferCount = 4
+	msgMaxSize     = 10000000 // max kind=full msg size
+	msgBufferChan  = make(chan []byte, msgBufferCount)
 )
 
 func init() {
 	// Use cached buffers to reduce cpu when many message are scanned
 	for i := 0; i < msgBufferCount; i++ {
-		b := make([]byte, msgUsualSize, msgMaxSize)
-		msgBufferChan <- &b
+		b := make([]byte, msgMaxSize)
+		msgBufferChan <- b
 	}
 }
 
@@ -127,9 +126,8 @@ func (r *rx) handle(conn encryptconn.ConnNoder) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	b := <-msgBufferChan
-	defer func() { msgBufferChan <- b }()
-	data := *b
+	data := <-msgBufferChan
+	defer func() { msgBufferChan <- data }()
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
 		r.log.Debug().Err(err).Msgf("read err: %v", data)
