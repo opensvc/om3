@@ -16,6 +16,11 @@ type (
 	T struct {
 		net.Conn
 	}
+
+	ConnNoder interface {
+		net.Conn
+		ReadWithNode(b []byte) (n int, nodename string, err error)
+	}
 )
 
 // New returns a new *T that will use encrypted net.Conn
@@ -45,14 +50,22 @@ func (t *T) Write(b []byte) (n int, err error) {
 //
 // read and decrypt data read from t.Conn
 func (t *T) Read(b []byte) (n int, err error) {
+	n, _, err = t.ReadWithNode(b)
+	return
+}
+
+// ReadWithNode implement ConnNoder interface for T
+//
+// read and decrypt data read from t.Conn
+func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 	encByteChan := make(chan []byte)
 	go reqjsonrpc.GetMessages(encByteChan, t.Conn)
 	encBytes := <-encByteChan
 	encMsg := reqjsonrpc.NewMessage(encBytes)
-	data, err := encMsg.Decrypt()
+	data, nodename, err := encMsg.DecryptWithNode()
 	if err != nil {
-		return 0, err
+		return 0, nodename, err
 	}
 	i := copy(b, data)
-	return i, nil
+	return i, nodename, nil
 }
