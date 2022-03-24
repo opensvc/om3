@@ -2,7 +2,6 @@ package hbucast
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"strings"
 	"time"
@@ -109,19 +108,36 @@ func (r *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	return nil
 }
 
-func (r *rx) handle(conn net.Conn) {
+var (
+	msgBufferCount = 2
+	msgUsualSize   = 1000     // usual event size
+	msgMaxSize     = 10000000 // max kind=full event size
+	msgBufferChan  = make(chan *[]byte, msgBufferCount)
+)
+
+func init() {
+	// Use cached buffers to reduce cpu when many message are scanned
+	for i := 0; i < msgBufferCount; i++ {
+		b := make([]byte, msgUsualSize, msgMaxSize)
+		msgBufferChan <- &b
+	}
+}
+
+func (r *rx) handle(conn encryptconn.ConnNoder) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	data := make([]byte, 4096)
-	i, err := conn.Read(data)
+	b := <-msgBufferChan
+	defer func() { msgBufferChan <- b }()
+	data := *b
+	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
 		r.log.Debug().Err(err).Msgf("read err: %v", data)
 		return
 	}
-	msg := &hbtype.Msg{}
-	if err := json.Unmarshal(data[:i], msg); err != nil {
-		r.log.Error().Err(err).Msgf("Unmarshal data: %s", data[:i])
+	msg, err := hbtype.New(data[:i], nodename)
+	if err != nil {
+		r.log.Debug().Err(err).Msgf("hbtype.New msg from %s", nodename)
 		return
 	}
 	r.cmdC <- hbctrl.CmdSetPeerSuccess{
