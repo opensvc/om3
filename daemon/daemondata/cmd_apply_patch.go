@@ -20,7 +20,7 @@ type opApplyRemotePatch struct {
 
 func (o opApplyRemotePatch) call(d *data) {
 	d.counterCmd <- idApplyPatch
-	d.log.Info().Msgf("opApplyRemotePatch for %s", o.nodename)
+	d.log.Debug().Msgf("opApplyRemotePatch for %s", o.nodename)
 	var b []byte
 	var err error
 	pendingNode, ok := d.pending.Monitor.Nodes[o.nodename]
