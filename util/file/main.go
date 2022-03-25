@@ -96,6 +96,37 @@ func Copy(src string, dst string) (err error) {
 	return nil
 }
 
+// Copy2 is Identical to Copy() except that Copy2() also attempts to preserve file metadata.
+func Copy2(src string, dst string) (err error) {
+	if err := Copy(src, dst); err != nil {
+		return err
+	}
+	if err := CopyMeta(src, dst); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CopyMeta clones the uid, gid, mtime and mode from src to dst
+func CopyMeta(src string, dst string) (err error) {
+	if info, err := os.Stat(src); err != nil {
+		return err
+	} else {
+		if err := os.Chmod(dst, info.Mode()); err != nil {
+			return err
+		}
+		if err := os.Chtimes(dst, time.Unix(0, 0), info.ModTime()); err != nil {
+			return err
+		}
+	}
+	if uid, gid, err := Ownership(src); err != nil {
+		return err
+	} else if err := os.Chown(dst, uid, gid); err != nil {
+		return err
+	}
+	return nil
+}
+
 //
 // ReadAll reads and return all content of the file at src
 //
