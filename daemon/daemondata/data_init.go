@@ -37,14 +37,14 @@ func newData(counterCmd chan<- interface{}) *data {
 
 func newNodeStatus(localNode string) cluster.NodeStatus {
 	nodeStatus := cluster.NodeStatus{
-		Agent:           "omg2",
+		Agent:           "3.0-0",
 		Speaker:         false,
 		API:             7,
 		Arbitrators:     map[string]cluster.ArbitratorStatus{},
 		Compat:          10,
 		Env:             "",
 		Frozen:          timestamp.T{},
-		Gen:             map[string]uint64{localNode: 2},
+		Gen:             map[string]uint64{localNode: 1},
 		Labels:          map[string]string{},
 		MinAvailMemPct:  0,
 		MinAvailSwapPct: 0,
