@@ -28,16 +28,20 @@ var (
 func (o opApplyRemotePatch) call(d *data) {
 	d.counterCmd <- idApplyPatch
 	d.log.Debug().Msgf("opApplyRemotePatch for %s", o.nodename)
-	var b []byte
-	var err error
+	var (
+		pendingB []byte
+		err      error
+		data     json.RawMessage
+	)
 	pendingNode, ok := d.pending.Monitor.Nodes[o.nodename]
 	if !ok {
 		o.err <- nil
 		return
 	}
 	pendingNodeGen := pendingNode.Gen[o.nodename]
-	b, err = json.Marshal(pendingNode)
+	pendingB, err = json.Marshal(pendingNode)
 	if err != nil {
+		d.log.Error().Err(err).Msgf("Marshal pendingNode%s", o.nodename)
 		o.err <- err
 		return
 	}
@@ -47,7 +51,7 @@ func (o opApplyRemotePatch) call(d *data) {
 		sortGens = append(sortGens, k)
 	}
 	sort.Strings(sortGens)
-
+	parentPath := jsondelta.OperationPath{"monitor", "nodes", o.nodename}
 	for genS := range deltas {
 		patchGen, err := strconv.ParseUint(string(genS), 10, 64)
 		if err != nil {
@@ -58,33 +62,45 @@ func (o opApplyRemotePatch) call(d *data) {
 		}
 		if patchGen > pendingNodeGen+1 {
 			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = uint64(0)
-			o.err <- errors.New("ApplyRemotePatch invalid patch gen: " + genS)
+			err := errors.New("ApplyRemotePatch invalid patch gen: " + genS)
+			d.log.Error().Err(err).Msgf("need full %s", o.nodename)
+			o.err <- err
 			return
 		}
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
-		var data json.RawMessage
-		if b, err := json.Marshal(patch); err != nil {
+		pendingB, err = patch.Apply(pendingB)
+		if err != nil {
+			d.log.Error().Err(err).Msgf("patch apply %s need full", o.nodename)
+			o.err <- err
+			return
+		}
+
+		absolutePatch := make(jsondelta.Patch, 0)
+		for _, op := range deltas[genS] {
+			absolutePatch = append(absolutePatch, jsondelta.Operation{
+				OpPath:  append(parentPath, op.OpPath...),
+				OpValue: op.OpValue,
+				OpKind:  op.OpKind,
+			})
+		}
+		if eventB, err := json.Marshal(absolutePatch); err != nil {
+			d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", o.nodename)
 			o.err <- err
 			return
 		} else {
-			data = b
+			data = eventB
+			eventId++
+			eventbus.Pub(d.eventCmd, event.Event{
+				Kind:      "patch",
+				ID:        eventId,
+				Timestamp: timestamp.Now(),
+				Data:      &data,
+			})
 		}
-		b, err = patch.Apply(b)
-		if err != nil {
-			o.err <- err
-			return
-		}
-		eventId++
-		eventbus.Pub(d.eventCmd, event.Event{
-			Kind:      "patch",
-			ID:        eventId,
-			Timestamp: timestamp.Now(),
-			Data:      &data,
-		})
 		pendingNodeGen = patchGen
 	}
 	pendingNode = cluster.NodeStatus{}
-	if err := json.Unmarshal(b, &pendingNode); err != nil {
+	if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
 		o.err <- err
 		return
 	}
