@@ -115,7 +115,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	time.Sleep(2 * time.Second)
 	go t.sendFull(dataC, 1, 5*time.Second)
 	time.Sleep(2 * time.Second)
-	go t.sendPatch(dataC, 100000000, 1*time.Microsecond)
+	go t.sendPatch(dataC, 100000000, 1*time.Second)
 
 	go func() {
 		// for demo handle received messages
