@@ -77,7 +77,8 @@ func (t *T) MainStart() error {
 func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) error {
 	n := clusterhb.New()
 	registeredDataC := make([]chan []byte, 0)
-	dataC := make(chan []byte)
+	var dataC chan []byte
+	dataC = daemonctx.HBSendQ(ctx)
 	for _, h := range n.Hbs() {
 		h.Configure(ctx)
 		rx := h.Rx()

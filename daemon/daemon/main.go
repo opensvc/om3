@@ -130,7 +130,7 @@ func (t *T) MainStart() error {
 		return err
 	}
 	t.Ctx = daemonctx.WithEventBusCmd(t.Ctx, evBusCmdC)
-
+	t.Ctx = daemonctx.WithHBSendQ(t.Ctx, make(chan []byte))
 	dataCmd, cancel := daemondata.Start(t.Ctx)
 	t.cancelFuncs = append(t.cancelFuncs, cancel)
 	t.Ctx = daemonctx.WithDaemonDataCmd(t.Ctx, dataCmd)
