@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
@@ -32,6 +33,7 @@ type (
 		loopEnabled   *enable.T
 		mandatorySubs map[string]sub
 		otherSubs     []string
+		cancelFuncs   []context.CancelFunc
 		routinehelper.TT
 	}
 	action struct {
@@ -90,6 +92,7 @@ func New(opts ...funcopt.O) *T {
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
 	)
+	t.cancelFuncs = make([]context.CancelFunc, 0)
 	t.log = t.Log()
 	t.loopC = make(chan action)
 	return t
@@ -128,6 +131,10 @@ func (t *T) MainStart() error {
 	}
 	t.Ctx = daemonctx.WithEventBusCmd(t.Ctx, evBusCmdC)
 
+	dataCmd, cancel := daemondata.Start(t.Ctx)
+	t.cancelFuncs = append(t.cancelFuncs, cancel)
+	t.Ctx = daemonctx.WithDaemonDataCmd(t.Ctx, dataCmd)
+
 	<-started
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
@@ -154,6 +161,9 @@ func (t *T) MainStop() error {
 		done := make(chan string)
 		t.loopC <- action{"stop", done}
 		<-done
+	}
+	for _, cancel := range t.cancelFuncs {
+		cancel()
 	}
 	t.CancelFunc()
 	t.log.Info().Msg("mgr stopped")
