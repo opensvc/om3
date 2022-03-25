@@ -47,6 +47,7 @@ var (
 	cmdNodeRegister          commands.CmdNodeRegister
 	cmdNodeScanCapabilities  commands.NodeScanCapabilities
 	cmdNodeSet               commands.NodeSet
+	cmdNodeSysreport         commands.CmdNodeSysreport
 	cmdNodeUnset             commands.NodeUnset
 )
 
@@ -78,5 +79,6 @@ func init() {
 	cmdNodeRegister.Init(nodeCmd)
 	cmdNodeScanCapabilities.Init(nodeScanCmd)
 	cmdNodeSet.Init(nodeCmd)
+	cmdNodeSysreport.Init(nodeCmd)
 	cmdNodeUnset.Init(nodeCmd)
 }
