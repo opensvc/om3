@@ -6,6 +6,7 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
@@ -79,6 +80,7 @@ type (
 		Children    []path.Relation                   `json:"children,omitempty"`
 		Slaves      []path.Relation                   `json:"slaves,omitempty"`
 		Scale       null.Int                          `json:"scale,omitempty"`
+		StatusGroup map[string]string                 `json:"status_group,omitempty"`
 	}
 
 	// ResourceOrder is a sortable list representation of the

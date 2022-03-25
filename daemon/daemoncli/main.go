@@ -113,7 +113,7 @@ func (t *T) Events() error {
 	}
 	for ev := range eventC {
 		log.Debug().Msgf("Events receive ev: %#v", ev)
-		if b, err := json.MarshalIndent(ev, "", "  "); err != nil {
+		if b, err := json.Marshal(ev); err != nil {
 			return err
 		} else {
 			fmt.Printf("%s\n", b)

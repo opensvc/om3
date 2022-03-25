@@ -2,20 +2,16 @@ package hb
 
 import (
 	"context"
-	"encoding/json"
 	"runtime"
 	"time"
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
-	"opensvc.com/opensvc/util/hostname"
-
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -57,27 +53,6 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-// pingMsg function is for demo
-func pingMsg(gen map[string]uint64) ([]byte, error) {
-	msg := hbtype.Msg{
-		Kind:     "ping",
-		Nodename: hostname.Hostname(),
-		Gen:      gen,
-	}
-	return json.Marshal(msg)
-}
-
-// fullMsg function is for demo
-func fullMsg(nodeStatus *cluster.NodeStatus) ([]byte, error) {
-	msg := hbtype.Msg{
-		Kind:     "full",
-		Nodename: hostname.Hostname(),
-		Full:     *nodeStatus,
-		Gen:      nodeStatus.Gen,
-	}
-	return json.Marshal(msg)
-}
-
 func (t *T) MainStart() error {
 	t.log.Info().Msg("mgr starting")
 	data := hbctrl.New(t.Ctx)
@@ -97,7 +72,6 @@ func (t *T) MainStart() error {
 func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) error {
 	n := clusterhb.New()
 	registeredDataC := make([]chan []byte, 0)
-	dataC := make(chan []byte)
 	for _, h := range n.Hbs() {
 		h.Configure(ctx)
 		rx := h.Rx()
@@ -118,6 +92,12 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	}
 	go func() {
 		// multiplex data messages to hb tx drivers
+		var dataC <-chan []byte
+		dataC = daemonctx.HBSendQ(t.Ctx)
+		if dataC == nil {
+			t.log.Error().Msg("unable to retrieve HBSendQ")
+			return
+		}
 		for {
 			select {
 			case <-ctx.Done():
@@ -129,32 +109,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 			}
 		}
 	}()
-	go func() {
-		// for demo loop on sending ping messages
-		dataBus := daemondatactx.DaemonData(t.Ctx)
-		for {
-			gen := dataBus.GetLocalNodeStatus().Gen
-			d, err := pingMsg(gen)
-			if err != nil {
-				return
-			}
-			dataC <- d
-			time.Sleep(time.Second)
-		}
-	}()
-	go func() {
-		// for demo loop on sending full messages
-		dataBus := daemondatactx.DaemonData(t.Ctx)
-		for {
-			nodeStatus := dataBus.GetLocalNodeStatus()
-			d, err := fullMsg(nodeStatus)
-			if err != nil {
-				return
-			}
-			dataC <- d
-			time.Sleep(5 * time.Second)
-		}
-	}()
+
 	go func() {
 		// for demo handle received messages
 		count := 0.0
@@ -165,15 +120,19 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		for {
 			select {
 			case <-demoCtx.Done():
-				t.log.Info().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+				t.log.Debug().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 				demoCtx, cancel = context.WithTimeout(bgCtx, 10*time.Second)
 				count = 0
 			case msg := <-msgC:
 				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				switch msg.Kind {
 				case "full":
-					t.log.Info().Msgf("Full msg from %s gens: %v", msg.Nodename, msg.Full.Gen)
 					dataBus.ApplyFull(msg.Nodename, &msg.Full)
+				case "patch":
+					err := dataBus.ApplyPatch(msg.Nodename, msg)
+					if err != nil {
+						t.log.Error().Err(err).Msgf("ApplyPatch %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+					}
 				}
 				count++
 			}

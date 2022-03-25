@@ -6,7 +6,7 @@ type opCommitPending struct {
 
 func (o opCommitPending) call(d *data) {
 	d.counterCmd <- idCommitPending
-	d.log.Info().Msg("opCommitPending")
+	d.log.Debug().Msg("opCommitPending")
 	d.current = deepCopy(d.pending)
 	o.done <- true
 }

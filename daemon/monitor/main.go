@@ -6,12 +6,10 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -38,7 +36,7 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		TCtx:        daemonctx.TCtx{},
-		loopDelay:   1 * time.Second,
+		loopDelay:   5 * time.Second,
 		loopEnabled: enable.New(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
@@ -64,6 +62,7 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	<-started
+	go t.demoOneShot()
 	t.log.Info().Msg("mgr started")
 	return nil
 }
@@ -100,12 +99,5 @@ func (t *T) loop(c chan bool) {
 func (t *T) aLoop() {
 	t.log.Debug().Msg("loop")
 	// For demo
-	dataCmd := daemondatactx.DaemonData(t.Ctx)
-	dataCmd.CommitPending()
-	nodeData := dataCmd.GetLocalNodeStatus()
-	localhost := hostname.Hostname()
-	gen := nodeData.Gen[localhost]
-	nodeData.Gen[localhost] = gen + 1
-	dataCmd.ApplyFull(localhost, nodeData)
-	dataCmd.CommitPending()
+	t.demoLoop()
 }

@@ -22,6 +22,7 @@ type (
 		localNode  string
 		counterCmd chan<- interface{}
 		log        zerolog.Logger
+		eventCmd   chan<- interface{}
 	}
 )
 
@@ -31,6 +32,9 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	d := newData(counterCmd)
 	d.log = daemonctx.Logger(ctx).With().Str("name", "daemon-data").Logger()
 	d.log.Info().Msg("starting")
+	d.eventCmd = daemonctx.EventBusCmd(ctx)
+
+	defer d.log.Info().Msg("stopped")
 	for {
 		select {
 		case <-ctx.Done():
@@ -44,7 +48,6 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 			}
 		}
 	}
-	d.log.Info().Msg("stopped")
 }
 
 func deepCopy(status *cluster.Status) *cluster.Status {
