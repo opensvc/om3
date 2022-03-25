@@ -54,6 +54,24 @@ func (o *Operation) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// MarshalJSON implements json.Marshaler interface for Operation
+func (o Operation) MarshalJSON() ([]byte, error) {
+	data := make([]json.RawMessage, 0)
+	b, err := json.Marshal(o.OpPath)
+	if err != nil {
+		return nil, err
+	}
+	data = append(data, b)
+	if o.OpKind != "remove" {
+		b, err := json.Marshal(o.OpValue)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, b)
+	}
+	return json.Marshal(data)
+}
+
 // NewOperation allocates and initializes a patch
 func NewOperation(b *json.RawMessage) Operation {
 	o := Operation{}
@@ -76,6 +94,13 @@ func NewOperationPath(data []interface{}) OperationPath {
 		p = append(p, v)
 	}
 	return p
+}
+
+// NewOptValue allocates and initializes an OpValue
+func NewOptValue(v interface{}) *json.RawMessage {
+	var b json.RawMessage
+	b, _ = json.Marshal(v)
+	return &b
 }
 
 // Kind returns the kind of operation, like remove or replace.
