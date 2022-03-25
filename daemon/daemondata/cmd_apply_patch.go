@@ -8,8 +8,11 @@ import (
 	"gopkg.in/errgo.v2/fmt/errors"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opApplyRemotePatch struct {
@@ -17,6 +20,10 @@ type opApplyRemotePatch struct {
 	msg      *hbtype.Msg
 	err      chan<- error
 }
+
+var (
+	eventId uint64
+)
 
 func (o opApplyRemotePatch) call(d *data) {
 	d.counterCmd <- idApplyPatch
@@ -55,11 +62,25 @@ func (o opApplyRemotePatch) call(d *data) {
 			return
 		}
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
+		var data json.RawMessage
+		if b, err := json.Marshal(patch); err != nil {
+			o.err <- err
+			return
+		} else {
+			data = b
+		}
 		b, err = patch.Apply(b)
 		if err != nil {
 			o.err <- err
 			return
 		}
+		eventId++
+		eventbus.Pub(d.eventCmd, event.Event{
+			Kind:      "patch",
+			ID:        eventId,
+			Timestamp: timestamp.Now(),
+			Data:      &data,
+		})
 		pendingNodeGen = patchGen
 	}
 	pendingNode = cluster.NodeStatus{}
