@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/client"
+
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 )
 
@@ -33,7 +33,7 @@ func daemonStatusCmdRun(_ *cobra.Command, _ []string) {
 	m.SetColor(colorFlag)
 	m.SetFormat(formatFlag)
 
-	cli, err := client.New(client.WithURL(serverFlag))
+	cli, err := newClient()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		return
