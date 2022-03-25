@@ -24,6 +24,7 @@ var (
 	contextDaemon      = contextKey("daemon")
 	contextDaemonData  = contextKey("daemondata-cmd")
 	contextEventBusCmd = contextKey("eventbus-cmd")
+	contextHBSendQueue = contextKey("hb-sendQ")
 	contextLogger      = contextKey("logger")
 	contextUuid        = contextKey("uuid")
 )
@@ -51,6 +52,16 @@ func EventBusCmd(ctx context.Context) (cmdC chan<- interface{}) {
 	panic("unable to retrieve context EventBusCmd")
 }
 
+// HBSendQ function returns HBSendQ from context
+func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
+	var ok bool
+	hbSendQ, ok = ctx.Value(contextHBSendQueue).(chan []byte)
+	if ok {
+		return
+	}
+	return nil
+}
+
 // WithDaemonDataCmd function returns copy of parent with daemonCmd.
 func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.Context {
 	return context.WithValue(parent, contextDaemonData, cmd)
@@ -59,6 +70,11 @@ func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.C
 // WithEventBusCmd function returns copy of parent with eventbus.
 func WithEventBusCmd(parent context.Context, evBusCmd chan<- interface{}) context.Context {
 	return context.WithValue(parent, contextEventBusCmd, evBusCmd)
+}
+
+// WithHBSendQ function returns copy of parent with HBSendQ.
+func WithHBSendQ(parent context.Context, HBSendQ chan []byte) context.Context {
+	return context.WithValue(parent, contextHBSendQueue, HBSendQ)
 }
 
 // WithLogger function returns copy of parent with logger.
