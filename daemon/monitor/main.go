@@ -6,8 +6,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -64,6 +62,7 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	<-started
+	go t.demoOneShot()
 	t.log.Info().Msg("mgr started")
 	return nil
 }
@@ -97,40 +96,8 @@ func (t *T) loop(c chan bool) {
 	}
 }
 
-var (
-	// For demo
-	demoAvails = map[string]string{
-		"dev1n1":        "",
-		"dev1n2":        "",
-		"dev1n3":        "",
-		"u2004-local-1": "",
-		"u2004-local-2": "",
-		"u2004-local-3": "",
-	}
-	demoSvc = "demo"
-)
-
 func (t *T) aLoop() {
 	t.log.Debug().Msg("loop")
 	// For demo
-	dataCmd := daemondatactx.DaemonData(t.Ctx)
-	dataCmd.CommitPending()
-	status := dataCmd.GetStatus()
-	for remote, v := range demoAvails {
-		remoteNodeStatus := daemondata.GetNodeStatus(status, remote)
-		if remoteNodeStatus != nil {
-			if demoStatus, ok := remoteNodeStatus.Services.Status[demoSvc]; ok {
-				if v != demoStatus.Avail.String() {
-					t.log.Info().Msgf("%s@%s status changed from %s -> %s", demoSvc, remote, v, demoStatus.Avail.String())
-					demoAvails[remote] = demoStatus.Avail.String()
-				}
-			}
-		}
-	}
-	//nodeData := dataCmd.GetLocalNodeStatus()
-	//localhost := hostname.Hostname()
-	//gen := nodeData.Gen[localhost]
-	//nodeData.Gen[localhost] = gen + 1
-	//dataCmd.ApplyFull(localhost, nodeData)
-	//dataCmd.CommitPending()
+	t.demoLoop()
 }
