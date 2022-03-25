@@ -5,13 +5,20 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
 func newData(counterCmd chan<- interface{}) *data {
+	node := object.NewNode()
+	config := node.MergedConfig()
 	localNode := hostname.Hostname()
 	status := cluster.Status{
-		Cluster:   cluster.Info{},
+		Cluster: cluster.Info{
+			ID:    config.Get(key.New("cluster", "id")),
+			Name:  config.Get(key.New("cluster", "name")),
+			Nodes: config.GetSlice(key.New("cluster", "nodes")),
+		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
 		Scheduler: cluster.SchedulerThreadStatus{},
