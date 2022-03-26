@@ -31,14 +31,15 @@ func (t *T) demoOneShot() {
 var (
 	// For demo
 	demoAvails = map[string]string{
-		"dev1n1":        "",
-		"dev1n2":        "",
-		"dev1n3":        "",
-		"u2004-local-1": "",
-		"u2004-local-2": "",
-		"u2004-local-3": "",
+		"dev1n1":        "undef",
+		"dev1n2":        "undef",
+		"dev1n3":        "undef",
+		"u2004-local-1": "undef",
+		"u2004-local-2": "undef",
+		"u2004-local-3": "undef",
 	}
 	demoSvc = "demo"
+	mode    = "undef"
 )
 
 func (t *T) demoLoop() {
@@ -188,6 +189,10 @@ func (t *T) prepareHBMsg(dataBus *daemondata.T, dataC chan<- []byte) {
 		nextSend = "patch"
 	} else {
 		nextSend = "ping"
+	}
+	if mode != nextSend {
+		t.log.Info().Msgf("hb mode change %s -> %s", mode, nextSend)
+		mode = nextSend
 	}
 	switch nextSend {
 	case "full":
