@@ -62,7 +62,6 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	<-started
-	go t.demoOneShot()
 	t.log.Info().Msg("mgr started")
 	return nil
 }
@@ -81,8 +80,8 @@ func (t *T) MainStop() error {
 func (t *T) loop(c chan bool) {
 	t.log.Info().Msg("loop started")
 	t.loopEnabled.Enable()
-	t.aLoop()
 	c <- true
+	t.aLoop()
 	for {
 		select {
 		case a := <-t.loopC:

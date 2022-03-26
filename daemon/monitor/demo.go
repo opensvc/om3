@@ -44,7 +44,9 @@ var (
 func (t *T) demoLoop() {
 	// For demo
 	dataCmd := daemondatactx.DaemonData(t.Ctx)
-	dataCmd.CommitPending()
+	var sendQ chan<- []byte
+	sendQ = daemonctx.HBSendQ(t.Ctx)
+	t.prepareHBMsg(dataCmd, sendQ)
 	status := dataCmd.GetStatus()
 	for remote, v := range demoAvails {
 		remoteNodeStatus := daemondata.GetNodeStatus(status, remote)
@@ -106,42 +108,95 @@ func (t *T) sendFull(dataC chan<- []byte, count int, interval time.Duration) {
 
 func (t *T) sendPatch(dataC chan<- []byte, count int, interval time.Duration) {
 	// for demo loop on sending patch messages
-	dataBus := daemondatactx.DaemonData(t.Ctx)
-	localhost := hostname.Hostname()
 	for i := 0; i < count; i++ {
-		ops := make([]jsondelta.Operation, 0)
-		dataBus.CommitPending()
-		localNodeStatus := dataBus.GetLocalNodeStatus()
-		newGen := localNodeStatus.Gen[localhost]
-		newGen++
-		localNodeStatus.Gen[localhost] = newGen
-		ops = append(ops, jsondelta.Operation{
-			OpPath:  []interface{}{"gen", localhost},
-			OpValue: jsondelta.NewOptValue(newGen),
-			OpKind:  "replace",
-		})
-		ops = append(ops, jsondelta.Operation{
-			OpPath:  []interface{}{"updated"},
-			OpValue: jsondelta.NewOptValue(timestamp.Now()),
-			OpKind:  "replace",
-		})
-		patch := hbtype.Msg{
-			Kind: "patch",
-			Gen:  localNodeStatus.Gen,
-			Deltas: map[string]jsondelta.Patch{
-				strconv.FormatUint(newGen, 10): ops,
-			},
-			Nodename: localhost,
-		}
-		err := dataBus.ApplyPatch(localhost, &patch)
-		if err != nil {
-			t.log.Error().Err(err).Msgf("ApplyPatch node gen %d", newGen)
-		}
-		dataBus.CommitPending()
+		newGen, patch := t.incGen([]string{})
 		if b, err := json.Marshal(patch); err == nil {
 			t.log.Debug().Msgf("Send new patch %d: %s", newGen, b)
 			dataC <- b
 		}
 		time.Sleep(interval)
+	}
+}
+
+func (t *T) incGen(remotesNeedReset []string) (uint64, *hbtype.Msg) {
+	dataBus := daemondatactx.DaemonData(t.Ctx)
+	dataBus.CommitPending()
+	localhost := hostname.Hostname()
+	localNodeStatus := dataBus.GetLocalNodeStatus()
+	newGen := localNodeStatus.Gen[localhost]
+	newGen++
+	localNodeStatus.Gen[localhost] = newGen
+	ops := make([]jsondelta.Operation, 0)
+	ops = append(ops, jsondelta.Operation{
+		OpPath:  []interface{}{"gen", localhost},
+		OpValue: jsondelta.NewOptValue(newGen),
+		OpKind:  "replace",
+	})
+	for _, remote := range remotesNeedReset {
+		ops = append(ops, jsondelta.Operation{
+			OpPath:  []interface{}{"gen", remote},
+			OpValue: jsondelta.NewOptValue(uint64(0)),
+			OpKind:  "replace",
+		})
+	}
+	ops = append(ops, jsondelta.Operation{
+		OpPath:  []interface{}{"updated"},
+		OpValue: jsondelta.NewOptValue(timestamp.Now()),
+		OpKind:  "replace",
+	})
+	patch := hbtype.Msg{
+		Kind: "patch",
+		Gen:  localNodeStatus.Gen,
+		Deltas: map[string]jsondelta.Patch{
+			strconv.FormatUint(newGen, 10): ops,
+		},
+		Nodename: localhost,
+	}
+	err := dataBus.ApplyPatch(localhost, &patch)
+	if err != nil {
+		t.log.Error().Err(err).Msgf("ApplyPatch node gen %d", newGen)
+	}
+	dataBus.CommitPending()
+	return newGen, &patch
+}
+
+func (t *T) prepareHBMsg(dataBus *daemondata.T, dataC chan<- []byte) {
+	// for demo loop on sending patch messages
+	localhost := hostname.Hostname()
+	dataBus.CommitPending()
+	status := dataBus.GetStatus()
+	var needFull bool
+	var nextSend string
+	var hasRemotes bool
+	var remoteNeedReset []string
+	for remote, nodeStatus := range status.Monitor.Nodes {
+		if remote == localhost {
+			continue
+		}
+		hasRemotes = true
+		if gen, ok := nodeStatus.Gen[localhost]; ok {
+			if gen == 0 {
+				t.log.Info().Msgf("remote node %s with gens: %v need full", remote, nodeStatus.Gen)
+				needFull = true
+				remoteNeedReset = append(remoteNeedReset, remote)
+			}
+		}
+	}
+	if needFull {
+		nextSend = "full"
+	} else if hasRemotes {
+		nextSend = "patch"
+	} else {
+		nextSend = "ping"
+	}
+	switch nextSend {
+	case "full":
+		_, _ = t.incGen(remoteNeedReset)
+		t.sendFull(dataC, 1, 0)
+		t.sendPatch(dataC, 1, 0)
+	case "patch":
+		t.sendPatch(dataC, 1, 0)
+	case "ping":
+		t.sendPing(dataC, 1, 0)
 	}
 }
