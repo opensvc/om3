@@ -10,7 +10,7 @@ type opApplyRemoteFull struct {
 
 func (o opApplyRemoteFull) call(d *data) {
 	d.counterCmd <- idApplyFull
-	d.log.Debug().Msg("opApplyRemoteFull")
+	d.log.Debug().Msgf("opApplyRemoteFull %s", o.nodename)
 	d.pending.Monitor.Nodes[o.nodename] = *o.full
 	d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = o.full.Gen[o.nodename]
 	o.done <- true
