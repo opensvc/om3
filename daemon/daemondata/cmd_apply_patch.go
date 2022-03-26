@@ -35,13 +35,14 @@ func (o opApplyRemotePatch) call(d *data) {
 	)
 	pendingNode, ok := d.pending.Monitor.Nodes[o.nodename]
 	if !ok {
+		d.log.Debug().Msgf("skip patch unknown remote %s", o.nodename)
 		o.err <- nil
 		return
 	}
 	pendingNodeGen := pendingNode.Gen[o.nodename]
 	pendingB, err = json.Marshal(pendingNode)
 	if err != nil {
-		d.log.Error().Err(err).Msgf("Marshal pendingNode%s", o.nodename)
+		d.log.Error().Err(err).Msgf("Marshal pendingNode %s", o.nodename)
 		o.err <- err
 		return
 	}
@@ -64,6 +65,7 @@ func (o opApplyRemotePatch) call(d *data) {
 			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = uint64(0)
 			err := errors.New("ApplyRemotePatch invalid patch gen: " + genS)
 			d.log.Error().Err(err).Msgf("need full %s", o.nodename)
+			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = 0
 			o.err <- err
 			return
 		}
@@ -71,6 +73,7 @@ func (o opApplyRemotePatch) call(d *data) {
 		pendingB, err = patch.Apply(pendingB)
 		if err != nil {
 			d.log.Error().Err(err).Msgf("patch apply %s need full", o.nodename)
+			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = 0
 			o.err <- err
 			return
 		}
@@ -101,6 +104,7 @@ func (o opApplyRemotePatch) call(d *data) {
 	}
 	pendingNode = cluster.NodeStatus{}
 	if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
+		d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", o.nodename)
 		o.err <- err
 		return
 	}
