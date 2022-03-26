@@ -64,7 +64,7 @@ func (o opApplyRemotePatch) call(d *data) {
 		if patchGen > pendingNodeGen+1 {
 			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = uint64(0)
 			err := errors.New("ApplyRemotePatch invalid patch gen: " + genS)
-			d.log.Error().Err(err).Msgf("need full %s", o.nodename)
+			d.log.Info().Err(err).Msgf("need full %s", o.nodename)
 			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = 0
 			o.err <- err
 			return
@@ -72,7 +72,7 @@ func (o opApplyRemotePatch) call(d *data) {
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
 		pendingB, err = patch.Apply(pendingB)
 		if err != nil {
-			d.log.Error().Err(err).Msgf("patch apply %s need full", o.nodename)
+			d.log.Info().Err(err).Msgf("patch apply %s need full", o.nodename)
 			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = 0
 			o.err <- err
 			return
