@@ -42,7 +42,7 @@ func (t Node) Checks() (check.ResultSet, error) {
 }
 
 func (t Node) pushChecks(rs *check.ResultSet) error {
-	client, err := t.collectorClient()
+	client, err := t.collectorFeedClient()
 	if err != nil {
 		return err
 	}

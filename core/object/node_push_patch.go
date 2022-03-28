@@ -51,7 +51,7 @@ func (t Node) pushPatch(data []patches.Patch) error {
 		"patch_rev",
 		"patch_install_date",
 	}
-	client, err := t.collectorClient()
+	client, err := t.collectorFeedClient()
 	if err != nil {
 		return err
 	}

@@ -156,7 +156,7 @@ func (t Node) registerAsUser(options OptsNodeRegister) error {
 }
 
 func (t Node) registerAsNode() error {
-	client, err := t.collectorClient()
+	client, err := t.collectorFeedClient()
 	if err != nil {
 		return err
 	}

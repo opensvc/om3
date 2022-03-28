@@ -1,9 +1,6 @@
 package object
 
 import (
-	"strings"
-
-	"github.com/pkg/errors"
 	"opensvc.com/opensvc/util/sysreport"
 )
 
@@ -37,7 +34,7 @@ type (
 // The collector is in charge of versioning this information and of
 // reporting on changes.
 func (t Node) Sysreport(options OptsNodeSysreport) error {
-	client, err := t.collectorClient()
+	client, err := t.collectorFeedClient()
 	if err != nil {
 		return err
 	}
@@ -45,38 +42,4 @@ func (t Node) Sysreport(options OptsNodeSysreport) error {
 	sr.SetCollectorClient(client)
 	sr.SetForce(options.Force.Force)
 	return sr.Do()
-}
-
-func (t Node) sendSysreport(archive string, deletedFiles []string) error {
-	client, err := t.collectorClient()
-	if err != nil {
-		return err
-	}
-	if response, err := client.Call("send_sysreport", archive, deletedFiles); err != nil {
-		return err
-	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s: %s", response.Error.Message, response.Error.Data)
-	} else if response.Result != nil {
-		switch v := response.Result.(type) {
-		case []interface{}:
-			for _, e := range v {
-				s, ok := e.(string)
-				if !ok {
-					continue
-				}
-				if strings.Contains(s, "already") {
-					t.Log().Info().Msg(s)
-				} else {
-					return errors.New(s)
-				}
-			}
-		case string:
-			return t.writeUUID(v)
-		default:
-			return errors.Errorf("unknown response result type: %+v", v)
-		}
-	} else {
-		return errors.Errorf("unexpected rpc response: %+v", response)
-	}
-	return nil
 }

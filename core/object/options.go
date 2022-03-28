@@ -45,6 +45,16 @@ type (
 		Force bool `flag:"force"`
 	}
 
+	// OptModuleset contains the moduleset option
+	OptModuleset struct {
+		Moduleset string `flag:"moduleset"`
+	}
+
+	// OptRuleset contains the ruleset option
+	OptRuleset struct {
+		Ruleset string `flag:"ruleset"`
+	}
+
 	// OptConfirm contains the confirm option
 	OptConfirm struct {
 		Confirm bool `flag:"confirm"`

@@ -179,6 +179,16 @@ var Tags = map[string]Opt{
 		Long: "app",
 		Desc: "optional. register the node in the specified app. if not specified, the node is registered in the first registering user's app found",
 	},
+	"moduleset": Opt{
+		Long:    "moduleset",
+		Desc:    "the modulesets to limit the action to. The special value `all` can be used in conjonction with detach.",
+		Aliases: []string{"modulesets"},
+	},
+	"ruleset": Opt{
+		Long:    "ruleset",
+		Desc:    "the rulesets to limit the action to. The special value `all` can be used in conjonction with detach.",
+		Aliases: []string{"rulesets"},
+	},
 	"subset": Opt{
 		Long:    "subset",
 		Desc:    "subset selector expression (g1,g2)",

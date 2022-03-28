@@ -11,6 +11,16 @@ var (
 		Short: "manage a opensvc cluster node",
 	}
 
+	nodeComplianceCmd = &cobra.Command{
+		Use:     "compliance",
+		Short:   "node system configuration queries, checks and fixes",
+		Aliases: []string{"compli", "comp", "com", "co"},
+	}
+	nodeComplianceShowCmd = &cobra.Command{
+		Use:     "show",
+		Short:   "node system configuration framework queries",
+		Aliases: []string{"compli", "comp", "com", "co"},
+	}
 	nodePrintCmd = &cobra.Command{
 		Use:     "print",
 		Short:   "print node",
@@ -30,35 +40,39 @@ var (
 		Aliases: []string{"edi", "ed"},
 	}
 
-	cmdNodeChecks            commands.CmdNodeChecks
-	cmdNodeDoc               commands.NodeDoc
-	cmdNodeDelete            commands.NodeDelete
-	cmdNodeDrivers           commands.NodeDrivers
-	cmdNodeEditConfig        commands.NodeEditConfig
-	cmdNodeLs                commands.NodeLs
-	cmdNodeGet               commands.NodeGet
-	cmdNodeEval              commands.NodeEval
-	cmdNodePrintCapabilities commands.NodePrintCapabilities
-	cmdNodePrintConfig       commands.NodePrintConfig
-	cmdNodePushAsset         commands.NodePushAsset
-	cmdNodePushDisks         commands.NodePushDisks
-	cmdNodePushPatch         commands.NodePushPatch
-	cmdNodePushPkg           commands.NodePushPkg
-	cmdNodeRegister          commands.CmdNodeRegister
-	cmdNodeScanCapabilities  commands.NodeScanCapabilities
-	cmdNodeSet               commands.NodeSet
-	cmdNodeSysreport         commands.CmdNodeSysreport
-	cmdNodeUnset             commands.NodeUnset
+	cmdNodeChecks                commands.CmdNodeChecks
+	cmdNodeComplianceShowRuleset commands.CmdNodeComplianceShowRuleset
+	cmdNodeDoc                   commands.NodeDoc
+	cmdNodeDelete                commands.NodeDelete
+	cmdNodeDrivers               commands.NodeDrivers
+	cmdNodeEditConfig            commands.NodeEditConfig
+	cmdNodeLs                    commands.NodeLs
+	cmdNodeGet                   commands.NodeGet
+	cmdNodeEval                  commands.NodeEval
+	cmdNodePrintCapabilities     commands.NodePrintCapabilities
+	cmdNodePrintConfig           commands.NodePrintConfig
+	cmdNodePushAsset             commands.NodePushAsset
+	cmdNodePushDisks             commands.NodePushDisks
+	cmdNodePushPatch             commands.NodePushPatch
+	cmdNodePushPkg               commands.NodePushPkg
+	cmdNodeRegister              commands.CmdNodeRegister
+	cmdNodeScanCapabilities      commands.NodeScanCapabilities
+	cmdNodeSet                   commands.NodeSet
+	cmdNodeSysreport             commands.CmdNodeSysreport
+	cmdNodeUnset                 commands.NodeUnset
 )
 
 func init() {
 	root.AddCommand(nodeCmd)
+	nodeCmd.AddCommand(nodeComplianceCmd)
+	nodeComplianceCmd.AddCommand(nodeComplianceShowCmd)
 	nodeCmd.AddCommand(nodeEditCmd)
 	nodeCmd.AddCommand(nodePrintCmd)
 	nodeCmd.AddCommand(nodePushCmd)
 	nodeCmd.AddCommand(nodeScanCmd)
 
 	cmdNodeChecks.Init(nodeCmd)
+	cmdNodeComplianceShowRuleset.Init(nodeComplianceShowCmd)
 	cmdNodeDoc.Init(nodeCmd)
 	cmdNodeDelete.Init(nodeCmd)
 	cmdNodeDrivers.Init(nodeCmd)

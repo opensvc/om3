@@ -450,7 +450,7 @@ func (t Node) pushAsset(data AssetData) error {
 		}
 		return []interface{}{vars, vals}
 	}
-	client, err := t.collectorClient()
+	client, err := t.collectorFeedClient()
 	if err != nil {
 		return err
 	}

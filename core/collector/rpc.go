@@ -22,6 +22,32 @@ type Client struct {
 	log    zerolog.Logger
 }
 
+func ComplianceURL(s string) (*url.URL, error) {
+	if url, err := BaseURL(s); err != nil {
+		return nil, err
+	} else {
+		// default path
+		if url.Path == "" {
+			url.Path = "/init/compliance/call/jsonrpc2"
+			url.RawPath = "/init/compliance/call/jsonrpc2"
+		}
+		return url, nil
+	}
+}
+
+func InitURL(s string) (*url.URL, error) {
+	if url, err := BaseURL(s); err != nil {
+		return nil, err
+	} else {
+		// default path
+		if url.Path == "" {
+			url.Path = "/init/default/call/jsonrpc2"
+			url.RawPath = "/init/default/call/jsonrpc2"
+		}
+		return url, nil
+	}
+}
+
 func FeedURL(s string) (*url.URL, error) {
 	if url, err := BaseURL(s); err != nil {
 		return nil, err
@@ -76,12 +102,34 @@ func BaseURL(s string) (*url.URL, error) {
 	return url, nil
 }
 
-// NewClient returns a Client to call the collector jsonrpc2 methods.
-func NewClient(endpoint, secret string) (*Client, error) {
+// NewFeedClient returns a Client to call the collector feed app jsonrpc2 methods.
+func NewFeedClient(endpoint, secret string) (*Client, error) {
 	url, err := FeedURL(endpoint)
 	if err != nil {
 		return nil, err
 	}
+	return newClient(url, secret)
+}
+
+// NewComplianceClient returns a Client to call the collector init app jsonrpc2 methods.
+func NewComplianceClient(endpoint, secret string) (*Client, error) {
+	url, err := ComplianceURL(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return newClient(url, secret)
+}
+
+// NewInitClient returns a Client to call the collector init app jsonrpc2 methods.
+func NewInitClient(endpoint, secret string) (*Client, error) {
+	url, err := InitURL(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return newClient(url, secret)
+}
+
+func newClient(url *url.URL, secret string) (*Client, error) {
 	client := &Client{
 		client: jsonrpc.NewClientWithOpts(url.String(), &jsonrpc.RPCClientOpts{
 			HTTPClient: &http.Client{
@@ -127,4 +175,13 @@ func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse
 		t.log.Error().Str("method", method).Interface("params", params).Interface("data", response.Error.Data).Int("code", response.Error.Code).Msg(response.Error.Message)
 	}
 	return response, err
+}
+
+func (t Client) CallFor(out interface{}, method string, params ...interface{}) error {
+	t.log.Info().Str("method", method).Interface("params", params).Msg("call")
+	err := t.client.CallFor(out, method, t.paramsWithAuth(params))
+	if err != nil {
+		t.log.Error().Str("method", method).Interface("params", params).Err(err).Msg("call")
+	}
+	return err
 }

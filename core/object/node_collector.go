@@ -10,10 +10,22 @@ import (
 	"opensvc.com/opensvc/util/key"
 )
 
-func (t Node) collectorClient() (*collector.Client, error) {
+func (t Node) collectorFeedClient() (*collector.Client, error) {
 	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
 	secret := t.config.GetString(key.Parse("node.uuid"))
-	return collector.NewClient(s, secret)
+	return collector.NewFeedClient(s, secret)
+}
+
+func (t Node) collectorInitClient() (*collector.Client, error) {
+	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
+	secret := t.config.GetString(key.Parse("node.uuid"))
+	return collector.NewInitClient(s, secret)
+}
+
+func (t Node) collectorComplianceClient() (*collector.Client, error) {
+	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
+	secret := t.config.GetString(key.Parse("node.uuid"))
+	return collector.NewComplianceClient(s, secret)
 }
 
 func (t *Node) CollectorRestAPIURL() (*url.URL, error) {

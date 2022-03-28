@@ -57,7 +57,7 @@ func (t Node) pushPkg(data []packages.Pkg) error {
 		"pkg_install_date",
 		"pkg_sig",
 	}
-	client, err := t.collectorClient()
+	client, err := t.collectorFeedClient()
 	if err != nil {
 		return err
 	}
