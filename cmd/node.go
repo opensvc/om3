@@ -16,6 +16,11 @@ var (
 		Short:   "node system configuration queries, checks and fixes",
 		Aliases: []string{"compli", "comp", "com", "co"},
 	}
+	nodeComplianceListCmd = &cobra.Command{
+		Use:     "list",
+		Short:   "node system configuration framework available objects listing",
+		Aliases: []string{"compli", "comp", "com", "co"},
+	}
 	nodeComplianceShowCmd = &cobra.Command{
 		Use:     "show",
 		Short:   "node system configuration framework queries",
@@ -43,6 +48,7 @@ var (
 	cmdNodeChecks                  commands.CmdNodeChecks
 	cmdNodeComplianceShowRuleset   commands.CmdNodeComplianceShowRuleset
 	cmdNodeComplianceShowModuleset commands.CmdNodeComplianceShowModuleset
+	cmdNodeComplianceListModuleset commands.CmdNodeComplianceListModuleset
 	cmdNodeComplianceEnv           commands.CmdNodeComplianceEnv
 	cmdNodeDoc                     commands.NodeDoc
 	cmdNodeDelete                  commands.NodeDelete
@@ -68,6 +74,7 @@ func init() {
 	root.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodeComplianceCmd)
 	nodeComplianceCmd.AddCommand(nodeComplianceShowCmd)
+	nodeComplianceCmd.AddCommand(nodeComplianceListCmd)
 	nodeCmd.AddCommand(nodeEditCmd)
 	nodeCmd.AddCommand(nodePrintCmd)
 	nodeCmd.AddCommand(nodePushCmd)
@@ -77,6 +84,7 @@ func init() {
 	cmdNodeComplianceEnv.Init(nodeComplianceCmd)
 	cmdNodeComplianceShowRuleset.Init(nodeComplianceShowCmd)
 	cmdNodeComplianceShowModuleset.Init(nodeComplianceShowCmd)
+	cmdNodeComplianceListModuleset.Init(nodeComplianceListCmd)
 	cmdNodeDoc.Init(nodeCmd)
 	cmdNodeDelete.Init(nodeCmd)
 	cmdNodeDrivers.Init(nodeCmd)

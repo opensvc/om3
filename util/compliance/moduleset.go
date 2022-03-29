@@ -103,3 +103,16 @@ func (t ModulesetRulesetRelations) Render() string {
 	}
 	return buff
 }
+
+func (t T) ListModulesets(filter string) ([]string, error) {
+	var err error
+	data := make([]string, 0)
+	if filter == "" {
+		filter = "%"
+	}
+	err = t.collectorClient.CallFor(&data, "comp_list_modulesets", filter)
+	if err != nil {
+		return data, err
+	}
+	return data, nil
+}
