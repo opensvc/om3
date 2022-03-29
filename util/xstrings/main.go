@@ -48,3 +48,12 @@ func Capitalize(s string) string {
 		return strings.ToTitle(s[0:1]) + s[1:]
 	}
 }
+
+// Split behaves like strings.Split() expect it returns an empty slice
+// if s is an empty string.
+func Split(s, sep string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return strings.Split(s, sep)
+}

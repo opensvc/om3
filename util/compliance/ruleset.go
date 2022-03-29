@@ -25,10 +25,6 @@ func (t T) GetRulesets() (Rulesets, error) {
 }
 
 func (t Ruleset) Render() string {
-	return t.String()
-}
-
-func (t Ruleset) String() string {
 	buff := fmt.Sprintf(" %s", t.Name)
 	if t.Filter != "" {
 		buff += fmt.Sprintf(" (%s)", t.Filter)
@@ -41,11 +37,7 @@ func (t Ruleset) String() string {
 }
 
 func (t Rulesets) Render() string {
-	return t.String()
-}
-
-func (t Rulesets) String() string {
-	buff := "rules:\n"
+	buff := "rulesets:\n"
 	for _, rset := range t {
 		buff += fmt.Sprintf("%s", rset)
 	}

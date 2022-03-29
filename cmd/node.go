@@ -40,26 +40,28 @@ var (
 		Aliases: []string{"edi", "ed"},
 	}
 
-	cmdNodeChecks                commands.CmdNodeChecks
-	cmdNodeComplianceShowRuleset commands.CmdNodeComplianceShowRuleset
-	cmdNodeDoc                   commands.NodeDoc
-	cmdNodeDelete                commands.NodeDelete
-	cmdNodeDrivers               commands.NodeDrivers
-	cmdNodeEditConfig            commands.NodeEditConfig
-	cmdNodeLs                    commands.NodeLs
-	cmdNodeGet                   commands.NodeGet
-	cmdNodeEval                  commands.NodeEval
-	cmdNodePrintCapabilities     commands.NodePrintCapabilities
-	cmdNodePrintConfig           commands.NodePrintConfig
-	cmdNodePushAsset             commands.NodePushAsset
-	cmdNodePushDisks             commands.NodePushDisks
-	cmdNodePushPatch             commands.NodePushPatch
-	cmdNodePushPkg               commands.NodePushPkg
-	cmdNodeRegister              commands.CmdNodeRegister
-	cmdNodeScanCapabilities      commands.NodeScanCapabilities
-	cmdNodeSet                   commands.NodeSet
-	cmdNodeSysreport             commands.CmdNodeSysreport
-	cmdNodeUnset                 commands.NodeUnset
+	cmdNodeChecks                  commands.CmdNodeChecks
+	cmdNodeComplianceShowRuleset   commands.CmdNodeComplianceShowRuleset
+	cmdNodeComplianceShowModuleset commands.CmdNodeComplianceShowModuleset
+	cmdNodeComplianceEnv           commands.CmdNodeComplianceEnv
+	cmdNodeDoc                     commands.NodeDoc
+	cmdNodeDelete                  commands.NodeDelete
+	cmdNodeDrivers                 commands.NodeDrivers
+	cmdNodeEditConfig              commands.NodeEditConfig
+	cmdNodeLs                      commands.NodeLs
+	cmdNodeGet                     commands.NodeGet
+	cmdNodeEval                    commands.NodeEval
+	cmdNodePrintCapabilities       commands.NodePrintCapabilities
+	cmdNodePrintConfig             commands.NodePrintConfig
+	cmdNodePushAsset               commands.NodePushAsset
+	cmdNodePushDisks               commands.NodePushDisks
+	cmdNodePushPatch               commands.NodePushPatch
+	cmdNodePushPkg                 commands.NodePushPkg
+	cmdNodeRegister                commands.CmdNodeRegister
+	cmdNodeScanCapabilities        commands.NodeScanCapabilities
+	cmdNodeSet                     commands.NodeSet
+	cmdNodeSysreport               commands.CmdNodeSysreport
+	cmdNodeUnset                   commands.NodeUnset
 )
 
 func init() {
@@ -72,7 +74,9 @@ func init() {
 	nodeCmd.AddCommand(nodeScanCmd)
 
 	cmdNodeChecks.Init(nodeCmd)
+	cmdNodeComplianceEnv.Init(nodeComplianceCmd)
 	cmdNodeComplianceShowRuleset.Init(nodeComplianceShowCmd)
+	cmdNodeComplianceShowModuleset.Init(nodeComplianceShowCmd)
 	cmdNodeDoc.Init(nodeCmd)
 	cmdNodeDelete.Init(nodeCmd)
 	cmdNodeDrivers.Init(nodeCmd)

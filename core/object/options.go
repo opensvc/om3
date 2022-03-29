@@ -45,6 +45,11 @@ type (
 		Force bool `flag:"force"`
 	}
 
+	// OptModule contains the module option
+	OptModule struct {
+		Module string `flag:"module"`
+	}
+
 	// OptModuleset contains the moduleset option
 	OptModuleset struct {
 		Moduleset string `flag:"moduleset"`
