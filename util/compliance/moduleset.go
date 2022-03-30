@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/core/collector"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -115,4 +117,22 @@ func (t T) ListModulesets(filter string) ([]string, error) {
 		return data, err
 	}
 	return data, nil
+}
+
+func (t T) AttachModuleset(s string) error {
+	response, err := t.collectorClient.Call("comp_attach_moduleset", hostname.Hostname(), s)
+	if err != nil {
+		return err
+	}
+	collector.LogSimpleResponse(response, t.log)
+	return nil
+}
+
+func (t T) DetachModuleset(s string) error {
+	response, err := t.collectorClient.Call("comp_detach_moduleset", hostname.Hostname(), s)
+	if err != nil {
+		return err
+	}
+	collector.LogSimpleResponse(response, t.log)
+	return nil
 }

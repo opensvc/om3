@@ -3,6 +3,7 @@ package compliance
 import (
 	"fmt"
 
+	"opensvc.com/opensvc/core/collector"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -39,7 +40,38 @@ func (t Ruleset) Render() string {
 func (t Rulesets) Render() string {
 	buff := "rulesets:\n"
 	for _, rset := range t {
-		buff += fmt.Sprintf("%s", rset)
+		buff += rset.Render()
 	}
 	return buff
+}
+
+func (t T) ListRulesets(filter string) ([]string, error) {
+	var err error
+	data := make([]string, 0)
+	if filter == "" {
+		filter = "%"
+	}
+	err = t.collectorClient.CallFor(&data, "comp_list_rulesets", filter, hostname.Hostname())
+	if err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+func (t T) AttachRuleset(s string) error {
+	response, err := t.collectorClient.Call("comp_attach_ruleset", hostname.Hostname(), s)
+	if err != nil {
+		return err
+	}
+	collector.LogSimpleResponse(response, t.log)
+	return nil
+}
+
+func (t T) DetachRuleset(s string) error {
+	response, err := t.collectorClient.Call("comp_detach_ruleset", hostname.Hostname(), s)
+	if err != nil {
+		return err
+	}
+	collector.LogSimpleResponse(response, t.log)
+	return nil
 }

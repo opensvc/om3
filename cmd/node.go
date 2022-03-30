@@ -13,18 +13,28 @@ var (
 
 	nodeComplianceCmd = &cobra.Command{
 		Use:     "compliance",
-		Short:   "node system configuration queries, checks and fixes",
+		Short:   "node configuration expectations analysis and application",
 		Aliases: []string{"compli", "comp", "com", "co"},
+	}
+	nodeComplianceAttachCmd = &cobra.Command{
+		Use:     "attach",
+		Short:   "attach modulesets and rulesets to the node.",
+		Aliases: []string{"attac", "atta", "att", "at"},
+	}
+	nodeComplianceDetachCmd = &cobra.Command{
+		Use:     "detach",
+		Short:   "detach modulesets and rulesets from the node.",
+		Aliases: []string{"detac", "deta", "det", "de"},
 	}
 	nodeComplianceListCmd = &cobra.Command{
 		Use:     "list",
-		Short:   "node system configuration framework available objects listing",
-		Aliases: []string{"compli", "comp", "com", "co"},
+		Short:   "list modulesets and rulesets available on the collector",
+		Aliases: []string{"lis", "li", "ls", "l"},
 	}
 	nodeComplianceShowCmd = &cobra.Command{
 		Use:     "show",
-		Short:   "node system configuration framework queries",
-		Aliases: []string{"compli", "comp", "com", "co"},
+		Short:   "show states: current moduleset and ruleset attachments, modules last check",
+		Aliases: []string{"sho", "sh", "s"},
 	}
 	nodePrintCmd = &cobra.Command{
 		Use:     "print",
@@ -45,34 +55,41 @@ var (
 		Aliases: []string{"edi", "ed"},
 	}
 
-	cmdNodeChecks                  commands.CmdNodeChecks
-	cmdNodeComplianceShowRuleset   commands.CmdNodeComplianceShowRuleset
-	cmdNodeComplianceShowModuleset commands.CmdNodeComplianceShowModuleset
-	cmdNodeComplianceListModuleset commands.CmdNodeComplianceListModuleset
-	cmdNodeComplianceEnv           commands.CmdNodeComplianceEnv
-	cmdNodeDoc                     commands.NodeDoc
-	cmdNodeDelete                  commands.NodeDelete
-	cmdNodeDrivers                 commands.NodeDrivers
-	cmdNodeEditConfig              commands.NodeEditConfig
-	cmdNodeLs                      commands.NodeLs
-	cmdNodeGet                     commands.NodeGet
-	cmdNodeEval                    commands.NodeEval
-	cmdNodePrintCapabilities       commands.NodePrintCapabilities
-	cmdNodePrintConfig             commands.NodePrintConfig
-	cmdNodePushAsset               commands.NodePushAsset
-	cmdNodePushDisks               commands.NodePushDisks
-	cmdNodePushPatch               commands.NodePushPatch
-	cmdNodePushPkg                 commands.NodePushPkg
-	cmdNodeRegister                commands.CmdNodeRegister
-	cmdNodeScanCapabilities        commands.NodeScanCapabilities
-	cmdNodeSet                     commands.NodeSet
-	cmdNodeSysreport               commands.CmdNodeSysreport
-	cmdNodeUnset                   commands.NodeUnset
+	cmdNodeChecks                    commands.CmdNodeChecks
+	cmdNodeComplianceAttachModuleset commands.CmdNodeComplianceAttachModuleset
+	cmdNodeComplianceDetachModuleset commands.CmdNodeComplianceDetachModuleset
+	cmdNodeComplianceAttachRuleset   commands.CmdNodeComplianceAttachRuleset
+	cmdNodeComplianceDetachRuleset   commands.CmdNodeComplianceDetachRuleset
+	cmdNodeComplianceShowRuleset     commands.CmdNodeComplianceShowRuleset
+	cmdNodeComplianceShowModuleset   commands.CmdNodeComplianceShowModuleset
+	cmdNodeComplianceListModuleset   commands.CmdNodeComplianceListModuleset
+	cmdNodeComplianceListRuleset     commands.CmdNodeComplianceListRuleset
+	cmdNodeComplianceEnv             commands.CmdNodeComplianceEnv
+	cmdNodeDoc                       commands.NodeDoc
+	cmdNodeDelete                    commands.NodeDelete
+	cmdNodeDrivers                   commands.NodeDrivers
+	cmdNodeEditConfig                commands.NodeEditConfig
+	cmdNodeLs                        commands.NodeLs
+	cmdNodeGet                       commands.NodeGet
+	cmdNodeEval                      commands.NodeEval
+	cmdNodePrintCapabilities         commands.NodePrintCapabilities
+	cmdNodePrintConfig               commands.NodePrintConfig
+	cmdNodePushAsset                 commands.NodePushAsset
+	cmdNodePushDisks                 commands.NodePushDisks
+	cmdNodePushPatch                 commands.NodePushPatch
+	cmdNodePushPkg                   commands.NodePushPkg
+	cmdNodeRegister                  commands.CmdNodeRegister
+	cmdNodeScanCapabilities          commands.NodeScanCapabilities
+	cmdNodeSet                       commands.NodeSet
+	cmdNodeSysreport                 commands.CmdNodeSysreport
+	cmdNodeUnset                     commands.NodeUnset
 )
 
 func init() {
 	root.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodeComplianceCmd)
+	nodeComplianceCmd.AddCommand(nodeComplianceAttachCmd)
+	nodeComplianceCmd.AddCommand(nodeComplianceDetachCmd)
 	nodeComplianceCmd.AddCommand(nodeComplianceShowCmd)
 	nodeComplianceCmd.AddCommand(nodeComplianceListCmd)
 	nodeCmd.AddCommand(nodeEditCmd)
@@ -82,9 +99,14 @@ func init() {
 
 	cmdNodeChecks.Init(nodeCmd)
 	cmdNodeComplianceEnv.Init(nodeComplianceCmd)
+	cmdNodeComplianceAttachModuleset.Init(nodeComplianceAttachCmd)
+	cmdNodeComplianceAttachRuleset.Init(nodeComplianceAttachCmd)
+	cmdNodeComplianceDetachModuleset.Init(nodeComplianceDetachCmd)
+	cmdNodeComplianceDetachRuleset.Init(nodeComplianceDetachCmd)
 	cmdNodeComplianceShowRuleset.Init(nodeComplianceShowCmd)
 	cmdNodeComplianceShowModuleset.Init(nodeComplianceShowCmd)
 	cmdNodeComplianceListModuleset.Init(nodeComplianceListCmd)
+	cmdNodeComplianceListRuleset.Init(nodeComplianceListCmd)
 	cmdNodeDoc.Init(nodeCmd)
 	cmdNodeDelete.Init(nodeCmd)
 	cmdNodeDrivers.Init(nodeCmd)

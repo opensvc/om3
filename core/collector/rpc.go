@@ -164,6 +164,32 @@ func (t Client) paramsWithAuth(params []interface{}) []interface{} {
 	return append(params, []string{t.secret, hostname.Hostname()})
 }
 
+func LogSimpleResponse(response *jsonrpc.RPCResponse, log zerolog.Logger) {
+	switch m := response.Result.(type) {
+	case map[string]interface{}:
+		if info, ok := m["info"]; ok {
+			switch v := info.(type) {
+			case string:
+				log.Info().Msg(v)
+			case []string:
+				for _, s := range v {
+					log.Info().Msg(s)
+				}
+			}
+		}
+		if err, ok := m["error"]; ok {
+			switch v := err.(type) {
+			case string:
+				log.Error().Msg(v)
+			case []string:
+				for _, s := range v {
+					log.Error().Msg(s)
+				}
+			}
+		}
+	}
+}
+
 // Call executes a jsonrpc2 collector call and returns the response.
 func (t Client) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
 	t.log.Info().Str("method", method).Interface("params", params).Msg("call")
