@@ -8,43 +8,43 @@ import (
 )
 
 type (
-	// CmdNodeComplianceListModuleset is the cobra flag set of the sysreport command.
-	CmdNodeComplianceListModuleset struct {
-		object.OptsNodeComplianceListModuleset
+	// CmdNodeComplianceListModules is the cobra flag set of the sysreport command.
+	CmdNodeComplianceListModules struct {
+		object.OptsNodeComplianceListModules
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdNodeComplianceListModuleset) Init(parent *cobra.Command) {
+func (t *CmdNodeComplianceListModules) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeComplianceListModuleset)
+	flag.Install(cmd, &t.OptsNodeComplianceListModules)
 }
 
-func (t *CmdNodeComplianceListModuleset) cmd() *cobra.Command {
+func (t *CmdNodeComplianceListModules) cmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "moduleset",
-		Short:   "List compliance moduleset available to this node.",
-		Aliases: []string{"modulese"},
+		Use:     "modules",
+		Short:   "List modules available on this node.",
+		Aliases: []string{"module", "modul", "modu", "mod"},
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
 	}
 }
 
-func (t *CmdNodeComplianceListModuleset) run() {
+func (t *CmdNodeComplianceListModules) run() {
 	nodeaction.New(
 		nodeaction.WithLocal(t.Global.Local),
 		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
 		nodeaction.WithFormat(t.Global.Format),
 		nodeaction.WithColor(t.Global.Color),
 		nodeaction.WithServer(t.Global.Server),
-		nodeaction.WithRemoteAction("compliance list modulesets"),
+		nodeaction.WithRemoteAction("compliance list modules"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
 			"format": t.Global.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceListModuleset(t.OptsNodeComplianceListModuleset)
+			return object.NewNode().ComplianceListModules(t.OptsNodeComplianceListModules)
 		}),
 	).Do()
 }

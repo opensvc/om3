@@ -28,7 +28,7 @@ var (
 	}
 	nodeComplianceListCmd = &cobra.Command{
 		Use:     "list",
-		Short:   "list modulesets and rulesets available on the collector",
+		Short:   "list modules, modulesets and rulesets available",
 		Aliases: []string{"lis", "li", "ls", "l"},
 	}
 	nodeComplianceShowCmd = &cobra.Command{
@@ -62,6 +62,7 @@ var (
 	cmdNodeComplianceDetachRuleset   commands.CmdNodeComplianceDetachRuleset
 	cmdNodeComplianceShowRuleset     commands.CmdNodeComplianceShowRuleset
 	cmdNodeComplianceShowModuleset   commands.CmdNodeComplianceShowModuleset
+	cmdNodeComplianceListModules     commands.CmdNodeComplianceListModules
 	cmdNodeComplianceListModuleset   commands.CmdNodeComplianceListModuleset
 	cmdNodeComplianceListRuleset     commands.CmdNodeComplianceListRuleset
 	cmdNodeComplianceEnv             commands.CmdNodeComplianceEnv
@@ -105,6 +106,7 @@ func init() {
 	cmdNodeComplianceDetachRuleset.Init(nodeComplianceDetachCmd)
 	cmdNodeComplianceShowRuleset.Init(nodeComplianceShowCmd)
 	cmdNodeComplianceShowModuleset.Init(nodeComplianceShowCmd)
+	cmdNodeComplianceListModules.Init(nodeComplianceListCmd)
 	cmdNodeComplianceListModuleset.Init(nodeComplianceListCmd)
 	cmdNodeComplianceListRuleset.Init(nodeComplianceListCmd)
 	cmdNodeDoc.Init(nodeCmd)
