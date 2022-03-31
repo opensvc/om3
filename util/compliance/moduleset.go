@@ -119,6 +119,15 @@ func (t T) ListModulesets(filter string) ([]string, error) {
 	return data, nil
 }
 
+func (t T) AttachModulesets(l []string) error {
+	for _, s := range l {
+		if err := t.AttachModuleset(s); err != nil {
+			return errors.Wrap(err, s)
+		}
+	}
+	return nil
+}
+
 func (t T) AttachModuleset(s string) error {
 	response, err := t.collectorClient.Call("comp_attach_moduleset", hostname.Hostname(), s)
 	if err != nil {

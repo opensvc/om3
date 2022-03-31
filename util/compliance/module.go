@@ -13,9 +13,12 @@ import (
 
 type (
 	Module struct {
-		path string
-		main *T
+		name  string
+		path  string
+		order int
+		main  *T
 	}
+	Modules []*Module
 )
 
 var (
@@ -23,75 +26,136 @@ var (
 	reModule    = regexp.MustCompile(reModuleStr)
 )
 
-func (t *T) NewModule(path string) *Module {
-	mod := Module{
-		path: path,
-		main: t,
+func validatePath(path string) error {
+	if path == "" {
+		return errors.Errorf("empty path")
 	}
-	return &mod
-}
-
-func (t Module) Validate() error {
-	if t.Name() == t.Base() {
-		return errors.Errorf("%s invalid filename: must match the %s regexp", t.Base(), reModuleStr)
-	}
-	info, err := os.Stat(t.path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
 	if !info.Mode().IsRegular() {
-		return errors.Errorf("%s is not a regular file", t.path)
+		return errors.Errorf("%s is not a regular file", path)
 	}
 	if info.Mode()&0111 == 0 {
-		return errors.Errorf("%s is a not executable (%s)", t.path, info.Mode())
+		return errors.Errorf("%s is a not executable (%s)", path, info.Mode())
 	}
-	uid, gid, err := file.Ownership(t.path)
+	uid, gid, err := file.Ownership(path)
 	if err != nil {
 		return err
 	}
 	if uid != 0 {
-		return errors.Errorf("%s is not owned by uid 0", t.path)
+		return errors.Errorf("%s is not owned by uid 0", path)
 	}
 	switch gid {
 	case 0, 2, 3, 4:
 	default:
-		return errors.Errorf("%s is not owned by gid 0,2,3,4", t.path)
+		return errors.Errorf("%s is not owned by gid 0,2,3,4", path)
 	}
 	return nil
 }
 
-func (t Module) Order() int {
-	s := t.Base()
-	for i := 0; i < len(s); i += 1 {
-		if !unicode.IsDigit(rune(s[i])) {
-			n, _ := strconv.Atoi(s[:i])
+func (t T) lookupModule(s string) (string, error) {
+	paths, err := filepath.Glob(filepath.Join(t.varDir, "*"+s))
+	if err != nil {
+		return "", err
+	}
+	re := regexp.MustCompile(`^S*[0-9]+-*` + s + `$`)
+	hits := make([]string, 0)
+	for _, path := range paths {
+		if !re.MatchString(filepath.Base(path)) {
+			continue
+		}
+		locations := []string{path}
+		if variants, err := filepath.Glob(filepath.Join(path, "main")); err == nil {
+			locations = append(locations, variants...)
+		}
+		if variants, err := filepath.Glob(filepath.Join(path, "scripts", "main")); err == nil {
+			locations = append(locations, variants...)
+		}
+		for _, path := range locations {
+			if err := validatePath(path); err != nil {
+				t.log.Debug().Msgf("%s discard: %s", path, err)
+				continue
+			}
+			hits = append(hits, path)
+		}
+	}
+	switch len(hits) {
+	case 0:
+		return "", errors.Errorf("no installed modules found matching %s", s)
+	case 1:
+		return hits[0], nil
+	default:
+		return "", errors.Errorf("multiple installed modules found matching %s: %s", s, hits)
+	}
+}
+
+func modOrder(base string) int {
+	for i := 0; i < len(base); i += 1 {
+		if !unicode.IsDigit(rune(base[i])) {
+			n, _ := strconv.Atoi(base[:i])
 			return n
 		}
 	}
 	return -1
 }
 
-func (t Module) Base() string {
-	return filepath.Base(t.path)
+func (t *T) NewModule(s string) (*Module, error) {
+	path, err := t.lookupModule(s)
+	if err != nil {
+		return nil, err
+	}
+	mod := Module{
+		name:  s,
+		main:  t,
+		path:  path,
+		order: modOrder(path),
+	}
+	return &mod, nil
+}
+
+func (t Module) Path() string {
+	return t.path
+}
+
+func (t Module) Order() int {
+	return t.order
 }
 
 func (t Module) Name() string {
-	return reModule.ReplaceAllLiteralString(t.Base(), "")
+	return t.name
 }
 
-func (t T) ListModules() ([]string, error) {
-	l := make([]string, 0)
+func (t T) ListModuleNames() ([]string, error) {
+	mods, err := t.ListModules()
+	if err != nil {
+		return []string{}, err
+	}
+	l := make([]string, len(mods))
+	for i, mod := range mods {
+		l[i] = mod.Name()
+	}
+	return l, nil
+}
+
+func (t T) ListModules() (Modules, error) {
+	l := make(Modules, 0)
 	paths, err := filepath.Glob(filepath.Join(t.varDir, "*"))
 	if err != nil {
 		return l, nil
 	}
 	for _, path := range paths {
-		mod := t.NewModule(path)
-		if err := mod.Validate(); err != nil {
-			t.log.Debug().Msgf("discard module %s: %s", path, err)
+		base := filepath.Base(path)
+		if !reModule.MatchString(base) {
 			continue
 		}
-		l = append(l, mod.Name())
+		name := reModule.ReplaceAllString(base, "")
+		if mod, err := t.NewModule(name); err != nil {
+			continue
+		} else {
+			l = append(l, mod)
+		}
 	}
 	return l, nil
 }

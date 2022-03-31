@@ -1,6 +1,10 @@
 package flag
 
 var Tags = map[string]Opt{
+	"attach": Opt{
+		Long: "attach",
+		Desc: "attach the modulesets selected for the compliance run.",
+	},
 	"color": Opt{
 		Long:    "color",
 		Default: "auto",

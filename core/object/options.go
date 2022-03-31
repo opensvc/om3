@@ -45,6 +45,11 @@ type (
 		Force bool `flag:"force"`
 	}
 
+	// OptAttach contains the force option
+	OptAttach struct {
+		Attach bool `flag:"attach"`
+	}
+
 	// OptModule contains the module option
 	OptModule struct {
 		Module string `flag:"module"`

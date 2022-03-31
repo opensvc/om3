@@ -13,7 +13,7 @@ type (
 
 func (t Node) ComplianceListModules(options OptsNodeComplianceListModules) ([]string, error) {
 	comp := compliance.New()
-	data, err := comp.ListModules()
+	data, err := comp.ListModuleNames()
 	if err != nil {
 		return nil, err
 	}
