@@ -123,11 +123,18 @@ func (t *Run) init() error {
 	}
 	t.modules = make(Modules, 0)
 	for _, mod := range t.data.ExpandModules(t.Modsets, t.Mods) {
-		if err := t.main.Validate(mod); err != nil {
-			return errors.Wrap(err, "init module")
-		} else {
+		err := t.main.Validate(mod)
+		if err == nil {
 			t.modules = append(t.modules, mod)
+			continue
 		}
+		rset := t.data.Ruleset(mod.ModulesetName())
+		if strings.Contains(rset.Filter, "via moduleset") {
+			mod.order = parseModuleOrder(mod.Name())
+			t.modules = append(t.modules, mod)
+			continue
+		}
+		return errors.Wrap(err, "init module")
 	}
 	sort.Sort(t.modules)
 	return nil
@@ -267,7 +274,86 @@ func (t Run) rsetIsExplicitViaModuleset(rset Ruleset) bool {
 	return rset.Filter == "explicit attachment via moduleset"
 }
 
+func (t *Run) autoModuleExec(mod *Module, action Action) (ModuleAction, error) {
+	ma := ModuleAction{
+		Action:  action,
+		Module:  mod.Name(),
+		BeginAt: time.Now(),
+	}
+	env, err := t.moduleEnv(mod)
+	if err != nil {
+		ma.ExitCode = -1
+		ma.EndAt = time.Now()
+		return ma, err
+	}
+	rset := t.data.Ruleset(mod.ModulesetName())
+	vars := rset.Vars
+	sort.Sort(vars)
+	for i, v := range vars {
+		ret := t.autoModuleVarExec(mod, action, v, env, &ma)
+		switch ret {
+		case ExitCodeOk:
+		case ExitCodeNA:
+			if i == 0 {
+				ma.ExitCode = 2
+			}
+		default:
+			ma.ExitCode = ret
+			if action == ActionFix {
+				break // at first error in a fix run
+			}
+		}
+	}
+	ma.EndAt = time.Now()
+	t.ModuleActions = append(t.ModuleActions, ma)
+	return ma, err
+}
+
+func (t *Run) autoModuleVarExec(mod *Module, action Action, v Var, env []string, ma *ModuleAction) int {
+	if v.Class == "raw" {
+		return 0
+	}
+	fn := t.getObjectFunc(v.Class)
+	if fn == nil {
+		ma.Log.Err(fmt.Sprint("invalid class", v.Class, "for rule", v.Name))
+		return 1
+	}
+	ret := fn(action, v, env, ma)
+	return ret
+}
+
+type objectExecFunc func(action Action, v Var, env []string, ma *ModuleAction) int
+
+func (t *Run) getObjectFunc(class string) objectExecFunc {
+	return t.objectExec
+}
+
+func (t *Run) objectExec(action Action, v Var, env []string, ma *ModuleAction) int {
+	path := filepath.Join(t.main.varDir, "com.opensvc", v.Class+".py")
+	cmd := command.New(
+		command.WithName(rawconfig.Node.Paths.Python),
+		command.WithVarArgs(path, v.EnvName(), string(action)),
+		command.WithIgnoredExitCodes(),
+		command.WithEnv(env),
+		command.WithOnStdoutLine(func(s string) {
+			ma.Log.Out(s)
+		}),
+		command.WithOnStderrLine(func(s string) {
+			ma.Log.Err(s)
+		}),
+	)
+	err := cmd.Run()
+	if err != nil {
+		ma.Log.Err(fmt.Sprint(err))
+		return 1
+	}
+	return cmd.ExitCode()
+}
+
 func (t *Run) moduleExec(mod *Module, action Action) (ModuleAction, error) {
+	if mod.path == "" {
+		return t.autoModuleExec(mod, action)
+	}
 	ma := ModuleAction{
 		Action:  action,
 		Module:  mod.Name(),

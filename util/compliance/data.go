@@ -62,7 +62,7 @@ func (t T) GetAllData(modsets []string) (Data, error) {
 
 func (t T) GetData(modsets []string) (Data, error) {
 	data := Data{}
-	err := t.collectorClient.CallFor(&data, "comp_get_data", hostname.Hostname(), modsets)
+	err := t.collectorClient.CallFor(&data, "comp_get_data_v2", hostname.Hostname(), modsets)
 	if err != nil {
 		return data, err
 	}

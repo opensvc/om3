@@ -27,6 +27,12 @@ var (
 	space = regexp.MustCompile(`\s+`)
 )
 
+func (t Vars) Len() int      { return len(t) }
+func (t Vars) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (t Vars) Less(i, j int) bool {
+	return t[i].Name < t[j].Name
+}
+
 func NewVars() Vars {
 	return make(Vars, 0)
 }
