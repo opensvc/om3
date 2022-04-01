@@ -2,11 +2,9 @@ package compliance
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/xmap"
 )
 
 type (
@@ -128,48 +126,81 @@ func (t Data) ModulesetsTree() *ModulesetTree {
 	return tree
 }
 
-func (t Data) CascadingModulesetModules(name string) []string {
-	l := make([]string, 0)
+func (t Data) CascadingModulesetModules(name string) map[string]string {
+	m := make(map[string]string)
 	modsetRelations, ok := t.ModsetRelations[name]
 	if ok {
 		for _, child := range modsetRelations {
 			// recurse for child modset
-			l = append(l, t.CascadingModulesetModules(child)...)
+			for modName, modsetName := range t.CascadingModulesetModules(child) {
+				m[modName] = modsetName
+			}
 		}
 	}
 	modset, ok := t.Modsets[name]
 	if ok {
-		l = append(l, modset.ModuleNames()...)
+		for _, modName := range modset.ModuleNames() {
+			m[modName] = name
+		}
 	}
-	return l
+	return m
 }
 
-func (t Data) AllModuleNames() []string {
-	m := make(map[string]interface{})
-	for _, mods := range t.Modsets {
+func (t Data) AllModulesMap() map[string]*Module {
+	m := make(map[string]*Module)
+	for modsetName, mods := range t.Modsets {
 		for _, mod := range mods {
-			m[mod.Name] = nil
+			module := NewModule(mod.Name)
+			module.SetAutofix(mod.AutoFix)
+			module.SetModulesetName(modsetName)
+			m[mod.Name] = module
 		}
 	}
-	l := xmap.Keys(m)
-	sort.Strings(l)
+	return m
+}
+
+func (t Data) AllModules() Modules {
+	l := make(Modules, 0)
+	m := t.AllModulesMap()
+	for _, module := range m {
+		l = append(l, module)
+	}
 	return l
 }
 
-func (t Data) ExpandModules(modsets, mods []string) []string {
-	m := make(map[string]interface{})
-	if len(modsets)+len(mods) == 0 {
-		return t.AllModuleNames()
+// ExpandModules returns a map indexed by module name, with the
+// hosting moduleset name as value.
+func (t Data) ExpandModules(modsetNames, modNames []string) Modules {
+	if len(modsetNames)+len(modNames) == 0 {
+		return t.AllModules()
 	}
-	for _, mod := range mods {
-		m[mod] = nil
-	}
-	for _, modset := range modsets {
-		for _, mod := range t.CascadingModulesetModules(modset) {
-			m[mod] = nil
+	all := t.AllModulesMap()
+	m := make(map[string]*Module)
+	for _, modName := range modNames {
+		if mod, ok := all[modName]; ok {
+			m[modName] = mod
 		}
 	}
-	l := xmap.Keys(m)
-	sort.Strings(l)
+	for _, modsetName := range modsetNames {
+		for childModsetName, childModName := range t.CascadingModulesetModules(modsetName) {
+			m[childModName] = NewModule(childModName).SetModulesetName(childModsetName)
+		}
+	}
+	l := make(Modules, 0)
+	for _, module := range m {
+		l = append(l, module)
+	}
 	return l
+}
+
+func (t Data) Ruleset(name string) Ruleset {
+	if rset, ok := t.Rsets[name]; ok {
+		return rset
+	} else {
+		return Ruleset{}
+	}
+}
+
+func (t Data) RulesetsMD5() string {
+	return t.Ruleset("osvc_collector").GetString("ruleset_md5")
 }

@@ -25,6 +25,7 @@ var (
 type (
 	// AgentPaths abstracts all paths of the agent file organisation
 	AgentPaths struct {
+		Python  string `mapstructure:"python"`
 		Root    string `mapstructure:"root"`
 		Bin     string `mapstructure:"bin"`
 		Var     string `mapstructure:"var"`

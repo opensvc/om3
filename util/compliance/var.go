@@ -3,7 +3,6 @@ package compliance
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -75,13 +74,15 @@ func (t Var) EnvValue() string {
 	case nil:
 		return "None"
 	case time.Time:
-		return v.Format("2006-01-02 15:04:05")
-	case string:
-		if len(v) > 0 && space.MatchString(v) {
-			return fmt.Sprintf("\"%s\"", v)
-		} else {
-			return fmt.Sprint(v)
-		}
+		return v.Format("20060102T15:04:05")
+	/*
+		case string:
+			if len(v) > 0 && space.MatchString(v) {
+				return fmt.Sprintf("\"%s\"", v)
+			} else {
+				return fmt.Sprint(v)
+			}
+	*/
 	default:
 		return fmt.Sprint(v)
 	}
@@ -95,15 +96,8 @@ func (t Var) EnvName() string {
 	return VarPrefix + s
 }
 
-func (t Vars) LoadEnv() {
-	for _, s := range os.Environ() {
-		pair := strings.SplitN(s, "=", 2)
-		t = append(t, Var{pair[0], pair[1], ""})
-	}
-}
-
-func (t Vars) Env() Env {
-	m := make(Env)
+func (t Vars) EnvMap() map[string]string {
+	m := make(map[string]string)
 	for _, v := range t {
 		m[v.EnvName()] = v.EnvValue()
 	}

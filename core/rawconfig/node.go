@@ -105,7 +105,9 @@ func Load(env map[string]string) {
 		env = readEnvFile()
 	}
 	root, _ := env["osvc_root_path"]
+	python, _ := env["osvc_python"]
 	setDefaults(root)
+	NodeViper.SetDefault("paths.python", python)
 	loadEpilogue()
 }
 

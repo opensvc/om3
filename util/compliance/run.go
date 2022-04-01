@@ -2,11 +2,17 @@ package compliance
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/xsession"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -24,7 +30,7 @@ type (
 
 		main    *T
 		data    Data
-		modules []*Module
+		modules Modules
 	}
 	ModuleActions []ModuleAction
 	ModuleAction  struct {
@@ -49,6 +55,7 @@ const (
 	ActionCheck   Action = "check"
 	ActionFix     Action = "fix"
 	ActionFixable Action = "fixable"
+	ActionAuto    Action = "auto"
 
 	ExitCodeOk  int = 0
 	ExitCodeNok int = 1
@@ -92,7 +99,7 @@ func (t *Run) SetAttach(v bool) {
 }
 
 func (t *Run) SetForce(v bool) {
-	t.Attach = v
+	t.Force = v
 }
 
 func (t *Run) endInit() {
@@ -115,18 +122,56 @@ func (t *Run) init() error {
 		t.data = data
 	}
 	t.modules = make(Modules, 0)
-	for _, modName := range t.data.ExpandModules(t.Modsets, t.Mods) {
-		if mod, err := t.main.NewModule(modName); err != nil {
+	for _, mod := range t.data.ExpandModules(t.Modsets, t.Mods) {
+		if err := t.main.Validate(mod); err != nil {
 			return errors.Wrap(err, "init module")
 		} else {
 			t.modules = append(t.modules, mod)
 		}
 	}
+	sort.Sort(t.modules)
 	return nil
+}
+
+func (t *Run) Auto() error {
+	return t.do(ActionAuto)
 }
 
 func (t *Run) Check() error {
 	return t.do(ActionCheck)
+}
+
+func (t *Run) Fix() error {
+	return t.do(ActionFix)
+}
+
+func (t *Run) Fixable() error {
+	return t.do(ActionFixable)
+}
+
+func (t *Run) Env() (Envs, error) {
+	envs := make(Envs)
+	if err := t.init(); err != nil {
+		return envs, err
+	}
+	for _, mod := range t.modules {
+		env, err := t.moduleEnv(mod)
+		if err != nil {
+			return envs, err
+		}
+		envs[mod.Name()] = env
+	}
+	return envs, nil
+}
+
+func (t Run) autoAction(action Action, mod *Module) Action {
+	if action != ActionAuto {
+		return action
+	}
+	if mod.Autofix() {
+		return ActionFix
+	}
+	return ActionCheck
 }
 
 func (t *Run) do(action Action) error {
@@ -142,17 +187,103 @@ func (t *Run) do(action Action) error {
 	return nil
 }
 
+func (t *Run) moduleEnv(mod *Module) ([]string, error) {
+	m := make(map[string]interface{})
+	m["LANG"] = "C.UTF-8"
+	m["LC_NUMERIC"] = "C"
+	m["LC_TIME"] = "C"
+	m["PYTHONIOENCODING"] = "utf-8"
+	m["OSVC_PYTHON"] = rawconfig.Node.Paths.Python
+	m["OSVC_PATH_ETC"] = rawconfig.Node.Paths.Etc
+	m["OSVC_PATH_VAR"] = rawconfig.Node.Paths.Var
+	m["OSVC_PATH_COMP"] = t.main.varDir
+	m["OSVC_PATH_TMP"] = rawconfig.Node.Paths.Tmp
+	m["OSVC_PATH_LOG"] = rawconfig.Node.Paths.Log
+	m["OSVC_NODEMGR"] = filepath.Join(rawconfig.Node.Paths.Bin, "nodemgr")
+	m["OSVC_SVCMGR"] = filepath.Join(rawconfig.Node.Paths.Bin, "svcmgr")
+	m["OSVC_SESSION_UUID"] = xsession.ID
+
+	if runtime.GOOS != "windows" {
+		m["PATH"] = rawconfig.Node.Paths.Bin + ":" + os.Getenv("PATH")
+	}
+
+	/*
+			# add services env section keys, with values eval'ed on this node
+		        if self.context.svc:
+		            os.environ[self.context.format_rule_var("SVC_NAME")] = self.context.format_rule_val(self.context.svc.name)
+		            os.environ[self.context.format_rule_var("SVC_PATH")] = self.context.format_rule_val(self.context.svc.path)
+		            if self.context.svc.namespace:
+		                os.environ[self.context.format_rule_var("SVC_NAMESPACE")] = self.context.format_rule_val(self.context.svc.namespace)
+		            for key, val in self.context.svc.env_section_keys_evaluated().items():
+		                os.environ[self.context.format_rule_var("SVC_CONF_ENV_"+key.upper())] = self.context.format_rule_val(val)
+
+		        for rset in self.ruleset.values():
+		            if (rset["filter"] != "explicit attachment via moduleset" and "matching non-public contextual ruleset shown via moduleset" not in rset["filter"]) or ( \
+		               self.moduleset in self.context.data["modset_rset_relations"]  and \
+		               rset['name'] in self.context.data["modset_rset_relations"][self.moduleset]
+		               ):
+		                for rule in rset['vars']:
+		                    var, val, var_class = self.context.parse_rule(rule)
+		                    os.environ[self.context.format_rule_var(var)] = self.context.format_rule_val(val)
+	*/
+
+	for _, rset := range t.data.Rsets {
+		if t.rsetIsNotPrivateContextualAndNotExplicitViaModuleset(rset) || t.rsetIsRelatedToModset(rset, mod.modset) {
+			for k, v := range rset.Vars.EnvMap() {
+				m[k] = v
+			}
+		}
+	}
+
+	env := make([]string, 0)
+	for k, v := range m {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	return env, nil
+}
+
+func (t Run) rsetIsRelatedToModset(rset Ruleset, modsetName string) bool {
+	relations, ok := t.data.ModsetRsetRelations[modsetName]
+	if !ok {
+		return false
+	}
+	for _, s := range relations {
+		if s == rset.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func (t Run) rsetIsNotPrivateContextualAndNotExplicitViaModuleset(rset Ruleset) bool {
+	return !t.rsetIsPrivateContextual(rset) && !t.rsetIsExplicitViaModuleset(rset)
+}
+
+func (t Run) rsetIsPrivateContextual(rset Ruleset) bool {
+	return strings.Contains(rset.Filter, "matching non-public contextual ruleset shown via moduleset")
+}
+
+func (t Run) rsetIsExplicitViaModuleset(rset Ruleset) bool {
+	return rset.Filter == "explicit attachment via moduleset"
+}
+
 func (t *Run) moduleExec(mod *Module, action Action) (ModuleAction, error) {
 	ma := ModuleAction{
 		Action:  action,
 		Module:  mod.Name(),
 		BeginAt: time.Now(),
 	}
+	env, err := t.moduleEnv(mod)
+	if err != nil {
+		ma.ExitCode = -1
+		ma.EndAt = time.Now()
+		return ma, err
+	}
 	cmd := command.New(
 		command.WithName(mod.Path()),
 		command.WithVarArgs(string(action)),
 		command.WithIgnoredExitCodes(),
-		// TODO: command.WithEnv(),
+		command.WithEnv(env),
 		command.WithOnStdoutLine(func(s string) {
 			ma.Log.Out(s)
 		}),
@@ -160,7 +291,7 @@ func (t *Run) moduleExec(mod *Module, action Action) (ModuleAction, error) {
 			ma.Log.Err(s)
 		}),
 	)
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		ma.Log.Err(fmt.Sprint(err))
 	}
@@ -179,6 +310,7 @@ func (t *Run) moduleAction(mod *Module, action Action) error {
 		_, err = t.moduleExec(mod, action)
 		return err
 	}
+	action = t.autoAction(action, mod)
 	switch action {
 	case ActionCheck:
 		if ma, err = t.moduleExec(mod, ActionCheck); err != nil {
@@ -197,7 +329,7 @@ func (t *Run) moduleAction(mod *Module, action Action) error {
 		if ma.ExitCode == ExitCodeOk {
 			return nil
 		}
-		if _, err = t.moduleExec(mod, ActionFixable); err != nil {
+		if ma, err = t.moduleExec(mod, ActionFixable); err != nil {
 			return err
 		}
 		if ma.ExitCode == ExitCodeNok {

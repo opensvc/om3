@@ -13,10 +13,11 @@ import (
 
 type (
 	Module struct {
-		name  string
-		path  string
-		order int
-		main  *T
+		name    string
+		path    string
+		modset  string
+		order   int
+		autofix bool
 	}
 	Modules []*Module
 )
@@ -25,6 +26,12 @@ var (
 	reModuleStr = `^S*[0-9]+-*`
 	reModule    = regexp.MustCompile(reModuleStr)
 )
+
+func (t Modules) Len() int      { return len(t) }
+func (t Modules) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (t Modules) Less(i, j int) bool {
+	return t[i].Order() < t[j].Order()
+}
 
 func validatePath(path string) error {
 	if path == "" {
@@ -91,7 +98,8 @@ func (t T) lookupModule(s string) (string, error) {
 	}
 }
 
-func modOrder(base string) int {
+func parseModuleOrder(path string) int {
+	base := filepath.Base(path)
 	for i := 0; i < len(base); i += 1 {
 		if !unicode.IsDigit(rune(base[i])) {
 			n, _ := strconv.Atoi(base[:i])
@@ -101,18 +109,43 @@ func modOrder(base string) int {
 	return -1
 }
 
-func (t *T) NewModule(s string) (*Module, error) {
-	path, err := t.lookupModule(s)
-	if err != nil {
+func NewModule(name string) *Module {
+	mod := Module{
+		name: name,
+	}
+	return &mod
+}
+
+func (t *T) NewValidModule(name string) (*Module, error) {
+	mod := NewModule(name)
+	if err := t.Validate(mod); err != nil {
 		return nil, err
 	}
-	mod := Module{
-		name:  s,
-		main:  t,
-		path:  path,
-		order: modOrder(path),
+	return mod, nil
+}
+
+func (t *T) Validate(mod *Module) error {
+	path, err := t.lookupModule(mod.name)
+	if err != nil {
+		return err
 	}
-	return &mod, nil
+	mod.path = path
+	mod.order = parseModuleOrder(path)
+	return nil
+}
+
+func (t *Module) SetAutofix(v bool) *Module {
+	t.autofix = v
+	return t
+}
+
+func (t *Module) SetModulesetName(s string) *Module {
+	t.modset = s
+	return t
+}
+
+func (t Module) ModulesetName() string {
+	return t.modset
 }
 
 func (t Module) Path() string {
@@ -125,6 +158,10 @@ func (t Module) Order() int {
 
 func (t Module) Name() string {
 	return t.name
+}
+
+func (t Module) Autofix() bool {
+	return t.autofix
 }
 
 func (t T) ListModuleNames() ([]string, error) {
@@ -151,7 +188,7 @@ func (t T) ListModules() (Modules, error) {
 			continue
 		}
 		name := reModule.ReplaceAllString(base, "")
-		if mod, err := t.NewModule(name); err != nil {
+		if mod, err := t.NewValidModule(name); err != nil {
 			continue
 		} else {
 			l = append(l, mod)

@@ -60,7 +60,10 @@ var (
 	cmdNodeComplianceDetachModuleset commands.CmdNodeComplianceDetachModuleset
 	cmdNodeComplianceAttachRuleset   commands.CmdNodeComplianceAttachRuleset
 	cmdNodeComplianceDetachRuleset   commands.CmdNodeComplianceDetachRuleset
+	cmdNodeComplianceAuto            commands.CmdNodeComplianceAuto
 	cmdNodeComplianceCheck           commands.CmdNodeComplianceCheck
+	cmdNodeComplianceFix             commands.CmdNodeComplianceFix
+	cmdNodeComplianceFixable         commands.CmdNodeComplianceFixable
 	cmdNodeComplianceShowRuleset     commands.CmdNodeComplianceShowRuleset
 	cmdNodeComplianceShowModuleset   commands.CmdNodeComplianceShowModuleset
 	cmdNodeComplianceListModules     commands.CmdNodeComplianceListModules
@@ -105,7 +108,10 @@ func init() {
 	cmdNodeComplianceAttachRuleset.Init(nodeComplianceAttachCmd)
 	cmdNodeComplianceDetachModuleset.Init(nodeComplianceDetachCmd)
 	cmdNodeComplianceDetachRuleset.Init(nodeComplianceDetachCmd)
+	cmdNodeComplianceAuto.Init(nodeComplianceCmd)
 	cmdNodeComplianceCheck.Init(nodeComplianceCmd)
+	cmdNodeComplianceFix.Init(nodeComplianceCmd)
+	cmdNodeComplianceFixable.Init(nodeComplianceCmd)
 	cmdNodeComplianceShowRuleset.Init(nodeComplianceShowCmd)
 	cmdNodeComplianceShowModuleset.Init(nodeComplianceShowCmd)
 	cmdNodeComplianceListModules.Init(nodeComplianceListCmd)

@@ -12,7 +12,7 @@ type (
 	Ruleset  struct {
 		Filter string
 		Name   string
-		Vars   []Var
+		Vars   Vars
 	}
 )
 
@@ -23,6 +23,26 @@ func (t T) GetRulesets() (Rulesets, error) {
 		return nil, err
 	}
 	return rulesets, nil
+}
+
+func (t Ruleset) GetString(name string) string {
+	if s, ok := t.Get(name).(string); ok {
+		return s
+	} else {
+		return ""
+	}
+}
+
+func (t Ruleset) Get(name string) interface{} {
+	if t.Vars == nil {
+		return nil
+	}
+	for _, v := range t.Vars {
+		if v.Name == name {
+			return v.Value
+		}
+	}
+	return nil
 }
 
 func (t Ruleset) Render() string {

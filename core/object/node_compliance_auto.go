@@ -5,15 +5,17 @@ import (
 )
 
 type (
-	// OptsNodeComplianceEnv is the options of the ComplianceEnv function.
-	OptsNodeComplianceEnv struct {
+	// OptsNodeComplianceAuto is the options of the ComplianceAuto function.
+	OptsNodeComplianceAuto struct {
 		Global    OptsGlobal
 		Moduleset OptModuleset
 		Module    OptModule
+		Force     OptForce
+		Attach    OptAttach
 	}
 )
 
-func (t Node) ComplianceEnv(options OptsNodeComplianceEnv) (compliance.Envs, error) {
+func (t Node) ComplianceAuto(options OptsNodeComplianceAuto) (*compliance.Run, error) {
 	client, err := t.collectorComplianceClient()
 	if err != nil {
 		return nil, err
@@ -23,5 +25,8 @@ func (t Node) ComplianceEnv(options OptsNodeComplianceEnv) (compliance.Envs, err
 	run := comp.NewRun()
 	run.SetModulesetsExpr(options.Moduleset.Moduleset)
 	run.SetModulesExpr(options.Module.Module)
-	return run.Env()
+	run.SetForce(options.Force.Force)
+	run.SetAttach(options.Attach.Attach)
+	err = run.Auto()
+	return run, err
 }
