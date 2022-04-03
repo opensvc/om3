@@ -2,7 +2,10 @@ package compliance
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
+
+	"opensvc.com/opensvc/core/rawconfig"
 )
 
 type (
@@ -54,6 +57,32 @@ func (t *LogEntries) Err(s string) {
 		Level: LogLevelErr,
 		Msg:   s,
 	})
+}
+
+func (t LogEntries) Render() string {
+	buff := ""
+	for _, e := range t.Entries() {
+		switch e.Level {
+		case LogLevelOut:
+			buff += fmt.Sprintf("      %s\n", e.Msg)
+		case LogLevelErr:
+			buff += fmt.Sprintf("      %s\n", rawconfig.Node.Colorize.Error("Err: ")+e.Msg)
+		}
+	}
+	return buff
+}
+
+func (t LogEntries) RenderForCollector() string {
+	buff := ""
+	for _, e := range t.Entries() {
+		switch e.Level {
+		case LogLevelOut:
+			buff += fmt.Sprintf("%s\n", e.Msg)
+		case LogLevelErr:
+			buff += fmt.Sprintf("Err: %s\n", e.Msg)
+		}
+	}
+	return buff
 }
 
 // MarshalJSON marshals the data as a quoted json string

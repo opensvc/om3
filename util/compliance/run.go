@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/xsession"
 	"opensvc.com/opensvc/util/xstrings"
 )
@@ -76,6 +77,7 @@ func (t *T) NewRun() *Run {
 
 func (t *Run) Close() {
 	t.EndAt = time.Now()
+	t.Push()
 }
 
 func (t *Run) SetModulesetsExpr(s string) {
@@ -387,6 +389,41 @@ func (t *Run) moduleExec(mod *Module, action Action) (ModuleAction, error) {
 	return ma, err
 }
 
+func (t Run) Push() error {
+	if len(t.ModuleActions) == 0 {
+		return
+	}
+	vars := []string{
+		"run_nodename",
+		"run_module",
+		"run_status",
+		"run_log",
+		"run_action",
+		"rset_md5",
+		"run_svcname",
+	}
+	hn := hostname.Hostname()
+	vals := make([][]interface{}, 0)
+	md5sum := t.data.RulesetsMD5()
+	for _, ma := range t.ModuleActions {
+		v := []interface{}{
+			hn,
+			ma.Module,
+			ma.Status(),
+			ma.Log.RenderForCollector(),
+			ma.Action,
+			md5sum,
+			"",
+		}
+		vals = append(vals, v)
+	}
+	response, err := t.main.collectorClient.Call("comp_log_actions", vars, vals)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t *Run) moduleAction(mod *Module, action Action) error {
 	var (
 		ma  ModuleAction
@@ -481,6 +518,17 @@ func (t ModuleAction) Status() string {
 	switch t.ExitCode {
 	case 0:
 		return rawconfig.Node.Colorize.Optimal("ok")
+	case 2:
+		return rawconfig.Node.Colorize.Secondary("n/a")
+	default:
+		return rawconfig.Node.Colorize.Error("nok")
+	}
+}
+
+func (t ModuleAction) StatusAndExitCode() string {
+	switch t.ExitCode {
+	case 0:
+		return rawconfig.Node.Colorize.Optimal("ok")
 	case 1:
 		return rawconfig.Node.Colorize.Error("nok")
 	case 2:
@@ -509,17 +557,10 @@ func (t ModuleActions) Render() string {
 
 func (t ModuleAction) Render() string {
 	buff := fmt.Sprintf("  - Action:   %s\n", rawconfig.Node.Colorize.Bold(t.Action))
-	buff += fmt.Sprintf("    Status:   %s\n", t.Status())
+	buff += fmt.Sprintf("    Status:   %s\n", t.StatusAndExitCode())
 	buff += fmt.Sprintf("    Duration: %s\n", t.Duration())
 	buff += fmt.Sprintf("    Log:\n")
-	for _, e := range t.Log.Entries() {
-		switch e.Level {
-		case LogLevelOut:
-			buff += fmt.Sprintf("      %s\n", e.Msg)
-		case LogLevelErr:
-			buff += fmt.Sprintf("      %s\n", rawconfig.Node.Colorize.Error("Err: ")+e.Msg)
-		}
-	}
+	buff += t.Log.Render()
 	return buff
 
 }
