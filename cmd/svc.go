@@ -21,35 +21,49 @@ isolate lifecycles or to abstract cluster-specific knowledge.
 
 func init() {
 	var (
-		cmdCreate           commands.CmdObjectCreate
-		cmdDelete           commands.CmdObjectDelete
-		cmdDoc              commands.CmdObjectDoc
-		cmdEditConfig       commands.CmdObjectEditConfig
-		cmdEval             commands.CmdObjectEval
-		cmdEnter            commands.CmdObjectEnter
-		cmdFreeze           commands.CmdObjectFreeze
-		cmdGet              commands.CmdObjectGet
-		cmdLs               commands.CmdObjectLs
-		cmdMonitor          commands.CmdObjectMonitor
-		cmdPrintConfig      commands.CmdObjectPrintConfig
-		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
-		cmdPrintDevices     commands.CmdObjectPrintDevices
-		cmdPrintStatus      commands.CmdObjectPrintStatus
-		cmdPrintSchedule    commands.CmdObjectPrintSchedule
-		cmdProvision        commands.CmdObjectProvision
-		cmdRestart          commands.CmdObjectRestart
-		cmdRun              commands.CmdObjectRun
-		cmdSet              commands.CmdObjectSet
-		cmdSetProvisioned   commands.CmdObjectSetProvisioned
-		cmdSetUnprovisioned commands.CmdObjectSetUnprovisioned
-		cmdStart            commands.CmdObjectStart
-		cmdStatus           commands.CmdObjectStatus
-		cmdStop             commands.CmdObjectStop
-		cmdSyncResync       commands.CmdObjectSyncResync
-		cmdThaw             commands.CmdObjectThaw
-		cmdUnfreeze         commands.CmdObjectUnfreeze
-		cmdUnprovision      commands.CmdObjectUnprovision
-		cmdUnset            commands.CmdObjectUnset
+		cmdCreate                    commands.CmdObjectCreate
+		cmdComplianceAttachModuleset commands.CmdObjectComplianceAttachModuleset
+		cmdComplianceDetachModuleset commands.CmdObjectComplianceDetachModuleset
+		cmdComplianceAttachRuleset   commands.CmdObjectComplianceAttachRuleset
+		cmdComplianceDetachRuleset   commands.CmdObjectComplianceDetachRuleset
+		cmdComplianceAuto            commands.CmdObjectComplianceAuto
+		cmdComplianceCheck           commands.CmdObjectComplianceCheck
+		cmdComplianceFix             commands.CmdObjectComplianceFix
+		cmdComplianceFixable         commands.CmdObjectComplianceFixable
+		cmdComplianceShowRuleset     commands.CmdObjectComplianceShowRuleset
+		cmdComplianceShowModuleset   commands.CmdObjectComplianceShowModuleset
+		cmdComplianceListModules     commands.CmdObjectComplianceListModules
+		cmdComplianceListModuleset   commands.CmdObjectComplianceListModuleset
+		cmdComplianceListRuleset     commands.CmdObjectComplianceListRuleset
+		cmdComplianceEnv             commands.CmdObjectComplianceEnv
+		cmdDelete                    commands.CmdObjectDelete
+		cmdDoc                       commands.CmdObjectDoc
+		cmdEditConfig                commands.CmdObjectEditConfig
+		cmdEval                      commands.CmdObjectEval
+		cmdEnter                     commands.CmdObjectEnter
+		cmdFreeze                    commands.CmdObjectFreeze
+		cmdGet                       commands.CmdObjectGet
+		cmdLs                        commands.CmdObjectLs
+		cmdMonitor                   commands.CmdObjectMonitor
+		cmdPrintConfig               commands.CmdObjectPrintConfig
+		cmdPrintConfigMtime          commands.CmdObjectPrintConfigMtime
+		cmdPrintDevices              commands.CmdObjectPrintDevices
+		cmdPrintStatus               commands.CmdObjectPrintStatus
+		cmdPrintSchedule             commands.CmdObjectPrintSchedule
+		cmdProvision                 commands.CmdObjectProvision
+		cmdRestart                   commands.CmdObjectRestart
+		cmdRun                       commands.CmdObjectRun
+		cmdSet                       commands.CmdObjectSet
+		cmdSetProvisioned            commands.CmdObjectSetProvisioned
+		cmdSetUnprovisioned          commands.CmdObjectSetUnprovisioned
+		cmdStart                     commands.CmdObjectStart
+		cmdStatus                    commands.CmdObjectStatus
+		cmdStop                      commands.CmdObjectStop
+		cmdSyncResync                commands.CmdObjectSyncResync
+		cmdThaw                      commands.CmdObjectThaw
+		cmdUnfreeze                  commands.CmdObjectUnfreeze
+		cmdUnprovision               commands.CmdObjectUnprovision
+		cmdUnset                     commands.CmdObjectUnset
 	)
 
 	kind := "svc"
@@ -77,6 +91,36 @@ func init() {
 		cmdUnfreeze.Init(kind, head, &selectorFlag)
 		cmdUnprovision.Init(kind, head, &selectorFlag)
 		cmdUnset.Init(kind, head, &selectorFlag)
+
+		if sub := makeSubCompliance(); sub != nil {
+			head.AddCommand(sub)
+			cmdComplianceEnv.Init(kind, sub, &selectorFlag)
+			cmdComplianceAuto.Init(kind, sub, &selectorFlag)
+			cmdComplianceCheck.Init(kind, sub, &selectorFlag)
+			cmdComplianceFix.Init(kind, sub, &selectorFlag)
+			cmdComplianceFixable.Init(kind, sub, &selectorFlag)
+			if subsub := makeSubComplianceAttach(); sub != nil {
+				sub.AddCommand(subsub)
+				cmdComplianceAttachModuleset.Init(kind, subsub, &selectorFlag)
+				cmdComplianceAttachRuleset.Init(kind, subsub, &selectorFlag)
+			}
+			if subsub := makeSubComplianceDetach(); subsub != nil {
+				sub.AddCommand(subsub)
+				cmdComplianceDetachModuleset.Init(kind, subsub, &selectorFlag)
+				cmdComplianceDetachRuleset.Init(kind, subsub, &selectorFlag)
+			}
+			if subsub := makeSubComplianceShow(); subsub != nil {
+				sub.AddCommand(subsub)
+				cmdComplianceShowRuleset.Init(kind, subsub, &selectorFlag)
+				cmdComplianceShowModuleset.Init(kind, subsub, &selectorFlag)
+			}
+			if subsub := makeSubComplianceList(); subsub != nil {
+				sub.AddCommand(subsub)
+				cmdComplianceListModules.Init(kind, subsub, &selectorFlag)
+				cmdComplianceListModuleset.Init(kind, subsub, &selectorFlag)
+				cmdComplianceListRuleset.Init(kind, subsub, &selectorFlag)
+			}
+		}
 
 		if sub := makeSubEdit(); sub != nil {
 			head.AddCommand(sub)

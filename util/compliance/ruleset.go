@@ -3,6 +3,7 @@ package compliance
 import (
 	"fmt"
 
+	"github.com/ybbus/jsonrpc"
 	"opensvc.com/opensvc/core/collector"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -79,7 +80,15 @@ func (t T) ListRulesets(filter string) ([]string, error) {
 }
 
 func (t T) AttachRuleset(s string) error {
-	response, err := t.collectorClient.Call("comp_attach_ruleset", hostname.Hostname(), s)
+	var (
+		response *jsonrpc.RPCResponse
+		err      error
+	)
+	if t.objectPath.IsZero() {
+		response, err = t.collectorClient.Call("comp_attach_ruleset", hostname.Hostname(), s)
+	} else {
+		response, err = t.collectorClient.Call("comp_attach_svc_ruleset", t.objectPath.String(), s)
+	}
 	if err != nil {
 		return err
 	}
@@ -88,7 +97,15 @@ func (t T) AttachRuleset(s string) error {
 }
 
 func (t T) DetachRuleset(s string) error {
-	response, err := t.collectorClient.Call("comp_detach_ruleset", hostname.Hostname(), s)
+	var (
+		response *jsonrpc.RPCResponse
+		err      error
+	)
+	if t.objectPath.IsZero() {
+		response, err = t.collectorClient.Call("comp_detach_ruleset", hostname.Hostname(), s)
+	} else {
+		response, err = t.collectorClient.Call("comp_detach_svc_ruleset", t.objectPath.String(), s)
+	}
 	if err != nil {
 		return err
 	}

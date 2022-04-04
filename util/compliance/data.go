@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -60,7 +61,24 @@ func (t T) GetAllData(modsets []string) (Data, error) {
 	return t.GetData([]string{})
 }
 
+func (t T) GetObjectData(p path.T, modsets []string) (Data, error) {
+	data := Data{}
+	err := t.collectorClient.CallFor(&data, "comp_get_svc_data_v2", hostname.Hostname(), p.String(), modsets)
+	if err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
 func (t T) GetData(modsets []string) (Data, error) {
+	if t.objectPath.IsZero() {
+		return t.GetNodeData(modsets)
+	} else {
+		return t.GetObjectData(t.objectPath, modsets)
+	}
+}
+
+func (t T) GetNodeData(modsets []string) (Data, error) {
 	data := Data{}
 	err := t.collectorClient.CallFor(&data, "comp_get_data_v2", hostname.Hostname(), modsets)
 	if err != nil {

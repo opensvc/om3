@@ -391,7 +391,7 @@ func (t *Run) moduleExec(mod *Module, action Action) (ModuleAction, error) {
 
 func (t Run) Push() error {
 	if len(t.ModuleActions) == 0 {
-		return
+		return nil
 	}
 	vars := []string{
 		"run_nodename",
@@ -413,11 +413,11 @@ func (t Run) Push() error {
 			ma.Log.RenderForCollector(),
 			ma.Action,
 			md5sum,
-			"",
+			t.main.objectPath,
 		}
 		vals = append(vals, v)
 	}
-	response, err := t.main.collectorClient.Call("comp_log_actions", vars, vals)
+	_, err := t.main.collectorClient.Call("comp_log_actions", vars, vals)
 	if err != nil {
 		return err
 	}

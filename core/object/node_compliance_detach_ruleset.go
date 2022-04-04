@@ -13,7 +13,7 @@ type (
 )
 
 func (t Node) ComplianceDetachRuleset(options OptsNodeComplianceDetachRuleset) ([]string, error) {
-	client, err := t.collectorComplianceClient()
+	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	err = comp.DetachRuleset(options.Ruleset.Ruleset)

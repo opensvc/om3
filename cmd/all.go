@@ -36,6 +36,46 @@ func makeSubEdit() *cobra.Command {
 	}
 }
 
+func makeSubCompliance() *cobra.Command {
+	return &cobra.Command{
+		Use:     "compliance",
+		Short:   "node configuration expectations analysis and application",
+		Aliases: []string{"compli", "comp", "com", "co"},
+	}
+}
+
+func makeSubComplianceAttach() *cobra.Command {
+	return &cobra.Command{
+		Use:     "attach",
+		Short:   "attach modulesets and rulesets to the node.",
+		Aliases: []string{"attac", "atta", "att", "at"},
+	}
+}
+
+func makeSubComplianceDetach() *cobra.Command {
+	return &cobra.Command{
+		Use:     "detach",
+		Short:   "detach modulesets and rulesets from the node.",
+		Aliases: []string{"detac", "deta", "det", "de"},
+	}
+}
+
+func makeSubComplianceList() *cobra.Command {
+	return &cobra.Command{
+		Use:     "list",
+		Short:   "list modules, modulesets and rulesets available",
+		Aliases: []string{"lis", "li", "ls", "l"},
+	}
+}
+
+func makeSubComplianceShow() *cobra.Command {
+	return &cobra.Command{
+		Use:     "show",
+		Short:   "show states: current moduleset and ruleset attachments, modules last check",
+		Aliases: []string{"sho", "sh", "s"},
+	}
+}
+
 func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate

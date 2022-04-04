@@ -8,13 +8,10 @@ type (
 		Global  OptsGlobal
 		Ruleset OptRuleset
 	}
-
-	ComplianceShowRulesetResData struct {
-	}
 )
 
 func (t Node) ComplianceShowRuleset(options OptsNodeComplianceShowRuleset) (compliance.Rulesets, error) {
-	client, err := t.collectorComplianceClient()
+	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	data, err := comp.GetRulesets()

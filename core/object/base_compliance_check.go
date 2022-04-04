@@ -5,8 +5,8 @@ import (
 )
 
 type (
-	// OptsNodeComplianceCheck is the options of the ComplianceCheck function.
-	OptsNodeComplianceCheck struct {
+	// OptsObjectComplianceCheck is the options of the ComplianceCheck function.
+	OptsObjectComplianceCheck struct {
 		Global    OptsGlobal
 		Moduleset OptModuleset
 		Module    OptModule
@@ -15,18 +15,17 @@ type (
 	}
 )
 
-func (t Node) ComplianceCheck(options OptsNodeComplianceCheck) (*compliance.Run, error) {
-	client, err := t.CollectorComplianceClient()
+func (t *Base) ComplianceCheck(options OptsObjectComplianceCheck) (*compliance.Run, error) {
+	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
+	comp.SetObjectPath(t.Path)
 	run := comp.NewRun()
 	run.SetModulesetsExpr(options.Moduleset.Moduleset)
 	run.SetModulesExpr(options.Module.Module)
-	run.SetForce(options.Force.Force)
-	run.SetAttach(options.Attach.Attach)
 	err = run.Check()
 	return run, err
 }

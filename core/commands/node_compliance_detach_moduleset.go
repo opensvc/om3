@@ -42,7 +42,8 @@ func (t *CmdNodeComplianceDetachModuleset) run() {
 		nodeaction.WithServer(t.Global.Server),
 		nodeaction.WithRemoteAction("compliance detach moduleset"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format":    t.Global.Format,
+			"moduleset": t.Moduleset,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().ComplianceDetachModuleset(t.OptsNodeComplianceDetachModuleset)

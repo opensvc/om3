@@ -22,7 +22,7 @@ func (t Node) collectorInitClient() (*collector.Client, error) {
 	return collector.NewInitClient(s, secret)
 }
 
-func (t Node) collectorComplianceClient() (*collector.Client, error) {
+func (t Node) CollectorComplianceClient() (*collector.Client, error) {
 	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
 	secret := t.config.GetString(key.Parse("node.uuid"))
 	return collector.NewComplianceClient(s, secret)

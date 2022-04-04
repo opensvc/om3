@@ -16,7 +16,7 @@ type (
 )
 
 func (t Node) ComplianceAuto(options OptsNodeComplianceAuto) (*compliance.Run, error) {
-	client, err := t.collectorComplianceClient()
+	client, err := t.CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}

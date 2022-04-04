@@ -13,7 +13,7 @@ type (
 )
 
 func (t Node) ComplianceListRuleset(options OptsNodeComplianceListRuleset) ([]string, error) {
-	client, err := t.collectorComplianceClient()
+	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	data, err := comp.ListRulesets(options.Ruleset.Ruleset)

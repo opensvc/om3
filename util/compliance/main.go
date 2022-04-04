@@ -6,12 +6,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/collector"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
 type (
 	T struct {
 		collectorClient *collector.Client
+		objectPath      path.T
 		log             zerolog.Logger
 		varDir          string
 
@@ -34,6 +36,10 @@ func (t *T) SetLogger(v zerolog.Logger) {
 
 func (t *T) SetCollectorClient(c *collector.Client) {
 	t.collectorClient = c
+}
+
+func (t *T) SetObjectPath(s path.T) {
+	t.objectPath = s
 }
 
 func (t *T) SetVarDir(s string) {

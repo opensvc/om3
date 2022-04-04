@@ -13,7 +13,7 @@ type (
 )
 
 func (t Node) ComplianceDetachModuleset(options OptsNodeComplianceDetachModuleset) ([]string, error) {
-	client, err := t.collectorComplianceClient()
+	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	err = comp.DetachModuleset(options.Moduleset.Moduleset)

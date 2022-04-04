@@ -16,7 +16,7 @@ type (
 )
 
 func (t Node) ComplianceFix(options OptsNodeComplianceFix) (*compliance.Run, error) {
-	client, err := t.collectorComplianceClient()
+	client, err := t.CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}
