@@ -117,15 +117,22 @@ func (t ModulesetRelations) Parents() map[string][]string {
 func (t Data) HeadModulesets() []string {
 	l := make([]string, 0)
 	m := t.ModsetRelations.Parents()
-	for name, _ := range t.Modsets {
-		if parents, ok := m[name]; ok {
-			for _, parent := range parents {
-				if _, ok := t.Modsets[parent]; ok {
-					continue
-				}
+	hasParent := func(name string) bool {
+		parents, ok := m[name]
+		if !ok {
+			return false
+		}
+		for _, parent := range parents {
+			if _, ok := t.Modsets[parent]; ok {
+				return true
 			}
 		}
-		l = append(l, name)
+		return false
+	}
+	for name, _ := range t.Modsets {
+		if !hasParent(name) {
+			l = append(l, name)
+		}
 	}
 	return l
 }
