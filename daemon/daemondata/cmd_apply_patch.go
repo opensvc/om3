@@ -47,33 +47,35 @@ func (o opApplyRemotePatch) call(d *data) {
 		return
 	}
 	deltas := o.msg.Deltas
-	sortGens := make([]string, 0, len(deltas))
+	var sortGen []uint64
 	for k := range deltas {
-		sortGens = append(sortGens, k)
-	}
-	sort.Strings(sortGens)
-	parentPath := jsondelta.OperationPath{"monitor", "nodes", o.nodename}
-	for genS := range deltas {
-		patchGen, err := strconv.ParseUint(string(genS), 10, 64)
+		gen, err := strconv.ParseUint(k, 10, 64)
 		if err != nil {
 			continue
 		}
-		if patchGen <= pendingNodeGen {
+		sortGen = append(sortGen, gen)
+	}
+	sort.Slice(sortGen, func(i, j int) bool { return sortGen[i] < sortGen[j] })
+	d.log.Debug().Msgf("ApplyRemotePatch patch sequence %v", sortGen)
+	parentPath := jsondelta.OperationPath{"monitor", "nodes", o.nodename}
+	for _, gen := range sortGen {
+		genS := strconv.FormatUint(gen, 10)
+		if gen <= pendingNodeGen {
 			continue
 		}
-		if patchGen > pendingNodeGen+1 {
-			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = uint64(0)
+		if gen > pendingNodeGen+1 {
 			err := errors.New("ApplyRemotePatch invalid patch gen: " + genS)
 			d.log.Info().Err(err).Msgf("need full %s", o.nodename)
-			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = 0
+			d.remotesNeedFull[o.nodename] = true
 			o.err <- err
 			return
 		}
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
+		d.log.Debug().Msgf("ApplyRemotePatch applying %s gen %s", o.nodename, genS)
 		pendingB, err = patch.Apply(pendingB)
 		if err != nil {
-			d.log.Info().Err(err).Msgf("patch apply %s need full", o.nodename)
-			d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = 0
+			d.log.Info().Err(err).Msgf("patch apply %s gen %s need full", o.nodename, genS)
+			d.remotesNeedFull[o.nodename] = true
 			o.err <- err
 			return
 		}
@@ -100,7 +102,7 @@ func (o opApplyRemotePatch) call(d *data) {
 				Data:      &data,
 			})
 		}
-		pendingNodeGen = patchGen
+		pendingNodeGen = gen
 	}
 	pendingNode = cluster.NodeStatus{}
 	if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
@@ -108,9 +110,18 @@ func (o opApplyRemotePatch) call(d *data) {
 		o.err <- err
 		return
 	}
+	d.mergedFromPeer[o.nodename] = pendingNodeGen
+	if gen, ok := o.msg.Gen[d.localNode]; ok {
+		d.mergedOnPeer[o.nodename] = gen
+	}
 	pendingNode.Gen[o.nodename] = pendingNodeGen
-	d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = pendingNodeGen
 	d.pending.Monitor.Nodes[o.nodename] = pendingNode
+	d.log.Debug().
+		Interface("mergedFromPeer", d.mergedFromPeer).
+		Interface("mergedOnPeer", d.mergedOnPeer).
+		Interface("pendingNode.Gen", d.pending.Monitor.Nodes[o.nodename].Gen).
+		Interface("remotesNeedFull", d.remotesNeedFull).
+		Msgf("opApplyRemotePatch for %s", o.nodename)
 	o.err <- nil
 }
 
