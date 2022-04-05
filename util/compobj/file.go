@@ -2,11 +2,9 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -136,38 +134,19 @@ func (t *CompFiles) Add(s string) error {
 	return nil
 }
 
-func GetFile(url string) ([]byte, error) {
-	client := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	response, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	b, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
 func (t CompFile) Content() ([]byte, error) {
 	if t.Ref == "" {
 		b := []byte(t.Fmt)
 		if !bytes.HasSuffix(b, []byte("\n")) {
 			b = append(b, []byte("\n")...)
 		}
-		return b, nil
+		return subst(b), nil
 	}
-	s, err := GetFile(t.Ref)
+	b, err := getFile(t.Ref)
 	if err != nil {
 		return nil, err
 	}
-	return s, nil
+	return subst(b), nil
 }
 
 func (t CompFile) FileMode() (os.FileMode, error) {

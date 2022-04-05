@@ -2,11 +2,17 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -39,6 +45,11 @@ var (
 	ExitOk            ExitCode = 0
 	ExitNok           ExitCode = 1
 	ExitNotApplicable ExitCode = 2
+
+	reWildcardHostname      = regexp.MustCompile(`%%HOSTNAME%%`)
+	reWildcardShortHostname = regexp.MustCompile(`%%SHORT_HOSTNAME%%`)
+	reWildcardEnvVar1       = regexp.MustCompile(`%%ENV:.+%%`)
+	reWildcardEnvVar2       = regexp.MustCompile(`(%%ENV:)(.+)(%%)`)
 )
 
 func (t ExitCode) Exit() {
@@ -184,4 +195,36 @@ func main() {
 		e.Exit()
 	}
 	e.Exit()
+}
+
+func getFile(url string) ([]byte, error) {
+	client := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+	response, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	b, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func subst(b []byte) []byte {
+	hn := hostname.Hostname()
+	shn := strings.Split(hn, ".")[0]
+	b = reWildcardHostname.ReplaceAll(b, []byte(hn))
+	b = reWildcardShortHostname.ReplaceAll(b, []byte(shn))
+	b = reWildcardEnvVar1.ReplaceAllFunc(b, func(m []byte) []byte {
+		parts := reWildcardEnvVar2.FindSubmatch(m)
+		val := os.Getenv("OSVC_COMP_" + string(parts[2]))
+		return []byte(val)
+	})
+	return b
 }
