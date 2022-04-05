@@ -13,6 +13,7 @@ func newData(counterCmd chan<- interface{}) *data {
 	node := object.NewNode()
 	config := node.MergedConfig()
 	localNode := hostname.Hostname()
+	localNodeStatus := newNodeStatus(localNode)
 	status := cluster.Status{
 		Cluster: cluster.Info{
 			ID:    config.Get(key.New("cluster", "id")),
@@ -28,17 +29,22 @@ func newData(counterCmd chan<- interface{}) *data {
 			Compat:       false,
 			Frozen:       false,
 			Nodes: map[string]cluster.NodeStatus{
-				localNode: newNodeStatus(localNode),
+				localNode: localNodeStatus,
 			},
 			Services: map[string]object.AggregatedStatus{},
 		},
 		Heartbeats: nil,
 	}
 	return &data{
-		current:    &status,
-		pending:    deepCopy(&status),
-		localNode:  localNode,
-		counterCmd: counterCmd,
+		committed:       &status,
+		pending:         status.DeepCopy(),
+		localNode:       localNode,
+		counterCmd:      counterCmd,
+		mergedFromPeer:  make(gens),
+		mergedOnPeer:    make(gens),
+		gen:             localNodeStatus.Gen[localNode],
+		remotesNeedFull: make(map[string]bool),
+		patchQueue:      make(patchQueue),
 	}
 }
 
