@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"encoding/json"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -109,4 +111,16 @@ func (t Status) GetObjectStatus(p path.T) object.Status {
 		}
 	}
 	return *data
+}
+
+func (n *NodeStatus) DeepCopy() *NodeStatus {
+	b, err := json.Marshal(n)
+	if err != nil {
+		return nil
+	}
+	nodeStatus := NodeStatus{}
+	if err := json.Unmarshal(b, &nodeStatus); err != nil {
+		return nil
+	}
+	return &nodeStatus
 }
