@@ -126,13 +126,15 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 			case msg := <-msgC:
 				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				switch msg.Kind {
-				case "full":
-					dataBus.ApplyFull(msg.Nodename, &msg.Full)
 				case "patch":
 					err := dataBus.ApplyPatch(msg.Nodename, msg)
 					if err != nil {
 						t.log.Error().Err(err).Msgf("ApplyPatch %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 					}
+				case "full":
+					dataBus.ApplyFull(msg.Nodename, &msg.Full)
+				case "ping":
+					dataBus.ApplyPing(msg.Nodename)
 				}
 				count++
 			}
