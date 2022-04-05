@@ -13,15 +13,15 @@ type (
 	Stat struct {
 		Path       string `json:"fpath"`    // /opt/opensvc/etc/vcluster.conf
 		RealPath   string `json:"realpath"` // /opt/opensvc/etc/vcluster.conf
-		Dev        uint64 `json:"dev"`      // 66306
+		Dev        Dev    `json:"dev"`      // 66306
 		UID        uint32 `json:"uid"`      // 0
 		GID        uint32 `json:"gid"`      // 0
 		ModeOctStr string `json:"mode"`     // "0o100600",
-		Mode       uint32
+		Mode       Mode
 		Size       int64
 		CTime      timestamp.T `json:"ctime"` // 1640331980
 		MTime      timestamp.T `json:"mtime"` // 1640331980
-		Nlink      uint64      `json:"nlink"` // 1
+		Nlink      Nlink       `json:"nlink"` // 1
 	}
 	Stats    []Stat
 	StatsMap map[string]Stat
