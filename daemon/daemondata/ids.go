@@ -7,6 +7,7 @@ const (
 	idGetStatus          = iota
 	idApplyFull          = iota
 	idApplyPatch         = iota
+	idApplyPing          = iota
 	idCommitPending      = iota
 )
 
@@ -18,6 +19,7 @@ var (
 		idGetStatus:          "get-status",
 		idApplyFull:          "apply-full",
 		idApplyPatch:         "apply-patch",
+		idApplyPing:          "apply-ping",
 		idCommitPending:      "commit-pending",
 	}
 )
