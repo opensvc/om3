@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -234,4 +236,43 @@ func subst(b []byte) []byte {
 		return []byte(val)
 	})
 	return b
+}
+
+func backupDir() string {
+	sessionID := os.Getenv("OSVC_SESSION_UUID")
+	pathVar := os.Getenv("OSVC_PATH_VAR")
+	if sessionID == "" || pathVar == "" {
+		return ""
+	}
+	return filepath.Join(pathVar, "compliance_backup", sessionID)
+}
+
+func backup(path string) (string, error) {
+	if !file.Exists(path) {
+		return "", nil
+	}
+	dir := backupDir()
+	if dir == "" {
+		return "", nil
+	}
+	relPath := strings.TrimPrefix(path, string(os.PathSeparator))
+	backupFilePath := filepath.Join(dir, relPath)
+	if file.Exists(backupFilePath) {
+		return "", nil
+	}
+	dir = filepath.Dir(backupFilePath)
+	if !file.Exists(dir) {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			return "", errors.Errorf("create dir %s: %s", dir, err)
+		}
+	}
+	if err := file.Copy(path, backupFilePath); err != nil {
+		return "", errors.Errorf("backup copy of %s => %s: %s", path, dir, err)
+	}
+	_ = removeOldBackups()
+	return backupFilePath, nil
+}
+
+func removeOldBackups() error {
+	return nil
 }

@@ -331,6 +331,10 @@ func (t CompFiles) fixContent(rule CompFile) ExitCode {
 	}
 	tempName := f.Name()
 	f.Close()
+	if _, err := backup(rule.Path); err != nil {
+		t.Errorf("file %s backup: %s\n", rule.Path, err)
+		return ExitNok
+	}
 	err = os.Rename(tempName, rule.Path)
 	if err != nil {
 		t.Errorf("file %s install temp: %s\n", rule.Path, err)
