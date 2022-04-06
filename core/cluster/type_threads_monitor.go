@@ -19,8 +19,8 @@ type (
 		ThreadStatus
 		Compat   bool                               `json:"compat"`
 		Frozen   bool                               `json:"frozen"`
-		Nodes    map[string]NodeStatus              `json:"nodes,omitempty"`
-		Services map[string]object.AggregatedStatus `json:"services,omitempty"`
+		Nodes    map[string]NodeStatus              `json:"nodes"`
+		Services map[string]object.AggregatedStatus `json:"services"`
 	}
 
 	// NodeStatus holds a node DataSet.
@@ -37,7 +37,7 @@ type (
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		Monitor         NodeMonitor                 `json:"monitor"`
-		Services        NodeServices                `json:"services,omitempty"`
+		Services        NodeServices                `json:"services"`
 		Stats           NodeStatusStats             `json:"stats"`
 		//Locks map[string]Lock `json:"locks"`
 	}
