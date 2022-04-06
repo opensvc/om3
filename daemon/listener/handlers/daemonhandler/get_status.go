@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/daemon/listener/handlers/handlerhelper"
 )
 
 func GetStatus(w http.ResponseWriter, r *http.Request) {
-	funcName := "daemonhandler.GetStatus"
-	log := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	write, log := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.GetStatus")
 	log.Debug().Msg("starting")
 	databus := daemondatactx.DaemonData(r.Context())
 	status := databus.GetStatus()
@@ -20,5 +19,5 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	_, _ = write(w, r, funcName, b)
+	_, _ = write(b)
 }
