@@ -1,11 +1,12 @@
 package daemonenv
 
 var (
-	RawPort  = "1224"
-	HttpPort = "1225"
+	// TODO use values from config
+	RawPort  = "1214"
+	HttpPort = "1215"
 
-	PathUxRaw  = "/tmp/lsnr_ux"
-	PathUxHttp = "/tmp/lsnr_ux_h2"
+	PathUxRaw  = "/var/lib/opensvc/lsnr/lsnr.sock"
+	PathUxHttp = "/var/lib/opensvc/lsnr/h2.sock"
 
 	UrlUxRaw    = "raw://" + PathUxRaw
 	UrlUxHttp   = "http://" + PathUxHttp
