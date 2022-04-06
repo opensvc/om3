@@ -22,12 +22,12 @@ type (
 		*Obj
 	}
 	CompFile struct {
-		Path string `json:"path"`
-		Mode int    `json:"mode"`
-		UID  int    `json:"uid"`
-		GID  int    `json:"gid"`
-		Fmt  string `json:"fmt"`
-		Ref  string `json:"ref"`
+		Path string      `json:"path"`
+		Mode int         `json:"mode"`
+		UID  interface{} `json:"uid"`
+		GID  interface{} `json:"gid"`
+		Fmt  string      `json:"fmt"`
+		Ref  string      `json:"ref"`
 	}
 )
 
@@ -151,6 +151,28 @@ func (t CompFile) Content() ([]byte, error) {
 	return subst(b), nil
 }
 
+func (t CompFile) ParseUID() int {
+	switch v := t.UID.(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	default:
+		return -1
+	}
+}
+
+func (t CompFile) ParseGID() int {
+	switch v := t.GID.(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	default:
+		return -1
+	}
+}
+
 func (t CompFile) FileMode() (os.FileMode, error) {
 	s := fmt.Sprintf("0%d", t.Mode)
 	i, err := strconv.ParseInt(s, 8, 32)
@@ -196,34 +218,47 @@ func (t CompFiles) fixMode(rule CompFile) ExitCode {
 }
 
 func (t CompFiles) checkOwnership(rule CompFile) ExitCode {
+	targetUID := rule.ParseUID()
+	targetGID := rule.ParseGID()
+	if targetUID < 0 && targetGID < 0 {
+		return ExitNotApplicable
+	}
 	uid, gid, err := file.Ownership(rule.Path)
 	e := ExitOk
 	if err != nil {
 		t.VerboseErrorf("file %s get current ownership: %s\n", rule.Path, err)
 		return ExitNok
 	}
-	if uid != rule.UID {
-		t.VerboseErrorf("file %s uid should be %d but is %d\n", rule.Path, rule.UID, uid)
+
+	if targetUID < 0 {
+		// ignore
+	} else if uid != targetUID {
+		t.VerboseErrorf("file %s uid should be %d but is %d\n", rule.Path, targetUID, uid)
 		e = ExitNok
 	} else {
-		t.VerboseErrorf("file %s uid is %d\n", rule.Path, rule.UID)
+		t.VerboseErrorf("file %s uid is %d\n", rule.Path, targetUID)
 	}
-	if gid != rule.GID {
-		t.VerboseErrorf("file %s gid should be %d but is %d\n", rule.Path, rule.GID, gid)
+
+	if targetGID < 0 {
+		// ignore
+	} else if gid != targetGID {
+		t.VerboseErrorf("file %s gid should be %d but is %d\n", rule.Path, targetGID, gid)
 		e = ExitNok
 	} else {
-		t.VerboseErrorf("file %s gid is %d\n", rule.Path, rule.GID)
+		t.VerboseErrorf("file %s gid is %d\n", rule.Path, targetGID)
 	}
 	return e
 }
 
 func (t CompFiles) fixOwnership(rule CompFile) ExitCode {
-	err := os.Chown(rule.Path, rule.UID, rule.GID)
+	targetUID := rule.ParseUID()
+	targetGID := rule.ParseGID()
+	err := os.Chown(rule.Path, targetUID, targetGID)
 	if err == nil {
-		t.Infof("file %s ownership set to %d:%d\n", rule.Path, rule.UID, rule.GID)
+		t.Infof("file %s ownership set to %d:%d\n", rule.Path, targetUID, targetGID)
 		return ExitOk
 	} else {
-		t.Errorf("file %s ownership set to %d:%d failed: %s\n", rule.Path, rule.UID, rule.GID, err)
+		t.Errorf("file %s ownership set to %d:%d failed: %s\n", rule.Path, targetUID, targetGID, err)
 		return ExitNok
 	}
 }
