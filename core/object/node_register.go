@@ -108,7 +108,7 @@ func (t Node) registerAsUser(options OptsNodeRegister) error {
 			fmt.Println("")
 		}
 	}
-	client := t.collectorRestAPIClient()
+	client := t.CollectorRestAPIClient()
 	url, err := t.CollectorRestAPIURL()
 	if err != nil {
 		return err

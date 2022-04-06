@@ -198,6 +198,13 @@ func main() {
 }
 
 func getFile(url string) ([]byte, error) {
+	if strings.HasPrefix(url, "safe") {
+		return collectorSafeGetFile(url)
+	}
+	return getNormalFile(url)
+}
+
+func getNormalFile(url string) ([]byte, error) {
 	client := http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{

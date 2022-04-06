@@ -35,7 +35,6 @@ func NewNode(opts ...funcopt.O) *Node {
 
 func (t *Node) init(opts ...funcopt.O) error {
 	if err := funcopt.Apply(t, opts...); err != nil {
-		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}
 
@@ -62,10 +61,8 @@ func (t *Node) init(opts ...funcopt.O) error {
 	*/
 
 	if err := t.loadConfig(); err != nil {
-		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}
-	t.log.Debug().Msgf("%s initialized", t)
 	return nil
 }
 

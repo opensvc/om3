@@ -33,7 +33,7 @@ func (t *Node) CollectorRestAPIURL() (*url.URL, error) {
 	return collector.RestURL(s)
 }
 
-func (t *Node) collectorRestAPIClient() *http.Client {
+func (t *Node) CollectorRestAPIClient() *http.Client {
 	insecure := t.MergedConfig().GetBool(key.Parse("node.dbinsecure"))
 	client := &http.Client{
 		Timeout: 5 * time.Second,

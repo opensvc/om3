@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
@@ -226,7 +228,35 @@ func (t CompFiles) fixOwnership(rule CompFile) ExitCode {
 	}
 }
 
+func (t CompFile) isSafeRef() bool {
+	if t.Ref == "" {
+		return false
+	}
+	if strings.HasPrefix(t.Ref, "safe") {
+		return true
+	}
+	return false
+}
+
+func (t CompFiles) checkSafeRef(rule CompFile) ExitCode {
+	meta, err := collectorSafeGetMeta(rule.Ref)
+	currentMD5, err := file.MD5(rule.Path)
+	if err != nil {
+		t.VerboseErrorf("file %s md5sum: %s\n", rule.Path, err)
+		return ExitNok
+	}
+	if hex.EncodeToString(currentMD5) != meta.MD5 {
+		t.VerboseErrorf("file %s content md5 differs from its reference\n", rule.Path)
+		return ExitNok
+	}
+	t.VerboseInfof("file %s md5 verified\n", rule.Path)
+	return ExitOk
+}
+
 func (t CompFiles) checkContent(rule CompFile) ExitCode {
+	if rule.isSafeRef() {
+		return t.checkSafeRef(rule)
+	}
 	target, err := rule.Content()
 	if err != nil {
 		t.VerboseErrorf("file %s get target content: %s\n", rule.Path, err)

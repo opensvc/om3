@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
 )
 
@@ -22,6 +21,5 @@ func NewObject(p string, others ...interface{}) (t *T, err error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "load config error")
 	}
-	log.Debug().Msgf("new config for %s: %d sections", p, len(t.file.Sections()))
 	return t, nil
 }
