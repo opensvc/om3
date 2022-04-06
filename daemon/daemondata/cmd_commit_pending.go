@@ -5,7 +5,10 @@ import (
 	"strconv"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opCommitPending struct {
@@ -117,8 +120,33 @@ func (d *data) applyCommitPendingOps() error {
 			return err
 		}
 		d.pending.Monitor.Nodes[d.localNode] = pendingNode
+		d.eventCommitPendingOps()
 	}
 	return nil
+}
+
+func (d *data) eventCommitPendingOps() {
+	fromRootPatch := make(jsondelta.Patch, 0)
+	prefixPath := jsondelta.OperationPath{"monitor", "nodes", d.localNode}
+	for _, op := range d.pendingOps {
+		fromRootPatch = append(fromRootPatch, jsondelta.Operation{
+			OpPath:  append(prefixPath, op.OpPath...),
+			OpValue: op.OpValue,
+			OpKind:  op.OpKind,
+		})
+	}
+	if eventB, err := json.Marshal(fromRootPatch); err != nil {
+		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
+	} else {
+		eventId++
+		var data json.RawMessage = eventB
+		eventbus.Pub(d.eventCmd, event.Event{
+			Kind:      "patch",
+			ID:        eventId,
+			Timestamp: timestamp.Now(),
+			Data:      &data,
+		})
+	}
 }
 
 // CommitPending handle a commit of pending changes to T
