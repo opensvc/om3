@@ -1,8 +1,10 @@
 package daemondata
 
 import (
+	"encoding/json"
 	"strconv"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -68,7 +70,7 @@ func (d *data) purgeAppliedPatchQueue() {
 			remoteMinGen = gen
 		}
 	}
-	for genS, _ := range d.patchQueue {
+	for genS := range d.patchQueue {
 		gen, err := strconv.ParseUint(genS, 10, 64)
 		if err != nil {
 			delete(d.patchQueue, genS)
@@ -88,10 +90,35 @@ func (d *data) updateFromPendingOps() bool {
 	if len(d.pendingOps) > 0 {
 		d.gen++
 		d.patchQueue[strconv.FormatUint(d.gen, 10)] = d.pendingOps
+		err := d.applyCommitPendingOps()
+		if err != nil {
+			d.log.Error().Err(err).Msg("updateFromPendingOps failure during applyCommitPendingOps, some pending changes may be lost")
+		}
 		d.resetPendingOps()
 		return true
 	}
 	return false
+}
+
+func (d *data) applyCommitPendingOps() error {
+	patch := jsondelta.NewPatchFromOperations(d.pendingOps)
+	pendingB, err := json.Marshal(d.pending.Monitor.Nodes[d.localNode])
+	if err != nil {
+		d.log.Error().Err(err).Msg("can't marshal pending local NodeStatus")
+		return err
+	}
+	if pendingB, err := patch.Apply(pendingB); err != nil {
+		d.log.Error().Err(err).Msg("can't patch.Apply on local NodeStatus")
+		return err
+	} else {
+		pendingNode := cluster.NodeStatus{}
+		if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
+			d.log.Error().Err(err).Msg("can't unmarshal patched local NodeStatus")
+			return err
+		}
+		d.pending.Monitor.Nodes[d.localNode] = pendingNode
+	}
+	return nil
 }
 
 // CommitPending handle a commit of pending changes to T
