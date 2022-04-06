@@ -5,13 +5,21 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
 func newData(counterCmd chan<- interface{}) *data {
+	node := object.NewNode()
+	config := node.MergedConfig()
 	localNode := hostname.Hostname()
+	localNodeStatus := newNodeStatus(localNode)
 	status := cluster.Status{
-		Cluster:   cluster.Info{},
+		Cluster: cluster.Info{
+			ID:    config.Get(key.New("cluster", "id")),
+			Name:  config.Get(key.New("cluster", "name")),
+			Nodes: config.GetSlice(key.New("cluster", "nodes")),
+		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
 		Scheduler: cluster.SchedulerThreadStatus{},
@@ -21,17 +29,22 @@ func newData(counterCmd chan<- interface{}) *data {
 			Compat:       false,
 			Frozen:       false,
 			Nodes: map[string]cluster.NodeStatus{
-				localNode: newNodeStatus(localNode),
+				localNode: localNodeStatus,
 			},
 			Services: map[string]object.AggregatedStatus{},
 		},
 		Heartbeats: nil,
 	}
 	return &data{
-		current:    &status,
-		pending:    deepCopy(&status),
-		localNode:  localNode,
-		counterCmd: counterCmd,
+		committed:       &status,
+		pending:         status.DeepCopy(),
+		localNode:       localNode,
+		counterCmd:      counterCmd,
+		mergedFromPeer:  make(gens),
+		mergedOnPeer:    make(gens),
+		gen:             localNodeStatus.Gen[localNode],
+		remotesNeedFull: make(map[string]bool),
+		patchQueue:      make(patchQueue),
 	}
 }
 

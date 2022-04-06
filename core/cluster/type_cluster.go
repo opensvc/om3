@@ -1,5 +1,7 @@
 package cluster
 
+import "encoding/json"
+
 type (
 	// Status describes the full Cluster state.
 	Status struct {
@@ -21,3 +23,15 @@ type (
 		Nodes []string `json:"nodes"`
 	}
 )
+
+func (s *Status) DeepCopy() *Status {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return nil
+	}
+	newStatus := Status{}
+	if err := json.Unmarshal(b, &newStatus); err != nil {
+		return nil
+	}
+	return &newStatus
+}

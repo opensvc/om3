@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"encoding/json"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -17,8 +19,8 @@ type (
 		ThreadStatus
 		Compat   bool                               `json:"compat"`
 		Frozen   bool                               `json:"frozen"`
-		Nodes    map[string]NodeStatus              `json:"nodes,omitempty"`
-		Services map[string]object.AggregatedStatus `json:"services,omitempty"`
+		Nodes    map[string]NodeStatus              `json:"nodes"`
+		Services map[string]object.AggregatedStatus `json:"services"`
 	}
 
 	// NodeStatus holds a node DataSet.
@@ -35,7 +37,7 @@ type (
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		Monitor         NodeMonitor                 `json:"monitor"`
-		Services        NodeServices                `json:"services,omitempty"`
+		Services        NodeServices                `json:"services"`
 		Stats           NodeStatusStats             `json:"stats"`
 		//Locks map[string]Lock `json:"locks"`
 	}
@@ -109,4 +111,16 @@ func (t Status) GetObjectStatus(p path.T) object.Status {
 		}
 	}
 	return *data
+}
+
+func (n *NodeStatus) DeepCopy() *NodeStatus {
+	b, err := json.Marshal(n)
+	if err != nil {
+		return nil
+	}
+	nodeStatus := NodeStatus{}
+	if err := json.Unmarshal(b, &nodeStatus); err != nil {
+		return nil
+	}
+	return &nodeStatus
 }

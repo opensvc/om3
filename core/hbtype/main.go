@@ -13,7 +13,7 @@ type (
 	// Msg struct holds hb message
 	Msg struct {
 		Kind     string                     `json:"kind"`
-		Compat   int                        `json:"compat"`
+		Compat   uint64                     `json:"compat"`
 		Gen      map[string]uint64          `json:"gen"`
 		Updated  timestamp.T                `json:"updated"`
 		Ping     cluster.NodeMonitor        `json:"monitor"` // monitor from 2.1
@@ -81,6 +81,10 @@ func New(b []byte, nodename string) (*Msg, error) {
 				}
 			case "deltas":
 				if err := json.Unmarshal(tmp, &msg.Deltas); err != nil {
+					return nil, err
+				}
+			case "full":
+				if err := json.Unmarshal(tmp, &msg.Full); err != nil {
 					return nil, err
 				}
 			}

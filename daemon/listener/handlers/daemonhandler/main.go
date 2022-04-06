@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
+	"opensvc.com/opensvc/daemon/listener/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/eventbus"
 )
 
@@ -18,8 +19,7 @@ var (
 )
 
 func running(w http.ResponseWriter, r *http.Request) {
-	funcName := "daemonhandler.Running"
-	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Running")
 	daemon := daemonctx.Daemon(r.Context())
 	logger.Debug().Msg("starting")
 	response := daemon.Running()
@@ -28,32 +28,29 @@ func running(w http.ResponseWriter, r *http.Request) {
 		logger.Error().Err(err).Msg("Marshal response")
 		return
 	}
-	_, _ = write(w, r, funcName, b)
+	_, _ = write(b)
 }
 
 func Stop(w http.ResponseWriter, r *http.Request) {
-	funcName := "daemonhandler.Stop"
-	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Stop")
 	logger.Debug().Msg("starting")
 	daemon := daemonctx.Daemon(r.Context())
 	if daemon.Running() {
-		msg := funcName + ": stopping"
-		logger.Info().Msg(msg)
+		logger.Info().Msg("stopping")
 		if err := daemon.StopAndQuit(); err != nil {
-			msg := funcName + ": StopAndQuit error"
+			msg := "StopAndQuit"
 			logger.Error().Err(err).Msg(msg)
-			_, _ = write(w, r, funcName, []byte(msg+" "+err.Error()))
+			_, _ = write([]byte(msg + " " + err.Error()))
 		}
 	} else {
-		msg := funcName + ": no daemon to stop"
+		msg := "no daemon to stop"
 		logger.Info().Msg(msg)
-		_, _ = write(w, r, funcName, []byte(msg))
+		_, _ = write([]byte(msg))
 	}
 }
 
 func Events(w http.ResponseWriter, r *http.Request) {
-	funcName := "daemonhandler.Events"
-	logger := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
 	logger.Debug().Msg("starting")
 	ctx := r.Context()
 	evCmdC := daemonctx.EventBusCmd(ctx)
@@ -95,7 +92,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			return
 		default:
 		}
-		if _, err := write(w, r, funcName, msg); err != nil {
+		if _, err := write(msg); err != nil {
 			logger.Error().Err(err).Msg("write failure")
 			done <- true
 			return
@@ -120,14 +117,4 @@ func Events(w http.ResponseWriter, r *http.Request) {
 
 	<-done
 	logger.Debug().Msg("done")
-}
-
-func write(w http.ResponseWriter, r *http.Request, funcName string, b []byte) (int, error) {
-	written, err := w.Write(b)
-	if err != nil {
-		logger := daemonctx.Logger(r.Context())
-		logger.Debug().Err(err).Msg(funcName + " write error")
-		return written, err
-	}
-	return written, nil
 }

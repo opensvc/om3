@@ -2,13 +2,13 @@ package daemondata
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/util/callcount"
+	"opensvc.com/opensvc/util/jsondelta"
 )
 
 type (
@@ -17,13 +17,22 @@ type (
 	}
 
 	data struct {
-		current    *cluster.Status
-		pending    *cluster.Status
-		localNode  string
-		counterCmd chan<- interface{}
-		log        zerolog.Logger
-		eventCmd   chan<- interface{}
+		committed       *cluster.Status // pending dataset committed
+		pending         *cluster.Status
+		pendingOps      []jsondelta.Operation // local data pending operations not yet in patchQueue
+		patchQueue      patchQueue            // local data patch queue for remotes
+		gen             uint64                // gen of local NodeStatus
+		mergedFromPeer  gens                  // remote dateset gen merged locally
+		mergedOnPeer    gens                  // local dataset gen merged remotely
+		remotesNeedFull map[string]bool
+		localNode       string
+		counterCmd      chan<- interface{}
+		log             zerolog.Logger
+		eventCmd        chan<- interface{}
 	}
+
+	gens       map[string]uint64
+	patchQueue map[string]jsondelta.Patch
 )
 
 func run(ctx context.Context, cmdC <-chan interface{}) {
@@ -48,16 +57,4 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 			}
 		}
 	}
-}
-
-func deepCopy(status *cluster.Status) *cluster.Status {
-	b, err := json.Marshal(status)
-	if err != nil {
-		return nil
-	}
-	newStatus := cluster.Status{}
-	if err := json.Unmarshal(b, &newStatus); err != nil {
-		return nil
-	}
-	return &newStatus
 }

@@ -88,8 +88,12 @@ type Getter interface {
 	Get() ([]byte, error)
 }
 
-type EventGetter interface {
+type EventBGetter interface {
 	GetRaw() (chan []byte, error)
+}
+
+type EventGetter interface {
+	Do() (chan event.Event, error)
 }
 
 // Do renders the cluster status
@@ -107,7 +111,7 @@ func (m T) Do(getter Getter, out io.Writer) error {
 	return nil
 }
 
-func (m T) DoWatch(eventGetter EventGetter, out io.Writer) error {
+func (m T) DoWatch(eventGetter EventBGetter, out io.Writer) error {
 	for {
 		if err := m.watch(eventGetter, out); err != nil {
 			return err
@@ -118,7 +122,7 @@ func (m T) DoWatch(eventGetter EventGetter, out io.Writer) error {
 	return nil
 }
 
-func (m T) watch(eventGetter EventGetter, out io.Writer) error {
+func (m T) watch(eventGetter EventBGetter, out io.Writer) error {
 	var (
 		data   cluster.Status
 		ok     bool
@@ -200,4 +204,54 @@ func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
 		screen.MoveTopLeft()
 	}
 	_, _ = fmt.Fprint(out, s)
+}
+
+func (m T) DoWatchDemo(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
+	for {
+		if err := m.watchdemo(statusGetter, eventGetter, out); err != nil {
+			return err
+		}
+		// unexpected: avoid fast looping
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
+}
+
+func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
+	var (
+		data   cluster.Status
+		err    error
+		events chan event.Event
+	)
+	events, err = eventGetter.Do()
+	if err != nil {
+		return err
+	}
+	var b []byte
+	b, err = statusGetter.Get()
+	if err != nil {
+		return err
+	}
+	m.doOneShot(data, true, out)
+	for e := range events {
+		switch e.Kind {
+		case "event":
+			continue
+		case "patch", "full":
+			// pass
+		default:
+			// unexpected: avoid fast looping
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		if err := handleEvent(&b, e); err != nil {
+			return errors.Wrap(err, "handle event")
+		}
+		if err := json.Unmarshal(b, &data); err != nil {
+			return errors.Wrap(err, "unmarshal event data")
+		}
+		m.doOneShot(data, true, out)
+	}
+	return nil
 }

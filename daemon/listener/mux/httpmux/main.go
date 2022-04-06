@@ -15,6 +15,7 @@ import (
 
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/handlers/daemonhandler"
+	"opensvc.com/opensvc/daemon/listener/handlers/objecthandler"
 )
 
 type (
@@ -33,8 +34,11 @@ func New(ctx context.Context) *T {
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
 	mux.Post("/daemon_stop", daemonhandler.Stop)
+	mux.Post("/object_status", objecthandler.PostStatus)
+	mux.Get("/object_selector", objecthandler.GetSelector)
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Mount("/daemon", t.newDaemonRouter())
+	mux.Mount("/object", objecthandler.Router())
 
 	t.mux = mux
 	return t

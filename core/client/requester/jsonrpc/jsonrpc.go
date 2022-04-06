@@ -208,7 +208,7 @@ func GetMessages(q chan []byte, rc io.ReadCloser) {
 		if len(b) == 0 {
 			break
 		}
-		q <- b
+		q <- append([]byte{}, b...)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -62,7 +63,6 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	<-started
-	go t.demoOneShot()
 	t.log.Info().Msg("mgr started")
 	return nil
 }
@@ -81,8 +81,8 @@ func (t *T) MainStop() error {
 func (t *T) loop(c chan bool) {
 	t.log.Info().Msg("loop started")
 	t.loopEnabled.Enable()
-	t.aLoop()
 	c <- true
+	t.aLoop()
 	for {
 		select {
 		case a := <-t.loopC:
@@ -98,6 +98,11 @@ func (t *T) loop(c chan bool) {
 
 func (t *T) aLoop() {
 	t.log.Debug().Msg("loop")
+	dataCmd := daemondatactx.DaemonData(t.Ctx)
+	dataCmd.CommitPending()
+	if msg := dataCmd.GetHbMessage(); len(msg) > 0 {
+		daemonctx.HBSendQ(t.Ctx) <- msg
+	}
 	// For demo
 	t.demoLoop()
 }

@@ -8,7 +8,7 @@ type opGetLocalNodeStatus struct {
 
 func (o opGetLocalNodeStatus) call(d *data) {
 	d.counterCmd <- idGetLocalNodeStatus
-	o.localStatus <- GetNodeStatus(d.current, d.localNode)
+	o.localStatus <- GetNodeStatus(d.committed, d.localNode)
 }
 
 func (t T) GetLocalNodeStatus() *cluster.NodeStatus {
