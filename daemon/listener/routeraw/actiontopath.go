@@ -15,4 +15,9 @@ var actionToPath = map[string]rawToHttp{
 	"daemon/running":    {"GET", "/daemon/running"},
 	"daemon/stop":       {"POST", "/daemon/stop"},
 	"daemon/eventsdemo": {"GET", "/daemon/eventsdemo"},
+
+	"object/selector": {"GET", "/object/selector"},
+	"object_selector": {"GET", "/object/selector"},
+	"object/status":   {"POST", "/object/status"},
+	"object_status":   {"POST", "/object/status"},
 }
