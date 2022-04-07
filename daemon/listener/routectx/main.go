@@ -1,5 +1,5 @@
 // Package muxctx provides functions for mux middlewares or handlers
-package muxctx
+package routectx
 
 import (
 	"context"

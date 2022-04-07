@@ -3,7 +3,7 @@
 
 	It can be used by raw listeners to Serve accepted connexions
 */
-package rawmux
+package routeraw
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 
 	clientrequest "opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/daemon/listener/mux/muxresponse"
+	"opensvc.com/opensvc/daemon/listener/routeresponse"
 )
 
 type (
@@ -76,7 +76,7 @@ func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 		t.log.Error().Err(err).Msg("rawunix.Serve can't analyse request")
 		return
 	}
-	resp := muxresponse.NewResponse(w)
+	resp := routeresponse.NewResponse(w)
 	if err := req.do(resp); err != nil {
 		t.log.Error().Err(err).Msgf("rawunix.Serve request.do error for %s %s",
 			req.method, req.path)
@@ -124,7 +124,7 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 }
 
 // do function execute http mux handler on translated request and returns error
-func (r *request) do(resp *muxresponse.Response) error {
+func (r *request) do(resp *routeresponse.Response) error {
 	body := r.body
 	if r.method == "GET" {
 		body = nil

@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
+	"opensvc.com/opensvc/daemon/listener/routeraw"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -29,7 +29,7 @@ type (
 	}
 
 	rawServer interface {
-		Serve(rawmux.ReadWriteCloseSetDeadliner)
+		Serve(routeraw.ReadWriteCloseSetDeadliner)
 	}
 )
 

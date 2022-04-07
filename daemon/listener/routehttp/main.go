@@ -4,7 +4,7 @@
 	It defines routing for Opensvc listener daemons
 
 */
-package httpmux
+package routehttp
 
 import (
 	"context"

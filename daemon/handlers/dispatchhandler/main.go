@@ -20,8 +20,8 @@ import (
 	"opensvc.com/opensvc/core/api/apimodel"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/daemon/listener/mux/muxctx"
-	"opensvc.com/opensvc/daemon/listener/mux/muxresponse"
+	"opensvc.com/opensvc/daemon/listener/routectx"
+	"opensvc.com/opensvc/daemon/listener/routeresponse"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -51,7 +51,7 @@ type (
 	// dispatchResponse holds dispatched response for node
 	dispatchResponse struct {
 		node     string
-		response *muxresponse.Response
+		response *routeresponse.Response
 		err      error
 	}
 )
@@ -104,7 +104,7 @@ var (
 func New(srcHandler http.HandlerFunc, successHttp int, minSuccess int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		nodes := getNodeHeader(r)
-		if muxctx.Multiplexed(r.Context()) || r.Header.Get(daemonenv.HeaderMultiplexed) == "true" {
+		if routectx.Multiplexed(r.Context()) || r.Header.Get(daemonenv.HeaderMultiplexed) == "true" {
 			srcHandler(w, r)
 			return
 		}
@@ -149,7 +149,7 @@ func getNodeHeader(r *http.Request) []string {
 
 func (d *dispatch) httpRequest(node string) *http.Request {
 	newRequest := d.srcRequest.Clone(
-		muxctx.WithMultiplexed(d.srcRequest.Context(), true),
+		routectx.WithMultiplexed(d.srcRequest.Context(), true),
 	)
 	newRequest.Header.Set(daemonenv.HeaderMultiplexed, "true")
 	newRequest.Header.Del(daemonenv.HeaderNode)
@@ -169,7 +169,7 @@ func (d *dispatch) prepareResponses() error {
 		if node == d.entrypoint {
 			go func() {
 				d.log.Debug().Msgf("local %s %s", newRequest.Method, newRequest.URL)
-				resp := muxresponse.NewByteResponse()
+				resp := routeresponse.NewByteResponse()
 				d.srcHandler(resp, newRequest)
 				rChan <- &dispatchResponse{
 					node:     d.entrypoint,
@@ -190,7 +190,7 @@ func (d *dispatch) prepareResponses() error {
 				}
 				rChan <- &dispatchResponse{
 					node:     node,
-					response: &muxresponse.Response{Response: resp},
+					response: &routeresponse.Response{Response: resp},
 				}
 			}()
 		}

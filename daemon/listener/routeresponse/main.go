@@ -1,7 +1,7 @@
 /*
 	Package muxresponse provides Response that implement http.ResponseWriter
 */
-package muxresponse
+package routeresponse
 
 import (
 	"bytes"

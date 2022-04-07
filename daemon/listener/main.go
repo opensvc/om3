@@ -13,7 +13,7 @@ import (
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpux"
 	"opensvc.com/opensvc/daemon/listener/lsnrrawinet"
 	"opensvc.com/opensvc/daemon/listener/lsnrrawux"
-	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
+	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -120,7 +120,7 @@ func (t *T) MainStart() error {
 		defer t.Trace(t.Name() + "-loop")()
 		t.loop(started)
 	}()
-	t.httpHandler = httpmux.New(t.Ctx)
+	t.httpHandler = routehttp.New(t.Ctx)
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
 		if err := sub.subActions.Init(); err != nil {
