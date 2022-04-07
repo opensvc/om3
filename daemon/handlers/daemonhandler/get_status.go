@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"opensvc.com/opensvc/daemon/daemondatactx"
-	"opensvc.com/opensvc/daemon/listener/handlers/handlerhelper"
+	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
 
 func GetStatus(w http.ResponseWriter, r *http.Request) {

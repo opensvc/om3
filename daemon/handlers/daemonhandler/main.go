@@ -9,8 +9,8 @@ import (
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/handlers/dispatchhandler"
-	"opensvc.com/opensvc/daemon/listener/handlers/handlerhelper"
+	"opensvc.com/opensvc/daemon/handlers/dispatchhandler"
+	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/eventbus"
 )
 

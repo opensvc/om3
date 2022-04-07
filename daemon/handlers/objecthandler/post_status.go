@@ -7,7 +7,7 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/daemon/daemondatactx"
-	"opensvc.com/opensvc/daemon/listener/handlers/handlerhelper"
+	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 

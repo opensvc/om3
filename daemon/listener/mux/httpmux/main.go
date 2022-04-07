@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/handlers/daemonhandler"
-	"opensvc.com/opensvc/daemon/listener/handlers/objecthandler"
+	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
+	"opensvc.com/opensvc/daemon/handlers/objecthandler"
 )
 
 type (
