@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/util/file"
@@ -274,5 +275,27 @@ func backup(path string) (string, error) {
 }
 
 func removeOldBackups() error {
+	threshold := time.Now().Add(-time.Hour * 24 * 7)
+	pathVar := os.Getenv("OSVC_PATH_VAR")
+	if pathVar == "" {
+		return nil
+	}
+	pattern := filepath.Join(pathVar, "compliance_backup", "*")
+	dirs, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	for _, dir := range dirs {
+		fi, err := os.Stat(dir)
+		if err != nil {
+			return err
+		}
+		if fi.ModTime().After(threshold) {
+			continue
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			return err
+		}
+	}
 	return nil
 }
