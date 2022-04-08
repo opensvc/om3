@@ -155,8 +155,20 @@ func syntax() {
 `, os.Args[0], os.Args[0])
 }
 
+func links() {
+	fmt.Println("The compliance objects in this collection must be called via a symlink.")
+	fmt.Println("Collection content:")
+	for k, _ := range m {
+		fmt.Printf("  %s\n", k)
+	}
+}
+
 func main() {
 	objName := filepath.Base(os.Args[0])
+	if p, err := os.Readlink(os.Args[0]); err != nil || filepath.Base(p) == objName {
+		links()
+		os.Exit(0)
+	}
 	newObj, ok := m[objName]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "%s compliance object not found in the core collection\n", objName)
