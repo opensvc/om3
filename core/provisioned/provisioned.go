@@ -58,6 +58,15 @@ func (t T) String() string {
 	return toString[t]
 }
 
+func (t T) Bool() bool {
+	switch t {
+	case True:
+		return true
+	default:
+		return false
+	}
+}
+
 //
 // FlagString returns a one character representation of the type instance.
 //

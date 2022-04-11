@@ -71,7 +71,10 @@ func Provision(ctx context.Context, t Driver, leader bool) error {
 	if t.IsDisabled() {
 		return nil
 	}
-	if err := provisionLeaderSwitch(ctx, t, leader); err != nil {
+	if err := provisionLeaderOrLeaded(ctx, t, leader); err != nil {
+		return err
+	}
+	if err := setProvisionedValue(true, t); err != nil {
 		return err
 	}
 	if err := t.Start(ctx); err != nil {
@@ -80,7 +83,7 @@ func Provision(ctx context.Context, t Driver, leader bool) error {
 	return nil
 }
 
-func provisionLeaderSwitch(ctx context.Context, t Driver, leader bool) error {
+func provisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
 	if !t.IsStandby() && !leader && t.IsShared() {
 		return provisionLeaded(ctx, t)
 	}
@@ -108,7 +111,10 @@ func Unprovision(ctx context.Context, t Driver, leader bool) error {
 	if err := unprovisionStop(ctx, t); err != nil {
 		return err
 	}
-	if err := unprovisionLeaderSwitch(ctx, t, leader); err != nil {
+	if err := unprovisionLeaderOrLeaded(ctx, t, leader); err != nil {
+		return err
+	}
+	if err := setProvisionedValue(false, t); err != nil {
 		return err
 	}
 	return nil
@@ -122,7 +128,7 @@ func unprovisionStop(ctx context.Context, t Driver) error {
 	}
 }
 
-func unprovisionLeaderSwitch(ctx context.Context, t Driver, leader bool) error {
+func unprovisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
 	if leader || t.IsStandby() {
 		return unprovisionLeader(ctx, t)
 	} else {
@@ -148,7 +154,20 @@ func Provisioned(t Driver) (provisioned.T, error) {
 	if t.IsDisabled() {
 		return provisioned.NotApplicable, nil
 	}
-	return t.Provisioned()
+	if v, err := getProvisionedValue(t); err == nil {
+		return provisioned.FromBool(v), nil
+	}
+	/*
+		if !hasAnyProvInterface(r) {
+			return true, nil
+		}
+	*/
+	if v, err := t.Provisioned(); err == nil {
+		err = setProvisionedValue(v.Bool(), t)
+		return v, err
+	} else {
+		return v, nil
+	}
 }
 
 func hasAnyProvInterface(r Driver) bool {
@@ -167,10 +186,22 @@ func hasAnyProvInterface(r Driver) bool {
 	return false
 }
 
-func setProvisionedValue(v bool, r Driver) error {
-	if !hasAnyProvInterface(r) {
-		return nil
+func getProvisionedValue(r Driver) (bool, error) {
+	var v bool
+	p := provisionedFile(r)
+	f, err := os.Open(p)
+	if err != nil {
+		return false, err
 	}
+	defer f.Close()
+	enc := json.NewDecoder(f)
+	if err := enc.Decode(&v); err != nil {
+		return false, err
+	}
+	return v, nil
+}
+
+func setProvisionedValue(v bool, r Driver) error {
 	p := provisionedFile(r)
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {

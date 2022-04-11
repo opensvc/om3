@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -45,6 +46,9 @@ func (t T) Start(ctx context.Context) error {
 	if _, err := os.Create(t.file()); err != nil {
 		return err
 	}
+	actionrollback.Register(ctx, func() error {
+		return t.stop()
+	})
 	return nil
 }
 
@@ -57,11 +61,13 @@ func (t T) Stop(ctx context.Context) error {
 		t.Log().Info().Msgf("flag file %s is already uninstalled", t.file())
 		return nil
 	}
-	t.Log().Info().Msgf("uninstall flag file %s", t.file())
-	if err := os.Remove(t.file()); err != nil {
-		return err
-	}
-	return nil
+	return t.stop()
+}
+
+func (t T) stop() error {
+	p := t.file()
+	t.Log().Info().Msgf("uninstall flag file %s", p)
+	return os.Remove(p)
 }
 
 // Label returns a formatted short description of the Resource

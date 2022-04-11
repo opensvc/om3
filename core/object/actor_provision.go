@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/actioncontext"
+	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
@@ -27,9 +28,16 @@ func (t *Base) Provision(options OptsProvision) error {
 		return err
 	}
 	t.setenv("provision", false)
-	return t.lockedAction("", options.OptsLocking, "provision", func() error {
+	err := t.lockedAction("", options.OptsLocking, "provision", func() error {
 		return t.lockedProvision(ctx)
 	})
+	if err != nil {
+		return err
+	}
+	if options.IsRollbackDisabled() {
+		return nil
+	}
+	return actionrollback.Rollback(ctx)
 }
 
 func (t *Base) lockedProvision(ctx context.Context) error {
