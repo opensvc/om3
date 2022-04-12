@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package device
@@ -12,7 +13,6 @@ import (
 	"github.com/yookoala/realpath"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/devicedriver"
-	"opensvc.com/opensvc/util/file"
 )
 
 func (t T) IsReadWrite() (bool, error) {
@@ -28,7 +28,7 @@ func (t T) IsReadOnly() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if b, err := file.ReadAll(p); err != nil {
+	if b, err := os.ReadFile(p); err != nil {
 		return false, err
 	} else {
 		return strings.TrimSpace(string(b)) == "1", nil
