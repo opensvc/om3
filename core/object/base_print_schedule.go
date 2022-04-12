@@ -1,12 +1,12 @@
 package object
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/schedule"
-	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/timestamp"
@@ -38,7 +38,7 @@ func (t *Base) lastSuccessFilepath(action string, rid string, base string) strin
 
 func (t *Base) loadLast(action string, rid string, base string) time.Time {
 	fpath := t.lastFilepath(action, rid, base)
-	b, err := file.ReadAll(fpath)
+	b, err := os.ReadFile(fpath)
 	if err != nil {
 		return time.Unix(0, 0)
 	}

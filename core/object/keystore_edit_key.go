@@ -32,7 +32,7 @@ func (t Keystore) EditKey(opts OptsEditKey) (err error) {
 		fmt.Println("unchanged")
 	} else {
 		var b []byte
-		if b, err = file.ReadAll(f.Name()); err != nil {
+		if b, err = os.ReadFile(f.Name()); err != nil {
 			return
 		}
 		if err = t.addKey(opts.Key, b); err != nil {

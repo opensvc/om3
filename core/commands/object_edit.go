@@ -104,7 +104,7 @@ func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {
 
 func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
 	var b []byte
-	if b, err = file.ReadAll(fName); err != nil {
+	if b, err = os.ReadFile(fName); err != nil {
 		return err
 	}
 	req := c.NewPostKey()

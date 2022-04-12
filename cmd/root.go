@@ -14,7 +14,6 @@ import (
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/logging"
 	"opensvc.com/opensvc/util/xsession"
@@ -82,14 +81,14 @@ func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 }
 
 func listObjectPaths() []string {
-	if b, err := file.ReadAll(filepath.Join(rawconfig.Node.Paths.Var, "list.services")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Node.Paths.Var, "list.services")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
 }
 
 func listNodes() []string {
-	if b, err := file.ReadAll(filepath.Join(rawconfig.Node.Paths.Var, "list.nodes")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Node.Paths.Var, "list.nodes")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil

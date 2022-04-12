@@ -297,7 +297,7 @@ func (t CompFiles) checkContent(rule CompFile) ExitCode {
 		t.VerboseErrorf("file %s get target content: %s\n", rule.Path, err)
 		return ExitNok
 	}
-	current, err := file.ReadAll(rule.Path)
+	current, err := os.ReadFile(rule.Path)
 	if err != nil {
 		t.VerboseErrorf("file %s get current content: %s\n", rule.Path, err)
 		return ExitNok

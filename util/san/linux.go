@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/file"
 )
 
 func isPortPresent(tp string) bool {
@@ -141,7 +140,7 @@ func ISCSIHostBusAdapters() ([]HostBusAdapter, error) {
 		Type: ISCSI,
 	}
 	p := "/etc/iscsi/initiatorname.iscsi"
-	b, err := file.ReadAll(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return l, err
 	}
@@ -173,7 +172,7 @@ func FCHostBusAdapters() ([]HostBusAdapter, error) {
 		} else {
 			hba.Type = FC
 		}
-		if b, err := file.ReadAll(m); err != nil {
+		if b, err := os.ReadFile(m); err != nil {
 			return l, err
 		} else {
 			id := string(b)

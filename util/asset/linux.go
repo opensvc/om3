@@ -19,8 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/talos-systems/go-smbios/smbios"
 	"github.com/zcalusic/sysinfo"
-
-	"opensvc.com/opensvc/util/file"
 )
 
 var (
@@ -115,7 +113,7 @@ func getPCIDevice(address string, db *pcidb.PCIDB) *Device {
 	}
 
 	// revision
-	b, err = file.ReadAll(p + "/revision")
+	b, err = os.ReadFile(p + "/revision")
 	if err == nil {
 		s := string(b)
 		s = strings.TrimRight(s, "\n\r")
@@ -131,7 +129,7 @@ func getPCIDevice(address string, db *pcidb.PCIDB) *Device {
 	}
 
 	// vendor
-	b, err = file.ReadAll(p + "/vendor")
+	b, err = os.ReadFile(p + "/vendor")
 	if err == nil {
 		s := string(b)
 		s = strings.TrimRight(s, "\n\r")
@@ -143,7 +141,7 @@ func getPCIDevice(address string, db *pcidb.PCIDB) *Device {
 	}
 
 	// product
-	b, err = file.ReadAll(p + "/device")
+	b, err = os.ReadFile(p + "/device")
 	if err == nil {
 		s := string(b)
 		s = strings.TrimRight(s, "\n\r")
@@ -155,7 +153,7 @@ func getPCIDevice(address string, db *pcidb.PCIDB) *Device {
 	}
 
 	// class
-	b, err = file.ReadAll(p + "/class")
+	b, err = os.ReadFile(p + "/class")
 	if err == nil {
 		s := string(b)
 		s = s[2:4]
@@ -289,7 +287,7 @@ func hardwarePCIDevices() ([]Device, error) {
 
 func LastBoot() (string, error) {
 	p := "/proc/uptime"
-	b, err := file.ReadAll(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to get last boot time from /proc/uptime")
 	}
@@ -305,7 +303,7 @@ func LastBoot() (string, error) {
 
 func BootID() (string, error) {
 	p := "/proc/sys/kernel/random/boot_id"
-	b, err := file.ReadAll(p)
+	b, err := os.ReadFile(p)
 	if err == nil {
 		s := string(b)
 		s = strings.TrimRight(s, "\n\r")

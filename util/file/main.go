@@ -2,7 +2,6 @@ package file
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -129,21 +128,6 @@ func CopyOwnership(src string, dst string) (err error) {
 		return err
 	}
 	return nil
-}
-
-//
-// ReadAll reads and return all content of the file at src
-//
-func ReadAll(src string) ([]byte, error) {
-	var (
-		r   *os.File
-		err error
-	)
-	if r, err = os.Open(src); err != nil {
-		return []byte{}, err
-	}
-	defer r.Close()
-	return ioutil.ReadAll(r)
 }
 
 //

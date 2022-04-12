@@ -24,7 +24,6 @@ import (
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/udevadm"
@@ -424,7 +423,7 @@ func (t T) dumpCacheFile() error {
 func (t T) loadCacheFile() ([]string, error) {
 	p := t.cacheFile()
 	data := make([]string, 0)
-	b, err := file.ReadAll(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return data, err
 	}

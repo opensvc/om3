@@ -75,7 +75,7 @@ func (t *Keystore) fromValue(name string, value *string) error {
 }
 
 func (t *Keystore) fromRegular(name string, p string) error {
-	b, err := file.ReadAll(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return err
 	}

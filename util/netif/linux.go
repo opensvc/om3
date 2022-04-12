@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package netif
@@ -5,15 +6,15 @@ package netif
 import (
 	"fmt"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/vishvananda/netlink"
-	"opensvc.com/opensvc/util/file"
 )
 
 func HasCarrier(ifName string) (bool, error) {
 	p := fmt.Sprintf("/sys/class/net/%s/carrier", ifName)
-	b, err := file.ReadAll(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return false, err
 	}
