@@ -119,6 +119,10 @@ func CopyMeta(src string, dst string) (err error) {
 			return err
 		}
 	}
+	return CopyOwnership(src, dst)
+}
+
+func CopyOwnership(src string, dst string) (err error) {
 	if uid, gid, err := Ownership(src); err != nil {
 		return err
 	} else if err := os.Chown(dst, uid, gid); err != nil {
