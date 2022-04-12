@@ -1,17 +1,22 @@
 package resfsflag
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/ssh"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/sshnode"
 )
 
 func init() {
@@ -23,9 +28,41 @@ func New() resource.Driver {
 }
 
 func (t T) Abort(ctx context.Context) bool {
-	if len(t.Nodes) > 1 {
-		// TODO
-		return true
+	if len(t.Nodes) <= 1 {
+		return false
+	}
+	test := func(n string) bool {
+		client, err := sshnode.NewClient(n)
+		if err != nil {
+			t.Log().Warn().Str("peer", n).Msgf("no abort: %s", err)
+			return false
+		}
+		defer client.Close()
+		session, err := client.NewSession()
+		if err != nil {
+			t.Log().Warn().Str("peer", n).Msgf("no abort: %s", err)
+			return false
+		}
+		defer session.Close()
+		var b bytes.Buffer
+		session.Stdout = &b
+		err = session.Run("test -f " + t.file())
+		if err == nil {
+			return true
+		}
+		ee := err.(*ssh.ExitError)
+		ec := ee.Waitmsg.ExitStatus()
+		return ec == 0
+	}
+	hn := hostname.Hostname()
+	for _, n := range t.Nodes {
+		if n == hn {
+			continue
+		}
+		if test(n) {
+			t.Log().Info().Msgf("abort: conflict with node %s", n)
+			return true
+		}
 	}
 	return false
 }
