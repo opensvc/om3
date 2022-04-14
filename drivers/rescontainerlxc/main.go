@@ -37,7 +37,6 @@ import (
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/envprovider"
 	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/pg"
 )
 
 const (
@@ -57,7 +56,6 @@ var (
 type (
 	T struct {
 		resource.T
-		PG                       pg.Config      `json:"pg"`
 		Path                     path.T         `json:"path"`
 		ObjectID                 uuid.UUID      `json:"object_id"`
 		DNS                      []string       `json:"dns"`
@@ -264,8 +262,8 @@ func (t T) Manifest() *manifest.T {
 	return m
 }
 
-func (t *T) stopCgroup(ctx context.Context) error {
-	p := t.cgroupDir(ctx)
+func (t *T) stopCgroup() error {
+	p := t.cgroupDir()
 	if p == "" {
 		return nil
 	}
@@ -276,8 +274,8 @@ func (t *T) stopCgroup(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) startCgroup(ctx context.Context) error {
-	p := t.cgroupDir(ctx)
+func (t *T) startCgroup() error {
+	p := t.cgroupDir()
 	if p == "" {
 		return nil
 	}
@@ -285,7 +283,7 @@ func (t *T) startCgroup(ctx context.Context) error {
 	if err := t.cleanupCgroup(p); err != nil {
 		return err
 	}
-	if err := t.setCpusetCloneChildren(ctx); err != nil {
+	if err := t.setCpusetCloneChildren(); err != nil {
 		return err
 	}
 	if err := t.createCgroup(p); err != nil {
@@ -301,7 +299,7 @@ func (t *T) Start(ctx context.Context) error {
 		t.Log().Info().Msgf("container is already up")
 		return nil
 	}
-	if err := t.startCgroup(ctx); err != nil {
+	if err := t.startCgroup(); err != nil {
 		return err
 	}
 	if err := t.installCF(); err != nil {
@@ -330,7 +328,7 @@ func (t T) Stop(ctx context.Context) error {
 	if err := t.cleanupLinks(links); err != nil {
 		return err
 	}
-	if err := t.stopCgroup(ctx); err != nil {
+	if err := t.stopCgroup(); err != nil {
 		return err
 	}
 	return nil
@@ -913,14 +911,14 @@ func (t *T) ContainerHead() (string, error) {
 	return t.rootDir()
 }
 
-func (t *T) cpusetDir(ctx context.Context) string {
+func (t *T) cpusetDir() string {
 	path := ""
 	if !file.Exists(cpusetDir) {
 		t.Log().Debug().Msgf("startCgroup: %s does not exist")
 		return ""
 	}
 	if t.cgroupDirCapable() {
-		p := t.cgroupDir(ctx)
+		p := t.cgroupDir()
 		if p == "" {
 			return ""
 		}
@@ -931,8 +929,8 @@ func (t *T) cpusetDir(ctx context.Context) string {
 	return path
 }
 
-func (t T) setCpusetCloneChildren(ctx context.Context) error {
-	path := t.cpusetDir(ctx)
+func (t T) setCpusetCloneChildren() error {
+	path := t.cpusetDir()
 	if path == "" {
 		return nil
 	}
@@ -998,13 +996,8 @@ func (t T) setCpusetCloneChildren(ctx context.Context) error {
 }
 
 // cgroupDir returns the container resource cgroup path, relative to a controler head.
-func (t T) cgroupDir(ctx context.Context) string {
-	mgr := pg.FromContext(ctx)
-	l := mgr.RevIDs()
-	if len(l) == 0 {
-		return ""
-	}
-	return l[0]
+func (t T) cgroupDir() string {
+	return t.GetPGID()
 }
 
 func (t T) cgroupDirCapable() bool {
@@ -1024,25 +1017,24 @@ func (t T) createCgroup(p string) error {
 }
 
 func (t T) cleanupCgroup(p string) error {
-	pattern1 := fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s-[0-9]", t.Name)
-	pattern2 := fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s", t.Name)
-	paths, err := filepath.Glob(pattern1)
-	if err != nil {
-		return err
+	patterns := []string{
+		fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s-[0-9]", t.Name),
+		fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s", t.Name),
+		fmt.Sprintf("%s", p),
+		fmt.Sprintf("%s/lxc.*", p),
 	}
-	more, err := filepath.Glob(pattern2)
-	if err != nil {
-		return err
+	paths := []string{}
+	for _, pattern := range patterns {
+		more, err := filepath.Glob(pattern)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, more...)
 	}
-	paths = append(paths, more...)
-	more, err = filepath.Glob(p)
-	if err != nil {
-		return err
-	}
-	paths = append(paths, more...)
+	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 	for _, path := range paths {
 		if err := os.Remove(path); err != nil {
-			t.Log().Warn().Msgf("remove %s: %s", path, err)
+			t.Log().Warn().Msgf("%s", err)
 		} else {
 			t.Log().Info().Msgf("removed %s", path)
 		}
@@ -1197,7 +1189,7 @@ func (t T) isUp() (bool, error) {
 }
 
 func (t T) start(ctx context.Context) error {
-	cgroupDir := t.cgroupDir(ctx)
+	cgroupDir := t.cgroupDir()
 	cf, err := t.configFile()
 	if err != nil {
 		return err
