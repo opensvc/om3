@@ -174,12 +174,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s compliance object not found in the core collection\n", objName)
 		os.Exit(1)
 	}
-	if len(os.Args) != 3 {
+	var prefix, action string
+	switch len(os.Args) {
+	case 2:
+		action = os.Args[1]
+	case 3:
+		prefix = os.Args[1]
+		action = os.Args[2]
+	default:
 		syntax()
 		os.Exit(1)
 	}
-	prefix := os.Args[1]
-	action := os.Args[2]
 	obj := newObj().(I)
 	for _, s := range os.Environ() {
 		pair := strings.SplitN(s, "=", 2)
