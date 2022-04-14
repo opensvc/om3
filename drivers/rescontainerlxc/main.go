@@ -1,0 +1,1173 @@
+package rescontainerdocker
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/vishvananda/netlink"
+
+	"opensvc.com/opensvc/core/actioncontext"
+	"opensvc.com/opensvc/core/actionrollback"
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/drivers/rescontainer"
+	"opensvc.com/opensvc/util/capabilities"
+	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/pg"
+)
+
+const (
+	driverGroup = drivergroup.Container
+	driverName  = "lxc"
+	cpusetDir   = "/sys/fs/cgroup/cpuset"
+)
+
+var (
+	prefixes = []string{
+		"/",
+		"/usr",
+		"/usr/local",
+	}
+)
+
+type (
+	T struct {
+		resource.T
+		PG                       pg.Config      `json:"pg"`
+		Path                     path.T         `json:"path"`
+		ObjectID                 uuid.UUID      `json:"object_id"`
+		DNS                      []string       `json:"dns"`
+		SCSIReserv               bool           `json:"scsireserv"`
+		PromoteRW                bool           `json:"promote_rw"`
+		NoPreemptAbort           bool           `json:"NoPreemptAbort"`
+		OsvcRootPath             string         `json:"osvc_root_path"`
+		GuestOS                  string         `json:"guest_os"`
+		Name                     string         `json:"name"`
+		Hostname                 string         `json:"hostname"`
+		DataDir                  string         `json:"data_dir"`
+		RootDir                  string         `json:"root_dir"`
+		ConfigFile               string         `json:"cf"`
+		Template                 string         `json:"template"`
+		TemplateOptions          []string       `json:"template_options"`
+		CreateSecretsEnvironment []string       `json:"create_secrets_environment"`
+		CreateConfigsEnvironment []string       `json:"create_configs_environment"`
+		CreateEnvironment        []string       `json:"create_configs_environment"`
+		RCmd                     []string       `json:"rcmd"`
+		StartTimeout             *time.Duration `json:"start_timeout"`
+		StopTimeout              *time.Duration `json:"stop_timeout"`
+
+		cache map[string]interface{}
+	}
+
+	header interface {
+		Head() string
+	}
+	resourceLister interface {
+		Resources() resource.Drivers
+	}
+)
+
+func init() {
+	capabilities.Register(capabilitiesScanner)
+	resource.Register(driverGroup, driverName, New)
+	resource.Register(driverGroup, "oci", New)
+}
+
+func capabilitiesScanner() ([]string, error) {
+	l := make([]string, 0)
+	cmd := command.New(
+		command.WithName("lxc-info"),
+		command.WithVarArgs("--version"),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return l, nil
+	}
+	l = append(l, "drivers.resource.container.lxc")
+	vs := strings.TrimSpace(string(b))
+	v, err := version.NewVersion(vs)
+	if err != nil {
+		return l, nil
+	}
+	constraints, err := version.NewConstraint("> 2.1")
+	if err != nil {
+		return l, nil
+	}
+	if constraints.Check(v) {
+		l = append(l, "drivers.resource.container.lxc.cgroup_dir")
+	}
+	return l, nil
+}
+
+func New() resource.Driver {
+	t := &T{
+		cache: make(map[string]interface{}),
+	}
+	return t
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t T) Manifest() *manifest.T {
+	m := manifest.New(driverGroup, driverName, t)
+	m.AddContext([]manifest.Context{
+		{
+			Key:  "path",
+			Attr: "Path",
+			Ref:  "object.path",
+		},
+		{
+			Key:  "object_id",
+			Attr: "ObjectID",
+			Ref:  "object.id",
+		},
+		{
+			Key:  "dns",
+			Attr: "DNS",
+			Ref:  "node.dns",
+		},
+	}...)
+	m.AddKeyword([]keywords.Keyword{
+		{
+			Option:   "container_data_dir",
+			Attr:     "DataDir",
+			Scopable: true,
+			Text:     "If this keyword is set, the service configures a resource-private container data store. This setup is allows stateful service relocalization.",
+			Example:  "/srv/svc1/data/containers",
+		},
+		{
+			Option:       "rootfs",
+			Attr:         "RootDir",
+			Provisioning: true,
+			Text:         "Sets the root fs directory of the container",
+			Example:      "/srv/svc1/data/containers",
+		},
+		{
+			Option:       "cf",
+			Attr:         "ConfigFile",
+			Provisioning: true,
+			Text:         "Defines a lxc configuration file in a non-standard location.",
+			Example:      "/srv/svc1/config",
+		},
+		{
+			Option:       "template",
+			Attr:         "Template",
+			Provisioning: true,
+			Text:         "Sets the url of the template unpacked into the container root fs or the name of the template passed to :cmd:`lxc-create`.",
+			Example:      "ubuntu",
+		},
+		{
+			Option:       "template_options",
+			Attr:         "TemplateOptions",
+			Provisioning: true,
+			Converter:    converters.Shlex,
+			Text:         "The arguments to pass through :cmd:`lxc-create` to the per-template script.",
+			Example:      "--release focal",
+		},
+		{
+			Option:       "create_secrets_environment",
+			Attr:         "CreateSecretsEnvironment",
+			Provisioning: true,
+			Scopable:     true,
+			Converter:    converters.Shlex,
+			Text:         "Set variables in the :cmd:`lxc-create` execution environment. A whitespace separated list of ``<var>=<secret name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<secret name>/<key path>`` only or whole ``<var>=<secret name>/<key path>``. Variables are uppercased.",
+			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
+		},
+		{
+			Option:       "create_configs_environment",
+			Attr:         "CreateConfigsEnvironment",
+			Provisioning: true,
+			Scopable:     true,
+			Converter:    converters.Shlex,
+			Text:         "Set variables in the :cmd:`lxc-create` execution environment. The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
+			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
+		},
+		{
+			Option:       "create_environment",
+			Attr:         "CreateEnvironment",
+			Provisioning: true,
+			Scopable:     true,
+			Converter:    converters.Shlex,
+			Text:         "Set variables in the :cmd:`lxc-create` execution environment. The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
+			Example:      "FOO=bar BAR=baz",
+		},
+		{
+			Option:    "rcmd",
+			Attr:      "RCmd",
+			Scopable:  true,
+			Converter: converters.Shlex,
+			Text:      "The command to wrap another command to execute it in the container.",
+			Example:   "lxc-attach -e -n osvtavnprov01 -- ",
+		},
+		{
+			Option:   "name",
+			Attr:     "Name",
+			Required: true,
+			Scopable: true,
+			Text:     "The name to assign to the container",
+		},
+		{
+			Option:   "hostname",
+			Attr:     "Hostname",
+			Scopable: true,
+			Example:  "nginx1",
+			Text:     "Set the container hostname. If not set, the container name is used.",
+		},
+		{
+			Option:    "start_timeout",
+			Attr:      "StartTimeout",
+			Scopable:  true,
+			Converter: converters.Duration,
+			Text:      "Wait for <duration> before declaring the container action a failure.",
+			Example:   "1m5s",
+			Default:   "5s",
+		},
+		{
+			Option:    "stop_timeout",
+			Attr:      "StopTimeout",
+			Scopable:  true,
+			Converter: converters.Duration,
+			Text:      "Wait for <duration> before declaring the container action a failure.",
+			Example:   "2m",
+			Default:   "2m30s",
+		},
+		rescontainer.KWSCSIReserv,
+		rescontainer.KWPromoteRW,
+		rescontainer.KWNoPreemptAbort,
+		rescontainer.KWOsvcRootPath,
+		rescontainer.KWGuestOS,
+	}...)
+	return m
+}
+
+func (t *T) stopCgroup(ctx context.Context) error {
+	p := t.cgroupDir(ctx)
+	if p == "" {
+		return nil
+	}
+	p = filepath.Join(cpusetDir, p)
+	if err := t.cleanupCgroup(p); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startCgroup(ctx context.Context) error {
+	p := t.cgroupDir(ctx)
+	if p == "" {
+		return nil
+	}
+	p = filepath.Join(cpusetDir, p)
+	if err := t.cleanupCgroup(p); err != nil {
+		return err
+	}
+	if err := t.setCpusetCloneChildren(ctx); err != nil {
+		return err
+	}
+	if err := t.createCgroup(p); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) Start(ctx context.Context) error {
+	if v, err := t.isUp(); err != nil {
+		return err
+	} else if v {
+		t.Log().Info().Msgf("container is already up")
+		return nil
+	}
+	if err := t.startCgroup(ctx); err != nil {
+		return err
+	}
+	if err := t.installCF(); err != nil {
+		return err
+	}
+	if err := t.start(ctx); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func() error {
+		return t.Stop(ctx)
+	})
+	return nil
+}
+
+func (t T) Stop(ctx context.Context) error {
+	if v, err := t.isUp(); err != nil {
+		return err
+	} else if !v {
+		t.Log().Info().Msgf("container is already down")
+		return nil
+	}
+	links := t.getLinks()
+	if err := t.stopOrKill(ctx); err != nil {
+		return err
+	}
+	if err := t.cleanupLinks(links); err != nil {
+		return err
+	}
+	if err := t.stopCgroup(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// NetNSPath implements the resource.NetNSPather optional interface.
+// Used by ip.netns and ip.route to configure network stuff in the container.
+func (t *T) NetNSPath() (string, error) {
+	if pid, err := t.getPID(); err != nil {
+		return "", err
+	} else if pid == 0 {
+		return "", errors.Errorf("container %s is not running", t.Name)
+	} else {
+		return fmt.Sprintf("/proc/%d/ns/net", pid), nil
+	}
+}
+
+// PID implements the resource.PIDer optional interface.
+// Used by ip.netns to name the veth pair devices.
+func (t *T) PID() int {
+	pid, _ := t.getPID()
+	return pid
+}
+
+func (t *T) Status(ctx context.Context) status.T {
+	/*
+		if t.PG.IsFrozen() {
+			return status.NotApplicable
+		}
+	*/
+	if v, err := t.isUp(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	} else if v {
+		return status.Up
+	}
+	return status.Down
+}
+
+func (t T) Label() string {
+	return t.Name
+}
+
+func (t T) Provision(ctx context.Context) error {
+	return nil
+}
+
+func (t T) Unprovision(ctx context.Context) error {
+	return nil
+}
+
+func (t T) Provisioned() (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
+}
+
+func (t T) Signal(sig syscall.Signal) error {
+	pid := t.PID()
+	if pid == 0 {
+		return nil
+	}
+	return syscall.Kill(pid, sig)
+}
+
+func (t *T) copyFrom(src, dst string) error {
+	rootDir, err := t.rootDir()
+	if err != nil {
+		return err
+	}
+	src = filepath.Join(rootDir, src)
+	return file.Copy(src, dst)
+}
+
+func (t *T) copyTo(src, dst string) error {
+	rootDir, err := t.rootDir()
+	if err != nil {
+		return err
+	}
+	dst = filepath.Join(rootDir, dst)
+	return file.Copy(src, dst)
+}
+
+func (t T) rcmd() ([]string, error) {
+	if len(t.RCmd) > 0 {
+		return t.RCmd, nil
+	}
+	hasPIDNS := file.Exists("/proc/1/ns/pid")
+	if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
+		if p, err := t.dataDir(); err == nil && p != "" {
+			return []string{exe, "-n", t.Name, "-P", p, "--clear-env", "--"}, nil
+		} else {
+			return []string{exe, "-n", t.Name, "--clear-env", "--"}, nil
+		}
+	}
+	return nil, errors.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword.")
+}
+
+// SetEncapFileOwnership sets the ownership of the file to be the
+// same ownership than the container root dir, which may be not root
+// for unprivileged containers.
+func (t *T) SetEncapFileOwnership(p string) error {
+	rootDir, err := t.rootDir()
+	if err != nil {
+		return err
+	}
+	return file.CopyOwnership(rootDir, p)
+}
+
+func (t T) Enter() error {
+	sh := "/bin/bash"
+	rcmd, err := t.rcmd()
+	if err != nil {
+		return err
+	}
+	args := append(rcmd, sh)
+	cmd := exec.Command(args[0], args[1:]...)
+	_ = cmd.Run()
+
+	switch cmd.ProcessState.ExitCode() {
+	case 126, 127:
+		sh = "/bin/sh"
+	}
+	args = append(rcmd, sh)
+	cmd = exec.Command(args[0], args[1:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (t T) stopTimeout() *int {
+	if t.StopTimeout == nil {
+		return nil
+	}
+	i := int(t.StopTimeout.Seconds())
+	return &i
+}
+
+func (t T) hostname() string {
+	if t.Hostname != "" {
+		return t.Hostname
+	}
+	return t.Name
+}
+
+func (t *T) setHostname() error {
+	if err := t.checkHostname(); err != nil {
+		t.Log().Info().Msg("container hostname already set")
+		return nil
+	}
+	p, err := t.hostnameFile()
+	if err != nil {
+		return err
+	}
+	h := t.hostname()
+	if err := os.WriteFile(p, []byte(h+"\n"), 0644); err != nil {
+		return err
+	}
+	t.Log().Info().Msgf("container hostname set to %s", h)
+	return nil
+}
+
+func (t *T) checkHostname() error {
+	p, err := t.hostnameFile()
+	if err != nil {
+		return err
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return errors.Wrap(err, "can not read container hostname")
+	}
+	target := t.hostname()
+	if string(b) != target {
+		return errors.Errorf("container hostname is %s, should be %s", string(b), target)
+	}
+	return nil
+}
+
+func (t *T) hostnameFile() (string, error) {
+	rootDir, err := t.rootDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(rootDir, "etc/hostname"), nil
+}
+
+func (t *T) configFile() (string, error) {
+	if p, ok := t.cache["configFile"]; ok {
+		return p.(string), nil
+	}
+	if p, err := t.getConfigFile(); err == nil {
+		t.cache["configFile"] = p
+		return p, nil
+	} else {
+		return "", err
+	}
+}
+
+func (t *T) getPrefix() (string, error) {
+	for _, p := range prefixes {
+		f := filepath.Join(p, "bin/lxc-start")
+		if file.Exists(f) {
+			return p, nil
+		}
+	}
+	return "", errors.Errorf("lxc install prefix not found")
+}
+
+// orderedPrefixes returns prefixes with the one containing lxc-start first
+func (t *T) orderedPrefixes(prefix string) ([]string, error) {
+	l := []string{prefix}
+	for _, p := range prefixes {
+		if p == prefix {
+			continue
+		}
+		l = append(l, p)
+	}
+	return l, nil
+}
+
+func (t *T) prefix() (string, error) {
+	if p, ok := t.cache["prefix"]; ok {
+		return p.(string), nil
+	}
+	if p, err := t.getPrefix(); err == nil {
+		t.cache["prefix"] = p
+		return p, nil
+	} else {
+		return "", err
+	}
+}
+
+func (t *T) getConfigFile() (string, error) {
+	if t.ConfigFile != "" {
+		return object.Realpath(t.ConfigFile, t.Path.Namespace)
+	}
+	if t.DataDir != "" {
+		p := filepath.Join(t.DataDir, "config")
+		return object.Realpath(p, t.Path.Namespace)
+	}
+	relDir := "/var/lib/lxc"
+
+	// seen on debian squeeze : prefix is /usr, but containers'
+	// config files paths are /var/lib/lxc/$name/config
+	// try prefix first, fallback to other know prefixes
+	prefix, err := t.prefix()
+	if err != nil {
+		return "", err
+	}
+	prefixes, err := t.orderedPrefixes(prefix)
+	if err != nil {
+		return "", err
+	}
+	for _, p := range prefixes {
+		p = filepath.Join(p, relDir, "config")
+		if file.Exists(p) {
+			return p, nil
+		}
+	}
+
+	// on Oracle Linux, config is in /etc/lxc
+	p := filepath.Join("/etc/lxc", t.Name, "config")
+	if file.Exists(p) {
+		return p, nil
+	}
+
+	return "", errors.Errorf("unable to find the container configuration file")
+}
+
+func (t T) getConfigValue(key string) (string, error) {
+	cf, err := t.configFile()
+	f, err := os.Open(cf)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		s := scanner.Text()
+		l := strings.SplitN(s, "=", 2)
+		if len(l) != 2 {
+			continue
+		}
+		k := l[0]
+		k = strings.TrimLeft(k, "#; \t")
+		k = strings.TrimSpace(k)
+		if key != k {
+			continue
+		}
+		v := l[1]
+		v = strings.TrimSpace(v)
+		return v, nil
+	}
+	return "", errors.Errorf("key %s not found in %s", key, cf)
+}
+
+func (t T) rootDirFromConfigFile() (string, error) {
+	p, err := t.rootfsFromConfigFile()
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(p, ":") {
+		return p, nil
+	}
+	// zfs:/tank/svc1, nbd:file1, dir:/foo ...
+	l := strings.SplitN(p, ":", 2)
+	p = l[1]
+	if p != "" && !strings.HasPrefix(p, "/") {
+		// zfs:tank/svc1
+		p = "/" + p
+	}
+	return p, nil
+}
+
+func (t T) rootfsFromConfigFile() (string, error) {
+	if p, err := t.getConfigValue("lxc.rootfs"); err == nil {
+		return p, nil
+	}
+	if p, err := t.getConfigValue("lxc.rootfs.path"); err == nil {
+		return p, nil
+	}
+	return "", errors.Errorf("could not determine lxc container rootfs")
+}
+
+func (t *T) getRootDir() (string, error) {
+	if t.RootDir != "" {
+		return object.Realpath(t.RootDir, t.Path.Namespace)
+	}
+	return t.rootDirFromConfigFile()
+}
+
+func (t *T) rootDir() (string, error) {
+	if p, ok := t.cache["rootDir"]; ok {
+		return p.(string), nil
+	}
+	if p, err := t.getRootDir(); err == nil {
+		t.cache["rootDir"] = p
+		return p, nil
+	} else {
+		return "", err
+	}
+}
+
+func (t *T) dataDir() (string, error) {
+	if t.DataDir == "" {
+		return "", nil
+	}
+	if p, ok := t.cache["dataDir"]; ok {
+		return p.(string), nil
+	}
+	if p, err := object.Realpath(t.DataDir, t.Path.Namespace); err == nil {
+		t.cache["dataDir"] = p
+		return p, nil
+	} else {
+		return "", err
+	}
+}
+
+func (t *T) nativeConfigFile() string {
+	if p, ok := t.cache["nativeConfigFile"]; ok {
+		return p.(string)
+	}
+	p := func() string {
+		if p := t.lxcPath(); p != "" {
+			return filepath.Join(p, t.Name, "config")
+		}
+		exe, err := exec.LookPath("lxc-info")
+		if err != nil {
+			return ""
+		}
+		dir := filepath.Dir(exe)
+		if !strings.HasSuffix(dir, "bin") {
+			return ""
+		}
+		dir = filepath.Dir(dir)
+		switch dir {
+		case "/", "/usr":
+			if file.ExistsAndDir("/var/lib/lxc") {
+				return fmt.Sprintf("/var/lib/lxc/%s/config", t.Name)
+			}
+			if file.ExistsAndDir("/etc/lxc") {
+				return fmt.Sprintf("/etc/lxc/%s/config", t.Name)
+			}
+		case "/usr/local":
+			if file.ExistsAndDir("/usr/local/var/lib/lxc") {
+				return fmt.Sprintf("/usr/local/var/lib/lxc/%s/config", t.Name)
+			}
+		}
+		return ""
+	}()
+	t.cache["nativeConfigFile"] = p
+	return p
+}
+
+func (t *T) lxcPath() string {
+	if p, ok := t.cache["lxcPath"]; ok {
+		return p.(string)
+	}
+	p := func() string {
+		if p, err := t.dataDir(); err != nil {
+			return p
+		}
+		p := "/var/lib/lxc"
+		if file.ExistsAndDir(p) {
+			return p
+		}
+		p = "/usr/local/var/lib/lxc"
+		if file.ExistsAndDir(p) {
+			return p
+		}
+		return ""
+	}()
+	t.cache["lxcPath"] = p
+	return p
+}
+
+func (t T) ToSync() []string {
+	l := make([]string, 0)
+
+	// Don't synchronize container.lxc config in /var/lib/lxc if not shared
+	// Non shared container resource mandates a private container for each
+	// service instance, thus synchronizing the lxc config is counter productive
+	// and can even lead to provisioning failure on secondary nodes.
+	if !t.Shared {
+		return l
+	}
+
+	// The config file might be in a umounted fs resource,
+	// in which case, no need to ask for its sync as the sync won't happen
+	cf, err := t.configFile()
+	if err != nil {
+		return l
+	}
+	if !file.Exists(cf) {
+		return l
+	}
+
+	// The config file is hosted on a fs resource.
+	// Let the user replicate it via a sync resource if the fs is not
+	// shared. If the fs is shared, it must not be replicated to avoid
+	// copying on the remote underlying fs (which may block a zfs dataset
+	// mount).
+	r, err := t.resourceHandlingFile(cf)
+	if err != nil {
+		return l
+	}
+	if r == nil {
+		return l
+	}
+
+	// replicate the config file in the system standard path
+	l = append(l, cf)
+	return l
+
+}
+
+func (t *T) obj() (interface{}, error) {
+	return object.NewFromPath(t.Path, object.WithVolatile(true))
+}
+
+func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
+	obj, err := t.obj()
+	if err != nil {
+		return nil, err
+	}
+	b, ok := obj.(resourceLister)
+	if !ok {
+		return nil, nil
+	}
+	for _, r := range b.Resources() {
+		h, ok := r.(header)
+		if !ok {
+			continue
+		}
+		if v, err := r.Provisioned(); err != nil {
+			continue
+		} else if v == provisioned.False {
+			continue
+		}
+		if h.Head() == p {
+			return r, nil
+		}
+	}
+	return nil, nil
+}
+
+// ContainerHead implements the interface replacing b2.1 the zonepath resource attribute
+func (t *T) ContainerHead() (string, error) {
+	return t.rootDir()
+}
+
+func (t *T) cpusetDir(ctx context.Context) string {
+	path := ""
+	if !file.Exists(cpusetDir) {
+		t.Log().Debug().Msgf("startCgroup: %s does not exist")
+		return ""
+	}
+	if t.cgroupDirCapable() {
+		p := t.cgroupDir(ctx)
+		if p == "" {
+			return ""
+		}
+		path = filepath.Join(cpusetDir, p)
+	} else {
+		path = filepath.Join(cpusetDir, "lxc")
+	}
+	return path
+}
+
+func (t T) setCpusetCloneChildren(ctx context.Context) error {
+	path := t.cpusetDir(ctx)
+	if path == "" {
+		return nil
+	}
+	if !file.Exists(path) {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return errors.Wrapf(err, "set clone_children for container %s", t.Name)
+		} else {
+			t.Log().Info().Msgf("%s created", path)
+		}
+	}
+	paths := make([]string, 0)
+	for p := path; p != cpusetDir; p = filepath.Dir(p) {
+		paths = append(paths, p)
+	}
+	sort.Sort(sort.StringSlice(paths))
+
+	setFile := func(p string, v []byte) error {
+		b, err := ioutil.ReadFile(p)
+		if err != nil {
+			t.Log().Debug().Msgf("%s does not exist", p)
+			return nil
+		}
+		if bytes.Compare(b, v) == 0 {
+			t.Log().Debug().Msgf("%s already set to %s", p, v)
+			return nil
+		}
+		err = ioutil.WriteFile(p, v, 0644)
+		if err != nil {
+			return err
+		}
+		t.Log().Info().Msgf("%s set to %s", p, v)
+		return nil
+	}
+	alignFile := func(p string) error {
+		base := filepath.Base(p)
+		ref := filepath.Join(cpusetDir, base)
+		b, err := ioutil.ReadFile(ref)
+		if err != nil {
+			t.Log().Debug().Msgf("%s does not exist", ref)
+			return nil
+		}
+		return setFile(p, b)
+	}
+	setDir := func(p string) error {
+		if err := alignFile(filepath.Join(p, "cpuset.mems")); err != nil {
+			return err
+		}
+		if err := alignFile(filepath.Join(p, "cpuset.cpus")); err != nil {
+			return err
+		}
+		if err := setFile(filepath.Join(p, "cgroup.clone_children"), []byte("1\n")); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	for _, p := range paths {
+		if err := setDir(p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// cgroupDir returns the container resource cgroup path, relative to a controler head.
+func (t T) cgroupDir(ctx context.Context) string {
+	mgr := pg.FromContext(ctx)
+	l := mgr.RevIDs()
+	if len(l) == 0 {
+		return ""
+	}
+	return l[0]
+}
+
+func (t T) cgroupDirCapable() bool {
+	return capabilities.Has("drivers.resource.container.lxc.cgroup_dir")
+}
+
+func (t T) createCgroup(p string) error {
+	if file.Exists(p) {
+		t.Log().Debug().Msgf("%s already exists", p)
+		return nil
+	}
+	if err := os.MkdirAll(p, 0755); err != nil {
+		return errors.Wrapf(err, "create %p", p)
+	}
+	t.Log().Info().Msgf("%s created", p)
+	return nil
+}
+
+func (t T) cleanupCgroup(p string) error {
+	pattern1 := fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s-[0-9]", t.Name)
+	pattern2 := fmt.Sprintf("/sys/fs/cgroup/*/lxc/%s", t.Name)
+	paths, err := filepath.Glob(pattern1)
+	if err != nil {
+		return err
+	}
+	more, err := filepath.Glob(pattern2)
+	if err != nil {
+		return err
+	}
+	paths = append(paths, more...)
+	more, err = filepath.Glob(p)
+	if err != nil {
+		return err
+	}
+	paths = append(paths, more...)
+	for _, path := range paths {
+		if err := os.Remove(path); err != nil {
+			t.Log().Warn().Msgf("remove %s: %s", path, err)
+		} else {
+			t.Log().Info().Msgf("removed %s", path)
+		}
+	}
+	return nil
+}
+
+func (t T) installCF() error {
+	cf, err := t.configFile()
+	if err != nil {
+		return err
+	}
+	nativeCF := t.nativeConfigFile()
+	if nativeCF == "" {
+		t.Log().Debug().Msg("could not determine the config file standard hosting directory")
+		return nil
+	}
+	if cf == nativeCF {
+		return nil
+	}
+	nativeDir := filepath.Dir(nativeCF)
+	if !file.Exists(nativeDir) {
+		if err := os.MkdirAll(nativeDir, 0755); err != nil {
+			return err
+		}
+	}
+	if err := file.Copy(cf, nativeCF); err != nil {
+		return errors.Wrapf(err, "install %s as %s", cf, nativeCF)
+	}
+	t.Log().Info().Msgf("%s installed as %s", cf, nativeCF)
+	return err
+}
+
+func (t *T) dataDirArgs() []string {
+	if dataDir, err := t.dataDir(); err == nil && dataDir != "" {
+		return []string{"-P", dataDir}
+	}
+	return []string{}
+}
+
+func (t *T) isUpInfo() bool {
+	args := []string{"--name", t.Name}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-info"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	v := strings.Contains(string(b), "RUNNING")
+	return v
+}
+
+func (t *T) cleanupLink(s string) error {
+	link, err := netlink.LinkByName(s)
+	if err != nil {
+		t.Log().Debug().Msgf("link %s already deleted", s)
+		return nil
+	}
+	if err := netlink.LinkDel(link); err != nil {
+		return errors.Wrapf(err, "link %s delete", s)
+	}
+
+	t.Log().Info().Msgf("link %s deleted", s)
+	return nil
+}
+
+func (t *T) cleanupLinks(links []string) error {
+	for _, link := range links {
+		if err := t.cleanupLink(link); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *T) getPID() (int, error) {
+	args := []string{"--name", t.Name}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-info"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for scanner.Scan() {
+		s := scanner.Text()
+		if strings.HasPrefix(s, "PID:") {
+			fields := strings.Fields(s)
+			if len(fields) < 2 {
+				continue
+			}
+			return strconv.Atoi(fields[1])
+		}
+	}
+	return 0, errors.Errorf("pid not found")
+}
+
+func (t *T) getLinks() []string {
+	l := make([]string, 0)
+	args := []string{"--name", t.Name}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-info"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return l
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for scanner.Scan() {
+		s := scanner.Text()
+		if strings.HasPrefix(s, "Link:") {
+			fields := strings.Fields(s)
+			if len(fields) < 2 {
+				continue
+			}
+			l = append(l, fields[1])
+		}
+	}
+	return l
+}
+
+func (t T) isUpPS() bool {
+	cmd := command.New(
+		command.WithName("lxc-ps"),
+		command.WithVarArgs("--name", t.Name),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	v := strings.Contains(string(b), t.Name)
+	return v
+}
+
+func (t T) isUp() (bool, error) {
+	if p, err := exec.LookPath("lxc-ps"); err == nil && p != "" {
+		return t.isUpPS(), nil
+	}
+	return t.isUpInfo(), nil
+}
+
+func (t T) start(ctx context.Context) error {
+	cgroupDir := t.cgroupDir(ctx)
+	cf, err := t.configFile()
+	if err != nil {
+		return err
+	}
+	outFile := fmt.Sprintf("/var/tmp/svc_%s_lxc_start.log", t.Name)
+	args := []string{"-d", "-n", t.Name, "-o", outFile}
+	if t.cgroupDirCapable() {
+		args = append(args, "-s", "lxc.cgroup.dir="+cgroupDir)
+	}
+	if cf != "" {
+		args = append(args, "-f", cf)
+	}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-start"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithTimeout(*t.StartTimeout),
+	)
+	return cmd.Run()
+}
+
+func (t T) stopOrKill(ctx context.Context) error {
+	if actioncontext.IsForce(ctx) {
+		return t.kill()
+	}
+	if err := t.stop(); err == nil {
+		return err
+	} else {
+		t.Log().Warn().Msgf("stop: %s", err)
+	}
+	return t.kill()
+}
+
+func (t T) stop() error {
+	args := []string{"-n", t.Name}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-stop"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithTimeout(*t.StartTimeout),
+	)
+	return cmd.Run()
+}
+
+func (t T) kill() error {
+	args := []string{"-n", t.Name, "--kill"}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-stop"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithTimeout(*t.StartTimeout),
+	)
+	return cmd.Run()
+}

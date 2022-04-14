@@ -24,6 +24,7 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
+	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
@@ -64,6 +65,7 @@ func capabilitiesScanner() ([]string, error) {
 }
 
 func init() {
+	capabilities.Register(capabilitiesScanner)
 	resource.Register(driverGroup, driverName, New)
 }
 

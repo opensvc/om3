@@ -22,6 +22,7 @@ require (
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
 	github.com/google/uuid v1.2.0
 	github.com/guregu/null v4.0.0+incompatible
+	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3

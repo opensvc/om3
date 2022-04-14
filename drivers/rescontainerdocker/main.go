@@ -33,6 +33,7 @@ import (
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/rescontainer"
+	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/envprovider"
 	"opensvc.com/opensvc/util/file"
@@ -111,13 +112,14 @@ func cli() *docker.Client {
 }
 
 func init() {
+	capabilities.Register(capabilitiesScanner)
 	resource.Register(driverGroup, driverName, New)
 	resource.Register(driverGroup, "oci", New)
 }
 
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	if _, err := exec.LookPath("docker"); err == nil {
+	if _, err := exec.LookPath("docker"); err != nil {
 		return l, nil
 	}
 	l = append(l, "drivers.resource.container.docker")
