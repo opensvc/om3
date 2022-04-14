@@ -35,6 +35,7 @@ import (
 	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/converters"
+	"opensvc.com/opensvc/util/envprovider"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pg"
 )
@@ -373,8 +374,100 @@ func (t T) Label() string {
 	return t.Name
 }
 
-func (t T) Provision(ctx context.Context) error {
-	return nil
+func (t T) ProvisionLeader(ctx context.Context) error {
+	args := []string{"--name", t.Name}
+	rootDir, err := t.rootDir()
+	if err == nil {
+		if !file.Exists(rootDir) {
+			if err := os.MkdirAll(rootDir, 0755); err != nil {
+				return err
+			}
+		}
+		args = append(args, "--dir", rootDir)
+	}
+	cf, err := t.configFile()
+	if err == nil && cf != "" && file.Exists(cf) {
+		args = append(args, "-f", cf)
+	}
+	dataDir, err := t.dataDir()
+	if err == nil && dataDir != "" {
+		args = append(args, "-P", dataDir)
+		if cf == "" {
+			cf = filepath.Join(dataDir, t.Name, "config")
+			if file.Exists(cf) {
+				args = append(args, "-f", cf)
+			}
+		}
+	}
+	if t.Template != "" {
+		args = append(args, "-t", t.Template)
+		if len(t.TemplateOptions) > 0 {
+			args = append(args, "..")
+			args = append(args, t.TemplateOptions...)
+		}
+	} else {
+		return errors.Errorf("the template keyword is mandatory for provision")
+	}
+	env, err := t.createEnv()
+	if err != nil {
+		return err
+	}
+	cmd := command.New(
+		command.WithName("lxc-create"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		//command.WithTimeout(*t.StartTimeout),
+		command.WithEnv(env),
+	)
+	return cmd.Run()
+}
+
+func (t T) createEnv() ([]string, error) {
+	env := []string{
+		"DEBIAN_FRONTEND=noninteractive",
+		"DEBIAN_PRIORITY=critical",
+	}
+	env = append(env, t.createEnvProxy()...)
+	env = append(env, t.CreateEnvironment...)
+	more, err := envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec")
+	if err != nil {
+		return env, err
+	}
+	env = append(env, more...)
+	more, err = envprovider.From(t.CreateConfigsEnvironment, t.Path.Namespace, "cfg")
+	if err != nil {
+		return env, err
+	}
+	env = append(env, more...)
+	return env, nil
+}
+
+func (t T) createEnvSecrets() ([]string, error) {
+	return envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec")
+}
+
+func (t T) createEnvConfigs() ([]string, error) {
+	return envprovider.From(t.CreateConfigsEnvironment, t.Path.Namespace, "cfg")
+}
+
+func (t T) createEnvProxy() []string {
+	env := []string{}
+	keys := []string{
+		"http_proxy", "https_proxy", "ftp_proxy", "rsync_proxy",
+	}
+	for _, k := range keys {
+		if v, ok := os.LookupEnv(k); ok {
+			env = append(env, k+"="+v)
+		}
+		k = strings.ToUpper(k)
+		if v, ok := os.LookupEnv(k); ok {
+			env = append(env, k+"="+v)
+		}
+	}
+	return env
 }
 
 func (t T) Unprovision(ctx context.Context) error {
@@ -583,7 +676,7 @@ func (t *T) getConfigFile() (string, error) {
 		return "", err
 	}
 	for _, p := range prefixes {
-		p = filepath.Join(p, relDir, "config")
+		p = filepath.Join(p, relDir, t.Name, "config")
 		if file.Exists(p) {
 			return p, nil
 		}
