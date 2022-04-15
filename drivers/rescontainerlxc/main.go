@@ -372,6 +372,36 @@ func (t T) Label() string {
 	return t.Name
 }
 
+func (t *T) UnprovisionLeader(ctx context.Context) error {
+	return t.purgeLxcVar(ctx)
+}
+
+func (t *T) UnprovisionLeaded(ctx context.Context) error {
+	return t.purgeLxcVar(ctx)
+}
+
+func (t *T) purgeLxcVar(ctx context.Context) error {
+	p := t.lxcPath()
+	if p == "" {
+		t.Log().Debug().Msg("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
+		return nil
+	}
+	p = filepath.Join(p, t.Name)
+	if !file.Exists(p) {
+		t.Log().Info().Msgf("%s already cleaned up", p)
+		return nil
+	}
+	if file.IsProtected(p) {
+		t.Log().Warn().Msgf("refuse to remove %s", p)
+		return nil
+	}
+	t.Log().Info().Msgf("remove %s", p)
+	if err := os.RemoveAll(p); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t T) ProvisionLeader(ctx context.Context) error {
 	args := []string{"--name", t.Name}
 	rootDir, err := t.rootDir()
