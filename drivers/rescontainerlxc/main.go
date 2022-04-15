@@ -1286,3 +1286,9 @@ func (t T) kill() error {
 	)
 	return cmd.Run()
 }
+
+// LinkNames implements the interface necessary for the container.lxc resources
+// to be targeted by ip.cni, ip.netns, ...
+func (t T) LinkNames() []string {
+	return []string{t.RID()}
+}
