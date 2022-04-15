@@ -161,7 +161,8 @@ func (t T) Manifest() *manifest.T {
 	}...)
 	m.AddKeyword([]keywords.Keyword{
 		{
-			Option:   "container_data_dir",
+			Option:   "data_dir",
+			Aliases:  []string{"container_data_dir"},
 			Attr:     "DataDir",
 			Scopable: true,
 			Text:     "If this keyword is set, the service configures a resource-private container data store. This setup is allows stateful service relocalization.",
@@ -306,7 +307,7 @@ func (t *T) Start(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if v {
-		t.Log().Info().Msgf("container is already up")
+		t.Log().Info().Msgf("container %s is already up", t.Name)
 		return nil
 	}
 	if err := t.startCgroup(); err != nil {
@@ -328,7 +329,7 @@ func (t T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(); err != nil {
 		return err
 	} else if !v {
-		t.Log().Info().Msgf("container is already down")
+		t.Log().Info().Msgf("container %s is already down", t.Name)
 		return nil
 	}
 	links := t.getLinks()
@@ -383,14 +384,39 @@ func (t T) Label() string {
 }
 
 func (t *T) UnprovisionLeader(ctx context.Context) error {
-	return t.purgeLxcVar(ctx)
+	return t.unprovision()
 }
 
 func (t *T) UnprovisionLeaded(ctx context.Context) error {
-	return t.purgeLxcVar(ctx)
+	return t.unprovision()
 }
 
-func (t *T) purgeLxcVar(ctx context.Context) error {
+func (t *T) unprovision() error {
+	if err := t.purgeLxcVar(); err != nil {
+		return err
+	}
+	if err := t.purgeConfigFile(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) purgeConfigFile() error {
+	p, err := t.configFile()
+	if err != nil {
+		return err
+	}
+	if !file.Exists(p) {
+		return nil
+	}
+	t.Log().Info().Msgf("remove %s", p)
+	if err := os.Remove(p); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) purgeLxcVar() error {
 	p := t.lxcPath()
 	if p == "" {
 		t.Log().Debug().Msg("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
@@ -398,7 +424,7 @@ func (t *T) purgeLxcVar(ctx context.Context) error {
 	}
 	p = filepath.Join(p, t.Name)
 	if !file.Exists(p) {
-		t.Log().Info().Msgf("%s already cleaned up", p)
+		t.Log().Info().Msgf("%s is already cleaned up", p)
 		return nil
 	}
 	if file.IsProtected(p) {
@@ -413,6 +439,10 @@ func (t *T) purgeLxcVar(ctx context.Context) error {
 }
 
 func (t T) ProvisionLeader(ctx context.Context) error {
+	if t.exists() {
+		t.Log().Info().Msgf("container %s is already created", t.Name)
+		return nil
+	}
 	args := []string{"--name", t.Name}
 	rootDir, err := t.rootDir()
 	if err == nil {
@@ -697,7 +727,7 @@ func (t *T) getConfigFile() (string, error) {
 		return object.Realpath(t.ConfigFile, t.Path.Namespace)
 	}
 	if t.DataDir != "" {
-		p := filepath.Join(t.DataDir, "config")
+		p := filepath.Join(t.DataDir, t.Name, "config")
 		return object.Realpath(p, t.Path.Namespace)
 	}
 	relDir := "/var/lib/lxc"
@@ -1073,10 +1103,9 @@ func (t T) cleanupCgroup(p string) error {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 	for _, path := range paths {
+		t.Log().Info().Msgf("remove %s", path)
 		if err := os.Remove(path); err != nil {
 			t.Log().Warn().Msgf("%s", err)
-		} else {
-			t.Log().Info().Msgf("removed %s", path)
 		}
 	}
 	return nil
@@ -1129,6 +1158,20 @@ func (t *T) isUpInfo() bool {
 	}
 	v := strings.Contains(string(b), "RUNNING")
 	return v
+}
+
+func (t *T) exists() bool {
+	args := []string{"--name", t.Name}
+	args = append(args, t.dataDirArgs()...)
+	cmd := command.New(
+		command.WithName("lxc-info"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+		//command.WithCommandLogLevel(zerolog.InfoLevel),
+		//command.WithStdoutLogLevel(zerolog.InfoLevel),
+		//command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run() == nil
 }
 
 func (t *T) cleanupLink(s string) error {
