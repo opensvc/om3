@@ -15,11 +15,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-ping/ping"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/crypto/ssh"
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
@@ -37,6 +39,8 @@ import (
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/envprovider"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/sshnode"
 )
 
 const (
@@ -58,6 +62,7 @@ type (
 		resource.T
 		Path                     path.T         `json:"path"`
 		ObjectID                 uuid.UUID      `json:"object_id"`
+		Nodes                    []string       `json:"nodes"`
 		DNS                      []string       `json:"dns"`
 		SCSIReserv               bool           `json:"scsireserv"`
 		PromoteRW                bool           `json:"promote_rw"`
@@ -142,6 +147,11 @@ func (t T) Manifest() *manifest.T {
 			Key:  "object_id",
 			Attr: "ObjectID",
 			Ref:  "object.id",
+		},
+		{
+			Key:  "nodes",
+			Attr: "Nodes",
+			Ref:  "object.nodes",
 		},
 		{
 			Key:  "dns",
@@ -1291,4 +1301,70 @@ func (t T) kill() error {
 // to be targeted by ip.cni, ip.netns, ...
 func (t T) LinkNames() []string {
 	return []string{t.RID()}
+}
+
+func (t *T) Abort(ctx context.Context) bool {
+	if v, err := t.isUp(); err != nil {
+		t.Log().Warn().Msgf("no-abort: %s", err)
+		return false
+	} else if v {
+		// the local instance is already up.
+		// let the local start report the unecessary start steps
+		return false
+	}
+	if pinger, err := ping.NewPinger(t.hostname()); err == nil {
+		pinger.Timeout = time.Second * 5
+		pinger.Count = 1
+		if err := pinger.Run(); err == nil {
+			t.Log().Info().Msgf("abort: %s is alive", t.hostname())
+			return true
+		}
+		return false
+	} else {
+		t.Log().Debug().Msgf("disable ping abort check: %s", err)
+	}
+	if n, err := t.upPeer(); err != nil {
+		return false
+	} else if n != "" {
+		t.Log().Info().Msgf("abort: %s is up on %s", t.hostname(), n)
+		return true
+	}
+	return false
+}
+
+func (t T) upPeer() (string, error) {
+	hn := hostname.Hostname()
+	isPeerUp := func(n string) (bool, error) {
+		client, err := sshnode.NewClient(n)
+		if err != nil {
+			return false, err
+		}
+		defer client.Close()
+		session, err := client.NewSession()
+		if err != nil {
+			return false, err
+		}
+		defer session.Close()
+		var b bytes.Buffer
+		session.Stdout = &b
+		err = session.Run(fmt.Sprintf("lxc-info -n %s -p", t.Name))
+		if err == nil {
+			return true, nil
+		}
+		ee := err.(*ssh.ExitError)
+		ec := ee.Waitmsg.ExitStatus()
+		return ec == 0, err
+	}
+	for _, n := range t.Nodes {
+		if hn == n {
+			continue
+		}
+		if v, err := isPeerUp(n); err != nil {
+			t.Log().Debug().Msgf("ssh abort check on %s: %s", n, err)
+			continue
+		} else if v {
+			return n, nil
+		}
+	}
+	return "", nil
 }
