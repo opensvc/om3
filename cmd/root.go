@@ -110,7 +110,6 @@ func initLogger() {
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
 	zerolog.MessageFieldName = "m"
-	logging.WithCaller = callerFlag
 
 	l := logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: true,
@@ -121,7 +120,6 @@ func initLogger() {
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
-		WithCaller:            logging.WithCaller,
 	}).
 		With().
 		Str("n", hostname.Hostname()).
@@ -131,6 +129,7 @@ func initLogger() {
 }
 
 func persistentPreRunE(_ *cobra.Command, _ []string) error {
+	logging.WithCaller = callerFlag
 	if err := hostname.Error(); err != nil {
 		return err
 	}

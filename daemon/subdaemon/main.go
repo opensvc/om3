@@ -171,7 +171,6 @@ func New(opts ...funcopt.O) *T {
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
-		WithCaller:            logging.WithCaller,
 	}).
 		With().
 		Str("n", hostname.Hostname()).

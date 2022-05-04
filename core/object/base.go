@@ -104,7 +104,6 @@ func (t *Base) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) erro
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
-		WithCaller:            logging.WithCaller,
 	}).
 		With().
 		Stringer("o", t.Path).

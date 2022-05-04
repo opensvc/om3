@@ -150,7 +150,6 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 			MaxSize:               5,
 			MaxBackups:            1,
 			MaxAge:                30,
-			WithCaller:            logging.WithCaller,
 		}).
 			With().
 			Str("n", hostname.Hostname()).

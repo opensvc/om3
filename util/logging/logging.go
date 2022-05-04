@@ -38,9 +38,6 @@ type Config struct {
 
 	// MaxAge the max age in days to keep a logfile
 	MaxAge int
-
-	// WithCaller adds the file:line information of the logger caller
-	WithCaller bool
 }
 
 // Logger is the opensvc specific zerolog logger
@@ -107,7 +104,7 @@ func Configure(config Config) *Logger {
 
 	// zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	l := zerolog.New(mw).With().Timestamp()
-	if config.WithCaller {
+	if WithCaller {
 		l = l.Caller()
 	}
 	logger := l.Logger()
