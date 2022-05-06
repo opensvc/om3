@@ -430,7 +430,7 @@ var commonKeywords = []keywords.Keyword{
 		Section: "node",
 		Option:  "dbopensvc",
 		Example: "https://collector.opensvc.com",
-		Text:    "Set the uri of the collector main xmlrpc server. The path part of the uri can be left unspecified. If not set, the agent does not try to communicate with a collector.",
+		Text:    "Set the uri of the collector's feed rpc server. The path part of the uri can be left unspecified. If not set, the agent does not try to communicate with a collector.",
 	},
 	{
 		Section:   "node",
@@ -441,9 +441,9 @@ var commonKeywords = []keywords.Keyword{
 	{
 		Section:     "node",
 		Option:      "dbcompliance",
-		Example:     "https://collector.opensvc.com/init/compliance/call/xmlrpc",
+		Example:     "https://collector.opensvc.com",
 		DefaultText: "Same protocol, server and port as dbopensvc, but with an different path.",
-		Text:        "Set the uri of the collector's main xmlrpc server. The path part of the uri can be left unspecified.",
+		Text:        "Set the uri of the collector's main rpc server. The path part of the uri can be left unspecified.",
 	},
 	{
 		Section:   "node",
