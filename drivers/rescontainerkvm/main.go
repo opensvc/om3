@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/antchfx/xmlquery"
@@ -254,6 +255,10 @@ func (t T) checkCapabilities() bool {
 }
 
 func (t T) IsOperational() (bool, error) {
+	if err := t.rexec("pwd"); err != nil {
+		t.Log().Debug().Err(err).Msgf("IsOperational")
+		return false, nil
+	}
 	return true, nil
 }
 
@@ -768,44 +773,6 @@ func (t *T) SetEncapFileOwnership(p string) error {
 	return file.CopyOwnership(rootDir, p)
 }
 
-func (t T) rcmd() ([]string, error) {
-        if len(t.RCmd) > 0 {
-                return t.RCmd, nil
-        }
-        if p, err := exec.LookPath("ssh"); err == nil {
-                return []string{
-                        p,
-                        "-o", "StrictHostKeyChecking=no",
-                        "-o", "ForwardX11=no",
-                        "-o", "ConnectTimeout=5",
-                        "-t",
-                        //"-o", "BatchMode=yes",
-                        //"-n",
-                        t.hostname(),
-                        "--",
-                }, nil
-        }
-        return nil, errors.Errorf("unable to identify a remote command method. install ssh or set the rcmd keyword.")
-}
-
-func (t T) Enter() error {
-        rcmd, err := t.rcmd()
-        if err != nil {
-                return err
-        }
-        sh := "/bin/bash"
-        args := append(rcmd, sh, "--help")
-        cmd := exec.Command(args[0], args[1:]...)
-        _ = cmd.Run()
-
-        switch cmd.ProcessState.ExitCode() {
-        case 126, 127:
-                sh = "/bin/sh"
-        }
-        args = append(rcmd, sh)
-        return syscall.Exec(args[0], args, os.Environ())
-}
-
 */
 
 func (t T) rcmd() ([]string, error) {
@@ -815,11 +782,59 @@ func (t T) rcmd() ([]string, error) {
 	return nil, errors.Errorf("unable to identify a remote command method. install ssh or set the rcmd keyword.")
 }
 
+func (t T) rexec(cmd string) error {
+	if rcmd, err := t.rcmd(); err == nil {
+		rcmd = append(rcmd, cmd)
+		return t.execViaRCmd(rcmd)
+	}
+	return t.execViaInternalSSH(cmd)
+}
+
 func (t T) Enter() error {
 	if rcmd, err := t.rcmd(); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
 	return t.enterViaInternalSSH()
+}
+
+func (t T) execViaInternalSSH(cmd string) error {
+	hn := t.hostname()
+	client, err := sshnode.NewClient(hn)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+	session.Stdin = os.Stdin
+	if err != nil {
+		return err
+	}
+	if err := session.Run(cmd); err != nil {
+		ee := err.(*ssh.ExitError)
+		ec := ee.Waitmsg.ExitStatus()
+		t.Log().Debug().Int("exitcode", ec).Str("cmd", cmd).Str("host", hn).Msg("rexec")
+		return err
+	}
+	return nil
+}
+
+func (t T) execViaRCmd(args []string) error {
+	cmd := command.New(
+		command.WithName(args[0]),
+		command.WithArgs(args[1:]),
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+	)
+	return cmd.Run()
 }
 
 func (t T) enterViaInternalSSH() error {
@@ -854,21 +869,6 @@ func (t T) enterViaInternalSSH() error {
 	}
 	_ = session.Wait()
 	return nil
-	/*
-
-		err = session.Run("/bin/bash")
-		if err != nil {
-			ee := err.(*ssh.ExitError)
-			ec := ee.Waitmsg.ExitStatus()
-			switch ec {
-			case 126, 127:
-				return session.Run("/bin/sh")
-			default:
-				return err
-			}
-		}
-		return nil
-	*/
 }
 
 func (t T) enterViaRCmd(rcmd []string) error {
@@ -882,11 +882,7 @@ func (t T) enterViaRCmd(rcmd []string) error {
 		sh = "/bin/sh"
 	}
 	args = append(rcmd, sh)
-	cmd = exec.Command(args[0], args[1:]...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return syscall.Exec(args[0], args, os.Environ())
 }
 
 func (t T) hostname() string {
