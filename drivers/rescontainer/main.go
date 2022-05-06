@@ -43,4 +43,44 @@ var (
 		Example:    "unix",
 		Default:    "unix",
 	}
+	KWRCmd = keywords.Keyword{
+		Option:    "rcmd",
+		Attr:      "RCmd",
+		Scopable:  true,
+		Converter: converters.Shlex,
+		Text:      "The command to wrap another command to execute it in the container.",
+		Example:   "lxc-attach -e -n osvtavnprov01 -- ",
+	}
+	KWName = keywords.Keyword{
+		Option:   "name",
+		Attr:     "Name",
+		Required: true,
+		Scopable: true,
+		Text:     "The name to assign to the container",
+	}
+	KWHostname = keywords.Keyword{
+		Option:   "hostname",
+		Attr:     "Hostname",
+		Scopable: true,
+		Example:  "nginx1",
+		Text:     "Set the container hostname. If not set, the container name is used.",
+	}
+	KWStartTimeout = keywords.Keyword{
+		Option:    "start_timeout",
+		Attr:      "StartTimeout",
+		Scopable:  true,
+		Converter: converters.Duration,
+		Text:      "Wait for <duration> before declaring the container action a failure.",
+		Example:   "1m5s",
+		Default:   "4m",
+	}
+	KWStopTimeout = keywords.Keyword{
+		Option:    "stop_timeout",
+		Attr:      "StopTimeout",
+		Scopable:  true,
+		Converter: converters.Duration,
+		Text:      "Wait for <duration> before declaring the container action a failure.",
+		Example:   "2m30s",
+		Default:   "2m",
+	}
 )
