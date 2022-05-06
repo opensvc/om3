@@ -1354,11 +1354,18 @@ func (t *T) Abort(ctx context.Context) bool {
 		// let the local start report the unecessary start steps
 		return false
 	}
+	hn := t.hostname()
+	t.Log().Info().Msgf("abort test: ping %s", hn)
+
 	if pinger, err := ping.NewPinger(t.hostname()); err == nil {
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
-		if err := pinger.Run(); err == nil {
-			t.Log().Info().Msgf("abort: %s is alive", t.hostname())
+		if err := pinger.Run(); err != nil {
+			t.Log().Warn().Msgf("no-abort: pinger err: %s", err)
+			return false
+		}
+		if pinger.Statistics().PacketsRecv > 0 {
+			t.Log().Info().Msgf("abort: %s is alive", hn)
 			return true
 		}
 		return false
@@ -1368,7 +1375,7 @@ func (t *T) Abort(ctx context.Context) bool {
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Log().Info().Msgf("abort: %s is up on %s", t.hostname(), n)
+		t.Log().Info().Msgf("abort: %s is up on %s", hn, n)
 		return true
 	}
 	return false
