@@ -372,6 +372,10 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 			if err := attr.SetValue(r, c.Attr, t.Nodes()); err != nil {
 				return err
 			}
+		case c.Ref == "object.peers":
+			if err := attr.SetValue(r, c.Attr, t.Peers()); err != nil {
+				return err
+			}
 		case c.Ref == "object.id":
 			if err := attr.SetValue(r, c.Attr, t.ID()); err != nil {
 				return err
