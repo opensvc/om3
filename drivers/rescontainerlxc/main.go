@@ -97,7 +97,6 @@ type (
 func init() {
 	capabilities.Register(capabilitiesScanner)
 	resource.Register(driverGroup, driverName, New)
-	resource.Register(driverGroup, "oci", New)
 }
 
 func capabilitiesScanner() ([]string, error) {
