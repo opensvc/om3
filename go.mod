@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
+	github.com/antchfx/xmlquery v1.3.10 // indirect
 	github.com/atomicgo/cursor v0.0.1
 	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
@@ -55,7 +56,7 @@ require (
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	github.com/yookoala/realpath v1.0.0
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
+	golang.org/x/crypto v0.0.0-20220314234724-5d542ad81a58 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
 	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
