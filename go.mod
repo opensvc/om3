@@ -15,6 +15,7 @@ require (
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
 	github.com/eidolon/wordwrap v0.0.0-20161011182207-e0f54129b8bb
 	github.com/fatih/color v1.10.0
+	github.com/g8rswimmer/error-chain v1.0.0 // indirect
 	github.com/gdamore/tcell/v2 v2.3.1
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
