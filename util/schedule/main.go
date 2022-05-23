@@ -1131,7 +1131,7 @@ func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Ti
 
 	isValidDay := func(tm time.Time, days []Day) bool {
 		weekday := ISOWeekday(tm)
-		monthday := int(tm.Month())
+		monthday := int(tm.Day())
 		for _, d := range days {
 			if d.Weekday != weekday {
 				continue
@@ -1192,11 +1192,29 @@ func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Ti
 	month1 := int(tm.Month())
 	for year := year1; year <= year1+1; year += 1 {
 		for _, month := range data.Months {
+			fmt.Println("xx month", month)
 			var firstDay int
-			if (year == year1) && (month < month1) {
-				// skip the head months until now
-				continue
+			if year == year1 {
+				if month < month1 {
+					// skip the head months until now
+					continue
+				} else if month > month1 {
+					// skipped beyond initial time (due to %<expr> for ex)
+					tm = time.Date(
+						year, time.Month(month), 1,
+						0, 0, 0, 0,
+						tm.Location(),
+					)
+				}
+			} else {
+				// skipped beyond initial time (due to month range for ex)
+				tm = time.Date(
+					year, time.Month(month), 1,
+					0, 0, 0, 0,
+					tm.Location(),
+				)
 			}
+
 			if (year == year1) && (month == month1) {
 				firstDay = tm.Day()
 			} else {
