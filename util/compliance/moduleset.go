@@ -3,6 +3,7 @@ package compliance
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/ybbus/jsonrpc"
@@ -20,6 +21,18 @@ type (
 	ModulesetRulesetRelations map[string][]string
 	ModulesetRelations        map[string][]string
 )
+
+func (t ModulesetModule) String() string {
+	return t.Name
+}
+
+func (t Moduleset) String() string {
+	l := make([]string, len(t))
+	for i, m := range t {
+		l[i] = fmt.Sprint(m)
+	}
+	return strings.Join(l, ",")
+}
 
 // MarshalJSON marshals the data as a quoted json string
 func (t ModulesetModule) MarshalJSON() ([]byte, error) {

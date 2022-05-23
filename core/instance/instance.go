@@ -35,7 +35,7 @@ type (
 	// for an object instance.
 	MonitorRestart struct {
 		Retries int         `json:"retries"`
-		Updated timestamp.T `json:"updateed"`
+		Updated timestamp.T `json:"updated"`
 	}
 
 	// Config describes a configuration file content checksum,

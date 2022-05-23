@@ -6,11 +6,12 @@ import (
 
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func fakeExecCommand(command string, args ...string) *exec.Cmd {
@@ -87,7 +88,7 @@ type fakeChecker struct {
 	Unit        string
 }
 
-func (t fakeChecker) Check() (*check.ResultSet, error) {
+func (t fakeChecker) Check(objs []interface{}) (*check.ResultSet, error) {
 	var results []check.Result
 	if strings.Contains(t.DriverGroup, "error") {
 		return &check.ResultSet{}, errors.New("something wrong happen")
@@ -308,7 +309,9 @@ func TestRunnerDo(t *testing.T) {
 			for _, checker := range tc.RegisteredCheckers {
 				check.Register(checker)
 			}
-			resultSet := check.NewRunner(tc.CustomCheckPaths).Do()
+			resultSet := check.NewRunner(
+				check.RunnerWithCustomCheckPaths(tc.CustomCheckPaths...),
+			).Do()
 			for _, expectedResult := range tc.ExpectedResults {
 				assert.Containsf(t, resultSet.Data, expectedResult,
 					"result: %+v not found in resultSet %+v\n", expectedResult, resultSet.Data)

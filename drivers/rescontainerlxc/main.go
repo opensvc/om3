@@ -948,7 +948,7 @@ func (t *T) ContainerHead() (string, error) {
 func (t *T) cpusetDir() string {
 	path := ""
 	if !file.Exists(cpusetDir) {
-		t.Log().Debug().Msgf("startCgroup: %s does not exist")
+		t.Log().Debug().Msgf("startCgroup: %s does not exist", cpusetDir)
 		return ""
 	}
 	if t.cgroupDirCapable() {
@@ -1044,7 +1044,7 @@ func (t T) createCgroup(p string) error {
 		return nil
 	}
 	if err := os.MkdirAll(p, 0755); err != nil {
-		return errors.Wrapf(err, "create %p", p)
+		return errors.Wrapf(err, "create %s", p)
 	}
 	t.Log().Info().Msgf("%s created", p)
 	return nil
