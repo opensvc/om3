@@ -186,6 +186,9 @@ func main() {
 		os.Exit(1)
 	}
 	obj := newObj().(I)
+	if prefix == "" {
+		prefix = obj.Info().DefaultPrefix
+	}
 	for _, s := range os.Environ() {
 		pair := strings.SplitN(s, "=", 2)
 		k := pair[0]
