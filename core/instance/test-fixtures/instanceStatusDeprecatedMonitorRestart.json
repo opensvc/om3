@@ -12,10 +12,7 @@
     "local_expect_updated": 1619529397.5926952,
     "placement": "",
     "restart": {
-      "fs#2": {
-	"retries": 1,
-        "updated": 1619529397.5926952
-      }
+      "fs#2": 1
     },
     "status": "idle",
     "status_updated": 1619529551.5369837

@@ -120,6 +120,21 @@ func (t *Status) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// UnmarshalJSON serializes the type instance as JSON.
+func (t *MonitorRestart) UnmarshalJSON(b []byte) error {
+	type tempT MonitorRestart
+	temp := tempT(MonitorRestart{})
+	if err := json.Unmarshal(b, &temp); err != nil {
+		var retries int
+		if err := json.Unmarshal(b, &retries); err != nil {
+			return err
+		}
+		temp.Retries = retries
+	}
+	*t = MonitorRestart(temp)
+	return nil
+}
+
 //
 // SortedResources returns a list of resource identifiers sorted by:
 // 1/ driver group
