@@ -22,6 +22,12 @@ var (
 	RegexpReference = regexp.MustCompile(`({[\w#.-_:]+})`)
 )
 
+func New() T {
+	return T{
+		Data: orderedmap.New(),
+	}
+}
+
 // MarshalJSON marshals the enum as a quoted json string
 func (t T) MarshalJSON() ([]byte, error) {
 	return t.Data.MarshalJSON()

@@ -79,11 +79,7 @@ func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
 	if err != nil {
 		return rawconfig.T{}, err
 	}
-	c := obj.Config()
-	if c == nil {
-		return rawconfig.T{}, fmt.Errorf("path %s: no configuration", p)
-	}
-	return c.Raw(), nil
+	return obj.PrintConfig(t.OptsPrintConfig)
 }
 
 func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconfig.T, error) {

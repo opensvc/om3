@@ -3,6 +3,7 @@ package object
 import (
 	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/envs"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/placement"
@@ -170,6 +171,22 @@ var keywordStore = keywords.Store{
 		Example:   "n1 n2",
 	},
 	{
+		Section:    "DEFAULT",
+		Option:     "monitor_action",
+		Scopable:   true,
+		Candidates: []string{"reboot", "crash", "freezestop", "switch"},
+		Text:       "The action to take when a monitored resource is not up nor standby up, and if the resource restart procedure has failed.",
+		Example:    "reboot",
+	},
+	{
+		Section:  "DEFAULT",
+		Option:   "pre_monitor_action",
+		Scopable: true,
+		Text:     "A script to execute before the :kw:`monitor_action`. For example, if the :kw:`monitor_action` is set to ``freezestop``, the script can decide to crash the server if it detects a situation were the freezestop can not succeed (ex. fs can not be umounted with a dead storage array).",
+		Example:  "/bin/true",
+	},
+
+	{
 		Section: "DEFAULT",
 		Option:  "app",
 		Default: "default",
@@ -178,9 +195,41 @@ var keywordStore = keywords.Store{
 	{
 		Section:     "DEFAULT",
 		Option:      "env",
+		Aliases:     []string{"service_type"},
 		DefaultText: "Same as the node env",
 		Candidates:  envs.List,
 		Text:        "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation). The default value is the node :kw:`env`.",
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "stonith",
+		Inherit:   keywords.InheritHead,
+		Converter: converters.Bool,
+		Default:   "false",
+		Depends: []keyop.T{
+			{
+				Key:   key.T{"DEFAULT", "topology"},
+				Op:    keyop.Equal,
+				Value: "failover",
+			},
+		},
+		Text: "Stonith the node previously running the service if stale upon start by the daemon monitor.",
+	},
+	{
+		Section:    "DEFAULT",
+		Option:     "constraints",
+		Inherit:    keywords.InheritHead,
+		Scopable:   true,
+		Deprecated: true,
+		Example:    "$(\"{nodename}\"==\"n2.opensvc.com\")",
+		Depends: []keyop.T{
+			{
+				Key:   key.T{"DEFAULT", "orchestrate"},
+				Op:    keyop.Equal,
+				Value: "ha",
+			},
+		},
+		Text: "An expression evaluating as a boolean, constraining the service instance placement by the daemon monitor to nodes with the constraints evaluated as True.\n\nThe constraints are not honored by manual start operations. The constraints value is embedded in the json status.\n\nSupported comparison operators are ``==``, ``!=``, ``>``, ``>=``, ``<=``, ``in (e1, e2)``, ``in [e1, e2]``.\n\nSupported arithmetic operators are ``*``, ``+``, ``-``, ``/``, ``**``, ``//``, ``%``.\n\nSupported binary operators are ``&``, ``|``, ``^``.\n\nThe negation operator is ``not``.\n\nSupported boolean operators are ``and``, ``or``.\n\nReferences are allowed.\n\nStrings, and references evaluating as strings, containing dots must be quoted.",
 	},
 	{
 		Section:    "DEFAULT",
@@ -201,12 +250,14 @@ var keywordStore = keywords.Store{
 		Section:    "DEFAULT",
 		Option:     "topology",
 		Default:    "failover",
+		Aliases:    []string{"cluster_type"},
 		Candidates: []string{"failover", "flex"},
 		Text:       "``failover`` the service is allowed to be up on one node at a time. ``flex`` the service can be up on :kw:`flex_target` nodes, where :kw:`flex_target` must be in the [flex_min, flex_max] range.",
 	},
 	{
 		Section:   "DEFAULT",
 		Option:    "flex_min",
+		Aliases:   []string{"flex_min_nodes"},
 		Default:   "1",
 		Converter: converters.Int,
 		//Depends: []keyval.T{
@@ -217,6 +268,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:     "DEFAULT",
 		Option:      "flex_max",
+		Aliases:     []string{"flex_max_nodes"},
 		DefaultText: "Number of svc nodes",
 		Converter:   converters.Int,
 		//Depends: []keyval.T{

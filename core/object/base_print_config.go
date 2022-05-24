@@ -15,8 +15,7 @@ type OptsPrintConfig struct {
 // PrintConfig gets a keyword value
 func (t *Base) PrintConfig(options OptsPrintConfig) (rawconfig.T, error) {
 	if options.Eval {
-		// TODO
-		return rawconfig.T{}, nil
+		return t.config.RawEvaluatedAs(options.Impersonate)
 	}
 	return t.config.Raw(), nil
 }

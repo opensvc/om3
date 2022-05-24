@@ -6,6 +6,7 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/core/schedule"
@@ -81,6 +82,7 @@ type (
 		ConfigFile() string
 		Config() *xconfig.T
 		EditConfig(OptsEditConfig) error
+		PrintConfig(OptsPrintConfig) (rawconfig.T, error)
 		Eval(OptsEval) (interface{}, error)
 		Get(OptsGet) (interface{}, error)
 		Set(OptsSet) error

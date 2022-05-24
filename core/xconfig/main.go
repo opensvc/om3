@@ -598,7 +598,8 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	sectionType := t.sectionType(k)
 	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
-		return nil, err
+		// unsupported keyword: treat as a simple string, like env keys
+		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
 	}
 	return t.EvalKeywordAs(k, kw, impersonate)
 }
@@ -805,6 +806,28 @@ func (t T) Raw() rawconfig.T {
 	return r
 }
 
+func (t T) RawEvaluated() (rawconfig.T, error) {
+	return t.RawEvaluatedAs("")
+}
+
+func (t T) RawEvaluatedAs(impersonate string) (rawconfig.T, error) {
+	r := rawconfig.New()
+	for _, s := range t.file.Sections() {
+		sectionMap := *orderedmap.New()
+		for k, _ := range s.KeysHash() {
+			_k := key.New(s.Name(), k)
+			_k.Option = _k.BaseOption()
+			if v, err := t.EvalAs(_k, impersonate); err != nil {
+				return rawconfig.New(), errors.Wrap(err, "eval")
+			} else {
+				sectionMap.Set(_k.Option, v)
+			}
+		}
+		r.Data.Set(s.Name(), sectionMap)
+	}
+	return r, nil
+}
+
 func (t T) HasSectionString(s string) bool {
 	for _, e := range t.SectionStrings() {
 		if s == e {
@@ -848,6 +871,7 @@ func (t T) dereference(ref string, section string, impersonate string) (string, 
 	var (
 		modifier f
 		err      error
+		count    bool
 	)
 	val := ""
 	ref = ref[1 : len(ref)-1]
@@ -855,16 +879,25 @@ func (t T) dereference(ref string, section string, impersonate string) (string, 
 	switch l[0] {
 	case "upper":
 		modifier = strings.ToUpper
+		ref = l[1]
 	case "lower":
 		modifier = strings.ToLower
+		ref = l[1]
 	case "capitalize":
 		modifier = xstrings.Capitalize
+		ref = l[1]
 	case "title":
 		modifier = strings.Title
+		ref = l[1]
 	case "swapcase":
 		modifier = xstrings.SwapCase
+		ref = l[1]
 	default:
 		modifier = func(s string) string { return s }
+	}
+	if strings.HasPrefix(ref, "#") {
+		count = true
+		ref = ref[1:len(ref)]
 	}
 	switch {
 	case strings.HasPrefix(ref, "node."):
@@ -873,8 +906,13 @@ func (t T) dereference(ref string, section string, impersonate string) (string, 
 		}
 	default:
 		if val, err = t.dereferenceWellKnown(ref, section, impersonate); err != nil {
+			fmt.Println(section, ref, err)
 			return ref, err
 		}
+	}
+	if count {
+		n := len(strings.Fields(val))
+		return fmt.Sprint(n), nil
 	}
 	return modifier(val), nil
 }
@@ -934,6 +972,9 @@ func (t T) dereferenceKey(ref string, section string, impersonate string) (strin
 }
 
 func (t T) dereferenceWellKnown(ref string, section string, impersonate string) (string, error) {
+	if impersonate == "" {
+		impersonate = hostname.Hostname()
+	}
 	if v, err := t.dereferenceKey(ref, section, impersonate); err == nil {
 		return v, nil
 	}
@@ -958,10 +999,14 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 		return rawconfig.Node.Paths.Etc, nil
 	case "var":
 		return rawconfig.Node.Paths.Var, nil
-	default:
-		if t.Referrer != nil {
-			return t.Referrer.Dereference(ref)
+	}
+	if t.Referrer != nil {
+		if v, err := t.Referrer.Dereference(ref); err == nil {
+			return v, nil
 		}
+	}
+	if v, err := t.EvalAsNoConv(key.New(section, ref), impersonate); err == nil {
+		return v, nil
 	}
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }

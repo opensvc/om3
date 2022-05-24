@@ -70,6 +70,12 @@ type (
 		// <rid>.<name> overrides DEFAULT.<name> (Leaf2Head, the default), or only <rid>.<name>
 		// is used (Leaf).
 		Inherit Inherit
+
+		// Deprecated means the keyword will be removed in a future release.
+		Deprecated bool
+
+		// ReplacedBy means the keyword is deprecated but another keyword can be used instead.
+		ReplacedBy string
 	}
 
 	Store   []Keyword

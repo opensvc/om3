@@ -33,7 +33,7 @@ func Parse(s string) T {
 }
 
 func (t T) BaseOption() string {
-	l := strings.SplitN(t.Option, "@", 1)
+	l := strings.SplitN(t.Option, "@", 2)
 	return l[0]
 }
 
