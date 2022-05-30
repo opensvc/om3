@@ -166,6 +166,7 @@ var genericKeywords = []keywords.Keyword{
 	{
 		Option:    "shared",
 		Attr:      "Shared",
+		Scopable:  true,
 		Converter: converters.Bool,
 		Text:      "Set to ``true`` to skip the resource on provision and unprovision actions if the action has already been done by a peer. Shared resources, like vg built on SAN disks must be provisioned once. All resources depending on a shared resource must also be flagged as shared.",
 	},

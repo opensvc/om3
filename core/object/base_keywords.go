@@ -271,6 +271,22 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Section:   "DEFAULT",
+		Option:    "shared",
+		Scopable:  true,
+		Default:   "true",
+		Converter: converters.Bool,
+		Text:      "Set to ``true`` to skip the resource on provision and unprovision actions if the action has already been done by a peer. Shared resources, like vg built on SAN disks must be provisioned once. All resources depending on a shared resource must also be flagged as shared.",
+	},
+	{
+		Section:   "DEFAULT",
+		Option:    "check_carrier",
+		Scopable:  true,
+		Default:   "true",
+		Converter: converters.Bool,
+		Text:      "Activate the link carrier check. Set to false if ipdev is a backend bridge or switch.",
+	},
+	{
+		Section:   "DEFAULT",
 		Option:    "flex_min",
 		Aliases:   []string{"flex_min_nodes"},
 		Default:   "1",
