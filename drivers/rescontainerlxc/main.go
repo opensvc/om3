@@ -158,6 +158,7 @@ func (t T) Manifest() *manifest.T {
 			Ref:  "node.dns",
 		},
 	}...)
+	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "data_dir",

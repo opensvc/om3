@@ -32,6 +32,7 @@ func New() resource.Driver {
 // Manifest ...
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driverGroup, driverName, t)
+	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "netns",

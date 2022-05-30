@@ -23,6 +23,9 @@ type (
 		Value string
 		Index int
 	}
+
+	// L is a list of T
+	L []T
 )
 
 const (
@@ -211,4 +214,13 @@ func (t T) String() string {
 	default:
 		return fmt.Sprintf("%s%s%s", t.Key, t.Op, t.Value)
 	}
+}
+
+func ParseList(exprs ...string) L {
+	l := make(L, 0)
+	for _, expr := range exprs {
+		t := Parse(expr)
+		l = append(l, *t)
+	}
+	return l
 }

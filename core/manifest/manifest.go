@@ -266,6 +266,71 @@ var RunTriggerKeywords = []keywords.Keyword{
 	},
 }
 
+var ProvisioningKeywords = []keywords.Keyword{
+	{
+		Option:    "provision",
+		Attr:      "EnableProvision",
+		Converter: converters.Bool,
+		Default:   "true",
+		Text:      "Set to false to skip the resource on provision and unprovision actions. Warning: Provision implies destructive operations like formating. Unprovision destroys service data.",
+	},
+	{
+		Option:    "unprovision",
+		Attr:      "EnableUnprovision",
+		Converter: converters.Bool,
+		Default:   "true",
+		Text:      "Set to false to skip the resource on unprovision actions. Warning: Unprovision destroys service data.",
+	},
+	{
+		Option:   "blocking_pre_provision",
+		Attr:     "BlockingPreProvision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`provision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_provision",
+		Attr:     "BlockingPostProvision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`provision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_provision",
+		Attr:     "PreProvision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`provision` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_provision",
+		Attr:     "PostProvision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`provision` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "blocking_pre_unprovision",
+		Attr:     "BlockingPreUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`unprovision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_unprovision",
+		Attr:     "BlockingPostUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`unprovision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_unprovision",
+		Attr:     "PreUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`unprovision` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_unprovision",
+		Attr:     "PostUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`unprovision` action. Errors do not interrupt the action.",
+	},
+}
+
 func New(group drivergroup.T, name string, r interface{}) *T {
 	t := &T{
 		Group: group,

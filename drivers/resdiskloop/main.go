@@ -50,6 +50,7 @@ func New() resource.Driver {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driverGroup, driverName, t)
 	m.AddKeyword(resdisk.BaseKeywords...)
+	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "file",

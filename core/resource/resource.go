@@ -120,6 +120,8 @@ type (
 		UnprovisionRequires     string
 		SyncRequires            string
 		RunRequires             string
+		EnableProvision         bool
+		EnableUnprovision       bool
 
 		statusLog    StatusLog
 		log          zerolog.Logger
