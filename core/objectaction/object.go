@@ -241,7 +241,7 @@ func (t T) DoLocal() error {
 					rsTree = tree.New()
 				}
 				rsNode = rsTree.AddNode()
-				rsNode.AddColumn().AddText(r.Path.String() + "@" + r.Nodename).SetColor(rawconfig.Node.Color.Primary)
+				rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Node.Color.Bold)
 				rsChildNode := rsNode.AddNode()
 				i.LoadTreeNode(rsChildNode)
 				continue

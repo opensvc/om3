@@ -151,6 +151,12 @@ var keywordStore = keywords.Store{
 		Example:  "50",
 	},
 	{
+		Option:    "stat_timeout",
+		Converter: converters.Duration,
+		Scopable:  true,
+		Text:      "The maximum wait time for a stat call to respond. When expired, the resource status is degraded is to warn, which might cause a TOC if the resource is monitored.",
+	},
+	{
 		Section:     "DEFAULT",
 		Option:      "nodes",
 		Inherit:     keywords.InheritHead,
@@ -230,6 +236,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:    "DEFAULT",
 		Option:     "placement",
+		Scopable:   true,
 		Inherit:    keywords.InheritHead,
 		Default:    "nodes order",
 		Candidates: placement.Names(),
@@ -246,6 +253,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:    "DEFAULT",
 		Option:     "topology",
+		Scopable:   true,
 		Default:    "failover",
 		Inherit:    keywords.InheritHead,
 		Aliases:    []string{"cluster_type"},
