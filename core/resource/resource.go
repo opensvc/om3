@@ -280,6 +280,10 @@ func Register(group drivergroup.T, name string, f func() Driver) {
 	drivers[*driverID] = f
 }
 
+func HasDriver(did driverid.T) bool {
+	return NewResourceFunc(did) != nil
+}
+
 func DriverIDList() driverid.L {
 	l := make(driverid.L, len(drivers))
 	i := 0

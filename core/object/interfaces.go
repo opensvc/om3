@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -19,6 +20,10 @@ type (
 	// Renderer is implemented by data type stored in ActionResults.Data.
 	Renderer interface {
 		Render() string
+	}
+	// LoadTreeNoder is implemented by data type stored in ActionResults.Data.
+	LoadTreeNoder interface {
+		LoadTreeNode(*tree.Node)
 	}
 
 	// SecureKeystorer is implemented by encrypting Keystore object kinds (usr, sec).
@@ -83,6 +88,7 @@ type (
 		Config() *xconfig.T
 		EditConfig(OptsEditConfig) error
 		PrintConfig(OptsPrintConfig) (rawconfig.T, error)
+		ValidateConfig(OptsValidateConfig) (xconfig.ValidateAlerts, error)
 		Eval(OptsEval) (interface{}, error)
 		Get(OptsGet) (interface{}, error)
 		Set(OptsSet) error

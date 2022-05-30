@@ -48,6 +48,12 @@ type (
 		// Default is the value returned when the non-required keyword is not set.
 		Default string
 
+		// DefaultOption is the name of the option looked up in the
+		// DEFAULT section if the keyword is not set. If not set,
+		// the string in the Option field is looked up in the DEFAULT
+		// section.
+		DefaultOption string
+
 		// Candidates is the list of accepted values. An empty list.
 		Candidates []string
 
@@ -71,8 +77,9 @@ type (
 		// is used (Leaf).
 		Inherit Inherit
 
-		// Deprecated means the keyword will be removed in a future release.
-		Deprecated bool
+		// Deprecated is the release where the keyword has been deprecated. Users can
+		// expect the keyword to be unsupported in the next release.
+		Deprecated string
 
 		// ReplacedBy means the keyword is deprecated but another keyword can be used instead.
 		ReplacedBy string
@@ -108,11 +115,12 @@ func (t Store) Swap(i, j int) {
 
 func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
+	baseOption := k.BaseOption()
 	for _, kw := range t {
 		if !kw.Kind.Has(kd) {
 			continue
 		}
-		if k.Option != kw.Option && !stringslice.Has(k.Option, kw.Aliases) {
+		if baseOption != kw.Option && !stringslice.Has(baseOption, kw.Aliases) {
 			continue
 		}
 		if kw.Section == "" {
@@ -126,6 +134,17 @@ func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 		}
 	}
 	return Keyword{}
+}
+
+func (t Keyword) DefaultKey() key.T {
+	k := key.T{
+		Section: "DEFAULT",
+		Option:  t.Option,
+	}
+	if t.DefaultOption != "" {
+		k.Option = t.DefaultOption
+	}
+	return k
 }
 
 func (t Keyword) IsZero() bool {

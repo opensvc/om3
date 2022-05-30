@@ -31,22 +31,6 @@ import (
 	"opensvc.com/opensvc/util/xsession"
 )
 
-var (
-	DefaultDriver = map[string]string{
-		"app":       "forking",
-		"container": "oci",
-		"ip":        "host",
-		"task":      "host",
-		"volume":    "",
-
-		// data resources
-		"vhost":       "envoy",
-		"certificate": "tls",
-		"route":       "envoy",
-		"expose":      "envoy",
-	}
-)
-
 type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
@@ -278,14 +262,11 @@ func (t *Base) configureResources() {
 		}
 		typeKey := key.New(k, "type")
 		driverName := t.config.Get(typeKey)
-		if driverName == "" {
-			var ok bool
-			if driverName, ok = DefaultDriver[driverGroup.String()]; !ok {
-				t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
-				continue
-			}
-		}
 		driverID := driverid.New(driverGroup, driverName)
+		if driverName == "" && driverID.Name == "" {
+			t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
+			continue
+		}
 		factory := resource.NewResourceFunc(*driverID)
 		if factory == nil {
 			t.log.Debug().Stringer("driver", driverID).Msg("driver not found")

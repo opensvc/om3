@@ -54,6 +54,11 @@ var (
 		Short:   "edition command group",
 		Aliases: []string{"edi", "ed"},
 	}
+	nodeValidateCmd = &cobra.Command{
+		Use:     "validate",
+		Short:   "validation command group",
+		Aliases: []string{"validat", "valida", "valid", "val"},
+	}
 
 	cmdNodeChecks                    commands.CmdNodeChecks
 	cmdNodeComplianceAttachModuleset commands.CmdNodeComplianceAttachModuleset
@@ -88,6 +93,7 @@ var (
 	cmdNodeSet                       commands.NodeSet
 	cmdNodeSysreport                 commands.CmdNodeSysreport
 	cmdNodeUnset                     commands.NodeUnset
+	cmdNodeValidateConfig            commands.NodeValidateConfig
 )
 
 func init() {
@@ -101,6 +107,7 @@ func init() {
 	nodeCmd.AddCommand(nodePrintCmd)
 	nodeCmd.AddCommand(nodePushCmd)
 	nodeCmd.AddCommand(nodeScanCmd)
+	nodeCmd.AddCommand(nodeValidateCmd)
 
 	cmdNodeChecks.Init(nodeCmd)
 	cmdNodeComplianceEnv.Init(nodeComplianceCmd)
@@ -139,4 +146,6 @@ func init() {
 	cmdNodeSet.Init(nodeCmd)
 	cmdNodeSysreport.Init(nodeCmd)
 	cmdNodeUnset.Init(nodeCmd)
+	cmdNodeValidateConfig.Init(nodeValidateCmd)
+
 }

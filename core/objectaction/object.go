@@ -16,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/render/tree"
 )
 
 type (
@@ -213,12 +214,19 @@ func (t T) DoLocal() error {
 		return err
 	}
 	human := func() string {
+		var (
+			rsTree *tree.Tree
+			rsNode *tree.Node
+		)
+		type loadTreeNoder interface {
+			LoadTreeNode(*tree.Node)
+		}
 		s := ""
 		for _, r := range rs {
 			switch {
 			case errors.Is(r.Error, object.ErrLogged):
 				// do not log again
-			case r.Error != nil:
+			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
 				log.Error().Err(r.Error).Msg("")
 			case r.Panic != nil:
 				switch err := r.Panic.(type) {
@@ -227,6 +235,18 @@ func (t T) DoLocal() error {
 				default:
 					log.Fatal().Msgf("%s", err)
 				}
+			}
+			if i, ok := interface{}(r.Data).(loadTreeNoder); ok {
+				if rsTree == nil {
+					rsTree = tree.New()
+				}
+				rsNode = rsTree.AddNode()
+				rsNode.AddColumn().AddText(r.Path.String() + "@" + r.Nodename).SetColor(rawconfig.Node.Color.Primary)
+				rsChildNode := rsNode.AddNode()
+				i.LoadTreeNode(rsChildNode)
+				continue
+			}
+			switch {
 			case r.HumanRenderer != nil:
 				s += r.HumanRenderer()
 			case r.Data != nil:
@@ -241,6 +261,9 @@ func (t T) DoLocal() error {
 					log.Error().Msgf("unimplemented default renderer for local action result of type %s", reflect.TypeOf(v))
 				}
 			}
+		}
+		if rsTree != nil {
+			return rsTree.Render()
 		}
 		return s
 	}
@@ -328,7 +351,9 @@ func (t T) DoRemote() {
 func (t T) Do() {
 	err := action.Do(t)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		if fmt.Sprint(err) != "" {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 	os.Exit(0)

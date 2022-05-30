@@ -35,6 +35,7 @@ func init() {
 		cmdSet              commands.CmdObjectSet
 		cmdStatus           commands.CmdObjectStatus
 		cmdUnset            commands.CmdObjectUnset
+		cmdValidateConfig   commands.CmdObjectValidateConfig
 	)
 
 	kind := "ccfg"
@@ -62,5 +63,10 @@ func init() {
 		cmdPrintConfig.Init(kind, sub, &selectorFlag)
 		cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
 		cmdPrintStatus.Init(kind, sub, &selectorFlag)
+	}
+
+	if sub := makeSubValidate(); sub != nil {
+		head.AddCommand(sub)
+		cmdValidateConfig.Init(kind, sub, &selectorFlag)
 	}
 }

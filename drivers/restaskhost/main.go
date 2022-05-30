@@ -37,6 +37,7 @@ type T struct {
 	RunCmd       string
 	OnErrorCmd   string
 	Check        string
+	Schedule     string
 	Confirmation bool
 	LogOutputs   bool
 	Snooze       *time.Duration

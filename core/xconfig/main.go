@@ -660,7 +660,7 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string) (stri
 	)
 	switch kw.Inherit {
 	case keywords.InheritHead2Leaf:
-		firstKey := key.New("DEFAULT", k.Option)
+		firstKey := kw.DefaultKey()
 		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate); err == nil {
 			return v, err
 		}
@@ -675,7 +675,7 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string) (stri
 		if v, err = t.evalDescopeStringAs(k, kw, impersonate); err == nil {
 			return v, err
 		}
-		firstKey := key.New("DEFAULT", k.Option)
+		firstKey := kw.DefaultKey()
 		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate); err == nil {
 			return v, err
 		}
@@ -906,7 +906,6 @@ func (t T) dereference(ref string, section string, impersonate string) (string, 
 		}
 	default:
 		if val, err = t.dereferenceWellKnown(ref, section, impersonate); err != nil {
-			fmt.Println(section, ref, err)
 			return ref, err
 		}
 	}

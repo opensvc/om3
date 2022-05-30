@@ -220,7 +220,7 @@ var keywordStore = keywords.Store{
 		Option:     "constraints",
 		Inherit:    keywords.InheritHead,
 		Scopable:   true,
-		Deprecated: true,
+		Deprecated: "2.1",
 		Example:    "$(\"{nodename}\"==\"n2.opensvc.com\")",
 		Depends: []keyop.T{
 			{

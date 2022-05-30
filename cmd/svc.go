@@ -64,6 +64,7 @@ func init() {
 		cmdUnfreeze                  commands.CmdObjectUnfreeze
 		cmdUnprovision               commands.CmdObjectUnprovision
 		cmdUnset                     commands.CmdObjectUnset
+		cmdValidateConfig            commands.CmdObjectValidateConfig
 	)
 
 	kind := "svc"
@@ -139,6 +140,11 @@ func init() {
 		if sub := makeSubSync(); sub != nil {
 			head.AddCommand(sub)
 			cmdSyncResync.Init(kind, sub, &selectorFlag)
+		}
+
+		if sub := makeSubValidate(); sub != nil {
+			head.AddCommand(sub)
+			cmdValidateConfig.Init(kind, sub, &selectorFlag)
 		}
 	}
 }

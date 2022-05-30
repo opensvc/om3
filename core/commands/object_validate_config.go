@@ -11,30 +11,31 @@ import (
 )
 
 type (
-	// CmdObjectEval is the cobra flag set of the get command.
-	CmdObjectEval struct {
-		object.OptsEval
+	// CmdObjectValidateConfig is the cobra flag set of the get command.
+	CmdObjectValidateConfig struct {
+		object.OptsValidateConfig
 	}
 )
 
 // Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectEval) Init(kind string, parent *cobra.Command, selector *string) {
+func (t *CmdObjectValidateConfig) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsEval)
+	flag.Install(cmd, &t.OptsValidateConfig)
 }
 
-func (t *CmdObjectEval) cmd(kind string, selector *string) *cobra.Command {
+func (t *CmdObjectValidateConfig) cmd(kind string, selector *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "eval",
-		Short: "evaluate a configuration key value",
+		Use:     "config",
+		Short:   "verify the object configuration syntax is correct",
+		Aliases: []string{"confi", "conf", "con", "co", "c"},
 		Run: func(cmd *cobra.Command, args []string) {
 			t.run(selector, kind)
 		},
 	}
 }
 
-func (t *CmdObjectEval) run(selector *string, kind string) {
+func (t *CmdObjectValidateConfig) run(selector *string, kind string) {
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
@@ -43,12 +44,7 @@ func (t *CmdObjectEval) run(selector *string, kind string) {
 		objectaction.WithFormat(t.Global.Format),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.Global.NodeSelector),
-		objectaction.WithRemoteAction("eval"),
-		objectaction.WithRemoteOptions(map[string]interface{}{
-			"kw":          t.Keyword,
-			"impersonate": t.Impersonate,
-			"eval":        true,
-		}),
+		objectaction.WithRemoteAction("validate config"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewFromPath(p)
 			if err != nil {
@@ -58,7 +54,7 @@ func (t *CmdObjectEval) run(selector *string, kind string) {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a configurer", o)
 			}
-			return c.Eval(t.OptsEval)
+			return c.ValidateConfig(t.OptsValidateConfig)
 		}),
 	).Do()
 }

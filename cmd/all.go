@@ -20,10 +20,18 @@ func makeSubPrint() *cobra.Command {
 	}
 }
 
+func makeSubValidate() *cobra.Command {
+	return &cobra.Command{
+		Use:     "validate",
+		Short:   "validation command group",
+		Aliases: []string{"validat", "valida", "valid", "vali", "val"},
+	}
+}
+
 func makeSubSync() *cobra.Command {
 	return &cobra.Command{
 		Use:     "sync",
-		Short:   "group data synchronization commands",
+		Short:   "data synchronization command group",
 		Aliases: []string{"syn", "sy"},
 	}
 }
@@ -108,6 +116,7 @@ func init() {
 		cmdUnfreeze         commands.CmdObjectUnfreeze
 		cmdUnprovision      commands.CmdObjectUnprovision
 		cmdUnset            commands.CmdObjectUnset
+		cmdValidateConfig   commands.CmdObjectValidateConfig
 	)
 
 	kind := ""
@@ -150,5 +159,10 @@ func init() {
 	if sub := makeSubSync(); sub != nil {
 		head.AddCommand(sub)
 		cmdSyncResync.Init(kind, sub, &selectorFlag)
+	}
+
+	if sub := makeSubValidate(); sub != nil {
+		head.AddCommand(sub)
+		cmdValidateConfig.Init(kind, sub, &selectorFlag)
 	}
 }

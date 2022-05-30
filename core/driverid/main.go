@@ -19,6 +19,22 @@ type (
 	L []T
 )
 
+var (
+	DefaultDriver = map[drivergroup.T]string{
+		drivergroup.App:       "forking",
+		drivergroup.Container: "oci",
+		drivergroup.IP:        "host",
+		drivergroup.Task:      "host",
+		drivergroup.Volume:    "",
+
+		// data resources
+		drivergroup.Vhost:       "envoy",
+		drivergroup.Certificate: "tls",
+		drivergroup.Route:       "envoy",
+		drivergroup.Expose:      "envoy",
+	}
+)
+
 func (t L) Len() int      { return len(t) }
 func (t L) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
 func (t L) Less(i, j int) bool {
@@ -51,21 +67,19 @@ func Parse(s string) *T {
 	switch len(l) {
 	case 2:
 		g := drivergroup.New(l[0])
-		return &T{
-			Group: g,
-			Name:  l[1],
-		}
+		return New(g, l[1])
 	case 1:
 		g := drivergroup.New(l[0])
-		return &T{
-			Group: g,
-		}
+		return New(g, "")
 	default:
 		return nil
 	}
 }
 
 func New(group drivergroup.T, name string) *T {
+	if name == "" {
+		name, _ = DefaultDriver[group]
+	}
 	return &T{
 		Group: group,
 		Name:  name,

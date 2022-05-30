@@ -1192,7 +1192,6 @@ func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Ti
 	month1 := int(tm.Month())
 	for year := year1; year <= year1+1; year += 1 {
 		for _, month := range data.Months {
-			fmt.Println("xx month", month)
 			var firstDay int
 			if year == year1 {
 				if month < month1 {
