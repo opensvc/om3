@@ -564,7 +564,7 @@ var keywordStore = keywords.Store{
 	},
 }
 
-func driverIDFromRID(t Configurer, section string) (driverid.T, error) {
+func driverIDFromRID(t Configurer, section string) (driverid.ID, error) {
 	sectionTypeKey := key.T{
 		Section: section,
 		Option:  "type",
@@ -572,9 +572,9 @@ func driverIDFromRID(t Configurer, section string) (driverid.T, error) {
 	sectionType := t.Config().Get(sectionTypeKey)
 	rid, err := resourceid.Parse(section)
 	if err != nil {
-		return driverid.T{}, err
+		return driverid.ID{}, err
 	}
-	did := driverid.T{
+	did := driverid.ID{
 		Group: rid.DriverGroup(),
 		Name:  sectionType,
 	}

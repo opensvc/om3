@@ -19,7 +19,7 @@ type OptsDoc struct {
 
 // Get returns a keyword value
 func (t *Base) Doc(options OptsDoc) (string, error) {
-	drvDoc := func(did driverid.T, kwName string) (string, error) {
+	drvDoc := func(did driverid.ID, kwName string) (string, error) {
 		factory := resource.NewResourceFunc(did)
 		if factory == nil {
 			return "", fmt.Errorf("driver not found")

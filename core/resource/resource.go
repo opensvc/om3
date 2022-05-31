@@ -272,7 +272,7 @@ func Register(group drivergroup.T, name string, f DriverAllocator) {
 	driverid.Register(*did, f)
 }
 
-func NewResourceFunc(t driverid.T) DriverAllocator {
+func NewResourceFunc(t driverid.ID) DriverAllocator {
 	i := driverid.Get(t)
 	if i == nil {
 		return nil

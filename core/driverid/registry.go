@@ -3,7 +3,7 @@ package driverid
 import "opensvc.com/opensvc/core/drivergroup"
 
 type (
-	Registry map[T]interface{}
+	Registry map[ID]interface{}
 )
 
 var (
@@ -14,21 +14,21 @@ func NewRegistry() Registry {
 	return make(Registry)
 }
 
-func Register(id T, allocator interface{}) {
+func Register(id ID, allocator interface{}) {
 	registry[id] = allocator
 }
 
-func Exists(id T) bool {
+func Exists(id ID) bool {
 	return Get(id) != nil
 }
 
-func Get(id T) interface{} {
+func Get(id ID) interface{} {
 	allocator, _ := registry[id]
 	return allocator
 }
 
-func List() L {
-	l := make(L, len(registry))
+func List() IDs {
+	l := make(IDs, len(registry))
 	i := 0
 	for did, _ := range registry {
 		l[i] = did

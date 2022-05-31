@@ -10,13 +10,13 @@ import (
 )
 
 type (
-	// T is the driverid main struct.
+	// ID is the driverid main struct.
 	// It identifies a driver by drivergroup and name.
-	T struct {
+	ID struct {
 		Group drivergroup.T
 		Name  string
 	}
-	L []T
+	IDs []ID
 )
 
 var (
@@ -35,14 +35,14 @@ var (
 	}
 )
 
-func (t L) Len() int      { return len(t) }
-func (t L) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
-func (t L) Less(i, j int) bool {
+func (t IDs) Len() int      { return len(t) }
+func (t IDs) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (t IDs) Less(i, j int) bool {
 	return t[i].String() < t[j].String()
 }
 
 // Render is a human rendered representation of the driver list
-func (t L) Render() string {
+func (t IDs) Render() string {
 	s := ""
 	sort.Sort(t)
 	for _, did := range t {
@@ -51,18 +51,18 @@ func (t L) Render() string {
 	return s
 }
 
-func (t T) String() string {
+func (t ID) String() string {
 	if t.Name == "" {
 		return t.Group.String()
 	}
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
-func (t T) NewGeneric() *T {
+func (t ID) NewGeneric() *ID {
 	return New(t.Group, "")
 }
 
-func Parse(s string) *T {
+func Parse(s string) *ID {
 	l := strings.Split(s, ".")
 	switch len(l) {
 	case 2:
@@ -76,11 +76,11 @@ func Parse(s string) *T {
 	}
 }
 
-func New(group drivergroup.T, name string) *T {
+func New(group drivergroup.T, name string) *ID {
 	if name == "" {
 		name, _ = DefaultDriver[group]
 	}
-	return &T{
+	return &ID{
 		Group: group,
 		Name:  name,
 	}
