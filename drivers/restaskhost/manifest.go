@@ -1,14 +1,14 @@
 package restaskhost
 
 import (
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/drivers/resapp"
 )
 
 const (
-	driverGroup = drivergroup.Task
+	driverGroup = driver.GroupTask
 	driverName  = "host"
 )
 

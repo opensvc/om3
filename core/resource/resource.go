@@ -16,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
@@ -267,8 +266,8 @@ func (t StandbyFlag) FlagString() string {
 	return "."
 }
 
-func Register(group drivergroup.T, name string, f DriverAllocator) {
-	did := driver.New(group, name)
+func Register(group driver.Group, name string, f DriverAllocator) {
+	did := driver.NewID(group, name)
 	driver.Register(*did, f)
 }
 
@@ -285,7 +284,7 @@ func NewResourceFunc(t driver.ID) DriverAllocator {
 		// used for example by the volume driver, whose
 		// type keyword is not pointing a resource sub driver
 		// but a pool driver.
-		return NewResourceFunc(*t.NewGeneric())
+		return NewResourceFunc(*t.NewGenericID())
 	}
 	return nil
 }

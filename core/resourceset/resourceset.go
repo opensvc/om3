@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/pg"
 )
@@ -17,7 +17,7 @@ type (
 	T struct {
 		Name           string
 		SectionName    string
-		DriverGroup    drivergroup.T
+		DriverGroup    driver.Group
 		Parallel       bool
 		PG             *pg.Config
 		ResourceLister ResourceLister
@@ -93,7 +93,7 @@ func (t *T) SetLogger(parent *zerolog.Logger) {
 
 //
 // Generic allocates and initializes a new resourceset for a given
-// drivergroup name, and return an error if this name is not valid.
+// driver group, and return an error if this name is not valid.
 //
 func Generic(driverGroupName string) (*T, error) {
 	return Parse(prefix + driverGroupName)
@@ -111,7 +111,7 @@ func Parse(s string) (*T, error) {
 	}
 	ss := s[len(prefix):]
 	l := strings.SplitN(ss, separator, 2) // ex: subset#disk:g1 => {disk, g1}
-	t.DriverGroup = drivergroup.New(l[0])
+	t.DriverGroup = driver.NewGroup(l[0])
 	if !t.DriverGroup.IsValid() {
 		return nil, fmt.Errorf("resourceset '%s' drivergroup '%s' is not supported", s, l[0])
 	}
@@ -123,7 +123,7 @@ func Parse(s string) (*T, error) {
 
 //
 // FormatSectionName returns the resourceset section name for a given
-// drivergroup name and subset name.
+// driver group name and subset name.
 //
 func FormatSectionName(driverGroupName, name string) string {
 	return prefix + driverGroupName + separator + name

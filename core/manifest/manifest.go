@@ -3,7 +3,7 @@ package manifest
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/util/converters"
 )
@@ -17,7 +17,7 @@ type (
 	// m := New("fs", "flag").AddKeyword(kws...).AddContext(ctx...)
 	//
 	T struct {
-		Group    drivergroup.T      `json:"group"`
+		Group    driver.Group       `json:"group"`
 		Name     string             `json:"name"`
 		Keywords []keywords.Keyword `json:"keywords"`
 		Context  []Context          `json:"context"`
@@ -332,7 +332,7 @@ var ProvisioningKeywords = []keywords.Keyword{
 	},
 }
 
-func New(group drivergroup.T, name string, r interface{}) *T {
+func New(group driver.Group, name string, r interface{}) *T {
 	t := &T{
 		Group: group,
 		Name:  name,

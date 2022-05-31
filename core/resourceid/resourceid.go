@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 )
 
 type T struct {
 	Name        string
-	driverGroup drivergroup.T
+	driverGroup driver.Group
 	index       string
 	initialized bool
 }
@@ -45,14 +45,14 @@ func (t *T) splitName() {
 		return
 	}
 	l := strings.Split(t.Name, "#")
-	t.driverGroup = drivergroup.New(l[0])
+	t.driverGroup = driver.NewGroup(l[0])
 	if len(l) >= 2 {
 		t.index = l[1]
 	}
 	t.initialized = true
 }
 
-func (t *T) DriverGroup() drivergroup.T {
+func (t *T) DriverGroup() driver.Group {
 	t.splitName()
 	return t.driverGroup
 }

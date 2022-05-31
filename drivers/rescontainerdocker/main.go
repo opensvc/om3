@@ -21,7 +21,7 @@ import (
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/sys/unix"
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	driverGroup = drivergroup.Container
+	driverGroup = driver.GroupContainer
 	driverName  = "docker"
 
 	AlwaysPolicy = "always"

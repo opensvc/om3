@@ -13,7 +13,6 @@ import (
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/path"
@@ -126,7 +125,7 @@ func (t *Base) ResourceSets() resourceset.L {
 	//   [subset#fs:g1]   (most precise)
 	//   [subset#g1]      (less precise)
 	//
-	subsetSectionString := func(g drivergroup.T, name string) string {
+	subsetSectionString := func(g driver.Group, name string) string {
 		s := resourceset.FormatSectionName(g.String(), name)
 		if t.config.HasSectionString(s) {
 			return s
@@ -141,7 +140,7 @@ func (t *Base) ResourceSets() resourceset.L {
 	//
 	// If the rset is already configured, avoid doing the job twice.
 	//
-	configureResourceSet := func(g drivergroup.T, name string) *resourceset.T {
+	configureResourceSet := func(g driver.Group, name string) *resourceset.T {
 		id := resourceset.FormatSectionName(g.String(), name)
 		if rset, ok := done[id]; ok {
 			return rset
@@ -181,7 +180,7 @@ func (t *Base) ResourceSets() resourceset.L {
 	}
 
 	// add generic resourcesets not already found as a section
-	for _, k := range drivergroup.Names() {
+	for _, k := range driver.GroupNames() {
 		if _, ok := done[k]; ok {
 			continue
 		}
@@ -221,7 +220,7 @@ func (t Base) ResourceByID(rid string) resource.Driver {
 	return t.getConfiguringResourceByID(rid)
 }
 
-func ResourcesByDrivergroups(i interface{}, drvgrps []drivergroup.T) resource.Drivers {
+func ResourcesByDrivergroups(i interface{}, drvgrps []driver.Group) resource.Drivers {
 	t, _ := i.(Baser)
 	l := make([]resource.Driver, 0)
 	for _, r := range t.Resources() {
@@ -256,13 +255,13 @@ func (t *Base) configureResources() {
 			continue
 		}
 		driverGroup := rid.DriverGroup()
-		if driverGroup == drivergroup.Unknown {
+		if driverGroup == driver.GroupUnknown {
 			t.log.Debug().Str("rid", k).Str("f", "listResources").Msg("unknown driver group")
 			continue
 		}
 		typeKey := key.New(k, "type")
 		driverName := t.config.Get(typeKey)
-		driverID := driver.New(driverGroup, driverName)
+		driverID := driver.NewID(driverGroup, driverName)
 		if driverName == "" && driverID.Name == "" {
 			t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
 			continue

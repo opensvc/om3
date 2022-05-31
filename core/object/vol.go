@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
@@ -55,9 +55,9 @@ func (t *Vol) Head() string {
 	type header interface {
 		Head() string
 	}
-	drvgrps := []drivergroup.T{
-		drivergroup.FS,
-		drivergroup.Volume,
+	drvgrps := []driver.Group{
+		driver.GroupFS,
+		driver.GroupVolume,
 	}
 	l := ResourcesByDrivergroups(t, drvgrps)
 	for _, r := range l {
@@ -86,9 +86,9 @@ func (t *Vol) Device() *device.T {
 	}
 	rids := make([]string, 0)
 	candidates := make(map[string]devicer)
-	l := ResourcesByDrivergroups(t, []drivergroup.T{
-		drivergroup.Disk,
-		drivergroup.Volume,
+	l := ResourcesByDrivergroups(t, []driver.Group{
+		driver.GroupDisk,
+		driver.GroupVolume,
 	})
 	for _, r := range l {
 		if r.Manifest().Name == "scsireserv" {
@@ -137,7 +137,7 @@ func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 			continue
 		}
 		for _, r := range o.Resources() {
-			if r.ID().DriverGroup() != drivergroup.Volume {
+			if r.ID().DriverGroup() != driver.GroupVolume {
 				continue
 			}
 			if o, ok := r.(VolNamer); ok {

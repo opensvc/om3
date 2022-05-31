@@ -11,7 +11,7 @@ import (
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	driverGroup = drivergroup.IP
+	driverGroup = driver.GroupIP
 	driverName  = "host"
 
 	tagNonRouted = "nonrouted"

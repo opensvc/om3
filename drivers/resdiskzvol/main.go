@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	driverGroup = drivergroup.Disk
+	driverGroup = driver.GroupDisk
 	driverName  = "zvol"
 	startedProp = "opensvc:started"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	driverGroup = drivergroup.Vhost
+	driverGroup = driver.GroupVhost
 	driverName  = "envoy"
 )
 

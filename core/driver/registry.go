@@ -1,7 +1,5 @@
 package driver
 
-import "opensvc.com/opensvc/core/drivergroup"
-
 type (
 	Registry map[ID]interface{}
 )
@@ -37,7 +35,7 @@ func List() IDs {
 	return l
 }
 
-func ListGroup(group drivergroup.T) Registry {
+func ListWithGroup(group Group) Registry {
 	m := NewRegistry()
 	for _, did := range List() {
 		if did.Group != group {

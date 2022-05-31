@@ -30,7 +30,7 @@ import (
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
@@ -50,7 +50,7 @@ import (
 )
 
 const (
-	driverGroup = drivergroup.Volume
+	driverGroup = driver.GroupVolume
 	driverName  = ""
 )
 

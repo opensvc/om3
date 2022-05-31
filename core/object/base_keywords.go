@@ -2,7 +2,6 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
@@ -590,7 +589,7 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 			Required: false,
 		}
 	}
-	driverGroup := drivergroup.Unknown
+	driverGroup := driver.GroupUnknown
 	rid, err := resourceid.Parse(k.Section)
 	if err == nil {
 		driverGroup = rid.DriverGroup()
@@ -601,7 +600,7 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 		return kw
 	}
 
-	for _, i := range driver.ListGroup(driverGroup) {
+	for _, i := range driver.ListWithGroup(driverGroup) {
 		allocator, ok := i.(resource.DriverAllocator)
 		if !ok {
 			continue

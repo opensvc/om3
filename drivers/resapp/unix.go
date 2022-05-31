@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
@@ -115,26 +115,26 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 	if !ok {
 		panic("an object with app resources must be a Baser")
 	}
-	l := object.ResourcesByDrivergroups(o, []drivergroup.T{
-		drivergroup.IP,
-		drivergroup.FS,
-		drivergroup.Share,
-		drivergroup.Disk,
-		drivergroup.Container,
+	l := object.ResourcesByDrivergroups(o, []driver.Group{
+		driver.GroupIP,
+		driver.GroupFS,
+		driver.GroupShare,
+		driver.GroupDisk,
+		driver.GroupContainer,
 	})
 	for _, r := range l {
 		switch r.ID().DriverGroup() {
-		case drivergroup.IP:
-		case drivergroup.FS:
-		case drivergroup.Share:
-		case drivergroup.Disk:
+		case driver.GroupIP:
+		case driver.GroupFS:
+		case driver.GroupShare:
+		case driver.GroupDisk:
 			switch r.Manifest().Name {
 			case "drbd":
 				continue
 			case "scsireserv":
 				continue
 			}
-		case drivergroup.Container:
+		case driver.GroupContainer:
 		default:
 			continue
 		}

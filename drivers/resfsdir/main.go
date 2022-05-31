@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	driverGroup = drivergroup.FS
+	driverGroup = driver.GroupFS
 	driverName  = "directory"
 	defaultPerm = 0755
 )

@@ -4,19 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/device"
 )
 
 type (
 	T struct {
-		Device      *device.T     `json:"device"`
-		Role        Role          `json:"role"`
-		RID         string        `json:"rid"`
-		DriverGroup drivergroup.T `json:"drivergroup"`
-		DriverName  string        `json:"drivername"`
-		ObjectPath  path.T        `json:"path"`
+		Device      *device.T    `json:"device"`
+		Role        Role         `json:"role"`
+		RID         string       `json:"rid"`
+		DriverGroup driver.Group `json:"drivergroup"`
+		DriverName  string       `json:"drivername"`
+		ObjectPath  path.T       `json:"path"`
 	}
 	L    []T
 	Role int

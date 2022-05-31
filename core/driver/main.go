@@ -6,33 +6,31 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-
-	"opensvc.com/opensvc/core/drivergroup"
 )
 
 type (
 	// ID is the driver main struct.
-	// It identifies a driver by drivergroup and name.
+	// It identifies a driver by Group and name.
 	ID struct {
-		Group drivergroup.T
+		Group Group
 		Name  string
 	}
 	IDs []ID
 )
 
 var (
-	DefaultDriver = map[drivergroup.T]string{
-		drivergroup.App:       "forking",
-		drivergroup.Container: "oci",
-		drivergroup.IP:        "host",
-		drivergroup.Task:      "host",
-		drivergroup.Volume:    "",
+	DefaultDriver = map[Group]string{
+		GroupApp:       "forking",
+		GroupContainer: "oci",
+		GroupIP:        "host",
+		GroupTask:      "host",
+		GroupVolume:    "",
 
 		// data resources
-		drivergroup.Vhost:       "envoy",
-		drivergroup.Certificate: "tls",
-		drivergroup.Route:       "envoy",
-		drivergroup.Expose:      "envoy",
+		GroupVhost:       "envoy",
+		GroupCertificate: "tls",
+		GroupRoute:       "envoy",
+		GroupExpose:      "envoy",
 	}
 )
 
@@ -59,25 +57,25 @@ func (t ID) String() string {
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
-func (t ID) NewGeneric() *ID {
-	return New(t.Group, "")
+func (t ID) NewGenericID() *ID {
+	return NewID(t.Group, "")
 }
 
 func Parse(s string) *ID {
 	l := strings.Split(s, ".")
 	switch len(l) {
 	case 2:
-		g := drivergroup.New(l[0])
-		return New(g, l[1])
+		g := NewGroup(l[0])
+		return NewID(g, l[1])
 	case 1:
-		g := drivergroup.New(l[0])
-		return New(g, "")
+		g := NewGroup(l[0])
+		return NewID(g, "")
 	default:
 		return nil
 	}
 }
 
-func New(group drivergroup.T, name string) *ID {
+func NewID(group Group, name string) *ID {
 	if name == "" {
 		name, _ = DefaultDriver[group]
 	}

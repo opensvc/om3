@@ -12,7 +12,7 @@ import (
 
 	"github.com/danwakefield/fnmatch"
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
@@ -281,7 +281,7 @@ func (t Keystore) postInstall(k string) error {
 		if err != nil {
 			return err
 		}
-		for _, r := range ResourcesByDrivergroups(o, []drivergroup.T{drivergroup.Volume}) {
+		for _, r := range ResourcesByDrivergroups(o, []driver.Group{driver.GroupVolume}) {
 			var i interface{} = r
 			v := i.(resvoler)
 			if !v.HasMetadata(t.Path, k) {

@@ -241,7 +241,7 @@ func (t T) Validate() (ValidateAlerts, error) {
 		section := s.Name()
 		sectionType := t.GetString(key.New(section, "type"))
 		if rid, err := resourceid.Parse(section); err == nil {
-			did := driver.New(rid.DriverGroup(), sectionType)
+			did := driver.NewID(rid.DriverGroup(), sectionType)
 			if (did.Name != "") && !driver.Exists(*did) {
 				alerts = append(alerts, t.NewValidateAlertUnknownDriver(key.T{Section: section}, sectionType))
 				continue

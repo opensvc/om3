@@ -1,14 +1,14 @@
 package ressharenfs
 
 import (
-	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/resource"
 )
 
 const (
-	driverGroup = drivergroup.Share
+	driverGroup = driver.GroupShare
 	driverName  = "nfs"
 )
 
