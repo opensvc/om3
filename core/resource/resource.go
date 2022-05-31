@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/flock"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/manifest"
@@ -893,4 +894,14 @@ func exposedStatusInfoSched(t Scheduler) map[string]ExposedStatusInfoSchedAction
 		data[e.Action] = ad
 	}
 	return data
+}
+
+func (exposedStatus ExposedStatus) DeepCopy() *ExposedStatus {
+	newValue := ExposedStatus{}
+	if b, err := json.Marshal(exposedStatus); err != nil {
+		return &ExposedStatus{}
+	} else if err := json.Unmarshal(b, &newValue); err == nil {
+		return &newValue
+	}
+	return &ExposedStatus{}
 }
