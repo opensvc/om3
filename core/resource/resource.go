@@ -82,6 +82,9 @@ type (
 		Requires(string) *resourcereqs.T
 	}
 
+	// DriverAllocator is the prototype of the driver allocator func
+	DriverAllocator func() Driver
+
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
@@ -264,41 +267,18 @@ func (t StandbyFlag) FlagString() string {
 	return "."
 }
 
-var drivers = make(map[driverid.T]func() Driver)
+func Register(group drivergroup.T, name string, f DriverAllocator) {
+	did := driverid.New(group, name)
+	driverid.Register(*did, f)
+}
 
-func RegisteredGroupDrivers(s string) map[driverid.T]func() Driver {
-	m := make(map[driverid.T]func() Driver)
-	for drvID, newDRV := range drivers {
-		if drvID.Group.String() != s {
-			continue
-		}
-		m[drvID] = newDRV
+func NewResourceFunc(t driverid.T) DriverAllocator {
+	i := driverid.Get(t)
+	if i == nil {
+		return nil
 	}
-	return m
-}
-
-func Register(group drivergroup.T, name string, f func() Driver) {
-	driverID := driverid.New(group, name)
-	drivers[*driverID] = f
-}
-
-func HasDriver(did driverid.T) bool {
-	return NewResourceFunc(did) != nil
-}
-
-func DriverIDList() driverid.L {
-	l := make(driverid.L, len(drivers))
-	i := 0
-	for did, _ := range drivers {
-		l[i] = did
-		i = i + 1
-	}
-	return l
-}
-
-func NewResourceFunc(t driverid.T) func() Driver {
-	if drv, ok := drivers[t]; ok {
-		return drv
+	if a, ok := i.(DriverAllocator); ok {
+		return a
 	}
 	if t.Name != "" {
 		// <group>.<name> driver not found, ... try <group>

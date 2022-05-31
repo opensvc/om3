@@ -37,6 +37,8 @@ import (
 	"context"
 	"time"
 
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -85,14 +87,10 @@ type (
 	}
 )
 
-var (
-	drivers = make(map[string]func() Confer)
-)
-
 func New(name string, config *xconfig.T) Confer {
 	hbFamily := config.GetString(key.New(name, "type"))
-	fn, ok := drivers[hbFamily]
-	if !ok {
+	fn := Driver(hbFamily)
+	if fn == nil {
 		return nil
 	}
 	t := fn()
@@ -104,7 +102,20 @@ func New(name string, config *xconfig.T) Confer {
 
 // Register function register a new hb driver confer
 func Register(driverName string, fn func() Confer) {
-	drivers[driverName] = fn
+	did := driverid.New(drivergroup.Heartbeat, driverName)
+	driverid.Register(*did, fn)
+}
+
+func Driver(driverName string) func() Confer {
+	did := driverid.New(drivergroup.Heartbeat, driverName)
+	i := driverid.Get(*did)
+	if i == nil {
+		return nil
+	}
+	if a, ok := i.(func() Confer); ok {
+		return a
+	}
+	return nil
 }
 
 func (t T) Name() string {

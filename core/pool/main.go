@@ -7,10 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/volaccess"
-	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/sizeconv"
@@ -20,7 +21,7 @@ type (
 	T struct {
 		driver string
 		name   string
-		config *xconfig.T
+		config Config
 	}
 
 	StatusUsage struct {
@@ -52,7 +53,12 @@ type (
 		Size float64 `json:"size"`
 	}
 	VolumeStatusList []VolumeStatus
+	PoolAllocator    func() Pooler
 
+	Config interface {
+		GetString(key.T) string
+		GetStringStrict(key.T) (string, error)
+	}
 	Pooler interface {
 		SetName(string)
 		SetDriver(string)
@@ -62,8 +68,8 @@ type (
 		Mappings() map[string]string
 		Capabilities() []string
 		Usage() (StatusUsage, error)
-		SetConfig(*xconfig.T)
-		Config() *xconfig.T
+		SetConfig(Config)
+		Config() Config
 	}
 	Translater interface {
 		Translate(name string, size float64, shared bool) []string
@@ -75,10 +81,6 @@ type (
 		FQDN() string
 		SetKeywords([]string) error
 	}
-)
-
-var (
-	drivers = make(map[string]func() Pooler)
 )
 
 func NewStatus() Status {
@@ -97,15 +99,15 @@ func cKey(poolName string, option string) key.T {
 	return key.New(section, option)
 }
 
-func cString(config *xconfig.T, poolName string, option string) string {
+func cString(config Config, poolName string, option string) string {
 	key := cKey(poolName, option)
 	return config.GetString(key)
 }
 
-func New(name string, config *xconfig.T) Pooler {
+func New(name string, config Config) Pooler {
 	poolType := cString(config, name, "type")
-	fn, ok := drivers[poolType]
-	if !ok {
+	fn := Driver(poolType)
+	if fn == nil {
 		return nil
 	}
 	t := fn()
@@ -128,8 +130,21 @@ func (t *T) Mappings() map[string]string {
 	return m
 }
 
-func Register(t string, fn func() Pooler) {
-	drivers[t] = fn
+func Driver(t string) PoolAllocator {
+	did := driverid.New(drivergroup.Pool, t)
+	i := driverid.Get(*did)
+	if i == nil {
+		return nil
+	}
+	if drv, ok := i.(PoolAllocator); ok {
+		return drv
+	}
+	return nil
+}
+
+func Register(t string, fn PoolAllocator) {
+	did := driverid.New(drivergroup.Pool, t)
+	driverid.Register(*did, fn)
 }
 
 func (t T) Name() string {
@@ -148,11 +163,11 @@ func (t T) Type() string {
 	return t.driver
 }
 
-func (t *T) Config() *xconfig.T {
+func (t *T) Config() Config {
 	return t.config
 }
 
-func (t *T) SetConfig(c *xconfig.T) {
+func (t *T) SetConfig(c Config) {
 	t.config = c
 }
 

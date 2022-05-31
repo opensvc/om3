@@ -28,6 +28,12 @@ const (
 	Expose
 	Route
 	Vhost
+	Pool
+	Network
+	Heartbeat
+	Array
+	Switch
+	Stonith
 )
 
 var (
@@ -45,6 +51,12 @@ var (
 		"expose":      Expose,
 		"route":       Route,
 		"vhost":       Vhost,
+		"pool":        Pool,
+		"network":     Network,
+		"hb":          Heartbeat,
+		"array":       Array,
+		"switch":      Switch,
+		"stonith":     Stonith,
 	}
 	toString = map[T]string{
 		IP:          "ip",
@@ -60,6 +72,12 @@ var (
 		Expose:      "expose",
 		Route:       "route",
 		Vhost:       "vhost",
+		Pool:        "pool",
+		Network:     "network",
+		Heartbeat:   "hb",
+		Array:       "array",
+		Switch:      "switch",
+		Stonith:     "stonith",
 	}
 )
 

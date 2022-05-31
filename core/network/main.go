@@ -11,6 +11,8 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/clusterip"
+	"opensvc.com/opensvc/core/drivergroup"
+	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -109,10 +111,7 @@ type (
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
 	}
-)
-
-var (
-	drivers = make(map[string]func() Networker)
+	NetworkAllocator func() Networker
 )
 
 func (t *T) Log() *zerolog.Logger {
@@ -133,8 +132,8 @@ func (t T) Nodes() []string {
 }
 
 func NewTyped(name, networkType, networkNetwork string, noder Noder) Networker {
-	fn, ok := drivers[networkType]
-	if !ok {
+	fn := Driver(networkType)
+	if fn == nil {
 		return nil
 	}
 	t := fn()
@@ -152,8 +151,21 @@ func NewFromNoder(name string, noder Noder) Networker {
 	return NewTyped(name, networkType, networkNetwork, noder)
 }
 
-func Register(t string, fn func() Networker) {
-	drivers[t] = fn
+func Driver(t string) NetworkAllocator {
+	did := driverid.New(drivergroup.Network, t)
+	i := driverid.Get(*did)
+	if i == nil {
+		return nil
+	}
+	if a, ok := i.(NetworkAllocator); ok {
+		return a
+	}
+	return nil
+}
+
+func Register(t string, fn NetworkAllocator) {
+	did := driverid.New(drivergroup.Network, t)
+	driverid.Register(*did, fn)
 }
 
 func (t T) Name() string {

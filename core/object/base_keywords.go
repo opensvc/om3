@@ -1,6 +1,7 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/drivergroup"
 	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keyop"
@@ -589,10 +590,10 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 			Required: false,
 		}
 	}
-	driverGroupName := ""
+	driverGroup := drivergroup.Unknown
 	rid, err := resourceid.Parse(k.Section)
 	if err == nil {
-		driverGroupName = rid.DriverGroup().String()
+		driverGroup = rid.DriverGroup()
 	}
 
 	if kw := store.Lookup(k, kd, sectionType); !kw.IsZero() {
@@ -600,8 +601,12 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 		return kw
 	}
 
-	for _, newDRV := range resource.RegisteredGroupDrivers(driverGroupName) {
-		kws := newDRV().Manifest().Keywords
+	for _, i := range driverid.ListGroup(driverGroup) {
+		allocator, ok := i.(resource.DriverAllocator)
+		if !ok {
+			continue
+		}
+		kws := allocator().Manifest().Keywords
 		if kws == nil {
 			continue
 		}
