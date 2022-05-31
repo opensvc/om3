@@ -15,8 +15,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/actioncontext"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resourceid"
@@ -268,12 +268,12 @@ func (t StandbyFlag) FlagString() string {
 }
 
 func Register(group drivergroup.T, name string, f DriverAllocator) {
-	did := driverid.New(group, name)
-	driverid.Register(*did, f)
+	did := driver.New(group, name)
+	driver.Register(*did, f)
 }
 
-func NewResourceFunc(t driverid.ID) DriverAllocator {
-	i := driverid.Get(t)
+func NewResourceFunc(t driver.ID) DriverAllocator {
+	i := driver.Get(t)
 	if i == nil {
 		return nil
 	}

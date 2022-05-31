@@ -1,8 +1,8 @@
 package object
 
 import (
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
@@ -564,7 +564,7 @@ var keywordStore = keywords.Store{
 	},
 }
 
-func driverIDFromRID(t Configurer, section string) (driverid.ID, error) {
+func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
 	sectionTypeKey := key.T{
 		Section: section,
 		Option:  "type",
@@ -572,9 +572,9 @@ func driverIDFromRID(t Configurer, section string) (driverid.ID, error) {
 	sectionType := t.Config().Get(sectionTypeKey)
 	rid, err := resourceid.Parse(section)
 	if err != nil {
-		return driverid.ID{}, err
+		return driver.ID{}, err
 	}
-	did := driverid.ID{
+	did := driver.ID{
 		Group: rid.DriverGroup(),
 		Name:  sectionType,
 	}
@@ -601,7 +601,7 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 		return kw
 	}
 
-	for _, i := range driverid.ListGroup(driverGroup) {
+	for _, i := range driver.ListGroup(driverGroup) {
 		allocator, ok := i.(resource.DriverAllocator)
 		if !ok {
 			continue

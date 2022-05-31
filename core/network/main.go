@@ -11,8 +11,8 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/clusterip"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -152,8 +152,8 @@ func NewFromNoder(name string, noder Noder) Networker {
 }
 
 func Driver(t string) NetworkAllocator {
-	did := driverid.New(drivergroup.Network, t)
-	i := driverid.Get(*did)
+	did := driver.New(drivergroup.Network, t)
+	i := driver.Get(*did)
 	if i == nil {
 		return nil
 	}
@@ -164,8 +164,8 @@ func Driver(t string) NetworkAllocator {
 }
 
 func Register(t string, fn NetworkAllocator) {
-	did := driverid.New(drivergroup.Network, t)
-	driverid.Register(*did, fn)
+	did := driver.New(drivergroup.Network, t)
+	driver.Register(*did, fn)
 }
 
 func (t T) Name() string {

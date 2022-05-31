@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/driverid"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceid"
@@ -241,8 +241,8 @@ func (t T) Validate() (ValidateAlerts, error) {
 		section := s.Name()
 		sectionType := t.GetString(key.New(section, "type"))
 		if rid, err := resourceid.Parse(section); err == nil {
-			did := driverid.New(rid.DriverGroup(), sectionType)
-			if (did.Name != "") && !driverid.Exists(*did) {
+			did := driver.New(rid.DriverGroup(), sectionType)
+			if (did.Name != "") && !driver.Exists(*did) {
 				alerts = append(alerts, t.NewValidateAlertUnknownDriver(key.T{Section: section}, sectionType))
 				continue
 			}

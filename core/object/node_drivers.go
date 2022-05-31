@@ -1,8 +1,8 @@
 package object
 
-import "opensvc.com/opensvc/core/driverid"
+import "opensvc.com/opensvc/core/driver"
 
 // Drivers returns the builtin drivers list
 func (t Node) Drivers() (interface{}, error) {
-	return driverid.List(), nil
+	return driver.List(), nil
 }

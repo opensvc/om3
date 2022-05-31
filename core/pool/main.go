@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/volaccess"
@@ -131,8 +131,8 @@ func (t *T) Mappings() map[string]string {
 }
 
 func Driver(t string) PoolAllocator {
-	did := driverid.New(drivergroup.Pool, t)
-	i := driverid.Get(*did)
+	did := driver.New(drivergroup.Pool, t)
+	i := driver.Get(*did)
 	if i == nil {
 		return nil
 	}
@@ -143,8 +143,8 @@ func Driver(t string) PoolAllocator {
 }
 
 func Register(t string, fn PoolAllocator) {
-	did := driverid.New(drivergroup.Pool, t)
-	driverid.Register(*did, fn)
+	did := driver.New(drivergroup.Pool, t)
+	driver.Register(*did, fn)
 }
 
 func (t T) Name() string {

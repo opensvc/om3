@@ -12,8 +12,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/actionresdeps"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/path"
@@ -262,7 +262,7 @@ func (t *Base) configureResources() {
 		}
 		typeKey := key.New(k, "type")
 		driverName := t.config.Get(typeKey)
-		driverID := driverid.New(driverGroup, driverName)
+		driverID := driver.New(driverGroup, driverName)
 		if driverName == "" && driverID.Name == "" {
 			t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
 			continue

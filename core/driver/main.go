@@ -1,5 +1,6 @@
-// driverid identifies a driver by drivergroup and name.
-package driverid
+// driver is the package serving the driver registry.
+// A driver is identified by group and name, via the ID type.
+package driver
 
 import (
 	"fmt"
@@ -10,7 +11,7 @@ import (
 )
 
 type (
-	// ID is the driverid main struct.
+	// ID is the driver main struct.
 	// It identifies a driver by drivergroup and name.
 	ID struct {
 		Group drivergroup.T

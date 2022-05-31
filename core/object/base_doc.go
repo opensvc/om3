@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"opensvc.com/opensvc/core/driverid"
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/key"
@@ -19,7 +19,7 @@ type OptsDoc struct {
 
 // Get returns a keyword value
 func (t *Base) Doc(options OptsDoc) (string, error) {
-	drvDoc := func(did driverid.ID, kwName string) (string, error) {
+	drvDoc := func(did driver.ID, kwName string) (string, error) {
 		factory := resource.NewResourceFunc(did)
 		if factory == nil {
 			return "", fmt.Errorf("driver not found")
@@ -56,7 +56,7 @@ func (t *Base) Doc(options OptsDoc) (string, error) {
 	k := key.Parse(options.Keyword)
 	switch {
 	case options.Driver != "":
-		did := driverid.Parse(options.Driver)
+		did := driver.Parse(options.Driver)
 		return drvDoc(*did, options.Keyword)
 	case k.Option != "":
 		return t.config.Doc(k)

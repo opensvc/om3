@@ -1,4 +1,4 @@
-package driverid
+package driver
 
 import "opensvc.com/opensvc/core/drivergroup"
 

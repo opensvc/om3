@@ -37,8 +37,8 @@ import (
 	"context"
 	"time"
 
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/drivergroup"
-	"opensvc.com/opensvc/core/driverid"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -102,13 +102,13 @@ func New(name string, config *xconfig.T) Confer {
 
 // Register function register a new hb driver confer
 func Register(driverName string, fn func() Confer) {
-	did := driverid.New(drivergroup.Heartbeat, driverName)
-	driverid.Register(*did, fn)
+	did := driver.New(drivergroup.Heartbeat, driverName)
+	driver.Register(*did, fn)
 }
 
 func Driver(driverName string) func() Confer {
-	did := driverid.New(drivergroup.Heartbeat, driverName)
-	i := driverid.Get(*did)
+	did := driver.New(drivergroup.Heartbeat, driverName)
+	i := driver.Get(*did)
 	if i == nil {
 		return nil
 	}
