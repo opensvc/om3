@@ -1077,8 +1077,8 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		return err
 	}
 	if validate {
-		if err := t.validate(); err != nil {
-			return err
+		if _, err := t.Validate(); err != nil {
+			return errors.Errorf("abort config commit: validation errors")
 		}
 	}
 	if !t.Referrer.IsVolatile() {
@@ -1090,10 +1090,6 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 	if t.postCommit != nil {
 		return t.postCommit()
 	}
-	return nil
-}
-
-func (t T) validate() error {
 	return nil
 }
 

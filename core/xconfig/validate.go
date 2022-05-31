@@ -196,6 +196,23 @@ func (t *ValidateAlertKind) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (t ValidateAlerts) HasError() bool {
+	return t.has(validateAlertLevelError)
+}
+
+func (t ValidateAlerts) HasWarn() bool {
+	return t.has(validateAlertLevelWarn)
+}
+
+func (t ValidateAlerts) has(lvl ValidateAlertLevel) bool {
+	for _, alert := range t {
+		if alert.Level == lvl {
+			return true
+		}
+	}
+	return false
+}
+
 func (t ValidateAlerts) Render() string {
 	tree := tree.New()
 	node := tree.AddNode()
@@ -224,15 +241,6 @@ func (t ValidateAlerts) LoadTreeNode(node *tree.Node) {
 		n.AddColumn().AddText(alert.Kind.String())
 		n.AddColumn().AddText(alert.Comment)
 	}
-}
-
-func (t ValidateAlerts) HasError() bool {
-	for _, alert := range t {
-		if alert.Level == validateAlertLevelError {
-			return true
-		}
-	}
-	return false
 }
 
 func (t T) Validate() (ValidateAlerts, error) {
@@ -277,4 +285,16 @@ func (t T) Validate() (ValidateAlerts, error) {
 		return alerts, errors.New("")
 	}
 	return alerts, nil
+}
+
+func ValidateFile(p string, ref Referrer) error {
+	cfg, err := NewObject(p)
+	if err != nil {
+		return err
+	}
+	cfg.Referrer = ref
+	if _, err := cfg.Validate(); err != nil {
+		return err
+	}
+	return nil
 }

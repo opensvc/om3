@@ -72,7 +72,7 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 
 func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error {
 	err := obj.EditConfig(t.EditConfig)
-	if errors.Is(err, object.ErrEditConfigPending) {
+	if errors.Is(err, xconfig.ErrEditPending) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
