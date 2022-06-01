@@ -13,6 +13,7 @@ import (
 
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemondiscover"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
@@ -148,6 +149,9 @@ func (t *T) MainStart() error {
 			return err
 		}
 	}
+
+	daemondiscover.Start(t.Ctx)
+
 	t.log.Info().Msg("mgr started")
 	return nil
 }
