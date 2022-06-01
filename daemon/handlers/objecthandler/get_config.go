@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
@@ -58,7 +59,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	readed, err := file.ReadAll(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		log.Error().Msgf("can't read %s", filename)
 		w.WriteHeader(500)
@@ -73,16 +74,16 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		Status: 0,
 		Data: Data{
 			Updated: timestamp.New(mtime),
-			Data:    string(readed),
+			Data:    string(b),
 		},
 	}
-	b, err := json.Marshal(resp)
+	respB, err := json.Marshal(resp)
 	if err != nil {
 		log.Error().Err(err).Msgf("marshal response error %s", filename)
 		w.WriteHeader(500)
 		return
 	}
-	if _, err := write(b); err != nil {
+	if _, err := write(respB); err != nil {
 		w.WriteHeader(500)
 		return
 	}
