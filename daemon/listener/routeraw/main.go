@@ -126,9 +126,6 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 // do function execute http mux handler on translated request and returns error
 func (r *request) do(resp *routeresponse.Response) error {
 	body := r.body
-	if r.method == "GET" {
-		body = nil
-	}
 	request, err := http.NewRequest(r.method, r.path, body)
 	request.Header = r.header
 	if err != nil {
