@@ -1,62 +1,60 @@
-// Package pubsub implements simple pub-sub
+// Package pubSub implements simple pub-sub
 //
 // Example:
 //	  import (
 //    	"context"
 //    	"fmt"
 //
-//    	ps "opensvc.com/opensvc/util/pubsub"
+//    	"opensvc.com/opensvc/util/pubSub"
 //    )
 //
 //    func main() {
 //    	const (
-//    		NsNum1 = ps.NsAll + 1 + iota
+//    		NsNum1 = pubSub.NsAll + 1 + iota
 //    		NsNum2
 //    	)
 //
-//    	// Start the pub-sub
-//    	pubSub1 := ps.T{}
-//    	c, err := pubSub1.Start(context.Background(), "pub-sub example")
-//    	if err != nil {
-//    		return
-//    	}
-//    	defer pubSub1.Stop()
+//      ctx, cancel := context.WithCancel(context.Background())
+//      defer cancel()
+//
+//  	// Start the pub-sub
+//      c := pubSub.Start(ctx, "pub-sub example")
 //
 //    	// Prepare a new subscription details
-//    	subOnCreate := ps.Subscription{
+//    	subOnCreate := pubSub.Subscription{
 //    		Ns:       NsNum1,
-//    		Op:       ps.OpCreate,
+//    		Op:       pubSub.OpCreate,
 //    		Matching: "idA",
 //    		Name:     "subscription example",
 //    	}
 //
 //    	// register the subscription
-//    	sub1Id := ps.Sub(c, subOnCreate, func(i interface{}) {
+//    	sub1Id := pubSub.Sub(c, subOnCreate, func(i interface{}) {
 //    		fmt.Printf("detected from subscription 1: value '%s' has been published with operation 'OpCreate' on id 'IdA' in name space 'NsNum1'\n", i)
 //    	})
-//    	defer ps.Unsub(c, sub1Id)
+//    	defer pubSub.Unsub(c, sub1Id)
 //
 //    	// register another subscription that watch all namespaces/operations/ids
-//    	defer ps.Unsub(
+//    	defer pubSub.Unsub(
 //    		c,
-//    		ps.Sub(c,
-//    			ps.Subscription{Name: "watch all"},
+//    		pubSub.Sub(c,
+//    			pubSub.Subscription{Name: "watch all"},
 //    			func(i interface{}) {
 //    				fmt.Printf("detected from subscription 2: value '%s' have been published\n", i)
 //    			}))
 //
 //    	// publish a create operation of "something" on namespace NsNum1
-//    	ps.Pub(c, ps.Publication{
+//    	pubSub.Pub(c, pubSub.Publication{
 //    		Ns:    NsNum1,
-//    		Op:    ps.OpCreate,
+//    		Op:    pubSub.OpCreate,
 //    		Id:    "idA",
 //    		Value: "foo bar",
 //    	})
 //
 //    	// publish a Update operation of "a value" on namespace NsNum2
-//    	ps.Pub(c, ps.Publication{
+//    	pubSub.Pub(c, pubSub.Publication{
 //    		Ns:    NsNum2,
-//    		Op:    ps.OpUpdate,
+//    		Op:    pubSub.OpUpdate,
 //    		Id:    "idXXXX",
 //    		Value: "a value",
 //    	})
@@ -67,7 +65,7 @@ package pubsub
 
 import (
 	"context"
-	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -89,14 +87,6 @@ const (
 )
 
 type (
-	// T struct holds internal data for a pub-sub
-	T struct {
-		cmdC    chan interface{}
-		cancel  func()
-		stopped chan bool
-		running bool
-	}
-
 	// Subscription struct holds a subscription details
 	Subscription struct {
 		// Ns is the namespace to subscribe on
@@ -126,7 +116,9 @@ type (
 		// Value is the thing to publish
 		Value interface{}
 	}
+)
 
+type (
 	cmdPub struct {
 		id   string
 		op   uint
@@ -150,27 +142,13 @@ type (
 	}
 )
 
-var (
-	ErrorAlreadyRunning = errors.New("pub sub already running")
-)
-
-// Stop function stops the pub-sub worker
-func (t *T) Stop() {
-	if t.cancel == nil {
-		return
-	}
-	t.cancel()
-	t.waitStopped()
-}
-
-// Start function starts the pub-sub
-func (t *T) Start(parent context.Context, name string) (chan<- interface{}, error) {
-	log := daemonctx.Logger(parent).With().Str("name", name).Logger()
-	if t.running == true {
-		log.Error().Err(ErrorAlreadyRunning).Msg("Start")
-		return nil, ErrorAlreadyRunning
-	}
-	running := make(chan bool)
+// Start runs a new pub sub
+//
+// returns the created pub sub cmd chan
+//
+func Start(ctx context.Context, name string) chan<- interface{} {
+	log := daemonctx.Logger(ctx).With().Str("name", name).Logger()
+	started := make(chan struct{})
 	cmdC := make(chan interface{})
 	go func() {
 		subs := make(map[uuid.UUID]func(interface{}))
@@ -178,18 +156,22 @@ func (t *T) Start(parent context.Context, name string) (chan<- interface{}, erro
 		subNs := make(map[uuid.UUID]uint)
 		subOps := make(map[uuid.UUID]uint)
 		subMatching := make(map[uuid.UUID]string)
-		ctx, cancel := context.WithCancel(parent)
-		t.stopped = make(chan bool)
-		t.cancel = cancel
 		defer func() {
-			log.Info().Msg("stopping")
-			cancel()
-			t.cancel = nil
-			t.running = false
-			close(t.stopped)
-			log.Info().Msg("stopped")
+			go func() {
+				log.Info().Msg("stopping")
+				defer log.Info().Msg("stopped")
+				ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+				defer cancel()
+				for {
+					select {
+					case <-cmdC:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
 		}()
-		running <- true
+		started <- struct{}{}
 		for {
 			select {
 			case <-ctx.Done():
@@ -207,13 +189,13 @@ func (t *T) Start(parent context.Context, name string) (chan<- interface{}, erro
 						if len(subMatching[id]) != 0 && subMatching[id] != c.id {
 							continue
 						}
-						running := make(chan bool)
 						goFunc := fn
+						goFuncStarted := make(chan struct{})
 						go func() {
-							running <- true
+							goFuncStarted <- struct{}{}
 							goFunc(c.data)
 						}()
-						<-running
+						<-goFuncStarted
 					}
 					c.resp <- true
 				case cmdSub:
@@ -240,9 +222,9 @@ func (t *T) Start(parent context.Context, name string) (chan<- interface{}, erro
 			}
 		}
 	}()
-	t.running = <-running
-	log.Info().Msg("running")
-	return cmdC, nil
+	<-started
+	log.Info().Msg("started")
+	return cmdC
 }
 
 // Pub function publish a new p Publication
@@ -281,13 +263,4 @@ func Unsub(cmdC chan<- interface{}, id uuid.UUID) string {
 		resp:  respC,
 	}
 	return <-respC
-}
-
-func (t *T) waitStopped() {
-	if t.stopped == nil {
-		return
-	}
-	select {
-	case <-t.stopped:
-	}
 }

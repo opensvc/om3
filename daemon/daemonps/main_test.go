@@ -8,14 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/core/event"
-	ps "opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 func TestDaemonPubSub(t *testing.T) {
-	bus := &ps.T{}
-	cmdC, err := bus.Start(context.Background(), t.Name())
-	require.Nil(t, err)
-	defer bus.Stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cmdC := pubsub.Start(ctx, t.Name())
 	var (
 		eventKinds    = []string{"hb_stale", "hb_beating"}
 		expectedKinds = []string{"event-subscribe", "hb_stale", "hb_beating"}

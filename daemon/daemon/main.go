@@ -19,8 +19,8 @@ import (
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/eventbus"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -122,14 +122,11 @@ func (t *T) MainStart() error {
 		t.loop(started)
 	}()
 	t.Ctx, t.CancelFunc = context.WithCancel(context.Background())
+
+	t.Ctx = daemonctx.WithDaemonPubSubCmd(t.Ctx, pubsub.Start(t.Ctx, "daemon pub sub"))
+
 	t.Ctx = daemonctx.WithDaemon(t.Ctx, t)
-	evBus := eventbus.T{}
-	evBusCmdC, err := evBus.Run(t.Ctx, "daemon event bus")
-	if err != nil {
-		t.log.Err(err).Msg("event bus start")
-		return err
-	}
-	t.Ctx = daemonctx.WithEventBusCmd(t.Ctx, evBusCmdC)
+
 	t.Ctx = daemonctx.WithHBSendQ(t.Ctx, make(chan []byte))
 	dataCmd, cancel := daemondata.Start(t.Ctx)
 	t.cancelFuncs = append(t.cancelFuncs, cancel)

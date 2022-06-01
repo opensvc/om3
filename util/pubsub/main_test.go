@@ -15,50 +15,15 @@ const (
 	NsStatus
 )
 
-func newRun(name string) (*T, chan<- interface{}) {
-	p := T{}
-	cmdC, err := p.Start(context.Background(), name)
-	if err != nil {
-		return nil, nil
-	}
-	return &p, cmdC
-}
-func TestRefuseRunTwice(t *testing.T) {
-	p := T{}
+func newRun(name string) (chan<- interface{}, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := p.Start(ctx, t.Name())
-	require.Nil(t, err)
-	_, err = p.Start(ctx, t.Name())
-	require.ErrorIs(t, err, ErrorAlreadyRunning)
-}
-
-func TestRunStopRun(t *testing.T) {
-	p := T{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := p.Start(ctx, t.Name())
-	require.Nil(t, err)
-	p.Stop()
-	_, err = p.Start(ctx, t.Name())
-	require.Nil(t, err)
-}
-
-func TestRunCancelRun(t *testing.T) {
-	p := T{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := p.Start(ctx, t.Name())
-	require.Nil(t, err)
-	cancel()
-	p.waitStopped()
-	_, err = p.Start(ctx, t.Name())
-	require.Nil(t, err)
+	cmdC := Start(ctx, name)
+	return cmdC, cancel
 }
 
 func TestPub(t *testing.T) {
-	p, cmdC := newRun(t.Name())
-	defer p.Stop()
+	cmdC, cancel := newRun(t.Name())
+	defer cancel()
 	Pub(cmdC, Publication{Value: "foo", Op: OpCreate})
 	Pub(cmdC, Publication{Value: "foo", Op: OpUpdate})
 	Pub(cmdC, Publication{Value: "foo", Op: OpRead})
@@ -68,15 +33,15 @@ func TestPub(t *testing.T) {
 }
 
 func TestSubUnSub(t *testing.T) {
-	p, cmdC := newRun(t.Name())
-	defer p.Stop()
+	cmdC, cancel := newRun(t.Name())
+	defer cancel()
 	sub := Sub(cmdC, Subscription{Name: t.Name()}, func(_ interface{}) {})
 	Unsub(cmdC, sub)
 }
 
 func TestSubThenPub(t *testing.T) {
-	p, cmdC := newRun(t.Name())
-	defer p.Stop()
+	cmdC, cancel := newRun(t.Name())
+	defer cancel()
 	published := make([]string, 0)
 	toPublish := []string{"foo", "foo1", "foo2"}
 	Sub(cmdC, Subscription{Name: t.Name()}, func(s interface{}) {
@@ -89,8 +54,8 @@ func TestSubThenPub(t *testing.T) {
 }
 
 func TestSubNsThenPub(t *testing.T) {
-	p, cmdC := newRun(t.Name())
-	defer p.Stop()
+	cmdC, cancel := newRun(t.Name())
+	defer cancel()
 	expectedCfg := []uint32{1, 20, 30}
 	expectedCfgId1 := []uint32{20}
 	expectedSvcAgg := []string{"foo", "foo1", "foo2", "foo1", "foo2"}
@@ -163,8 +128,8 @@ func TestSubNsThenPub(t *testing.T) {
 }
 
 func TestSubPubUnSubPubWithoutFilter(t *testing.T) {
-	p, cmdC := newRun(t.Name())
-	defer p.Stop()
+	cmdC, cancel := newRun(t.Name())
+	defer cancel()
 	toPublish := []string{"foo", "foo1", "foo2"}
 	expectedPublished := []string{"foo", "foo1", "foo2"}
 
