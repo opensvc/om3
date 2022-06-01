@@ -128,6 +128,7 @@ var genericKeywords = []keywords.Keyword{
 	{
 		Option:    "disable",
 		Attr:      "Disable",
+		Scopable:  true,
 		Converter: converters.Bool,
 		Text:      "A disabled resource will be ignored on service startup and shutdown. Its status is always reported ``n/a``.\n\nSet in DEFAULT, the whole service is disabled. A disabled service does not honor :c-action:`start` and :c-action:`stop` actions. These actions immediately return success.\n\n:cmd:`om <path> disable` only sets :kw:`DEFAULT.disable`. As resources disabled state is not changed, :cmd:`om <path> enable` does not enable disabled resources.",
 	},
@@ -160,6 +161,7 @@ var genericKeywords = []keywords.Keyword{
 	{
 		Option:    "monitor",
 		Attr:      "Monitor",
+		Scopable:  true,
 		Converter: converters.Bool,
 		Text:      "A down monitored resource will trigger a the monitor action (crash or reboot the node, freezestop or switch the service) if the monitor thinks the resource should be up and it all restart tries failed.",
 	},

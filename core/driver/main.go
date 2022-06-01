@@ -25,6 +25,7 @@ var (
 		GroupIP:        "host",
 		GroupTask:      "host",
 		GroupVolume:    "",
+		GroupSync:      "rsync",
 
 		// data resources
 		GroupVhost:       "envoy",

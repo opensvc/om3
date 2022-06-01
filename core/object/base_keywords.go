@@ -63,6 +63,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "disable",
+		Scopable:  true,
 		Converter: converters.Bool,
 		Text:      "A disabled resource will be ignored on service startup and shutdown. Its status is always reported ``n/a``.\n\nSet in DEFAULT, the whole service is disabled. A disabled service does not honor start and stop actions. These actions immediately return success.\n\n:cmd:`om <path> disable` only sets :kw:`DEFAULT.disable`. As resources disabled state is not changed, :cmd:`om <path> enable` does not enable disabled resources.",
 	},
@@ -159,6 +160,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:     "DEFAULT",
 		Option:      "nodes",
+		Scopable:    true,
 		Inherit:     keywords.InheritHead,
 		Converter:   xconfig.NodesConverter,
 		Text:        "A node selector expression specifying the list of cluster nodes hosting service instances.",
@@ -168,6 +170,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:   "DEFAULT",
 		Option:    "drpnodes",
+		Scopable:  true,
 		Inherit:   keywords.InheritHead,
 		Converter: xconfig.OtherNodesConverter,
 		Text:      "The backup node where the service is activated in a DRP situation. This node is also a data synchronization target for :c-res:`sync` resources.",
@@ -263,6 +266,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:     "DEFAULT",
 		Option:      "flex_primary",
+		Scopable:    true,
 		Inherit:     keywords.InheritHead,
 		Converter:   converters.ListLowercase,
 		Depends:     keyop.ParseList("topology=flex"),
