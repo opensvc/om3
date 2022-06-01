@@ -27,7 +27,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemondata"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
-	"opensvc.com/opensvc/daemon/monitor/mondata"
 	"opensvc.com/opensvc/daemon/monitor/smon"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -65,7 +64,7 @@ var (
 // Start launch goroutine instCfg worker for a local instance config
 func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) {
 	localhost := hostname.Hostname()
-	id := mondata.InstanceId(p, localhost)
+	id := daemondata.InstanceId(p, localhost)
 
 	o := &instCfg{
 		cfg:          instance.Config{Path: p},

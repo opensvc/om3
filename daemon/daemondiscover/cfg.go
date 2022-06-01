@@ -12,11 +12,11 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
-	"opensvc.com/opensvc/daemon/monitor/mondata"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/timestamp"
@@ -212,7 +212,7 @@ func (d *discover) fetchFromApi(p path.T, node string) (b []byte, updated timest
 }
 
 func (d *discover) fetcherRoutine(ctx context.Context, p path.T, node string) {
-	id := mondata.InstanceId(p, node)
+	id := daemondata.InstanceId(p, node)
 	b, updated, err := d.fetchFromApi(p, node)
 	if err != nil {
 		d.log.Error().Err(err).Msgf("fetchFromApi %s", id)
