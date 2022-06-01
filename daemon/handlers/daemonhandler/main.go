@@ -9,9 +9,9 @@ import (
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/handlers/dispatchhandler"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/util/eventbus"
 )
 
 var (
@@ -53,7 +53,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
 	logger.Debug().Msg("starting")
 	ctx := r.Context()
-	evCmdC := daemonctx.EventBusCmd(ctx)
+	evCmdC := daemonctx.DaemonPubSubCmd(ctx)
 	done := make(chan bool)
 	var httpBody bool
 	if r.Header.Get("accept") == "text/event-stream" {
@@ -101,8 +101,8 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := eventbus.Sub(evCmdC, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
-	defer eventbus.UnSub(evCmdC, subId)
+	subId := daemonps.SubEvent(evCmdC, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
+	defer daemonps.UnSubEvent(evCmdC, subId)
 	go func() {
 		for {
 			select {

@@ -23,7 +23,7 @@ type (
 var (
 	contextDaemon      = contextKey("daemon")
 	contextDaemonData  = contextKey("daemondata-cmd")
-	contextEventBusCmd = contextKey("eventbus-cmd")
+	contextDaemonPSCmd = contextKey("daemon-pub-sub-cmd")
 	contextHBSendQueue = contextKey("hb-sendQ")
 	contextLogger      = contextKey("logger")
 	contextUuid        = contextKey("uuid")
@@ -42,14 +42,14 @@ func DaemonDataCmd(ctx context.Context) chan<- interface{} {
 	panic("unable to retrieve context DaemonDataCmd")
 }
 
-// EventBusCmd function returns EventBusCmd from context
-func EventBusCmd(ctx context.Context) (cmdC chan<- interface{}) {
+// DaemonPubSubCmd function returns DaemonPubSubCmd from context
+func DaemonPubSubCmd(ctx context.Context) (cmdC chan<- interface{}) {
 	var ok bool
-	cmdC, ok = ctx.Value(contextEventBusCmd).(chan<- interface{})
+	cmdC, ok = ctx.Value(contextDaemonPSCmd).(chan<- interface{})
 	if ok {
 		return
 	}
-	panic("unable to retrieve context EventBusCmd")
+	panic("unable to retrieve context DaemonPubSubCmd")
 }
 
 // HBSendQ function returns HBSendQ from context
@@ -67,9 +67,9 @@ func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.C
 	return context.WithValue(parent, contextDaemonData, cmd)
 }
 
-// WithEventBusCmd function returns copy of parent with eventbus.
-func WithEventBusCmd(parent context.Context, evBusCmd chan<- interface{}) context.Context {
-	return context.WithValue(parent, contextEventBusCmd, evBusCmd)
+// WithDaemonPubSubCmd function returns copy of parent with daemon pub sub cmd.
+func WithDaemonPubSubCmd(parent context.Context, cmd chan<- interface{}) context.Context {
+	return context.WithValue(parent, contextDaemonPSCmd, cmd)
 }
 
 // WithHBSendQ function returns copy of parent with HBSendQ.
