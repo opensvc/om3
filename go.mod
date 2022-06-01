@@ -15,6 +15,7 @@ require (
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
 	github.com/eidolon/wordwrap v0.0.0-20161011182207-e0f54129b8bb
 	github.com/fatih/color v1.10.0
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/g8rswimmer/error-chain v1.0.0 // indirect
 	github.com/gdamore/tcell/v2 v2.3.1
 	github.com/go-chi/chi/v5 v5.0.7
@@ -59,7 +60,7 @@ require (
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
 	golang.org/x/crypto v0.0.0-20220314234724-5d542ad81a58 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
-	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/ini.v1 v1.62.0
