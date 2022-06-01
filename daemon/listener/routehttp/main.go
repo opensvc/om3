@@ -36,6 +36,7 @@ func New(ctx context.Context) *T {
 	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Post("/object_status", objecthandler.PostStatus)
 	mux.Get("/object_selector", objecthandler.GetSelector)
+	mux.Get("/object_config", objecthandler.GetConfig)
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Mount("/daemon", t.newDaemonRouter())
 	mux.Mount("/object", objecthandler.Router())
