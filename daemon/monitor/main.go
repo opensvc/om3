@@ -37,7 +37,7 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		TCtx:        daemonctx.TCtx{},
-		loopDelay:   5 * time.Second,
+		loopDelay:   2 * time.Second,
 		loopEnabled: enable.New(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
@@ -103,6 +103,4 @@ func (t *T) aLoop() {
 	if msg := dataCmd.GetHbMessage(); len(msg) > 0 {
 		daemonctx.HBSendQ(t.Ctx) <- msg
 	}
-	// For demo
-	t.demoLoop()
 }
