@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/daemon/listener/encryptconn"
-	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
-	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
+	"opensvc.com/opensvc/daemon/listener/routehttp"
+	"opensvc.com/opensvc/daemon/listener/routeraw"
 )
 
 func (t *T) stop() error {
@@ -25,7 +25,7 @@ func (t *T) start() error {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
 	}
-	mux := rawmux.New(httpmux.New(t.Ctx), t.log, 5*time.Second)
+	mux := routeraw.New(routehttp.New(t.Ctx), t.log, 5*time.Second)
 	c := make(chan bool)
 	go func() {
 		c <- true

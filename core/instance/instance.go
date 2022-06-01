@@ -155,6 +155,34 @@ func (t *Status) SortedResources() []resource.ExposedStatus {
 	return l
 }
 
+func (t Status) DeepCopy() *Status {
+	t.Running = append(ResourceRunningSet{}, t.Running...)
+	t.Parents = append([]path.Relation{}, t.Parents...)
+	t.Children = append([]path.Relation{}, t.Children...)
+	t.Slaves = append([]path.Relation{}, t.Slaves...)
+
+	subSets := make(map[string]SubsetStatus)
+
+	for id, v := range t.Subsets {
+		subSets[id] = v
+	}
+	t.Subsets = subSets
+
+	resources := make(map[string]resource.ExposedStatus)
+	for id, v := range t.Resources {
+		resources[id] = *v.DeepCopy()
+	}
+	t.Resources = resources
+
+	statusGroup := make(map[string]string)
+	for id, v := range t.StatusGroup {
+		statusGroup[id] = v
+	}
+	t.StatusGroup = statusGroup
+
+	return &t
+}
+
 func (a ResourceOrder) Len() int      { return len(a) }
 func (a ResourceOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ResourceOrder) Less(i, j int) bool {
@@ -209,4 +237,20 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 	flags += r.Standby.FlagString()
 	flags += r.Restart.FlagString(retries)
 	return flags
+}
+
+func (cfg Config) DeepCopy() *Config {
+	newCfg := cfg
+	newCfg.Scope = append([]string{}, cfg.Scope...)
+	return &newCfg
+}
+
+func (smon Monitor) DeepCopy() *Monitor {
+	v := smon
+	restart := make(map[string]MonitorRestart)
+	for s, val := range v.Restart {
+		restart[s] = val
+	}
+	v.Restart = restart
+	return &v
 }

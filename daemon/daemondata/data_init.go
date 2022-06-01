@@ -65,6 +65,7 @@ func newNodeStatus(localNode string) cluster.NodeStatus {
 		Services: cluster.NodeServices{
 			Config: map[string]instance.Config{},
 			Status: map[string]instance.Status{},
+			Smon:   map[string]instance.Monitor{},
 		},
 		Stats: cluster.NodeStatusStats{},
 	}

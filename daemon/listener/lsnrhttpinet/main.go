@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
+	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -88,7 +88,7 @@ func (t *T) stop() error {
 func (t *T) start() error {
 	t.log.Info().Msg("listener starting")
 	started := make(chan bool)
-	t.listener = &http.Server{Addr: t.addr, Handler: httpmux.New(t.Ctx)}
+	t.listener = &http.Server{Addr: t.addr, Handler: routehttp.New(t.Ctx)}
 	go func() {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)

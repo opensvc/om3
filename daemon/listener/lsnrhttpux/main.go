@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
+	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -98,7 +98,7 @@ func (t *T) start() error {
 	started := make(chan bool)
 	s := &http2.Server{}
 	server := http.Server{
-		Handler: h2c.NewHandler(httpmux.New(t.Ctx), s),
+		Handler: h2c.NewHandler(routehttp.New(t.Ctx), s),
 	}
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {

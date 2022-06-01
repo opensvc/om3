@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"opensvc.com/opensvc/daemon/listener/mux/httpmux"
-	"opensvc.com/opensvc/daemon/listener/mux/rawmux"
+	"opensvc.com/opensvc/daemon/listener/routehttp"
+	"opensvc.com/opensvc/daemon/listener/routeraw"
 )
 
 func (t *T) stop() error {
@@ -24,7 +24,7 @@ func (t *T) start() error {
 		t.log.Error().Err(err).Msg("RemoveAll")
 		return err
 	}
-	mux := rawmux.New(httpmux.New(t.Ctx), t.log, 5*time.Second)
+	mux := routeraw.New(routehttp.New(t.Ctx), t.log, 5*time.Second)
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {
 		t.log.Error().Err(err).Msg("listen failed")
