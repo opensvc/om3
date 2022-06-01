@@ -218,8 +218,8 @@ func (t T) DoLocal() error {
 			rsTree *tree.Tree
 			rsNode *tree.Node
 		)
-		type loadTreeNoder interface {
-			LoadTreeNode(*tree.Node)
+		type treeProvider interface {
+			Tree() *tree.Tree
 		}
 		s := ""
 		for _, r := range rs {
@@ -236,14 +236,16 @@ func (t T) DoLocal() error {
 					log.Fatal().Msgf("%s", err)
 				}
 			}
-			if i, ok := interface{}(r.Data).(loadTreeNoder); ok {
+			if i, ok := interface{}(r.Data).(treeProvider); ok {
 				if rsTree == nil {
 					rsTree = tree.New()
 				}
-				rsNode = rsTree.AddNode()
-				rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Node.Color.Bold)
-				rsChildNode := rsNode.AddNode()
-				i.LoadTreeNode(rsChildNode)
+				branch := i.Tree()
+				if !branch.IsEmpty() {
+					rsNode = rsTree.AddNode()
+					rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Node.Color.Bold)
+					rsNode.PlugTree(branch)
+				}
 				continue
 			}
 			switch {

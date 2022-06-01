@@ -214,16 +214,16 @@ func (t ValidateAlerts) has(lvl ValidateAlertLevel) bool {
 }
 
 func (t ValidateAlerts) Render() string {
-	tree := tree.New()
-	node := tree.AddNode()
-	t.LoadTreeNode(node)
-	return tree.Render()
+	tr := t.Tree()
+	return tr.Render()
 }
 
-func (t ValidateAlerts) LoadTreeNode(node *tree.Node) {
+func (t ValidateAlerts) Tree() *tree.Tree {
+	tr := tree.New()
 	if len(t) == 0 {
-		return
+		return tr
 	}
+	node := tr.AddNode()
 	node.AddColumn().AddText("alert level").SetColor(rawconfig.Node.Color.Secondary)
 	node.AddColumn().AddText("key").SetColor(rawconfig.Node.Color.Secondary)
 	node.AddColumn().AddText("type").SetColor(rawconfig.Node.Color.Secondary)
@@ -241,6 +241,7 @@ func (t ValidateAlerts) LoadTreeNode(node *tree.Node) {
 		n.AddColumn().AddText(alert.Kind.String())
 		n.AddColumn().AddText(alert.Comment)
 	}
+	return tr
 }
 
 func (t T) Validate() (ValidateAlerts, error) {
