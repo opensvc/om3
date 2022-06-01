@@ -21,6 +21,19 @@ func Exists(id ID) bool {
 }
 
 func Get(id ID) interface{} {
+	allocator, ok := registry[id]
+	if !ok {
+		// <group>.<name> driver not found, ... try <group>
+		// used for example by the volume driver, whose
+		// type keyword is not pointing a resource sub driver
+		// but a pool driver.
+		id.Name = ""
+		return GetStrict(id)
+	}
+	return allocator
+}
+
+func GetStrict(id ID) interface{} {
 	allocator, _ := registry[id]
 	return allocator
 }

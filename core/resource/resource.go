@@ -279,13 +279,6 @@ func NewResourceFunc(t driver.ID) DriverAllocator {
 	if a, ok := i.(DriverAllocator); ok {
 		return a
 	}
-	if t.Name != "" {
-		// <group>.<name> driver not found, ... try <group>
-		// used for example by the volume driver, whose
-		// type keyword is not pointing a resource sub driver
-		// but a pool driver.
-		return NewResourceFunc(*t.NewGenericID())
-	}
 	return nil
 }
 
