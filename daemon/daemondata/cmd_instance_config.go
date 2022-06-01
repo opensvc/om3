@@ -31,7 +31,7 @@ func (o opDelInstanceConfig) call(d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubCfgDelete(d.eventCmd, s, moncmd.CfgDeleted{
+	daemonps.PubCfgDelete(d.pubSub, s, moncmd.CfgDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -47,7 +47,7 @@ func (o opSetInstanceConfig) call(d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubCfgUpdate(d.eventCmd, s, moncmd.CfgUpdated{
+	daemonps.PubCfgUpdate(d.pubSub, s, moncmd.CfgUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Config: o.value,

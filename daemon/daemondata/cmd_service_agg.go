@@ -39,7 +39,7 @@ func (o opDelServiceAgg) call(d *data) {
 		} else {
 			eventId++
 			var data json.RawMessage = eventB
-			daemonps.PubEvent(d.eventCmd, event.Event{
+			daemonps.PubEvent(d.pubSub, event.Event{
 				Kind:      "patch",
 				ID:        eventId,
 				Timestamp: timestamp.Now(),
@@ -47,7 +47,7 @@ func (o opDelServiceAgg) call(d *data) {
 			})
 		}
 	}
-	daemonps.PubSvcAggDelete(d.eventCmd, s, moncmd.MonSvcAggDeleted{
+	daemonps.PubSvcAggDelete(d.pubSub, s, moncmd.MonSvcAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -69,14 +69,14 @@ func (o opSetServiceAgg) call(d *data) {
 	} else {
 		eventId++
 		var data json.RawMessage = eventB
-		daemonps.PubEvent(d.eventCmd, event.Event{
+		daemonps.PubEvent(d.pubSub, event.Event{
 			Kind:      "patch",
 			ID:        eventId,
 			Timestamp: timestamp.Now(),
 			Data:      &data,
 		})
 	}
-	daemonps.PubSvcAggUpdate(d.eventCmd, s, moncmd.MonSvcAggUpdated{
+	daemonps.PubSvcAggUpdate(d.pubSub, s, moncmd.MonSvcAggUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		SvcAgg: o.value,

@@ -28,7 +28,7 @@ type (
 		localNode       string
 		counterCmd      chan<- interface{}
 		log             zerolog.Logger
-		eventCmd        chan<- interface{}
+		pubSub          chan<- interface{}
 	}
 
 	gens       map[string]uint64
@@ -41,7 +41,7 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	d := newData(counterCmd)
 	d.log = daemonctx.Logger(ctx).With().Str("name", "daemon-data").Logger()
 	d.log.Info().Msg("starting")
-	d.eventCmd = daemonctx.DaemonPubSubCmd(ctx)
+	d.pubSub = daemonctx.DaemonPubSubCmd(ctx)
 
 	defer d.log.Info().Msg("stopped")
 	for {

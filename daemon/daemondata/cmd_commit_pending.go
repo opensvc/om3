@@ -6,7 +6,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/util/eventbus"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -140,7 +140,7 @@ func (d *data) eventCommitPendingOps() {
 	} else {
 		eventId++
 		var data json.RawMessage = eventB
-		eventbus.Pub(d.eventCmd, event.Event{
+		daemonps.PubEvent(d.pubSub, event.Event{
 			Kind:      "patch",
 			ID:        eventId,
 			Timestamp: timestamp.Now(),

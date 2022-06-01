@@ -37,7 +37,7 @@ func (o opDelInstanceStatus) call(d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubInstStatusDelete(d.eventCmd, s, moncmd.InstStatusDeleted{
+	daemonps.PubInstStatusDelete(d.pubSub, s, moncmd.InstStatusDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -64,7 +64,7 @@ func (o opSetInstanceStatus) call(d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubInstStatusUpdated(d.eventCmd, s, moncmd.InstStatusUpdated{
+	daemonps.PubInstStatusUpdated(d.pubSub, s, moncmd.InstStatusUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,
