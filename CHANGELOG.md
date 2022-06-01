@@ -35,6 +35,10 @@
 	constraints violation => constraints-violation
 	daemon down => daemon-down
 
+### driver fs
+
+* **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
+
 ### driver app
 
 * **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)

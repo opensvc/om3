@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
@@ -40,13 +41,9 @@ type (
 		Type            string         `json:"type"`
 		MountOptions    string         `json:"mnt_opt"`
 		StatTimeout     *time.Duration `json:"stat_timeout"`
-		Size            *int64         `json:"size"`
-		SnapSize        *int64         `json:"snap_size"`
 		Zone            string         `json:"zone"`
-		VG              string         `json:"vg"`
 		PRKey           string         `json:"prkey"`
 		MKFSOptions     []string       `json:"mkfs_opt"`
-		CreateOptions   []string       `json:"create_options"`
 		User            *user.User     `json:"user"`
 		Group           *user.Group    `json:"group"`
 		Perm            *os.FileMode   `json:"perm"`
@@ -70,15 +67,6 @@ var (
 		Scopable: true,
 		Text:     "Defines a specific persistent reservation key for the resource. Takes priority over the service-level defined prkey and the node.conf specified prkey.",
 	}
-	KeywordCreateOptions = keywords.Keyword{
-		Option:       "create_options",
-		Attr:         "CreateOptions",
-		Converter:    converters.Shlex,
-		Scopable:     true,
-		Provisioning: true,
-		Text:         "Additional options to pass to the logical volume create command. Size and name are already set.",
-		Example:      "--contiguous y",
-	}
 	KeywordSCSIReservation = keywords.Keyword{
 		Option:    "scsireserv",
 		Attr:      "SCSIReservation",
@@ -99,23 +87,6 @@ var (
 		Required: true,
 		Text:     "The block device file or filesystem image file hosting the filesystem to mount. Different device can be set up on different nodes using the ``dev@nodename`` syntax",
 	}
-	KeywordVG = keywords.Keyword{
-		Option:       "vg",
-		Attr:         "VG",
-		Required:     false,
-		Scopable:     true,
-		Text:         "The name of the disk group the filesystem device should be provisioned from.",
-		Provisioning: true,
-	}
-	KeywordSize = keywords.Keyword{
-		Option:       "size",
-		Attr:         "Size",
-		Required:     false,
-		Converter:    converters.Size,
-		Scopable:     true,
-		Text:         "The size of the logical volume to provision for this filesystem. On linux, can also be expressed as <n>%{FREE|PVS|VG}.",
-		Provisioning: true,
-	}
 	KeywordMKFSOptions = keywords.Keyword{
 		Option:       "mkfs_opt",
 		Attr:         "MKFSOptions",
@@ -132,13 +103,6 @@ var (
 		Default:   "5s",
 		Scopable:  true,
 		Text:      "The maximum wait time for a stat call to respond. When expired, the resource status is degraded is to warn, which might cause a TOC if the resource is monitored.",
-	}
-	KeywordSnapSize = keywords.Keyword{
-		Option:    "snap_size",
-		Attr:      "SnapSize",
-		Converter: converters.Size,
-		Scopable:  true,
-		Text:      "If this filesystem is build on a snapable logical volume or is natively snapable (jfs, vxfs, ...) this setting overrides the default 10% of the filesystem size to compute the snapshot size. The snapshot is created by snap-enabled rsync-type sync resources. The unit is Megabytes.",
 	}
 	KeywordMountPoint = keywords.Keyword{
 		Option:   "mnt",
@@ -193,7 +157,6 @@ var (
 	KeywordsVirtual = []keywords.Keyword{
 		KeywordMountPoint,
 		KeywordMountOptions,
-		KeywordSize,
 		KeywordDevice,
 		KeywordStatTimeout,
 		KeywordZone,
@@ -203,16 +166,12 @@ var (
 		KeywordMountPoint,
 		KeywordDevice,
 		KeywordMountOptions,
-		KeywordSize,
 		KeywordStatTimeout,
-		KeywordSnapSize,
 		KeywordPRKey,
 		KeywordSCSIReservation,
 		KeywordNoPreemptAbort,
 		KeywordPromoteRW,
 		KeywordMKFSOptions,
-		KeywordCreateOptions,
-		KeywordVG,
 		KeywordZone,
 		KeywordUser,
 		KeywordGroup,
@@ -224,7 +183,6 @@ var (
 		KeywordDevice,
 		KeywordMountOptions,
 		KeywordStatTimeout,
-		KeywordSnapSize,
 		KeywordPRKey,
 		KeywordSCSIReservation,
 		KeywordNoPreemptAbort,
@@ -525,7 +483,11 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("skip mkfs, formatted detection is not implemented for type %s", fs)
 		return nil
 	}
-	if v, err := i1.IsFormated(t.Device); err != nil {
+	devpath := t.devpath()
+	if devpath == "" {
+		return errors.Errorf("%s real dev path is empty", t.Device)
+	}
+	if v, err := i1.IsFormated(devpath); err != nil {
 		t.Log().Warn().Msgf("skip mkfs: %s", err)
 	} else if v {
 		t.Log().Info().Msgf("%s is already formated", t.Device)
