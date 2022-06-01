@@ -63,8 +63,9 @@ type (
 
 	// NodeServices groups instances configuration digest and status
 	NodeServices struct {
-		Config map[string]instance.Config `json:"config"`
-		Status map[string]instance.Status `json:"status"`
+		Config map[string]instance.Config  `json:"config"`
+		Status map[string]instance.Status  `json:"status"`
+		Smon   map[string]instance.Monitor `json:"smon"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
