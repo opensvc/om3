@@ -4,6 +4,21 @@
 
 ### core
 
+* **breaking change:** drop support for deprecated driver group names:
+
+	drbd: disk.drbd
+	vdisk: disk.vdisk
+	vmdg: disk.ldom
+	pool: disk.zpool
+	zpool: disk.zpool
+	loop: disk.loop
+	md: disk.md
+	zvol: disk.zvol
+	lv: disk.lv
+	raw: disk.raw
+	vxdg: disk.vxdg
+	vxvol: disk.vxvol
+
 * **breaking change:** stop matching DEFAULT.<string> for "<string>:" object selector expressions. Match only sections basename (like in [<basename>#<index>]).
 
 * **breaking change:** drop backward compatibility for the always_on=<nodes> keyword.
@@ -21,6 +36,7 @@
 	daemon down => daemon-down
 
 ### driver app
+
 * **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)
   
         environment = Foo=one bar=2 Z=u
