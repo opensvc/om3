@@ -42,7 +42,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/util/eventbus"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -139,7 +139,7 @@ func (t *T) Start() {
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	hbBeatings := make(map[string]map[string]cluster.HeartbeatPeerStatus)
-	evBusCmd := daemonctx.EventBusCmd(t.ctx)
+	pubSubCmd := daemonctx.DaemonPubSubCmd(t.ctx)
 	defer t.log.Info().Msgf("done: %v", events)
 	for {
 		select {
@@ -164,7 +164,7 @@ func (t *T) Start() {
 				}
 				var data json.RawMessage
 				data = []byte("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
-				eventbus.Pub(evBusCmd, event.Event{
+				daemonps.PubEvent(pubSubCmd, event.Event{
 					Kind:      o.Name,
 					ID:        0,
 					Timestamp: timestamp.Now(),
