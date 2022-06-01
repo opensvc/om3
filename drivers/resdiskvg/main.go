@@ -11,6 +11,8 @@ import (
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -28,6 +30,7 @@ const (
 type (
 	T struct {
 		resdisk.T
+		Path    path.T
 		VGName  string   `json:"vg"`
 		Size    string   `json:"size"`
 		Options []string `json:"options"`
@@ -72,6 +75,13 @@ func New() resource.Driver {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driverGroup, driverName, t)
+	m.AddContext([]manifest.Context{
+		{
+			Key:  "path",
+			Attr: "Path",
+			Ref:  "object.path",
+		},
+	}...)
 	m.AddKeyword(resdisk.BaseKeywords...)
 	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
@@ -196,7 +206,11 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("%s is already provisioned", vg.FQN())
 		return nil
 	}
-	return vgi.Create(t.Size, t.PVs, t.Options)
+	if pvs, err := object.Realdevpaths(t.PVs, t.Path.Namespace); err != nil {
+		return err
+	} else {
+		return vgi.Create(t.Size, pvs, t.Options)
+	}
 }
 
 func (t T) UnprovisionLeader(ctx context.Context) error {

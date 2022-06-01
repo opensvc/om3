@@ -13,6 +13,8 @@ import (
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -22,7 +24,6 @@ import (
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
-	"opensvc.com/opensvc/util/loop"
 )
 
 const (
@@ -33,6 +34,7 @@ const (
 type (
 	T struct {
 		resource.T
+		Path            path.T
 		MountPoint      string         `json:"mnt"`
 		Device          string         `json:"dev"`
 		Type            string         `json:"type"`
@@ -256,6 +258,13 @@ func New() resource.Driver {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driverGroup, t.Type, t)
+	m.AddContext([]manifest.Context{
+		{
+			Key:  "path",
+			Attr: "Path",
+			Ref:  "object.path",
+		},
+	}...)
 	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword(KeywordsBase...)
 	return m
@@ -361,32 +370,12 @@ func (t T) device() *device.T {
 }
 
 func (t T) devpath() string {
-	// lazy ref
-	if !strings.HasPrefix(t.Device, "/") {
-		return t.deviceFromVolume(t.Device)
-	}
-	if file.ExistsAndRegular(t.Device) {
-		if lo, err := loop.New().FileGet(t.Device); err != nil {
-			t.Log().Debug().Err(err).Msg("get loop info")
-			return ""
-		} else {
-			return lo.Name
-		}
-	}
-	return t.Device
-}
-
-func (t T) deviceFromVolume(p string) string {
-	l := filepath.SplitList(p)
-	if len(l) < 2 {
+	if p, err := object.Realdevpath(t.Device, t.Path.Namespace); err == nil {
 		return p
+	} else {
+		t.Log().Debug().Err(err).Msg("")
 	}
-	/*
-		vol = resvol.New()
-		vol.Name = l[0]
-		l[0] = vol.mountPoint()
-	*/
-	return filepath.Join(l...)
+	return ""
 }
 
 func (t *T) mount(ctx context.Context) error {
