@@ -22,7 +22,7 @@ type (
 		Level   ValidateAlertLevel `json:"level"`
 		Kind    ValidateAlertKind  `json:"kind"`
 		Key     key.T              `json:"key"`
-		Type    string             `json:"type"`
+		Driver  driver.ID          `json:"driver"`
 		Comment string             `json:"comment"`
 	}
 	ValidateAlertKind  int
@@ -76,58 +76,58 @@ var (
 	}
 )
 
-func (t T) NewValidateAlertScoping(k key.T, st string) ValidateAlert {
+func (t T) NewValidateAlertScoping(k key.T, did driver.ID) ValidateAlert {
 	return ValidateAlert{
-		Path:  t.Path,
-		Kind:  validateAlertKindScoping,
-		Level: validateAlertLevelError,
-		Key:   k,
-		Type:  st,
+		Path:   t.Path,
+		Kind:   validateAlertKindScoping,
+		Level:  validateAlertLevelError,
+		Key:    k,
+		Driver: did,
 	}
 }
 
-func (t T) NewValidateAlertUnknownDriver(k key.T, st string) ValidateAlert {
+func (t T) NewValidateAlertUnknownDriver(k key.T, did driver.ID) ValidateAlert {
 	return ValidateAlert{
-		Path:  t.Path,
-		Kind:  validateAlertKindUnknownDriver,
-		Level: validateAlertLevelWarn,
-		Key:   k,
-		Type:  st,
+		Path:   t.Path,
+		Kind:   validateAlertKindUnknownDriver,
+		Level:  validateAlertLevelWarn,
+		Key:    k,
+		Driver: did,
 	}
 }
 
-func (t T) NewValidateAlertUnknown(k key.T, st string) ValidateAlert {
+func (t T) NewValidateAlertUnknown(k key.T, did driver.ID) ValidateAlert {
 	return ValidateAlert{
-		Path:  t.Path,
-		Kind:  validateAlertKindUnknown,
-		Level: validateAlertLevelWarn,
-		Key:   k,
-		Type:  st,
+		Path:   t.Path,
+		Kind:   validateAlertKindUnknown,
+		Level:  validateAlertLevelWarn,
+		Key:    k,
+		Driver: did,
 	}
 }
 
-func (t T) NewValidateAlertCandidates(k key.T, st string) ValidateAlert {
+func (t T) NewValidateAlertCandidates(k key.T, did driver.ID) ValidateAlert {
 	return ValidateAlert{
-		Path:  t.Path,
-		Kind:  validateAlertKindCandidates,
-		Level: validateAlertLevelError,
-		Key:   k,
-		Type:  st,
+		Path:   t.Path,
+		Kind:   validateAlertKindCandidates,
+		Level:  validateAlertLevelError,
+		Key:    k,
+		Driver: did,
 	}
 }
 
-func (t T) NewValidateAlertEval(k key.T, st, comment string) ValidateAlert {
+func (t T) NewValidateAlertEval(k key.T, did driver.ID, comment string) ValidateAlert {
 	return ValidateAlert{
 		Path:    t.Path,
 		Kind:    validateAlertKindEval,
 		Level:   validateAlertLevelError,
 		Key:     k,
-		Type:    st,
+		Driver:  did,
 		Comment: comment,
 	}
 }
 
-func (t T) NewValidateAlertDeprecated(k key.T, st, release, replacedBy string) ValidateAlert {
+func (t T) NewValidateAlertDeprecated(k key.T, did driver.ID, release, replacedBy string) ValidateAlert {
 	comment := fmt.Sprintf("since %s", release)
 	if replacedBy != "" {
 		comment += fmt.Sprintf("replaced by %s", replacedBy)
@@ -137,7 +137,7 @@ func (t T) NewValidateAlertDeprecated(k key.T, st, release, replacedBy string) V
 		Kind:    validateAlertKindDeprecated,
 		Level:   validateAlertLevelWarn,
 		Key:     k,
-		Type:    st,
+		Driver:  did,
 		Comment: comment,
 	}
 }
@@ -226,20 +226,28 @@ func (t ValidateAlerts) Tree() *tree.Tree {
 	node := tr.AddNode()
 	node.AddColumn().AddText("alert level").SetColor(rawconfig.Node.Color.Secondary)
 	node.AddColumn().AddText("key").SetColor(rawconfig.Node.Color.Secondary)
-	node.AddColumn().AddText("type").SetColor(rawconfig.Node.Color.Secondary)
+	node.AddColumn().AddText("driver").SetColor(rawconfig.Node.Color.Secondary)
 	node.AddColumn().AddText("kind").SetColor(rawconfig.Node.Color.Secondary)
 	node.AddColumn().AddText("comment").SetColor(rawconfig.Node.Color.Secondary)
 	for _, alert := range t {
-		n := node.AddNode()
+		n := tr.AddNode()
 		color := rawconfig.Node.Color.Warning
 		if alert.Level == validateAlertLevelError {
 			color = rawconfig.Node.Color.Error
 		}
+		driver := alert.Driver.String()
+		if driver == "" {
+			driver = "-"
+		}
+		comment := alert.Comment
+		if comment == "" {
+			comment = "-"
+		}
 		n.AddColumn().AddText(alert.Level.String()).SetColor(color)
 		n.AddColumn().AddText(alert.Key.String())
-		n.AddColumn().AddText(alert.Type)
+		n.AddColumn().AddText(driver)
 		n.AddColumn().AddText(alert.Kind.String())
-		n.AddColumn().AddText(alert.Comment)
+		n.AddColumn().AddText(comment)
 	}
 	return tr
 }
@@ -247,16 +255,17 @@ func (t ValidateAlerts) Tree() *tree.Tree {
 func (t T) Validate() (ValidateAlerts, error) {
 	alerts := make(ValidateAlerts, 0)
 	for _, s := range t.file.Sections() {
+		did := &driver.ID{}
 		section := s.Name()
 		sectionType := t.GetString(key.New(section, "type"))
 		if rid, err := resourceid.Parse(section); err == nil {
-			did := driver.NewID(rid.DriverGroup(), sectionType)
+			did = driver.NewID(rid.DriverGroup(), sectionType)
 			if did.Name != "" {
 				if sectionType == "" {
 					sectionType = did.Name
 				}
 				if !driver.Exists(*did) {
-					alerts = append(alerts, t.NewValidateAlertUnknownDriver(key.T{Section: section}, sectionType))
+					alerts = append(alerts, t.NewValidateAlertUnknownDriver(key.T{Section: section}, *did))
 					continue
 				}
 			}
@@ -268,22 +277,22 @@ func (t T) Validate() (ValidateAlerts, error) {
 			}
 			kw, err := getKeyword(k, sectionType, t.Referrer)
 			if err != nil {
-				alerts = append(alerts, t.NewValidateAlertUnknown(k, sectionType))
+				alerts = append(alerts, t.NewValidateAlertUnknown(k, *did))
 				continue
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
-				alerts = append(alerts, t.NewValidateAlertScoping(k, sectionType))
+				alerts = append(alerts, t.NewValidateAlertScoping(k, *did))
 			}
 			v, err := t.evalStringAs(k, kw, "")
 			if err != nil {
-				alerts = append(alerts, t.NewValidateAlertEval(k, sectionType, fmt.Sprint(err)))
+				alerts = append(alerts, t.NewValidateAlertEval(k, *did, fmt.Sprint(err)))
 				continue
 			}
 			if kw.Deprecated != "" {
-				alerts = append(alerts, t.NewValidateAlertDeprecated(k, sectionType, kw.Deprecated, kw.ReplacedBy))
+				alerts = append(alerts, t.NewValidateAlertDeprecated(k, *did, kw.Deprecated, kw.ReplacedBy))
 			}
 			if (len(kw.Candidates) > 0) && !stringslice.Has(v, kw.Candidates) {
-				alerts = append(alerts, t.NewValidateAlertCandidates(k, sectionType))
+				alerts = append(alerts, t.NewValidateAlertCandidates(k, *did))
 			}
 		}
 	}

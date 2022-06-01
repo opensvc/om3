@@ -104,7 +104,7 @@ func (t Group) String() string {
 	if s, ok := toGroupString[t]; ok {
 		return s
 	}
-	return "unknown"
+	return ""
 }
 
 // MarshalJSON marshals the enum as a quoted json string
