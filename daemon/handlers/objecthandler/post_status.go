@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/util/jsondelta"
 )
 
 type (
@@ -36,13 +37,16 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	dataBus := daemondatactx.DaemonData(r.Context())
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"services", "status", postStatus.Path},
-		OpValue: jsondelta.NewOptValue(postStatus.Data),
-		OpKind:  "replace",
+	if p, err := path.Parse(postStatus.Path); err != nil {
+		log.Error().Err(err).Msg("path.Parse")
+	} else {
+		dataCmd := daemonctx.DaemonDataCmd(r.Context())
+		log.Debug().Msgf("SetInstanceStatus on %s", postStatus.Path)
+		if err := daemondata.SetInstanceStatus(dataCmd, p, postStatus.Data); err != nil {
+			log.Error().Err(err).Msgf("SetInstanceStatus %s", p)
+		}
 	}
-	dataBus.PushOps([]jsondelta.Operation{op})
+
 	response := response{0, "instance status pushed pending ops"}
 	b, err := json.Marshal(response)
 	if err != nil {
