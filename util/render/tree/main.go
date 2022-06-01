@@ -69,7 +69,7 @@ type (
 		Widths      []Width
 		ForcedWidth int
 
-		head        Node
+		head        *Node
 		totalWidth  int
 		pads        []int
 		columnCount int
@@ -134,6 +134,7 @@ const (
 func New() *Tree {
 	t := &Tree{
 		Separator: defaultSeparator,
+		head:      &Node{},
 		depth:     0,
 	}
 	t.head.Forest = t
@@ -143,7 +144,12 @@ func New() *Tree {
 
 // Head return the tree head Node reference.
 func (t *Tree) Head() *Node {
-	return &t.head
+	return t.head
+}
+
+// IsEmpty returns true if the tree head node has no children.
+func (t *Tree) IsEmpty() bool {
+	return len(t.head.children) == 0
 }
 
 // AddNode adds and returns a new Node, child of this node.
@@ -151,10 +157,52 @@ func (t *Tree) AddNode() *Node {
 	return t.head.AddNode()
 }
 
+// PlugNode add an existing tree head Node as child of the head node of the tree
+func (t *Tree) PlugTree(n *Tree) {
+	t.head.PlugTree(n)
+}
+
+// PlugNode add an existing Node as child of the head node of the tree
+func (t *Tree) PlugNode(n *Node) {
+	t.head.PlugNode(n)
+}
+
 // AddColumn adds and returns a column to the head node.
 // Phrases can be added through the returned Column object.
 func (t *Tree) AddColumn() *Column {
 	return t.head.AddColumn()
+}
+
+// assignNode set the Forest and Parent fields on child and recursively all descendent nodes of child.
+func assignNode(parent, child *Node) {
+	if child == nil {
+		return
+	}
+	child.Forest = parent.Forest
+	child.Parent = parent
+	child.depth = parent.depth + 1
+	if child.depth > parent.Forest.depth {
+		parent.Forest.depth = child.depth
+	}
+	columnCount := len(child.columns)
+	if columnCount > child.Forest.columnCount {
+		child.Forest.columnCount = columnCount
+		child.Forest.Widths = make([]Width, columnCount)
+	}
+	for _, grandchild := range child.children {
+		assignNode(child, grandchild)
+	}
+}
+
+// PlugNode add an existing tree head Node as child this node.
+func (t *Node) PlugTree(n *Tree) {
+	t.PlugNode(n.Head())
+}
+
+// PlugNode adds and existing Node as child of this node.
+func (n *Node) PlugNode(child *Node) {
+	assignNode(n, child)
+	n.children = append(n.children, child)
 }
 
 // AddNode adds and returns a new Node, child of this node.
@@ -204,7 +252,7 @@ func (t *Tree) Render() string {
 	t.getPads()
 	t.adjustPads()
 	t.wrapData()
-	return t.renderRecurse(&t.head, "", 0, make([]bool, 0))
+	return t.renderRecurse(t.head, "", 0, make([]bool, 0))
 }
 
 // getPads analyse data length in data columns and set the tree pads as a list
@@ -437,6 +485,11 @@ func (n *Node) String() string {
 	s := ""
 	s += fmt.Sprintf("<node Forest:%p >", n.Forest)
 	return s
+}
+
+// IsEmpty returns true if the node has one or more columns
+func (n *Node) IsEmpty() bool {
+	return len(n.columns) == 0
 }
 
 // AddColumn adds and returns a column to the node.
