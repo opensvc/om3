@@ -20,6 +20,7 @@ func (o opCommitPending) call(d *data) {
 	d.log.Debug().Msg("opCommitPending")
 	requireFull := d.updateGens()
 	if requireFull {
+		// TODO apply pending ops
 		d.resetPendingOps()
 		d.resetPatchQueue()
 	} else {
@@ -30,7 +31,17 @@ func (o opCommitPending) call(d *data) {
 		d.purgeAppliedPatchQueue()
 	}
 
+	cfgDeletes, cfgUpdates := d.getCfgDiff()
+
 	d.committed = d.pending.DeepCopy()
+
+	for _, cfgDelete := range cfgDeletes {
+		daemonps.PubCfgDelete(d.pubSub, cfgDelete.Path.String(), cfgDelete)
+	}
+	for _, cfgUpdates := range cfgUpdates {
+		daemonps.PubCfgUpdate(d.pubSub, cfgUpdates.Path.String(), cfgUpdates)
+	}
+
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).
 		Interface("mergedOnPeer", d.mergedOnPeer).
