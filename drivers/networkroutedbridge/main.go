@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package networkroutedbridge
@@ -10,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -20,8 +22,12 @@ type (
 	}
 )
 
+var (
+	drvID = driver.NewID(driver.GroupNetwork, "routed_bridge")
+)
+
 func init() {
-	network.Register("routed_bridge", NewNetworker)
+	driver.Register(drvID, NewNetworker)
 }
 
 func NewNetworker() network.Networker {

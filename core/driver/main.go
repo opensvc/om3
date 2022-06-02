@@ -58,11 +58,23 @@ func (t ID) String() string {
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
-func (t ID) NewGenericID() *ID {
+func (t ID) IsEmpty() bool {
+	return t.Name == "" && t.Group == 0
+}
+
+func (t ID) Cap() string {
+	s := t.String()
+	if (t.Group & resourceGroups) == t.Group {
+		return "drivers.resource." + s
+	}
+	return "drivers." + s
+}
+
+func (t ID) NewGenericID() ID {
 	return NewID(t.Group, "")
 }
 
-func Parse(s string) *ID {
+func Parse(s string) ID {
 	l := strings.Split(s, ".")
 	switch len(l) {
 	case 2:
@@ -72,15 +84,15 @@ func Parse(s string) *ID {
 		g := NewGroup(l[0])
 		return NewID(g, "")
 	default:
-		return nil
+		return ID{}
 	}
 }
 
-func NewID(group Group, name string) *ID {
+func NewID(group Group, name string) ID {
 	if name == "" {
 		name, _ = DefaultDriver[group]
 	}
-	return &ID{
+	return ID{
 		Group: group,
 		Name:  name,
 	}

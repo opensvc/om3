@@ -6,7 +6,6 @@ package ressharenfs
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -91,14 +90,6 @@ func (t Exports) ByPath(s string) Exports {
 		l = append(l, e)
 	}
 	return l
-}
-
-func capabilitiesScanner() ([]string, error) {
-	_, err := exec.LookPath("exportfs")
-	if err != nil {
-		return []string{}, nil
-	}
-	return []string{"drivers.resource.share.nfs"}, nil
 }
 
 func (t *T) stop() error {

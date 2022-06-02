@@ -47,10 +47,6 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
-}
-
 func (t T) IsRunning() bool {
 	err := t.DoWithLock(false, time.Second*0, "run", func() error {
 		return nil

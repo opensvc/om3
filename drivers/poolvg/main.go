@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package poolvg
@@ -5,6 +6,7 @@ package poolvg
 import (
 	"strings"
 
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/pool"
 	"opensvc.com/opensvc/util/lvm2"
 	"opensvc.com/opensvc/util/sizeconv"
@@ -16,8 +18,12 @@ type (
 	}
 )
 
+var (
+	drvID = driver.NewID(driver.GroupPool, "vg")
+)
+
 func init() {
-	pool.Register("vg", NewPooler)
+	driver.Register(drvID, NewPooler)
 }
 
 func NewPooler() pool.Pooler {

@@ -1,6 +1,7 @@
+//go:build !linux
 // +build !linux
 
-package resdiskraw
+package resdiskdisk
 
 import (
 	"context"

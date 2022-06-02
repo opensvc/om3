@@ -19,8 +19,8 @@ type OptsDoc struct {
 
 // Get returns a keyword value
 func (t *Base) Doc(options OptsDoc) (string, error) {
-	drvDoc := func(did driver.ID, kwName string) (string, error) {
-		factory := resource.NewResourceFunc(did)
+	drvDoc := func(drvID driver.ID, kwName string) (string, error) {
+		factory := resource.NewResourceFunc(drvID)
 		if factory == nil {
 			return "", fmt.Errorf("driver not found")
 		}
@@ -56,15 +56,15 @@ func (t *Base) Doc(options OptsDoc) (string, error) {
 	k := key.Parse(options.Keyword)
 	switch {
 	case options.Driver != "":
-		did := driver.Parse(options.Driver)
-		return drvDoc(*did, options.Keyword)
+		drvID := driver.Parse(options.Driver)
+		return drvDoc(drvID, options.Keyword)
 	case k.Option != "":
 		return t.config.Doc(k)
 	case k.Section == "DEFAULT":
 		return defaultDoc()
 	case k.Section != "":
-		did, _ := driverIDFromRID(t, k.Section)
-		return drvDoc(did, "")
+		drvID, _ := driverIDFromRID(t, k.Section)
+		return drvDoc(drvID, "")
 	default:
 		return "?", nil
 	}

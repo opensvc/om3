@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"opensvc.com/opensvc/core/actionrollback"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
@@ -19,8 +20,13 @@ import (
 	"opensvc.com/opensvc/util/sshnode"
 )
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
+// T is the driver structure.
+type T struct {
+	resource.T
+	Path     path.T   `json:"path"`
+	Nodes    []string `json:"nodes"`
+	lazyFile string
+	lazyDir  string
 }
 
 func New() resource.Driver {

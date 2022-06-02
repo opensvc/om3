@@ -151,8 +151,8 @@ func NewFromNoder(name string, noder Noder) Networker {
 }
 
 func Driver(t string) NetworkAllocator {
-	did := driver.NewID(driver.GroupNetwork, t)
-	i := driver.Get(*did)
+	drvID := driver.NewID(driver.GroupNetwork, t)
+	i := driver.Get(drvID)
 	if i == nil {
 		return nil
 	}
@@ -160,11 +160,6 @@ func Driver(t string) NetworkAllocator {
 		return a
 	}
 	return nil
-}
-
-func Register(t string, fn NetworkAllocator) {
-	did := driver.NewID(driver.GroupNetwork, t)
-	driver.Register(*did, fn)
 }
 
 func (t T) Name() string {

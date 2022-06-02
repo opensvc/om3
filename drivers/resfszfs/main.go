@@ -13,28 +13,18 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resfsdir"
-	"opensvc.com/opensvc/drivers/resfshost"
 	"opensvc.com/opensvc/util/args"
 	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/findmnt"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/sizeconv"
 	"opensvc.com/opensvc/util/zfs"
-)
-
-const (
-	driverGroup = driver.GroupFS
-	driverName  = "zfs"
 )
 
 type (
@@ -57,73 +47,9 @@ type (
 	}
 )
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
-}
-
 func New() resource.Driver {
 	t := &T{}
 	return t
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		resfshost.KeywordMountPoint,
-		resfshost.KeywordDevice,
-		resfshost.KeywordMountOptions,
-		resfshost.KeywordStatTimeout,
-		resfshost.KeywordMKFSOptions,
-		resfshost.KeywordZone,
-		resfshost.KeywordUser,
-		resfshost.KeywordGroup,
-		resfshost.KeywordPerm,
-		keywords.Keyword{
-			Option:       "size",
-			Attr:         "Size",
-			Required:     false,
-			Converter:    converters.Size,
-			Scopable:     true,
-			Text:         "Used by default as the refquota of the provisioned dataset. The quota, refquota, reservation and refreservation values can be expressed as a multiplier of size (example: quota=x2).",
-			Provisioning: true,
-		},
-		keywords.Keyword{
-			Option:       "refquota",
-			Attr:         "RefQuota",
-			Required:     false,
-			Scopable:     true,
-			Default:      "x1",
-			Text:         "The dataset 'refquota' property value to set on provision. The value can be 'none', or a size expression, or a multiplier of the size keyword value (ex: x2).",
-			Provisioning: true,
-		},
-		keywords.Keyword{
-			Option:       "quota",
-			Attr:         "Quota",
-			Required:     false,
-			Scopable:     true,
-			Text:         "The dataset 'quota' property value to set on provision. The value can be 'none', or a size expression, or a multiplier of the size keyword value (ex: x2).",
-			Provisioning: true,
-		},
-		keywords.Keyword{
-			Option:       "refreservation",
-			Attr:         "RefReservation",
-			Required:     false,
-			Scopable:     true,
-			Text:         "The dataset 'refreservation' property value to set on provision. The value can be 'none', or a size expression, or a multiplier of the size keyword value (ex: x2).",
-			Provisioning: true,
-		},
-		keywords.Keyword{
-			Option:       "reservation",
-			Attr:         "Reservation",
-			Required:     false,
-			Scopable:     true,
-			Text:         "The dataset 'reservation' property value to set on provision. The value can be 'none', or a size expression, or a multiplier of the size keyword value (ex: x2).",
-			Provisioning: true,
-		},
-	}...)
-	return m
 }
 
 func (t T) Start(ctx context.Context) error {

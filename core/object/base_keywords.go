@@ -605,7 +605,7 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 	}
 
 	for _, i := range driver.ListWithGroup(driverGroup) {
-		allocator, ok := i.(resource.DriverAllocator)
+		allocator, ok := i.(func() resource.Driver)
 		if !ok {
 			continue
 		}

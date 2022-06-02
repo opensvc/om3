@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/pool"
 	"opensvc.com/opensvc/util/df"
 	"opensvc.com/opensvc/util/sizeconv"
@@ -16,8 +17,12 @@ type (
 	}
 )
 
+var (
+	drvID = driver.NewID(driver.GroupPool, "shm")
+)
+
 func init() {
-	pool.Register("shm", NewPooler)
+	driver.Register(drvID, NewPooler)
 }
 
 func NewPooler() pool.Pooler {

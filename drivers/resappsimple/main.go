@@ -24,10 +24,6 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
-}
-
 // Start the Resource
 func (t T) Start(ctx context.Context) (err error) {
 	t.Log().Debug().Msg("Start()")
@@ -112,7 +108,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label returns a formatted short description of the Resource
 func (t T) Label() string {
-	return driverGroup.String()
+	return drvID.String()
 }
 
 func (t *T) status() status.T {

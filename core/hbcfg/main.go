@@ -102,12 +102,12 @@ func New(name string, config *xconfig.T) Confer {
 // Register function register a new hb driver confer
 func Register(driverName string, fn func() Confer) {
 	did := driver.NewID(driver.GroupHeartbeat, driverName)
-	driver.Register(*did, fn)
+	driver.Register(did, fn)
 }
 
 func Driver(driverName string) func() Confer {
 	did := driver.NewID(driver.GroupHeartbeat, driverName)
-	i := driver.Get(*did)
+	i := driver.Get(did)
 	if i == nil {
 		return nil
 	}

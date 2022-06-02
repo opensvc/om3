@@ -18,7 +18,7 @@ func (t L) Render() string {
 			// volume with no device
 			continue
 		}
-		did := driver.NewID(e.DriverGroup, e.DriverName)
+		did := driver.NewID(e.DriverID.Group, e.DriverID.Name)
 		n := tree.AddNode()
 		n.AddColumn().AddText(e.ObjectPath.String()).SetColor(rawconfig.Node.Color.Primary)
 		n.AddColumn().AddText(e.RID).SetColor(rawconfig.Node.Color.Primary)

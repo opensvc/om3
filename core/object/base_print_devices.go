@@ -29,14 +29,12 @@ type (
 )
 
 func (t *Base) newObjectdevice(dev *device.T, role objectdevice.Role, r resource.Driver) objectdevice.T {
-	manifest := r.Manifest()
 	return objectdevice.T{
-		Device:      dev,
-		Role:        role,
-		RID:         r.RID(),
-		DriverGroup: manifest.Group,
-		DriverName:  manifest.Name,
-		ObjectPath:  t.Path,
+		Device:     dev,
+		Role:       role,
+		RID:        r.RID(),
+		DriverID:   r.Manifest().DriverID,
+		ObjectPath: t.Path,
 	}
 }
 

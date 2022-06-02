@@ -131,7 +131,7 @@ func (t *T) Mappings() map[string]string {
 
 func Driver(t string) PoolAllocator {
 	did := driver.NewID(driver.GroupPool, t)
-	i := driver.Get(*did)
+	i := driver.Get(did)
 	if i == nil {
 		return nil
 	}
@@ -139,11 +139,6 @@ func Driver(t string) PoolAllocator {
 		return drv
 	}
 	return nil
-}
-
-func Register(t string, fn PoolAllocator) {
-	did := driver.NewID(driver.GroupPool, t)
-	driver.Register(*did, fn)
 }
 
 func (t T) Name() string {

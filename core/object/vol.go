@@ -91,7 +91,7 @@ func (t *Vol) Device() *device.T {
 		driver.GroupVolume,
 	})
 	for _, r := range l {
-		if r.Manifest().Name == "scsireserv" {
+		if r.Manifest().DriverID.Name == "scsireserv" {
 			continue
 		}
 		var i interface{} = r

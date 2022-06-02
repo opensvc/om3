@@ -4,29 +4,21 @@ import (
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/util/capabilities"
 )
 
-const (
-	driverGroup = driver.GroupShare
-	driverName  = "nfs"
+var (
+	drvID = driver.NewID(driver.GroupShare, "nfs")
 )
 
-// T is the driver structure.
-type T struct {
-	resource.T
-	SharePath string `json:"path"`
-	ShareOpts string `json:"opts"`
-
-	issues              map[string]string
-	issuesMissingClient []string
-	issuesWrongOpts     []string
-	issuesNone          []string
+func init() {
+	driver.Register(drvID, New)
+	capabilities.Register(capabilitiesScanner)
 }
 
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
+	m := manifest.New(drvID, t)
 	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{

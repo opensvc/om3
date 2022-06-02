@@ -7,10 +7,13 @@ import (
 	"opensvc.com/opensvc/drivers/resapp"
 )
 
-const (
-	driverGroup = driver.GroupTask
-	driverName  = "host"
+var (
+	drvID = driver.NewID(driver.GroupTask, "host")
 )
+
+func init() {
+	driver.Register(drvID, New)
+}
 
 // Manifest ...
 func (t T) Manifest() *manifest.T {
@@ -19,7 +22,7 @@ func (t T) Manifest() *manifest.T {
 	keywordL = append(keywordL, resapp.UnixKeywords...)
 	keywordL = append(keywordL, manifest.RunTriggerKeywords...)
 	keywordL = append(keywordL, Keywords...)
-	m := manifest.New(driverGroup, driverName, t)
+	m := manifest.New(drvID, t)
 	m.AddContext([]manifest.Context{
 		{
 			Key:  "path",

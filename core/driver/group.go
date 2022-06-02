@@ -37,6 +37,8 @@ const (
 )
 
 var (
+	resourceGroups = GroupIP | GroupVolume | GroupDisk | GroupFS | GroupShare | GroupContainer | GroupApp | GroupSync | GroupTask | GroupCertificate | GroupExpose | GroupRoute | GroupVhost
+
 	toGroupID = map[string]Group{
 		"ip":          GroupIP,
 		"volume":      GroupVolume,

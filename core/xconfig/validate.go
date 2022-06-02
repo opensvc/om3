@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceid"
+	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/stringslice"
@@ -39,6 +40,7 @@ const (
 	validateAlertKindEval
 	validateAlertKindCandidates
 	validateAlertKindDeprecated
+	validateAlertKindCapabilities
 )
 
 var (
@@ -58,6 +60,7 @@ var (
 	validateAlertKindEvalStr          = "keyword does not evaluate"
 	validateAlertKindCandidatesStr    = "keyword value is not in allowed candidates"
 	validateAlertKindDeprecatedStr    = "keyword is deprecated"
+	validateAlertKindCapabilitiesStr  = "driver is not in node capabilities"
 	validateAlertKindNames            = map[ValidateAlertKind]string{
 		validateAlertKindScoping:       validateAlertKindScopingStr,
 		validateAlertKindUnknown:       validateAlertKindUnknownStr,
@@ -65,6 +68,7 @@ var (
 		validateAlertKindEval:          validateAlertKindEvalStr,
 		validateAlertKindCandidates:    validateAlertKindCandidatesStr,
 		validateAlertKindDeprecated:    validateAlertKindDeprecatedStr,
+		validateAlertKindCapabilities:  validateAlertKindCapabilitiesStr,
 	}
 	validateAlertKindFromNames = map[string]ValidateAlertKind{
 		validateAlertKindScopingStr:       validateAlertKindScoping,
@@ -73,6 +77,7 @@ var (
 		validateAlertKindEvalStr:          validateAlertKindEval,
 		validateAlertKindCandidatesStr:    validateAlertKindCandidates,
 		validateAlertKindDeprecatedStr:    validateAlertKindDeprecated,
+		validateAlertKindCapabilitiesStr:  validateAlertKindCapabilities,
 	}
 )
 
@@ -139,6 +144,16 @@ func (t T) NewValidateAlertDeprecated(k key.T, did driver.ID, release, replacedB
 		Key:     k,
 		Driver:  did,
 		Comment: comment,
+	}
+}
+
+func (t T) NewValidateAlertCapabilities(k key.T, did driver.ID) ValidateAlert {
+	return ValidateAlert{
+		Path:   t.Path,
+		Kind:   validateAlertKindCapabilities,
+		Level:  validateAlertLevelWarn,
+		Key:    k,
+		Driver: did,
 	}
 }
 
@@ -255,7 +270,7 @@ func (t ValidateAlerts) Tree() *tree.Tree {
 func (t T) Validate() (ValidateAlerts, error) {
 	alerts := make(ValidateAlerts, 0)
 	for _, s := range t.file.Sections() {
-		did := &driver.ID{}
+		var did driver.ID
 		section := s.Name()
 		sectionType := t.GetString(key.New(section, "type"))
 		if rid, err := resourceid.Parse(section); err == nil {
@@ -264,8 +279,12 @@ func (t T) Validate() (ValidateAlerts, error) {
 				if sectionType == "" {
 					sectionType = did.Name
 				}
-				if !driver.Exists(*did) {
-					alerts = append(alerts, t.NewValidateAlertUnknownDriver(key.T{Section: section}, *did))
+				if !driver.Exists(did) {
+					alerts = append(alerts, t.NewValidateAlertUnknownDriver(key.T{Section: section}, did))
+					continue
+				}
+				if !capabilities.Has(did.Cap()) {
+					alerts = append(alerts, t.NewValidateAlertCapabilities(key.T{Section: section}, did))
 					continue
 				}
 			}
@@ -277,22 +296,22 @@ func (t T) Validate() (ValidateAlerts, error) {
 			}
 			kw, err := getKeyword(k, sectionType, t.Referrer)
 			if err != nil {
-				alerts = append(alerts, t.NewValidateAlertUnknown(k, *did))
+				alerts = append(alerts, t.NewValidateAlertUnknown(k, did))
 				continue
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
-				alerts = append(alerts, t.NewValidateAlertScoping(k, *did))
+				alerts = append(alerts, t.NewValidateAlertScoping(k, did))
 			}
 			v, err := t.evalStringAs(k, kw, "")
 			if err != nil {
-				alerts = append(alerts, t.NewValidateAlertEval(k, *did, fmt.Sprint(err)))
+				alerts = append(alerts, t.NewValidateAlertEval(k, did, fmt.Sprint(err)))
 				continue
 			}
 			if kw.Deprecated != "" {
-				alerts = append(alerts, t.NewValidateAlertDeprecated(k, *did, kw.Deprecated, kw.ReplacedBy))
+				alerts = append(alerts, t.NewValidateAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
 			}
 			if (len(kw.Candidates) > 0) && !stringslice.Has(v, kw.Candidates) {
-				alerts = append(alerts, t.NewValidateAlertCandidates(k, *did))
+				alerts = append(alerts, t.NewValidateAlertCandidates(k, did))
 			}
 		}
 	}

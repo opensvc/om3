@@ -1,0 +1,13 @@
+//go:build linux || solaris || darwin
+
+package resfsflag
+
+import "opensvc.com/opensvc/util/capabilities"
+
+func init() {
+	capabilities.Register(capabilitiesScanner)
+}
+
+func capabilitiesScanner() ([]string, error) {
+	return []string{drvID.Cap()}, nil
+}

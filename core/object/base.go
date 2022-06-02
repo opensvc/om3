@@ -266,7 +266,7 @@ func (t *Base) configureResources() {
 			t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
 			continue
 		}
-		factory := resource.NewResourceFunc(*driverID)
+		factory := resource.NewResourceFunc(driverID)
 		if factory == nil {
 			t.log.Debug().Stringer("driver", driverID).Msg("driver not found")
 			continue

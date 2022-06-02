@@ -82,9 +82,6 @@ type (
 		Requires(string) *resourcereqs.T
 	}
 
-	// DriverAllocator is the prototype of the driver allocator func
-	DriverAllocator func() Driver
-
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
@@ -267,17 +264,12 @@ func (t StandbyFlag) FlagString() string {
 	return "."
 }
 
-func Register(group driver.Group, name string, f DriverAllocator) {
-	did := driver.NewID(group, name)
-	driver.Register(*did, f)
-}
-
-func NewResourceFunc(t driver.ID) DriverAllocator {
-	i := driver.Get(t)
+func NewResourceFunc(drvID driver.ID) func() Driver {
+	i := driver.Get(drvID)
 	if i == nil {
 		return nil
 	}
-	if a, ok := i.(DriverAllocator); ok {
+	if a, ok := i.(func() Driver); ok {
 		return a
 	}
 	return nil
@@ -487,18 +479,8 @@ func (t T) TagSet() TagSet {
 	return s
 }
 
-func formatResourceType(r Driver) string {
-	m := r.Manifest()
-	switch {
-	case m.Name == "":
-		return fmt.Sprintf("%s", m.Group)
-	default:
-		return fmt.Sprintf("%s.%s", m.Group, m.Name)
-	}
-}
-
 func formatResourceLabel(r Driver) string {
-	return fmt.Sprintf("%s %s", formatResourceType(r), r.Label())
+	return fmt.Sprintf("%s %s", r.Manifest().DriverID, r.Label())
 }
 
 func (t T) trigger(s string) error {
@@ -797,7 +779,7 @@ func Status(ctx context.Context, r Driver) status.T {
 func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 	return ExposedStatus{
 		Label:       formatResourceLabel(r),
-		Type:        formatResourceType(r),
+		Type:        r.Manifest().DriverID.String(),
 		Status:      Status(ctx, r),
 		Subset:      r.RSubset(),
 		Tags:        r.TagSet(),

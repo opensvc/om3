@@ -1,5 +1,4 @@
 //go:build linux
-// +build linux
 
 package resdiskzvol
 
@@ -8,22 +7,16 @@ import (
 	"fmt"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
-	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/zfs"
 )
 
 const (
-	driverGroup = driver.GroupDisk
-	driverName  = "zvol"
 	startedProp = "opensvc:started"
 )
 
@@ -37,58 +30,9 @@ type (
 	}
 )
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
-}
-
 func New() resource.Driver {
 	t := &T{}
 	return t
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
-			Option:   "name",
-			Attr:     "Name",
-			Required: true,
-			Scopable: true,
-			Text:     "The full name of the zfs volume in the ``<pool>/<name>`` form.",
-			Example:  "tank/zvol1",
-		},
-		{
-			Option:       "create_options",
-			Attr:         "CreateOptions",
-			Converter:    converters.Shlex,
-			Scopable:     true,
-			Provisioning: true,
-			Text:         "The :cmd:`zfs create -V <name>` extra options.",
-			Example:      "-o dedup=on",
-		},
-		{
-			Option:       "size",
-			Attr:         "Size",
-			Scopable:     true,
-			Converter:    converters.Size,
-			Provisioning: true,
-			Text:         "The size of the zfs volume to create.",
-			Example:      "10m",
-		},
-		{
-			Option:       "blocksize",
-			Attr:         "BlockSize",
-			Scopable:     true,
-			Converter:    converters.Size,
-			Provisioning: true,
-			Text:         "The blocksize of the zfs volume to create.",
-			Example:      "256k",
-		},
-	}...)
-	return m
 }
 
 func (t T) hasIt() (bool, error) {

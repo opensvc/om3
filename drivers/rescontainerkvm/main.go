@@ -1,4 +1,4 @@
-package rescontainerdocker
+package rescontainerkvm
 
 import (
 	"bufio"
@@ -23,28 +23,21 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/drivers/rescontainer"
 	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/sshnode"
 )
 
 const (
-	driverGroup = driver.GroupContainer
-	driverName  = "kvm"
-	cpusetDir   = "/sys/fs/cgroup/cpuset"
+	cpusetDir = "/sys/fs/cgroup/cpuset"
 )
 
 type (
@@ -80,28 +73,6 @@ type (
 		Resources() resource.Drivers
 	}
 )
-
-func init() {
-	capabilities.Register(capabilitiesScanner)
-	resource.Register(driverGroup, driverName, New)
-}
-
-func capabilitiesScanner() ([]string, error) {
-	l := make([]string, 0)
-	if _, err := exec.LookPath("machinectl"); err == nil {
-		l = append(l, "node.x.machinectl")
-	}
-	if _, err := exec.LookPath("virsh"); err == nil {
-		l = append(l, "drivers.resource.container.kvm.partitions")
-	}
-	if isPartitionsCapable() {
-		l = append(l, "drivers.resource.container.kvm")
-	}
-	if isHVMCapable() {
-		l = append(l, "drivers.resource.container.kvm.hvm")
-	}
-	return l, nil
-}
 
 func isPartitionsCapable() bool {
 	cmd := command.New(
@@ -151,78 +122,6 @@ func New() resource.Driver {
 	return t
 }
 
-// Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-		{
-			Key:  "object_id",
-			Attr: "ObjectID",
-			Ref:  "object.id",
-		},
-		{
-			Key:  "peers",
-			Attr: "Peers",
-			Ref:  "object.nodes",
-		},
-		{
-			Key:  "dns",
-			Attr: "DNS",
-			Ref:  "node.dns",
-		},
-		{
-			Key:  "topology",
-			Attr: "Topology",
-			Ref:  "object.topology",
-		},
-	}...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		/*
-			{
-				Option:       "snap",
-				Attr:         "Snap",
-				Scopable:     true,
-				Provisioning: true,
-				Text:         "If this keyword is set, the service configures a resource-private container data store. This setup is allows stateful service relocalization.",
-				Example:      "/srv/svc1/data/containers",
-			},
-			{
-				Option:       "snapof",
-				Attr:         "SnapOf",
-				Scopable:     true,
-				Provisioning: true,
-				Text:         "Sets the root fs directory of the container",
-				Example:      "/srv/svc1/data/containers",
-			},
-		*/
-		{
-			Option:       "virtinst",
-			Attr:         "VirtInst",
-			Provisioning: true,
-			Converter:    converters.Shlex,
-			Text:         "The arguments to pass through :cmd:`lxc-create` to the per-template script.",
-			Example:      "--release focal",
-		},
-		rescontainer.KWRCmd,
-		rescontainer.KWName,
-		rescontainer.KWHostname,
-		rescontainer.KWStartTimeout,
-		rescontainer.KWStopTimeout,
-		rescontainer.KWSCSIReserv,
-		rescontainer.KWPromoteRW,
-		rescontainer.KWNoPreemptAbort,
-		rescontainer.KWOsvcRootPath,
-		rescontainer.KWGuestOS,
-	}...)
-	return m
-}
-
 func (t *T) configFile() string {
 	return filepath.Join("/etc/libvirt/qemu", t.Name+".xml")
 }
@@ -248,7 +147,7 @@ func (t T) ToSync() []string {
 }
 
 func (t T) checkCapabilities() bool {
-	if !capabilities.Has("drivers.resource.container.kvm.hvm") {
+	if !capabilities.Has(drvID.Cap() + ".hvm") {
 		t.StatusLog().Warn("hvm not supported by host")
 		return false
 	}
@@ -359,7 +258,7 @@ func (t *T) containerStart(ctx context.Context) error {
 }
 
 func (t *T) doPartitions() error {
-	if t.GetPG() != nil && !capabilities.Has("node.x.machinectl") && capabilities.Has("drivers.resource.container.kvm.partitions") {
+	if t.GetPG() != nil && !capabilities.Has("node.x.machinectl") && capabilities.Has(drvID.Cap()+".partitions") {
 		if err := t.setPartitions(); err != nil {
 			return err
 		}
@@ -661,7 +560,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.hasAutostartFile() {
 		t.StatusLog().Warn("container auto boot is on")
 	}
-	if !capabilities.Has("drivers.resource.container.kvm") {
+	if !capabilities.Has(drvID.Cap()) {
 		t.StatusLog().Info("this node is not kvm capable")
 		return status.Undef
 	}

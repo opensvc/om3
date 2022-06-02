@@ -6,24 +6,15 @@ import (
 	"path/filepath"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resdisk"
-	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/df"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/loop"
 	"opensvc.com/opensvc/util/sizeconv"
-)
-
-const (
-	driverGroup = driver.GroupDisk
-	driverName  = "loop"
 )
 
 type (
@@ -34,47 +25,9 @@ type (
 	}
 )
 
-func capabilitiesScanner() ([]string, error) {
-	if !loop.IsCapable() {
-		return []string{}, nil
-	}
-	return []string{"drivers.resource.disk.loop"}, nil
-}
-
 func New() resource.Driver {
 	t := &T{}
 	return t
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
-			Option:   "file",
-			Attr:     "File",
-			Required: true,
-			Scopable: true,
-			Text:     "The loopback device backing file full path.",
-			Example:  "/srv/{fqdn}-loop-{rindex}",
-		},
-		{
-			Option:       "size",
-			Attr:         "Size",
-			Scopable:     true,
-			Provisioning: true,
-			Text:         "The size of the loop file to provision.",
-			Example:      "100m",
-		},
-	}...)
-	return m
-}
-
-func init() {
-	capabilities.Register(capabilitiesScanner)
-	resource.Register(driverGroup, driverName, New)
 }
 
 func (t T) loop() *loop.T {

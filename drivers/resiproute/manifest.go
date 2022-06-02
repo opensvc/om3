@@ -4,34 +4,19 @@ import (
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/core/resource"
 )
 
-const (
-	driverGroup = driver.GroupIP
-	driverName  = "route"
+var (
+	drvID = driver.NewID(driver.GroupIP, "route")
 )
-
-// T ...
-type T struct {
-	To      string `json:"destination"`
-	Gateway string `json:"gateway"`
-	NetNS   string `json:"netns"`
-	Dev     string `json:"dev"`
-	resource.T
-}
 
 func init() {
-	resource.Register(driverGroup, driverName, New)
-}
-
-func New() resource.Driver {
-	return &T{}
+	driver.Register(drvID, New)
 }
 
 // Manifest ...
 func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
+	m := manifest.New(drvID, t)
 	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{

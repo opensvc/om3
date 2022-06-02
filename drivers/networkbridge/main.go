@@ -1,6 +1,7 @@
 package networkbridge
 
 import (
+	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/network"
 )
 
@@ -10,8 +11,12 @@ type (
 	}
 )
 
+var (
+	drvID = driver.NewID(driver.GroupNetwork, "bridge")
+)
+
 func init() {
-	network.Register("bridge", NewNetworker)
+	driver.Register(drvID, NewNetworker)
 }
 
 func NewNetworker() network.Networker {

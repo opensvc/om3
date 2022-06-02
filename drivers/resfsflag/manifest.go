@@ -3,27 +3,19 @@ package resfsflag
 import (
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/resource"
 )
 
-const (
-	driverGroup = driver.GroupFS
-	driverName  = "flag"
+var (
+	drvID = driver.NewID(driver.GroupFS, "flag")
 )
 
-// T is the driver structure.
-type T struct {
-	resource.T
-	Path     path.T   `json:"path"`
-	Nodes    []string `json:"nodes"`
-	lazyFile string
-	lazyDir  string
+func init() {
+	driver.Register(drvID, New)
 }
 
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
+	m := manifest.New(drvID, t)
 	m.AddContext([]manifest.Context{
 		{
 			Key:  "path",

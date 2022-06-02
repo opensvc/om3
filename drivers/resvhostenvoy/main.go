@@ -4,18 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/converters"
-)
-
-const (
-	driverGroup = driver.GroupVhost
-	driverName  = "envoy"
 )
 
 type (
@@ -26,38 +17,9 @@ type (
 	}
 )
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
-}
-
 func New() resource.Driver {
 	t := &T{}
 	return t
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t T) Manifest() *manifest.T {
-	m := manifest.New(driverGroup, driverName, t)
-	m.AddKeyword([]keywords.Keyword{
-		{
-			Option:    "domains",
-			Attr:      "Domains",
-			Scopable:  true,
-			Converter: converters.List,
-			Default:   "{name}",
-			Example:   "{name}",
-			Text:      "The list of http domains in this expose.",
-		},
-		{
-			Option:    "routes",
-			Attr:      "Routes",
-			Scopable:  true,
-			Converter: converters.List,
-			Example:   "route#1 route#2",
-			Text:      "The list of route resource identifiers for this vhost.",
-		},
-	}...)
-	return m
 }
 
 func (t T) Start(ctx context.Context) error {

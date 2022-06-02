@@ -17,8 +17,7 @@ type (
 	// m := New("fs", "flag").AddKeyword(kws...).AddContext(ctx...)
 	//
 	T struct {
-		Group    driver.Group       `json:"group"`
-		Name     string             `json:"name"`
+		DriverID driver.ID          `json:"driver"`
 		Keywords []keywords.Keyword `json:"keywords"`
 		Context  []Context          `json:"context"`
 	}
@@ -334,10 +333,9 @@ var ProvisioningKeywords = []keywords.Keyword{
 	},
 }
 
-func New(group driver.Group, name string, r interface{}) *T {
+func New(did driver.ID, r interface{}) *T {
 	t := &T{
-		Group: group,
-		Name:  name,
+		DriverID: did,
 	}
 	t.AddKeyword(genericKeywords...)
 	t.AddInterfacesKeywords(r)

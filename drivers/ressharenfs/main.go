@@ -11,9 +11,16 @@ import (
 	"opensvc.com/opensvc/util/capabilities"
 )
 
-func init() {
-	resource.Register(driverGroup, driverName, New)
-	capabilities.Register(capabilitiesScanner)
+// T is the driver structure.
+type T struct {
+	resource.T
+	SharePath string `json:"path"`
+	ShareOpts string `json:"opts"`
+
+	issues              map[string]string
+	issuesMissingClient []string
+	issuesWrongOpts     []string
+	issuesNone          []string
 }
 
 func New() resource.Driver {
