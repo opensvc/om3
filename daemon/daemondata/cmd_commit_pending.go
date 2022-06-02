@@ -32,6 +32,7 @@ func (o opCommitPending) call(d *data) {
 	}
 
 	cfgDeletes, cfgUpdates := d.getCfgDiff()
+	statusDeletes, statusUpdates := d.getStatusDiff()
 
 	d.committed = d.pending.DeepCopy()
 
@@ -40,6 +41,12 @@ func (o opCommitPending) call(d *data) {
 	}
 	for _, cfgUpdates := range cfgUpdates {
 		daemonps.PubCfgUpdate(d.pubSub, cfgUpdates.Path.String(), cfgUpdates)
+	}
+	for _, w := range statusDeletes {
+		daemonps.PubInstStatusDelete(d.pubSub, w.Path.String(), w)
+	}
+	for _, w := range statusUpdates {
+		daemonps.PubInstStatusUpdated(d.pubSub, w.Path.String(), w)
 	}
 
 	d.log.Debug().

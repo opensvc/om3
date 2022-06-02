@@ -31,6 +31,32 @@ func (d *data) getCfgDiff() (deletes []moncmd.CfgDeleted, updates []moncmd.CfgUp
 	return
 }
 
+func (d *data) getStatusDiff() (deletes []moncmd.InstStatusDeleted, updates []moncmd.InstStatusUpdated) {
+	nodes := make(map[string]struct{})
+	for n := range d.pending.Monitor.Nodes {
+		if n == d.localNode {
+			continue
+		}
+		nodes[n] = struct{}{}
+	}
+	for n := range d.committed.Monitor.Nodes {
+		if n == d.localNode {
+			continue
+		}
+		nodes[n] = struct{}{}
+	}
+	for n := range nodes {
+		cfgDeletes, cfgUpdates := d.getStatusDiffForNode(n)
+		if len(cfgDeletes) > 0 {
+			deletes = append(deletes, cfgDeletes...)
+		}
+		if len(cfgUpdates) > 0 {
+			updates = append(updates, cfgUpdates...)
+		}
+	}
+	return
+}
+
 func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.CfgUpdated) {
 	deletes := make([]moncmd.CfgDeleted, 0)
 	updates := make([]moncmd.CfgUpdated, 0)
@@ -113,6 +139,78 @@ func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.Cfg
 				continue
 			}
 			deletes = append(deletes, moncmd.CfgDeleted{
+				Path: p,
+				Node: node,
+			})
+		}
+	}
+	return deletes, updates
+}
+
+func (d *data) getStatusDiffForNode(node string) ([]moncmd.InstStatusDeleted, []moncmd.InstStatusUpdated) {
+	deletes := make([]moncmd.InstStatusDeleted, 0)
+	updates := make([]moncmd.InstStatusUpdated, 0)
+	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
+	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
+	if hasPendingNode && hasCommittedNode {
+		for s, pending := range pendingNode.Services.Status {
+			if committed, ok := committedNode.Services.Status[s]; ok {
+				if pending.Updated.Time().Unix() > committed.Updated.Time().Unix() {
+					p, err := path.Parse(s)
+					if err != nil {
+						continue
+					}
+					updates = append(updates, moncmd.InstStatusUpdated{
+						Path:   p,
+						Node:   node,
+						Status: *pending.DeepCopy(),
+					})
+				}
+			} else {
+				p, err := path.Parse(s)
+				if err != nil {
+					continue
+				}
+				updates = append(updates, moncmd.InstStatusUpdated{
+					Path:   p,
+					Node:   node,
+					Status: *pending.DeepCopy(),
+				})
+			}
+		}
+		for s := range committedNode.Services.Status {
+			if _, ok := pendingNode.Services.Status[s]; !ok {
+				p, err := path.Parse(s)
+				if err != nil {
+					continue
+				}
+				deletes = append(deletes, moncmd.InstStatusDeleted{
+					Path: p,
+					Node: node,
+				})
+			}
+		}
+	} else if hasPendingNode {
+		// all pending status are new
+		for s, cfg := range pendingNode.Services.Status {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			updates = append(updates, moncmd.InstStatusUpdated{
+				Path:   p,
+				Node:   node,
+				Status: *cfg.DeepCopy(),
+			})
+		}
+	} else if hasCommittedNode {
+		// all committed status are deleted
+		for s := range committedNode.Services.Status {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			deletes = append(deletes, moncmd.InstStatusDeleted{
 				Path: p,
 				Node: node,
 			})
