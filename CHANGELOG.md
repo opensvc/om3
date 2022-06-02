@@ -19,6 +19,11 @@
 	vxdg: disk.vxdg
 	vxvol: disk.vxvol
 
+For example, a [md#1] section needs reformatting as:
+
+	[disk#1]
+	type = md
+
 * **breaking change:** stop matching DEFAULT.<string> for "<string>:" object selector expressions. Match only sections basename (like in [<basename>#<index>]).
 
 * **breaking change:** drop backward compatibility for the always_on=<nodes> keyword.
