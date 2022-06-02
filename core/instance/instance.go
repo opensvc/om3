@@ -16,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
+	"opensvc.com/opensvc/util/stringslice"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -253,4 +254,20 @@ func (smon Monitor) DeepCopy() *Monitor {
 	}
 	v.Restart = restart
 	return &v
+}
+
+// ConfigEqual returns a boolean reporting whether a == b
+//
+// Nodename and Path are not compared
+func ConfigEqual(a, b *Config) bool {
+	if a.Updated != b.Updated {
+		return false
+	}
+	if a.Checksum != b.Checksum {
+		return false
+	}
+	if !stringslice.Equal(a.Scope, b.Scope) {
+		return false
+	}
+	return true
 }
