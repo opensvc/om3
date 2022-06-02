@@ -29,9 +29,10 @@ system packages change, so admins only have to use this when they want manually
 installed software to be discovered without restarting the daemon.`
 
 	return &cobra.Command{
-		Use:   "capabilities",
-		Short: "scan the node for capabilities",
-		Long:  long,
+		Use:     "capabilities",
+		Short:   "scan the node for capabilities",
+		Aliases: []string{"capa", "caps", "cap", "ca", "c"},
+		Long:    long,
 		Run: func(_ *cobra.Command, _ []string) {
 			t.run()
 		},
