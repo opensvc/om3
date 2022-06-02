@@ -147,7 +147,7 @@ type (
 // returns the created pub sub cmd chan
 //
 func Start(ctx context.Context, name string) chan<- interface{} {
-	log := daemonctx.Logger(ctx).With().Str("name", name).Logger()
+	log := daemonctx.Logger(ctx).With().Str("_pkg", "pubSub").Str("name", name).Logger()
 	started := make(chan struct{})
 	cmdC := make(chan interface{})
 	go func() {
@@ -206,7 +206,7 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 					subOps[id] = c.op
 					subMatching[id] = c.matching
 					c.resp <- id
-					log.Info().Msgf("subscribe %s", c.name)
+					log.Debug().Msgf("subscribe %s", c.name)
 				case cmdUnsub:
 					name, ok := subNames[c.subId]
 					if !ok {
@@ -217,7 +217,7 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 					delete(subNs, c.subId)
 					delete(subOps, c.subId)
 					c.resp <- name
-					log.Info().Msgf("unsubscribe %s", name)
+					log.Debug().Msgf("unsubscribe %s", name)
 				}
 			}
 		}
