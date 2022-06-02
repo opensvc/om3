@@ -565,6 +565,33 @@ var keywordStore = keywords.Store{
 		Text:      "Wait for <duration> before declaring the action a failure. Takes precedence over :kw:`timeout`.",
 		Example:   "1m30s",
 	},
+	{
+		Option:     "access",
+		Attr:       "Access",
+		Kind:       kind.Or(kind.Vol),
+		Inherit:    keywords.InheritHead,
+		Default:    "rwo",
+		Candidates: []string{"rwo", "roo", "rwx", "rox"},
+		Scopable:   true,
+		Text:       "The access mode of the volume.\n``rwo`` is Read Write Once,\n``roo`` is Read Only Once,\n``rwx`` is Read Write Many,\n``rox`` is Read Only Many.\n``rox`` and ``rwx`` modes are served by flex volume services.",
+	},
+	{
+		Option:    "size",
+		Attr:      "Size",
+		Inherit:   keywords.InheritHead,
+		Kind:      kind.Or(kind.Vol),
+		Scopable:  true,
+		Converter: converters.Size,
+		Text:      "The size used by this volume in its pool.",
+	},
+	{
+		Option:   "pool",
+		Attr:     "Pool",
+		Inherit:  keywords.InheritHead,
+		Kind:     kind.Or(kind.Vol),
+		Scopable: true,
+		Text:     "The name of the pool this volume was allocated from.",
+	},
 }
 
 func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
