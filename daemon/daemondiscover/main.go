@@ -70,7 +70,7 @@ func Start(ctx context.Context) error {
 		svcaggCmdC: make(chan *moncmd.T),
 
 		ctx:    ctx,
-		log:    daemonctx.Logger(ctx).With().Str("name", "_svc-discover").Logger(),
+		log:    daemonctx.Logger(ctx).With().Str("_pkg", "daemondiscover").Logger(),
 		moncfg: make(map[string]struct{}),
 
 		monCfgCmdC:   make(map[string]chan<- *moncmd.T),

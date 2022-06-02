@@ -15,7 +15,7 @@ import (
 
 func (d *discover) fsWatcherStart() error {
 	watcher, err := fsnotify.NewWatcher()
-	log := d.log
+	log := d.log.With().Str("_func", "fsWatcherStart").Logger()
 	if err != nil {
 		d.log.Error().Err(err).Msg("NewWatcher")
 		return err
@@ -71,7 +71,7 @@ func (d *discover) fsWatcherStart() error {
 				if !strings.HasSuffix(filename, ".conf") {
 					continue
 				}
-				log.Info().Msgf("event: %s", event)
+				log.Debug().Msgf("event: %s", event)
 				createDeleteMask := fsnotify.Create | fsnotify.Remove | fsnotify.Create
 				if event.Op&createDeleteMask == 0 {
 					continue
@@ -82,7 +82,7 @@ func (d *discover) fsWatcherStart() error {
 				}
 				switch {
 				case event.Op&fsnotify.Create != 0:
-					log.Info().Msgf("cfg discover detect created file %s", filename)
+					log.Debug().Msgf("cfg discover detect created file %s", filename)
 					d.cfgCmdC <- moncmd.New(moncmd.CfgFsWatcherCreate{Path: p, Filename: event.Name})
 				}
 			}
