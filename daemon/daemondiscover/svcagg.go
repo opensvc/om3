@@ -10,7 +10,7 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func (d *discover) svcaggRoutine() {
+func (d *discover) agg() {
 	log := d.log.With().Str("_func", "agg").Logger()
 	log.Info().Msg("started")
 	defer func() {

@@ -87,7 +87,7 @@ func Start(ctx context.Context) error {
 		d.log.Error().Err(err).Msg("fsWatcherStart")
 		return err
 	}
-	go d.cfgRoutine()
-	go d.svcaggRoutine()
+	go d.cfg()
+	go d.agg()
 	return nil
 }
