@@ -38,6 +38,7 @@ func (d *discover) cfg() {
 		select {
 		case <-d.ctx.Done():
 			d.log.Info().Msg("cfg done")
+			return
 		case i := <-d.cfgCmdC:
 			switch c := (*i).(type) {
 			case moncmd.CfgFsWatcherCreate:

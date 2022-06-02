@@ -29,6 +29,7 @@ func (d *discover) agg() {
 		select {
 		case <-d.ctx.Done():
 			log.Info().Msg("done")
+			return
 		case i := <-d.svcaggCmdC:
 			switch c := (*i).(type) {
 			case moncmd.MonSvcAggDone:
