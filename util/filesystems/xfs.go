@@ -54,3 +54,10 @@ func (t T_XFS) MKFS(devpath string, args []string) error {
 	)
 	return cmd.Run()
 }
+
+func (t T_XFS) IsCapable() bool {
+	if _, err := exec.LookPath("mkfs.xfs"); err != nil {
+		return false
+	}
+	return true
+}

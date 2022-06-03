@@ -1,9 +1,13 @@
 package filesystems
 
 import (
+	"bufio"
 	"errors"
+	"os"
+	"strings"
 
 	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/xmap"
 )
@@ -44,13 +48,17 @@ type (
 	IsFormateder interface {
 		IsFormated(string) (bool, error)
 	}
+	IsCapabler interface {
+		IsCapable() bool
+	}
 	MKFSer interface {
 		MKFS(string, []string) error
 	}
 )
 
 var (
-	db = make(map[string]interface{})
+	availTypesCache availTypesM
+	db              = make(map[string]interface{})
 )
 
 func init() {
@@ -139,6 +147,19 @@ func (t *T) SetLog(log *zerolog.Logger) {
 	t.log = log
 }
 
+func IsCapable(t string) bool {
+	fs := FromType(t)
+	if i, ok := fs.(IsCapabler); ok {
+		if !i.IsCapable() {
+			return false
+		}
+	}
+	if !availTypes().Has(t) && !hasKMod(t) {
+		return false
+	}
+	return true
+}
+
 func CanFSCK(fs interface{}) error {
 	if i, ok := fs.(CanFSCKer); !ok {
 		return nil
@@ -196,4 +217,49 @@ func FromType(s string) I {
 
 func Types() []string {
 	return xmap.Keys(db)
+}
+
+type availTypesM map[string]interface{}
+
+func (m availTypesM) Has(s string) bool {
+	if m == nil {
+		return false
+	}
+	_, ok := m[s]
+	return ok
+}
+
+func hasKMod(s string) bool {
+	cmd := command.New(
+		command.WithName("modinfo"),
+		command.WithVarArgs(s),
+	)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+func availTypes() availTypesM {
+	if availTypesCache != nil {
+		return availTypesCache
+	}
+	m := make(availTypesM)
+	f, err := os.Open("/proc/filesystems")
+	if err != nil {
+		return m
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		s := scanner.Text()
+		fields := strings.Fields(s)
+		n := len(fields)
+		s = fields[n-1]
+		if s != "" {
+			m[s] = nil
+		}
+	}
+	availTypesCache = m
+	return m
 }
