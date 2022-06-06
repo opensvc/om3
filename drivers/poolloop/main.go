@@ -52,14 +52,11 @@ func (t T) Usage() (pool.StatusUsage, error) {
 		return pool.StatusUsage{}, err
 	}
 	e := entries[0]
-	var used int64
-	if size > 0 {
-		size = e.Size / 1024
+	var size, free, used int64
+	if e.Total > 0 {
+		size = e.Total / 1024
 		free = e.Free / 1024
 		used = e.Used / 1024
-	} else {
-		size = 0
-		free = 0
 	}
 	usage := pool.StatusUsage{
 		Size: float64(size),

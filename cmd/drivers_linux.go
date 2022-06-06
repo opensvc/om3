@@ -7,6 +7,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/networkbridge"
 	_ "opensvc.com/opensvc/drivers/networklo"
 	_ "opensvc.com/opensvc/drivers/networkroutedbridge"
+	_ "opensvc.com/opensvc/drivers/poolloop"
 	_ "opensvc.com/opensvc/drivers/poolvg"
 	_ "opensvc.com/opensvc/drivers/rescontainerdocker"
 	_ "opensvc.com/opensvc/drivers/rescontainerkvm"
