@@ -326,17 +326,19 @@ func (t *T) HasKey(k key.T) bool {
 }
 
 func (t *T) Get(k key.T) string {
-	fk := t.file.Section(k.Section).Key(k.Option)
-	if fk == nil {
+	if section := t.file.Section(k.Section); section == nil {
 		return ""
+	} else if fk := section.Key(k.Option); fk == nil {
+		return ""
+	} else {
+		return fk.Value()
 	}
-	return fk.Value()
 }
 
 func (t *T) GetStrict(k key.T) (string, error) {
-	s := t.file.Section(k.Section)
-	if s.HasKey(k.Option) {
-		return s.Key(k.Option).Value(), nil
+	section := t.file.Section(k.Section)
+	if section.HasKey(k.Option) {
+		return section.Key(k.Option).Value(), nil
 	}
 	return "", errors.Wrapf(ErrExist, "key '%s' not found (unscopable kw)", k)
 }
