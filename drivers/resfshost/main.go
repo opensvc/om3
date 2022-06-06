@@ -164,6 +164,12 @@ func (t T) device() *device.T {
 }
 
 func (t T) devpath() string {
+	if t.fs().IsFileBacked() {
+		return t.Device
+	}
+	if t.fs().IsVirtual() {
+		return "none"
+	}
 	if p, err := object.Realdevpath(t.Device, t.Path.Namespace); err == nil {
 		return p
 	} else {
@@ -185,6 +191,9 @@ func (t *T) mount(ctx context.Context) error {
 		t.Log().Info().Msgf("%s already mounted on %s", t.devpath(), t.mountPoint())
 		return nil
 	}
+	if err := t.createDevice(ctx); err != nil {
+		return err
+	}
 	if err := t.createMountPoint(ctx); err != nil {
 		return err
 	}
@@ -197,6 +206,22 @@ func (t *T) mount(ctx context.Context) error {
 	actionrollback.Register(ctx, func() error {
 		return t.fs().Umount(t.mountPoint())
 	})
+	return nil
+}
+
+func (t *T) createDevice(ctx context.Context) error {
+	p := t.devpath()
+	fs := t.fs()
+	if !fs.IsFileBacked() {
+		return nil
+	}
+	if file.Exists(p) {
+		return nil
+	}
+	t.Log().Info().Msgf("create missing device %s", p)
+	if err := os.MkdirAll(p, 0755); err != nil {
+		return fmt.Errorf("error creating device %s: %s", p, err)
+	}
 	return nil
 }
 
@@ -234,8 +259,9 @@ func (t *T) validateDevice() error {
 	if t.isByUUID() {
 		return nil
 	}
-	if !file.Exists(t.Device) {
-		return fmt.Errorf("device does not exist: %s", t.Device)
+	dev := t.devpath()
+	if !fs.IsFileBacked() && !file.Exists(dev) {
+		return fmt.Errorf("device does not exist: %s", dev)
 	}
 	return nil
 }
