@@ -1,8 +1,11 @@
+//go:build linux
 // +build linux
 
 package lvm2
 
 import (
+	"os/exec"
+
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
@@ -47,6 +50,13 @@ func WithLogger(log *zerolog.Logger) funcopt.O {
 		t.SetLog(log)
 		return nil
 	})
+}
+
+func IsCapable() bool {
+	if _, err := exec.LookPath("lvs"); err == nil {
+		return true
+	}
+	return false
 }
 
 func hasMetad() bool {

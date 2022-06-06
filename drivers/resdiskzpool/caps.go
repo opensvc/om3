@@ -1,4 +1,4 @@
-package resdiskzvol
+package resdiskzpool
 
 import (
 	"os/exec"
@@ -12,7 +12,7 @@ func init() {
 
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	if _, err := exec.LookPath("zfs"); err != nil {
+	if _, err := exec.LookPath("zpool"); err != nil {
 		return l, nil
 	}
 	l = append(l, drvID.Cap())
