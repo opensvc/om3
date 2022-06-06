@@ -480,7 +480,7 @@ func (t T) TagSet() TagSet {
 }
 
 func formatResourceLabel(r Driver) string {
-	return fmt.Sprintf("%s %s", r.Manifest().DriverID, r.Label())
+	return fmt.Sprintf("%s %s", r.Manifest().DriverID.Name, r.Label())
 }
 
 func (t T) trigger(s string) error {
