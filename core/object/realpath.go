@@ -95,7 +95,11 @@ func Realdevpath(s string, namespace string) (string, error) {
 		default:
 			return s, errors.Wrapf(ErrAccess, "%s(%s)", volPath, st.Avail)
 		}
-		return vol.Device().Path(), nil
+		dev := vol.Device()
+		if dev == nil {
+			return s, errors.Errorf("%s is not a device-capable vol", s)
+		}
+		return dev.Path(), nil
 	}
 }
 
