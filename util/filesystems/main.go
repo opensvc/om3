@@ -63,7 +63,7 @@ var (
 
 func init() {
 	registerFS(&T{fsType: "tmpfs", isVirtual: true})
-	registerFS(&T{fsType: "none", isVirtual: true})
+	registerFS(&T{fsType: "none", isFileBacked: true})
 	registerFS(&T{fsType: "bind", isFileBacked: true})
 	registerFS(&T{fsType: "lofs", isFileBacked: true})
 	registerFS(&T{fsType: "btrfs", isMultiDevice: true})
