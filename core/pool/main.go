@@ -52,7 +52,6 @@ type (
 		Size float64 `json:"size"`
 	}
 	VolumeStatusList []VolumeStatus
-	PoolAllocator    func() Pooler
 
 	Config interface {
 		GetString(key.T) string
@@ -129,13 +128,13 @@ func (t *T) Mappings() map[string]string {
 	return m
 }
 
-func Driver(t string) PoolAllocator {
+func Driver(t string) func() Pooler {
 	did := driver.NewID(driver.GroupPool, t)
 	i := driver.Get(did)
 	if i == nil {
 		return nil
 	}
-	if drv, ok := i.(PoolAllocator); ok {
+	if drv, ok := i.(func() Pooler); ok {
 		return drv
 	}
 	return nil

@@ -110,7 +110,6 @@ type (
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
 	}
-	NetworkAllocator func() Networker
 )
 
 func (t *T) Log() *zerolog.Logger {
@@ -150,13 +149,13 @@ func NewFromNoder(name string, noder Noder) Networker {
 	return NewTyped(name, networkType, networkNetwork, noder)
 }
 
-func Driver(t string) NetworkAllocator {
+func Driver(t string) func() Networker {
 	drvID := driver.NewID(driver.GroupNetwork, t)
 	i := driver.Get(drvID)
 	if i == nil {
 		return nil
 	}
-	if a, ok := i.(NetworkAllocator); ok {
+	if a, ok := i.(func() Networker); ok {
 		return a
 	}
 	return nil
