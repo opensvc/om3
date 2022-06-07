@@ -27,10 +27,10 @@ func parsePoolUsage(b []byte) (PoolUsage, error) {
 	}
 	parseLine := func(line string) (int64, error) {
 		l := strings.Fields(line)
-		if len(l) != 2 {
+		if len(l) < 3 {
 			return 0, errors.Errorf("unexpected number of elements in line: %s", line)
 		}
-		return strconv.ParseInt(l[1], 10, 64)
+		return strconv.ParseInt(l[2], 10, 64)
 	}
 
 	if i, err := parseLine(lines[0]); err == nil {
