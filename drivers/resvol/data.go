@@ -295,6 +295,9 @@ func (t T) installDir(dir string, head string, mode *os.FileMode) error {
 }
 
 func (t T) installDirs() error {
+	if len(t.Directories) == 0 {
+		return nil
+	}
 	head := t.Head()
 	if head == "" {
 		return fmt.Errorf("refuse to install dirs in empty (ie /) head")
