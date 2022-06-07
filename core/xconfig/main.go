@@ -557,7 +557,7 @@ func (t *T) write() (err error) {
 	var f *os.File
 	ini.DefaultHeader = true
 	dir := filepath.Dir(t.ConfigFilePath)
-	if err = os.MkdirAll(dir, 0755); err != nil {
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
 	base := filepath.Base(t.ConfigFilePath)
