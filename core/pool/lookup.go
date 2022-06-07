@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/core/volaccess"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/sizeconv"
 )
@@ -137,7 +138,7 @@ type (
 	consumer interface {
 		String() string
 		Nodes() []string
-		Config() Config
+		Config() *xconfig.T
 	}
 )
 
@@ -165,7 +166,7 @@ func (t Lookup) Env(p Pooler, c consumer, optional bool) ([]string, error) {
 func (t Lookup) ConfigureVolume(volume volumer, obj interface{}) error {
 	c, ok := obj.(consumer)
 	if !ok {
-		return fmt.Errorf("ConfigureVolume() obj argument is not a consumer")
+		return fmt.Errorf("ConfigureVolume(): the <obj> argument is not a consumer")
 	}
 	p, err := t.Do()
 	if err != nil {
