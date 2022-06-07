@@ -1,9 +1,8 @@
 package resdiskzpool
 
 import (
-	"os/exec"
-
 	"opensvc.com/opensvc/util/capabilities"
+	"opensvc.com/opensvc/util/zfs"
 )
 
 func init() {
@@ -12,7 +11,7 @@ func init() {
 
 func capabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	if _, err := exec.LookPath("zpool"); err != nil {
+	if !zfs.IsCapable() {
 		return l, nil
 	}
 	l = append(l, drvID.Cap())
