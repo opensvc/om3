@@ -161,6 +161,7 @@ func (t T) provisionDir(ctx context.Context) error {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
+		t.Log().Info().Msgf("unlink dir %s", dir)
 		return os.Remove(dir)
 	})
 	return nil
@@ -181,6 +182,7 @@ func (t T) provision(ctx context.Context) error {
 	}
 	defer f.Close()
 	actionrollback.Register(ctx, func() error {
+		t.Log().Info().Msgf("unlink file %s", t.File)
 		return os.Remove(t.File)
 	})
 	if size, err = sizeconv.FromSize(t.Size); err != nil {
@@ -204,7 +206,7 @@ func (t T) provision(ctx context.Context) error {
 }
 
 func (t T) unprovision(ctx context.Context) error {
-	t.Log().Info().Msgf("unlink %s", t.File)
+	t.Log().Info().Msgf("unlink file %s", t.File)
 	return os.RemoveAll(t.File)
 }
 
