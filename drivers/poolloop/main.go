@@ -3,6 +3,8 @@
 package poolloop
 
 import (
+	"fmt"
+
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/pool"
 	"opensvc.com/opensvc/util/df"
@@ -73,10 +75,12 @@ func (t *T) Translate(name string, size float64, shared bool) []string {
 }
 
 func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
+	p := fmt.Sprintf("%s/%s.img", t.Head(), name)
 	data := []string{
 		"disk#0.type=loop",
 		"disk#0.name=" + name,
 		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
+		"disk#0.file=" + p,
 	}
 	return data
 }
