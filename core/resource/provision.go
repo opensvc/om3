@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -203,6 +204,12 @@ func getProvisionedValue(r Driver) (bool, error) {
 
 func setProvisionedValue(v bool, r Driver) error {
 	p := provisionedFile(r)
+	d := filepath.Dir(p)
+	if _, err := os.Stat(d); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(d, os.ModePerm); err != nil {
+			return err
+		}
+	}
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
