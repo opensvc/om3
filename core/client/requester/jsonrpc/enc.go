@@ -35,10 +35,11 @@ type (
 
 // NewMessage allocates a new Message configured for the local node and cluster context
 func NewMessage(b []byte) *Message {
+	cluster := rawconfig.ClusterSection()
 	m := &Message{
 		NodeName:    hostname.Hostname(),
-		ClusterName: rawconfig.Node.Cluster.Name,
-		Key:         rawconfig.Node.Cluster.Secret,
+		ClusterName: cluster.Name,
+		Key:         cluster.Secret,
 		Data:        b,
 	}
 	return m

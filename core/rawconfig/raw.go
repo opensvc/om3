@@ -57,7 +57,7 @@ func (t T) Render() string {
 		if section == "metadata" {
 			continue
 		}
-		s += Node.Colorize.Primary(fmt.Sprintf("[%s]\n", section))
+		s += Colorize.Primary(fmt.Sprintf("[%s]\n", section))
 		data, _ := t.Data.Get(section)
 		omap := data.(orderedmap.OrderedMap)
 		for _, k := range omap.Keys() {
@@ -82,7 +82,7 @@ func renderComment(k string, v interface{}) string {
 }
 
 func renderKey(k string, v interface{}) string {
-	k = RegexpScope.ReplaceAllString(k, Node.Colorize.Error("$1"))
+	k = RegexpScope.ReplaceAllString(k, Colorize.Error("$1"))
 	var vs string
 	type stringer interface {
 		String() string
@@ -113,7 +113,7 @@ func renderKey(k string, v interface{}) string {
 	case bool:
 		vs = strconv.FormatBool(o)
 	case string:
-		vs = RegexpReference.ReplaceAllString(o, Node.Colorize.Optimal("$1"))
+		vs = RegexpReference.ReplaceAllString(o, Colorize.Optimal("$1"))
 		vs = strings.ReplaceAll(vs, "\n", "\n\t")
 	case stringer:
 		vs = o.String()
@@ -121,5 +121,5 @@ func renderKey(k string, v interface{}) string {
 		//fmt.Println(o, reflect.TypeOf(o))
 		vs = ""
 	}
-	return fmt.Sprintf("%s = %s\n", Node.Colorize.Secondary(k), vs)
+	return fmt.Sprintf("%s = %s\n", Colorize.Secondary(k), vs)
 }

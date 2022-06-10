@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -53,13 +54,13 @@ func (t L) Swap(i, j int) {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t L) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("ip").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("node").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("object").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("resource").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("ip").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("node").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("object").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("resource").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
 	sort.Sort(t)
 	for _, data := range t {
 		n := head.AddNode()

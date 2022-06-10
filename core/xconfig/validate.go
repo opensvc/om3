@@ -239,16 +239,16 @@ func (t ValidateAlerts) Tree() *tree.Tree {
 		return tr
 	}
 	node := tr.AddNode()
-	node.AddColumn().AddText("alert level").SetColor(rawconfig.Node.Color.Secondary)
-	node.AddColumn().AddText("key").SetColor(rawconfig.Node.Color.Secondary)
-	node.AddColumn().AddText("driver").SetColor(rawconfig.Node.Color.Secondary)
-	node.AddColumn().AddText("kind").SetColor(rawconfig.Node.Color.Secondary)
-	node.AddColumn().AddText("comment").SetColor(rawconfig.Node.Color.Secondary)
+	node.AddColumn().AddText("alert level").SetColor(rawconfig.Color.Secondary)
+	node.AddColumn().AddText("key").SetColor(rawconfig.Color.Secondary)
+	node.AddColumn().AddText("driver").SetColor(rawconfig.Color.Secondary)
+	node.AddColumn().AddText("kind").SetColor(rawconfig.Color.Secondary)
+	node.AddColumn().AddText("comment").SetColor(rawconfig.Color.Secondary)
 	for _, alert := range t {
 		n := tr.AddNode()
-		color := rawconfig.Node.Color.Warning
+		color := rawconfig.Color.Warning
 		if alert.Level == validateAlertLevelError {
-			color = rawconfig.Node.Color.Error
+			color = rawconfig.Color.Error
 		}
 		driver := alert.Driver.String()
 		if driver == "" {

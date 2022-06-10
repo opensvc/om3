@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
@@ -113,7 +114,7 @@ func (t *CmdObjectPrintSchedule) run(selector *string, kind string) {
 		Format:   t.Global.Format,
 		Color:    t.Global.Color,
 		Data:     data,
-		Colorize: rawconfig.Node.Colorize,
+		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {
 			return data.Render()
 		},

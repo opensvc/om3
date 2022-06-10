@@ -243,7 +243,7 @@ func (t T) DoLocal() error {
 				branch := i.Tree()
 				if !branch.IsEmpty() {
 					rsNode = rsTree.AddNode()
-					rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Node.Color.Bold)
+					rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Color.Bold)
 					rsNode.PlugTree(branch)
 				}
 				continue
@@ -274,7 +274,7 @@ func (t T) DoLocal() error {
 		Color:         t.Color,
 		Data:          rs,
 		HumanRenderer: human,
-		Colorize:      rawconfig.Node.Colorize,
+		Colorize:      rawconfig.Colorize,
 	}.Print()
 	for _, ar := range rs {
 		if ar.Panic != nil || ar.Error != nil {
@@ -319,7 +319,7 @@ func (t T) DoAsync() {
 			Color:         t.Color,
 			Data:          b,
 			HumanRenderer: human,
-			Colorize:      rawconfig.Node.Colorize,
+			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}
 }

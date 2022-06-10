@@ -196,7 +196,7 @@ func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
 		Color:         m.color,
 		Data:          data,
 		HumanRenderer: human,
-		Colorize:      rawconfig.Node.Colorize,
+		Colorize:      rawconfig.Colorize,
 	}.Sprint()
 
 	if clear {

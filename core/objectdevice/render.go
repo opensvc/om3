@@ -8,11 +8,11 @@ import (
 
 func (t L) Render() string {
 	tree := tree.New()
-	tree.AddColumn().AddText("Object").SetColor(rawconfig.Node.Color.Bold)
-	tree.AddColumn().AddText("Resource").SetColor(rawconfig.Node.Color.Bold)
-	tree.AddColumn().AddText("Driver").SetColor(rawconfig.Node.Color.Bold)
-	tree.AddColumn().AddText("Role").SetColor(rawconfig.Node.Color.Bold)
-	tree.AddColumn().AddText("Device").SetColor(rawconfig.Node.Color.Bold)
+	tree.AddColumn().AddText("Object").SetColor(rawconfig.Color.Bold)
+	tree.AddColumn().AddText("Resource").SetColor(rawconfig.Color.Bold)
+	tree.AddColumn().AddText("Driver").SetColor(rawconfig.Color.Bold)
+	tree.AddColumn().AddText("Role").SetColor(rawconfig.Color.Bold)
+	tree.AddColumn().AddText("Device").SetColor(rawconfig.Color.Bold)
 	for _, e := range t {
 		if e.Device == nil {
 			// volume with no device
@@ -20,10 +20,10 @@ func (t L) Render() string {
 		}
 		did := driver.NewID(e.DriverID.Group, e.DriverID.Name)
 		n := tree.AddNode()
-		n.AddColumn().AddText(e.ObjectPath.String()).SetColor(rawconfig.Node.Color.Primary)
-		n.AddColumn().AddText(e.RID).SetColor(rawconfig.Node.Color.Primary)
-		n.AddColumn().AddText(did.String()).SetColor(rawconfig.Node.Color.Secondary)
-		n.AddColumn().AddText(e.Role.String()).SetColor(rawconfig.Node.Color.Secondary)
+		n.AddColumn().AddText(e.ObjectPath.String()).SetColor(rawconfig.Color.Primary)
+		n.AddColumn().AddText(e.RID).SetColor(rawconfig.Color.Primary)
+		n.AddColumn().AddText(did.String()).SetColor(rawconfig.Color.Secondary)
+		n.AddColumn().AddText(e.Role.String()).SetColor(rawconfig.Color.Secondary)
 		n.AddColumn().AddText(e.Device.Path())
 	}
 	return tree.Render()

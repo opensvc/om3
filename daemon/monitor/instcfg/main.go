@@ -164,7 +164,7 @@ func (o *instCfg) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
 	default:
 		defer o.fetchCancel()
 		s := c.Path.String()
-		confFile := rawconfig.Node.Paths.Etc + "/" + s + ".conf"
+		confFile := rawconfig.Paths.Etc + "/" + s + ".conf"
 		o.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
 		err := os.Rename(c.Filename, confFile)
 		if err != nil {
@@ -267,6 +267,9 @@ func (o *instCfg) configFileCheck() {
 		o.log.Info().Msgf("configFile no present(md5sum)")
 		o.cancel()
 		return
+	}
+	if o.path.String() == clusterPath.String() {
+		rawconfig.LoadSections()
 	}
 	if err := o.setConfigure(); err != nil {
 		o.log.Error().Err(err).Msg("setConfigure")

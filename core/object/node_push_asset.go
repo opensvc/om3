@@ -238,9 +238,9 @@ func (t Node) getAsset() (AssetData, error) {
 
 func (t AssetData) Render() string {
 	tr := tree.New()
-	tr.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Node.Color.Bold)
-	tr.AddColumn().AddText("Value").SetColor(rawconfig.Node.Color.Bold)
-	tr.AddColumn().AddText("Source").SetColor(rawconfig.Node.Color.Bold)
+	tr.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Color.Bold)
+	tr.AddColumn().AddText("Value").SetColor(rawconfig.Color.Bold)
+	tr.AddColumn().AddText("Source").SetColor(rawconfig.Color.Bold)
 
 	node := func(v AssetValue) *tree.Node {
 		val := ""
@@ -248,7 +248,7 @@ func (t AssetData) Render() string {
 			val = fmt.Sprint(v.Value)
 		}
 		n := tr.AddNode()
-		n.AddColumn().AddText(v.Title).SetColor(rawconfig.Node.Color.Primary)
+		n.AddColumn().AddText(v.Title).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(val)
 		n.AddColumn().AddText(v.Source)
 		return n
@@ -297,7 +297,7 @@ func (t AssetData) Render() string {
 	_ = node(t.TeamSupport)
 
 	n := tr.AddNode()
-	n.AddColumn().AddText("hardware").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText("hardware").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.Hardware)))
 	n.AddColumn().AddText(AssetSrcProbe)
 	for _, e := range t.Hardware {
@@ -307,12 +307,12 @@ func (t AssetData) Render() string {
 	}
 
 	n = tr.AddNode()
-	n.AddColumn().AddText("uids").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText("uids").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.UIDS)))
 	n.AddColumn().AddText(AssetSrcProbe)
 
 	n = tr.AddNode()
-	n.AddColumn().AddText("gids").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText("gids").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.GIDS)))
 	n.AddColumn().AddText(AssetSrcProbe)
 
@@ -321,7 +321,7 @@ func (t AssetData) Render() string {
 		nbAddr = nbAddr + len(v)
 	}
 	n = tr.AddNode()
-	n.AddColumn().AddText("ip addresses").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText("ip addresses").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(nbAddr))
 	n.AddColumn().AddText(AssetSrcProbe)
 	for _, v := range t.LAN {
@@ -337,7 +337,7 @@ func (t AssetData) Render() string {
 	}
 
 	n = tr.AddNode()
-	n.AddColumn().AddText("host bus adapters").SetColor(rawconfig.Node.Color.Primary)
+	n.AddColumn().AddText("host bus adapters").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.HBA)))
 	n.AddColumn().AddText(AssetSrcProbe)
 	for _, v := range t.HBA {

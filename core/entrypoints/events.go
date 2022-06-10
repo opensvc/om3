@@ -51,6 +51,6 @@ func (t Events) doOne(e event.Event) {
 		Color:         t.Color,
 		Data:          e,
 		HumanRenderer: human,
-		Colorize:      rawconfig.Node.Colorize,
+		Colorize:      rawconfig.Colorize,
 	}.Print()
 }

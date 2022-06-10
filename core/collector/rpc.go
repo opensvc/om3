@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/ybbus/jsonrpc"
+
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/logging"
@@ -145,7 +146,7 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 			ConsoleLoggingEnabled: false,
 			EncodeLogsAsJSON:      true,
 			FileLoggingEnabled:    true,
-			Directory:             rawconfig.Node.Paths.Log,
+			Directory:             rawconfig.Paths.Log,
 			Filename:              "rpc.log",
 			MaxSize:               5,
 			MaxBackups:            1,

@@ -997,9 +997,9 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 	case "nodemgr":
 		return os.Args[0] + " node", nil
 	case "etc":
-		return rawconfig.Node.Paths.Etc, nil
+		return rawconfig.Paths.Etc, nil
 	case "var":
-		return rawconfig.Node.Paths.Var, nil
+		return rawconfig.Paths.Var, nil
 	}
 	if t.Referrer != nil {
 		if v, err := t.Referrer.Dereference(ref); err == nil {

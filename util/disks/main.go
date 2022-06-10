@@ -118,13 +118,13 @@ func GetDisks(claims ObjectsDeviceClaims) (Disks, error) {
 // Render returns a human friendly string representation of the type.
 func (t Disks) Render() string {
 	tree := tree.New()
-	tree.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Node.Color.Bold)
+	tree.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("size")
 	tree.AddColumn().AddText("vendor")
 	tree.AddColumn().AddText("model")
 	for _, disk := range t {
 		n := tree.AddNode()
-		n.AddColumn().AddText(disk.ID).SetColor(rawconfig.Node.Color.Primary)
+		n.AddColumn().AddText(disk.ID).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(sizeconv.BSizeCompact(float64(disk.Size)))
 		n.AddColumn().AddText(disk.Vendor)
 		n.AddColumn().AddText(disk.Model)
@@ -136,8 +136,8 @@ func (t Disks) Render() string {
 			} else {
 				regClaimer = reg.Object
 			}
-			n.AddColumn().AddText(regClaimer).SetColor(rawconfig.Node.Color.Secondary)
-			n.AddColumn().AddText(sizeconv.BSizeCompact(float64(reg.Size))).SetColor(rawconfig.Node.Color.Secondary)
+			n.AddColumn().AddText(regClaimer).SetColor(rawconfig.Color.Secondary)
+			n.AddColumn().AddText(sizeconv.BSizeCompact(float64(reg.Size))).SetColor(rawconfig.Color.Secondary)
 		}
 	}
 	return tree.Render()

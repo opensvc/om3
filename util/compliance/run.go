@@ -202,18 +202,18 @@ func (t *Run) moduleEnv(mod *Module) ([]string, error) {
 	m["LC_NUMERIC"] = "C"
 	m["LC_TIME"] = "C"
 	m["PYTHONIOENCODING"] = "utf-8"
-	m["OSVC_PYTHON"] = rawconfig.Node.Paths.Python
-	m["OSVC_PATH_ETC"] = rawconfig.Node.Paths.Etc
-	m["OSVC_PATH_VAR"] = rawconfig.Node.Paths.Var
+	m["OSVC_PYTHON"] = rawconfig.Paths.Python
+	m["OSVC_PATH_ETC"] = rawconfig.Paths.Etc
+	m["OSVC_PATH_VAR"] = rawconfig.Paths.Var
 	m["OSVC_PATH_COMP"] = t.main.varDir
-	m["OSVC_PATH_TMP"] = rawconfig.Node.Paths.Tmp
-	m["OSVC_PATH_LOG"] = rawconfig.Node.Paths.Log
-	m["OSVC_NODEMGR"] = filepath.Join(rawconfig.Node.Paths.Bin, "nodemgr")
-	m["OSVC_SVCMGR"] = filepath.Join(rawconfig.Node.Paths.Bin, "svcmgr")
+	m["OSVC_PATH_TMP"] = rawconfig.Paths.Tmp
+	m["OSVC_PATH_LOG"] = rawconfig.Paths.Log
+	m["OSVC_NODEMGR"] = filepath.Join(rawconfig.Paths.Bin, "nodemgr")
+	m["OSVC_SVCMGR"] = filepath.Join(rawconfig.Paths.Bin, "svcmgr")
 	m["OSVC_SESSION_UUID"] = xsession.ID
 
 	if runtime.GOOS != "windows" {
-		m["PATH"] = rawconfig.Node.Paths.Bin + ":" + os.Getenv("PATH")
+		m["PATH"] = rawconfig.Paths.Bin + ":" + os.Getenv("PATH")
 	}
 
 	/*
@@ -333,7 +333,7 @@ func (t *Run) getObjectFunc(class string) objectExecFunc {
 func (t *Run) objectExec(action Action, v Var, env []string, ma *ModuleAction) int {
 	path := filepath.Join(t.main.varDir, "com.opensvc", v.Class+".py")
 	cmd := command.New(
-		command.WithName(rawconfig.Node.Paths.Python),
+		command.WithName(rawconfig.Paths.Python),
 		command.WithVarArgs(path, v.EnvName(), string(action)),
 		command.WithIgnoredExitCodes(),
 		command.WithEnv(env),
@@ -517,24 +517,24 @@ func (t Run) Render() string {
 func (t ModuleAction) Status() string {
 	switch t.ExitCode {
 	case 0:
-		return rawconfig.Node.Colorize.Optimal("ok")
+		return rawconfig.Colorize.Optimal("ok")
 	case 2:
-		return rawconfig.Node.Colorize.Secondary("n/a")
+		return rawconfig.Colorize.Secondary("n/a")
 	default:
-		return rawconfig.Node.Colorize.Error("nok")
+		return rawconfig.Colorize.Error("nok")
 	}
 }
 
 func (t ModuleAction) StatusAndExitCode() string {
 	switch t.ExitCode {
 	case 0:
-		return rawconfig.Node.Colorize.Optimal("ok")
+		return rawconfig.Colorize.Optimal("ok")
 	case 1:
-		return rawconfig.Node.Colorize.Error("nok")
+		return rawconfig.Colorize.Error("nok")
 	case 2:
-		return rawconfig.Node.Colorize.Secondary("n/a")
+		return rawconfig.Colorize.Secondary("n/a")
 	default:
-		return fmt.Sprintf("%s (%d)", rawconfig.Node.Colorize.Error("nok"), t.ExitCode)
+		return fmt.Sprintf("%s (%d)", rawconfig.Colorize.Error("nok"), t.ExitCode)
 	}
 }
 
@@ -547,7 +547,7 @@ func (t ModuleActions) Render() string {
 	last := ""
 	for _, ma := range t {
 		if ma.Module != last {
-			buff += fmt.Sprintf("- Module: %s\n", rawconfig.Node.Colorize.Bold(ma.Module))
+			buff += fmt.Sprintf("- Module: %s\n", rawconfig.Colorize.Bold(ma.Module))
 			last = ma.Module
 		}
 		buff += ma.Render()
@@ -556,7 +556,7 @@ func (t ModuleActions) Render() string {
 }
 
 func (t ModuleAction) Render() string {
-	buff := fmt.Sprintf("  - Action:   %s\n", rawconfig.Node.Colorize.Bold(t.Action))
+	buff := fmt.Sprintf("  - Action:   %s\n", rawconfig.Colorize.Bold(t.Action))
 	buff += fmt.Sprintf("    Status:   %s\n", t.StatusAndExitCode())
 	buff += fmt.Sprintf("    Duration: %s\n", t.Duration())
 	buff += fmt.Sprintf("    Log:\n")

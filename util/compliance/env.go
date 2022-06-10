@@ -10,7 +10,7 @@ type (
 func (t Envs) Render() string {
 	buff := ""
 	for mod, env := range t {
-		buff += rawconfig.Node.Colorize.Bold(mod) + "\n"
+		buff += rawconfig.Colorize.Bold(mod) + "\n"
 		for _, line := range env {
 			buff += "  " + line + "\n"
 		}

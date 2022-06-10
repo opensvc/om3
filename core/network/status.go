@@ -105,13 +105,13 @@ func (t StatusList) Tree() *tree.Tree {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t StatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("name").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("type").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("network").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("size").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("used").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("free").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("pct").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("name").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("type").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("network").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("size").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("used").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("free").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("pct").SetColor(rawconfig.Color.Bold)
 	sort.Sort(t)
 	for _, data := range t {
 		n := head.AddNode()
@@ -121,7 +121,7 @@ func (t StatusList) LoadTreeNode(head *tree.Node) {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t Status) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Node.Color.Primary)
+	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Color.Primary)
 	head.AddColumn().AddText(t.Type)
 	head.AddColumn().AddText(t.Network)
 	if t.Size == 0 {

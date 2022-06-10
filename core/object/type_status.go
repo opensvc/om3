@@ -52,9 +52,9 @@ func (t Status) Tree() *tree.Tree {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t Status) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Path.String()).SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText(t.Path.String()).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
-	head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Node.Colorize))
+	head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Colorize))
 	head.AddColumn().AddText(t.descString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
@@ -75,9 +75,9 @@ func (t Status) loadTreeNodeParents(head *tree.Node) {
 	n.AddColumn().AddText("parents")
 	for p, data := range t.Parents {
 		pNode := n.AddNode()
-		pNode.AddColumn().AddText(p).SetColor(rawconfig.Node.Color.Bold)
+		pNode.AddColumn().AddText(p).SetColor(rawconfig.Color.Bold)
 		pNode.AddColumn()
-		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Node.Colorize))
+		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Colorize))
 	}
 }
 
@@ -89,9 +89,9 @@ func (t Status) loadTreeNodeChildren(head *tree.Node) {
 	n.AddColumn().AddText("children")
 	for p, data := range t.Children {
 		pNode := n.AddNode()
-		pNode.AddColumn().AddText(p).SetColor(rawconfig.Node.Color.Bold)
+		pNode.AddColumn().AddText(p).SetColor(rawconfig.Color.Bold)
 		pNode.AddColumn()
-		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Node.Colorize))
+		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Colorize))
 	}
 }
 
@@ -103,9 +103,9 @@ func (t Status) loadTreeNodeSlaves(head *tree.Node) {
 	n.AddColumn().AddText("slaves")
 	for p, data := range t.Slaves {
 		pNode := n.AddNode()
-		pNode.AddColumn().AddText(p).SetColor(rawconfig.Node.Color.Bold)
+		pNode.AddColumn().AddText(p).SetColor(rawconfig.Color.Bold)
 		pNode.AddColumn()
-		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Node.Colorize))
+		pNode.AddColumn().AddText(colorstatus.Sprint(data.Avail, rawconfig.Colorize))
 	}
 }
 
@@ -118,19 +118,19 @@ func (t Status) descString() string {
 
 	// Overall if warn. Else no need to repeat an info we can guess from Avail.
 	if t.Object.Overall == status.Warn {
-		l = append(l, colorstatus.Sprint(t.Object.Overall, rawconfig.Node.Colorize))
+		l = append(l, colorstatus.Sprint(t.Object.Overall, rawconfig.Colorize))
 	}
 
 	// Placement
 	switch t.Object.Placement {
 	case "optimal", "n/a", "":
 	default:
-		l = append(l, rawconfig.Node.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.Placement)))
+		l = append(l, rawconfig.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.Placement)))
 	}
 
 	// Agent compatibility
 	if !t.Compat {
-		l = append(l, rawconfig.Node.Colorize.Error("incompatible versions"))
+		l = append(l, rawconfig.Colorize.Error("incompatible versions"))
 	}
 
 	return strings.Join(l, " ")

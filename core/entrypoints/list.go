@@ -47,6 +47,6 @@ func (t List) Do() {
 		Color:         t.Color,
 		Data:          data,
 		HumanRenderer: human,
-		Colorize:      rawconfig.Node.Colorize,
+		Colorize:      rawconfig.Colorize,
 	}.Print()
 }

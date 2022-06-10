@@ -129,7 +129,7 @@ func (d *discover) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
 	default:
 		defer d.cancelFetcher(c.Path.String())
 		s := c.Path.String()
-		confFile := rawconfig.Node.Paths.Etc + "/" + s + ".conf"
+		confFile := rawconfig.Paths.Etc + "/" + s + ".conf"
 		d.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
 		err := os.Rename(c.Filename, confFile)
 		if err != nil {

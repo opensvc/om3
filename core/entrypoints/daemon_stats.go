@@ -42,7 +42,7 @@ func (t DaemonStats) Do() error {
 		Format:   t.Format,
 		Color:    t.Color,
 		Data:     data,
-		Colorize: rawconfig.Node.Colorize,
+		Colorize: rawconfig.Colorize,
 	}
 	renderer.Print()
 	return nil

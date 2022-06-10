@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
@@ -55,7 +56,7 @@ func (t *PoolLs) run() {
 			}
 			return s
 		},
-		Colorize: rawconfig.Node.Colorize,
+		Colorize: rawconfig.Colorize,
 	}.Print()
 }
 

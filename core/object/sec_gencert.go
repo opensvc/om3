@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/fqdn"
@@ -47,7 +48,7 @@ func (t *Sec) GenCert(options OptsGenCert) error {
 }
 
 func CASecPaths() []path.T {
-	ls := strings.Fields(rawconfig.Node.Cluster.CASecPaths)
+	ls := strings.Fields(rawconfig.ClusterSection().CASecPaths)
 	l := make([]path.T, 0)
 	for _, s := range ls {
 		p, err := path.Parse(s)

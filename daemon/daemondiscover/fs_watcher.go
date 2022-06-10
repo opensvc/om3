@@ -13,6 +13,10 @@ import (
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 )
 
+var (
+	pathEtc = rawconfig.Paths.Etc
+)
+
 func (d *discover) fsWatcherStart() error {
 	watcher, err := fsnotify.NewWatcher()
 	log := d.log.With().Str("_func", "fsWatcherStart").Logger()
@@ -26,7 +30,7 @@ func (d *discover) fsWatcherStart() error {
 		}
 	}
 	d.fsWatcher = watcher
-	pathEtc := rawconfig.Node.Paths.Etc
+	//pathEtc := rawconfig.Paths.Etc
 	for _, filename := range []string{pathEtc} {
 		if err := d.fsWatcher.Add(filename); err != nil {
 			log.Error().Err(err).Msgf("watcher.Add %s", filename)
@@ -44,6 +48,7 @@ func (d *discover) fsWatcherStart() error {
 					return nil
 				}
 				if strings.HasSuffix(filename, ".conf") {
+					// TODO need detect node.conf to call rawconfig.LoadSections()
 					p, err := filenameToPath(filename)
 					if err != nil {
 						log.Error().Err(err).Msgf("fsWatcher %s", filename)
@@ -92,7 +97,6 @@ func (d *discover) fsWatcherStart() error {
 }
 
 func filenameToPath(filename string) (path.T, error) {
-	pathEtc := rawconfig.Node.Paths.Etc
 	svcName := strings.TrimPrefix(filename, pathEtc+"/")
 	svcName = strings.TrimSuffix(svcName, ".conf")
 	if len(svcName) == 0 {

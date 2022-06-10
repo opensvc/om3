@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/cluster"
@@ -175,6 +176,6 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 			}
 			return s
 		},
-		Colorize: rawconfig.Node.Colorize,
+		Colorize: rawconfig.Colorize,
 	}.Print()
 }

@@ -11,7 +11,7 @@ func ConfigureLog() *logging.Logger {
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
-		Directory:             rawconfig.Node.Paths.Log,
+		Directory:             rawconfig.Paths.Log,
 		Filename:              "node",
 		MaxSize:               5,
 		MaxBackups:            1,
