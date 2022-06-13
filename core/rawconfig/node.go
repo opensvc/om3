@@ -24,7 +24,7 @@ var (
 
 	// nodeViper is the global accessor to the viper instance handling configuration
 	nodeViper *viper.Viper
-	fromViper = sections{}
+	fromViper = conf{}
 
 	clusterSectionCmd = make(chan chan<- *clusterSection)
 	nodeSectionCmd    = make(chan chan<- *nodeSection)
@@ -35,12 +35,13 @@ var (
 )
 
 type (
-	// sections is the node and cluster sections of merged config (cluster.conf then node.conf)
-	sections struct {
-		Cluster clusterSection        `mapstructure:"cluster"`
-		Node    nodeSection           `mapstructure:"node"`
-		Palette palette.StringPalette `mapstructure:"palette"`
-		Paths   AgentPaths            `mapstructure:"paths"`
+	// conf is the merged config (defaults, cluster.conf then node.conf)
+	conf struct {
+		Cluster  clusterSection        `mapstructure:"cluster"`
+		Hostname string                `mapstructure:"hostname"`
+		Node     nodeSection           `mapstructure:"node"`
+		Palette  palette.StringPalette `mapstructure:"palette"`
+		Paths    AgentPaths            `mapstructure:"paths"`
 	}
 
 	clusterSection struct {
@@ -188,12 +189,10 @@ func loadSections() {
 	nodeViper.SetConfigType("yaml")
 	nodeViper.AddConfigPath(filepath.FromSlash(p))
 	nodeViper.AddConfigPath(".")
-	if err := nodeViper.MergeInConfig(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to merge %s yaml configuration file: %s\n", p, err)
-	}
+	nodeViper.MergeInConfig()
 
 	if err := nodeViper.Unmarshal(&fromViper); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration sections: %s\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)
 		return
 	}
 	sectionCluster = &fromViper.Cluster
