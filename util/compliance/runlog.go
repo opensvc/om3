@@ -66,7 +66,7 @@ func (t LogEntries) Render() string {
 		case LogLevelOut:
 			buff += fmt.Sprintf("      %s\n", e.Msg)
 		case LogLevelErr:
-			buff += fmt.Sprintf("      %s\n", rawconfig.Node.Colorize.Error("Err: ")+e.Msg)
+			buff += fmt.Sprintf("      %s\n", rawconfig.Colorize.Error("Err: ")+e.Msg)
 		}
 	}
 	return buff

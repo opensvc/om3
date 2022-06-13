@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
@@ -23,11 +24,11 @@ func (t Node) Exists() bool {
 }
 
 func (t *Node) ConfigFile() string {
-	return filepath.Join(rawconfig.Node.Paths.Etc, "node.conf")
+	return filepath.Join(rawconfig.Paths.Etc, "node.conf")
 }
 
 func (t *Node) ClusterConfigFile() string {
-	return filepath.Join(rawconfig.Node.Paths.Etc, "cluster.conf")
+	return filepath.Join(rawconfig.Paths.Etc, "cluster.conf")
 }
 
 func (t *Node) loadConfig() error {
@@ -80,7 +81,7 @@ func (t Node) Env() string {
 	if s := t.config.GetString(k); s != "" {
 		return s
 	}
-	return rawconfig.Node.Node.Env
+	return rawconfig.NodeSection().Env
 }
 
 func (t Node) App() string {

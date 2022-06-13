@@ -32,10 +32,11 @@ func New(encConn net.Conn) *T {
 //
 // Write encrypted d to T.Conn
 func (t *T) Write(b []byte) (n int, err error) {
+	cluster := rawconfig.ClusterSection()
 	msg := &reqjsonrpc.Message{
 		NodeName:    hostname.Hostname(),
-		ClusterName: rawconfig.Node.Cluster.Name,
-		Key:         rawconfig.Node.Cluster.Secret,
+		ClusterName: cluster.Name,
+		Key:         cluster.Secret,
 		Data:        b,
 	}
 	encBytes, err := msg.Encrypt()

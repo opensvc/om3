@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/check"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/exe"
@@ -23,7 +24,7 @@ type OptsNodeChecks struct {
 // Checks finds and runs the check drivers.
 // Results are aggregated and sent to the collector.
 func (t Node) Checks() (check.ResultSet, error) {
-	rootPath := filepath.Join(rawconfig.NodeViper.GetString("paths.drivers"), "check", "chk*")
+	rootPath := filepath.Join(rawconfig.Paths.Drivers, "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
 	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))
 	objs, err := sel.Objects(WithVolatile(true))

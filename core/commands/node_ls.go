@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeselector"
@@ -72,6 +73,6 @@ func (t *NodeLs) run() {
 			}
 			return s
 		},
-		Colorize: rawconfig.Node.Colorize,
+		Colorize: rawconfig.Colorize,
 	}.Print()
 }

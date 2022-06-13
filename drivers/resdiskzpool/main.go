@@ -287,7 +287,7 @@ func (t T) poolImport() error {
 }
 
 func (t T) poolImportCacheFile() string {
-	return filepath.Join(rawconfig.Node.Paths.Var, "zpool.cache")
+	return filepath.Join(rawconfig.Paths.Var, "zpool.cache")
 }
 
 func (t T) poolImportDeviceDir() string {

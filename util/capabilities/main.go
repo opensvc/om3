@@ -123,5 +123,5 @@ func runScanner(sc scanner, running chan int, result chan []string) {
 }
 
 func getPath() string {
-	return rawconfig.Node.Paths.Var + "/capabilities.json"
+	return rawconfig.Paths.Var + "/capabilities.json"
 }

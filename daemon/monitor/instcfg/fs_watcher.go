@@ -14,25 +14,26 @@ var (
 )
 
 func (o *instCfg) watchFile() error {
+	log := o.log.With().Str("func", "instcfg.watchFile").Str("cfgfile", o.filename).Logger()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		o.log.Error().Err(err).Msgf("NewWatcher")
+		log.Error().Err(err).Msg("NewWatcher")
 		return err
 	}
 	if err = watcher.Add(o.filename); err != nil {
-		o.log.Error().Err(err).Msgf("watcher add")
+		log.Error().Err(err).Msg("watcher.Add")
 		if err := watcher.Close(); err != nil {
-			o.log.Error().Err(err).Msgf("watcher Close")
+			log.Error().Err(err).Msg("Close")
 		}
 		return err
 	}
 	go func() {
 		defer func() {
 			if err := watcher.Close(); err != nil {
-				o.log.Error().Err(err).Msgf("watcher Close")
+				log.Error().Err(err).Msg("defer Close")
 			}
 		}()
-		o.log.Info().Msgf("watching file %s", o.filename)
+		log.Debug().Msg("watching events")
 		const updateMask = fsnotify.Write | fsnotify.Create | fsnotify.Remove | fsnotify.Rename | fsnotify.Chmod
 		const needReAddMask = fsnotify.Remove | fsnotify.Rename
 		for {
@@ -44,17 +45,17 @@ func (o *instCfg) watchFile() error {
 					if event.Op&needReAddMask != 0 {
 						time.Sleep(delayExistAfterRemove)
 						if !file.Exists(o.filename) {
-							o.log.Info().Msgf("file %s removed", o.filename)
+							log.Info().Msg("file removed")
 							o.cmdC <- moncmd.New(moncmd.CfgFileRemoved{})
 							return
 						} else {
-							o.log.Info().Msgf("re-add watch on %s", o.filename)
+							log.Debug().Msg("re-add watch")
 							if err := watcher.Add(o.filename); err != nil {
-								o.log.Error().Err(err).Msgf("re-add watch on %s", o.filename)
+								log.Error().Err(err).Msg("watcher.Add")
 							}
 						}
 					}
-					o.log.Info().Msgf("file %s updated", o.filename)
+					log.Debug().Msg("file updated")
 					o.cmdC <- moncmd.New(moncmd.CfgFileUpdated{})
 				}
 			}

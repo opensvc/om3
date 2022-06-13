@@ -81,14 +81,14 @@ func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 }
 
 func listObjectPaths() []string {
-	if b, err := os.ReadFile(filepath.Join(rawconfig.Node.Paths.Var, "list.services")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.services")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
 }
 
 func listNodes() []string {
-	if b, err := os.ReadFile(filepath.Join(rawconfig.Node.Paths.Var, "list.nodes")); err == nil {
+	if b, err := os.ReadFile(filepath.Join(rawconfig.Paths.Var, "list.nodes")); err == nil {
 		return strings.Fields(string(b))
 	}
 	return nil
@@ -115,7 +115,7 @@ func initLogger() {
 		ConsoleLoggingEnabled: true,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
-		Directory:             rawconfig.Node.Paths.Log,
+		Directory:             rawconfig.Paths.Log,
 		Filename:              "node.log",
 		MaxSize:               5,
 		MaxBackups:            1,

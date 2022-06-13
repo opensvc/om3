@@ -2,28 +2,24 @@ package daemondiscover
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"time"
 
-	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonenv"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
-func (d *discover) cfgRoutine() {
-	d.log.Info().Msg("cfgRoutine started")
+func (d *discover) cfg() {
+	d.log.Info().Msg("cfg started")
 	defer func() {
 		done := time.After(dropCmdTimeout)
 		for {
@@ -41,7 +37,8 @@ func (d *discover) cfgRoutine() {
 	for {
 		select {
 		case <-d.ctx.Done():
-			d.log.Info().Msg("cfgRoutine done")
+			d.log.Info().Msg("cfg done")
+			return
 		case i := <-d.cfgCmdC:
 			switch c := (*i).(type) {
 			case moncmd.CfgFsWatcherCreate:
@@ -92,10 +89,10 @@ func (d *discover) cmdInstCfgDone(p path.T, filename string) {
 
 func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {
 	s := p.String()
-	d.log.Info().Msgf("cmdRemoteCfgUpdated for node %s, path %s", node, p)
 	if _, ok := d.moncfg[s]; ok {
 		return
 	}
+	d.log.Info().Msgf("cmdRemoteCfgUpdated for node %s, path %s", node, p)
 	if remoteUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s
 		if remoteCfg.Updated.Time().After(remoteUpdated.Time()) {
@@ -132,7 +129,7 @@ func (d *discover) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
 	default:
 		defer d.cancelFetcher(c.Path.String())
 		s := c.Path.String()
-		confFile := rawconfig.Node.Paths.Etc + "/" + s + ".conf"
+		confFile := rawconfig.Paths.Etc + "/" + s + ".conf"
 		d.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
 		err := os.Rename(c.Filename, confFile)
 		if err != nil {
@@ -178,97 +175,5 @@ func (d *discover) fetchCfgFromRemote(p path.T, node string, updated timestamp.T
 		d.fetcherNodeCancel[node] = make(map[string]context.CancelFunc)
 	}
 
-	go d.fetcherRoutine(ctx, p, node)
-}
-
-func (d *discover) fetchFromApi(p path.T, node string) (b []byte, updated timestamp.T, err error) {
-	url := "raw://" + node + ":" + daemonenv.RawPort
-	var (
-		cli   *client.T
-		readB []byte
-	)
-	cli, err = client.New(client.WithURL(url))
-	if err != nil {
-		d.log.Error().Err(err).Msgf("fetchFromApi new client from %s", url)
-		return
-	}
-	handle := cli.NewGetObjectConfig()
-	handle.ObjectSelector = p.String()
-	readB, err = handle.Do()
-	if err != nil {
-		d.log.Error().Err(err).Msg("fetchFromApi")
-	}
-	type response struct {
-		Data    string
-		Updated timestamp.T `json:"mtime"`
-	}
-	resp := response{}
-	err = json.Unmarshal(readB, &resp)
-	if err != nil {
-		d.log.Error().Err(err).Msgf("fetchFromApi Unmarshal '%s'", readB)
-		return
-	}
-	return []byte(resp.Data), resp.Updated, nil
-}
-
-func (d *discover) fetcherRoutine(ctx context.Context, p path.T, node string) {
-	id := daemondata.InstanceId(p, node)
-	b, updated, err := d.fetchFromApi(p, node)
-	if err != nil {
-		d.log.Error().Err(err).Msgf("fetchFromApi %s", id)
-		return
-	}
-	f, err := os.CreateTemp("", p.Name+".conf.*.tmp")
-	if err != nil {
-		d.log.Error().Err(err).Msgf("CreateTemp for %s", id)
-		return
-	}
-	tmpFilename := f.Name()
-	defer func() {
-		d.log.Info().Msgf("done fetcher routine for %s@%s", p, node)
-		_ = os.Remove(tmpFilename)
-	}()
-	if _, err := f.Write(b); err != nil {
-		_ = f.Close()
-		d.log.Error().Err(err).Msgf("write tmp file for %s", id)
-		return
-	}
-	_ = f.Close()
-	mtime := updated.Time()
-	if err := os.Chtimes(tmpFilename, mtime, mtime); err != nil {
-		d.log.Error().Err(err).Msgf("update file time %s", tmpFilename)
-		return
-	}
-	configure, err := object.NewConfigurerFromPath(p, object.WithConfigFile(f.Name()), object.WithVolatile(true))
-	if err != nil {
-		d.log.Error().Err(err).Msgf("configure error for %s")
-		return
-	}
-	nodes := configure.Config().Referrer.Nodes()
-	validScope := false
-	for _, n := range nodes {
-		if n == d.localhost {
-			validScope = true
-			break
-		}
-	}
-	if !validScope {
-		return
-	}
-	select {
-	case <-ctx.Done():
-		d.log.Info().Msgf("abort fetch config %s", id)
-		return
-	default:
-		err := make(chan error)
-		d.cfgCmdC <- moncmd.New(moncmd.RemoteFileConfig{
-			Path:     p,
-			Node:     node,
-			Filename: f.Name(),
-			Updated:  updated,
-			Ctx:      ctx,
-			Err:      err,
-		})
-		<-err
-	}
+	go remoteconfig.Fetch(ctx, p, node, d.cfgCmdC)
 }

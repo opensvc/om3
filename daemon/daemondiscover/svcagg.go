@@ -10,8 +10,9 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func (d *discover) svcaggRoutine() {
-	d.log.Info().Msg("svcaggRoutine started")
+func (d *discover) agg() {
+	log := d.log.With().Str("_func", "agg").Logger()
+	log.Info().Msg("started")
 	defer func() {
 		done := time.After(dropCmdTimeout)
 		for {
@@ -23,20 +24,20 @@ func (d *discover) svcaggRoutine() {
 		}
 	}()
 	c := daemonctx.DaemonPubSubCmd(d.ctx)
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "svc-discover-agg-from-cfg-create", "", d.onEvAgg))
+	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "agg-from-cfg-create", "", d.onEvAgg))
 	for {
 		select {
 		case <-d.ctx.Done():
-			d.log.Info().Msg("svcagg routine done")
+			log.Info().Msg("done")
+			return
 		case i := <-d.svcaggCmdC:
 			switch c := (*i).(type) {
 			case moncmd.MonSvcAggDone:
 				delete(d.svcAgg, c.Path.String())
 			case moncmd.CfgUpdated:
 				s := c.Path.String()
-				d.log.Info().Msgf("svcaggRoutine detect moncmd.CfgUpdated %s", s)
 				if _, ok := d.svcAgg[s]; !ok {
-					d.log.Info().Msgf("svcaggRoutine creating new svcagg %s", s)
+					log.Info().Msgf("discover new object %s", s)
 					if err := svcagg.Start(d.ctx, c.Path, c.Config, d.svcaggCmdC); err != nil {
 						d.log.Error().Err(err).Msgf("svcAgg.Start %s", s)
 						return
@@ -44,7 +45,7 @@ func (d *discover) svcaggRoutine() {
 					d.svcAgg[s] = make(map[string]struct{})
 				}
 			default:
-				d.log.Error().Interface("cmd", i).Msg("svcagg routine unexpected cmd")
+				log.Error().Interface("cmd", i).Msg("unexpected cmd")
 			}
 		}
 	}

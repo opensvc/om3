@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
+
 	"opensvc.com/opensvc/core/colorstatus"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -101,7 +102,7 @@ func (f Frame) sObjectRunning(path string) string {
 
 func sObjectAvail(d object.AggregatedStatus) string {
 	s := d.Avail
-	return colorstatus.Sprint(s, rawconfig.Node.Colorize)
+	return colorstatus.Sprint(s, rawconfig.Colorize)
 }
 
 func (f Frame) sObject(path string) string {

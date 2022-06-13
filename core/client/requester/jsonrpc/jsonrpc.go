@@ -35,7 +35,7 @@ func (t T) String() string {
 }
 
 func defaultUDSPath() string {
-	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", rawconfig.NodeViper.GetString("paths.var")))
+	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/lsnr.sock", rawconfig.Paths.Var))
 }
 
 // Get implements the Get interface method for the JSONRPC api
@@ -60,10 +60,11 @@ func (t T) doReq(method string, req request.T) (io.ReadCloser, error) {
 		return nil, err
 	}
 	if t.Inet {
+		cluster := rawconfig.ClusterSection()
 		m := &Message{
 			NodeName:    hostname.Hostname(),
-			ClusterName: rawconfig.Node.Cluster.Name,
-			Key:         rawconfig.Node.Cluster.Secret,
+			ClusterName: cluster.Name,
+			Key:         cluster.Secret,
 			Data:        b,
 		}
 		b, err = m.Encrypt()

@@ -25,7 +25,7 @@ type (
 func New() *T {
 	t := &T{
 		log:    log.With().Str("c", "compliance").Logger(),
-		varDir: filepath.Join(rawconfig.Node.Paths.Var, "compliance"),
+		varDir: filepath.Join(rawconfig.Paths.Var, "compliance"),
 	}
 	return t
 }

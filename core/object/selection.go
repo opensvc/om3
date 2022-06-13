@@ -207,9 +207,9 @@ func Installed() ([]path.T, error) {
 	l := make([]path.T, 0)
 	matches := make([]string, 0)
 	patterns := []string{
-		fmt.Sprintf("%s/*.conf", rawconfig.Node.Paths.Etc),                // root svc
-		fmt.Sprintf("%s/*/*.conf", rawconfig.Node.Paths.Etc),              // root other
-		fmt.Sprintf("%s/namespaces/*/*/*.conf", rawconfig.Node.Paths.Etc), // namespaces
+		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),                // root svc
+		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),              // root other
+		fmt.Sprintf("%s/namespaces/*/*/*.conf", rawconfig.Paths.Etc), // namespaces
 	}
 	for _, pattern := range patterns {
 		m, err := filepath.Glob(pattern)
@@ -219,8 +219,8 @@ func Installed() ([]path.T, error) {
 		matches = append(matches, m...)
 	}
 	replacements := []string{
-		fmt.Sprintf("%s/", rawconfig.Node.Paths.EtcNs),
-		fmt.Sprintf("%s/", rawconfig.Node.Paths.Etc),
+		fmt.Sprintf("%s/", rawconfig.Paths.EtcNs),
+		fmt.Sprintf("%s/", rawconfig.Paths.Etc),
 	}
 	envNamespace := env.Namespace()
 	envKind := kind.New(env.Kind())

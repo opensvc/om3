@@ -33,7 +33,7 @@ func (t T) Fetch() (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if f, err = ioutil.TempFile(rawconfig.Node.Paths.Tmp, ".fetch.*"); err != nil {
+	if f, err = ioutil.TempFile(rawconfig.Paths.Tmp, ".fetch.*"); err != nil {
 		return "", err
 	}
 	fName := f.Name()

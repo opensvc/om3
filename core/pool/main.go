@@ -371,14 +371,14 @@ func (t StatusList) Tree() *tree.Tree {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t StatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("name").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("type").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("caps").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("head").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("vols").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("size").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("used").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("free").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("name").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("type").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("caps").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("head").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("vols").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("size").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("used").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("free").SetColor(rawconfig.Color.Bold)
 	sort.Sort(t)
 	for _, data := range t {
 		n := head.AddNode()
@@ -388,7 +388,7 @@ func (t StatusList) LoadTreeNode(head *tree.Node) {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t Status) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Node.Color.Primary)
+	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Color.Primary)
 	head.AddColumn().AddText(t.Type)
 	head.AddColumn().AddText(strings.Join(t.Capabilities, ","))
 	head.AddColumn().AddText(t.Head)
@@ -422,14 +422,14 @@ func (t VolumeStatusList) Swap(i, j int) {
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("volume").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("children").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("orphan").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Node.Color.Bold)
+	head.AddColumn().AddText("volume").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("children").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("orphan").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
+	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
 	sort.Sort(t)
 	for _, data := range t {
 		n := head.AddNode()

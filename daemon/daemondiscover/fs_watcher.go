@@ -13,9 +13,13 @@ import (
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 )
 
+var (
+	pathEtc = rawconfig.Paths.Etc
+)
+
 func (d *discover) fsWatcherStart() error {
 	watcher, err := fsnotify.NewWatcher()
-	log := d.log
+	log := d.log.With().Str("_func", "fsWatcherStart").Logger()
 	if err != nil {
 		d.log.Error().Err(err).Msg("NewWatcher")
 		return err
@@ -26,7 +30,7 @@ func (d *discover) fsWatcherStart() error {
 		}
 	}
 	d.fsWatcher = watcher
-	pathEtc := rawconfig.Node.Paths.Etc
+	//pathEtc := rawconfig.Paths.Etc
 	for _, filename := range []string{pathEtc} {
 		if err := d.fsWatcher.Add(filename); err != nil {
 			log.Error().Err(err).Msgf("watcher.Add %s", filename)
@@ -44,6 +48,7 @@ func (d *discover) fsWatcherStart() error {
 					return nil
 				}
 				if strings.HasSuffix(filename, ".conf") {
+					// TODO need detect node.conf to call rawconfig.LoadSections()
 					p, err := filenameToPath(filename)
 					if err != nil {
 						log.Error().Err(err).Msgf("fsWatcher %s", filename)
@@ -71,7 +76,7 @@ func (d *discover) fsWatcherStart() error {
 				if !strings.HasSuffix(filename, ".conf") {
 					continue
 				}
-				log.Info().Msgf("event: %s", event)
+				log.Debug().Msgf("event: %s", event)
 				createDeleteMask := fsnotify.Create | fsnotify.Remove | fsnotify.Create
 				if event.Op&createDeleteMask == 0 {
 					continue
@@ -82,7 +87,7 @@ func (d *discover) fsWatcherStart() error {
 				}
 				switch {
 				case event.Op&fsnotify.Create != 0:
-					log.Info().Msgf("cfg discover detect created file %s", filename)
+					log.Debug().Msgf("cfg discover detect created file %s", filename)
 					d.cfgCmdC <- moncmd.New(moncmd.CfgFsWatcherCreate{Path: p, Filename: event.Name})
 				}
 			}
@@ -92,7 +97,6 @@ func (d *discover) fsWatcherStart() error {
 }
 
 func filenameToPath(filename string) (path.T, error) {
-	pathEtc := rawconfig.Node.Paths.Etc
 	svcName := strings.TrimPrefix(filename, pathEtc+"/")
 	svcName = strings.TrimSuffix(svcName, ".conf")
 	if len(svcName) == 0 {

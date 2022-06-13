@@ -66,14 +66,14 @@ var (
 func New() *T {
 	srLog = log.With().Str("c", "sysreport").Logger()
 	t := &T{
-		etcDir:   filepath.Join(rawconfig.Node.Paths.Etc, "sysreport.conf.d"),
-		varDir:   filepath.Join(rawconfig.Node.Paths.Var),
+		etcDir:   filepath.Join(rawconfig.Paths.Etc, "sysreport.conf.d"),
+		varDir:   filepath.Join(rawconfig.Paths.Var),
 		excludes: []string{},
 		commands: []string{},
 		includes: []string{
-			filepath.Join(rawconfig.Node.Paths.Etc, "*.conf"),
-			filepath.Join(rawconfig.Node.Paths.Etc, "namespaces", "*", "*", "*.conf"),
-			filepath.Join(rawconfig.Node.Paths.Etc, "sysreport.conf.d"),
+			filepath.Join(rawconfig.Paths.Etc, "*.conf"),
+			filepath.Join(rawconfig.Paths.Etc, "namespaces", "*", "*", "*.conf"),
+			filepath.Join(rawconfig.Paths.Etc, "sysreport.conf.d"),
 		},
 	}
 	return t

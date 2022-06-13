@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/path"
@@ -84,7 +85,7 @@ func (t Base) Env() string {
 	if s := t.config.GetString(k); s != "" {
 		return s
 	}
-	return rawconfig.Node.Node.Env
+	return rawconfig.NodeSection().Env
 }
 
 func (t Base) App() string {
@@ -287,7 +288,7 @@ func (t Base) Dereference(ref string) (string, error) {
 		if t.Path.IsZero() {
 			return "", nil
 		}
-		return fqdn.New(t.Path, rawconfig.Node.Cluster.Name).Domain(), nil
+		return fqdn.New(t.Path, rawconfig.ClusterSection().Name).Domain(), nil
 	case "private_var":
 		return t.paths.varDir, nil
 	case "initd":

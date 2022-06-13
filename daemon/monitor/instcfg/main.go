@@ -1,8 +1,10 @@
 //	Package instcfg is responsible for local instance.Config
 //
 //	It provides the cluster data ["monitor", "nodes", localhost, "services", "config, <instance>]
-//	instance config are first created by daemon discover, then it watch local
-//	config file to detect updates.
+//	instance config are first created by daemon discover.
+//	It watches local config file to load updates.
+//  It watches more recent remote config to refresh local config file.
+//  It watches for local cluster config update to refresh scopes.
 //
 //	worker routine is terminated when config file is not any more present, or
 //  when context is done.
@@ -15,6 +17,7 @@ package instcfg
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -23,14 +26,17 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/monitor/smon"
+	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/stringslice"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -48,6 +54,10 @@ type (
 		lastMtime    time.Time
 		localhost    string
 		forceRefresh bool
+
+		fetchCtx     context.Context
+		fetchUpdated timestamp.T
+		fetchCancel  context.CancelFunc
 
 		cmdC         chan *moncmd.T
 		dataCmdC     chan<- interface{}
@@ -70,7 +80,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		cfg:          instance.Config{Path: p},
 		path:         p,
 		id:           id,
-		log:          daemonctx.Logger(parent).With().Str("_instanceCfg", p.String()).Logger(),
+		log:          daemonctx.Logger(parent).With().Str("_pkg", "instcfg").Str("_id", p.String()).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
 		cmdC:         make(chan *moncmd.T),
@@ -90,8 +100,9 @@ func (o *instCfg) worker(parent context.Context) {
 	defer moncmd.DropPendingCmd(o.cmdC, dropCmdTimeout)
 	defer o.done()
 	clusterId := clusterPath.String()
+	c := daemonctx.DaemonPubSubCmd(o.ctx)
+	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "instance-config self cfg update", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
-		c := daemonctx.DaemonPubSubCmd(o.ctx)
 		defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "instance-config cluster cfg update", clusterId, o.onEv))
 	}
 
@@ -116,21 +127,24 @@ func (o *instCfg) worker(parent context.Context) {
 	}
 	o.log.Info().Msg("started")
 	for {
+		if o.fetchCtx != nil {
+			select {
+			case <-o.fetchCtx.Done():
+				o.fetchCancel()
+				o.fetchCtx = nil
+			default:
+			}
+		}
 		select {
 		case <-o.ctx.Done():
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
+			case moncmd.RemoteFileConfig:
+				o.cmdRemoteCfgFetched(c)
 			case moncmd.CfgUpdated:
-				if c.Node != o.localhost {
-					// only watch local cluster cfg
-					continue
-				}
-				o.log.Info().Msg("cluster changed => refresh cfg")
-				o.forceRefresh = true
-				o.configFileCheck()
+				o.cmdCfgUpdated(c)
 			case moncmd.CfgFileUpdated:
-				o.log.Info().Msg("config file updated")
 				o.configFileCheck()
 			case moncmd.CfgFileRemoved:
 				return
@@ -141,16 +155,89 @@ func (o *instCfg) worker(parent context.Context) {
 	}
 }
 
+func (o *instCfg) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
+	select {
+	case <-c.Ctx.Done():
+		o.fetchCtx = nil
+		c.Err <- nil
+		return
+	default:
+		defer o.fetchCancel()
+		s := c.Path.String()
+		confFile := rawconfig.Paths.Etc + "/" + s + ".conf"
+		o.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
+		err := os.Rename(c.Filename, confFile)
+		if err != nil {
+			o.log.Error().Err(err).Msgf("can't install fetched config to %s", confFile)
+		}
+		o.fetchCtx = nil
+		c.Err <- err
+	}
+	return
+}
+
+func (o *instCfg) cmdCfgUpdated(c moncmd.CfgUpdated) {
+	var clusterUpdate bool
+	if c.Path.String() == clusterPath.String() {
+		clusterUpdate = true
+	}
+	if c.Node != o.localhost {
+		if clusterUpdate {
+			o.cmdCfgUpdatedRemote(c)
+		} else if !stringslice.Has(o.localhost, c.Config.Scope) {
+			o.log.Error().Msgf("not in scope: %s", c.Config.Scope)
+			return
+		} else {
+			o.cmdCfgUpdatedRemote(c)
+		}
+	} else if clusterUpdate && o.path.String() != clusterPath.String() {
+		o.log.Info().Msg("local cluster config changed => refresh cfg")
+		o.forceRefresh = true
+		o.configFileCheck()
+	}
+}
+
+// cmdCfgUpdatedRemote retrieve config file from remote node
+//
+// it returns without any actions when current updated is newer, or if a fetcher
+// from updated is already running.
+//
+// pending obsolete fetcher is canceled.
+//
+func (o *instCfg) cmdCfgUpdatedRemote(c moncmd.CfgUpdated) {
+	remoteCfgUpdated := c.Config.Updated.Time().Unix()
+	if o.cfg.Updated.Time().Unix() >= remoteCfgUpdated {
+		return
+	}
+	// need fetch
+	if o.fetchCtx != nil {
+		// fetcher is running
+		if o.fetchUpdated.Time().Unix() >= remoteCfgUpdated {
+			return
+		} else {
+			o.log.Info().Msgf("cancel current fetcher a more recent config file exists on %s", c.Node)
+			o.fetchCancel()
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	o.fetchCtx = ctx
+	o.fetchCancel = cancel
+	o.fetchUpdated = c.Config.Updated
+	o.log.Info().Msgf("fetching more recent config from node %s", c.Node)
+	go remoteconfig.Fetch(daemonctx.WithLogger(ctx, o.log), o.path, c.Node, o.cmdC)
+}
+
 func (o *instCfg) onEv(i interface{}) {
 	o.cmdC <- moncmd.New(i)
 }
 
 // updateCfg update iCfg.cfg when newCfg differ from iCfg.cfg
 func (o *instCfg) updateCfg(newCfg *instance.Config) {
-	if o.cfg.Updated == newCfg.Updated {
-		o.log.Info().Msg("same updated, skip")
+	if instance.ConfigEqual(&o.cfg, newCfg) {
+		o.log.Debug().Msg("no update required")
 		return
 	}
+	o.cfg = *newCfg
 	if err := daemondata.SetInstanceConfig(o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
@@ -172,7 +259,7 @@ func (o *instCfg) configFileCheck() {
 		return
 	}
 	if mtime.Equal(o.lastMtime) && !o.forceRefresh {
-		o.log.Info().Msg("same mtime, skip")
+		o.log.Debug().Msg("same mtime, skip")
 		return
 	}
 	checksum, err := file.MD5(o.filename)
@@ -180,6 +267,9 @@ func (o *instCfg) configFileCheck() {
 		o.log.Info().Msgf("configFile no present(md5sum)")
 		o.cancel()
 		return
+	}
+	if o.path.String() == clusterPath.String() {
+		rawconfig.LoadSections()
 	}
 	if err := o.setConfigure(); err != nil {
 		o.log.Error().Err(err).Msg("setConfigure")
@@ -202,14 +292,7 @@ func (o *instCfg) configFileCheck() {
 		o.log.Info().Msg("configFile changed(wait next evaluation)")
 		return
 	}
-	hasLocalNode := false
-	for _, node := range nodes {
-		if node == o.localhost {
-			hasLocalNode = true
-			break
-		}
-	}
-	if !hasLocalNode {
+	if !stringslice.Has(o.localhost, nodes) {
 		o.log.Info().Msg("localhost not anymore an instance node")
 		o.cancel()
 		return

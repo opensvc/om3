@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
@@ -61,7 +62,7 @@ func (t *NetworkStatus) run() {
 		Format:   t.Global.Format,
 		Color:    t.Global.Color,
 		Data:     data,
-		Colorize: rawconfig.Node.Colorize,
+		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {
 			return data.Render(t.Verbose)
 		},

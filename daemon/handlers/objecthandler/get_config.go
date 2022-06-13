@@ -51,7 +51,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	pathEtc := rawconfig.Node.Paths.Etc
+	pathEtc := rawconfig.Paths.Etc
 	filename := pathEtc + "/" + payload.Options.Path + ".conf"
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {

@@ -12,14 +12,18 @@ func (f Frame) sObjectInstance(path string, node string) string {
 	s := ""
 	avail := f.Current.Monitor.Services[path].Avail
 	if instance, ok := f.Current.Monitor.Nodes[node].Services.Status[path]; ok {
+		smon, hasSmon := f.Current.Monitor.Nodes[node].Services.Smon[path]
+		if !hasSmon {
+			smon = instance.Monitor
+		}
 		s += sObjectInstanceAvail(avail, instance)
 		s += sObjectInstanceOverall(instance)
 		s += sObjectInstanceDRP(instance)
-		s += sObjectInstanceLeader(instance)
+		s += sObjectInstanceLeader(smon)
 		s += sObjectInstanceFrozen(instance)
 		s += sObjectInstanceUnprovisioned(instance)
-		s += sObjectInstanceMonitorStatus(instance)
-		s += sObjectInstanceMonitorGlobalExpect(instance)
+		s += sObjectInstanceMonitorStatus(smon)
+		s += sObjectInstanceMonitorGlobalExpect(smon)
 		s += "\t"
 	} else if cf, ok := f.Current.Monitor.Nodes[hostname.Hostname()].Services.Config[path]; !ok {
 		return s
@@ -72,8 +76,8 @@ func sObjectInstanceDRP(instance instance.Status) string {
 	return ""
 }
 
-func sObjectInstanceLeader(instance instance.Status) string {
-	if instance.Monitor.Placement == "leader" {
+func sObjectInstanceLeader(smon instance.Monitor) string {
+	if smon.Placement == "leader" {
 		return iconLeader
 	}
 	return ""
@@ -97,16 +101,16 @@ func sObjectInstanceUnprovisioned(instance instance.Status) string {
 	}
 }
 
-func sObjectInstanceMonitorStatus(instance instance.Status) string {
-	if instance.Monitor.Status != "idle" {
-		return " " + instance.Monitor.Status
+func sObjectInstanceMonitorStatus(smon instance.Monitor) string {
+	if smon.Status != "idle" {
+		return " " + smon.Status
 	}
 	return ""
 }
 
-func sObjectInstanceMonitorGlobalExpect(instance instance.Status) string {
-	if instance.Monitor.GlobalExpect != "" {
-		return hiblack(" >" + instance.Monitor.GlobalExpect)
+func sObjectInstanceMonitorGlobalExpect(smon instance.Monitor) string {
+	if smon.GlobalExpect != "" {
+		return hiblack(" >" + smon.GlobalExpect)
 	}
 	return ""
 }

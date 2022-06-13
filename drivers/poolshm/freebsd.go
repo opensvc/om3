@@ -9,5 +9,5 @@ import (
 )
 
 func (t T) path() string {
-	return filepath.Join(rawconfig.Node.Paths.Var, "pool", "shm")
+	return filepath.Join(rawconfig.Paths.Var, "pool", "shm")
 }

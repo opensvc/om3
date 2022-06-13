@@ -622,7 +622,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 		Section: "listener",
 		Option:  "crl",
 		Example: "https://crl.opensvc.com",
-		Default: rawconfig.Node.Paths.CACRL,
+		Default: rawconfig.Paths.CACRL,
 		Text:    "The url serving the certificate revocation list. The default points to the path of the cluster ca crl in ``{var}/certs/ca_crl``.",
 	},
 	{

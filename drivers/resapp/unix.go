@@ -365,9 +365,9 @@ func (t T) getScript() string {
 	}
 	var p string
 	if t.Path.Namespace != "root" {
-		p = fmt.Sprintf("%s/namespaces/%s/%s/%s.d/%s", rawconfig.Node.Paths.Etc, t.Path.Namespace, t.Path.Kind, t.Path.Name, s)
+		p = fmt.Sprintf("%s/namespaces/%s/%s/%s.d/%s", rawconfig.Paths.Etc, t.Path.Namespace, t.Path.Kind, t.Path.Name, s)
 	} else {
-		p = fmt.Sprintf("%s/%s.d/%s", rawconfig.Node.Paths.Etc, t.Path.Name, s)
+		p = fmt.Sprintf("%s/%s.d/%s", rawconfig.Paths.Etc, t.Path.Name, s)
 	}
 	return filepath.FromSlash(p)
 }

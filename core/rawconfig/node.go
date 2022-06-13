@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render/palette"
 )
@@ -17,23 +18,29 @@ const (
 )
 
 var (
-	// Node is the global containing the program configuration
-	Node node
+	Colorize *palette.ColorPaletteFunc
+	Color    *palette.ColorPalette
+	Paths    AgentPaths
 
-	// NodeViper is the global accessor to the viper instance handling configuration
-	NodeViper *viper.Viper
+	// nodeViper is the global accessor to the viper instance handling configuration
+	nodeViper *viper.Viper
+	fromViper = sections{}
+
+	clusterSectionCmd = make(chan chan<- *clusterSection)
+	nodeSectionCmd    = make(chan chan<- *nodeSection)
+	loadConfigCmd     = make(chan loadCmd)
+
+	sectionCluster *clusterSection
+	sectionNode    *nodeSection
 )
 
 type (
-	// Type is the top level configuration structure
-	node struct {
-		Hostname string                `mapstructure:"hostname"`
-		Paths    AgentPaths            `mapstructure:"paths"`
-		Cluster  clusterSection        `mapstructure:"cluster"`
-		Node     nodeSection           `mapstructure:"node"`
-		Palette  palette.StringPalette `mapstructure:"palette"`
-		Colorize *palette.ColorPaletteFunc
-		Color    *palette.ColorPalette
+	// sections is the node and cluster sections of merged config (cluster.conf then node.conf)
+	sections struct {
+		Cluster clusterSection        `mapstructure:"cluster"`
+		Node    nodeSection           `mapstructure:"node"`
+		Palette palette.StringPalette `mapstructure:"palette"`
+		Paths   AgentPaths            `mapstructure:"paths"`
 	}
 
 	clusterSection struct {
@@ -47,59 +54,57 @@ type (
 		Env       string `mapstructure:"env"`
 		Collector string `mapstructure:"dbopensvc"`
 	}
+
+	loadCmd struct {
+		Env  map[string]string
+		Done chan struct{}
+	}
 )
 
-func setDefaults(root string) {
-	NodeViper.SetDefault("hostname", hostname.Hostname())
-	if root == defPathRoot {
-		NodeViper.SetDefault("paths.root", "")
-		NodeViper.SetDefault("paths.bin", defPathBin)
-		NodeViper.SetDefault("paths.var", defPathVar)
-		NodeViper.SetDefault("paths.lock", defPathLock)
-		NodeViper.SetDefault("paths.cache", defPathCache)
-		NodeViper.SetDefault("paths.certs", defPathCerts)
-		NodeViper.SetDefault("paths.cacrl", defPathCACRL)
-		NodeViper.SetDefault("paths.log", defPathLog)
-		NodeViper.SetDefault("paths.etc", defPathEtc)
-		NodeViper.SetDefault("paths.etcns", defPathEtcNs)
-		NodeViper.SetDefault("paths.tmp", defPathTmp)
-		NodeViper.SetDefault("paths.doc", defPathDoc)
-		NodeViper.SetDefault("paths.html", defPathHTML)
-		NodeViper.SetDefault("paths.drivers", defPathDrivers)
-	} else {
-		NodeViper.SetDefault("paths.root", root)
-		NodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
-		NodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
-		NodeViper.SetDefault("paths.lock", filepath.Join(root, "var", "lock"))
-		NodeViper.SetDefault("paths.cache", filepath.Join(root, "var", "cache"))
-		NodeViper.SetDefault("paths.certs", filepath.Join(root, "var", "certs"))
-		NodeViper.SetDefault("paths.cacrl", filepath.Join(root, "var", "certs", "ca_crl"))
-		NodeViper.SetDefault("paths.log", filepath.Join(root, "log"))
-		NodeViper.SetDefault("paths.etc", filepath.Join(root, "etc"))
-		NodeViper.SetDefault("paths.etcns", filepath.Join(root, "etc", "namespaces"))
-		NodeViper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
-		NodeViper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
-		NodeViper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
-		NodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
-	}
-	NodeViper.SetDefault("palette.primary", palette.DefaultPrimary)
-	NodeViper.SetDefault("palette.secondary", palette.DefaultSecondary)
-	NodeViper.SetDefault("palette.optimal", palette.DefaultOptimal)
-	NodeViper.SetDefault("palette.error", palette.DefaultError)
-	NodeViper.SetDefault("palette.warning", palette.DefaultWarning)
-	NodeViper.SetDefault("palette.frozen", palette.DefaultFrozen)
+func init() {
+	go func() {
+		for {
+			select {
+			case respChan := <-clusterSectionCmd:
+				respChan <- sectionCluster
+			case respChan := <-nodeSectionCmd:
+				respChan <- sectionNode
+			case cmd := <-loadConfigCmd:
+				loadSections()
+				cmd.Done <- struct{}{}
+			}
+		}
+	}()
+
+	Load(nil)
 }
 
-func init() {
-	Load(nil)
+func ClusterSection() *clusterSection {
+	c := make(chan *clusterSection)
+	clusterSectionCmd <- c
+	return <-c
+}
+
+func NodeSection() *nodeSection {
+	c := make(chan *nodeSection)
+	nodeSectionCmd <- c
+	return <-c
+}
+
+func LoadSections() {
+	cmd := loadCmd{
+		Done: make(chan struct{}),
+	}
+	loadConfigCmd <- cmd
+	<-cmd.Done
 }
 
 // Load initializes the Viper and Config globals.
 // Done once in package init(), but can be called again to force env variables or detect changes.
 func Load(env map[string]string) {
-	NodeViper = viper.New()
-	NodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	NodeViper.AutomaticEnv()
+	nodeViper = viper.New()
+	nodeViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	nodeViper.AutomaticEnv()
 
 	if env == nil {
 		env = readEnvFile()
@@ -107,31 +112,85 @@ func Load(env map[string]string) {
 	root, _ := env["osvc_root_path"]
 	python, _ := env["osvc_python"]
 	setDefaults(root)
-	NodeViper.SetDefault("paths.python", python)
-	loadEpilogue()
+	nodeViper.SetDefault("paths.python", python)
+
+	LoadSections()
+
+	Colorize = palette.NewFunc(fromViper.Palette)
+	Color = palette.New(fromViper.Palette)
+	Paths = fromViper.Paths
 }
 
-func loadEpilogue() {
-	NodeViper.SetConfigType("ini")
+func setDefaults(root string) {
+	nodeViper.SetDefault("hostname", hostname.Hostname())
+	if root == defPathRoot {
+		nodeViper.SetDefault("paths.root", "")
+		nodeViper.SetDefault("paths.bin", defPathBin)
+		nodeViper.SetDefault("paths.var", defPathVar)
+		nodeViper.SetDefault("paths.lock", defPathLock)
+		nodeViper.SetDefault("paths.cache", defPathCache)
+		nodeViper.SetDefault("paths.certs", defPathCerts)
+		nodeViper.SetDefault("paths.cacrl", defPathCACRL)
+		nodeViper.SetDefault("paths.log", defPathLog)
+		nodeViper.SetDefault("paths.etc", defPathEtc)
+		nodeViper.SetDefault("paths.etcns", defPathEtcNs)
+		nodeViper.SetDefault("paths.tmp", defPathTmp)
+		nodeViper.SetDefault("paths.doc", defPathDoc)
+		nodeViper.SetDefault("paths.html", defPathHTML)
+		nodeViper.SetDefault("paths.drivers", defPathDrivers)
+	} else {
+		nodeViper.SetDefault("paths.root", root)
+		nodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
+		nodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
+		nodeViper.SetDefault("paths.lock", filepath.Join(root, "var", "lock"))
+		nodeViper.SetDefault("paths.cache", filepath.Join(root, "var", "cache"))
+		nodeViper.SetDefault("paths.certs", filepath.Join(root, "var", "certs"))
+		nodeViper.SetDefault("paths.cacrl", filepath.Join(root, "var", "certs", "ca_crl"))
+		nodeViper.SetDefault("paths.log", filepath.Join(root, "log"))
+		nodeViper.SetDefault("paths.etc", filepath.Join(root, "etc"))
+		nodeViper.SetDefault("paths.etcns", filepath.Join(root, "etc", "namespaces"))
+		nodeViper.SetDefault("paths.tmp", filepath.Join(root, "tmp"))
+		nodeViper.SetDefault("paths.doc", filepath.Join(root, "share", "doc"))
+		nodeViper.SetDefault("paths.html", filepath.Join(root, "share", "html"))
+		nodeViper.SetDefault("paths.drivers", filepath.Join(root, "drivers"))
+	}
+	nodeViper.SetDefault("palette.primary", palette.DefaultPrimary)
+	nodeViper.SetDefault("palette.secondary", palette.DefaultSecondary)
+	nodeViper.SetDefault("palette.optimal", palette.DefaultOptimal)
+	nodeViper.SetDefault("palette.error", palette.DefaultError)
+	nodeViper.SetDefault("palette.warning", palette.DefaultWarning)
+	nodeViper.SetDefault("palette.frozen", palette.DefaultFrozen)
+}
 
-	p := fmt.Sprintf("%s/cluster.conf", NodeViper.GetString("paths.etc"))
-	NodeViper.SetConfigFile(filepath.FromSlash(p))
-	NodeViper.MergeInConfig()
+func loadSections() {
+	nodeViper.SetConfigType("ini")
 
-	p = fmt.Sprintf("%s/node.conf", NodeViper.GetString("paths.etc"))
-	NodeViper.SetConfigFile(filepath.FromSlash(p))
-	NodeViper.MergeInConfig()
-
-	p = fmt.Sprintf("$HOME/.%s", Program)
-	NodeViper.SetConfigType("yaml")
-	NodeViper.AddConfigPath(filepath.FromSlash(p))
-	NodeViper.AddConfigPath(".")
-	NodeViper.MergeInConfig()
-
-	if err := NodeViper.Unmarshal(&Node); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse the configuration file: %s\n", err)
+	p := fmt.Sprintf("%s/cluster.conf", Paths.Etc)
+	nodeViper.SetConfigFile(filepath.FromSlash(p))
+	if err := nodeViper.MergeInConfig(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to merge cluster.conf: %s\n", err)
 		return
 	}
-	Node.Colorize = palette.NewFunc(Node.Palette)
-	Node.Color = palette.New(Node.Palette)
+
+	p = fmt.Sprintf("%s/node.conf", Paths.Etc)
+	nodeViper.SetConfigFile(filepath.FromSlash(p))
+	if err := nodeViper.MergeInConfig(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to merge node.conf: %s\n", err)
+		return
+	}
+
+	p = fmt.Sprintf("$HOME/.%s", Program)
+	nodeViper.SetConfigType("yaml")
+	nodeViper.AddConfigPath(filepath.FromSlash(p))
+	nodeViper.AddConfigPath(".")
+	if err := nodeViper.MergeInConfig(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to merge %s yaml configuration file: %s\n", p, err)
+	}
+
+	if err := nodeViper.Unmarshal(&fromViper); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration sections: %s\n", err)
+		return
+	}
+	sectionCluster = &fromViper.Cluster
+	sectionNode = &fromViper.Node
 }

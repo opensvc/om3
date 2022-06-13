@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/client"
@@ -41,8 +42,9 @@ var (
 )
 
 func (t *Base) validateAction() error {
-	if t.Env() != "PRD" && rawconfig.Node.Node.Env == "PRD" {
-		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), rawconfig.Node.Node.Env)
+	node := rawconfig.NodeSection()
+	if t.Env() != "PRD" && node.Env == "PRD" {
+		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), node.Env)
 	}
 	if t.config.IsInNodes(hostname.Hostname()) {
 		return nil

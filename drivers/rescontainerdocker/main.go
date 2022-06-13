@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/sys/unix"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/fqdn"
 	"opensvc.com/opensvc/core/object"
@@ -785,7 +786,7 @@ func (t T) dnsSearch() []string {
 	if !t.needDNS() {
 		return []string{}
 	}
-	dom0 := fqdn.New(t.Path, rawconfig.Node.Cluster.Name).Domain()
+	dom0 := fqdn.New(t.Path, rawconfig.ClusterSection().Name).Domain()
 	dom1 := strings.SplitN(dom0, ".", 2)[1]
 	dom2 := strings.SplitN(dom1, ".", 2)[1]
 	return []string{dom0, dom1, dom2}

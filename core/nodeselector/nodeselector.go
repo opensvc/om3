@@ -12,6 +12,7 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/errgo.v2/fmt/errors"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -283,7 +284,7 @@ func (t T) KnownNodes() ([]string, error) {
 }
 
 func (t T) localKnownNodes() ([]string, error) {
-	l := strings.Fields(rawconfig.Node.Cluster.Nodes)
+	l := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for i := 0; i > len(l); i++ {
 		l[i] = strings.ToLower(l[i])
 	}
@@ -329,7 +330,7 @@ func (t T) getLocalNodesInfo() (NodesInfo, error) {
 		b    []byte
 		data NodesInfo
 	)
-	p := filepath.Join(rawconfig.Node.Paths.Var, "nodes_info.json")
+	p := filepath.Join(rawconfig.Paths.Var, "nodes_info.json")
 	log.Debug().Msgf("load %s", p)
 	if b, err = ioutil.ReadFile(p); err != nil {
 		return data, err
