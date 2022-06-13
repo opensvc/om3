@@ -1,4 +1,4 @@
-// +build freebsd darwin solaris
+//go:build freebsd || darwin || solaris
 
 package poolshm
 

@@ -1,5 +1,4 @@
 //go:build linux || solaris || freebsd || darwin
-// +build linux solaris freebsd darwin
 
 package device
 

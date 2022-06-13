@@ -1,12 +1,13 @@
-// +build linux
+//go:build linux
 
 package osagentservice
 
 import (
+	"os"
+
 	"github.com/containerd/cgroups"
 	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/systemd"
-	"os"
 )
 
 var (

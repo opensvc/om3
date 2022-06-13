@@ -1,4 +1,4 @@
-// +build !linux,!solaris,!darwin
+//go:build !linux && !solaris && !darwin
 
 package resfsflag
 
