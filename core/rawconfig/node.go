@@ -173,17 +173,11 @@ func loadSections() {
 
 	p := fmt.Sprintf("%s/cluster.conf", Paths.Etc)
 	nodeViper.SetConfigFile(filepath.FromSlash(p))
-	if err := nodeViper.MergeInConfig(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to merge cluster.conf: %s\n", err)
-		return
-	}
+	_ = nodeViper.MergeInConfig()
 
 	p = fmt.Sprintf("%s/node.conf", Paths.Etc)
 	nodeViper.SetConfigFile(filepath.FromSlash(p))
-	if err := nodeViper.MergeInConfig(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to merge node.conf: %s\n", err)
-		return
-	}
+	_ = nodeViper.MergeInConfig()
 
 	p = fmt.Sprintf("$HOME/.%s", Program)
 	nodeViper.SetConfigType("yaml")
