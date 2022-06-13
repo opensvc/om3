@@ -3,10 +3,20 @@ package env
 import "os"
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
-// is set to true. The opensvc daemon sets this variable on every command
+// is set to "daemon". The opensvc daemon sets this variable on every command
 // it executes.
 func HasDaemonOrigin() bool {
 	return os.Getenv("OSVC_ACTION_ORIGIN") == "daemon"
+}
+
+// Origin returns the action origin using a env var that the daemon sets when
+// executing a CRM action. The only possible return values are "daemon" or "user".
+func Origin() string {
+	s := os.Getenv("OSVC_ACTION_ORIGIN")
+	if s == "" {
+		s = "user"
+	}
+	return s
 }
 
 // Namespace returns the namespace filter forced via the OSVC_NAMESPACE environment
