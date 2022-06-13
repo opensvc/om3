@@ -7,10 +7,6 @@ import (
 	"context"
 )
 
-func capabilitiesScanner() ([]string, error) {
-	return []string{}, nil
-}
-
 func (t T) stop() error {
 	return nil
 }
