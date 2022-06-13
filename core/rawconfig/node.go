@@ -116,7 +116,7 @@ func Load(env map[string]string) {
 	nodeViper.SetDefault("paths.python", python)
 
 	if err := nodeViper.Unmarshal(&fromViper); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)
 		return
 	}
 	Paths = fromViper.Paths
