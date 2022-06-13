@@ -230,6 +230,11 @@ func (t T) Match(pattern string) bool {
 	return false
 }
 
+// Path implements the Pather interface
+func (t T) Path() T {
+	return t
+}
+
 func (t Relation) String() string {
 	return string(t)
 }

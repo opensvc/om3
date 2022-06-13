@@ -26,6 +26,7 @@ func init() {
 		cmdEval             commands.CmdObjectEval
 		cmdGet              commands.CmdObjectGet
 		cmdLs               commands.CmdObjectLs
+		cmdLogs             commands.CmdObjectLogs
 		cmdMonitor          commands.CmdObjectMonitor
 		cmdPrintConfig      commands.CmdObjectPrintConfig
 		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
@@ -47,6 +48,7 @@ func init() {
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
+	cmdLogs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)

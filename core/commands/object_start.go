@@ -44,6 +44,7 @@ func (t *CmdObjectStart) run(selector *string, kind string) {
 		objectaction.WithRemoteAction("start"),
 		objectaction.WithAsyncTarget("started"),
 		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
+		objectaction.WithDigest(),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewActorFromPath(p)
 			if err != nil {

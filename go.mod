@@ -25,6 +25,7 @@ require (
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
 	github.com/google/uuid v1.2.0
 	github.com/guregu/null v4.0.0+incompatible
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/go-version v1.4.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/iancoleman/orderedmap v0.2.0
@@ -38,7 +39,7 @@ require (
 	github.com/msoap/byline v1.1.1
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/opensvc/fcache v1.0.3
-	github.com/opensvc/fcntllock v1.0.2
+	github.com/opensvc/fcntllock v1.0.3
 	github.com/opensvc/flock v1.0.3
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pkg/errors v0.9.1
@@ -77,6 +78,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect

@@ -45,15 +45,18 @@ type Logger struct {
 	*zerolog.Logger
 }
 
+const (
+	TimeFormat = "15:04:05.000"
+)
+
 var (
 	// WithCaller adds the file:line information of the logger caller
 	WithCaller bool
 
-	consoleWriter zerolog.ConsoleWriter
+	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: TimeFormat}
 )
 
 func init() {
-	consoleWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"}
 	zerolog.ErrorStackMarshaler = marshalStack
 }
 
@@ -103,7 +106,7 @@ func Configure(config Config) *Logger {
 	mw := io.MultiWriter(writers...)
 
 	// zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	l := zerolog.New(mw).With().Timestamp()
+	l := log.Output(mw).With().Timestamp()
 	if WithCaller {
 		l = l.Caller()
 	}

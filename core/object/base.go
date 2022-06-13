@@ -14,7 +14,6 @@ import (
 
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -80,7 +79,7 @@ func (t *Base) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) erro
 		return err
 	}
 	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: true,
+		ConsoleLoggingEnabled: false,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             t.logDir(), // contains the ns/kind
@@ -439,55 +438,6 @@ func (t Base) standardConfigFile() string {
 // Exists returns true if the object configuration file exists.
 func (t Base) Exists() bool {
 	return file.Exists(t.ConfigFile())
-}
-
-//
-// VarDir returns the directory on the local filesystem where the object
-// variable persistent data is stored as files.
-//
-func (t Base) VarDir() string {
-	p := t.Path.String()
-	switch t.Path.Namespace {
-	case "", "root":
-		p = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.Var, t.Path.Kind, t.Path.Name)
-	default:
-		p = fmt.Sprintf("%s/namespaces/%s", rawconfig.Paths.Var, p)
-	}
-	return filepath.FromSlash(p)
-}
-
-//
-// TmpDir returns the directory on the local filesystem where the object
-// stores its temporary files.
-//
-func (t Base) TmpDir() string {
-	p := t.Path.String()
-	switch {
-	case t.Path.Namespace != "", t.Path.Namespace != "root":
-		p = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Tmp, t.Path.Namespace, t.Path.Kind)
-	case t.Path.Kind == kind.Svc, t.Path.Kind == kind.Ccfg:
-		p = fmt.Sprintf("%s", rawconfig.Paths.Tmp)
-	default:
-		p = fmt.Sprintf("%s/%s", rawconfig.Paths.Tmp, t.Path.Kind)
-	}
-	return filepath.FromSlash(p)
-}
-
-//
-// LogDir returns the directory on the local filesystem where the object
-// stores its temporary files.
-//
-func (t Base) LogDir() string {
-	p := t.Path.String()
-	switch {
-	case t.Path.Namespace != "", t.Path.Namespace != "root":
-		p = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Log, t.Path.Namespace, t.Path.Kind)
-	case t.Path.Kind == kind.Svc, t.Path.Kind == kind.Ccfg:
-		p = fmt.Sprintf("%s", rawconfig.Paths.Log)
-	default:
-		p = fmt.Sprintf("%s/%s", rawconfig.Paths.Log, t.Path.Kind)
-	}
-	return filepath.FromSlash(p)
 }
 
 //

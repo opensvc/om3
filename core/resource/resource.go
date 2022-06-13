@@ -657,19 +657,19 @@ func Run(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "requires")
+		return errors.Wrapf(err, "run requires")
 	}
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Run); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return errors.Wrapf(err, "pre run trigger")
 	}
 	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	if err := runner.Run(ctx); err != nil {
-		return errors.Wrapf(err, r.RID())
+		return errors.Wrapf(err, "run")
 	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Run); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return errors.Wrapf(err, "post run trigger")
 	}
 	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -685,19 +685,19 @@ func Start(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "requires")
+		return errors.Wrapf(err, "start requires")
 	}
 	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Start); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return errors.Wrapf(err, "pre start trigger")
 	}
 	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	if err := r.Start(ctx); err != nil {
-		return errors.Wrapf(err, r.RID())
+		return errors.Wrapf(err, "start")
 	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Start); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return errors.Wrapf(err, "post start trigger")
 	}
 	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)

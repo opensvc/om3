@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/client"
@@ -18,6 +17,8 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 type (
@@ -57,22 +58,23 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 	}
 }
 
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) []object.Status {
+func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Status, error) {
 	if t.Refresh || t.Global.Local {
+		// explicitely local
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		log.Debug().Err(err).Msg("extract cluster status")
-		return data
+		// try daemon
+		return data, nil
+	} else if clientcontext.IsSet() {
+		// no fallback for remote cluster
+		return []object.Status{}, err
 	}
-	if clientcontext.IsSet() {
-		log.Error().Msg("can not fetch daemon data")
-		return []object.Status{}
-	}
+	// fallback to local
 	return t.extractLocal(selector)
 }
 
-func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
+func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, error) {
 	data := make([]object.Status, 0)
 	sel := object.NewSelection(
 		selector,
@@ -81,18 +83,18 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 	h := hostname.Hostname()
 	paths, err := sel.Expand()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return data
+		return data, err
 	}
+	var errs error
 	for _, p := range paths {
 		obj, err := object.NewBaserFromPath(p)
 		if err != nil {
-			log.Debug().Err(err).Stringer("path", p).Msg("extract local")
+			errs = multierror.Append(errs, err)
 			continue
 		}
 		status, err := obj.Status(t.OptsStatus)
 		if err != nil {
-			log.Debug().Err(err).Stringer("path", p).Msg("extract local")
+			errs = multierror.Append(errs, err)
 			continue
 		}
 		o := object.Status{
@@ -111,7 +113,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) []object.Status {
 		}
 		data = append(data, o)
 	}
-	return data
+	return data, errs
 }
 
 func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) ([]object.Status, error) {
@@ -135,7 +137,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	for ps := range clusterStatus.Monitor.Services {
 		p, err := path.Parse(ps)
 		if err != nil {
-			log.Debug().Err(err).Str("path", ps).Msg("extractFromDaemon")
+			fmt.Fprintf(os.Stderr, "%s: %s\n", p, err)
 			continue
 		}
 		data = append(data, clusterStatus.GetObjectStatus(p))
@@ -144,11 +146,14 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 }
 
 func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
-	var data []object.Status
+	var (
+		data []object.Status
+		err  error
+	)
 	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
 	c, err := client.New(client.WithURL(t.Global.Server))
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	sel := object.NewSelection(
@@ -157,10 +162,14 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		fmt.Fprintf(os.Stderr, "expand selection: %s\n", err)
+		os.Exit(1)
 	}
-	data = t.extract(mergedSelector, c)
+	data, err = t.extract(mergedSelector, c)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "extract data: %s\n", err)
+		os.Exit(1)
+	}
 
 	output.Renderer{
 		Format: t.Global.Format,

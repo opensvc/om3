@@ -1,11 +1,13 @@
 package objectaction
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client"
@@ -17,6 +19,8 @@ import (
 	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/xsession"
+	"opensvc.com/opensvc/util/xspin"
 )
 
 type (
@@ -26,7 +30,12 @@ type (
 		action.T
 		Object object.Action
 	}
+
+	// ZerologHook implements the zerolog.Hook interface, ie a Run func executed on Event
+	ZerologHook struct{}
 )
+
+var spinner *xspin.Spinner
 
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
@@ -134,6 +143,17 @@ func WithAsyncTarget(s string) funcopt.O {
 }
 
 //
+// WithDigest enables the action spinner rendering
+//
+func WithDigest() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.Digest = true
+		return nil
+	})
+}
+
+//
 // WithAsyncWatch runs a event-driven monitor on the selected objects after
 // setting a new target. So the operator can see the orchestration
 // unfolding.
@@ -200,6 +220,14 @@ func (t T) Options() action.T {
 	return t.T
 }
 
+func (h ZerologHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+	if spinner == nil {
+		return
+	}
+	spinner.Tick()
+	spinner.Redraw()
+}
+
 func (t T) DoLocal() error {
 	log.Debug().
 		Str("format", t.Format).
@@ -209,7 +237,17 @@ func (t T) DoLocal() error {
 		t.ObjectSelector,
 		object.SelectionWithLocal(true),
 	)
+	if t.Digest {
+		spinner = xspin.New("wave")
+		log.Logger = log.Logger.Hook(ZerologHook{})
+		fmt.Printf("sid=%s %s", xsession.ID, spinner)
+	}
 	rs, err := sel.Do(t.Object)
+	if t.Digest {
+		spinner.Disable()
+		spinner.Erase()
+		fmt.Print("\n")
+	}
 	if err != nil {
 		return err
 	}
@@ -224,8 +262,6 @@ func (t T) DoLocal() error {
 		s := ""
 		for _, r := range rs {
 			switch {
-			case errors.Is(r.Error, object.ErrLogged):
-				// do not log again
 			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
 				log.Error().Err(r.Error).Msg("")
 			case r.Panic != nil:
@@ -276,12 +312,16 @@ func (t T) DoLocal() error {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+	var errs error
 	for _, ar := range rs {
-		if ar.Panic != nil || ar.Error != nil {
-			return errors.New("")
+		switch {
+		case ar.Panic != nil:
+			errs = multierror.Append(errs, errors.Errorf(fmt.Sprint(ar.Panic)))
+		case ar.Error != nil:
+			errs = multierror.Append(errs, ar.Error)
 		}
 	}
-	return nil
+	return errs
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an

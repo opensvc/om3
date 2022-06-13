@@ -41,25 +41,6 @@ func (t *Node) init(opts ...funcopt.O) error {
 	// log.Logger is configured in cmd/root.go
 	t.log = log.Logger
 
-	/*
-			t.log = logging.Configure(logging.Config{
-				ConsoleLoggingEnabled: true,
-				EncodeLogsAsJSON:      true,
-				FileLoggingEnabled:    true,
-				Directory:             t.LogDir(),
-				Filename:              "node.log",
-				MaxSize:               5,
-				MaxBackups:            1,
-				MaxAge:                30,
-				WithCaller:            logging.WithCaller,
-			}).
-				With().
-				Str("n", hostname.Hostname()).
-				Str("sid", xsession.ID).
-				Logger()
-		}
-	*/
-
 	if err := t.loadConfig(); err != nil {
 		return err
 	}

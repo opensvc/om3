@@ -92,6 +92,15 @@ var Tags = map[string]Opt{
 		Long: "local",
 		Desc: "inline action on local instance",
 	},
+	"logs-follow": Opt{
+		Short: "f",
+		Long:  "follow",
+		Desc:  "follow the log feed",
+	},
+	"logs-sid": Opt{
+		Long: "sid",
+		Desc: "filter on the session id of an action",
+	},
 	"createnamespace": Opt{
 		Long: "namespace",
 		Desc: "where to create the new objects",

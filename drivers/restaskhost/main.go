@@ -21,7 +21,6 @@ import (
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -111,7 +110,7 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 	} else if s != status.Up {
 		return fmt.Errorf("command exited with code %d", cmd.ExitCode())
 	}
-	return object.ErrLogged
+	return nil
 }
 
 func (t T) onError() error {

@@ -447,7 +447,7 @@ func (t *Selection) Do(action Action) ([]ActionResult, error) {
 			}()
 			data, err := action.Run(p)
 			result.Data = data
-			result.Error = err
+			result.Error = errors.Wrapf(err, "%s", p)
 			result.HumanRenderer = func() string { return defaultHumanRenderer(data) }
 			q <- result
 		}(p)

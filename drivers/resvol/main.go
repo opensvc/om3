@@ -279,7 +279,7 @@ func (t *T) Volume() (*object.Vol, error) {
 }
 
 func (t *T) createVolume(volume *object.Vol) (*object.Vol, error) {
-	p := filepath.Join(volume.VarDir(), "create_volume.lock")
+	p := filepath.Join(object.VarDir(volume.Path), "create_volume.lock")
 	lock := flock.New(p, xsession.ID, fcntllock.New)
 	timeout, err := time.ParseDuration("20s")
 	if err != nil {

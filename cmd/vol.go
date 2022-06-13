@@ -30,6 +30,7 @@ func init() {
 		cmdFreeze           commands.CmdObjectFreeze
 		cmdGet              commands.CmdObjectGet
 		cmdLs               commands.CmdObjectLs
+		cmdLogs             commands.CmdObjectLogs
 		cmdMonitor          commands.CmdObjectMonitor
 		cmdPrintConfig      commands.CmdObjectPrintConfig
 		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
@@ -64,6 +65,7 @@ func init() {
 	cmdFreeze.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
+	cmdLogs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdProvision.Init(kind, head, &selectorFlag)
 	cmdRestart.Init(kind, head, &selectorFlag)

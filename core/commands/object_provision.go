@@ -45,6 +45,7 @@ func (t *CmdObjectProvision) run(selector *string, kind string) {
 		objectaction.WithRemoteAction("provision"),
 		objectaction.WithAsyncTarget("provisioned"),
 		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
+		objectaction.WithDigest(),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewActorFromPath(p)
 			if err != nil {

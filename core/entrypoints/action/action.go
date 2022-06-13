@@ -13,6 +13,8 @@ import (
 type (
 	// T holds the action options common to all actioner implementations.
 	T struct {
+		Digest bool
+
 		//
 		// ObjectSelector expands into a selection of objects to execute
 		// the action on.
