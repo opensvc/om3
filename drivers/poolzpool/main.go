@@ -1,4 +1,5 @@
-//go:build linux
+//go:build linux || solaris
+// +build linux solaris
 
 package poolzpool
 
