@@ -58,7 +58,7 @@ func (t *CmdObjectLogs) render(fpath string) error {
 			fmt.Printf("%s\n", string(b))
 		default:
 			if _, err := w.Write(b); err != nil {
-				return err
+				fmt.Fprintf(os.Stderr, "%s: %s\n", err, string(b))
 			}
 		}
 	}
