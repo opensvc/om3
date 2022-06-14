@@ -310,6 +310,10 @@ func (t *Base) action(ctx context.Context, fn resourceset.DoFunc) error {
 	return nil
 }
 
+//
+// notifyAction signals the daemon that an action is in progress, setting the
+// instance local expect via POST /object_monitor
+//
 func (t *Base) notifyAction(ctx context.Context) error {
 	if env.HasDaemonOrigin() {
 		return nil
