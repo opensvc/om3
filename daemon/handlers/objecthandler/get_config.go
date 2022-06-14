@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/file"
@@ -52,7 +53,17 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pathEtc := rawconfig.Paths.Etc
-	filename := pathEtc + "/" + payload.Options.Path + ".conf"
+	objPath, err := path.Parse(payload.Options.Path)
+	if err != nil {
+		log.Error().Err(err).Msgf("invalid path: %s", payload.Options.Path)
+		w.WriteHeader(500)
+		return
+	}
+	var prefix string
+	if objPath.Namespace != "root" {
+		prefix = "namespaces/"
+	}
+	filename := pathEtc + "/" + prefix + objPath.String() + ".conf"
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
 		log.Error().Msgf("configFile no present(mtime) %s %s", filename, mtime)
