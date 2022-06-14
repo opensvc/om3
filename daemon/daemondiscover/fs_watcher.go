@@ -30,8 +30,7 @@ func (d *discover) fsWatcherStart() error {
 		}
 	}
 	d.fsWatcher = watcher
-	//pathEtc := rawconfig.Paths.Etc
-	for _, filename := range []string{pathEtc} {
+	for _, filename := range []string{pathEtc, pathEtc + "/namespaces"} {
 		if err := d.fsWatcher.Add(filename); err != nil {
 			log.Error().Err(err).Msgf("watcher.Add %s", filename)
 			cleanup()
@@ -45,6 +44,11 @@ func (d *discover) fsWatcherStart() error {
 			pathEtc,
 			func(filename string, info os.FileInfo, err error) error {
 				if info.IsDir() {
+					if strings.HasPrefix(filename, pathEtc+"/namespaces/") {
+						if err := d.fsWatcher.Add(filename); err != nil {
+							log.Error().Err(err).Msgf("watcher.Add %s", filename)
+						}
+					}
 					return nil
 				}
 				if strings.HasSuffix(filename, ".conf") {
@@ -98,6 +102,7 @@ func (d *discover) fsWatcherStart() error {
 
 func filenameToPath(filename string) (path.T, error) {
 	svcName := strings.TrimPrefix(filename, pathEtc+"/")
+	svcName = strings.TrimPrefix(svcName, "namespaces/")
 	svcName = strings.TrimSuffix(svcName, ".conf")
 	if len(svcName) == 0 {
 		return path.T{}, errors.New("skipped null filename")

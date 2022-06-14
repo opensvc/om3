@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
@@ -103,7 +104,7 @@ func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance
 			return
 		}
 	}
-	if !d.inScope(&remoteCfg) {
+	if p.Kind != kind.Sec && !d.inScope(&remoteCfg) {
 		d.log.Error().Msgf("cmdRemoteCfgUpdated for node %s, path %s not in scope", node, p)
 		return
 	}
@@ -128,8 +129,12 @@ func (d *discover) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
 		return
 	default:
 		defer d.cancelFetcher(c.Path.String())
+		var prefix string
+		if c.Path.Namespace != "root" {
+			prefix = "namespaces/"
+		}
 		s := c.Path.String()
-		confFile := rawconfig.Paths.Etc + "/" + s + ".conf"
+		confFile := rawconfig.Paths.Etc + "/" + prefix + s + ".conf"
 		d.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
 		err := os.Rename(c.Filename, confFile)
 		if err != nil {

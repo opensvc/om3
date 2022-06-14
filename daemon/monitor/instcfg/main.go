@@ -163,8 +163,12 @@ func (o *instCfg) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
 		return
 	default:
 		defer o.fetchCancel()
+		var prefix string
+		if c.Path.Namespace != "root" {
+			prefix = "namespaces/"
+		}
 		s := c.Path.String()
-		confFile := rawconfig.Paths.Etc + "/" + s + ".conf"
+		confFile := rawconfig.Paths.Etc + "/" + prefix + s + ".conf"
 		o.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
 		err := os.Rename(c.Filename, confFile)
 		if err != nil {
@@ -184,7 +188,7 @@ func (o *instCfg) cmdCfgUpdated(c moncmd.CfgUpdated) {
 	if c.Node != o.localhost {
 		if clusterUpdate {
 			o.cmdCfgUpdatedRemote(c)
-		} else if !stringslice.Has(o.localhost, c.Config.Scope) {
+		} else if o.path.Kind != kind.Sec && !stringslice.Has(o.localhost, c.Config.Scope) {
 			o.log.Error().Msgf("not in scope: %s", c.Config.Scope)
 			return
 		} else {
