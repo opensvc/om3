@@ -14,7 +14,11 @@ func New() *multierror.Error {
 }
 
 func Append(err error, errs ...error) *multierror.Error {
-	return multierror.Append(err, errs...)
+	nerrs := multierror.Append(err, errs...)
+	if (err == nil) && (nerrs != nil) {
+		nerrs.ErrorFormat = listFormatFunc
+	}
+	return nerrs
 }
 
 func listFormatFunc(es []error) string {

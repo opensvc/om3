@@ -315,7 +315,7 @@ func (t T) DoLocal() error {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	errs := xerrors.New()
+	var errs error
 	for _, ar := range rs {
 		switch {
 		case ar.Panic != nil:

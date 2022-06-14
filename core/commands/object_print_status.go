@@ -84,7 +84,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 	if err != nil {
 		return data, err
 	}
-	errs := xerrors.New()
+	var errs error
 	for _, p := range paths {
 		obj, err := object.NewBaserFromPath(p)
 		if err != nil {
