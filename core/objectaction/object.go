@@ -224,7 +224,10 @@ func (h ZerologHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 	if spinner == nil {
 		return
 	}
-	spinner.Tick()
+	if level > zerolog.InfoLevel {
+		msg = level.String() + ": " + msg
+	}
+	spinner.Tick(msg)
 	spinner.Redraw()
 }
 

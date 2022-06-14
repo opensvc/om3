@@ -9,9 +9,11 @@ import (
 
 type (
 	Spinner struct {
-		frames   []string
-		index    int
-		disabled bool
+		frames           []string
+		index            int
+		disabled         bool
+		msg              string
+		writtenRuneCount int
 	}
 )
 
@@ -34,28 +36,28 @@ func New(kind string) *Spinner {
 }
 
 func (s Spinner) Erase() {
+	frame := strings.Repeat(" ", s.writtenRuneCount)
+	cursor.Left(s.writtenRuneCount)
+	fmt.Print(frame)
+	cursor.Left(s.writtenRuneCount)
+}
+
+func (s *Spinner) Draw() {
 	frame := s.String()
-	n := len([]rune(frame))
-	frame = strings.Repeat(" ", n)
-	cursor.Left(n)
+	s.writtenRuneCount = len([]rune(frame))
 	fmt.Print(frame)
 }
 
-func (s Spinner) Draw() {
-	fmt.Print(s)
-}
-
-func (s Spinner) Redraw() {
+func (s *Spinner) Redraw() {
 	if s.disabled {
 		return
 	}
-	frame := s.String()
-	cursor.Left(len([]rune(frame)))
-	fmt.Print(frame)
+	s.Erase()
+	s.Draw()
 }
 
 func (s Spinner) String() string {
-	return fmt.Sprint(s.frames[s.index] + " ")
+	return fmt.Sprint(s.frames[s.index] + " " + s.msg)
 }
 
 func (s *Spinner) Enable() {
@@ -66,7 +68,8 @@ func (s *Spinner) Disable() {
 	s.disabled = true
 }
 
-func (s *Spinner) Tick() {
+func (s *Spinner) Tick(msg string) {
+	s.msg = msg
 	if s.index >= (len(s.frames) - 1) {
 		s.index = 0
 	} else {
