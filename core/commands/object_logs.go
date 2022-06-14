@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
@@ -49,7 +48,7 @@ func (t *CmdObjectLogs) render(fpath string) error {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	w := zerolog.NewConsoleWriter()
-	w.TimeFormat = time.RFC3339
+	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
 	for scanner.Scan() {
 		b := scanner.Bytes()
@@ -57,9 +56,7 @@ func (t *CmdObjectLogs) render(fpath string) error {
 		case "json":
 			fmt.Printf("%s\n", string(b))
 		default:
-			if _, err := w.Write(b); err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", err, string(b))
-			}
+			_, _ = w.Write(b)
 		}
 	}
 	return nil
