@@ -17,8 +17,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
-
-	multierror "github.com/hashicorp/go-multierror"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -85,16 +84,16 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 	if err != nil {
 		return data, err
 	}
-	var errs error
+	errs := xerrors.New()
 	for _, p := range paths {
 		obj, err := object.NewBaserFromPath(p)
 		if err != nil {
-			errs = multierror.Append(errs, err)
+			errs = xerrors.Append(errs, err)
 			continue
 		}
 		status, err := obj.Status(t.OptsStatus)
 		if err != nil {
-			errs = multierror.Append(errs, err)
+			errs = xerrors.Append(errs, err)
 			continue
 		}
 		o := object.Status{

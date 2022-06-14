@@ -5,7 +5,6 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -19,6 +18,7 @@ import (
 	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/xerrors"
 	"opensvc.com/opensvc/util/xsession"
 	"opensvc.com/opensvc/util/xspin"
 )
@@ -243,13 +243,13 @@ func (t T) DoLocal() error {
 	if t.Digest {
 		spinner = xspin.New("wave")
 		log.Logger = log.Logger.Hook(ZerologHook{})
-		fmt.Printf("sid=%s %s", xsession.ID, spinner)
+		fmt.Println(xsession.ID)
+		fmt.Printf("%s", spinner)
 	}
 	rs, err := sel.Do(t.Object)
 	if t.Digest {
 		spinner.Disable()
 		spinner.Erase()
-		fmt.Print("\n")
 	}
 	if err != nil {
 		return err
@@ -315,13 +315,13 @@ func (t T) DoLocal() error {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	var errs error
+	errs := xerrors.New()
 	for _, ar := range rs {
 		switch {
 		case ar.Panic != nil:
-			errs = multierror.Append(errs, errors.Errorf(fmt.Sprint(ar.Panic)))
+			errs = xerrors.Append(errs, errors.Errorf(fmt.Sprint(ar.Panic)))
 		case ar.Error != nil:
-			errs = multierror.Append(errs, ar.Error)
+			errs = xerrors.Append(errs, ar.Error)
 		}
 	}
 	return errs
