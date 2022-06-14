@@ -256,6 +256,13 @@ func TestMatch(t *testing.T) {
 			pattern:   "*/svc/*",
 			match:     true,
 		},
+		"vol/vol1 matches */*/v*": {
+			name:      "vol1",
+			namespace: "",
+			kind:      "vol",
+			pattern:   "*/*/v*",
+			match:     true,
+		},
 		"vol/vol1 matches vol/v*": {
 			name:      "vol1",
 			namespace: "",
@@ -276,6 +283,13 @@ func TestMatch(t *testing.T) {
 			kind:      "svc",
 			pattern:   "svc/*",
 			match:     false,
+		},
+		"ns1/svc/svc1 matches */*/svc*": {
+			name:      "svc1",
+			namespace: "ns1",
+			kind:      "svc",
+			pattern:   "*/*/svc*",
+			match:     true,
 		},
 		"ns1/svc/svc1 matches *": {
 			name:      "svc1",

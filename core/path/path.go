@@ -92,6 +92,20 @@ func New(name string, namespace string, kd string) (T, error) {
 	return path, nil
 }
 
+func (t T) FQN() string {
+	var s string
+	if t.Kind == kind.Invalid {
+		return ""
+	}
+	if t.Namespace == "" {
+		s += "root" + Separator
+	} else {
+		s += t.Namespace + Separator
+	}
+	s += t.Kind.String() + Separator
+	return s + t.Name
+}
+
 func (t T) String() string {
 	var s string
 	if t.Kind == kind.Invalid {
@@ -184,45 +198,31 @@ func (t *T) UnmarshalJSON(b []byte) error {
 // The '*' pattern matches all svc objects in all namespaces.
 //
 func (t T) Match(pattern string) bool {
+	if pattern == "**" {
+		return true
+	}
 	l := strings.Split(pattern, "/")
-	s := t.String()
 	f := fnmatch.FNM_IGNORECASE | fnmatch.FNM_PATHNAME
-	switch len(l) {
-	case 1:
-		switch pattern {
-		case "**":
-			return true
-		case "*":
-			if fnmatch.Match("*/svc/*", s, f) {
-				return true
-			}
-			if fnmatch.Match("*", s, f) {
-				return true
-			}
-		default:
-			if fnmatch.Match(pattern, s, f) {
-				return true
-			}
-		}
-	case 2:
-
-		if l[0] == "svc" {
-			// svc/foo => foo ... for root namespace
-			if fnmatch.Match(l[1], s, f) {
-				return true
-			}
-		}
-		pattern = strings.Replace(pattern, "**", "*/*", 1)
+	if strings.Contains(pattern, "**") {
+		s := t.FQN()
 		if fnmatch.Match(pattern, s, f) {
 			return true
 		}
-	case 3:
-		if l[1] == "svc" && l[0] == "*" {
-			// */svc/foo => foo ... for root namespace
-			if fnmatch.Match(l[2], s, f) {
-				return true
-			}
+		return false
+	}
+	switch len(l) {
+	case 1:
+		s := t.FQN()
+		if fnmatch.Match("*/svc/"+pattern, s, f) {
+			return true
 		}
+	case 2:
+		s := t.FQN()
+		if fnmatch.Match("root/"+pattern, s, f) {
+			return true
+		}
+	case 3:
+		s := t.FQN()
 		if fnmatch.Match(pattern, s, f) {
 			return true
 		}
