@@ -1,4 +1,4 @@
-// Package statusbus provide bus maintain object rid status
+// Package statusbus collects and dispatches object rid status changes
 //
 // It allows:
 //    Post object rid status
