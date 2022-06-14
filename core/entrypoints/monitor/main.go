@@ -212,7 +212,7 @@ func (m T) DoWatchDemo(statusGetter Getter, eventGetter EventGetter, out io.Writ
 			return err
 		}
 		// unexpected: avoid fast looping
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Millisecond)
 	}
 	return nil
 }
@@ -240,8 +240,6 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 		case "patch", "full":
 			// pass
 		default:
-			// unexpected: avoid fast looping
-			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
