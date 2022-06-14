@@ -3,6 +3,7 @@ package xspin
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/atomicgo/cursor"
 )
@@ -14,6 +15,7 @@ type (
 		disabled         bool
 		msg              string
 		writtenRuneCount int
+		mu               sync.Mutex
 	}
 )
 
@@ -36,6 +38,12 @@ func New(kind string) *Spinner {
 }
 
 func (s Spinner) Erase() {
+	s.mu.Lock()
+	s.erase()
+	s.mu.Unlock()
+}
+
+func (s Spinner) erase() {
 	frame := strings.Repeat(" ", s.writtenRuneCount)
 	cursor.Left(s.writtenRuneCount)
 	fmt.Print(frame)
@@ -43,17 +51,25 @@ func (s Spinner) Erase() {
 }
 
 func (s *Spinner) Draw() {
+	s.mu.Lock()
+	s.draw()
+	s.mu.Unlock()
+}
+
+func (s *Spinner) draw() {
 	frame := s.String()
 	s.writtenRuneCount = len([]rune(frame))
 	fmt.Print(frame)
 }
 
 func (s *Spinner) Redraw() {
+	s.mu.Lock()
 	if s.disabled {
 		return
 	}
-	s.Erase()
-	s.Draw()
+	s.erase()
+	s.draw()
+	s.mu.Unlock()
 }
 
 func (s Spinner) String() string {
@@ -61,18 +77,24 @@ func (s Spinner) String() string {
 }
 
 func (s *Spinner) Enable() {
+	s.mu.Lock()
 	s.disabled = false
+	s.mu.Unlock()
 }
 
 func (s *Spinner) Disable() {
+	s.mu.Lock()
 	s.disabled = true
+	s.mu.Unlock()
 }
 
 func (s *Spinner) Tick(msg string) {
+	s.mu.Lock()
 	s.msg = msg
 	if s.index >= (len(s.frames) - 1) {
 		s.index = 0
 	} else {
 		s.index += 1
 	}
+	s.mu.Unlock()
 }
