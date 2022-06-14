@@ -51,6 +51,9 @@ func (d *discover) fsWatcherStart() error {
 					}
 					return nil
 				}
+				if filename == "/etc/opensvc/node.conf" {
+					return nil
+				}
 				if strings.HasSuffix(filename, ".conf") {
 					// TODO need detect node.conf to call rawconfig.LoadSections()
 					p, err := filenameToPath(filename)
@@ -78,6 +81,9 @@ func (d *discover) fsWatcherStart() error {
 				var p path.T
 				filename := event.Name
 				if !strings.HasSuffix(filename, ".conf") {
+					continue
+				}
+				if filename == "/etc/opensvc/node.conf" {
 					continue
 				}
 				log.Debug().Msgf("event: %s", event)
