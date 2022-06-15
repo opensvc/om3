@@ -4,6 +4,11 @@
 
 ### core
 
+* **breaking change:** command flags that accept a duration now require a unit.
+
+	change --waitlock=60 to --waitlock=1m
+	change --time=10 to --time=10s
+
 * **breaking change:** drop support for deprecated driver group names:
 
 	drbd: disk.drbd
