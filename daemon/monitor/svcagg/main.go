@@ -135,8 +135,8 @@ func (o *svcAggStatus) updateStatus() {
 	if o.status.Avail != newAvail {
 		o.status.Avail = newAvail
 		o.log.Info().Msgf("updated status avail to %s", o.status.Avail)
-		o.update()
 	}
+	o.update()
 }
 
 func (o *svcAggStatus) delete() {
