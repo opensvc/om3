@@ -20,8 +20,10 @@ func (o opCommitPending) call(d *data) {
 	d.log.Debug().Msg("opCommitPending")
 	requireFull := d.updateGens()
 	if requireFull {
-		// TODO apply pending ops
-		d.resetPendingOps()
+		genChanged := d.updateFromPendingOps()
+		if genChanged {
+			d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode] = d.gen
+		}
 		d.resetPatchQueue()
 	} else {
 		genChanged := d.updateFromPendingOps()
