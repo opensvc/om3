@@ -147,9 +147,9 @@ func (o *svcAggStatus) delete() {
 }
 
 func (o *svcAggStatus) update() {
-	o.log.Info().Msgf("update avail %s", o.status.Avail)
-	// TODO use o.status.DeepCopy() to prevent side effects
-	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, o.status); err != nil {
+	value := o.status.DeepCopy()
+	o.log.Info().Msgf("update avail %s", value.Avail)
+	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, *value); err != nil {
 		o.log.Error().Err(err).Msg("SetServiceAgg")
 	}
 }
