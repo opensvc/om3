@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -86,14 +87,38 @@ type (
 	containerNamer interface {
 		ContainerName() string
 	}
+
+	imageCacheMap struct {
+		m  map[string]*image.Image
+		mu sync.Mutex
+	}
 )
 
 var (
 	// Allocate a single client socket for all container.docker resources
 	// Get/Init it via cli()
 	clientCache *docker.Client
-	imageCache  = make(map[string]*image.Image)
+	imageCache  = NewImageCacheMap()
 )
+
+func NewImageCacheMap() *imageCacheMap {
+	return &imageCacheMap{
+		m: make(map[string]*image.Image),
+	}
+}
+
+func (t imageCacheMap) Get(name string) (*image.Image, bool) {
+	t.mu.Lock()
+	img, ok := t.m[name]
+	t.mu.Unlock()
+	return img, ok
+}
+
+func (t *imageCacheMap) Put(name string, img *image.Image) {
+	t.mu.Lock()
+	t.m[name] = img
+	t.mu.Unlock()
+}
 
 func cli() *docker.Client {
 	if clientCache != nil {
@@ -664,14 +689,14 @@ func (t T) image() (*image.Image, error) {
 }
 
 func getImage(ctx context.Context, name string) (*image.Image, error) {
-	if img, ok := imageCache[name]; ok {
+	if img, ok := imageCache.Get(name); ok {
 		return img, nil
 	}
 	img, err := cli().ImageService().FindImage(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	imageCache[name] = img
+	imageCache.Put(name, img)
 	return img, nil
 }
 
