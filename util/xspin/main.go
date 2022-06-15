@@ -62,14 +62,12 @@ func (s *Spinner) draw() {
 	fmt.Print(frame)
 }
 
-func (s *Spinner) Redraw() {
-	s.mu.Lock()
+func (s *Spinner) redraw() {
 	if s.disabled {
 		return
 	}
 	s.erase()
 	s.draw()
-	s.mu.Unlock()
 }
 
 func (s Spinner) String() string {
@@ -88,13 +86,24 @@ func (s *Spinner) Disable() {
 	s.mu.Unlock()
 }
 
-func (s *Spinner) Tick(msg string) {
+func (s *Spinner) TickWithMsg(msg string) {
 	s.mu.Lock()
 	s.msg = msg
+	s.tick()
+	s.mu.Unlock()
+}
+
+func (s *Spinner) Tick() {
+	s.mu.Lock()
+	s.tick()
+	s.mu.Unlock()
+}
+
+func (s *Spinner) tick() {
 	if s.index >= (len(s.frames) - 1) {
 		s.index = 0
 	} else {
 		s.index += 1
 	}
-	s.mu.Unlock()
+	s.redraw()
 }

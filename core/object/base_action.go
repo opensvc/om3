@@ -205,6 +205,7 @@ func (t *Base) abortStartAffinity(ctx context.Context) (err error) {
 }
 
 func (t *Base) abortStartDrivers(ctx context.Context, l ResourceLister) (err error) {
+	t.log.Log().Msg("abort tests")
 	t.log.Debug().Msg("call resource drivers abort start")
 	sb := statusbus.FromContext(ctx)
 	resources := l.Resources()

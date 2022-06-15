@@ -8,9 +8,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/pg"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -195,6 +197,7 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) 
 
 func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
 	var err error
+	actionName := actioncontext.Props(ctx).Name
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
@@ -216,21 +219,26 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	for _, r := range resources {
 		go do(q, r)
 	}
-	for i := 0; i < len(resources); i++ {
+	var errs error
+	nResources := len(resources)
+	for i := 0; i < nResources; i++ {
 		res := <-q
+		t.Log().Log().Msgf("wait %s parallel %s: %d/%d running", t.Name, actionName, nResources-i, nResources)
 		if res.Resource.IsOptional() {
 			continue
 		}
-		err = errors.Wrap(res.Error, res.Resource.RID())
+		xerrors.Append(err, errors.Wrap(res.Error, res.Resource.RID()))
 	}
-	return err
+	return errs
 }
 
 func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
+	actionName := actioncontext.Props(ctx).Name
 	for _, r := range resources {
 		var err error
 		c := make(chan error, 1)
 		if err = l.ReconfigureResource(r); err == nil {
+			r.Log().Log().Msgf("%s %s", actionName, r.RID())
 			c <- fn(ctx, r)
 		}
 		select {
