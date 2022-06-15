@@ -29,7 +29,7 @@ type (
 	// AggregatedStatus contains the object states obtained via
 	// aggregation of all instances states.
 	AggregatedStatus struct {
-		Avail       status.T      `json:"avail,omitempty"`
+		Avail       status.T      `json:"avail"`
 		Overall     status.T      `json:"overall,omitempty"`
 		Frozen      string        `json:"frozen,omitempty"`
 		Placement   string        `json:"placement,omitempty"`
