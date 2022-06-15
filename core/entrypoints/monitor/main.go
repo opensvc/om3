@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/inancgumus/screen"
@@ -222,6 +223,8 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 		data   cluster.Status
 		err    error
 		events chan event.Event
+
+		displayInterval = 500 * time.Millisecond
 	)
 	events, err = eventGetter.Do()
 	if err != nil {
@@ -232,7 +235,39 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 	if err != nil {
 		return err
 	}
-	m.doOneShot(data, true, out)
+	if err := json.Unmarshal(b, &data); err != nil {
+		return err
+	}
+	dataChan := make(chan *cluster.Status)
+	bChan := make(chan *[]byte)
+	go func() {
+		for d := range dataChan {
+			m.doOneShot(*d, true, out)
+		}
+	}()
+	t := time.Tick(displayInterval)
+	go func() {
+		b := &[]byte{}
+		changes := false
+		for {
+			select {
+			case tb := <-bChan:
+				b = tb
+				changes = true
+			case <-t:
+				if !changes {
+					continue
+				}
+				if err := json.Unmarshal(*b, &data); err != nil {
+					fmt.Fprintf(os.Stderr, "unmarshal event data %s", err)
+					return
+				}
+				dataChan <- &data
+				changes = false
+			}
+		}
+	}()
+	dataChan <- &data
 	for e := range events {
 		switch e.Kind {
 		case "event":
@@ -246,10 +281,7 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 		if err := handleEvent(&b, e); err != nil {
 			return errors.Wrap(err, "handle event")
 		}
-		if err := json.Unmarshal(b, &data); err != nil {
-			return errors.Wrap(err, "unmarshal event data")
-		}
-		m.doOneShot(data, true, out)
+		bChan <- &b
 	}
 	return nil
 }
