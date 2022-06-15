@@ -145,3 +145,13 @@ func NewObjectStatus() *Status {
 	t.Slaves = make(map[string]AggregatedStatus)
 	return t
 }
+
+func (s *AggregatedStatus) DeepCopy() *AggregatedStatus {
+	return &AggregatedStatus{
+		Avail:       s.Avail,
+		Overall:     s.Overall,
+		Frozen:      s.Frozen,
+		Placement:   s.Placement,
+		Provisioned: s.Provisioned,
+	}
+}
