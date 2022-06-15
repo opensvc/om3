@@ -26,7 +26,7 @@ func (f Frame) sObjectInstance(path string, node string) string {
 		s += sObjectInstanceMonitorGlobalExpect(smon)
 		s += "\t"
 	} else if cf, ok := f.Current.Monitor.Nodes[hostname.Hostname()].Services.Config[path]; !ok {
-		return s
+		return "\t"
 	} else if stringslice.Has(node, cf.Scope) {
 		s += iconUndef + "\t"
 	}

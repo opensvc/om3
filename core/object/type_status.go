@@ -29,7 +29,7 @@ type (
 	// AggregatedStatus contains the object states obtained via
 	// aggregation of all instances states.
 	AggregatedStatus struct {
-		Avail       status.T      `json:"avail,omitempty"`
+		Avail       status.T      `json:"avail"`
 		Overall     status.T      `json:"overall,omitempty"`
 		Frozen      string        `json:"frozen,omitempty"`
 		Placement   string        `json:"placement,omitempty"`
@@ -144,4 +144,14 @@ func NewObjectStatus() *Status {
 	t.Children = make(map[string]AggregatedStatus)
 	t.Slaves = make(map[string]AggregatedStatus)
 	return t
+}
+
+func (s *AggregatedStatus) DeepCopy() *AggregatedStatus {
+	return &AggregatedStatus{
+		Avail:       s.Avail,
+		Overall:     s.Overall,
+		Frozen:      s.Frozen,
+		Placement:   s.Placement,
+		Provisioned: s.Provisioned,
+	}
 }
