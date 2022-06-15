@@ -69,6 +69,8 @@ var (
 	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
 
 	dropCmdTimeout = 100 * time.Millisecond
+
+	delayInitialConfigure = 100 * time.Millisecond
 )
 
 // Start launch goroutine instCfg worker for a local instance config
@@ -110,6 +112,8 @@ func (o *instCfg) worker(parent context.Context) {
 		o.log.Error().Err(err).Msg("watch file")
 		return
 	}
+	// delay initial configure, view on storm file creation
+	time.Sleep(delayInitialConfigure)
 	if err := o.setConfigure(); err != nil {
 		o.log.Error().Err(err).Msg("setConfigure")
 		return
@@ -313,7 +317,7 @@ func (o *instCfg) configFileCheck() {
 func (o *instCfg) setConfigure() error {
 	configure, err := object.NewConfigurerFromPath(o.path)
 	if err != nil {
-		o.log.Debug().Err(err).Msg("worker NewConfigurerFromPath failure")
+		o.log.Warn().Err(err).Msg("worker NewConfigurerFromPath failure")
 		o.cancel()
 		return err
 	}
