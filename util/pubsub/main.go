@@ -156,6 +156,7 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 		subNs := make(map[uuid.UUID]uint)
 		subOps := make(map[uuid.UUID]uint)
 		subMatching := make(map[uuid.UUID]string)
+		subQueue := make(map[uuid.UUID]chan interface{})
 		defer func() {
 			go func() {
 				log.Info().Msg("stopping")
@@ -179,7 +180,7 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 			case cmd := <-cmdC:
 				switch c := cmd.(type) {
 				case cmdPub:
-					for id, fn := range subs {
+					for id := range subs {
 						if subNs[id] != NsAll && subNs[id] != c.ns {
 							continue
 						}
@@ -189,13 +190,7 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 						if len(subMatching[id]) != 0 && subMatching[id] != c.id {
 							continue
 						}
-						goFunc := fn
-						goFuncStarted := make(chan struct{})
-						go func() {
-							goFuncStarted <- struct{}{}
-							goFunc(c.data)
-						}()
-						<-goFuncStarted
+						subQueue[id] <- c.data
 					}
 					c.resp <- true
 				case cmdSub:
@@ -205,6 +200,17 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 					subNs[id] = c.ns
 					subOps[id] = c.op
 					subMatching[id] = c.matching
+					queue := make(chan interface{}, 100)
+					subQueue[id] = queue
+					fn := c.fn
+					started := make(chan struct{})
+					go func() {
+						started <- struct{}{}
+						for i := range queue {
+							fn(i)
+						}
+					}()
+					<-started
 					c.resp <- id
 					log.Debug().Msgf("subscribe %s", c.name)
 				case cmdUnsub:
@@ -216,6 +222,7 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 					delete(subNames, c.subId)
 					delete(subNs, c.subId)
 					delete(subOps, c.subId)
+					delete(subQueue, c.subId)
 					c.resp <- name
 					log.Debug().Msgf("unsubscribe %s", name)
 				}
