@@ -51,6 +51,7 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		o.log.Info().Msgf("client request global expect to %s", c.GlobalExpect)
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
+		o.state.GlobalExpectUpdated = c.GlobalExpectUpdated
 		o.updateIfChange()
 	}
 	o.unsetStatusWhenReached(o.instStatus[o.localhost])
