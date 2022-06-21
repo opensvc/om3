@@ -12,7 +12,7 @@
 //		=> orchestrate
 //		=> pub new state if change
 //
-//	worker watches on remote instance status updates converge global expects
+//	worker watches on remote instance smon updates converge global expects
 //		=> convergeGlobalExpectFromRemote
 //		=> orchestrate
 //		=> pub new state if change
@@ -51,7 +51,11 @@ type (
 		dataCmdC chan<- interface{}
 		log      zerolog.Logger
 
-		instStatus  map[string]instance.Status
+		// updated data from aggregated status update srcEvent
+		instStatus map[string]instance.Status
+		instSmon   map[string]instance.Monitor
+		scopeNodes []string
+
 		svcAgg      object.AggregatedStatus
 		cancelReady context.CancelFunc
 		localhost   string
@@ -104,7 +108,9 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		dataCmdC:      daemonctx.DaemonDataCmd(ctx),
 		log:           daemonctx.Logger(ctx).With().Str("_smon", p.String()).Logger(),
 		instStatus:    make(map[string]instance.Status),
+		instSmon:      make(map[string]instance.Monitor),
 		localhost:     hostname.Hostname(),
+		scopeNodes:    nodes,
 		change:        true,
 	}
 
@@ -115,17 +121,17 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 // worker watch for local smon updates
 func (o *smon) worker(initialNodes []string) {
 	defer o.log.Info().Msg("done")
+
+	c := daemonctx.DaemonPubSubCmd(o.ctx)
+	defer ps.UnSub(c, ps.SubSvcAgg(c, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
+	defer ps.UnSub(c, ps.SubSetSmon(c, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
+	defer ps.UnSub(c, ps.SubSmon(c, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
+
 	for _, node := range initialNodes {
 		o.instStatus[node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, node)
 	}
 	o.updateIfChange()
 	defer o.delete()
-
-	c := daemonctx.DaemonPubSubCmd(o.ctx)
-	defer ps.UnSub(c, ps.SubInstStatus(c, pubsub.OpUpdate, "smon status.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "smon cfg.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubSvcAgg(c, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubSetSmon(c, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
 
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
 	go o.status()
@@ -136,46 +142,56 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
-			case moncmd.CfgUpdated:
-				if c.Node != o.localhost {
-					continue
-				}
-				cfgNodes := make(map[string]struct{})
-				for _, node := range c.Config.Scope {
-					cfgNodes[node] = struct{}{}
-					if _, ok := o.instStatus[node]; !ok {
-						o.instStatus[node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, node)
+			case moncmd.MonSvcAggUpdated:
+				if c.SrcEv != nil {
+					switch srcCmd := (*c.SrcEv).(type) {
+					case moncmd.InstStatusUpdated:
+						srcNode := srcCmd.Node
+						if _, ok := o.instStatus[srcNode]; !ok {
+							continue
+						}
+						instStatus := srcCmd.Status
+						o.instStatus[srcNode] = instStatus
+						if srcNode == o.localhost {
+							o.unsetStatusWhenReached(instStatus)
+						}
+					case moncmd.CfgUpdated:
+						if srcCmd.Node != o.localhost {
+							continue
+						}
+						cfgNodes := make(map[string]struct{})
+						for _, node := range srcCmd.Config.Scope {
+							cfgNodes[node] = struct{}{}
+							if _, ok := o.instStatus[node]; !ok {
+								o.instStatus[node] = instance.Status{Avail: status.Undef}
+							}
+						}
+						for node := range o.instStatus {
+							if _, ok := cfgNodes[node]; !ok {
+								o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
+								delete(o.instStatus, node)
+							}
+						}
+						o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
 					}
 				}
-				for node := range o.instStatus {
-					if _, ok := cfgNodes[node]; !ok {
-						o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
-						delete(o.instStatus, node)
-					}
-				}
-			case moncmd.InstStatusUpdated:
+				o.cmdSvcAggUpdated(c.SvcAgg)
+			case moncmd.SetSmon:
+				o.cmdSetSmonClient(c.Monitor)
+			case moncmd.SmonUpdated:
 				node := c.Node
-				if _, ok := o.instStatus[node]; !ok {
+				if node == o.localhost {
 					continue
 				}
-				instStatus := c.Status
-				o.log.Info().Msgf("updated instance status avail -> %s", instStatus.Avail)
-				o.instStatus[node] = instStatus
-				if node == o.localhost {
-					o.unsetStatusWhenReached(instStatus)
-					o.updateIfChange()
-				} else {
-					o.convergeGlobalExpectFromRemote()
-					o.updateIfChange()
-				}
+				instSmon := c.Status
+				o.log.Debug().Msgf("updated instance smon from node %s  -> %s", node, instSmon.GlobalExpect)
+				o.instSmon[node] = instSmon
+				o.convergeGlobalExpectFromRemote()
+				o.updateIfChange()
 				o.orchestrate()
 				o.updateIfChange()
 			case cmdReady:
 				o.cmdTryLeaveReady(c.ctx)
-			case moncmd.MonSvcAggUpdated:
-				o.cmdSvcAggUpdated(c.SvcAgg)
-			case moncmd.SetSmon:
-				o.cmdSetSmonClient(c.Monitor)
 			}
 		}
 	}
