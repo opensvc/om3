@@ -17,13 +17,13 @@ func (o *smon) cmdTryLeaveReady(ctx context.Context) {
 		case context.DeadlineExceeded:
 			if o.state.Status != statusReady {
 				o.log.Error().Msgf("cmdTryLeaveReady with non ready status: %s", o.state.Status)
-				o.cancelReady = nil
+				o.tryCancelReady()
 				return
 			}
 			status, ok := o.instStatus[o.localhost]
 			if !ok {
 				o.log.Error().Msg("cmdTryLeaveReady but local instance status is unset")
-				o.cancelReady = nil
+				o.tryCancelReady()
 				return
 			}
 			o.unsetStatusWhenReached(status)
@@ -56,4 +56,11 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 	o.updateIfChange()
 	o.orchestrate()
 	o.updateIfChange()
+}
+
+func (o *smon) tryCancelReady() {
+	if o.cancelReady != nil {
+		o.cancelReady()
+		o.cancelReady = nil
+	}
 }
