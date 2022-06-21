@@ -26,6 +26,7 @@ func (o *smon) cmdTryLeaveReady(ctx context.Context) {
 				o.tryCancelReady()
 				return
 			}
+			o.tryCancelReady()
 			o.unsetStatusWhenReached(status)
 			o.updateIfChange()
 			o.orchestrateStartedFromReady()
