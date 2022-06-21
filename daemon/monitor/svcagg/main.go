@@ -39,6 +39,9 @@ type (
 		// instance status map for nodes used to compute AggregatedStatus
 		instStatus map[string]instance.Status
 
+		// srcEvent is the source event that create svcAggStatus update
+		srcEvent *moncmd.T
+
 		ctx context.Context
 		log zerolog.Logger
 	}
@@ -85,6 +88,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 		case <-o.ctx.Done():
 			return
 		case ev := <-o.cmdC:
+			o.srcEvent = ev
 			switch c := (*ev).(type) {
 			case moncmd.CfgUpdated:
 				if _, ok := o.instStatus[c.Node]; ok {
@@ -134,7 +138,6 @@ func (o *svcAggStatus) updateStatus() {
 	}
 	if o.status.Avail != newAvail {
 		o.status.Avail = newAvail
-		o.log.Info().Msgf("updated status avail to %s", o.status.Avail)
 	}
 	o.update()
 }
@@ -149,7 +152,7 @@ func (o *svcAggStatus) delete() {
 func (o *svcAggStatus) update() {
 	value := o.status.DeepCopy()
 	o.log.Info().Msgf("update avail %s", value.Avail)
-	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, *value); err != nil {
+	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
 		o.log.Error().Err(err).Msg("SetServiceAgg")
 	}
 }

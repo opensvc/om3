@@ -15,6 +15,7 @@ type (
 		Path   path.T
 		Node   string
 		SvcAgg object.AggregatedStatus
+		SrcEv  *T
 	}
 
 	MonSvcAggDone struct {
