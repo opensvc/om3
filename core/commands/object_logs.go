@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 
@@ -50,8 +51,15 @@ func (t *CmdObjectLogs) render(fpath string) error {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
+	var patternSID []byte
+	if t.SID != "" {
+		patternSID = []byte(fmt.Sprintf("\"sid\":\"%s\"", t.SID))
+	}
 	for scanner.Scan() {
 		b := scanner.Bytes()
+		if (patternSID != nil) && !bytes.Contains(b, patternSID) {
+			continue
+		}
 		switch t.Global.Format {
 		case "json":
 			fmt.Printf("%s\n", string(b))
