@@ -69,7 +69,7 @@ ROOT
 
 `
 
-var privateKeywords = []keywords.Keyword{
+var nodePrivateKeywords = []keywords.Keyword{
 	{
 		Section: "node",
 		Option:  "oci",
@@ -311,7 +311,7 @@ var privateKeywords = []keywords.Keyword{
 	},
 }
 
-var commonKeywords = []keywords.Keyword{
+var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section:   "node",
 		Option:    "secure_fetch",
@@ -1578,16 +1578,8 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 	},
 }
 
-var nodeKeywordStore = keywords.Store(append(privateKeywords, commonKeywords...))
+var nodeKeywordStore = keywords.Store(append(nodePrivateKeywords, nodeCommonKeywords...))
 
 func (t Node) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	switch k.Section {
-	case "data", "env", "labels":
-		return keywords.Keyword{
-			Option:   "*", // trick IsZero()
-			Scopable: true,
-			Required: false,
-		}
-	}
 	return keywordLookup(nodeKeywordStore, k, kind.Invalid, sectionType)
 }

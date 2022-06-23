@@ -594,14 +594,14 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	if t == nil {
 		return nil, errors.New("unreadable config")
 	}
-	if k.Section == "env" {
+	switch k.Section {
+	case "data", "env", "labels":
 		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
 	}
 	sectionType := t.sectionType(k)
 	kw, err := getKeyword(k, sectionType, t.Referrer)
 	if err != nil {
-		// unsupported keyword: treat as a simple string, like env keys
-		return t.EvalKeywordAs(k, keywords.Keyword{}, impersonate)
+		return nil, err
 	}
 	return t.EvalKeywordAs(k, kw, impersonate)
 }
