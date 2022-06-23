@@ -227,6 +227,7 @@ func (h ZerologHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 	}
 	if level == zerolog.NoLevel {
 		spinner.TickWithMsg(msg)
+		e.Discard()
 	} else {
 		spinner.Tick()
 	}
