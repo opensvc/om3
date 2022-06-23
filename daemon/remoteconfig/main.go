@@ -47,7 +47,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 	}
 	configure, err := object.NewConfigurerFromPath(p, object.WithConfigFile(f.Name()), object.WithVolatile(true))
 	if err != nil {
-		log.Error().Err(err).Msgf("configure error for %s")
+		log.Error().Err(err).Msgf("configure error for %s", p)
 		return
 	}
 	nodes := configure.Config().Referrer.Nodes()

@@ -128,6 +128,7 @@ func (o *smon) worker(initialNodes []string) {
 	defer ps.UnSub(c, ps.SubSetSmon(c, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
 
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
+	go o.status()
 	o.log.Info().Msg("started")
 	for {
 		select {

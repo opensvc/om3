@@ -8,7 +8,7 @@ type opGetStatus struct {
 
 func (o opGetStatus) call(d *data) {
 	d.counterCmd <- idGetStatus
-	o.status <- d.committed.DeepCopy()
+	o.status <- d.pending.DeepCopy()
 }
 
 func (t T) GetStatus() *cluster.Status {
