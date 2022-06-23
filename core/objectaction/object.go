@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -240,14 +241,14 @@ func (t T) DoLocal() error {
 		t.ObjectSelector,
 		object.SelectionWithLocal(true),
 	)
-	if t.Digest {
+	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) {
 		spinner = xspin.New("wave")
 		log.Logger = log.Logger.Hook(ZerologHook{})
 		fmt.Println(xsession.ID)
 		fmt.Printf("%s", spinner)
 	}
 	rs, err := sel.Do(t.Object)
-	if t.Digest {
+	if spinner != nil {
 		spinner.Disable()
 		spinner.Erase()
 	}
