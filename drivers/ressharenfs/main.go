@@ -45,7 +45,7 @@ func (t T) Start(ctx context.Context) error {
 	if _, err := t.isPathExported(); err != nil && len(t.issues) == 0 {
 		return err
 	}
-	if t.statusFromIssues() == status.Up {
+	if t.status() == status.Up {
 		t.Log().Info().Msg("already up")
 		return nil
 	}
@@ -63,7 +63,7 @@ func (t T) Stop(ctx context.Context) error {
 	if _, err := t.isPathExported(); err != nil {
 		return err
 	}
-	if t.statusFromIssues() == status.Down {
+	if t.status() == status.Down {
 		t.Log().Info().Msg("already down")
 		return nil
 	}
@@ -75,14 +75,21 @@ func (t T) Stop(ctx context.Context) error {
 
 // Status evaluates and display the Resource status and logs
 func (t *T) Status(ctx context.Context) status.T {
+	return t.status()
+}
+
+func (t *T) status() status.T {
 	if !capabilities.Has("node.x.exportfs") {
 		t.StatusLog().Error("exportfs is not installed")
 		return status.NotApplicable
 	}
-	_, err := t.isPathExported()
+	v, err := t.isPathExported()
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
+	}
+	if !v {
+		return status.Down
 	}
 	return t.statusFromIssues()
 }

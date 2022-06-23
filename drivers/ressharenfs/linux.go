@@ -299,9 +299,7 @@ func (t T) getAllExports() (Exports, error) {
 	}
 	exports := make(Exports, 0)
 	for _, line := range strings.Split(string(out), "\n") {
-		if export, err := parseExport(line); err != nil {
-			return exports, err
-		} else {
+		if export, err := parseExport(line); err == nil {
 			exports = append(exports, export)
 		}
 	}
@@ -325,6 +323,9 @@ func parseShowmountLine(s string) (mount Mount, err error) {
 
 func parseExport(s string) (Export, error) {
 	l := strings.Fields(s)
+	if len(l) == 0 {
+		return Export{}, fmt.Errorf("invalid exportfs -v output line format (expected 1 client(opt,opt)): %s", s)
+	}
 	opts, err := parseOpts(l[1:])
 	if err != nil {
 		return Export{}, err
