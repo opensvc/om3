@@ -52,7 +52,6 @@ func (o opCommitPending) call(d *data) {
 		daemonps.PubInstStatusUpdated(d.pubSub, w.Path.String(), w)
 	}
 	for _, w := range smonDeletes {
-		d.log.Error().Msgf("detect smonDeletes from %s %s", w.Path, w.Node)
 		daemonps.PubSmonDelete(d.pubSub, w.Path.String(), w)
 	}
 	for _, w := range smonUpdates {
