@@ -123,12 +123,12 @@ func (d *discover) cmdRemoteCfgDeleted(p path.T, node string) {
 }
 
 func (d *discover) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
+	defer d.cancelFetcher(c.Path.String())
 	select {
 	case <-c.Ctx.Done():
 		c.Err <- nil
 		return
 	default:
-		defer d.cancelFetcher(c.Path.String())
 		var prefix string
 		if c.Path.Namespace != "root" {
 			prefix = "namespaces/"
@@ -156,6 +156,7 @@ func (d *discover) inScope(cfg *instance.Config) bool {
 }
 
 func (d *discover) cancelFetcher(s string) {
+	d.log.Debug().Msgf("cancelFetcher %s", s)
 	node := d.fetcherFrom[s]
 	d.fetcherCancel[s]()
 	delete(d.fetcherCancel, s)
