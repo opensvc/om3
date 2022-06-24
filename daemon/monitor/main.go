@@ -37,7 +37,7 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		TCtx:        daemonctx.TCtx{},
-		loopDelay:   2 * time.Second,
+		loopDelay:   1000 * time.Millisecond,
 		loopEnabled: enable.New(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())

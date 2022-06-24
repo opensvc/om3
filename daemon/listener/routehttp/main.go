@@ -34,6 +34,7 @@ func New(ctx context.Context) *T {
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
 	mux.Post("/daemon_stop", daemonhandler.Stop)
+	mux.Post("/object_monitor", objecthandler.PostMonitor)
 	mux.Post("/object_status", objecthandler.PostStatus)
 	mux.Get("/object_selector", objecthandler.GetSelector)
 	mux.Get("/object_config", objecthandler.GetConfig)

@@ -29,6 +29,7 @@ func (o *instCfg) watchFile() error {
 	}
 	go func() {
 		defer func() {
+			log.Debug().Msg("watching events done")
 			if err := watcher.Close(); err != nil {
 				log.Error().Err(err).Msg("defer Close")
 			}
@@ -58,6 +59,8 @@ func (o *instCfg) watchFile() error {
 					log.Debug().Msg("file updated")
 					o.cmdC <- moncmd.New(moncmd.CfgFileUpdated{})
 				}
+			case err := <-watcher.Errors:
+				log.Error().Err(err).Msg("watcher.Errors")
 			}
 		}
 	}()
