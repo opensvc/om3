@@ -218,11 +218,14 @@ func Start(ctx context.Context, name string) chan<- interface{} {
 					if !ok {
 						continue
 					}
+					queue := subQueue[c.subId]
 					delete(subs, c.subId)
 					delete(subNames, c.subId)
 					delete(subNs, c.subId)
 					delete(subOps, c.subId)
 					delete(subQueue, c.subId)
+					// end subscriber dispatcher
+					close(queue)
 					c.resp <- name
 					log.Debug().Msgf("unsubscribe %s", name)
 				}
