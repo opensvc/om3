@@ -1112,14 +1112,17 @@ func (t *T) CommitToInvalid(configPath string) error {
 }
 
 func (t *T) CommitData(configData rawconfig.T) error {
+	t.changed = true
 	return t.rawCommit(configData, "", true)
 }
 
 func (t *T) CommitDataTo(configData rawconfig.T, configPath string) error {
+	t.changed = true
 	return t.rawCommit(configData, configPath, true)
 }
 
 func (t *T) CommitDataToInvalid(configData rawconfig.T, configPath string) error {
+	t.changed = true
 	return t.rawCommit(configData, configPath, false)
 }
 
