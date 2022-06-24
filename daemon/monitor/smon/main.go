@@ -21,6 +21,7 @@ package smon
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -28,7 +29,6 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	ps "opensvc.com/opensvc/daemon/daemonps"
@@ -51,6 +51,9 @@ type (
 		dataCmdC chan<- interface{}
 		log      zerolog.Logger
 
+		pendingCtx    context.Context
+		pendingCancel context.CancelFunc
+
 		// updated data from aggregated status update srcEvent
 		instStatus map[string]instance.Status
 		instSmon   map[string]instance.Monitor
@@ -62,16 +65,21 @@ type (
 		change      bool
 	}
 
-	cmdReady struct {
-		ctx context.Context
+	// cmdOrchestrate can be used from post action go routines
+	cmdOrchestrate struct {
+		state    string
+		newState string
 	}
 )
 
 var (
-	statusIdle     = ""
-	statusReady    = "ready"
-	statusStarting = "starting"
-	statusStopping = "stopping"
+	statusIdle        = "idle"
+	statusReady       = "ready"
+	statusStarted     = "started"
+	statusStartFailed = "start failed"
+	statusStarting    = "starting"
+	statusStopFailed  = "stop failed"
+	statusStopping    = "stopping"
 
 	localExpectStarted = "started"
 	localExpectUnset   = ""
@@ -79,8 +87,6 @@ var (
 	globalExpectUnset   = ""
 	globalExpectStarted = "started"
 	globalExpectStopped = "stopped"
-
-	readyDuration = 1 * time.Second
 )
 
 // Start launch goroutine smon worker for a local instance state
@@ -134,7 +140,7 @@ func (o *smon) worker(initialNodes []string) {
 	defer o.delete()
 
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
-	go o.status()
+	go o.crmStatus()
 	o.log.Info().Msg("started")
 	for {
 		select {
@@ -143,55 +149,13 @@ func (o *smon) worker(initialNodes []string) {
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
 			case moncmd.MonSvcAggUpdated:
-				if c.SrcEv != nil {
-					switch srcCmd := (*c.SrcEv).(type) {
-					case moncmd.InstStatusUpdated:
-						srcNode := srcCmd.Node
-						if _, ok := o.instStatus[srcNode]; !ok {
-							continue
-						}
-						instStatus := srcCmd.Status
-						o.instStatus[srcNode] = instStatus
-						if srcNode == o.localhost {
-							o.unsetStatusWhenReached(instStatus)
-						}
-					case moncmd.CfgUpdated:
-						if srcCmd.Node != o.localhost {
-							continue
-						}
-						cfgNodes := make(map[string]struct{})
-						for _, node := range srcCmd.Config.Scope {
-							cfgNodes[node] = struct{}{}
-							if _, ok := o.instStatus[node]; !ok {
-								o.instStatus[node] = instance.Status{Avail: status.Undef}
-							}
-						}
-						for node := range o.instStatus {
-							if _, ok := cfgNodes[node]; !ok {
-								o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
-								delete(o.instStatus, node)
-							}
-						}
-						o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
-					}
-				}
-				o.cmdSvcAggUpdated(c.SvcAgg)
+				o.cmdSvcAggUpdated(c)
 			case moncmd.SetSmon:
 				o.cmdSetSmonClient(c.Monitor)
 			case moncmd.SmonUpdated:
-				node := c.Node
-				if node == o.localhost {
-					continue
-				}
-				instSmon := c.Status
-				o.log.Debug().Msgf("updated instance smon from node %s  -> %s", node, instSmon.GlobalExpect)
-				o.instSmon[node] = instSmon
-				o.convergeGlobalExpectFromRemote()
-				o.updateIfChange()
-				o.orchestrate()
-				o.updateIfChange()
-			case cmdReady:
-				o.cmdTryLeaveReady(c.ctx)
+				o.cmdSmonUpdated(c)
+			case cmdOrchestrate:
+				o.needOrchestrate(c)
 			}
 		}
 	}
@@ -224,79 +188,54 @@ func (o *smon) updateIfChange() {
 	previousVal := o.previousState
 	newVal := o.state
 	if newVal.Status != previousVal.Status {
-		o.log.Info().Msgf("change monitor status %s -> %s", previousVal.Status, newVal.Status)
+		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		o.log.Info().Msgf("change local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
+		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
+		o.log.Info().Msgf("change monitor local expect %s -> %s", from, to)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		o.log.Info().Msgf("change global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
+		from, to := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
+		o.log.Info().Msgf("change monitor global expect %s -> %s", from, to)
 	}
 	o.previousState = o.state
 	o.update()
 }
 
-// unsetStatusWhenReached
-func (o *smon) unsetStatusWhenReached(localInstanceStatus instance.Status) {
-	localStatus := o.state.Status
-	switch {
-	case localStatus == statusIdle:
-		return
-	case localStatus == statusStarting || localStatus == statusReady:
-		if localInstanceStatus.Avail == status.Up {
-			o.log.Info().Msgf("reached local instance status: %s smon.status: %s", localInstanceStatus.Avail, localStatus)
-			o.change = true
-			o.state.Status = statusIdle
-			o.state.LocalExpect = localExpectStarted
-			if o.cancelReady != nil {
-				o.cancelReady()
-				o.cancelReady = nil
-			}
-		}
-	case localStatus == statusStopping:
-		if localInstanceStatus.Avail == status.Down {
-			o.log.Info().Msgf("reached local instance status: %s smon.status: %s", localInstanceStatus.Avail, localStatus)
-			o.change = true
-			o.state.Status = statusIdle
-			o.state.LocalExpect = localExpectUnset
-			if o.cancelReady != nil {
-				o.cancelReady()
-				o.cancelReady = nil
-			}
-		}
-	}
-}
-
-// convergeGlobalExpectFromRemote set global expect from most recent global expect value
-func (o *smon) convergeGlobalExpectFromRemote() {
-	var mostRecentNode string
-	var mostRecentUpdated time.Time
-	for node, state := range o.instStatus {
-		nodeTime := state.Monitor.GlobalExpectUpdated.Time()
-		if nodeTime.After(mostRecentUpdated) {
-			mostRecentNode = node
-			mostRecentUpdated = nodeTime
-		}
-	}
-	if mostRecentNode != o.localhost {
-		o.change = true
-		o.state.GlobalExpect = o.instStatus[mostRecentNode].Monitor.GlobalExpect
-		o.state.GlobalExpectUpdated = o.instStatus[mostRecentNode].Monitor.GlobalExpectUpdated
-		o.log.Info().Msgf("remote node %s has most recent global expect value %s", mostRecentNode, o.state.GlobalExpect)
-	}
-}
-
 func (o *smon) hasOtherNodeActing() bool {
-	for node, instanceStatus := range o.instStatus {
-		if node == o.localhost {
+	for remoteNode, remoteSmon := range o.instSmon {
+		if remoteNode == o.localhost {
 			continue
 		}
-		switch instanceStatus.Monitor.Status {
-		case statusReady:
-			return true
-		case statusStarting:
+		if strings.HasSuffix(remoteSmon.Status, "ing") {
 			return true
 		}
 	}
 	return false
+}
+
+func (o *smon) createPendingWithCancel() {
+	o.pendingCtx, o.pendingCancel = context.WithCancel(o.ctx)
+}
+
+func (o *smon) createPendingWithDuration(duration time.Duration) {
+	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
+}
+
+func (o *smon) clearPending() {
+	if o.pendingCancel != nil {
+		o.pendingCancel()
+		o.pendingCancel = nil
+		o.pendingCtx = nil
+	}
+}
+
+func (o *smon) logFromTo(from, to string) (string, string) {
+	if from == "" {
+		from = "unset"
+	}
+	if to == "" {
+		to = "unset"
+	}
+	return from, to
 }
