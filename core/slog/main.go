@@ -33,7 +33,6 @@ func (event Event) Map() map[string]interface{} {
 }
 
 func (event Event) IsMatching(filters map[string]interface{}) bool {
-	fmt.Println("xx", string(event.b), filters)
 	for k, v := range filters {
 		if current, ok := event.m[k]; !ok || (current != v) {
 			return false
