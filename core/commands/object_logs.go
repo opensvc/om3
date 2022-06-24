@@ -56,6 +56,13 @@ func (t *CmdObjectLogs) local(selStr string) error {
 	} else {
 		return err
 	}
+	if t.Follow {
+		if stream, err := slog.GetEventStreamFromObjects(paths, filters); err == nil {
+			for event := range stream.Events() {
+				event.Render(t.Global.Format)
+			}
+		}
+	}
 	return nil
 }
 
