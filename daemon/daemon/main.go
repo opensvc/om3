@@ -7,6 +7,7 @@ package daemon
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -80,7 +81,7 @@ var (
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		TCtx:        daemonctx.TCtx{},
-		loopDelay:   1 * time.Second,
+		loopDelay:   10 * time.Second,
 		loopEnabled: enable.New(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
@@ -190,5 +191,6 @@ func (t *T) loop(c chan bool) {
 }
 
 func (t *T) aLoop() {
-	t.log.Debug().Msg("loop")
+	// TODO move this to daemon data
+	t.log.Info().Msgf("go routines %d", runtime.NumGoroutine())
 }
