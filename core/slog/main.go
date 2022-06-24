@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/fatih/color"
@@ -12,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/xerrors"
 )
 
@@ -161,15 +163,33 @@ func (stream *Stream) Follow(fpath string) error {
 	return nil
 }
 
+func GetEventStreamFromNode(filters map[string]interface{}) (*Stream, error) {
+	files := []string{filepath.Join(rawconfig.Paths.Log, "node.log")}
+	return GetEventStreamFromFiles(files, filters)
+}
+
 func GetEventStreamFromObjects(paths []path.T, filters map[string]interface{}) (*Stream, error) {
+	files := make([]string, len(paths))
+	for i := 0; i < len(paths); i += 1 {
+		files[i] = object.LogFile(paths[i])
+	}
+	return GetEventStreamFromFiles(files, filters)
+}
+
+func GetEventStreamFromFiles(files []string, filters map[string]interface{}) (*Stream, error) {
 	stream := NewStream()
 	var errs error
-	for _, p := range paths {
-		if err := stream.Follow(object.LogFile(p)); err != nil {
+	for _, p := range files {
+		if err := stream.Follow(p); err != nil {
 			xerrors.Append(errs, err)
 		}
 	}
 	return stream, errs
+}
+
+func GetEventsFromNode(filters map[string]interface{}) (Events, error) {
+	file := filepath.Join(rawconfig.Paths.Log, "node.log")
+	return GetEventsFromFile(file, filters)
 }
 
 func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Events, error) {

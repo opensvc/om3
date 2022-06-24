@@ -79,6 +79,7 @@ var (
 	cmdNodeDelete                    commands.NodeDelete
 	cmdNodeDrivers                   commands.NodeDrivers
 	cmdNodeEditConfig                commands.NodeEditConfig
+	cmdNodeLogs                      commands.NodeLogs
 	cmdNodeLs                        commands.NodeLs
 	cmdNodeGet                       commands.NodeGet
 	cmdNodeEval                      commands.NodeEval
@@ -128,6 +129,7 @@ func init() {
 	cmdNodeDelete.Init(nodeCmd)
 	cmdNodeDrivers.Init(nodeCmd)
 	cmdNodeEditConfig.Init(nodeEditCmd)
+	cmdNodeLogs.Init(nodeCmd)
 	cmdNodeLs.Init(nodeCmd)
 	cmdNodeGet.Init(nodeCmd)
 	cmdNodeEval.Init(nodeCmd)
