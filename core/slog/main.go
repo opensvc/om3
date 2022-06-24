@@ -86,16 +86,12 @@ func (events Events) Render(format string) {
 }
 
 func NewEvent(b []byte) (Event, error) {
-	event := Event{}
-	if err := event.Load(b); err != nil {
-		return event, err
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return Event{}, err
+	} else {
+		return Event{b: b, m: m}, nil
 	}
-	return event, nil
-}
-
-func (event *Event) Load(b []byte) error {
-	event.b = b
-	return json.Unmarshal(event.b, &event.m)
 }
 
 func GetEventsFromFile(fpath string, filters map[string]interface{}) (Events, error) {
@@ -107,7 +103,7 @@ func GetEventsFromFile(fpath string, filters map[string]interface{}) (Events, er
 	scanner := bufio.NewScanner(f)
 	events := make(Events, 0)
 	for scanner.Scan() {
-		b := scanner.Bytes()
+		b := []byte(scanner.Text())
 		if event, err := NewEvent(b); err != nil {
 			continue
 		} else if event.IsMatching(filters) {
@@ -178,11 +174,12 @@ func GetEventStreamFromObjects(paths []path.T, filters map[string]interface{}) (
 
 func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Events, error) {
 	events := make(Events, 0)
+	var errs error
 	for _, p := range paths {
 		fpath := object.LogFile(p)
 		more, err := GetEventsFromFile(fpath, filters)
 		if err != nil {
-			return events, err
+			xerrors.Append(errs, err)
 		}
 		events = append(events, more...)
 	}
@@ -197,5 +194,5 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 		}
 		return ts1.(float64) < ts2.(float64)
 	})
-	return events, nil
+	return events, errs
 }
