@@ -19,6 +19,8 @@ var actionToPath = map[string]rawToHttp{
 
 	"object/config":   {"GET", "/object/config"},
 	"object_config":   {"GET", "/object/config"},
+	"object/monitor":  {"POST", "/object/monitor"},
+	"object_monitor":  {"POST", "/object/monitor"},
 	"object/selector": {"GET", "/object/selector"},
 	"object_selector": {"GET", "/object/selector"},
 	"object/status":   {"POST", "/object/status"},

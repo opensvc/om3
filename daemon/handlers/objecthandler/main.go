@@ -7,6 +7,7 @@ import (
 func Router() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/config", GetConfig)
+	r.Post("/monitor", PostMonitor)
 	r.Post("/status", PostStatus)
 	r.Get("/selector", GetSelector)
 	return r
