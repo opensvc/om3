@@ -106,11 +106,7 @@ func Configure(config Config) *Logger {
 	mw := io.MultiWriter(writers...)
 
 	// zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	l := log.Output(mw).With().Timestamp()
-	if WithCaller {
-		l = l.Caller()
-	}
-	logger := l.Logger()
+	logger := log.Output(mw)
 
 	/*
 		logger.Debug().

@@ -95,6 +95,7 @@ func listNodes() []string {
 }
 
 func configureLogger() {
+	initLogger()
 	if colorLogFlag == "no" {
 		logging.DisableDefaultConsoleWriterColor()
 	}
@@ -102,6 +103,9 @@ func configureLogger() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+	if callerFlag {
+		log.Logger = log.Logger.With().Caller().Logger()
 	}
 }
 
@@ -112,7 +116,7 @@ func initLogger() {
 	zerolog.MessageFieldName = "m"
 
 	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: false,
+		ConsoleLoggingEnabled: debugFlag,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             rawconfig.Paths.Log,
@@ -208,9 +212,7 @@ func guessSubsystem(s string) string {
 }
 
 func init() {
-	initLogger()
 	cobra.OnInitialize(initConfig)
-
 	root.PersistentFlags().StringVar(&configFlag, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
 	root.PersistentFlags().StringVar(&colorLogFlag, "colorlog", "auto", "log output colorization yes|no|auto")

@@ -26,109 +26,109 @@ func TestAppStop(t *testing.T) {
 		expectedResults string
 	}{
 		"logInfo": {
-			[]string{"--rid", "app#1"},
+			[]string{"--rid", "app#1", "--debug"},
 			"line1\nline2",
 		},
 		"logError": {
-			[]string{"--rid", "app#2"},
+			[]string{"--rid", "app#2", "--debug"},
 			"unrecognized option",
 		},
 		"env": {
-			[]string{"--rid", "app#env"},
+			[]string{"--rid", "app#env", "--debug"},
 			"FOO=foo\nacceptMixedCase=value1",
 		},
 		"cwd": {
-			[]string{"--rid", "app#cwd"},
+			[]string{"--rid", "app#cwd", "--debug"},
 			"/usr",
 		},
 		"cwdWithDefaultType": {
-			[]string{"--rid", "app#cwdWithDefaultType"},
+			[]string{"--rid", "app#cwdWithDefaultType", "--debug"},
 			"/usr",
 		},
 		"badUser": {
-			[]string{"--rid", "app#badUser"},
+			[]string{"--rid", "app#badUser", "--debug"},
 			"unable to find user info for 'badUser'",
 		},
 		"badGroup": {
-			[]string{"--rid", "app#badGroup"},
+			[]string{"--rid", "app#badGroup", "--debug"},
 			"unable to find group info for 'badGroup'",
 		},
 		"badUserGroup": {
-			[]string{"--rid", "app#badUserGroup"},
+			[]string{"--rid", "app#badUserGroup", "--debug"},
 			"unable to find user info for 'badUser'",
 		},
 		"root": {
-			[]string{"--rid", "app#root"},
+			[]string{"--rid", "app#root", "--debug"},
 			"uid=0(root) gid=1", // daemon may be 12 on solaris
 		},
 		"nonRoot": {
-			[]string{"--rid", "app#root"},
+			[]string{"--rid", "app#root", "--debug"},
 			operationNotPermittedMsg,
 		},
 		"stopTrueScript": {
-			[]string{"--rid", "app#stopTrueScript"},
+			[]string{"--rid", "app#stopTrueScript", "--debug"},
 			"noSuchFile.opensvc.test",
 		},
 		"stoptrue": {
-			[]string{"--rid", "app#stoptrue"},
+			[]string{"--rid", "app#stoptrue", "--debug"},
 			"stop",
 		},
 		"stopTrue": {
-			[]string{"--rid", "app#stopTrue"},
+			[]string{"--rid", "app#stopTrue", "--debug"},
 			"stop",
 		},
 		"stopT": {
-			[]string{"--rid", "app#stopT"},
+			[]string{"--rid", "app#stopT", "--debug"},
 			"stop",
 		},
 		"stop0": {
-			[]string{"--rid", "app#stop0"},
+			[]string{"--rid", "app#stop0", "--debug"},
 			"stop",
 		},
 		"stopf": {
-			[]string{"--rid", "app#stopf"},
+			[]string{"--rid", "app#stopf", "--debug"},
 			"stop",
 		},
 		"stopF": {
-			[]string{"--rid", "app#stopF"},
+			[]string{"--rid", "app#stopF", "--debug"},
 			"stop",
 		},
 		"stopfalse": {
-			[]string{"--rid", "app#stopfalse"},
+			[]string{"--rid", "app#stopfalse", "--debug"},
 			"stop",
 		},
 		"stopFALSE": {
-			[]string{"--rid", "app#stopFALSE"},
+			[]string{"--rid", "app#stopFALSE", "--debug"},
 			"stop",
 		},
 		"stopFalse": {
-			[]string{"--rid", "app#stopFalse"},
+			[]string{"--rid", "app#stopFalse", "--debug"},
 			"stop",
 		},
 		"stopEmpty": {
-			extraArgs: []string{"--rid", "app#stopEmpty"},
+			extraArgs: []string{"--rid", "app#stopEmpty", "--debug"},
 		},
 		"stopUndef": {
-			extraArgs: []string{"--rid", "app#stopUndef"},
+			extraArgs: []string{"--rid", "app#stopUndef", "--debug"},
 		},
 		"stopScriptUndef": {
-			[]string{"--rid", "app#stopScriptUndef"},
+			[]string{"--rid", "app#stopScriptUndef", "--debug"},
 			"action 'stop' as true value but 'script' keyword is empty",
 		},
 		"configEnv": {
-			[]string{"--rid", "app#configEnv"},
+			[]string{"--rid", "app#configEnv", "--debug"},
 			"FOOCFG1=fooValue1\nFooCFG2=fooValue2\n",
 		},
 		"secretEnv": {
-			[]string{"--rid", "app#secretEnv"},
+			[]string{"--rid", "app#secretEnv", "--debug"},
 			"FOOSEC1=fooSec1\nFooSEC2=fooSec2\n",
 		},
 		"secretEnvMatchers": {
-			[]string{"--rid", "app#secretEnvMatchers"},
+			[]string{"--rid", "app#secretEnvMatchers", "--debug"},
 			"foo.foo1=fooSec1\nfoo.Foo2=fooSec2\n",
 		},
 		"configEnvMatchers": {
-			[]string{"--rid", "app#configEnvMatchers"},
+			[]string{"--rid", "app#configEnvMatchers", "--debug"},
 			"FOOKEY1=FOOKEYValue1\nFOOkey2=FOOkeyValue2\n",
 		},
 	}
