@@ -57,6 +57,32 @@ func (d *data) getStatusDiff() (deletes []moncmd.InstStatusDeleted, updates []mo
 	return
 }
 
+func (d *data) getSmonDiff() (deletes []moncmd.SmonDeleted, updates []moncmd.SmonUpdated) {
+	nodes := make(map[string]struct{})
+	for n := range d.pending.Monitor.Nodes {
+		if n == d.localNode {
+			continue
+		}
+		nodes[n] = struct{}{}
+	}
+	for n := range d.committed.Monitor.Nodes {
+		if n == d.localNode {
+			continue
+		}
+		nodes[n] = struct{}{}
+	}
+	for n := range nodes {
+		deleteOnNode, updateOnNode := d.getSmonDiffForNode(n)
+		if len(deleteOnNode) > 0 {
+			deletes = append(deletes, deleteOnNode...)
+		}
+		if len(updateOnNode) > 0 {
+			updates = append(updates, updateOnNode...)
+		}
+	}
+	return
+}
+
 func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.CfgUpdated) {
 	deletes := make([]moncmd.CfgDeleted, 0)
 	updates := make([]moncmd.CfgUpdated, 0)
@@ -211,6 +237,80 @@ func (d *data) getStatusDiffForNode(node string) ([]moncmd.InstStatusDeleted, []
 				continue
 			}
 			deletes = append(deletes, moncmd.InstStatusDeleted{
+				Path: p,
+				Node: node,
+			})
+		}
+	}
+	return deletes, updates
+}
+
+func (d *data) getSmonDiffForNode(node string) ([]moncmd.SmonDeleted, []moncmd.SmonUpdated) {
+	deletes := make([]moncmd.SmonDeleted, 0)
+	updates := make([]moncmd.SmonUpdated, 0)
+	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
+	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
+	if hasPendingNode && hasCommittedNode {
+		for s, pending := range pendingNode.Services.Smon {
+			if committed, ok := committedNode.Services.Smon[s]; ok {
+				globalExpectUpdated := pending.GlobalExpectUpdated.Time().Unix() > committed.GlobalExpectUpdated.Time().Unix()
+				statusUpdated := pending.StatusUpdated.Time().Unix() > committed.StatusUpdated.Time().Unix()
+				if globalExpectUpdated || statusUpdated {
+					p, err := path.Parse(s)
+					if err != nil {
+						continue
+					}
+					updates = append(updates, moncmd.SmonUpdated{
+						Path:   p,
+						Node:   node,
+						Status: *pending.DeepCopy(),
+					})
+				}
+			} else {
+				p, err := path.Parse(s)
+				if err != nil {
+					continue
+				}
+				updates = append(updates, moncmd.SmonUpdated{
+					Path:   p,
+					Node:   node,
+					Status: *pending.DeepCopy(),
+				})
+			}
+		}
+		for s := range committedNode.Services.Smon {
+			if _, ok := pendingNode.Services.Smon[s]; !ok {
+				p, err := path.Parse(s)
+				if err != nil {
+					continue
+				}
+				deletes = append(deletes, moncmd.SmonDeleted{
+					Path: p,
+					Node: node,
+				})
+			}
+		}
+	} else if hasPendingNode {
+		// all pending status are new
+		for s, cfg := range pendingNode.Services.Smon {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			updates = append(updates, moncmd.SmonUpdated{
+				Path:   p,
+				Node:   node,
+				Status: *cfg.DeepCopy(),
+			})
+		}
+	} else if hasCommittedNode {
+		// all committed status are deleted
+		for s := range committedNode.Services.Smon {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			deletes = append(deletes, moncmd.SmonDeleted{
 				Path: p,
 				Node: node,
 			})

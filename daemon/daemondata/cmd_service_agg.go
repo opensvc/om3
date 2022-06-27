@@ -22,6 +22,7 @@ type (
 		err   chan<- error
 		path  path.T
 		value object.AggregatedStatus
+		srcEv *moncmd.T
 	}
 )
 
@@ -80,6 +81,7 @@ func (o opSetServiceAgg) call(d *data) {
 		Path:   o.path,
 		Node:   d.localNode,
 		SvcAgg: o.value,
+		SrcEv:  o.srcEv,
 	})
 	o.err <- nil
 }

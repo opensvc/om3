@@ -34,11 +34,13 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err := json.Unmarshal(reqBody, &postStatus); err != nil {
 		log.Error().Err(err).Msg("request body unmarshal")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if p, err := path.Parse(postStatus.Path); err != nil {
 		log.Error().Err(err).Msg("path.Parse")
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	} else {
 		dataCmd := daemonctx.DaemonDataCmd(r.Context())
 		log.Debug().Msgf("SetInstanceStatus on %s", postStatus.Path)

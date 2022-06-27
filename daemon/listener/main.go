@@ -171,5 +171,4 @@ func (t *T) loop(c chan bool) {
 }
 
 func (t *T) aLoop() {
-	t.log.Debug().Msg("loop")
 }

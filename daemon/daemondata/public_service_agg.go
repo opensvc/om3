@@ -3,6 +3,7 @@ package daemondata
 import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/daemon/monitor/moncmd"
 )
 
 // DelServiceAgg
@@ -20,12 +21,13 @@ func DelServiceAgg(c chan<- interface{}, p path.T) error {
 // SetServiceAgg
 //
 // committed.Monitor.Services.*
-func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus) error {
+func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus, ev *moncmd.T) error {
 	err := make(chan error)
 	c <- opSetServiceAgg{
 		err:   err,
 		path:  p,
 		value: v,
+		srcEv: ev,
 	}
 	return <-err
 }
