@@ -242,7 +242,7 @@ func (t T) DoLocal() error {
 		t.ObjectSelector,
 		object.SelectionWithLocal(true),
 	)
-	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) {
+	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
 		spinner = xspin.New("wave")
 		log.Logger = log.Logger.Hook(ZerologHook{})
 		fmt.Println(xsession.ID)
