@@ -72,11 +72,16 @@ func TestKeyopParse(t *testing.T) {
 			index: 2,
 		},
 		{
-			expr:  "fs.optional=false",
-			key:   key.T{Section: "fs", Option: "optional"},
-			op:    Set,
-			val:   "false",
-			index: 2,
+			expr: "fs.optional=false",
+			key:  key.T{Section: "fs", Option: "optional"},
+			op:   Set,
+			val:  "false",
+		},
+		{
+			expr: "disk#0.vdev=mirror {volume#1.exposed_devs[0]} {volume#2.exposed_devs[0]}",
+			key:  key.T{Section: "disk#0", Option: "vdev"},
+			op:   Set,
+			val:  "mirror {volume#1.exposed_devs[0]} {volume#2.exposed_devs[0]}",
 		},
 	}
 	for _, test := range tests {

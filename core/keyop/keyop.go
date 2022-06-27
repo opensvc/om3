@@ -173,7 +173,7 @@ func Parse(s string) *T {
 	//     "0",            /* index */
 	//   }
 	//
-	subs := regexpIndex.FindStringSubmatch(s)
+	subs := regexpIndex.FindStringSubmatch(k)
 
 	if len(subs) == 3 {
 		k = subs[1]
