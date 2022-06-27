@@ -56,6 +56,7 @@ type (
 	Config interface {
 		GetString(key.T) string
 		GetStringStrict(key.T) (string, error)
+		GetSlice(key.T) []string
 	}
 	Pooler interface {
 		SetName(string)
@@ -70,10 +71,10 @@ type (
 		Config() Config
 	}
 	Translater interface {
-		Translate(name string, size float64, shared bool) []string
+		Translate(name string, size float64, shared bool) ([]string, error)
 	}
 	BlkTranslater interface {
-		BlkTranslate(name string, size float64, shared bool) []string
+		BlkTranslate(name string, size float64, shared bool) ([]string, error)
 	}
 	volumer interface {
 		FQDN() string
@@ -171,23 +172,32 @@ func GetStatus(t Pooler, withUsage bool) Status {
 	data.Capabilities = t.Capabilities()
 	data.Head = t.Head()
 	if withUsage {
-		usage, err := t.Usage()
-		if err != nil {
+		if usage, err := t.Usage(); err != nil {
 			data.Errors = append(data.Errors, err.Error())
+		} else {
+			data.Free = usage.Free
+			data.Used = usage.Used
+			data.Size = usage.Size
 		}
-		data.Free = usage.Free
-		data.Used = usage.Used
-		data.Size = usage.Size
 	}
 	return data
 }
 
 func pKey(p Pooler, s string) key.T {
-	return key.New("pool#"+p.Name(), s)
+	return pk(p.Name(), s)
+}
+
+func pk(poolName, s string) key.T {
+	return key.New("pool#"+poolName, s)
+}
+
+func (t *T) GetSlice(s string) []string {
+	k := pk(t.name, s)
+	return t.Config().GetSlice(k)
 }
 
 func (t *T) GetString(s string) string {
-	k := key.New("pool#"+t.name, s)
+	k := pk(t.name, s)
 	return t.Config().GetString(k)
 }
 
@@ -311,19 +321,24 @@ func ConfigureVolume(p Pooler, vol volumer, size float64, format bool, acs volac
 
 func translate(p Pooler, name string, size float64, format bool, shared bool) ([]string, error) {
 	var kws []string
+	var err error
 	switch format {
 	case true:
 		o, ok := p.(Translater)
 		if !ok {
 			return nil, fmt.Errorf("pool %s does not support formatted volumes", p.Name())
 		}
-		kws = o.Translate(name, size, shared)
+		if kws, err = o.Translate(name, size, shared); err != nil {
+			return nil, err
+		}
 	case false:
 		o, ok := p.(BlkTranslater)
 		if !ok {
 			return nil, fmt.Errorf("pool %s does not support block volumes", p.Name())
 		}
-		kws = o.BlkTranslate(name, size, shared)
+		if kws, err = o.BlkTranslate(name, size, shared); err != nil {
+			return nil, err
+		}
 	}
 	return kws, nil
 }

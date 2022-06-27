@@ -65,7 +65,7 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 			fmt.Fprintf(os.Stderr, "skip %s: not a keystore\n", p)
 			continue
 		}
-		if !wc && obj.(object.Configurer).Exists() {
+		if !wc && object.Exists(p) {
 			if err := t.doLocal(ks, c); err != nil {
 				return err
 			}

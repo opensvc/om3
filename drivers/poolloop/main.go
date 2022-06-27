@@ -68,13 +68,16 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	return usage, nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) []string {
-	data := t.BlkTranslate(name, size, shared)
+func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+	data, err := t.BlkTranslate(name, size, shared)
+	if err != nil {
+		return nil, err
+	}
 	data = append(data, t.AddFS(name, shared, 1, 0, "disk#0")...)
-	return data
+	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
+func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
 	p := fmt.Sprintf("%s/%s.img", t.Head(), name)
 	data := []string{
 		"disk#0.type=loop",
@@ -82,7 +85,7 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
 		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
 		"disk#0.file=" + p,
 	}
-	return data
+	return data, nil
 }
 
 func (t T) path() string {

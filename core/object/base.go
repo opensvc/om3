@@ -262,10 +262,6 @@ func (t *Base) configureResources() {
 		typeKey := key.New(k, "type")
 		driverName := t.config.Get(typeKey)
 		driverID := driver.NewID(driverGroup, driverName)
-		if driverName == "" && driverID.Name == "" {
-			t.log.Debug().Stringer("rid", rid).Msg("no explicit type and no default type for this driver group")
-			continue
-		}
 		factory := resource.NewResourceFunc(driverID)
 		if factory == nil {
 			t.log.Debug().Stringer("driver", driverID).Msg("driver not found")
@@ -410,34 +406,25 @@ func (t Base) GetActionResDeps() *actionresdeps.Store {
 //
 func (t Base) ConfigFile() string {
 	if t.configFile == "" {
-		t.configFile = t.standardConfigFile()
+		t.configFile = ConfigFile(t.Path)
 	}
 	return t.configFile
 }
 
-//
-// SetStandardConfigFile changes the configuration file currently set
-// usually by NewFromPath(..., WithConfigFile(fpath), ...) with the
-// standard configuration file location.
-//
-func (t Base) SetStandardConfigFile() {
-	t.configFile = t.standardConfigFile()
-}
-
-func (t Base) standardConfigFile() string {
-	p := t.Path.String()
-	switch t.Path.Namespace {
+func ConfigFile(p path.T) string {
+	s := p.String()
+	switch p.Namespace {
 	case "", "root":
-		p = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, p)
+		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
 	default:
-		p = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, p)
+		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, s)
 	}
-	return filepath.FromSlash(p)
+	return filepath.FromSlash(s)
 }
 
 // Exists returns true if the object configuration file exists.
-func (t Base) Exists() bool {
-	return file.Exists(t.ConfigFile())
+func Exists(p path.T) bool {
+	return file.Exists(ConfigFile(p))
 }
 
 //

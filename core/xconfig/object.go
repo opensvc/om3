@@ -3,8 +3,8 @@ package xconfig
 import (
 	"path/filepath"
 
+	"github.com/cvaroqui/ini"
 	"github.com/pkg/errors"
-	"gopkg.in/ini.v1"
 )
 
 // NewObject configures and returns a Viper instance

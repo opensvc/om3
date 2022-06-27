@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cvaroqui/ini"
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"gopkg.in/ini.v1"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
@@ -806,6 +806,19 @@ func (t T) Raw() rawconfig.T {
 		r.Data.Set(s.Name(), sectionMap)
 	}
 	return r
+}
+
+// Ops returns the list of <section>.<option>[@<scope>]=<value>
+// This format is used by the volume pools framework.
+func (t T) Ops() []string {
+	l := make([]string, 0)
+	for _, s := range t.file.Sections() {
+		for k, v := range s.KeysHash() {
+			op := fmt.Sprintf("%s.%s=%s", s.Name(), k, v)
+			l = append(l, op)
+		}
+	}
+	return l
 }
 
 func (t T) RawEvaluated() (rawconfig.T, error) {

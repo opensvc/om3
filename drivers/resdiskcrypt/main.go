@@ -122,7 +122,7 @@ func (t T) passphraseStrict() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !sec.Exists() {
+	if !object.Exists(sec.Path) {
 		return nil, fmt.Errorf("%s does not exist", sec.Path)
 	}
 	keyname := t.passphraseKeyname()

@@ -96,7 +96,7 @@ func (t Lookup) Do() (Pooler, error) {
 				cause = append(cause, fmt.Sprintf("[%s] no usage data: %s", p.Name(), err))
 				continue
 			}
-			if usage.Free*1024 < t.Size {
+			if usage.Size > 0 && (usage.Free*1024 < t.Size) {
 				cause = append(cause, fmt.Sprintf("[%s] not enough free space: %s free, %s requested",
 					p.Name(), sizeconv.BSize(float64(usage.Free*1024)), sizeconv.BSize(t.Size)))
 				continue

@@ -75,19 +75,19 @@ func (t *T) loopFile(name string) string {
 	return filepath.Join(t.path(), name+".img")
 }
 
-func (t *T) Translate(name string, size float64, shared bool) []string {
+func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
 	return []string{
 		"fs#0.type=tmpfs",
 		"fs#0.dev=none",
 		"fs#0.mnt=" + pool.MountPointFromName(name),
 		"fs#0.mnt_opt=" + t.mntOpt(size),
-	}
+	}, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
+func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
 	return []string{
 		"disk#0.type=loop",
 		"disk#0.file=" + t.loopFile(name),
 		"disk#0.size=" + sizeconv.ExactBSizeCompact(size),
-	}
+	}, nil
 }

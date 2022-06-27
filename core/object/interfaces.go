@@ -48,7 +48,6 @@ type (
 	// Baser is implemented by all object kinds.
 	Baser interface {
 		Status(OptsStatus) (instance.Status, error)
-		Exists() bool
 		IsVolatile() bool
 		ResourceSets() resourceset.L
 		Resources() resource.Drivers
@@ -83,7 +82,6 @@ type (
 
 	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
 	Configurer interface {
-		Exists() bool
 		ConfigFile() string
 		Config() *xconfig.T
 		EditConfig(OptsEditConfig) error
@@ -94,7 +92,6 @@ type (
 		Set(OptsSet) error
 		Unset(OptsUnset) error
 		Delete(OptsDelete) error
-		SetStandardConfigFile()
 		SetKeys(kops ...keyop.T) error
 		UnsetKeys(kws ...key.T) error
 		Doc(OptsDoc) (string, error)

@@ -67,7 +67,7 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	return usage, nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) []string {
+func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
 	poolName := t.poolName()
 	mnt := pool.MountPointFromName(name)
 	data := []string{
@@ -82,10 +82,10 @@ func (t *T) Translate(name string, size float64, shared bool) []string {
 	if mntOpt := t.GetString("mnt_opt"); mntOpt != "" {
 		data = append(data, "fs#0.mnt_opt="+mntOpt)
 	}
-	return data
+	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
+func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
 	poolName := t.poolName()
 	data := []string{
 		"disk#0.type=zvol",
@@ -95,5 +95,5 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
 	if mkblkOpt := t.GetString("create_options"); mkblkOpt != "" {
 		data = append(data, "fs#0.mkblk_opt="+mkblkOpt)
 	}
-	return data
+	return data, nil
 }

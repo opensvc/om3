@@ -162,14 +162,13 @@ func (t T) parseReference(s string, filter kind.T, head string) Metadata {
 
 func (t *T) statusData() {
 	for _, md := range t.getMetadata() {
+		if !object.Exists(md.FromStore) {
+			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
+			continue
+		}
 		o, err := object.NewFromPath(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
-			continue
-		}
-		base, _ := o.(object.Baser)
-		if !base.Exists() {
-			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
 		keystore := o.(object.Keystorer)
@@ -243,14 +242,13 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 	var changed bool
 
 	for _, md := range t.getMetadataByKind(filter) {
+		if !object.Exists(md.FromStore) {
+			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
+			continue
+		}
 		o, err := object.NewFromPath(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warn().Msgf("store %s init error: %s", md.FromStore, err)
-		}
-		base, _ := o.(object.Baser)
-		if !base.Exists() {
-			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
-			continue
 		}
 		keystore, _ := o.(object.Keystorer)
 		var matches []string

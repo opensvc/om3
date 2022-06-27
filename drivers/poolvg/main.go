@@ -79,13 +79,16 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	return usage, nil
 }
 
-func (t *T) Translate(name string, size float64, shared bool) []string {
-	data := t.BlkTranslate(name, size, shared)
+func (t *T) Translate(name string, size float64, shared bool) ([]string, error) {
+	data, err := t.BlkTranslate(name, size, shared)
+	if err != nil {
+		return nil, err
+	}
 	data = append(data, t.AddFS(name, shared, 1, 0, "disk#0")...)
-	return data
+	return data, nil
 }
 
-func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
+func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, error) {
 	data := []string{
 		"disk#0.type=lv",
 		"disk#0.name=" + name,
@@ -95,7 +98,7 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) []string {
 	if opts := t.MkblkOptions(); opts != "" {
 		data = append(data, "disk#0.create_options="+opts)
 	}
-	return data
+	return data, nil
 }
 
 func (t T) path() string {

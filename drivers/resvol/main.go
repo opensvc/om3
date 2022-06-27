@@ -118,7 +118,7 @@ func (t T) Start(ctx context.Context) error {
 		t.Log().Error().Err(err).Msg("")
 		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
 	}
-	if !volume.Exists() {
+	if !object.Exists(volume.Path) {
 		return fmt.Errorf("volume %s does not exist", t.name())
 	}
 	if err = t.startVolume(ctx, volume); err != nil {
@@ -187,7 +187,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("%s", err)
 		return status.Down
 	}
-	if !volume.Exists() {
+	if !object.Exists(volume.Path) {
 		t.StatusLog().Info("vol %s does not exist", t.name())
 		return status.Down
 	}
@@ -269,7 +269,7 @@ func (t *T) Volume() (*object.Vol, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !v.Exists() {
+	if !object.Exists(p) {
 		v.SetVolatile(true)
 		if err := t.configureVolume(v, false); err != nil {
 			return nil, err
@@ -360,7 +360,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if volume.Exists() {
+	if object.Exists(volume.Path) {
 		t.Log().Info().Msgf("%s is already provisioned", volume.Path)
 		return nil
 	}
@@ -375,7 +375,7 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !volume.Exists() {
+	if !object.Exists(volume.Path) {
 		t.Log().Info().Msgf("%s is already unprovisioned", volume.Path)
 		return nil
 	}
@@ -387,7 +387,8 @@ func (t T) Provisioned() (provisioned.T, error) {
 	if err != nil {
 		return provisioned.False, err
 	}
-	return provisioned.FromBool(volume.Exists()), nil
+	exists := object.Exists(volume.Path)
+	return provisioned.FromBool(exists), nil
 }
 
 func (t T) Head() string {

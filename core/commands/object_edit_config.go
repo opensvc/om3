@@ -57,7 +57,7 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 		if err != nil {
 			return err
 		}
-		if !wc && obj.Exists() {
+		if !wc && object.Exists(p) {
 			if err := t.doLocal(obj, c); err != nil {
 				return err
 			}

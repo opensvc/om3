@@ -191,14 +191,10 @@ func (t *Sec) getCASec() (*Sec, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid ca secret path: %s", s)
 	}
-	sec, err := NewSec(p, WithVolatile(true))
-	if err != nil {
-		return nil, err
+	if !Exists(p) {
+		return nil, fmt.Errorf("secret %s does not exist", p.String())
 	}
-	if !sec.Exists() {
-		return sec, fmt.Errorf("secret %s does not exist", p.String())
-	}
-	return sec, nil
+	return NewSec(p, WithVolatile(true))
 }
 
 func (t *Sec) setPriv(priv *rsa.PrivateKey) error {

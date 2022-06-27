@@ -374,11 +374,7 @@ func (t *Selection) localExactExpand(s string) (*set.Set, error) {
 	if err != nil {
 		return matching, err
 	}
-	o, err := NewBaserFromPath(p)
-	if err != nil {
-		return nil, err
-	}
-	if !o.Exists() {
+	if !Exists(p) {
 		return matching, nil
 	}
 	matching.Insert(p.String())
