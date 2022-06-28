@@ -136,6 +136,7 @@ func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
 		o.log.Info().Msg("local status is started, unset global expect")
 		o.change = true
+		o.state.Status = statusIdle
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusStarted {
 			o.state.LocalExpect = statusStarted
