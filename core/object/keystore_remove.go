@@ -6,9 +6,9 @@ import (
 
 // OptsUnset is the options of the Unset object method.
 type OptsRemove struct {
-	Global OptsGlobal
-	Lock   OptsLocking
-	Key    string `flag:"key"`
+	OptsGlobal
+	OptsLocking
+	Key string `flag:"key"`
 }
 
 // Remove gets a keyword value

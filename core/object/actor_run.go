@@ -20,7 +20,9 @@ type OptsRun struct {
 
 // Run starts the local instance of the object
 func (t *Base) Run(options OptsRun) error {
-	ctx := actioncontext.New(options, objectactionprops.Run)
+	ctx := context.Background()
+	ctx = actioncontext.WithOptions(ctx, options)
+	ctx = actioncontext.WithProps(ctx, objectactionprops.Run)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

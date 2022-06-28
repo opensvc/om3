@@ -78,9 +78,7 @@ func getKeys(name, ns, kd, match string) (s []string, err error) {
 		return nil, err
 	}
 	keysOptions := object.OptsKeys{
-		Global: object.OptsGlobal{},
-		Lock:   object.OptsLocking{},
-		Match:  match,
+		Match: match,
 	}
 	if keys, err = o.Keys(keysOptions); err != nil {
 		return nil, err
@@ -109,9 +107,7 @@ func getKey(name, ns, kd, key string) (string, error) {
 func decodeKey(o decoder, key string) (s string, err error) {
 	var b []byte
 	decodeOption := object.OptsDecode{
-		Global: object.OptsGlobal{},
-		Lock:   object.OptsLocking{},
-		Key:    key,
+		Key: key,
 	}
 	if b, err = o.Decode(decodeOption); err != nil {
 		return "", errors.Wrapf(err, "env decode from %s", o)

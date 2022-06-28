@@ -9,10 +9,10 @@ import (
 )
 
 type OptsDelete struct {
-	Global           OptsGlobal
-	Lock             OptsLocking
-	ResourceSelector string `flag:"rid"`
-	Unprovision      bool   `flag:"unprovision"`
+	OptsGlobal
+	OptsLocking
+	RID         string `flag:"rid"`
+	Unprovision bool   `flag:"unprovision"`
 }
 
 //
@@ -25,14 +25,14 @@ type OptsDelete struct {
 // sections in the configuration file.
 //
 func (t Base) Delete(opts OptsDelete) error {
-	return t.lockedAction("", opts.Lock, "delete", func() error {
+	return t.lockedAction("", opts.OptsLocking, "delete", func() error {
 		return t.lockedDelete(opts)
 	})
 }
 
 func (t Base) lockedDelete(opts OptsDelete) error {
-	if opts.ResourceSelector != "" {
-		return t.deleteSections(opts.ResourceSelector)
+	if opts.RID != "" {
+		return t.deleteSections(opts.RID)
 	}
 	return t.deleteInstance()
 }
@@ -94,7 +94,7 @@ func (t Base) setPurgeCollectorTag() error {
 	return nil
 }
 
-func (t Base) deleteSections(ResourceSelector string) error {
-	sections := strings.Split(ResourceSelector, ",")
+func (t Base) deleteSections(s string) error {
+	sections := strings.Split(s, ",")
 	return t.config.DeleteSections(sections)
 }

@@ -22,7 +22,9 @@ type OptsProvision struct {
 
 // Provision allocates and starts the local instance of the object
 func (t *Base) Provision(options OptsProvision) error {
-	ctx := actioncontext.New(options, objectactionprops.Provision)
+	ctx := context.Background()
+	ctx = actioncontext.WithOptions(ctx, options)
+	ctx = actioncontext.WithProps(ctx, objectactionprops.Provision)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

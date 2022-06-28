@@ -10,9 +10,9 @@ import (
 
 // OptsKeys is the options of the Keys function of all data objects.
 type OptsKeys struct {
-	Global OptsGlobal
-	Lock   OptsLocking
-	Match  string `flag:"match"`
+	OptsGlobal
+	OptsLocking
+	Match string `flag:"match"`
 }
 
 // Get returns a keyword value

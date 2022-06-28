@@ -16,7 +16,9 @@ type OptsSetProvisioned struct {
 
 // SetProvisioned starts the local instance of the object
 func (t *Base) SetProvisioned(options OptsSetProvisioned) error {
-	ctx := actioncontext.New(options, objectactionprops.SetProvisioned)
+	ctx := context.Background()
+	ctx = actioncontext.WithOptions(ctx, options)
+	ctx = actioncontext.WithProps(ctx, objectactionprops.SetProvisioned)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

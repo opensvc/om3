@@ -48,7 +48,7 @@ func (t *CmdObjectCreate) runErr(selector *string, kind string) error {
 	if err != nil {
 		return err
 	}
-	c, err := client.New(client.WithURL(t.Global.Server))
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
@@ -77,11 +77,11 @@ func (t *CmdObjectCreate) parseSelector(selector *string, kind string) (path.T, 
 		return p, err
 	}
 	// now we know the path is valid. Verify it is non-existing or matches only one object.
-	objectSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "**")
+	objectSelector := mergeSelector(*selector, t.ObjectSelector, kind, "**")
 	paths, err := object.NewSelection(
 		objectSelector,
-		object.SelectionWithLocal(t.Global.Local),
-		object.SelectionWithServer(t.Global.Server),
+		object.SelectionWithLocal(t.Local),
+		object.SelectionWithServer(t.Server),
 	).Expand()
 	if err == nil && len(paths) > 1 {
 		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions.")

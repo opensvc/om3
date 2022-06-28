@@ -10,14 +10,14 @@ import (
 
 // OptsSet is the options of the Set object method.
 type OptsSet struct {
-	Global     OptsGlobal
-	Lock       OptsLocking
+	OptsGlobal
+	OptsLocking
 	KeywordOps []string `flag:"kwops"`
 }
 
 // Set changes or adds a keyword and its value in the configuration file.
 func (t *Base) Set(options OptsSet) error {
-	return t.lockedAction("", options.Lock, "set", func() error {
+	return t.lockedAction("", options.OptsLocking, "set", func() error {
 		return setKeywords(t.config, options.KeywordOps)
 	})
 }

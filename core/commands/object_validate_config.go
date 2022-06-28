@@ -36,14 +36,14 @@ func (t *CmdObjectValidateConfig) cmd(kind string, selector *string) *cobra.Comm
 }
 
 func (t *CmdObjectValidateConfig) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Global.Local),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithColor(t.Color),
+		objectaction.WithFormat(t.Format),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("validate config"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewFromPath(p)

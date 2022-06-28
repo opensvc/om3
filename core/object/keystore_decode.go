@@ -11,9 +11,9 @@ const (
 
 // OptsDecode is the options of the Decode function of all keystore objects.
 type OptsDecode struct {
-	Global OptsGlobal
-	Lock   OptsLocking
-	Key    string `flag:"key"`
+	OptsGlobal
+	OptsLocking
+	Key string `flag:"key"`
 }
 
 // Get returns a keyword value

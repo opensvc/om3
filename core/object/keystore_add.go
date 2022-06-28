@@ -11,11 +11,11 @@ import (
 
 // OptsAdd is the options of the Decode function of all keystore objects.
 type OptsAdd struct {
-	Global OptsGlobal
-	Lock   OptsLocking
-	Key    string  `flag:"key"`
-	From   *string `flag:"from"`
-	Value  *string `flag:"value"`
+	OptsGlobal
+	OptsLocking
+	Key   string  `flag:"key"`
+	From  *string `flag:"from"`
+	Value *string `flag:"value"`
 }
 
 func (t *Keystore) add(name string, from, value *string) error {

@@ -29,8 +29,8 @@ import (
 
 // OptsStatus is the options of the Start object method.
 type OptsStatus struct {
-	Global  OptsGlobal
-	Lock    OptsLocking
+	OptsGlobal
+	OptsLocking
 	Refresh bool `flag:"refresh"`
 	//Status string `flag:"status"`
 }
@@ -45,7 +45,9 @@ func (t *Base) Status(options OptsStatus) (instance.Status, error) {
 		data instance.Status
 		err  error
 	)
-	ctx := actioncontext.New(options, objectactionprops.Status)
+	ctx := context.Background()
+	ctx = actioncontext.WithOptions(ctx, options)
+	ctx = actioncontext.WithProps(ctx, objectactionprops.Status)
 	ctx, stop := statusbus.WithContext(ctx, t.Path)
 	defer stop()
 
@@ -66,7 +68,7 @@ func (t *Base) postActionStatusEval(ctx context.Context) {
 }
 
 func (t *Base) statusEval(ctx context.Context, options OptsStatus) (data instance.Status, err error) {
-	lockErr := t.lockedAction("status", options.Lock, "", func() error {
+	lockErr := t.lockedAction("status", options.OptsLocking, "", func() error {
 		data, err = t.lockedStatusEval(ctx)
 		return err
 	})

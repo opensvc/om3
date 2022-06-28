@@ -92,7 +92,7 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconf
 	handle.ObjectSelector = p.String()
 	handle.Evaluate = t.Eval
 	handle.Impersonate = t.Impersonate
-	handle.SetNode(t.Global.NodeSelector)
+	handle.SetNode(t.NodeSelector)
 	b, err = handle.Do()
 	if err != nil {
 		return rawconfig.T{}, err
@@ -130,8 +130,8 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		data result
 		err  error
 	)
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -149,8 +149,8 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 			return data[*selector].Render()
 		}
 		output.Renderer{
-			Format:        t.Global.Format,
-			Color:         t.Global.Color,
+			Format:        t.Format,
+			Color:         t.Color,
 			Data:          data[*selector],
 			HumanRenderer: render,
 			Colorize:      rawconfig.Colorize,
@@ -168,8 +168,8 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 			return s
 		}
 		output.Renderer{
-			Format:        t.Global.Format,
-			Color:         t.Global.Color,
+			Format:        t.Format,
+			Color:         t.Color,
 			Data:          data,
 			HumanRenderer: render,
 			Colorize:      rawconfig.Colorize,

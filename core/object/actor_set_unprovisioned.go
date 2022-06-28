@@ -16,7 +16,9 @@ type OptsSetUnprovisioned struct {
 
 // SetUnprovisioned starts the local instance of the object
 func (t *Base) SetUnprovisioned(options OptsSetUnprovisioned) error {
-	ctx := actioncontext.New(options, objectactionprops.SetUnprovisioned)
+	ctx := context.Background()
+	ctx = actioncontext.WithOptions(ctx, options)
+	ctx = actioncontext.WithProps(ctx, objectactionprops.SetUnprovisioned)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

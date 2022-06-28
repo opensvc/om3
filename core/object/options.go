@@ -96,7 +96,7 @@ type (
 	}
 
 	OptsCreate struct {
-		Global OptsGlobal
+		OptsGlobal
 		OptsAsync
 		OptsLocking
 		OptsResourceSelector

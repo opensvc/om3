@@ -10,11 +10,7 @@ import (
 )
 
 type (
-	key int
-	T   struct {
-		Options interface{}
-		Props   objectactionprops.T
-	}
+	key      int
 	isCroner interface {
 		IsCron() bool
 	}
@@ -42,95 +38,125 @@ type (
 	lockTimeouter interface {
 		LockTimeout() time.Duration
 	}
+	rider interface {
+		ResourceSelectorRID() string
+	}
+	tager interface {
+		ResourceSelectorTag() string
+	}
+	subseter interface {
+		ResourceSelectorSubset() string
+	}
 )
 
 const (
-	tKey key = 0
+	optionsKey key = iota
+	propsKey
 )
 
-func New(options interface{}, props objectactionprops.T) context.Context {
-	ctx := context.WithValue(context.Background(), tKey, &T{
-		Props:   props,
-		Options: options,
-	})
-	if props.Rollback {
-		ctx = actionrollback.NewContext(ctx)
-	}
-	ctx = pg.NewContext(ctx)
-	return ctx
-}
-
-func Value(ctx context.Context) *T {
-	return ctx.Value(tKey).(*T)
+func WithOptions(ctx context.Context, options interface{}) context.Context {
+	return context.WithValue(ctx, optionsKey, options)
 }
 
 func Options(ctx context.Context) interface{} {
-	return Value(ctx).Options
+	return ctx.Value(optionsKey)
+}
+
+func WithProps(ctx context.Context, props objectactionprops.T) context.Context {
+	ctx = context.WithValue(ctx, propsKey, props)
+	if props.Rollback {
+		ctx = actionrollback.NewContext(ctx)
+	}
+	if props.PG {
+		ctx = pg.NewContext(ctx)
+	}
+	return ctx
 }
 
 func Props(ctx context.Context) objectactionprops.T {
-	return Value(ctx).Props
+	return ctx.Value(propsKey).(objectactionprops.T)
 }
 
 func To(ctx context.Context) string {
-	if o, ok := Value(ctx).Options.(toStrer); ok {
+	if o, ok := Options(ctx).(toStrer); ok {
 		return o.ToStr()
 	}
 	return ""
 }
 
 func IsConfirm(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isConfirmer); ok {
+	if o, ok := Options(ctx).(isConfirmer); ok {
 		return o.IsConfirm()
 	}
 	return false
 }
 
 func IsCron(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isCroner); ok {
+	if o, ok := Options(ctx).(isCroner); ok {
 		return o.IsCron()
 	}
 	return false
 }
 
 func IsDryRun(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isDryRuner); ok {
+	if o, ok := Options(ctx).(isDryRuner); ok {
 		return o.IsDryRun()
 	}
 	return false
 }
 
 func IsRollbackDisabled(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isRollbackDisableder); ok {
+	if o, ok := Options(ctx).(isRollbackDisableder); ok {
 		return o.IsRollbackDisabled()
 	}
 	return false
 }
 
 func IsForce(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isForcer); ok {
+	if o, ok := Options(ctx).(isForcer); ok {
 		return o.IsForce()
 	}
 	return false
 }
 
 func IsLeader(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isLeaderer); ok {
+	if o, ok := Options(ctx).(isLeaderer); ok {
 		return o.IsLeader()
 	}
 	return false
 }
 
 func IsLockDisabled(ctx context.Context) bool {
-	if o, ok := Value(ctx).Options.(isLockDisableder); ok {
+	if o, ok := Options(ctx).(isLockDisableder); ok {
 		return o.IsLockDisabled()
 	}
 	return false
 }
 
 func LockTimeout(ctx context.Context) time.Duration {
-	if o, ok := Value(ctx).Options.(lockTimeouter); ok {
+	if o, ok := Options(ctx).(lockTimeouter); ok {
 		return o.LockTimeout()
 	}
 	return time.Second * 0
+}
+
+func ResourceSelectorRID(ctx context.Context) string {
+	if o, ok := Options(ctx).(rider); ok {
+		return o.ResourceSelectorRID()
+	}
+	return ""
+}
+
+func ResourceSelectorTag(ctx context.Context) string {
+	if o, ok := Options(ctx).(tager); ok {
+		return o.ResourceSelectorTag()
+	}
+	return ""
+}
+
+func ResourceSelectorSubset(ctx context.Context) string {
+	if o, ok := Options(ctx).(subseter); ok {
+		return o.ResourceSelectorSubset()
+	}
+	return ""
 }

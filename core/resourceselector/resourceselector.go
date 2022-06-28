@@ -29,16 +29,6 @@ type (
 		IsDesc() bool
 	}
 
-	rider interface {
-		ResourceSelectorRID() string
-	}
-	tager interface {
-		ResourceSelectorTag() string
-	}
-	subseter interface {
-		ResourceSelectorSubset() string
-	}
-
 	depser interface {
 		GetActionResDeps() *actionresdeps.Store
 	}
@@ -170,33 +160,15 @@ func (t T) IsZero() bool {
 
 func FromContext(ctx context.Context, l ResourceLister) *T {
 	props := actioncontext.Props(ctx)
+	rid := actioncontext.ResourceSelectorRID(ctx)
+	tag := actioncontext.ResourceSelectorTag(ctx)
+	subset := actioncontext.ResourceSelectorSubset(ctx)
 	return New(
 		l,
-		WithRID(RIDFromContext(ctx)),
-		WithTag(TagFromContext(ctx)),
-		WithSubset(SubsetFromContext(ctx)),
+		WithRID(rid),
+		WithTag(tag),
+		WithSubset(subset),
 		WithOrder(props.Order),
 		WithAction(props.Name),
 	)
-}
-
-func RIDFromContext(ctx context.Context) string {
-	if o, ok := actioncontext.Value(ctx).Options.(rider); ok {
-		return o.ResourceSelectorRID()
-	}
-	return ""
-}
-
-func TagFromContext(ctx context.Context) string {
-	if o, ok := actioncontext.Value(ctx).Options.(tager); ok {
-		return o.ResourceSelectorTag()
-	}
-	return ""
-}
-
-func SubsetFromContext(ctx context.Context) string {
-	if o, ok := actioncontext.Value(ctx).Options.(subseter); ok {
-		return o.ResourceSelectorSubset()
-	}
-	return ""
 }

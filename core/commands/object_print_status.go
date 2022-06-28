@@ -58,7 +58,7 @@ func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command
 }
 
 func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Status, error) {
-	if t.Refresh || t.Global.Local {
+	if t.Refresh || t.Local {
 		// explicitely local
 		return t.extractLocal(selector)
 	}
@@ -149,8 +149,8 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 		data []object.Status
 		err  error
 	)
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	c, err := client.New(client.WithURL(t.Global.Server))
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -171,8 +171,8 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	}
 
 	output.Renderer{
-		Format: t.Global.Format,
-		Color:  t.Global.Color,
+		Format: t.Format,
+		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {
 			s := ""

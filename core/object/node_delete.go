@@ -11,8 +11,8 @@ import (
 // sections in the configuration file.
 //
 func (t Node) Delete(opts OptsDelete) error {
-	if opts.ResourceSelector != "" {
-		return t.deleteSections(opts.ResourceSelector)
+	if opts.RID != "" {
+		return t.deleteSections(opts.RID)
 	}
 	return nil
 }

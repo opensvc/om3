@@ -46,14 +46,14 @@ func (t *CmdObjectStatus) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectStatus) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocal(t.Global.Local),
-		objectaction.WithFormat(t.Global.Format),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithFormat(t.Format),
+		objectaction.WithColor(t.Color),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("status"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewBaserFromPath(p)

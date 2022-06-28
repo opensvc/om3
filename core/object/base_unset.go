@@ -7,14 +7,14 @@ import (
 
 // OptsUnset is the options of the Unset object method.
 type OptsUnset struct {
-	Global   OptsGlobal
-	Lock     OptsLocking
+	OptsGlobal
+	OptsLocking
 	Keywords []string `flag:"kws"`
 }
 
 // Unset gets a keyword value
 func (t *Base) Unset(options OptsUnset) error {
-	return t.lockedAction("", options.Lock, "unset", func() error {
+	return t.lockedAction("", options.OptsLocking, "unset", func() error {
 		return unset(t.config, options)
 	})
 }

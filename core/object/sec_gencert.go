@@ -23,8 +23,8 @@ import (
 
 // OptsUnset is the options of the Unset object method.
 type OptsGenCert struct {
-	Global OptsGlobal
-	Lock   OptsLocking
+	OptsGlobal
+	OptsLocking
 }
 
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.

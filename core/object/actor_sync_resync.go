@@ -18,7 +18,9 @@ type OptsSyncResync struct {
 
 // SyncResync re-establishes the data synchronization
 func (t *Base) SyncResync(options OptsSyncResync) error {
-	ctx := actioncontext.New(options, objectactionprops.SyncResync)
+	ctx := context.Background()
+	ctx = actioncontext.WithOptions(ctx, options)
+	ctx = actioncontext.WithProps(ctx, objectactionprops.SyncResync)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

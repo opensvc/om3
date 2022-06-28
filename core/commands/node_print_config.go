@@ -35,11 +35,11 @@ func (t *NodePrintConfig) cmd() *cobra.Command {
 func (t *NodePrintConfig) run() {
 	nodeaction.New(
 		nodeaction.LocalFirst(),
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("print config"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
 			"impersonate": t.Impersonate,

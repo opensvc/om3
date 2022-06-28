@@ -18,6 +18,7 @@ type (
 		DisableNodeValidation bool
 		RelayToAny            bool
 		Rollback              bool
+		PG                    bool
 		TimeoutKeywords       []string
 	}
 )
@@ -77,6 +78,7 @@ var (
 	}
 	Status = T{
 		Name: "status",
+		PG:   true,
 	}
 	Unset = T{
 		Name:       "unset",
@@ -115,6 +117,7 @@ var (
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		Rollback:        true,
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
+		PG:              true,
 	}
 	Purge = T{
 		Name:            "purge",
@@ -133,12 +136,14 @@ var (
 		LocalExpect:     "unset",
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
+		PG:              true,
 	}
 	Run = T{
 		Name:            "run",
 		Local:           true,
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"run_timeout", "timeout"},
+		PG:              true,
 	}
 	Shutdown = T{
 		Name:            "shutdown",
@@ -148,6 +153,7 @@ var (
 		Order:           ordering.Desc,
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
+		PG:              true,
 	}
 	Start = T{
 		Name:            "start",
@@ -158,6 +164,7 @@ var (
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		Rollback:        true,
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
+		PG:              true,
 	}
 	Stop = T{
 		Name:            "stop",
@@ -169,6 +176,7 @@ var (
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		Freeze:          true,
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
+		PG:              true,
 	}
 	Switch = T{
 		Name:            "switch",
@@ -182,6 +190,7 @@ var (
 		Name:  "sync_resync",
 		Local: true,
 		Kinds: []kind.T{kind.Svc, kind.Vol},
+		PG:    true,
 	}
 	Takeover = T{
 		Name:            "takeover",
@@ -213,5 +222,6 @@ var (
 		Order:           ordering.Desc,
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
+		PG:              true,
 	}
 )

@@ -34,14 +34,14 @@ func (t *NodeDelete) cmd() *cobra.Command {
 func (t *NodeDelete) run() {
 	nodeaction.New(
 		nodeaction.LocalFirst(),
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("delete"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"rid":         t.OptsDelete.ResourceSelector,
+			"rid":         t.OptsDelete.RID,
 			"unprovision": t.OptsDelete.Unprovision,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
