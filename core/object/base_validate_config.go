@@ -5,7 +5,7 @@ import "opensvc.com/opensvc/core/xconfig"
 // OptsValidateConfig is the options of the ValidateConfig object method.
 type OptsValidateConfig struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 }
 
 // ValidateConfig

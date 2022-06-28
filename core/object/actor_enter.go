@@ -10,7 +10,7 @@ import (
 type OptsEnter struct {
 	ObjectSelector string `flag:"object"`
 	OptsResourceSelector
-	OptsLocking
+	OptsLock
 }
 
 type enterer interface {

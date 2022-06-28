@@ -16,7 +16,7 @@ func (t *Base) lockPath(group string) (path string) {
 	return
 }
 
-func (t *Base) lockedAction(group string, options OptsLocking, intent string, f func() error) error {
+func (t *Base) lockedAction(group string, options OptsLock, intent string, f func() error) error {
 	if options.Disable {
 		// --nolock handling
 		return nil

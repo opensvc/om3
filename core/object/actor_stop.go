@@ -12,7 +12,7 @@ import (
 type OptsStop struct {
 	OptsGlobal
 	OptsAsync
-	OptsLocking
+	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
@@ -27,7 +27,7 @@ func (t *Base) Stop(options OptsStop) error {
 		return err
 	}
 	t.setenv("stop", false)
-	return t.lockedAction("", options.OptsLocking, "stop", func() error {
+	return t.lockedAction("", options.OptsLock, "stop", func() error {
 		return t.lockedStop(ctx)
 	})
 

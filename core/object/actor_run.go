@@ -12,7 +12,7 @@ import (
 // OptsRun is the options of the Run object method.
 type OptsRun struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	OptsResourceSelector
 	OptCron
 	OptConfirm

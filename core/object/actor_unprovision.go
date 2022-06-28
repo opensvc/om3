@@ -12,7 +12,7 @@ import (
 type OptsUnprovision struct {
 	OptsGlobal
 	OptsAsync
-	OptsLocking
+	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
@@ -28,7 +28,7 @@ func (t *Base) Unprovision(options OptsUnprovision) error {
 		return err
 	}
 	t.setenv("unprovision", false)
-	return t.lockedAction("", options.OptsLocking, "unprovision", func() error {
+	return t.lockedAction("", options.OptsLock, "unprovision", func() error {
 		return t.lockedUnprovision(ctx)
 	})
 }

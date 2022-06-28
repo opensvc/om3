@@ -12,7 +12,7 @@ import (
 type OptsStart struct {
 	OptsGlobal
 	OptsAsync
-	OptsLocking
+	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
@@ -28,7 +28,7 @@ func (t *Base) Start(options OptsStart) error {
 		return err
 	}
 	t.setenv("start", false)
-	err := t.lockedAction("", options.OptsLocking, "start", func() error {
+	err := t.lockedAction("", options.OptsLock, "start", func() error {
 		return t.lockedStart(ctx)
 	})
 	return err

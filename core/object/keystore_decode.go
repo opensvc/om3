@@ -12,7 +12,7 @@ const (
 // OptsDecode is the options of the Decode function of all keystore objects.
 type OptsDecode struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	Key string `flag:"key"`
 }
 

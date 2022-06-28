@@ -10,7 +10,7 @@ import (
 
 type OptsDelete struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	RID         string `flag:"rid"`
 	Unprovision bool   `flag:"unprovision"`
 }
@@ -25,7 +25,7 @@ type OptsDelete struct {
 // sections in the configuration file.
 //
 func (t Base) Delete(opts OptsDelete) error {
-	return t.lockedAction("", opts.OptsLocking, "delete", func() error {
+	return t.lockedAction("", opts.OptsLock, "delete", func() error {
 		return t.lockedDelete(opts)
 	})
 }

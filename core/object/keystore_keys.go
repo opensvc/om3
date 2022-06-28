@@ -11,7 +11,7 @@ import (
 // OptsKeys is the options of the Keys function of all data objects.
 type OptsKeys struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	Match string `flag:"match"`
 }
 

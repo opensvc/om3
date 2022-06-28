@@ -5,7 +5,7 @@ func (t *Base) Restart(options OptsStart) error {
 	if err := t.Stop(OptsStop{
 		OptsGlobal:           options.OptsGlobal,
 		OptsAsync:            options.OptsAsync,
-		OptsLocking:          options.OptsLocking,
+		OptsLock:             options.OptsLock,
 		OptsResourceSelector: options.OptsResourceSelector,
 		OptTo:                options.OptTo,
 		OptForce:             options.OptForce,

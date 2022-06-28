@@ -24,8 +24,8 @@ type (
 		Tag    string `flag:"tags"`
 	}
 
-	// OptsLocking contains options accepted by all actions using an action lock
-	OptsLocking struct {
+	// OptsLock contains options accepted by all actions using an action lock
+	OptsLock struct {
 		Disable bool          `flag:"nolock"`
 		Timeout time.Duration `flag:"waitlock"`
 	}
@@ -98,7 +98,7 @@ type (
 	OptsCreate struct {
 		OptsGlobal
 		OptsAsync
-		OptsLocking
+		OptsLock
 		OptsResourceSelector
 		OptTo
 		OptForce
@@ -143,9 +143,9 @@ func (t OptLeader) IsLeader() bool {
 func (t OptsGlobal) IsDryRun() bool {
 	return t.DryRun
 }
-func (t OptsLocking) IsLockDisabled() bool {
+func (t OptsLock) IsLockDisabled() bool {
 	return t.Disable
 }
-func (t OptsLocking) LockTimeout() time.Duration {
+func (t OptsLock) LockTimeout() time.Duration {
 	return t.Timeout
 }

@@ -30,7 +30,7 @@ import (
 // OptsStatus is the options of the Start object method.
 type OptsStatus struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	Refresh bool `flag:"refresh"`
 	//Status string `flag:"status"`
 }
@@ -68,7 +68,7 @@ func (t *Base) postActionStatusEval(ctx context.Context) {
 }
 
 func (t *Base) statusEval(ctx context.Context, options OptsStatus) (data instance.Status, err error) {
-	lockErr := t.lockedAction("status", options.OptsLocking, "", func() error {
+	lockErr := t.lockedAction("status", options.OptsLock, "", func() error {
 		data, err = t.lockedStatusEval(ctx)
 		return err
 	})

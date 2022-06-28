@@ -5,7 +5,7 @@ import "opensvc.com/opensvc/util/key"
 // OptsGet is the options of the Get function of all base objects.
 type OptsGet struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	Keyword     string `flag:"kw"`
 	Eval        bool   `flag:"eval"`
 	Impersonate string `flag:"impersonate"`

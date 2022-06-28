@@ -11,7 +11,7 @@ import (
 type OptsSetUnprovisioned struct {
 	OptsGlobal
 	OptsResourceSelector
-	OptsLocking
+	OptsLock
 }
 
 // SetUnprovisioned starts the local instance of the object
@@ -23,7 +23,7 @@ func (t *Base) SetUnprovisioned(options OptsSetUnprovisioned) error {
 		return err
 	}
 	t.setenv("set unprovisioned", false)
-	err := t.lockedAction("", options.OptsLocking, "set unprovisioned", func() error {
+	err := t.lockedAction("", options.OptsLock, "set unprovisioned", func() error {
 		return t.lockedSetUnprovisioned(ctx)
 	})
 	return err

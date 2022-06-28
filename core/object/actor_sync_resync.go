@@ -11,7 +11,7 @@ import (
 // OptsSyncResync is the options of the SyncResync object method.
 type OptsSyncResync struct {
 	OptsGlobal
-	OptsLocking
+	OptsLock
 	OptsResourceSelector
 	OptForce
 }
@@ -25,7 +25,7 @@ func (t *Base) SyncResync(options OptsSyncResync) error {
 		return err
 	}
 	t.setenv("sync_resync", false)
-	return t.lockedAction("", options.OptsLocking, "sync_resync", func() error {
+	return t.lockedAction("", options.OptsLock, "sync_resync", func() error {
 		return t.lockedSyncResync(ctx)
 	})
 

@@ -12,7 +12,7 @@ import (
 type OptsProvision struct {
 	OptsGlobal
 	OptsAsync
-	OptsLocking
+	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
@@ -29,7 +29,7 @@ func (t *Base) Provision(options OptsProvision) error {
 		return err
 	}
 	t.setenv("provision", false)
-	err := t.lockedAction("", options.OptsLocking, "provision", func() error {
+	err := t.lockedAction("", options.OptsLock, "provision", func() error {
 		return t.lockedProvision(ctx)
 	})
 	if err != nil {
