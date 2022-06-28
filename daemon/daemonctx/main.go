@@ -4,19 +4,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/daemon/subdaemon"
 )
 
 type (
-	// TCtx holds Context and CancelFunc for daemons
-	TCtx struct {
-		Ctx        context.Context
-		CancelFunc context.CancelFunc
-	}
-
 	contextKey string
 )
 
@@ -25,7 +17,6 @@ var (
 	contextDaemonData  = contextKey("daemondata-cmd")
 	contextDaemonPSCmd = contextKey("daemon-pub-sub-cmd")
 	contextHBSendQueue = contextKey("hb-sendQ")
-	contextLogger      = contextKey("logger")
 	contextUuid        = contextKey("uuid")
 )
 
@@ -75,20 +66,6 @@ func WithDaemonPubSubCmd(parent context.Context, cmd chan<- interface{}) context
 // WithHBSendQ function returns copy of parent with HBSendQ.
 func WithHBSendQ(parent context.Context, HBSendQ chan []byte) context.Context {
 	return context.WithValue(parent, contextHBSendQueue, HBSendQ)
-}
-
-// WithLogger function returns copy of parent with logger.
-func WithLogger(parent context.Context, logger zerolog.Logger) context.Context {
-	return context.WithValue(parent, contextLogger, logger)
-}
-
-// Logger function returns logger from context or returns default logger
-func Logger(ctx context.Context) zerolog.Logger {
-	logger, ok := ctx.Value(contextLogger).(zerolog.Logger)
-	if ok {
-		return logger
-	}
-	return log.Logger
 }
 
 // WithDaemon function returns copy of parent with daemon.

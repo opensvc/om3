@@ -29,6 +29,7 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/monitor/smon"
@@ -82,7 +83,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		cfg:          instance.Config{Path: p},
 		path:         p,
 		id:           id,
-		log:          daemonctx.Logger(parent).With().Str("_pkg", "instcfg").Str("_id", p.String()).Logger(),
+		log:          daemonlogctx.Logger(parent).With().Str("_pkg", "instcfg").Str("_id", p.String()).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
 		cmdC:         make(chan *moncmd.T),
@@ -232,7 +233,7 @@ func (o *instCfg) cmdCfgUpdatedRemote(c moncmd.CfgUpdated) {
 	o.fetchCancel = cancel
 	o.fetchUpdated = c.Config.Updated
 	o.log.Info().Msgf("fetching more recent config from node %s", c.Node)
-	go remoteconfig.Fetch(daemonctx.WithLogger(ctx, o.log), o.path, c.Node, o.cmdC)
+	go remoteconfig.Fetch(daemonlogctx.WithLogger(ctx, o.log), o.path, c.Node, o.cmdC)
 }
 
 func (o *instCfg) onEv(i interface{}) {

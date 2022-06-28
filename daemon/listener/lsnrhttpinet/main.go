@@ -1,12 +1,13 @@
 package lsnrhttpinet
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -16,8 +17,9 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		daemonctx.TCtx
 		routinehelper.TT
+		ctx          context.Context
+		cancel       context.CancelFunc
 		listener     *http.Server
 		log          zerolog.Logger
 		routineTrace routineTracer
@@ -33,22 +35,24 @@ type (
 )
 
 func New(opts ...funcopt.O) *T {
-	t := &T{TCtx: daemonctx.TCtx{}}
+	t := &T{}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
 	}
+	name := "lsnr-http-inet"
+	t.log = daemonlogctx.Logger(t.ctx).With().
+		Str("addr", t.addr).
+		Str("sub", name).
+		Logger()
+	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
 	t.T = subdaemon.New(
 		subdaemon.WithName("lsnr-http-inet"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
+		subdaemon.WithContext(t.ctx),
 	)
-	t.log = t.Log().With().
-		Str("addr", t.addr).
-		Str("sub", t.Name()).
-		Logger()
-	t.Ctx = daemonctx.WithLogger(t.Ctx, t.log)
 	return t
 }
 
@@ -88,7 +92,7 @@ func (t *T) stop() error {
 func (t *T) start() error {
 	t.log.Info().Msg("listener starting")
 	started := make(chan bool)
-	t.listener = &http.Server{Addr: t.addr, Handler: routehttp.New(t.Ctx)}
+	t.listener = &http.Server{Addr: t.addr, Handler: routehttp.New(t.ctx)}
 	go func() {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)

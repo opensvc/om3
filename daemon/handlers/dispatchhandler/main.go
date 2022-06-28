@@ -18,8 +18,8 @@ import (
 	"golang.org/x/net/http2"
 
 	"opensvc.com/opensvc/core/api/apimodel"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/listener/routectx"
 	"opensvc.com/opensvc/daemon/listener/routeresponse"
 	"opensvc.com/opensvc/util/hostname"
@@ -108,7 +108,7 @@ func New(srcHandler http.HandlerFunc, successHttp int, minSuccess int) http.Hand
 			srcHandler(w, r)
 			return
 		}
-		log := daemonctx.Logger(r.Context()).
+		log := daemonlogctx.Logger(r.Context()).
 			With().
 			Str("pkg", "dispatchhandler").
 			Logger()

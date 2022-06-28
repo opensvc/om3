@@ -15,6 +15,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemondiscover"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
@@ -28,7 +29,9 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		daemonctx.TCtx
+		routinehelper.TT
+		ctx           context.Context
+		cancel        context.CancelFunc
 		log           zerolog.Logger
 		loopC         chan action
 		loopDelay     time.Duration
@@ -36,7 +39,6 @@ type (
 		mandatorySubs map[string]sub
 		otherSubs     []string
 		cancelFuncs   []context.CancelFunc
-		routinehelper.TT
 	}
 	action struct {
 		do   string
@@ -54,7 +56,7 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return monitor.New(
 					monitor.WithRoutineTracer(&t.TT),
-					monitor.WithContext(t.Ctx),
+					monitor.WithContext(t.ctx),
 				)
 			},
 		},
@@ -62,7 +64,7 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return listener.New(
 					listener.WithRoutineTracer(&t.TT),
-					listener.WithContext(t.Ctx),
+					listener.WithContext(t.ctx),
 				)
 			},
 		},
@@ -71,7 +73,7 @@ var (
 				return hb.New(
 					hb.WithRoutineTracer(&t.TT),
 					hb.WithRootDaemon(t),
-					hb.WithContext(t.Ctx),
+					hb.WithContext(t.ctx),
 				)
 			},
 		},
@@ -79,10 +81,15 @@ var (
 )
 
 func New(opts ...funcopt.O) *T {
+	ctx, cancel := context.WithCancel(context.Background())
+	log := daemonlogctx.Logger(ctx).With().Str("name", "daemon-main").Logger()
+	ctx = daemonlogctx.WithLogger(ctx, log)
 	t := &T{
-		TCtx:        daemonctx.TCtx{},
 		loopDelay:   10 * time.Second,
 		loopEnabled: enable.New(),
+		log:         log,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -93,9 +100,9 @@ func New(opts ...funcopt.O) *T {
 		subdaemon.WithName("main"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
+		subdaemon.WithContext(t.ctx),
 	)
 	t.cancelFuncs = make([]context.CancelFunc, 0)
-	t.log = t.Log()
 	t.loopC = make(chan action)
 	return t
 }
@@ -123,16 +130,15 @@ func (t *T) MainStart() error {
 		defer t.Trace(t.Name() + "-loop")()
 		t.loop(started)
 	}()
-	t.Ctx, t.CancelFunc = context.WithCancel(context.Background())
 
-	t.Ctx = daemonctx.WithDaemonPubSubCmd(t.Ctx, pubsub.Start(t.Ctx, "daemon pub sub"))
+	t.ctx = daemonctx.WithDaemonPubSubCmd(t.ctx, pubsub.Start(t.ctx, "daemon pub sub"))
 
-	t.Ctx = daemonctx.WithDaemon(t.Ctx, t)
+	t.ctx = daemonctx.WithDaemon(t.ctx, t)
 
-	t.Ctx = daemonctx.WithHBSendQ(t.Ctx, make(chan []byte))
-	dataCmd, cancel := daemondata.Start(t.Ctx)
+	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan []byte))
+	dataCmd, cancel := daemondata.Start(t.ctx)
 	t.cancelFuncs = append(t.cancelFuncs, cancel)
-	t.Ctx = daemonctx.WithDaemonDataCmd(t.Ctx, dataCmd)
+	t.ctx = daemonctx.WithDaemonDataCmd(t.ctx, dataCmd)
 
 	<-started
 	for subName, sub := range mandatorySubs {
@@ -151,7 +157,7 @@ func (t *T) MainStart() error {
 		}
 	}
 
-	daemondiscover.Start(t.Ctx)
+	daemondiscover.Start(t.ctx)
 
 	t.log.Info().Msg("mgr started")
 	return nil
@@ -167,7 +173,7 @@ func (t *T) MainStop() error {
 	for _, cancel := range t.cancelFuncs {
 		cancel()
 	}
-	t.CancelFunc()
+	t.cancel()
 	t.log.Info().Msg("mgr stopped")
 	return nil
 }

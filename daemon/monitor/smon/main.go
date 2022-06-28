@@ -31,6 +31,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
@@ -112,7 +113,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		cancel:        cancel,
 		cmdC:          make(chan *moncmd.T),
 		dataCmdC:      daemonctx.DaemonDataCmd(ctx),
-		log:           daemonctx.Logger(ctx).With().Str("_smon", p.String()).Logger(),
+		log:           daemonlogctx.Logger(ctx).With().Str("_smon", p.String()).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instSmon:      make(map[string]instance.Monitor),
 		localhost:     hostname.Hostname(),

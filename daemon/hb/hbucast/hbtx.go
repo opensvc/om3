@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/daemon/listener/encryptconn"
 )
@@ -107,7 +107,7 @@ func (t *tx) send(node string, b []byte) {
 
 func newTx(ctx context.Context, name string, nodes []string, port, intf string, timeout time.Duration) *tx {
 	id := name + ".tx"
-	log := daemonctx.Logger(ctx).With().Str("id", id).Logger()
+	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
 		ctx:     ctx,
 		id:      id,
