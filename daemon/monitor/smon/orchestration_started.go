@@ -127,6 +127,7 @@ func (o *smon) startedFromStartFailed() {
 		o.log.Info().Msg("clear start failed (aggregated status is up)")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
+		o.state.Status = statusIdle
 		return
 	}
 }
