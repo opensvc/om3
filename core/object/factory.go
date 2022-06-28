@@ -17,6 +17,16 @@ func WithConfigFile(s string) funcopt.O {
 	})
 }
 
+// WithConfigData sets configuration overriding what is installed in the config file
+// Useful for testing volatile services.
+func WithConfigData(b []byte) funcopt.O {
+	return funcopt.F(func(t interface{}) error {
+		base := t.(*Base)
+		base.configData = b
+		return nil
+	})
+}
+
 // WithVolatile makes sure not data is ever written by the object.
 func WithVolatile(s bool) funcopt.O {
 	return funcopt.F(func(t interface{}) error {

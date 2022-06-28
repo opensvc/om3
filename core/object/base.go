@@ -42,6 +42,7 @@ type (
 
 		// caches
 		id                 uuid.UUID
+		configData         []byte
 		configFile         string
 		config             *xconfig.T
 		node               *Node

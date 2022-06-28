@@ -72,7 +72,7 @@ func WithRemoteNodes(s string) funcopt.O {
 }
 
 //
-// WithResourceSelector expands into a selection of resources to execute the
+// WithResourceSelectorOptions expands into a selection of resources to execute the
 // action on.
 //
 func WithResourceSelectorOptions(o resourceselector.Options) funcopt.O {

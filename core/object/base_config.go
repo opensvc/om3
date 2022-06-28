@@ -33,7 +33,11 @@ func (t *Base) reloadConfig() error {
 
 func (t *Base) loadConfig(referrer xconfig.Referrer) error {
 	var err error
-	if t.config, err = xconfig.NewObject(t.ConfigFile()); err != nil {
+	var sources []interface{}
+	if t.configData != nil {
+		sources = append(sources, t.configData)
+	}
+	if t.config, err = xconfig.NewObject(t.ConfigFile(), sources...); err != nil {
 		return err
 	}
 	t.config.Path = t.Path
