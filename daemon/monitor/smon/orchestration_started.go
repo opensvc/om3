@@ -77,6 +77,8 @@ func (o *smon) startedFromIdle() {
 func (o *smon) startedFromReady() {
 	if o.pendingCancel == nil {
 		o.log.Error().Msg("startedFromReady without pending")
+		o.change = true
+		o.state.Status = statusIdle
 		return
 	}
 	if o.startedClearIfReached() {
