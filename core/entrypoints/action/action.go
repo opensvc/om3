@@ -7,7 +7,6 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
-	"opensvc.com/opensvc/core/resourceselector"
 )
 
 type (
@@ -27,7 +26,9 @@ type (
 		//
 		NodeSelector string
 
-		ResourceSelectorOptions resourceselector.Options
+		RID    string
+		Subset string
+		Tag    string
 
 		//
 		// Local routes the action to the CRM instead of remoting it via
@@ -117,7 +118,7 @@ func Do(t Actioner) error {
 	switch {
 	case o.NodeSelector != "":
 		t.DoRemote()
-	case o.Local, o.DefaultIsLocal, !o.ResourceSelectorOptions.IsZero():
+	case o.Local, o.DefaultIsLocal, o.RID != "", o.Subset != "", o.Tag != "":
 		err = t.DoLocal()
 	case o.Target != "":
 		t.DoAsync()

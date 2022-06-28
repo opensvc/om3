@@ -2,8 +2,6 @@ package object
 
 import (
 	"time"
-
-	"opensvc.com/opensvc/core/resourceselector"
 )
 
 type (
@@ -18,8 +16,12 @@ type (
 		DryRun         bool   `flag:"dry-run"`
 	}
 
+	// OptsResourceSelector contains options needed to initialize a
+	// resourceselector.Options struct
 	OptsResourceSelector struct {
-		resourceselector.Options
+		RID    string `flag:"rid"`
+		Subset string `flag:"subset"`
+		Tag    string `flag:"tags"`
 	}
 
 	// OptsLocking contains options accepted by all actions using an action lock
@@ -111,6 +113,15 @@ type (
 	}
 )
 
+func (t OptsResourceSelector) ResourceSelectorRID() string {
+	return t.RID
+}
+func (t OptsResourceSelector) ResourceSelectorTag() string {
+	return t.Tag
+}
+func (t OptsResourceSelector) ResourceSelectorSubset() string {
+	return t.Subset
+}
 func (t OptDisableRollback) IsRollbackDisabled() bool {
 	return t.DisableRollback
 }

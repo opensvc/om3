@@ -34,17 +34,19 @@ func (t *CmdObjectProvision) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectProvision) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.OptsGlobal.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithResourceSelectorOptions(t.OptsResourceSelector.Options),
-		objectaction.WithLocal(t.OptsGlobal.Local),
-		objectaction.WithFormat(t.OptsGlobal.Format),
-		objectaction.WithColor(t.OptsGlobal.Color),
-		objectaction.WithRemoteNodes(t.OptsGlobal.NodeSelector),
+		objectaction.WithRID(t.RID),
+		objectaction.WithTag(t.Tag),
+		objectaction.WithSubset(t.Subset),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithFormat(t.Format),
+		objectaction.WithColor(t.Color),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("provision"),
 		objectaction.WithAsyncTarget("provisioned"),
-		objectaction.WithAsyncWatch(t.OptsAsync.Watch),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithDigest(),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewActorFromPath(p)

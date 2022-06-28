@@ -16,7 +16,6 @@ import (
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/resourceselector"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/xerrors"
@@ -72,13 +71,34 @@ func WithRemoteNodes(s string) funcopt.O {
 }
 
 //
-// WithResourceSelectorOptions expands into a selection of resources to execute the
-// action on.
+// WithRID expands into a selection of resources to execute the action on.
 //
-func WithResourceSelectorOptions(o resourceselector.Options) funcopt.O {
+func WithRID(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.ResourceSelectorOptions = o
+		t.RID = s
+		return nil
+	})
+}
+
+//
+// WithTag expands into a selection of resources to execute the action on.
+//
+func WithTag(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.Tag = s
+		return nil
+	})
+}
+
+//
+// WithSubset expands into a selection of resources to execute the action on.
+//
+func WithSubset(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.Subset = s
 		return nil
 	})
 }

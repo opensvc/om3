@@ -12,16 +12,11 @@ import (
 )
 
 type (
-	// Options groups the field of T that get exposed via commandline flags
-	Options struct {
-		RID    string `flag:"rid"`
-		Subset string `flag:"subset"`
-		Tag    string `flag:"tags"`
-	}
-
 	// T contains options accepted by all actions manipulating resources
 	T struct {
-		Options
+		rid    string
+		subset string
+		tag    string
 		order  ordering.T
 		lister ResourceLister
 		action string
@@ -34,8 +29,14 @@ type (
 		IsDesc() bool
 	}
 
-	OptionsGetter interface {
-		GetOptions() Options
+	rider interface {
+		ResourceSelectorRID() string
+	}
+	tager interface {
+		ResourceSelectorTag() string
+	}
+	subseter interface {
+		ResourceSelectorSubset() string
 	}
 
 	depser interface {
@@ -43,22 +44,10 @@ type (
 	}
 )
 
-func (t Options) GetOptions() Options {
-	return t
-}
-
-func WithOptions(o Options) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
-		t := i.(*T)
-		t.Options = o
-		return nil
-	})
-}
-
 func WithRID(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.RID = s
+		t.rid = s
 		return nil
 	})
 }
@@ -66,7 +55,7 @@ func WithRID(s string) funcopt.O {
 func WithTag(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.Tag = s
+		t.tag = s
 		return nil
 	})
 }
@@ -74,7 +63,7 @@ func WithTag(s string) funcopt.O {
 func WithSubset(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.Subset = s
+		t.subset = s
 		return nil
 	})
 }
@@ -117,7 +106,7 @@ func (t T) ReconfigureResource(r resource.Driver) error {
 
 func (t T) Resources() resource.Drivers {
 	l := t.lister.Resources()
-	if t.RID == "" && t.Tag == "" && t.Subset == "" {
+	if t.rid == "" && t.tag == "" && t.subset == "" {
 		return l
 	}
 	var dp *actionresdeps.Store
@@ -126,9 +115,9 @@ func (t T) Resources() resource.Drivers {
 	}
 	fl := make(resource.Drivers, 0)
 	f := func(c rune) bool { return c == ',' }
-	rids := strings.FieldsFunc(t.RID, f)
-	tags := strings.FieldsFunc(t.Tag, f)
-	subsets := strings.FieldsFunc(t.Subset, f)
+	rids := strings.FieldsFunc(t.rid, f)
+	tags := strings.FieldsFunc(t.tag, f)
+	subsets := strings.FieldsFunc(t.subset, f)
 	for _, r := range l {
 		for _, e := range rids {
 			if r.MatchRID(e) {
@@ -166,13 +155,13 @@ func (t T) Resources() resource.Drivers {
 	return fl
 }
 
-func (t Options) IsZero() bool {
+func (t T) IsZero() bool {
 	switch {
-	case t.RID != "":
+	case t.rid != "":
 		return false
-	case t.Subset != "":
+	case t.subset != "":
 		return false
-	case t.Tag != "":
+	case t.tag != "":
 		return false
 	default:
 		return true
@@ -180,19 +169,34 @@ func (t Options) IsZero() bool {
 }
 
 func FromContext(ctx context.Context, l ResourceLister) *T {
-	opts := OptionsFromContext(ctx)
 	props := actioncontext.Props(ctx)
 	return New(
 		l,
-		WithOptions(opts),
+		WithRID(RIDFromContext(ctx)),
+		WithTag(TagFromContext(ctx)),
+		WithSubset(SubsetFromContext(ctx)),
 		WithOrder(props.Order),
 		WithAction(props.Name),
 	)
 }
 
-func OptionsFromContext(ctx context.Context) Options {
-	if o, ok := actioncontext.Value(ctx).Options.(OptionsGetter); ok {
-		return o.GetOptions()
+func RIDFromContext(ctx context.Context) string {
+	if o, ok := actioncontext.Value(ctx).Options.(rider); ok {
+		return o.ResourceSelectorRID()
 	}
-	return Options{}
+	return ""
+}
+
+func TagFromContext(ctx context.Context) string {
+	if o, ok := actioncontext.Value(ctx).Options.(tager); ok {
+		return o.ResourceSelectorTag()
+	}
+	return ""
+}
+
+func SubsetFromContext(ctx context.Context) string {
+	if o, ok := actioncontext.Value(ctx).Options.(subseter); ok {
+		return o.ResourceSelectorSubset()
+	}
+	return ""
 }

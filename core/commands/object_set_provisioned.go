@@ -35,17 +35,17 @@ func (t *CmdObjectSetProvisioned) cmd(kind string, selector *string) *cobra.Comm
 }
 
 func (t *CmdObjectSetProvisioned) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.OptsGlobal.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.OptsGlobal.Local),
-		objectaction.WithColor(t.OptsGlobal.Color),
-		objectaction.WithFormat(t.OptsGlobal.Format),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithColor(t.Color),
+		objectaction.WithFormat(t.Format),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.OptsGlobal.NodeSelector),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("set provisioned"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"rid": t.OptsResourceSelector.Options,
+			"rid": t.RID,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewActorFromPath(p)

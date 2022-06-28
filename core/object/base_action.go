@@ -330,7 +330,7 @@ func (t *Base) notifyAction(ctx context.Context) error {
 	req := c.NewPostObjectMonitor()
 	req.ObjectSelector = t.Path.String()
 	req.State = action.Progress
-	if resourceselector.OptionsFromContext(ctx).IsZero() {
+	if resourceselector.FromContext(ctx, nil).IsZero() {
 		req.LocalExpect = action.LocalExpect
 	}
 	_, err = req.Do()
@@ -346,7 +346,7 @@ func (t *Base) mayFreeze(ctx context.Context) error {
 		t.log.Debug().Msg("skip freeze: dry run")
 		return nil
 	}
-	if !resourceselector.OptionsFromContext(ctx).IsZero() {
+	if !resourceselector.FromContext(ctx, nil).IsZero() {
 		t.log.Debug().Msg("skip freeze: resource selection")
 		return nil
 	}
