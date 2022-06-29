@@ -17,7 +17,7 @@ func TestDaemonPubSub(t *testing.T) {
 	cmdC := pubsub.Start(ctx, t.Name())
 	var (
 		eventKinds    = []string{"hb_stale", "hb_beating"}
-		expectedKinds = []string{"event-subscribe", "hb_stale", "hb_beating"}
+		expectedKinds = []string{"event_subscribe", "hb_stale", "hb_beating"}
 		detectedKinds []string
 	)
 	defer UnSubEvent(
