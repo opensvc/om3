@@ -18,7 +18,7 @@ type (
 
 	// Keystore is the base type of sec, cfg and usr objects
 	Keystore struct {
-		Base
+		core
 		CustomEncode EncodeFunc
 		CustomDecode DecodeFunc
 	}
@@ -52,7 +52,7 @@ func (t Keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	if b, err = t.decode(name); err != nil {
 		return
 	}
-	if f, err = ioutil.TempFile(t.Base.paths.tmpDir, ".TemporaryKeyFile.*"); err != nil {
+	if f, err = ioutil.TempFile(t.core.paths.tmpDir, ".TemporaryKeyFile.*"); err != nil {
 		return
 	}
 	if _, err = f.Write(b); err != nil {

@@ -15,7 +15,7 @@ type (
 	// the definition found in node.conf.
 	//
 	Ccfg struct {
-		Base
+		core
 	}
 )
 
@@ -34,10 +34,10 @@ var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeyw
 // NewCcfg allocates a ccfg kind object.
 func NewCcfg(p path.T, opts ...funcopt.O) (*Ccfg, error) {
 	s := &Ccfg{}
-	err := s.Base.init(s, p, opts...)
+	err := s.core.init(s, p, opts...)
 	return s, err
 }
 
 func (t Ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(ccfgKeywordStore, k, t.Path.Kind, sectionType)
+	return keywordLookup(ccfgKeywordStore, k, t.path.Kind, sectionType)
 }

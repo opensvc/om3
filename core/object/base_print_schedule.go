@@ -13,23 +13,23 @@ import (
 )
 
 // PrintSchedule display the object scheduling table
-func (t *Base) PrintSchedule() schedule.Table {
+func (t *core) PrintSchedule() schedule.Table {
 	return t.Schedules()
 }
 
-func (t *Base) lastFilepath(action string, rid string, base string) string {
+func (t *core) lastFilepath(action string, rid string, base string) string {
 	base = "last_" + base
 	if rid != "" {
 		base = base + "_" + rid
 	}
-	return filepath.Join(VarDir(t.Path), "scheduler", base)
+	return filepath.Join(VarDir(t.path), "scheduler", base)
 }
 
-func (t *Base) lastSuccessFilepath(action string, rid string, base string) string {
+func (t *core) lastSuccessFilepath(action string, rid string, base string) string {
 	return filepath.Join(t.lastFilepath(action, rid, base) + ".success")
 }
 
-func (t *Base) loadLast(action string, rid string, base string) time.Time {
+func (t *core) loadLast(action string, rid string, base string) time.Time {
 	fpath := t.lastFilepath(action, rid, base)
 	b, err := os.ReadFile(fpath)
 	if err != nil {
@@ -46,7 +46,7 @@ func (t *Base) loadLast(action string, rid string, base string) time.Time {
 	return time.Unix(0, 0)
 }
 
-func (t *Base) newScheduleEntry(action string, keyStr string, base string) schedule.Entry {
+func (t *core) newScheduleEntry(action string, keyStr string, base string) schedule.Entry {
 	k := key.Parse(keyStr)
 	def, err := t.config.GetStringStrict(k)
 	if err != nil {
@@ -54,7 +54,7 @@ func (t *Base) newScheduleEntry(action string, keyStr string, base string) sched
 	}
 	return schedule.Entry{
 		Node:       hostname.Hostname(),
-		Path:       t.Path,
+		Path:       t.path,
 		Action:     action,
 		Last:       timestamp.New(t.loadLast(action, "", base)),
 		Key:        k.String(),
@@ -62,7 +62,7 @@ func (t *Base) newScheduleEntry(action string, keyStr string, base string) sched
 	}
 }
 
-func (t *Base) Schedules() schedule.Table {
+func (t *core) Schedules() schedule.Table {
 	table := schedule.NewTable(
 		t.newScheduleEntry("status", "status_schedule", "status"),
 		t.newScheduleEntry("compliance_auto", "comp_schedule", "comp_check"),

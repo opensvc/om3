@@ -14,6 +14,7 @@ import (
 
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/driver"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -31,12 +32,12 @@ import (
 )
 
 type (
-	// Base is the base struct embedded in all kinded objects.
-	Base struct {
+	// core is the base struct embedded in all kinded objects.
+	core struct {
 		sync.Mutex
 
-		Path path.T
-		PG   *pg.Config
+		path path.T
+		pg   *pg.Config
 
 		// private
 		volatile bool
@@ -56,26 +57,45 @@ type (
 		// method plugs
 		postCommit func() error
 	}
+
+	// Core is implemented by all object kinds.
+	Core interface {
+		Path() path.T
+		PG() *pg.Config
+		Status(OptsStatus) (instance.Status, error)
+		IsVolatile() bool
+		ResourceSets() resourceset.L
+		Resources() resource.Drivers
+		ResourceByID(rid string) resource.Driver
+	}
 )
 
-func (t *Base) PostCommit() error {
+func (t *core) PG() *pg.Config {
+	return t.pg
+}
+
+func (t *core) Path() path.T {
+	return t.path
+}
+
+func (t *core) PostCommit() error {
 	if t.postCommit == nil {
 		return nil
 	}
 	return t.postCommit()
 }
 
-func (t *Base) SetPostCommit(fn func() error) {
+func (t *core) SetPostCommit(fn func() error) {
 	t.postCommit = fn
 }
 
 // List returns the stringified path as data
-func (t *Base) List() (string, error) {
-	return t.Path.String(), nil
+func (t *core) List() (string, error) {
+	return t.path.String(), nil
 }
 
-func (t *Base) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) error {
-	t.Path = p
+func (t *core) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) error {
+	t.path = p
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
@@ -85,13 +105,13 @@ func (t *Base) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) erro
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             t.logDir(), // contains the ns/kind
-		Filename:              t.Path.Name + ".log",
+		Filename:              t.path.Name + ".log",
 		MaxSize:               5,
 		MaxBackups:            1,
 		MaxAge:                30,
 	}).
 		With().
-		Stringer("o", t.Path).
+		Stringer("o", t.path).
 		Str("n", hostname.Hostname()).
 		Str("sid", xsession.ID).
 		Logger()
@@ -100,25 +120,25 @@ func (t *Base) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) erro
 		t.log.Debug().Msgf("%s init error: %s", t, err)
 		return err
 	}
-	t.PG = t.pgConfig("")
+	t.pg = t.pgConfig("")
 	t.actionResourceDeps = actionresdeps.NewStore()
 	t.log.Debug().Msgf("%s initialized", t)
 	return nil
 }
 
-func (t Base) String() string {
-	return t.Path.String()
+func (t core) String() string {
+	return t.path.String()
 }
 
-func (t *Base) SetVolatile(v bool) {
+func (t *core) SetVolatile(v bool) {
 	t.volatile = v
 }
 
-func (t Base) IsVolatile() bool {
+func (t core) IsVolatile() bool {
 	return t.volatile
 }
 
-func (t *Base) ResourceSets() resourceset.L {
+func (t *core) ResourceSets() resourceset.L {
 	l := resourceset.NewList()
 	done := make(map[string]*resourceset.T)
 	//
@@ -197,7 +217,7 @@ func (t *Base) ResourceSets() resourceset.L {
 	return l
 }
 
-func (t Base) getConfiguringResourceByID(rid string) resource.Driver {
+func (t core) getConfiguringResourceByID(rid string) resource.Driver {
 	for _, r := range t._resources {
 		if r.RID() == rid {
 			return r
@@ -206,7 +226,7 @@ func (t Base) getConfiguringResourceByID(rid string) resource.Driver {
 	return nil
 }
 
-func (t Base) getConfiguredResourceByID(rid string) resource.Driver {
+func (t core) getConfiguredResourceByID(rid string) resource.Driver {
 	for _, r := range t.resources {
 		if r.RID() == rid {
 			return r
@@ -215,7 +235,7 @@ func (t Base) getConfiguredResourceByID(rid string) resource.Driver {
 	return nil
 }
 
-func (t Base) ResourceByID(rid string) resource.Driver {
+func (t core) ResourceByID(rid string) resource.Driver {
 	if r := t.getConfiguredResourceByID(rid); r != nil {
 		return r
 	}
@@ -223,7 +243,7 @@ func (t Base) ResourceByID(rid string) resource.Driver {
 }
 
 func ResourcesByDrivergroups(i interface{}, drvgrps []driver.Group) resource.Drivers {
-	t, _ := i.(Baser)
+	t, _ := i.(Core)
 	l := make([]resource.Driver, 0)
 	for _, r := range t.Resources() {
 		drvgrp := r.ID().DriverGroup()
@@ -237,7 +257,7 @@ func ResourcesByDrivergroups(i interface{}, drvgrps []driver.Group) resource.Dri
 	return resource.Drivers(l)
 }
 
-func (t *Base) Resources() resource.Drivers {
+func (t *core) Resources() resource.Drivers {
 	if t.resources != nil {
 		return t.resources
 	}
@@ -245,7 +265,7 @@ func (t *Base) Resources() resource.Drivers {
 	return t.resources
 }
 
-func (t *Base) configureResources() {
+func (t *core) configureResources() {
 	t.Lock()
 	defer t.Unlock()
 	begin := time.Now()
@@ -308,11 +328,11 @@ func (t *Base) configureResources() {
 	return
 }
 
-func (t *Base) ReconfigureResource(r resource.Driver) error {
+func (t *core) ReconfigureResource(r resource.Driver) error {
 	return t.configureResource(r, r.RID())
 }
 
-func (t *Base) configureResource(r resource.Driver, rid string) error {
+func (t *core) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	m := r.Manifest()
 	for _, kw := range m.Keywords {
@@ -343,7 +363,7 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 	setAttr := func(c manifest.Context) error {
 		switch {
 		case c.Ref == "object.path":
-			if err := attr.SetValue(r, c.Attr, t.Path); err != nil {
+			if err := attr.SetValue(r, c.Attr, t.path); err != nil {
 				return err
 			}
 		case c.Ref == "object.nodes":
@@ -398,7 +418,7 @@ func (t *Base) configureResource(r resource.Driver, rid string) error {
 	return nil
 }
 
-func (t Base) GetActionResDeps() *actionresdeps.Store {
+func (t core) GetActionResDeps() *actionresdeps.Store {
 	return t.actionResourceDeps
 }
 
@@ -406,9 +426,9 @@ func (t Base) GetActionResDeps() *actionresdeps.Store {
 // ConfigFile returns the absolute path of an opensvc object configuration
 // file.
 //
-func (t Base) ConfigFile() string {
+func (t core) ConfigFile() string {
 	if t.configFile == "" {
-		t.configFile = ConfigFile(t.Path)
+		t.configFile = ConfigFile(t.path)
 	}
 	return t.configFile
 }
@@ -433,7 +453,7 @@ func Exists(p path.T) bool {
 // Node returns a cache Node struct pointer. If none is already cached,
 // allocate a new Node{} and cache it.
 //
-func (t *Base) Node() *Node {
+func (t *core) Node() *Node {
 	if t.node != nil {
 		return t.node
 	}
@@ -441,11 +461,11 @@ func (t *Base) Node() *Node {
 	return t.node
 }
 
-func (t Base) Log() *zerolog.Logger {
+func (t core) Log() *zerolog.Logger {
 	return &t.log
 }
 
 // IsDesc is a requirement of the ResourceLister interface. Base Resources() is always ascending.
-func (t *Base) IsDesc() bool {
+func (t *core) IsDesc() bool {
 	return false
 }

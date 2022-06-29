@@ -97,10 +97,10 @@ func (t T) forgetPassphrase() error {
 	}
 	keyname := t.passphraseKeyname()
 	if !t.ManagePassphrase {
-		t.Log().Info().Msgf("leave key %s in %s", keyname, sec.Path)
+		t.Log().Info().Msgf("leave key %s in %s", keyname, sec.Path())
 		return nil
 	}
-	t.Log().Info().Msgf("remove key %s in %s", keyname, sec.Path)
+	t.Log().Info().Msgf("remove key %s in %s", keyname, sec.Path())
 	return sec.RemoveKey(keyname)
 }
 
@@ -122,12 +122,12 @@ func (t T) passphraseStrict() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !object.Exists(sec.Path) {
-		return nil, fmt.Errorf("%s does not exist", sec.Path)
+	if !object.Exists(sec.Path()) {
+		return nil, fmt.Errorf("%s does not exist", sec.Path())
 	}
 	keyname := t.passphraseKeyname()
 	if !sec.HasKey(keyname) {
-		return nil, fmt.Errorf("%s does not exist", sec.Path)
+		return nil, fmt.Errorf("%s does not exist", sec.Path())
 	}
 	return sec.DecodeKey(keyname)
 }

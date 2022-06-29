@@ -226,11 +226,11 @@ func (t Keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 			return false, err
 		}
 		if string(currentMD5) == string(targetMD5) {
-			t.log.Debug().Msgf("%s/%s in %s already installed and same md5: set access and modification times to %s", t.Path.Name, vk.Key, dst, mtime)
+			t.log.Debug().Msgf("%s/%s in %s already installed and same md5: set access and modification times to %s", t.path.Name, vk.Key, dst, mtime)
 			return false, os.Chtimes(dst, mtime, mtime)
 		}
 	}
-	t.log.Info().Msgf("install %s/%s in %s", t.Path.Name, vk.Key, dst)
+	t.log.Info().Msgf("install %s/%s in %s", t.path.Name, vk.Key, dst)
 	perm := os.ModePerm
 	if mode != nil {
 		perm = *mode
@@ -249,14 +249,14 @@ func (t Keystore) InstallKey(k string, dst string, mode *os.FileMode, dirmode *o
 	t.log.Debug().Msgf("install key=%s to %s", k, dst)
 	keys, err := t.resolveKey(k)
 	if err != nil {
-		return errors.Wrapf(err, "%s", t.Path)
+		return errors.Wrapf(err, "%s", t.path)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key=%s not found", t.Path, k)
+		return fmt.Errorf("%s key=%s not found", t.path, k)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
-			return errors.Wrapf(err, "%s: %s", t.Path, vk.Key)
+			return errors.Wrapf(err, "%s: %s", t.path, vk.Key)
 		}
 	}
 	return nil
@@ -264,7 +264,7 @@ func (t Keystore) InstallKey(k string, dst string, mode *os.FileMode, dirmode *o
 
 func (t Keystore) postInstall(k string) error {
 	changedVolumes := make(map[path.T]interface{})
-	sel := NewSelection(t.Path.Namespace+"/svc/*", SelectionWithLocal(true))
+	sel := NewSelection(t.path.Namespace+"/svc/*", SelectionWithLocal(true))
 	type resvoler interface {
 		InstallDataByKind(kind.T) (bool, error)
 		HasMetadata(p path.T, k string) bool
@@ -283,7 +283,7 @@ func (t Keystore) postInstall(k string) error {
 		for _, r := range ResourcesByDrivergroups(o, []driver.Group{driver.GroupVolume}) {
 			var i interface{} = r
 			v := i.(resvoler)
-			if !v.HasMetadata(t.Path, k) {
+			if !v.HasMetadata(t.path, k) {
 				continue
 			}
 			vol, err := v.Volume()
@@ -299,17 +299,17 @@ func (t Keystore) postInstall(k string) error {
 			if st.Avail != status.Up {
 				continue
 			}
-			changed, err := v.InstallDataByKind(t.Path.Kind)
+			changed, err := v.InstallDataByKind(t.path.Kind)
 			if err != nil {
 				return err
 			}
 			if changed {
-				changedVolumes[vol.Path] = nil
+				changedVolumes[vol.Path()] = nil
 			}
-			if _, ok := changedVolumes[vol.Path]; !ok {
+			if _, ok := changedVolumes[vol.Path()]; !ok {
 				continue
 			}
-			t.log.Debug().Msgf("signal %s %s referrer: %s (%s)", t.Path, k, p, r.RID())
+			t.log.Debug().Msgf("signal %s %s referrer: %s (%s)", t.path, k, p, r.RID())
 			if err := v.SendSignals(); err != nil {
 				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
 				continue

@@ -17,7 +17,7 @@ type OptsDoc struct {
 }
 
 // Get returns a keyword value
-func (t *Base) Doc(options OptsDoc) (string, error) {
+func (t *core) Doc(options OptsDoc) (string, error) {
 	drvDoc := func(drvID driver.ID, kwName string) (string, error) {
 		factory := resource.NewResourceFunc(drvID)
 		if factory == nil {
@@ -43,7 +43,7 @@ func (t *Base) Doc(options OptsDoc) (string, error) {
 			if kw.Section != "DEFAULT" {
 				continue
 			}
-			if !kw.Kind.Has(t.Path.Kind) {
+			if !kw.Kind.Has(t.path.Kind) {
 				continue
 			}
 			buff += kw.Doc()

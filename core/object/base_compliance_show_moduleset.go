@@ -12,14 +12,14 @@ type (
 	}
 )
 
-func (t *Base) ComplianceShowModuleset(options OptsObjectComplianceShowModuleset) (*compliance.ModulesetTree, error) {
+func (t *core) ComplianceShowModuleset(options OptsObjectComplianceShowModuleset) (*compliance.ModulesetTree, error) {
 	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	comp.SetObjectPath(t.Path)
+	comp.SetObjectPath(t.path)
 	modsets := xstrings.Split(options.Moduleset, ",")
 	data, err := comp.GetData(modsets)
 	if err != nil {

@@ -4,11 +4,9 @@ import (
 	"os"
 	"os/user"
 
-	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceset"
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
@@ -33,15 +31,6 @@ type (
 		Install(OptsInstall) error
 
 		InstallKey(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
-	}
-
-	// Baser is implemented by all object kinds.
-	Baser interface {
-		Status(OptsStatus) (instance.Status, error)
-		IsVolatile() bool
-		ResourceSets() resourceset.L
-		Resources() resource.Drivers
-		ResourceByID(rid string) resource.Driver
 	}
 
 	// Actor is implemented by object kinds supporting start, stop, ...

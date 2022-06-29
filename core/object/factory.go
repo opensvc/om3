@@ -11,8 +11,8 @@ import (
 // WithConfigFile sets a non-standard configuration location.
 func WithConfigFile(s string) funcopt.O {
 	return funcopt.F(func(t interface{}) error {
-		base := t.(*Base)
-		base.configFile = s
+		o := t.(*core)
+		o.configFile = s
 		return nil
 	})
 }
@@ -21,8 +21,8 @@ func WithConfigFile(s string) funcopt.O {
 // Useful for testing volatile services.
 func WithConfigData(b []byte) funcopt.O {
 	return funcopt.F(func(t interface{}) error {
-		base := t.(*Base)
-		base.configData = b
+		o := t.(*core)
+		o.configData = b
 		return nil
 	})
 }
@@ -30,8 +30,8 @@ func WithConfigData(b []byte) funcopt.O {
 // WithVolatile makes sure not data is ever written by the object.
 func WithVolatile(s bool) funcopt.O {
 	return funcopt.F(func(t interface{}) error {
-		base := t.(*Base)
-		base.volatile = s
+		o := t.(*core)
+		o.volatile = s
 		return nil
 	})
 }
@@ -57,11 +57,11 @@ func NewFromPath(p path.T, opts ...funcopt.O) (interface{}, error) {
 }
 
 // NewBaserFromPath returns a Baser interface from an object path
-func NewBaserFromPath(p path.T, opts ...funcopt.O) (Baser, error) {
+func NewBaserFromPath(p path.T, opts ...funcopt.O) (Core, error) {
 	if o, err := NewFromPath(p, opts...); err != nil {
 		return nil, err
 	} else {
-		return o.(Baser), nil
+		return o.(Core), nil
 	}
 }
 

@@ -13,12 +13,12 @@ import (
 // The file mtime is loaded as the frozen key value in the
 // instance status dataset.
 //
-func (t *Base) frozenFile() string {
+func (t *core) frozenFile() string {
 	return filepath.Join(t.varDir(), "frozen")
 }
 
 // Frozen returns the unix timestamp of the last freeze.
-func (t *Base) Frozen() timestamp.T {
+func (t *core) Frozen() timestamp.T {
 	p := t.frozenFile()
 	fi, err := os.Stat(p)
 	if err != nil {
@@ -31,7 +31,7 @@ func (t *Base) Frozen() timestamp.T {
 // Freeze creates a persistant flag file that prevents orchestration
 // of the object instance.
 //
-func (t *Base) Freeze() error {
+func (t *core) Freeze() error {
 	p := t.frozenFile()
 	if file.Exists(p) {
 		return nil
@@ -55,7 +55,7 @@ func (t *Base) Freeze() error {
 // Unfreeze removes the persistant flag file that prevents orchestration
 // of the object instance.
 //
-func (t *Base) Unfreeze() error {
+func (t *core) Unfreeze() error {
 	p := t.frozenFile()
 	if !file.Exists(p) {
 		return nil
@@ -72,6 +72,6 @@ func (t *Base) Unfreeze() error {
 // Thaw removes the persistant flag file that prevents orchestration
 // of the object instance. Synomym of Unfreeze.
 //
-func (t *Base) Thaw() error {
+func (t *core) Thaw() error {
 	return t.Unfreeze()
 }

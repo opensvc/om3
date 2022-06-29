@@ -19,7 +19,7 @@ type OptsProvision struct {
 }
 
 // Provision allocates and starts the local instance of the object
-func (t *Base) Provision(options OptsProvision) error {
+func (t *core) Provision(options OptsProvision) error {
 	props := actioncontext.Provision
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -43,7 +43,7 @@ func (t *Base) Provision(options OptsProvision) error {
 	return t.lockedStop(ctx)
 }
 
-func (t *Base) lockedProvision(ctx context.Context) error {
+func (t *core) lockedProvision(ctx context.Context) error {
 	if err := t.masterProvision(ctx); err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (t *Base) lockedProvision(ctx context.Context) error {
 	return nil
 }
 
-func (t *Base) masterProvision(ctx context.Context) error {
+func (t *core) masterProvision(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("provision resource")
 		leader := actioncontext.IsLeader(ctx)
@@ -61,6 +61,6 @@ func (t *Base) masterProvision(ctx context.Context) error {
 	})
 }
 
-func (t *Base) slaveProvision(ctx context.Context) error {
+func (t *core) slaveProvision(ctx context.Context) error {
 	return nil
 }

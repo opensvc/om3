@@ -10,7 +10,7 @@ type OptsEditConfig struct {
 	Recover bool `flag:"recover"`
 }
 
-func (t Base) EditConfig(opts OptsEditConfig) error {
+func (t core) EditConfig(opts OptsEditConfig) error {
 	var mode xconfig.EditMode
 	switch {
 	case opts.Discard && opts.Recover:

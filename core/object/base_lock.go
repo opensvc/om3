@@ -9,15 +9,15 @@ import (
 	"opensvc.com/opensvc/util/xsession"
 )
 
-func (t *Base) lockPath(group string) (path string) {
+func (t *core) lockPath(group string) (path string) {
 	if group == "" {
 		group = "generic"
 	}
-	path = filepath.Join(VarDir(t.Path), "lock", group)
+	path = filepath.Join(VarDir(t.path), "lock", group)
 	return
 }
 
-func (t *Base) lockAction(action actioncontext.Properties, options OptsLock) (func(), error) {
+func (t *core) lockAction(action actioncontext.Properties, options OptsLock) (func(), error) {
 	unlock := func() {}
 	if !action.MustLock {
 		return unlock, nil

@@ -27,11 +27,11 @@ var (
 	regexpExposedDevicesIndex = regexp.MustCompile(`.*\.exposed_devs\[([0-9]+)\]`)
 )
 
-func (t *Base) reloadConfig() error {
+func (t *core) reloadConfig() error {
 	return t.loadConfig(t.config.Referrer)
 }
 
-func (t *Base) loadConfig(referrer xconfig.Referrer) error {
+func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	var err error
 	var sources []interface{}
 	if t.configData != nil {
@@ -40,17 +40,17 @@ func (t *Base) loadConfig(referrer xconfig.Referrer) error {
 	if t.config, err = xconfig.NewObject(t.ConfigFile(), sources...); err != nil {
 		return err
 	}
-	t.config.Path = t.Path
+	t.config.Path = t.path
 	t.config.Referrer = referrer
 	t.config.NodeReferrer = t.Node()
 	return err
 }
 
-func (t Base) Config() *xconfig.T {
+func (t core) Config() *xconfig.T {
 	return t.config
 }
 
-func (t *Base) ID() uuid.UUID {
+func (t *core) ID() uuid.UUID {
 	if t.id != uuid.Nil {
 		return t.id
 	}
@@ -75,16 +75,16 @@ func (t *Base) ID() uuid.UUID {
 	return t.id
 }
 
-func (t Base) Orchestrate() string {
+func (t core) Orchestrate() string {
 	k := key.Parse("orchestrate")
 	return t.config.GetString(k)
 }
 
-func (t Base) FQDN() string {
-	return fqdn.New(t.Path, t.Node().Config().GetString(key.Parse("cluster.name"))).String()
+func (t core) FQDN() string {
+	return fqdn.New(t.path, t.Node().Config().GetString(key.Parse("cluster.name"))).String()
 }
 
-func (t Base) Env() string {
+func (t core) Env() string {
 	k := key.Parse("env")
 	if s := t.config.GetString(k); s != "" {
 		return s
@@ -92,24 +92,24 @@ func (t Base) Env() string {
 	return rawconfig.NodeSection().Env
 }
 
-func (t Base) App() string {
+func (t core) App() string {
 	k := key.Parse("app")
 	return t.config.GetString(k)
 }
 
-func (t Base) Topology() topology.T {
+func (t core) Topology() topology.T {
 	k := key.Parse("topology")
 	s := t.config.GetString(k)
 	return topology.New(s)
 }
 
-func (t Base) Placement() placement.T {
+func (t core) Placement() placement.T {
 	k := key.Parse("placement")
 	s := t.config.GetString(k)
 	return placement.New(s)
 }
 
-func (t Base) Priority() priority.T {
+func (t core) Priority() priority.T {
 	k := key.Parse("priority")
 	if i, err := t.config.GetIntStrict(k); err != nil {
 		//t.log.Error().Err(err).Msg("")
@@ -119,7 +119,7 @@ func (t Base) Priority() priority.T {
 	}
 }
 
-func (t Base) Peers() []string {
+func (t core) Peers() []string {
 	impersonate := hostname.Hostname()
 	switch {
 	case t.config.IsInNodes(impersonate):
@@ -131,7 +131,7 @@ func (t Base) Peers() []string {
 	}
 }
 
-func (t Base) Children() []path.Relation {
+func (t core) Children() []path.Relation {
 	data := make([]path.Relation, 0)
 	k := key.Parse("children")
 	l, err := t.config.GetSliceStrict(k)
@@ -145,7 +145,7 @@ func (t Base) Children() []path.Relation {
 	return data
 }
 
-func (t Base) Parents() []path.Relation {
+func (t core) Parents() []path.Relation {
 	data := make([]path.Relation, 0)
 	k := key.Parse("parents")
 	l, err := t.config.GetSliceStrict(k)
@@ -159,7 +159,7 @@ func (t Base) Parents() []path.Relation {
 	return data
 }
 
-func (t Base) FlexMin() int {
+func (t core) FlexMin() int {
 	var (
 		i   int
 		err error
@@ -179,7 +179,7 @@ func (t Base) FlexMin() int {
 	return i
 }
 
-func (t Base) FlexMax() int {
+func (t core) FlexMax() int {
 	var (
 		i   int
 		err error
@@ -199,7 +199,7 @@ func (t Base) FlexMax() int {
 	return i
 }
 
-func (t Base) FlexTarget() int {
+func (t core) FlexTarget() int {
 	var (
 		i   int
 		err error
@@ -220,7 +220,7 @@ func (t Base) FlexTarget() int {
 	return i
 }
 
-func (t Base) dereferenceExposedDevices(ref string) (string, error) {
+func (t core) dereferenceExposedDevices(ref string) (string, error) {
 	l := strings.SplitN(ref, ".", 2)
 	type ExposedDeviceser interface {
 		ExposedDevices() []*device.T
@@ -262,41 +262,41 @@ func (t Base) dereferenceExposedDevices(ref string) (string, error) {
 	return xdevs[i].String(), nil
 }
 
-func (t Base) Dereference(ref string) (string, error) {
+func (t core) Dereference(ref string) (string, error) {
 	switch ref {
 	case "id":
 		return t.ID().String(), nil
 	case "name", "svcname":
-		return t.Path.Name, nil
+		return t.path.Name, nil
 	case "short_name", "short_svcname":
-		return strings.SplitN(t.Path.Name, ".", 1)[0], nil
+		return strings.SplitN(t.path.Name, ".", 1)[0], nil
 	case "scaler_name", "scaler_svcname":
-		return RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), nil
+		return RegexpScalerPrefix.ReplaceAllString(t.path.Name, ""), nil
 	case "scaler_short_name", "scaler_short_svcname":
-		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.Path.Name, ""), ".", 1)[0], nil
+		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.path.Name, ""), ".", 1)[0], nil
 	case "namespace":
-		return t.Path.Namespace, nil
+		return t.path.Namespace, nil
 	case "kind":
-		return t.Path.Kind.String(), nil
+		return t.path.Kind.String(), nil
 	case "path", "svcpath":
-		if t.Path.IsZero() {
+		if t.path.IsZero() {
 			return "", nil
 		}
-		return t.Path.String(), nil
+		return t.path.String(), nil
 	case "fqdn":
-		if t.Path.IsZero() {
+		if t.path.IsZero() {
 			return "", nil
 		}
 		return t.FQDN(), nil
 	case "domain":
-		if t.Path.IsZero() {
+		if t.path.IsZero() {
 			return "", nil
 		}
-		return fqdn.New(t.Path, rawconfig.ClusterSection().Name).Domain(), nil
+		return fqdn.New(t.path, rawconfig.ClusterSection().Name).Domain(), nil
 	case "private_var":
 		return t.paths.varDir, nil
 	case "initd":
-		return filepath.Join(filepath.Dir(t.ConfigFile()), t.Path.Name+".d"), nil
+		return filepath.Join(filepath.Dir(t.ConfigFile()), t.path.Name+".d"), nil
 	case "collector_api":
 		if url, err := t.Node().CollectorRestAPIURL(); err != nil {
 			return "", err
@@ -329,40 +329,40 @@ func (t Base) Dereference(ref string) (string, error) {
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
-func (t Base) Nodes() []string {
+func (t core) Nodes() []string {
 	v := t.config.Get(key.Parse("nodes"))
 	l, _ := xconfig.NodesConverter.Convert(v)
 	return l.([]string)
 }
 
-func (t Base) DRPNodes() []string {
+func (t core) DRPNodes() []string {
 	v := t.config.Get(key.Parse("drpnodes"))
 	l, _ := xconfig.OtherNodesConverter.Convert(v)
 	return l.([]string)
 }
 
-func (t Base) EncapNodes() []string {
+func (t core) EncapNodes() []string {
 	v := t.config.Get(key.Parse("encapnodes"))
 	l, _ := xconfig.OtherNodesConverter.Convert(v)
 	return l.([]string)
 }
 
-func (t Base) HardAffinity() []string {
+func (t core) HardAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("hard_affinity"))
 	return l.([]string)
 }
 
-func (t Base) HardAntiAffinity() []string {
+func (t core) HardAntiAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("hard_anti_affinity"))
 	return l.([]string)
 }
 
-func (t Base) SoftAffinity() []string {
+func (t core) SoftAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("soft_affinity"))
 	return l.([]string)
 }
 
-func (t Base) SoftAntiAffinity() []string {
+func (t core) SoftAntiAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
 	return l.([]string)
 }

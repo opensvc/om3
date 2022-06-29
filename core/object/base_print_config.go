@@ -12,7 +12,7 @@ type OptsPrintConfig struct {
 }
 
 // PrintConfig gets a keyword value
-func (t *Base) PrintConfig(options OptsPrintConfig) (rawconfig.T, error) {
+func (t *core) PrintConfig(options OptsPrintConfig) (rawconfig.T, error) {
 	if options.Eval {
 		return t.config.RawEvaluatedAs(options.Impersonate)
 	}

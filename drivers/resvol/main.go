@@ -91,7 +91,7 @@ func (t T) stopVolume(ctx context.Context, volume *object.Vol, force bool) error
 	//options.Leader = actioncontext.IsLeader(ctx)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
-		t.Log().Info().Msgf("skip %s stop: active users: %s", volume.Path, holders)
+		t.Log().Info().Msgf("skip %s stop: active users: %s", volume.Path(), holders)
 		return nil
 	}
 	return volume.Stop(options)
@@ -114,7 +114,7 @@ func (t T) Start(ctx context.Context) error {
 		t.Log().Error().Err(err).Msg("")
 		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
 	}
-	if !object.Exists(volume.Path) {
+	if !object.Exists(volume.Path()) {
 		return fmt.Errorf("volume %s does not exist", t.name())
 	}
 	if err = t.startVolume(ctx, volume); err != nil {
@@ -183,7 +183,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("%s", err)
 		return status.Down
 	}
-	if !object.Exists(volume.Path) {
+	if !object.Exists(volume.Path()) {
 		t.StatusLog().Info("vol %s does not exist", t.name())
 		return status.Down
 	}
@@ -193,14 +193,14 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 	if data.Overall == status.Warn {
-		t.StatusLog().Error("vol %s has warnings", volume.Path)
+		t.StatusLog().Error("vol %s has warnings", volume.Path())
 	}
 	t.statusData()
 	if !t.flagInstalled() {
 		if data.Avail == status.Warn {
-			t.StatusLog().Error("%s avail %s", volume.Path, data.Avail)
+			t.StatusLog().Error("%s avail %s", volume.Path(), data.Avail)
 		} else {
-			t.StatusLog().Info("%s avail %s", volume.Path, data.Avail)
+			t.StatusLog().Info("%s avail %s", volume.Path(), data.Avail)
 		}
 		return status.Down
 	}
@@ -275,7 +275,7 @@ func (t *T) Volume() (*object.Vol, error) {
 }
 
 func (t *T) createVolume(volume *object.Vol) (*object.Vol, error) {
-	p := filepath.Join(object.VarDir(volume.Path), "create_volume.lock")
+	p := filepath.Join(object.VarDir(volume.Path()), "create_volume.lock")
 	lock := flock.New(p, xsession.ID, fcntllock.New)
 	timeout, err := time.ParseDuration("20s")
 	if err != nil {
@@ -356,8 +356,8 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if object.Exists(volume.Path) {
-		t.Log().Info().Msgf("%s is already provisioned", volume.Path)
+	if object.Exists(volume.Path()) {
+		t.Log().Info().Msgf("%s is already provisioned", volume.Path())
 		return nil
 	}
 	if volume, err = t.createVolume(volume); err != nil {
@@ -371,8 +371,8 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !object.Exists(volume.Path) {
-		t.Log().Info().Msgf("%s is already unprovisioned", volume.Path)
+	if !object.Exists(volume.Path()) {
+		t.Log().Info().Msgf("%s is already unprovisioned", volume.Path())
 		return nil
 	}
 	return volume.Unprovision(object.OptsUnprovision{})
@@ -383,7 +383,7 @@ func (t T) Provisioned() (provisioned.T, error) {
 	if err != nil {
 		return provisioned.False, err
 	}
-	exists := object.Exists(volume.Path)
+	exists := object.Exists(volume.Path())
 	return provisioned.FromBool(exists), nil
 }
 

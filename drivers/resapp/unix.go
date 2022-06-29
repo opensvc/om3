@@ -110,7 +110,7 @@ func (t *T) CommonStop(ctx context.Context, r resource.Driver) (err error) {
 
 func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 	sb := statusbus.FromContext(ctx)
-	o, ok := t.GetObject().(object.Baser)
+	o, ok := t.GetObject().(object.Core)
 	if !ok {
 		panic("an object with app resources must be a Baser")
 	}

@@ -37,7 +37,7 @@ func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 	s := &Sec{}
 	s.CustomEncode = secEncode
 	s.CustomDecode = secDecode
-	if err := s.Base.init(s, p, opts...); err != nil {
+	if err := s.core.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
@@ -45,7 +45,7 @@ func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 }
 
 func (t Sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
+	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
 func secEncode(b []byte) (string, error) {

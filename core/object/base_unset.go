@@ -13,7 +13,7 @@ type OptsUnset struct {
 }
 
 // Unset gets a keyword value
-func (t *Base) Unset(options OptsUnset) error {
+func (t *core) Unset(options OptsUnset) error {
 	props := actioncontext.Unset
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
@@ -23,7 +23,7 @@ func (t *Base) Unset(options OptsUnset) error {
 	return unset(t.config, options)
 }
 
-func (t *Base) UnsetKeys(kws ...key.T) error {
+func (t *core) UnsetKeys(kws ...key.T) error {
 	return unsetKeys(t.config, kws...)
 }
 

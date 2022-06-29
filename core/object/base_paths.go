@@ -70,15 +70,15 @@ func LogFile(p path.T) string {
 	return filepath.Join(LogDir(p), p.Name+".log")
 }
 
-func (t *Base) VarDir() string {
-	return VarDir(t.Path)
+func (t *core) VarDir() string {
+	return VarDir(t.path)
 }
 
-func (t *Base) varDir() string {
+func (t *core) varDir() string {
 	if t.paths.varDir != "" {
 		return t.paths.varDir
 	}
-	t.paths.varDir = VarDir(t.Path)
+	t.paths.varDir = VarDir(t.path)
 	if !t.volatile {
 		if err := os.MkdirAll(t.paths.varDir, os.ModePerm); err != nil {
 			t.log.Error().Msgf("%s", err)
@@ -87,15 +87,15 @@ func (t *Base) varDir() string {
 	return t.paths.varDir
 }
 
-func (t *Base) LogDir() string {
-	return LogDir(t.Path)
+func (t *core) LogDir() string {
+	return LogDir(t.path)
 }
 
-func (t *Base) logDir() string {
+func (t *core) logDir() string {
 	if t.paths.logDir != "" {
 		return t.paths.logDir
 	}
-	t.paths.logDir = LogDir(t.Path)
+	t.paths.logDir = LogDir(t.path)
 	if !t.volatile {
 		if err := os.MkdirAll(t.paths.logDir, os.ModePerm); err != nil {
 			t.log.Error().Msgf("%s", err)
@@ -104,15 +104,15 @@ func (t *Base) logDir() string {
 	return t.paths.logDir
 }
 
-func (t *Base) TmpDir() string {
-	return TmpDir(t.Path)
+func (t *core) TmpDir() string {
+	return TmpDir(t.path)
 }
 
-func (t *Base) tmpDir() string {
+func (t *core) tmpDir() string {
 	if t.paths.tmpDir != "" {
 		return t.paths.tmpDir
 	}
-	t.paths.tmpDir = TmpDir(t.Path)
+	t.paths.tmpDir = TmpDir(t.path)
 	if !t.volatile {
 		if err := os.MkdirAll(t.paths.tmpDir, os.ModePerm); err != nil {
 			t.log.Error().Msgf("%s", err)

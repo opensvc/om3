@@ -25,7 +25,7 @@ type OptsDelete struct {
 // If a resource selector is set, only delete the corresponding
 // sections in the configuration file.
 //
-func (t Base) Delete(options OptsDelete) error {
+func (t core) Delete(options OptsDelete) error {
 	props := actioncontext.Delete
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
@@ -35,14 +35,14 @@ func (t Base) Delete(options OptsDelete) error {
 	return t.lockedDelete(options)
 }
 
-func (t Base) lockedDelete(opts OptsDelete) error {
+func (t core) lockedDelete(opts OptsDelete) error {
 	if opts.RID != "" {
 		return t.deleteSections(opts.RID)
 	}
 	return t.deleteInstance()
 }
 
-func (t Base) deleteInstance() error {
+func (t core) deleteInstance() error {
 	if err := t.deleteInstanceFiles(); err != nil {
 		return err
 	}
@@ -56,12 +56,12 @@ func (t Base) deleteInstance() error {
 	return nil
 }
 
-func (t Base) deleteInstanceFiles() error {
+func (t core) deleteInstanceFiles() error {
 	patterns := []string{
-		filepath.Join(t.logDir(), t.Path.Name+".log*"),
-		filepath.Join(t.logDir(), t.Path.Name+".debug.log*"),
-		filepath.Join(t.logDir(), "."+t.Path.Name+".log*"),
-		filepath.Join(t.logDir(), "."+t.Path.Name+".debug.log*"),
+		filepath.Join(t.logDir(), t.path.Name+".log*"),
+		filepath.Join(t.logDir(), t.path.Name+".debug.log*"),
+		filepath.Join(t.logDir(), "."+t.path.Name+".log*"),
+		filepath.Join(t.logDir(), "."+t.path.Name+".debug.log*"),
 		filepath.Join(t.varDir()),
 	}
 	for _, pattern := range patterns {
@@ -78,7 +78,7 @@ func (t Base) deleteInstanceFiles() error {
 	return nil
 }
 
-func (t Base) tryDeleteInstanceFile(fpath string) bool {
+func (t core) tryDeleteInstanceFile(fpath string) bool {
 	if file.IsProtected(fpath) {
 		t.log.Warn().Str("path", fpath).Msg("block attempt to remove a protected file")
 		return false
@@ -91,15 +91,15 @@ func (t Base) tryDeleteInstanceFile(fpath string) bool {
 	return true
 }
 
-func (t Base) deleteInstanceLogs() error {
+func (t core) deleteInstanceLogs() error {
 	return nil
 }
 
-func (t Base) setPurgeCollectorTag() error {
+func (t core) setPurgeCollectorTag() error {
 	return nil
 }
 
-func (t Base) deleteSections(s string) error {
+func (t core) deleteSections(s string) error {
 	sections := strings.Split(s, ",")
 	return t.config.DeleteSections(sections)
 }

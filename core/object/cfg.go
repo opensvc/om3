@@ -35,7 +35,7 @@ func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
 	s := &Cfg{}
 	s.CustomEncode = cfgEncode
 	s.CustomDecode = cfgDecode
-	if err := s.Base.init(s, p, opts...); err != nil {
+	if err := s.core.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
@@ -43,7 +43,7 @@ func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
 }
 
 func (t Cfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
+	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
 func cfgEncode(b []byte) (string, error) {

@@ -24,19 +24,19 @@ type (
 	// independant) to a pool.
 	//
 	Vol struct {
-		Base
+		core
 	}
 )
 
 // NewVol allocates a vol kind object.
 func NewVol(p path.T, opts ...funcopt.O) (*Vol, error) {
 	s := &Vol{}
-	err := s.Base.init(s, p, opts...)
+	err := s.core.init(s, p, opts...)
 	return s, err
 }
 
 func (t Vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
+	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
 //
@@ -141,7 +141,7 @@ func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 				continue
 			}
 			if o, ok := r.(VolNamer); ok {
-				if o.VolName() != t.Path.Name {
+				if o.VolName() != t.path.Name {
 					continue
 				}
 			}

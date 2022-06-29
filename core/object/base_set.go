@@ -16,7 +16,7 @@ type OptsSet struct {
 }
 
 // Set changes or adds a keyword and its value in the configuration file.
-func (t *Base) Set(options OptsSet) error {
+func (t *core) Set(options OptsSet) error {
 	unlock, err := t.lockAction(actioncontext.Set, options.OptsLock)
 	if err != nil {
 		return err
@@ -25,11 +25,11 @@ func (t *Base) Set(options OptsSet) error {
 	return setKeywords(t.config, options.KeywordOps)
 }
 
-func (t *Base) SetKeywords(kws []string) error {
+func (t *core) SetKeywords(kws []string) error {
 	return setKeywords(t.config, kws)
 }
 
-func (t *Base) SetKeys(kops ...keyop.T) error {
+func (t *core) SetKeys(kops ...keyop.T) error {
 	return setKeys(t.config, kops...)
 }
 

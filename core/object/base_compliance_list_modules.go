@@ -4,9 +4,9 @@ import (
 	"opensvc.com/opensvc/util/compliance"
 )
 
-func (t *Base) ComplianceListModules() ([]string, error) {
+func (t *core) ComplianceListModules() ([]string, error) {
 	comp := compliance.New()
-	comp.SetObjectPath(t.Path)
+	comp.SetObjectPath(t.path)
 	data, err := comp.ListModuleNames()
 	if err != nil {
 		return nil, err

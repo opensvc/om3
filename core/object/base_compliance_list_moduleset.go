@@ -11,14 +11,14 @@ type (
 	}
 )
 
-func (t *Base) ComplianceListModuleset(options OptsObjectComplianceListModuleset) ([]string, error) {
+func (t *core) ComplianceListModuleset(options OptsObjectComplianceListModuleset) ([]string, error) {
 	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	comp.SetObjectPath(t.Path)
+	comp.SetObjectPath(t.path)
 	data, err := comp.ListModulesets(options.Moduleset)
 	if err != nil {
 		return nil, err

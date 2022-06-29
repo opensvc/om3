@@ -11,7 +11,7 @@ type OptsGet struct {
 }
 
 // Get returns a keyword value
-func (t *Base) Get(options OptsGet) (interface{}, error) {
+func (t *core) Get(options OptsGet) (interface{}, error) {
 	k := key.Parse(options.Keyword)
 	if options.Eval {
 		v, err := t.config.EvalAs(k, options.Impersonate)

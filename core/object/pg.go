@@ -34,7 +34,7 @@ func pgNameResource(s string) string {
 // /opensvc/vol.v1/subset.g1/app.1		# !ns ss
 // /opensvc/vol.v1/disk.1			# !ns !ss
 //
-func (t *Base) pgConfig(section string) *pg.Config {
+func (t *core) pgConfig(section string) *pg.Config {
 	data := pg.Config{}
 	data.CpuShares, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_shares"))
 	data.Cpus, _ = t.config.EvalNoConv(key.New(section, "pg_cpus"))
@@ -56,11 +56,11 @@ func (t *Base) pgConfig(section string) *pg.Config {
 		}
 	}
 	svcPGName := func() []string {
-		s := pgNameObject(t.Path)
-		if t.Path.Namespace == "root" {
+		s := pgNameObject(t.path)
+		if t.path.Namespace == "root" {
 			return []string{"opensvc", s}
 		}
-		return []string{"opensvc", t.Path.Namespace, s}
+		return []string{"opensvc", t.path.Namespace, s}
 	}
 	subsetPGName := func(s string) []string {
 		name := subsetName(s)
@@ -92,7 +92,7 @@ func (t *Base) pgConfig(section string) *pg.Config {
 	return &data
 }
 
-func (t *Base) CleanPG(ctx context.Context) {
+func (t *core) CleanPG(ctx context.Context) {
 	action := actioncontext.Props(ctx)
 	if action.Order.IsDesc() {
 		for _, run := range pg.FromContext(ctx).Clean() {

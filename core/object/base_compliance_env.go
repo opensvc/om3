@@ -12,14 +12,14 @@ type (
 	}
 )
 
-func (t *Base) ComplianceEnv(options OptsObjectComplianceEnv) (compliance.Envs, error) {
+func (t *core) ComplianceEnv(options OptsObjectComplianceEnv) (compliance.Envs, error) {
 	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	comp.SetObjectPath(t.Path)
+	comp.SetObjectPath(t.path)
 	run := comp.NewRun()
 	run.SetModulesetsExpr(options.Moduleset)
 	run.SetModulesExpr(options.Module)

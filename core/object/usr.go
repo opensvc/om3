@@ -16,14 +16,14 @@ type (
 	// for OpenID access (where grants are embedded in the trusted token)
 	//
 	Usr struct {
-		Base
+		core
 	}
 )
 
 // NewUsr allocates a usr kind object.
 func NewUsr(p path.T, opts ...funcopt.O) (*Usr, error) {
 	s := &Usr{}
-	if err := s.Base.init(s, p, opts...); err != nil {
+	if err := s.core.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)
@@ -31,5 +31,5 @@ func NewUsr(p path.T, opts ...funcopt.O) (*Usr, error) {
 }
 
 func (t Usr) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(keywordStore, k, t.Path.Kind, sectionType)
+	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }

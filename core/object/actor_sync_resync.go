@@ -16,7 +16,7 @@ type OptsSyncResync struct {
 }
 
 // SyncResync re-establishes the data synchronization
-func (t *Base) SyncResync(options OptsSyncResync) error {
+func (t *core) SyncResync(options OptsSyncResync) error {
 	props := actioncontext.SyncResync
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -33,7 +33,7 @@ func (t *Base) SyncResync(options OptsSyncResync) error {
 	return t.lockedSyncResync(ctx)
 }
 
-func (t *Base) lockedSyncResync(ctx context.Context) error {
+func (t *core) lockedSyncResync(ctx context.Context) error {
 	if err := t.masterSyncResync(ctx); err != nil {
 		return err
 	}
@@ -43,12 +43,12 @@ func (t *Base) lockedSyncResync(ctx context.Context) error {
 	return nil
 }
 
-func (t *Base) masterSyncResync(ctx context.Context) error {
+func (t *core) masterSyncResync(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.Resync(ctx, r)
 	})
 }
 
-func (t *Base) slaveSyncResync(ctx context.Context) error {
+func (t *core) slaveSyncResync(ctx context.Context) error {
 	return nil
 }

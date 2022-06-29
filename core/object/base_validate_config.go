@@ -11,7 +11,7 @@ type OptsValidateConfig struct {
 }
 
 // ValidateConfig
-func (t *Base) ValidateConfig(options OptsValidateConfig) (xconfig.ValidateAlerts, error) {
+func (t *core) ValidateConfig(options OptsValidateConfig) (xconfig.ValidateAlerts, error) {
 	props := actioncontext.ValidateConfig
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {

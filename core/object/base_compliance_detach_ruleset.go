@@ -11,13 +11,13 @@ type (
 	}
 )
 
-func (t *Base) ComplianceDetachRuleset(options OptsObjectComplianceDetachRuleset) error {
+func (t *core) ComplianceDetachRuleset(options OptsObjectComplianceDetachRuleset) error {
 	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return err
 	}
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	comp.SetObjectPath(t.Path)
+	comp.SetObjectPath(t.path)
 	return comp.DetachRuleset(options.Ruleset)
 }

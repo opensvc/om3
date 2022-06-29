@@ -11,13 +11,13 @@ type (
 	}
 )
 
-func (t *Base) ComplianceAttachRuleset(options OptsObjectComplianceAttachRuleset) error {
+func (t *core) ComplianceAttachRuleset(options OptsObjectComplianceAttachRuleset) error {
 	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return err
 	}
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	comp.SetObjectPath(t.Path)
+	comp.SetObjectPath(t.path)
 	return comp.AttachRuleset(options.Ruleset)
 }

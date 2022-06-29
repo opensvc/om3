@@ -18,7 +18,7 @@ type enterer interface {
 }
 
 // Enter returns a keyword value
-func (t *Base) Enter(options OptsEnter) error {
+func (t *core) Enter(options OptsEnter) error {
 	rs := resourceselector.New(t, resourceselector.WithRID(options.OptsResourceSelector.RID))
 	for _, r := range rs.Resources() {
 		i, ok := r.(enterer)
