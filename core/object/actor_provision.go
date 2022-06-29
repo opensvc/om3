@@ -22,20 +22,24 @@ type OptsProvision struct {
 
 // Provision allocates and starts the local instance of the object
 func (t *Base) Provision(options OptsProvision) error {
+	props := objectactionprops.Provision
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.Provision)
+	ctx = actioncontext.WithProps(ctx, props)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("provision", false)
-	err := t.lockedAction("", options.OptsLock, "provision", func() error {
-		return t.lockedProvision(ctx)
-	})
+	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
 		return err
 	}
+	defer unlock()
+	if err := t.lockedProvision(ctx); err != nil {
+		return err
+	}
 	if options.IsRollbackDisabled() {
+		// --disable-rollback handling
 		return nil
 	}
 	return t.lockedStop(ctx)

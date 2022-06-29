@@ -13,6 +13,8 @@ type (
 		Order                 ordering.T
 		LocalExpect           string
 		Local                 bool
+		Lock                  bool
+		LockGroup             string
 		Freeze                bool
 		Kinds                 []kind.T
 		DisableNodeValidation bool
@@ -41,6 +43,7 @@ var (
 		Progress:   "deleting",
 		Order:      ordering.Desc,
 		Local:      true,
+		Lock:       true,
 		RelayToAny: true,
 		Kinds:      []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
 	}
@@ -67,21 +70,27 @@ var (
 	Set = T{
 		Name:       "set",
 		RelayToAny: true,
+		Lock:       true,
 	}
 	SetProvisioned = T{
 		Name:  "set provisioned",
 		Local: true,
+		Lock:  true,
 	}
 	SetUnprovisioned = T{
 		Name:  "set unprovisioned",
 		Local: true,
+		Lock:  true,
 	}
 	Status = T{
-		Name: "status",
-		PG:   true,
+		Name:      "status",
+		PG:        true,
+		Lock:      true,
+		LockGroup: "status",
 	}
 	Unset = T{
 		Name:       "unset",
+		Lock:       true,
 		RelayToAny: true,
 	}
 	Giveback = T{
@@ -113,6 +122,7 @@ var (
 		Target:          "provisioned",
 		Progress:        "provisioning",
 		Local:           true,
+		Lock:            true,
 		LocalExpect:     "unset",
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		Rollback:        true,
@@ -171,6 +181,7 @@ var (
 		Target:          "stopped",
 		Progress:        "stopping",
 		Local:           true,
+		Lock:            true,
 		Order:           ordering.Desc,
 		LocalExpect:     "",
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
@@ -189,6 +200,7 @@ var (
 	SyncResync = T{
 		Name:  "sync_resync",
 		Local: true,
+		Lock:  true,
 		Kinds: []kind.T{kind.Svc, kind.Vol},
 		PG:    true,
 	}
@@ -219,6 +231,7 @@ var (
 		Target:          "unprovisioned",
 		Progress:        "unprovisioning",
 		Local:           true,
+		Lock:            true,
 		Order:           ordering.Desc,
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},

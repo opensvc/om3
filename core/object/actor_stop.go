@@ -20,17 +20,20 @@ type OptsStop struct {
 
 // Stop stops the local instance of the object
 func (t *Base) Stop(options OptsStop) error {
+	props := objectactionprops.Stop
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.Stop)
+	ctx = actioncontext.WithProps(ctx, props)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("stop", false)
-	return t.lockedAction("", options.OptsLock, "stop", func() error {
-		return t.lockedStop(ctx)
-	})
-
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedStop(ctx)
 }
 
 func (t *Base) lockedStop(ctx context.Context) error {

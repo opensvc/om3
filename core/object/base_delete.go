@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -24,10 +25,14 @@ type OptsDelete struct {
 // If a resource selector is set, only delete the corresponding
 // sections in the configuration file.
 //
-func (t Base) Delete(opts OptsDelete) error {
-	return t.lockedAction("", opts.OptsLock, "delete", func() error {
-		return t.lockedDelete(opts)
-	})
+func (t Base) Delete(options OptsDelete) error {
+	props := objectactionprops.Delete
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedDelete(options)
 }
 
 func (t Base) lockedDelete(opts OptsDelete) error {

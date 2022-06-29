@@ -67,15 +67,14 @@ func (t *Base) postActionStatusEval(ctx context.Context) {
 	}
 }
 
-func (t *Base) statusEval(ctx context.Context, options OptsStatus) (data instance.Status, err error) {
-	lockErr := t.lockedAction("status", options.OptsLock, "", func() error {
-		data, err = t.lockedStatusEval(ctx)
-		return err
-	})
-	if lockErr != nil {
-		err = lockErr
+func (t *Base) statusEval(ctx context.Context, options OptsStatus) (instance.Status, error) {
+	props := objectactionprops.Status
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return instance.Status{}, err
 	}
-	return
+	defer unlock()
+	return t.lockedStatusEval(ctx)
 }
 
 func (t *Base) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {

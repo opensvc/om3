@@ -18,17 +18,20 @@ type OptsSyncResync struct {
 
 // SyncResync re-establishes the data synchronization
 func (t *Base) SyncResync(options OptsSyncResync) error {
+	props := objectactionprops.SyncResync
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.SyncResync)
+	ctx = actioncontext.WithProps(ctx, props)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("sync_resync", false)
-	return t.lockedAction("", options.OptsLock, "sync_resync", func() error {
-		return t.lockedSyncResync(ctx)
-	})
-
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedSyncResync(ctx)
 }
 
 func (t *Base) lockedSyncResync(ctx context.Context) error {

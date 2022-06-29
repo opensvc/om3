@@ -16,17 +16,20 @@ type OptsSetProvisioned struct {
 
 // SetProvisioned starts the local instance of the object
 func (t *Base) SetProvisioned(options OptsSetProvisioned) error {
+	props := objectactionprops.SetProvisioned
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.SetProvisioned)
+	ctx = actioncontext.WithProps(ctx, props)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("set provisioned", false)
-	err := t.lockedAction("", options.OptsLock, "set provisioned", func() error {
-		return t.lockedSetProvisioned(ctx)
-	})
-	return err
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedSetProvisioned(ctx)
 }
 
 func (t *Base) lockedSetProvisioned(ctx context.Context) error {

@@ -21,16 +21,20 @@ type OptsUnprovision struct {
 
 // Unprovision stops and frees the local instance of the object
 func (t *Base) Unprovision(options OptsUnprovision) error {
+	props := objectactionprops.Unprovision
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.Unprovision)
+	ctx = actioncontext.WithProps(ctx, props)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("unprovision", false)
-	return t.lockedAction("", options.OptsLock, "unprovision", func() error {
-		return t.lockedUnprovision(ctx)
-	})
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedUnprovision(ctx)
 }
 
 func (t *Base) lockedUnprovision(ctx context.Context) error {

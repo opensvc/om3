@@ -113,6 +113,16 @@ type (
 	}
 )
 
+var (
+	defaultOptsGlobal = OptsGlobal{
+		Color:  "auto",
+		Format: "auto",
+	}
+	defaultOptsLock = OptsLock{
+		Timeout: 5 * time.Second,
+	}
+)
+
 func (t OptsResourceSelector) ResourceSelectorRID() string {
 	return t.RID
 }

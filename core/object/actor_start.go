@@ -21,17 +21,20 @@ type OptsStart struct {
 
 // Start starts the local instance of the object
 func (t *Base) Start(options OptsStart) error {
+	props := objectactionprops.Start
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.Start)
+	ctx = actioncontext.WithProps(ctx, props)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("start", false)
-	err := t.lockedAction("", options.OptsLock, "start", func() error {
-		return t.lockedStart(ctx)
-	})
-	return err
+	unlock, err := t.lockAction(props, options.OptsLock)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedStart(ctx)
 }
 
 func (t *Base) lockedStart(ctx context.Context) error {
