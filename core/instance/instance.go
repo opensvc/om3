@@ -62,7 +62,6 @@ type (
 		Env         string                            `json:"env,omitempty"`
 		Frozen      timestamp.T                       `json:"frozen,omitempty"`
 		Kind        kind.T                            `json:"kind"`
-		Monitor     Monitor                           `json:"monitor"`
 		Optional    status.T                          `json:"optional,omitempty"`
 		Orchestrate string                            `json:"orchestrate,omitempty"` // TODO enum
 		Topology    topology.T                        `json:"topology,omitempty"`
@@ -224,20 +223,22 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 		flags += "."
 	}
 
-	// Restart and retries
-	retries := 0
-	if restart, ok := t.Monitor.Restart[rid.Name]; ok {
-		retries = restart.Retries
-	}
-
 	flags += r.Monitor.FlagString()
 	flags += r.Disable.FlagString()
 	flags += r.Optional.FlagString()
 	flags += r.Encap.FlagString()
 	flags += r.Provisioned.State.FlagString()
 	flags += r.Standby.FlagString()
-	flags += r.Restart.FlagString(retries)
 	return flags
+}
+
+func (smon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
+	// Restart and retries
+	retries := 0
+	if restart, ok := smon.Restart[rid.Name]; ok {
+		retries = restart.Retries
+	}
+	return r.Restart.FlagString(retries)
 }
 
 func (cfg Config) DeepCopy() *Config {

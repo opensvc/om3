@@ -11,17 +11,17 @@ import (
 func (f Frame) sObjectInstance(path string, node string) string {
 	s := ""
 	avail := f.Current.Monitor.Services[path].Avail
-	if instance, ok := f.Current.Monitor.Nodes[node].Services.Status[path]; ok {
+	if status, ok := f.Current.Monitor.Nodes[node].Services.Status[path]; ok {
 		smon, hasSmon := f.Current.Monitor.Nodes[node].Services.Smon[path]
 		if !hasSmon {
-			smon = instance.Monitor
+			smon = instance.Monitor{}
 		}
-		s += sObjectInstanceAvail(avail, instance)
-		s += sObjectInstanceOverall(instance)
-		s += sObjectInstanceDRP(instance)
+		s += sObjectInstanceAvail(avail, status)
+		s += sObjectInstanceOverall(status)
+		s += sObjectInstanceDRP(status)
 		s += sObjectInstanceLeader(smon)
-		s += sObjectInstanceFrozen(instance)
-		s += sObjectInstanceUnprovisioned(instance)
+		s += sObjectInstanceFrozen(status)
+		s += sObjectInstanceUnprovisioned(status)
 		s += sObjectInstanceMonitorStatus(smon)
 		s += sObjectInstanceMonitorGlobalExpect(smon)
 		s += "\t"
