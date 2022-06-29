@@ -2,6 +2,7 @@ package hbucast
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"strings"
 	"time"
@@ -133,9 +134,9 @@ func (r *rx) handle(conn encryptconn.ConnNoder) {
 		r.log.Debug().Err(err).Msgf("read err: %v", data)
 		return
 	}
-	msg, err := hbtype.New(data[:i], nodename)
-	if err != nil {
-		r.log.Debug().Err(err).Msgf("hbtype.New msg from %s", nodename)
+	msg := hbtype.Msg{}
+	if err := json.Unmarshal(data[:i], &msg); err != nil {
+		r.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
 		return
 	}
 	r.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -143,7 +144,7 @@ func (r *rx) handle(conn encryptconn.ConnNoder) {
 		HbId:     r.id,
 		Success:  true,
 	}
-	r.msgC <- msg
+	r.msgC <- &msg
 }
 
 func newRx(ctx context.Context, name string, nodes []string, addr, port, intf string, timeout time.Duration) *rx {
