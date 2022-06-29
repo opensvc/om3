@@ -17,18 +17,18 @@ func (t *Base) lockPath(group string) (path string) {
 	return
 }
 
-func (t *Base) lockAction(props actioncontext.Properties, options OptsLock) (func(), error) {
+func (t *Base) lockAction(action actioncontext.Properties, options OptsLock) (func(), error) {
 	unlock := func() {}
-	if !props.Lock {
+	if !action.MustLock {
 		return unlock, nil
 	}
 	if options.Disable {
 		// --nolock handling
 		return unlock, nil
 	}
-	p := t.lockPath(props.LockGroup)
+	p := t.lockPath(action.LockGroup)
 	lock := flock.New(p, xsession.ID, fcntllock.New)
-	err := lock.Lock(options.Timeout, props.Name)
+	err := lock.Lock(options.Timeout, action.Name)
 	if err != nil {
 		return unlock, err
 	}

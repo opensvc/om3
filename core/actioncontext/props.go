@@ -13,7 +13,7 @@ type (
 		Order                 ordering.T
 		LocalExpect           string
 		Local                 bool
-		Lock                  bool
+		MustLock              bool
 		LockGroup             string
 		Freeze                bool
 		Kinds                 []kind.T
@@ -43,7 +43,7 @@ var (
 		Progress:   "deleting",
 		Order:      ordering.Desc,
 		Local:      true,
-		Lock:       true,
+		MustLock:   true,
 		RelayToAny: true,
 		Kinds:      []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
 	}
@@ -70,27 +70,27 @@ var (
 	Set = Properties{
 		Name:       "set",
 		RelayToAny: true,
-		Lock:       true,
+		MustLock:   true,
 	}
 	SetProvisioned = Properties{
-		Name:  "set provisioned",
-		Local: true,
-		Lock:  true,
+		Name:     "set provisioned",
+		Local:    true,
+		MustLock: true,
 	}
 	SetUnprovisioned = Properties{
-		Name:  "set unprovisioned",
-		Local: true,
-		Lock:  true,
+		Name:     "set unprovisioned",
+		Local:    true,
+		MustLock: true,
 	}
 	Status = Properties{
 		Name:      "status",
 		PG:        true,
-		Lock:      true,
+		MustLock:  true,
 		LockGroup: "status",
 	}
 	Unset = Properties{
 		Name:       "unset",
-		Lock:       true,
+		MustLock:   true,
 		RelayToAny: true,
 	}
 	Giveback = Properties{
@@ -108,7 +108,7 @@ var (
 	ValidateConfig = Properties{
 		Name:       "validate_config",
 		RelayToAny: true,
-		Lock:       true,
+		MustLock:   true,
 	}
 	Move = Properties{
 		Name:            "move",
@@ -123,7 +123,7 @@ var (
 		Target:          "provisioned",
 		Progress:        "provisioning",
 		Local:           true,
-		Lock:            true,
+		MustLock:        true,
 		LocalExpect:     "unset",
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		Rollback:        true,
@@ -182,7 +182,7 @@ var (
 		Target:          "stopped",
 		Progress:        "stopping",
 		Local:           true,
-		Lock:            true,
+		MustLock:        true,
 		Order:           ordering.Desc,
 		LocalExpect:     "",
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
@@ -199,11 +199,11 @@ var (
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
 	SyncResync = Properties{
-		Name:  "sync_resync",
-		Local: true,
-		Lock:  true,
-		Kinds: []kind.T{kind.Svc, kind.Vol},
-		PG:    true,
+		Name:     "sync_resync",
+		Local:    true,
+		MustLock: true,
+		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		PG:       true,
 	}
 	Takeover = Properties{
 		Name:            "takeover",
@@ -232,7 +232,7 @@ var (
 		Target:          "unprovisioned",
 		Progress:        "unprovisioning",
 		Local:           true,
-		Lock:            true,
+		MustLock:        true,
 		Order:           ordering.Desc,
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
