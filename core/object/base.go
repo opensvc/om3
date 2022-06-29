@@ -33,6 +33,8 @@ import (
 type (
 	// Base is the base struct embedded in all kinded objects.
 	Base struct {
+		sync.Mutex
+
 		Path path.T
 		PG   *pg.Config
 
@@ -50,7 +52,6 @@ type (
 		resources          resource.Drivers
 		_resources         resource.Drivers
 		actionResourceDeps *actionresdeps.Store
-		mu                 sync.Mutex
 
 		// method plugs
 		postCommit func() error
@@ -245,8 +246,8 @@ func (t *Base) Resources() resource.Drivers {
 }
 
 func (t *Base) configureResources() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	begin := time.Now()
 	postponed := make(map[string][]resource.Driver)
 	t._resources = make(resource.Drivers, 0)

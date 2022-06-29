@@ -25,8 +25,8 @@ type (
 
 	// Store is the action resource dependencies data store.
 	Store struct {
-		m  map[depKey]bMap
-		mu sync.Mutex
+		sync.Mutex
+		m map[depKey]bMap
 	}
 
 	bMap map[string]interface{}
@@ -79,8 +79,8 @@ func (t *Store) RegisterSlice(deps []Dep) {
 }
 
 func (t *Store) Register(dep Dep) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	key := dep.Key()
 	bs, ok := t.m[key]
 	if !ok {
