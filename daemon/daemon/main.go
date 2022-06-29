@@ -7,7 +7,6 @@ package daemon
 
 import (
 	"context"
-	"runtime"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -197,6 +196,4 @@ func (t *T) loop(c chan bool) {
 }
 
 func (t *T) aLoop() {
-	// TODO move this to daemon data
-	t.log.Info().Msgf("go routines %d", runtime.NumGoroutine())
 }

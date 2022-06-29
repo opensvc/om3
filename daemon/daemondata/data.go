@@ -2,6 +2,8 @@ package daemondata
 
 import (
 	"context"
+	"runtime"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -45,11 +47,15 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	d.pubSub = daemonctx.DaemonPubSubCmd(ctx)
 
 	defer d.log.Info().Msg("stopped")
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			cancel()
 			return
+		case <-ticker.C:
+			d.pending.Monitor.Routines = runtime.NumGoroutine()
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
 				c.call(d)
