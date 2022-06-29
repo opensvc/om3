@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	// DataSectionName is the name of the section hosting keys in the sec, cfg and usr objects' configuration file.
-	DataSectionName = "data"
+	// dataSectionName is the name of the section hosting keys in the sec, cfg and usr objects' configuration file.
+	dataSectionName = "data"
 )
 
 type (
@@ -37,7 +37,7 @@ func (t Keystore) Decode(options OptsDecode) ([]byte, error) {
 }
 
 func keyFromName(name string) key.T {
-	return key.New(DataSectionName, name)
+	return key.New(dataSectionName, name)
 }
 
 func (t Keystore) HasKey(name string) bool {

@@ -80,9 +80,9 @@ type (
 )
 
 const (
-	AssetSrcProbe   string = "probe"
-	AssetSrcDefault string = "default"
-	AssetSrcConfig  string = "config"
+	assetSrcProbe   = "probe"
+	assetSrcDefault = "default"
+	assetSrcConfig  = "config"
 )
 
 func (t AssetData) AssetValues() []AssetValue {
@@ -103,7 +103,7 @@ func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt in
 	data.Title = title
 	k := key.Parse(kw)
 	if t.MergedConfig().HasKey(k) {
-		data.Source = AssetSrcConfig
+		data.Source = assetSrcConfig
 		s, err := t.MergedConfig().Eval(k)
 		if err == nil {
 			data.Value = s
@@ -113,7 +113,7 @@ func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt in
 	if probe != nil {
 		s, err := probe.Get(k.Option)
 		if err == nil {
-			data.Source = AssetSrcProbe
+			data.Source = assetSrcProbe
 			data.Value = s
 			return
 		}
@@ -121,21 +121,21 @@ func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt in
 			data.Error = fmt.Sprint(err)
 		}
 	}
-	data.Source = AssetSrcDefault
+	data.Source = assetSrcDefault
 	data.Value = dflt
 	return
 }
 
 func (t Node) assetAgentVersion() (data AssetValue) {
 	data.Title = "agent version"
-	data.Source = AssetSrcProbe
+	data.Source = assetSrcProbe
 	data.Value = version.Version
 	return
 }
 
 func (t Node) assetNodename() (data AssetValue) {
 	data.Title = "nodename"
-	data.Source = AssetSrcProbe
+	data.Source = assetSrcProbe
 	data.Value = hostname.Hostname()
 	return
 }
@@ -143,7 +143,7 @@ func (t Node) assetNodename() (data AssetValue) {
 func (t Node) assetValueClusterID() (data AssetValue) {
 	k := key.T{Section: "cluster", Option: "id"}
 	data.Title = "cluster id"
-	data.Source = AssetSrcProbe
+	data.Source = assetSrcProbe
 	data.Value, _ = t.MergedConfig().Eval(k)
 	return
 }
@@ -294,7 +294,7 @@ func (t AssetData) Render() string {
 	n := tr.AddNode()
 	n.AddColumn().AddText("hardware").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.Hardware)))
-	n.AddColumn().AddText(AssetSrcProbe)
+	n.AddColumn().AddText(assetSrcProbe)
 	for _, e := range t.Hardware {
 		l := n.AddNode()
 		l.AddColumn().AddText(e.Type + " " + e.Path)
@@ -304,12 +304,12 @@ func (t AssetData) Render() string {
 	n = tr.AddNode()
 	n.AddColumn().AddText("uids").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.UIDS)))
-	n.AddColumn().AddText(AssetSrcProbe)
+	n.AddColumn().AddText(assetSrcProbe)
 
 	n = tr.AddNode()
 	n.AddColumn().AddText("gids").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.GIDS)))
-	n.AddColumn().AddText(AssetSrcProbe)
+	n.AddColumn().AddText(assetSrcProbe)
 
 	nbAddr := 0
 	for _, v := range t.LAN {
@@ -318,7 +318,7 @@ func (t AssetData) Render() string {
 	n = tr.AddNode()
 	n.AddColumn().AddText("ip addresses").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(nbAddr))
-	n.AddColumn().AddText(AssetSrcProbe)
+	n.AddColumn().AddText(assetSrcProbe)
 	for _, v := range t.LAN {
 		for _, e := range v {
 			s := e.Address
@@ -334,7 +334,7 @@ func (t AssetData) Render() string {
 	n = tr.AddNode()
 	n.AddColumn().AddText("host bus adapters").SetColor(rawconfig.Color.Primary)
 	n.AddColumn().AddText(fmt.Sprint(len(t.HBA)))
-	n.AddColumn().AddText(AssetSrcProbe)
+	n.AddColumn().AddText(assetSrcProbe)
 	for _, v := range t.HBA {
 		l := n.AddNode()
 		l.AddColumn().AddText(v.ID)

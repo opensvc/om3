@@ -17,6 +17,6 @@ func (t *Keystore) Remove(options OptsRemove) error {
 
 // Remove gets a keyword value
 func (t *Keystore) RemoveKey(keyname string) error {
-	k := key.New(DataSectionName, keyname)
+	k := key.New(dataSectionName, keyname)
 	return t.UnsetKeys(k)
 }
