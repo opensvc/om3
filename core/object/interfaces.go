@@ -12,20 +12,10 @@ import (
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
-	// Renderer is implemented by data type stored in ActionResults.Data.
-	Renderer interface {
-		Render() string
-	}
-	// LoadTreeNoder is implemented by data type stored in ActionResults.Data.
-	LoadTreeNoder interface {
-		LoadTreeNode(*tree.Node)
-	}
-
 	// SecureKeystorer is implemented by encrypting Keystore object kinds (usr, sec).
 	SecureKeystorer interface {
 		GenCert(OptsGenCert) error

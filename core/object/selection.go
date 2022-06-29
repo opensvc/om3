@@ -26,6 +26,11 @@ import (
 )
 
 type (
+	// renderer is implemented by data type stored in ActionResults.Data.
+	renderer interface {
+		Render() string
+	}
+
 	// Selection is the selection structure
 	Selection struct {
 		SelectorExpression string
@@ -77,7 +82,7 @@ func defaultHumanRenderer(data interface{}) string {
 		return ""
 	}
 	switch v := data.(type) {
-	case Renderer:
+	case renderer:
 		return v.Render()
 	case fmt.Stringer:
 		return v.String()
