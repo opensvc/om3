@@ -7,8 +7,7 @@ import (
 type (
 	// OptsObjectComplianceDetachModuleset is the options of the ComplianceDetachModuleset function.
 	OptsObjectComplianceDetachModuleset struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
+		OptModuleset
 	}
 )
 
@@ -20,5 +19,5 @@ func (t *Base) ComplianceDetachModuleset(options OptsObjectComplianceDetachModul
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	comp.SetObjectPath(t.Path)
-	return comp.DetachModuleset(options.Moduleset.Moduleset)
+	return comp.DetachModuleset(options.Moduleset)
 }

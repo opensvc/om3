@@ -20,7 +20,7 @@ import (
 type (
 	// CmdObjectPrintSchedule is the cobra flag set of the print schedule command.
 	CmdObjectPrintSchedule struct {
-		object.OptsPrintSchedule
+		OptsGlobal
 	}
 )
 
@@ -43,7 +43,7 @@ func (t *CmdObjectPrintSchedule) cmd(kind string, selector *string) *cobra.Comma
 }
 
 func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) schedule.Table {
-	if t.Global.Local {
+	if t.Local {
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
@@ -63,7 +63,7 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 		object.SelectionWithLocal(true),
 	)
 	type scheduler interface {
-		PrintSchedule(object.OptsPrintSchedule) schedule.Table
+		PrintSchedule() schedule.Table
 	}
 	paths, err := sel.Expand()
 	if err != nil {
@@ -79,7 +79,7 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 		if !ok {
 			continue
 		}
-		table := i.PrintSchedule(t.OptsPrintSchedule)
+		table := i.PrintSchedule()
 		data = data.Add(table)
 	}
 	return data
@@ -102,8 +102,8 @@ func (t *CmdObjectPrintSchedule) extractFromDaemon(selector string, c *client.T)
 }
 
 func (t *CmdObjectPrintSchedule) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	c, err := client.New(client.WithURL(t.Global.Server))
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
@@ -111,8 +111,8 @@ func (t *CmdObjectPrintSchedule) run(selector *string, kind string) {
 	data := t.extract(mergedSelector, c)
 
 	output.Renderer{
-		Format:   t.Global.Format,
-		Color:    t.Global.Color,
+		Format:   t.Format,
+		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {

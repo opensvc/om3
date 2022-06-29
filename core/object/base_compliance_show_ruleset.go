@@ -4,15 +4,7 @@ import (
 	"opensvc.com/opensvc/util/compliance"
 )
 
-type (
-	// OptsObjectComplianceShowRuleset is the options of the ComplianceEnv function.
-	OptsObjectComplianceShowRuleset struct {
-		Global  OptsGlobal
-		Ruleset OptRuleset
-	}
-)
-
-func (t *Base) ComplianceShowRuleset(options OptsObjectComplianceShowRuleset) (compliance.Rulesets, error) {
+func (t *Base) ComplianceShowRuleset() (compliance.Rulesets, error) {
 	client, err := t.Node().CollectorComplianceClient()
 	if err != nil {
 		return nil, err

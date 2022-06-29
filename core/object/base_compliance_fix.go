@@ -7,11 +7,10 @@ import (
 type (
 	// OptsObjectComplianceFix is the options of the ComplianceFix function.
 	OptsObjectComplianceFix struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
-		Module    OptModule
-		Force     OptForce
-		Attach    OptAttach
+		OptModuleset
+		OptModule
+		OptForce
+		OptAttach
 	}
 )
 
@@ -24,8 +23,10 @@ func (t *Base) ComplianceFix(options OptsObjectComplianceFix) (*compliance.Run, 
 	comp.SetCollectorClient(client)
 	comp.SetObjectPath(t.Path)
 	run := comp.NewRun()
-	run.SetModulesetsExpr(options.Moduleset.Moduleset)
-	run.SetModulesExpr(options.Module.Module)
+	run.SetModulesetsExpr(options.Moduleset)
+	run.SetModulesExpr(options.Module)
+	run.SetForce(options.Force)
+	run.SetAttach(options.Attach)
 	err = run.Fix()
 	return run, err
 }

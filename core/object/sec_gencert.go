@@ -23,7 +23,6 @@ import (
 
 // OptsUnset is the options of the Unset object method.
 type OptsGenCert struct {
-	OptsGlobal
 	OptsLock
 }
 

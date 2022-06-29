@@ -7,8 +7,7 @@ import (
 type (
 	// OptsObjectComplianceListModuleset is the options of the ComplianceListModuleset function.
 	OptsObjectComplianceListModuleset struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
+		OptModuleset
 	}
 )
 
@@ -20,7 +19,7 @@ func (t *Base) ComplianceListModuleset(options OptsObjectComplianceListModuleset
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	comp.SetObjectPath(t.Path)
-	data, err := comp.ListModulesets(options.Moduleset.Moduleset)
+	data, err := comp.ListModulesets(options.Moduleset)
 	if err != nil {
 		return nil, err
 	}

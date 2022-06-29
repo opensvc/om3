@@ -13,6 +13,7 @@ import (
 type (
 	// CmdKeystoreInstall is the cobra flag set of the decode command.
 	CmdKeystoreInstall struct {
+		OptsGlobal
 		object.OptsInstall
 	}
 )
@@ -21,7 +22,7 @@ type (
 func (t *CmdKeystoreInstall) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsInstall)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdKeystoreInstall) cmd(kind string, selector *string) *cobra.Command {
@@ -36,14 +37,14 @@ func (t *CmdKeystoreInstall) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdKeystoreInstall) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Global.Local),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithColor(t.Color),
+		objectaction.WithFormat(t.Format),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("install"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
 			"key": t.Key,

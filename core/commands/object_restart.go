@@ -11,6 +11,8 @@ import (
 type (
 	// CmdObjectRestart is the cobra flag set of the restart command.
 	CmdObjectRestart struct {
+		OptsGlobal
+		OptsAsync
 		object.OptsStart
 	}
 )

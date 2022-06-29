@@ -7,8 +7,7 @@ import (
 type (
 	// OptsNodeComplianceDetachRuleset is the options of the ComplianceDetachRuleset function.
 	OptsNodeComplianceDetachRuleset struct {
-		Global  OptsGlobal
-		Ruleset OptRuleset
+		OptRuleset
 	}
 )
 
@@ -16,6 +15,6 @@ func (t Node) ComplianceDetachRuleset(options OptsNodeComplianceDetachRuleset) (
 	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	err = comp.DetachRuleset(options.Ruleset.Ruleset)
+	err = comp.DetachRuleset(options.Ruleset)
 	return nil, err
 }

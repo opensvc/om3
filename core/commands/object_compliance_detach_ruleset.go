@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectComplianceDetachRuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceDetachRuleset struct {
+		OptsGlobal
 		object.OptsObjectComplianceDetachRuleset
 	}
 )
@@ -35,18 +36,18 @@ func (t *CmdObjectComplianceDetachRuleset) cmd(kind string, selector *string) *c
 }
 
 func (t *CmdObjectComplianceDetachRuleset) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Global.Local),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithColor(t.Color),
+		objectaction.WithFormat(t.Format),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
-		objectaction.WithServer(t.Global.Server),
+		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithServer(t.Server),
 		objectaction.WithRemoteAction("compliance detach ruleset"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"format":  t.Global.Format,
+			"format":  t.Format,
 			"ruleset": t.Ruleset,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {

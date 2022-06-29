@@ -6,13 +6,6 @@ import (
 	"opensvc.com/opensvc/util/patches"
 )
 
-type (
-	// OptsNodePushPatch is the options of the PushAsset function.
-	OptsNodePushPatch struct {
-		Global OptsGlobal
-	}
-)
-
 func (t Node) PushPatch() ([]patches.Patch, error) {
 	l, err := patches.List()
 	if err != nil {

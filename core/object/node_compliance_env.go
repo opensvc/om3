@@ -7,9 +7,8 @@ import (
 type (
 	// OptsNodeComplianceEnv is the options of the ComplianceEnv function.
 	OptsNodeComplianceEnv struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
-		Module    OptModule
+		OptModuleset
+		OptModule
 	}
 )
 
@@ -21,7 +20,7 @@ func (t Node) ComplianceEnv(options OptsNodeComplianceEnv) (compliance.Envs, err
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	run := comp.NewRun()
-	run.SetModulesetsExpr(options.Moduleset.Moduleset)
-	run.SetModulesExpr(options.Module.Module)
+	run.SetModulesetsExpr(options.Moduleset)
+	run.SetModulesExpr(options.Module)
 	return run.Env()
 }

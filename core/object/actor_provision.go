@@ -10,10 +10,9 @@ import (
 
 // OptsProvision is the options of the Provision object method.
 type OptsProvision struct {
-	OptsGlobal
-	OptsAsync
 	OptsLock
 	OptsResourceSelector
+	OptDryRun
 	OptTo
 	OptForce
 	OptLeader

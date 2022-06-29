@@ -10,6 +10,7 @@ import (
 type (
 	// NodeDoc is the cobra flag set of the node doc command.
 	NodeDoc struct {
+		OptsGlobal
 		object.OptsDoc
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *NodeDoc) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsDoc)
+	flag.Install(cmd, t)
 }
 
 func (t *NodeDoc) cmd() *cobra.Command {
@@ -33,18 +34,18 @@ func (t *NodeDoc) cmd() *cobra.Command {
 
 func (t *NodeDoc) run() {
 	nodeaction.New(
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("node doc"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
 			"kw":     t.Keyword,
 			"driver": t.Driver,
 		}),
 
-		nodeaction.WithLocal(t.Global.Local),
+		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().Doc(t.OptsDoc)
 		}),

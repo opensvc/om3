@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectUnset is the cobra flag set of the set command.
 	CmdObjectUnset struct {
+		OptsGlobal
 		object.OptsUnset
 	}
 )

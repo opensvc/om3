@@ -13,6 +13,7 @@ import (
 type (
 	// CmdKeystoreChange is the cobra flag set of the decode command.
 	CmdKeystoreChange struct {
+		OptsGlobal
 		object.OptsAdd
 	}
 )

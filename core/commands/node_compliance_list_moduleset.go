@@ -10,6 +10,7 @@ import (
 type (
 	// CmdNodeComplianceListModuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceListModuleset struct {
+		OptsGlobal
 		object.OptsNodeComplianceListModuleset
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *CmdNodeComplianceListModuleset) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeComplianceListModuleset)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdNodeComplianceListModuleset) cmd() *cobra.Command {
@@ -34,14 +35,14 @@ func (t *CmdNodeComplianceListModuleset) cmd() *cobra.Command {
 
 func (t *CmdNodeComplianceListModuleset) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("compliance list modulesets"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().ComplianceListModuleset(t.OptsNodeComplianceListModuleset)

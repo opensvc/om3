@@ -7,8 +7,7 @@ import (
 type (
 	// OptsNodeComplianceDetachModuleset is the options of the ComplianceDetachModuleset function.
 	OptsNodeComplianceDetachModuleset struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
+		OptModuleset
 	}
 )
 
@@ -16,6 +15,6 @@ func (t Node) ComplianceDetachModuleset(options OptsNodeComplianceDetachModulese
 	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	err = comp.DetachModuleset(options.Moduleset.Moduleset)
+	err = comp.DetachModuleset(options.Moduleset)
 	return nil, err
 }

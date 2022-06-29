@@ -9,7 +9,6 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeselector"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 )
@@ -17,7 +16,7 @@ import (
 type (
 	// NodeLs is the cobra flag set of the command.
 	NodeLs struct {
-		Global object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -45,26 +44,26 @@ func (t *NodeLs) run() {
 		err      error
 		selector string
 	)
-	if !t.Global.Local {
-		if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	if !t.Local {
+		if c, err = client.New(client.WithURL(t.Server)); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}
-	if t.Global.NodeSelector == "" {
+	if t.NodeSelector == "" {
 		selector = "*"
 	} else {
-		selector = t.Global.NodeSelector
+		selector = t.NodeSelector
 	}
 	nodes := nodeselector.New(
 		selector,
-		nodeselector.WithLocal(t.Global.Local),
-		nodeselector.WithServer(t.Global.Server),
+		nodeselector.WithLocal(t.Local),
+		nodeselector.WithServer(t.Server),
 		nodeselector.WithClient(c),
 	).Expand()
 	output.Renderer{
-		Format: t.Global.Format,
-		Color:  t.Global.Color,
+		Format: t.Format,
+		Color:  t.Color,
 		Data:   nodes,
 		HumanRenderer: func() string {
 			s := ""

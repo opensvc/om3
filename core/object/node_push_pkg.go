@@ -6,13 +6,6 @@ import (
 	"opensvc.com/opensvc/util/packages"
 )
 
-type (
-	// OptsNodePushPkg is the options of the PushAsset function.
-	OptsNodePushPkg struct {
-		Global OptsGlobal
-	}
-)
-
 func (t Node) PushPkg() ([]packages.Pkg, error) {
 	l, err := packages.List()
 	if err != nil {

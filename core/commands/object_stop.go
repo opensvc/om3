@@ -11,6 +11,8 @@ import (
 type (
 	// CmdObjectStop is the cobra flag set of the stop command.
 	CmdObjectStop struct {
+		OptsGlobal
+		OptsAsync
 		object.OptsStop
 	}
 )

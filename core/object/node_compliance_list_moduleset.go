@@ -7,8 +7,7 @@ import (
 type (
 	// OptsNodeComplianceListModuleset is the options of the ComplianceListModuleset function.
 	OptsNodeComplianceListModuleset struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
+		OptModuleset
 	}
 )
 
@@ -16,7 +15,7 @@ func (t Node) ComplianceListModuleset(options OptsNodeComplianceListModuleset) (
 	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	data, err := comp.ListModulesets(options.Moduleset.Moduleset)
+	data, err := comp.ListModulesets(options.Moduleset)
 	if err != nil {
 		return nil, err
 	}

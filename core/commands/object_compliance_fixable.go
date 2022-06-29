@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectComplianceFixable is the cobra flag set of the sysreport command.
 	CmdObjectComplianceFixable struct {
+		OptsGlobal
 		object.OptsObjectComplianceFixable
 	}
 )
@@ -34,18 +35,18 @@ func (t *CmdObjectComplianceFixable) cmd(kind string, selector *string) *cobra.C
 }
 
 func (t *CmdObjectComplianceFixable) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Global.Local),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithFormat(t.Global.Format),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithColor(t.Color),
+		objectaction.WithFormat(t.Format),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
-		objectaction.WithServer(t.Global.Server),
+		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithServer(t.Server),
 		objectaction.WithRemoteAction("compliance fixable"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Global.Format,
+			"format":    t.Format,
 			"force":     t.Force,
 			"module":    t.Module,
 			"moduleset": t.Moduleset,

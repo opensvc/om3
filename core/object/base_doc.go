@@ -12,7 +12,6 @@ import (
 
 // OptsGet is the options of the Get function of all base objects.
 type OptsDoc struct {
-	Global  OptsGlobal
 	Keyword string `flag:"kw"`
 	Driver  string `flag:"driver"`
 }

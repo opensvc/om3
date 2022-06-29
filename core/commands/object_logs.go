@@ -14,7 +14,7 @@ import (
 type (
 	// CmdObjectLogs is the cobra flag set of the logs command.
 	CmdObjectLogs struct {
-		Global object.OptsGlobal
+		OptsGlobal
 		Follow bool   `flag:"logs-follow"`
 		SID    string `flag:"logs-sid"`
 	}
@@ -52,14 +52,14 @@ func (t *CmdObjectLogs) local(selStr string) error {
 		filters["sid"] = t.SID
 	}
 	if events, err := slog.GetEventsFromObjects(paths, filters); err == nil {
-		events.Render(t.Global.Format)
+		events.Render(t.Format)
 	} else {
 		return err
 	}
 	if t.Follow {
 		if stream, err := slog.GetEventStreamFromObjects(paths, filters); err == nil {
 			for event := range stream.Events() {
-				event.Render(t.Global.Format)
+				event.Render(t.Format)
 			}
 		}
 	}
@@ -68,9 +68,9 @@ func (t *CmdObjectLogs) local(selStr string) error {
 
 func (t *CmdObjectLogs) run(selector *string, kind string) {
 	var err error
-	render.SetColor(t.Global.Color)
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "**")
-	if t.Global.Local {
+	render.SetColor(t.Color)
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "**")
+	if t.Local {
 		err = t.local(mergedSelector)
 	} else {
 		//err = t.remote(mergedSelector)

@@ -10,6 +10,7 @@ import (
 type (
 	// CmdNodeSysreport is the cobra flag set of the sysreport command.
 	CmdNodeSysreport struct {
+		OptsGlobal
 		object.OptsNodeSysreport
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *CmdNodeSysreport) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeSysreport)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdNodeSysreport) cmd() *cobra.Command {
@@ -34,14 +35,14 @@ func (t *CmdNodeSysreport) cmd() *cobra.Command {
 
 func (t *CmdNodeSysreport) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("sysreport"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 			"force":  t.Force,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {

@@ -10,6 +10,7 @@ import (
 type (
 	// NodeDelete is the cobra flag set of the delete command.
 	NodeDelete struct {
+		OptsGlobal
 		object.OptsDelete
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *NodeDelete) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsDelete)
+	flag.Install(cmd, t)
 }
 
 func (t *NodeDelete) cmd() *cobra.Command {

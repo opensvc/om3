@@ -10,7 +10,7 @@ import (
 type (
 	// NodePushAsset is the cobra flag set of the start command.
 	NodePushAsset struct {
-		object.OptsNodePushAsset
+		OptsGlobal
 	}
 )
 
@@ -18,13 +18,13 @@ type (
 func (t *NodePushAsset) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodePushAsset)
+	flag.Install(cmd, t)
 }
 
 func (t *NodePushAsset) InitAlt(parent *cobra.Command) {
 	cmd := t.cmdAlt()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodePushAsset)
+	flag.Install(cmd, t)
 }
 
 func (t *NodePushAsset) cmd() *cobra.Command {
@@ -52,14 +52,14 @@ func (t *NodePushAsset) cmdAlt() *cobra.Command {
 
 func (t *NodePushAsset) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("push_asset"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().PushAsset()

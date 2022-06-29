@@ -13,6 +13,7 @@ import (
 type (
 	// CmdKeystoreDecode is the cobra flag set of the decode command.
 	CmdKeystoreDecode struct {
+		OptsGlobal
 		object.OptsDecode
 	}
 )
@@ -21,7 +22,7 @@ type (
 func (t *CmdKeystoreDecode) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsDecode)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdKeystoreDecode) cmd(kind string, selector *string) *cobra.Command {

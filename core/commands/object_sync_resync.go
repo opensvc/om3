@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectSyncResync is the cobra flag set of the sync resync command.
 	CmdObjectSyncResync struct {
+		OptsGlobal
 		object.OptsSyncResync
 	}
 )

@@ -12,7 +12,7 @@ import (
 type (
 	// CmdObjectEditConfig is the cobra flag set of the print config command.
 	NodeEditConfig struct {
-		Global     object.OptsGlobal
+		OptsGlobal
 		EditConfig object.OptsEditConfig
 	}
 )

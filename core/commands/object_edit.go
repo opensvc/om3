@@ -21,8 +21,8 @@ type (
 	// CmdObjectEdit is the cobra flag set of the print config command.
 	CmdObjectEdit struct {
 		Command *cobra.Command
-		Global  object.OptsGlobal
-		EditKey object.OptsEditKey
+		OptsGlobal
+		object.OptsEditKey
 	}
 )
 
@@ -79,7 +79,7 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 }
 
 func (t *CmdObjectEdit) doLocal(obj object.Keystorer, c *client.T) error {
-	return obj.EditKey(t.EditKey)
+	return obj.EditKey(t.OptsEditKey)
 }
 
 func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {
@@ -125,7 +125,7 @@ func (t *CmdObjectEdit) doRemote(p path.T, c *client.T) error {
 		buff   []byte
 		f      *os.File
 	)
-	if buff, err = fetchKey(p, t.EditKey.Key, c); err != nil {
+	if buff, err = fetchKey(p, t.Key, c); err != nil {
 		return err
 	}
 	if f, err = ioutil.TempFile("", ".opensvc.edit.key.*"); err != nil {
@@ -146,7 +146,7 @@ func (t *CmdObjectEdit) doRemote(p path.T, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = pushKey(p, t.EditKey.Key, fName, c); err != nil {
+	if err = pushKey(p, t.Key, fName, c); err != nil {
 		return err
 	}
 	return nil
@@ -157,8 +157,8 @@ func (t *CmdObjectEdit) run(selector *string, kind string) {
 		c   *client.T
 		err error
 	)
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}

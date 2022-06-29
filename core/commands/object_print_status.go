@@ -23,6 +23,7 @@ import (
 type (
 	// CmdObjectPrintStatus is the cobra flag set of the status command.
 	CmdObjectPrintStatus struct {
+		OptsGlobal
 		object.OptsStatus
 	}
 )

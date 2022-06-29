@@ -10,13 +10,12 @@ import (
 
 // OptsStart is the options of the Start object method.
 type OptsStart struct {
-	OptsGlobal
-	OptsAsync
 	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
 	OptDisableRollback
+	OptDryRun
 }
 
 // Start starts the local instance of the object

@@ -21,7 +21,7 @@ type (
 func (t *CmdObjectEnter) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsEnter)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectEnter) cmd(kind string, selector *string) *cobra.Command {

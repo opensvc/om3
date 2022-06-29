@@ -7,8 +7,7 @@ import (
 type (
 	// OptsNodeComplianceAttachModuleset is the options of the ComplianceAttachModuleset function.
 	OptsNodeComplianceAttachModuleset struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
+		OptModuleset
 	}
 )
 
@@ -16,6 +15,6 @@ func (t Node) ComplianceAttachModuleset(options OptsNodeComplianceAttachModulese
 	client, err := t.CollectorComplianceClient()
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
-	err = comp.AttachModuleset(options.Moduleset.Moduleset)
+	err = comp.AttachModuleset(options.Moduleset)
 	return nil, err
 }

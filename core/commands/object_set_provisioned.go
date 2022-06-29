@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectSetProvisioned is the cobra flag set of the set provisioned command.
 	CmdObjectSetProvisioned struct {
+		OptsGlobal
 		object.OptsSetProvisioned
 	}
 )

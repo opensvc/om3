@@ -13,6 +13,7 @@ import (
 type (
 	// CmdObjectValidateConfig is the cobra flag set of the get command.
 	CmdObjectValidateConfig struct {
+		OptsGlobal
 		object.OptsValidateConfig
 	}
 )
@@ -21,7 +22,7 @@ type (
 func (t *CmdObjectValidateConfig) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsValidateConfig)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectValidateConfig) cmd(kind string, selector *string) *cobra.Command {

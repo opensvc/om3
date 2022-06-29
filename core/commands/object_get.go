@@ -13,6 +13,7 @@ import (
 type (
 	// CmdObjectGet is the cobra flag set of the get command.
 	CmdObjectGet struct {
+		OptsGlobal
 		object.OptsGet
 	}
 )
@@ -21,7 +22,7 @@ type (
 func (t *CmdObjectGet) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsGet)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectGet) cmd(kind string, selector *string) *cobra.Command {

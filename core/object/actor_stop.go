@@ -10,12 +10,11 @@ import (
 
 // OptsStop is the options of the Stop object method.
 type OptsStop struct {
-	OptsGlobal
-	OptsAsync
 	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
+	OptDryRun
 }
 
 // Stop stops the local instance of the object

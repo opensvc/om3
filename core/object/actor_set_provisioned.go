@@ -9,9 +9,9 @@ import (
 )
 
 type OptsSetProvisioned struct {
-	OptsGlobal
 	OptsResourceSelector
 	OptsLock
+	OptDryRun
 }
 
 // SetProvisioned starts the local instance of the object

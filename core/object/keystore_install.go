@@ -21,8 +21,7 @@ import (
 
 type (
 	OptsInstall struct {
-		Global OptsGlobal
-		Key    string `flag:"key"`
+		Key string `flag:"key"`
 	}
 
 	vKeyType int

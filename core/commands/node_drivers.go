@@ -10,7 +10,7 @@ import (
 type (
 	// NodeDrivers is the cobra flag set of the node drivers command.
 	NodeDrivers struct {
-		Global object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -18,7 +18,7 @@ type (
 func (t *NodeDrivers) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.Global)
+	flag.Install(cmd, t)
 }
 
 func (t *NodeDrivers) cmd() *cobra.Command {
@@ -34,17 +34,17 @@ func (t *NodeDrivers) cmd() *cobra.Command {
 
 func (t *NodeDrivers) run() {
 	nodeaction.New(
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("node drivers"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 		}),
 
-		nodeaction.WithLocal(t.Global.Local),
+		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().Drivers()
 		}),

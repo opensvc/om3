@@ -15,11 +15,6 @@ import (
 )
 
 type (
-	// OptsNodePushAsset is the options of the PushAsset function.
-	OptsNodePushAsset struct {
-		Global OptsGlobal
-	}
-
 	AssetValue struct {
 		Name   string      `json:"-"`
 		Source string      `json:"source"`

@@ -20,7 +20,7 @@ import (
 type (
 	// PoolStatus is the cobra flag set of the command.
 	PoolStatus struct {
-		Global  object.OptsGlobal
+		OptsGlobal
 		Verbose bool   `flag:"poolstatusverbose"`
 		Name    string `flag:"poolstatusname"`
 	}
@@ -49,7 +49,7 @@ func (t *PoolStatus) run() {
 		err  error
 		data pool.StatusList
 	)
-	if !t.Global.Local || clientcontext.IsSet() {
+	if !t.Local || clientcontext.IsSet() {
 		data, err = t.extractDaemon()
 	} else {
 		data, err = t.extractLocal()
@@ -59,8 +59,8 @@ func (t *PoolStatus) run() {
 		return
 	}
 	output.Renderer{
-		Format:   t.Global.Format,
-		Color:    t.Global.Color,
+		Format:   t.Format,
+		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {
@@ -78,7 +78,7 @@ func (t *PoolStatus) extractLocal() (pool.StatusList, error) {
 }
 
 func (t *PoolStatus) extractDaemon() (pool.StatusList, error) {
-	c, err := client.New(client.WithURL(t.Global.Server))
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return nil, err
 	}

@@ -4,14 +4,7 @@ import (
 	"opensvc.com/opensvc/util/compliance"
 )
 
-type (
-	// OptsObjectComplianceListModules is the options of the ComplianceListModules function.
-	OptsObjectComplianceListModules struct {
-		Global OptsGlobal
-	}
-)
-
-func (t *Base) ComplianceListModules(options OptsObjectComplianceListModules) ([]string, error) {
+func (t *Base) ComplianceListModules() ([]string, error) {
 	comp := compliance.New()
 	comp.SetObjectPath(t.Path)
 	data, err := comp.ListModuleNames()

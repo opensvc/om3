@@ -10,6 +10,7 @@ import (
 type (
 	// CmdNodeComplianceAttachModuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceAttachModuleset struct {
+		OptsGlobal
 		object.OptsNodeComplianceAttachModuleset
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *CmdNodeComplianceAttachModuleset) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeComplianceAttachModuleset)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdNodeComplianceAttachModuleset) cmd() *cobra.Command {
@@ -35,14 +36,14 @@ func (t *CmdNodeComplianceAttachModuleset) cmd() *cobra.Command {
 
 func (t *CmdNodeComplianceAttachModuleset) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("compliance attach moduleset"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().ComplianceAttachModuleset(t.OptsNodeComplianceAttachModuleset)

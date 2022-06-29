@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/slog"
 	"opensvc.com/opensvc/util/render"
 )
@@ -14,7 +13,7 @@ import (
 type (
 	// NodeLogs is the cobra flag set of the logs command.
 	NodeLogs struct {
-		Global object.OptsGlobal
+		OptsGlobal
 		Follow bool   `flag:"logs-follow"`
 		SID    string `flag:"logs-sid"`
 	}
@@ -44,14 +43,14 @@ func (t *NodeLogs) local() error {
 		filters["sid"] = t.SID
 	}
 	if events, err := slog.GetEventsFromNode(filters); err == nil {
-		events.Render(t.Global.Format)
+		events.Render(t.Format)
 	} else {
 		return err
 	}
 	if t.Follow {
 		if stream, err := slog.GetEventStreamFromNode(filters); err == nil {
 			for event := range stream.Events() {
-				event.Render(t.Global.Format)
+				event.Render(t.Format)
 			}
 		}
 	}
@@ -60,11 +59,11 @@ func (t *NodeLogs) local() error {
 
 func (t *NodeLogs) run() {
 	var err error
-	render.SetColor(t.Global.Color)
-	if t.Global.Local {
+	render.SetColor(t.Color)
+	if t.Local {
 		err = t.local()
 	} else {
-		//err = t.remote(t.Global.Nodes)
+		//err = t.remote(t.Nodes)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

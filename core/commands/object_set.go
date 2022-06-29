@@ -12,6 +12,7 @@ type (
 	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectSet struct {
 		Command *cobra.Command
+		OptsGlobal
 		object.OptsSet
 	}
 )

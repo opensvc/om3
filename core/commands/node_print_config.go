@@ -10,6 +10,7 @@ import (
 type (
 	// NodePrintConfig is the cobra flag set of the start command.
 	NodePrintConfig struct {
+		OptsGlobal
 		object.OptsPrintConfig
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *NodePrintConfig) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsPrintConfig)
+	flag.Install(cmd, t)
 }
 
 func (t *NodePrintConfig) cmd() *cobra.Command {

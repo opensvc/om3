@@ -20,7 +20,7 @@ import (
 type (
 	// NetworkStatus is the cobra flag set of the command.
 	NetworkStatus struct {
-		Global  object.OptsGlobal
+		OptsGlobal
 		Verbose bool   `flag:"networkstatusverbose"`
 		Name    string `flag:"networkstatusname"`
 	}
@@ -49,7 +49,7 @@ func (t *NetworkStatus) run() {
 		err  error
 		data network.StatusList
 	)
-	if !t.Global.Local || clientcontext.IsSet() {
+	if !t.Local || clientcontext.IsSet() {
 		data, err = t.extractDaemon()
 	} else {
 		data, err = t.extractLocal()
@@ -59,8 +59,8 @@ func (t *NetworkStatus) run() {
 		return
 	}
 	output.Renderer{
-		Format:   t.Global.Format,
-		Color:    t.Global.Color,
+		Format:   t.Format,
+		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {
@@ -75,7 +75,7 @@ func (t *NetworkStatus) extractLocal() (network.StatusList, error) {
 }
 
 func (t *NetworkStatus) extractDaemon() (network.StatusList, error) {
-	c, err := client.New(client.WithURL(t.Global.Server))
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return nil, err
 	}

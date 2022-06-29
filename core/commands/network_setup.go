@@ -15,7 +15,7 @@ import (
 type (
 	// NetworkSetup is the cobra flag set of the command.
 	NetworkSetup struct {
-		Global object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -38,7 +38,7 @@ func (t *NetworkSetup) cmd() *cobra.Command {
 }
 
 func (t *NetworkSetup) run() {
-	if t.Global.Local || !clientcontext.IsSet() {
+	if t.Local || !clientcontext.IsSet() {
 		t.doLocal()
 	} else {
 		t.doDaemon()
@@ -57,7 +57,7 @@ func (t *NetworkSetup) doDaemon() {
 		c   *client.T
 		err error
 	)
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

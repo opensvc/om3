@@ -7,8 +7,7 @@ import (
 type (
 	// OptsObjectComplianceAttachRuleset is the options of the ComplianceAttachRuleset function.
 	OptsObjectComplianceAttachRuleset struct {
-		Global  OptsGlobal
-		Ruleset OptRuleset
+		OptRuleset
 	}
 )
 
@@ -20,5 +19,5 @@ func (t *Base) ComplianceAttachRuleset(options OptsObjectComplianceAttachRuleset
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	comp.SetObjectPath(t.Path)
-	return comp.AttachRuleset(options.Ruleset.Ruleset)
+	return comp.AttachRuleset(options.Ruleset)
 }

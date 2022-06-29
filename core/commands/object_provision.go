@@ -11,6 +11,8 @@ import (
 type (
 	// CmdObjectProvision is the cobra flag set of the start command.
 	CmdObjectProvision struct {
+		OptsGlobal
+		OptsAsync
 		object.OptsProvision
 	}
 )

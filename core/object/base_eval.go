@@ -7,7 +7,6 @@ import (
 
 // OptsEval is the options of the Eval function of all base objects.
 type OptsEval struct {
-	OptsGlobal
 	OptsLock
 	Keyword     string `flag:"kw"`
 	Impersonate string `flag:"impersonate"`

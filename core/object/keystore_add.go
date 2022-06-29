@@ -11,7 +11,6 @@ import (
 
 // OptsAdd is the options of the Decode function of all keystore objects.
 type OptsAdd struct {
-	OptsGlobal
 	OptsLock
 	Key   string  `flag:"key"`
 	From  *string `flag:"from"`

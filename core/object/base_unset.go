@@ -8,7 +8,6 @@ import (
 
 // OptsUnset is the options of the Unset object method.
 type OptsUnset struct {
-	OptsGlobal
 	OptsLock
 	Keywords []string `flag:"kws"`
 }

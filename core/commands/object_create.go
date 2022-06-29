@@ -15,6 +15,7 @@ import (
 type (
 	// CmdObjectCreate is the cobra flag set of the create command.
 	CmdObjectCreate struct {
+		OptsGlobal
 		object.OptsCreate
 	}
 )

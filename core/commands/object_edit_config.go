@@ -22,8 +22,8 @@ import (
 type (
 	// CmdObjectEditConfig is the cobra flag set of the print config command.
 	CmdObjectEditConfig struct {
-		Global     object.OptsGlobal
-		EditConfig object.OptsEditConfig
+		OptsGlobal
+		object.OptsEditConfig
 	}
 )
 
@@ -71,7 +71,7 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 }
 
 func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error {
-	err := obj.EditConfig(t.EditConfig)
+	err := obj.EditConfig(t.OptsEditConfig)
 	if errors.Is(err, xconfig.ErrEditPending) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -154,8 +154,8 @@ func (t *CmdObjectEditConfig) run(selector *string, kind string) {
 		c   *client.T
 		err error
 	)
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}

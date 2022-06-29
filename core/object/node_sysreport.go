@@ -7,8 +7,7 @@ import (
 type (
 	// OptsNodeSysreport is the options of the Sysreport function.
 	OptsNodeSysreport struct {
-		Global OptsGlobal
-		Force  OptForce
+		OptForce
 	}
 
 	// SysreportReq structures the POST /register request body
@@ -40,6 +39,6 @@ func (t Node) Sysreport(options OptsNodeSysreport) error {
 	}
 	sr := sysreport.New()
 	sr.SetCollectorClient(client)
-	sr.SetForce(options.Force.Force)
+	sr.SetForce(options.Force)
 	return sr.Do()
 }

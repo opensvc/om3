@@ -108,6 +108,7 @@ var (
 	ValidateConfig = T{
 		Name:       "validate_config",
 		RelayToAny: true,
+		Lock:       true,
 	}
 	Move = T{
 		Name:            "move",

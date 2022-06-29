@@ -10,7 +10,7 @@ import (
 type (
 	// CmdNodeComplianceShowRuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceShowRuleset struct {
-		object.OptsNodeComplianceShowRuleset
+		OptsGlobal
 	}
 )
 
@@ -18,7 +18,7 @@ type (
 func (t *CmdNodeComplianceShowRuleset) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeComplianceShowRuleset)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdNodeComplianceShowRuleset) cmd() *cobra.Command {
@@ -34,18 +34,17 @@ func (t *CmdNodeComplianceShowRuleset) cmd() *cobra.Command {
 
 func (t *CmdNodeComplianceShowRuleset) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("compliance show ruleset"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format":  t.Global.Format,
-			"ruleset": t.Ruleset,
+			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceShowRuleset(t.OptsNodeComplianceShowRuleset)
+			return object.NewNode().ComplianceShowRuleset()
 		}),
 	).Do()
 }

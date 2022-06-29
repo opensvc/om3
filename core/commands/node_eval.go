@@ -10,6 +10,7 @@ import (
 type (
 	// NodeEval is the cobra flag set of the start command.
 	NodeEval struct {
+		OptsGlobal
 		object.OptsEval
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *NodeEval) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsEval)
+	flag.Install(cmd, t)
 }
 
 func (t *NodeEval) cmd() *cobra.Command {

@@ -10,6 +10,7 @@ import (
 type (
 	// CmdNodeRegister is the cobra flag set of the start command.
 	CmdNodeRegister struct {
+		OptsGlobal
 		object.OptsNodeRegister
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *CmdNodeRegister) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeRegister)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdNodeRegister) cmd() *cobra.Command {
@@ -34,14 +35,14 @@ func (t *CmdNodeRegister) cmd() *cobra.Command {
 
 func (t *CmdNodeRegister) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("register"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return nil, object.NewNode().Register(t.OptsNodeRegister)

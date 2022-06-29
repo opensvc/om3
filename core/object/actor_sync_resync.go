@@ -10,10 +10,10 @@ import (
 
 // OptsSyncResync is the options of the SyncResync object method.
 type OptsSyncResync struct {
-	OptsGlobal
 	OptsLock
 	OptsResourceSelector
 	OptForce
+	OptDryRun
 }
 
 // SyncResync re-establishes the data synchronization

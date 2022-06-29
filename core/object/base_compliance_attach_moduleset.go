@@ -7,7 +7,6 @@ import (
 type (
 	// OptsObjectComplianceAttachModuleset is the options of the ComplianceAttachModuleset function.
 	OptsObjectComplianceAttachModuleset struct {
-		Global    OptsGlobal
 		Moduleset OptModuleset
 	}
 )

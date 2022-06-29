@@ -12,15 +12,8 @@ import (
 	"opensvc.com/opensvc/util/timestamp"
 )
 
-type (
-	// OptsPrintSchedule is the options of the PrintSchedule object method.
-	OptsPrintSchedule struct {
-		Global OptsGlobal
-	}
-)
-
 // PrintSchedule display the object scheduling table
-func (t *Base) PrintSchedule(options OptsPrintSchedule) schedule.Table {
+func (t *Base) PrintSchedule() schedule.Table {
 	return t.Schedules()
 }
 

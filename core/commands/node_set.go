@@ -10,6 +10,7 @@ import (
 type (
 	// NodeSet is the cobra flag set of the start command.
 	NodeSet struct {
+		OptsGlobal
 		object.OptsSet
 	}
 )

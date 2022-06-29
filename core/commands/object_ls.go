@@ -4,13 +4,12 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/entrypoints"
 	"opensvc.com/opensvc/core/flag"
-	"opensvc.com/opensvc/core/object"
 )
 
 type (
 	// CmdObjectLs is the cobra flag set of the ls command.
 	CmdObjectLs struct {
-		Global object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -33,10 +32,10 @@ func (t *CmdObjectLs) cmd(kind string, selector *string) *cobra.Command {
 
 func (t *CmdObjectLs) run(selector *string, kind string) {
 	entrypoints.List{
-		ObjectSelector: mergeSelector(*selector, t.Global.ObjectSelector, kind, "**"),
-		Format:         t.Global.Format,
-		Color:          t.Global.Color,
-		Local:          t.Global.Local,
-		Server:         t.Global.Server,
+		ObjectSelector: mergeSelector(*selector, t.ObjectSelector, kind, "**"),
+		Format:         t.Format,
+		Color:          t.Color,
+		Local:          t.Local,
+		Server:         t.Server,
 	}.Do()
 }

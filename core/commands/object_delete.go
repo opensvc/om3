@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectDelete struct {
+		OptsGlobal
 		object.OptsDelete
 	}
 )
@@ -19,7 +20,7 @@ type (
 func (t *CmdObjectDelete) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsDelete)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdObjectDelete) cmd(kind string, selector *string) *cobra.Command {

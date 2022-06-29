@@ -29,7 +29,6 @@ import (
 
 // OptsStatus is the options of the Start object method.
 type OptsStatus struct {
-	OptsGlobal
 	OptsLock
 	Refresh bool `flag:"refresh"`
 	//Status string `flag:"status"`

@@ -18,7 +18,7 @@ import (
 type (
 	// NetworkLs is the cobra flag set of the command.
 	NetworkLs struct {
-		Global object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -41,14 +41,14 @@ func (t *NetworkLs) cmd() *cobra.Command {
 
 func (t *NetworkLs) run() {
 	var data []string
-	if t.Global.Local || !clientcontext.IsSet() {
+	if t.Local || !clientcontext.IsSet() {
 		data = t.extractLocal()
 	} else {
 		data = t.extractDaemon()
 	}
 	output.Renderer{
-		Format: t.Global.Format,
-		Color:  t.Global.Color,
+		Format: t.Format,
+		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {
 			s := ""
@@ -71,7 +71,7 @@ func (t *NetworkLs) extractDaemon() []string {
 		c   *client.T
 		err error
 	)
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

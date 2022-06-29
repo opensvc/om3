@@ -19,7 +19,6 @@ import (
 type (
 	// OptsNodeRegister is the options of the Register function.
 	OptsNodeRegister struct {
-		Global   OptsGlobal
 		User     string `flag:"collector_user"`
 		Password string `flag:"collector_password"`
 		App      string `flag:"collector_app"`

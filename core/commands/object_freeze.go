@@ -11,8 +11,8 @@ import (
 type (
 	// CmdObjectFreeze is the cobra flag set of the freeze command.
 	CmdObjectFreeze struct {
-		Global object.OptsGlobal
-		Async  object.OptsAsync
+		OptsGlobal
+		OptsAsync
 	}
 )
 
@@ -34,16 +34,16 @@ func (t *CmdObjectFreeze) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectFreeze) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
-		objectaction.WithLocal(t.Global.Local),
+		objectaction.WithLocal(t.Local),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithFormat(t.Global.Format),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithServer(t.Global.Server),
+		objectaction.WithFormat(t.Format),
+		objectaction.WithColor(t.Color),
+		objectaction.WithServer(t.Server),
 		objectaction.WithAsyncTarget("frozen"),
-		objectaction.WithAsyncWatch(t.Async.Watch),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("freeze"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewActorFromPath(p)

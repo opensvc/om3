@@ -5,15 +5,9 @@ import (
 )
 
 type (
-	// OptsGlobal contains options accepted by all actions
-	OptsGlobal struct {
-		Color          string `flag:"color"`
-		Format         string `flag:"format"`
-		Server         string `flag:"server"`
-		Local          bool   `flag:"local"`
-		NodeSelector   string `flag:"node"`
-		ObjectSelector string `flag:"object"`
-		DryRun         bool   `flag:"dry-run"`
+	// OptDryRun contains the dry-run option
+	OptDryRun struct {
+		DryRun bool `flag:"dry-run"`
 	}
 
 	// OptsResourceSelector contains options needed to initialize a
@@ -96,8 +90,6 @@ type (
 	}
 
 	OptsCreate struct {
-		OptsGlobal
-		OptsAsync
 		OptsLock
 		OptsResourceSelector
 		OptTo
@@ -114,10 +106,6 @@ type (
 )
 
 var (
-	defaultOptsGlobal = OptsGlobal{
-		Color:  "auto",
-		Format: "auto",
-	}
 	defaultOptsLock = OptsLock{
 		Timeout: 5 * time.Second,
 	}
@@ -150,7 +138,7 @@ func (t OptTo) ToStr() string {
 func (t OptLeader) IsLeader() bool {
 	return t.Leader
 }
-func (t OptsGlobal) IsDryRun() bool {
+func (t OptDryRun) IsDryRun() bool {
 	return t.DryRun
 }
 func (t OptsLock) IsLockDisabled() bool {

@@ -7,11 +7,10 @@ import (
 type (
 	// OptsObjectComplianceAuto is the options of the ComplianceAuto function.
 	OptsObjectComplianceAuto struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
-		Module    OptModule
-		Force     OptForce
-		Attach    OptAttach
+		OptModuleset
+		OptModule
+		OptForce
+		OptAttach
 	}
 )
 
@@ -24,8 +23,10 @@ func (t *Base) ComplianceAuto(options OptsObjectComplianceAuto) (*compliance.Run
 	comp.SetCollectorClient(client)
 	comp.SetObjectPath(t.Path)
 	run := comp.NewRun()
-	run.SetModulesetsExpr(options.Moduleset.Moduleset)
-	run.SetModulesExpr(options.Module.Module)
+	run.SetModulesetsExpr(options.Moduleset)
+	run.SetModulesExpr(options.Module)
+	run.SetForce(options.Force)
+	run.SetAttach(options.Attach)
 	err = run.Auto()
 	return run, err
 }

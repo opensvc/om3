@@ -10,6 +10,7 @@ import (
 type (
 	// NodeUnset is the cobra flag set of the start command.
 	NodeUnset struct {
+		OptsGlobal
 		object.OptsUnset
 	}
 )

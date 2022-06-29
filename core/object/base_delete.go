@@ -10,8 +10,8 @@ import (
 )
 
 type OptsDelete struct {
-	OptsGlobal
 	OptsLock
+	OptDryRun
 	RID         string `flag:"rid"`
 	Unprovision bool   `flag:"unprovision"`
 }

@@ -10,7 +10,7 @@ import (
 type (
 	// NodePushPatch is the cobra flag set of the start command.
 	NodePushPatch struct {
-		object.OptsNodePushPatch
+		OptsGlobal
 	}
 )
 
@@ -18,13 +18,13 @@ type (
 func (t *NodePushPatch) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodePushPatch)
+	flag.Install(cmd, t)
 }
 
 func (t *NodePushPatch) InitAlt(parent *cobra.Command) {
 	cmd := t.cmdAlt()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodePushPatch)
+	flag.Install(cmd, t)
 }
 
 func (t *NodePushPatch) cmd() *cobra.Command {
@@ -52,14 +52,14 @@ func (t *NodePushPatch) cmdAlt() *cobra.Command {
 
 func (t *NodePushPatch) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("push_patch"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format": t.Global.Format,
+			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			return object.NewNode().PushPatch()

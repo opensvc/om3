@@ -10,6 +10,7 @@ import (
 type (
 	// NodeGet is the cobra flag set of the start command.
 	NodeGet struct {
+		OptsGlobal
 		object.OptsGet
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *NodeGet) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsGet)
+	flag.Install(cmd, t)
 }
 
 func (t *NodeGet) cmd() *cobra.Command {

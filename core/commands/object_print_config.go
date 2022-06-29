@@ -22,6 +22,7 @@ type (
 	// CmdObjectPrintConfig is the cobra flag set of the print config command.
 	CmdObjectPrintConfig struct {
 		Command *cobra.Command
+		OptsGlobal
 		object.OptsPrintConfig
 	}
 )

@@ -13,6 +13,7 @@ import (
 type (
 	// CmdKeystoreRemove is the cobra flag set of the remove command.
 	CmdSecGenCert struct {
+		OptsGlobal
 		object.OptsGenCert
 	}
 )
@@ -21,7 +22,7 @@ type (
 func (t *CmdSecGenCert) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsGenCert)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdSecGenCert) cmd(kind string, selector *string) *cobra.Command {

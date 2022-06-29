@@ -14,7 +14,7 @@ import (
 type (
 	// CmdObjectPrintConfigMtime is the cobra flag set of the print config command.
 	CmdObjectPrintConfigMtime struct {
-		object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -37,14 +37,14 @@ func (t *CmdObjectPrintConfigMtime) cmd(kind string, selector *string) *cobra.Co
 }
 
 func (t *CmdObjectPrintConfigMtime) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.OptsGlobal.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocal(t.OptsGlobal.Local),
-		objectaction.WithFormat(t.OptsGlobal.Format),
-		objectaction.WithColor(t.OptsGlobal.Color),
-		objectaction.WithRemoteNodes(t.OptsGlobal.NodeSelector),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithFormat(t.Format),
+		objectaction.WithColor(t.Color),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("print_config_mtime"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewFromPath(p)

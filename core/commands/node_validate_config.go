@@ -10,6 +10,7 @@ import (
 type (
 	// NodeValidateConfig is the cobra flag set of the start command.
 	NodeValidateConfig struct {
+		OptsGlobal
 		object.OptsValidateConfig
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *NodeValidateConfig) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsValidateConfig)
+	flag.Install(cmd, t)
 }
 
 func (t *NodeValidateConfig) cmd() *cobra.Command {

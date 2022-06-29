@@ -7,13 +7,6 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 )
 
-type (
-	// OptsNodePushDisks is the options of the PushAsset function.
-	OptsNodePushDisks struct {
-		Global OptsGlobal
-	}
-)
-
 func AllObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
 	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))

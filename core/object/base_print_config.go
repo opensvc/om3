@@ -6,7 +6,6 @@ import (
 
 // OptsPrintConfig is the options of the PrintConfig object method.
 type OptsPrintConfig struct {
-	OptsGlobal
 	OptsLock
 	Eval        bool   `flag:"eval"`
 	Impersonate string `flag:"impersonate"`

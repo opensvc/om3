@@ -18,7 +18,6 @@ import (
 
 // OptsNodeChecks is the options of the Checks function.
 type OptsNodeChecks struct {
-	Global OptsGlobal
 }
 
 // Checks finds and runs the check drivers.

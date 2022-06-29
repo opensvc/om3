@@ -11,8 +11,7 @@ import (
 type (
 	// OptsPrintDevices is the options of the PrintDevices object method.
 	OptsPrintDevices struct {
-		Global OptsGlobal
-		Roles  string `flag:"devroles"`
+		Roles string `flag:"devroles"`
 	}
 	devExposer interface {
 		ExposedDevices() []*device.T

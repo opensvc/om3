@@ -8,14 +8,13 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"opensvc.com/opensvc/core/flag"
-	"opensvc.com/opensvc/core/object"
 )
 
 type (
 	// CmdObjectMonitor is the cobra flag set of the monitor command.
 	CmdObjectMonitor struct {
-		Global object.OptsGlobal
-		Watch  bool `flag:"watch"`
+		OptsGlobal
+		Watch bool `flag:"watch"`
 	}
 )
 
@@ -39,16 +38,16 @@ func (t *CmdObjectMonitor) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectMonitor) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	cli, err := client.New(client.WithURL(t.Global.Server))
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	cli, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 
 	m := monitor.New()
-	m.SetColor(t.Global.Color)
-	m.SetFormat(t.Global.Format)
+	m.SetColor(t.Color)
+	m.SetFormat(t.Format)
 	m.SetSections([]string{"objects"})
 
 	if t.Watch {

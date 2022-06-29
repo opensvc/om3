@@ -17,7 +17,7 @@ import (
 type (
 	// PoolLs is the cobra flag set of the command.
 	PoolLs struct {
-		Global object.OptsGlobal
+		OptsGlobal
 	}
 )
 
@@ -40,14 +40,14 @@ func (t *PoolLs) cmd() *cobra.Command {
 
 func (t *PoolLs) run() {
 	var data []string
-	if t.Global.Local || !clientcontext.IsSet() {
+	if t.Local || !clientcontext.IsSet() {
 		data = t.extractLocal()
 	} else {
 		data = t.extractDaemon()
 	}
 	output.Renderer{
-		Format: t.Global.Format,
-		Color:  t.Global.Color,
+		Format: t.Format,
+		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {
 			s := ""
@@ -69,7 +69,7 @@ func (t *PoolLs) extractDaemon() []string {
 		c   *client.T
 		err error
 	)
-	if c, err = client.New(client.WithURL(t.Global.Server)); err != nil {
+	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

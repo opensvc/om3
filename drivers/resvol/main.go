@@ -81,18 +81,14 @@ func New() resource.Driver {
 
 func (t T) startVolume(ctx context.Context, volume *object.Vol) error {
 	options := object.OptsStart{}
-	options.Local = true
-	//ctxOptions := actioncontext.Options(ctx).(object.OptsStart)
-	//options.Leader = ctxOptions.Leader
+	//options.Leader = actioncontext.IsLeader(ctx)
 	return volume.Start(options)
 }
 
 func (t T) stopVolume(ctx context.Context, volume *object.Vol, force bool) error {
 	options := object.OptsStop{}
-	options.Local = true
 	options.Force = force
-	//ctxOptions := actioncontext.Options(ctx).(object.OptsStop)
-	//options.Leader = ctxOptions.Leader
+	//options.Leader = actioncontext.IsLeader(ctx)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
 		t.Log().Info().Msgf("skip %s stop: active users: %s", volume.Path, holders)

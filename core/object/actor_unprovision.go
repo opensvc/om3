@@ -10,13 +10,12 @@ import (
 
 // OptsUnprovision is the options of the Unprovision object method.
 type OptsUnprovision struct {
-	OptsGlobal
-	OptsAsync
 	OptsLock
 	OptsResourceSelector
 	OptTo
 	OptForce
 	OptLeader
+	OptDryRun
 }
 
 // Unprovision stops and frees the local instance of the object

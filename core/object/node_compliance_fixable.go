@@ -7,11 +7,10 @@ import (
 type (
 	// OptsNodeComplianceFixable is the options of the ComplianceFixable function.
 	OptsNodeComplianceFixable struct {
-		Global    OptsGlobal
-		Moduleset OptModuleset
-		Module    OptModule
-		Force     OptForce
-		Attach    OptAttach
+		OptModuleset
+		OptModule
+		OptForce
+		OptAttach
 	}
 )
 
@@ -23,10 +22,10 @@ func (t Node) ComplianceFixable(options OptsNodeComplianceFixable) (*compliance.
 	comp := compliance.New()
 	comp.SetCollectorClient(client)
 	run := comp.NewRun()
-	run.SetModulesetsExpr(options.Moduleset.Moduleset)
-	run.SetModulesExpr(options.Module.Module)
-	run.SetForce(options.Force.Force)
-	run.SetAttach(options.Attach.Attach)
+	run.SetModulesetsExpr(options.Moduleset)
+	run.SetModulesExpr(options.Module)
+	run.SetForce(options.Force)
+	run.SetAttach(options.Attach)
 	err = run.Fixable()
 	return run, err
 }

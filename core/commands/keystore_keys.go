@@ -13,6 +13,7 @@ import (
 type (
 	// CmdKeystoreKeys is the cobra flag set of the keys command.
 	CmdKeystoreKeys struct {
+		OptsGlobal
 		object.OptsKeys
 	}
 )
@@ -21,7 +22,7 @@ type (
 func (t *CmdKeystoreKeys) Init(kind string, parent *cobra.Command, selector *string) {
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsKeys)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdKeystoreKeys) cmd(kind string, selector *string) *cobra.Command {

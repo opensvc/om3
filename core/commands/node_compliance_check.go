@@ -10,6 +10,7 @@ import (
 type (
 	// CmdNodeComplianceCheck is the cobra flag set of the sysreport command.
 	CmdNodeComplianceCheck struct {
+		OptsGlobal
 		object.OptsNodeComplianceCheck
 	}
 )
@@ -18,7 +19,7 @@ type (
 func (t *CmdNodeComplianceCheck) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
-	flag.Install(cmd, &t.OptsNodeComplianceCheck)
+	flag.Install(cmd, t)
 }
 
 func (t *CmdNodeComplianceCheck) cmd() *cobra.Command {
@@ -34,14 +35,14 @@ func (t *CmdNodeComplianceCheck) cmd() *cobra.Command {
 
 func (t *CmdNodeComplianceCheck) run() {
 	nodeaction.New(
-		nodeaction.WithLocal(t.Global.Local),
-		nodeaction.WithRemoteNodes(t.Global.NodeSelector),
-		nodeaction.WithFormat(t.Global.Format),
-		nodeaction.WithColor(t.Global.Color),
-		nodeaction.WithServer(t.Global.Server),
+		nodeaction.WithLocal(t.Local),
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Format),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("compliance check"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"format":    t.Global.Format,
+			"format":    t.Format,
 			"force":     t.Force,
 			"module":    t.Module,
 			"moduleset": t.Moduleset,

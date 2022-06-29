@@ -11,8 +11,8 @@ import (
 type (
 	// CmdObjectUnfreeze is the cobra flag set of the unfreeze command.
 	CmdObjectUnfreeze struct {
-		Global object.OptsGlobal
-		Async  object.OptsAsync
+		OptsGlobal
+		OptsAsync
 	}
 	CmdObjectThaw struct {
 		CmdObjectUnfreeze
@@ -55,16 +55,16 @@ func (t *CmdObjectThaw) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectUnfreeze) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	objectaction.New(
-		objectaction.WithLocal(t.Global.Local),
+		objectaction.WithLocal(t.Local),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithFormat(t.Global.Format),
-		objectaction.WithColor(t.Global.Color),
-		objectaction.WithServer(t.Global.Server),
+		objectaction.WithFormat(t.Format),
+		objectaction.WithColor(t.Color),
+		objectaction.WithServer(t.Server),
 		objectaction.WithAsyncTarget("thawed"),
-		objectaction.WithAsyncWatch(t.Async.Watch),
-		objectaction.WithRemoteNodes(t.Global.NodeSelector),
+		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("unfreeze"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewActorFromPath(p)

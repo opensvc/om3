@@ -11,7 +11,6 @@ import (
 
 // OptsSet is the options of the Set object method.
 type OptsSet struct {
-	OptsGlobal
 	OptsLock
 	KeywordOps []string `flag:"kwops"`
 }

@@ -19,6 +19,7 @@ import (
 type (
 	// CmdObjectPrintDevices is the cobra flag set of the print devices command.
 	CmdObjectPrintDevices struct {
+		OptsGlobal
 		object.OptsPrintDevices
 	}
 	devicer interface {
@@ -45,7 +46,7 @@ func (t *CmdObjectPrintDevices) cmd(kind string, selector *string) *cobra.Comman
 }
 
 func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) objectdevice.L {
-	if t.Global.Local || (t.Global.NodeSelector == "" && !clientcontext.IsSet()) {
+	if t.Local || (t.NodeSelector == "" && !clientcontext.IsSet()) {
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
@@ -103,8 +104,8 @@ func (t *CmdObjectPrintDevices) extractFromDaemon(selector string, c *client.T) 
 }
 
 func (t *CmdObjectPrintDevices) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.Global.ObjectSelector, kind, "")
-	c, err := client.New(client.WithURL(t.Global.Server))
+	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
@@ -112,8 +113,8 @@ func (t *CmdObjectPrintDevices) run(selector *string, kind string) {
 	data := t.extract(mergedSelector, c)
 
 	output.Renderer{
-		Format:   t.Global.Format,
-		Color:    t.Global.Color,
+		Format:   t.Format,
+		Color:    t.Color,
 		Data:     data,
 		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {

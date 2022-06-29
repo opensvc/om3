@@ -11,6 +11,7 @@ import (
 type (
 	// CmdObjectRun is the cobra flag set of the run command.
 	CmdObjectRun struct {
+		OptsGlobal
 		object.OptsRun
 	}
 )
