@@ -25,3 +25,17 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 			mostRecentNode, strVal, mostRecentUpdated)
 	}
 }
+
+func (o *smon) isConvergedGlobalExpect() bool {
+	localUpdated := o.state.GlobalExpectUpdated.Time()
+	for s, v := range o.instSmon {
+		if s == o.localhost {
+			continue
+		}
+		if localUpdated.After(v.GlobalExpectUpdated.Time()) {
+			o.log.Debug().Msgf("wait GlobalExpect propagation on %s", s)
+			return false
+		}
+	}
+	return true
+}

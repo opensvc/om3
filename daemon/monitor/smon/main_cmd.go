@@ -51,7 +51,6 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		o.state.GlobalExpectUpdated = c.GlobalExpectUpdated
 		o.updateIfChange()
 		o.orchestrate()
-		// TODO wait propagate before orchestrate (avoid stopped -> unset local, before remote global expect updated)
 	}
 }
 

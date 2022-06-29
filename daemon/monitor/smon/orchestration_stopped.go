@@ -55,6 +55,9 @@ func (o *smon) stoppedFromAny() {
 
 func (o *smon) stoppedClearIfReached() bool {
 	if o.isLocalStopped() {
+		if !o.isConvergedGlobalExpect() {
+			return true
+		}
 		o.log.Info().Msg("local status is stopped, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
