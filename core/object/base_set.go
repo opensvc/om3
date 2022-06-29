@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/xconfig"
 )
 
@@ -17,8 +17,7 @@ type OptsSet struct {
 
 // Set changes or adds a keyword and its value in the configuration file.
 func (t *Base) Set(options OptsSet) error {
-	props := objectactionprops.Set
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(actioncontext.Set, options.OptsLock)
 	if err != nil {
 		return err
 	}

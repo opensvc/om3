@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -20,7 +19,7 @@ type OptsUnprovision struct {
 
 // Unprovision stops and frees the local instance of the object
 func (t *Base) Unprovision(options OptsUnprovision) error {
-	props := objectactionprops.Unprovision
+	props := actioncontext.Unprovision
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
 	ctx = actioncontext.WithProps(ctx, props)

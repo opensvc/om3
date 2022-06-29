@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -20,7 +19,7 @@ type OptsStart struct {
 
 // Start starts the local instance of the object
 func (t *Base) Start(options OptsStart) error {
-	props := objectactionprops.Start
+	props := actioncontext.Start
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
 	ctx = actioncontext.WithProps(ctx, props)

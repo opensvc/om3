@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -18,7 +17,7 @@ type OptsSyncResync struct {
 
 // SyncResync re-establishes the data synchronization
 func (t *Base) SyncResync(options OptsSyncResync) error {
-	props := objectactionprops.SyncResync
+	props := actioncontext.SyncResync
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
 	ctx = actioncontext.WithProps(ctx, props)

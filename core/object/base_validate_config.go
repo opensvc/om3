@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/objectactionprops"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/xconfig"
 )
 
@@ -12,7 +12,7 @@ type OptsValidateConfig struct {
 
 // ValidateConfig
 func (t *Base) ValidateConfig(options OptsValidateConfig) (xconfig.ValidateAlerts, error) {
-	props := objectactionprops.ValidateConfig
+	props := actioncontext.ValidateConfig
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
 		return xconfig.ValidateAlerts{}, err

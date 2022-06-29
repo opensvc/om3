@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/objectactionprops"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/key"
 )
@@ -14,7 +14,7 @@ type OptsUnset struct {
 
 // Unset gets a keyword value
 func (t *Base) Unset(options OptsUnset) error {
-	props := objectactionprops.Unset
+	props := actioncontext.Unset
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
 		return err

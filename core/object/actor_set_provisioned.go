@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -16,7 +15,7 @@ type OptsSetProvisioned struct {
 
 // SetProvisioned starts the local instance of the object
 func (t *Base) SetProvisioned(options OptsSetProvisioned) error {
-	props := objectactionprops.SetProvisioned
+	props := actioncontext.SetProvisioned
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
 	ctx = actioncontext.WithProps(ctx, props)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 )
 
@@ -22,7 +21,7 @@ type OptsRun struct {
 func (t *Base) Run(options OptsRun) error {
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.Run)
+	ctx = actioncontext.WithProps(ctx, actioncontext.Run)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

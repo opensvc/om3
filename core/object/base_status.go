@@ -17,7 +17,6 @@ import (
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/statusbus"
@@ -46,7 +45,7 @@ func (t *Base) Status(options OptsStatus) (instance.Status, error) {
 	)
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, objectactionprops.Status)
+	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
 	ctx, stop := statusbus.WithContext(ctx, t.Path)
 	defer stop()
 
@@ -67,7 +66,7 @@ func (t *Base) postActionStatusEval(ctx context.Context) {
 }
 
 func (t *Base) statusEval(ctx context.Context, options OptsStatus) (instance.Status, error) {
-	props := objectactionprops.Status
+	props := actioncontext.Status
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
 		return instance.Status{}, err

@@ -1,4 +1,4 @@
-package objectactionprops
+package actioncontext
 
 import (
 	"opensvc.com/opensvc/core/kind"
@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	T struct {
+	Properties struct {
 		Name                  string
 		Target                string
 		Progress              string
@@ -26,18 +26,18 @@ type (
 )
 
 var (
-	Abort = T{
+	Abort = Properties{
 		Name:        "abort",
 		Target:      "aborted",
 		Progress:    "aborting",
 		LocalExpect: "unset",
 	}
-	Decode = T{
+	Decode = Properties{
 		Name:       "decode",
 		RelayToAny: true,
 		Kinds:      []kind.T{kind.Usr, kind.Sec, kind.Cfg},
 	}
-	Delete = T{
+	Delete = Properties{
 		Name:       "delete",
 		Target:     "deleted",
 		Progress:   "deleting",
@@ -47,11 +47,11 @@ var (
 		RelayToAny: true,
 		Kinds:      []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
 	}
-	Eval = T{
+	Eval = Properties{
 		Name:       "eval",
 		RelayToAny: true,
 	}
-	Freeze = T{
+	Freeze = Properties{
 		Name:        "freeze",
 		Target:      "frozen",
 		Progress:    "freezing",
@@ -59,41 +59,41 @@ var (
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
 	}
-	GenCert = T{
+	GenCert = Properties{
 		Name:       "gen_cert",
 		RelayToAny: true,
 	}
-	Get = T{
+	Get = Properties{
 		Name:       "get",
 		RelayToAny: true,
 	}
-	Set = T{
+	Set = Properties{
 		Name:       "set",
 		RelayToAny: true,
 		Lock:       true,
 	}
-	SetProvisioned = T{
+	SetProvisioned = Properties{
 		Name:  "set provisioned",
 		Local: true,
 		Lock:  true,
 	}
-	SetUnprovisioned = T{
+	SetUnprovisioned = Properties{
 		Name:  "set unprovisioned",
 		Local: true,
 		Lock:  true,
 	}
-	Status = T{
+	Status = Properties{
 		Name:      "status",
 		PG:        true,
 		Lock:      true,
 		LockGroup: "status",
 	}
-	Unset = T{
+	Unset = Properties{
 		Name:       "unset",
 		Lock:       true,
 		RelayToAny: true,
 	}
-	Giveback = T{
+	Giveback = Properties{
 		Name:            "giveback",
 		Target:          "placed",
 		Progress:        "placing",
@@ -101,16 +101,16 @@ var (
 		Kinds:           []kind.T{kind.Svc},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
-	Keys = T{
+	Keys = Properties{
 		Name:       "keys",
 		RelayToAny: true,
 	}
-	ValidateConfig = T{
+	ValidateConfig = Properties{
 		Name:       "validate_config",
 		RelayToAny: true,
 		Lock:       true,
 	}
-	Move = T{
+	Move = Properties{
 		Name:            "move",
 		Target:          "placed@",
 		Progress:        "placing@",
@@ -118,7 +118,7 @@ var (
 		Kinds:           []kind.T{kind.Svc},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
-	Provision = T{
+	Provision = Properties{
 		Name:            "provision",
 		Target:          "provisioned",
 		Progress:        "provisioning",
@@ -130,7 +130,7 @@ var (
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
 	}
-	Purge = T{
+	Purge = Properties{
 		Name:            "purge",
 		Target:          "purged",
 		Progress:        "purging",
@@ -139,7 +139,7 @@ var (
 		Kinds:           []kind.T{kind.Svc, kind.Vol, kind.Usr, kind.Sec, kind.Cfg},
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 	}
-	Restart = T{
+	Restart = Properties{
 		Name:            "restart",
 		Target:          "restarted",
 		Progress:        "restarting",
@@ -149,14 +149,14 @@ var (
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
 	}
-	Run = T{
+	Run = Properties{
 		Name:            "run",
 		Local:           true,
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"run_timeout", "timeout"},
 		PG:              true,
 	}
-	Shutdown = T{
+	Shutdown = Properties{
 		Name:            "shutdown",
 		Target:          "shutdown",
 		Progress:        "shutting",
@@ -166,7 +166,7 @@ var (
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
-	Start = T{
+	Start = Properties{
 		Name:            "start",
 		Target:          "started",
 		Progress:        "starting",
@@ -177,7 +177,7 @@ var (
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
 	}
-	Stop = T{
+	Stop = Properties{
 		Name:            "stop",
 		Target:          "stopped",
 		Progress:        "stopping",
@@ -190,7 +190,7 @@ var (
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
-	Switch = T{
+	Switch = Properties{
 		Name:            "switch",
 		Target:          "placed@",
 		Progress:        "placing@",
@@ -198,14 +198,14 @@ var (
 		Kinds:           []kind.T{kind.Svc},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
-	SyncResync = T{
+	SyncResync = Properties{
 		Name:  "sync_resync",
 		Local: true,
 		Lock:  true,
 		Kinds: []kind.T{kind.Svc, kind.Vol},
 		PG:    true,
 	}
-	Takeover = T{
+	Takeover = Properties{
 		Name:            "takeover",
 		Target:          "placed@",
 		Progress:        "placing@",
@@ -213,7 +213,7 @@ var (
 		Kinds:           []kind.T{kind.Svc},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
-	Thaw = T{
+	Thaw = Properties{
 		Name:        "thaw",
 		Target:      "thawed",
 		Progress:    "thawing",
@@ -221,13 +221,13 @@ var (
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
 	}
-	TOC = T{
+	TOC = Properties{
 		Name:        "toc",
 		Progress:    "tocing",
 		Order:       ordering.Desc,
 		LocalExpect: "",
 	}
-	Unprovision = T{
+	Unprovision = Properties{
 		Name:            "unprovision",
 		Target:          "unprovisioned",
 		Progress:        "unprovisioning",

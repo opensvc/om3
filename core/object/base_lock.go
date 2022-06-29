@@ -5,7 +5,7 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
-	"opensvc.com/opensvc/core/objectactionprops"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/util/xsession"
 )
 
@@ -17,7 +17,7 @@ func (t *Base) lockPath(group string) (path string) {
 	return
 }
 
-func (t *Base) lockAction(props objectactionprops.T, options OptsLock) (func(), error) {
+func (t *Base) lockAction(props actioncontext.Properties, options OptsLock) (func(), error) {
 	unlock := func() {}
 	if !props.Lock {
 		return unlock, nil

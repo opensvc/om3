@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/objectactionprops"
 	"opensvc.com/opensvc/util/pg"
 )
 
@@ -62,7 +61,7 @@ func Options(ctx context.Context) interface{} {
 	return ctx.Value(optionsKey)
 }
 
-func WithProps(ctx context.Context, props objectactionprops.T) context.Context {
+func WithProps(ctx context.Context, props Properties) context.Context {
 	ctx = context.WithValue(ctx, propsKey, props)
 	if props.Rollback {
 		ctx = actionrollback.NewContext(ctx)
@@ -73,8 +72,8 @@ func WithProps(ctx context.Context, props objectactionprops.T) context.Context {
 	return ctx
 }
 
-func Props(ctx context.Context) objectactionprops.T {
-	return ctx.Value(propsKey).(objectactionprops.T)
+func Props(ctx context.Context) Properties {
+	return ctx.Value(propsKey).(Properties)
 }
 
 func To(ctx context.Context) string {

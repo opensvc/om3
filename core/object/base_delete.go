@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"opensvc.com/opensvc/core/objectactionprops"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -26,7 +26,7 @@ type OptsDelete struct {
 // sections in the configuration file.
 //
 func (t Base) Delete(options OptsDelete) error {
-	props := objectactionprops.Delete
+	props := actioncontext.Delete
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
 		return err
