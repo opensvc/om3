@@ -42,6 +42,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -51,8 +52,8 @@ type (
 	T struct {
 		cmd    chan interface{}
 		ctx    context.Context
+		cancel context.CancelFunc
 		log    zerolog.Logger
-		cancel func()
 	}
 
 	// RemoteBeating holds Remote beating stats for a remote node
@@ -121,7 +122,7 @@ func New(parent context.Context) *T {
 	return &T{
 		cmd:    make(chan interface{}),
 		ctx:    ctx,
-		log:    daemonctx.Logger(parent).With().Str("Name", "hbctrl").Logger(),
+		log:    daemonlogctx.Logger(parent).With().Str("Name", "hbctrl").Logger(),
 		cancel: cancel,
 	}
 }

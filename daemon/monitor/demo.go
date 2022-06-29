@@ -23,7 +23,7 @@ var (
 
 func (t *T) demoLoop() {
 	// For demo
-	dataCmd := daemondatactx.DaemonData(t.Ctx)
+	dataCmd := daemondatactx.DaemonData(t.ctx)
 	dataCmd.PushOps([]jsondelta.Operation{
 		{
 			OpPath:  jsondelta.OperationPath{"monitor", "status_updated"},

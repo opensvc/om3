@@ -20,6 +20,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/pubsub"
@@ -59,7 +60,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		dataCmdC:     daemonctx.DaemonDataCmd(ctx),
 		instStatus:   make(map[string]instance.Status),
 		ctx:          ctx,
-		log:          daemonctx.Logger(ctx).With().Str("_svcagg", id).Logger(),
+		log:          daemonlogctx.Logger(ctx).With().Str("_svcagg", id).Logger(),
 	}
 	go o.worker(cfg.Scope)
 	return nil

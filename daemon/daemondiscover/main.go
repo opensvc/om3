@@ -19,7 +19,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/timestamp"
@@ -70,7 +70,7 @@ func Start(ctx context.Context) error {
 		svcaggCmdC: make(chan *moncmd.T),
 
 		ctx:    ctx,
-		log:    daemonctx.Logger(ctx).With().Str("_pkg", "daemondiscover").Logger(),
+		log:    daemonlogctx.Logger(ctx).With().Str("_pkg", "daemondiscover").Logger(),
 		moncfg: make(map[string]struct{}),
 
 		monCfgCmdC:   make(map[string]chan<- *moncmd.T),

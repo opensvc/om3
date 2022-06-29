@@ -27,7 +27,7 @@ func WithRootDaemon(o subdaemon.RootManager) funcopt.O {
 func WithContext(parent context.Context) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.Ctx, t.CancelFunc = context.WithCancel(parent)
+		t.ctx, t.cancel = context.WithCancel(parent)
 		return nil
 	})
 }

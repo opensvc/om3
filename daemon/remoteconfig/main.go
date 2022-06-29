@@ -8,9 +8,9 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/timestamp"
@@ -18,7 +18,7 @@ import (
 
 func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 	id := daemondata.InstanceId(p, node)
-	log := daemonctx.Logger(ctx).With().Str("_pkg", "remoteconfig").Str("id", id).Logger()
+	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "remoteconfig").Str("id", id).Logger()
 	b, updated, err := fetchFromApi(p, node)
 	if err != nil {
 		log.Error().Err(err).Msgf("fetchFromApi %s", id)

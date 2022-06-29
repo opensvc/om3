@@ -21,6 +21,7 @@ type (
 		Frozen   bool                               `json:"frozen"`
 		Nodes    map[string]NodeStatus              `json:"nodes"`
 		Services map[string]object.AggregatedStatus `json:"services"`
+		Routines int                                `json:"routines"`
 	}
 
 	// NodeStatus holds a node DataSet.

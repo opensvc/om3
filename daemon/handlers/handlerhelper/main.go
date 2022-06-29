@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 )
 
 type (
@@ -18,7 +18,7 @@ type (
 )
 
 func GetWriteAndLog(w Writer, r Contexer, funcName string) (func([]byte) (int, error), zerolog.Logger) {
-	log := daemonctx.Logger(r.Context()).With().Str("func", funcName).Logger()
+	log := daemonlogctx.Logger(r.Context()).With().Str("func", funcName).Logger()
 	write := func(b []byte) (int, error) {
 		written, err := w.Write(b)
 		if err != nil {

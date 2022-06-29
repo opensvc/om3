@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -20,13 +21,14 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		daemonctx.TCtx
+		routinehelper.TT
+		ctx          context.Context
+		cancel       context.CancelFunc
 		log          zerolog.Logger
 		routineTrace routineTracer
 		rootDaemon   subdaemon.RootManager
-		routinehelper.TT
-		txs map[string]hbtype.Transmitter
-		rxs map[string]hbtype.Receiver
+		txs          map[string]hbtype.Transmitter
+		rxs          map[string]hbtype.Receiver
 	}
 
 	routineTracer interface {
@@ -36,18 +38,19 @@ type (
 )
 
 func New(opts ...funcopt.O) *T {
-	t := &T{TCtx: daemonctx.TCtx{}}
+	t := &T{}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("hb funcopt.Apply")
 		return nil
 	}
+	t.log = daemonlogctx.Logger(t.ctx)
 	t.T = subdaemon.New(
 		subdaemon.WithName("hb"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
+		subdaemon.WithContext(t.ctx),
 	)
-	t.log = t.Log()
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
 	return t
@@ -55,11 +58,11 @@ func New(opts ...funcopt.O) *T {
 
 func (t *T) MainStart() error {
 	t.log.Info().Msg("mgr starting")
-	data := hbctrl.New(t.Ctx)
+	data := hbctrl.New(t.ctx)
 	go data.Start()
 	msgC := make(chan *hbtype.Msg)
 
-	err := t.start(t.Ctx, data, msgC)
+	err := t.start(t.ctx, data, msgC)
 	if err != nil {
 		return err
 	}
@@ -93,7 +96,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	go func() {
 		// multiplex data messages to hb tx drivers
 		var dataC <-chan []byte
-		dataC = daemonctx.HBSendQ(t.Ctx)
+		dataC = daemonctx.HBSendQ(t.ctx)
 		if dataC == nil {
 			t.log.Error().Msg("unable to retrieve HBSendQ")
 			return

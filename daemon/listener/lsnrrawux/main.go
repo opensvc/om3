@@ -1,11 +1,12 @@
 package lsnrrawux
 
 import (
+	"context"
 	"net"
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/listener/routeraw"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -15,8 +16,9 @@ import (
 type (
 	T struct {
 		*subdaemon.T
-		daemonctx.TCtx
 		routinehelper.TT
+		ctx          context.Context
+		cancel       context.CancelFunc
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
@@ -34,23 +36,25 @@ type (
 )
 
 func New(opts ...funcopt.O) *T {
-	t := &T{TCtx: daemonctx.TCtx{}}
+	t := &T{}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("listener funcopt.Apply")
 		return nil
 	}
-	t.T = subdaemon.New(
-		subdaemon.WithName("lsnr-raw-ux"),
-		subdaemon.WithMainManager(t),
-		subdaemon.WithRoutineTracer(&t.TT),
-	)
-	t.log = t.Log().
+	name := "lsnr-raw-ux"
+	t.log = daemonlogctx.Logger(t.ctx).
 		With().
 		Str("addr", t.addr).
-		Str("sub", t.Name()).
+		Str("sub", name).
 		Logger()
-	t.Ctx = daemonctx.WithLogger(t.Ctx, t.log)
+	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
+	t.T = subdaemon.New(
+		subdaemon.WithName(name),
+		subdaemon.WithMainManager(t),
+		subdaemon.WithRoutineTracer(&t.TT),
+		subdaemon.WithContext(t.ctx),
+	)
 	return t
 }
 

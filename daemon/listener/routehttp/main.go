@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
 	"opensvc.com/opensvc/daemon/handlers/objecthandler"
 )
@@ -73,8 +74,8 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqUuid := uuid.New()
-			log := daemonctx.Logger(parent)
-			ctx := daemonctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
+			log := daemonlogctx.Logger(parent)
+			ctx := daemonlogctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
 			ctx = daemonctx.WithUuid(ctx, reqUuid)
 			log.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r.WithContext(ctx))

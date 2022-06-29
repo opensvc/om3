@@ -2,11 +2,14 @@ package daemondata
 
 import (
 	"context"
+	"runtime"
+	"time"
 
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/callcount"
 	"opensvc.com/opensvc/util/jsondelta"
 )
@@ -39,16 +42,20 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	counterCmd, cancel := callcount.Start(ctx, idToName)
 	defer cancel()
 	d := newData(counterCmd)
-	d.log = daemonctx.Logger(ctx).With().Str("name", "daemon-data").Logger()
+	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemon-data").Logger()
 	d.log.Info().Msg("starting")
 	d.pubSub = daemonctx.DaemonPubSubCmd(ctx)
 
 	defer d.log.Info().Msg("stopped")
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			cancel()
 			return
+		case <-ticker.C:
+			d.pending.Monitor.Routines = runtime.NumGoroutine()
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
 				c.call(d)

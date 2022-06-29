@@ -12,19 +12,23 @@
 package subdaemon
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/logging"
-	"opensvc.com/opensvc/util/xsession"
 )
 
 type (
 	T struct {
+		routinehelper.TT
+		ctx             context.Context
+		cancel          context.CancelFunc
 		name            string
 		log             zerolog.Logger
 		logName         string
@@ -37,7 +41,6 @@ type (
 		enabled         *enable.T
 		running         *enable.T
 		done            chan bool
-		routinehelper.TT
 	}
 
 	registerAction struct {
@@ -162,21 +165,11 @@ func New(opts ...funcopt.O) *T {
 		t.log.Error().Err(err).Msg("subdaemon funcopt.Apply")
 		return nil
 	}
-	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: true,
-		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    true,
-		Directory:             "/tmp/log",
-		Filename:              t.logName + ".log",
-		MaxSize:               5,
-		MaxBackups:            1,
-		MaxAge:                30,
-	}).
+	t.log = daemonlogctx.Logger(t.ctx).
 		With().
 		Str("n", hostname.Hostname()).
-		Str("sid", xsession.ID).
-		Str("name", t.name).
 		Logger()
+	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
 	t.subSvc = make(map[string]Manager)
 	return t
 }

@@ -77,6 +77,8 @@ func (o *smon) startedFromIdle() {
 func (o *smon) startedFromReady() {
 	if o.pendingCancel == nil {
 		o.log.Error().Msg("startedFromReady without pending")
+		o.change = true
+		o.state.Status = statusIdle
 		return
 	}
 	if o.startedClearIfReached() {
@@ -125,14 +127,19 @@ func (o *smon) startedFromStartFailed() {
 		o.log.Info().Msg("clear start failed (aggregated status is up)")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
+		o.state.Status = statusIdle
 		return
 	}
 }
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
+		if !o.isConvergedGlobalExpect() {
+			return true
+		}
 		o.log.Info().Msg("local status is started, unset global expect")
 		o.change = true
+		o.state.Status = statusIdle
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusStarted {
 			o.state.LocalExpect = statusStarted

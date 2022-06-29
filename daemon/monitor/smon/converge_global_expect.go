@@ -1,6 +1,10 @@
 package smon
 
-import "time"
+import (
+	"time"
+
+	"opensvc.com/opensvc/util/timestamp"
+)
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
 func (o *smon) convergeGlobalExpectFromRemote() {
@@ -13,7 +17,10 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 			mostRecentUpdated = nodeTime
 		}
 	}
-	if o.state.GlobalExpectUpdated.Time().Before(mostRecentUpdated) {
+	if timestamp.New(mostRecentUpdated).IsZero() {
+		return
+	}
+	if mostRecentUpdated.After(o.state.GlobalExpectUpdated.Time()) {
 		o.change = true
 		o.state.GlobalExpect = o.instSmon[mostRecentNode].GlobalExpect
 		o.state.GlobalExpectUpdated = o.instSmon[mostRecentNode].GlobalExpectUpdated
@@ -21,7 +28,21 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Info().Msgf("apply global expect change from remote %s %s %s",
+		o.log.Info().Msgf("apply global expect change from remote %s -> %s %s",
 			mostRecentNode, strVal, mostRecentUpdated)
 	}
+}
+
+func (o *smon) isConvergedGlobalExpect() bool {
+	localUpdated := o.state.GlobalExpectUpdated.Time()
+	for s, v := range o.instSmon {
+		if s == o.localhost {
+			continue
+		}
+		if localUpdated.After(v.GlobalExpectUpdated.Time()) {
+			o.log.Debug().Msgf("wait GlobalExpect propagation on %s", s)
+			return false
+		}
+	}
+	return true
 }

@@ -52,7 +52,7 @@ func (o opGetHbMessage) call(d *data) {
 		d.log.Info().Msgf("hb message type change %s -> %s", lastMessageType, nextMessageType)
 	}
 	lastMessageType = nextMessageType
-	var msg *hbtype.Msg
+	var msg interface{}
 	switch nextMessageType {
 	case "patch":
 		b, err := json.Marshal(d.patchQueue)
@@ -67,7 +67,7 @@ func (o opGetHbMessage) call(d *data) {
 			o.data <- []byte{}
 			return
 		}
-		msg = &hbtype.Msg{
+		msg = hbtype.MsgPatch{
 			Kind:     "patch",
 			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
 			Gen:      d.getGens(),
@@ -76,28 +76,23 @@ func (o opGetHbMessage) call(d *data) {
 			Nodename: d.localNode,
 		}
 	case "full":
-		// TODO use full in Msg once 2.1 not anymore needed
-		//msg = &hbtype.Msg{
-		//	Kind:     "full",
-		//	Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
-		//	Gen:      d.getGens(),
-		//	Updated:  timestamp.Now(),
-		//	Full:     *GetNodeStatus(d.committed, d.localNode).DeepCopy(),
-		//	Nodename: d.localNode,
-		//}
-		full := *GetNodeStatus(d.committed, d.localNode).DeepCopy()
-		if b, err := json.Marshal(full); err != nil {
-			o.data <- []byte{}
-		} else {
-			o.data <- b
+		msg = hbtype.MsgFull{
+			Kind:     "full",
+			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
+			Gen:      d.getGens(),
+			Updated:  timestamp.Now(),
+			Full:     *GetNodeStatus(d.committed, d.localNode).DeepCopy(),
+			Nodename: d.localNode,
 		}
-		return
 	case "ping":
-		msg = &hbtype.Msg{
+		msg = hbtype.MsgPing{
 			Kind:     "ping",
 			Nodename: d.localNode,
 			Gen:      d.getGens(),
 		}
+	default:
+		d.log.Error().Msgf("opGetHbMessage unexpected message type: %s", nextMessageType)
+		return
 	}
 	if b, err := json.Marshal(msg); err != nil {
 		o.data <- []byte{}

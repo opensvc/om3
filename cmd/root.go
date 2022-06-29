@@ -116,7 +116,7 @@ func initLogger() {
 	zerolog.MessageFieldName = "m"
 
 	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: debugFlag,
+		ConsoleLoggingEnabled: debugFlag || daemonRestartForeground || daemonStartForeground,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             rawconfig.Paths.Log,

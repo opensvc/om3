@@ -115,6 +115,7 @@ func (o opApplyRemotePatch) call(d *data) {
 		d.mergedOnPeer[o.nodename] = gen
 	}
 	pendingNode.Gen[o.nodename] = pendingNodeGen
+	pendingNode.Gen[d.localNode] = o.msg.Gen[d.localNode]
 	d.pending.Monitor.Nodes[o.nodename] = pendingNode
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).

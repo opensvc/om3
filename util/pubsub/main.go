@@ -69,7 +69,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 )
 
 const (
@@ -147,7 +147,7 @@ type (
 // returns the created pub sub cmd chan
 //
 func Start(ctx context.Context, name string) chan<- interface{} {
-	log := daemonctx.Logger(ctx).With().Str("_pkg", "pubSub").Str("name", name).Logger()
+	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "pubSub").Str("name", name).Logger()
 	started := make(chan struct{})
 	cmdC := make(chan interface{})
 	go func() {
