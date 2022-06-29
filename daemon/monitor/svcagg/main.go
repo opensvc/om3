@@ -123,7 +123,7 @@ func (o *svcAggStatus) onEv(i interface{}) {
 
 func (o *svcAggStatus) updateStatus() {
 	// TODO update this simple aggregate status compute, perhaps already implemented
-	statusCount := make([]uint, 10, 10)
+	statusCount := make([]uint, 128, 128)
 	var newAvail status.T
 	for _, instStatus := range o.instStatus {
 		statusCount[instStatus.Avail]++
