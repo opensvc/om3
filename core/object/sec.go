@@ -28,15 +28,15 @@ type (
 	// changes.
 	//
 	Sec struct {
-		Keystore
+		keystore
 	}
 )
 
 // NewSec allocates a sec kind object.
 func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 	s := &Sec{}
-	s.CustomEncode = secEncode
-	s.CustomDecode = secDecode
+	s.customEncode = secEncode
+	s.customDecode = secDecode
 	if err := s.core.init(s, p, opts...); err != nil {
 		return s, err
 	}

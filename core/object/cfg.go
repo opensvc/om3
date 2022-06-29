@@ -26,15 +26,15 @@ type (
 	// changes.
 	//
 	Cfg struct {
-		Keystore
+		keystore
 	}
 )
 
 // NewCfg allocates a cfg kind object.
 func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
 	s := &Cfg{}
-	s.CustomEncode = cfgEncode
-	s.CustomDecode = cfgDecode
+	s.customEncode = cfgEncode
+	s.customDecode = cfgDecode
 	if err := s.core.init(s, p, opts...); err != nil {
 		return s, err
 	}

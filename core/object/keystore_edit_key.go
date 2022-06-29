@@ -12,7 +12,7 @@ type OptsEditKey struct {
 	Key string `flag:"key"`
 }
 
-func (t Keystore) EditKey(opts OptsEditKey) (err error) {
+func (t keystore) EditKey(opts OptsEditKey) (err error) {
 	var (
 		refSum []byte
 		f      *os.File

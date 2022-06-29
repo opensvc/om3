@@ -17,7 +17,7 @@ type OptsAdd struct {
 	Value *string `flag:"value"`
 }
 
-func (t *Keystore) add(name string, from, value *string) error {
+func (t *keystore) add(name string, from, value *string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
@@ -30,14 +30,14 @@ func (t *Keystore) add(name string, from, value *string) error {
 	return t.alter(name, from, value)
 }
 
-func (t *Keystore) change(name string, from, value *string) error {
+func (t *keystore) change(name string, from, value *string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
 	return t.alter(name, from, value)
 }
 
-func (t *Keystore) alter(name string, from, value *string) error {
+func (t *keystore) alter(name string, from, value *string) error {
 	var (
 		err error
 	)
@@ -63,7 +63,7 @@ func (t *Keystore) alter(name string, from, value *string) error {
 	return t.config.Commit()
 }
 
-func (t *Keystore) fromValue(name string, value *string) error {
+func (t *keystore) fromValue(name string, value *string) error {
 	var b []byte
 	if value == nil {
 		b = []byte{}
@@ -73,7 +73,7 @@ func (t *Keystore) fromValue(name string, value *string) error {
 	return t.addKey(name, b)
 }
 
-func (t *Keystore) fromRegular(name string, p string) error {
+func (t *keystore) fromRegular(name string, p string) error {
 	b, err := os.ReadFile(p)
 	if err != nil {
 		return err
@@ -81,12 +81,12 @@ func (t *Keystore) fromRegular(name string, p string) error {
 	return t.addKey(name, b)
 }
 
-func (t *Keystore) fromDir(name string, p string) error {
+func (t *keystore) fromDir(name string, p string) error {
 	// TODO: walk and call fromRegular
 	return nil
 }
 
-func (t *Keystore) fromURI(name string, u uri.T) error {
+func (t *keystore) fromURI(name string, u uri.T) error {
 	fName, err := u.Fetch()
 	if err != nil {
 		return err
@@ -96,8 +96,8 @@ func (t *Keystore) fromURI(name string, u uri.T) error {
 }
 
 // Note: addKey does not commit, so it can be used multiple times efficiently.
-func (t *Keystore) addKey(name string, b []byte) error {
-	s, err := t.CustomEncode(b)
+func (t *keystore) addKey(name string, b []byte) error {
+	s, err := t.customEncode(b)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (t *Keystore) addKey(name string, b []byte) error {
 }
 
 // AddKey sets a key and commits immediately
-func (t *Keystore) AddKey(name string, b []byte) error {
+func (t *keystore) AddKey(name string, b []byte) error {
 	if err := t.addKey(name, b); err != nil {
 		return err
 	}

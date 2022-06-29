@@ -15,7 +15,7 @@ type OptsKeys struct {
 }
 
 // Get returns a keyword value
-func (t *Keystore) Keys(options OptsKeys) ([]string, error) {
+func (t *keystore) Keys(options OptsKeys) ([]string, error) {
 	return t.MatchingKeys(options.Match)
 }
 
@@ -25,7 +25,7 @@ func (t *Keystore) Keys(options OptsKeys) ([]string, error) {
 //
 // Example: []key{"a/b/c", "a/c/b"} => []dir{"a", "a/b", "a/c"}
 //
-func (t *Keystore) MatchingDirs(pattern string) ([]string, error) {
+func (t *keystore) MatchingDirs(pattern string) ([]string, error) {
 	m := make(map[string]interface{})
 	keys, err := t.MatchingKeys(pattern)
 	if err != nil {
@@ -45,15 +45,15 @@ func (t *Keystore) MatchingDirs(pattern string) ([]string, error) {
 	return dirs, nil
 }
 
-func (t *Keystore) AllDirs() ([]string, error) {
+func (t *keystore) AllDirs() ([]string, error) {
 	return t.MatchingDirs("")
 }
 
-func (t *Keystore) AllKeys() ([]string, error) {
+func (t *keystore) AllKeys() ([]string, error) {
 	return t.MatchingKeys("")
 }
 
-func (t *Keystore) MatchingKeys(pattern string) ([]string, error) {
+func (t *keystore) MatchingKeys(pattern string) ([]string, error) {
 	data := make([]string, 0)
 	f := fnmatch.FNM_PATHNAME | fnmatch.FNM_LEADING_DIR
 

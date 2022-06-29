@@ -13,26 +13,26 @@ const (
 )
 
 type (
-	EncodeFunc func([]byte) (string, error)
-	DecodeFunc func(string) ([]byte, error)
+	encodeFunc func([]byte) (string, error)
+	decodeFunc func(string) ([]byte, error)
 
-	// Keystore is the base type of sec, cfg and usr objects
-	Keystore struct {
+	// keystore is the base type of sec, cfg and usr objects
+	keystore struct {
 		core
-		CustomEncode EncodeFunc
-		CustomDecode DecodeFunc
+		customEncode encodeFunc
+		customDecode decodeFunc
 	}
 )
 
-func (t Keystore) Add(options OptsAdd) error {
+func (t keystore) Add(options OptsAdd) error {
 	return t.add(options.Key, options.From, options.Value)
 }
 
-func (t Keystore) Change(options OptsAdd) error {
+func (t keystore) Change(options OptsAdd) error {
 	return t.change(options.Key, options.From, options.Value)
 }
 
-func (t Keystore) Decode(options OptsDecode) ([]byte, error) {
+func (t keystore) Decode(options OptsDecode) ([]byte, error) {
 	return t.decode(options.Key)
 }
 
@@ -40,12 +40,12 @@ func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)
 }
 
-func (t Keystore) HasKey(name string) bool {
+func (t keystore) HasKey(name string) bool {
 	k := keyFromName(name)
 	return t.config.HasKey(k)
 }
 
-func (t Keystore) temporaryKeyFile(name string) (f *os.File, err error) {
+func (t keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	var (
 		b []byte
 	)
@@ -61,6 +61,6 @@ func (t Keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	return
 }
 
-func (t Keystore) postCommit() error {
+func (t keystore) postCommit() error {
 	return t.postInstall("")
 }
