@@ -36,7 +36,11 @@ type (
 		configFile string
 		config     *xconfig.T
 		node       *Node
-		paths      BasePaths
+		paths      struct {
+			varDir string
+			logDir string
+			tmpDir string
+		}
 
 		// method plugs
 		postCommit func() error

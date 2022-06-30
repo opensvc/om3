@@ -10,13 +10,6 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
-// BasePaths contains lazy initialized object paths on the node filesystem.
-type BasePaths struct {
-	varDir string
-	logDir string
-	tmpDir string
-}
-
 //
 // VarDir returns the directory on the local filesystem where the object
 // variable persistent data is stored as files.
