@@ -14,7 +14,7 @@ type OptsSetUnprovisioned struct {
 }
 
 // SetUnprovisioned starts the local instance of the object
-func (t *core) SetUnprovisioned(options OptsSetUnprovisioned) error {
+func (t *actor) SetUnprovisioned(options OptsSetUnprovisioned) error {
 	props := actioncontext.SetUnprovisioned
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -31,7 +31,7 @@ func (t *core) SetUnprovisioned(options OptsSetUnprovisioned) error {
 	return t.lockedSetUnprovisioned(ctx)
 }
 
-func (t *core) lockedSetUnprovisioned(ctx context.Context) error {
+func (t *actor) lockedSetUnprovisioned(ctx context.Context) error {
 	if err := t.masterSetUnprovisioned(ctx); err != nil {
 		return err
 	}
@@ -41,12 +41,12 @@ func (t *core) lockedSetUnprovisioned(ctx context.Context) error {
 	return nil
 }
 
-func (t *core) masterSetUnprovisioned(ctx context.Context) error {
+func (t *actor) masterSetUnprovisioned(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.SetUnprovisioned(ctx, r)
 	})
 }
 
-func (t *core) slaveSetUnprovisioned(ctx context.Context) error {
+func (t *actor) slaveSetUnprovisioned(ctx context.Context) error {
 	return nil
 }

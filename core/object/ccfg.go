@@ -8,14 +8,18 @@ import (
 )
 
 type (
+	ccfg struct {
+		core
+	}
+
 	//
 	// Ccfg is the clusterwide configuration store.
 	//
 	// The content is the same as node.conf, and is overriden by
 	// the definition found in node.conf.
 	//
-	Ccfg struct {
-		core
+	Ccfg interface {
+		Core
 	}
 )
 
@@ -32,12 +36,12 @@ var ccfgPrivateKeywords = []keywords.Keyword{
 var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
 
 // NewCcfg allocates a ccfg kind object.
-func NewCcfg(p path.T, opts ...funcopt.O) (*Ccfg, error) {
-	s := &Ccfg{}
+func NewCcfg(p path.T, opts ...funcopt.O) (*ccfg, error) {
+	s := &ccfg{}
 	err := s.core.init(s, p, opts...)
 	return s, err
 }
 
-func (t Ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(ccfgKeywordStore, k, t.path.Kind, sectionType)
 }

@@ -68,7 +68,7 @@ func (t *core) Schedules() schedule.Table {
 		t.newScheduleEntry("compliance_auto", "comp_schedule", "comp_check"),
 	)
 	needResMon := false
-	for _, r := range t.Resources() {
+	for _, r := range listResources(t) {
 		if !needResMon && r.IsMonitored() {
 			needResMon = true
 		}
@@ -80,7 +80,7 @@ func (t *core) Schedules() schedule.Table {
 		e := t.newScheduleEntry("resource_monitor", "monitor_schedule", "resource_monitor")
 		table = table.Add(e)
 	}
-	if len(t.Resources()) > 0 {
+	if len(listResources(t)) > 0 {
 		e := t.newScheduleEntry("push_resinfo", "resinfo_schedule", "push_resinfo")
 		table = table.Add(e)
 	}

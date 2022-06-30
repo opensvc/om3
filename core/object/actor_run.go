@@ -18,7 +18,7 @@ type OptsRun struct {
 }
 
 // Run starts the local instance of the object
-func (t *core) Run(options OptsRun) error {
+func (t *actor) Run(options OptsRun) error {
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
 	ctx = actioncontext.WithProps(ctx, actioncontext.Run)
@@ -35,7 +35,7 @@ func (t *core) Run(options OptsRun) error {
 	return nil
 }
 
-func (t *core) masterRun(ctx context.Context, options OptsRun) error {
+func (t *actor) masterRun(ctx context.Context, options OptsRun) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("run resource")
 		err := resource.Run(ctx, r)
@@ -49,6 +49,6 @@ func (t *core) masterRun(ctx context.Context, options OptsRun) error {
 	})
 }
 
-func (t *core) slaveRun(ctx context.Context) error {
+func (t *actor) slaveRun(ctx context.Context) error {
 	return nil
 }

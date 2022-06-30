@@ -27,7 +27,7 @@ type OptsGenCert struct {
 }
 
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.
-func (t *Sec) GenCert(options OptsGenCert) error {
+func (t *sec) GenCert(options OptsGenCert) error {
 	var err error
 	priv, err := t.getPriv()
 	if err != nil {
@@ -59,7 +59,7 @@ func CASecPaths() []path.T {
 	return l
 }
 
-func (t *Sec) genSelfSigned(priv *rsa.PrivateKey) error {
+func (t *sec) genSelfSigned(priv *rsa.PrivateKey) error {
 	t.log.Debug().Msg("generate a self-signed certificate")
 	tmpl, err := t.template(true, priv)
 	if err != nil {
@@ -72,7 +72,7 @@ func (t *Sec) genSelfSigned(priv *rsa.PrivateKey) error {
 	return t.addKey("certificate", certBytes)
 }
 
-func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
+func (t *sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
 	t.log.Debug().Msgf("generate a certificate signed by the CA in %s", ca)
 	caCert, caCertBytes, err := t.getCACert()
 	if err != nil {
@@ -95,16 +95,16 @@ func (t *Sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
 	return nil
 }
 
-func (t *Sec) CertInfo(name string) string {
+func (t *sec) CertInfo(name string) string {
 	return t.config.GetString(key.Parse(name))
 }
 
-func (t *Sec) CertInfoBits() int {
+func (t *sec) CertInfoBits() int {
 	sz := t.config.GetSize(key.Parse("bits"))
 	return int(*sz)
 }
 
-func (t *Sec) CertInfoNotAfter() (time.Time, error) {
+func (t *sec) CertInfoNotAfter() (time.Time, error) {
 	if v, err := t.config.GetDurationStrict(key.Parse("validity")); err != nil {
 		return time.Now(), err
 	} else {
@@ -112,7 +112,7 @@ func (t *Sec) CertInfoNotAfter() (time.Time, error) {
 	}
 }
 
-func (t *Sec) IPAddressesFromAltNames() []net.IP {
+func (t *sec) IPAddressesFromAltNames() []net.IP {
 	l := []net.IP{net.ParseIP("127.0.0.1")}
 	for _, word := range t.config.GetSlice(key.Parse("alt_names")) {
 		ip := net.ParseIP(word)
@@ -124,7 +124,7 @@ func (t *Sec) IPAddressesFromAltNames() []net.IP {
 	return l
 }
 
-func (t *Sec) DNSNamesFromAltNames() []string {
+func (t *sec) DNSNamesFromAltNames() []string {
 	l := []string{}
 	for _, word := range t.config.GetSlice(key.Parse("alt_names")) {
 		if !fqdn.IsValid(word) && !hostname.IsValid(word) {
@@ -148,7 +148,7 @@ func getBaseKeyUsage(priv interface{}) x509.KeyUsage {
 	return keyUsage
 }
 
-func (t *Sec) subject() pkix.Name {
+func (t *sec) subject() pkix.Name {
 	return pkix.Name{
 		Country:            []string{t.CertInfo("c")},
 		Organization:       []string{t.CertInfo("o")},
@@ -158,7 +158,7 @@ func (t *Sec) subject() pkix.Name {
 }
 
 // "cn", "c", "st", "l", "o", "ou", "email", "alt_names", "bits", "validity", "ca"
-func (t *Sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
+func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 	keyUsage := getBaseKeyUsage(priv)
 	notAfter, err := t.CertInfoNotAfter()
 	if err != nil {
@@ -184,7 +184,7 @@ func (t *Sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 	return template, nil
 }
 
-func (t *Sec) getCASec() (*Sec, error) {
+func (t *sec) getCASec() (*sec, error) {
 	s := t.CertInfo("ca")
 	p, err := path.Parse(s)
 	if err != nil {
@@ -196,7 +196,7 @@ func (t *Sec) getCASec() (*Sec, error) {
 	return NewSec(p, WithVolatile(true))
 }
 
-func (t *Sec) setPriv(priv *rsa.PrivateKey) error {
+func (t *sec) setPriv(priv *rsa.PrivateKey) error {
 	b, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
 		return err
@@ -205,14 +205,14 @@ func (t *Sec) setPriv(priv *rsa.PrivateKey) error {
 	return t.addKey("private_key", pemBytes)
 }
 
-func (t *Sec) setCert(derBytes []byte) error {
+func (t *sec) setCert(derBytes []byte) error {
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	return t.addKey("certificate", pemBytes)
 }
 
-func (t *Sec) getCACert() (*x509.Certificate, []byte, error) {
+func (t *sec) getCACert() (*x509.Certificate, []byte, error) {
 	var (
-		sec  *Sec
+		sec  *sec
 		b    []byte
 		err  error
 		cert *x509.Certificate
@@ -241,9 +241,9 @@ func certFromPEM(b []byte) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-func (t *Sec) getCAPriv() (*rsa.PrivateKey, error) {
+func (t *sec) getCAPriv() (*rsa.PrivateKey, error) {
 	var (
-		sec *Sec
+		sec *sec
 		b   []byte
 		err error
 	)
@@ -268,7 +268,7 @@ func privFromPEM(b []byte) (*rsa.PrivateKey, error) {
 	return priv.(*rsa.PrivateKey), nil
 }
 
-func (t *Sec) getPriv() (*rsa.PrivateKey, error) {
+func (t *sec) getPriv() (*rsa.PrivateKey, error) {
 	b, err := t.decode("private_key")
 	if err != nil {
 		return t.genPriv()
@@ -280,7 +280,7 @@ func (t *Sec) getPriv() (*rsa.PrivateKey, error) {
 	return priv, nil
 }
 
-func (t *Sec) genPriv() (*rsa.PrivateKey, error) {
+func (t *sec) genPriv() (*rsa.PrivateKey, error) {
 	bits := t.CertInfoBits()
 	t.log.Info().Int("bits", bits).Msg("generate new private key")
 	priv, err := rsa.GenerateKey(rand.Reader, bits)

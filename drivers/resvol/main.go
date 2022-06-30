@@ -79,13 +79,13 @@ func New() resource.Driver {
 	return t
 }
 
-func (t T) startVolume(ctx context.Context, volume *object.Vol) error {
+func (t T) startVolume(ctx context.Context, volume object.Vol) error {
 	options := object.OptsStart{}
 	//options.Leader = actioncontext.IsLeader(ctx)
 	return volume.Start(options)
 }
 
-func (t T) stopVolume(ctx context.Context, volume *object.Vol, force bool) error {
+func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error {
 	options := object.OptsStop{}
 	options.Force = force
 	//options.Leader = actioncontext.IsLeader(ctx)
@@ -97,7 +97,7 @@ func (t T) stopVolume(ctx context.Context, volume *object.Vol, force bool) error
 	return volume.Stop(options)
 }
 
-func (t T) statusVolume(ctx context.Context, volume *object.Vol) (instance.Status, error) {
+func (t T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status, error) {
 	options := object.OptsStatus{}
 	ctxOptions := actioncontext.Options(ctx)
 	if i, ok := ctxOptions.(object.OptsStatus); ok {
@@ -256,7 +256,7 @@ func (t T) access() volaccess.T {
 
 }
 
-func (t *T) Volume() (*object.Vol, error) {
+func (t *T) Volume() (object.Vol, error) {
 	p, err := path.New(t.name(), t.Path.Namespace, kind.Vol.String())
 	if err != nil {
 		return nil, err
@@ -274,7 +274,7 @@ func (t *T) Volume() (*object.Vol, error) {
 	return v, nil
 }
 
-func (t *T) createVolume(volume *object.Vol) (*object.Vol, error) {
+func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
 	p := filepath.Join(object.VarDir(volume.Path()), "create_volume.lock")
 	lock := flock.New(p, xsession.ID, fcntllock.New)
 	timeout, err := time.ParseDuration("20s")
@@ -289,7 +289,7 @@ func (t *T) createVolume(volume *object.Vol) (*object.Vol, error) {
 	return t.lockedCreateVolume(volume)
 }
 
-func (t *T) lockedCreateVolume(volume *object.Vol) (*object.Vol, error) {
+func (t *T) lockedCreateVolume(volume object.Vol) (object.Vol, error) {
 	volume.SetVolatile(false)
 	err := t.configureVolume(volume, true)
 	if err != nil {
@@ -335,7 +335,7 @@ func (t *T) volEnv() []string {
 	return []string{}
 }
 
-func (t *T) configureVolume(v *object.Vol, withUsage bool) error {
+func (t *T) configureVolume(v object.Vol, withUsage bool) error {
 	l, err := t.poolLookup(withUsage)
 	if err != nil {
 		return err

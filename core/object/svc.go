@@ -8,23 +8,27 @@ import (
 )
 
 type (
+	svc struct {
+		actor
+	}
+
 	//
 	// Svc is the svc-kind object.
 	//
 	// These objects contain front facing resources like app and containers.
 	//
-	Svc struct {
-		core
+	Svc interface {
+		Actor
 	}
 )
 
 // NewSvc allocates a svc kind object.
-func NewSvc(p path.T, opts ...funcopt.O) (*Svc, error) {
-	s := &Svc{}
+func NewSvc(p path.T, opts ...funcopt.O) (*svc, error) {
+	s := &svc{}
 	err := s.core.init(s, p, opts...)
 	return s, err
 }
 
-func (t Svc) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t svc) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }

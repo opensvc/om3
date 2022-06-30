@@ -15,6 +15,10 @@ import (
 )
 
 type (
+	vol struct {
+		actor
+	}
+
 	//
 	// Vol is the vol-kind object.
 	//
@@ -23,19 +27,22 @@ type (
 	// They are created by feeding a volume resource configuration (cluster
 	// independant) to a pool.
 	//
-	Vol struct {
-		core
+	Vol interface {
+		Actor
+		Head() string
+		Device() *device.T
+		HoldersExcept(ctx context.Context, p path.T) path.L
 	}
 )
 
 // NewVol allocates a vol kind object.
-func NewVol(p path.T, opts ...funcopt.O) (*Vol, error) {
-	s := &Vol{}
+func NewVol(p path.T, opts ...funcopt.O) (*vol, error) {
+	s := &vol{}
 	err := s.core.init(s, p, opts...)
 	return s, err
 }
 
-func (t Vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
@@ -49,7 +56,7 @@ func (t Vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 //
 // Callers must check the returned value is not empty.
 //
-func (t *Vol) Head() string {
+func (t *vol) Head() string {
 	head := ""
 	heads := make([]string, 0)
 	type header interface {
@@ -80,7 +87,7 @@ func (t *Vol) Head() string {
 	return head
 }
 
-func (t *Vol) Device() *device.T {
+func (t *vol) Device() *device.T {
 	type devicer interface {
 		ExposedDevices() []*device.T
 	}
@@ -114,9 +121,9 @@ func (t *Vol) Device() *device.T {
 	return nil
 }
 
-func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
+func (t *vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 	l := make(path.L, 0)
-	type VolNamer interface {
+	type volNamer interface {
 		VolName() string
 	}
 	for _, rel := range t.Children() {
@@ -140,7 +147,7 @@ func (t *Vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 			if r.ID().DriverGroup() != driver.GroupVolume {
 				continue
 			}
-			if o, ok := r.(VolNamer); ok {
+			if o, ok := r.(volNamer); ok {
 				if o.VolName() != t.path.Name {
 					continue
 				}

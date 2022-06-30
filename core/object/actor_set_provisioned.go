@@ -14,7 +14,7 @@ type OptsSetProvisioned struct {
 }
 
 // SetProvisioned starts the local instance of the object
-func (t *core) SetProvisioned(options OptsSetProvisioned) error {
+func (t *actor) SetProvisioned(options OptsSetProvisioned) error {
 	props := actioncontext.SetProvisioned
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -31,7 +31,7 @@ func (t *core) SetProvisioned(options OptsSetProvisioned) error {
 	return t.lockedSetProvisioned(ctx)
 }
 
-func (t *core) lockedSetProvisioned(ctx context.Context) error {
+func (t *actor) lockedSetProvisioned(ctx context.Context) error {
 	if err := t.masterSetProvisioned(ctx); err != nil {
 		return err
 	}
@@ -41,12 +41,12 @@ func (t *core) lockedSetProvisioned(ctx context.Context) error {
 	return nil
 }
 
-func (t *core) masterSetProvisioned(ctx context.Context) error {
+func (t *actor) masterSetProvisioned(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.SetProvisioned(ctx, r)
 	})
 }
 
-func (t *core) slaveSetProvisioned(ctx context.Context) error {
+func (t *actor) slaveSetProvisioned(ctx context.Context) error {
 	return nil
 }

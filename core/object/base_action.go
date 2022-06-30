@@ -40,7 +40,7 @@ var (
 	ErrInvalidNode = errors.New("invalid node")
 )
 
-func (t *core) validateAction() error {
+func (t *actor) validateAction() error {
 	node := rawconfig.NodeSection()
 	if t.Env() != "PRD" && node.Env == "PRD" {
 		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), node.Env)
@@ -54,7 +54,7 @@ func (t *core) validateAction() error {
 	return errors.Wrapf(ErrInvalidNode, "hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", hostname.Hostname())
 }
 
-func (t *core) setenv(action string, leader bool) {
+func (t *actor) setenv(action string, leader bool) {
 	os.Setenv("OPENSVC_SVCPATH", t.path.String())
 	os.Setenv("OPENSVC_SVCNAME", t.path.Name)
 	os.Setenv("OPENSVC_NAMESPACE", t.path.Namespace)
@@ -67,7 +67,7 @@ func (t *core) setenv(action string, leader bool) {
 	// each Setenv resource Driver will load its own env vars when actioned
 }
 
-func (t *core) preAction(ctx context.Context) error {
+func (t *actor) preAction(ctx context.Context) error {
 	t.log.Info().Strs("argv", os.Args).Str("origin", env.Origin()).Msg("do")
 	if err := t.notifyAction(ctx); err != nil {
 		action := actioncontext.Props(ctx)
@@ -79,7 +79,7 @@ func (t *core) preAction(ctx context.Context) error {
 	return nil
 }
 
-func (t *core) needRollback(ctx context.Context) bool {
+func (t *actor) needRollback(ctx context.Context) bool {
 	if actionrollback.Len(ctx) == 0 {
 		t.Log().Debug().Msgf("skip rollback: empty stack")
 		return false
@@ -101,12 +101,12 @@ func (t *core) needRollback(ctx context.Context) bool {
 	return true
 }
 
-func (t *core) rollback(ctx context.Context) error {
+func (t *actor) rollback(ctx context.Context) error {
 	t.Log().Info().Msg("rollback")
 	return actionrollback.Rollback(ctx)
 }
 
-func (t *core) withTimeout(ctx context.Context) (context.Context, func()) {
+func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
 	props := actioncontext.Props(ctx)
 	timeout := t.actionTimeout(props.TimeoutKeywords)
 	if timeout == 0 {
@@ -115,7 +115,7 @@ func (t *core) withTimeout(ctx context.Context) (context.Context, func()) {
 	return context.WithTimeout(ctx, timeout)
 }
 
-func (t *core) actionTimeout(kwNames []string) time.Duration {
+func (t *actor) actionTimeout(kwNames []string) time.Duration {
 	for _, kwName := range kwNames {
 		k := key.Parse(kwName)
 		timeout := t.Config().GetDuration(k)
@@ -127,7 +127,7 @@ func (t *core) actionTimeout(kwNames []string) time.Duration {
 	return 0
 }
 
-func (t core) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
+func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 	a, ok := r.(resource.Aborter)
 	if !ok {
@@ -142,7 +142,7 @@ func (t core) abortWorker(ctx context.Context, r resource.Driver, q chan bool, w
 	q <- false
 }
 
-func (t *core) abortStart(ctx context.Context, l ResourceLister) (err error) {
+func (t *actor) abortStart(ctx context.Context, l ResourceLister) (err error) {
 	if actioncontext.Props(ctx).Name != "start" {
 		return nil
 	}
@@ -152,7 +152,7 @@ func (t *core) abortStart(ctx context.Context, l ResourceLister) (err error) {
 	return t.abortStartDrivers(ctx, l)
 }
 
-func (t *core) abortStartAffinity(ctx context.Context) (err error) {
+func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	if env.HasDaemonOrigin() {
 		return nil
 	}
@@ -204,7 +204,7 @@ func (t *core) abortStartAffinity(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t *core) abortStartDrivers(ctx context.Context, l ResourceLister) (err error) {
+func (t *actor) abortStartDrivers(ctx context.Context, l ResourceLister) (err error) {
 	t.log.Log().Msg("abort tests")
 	t.log.Debug().Msg("call resource drivers abort start")
 	sb := statusbus.FromContext(ctx)
@@ -235,7 +235,7 @@ func (t *core) abortStartDrivers(ctx context.Context, l ResourceLister) (err err
 	return nil
 }
 
-func (t *core) action(ctx context.Context, fn resourceset.DoFunc) error {
+func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	pg.FromContext(ctx).Register(t.pg)
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
@@ -315,7 +315,7 @@ func (t *core) action(ctx context.Context, fn resourceset.DoFunc) error {
 // notifyAction signals the daemon that an action is in progress, setting the
 // instance local expect via POST /object_monitor
 //
-func (t *core) notifyAction(ctx context.Context) error {
+func (t *actor) notifyAction(ctx context.Context) error {
 	if env.HasDaemonOrigin() {
 		return nil
 	}
@@ -337,7 +337,7 @@ func (t *core) notifyAction(ctx context.Context) error {
 	return err
 }
 
-func (t *core) mayFreeze(ctx context.Context) error {
+func (t *actor) mayFreeze(ctx context.Context) error {
 	action := actioncontext.Props(ctx)
 	if !action.Freeze {
 		return nil
@@ -357,7 +357,7 @@ func (t *core) mayFreeze(ctx context.Context) error {
 	return t.Freeze()
 }
 
-func (t *core) orchestrateWantsFreeze() bool {
+func (t *actor) orchestrateWantsFreeze() bool {
 	switch t.Orchestrate() {
 	case "ha", "start":
 		return true

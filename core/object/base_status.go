@@ -1,7 +1,6 @@
 package object
 
 import (
-	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -10,17 +9,13 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/statusbus"
-	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/timestamp"
@@ -37,45 +32,32 @@ func (t *core) statusFile() string {
 	return filepath.Join(t.varDir(), "status.json")
 }
 
-// Status returns the service status dataset
 func (t *core) Status(options OptsStatus) (instance.Status, error) {
 	var (
 		data instance.Status
 		err  error
 	)
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
-	ctx, stop := statusbus.WithContext(ctx, t.path)
-	defer stop()
-
 	if options.Refresh || t.statusDumpOutdated() {
-		return t.statusEval(ctx, options)
+		return t.statusEval(options)
 	}
 	if data, err = t.statusLoad(); err == nil {
 		return data, nil
 	}
 	// corrupted status.json => eval
-	return t.statusEval(ctx, options)
+	return t.statusEval(options)
 }
 
-func (t *core) postActionStatusEval(ctx context.Context) {
-	if _, err := t.statusEval(ctx, OptsStatus{}); err != nil {
-		t.log.Debug().Err(err).Msg("a status refresh is already in progress")
-	}
-}
-
-func (t *core) statusEval(ctx context.Context, options OptsStatus) (instance.Status, error) {
+func (t *core) statusEval(options OptsStatus) (instance.Status, error) {
 	props := actioncontext.Status
 	unlock, err := t.lockAction(props, options.OptsLock)
 	if err != nil {
 		return instance.Status{}, err
 	}
 	defer unlock()
-	return t.lockedStatusEval(ctx)
+	return t.lockedStatusEval()
 }
 
-func (t *core) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
+func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
 	data.Orchestrate = t.Orchestrate()
@@ -87,38 +69,13 @@ func (t *core) lockedStatusEval(ctx context.Context) (data instance.Status, err 
 	data.Parents = t.Parents()
 	data.Children = t.Children()
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
-	data.Subsets = t.subsetsStatus()
-	data.Frozen = t.Frozen()
-	data.Running = t.RunningRIDList()
-	if err = t.resourceStatusEval(ctx, &data); err != nil {
-		return
-	}
-	if len(data.Resources) == 0 {
-		data.Avail = status.NotApplicable
-		data.Overall = status.NotApplicable
-		data.Optional = status.NotApplicable
-	}
-	if data.Topology == topology.Flex {
-		data.FlexTarget = t.FlexTarget()
-		data.FlexMin = t.FlexMin()
-		data.FlexMax = t.FlexMax()
-	}
+	data.Running = runningRIDList(t)
+	data.Avail = status.NotApplicable
+	data.Overall = status.NotApplicable
+	data.Optional = status.NotApplicable
 	data.Csum = csumStatusData(data)
 	t.statusDump(data)
 	return
-}
-
-func (t *core) RunningRIDList() []string {
-	l := make([]string, 0)
-	for _, r := range t.Resources() {
-		if i, ok := r.(resource.IsRunninger); !ok {
-			continue
-		} else if !i.IsRunning() {
-			continue
-		}
-		l = append(l, r.RID())
-	}
-	return l
 }
 
 func csumStatusDataRecurse(w io.Writer, d interface{}) error {
@@ -180,36 +137,6 @@ func csumStatusData(data instance.Status) string {
 		fmt.Println(data, err) // TODO: remove me
 	}
 	return fmt.Sprintf("%x", w.Sum(nil))
-}
-
-func (t *core) subsetsStatus() map[string]instance.SubsetStatus {
-	data := make(map[string]instance.SubsetStatus)
-	for _, rs := range t.ResourceSets() {
-		if !rs.Parallel {
-			continue
-		}
-		data[rs.Fullname()] = instance.SubsetStatus{
-			Parallel: rs.Parallel,
-		}
-	}
-	return data
-}
-
-func (t *core) resourceStatusEval(ctx context.Context, data *instance.Status) error {
-	data.Resources = make(map[string]resource.ExposedStatus)
-	var mu sync.Mutex
-	return t.ResourceSets().Do(ctx, t, "", func(ctx context.Context, r resource.Driver) error {
-		xd := resource.GetExposedStatus(ctx, r)
-		mu.Lock()
-		data.Resources[r.RID()] = xd
-		data.Overall.Add(xd.Status)
-		if !xd.Optional {
-			data.Avail.Add(xd.Status)
-		}
-		data.Provisioned.Add(xd.Provisioned.State)
-		mu.Unlock()
-		return nil
-	})
 }
 
 func (t *core) statusDumpOutdated() bool {

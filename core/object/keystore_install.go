@@ -268,7 +268,7 @@ func (t keystore) postInstall(k string) error {
 	type resvoler interface {
 		InstallDataByKind(kind.T) (bool, error)
 		HasMetadata(p path.T, k string) bool
-		Volume() (*Vol, error)
+		Volume() (Vol, error)
 		SendSignals() error
 	}
 	paths, err := sel.Expand()

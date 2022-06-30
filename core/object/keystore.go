@@ -3,6 +3,7 @@ package object
 import (
 	"io/ioutil"
 	"os"
+	"os/user"
 
 	"opensvc.com/opensvc/util/key"
 )
@@ -16,11 +17,33 @@ type (
 	encodeFunc func([]byte) (string, error)
 	decodeFunc func(string) ([]byte, error)
 
-	// keystore is the base type of sec, cfg and usr objects
 	keystore struct {
 		core
 		customEncode encodeFunc
 		customDecode decodeFunc
+	}
+
+	// Keystore is the base interface of sec, cfg and usr objects
+	Keystore interface {
+		Core
+		HasKey(name string) bool
+		Add(OptsAdd) error
+		AddKey(name string, b []byte) error
+		Change(OptsAdd) error
+		Decode(OptsDecode) ([]byte, error)
+		DecodeKey(keyname string) ([]byte, error)
+		Keys(OptsKeys) ([]string, error)
+		MatchingKeys(string) ([]string, error)
+		Remove(OptsRemove) error
+		RemoveKey(keyname string) error
+		EditKey(OptsEditKey) error
+		Install(OptsInstall) error
+		InstallKey(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
+	}
+
+	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).
+	SecureKeystore interface {
+		GenCert(OptsGenCert) error
 	}
 )
 

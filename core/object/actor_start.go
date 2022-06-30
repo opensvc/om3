@@ -18,7 +18,7 @@ type OptsStart struct {
 }
 
 // Start starts the local instance of the object
-func (t *core) Start(options OptsStart) error {
+func (t *actor) Start(options OptsStart) error {
 	props := actioncontext.Start
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -35,7 +35,7 @@ func (t *core) Start(options OptsStart) error {
 	return t.lockedStart(ctx)
 }
 
-func (t *core) lockedStart(ctx context.Context) error {
+func (t *actor) lockedStart(ctx context.Context) error {
 	if err := t.masterStart(ctx); err != nil {
 		return err
 	}
@@ -45,13 +45,13 @@ func (t *core) lockedStart(ctx context.Context) error {
 	return nil
 }
 
-func (t *core) masterStart(ctx context.Context) error {
+func (t *actor) masterStart(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return resource.Start(ctx, r)
 	})
 }
 
-func (t *core) slaveStart(ctx context.Context) error {
+func (t *actor) slaveStart(ctx context.Context) error {
 	return nil
 }

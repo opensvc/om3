@@ -27,7 +27,7 @@ type (
 	}
 )
 
-func (t *core) newObjectdevice(dev *device.T, role objectdevice.Role, r resource.Driver) objectdevice.T {
+func (t *actor) newObjectdevice(dev *device.T, role objectdevice.Role, r resource.Driver) objectdevice.T {
 	return objectdevice.T{
 		Device:     dev,
 		Role:       role,
@@ -38,7 +38,7 @@ func (t *core) newObjectdevice(dev *device.T, role objectdevice.Role, r resource
 }
 
 // PrintDevices display the object base, sub and exposed devices
-func (t *core) PrintDevices(options OptsPrintDevices) objectdevice.L {
+func (t *actor) PrintDevices(options OptsPrintDevices) objectdevice.L {
 	var exposed, sub, base, claimed bool
 	m := make(map[string]interface{})
 	for _, role := range strings.Split(options.Roles, ",") {
@@ -62,7 +62,7 @@ func (t *core) PrintDevices(options OptsPrintDevices) objectdevice.L {
 	return t.printDevices(exposed, sub, base, claimed)
 }
 
-func (t *core) printDevices(exposed, sub, base, claimed bool) objectdevice.L {
+func (t *actor) printDevices(exposed, sub, base, claimed bool) objectdevice.L {
 	l := objectdevice.NewList()
 	for _, r := range t.Resources() {
 		var i interface{} = r

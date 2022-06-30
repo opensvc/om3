@@ -81,7 +81,8 @@ func (t core) Orchestrate() string {
 }
 
 func (t core) FQDN() string {
-	return fqdn.New(t.path, t.Node().Config().GetString(key.Parse("cluster.name"))).String()
+	clusterName := rawconfig.ClusterSection().Name
+	return fqdn.New(t.path, clusterName).String()
 }
 
 func (t core) Env() string {
@@ -222,14 +223,19 @@ func (t core) FlexTarget() int {
 
 func (t core) dereferenceExposedDevices(ref string) (string, error) {
 	l := strings.SplitN(ref, ".", 2)
-	type ExposedDeviceser interface {
+	var i interface{} = t
+	actor, ok := i.(Actor)
+	if !ok {
+		return ref, fmt.Errorf("can't dereference exposed_devs on a non-actor object: %s", ref)
+	}
+	type exposedDeviceser interface {
 		ExposedDevices() []*device.T
 	}
 	if len(l) != 2 {
 		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
 	}
 	rid := l[0]
-	r := t.ResourceByID(rid)
+	r := actor.ResourceByID(rid)
 	if r == nil {
 		if t.config.HasSectionString(rid) {
 			return ref, xconfig.NewErrPostponedRef(ref, rid)
@@ -237,7 +243,7 @@ func (t core) dereferenceExposedDevices(ref string) (string, error) {
 			return ref, fmt.Errorf("resource referenced by %s not found", ref)
 		}
 	}
-	o, ok := r.(ExposedDeviceser)
+	o, ok := r.(exposedDeviceser)
 	if !ok {
 		return ref, fmt.Errorf("resource referenced by %s has no exposed devices", ref)
 	}
@@ -250,16 +256,16 @@ func (t core) dereferenceExposedDevices(ref string) (string, error) {
 		}
 		return strings.Join(ls, " "), nil
 	}
-	i, err := strconv.Atoi(s)
+	idx, err := strconv.Atoi(s)
 	if err != nil {
 		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
 	}
 	xdevs := o.ExposedDevices()
 	n := len(xdevs)
-	if i > n-1 {
+	if idx > n-1 {
 		return ref, fmt.Errorf("ref %s index error: the referenced resource has only %d exposed devices", ref, n)
 	}
-	return xdevs[i].String(), nil
+	return xdevs[idx].String(), nil
 }
 
 func (t core) Dereference(ref string) (string, error) {

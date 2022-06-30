@@ -142,7 +142,7 @@ func (t T) verifyPassphrase(force bool) error {
 	return nil
 }
 
-func (t T) sec() (*object.Sec, error) {
+func (t T) sec() (object.Sec, error) {
 	p, err := t.secPath()
 	if err != nil {
 		return nil, err

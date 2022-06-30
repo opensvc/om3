@@ -14,6 +14,10 @@ import (
 )
 
 type (
+	sec struct {
+		keystore
+	}
+
 	//
 	// Sec is the sec-kind object.
 	//
@@ -27,14 +31,15 @@ type (
 	// A Signal can be sent to consumer processes upon exposed key value
 	// changes.
 	//
-	Sec struct {
-		keystore
+	Sec interface {
+		Keystore
+		SecureKeystore
 	}
 )
 
 // NewSec allocates a sec kind object.
-func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
-	s := &Sec{}
+func NewSec(p path.T, opts ...funcopt.O) (*sec, error) {
+	s := &sec{}
 	s.customEncode = secEncode
 	s.customDecode = secDecode
 	if err := s.core.init(s, p, opts...); err != nil {
@@ -44,7 +49,7 @@ func NewSec(p path.T, opts ...funcopt.O) (*Sec, error) {
 	return s, nil
 }
 
-func (t Sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 

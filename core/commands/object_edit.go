@@ -58,10 +58,10 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 			continue
 		}
 		var (
-			ks object.Keystorer
+			ks object.Keystore
 			ok bool
 		)
-		if ks, ok = obj.(object.Keystorer); !ok {
+		if ks, ok = obj.(object.Keystore); !ok {
 			fmt.Fprintf(os.Stderr, "skip %s: not a keystore\n", p)
 			continue
 		}
@@ -78,7 +78,7 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEdit) doLocal(obj object.Keystorer, c *client.T) error {
+func (t *CmdObjectEdit) doLocal(obj object.Keystore, c *client.T) error {
 	return obj.EditKey(t.OptsEditKey)
 }
 

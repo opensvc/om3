@@ -19,8 +19,11 @@ func (t *core) Eval(options OptsEval) (interface{}, error) {
 	switch err.(type) {
 	case xconfig.ErrPostponedRef:
 		// example: disk#1.exposed_devs[0]
-		t.configureResources()
-		v, err = t.config.EvalAs(k, options.Impersonate)
+		var i interface{} = t
+		if actor, ok := i.(Actor); ok {
+			actor.ConfigureResources()
+			v, err = t.config.EvalAs(k, options.Impersonate)
+		}
 	}
 	return v, err
 }

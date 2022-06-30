@@ -166,12 +166,11 @@ func (t *T) statusData() {
 			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
-		o, err := object.NewFromPath(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewKeystoreFromPath(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
 		}
-		keystore := o.(object.Keystorer)
 		matches, err := keystore.MatchingKeys(md.FromKey)
 		if err != nil {
 			t.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromKey, err)
@@ -246,11 +245,10 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
-		o, err := object.NewFromPath(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewKeystoreFromPath(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warn().Msgf("store %s init error: %s", md.FromStore, err)
 		}
-		keystore, _ := o.(object.Keystorer)
 		var matches []string
 		matches, err = keystore.MatchingKeys(md.FromKey)
 		if err != nil {

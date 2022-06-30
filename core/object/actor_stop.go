@@ -17,7 +17,7 @@ type OptsStop struct {
 }
 
 // Stop stops the local instance of the object
-func (t *core) Stop(options OptsStop) error {
+func (t *actor) Stop(options OptsStop) error {
 	props := actioncontext.Stop
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -34,7 +34,7 @@ func (t *core) Stop(options OptsStop) error {
 	return t.lockedStop(ctx)
 }
 
-func (t *core) lockedStop(ctx context.Context) error {
+func (t *actor) lockedStop(ctx context.Context) error {
 	if err := t.masterStop(ctx); err != nil {
 		return err
 	}
@@ -44,13 +44,13 @@ func (t *core) lockedStop(ctx context.Context) error {
 	return nil
 }
 
-func (t *core) masterStop(ctx context.Context) error {
+func (t *actor) masterStop(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("stop resource")
 		return resource.Stop(ctx, r)
 	})
 }
 
-func (t *core) slaveStop(ctx context.Context) error {
+func (t *actor) slaveStop(ctx context.Context) error {
 	return nil
 }

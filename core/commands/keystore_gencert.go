@@ -51,7 +51,7 @@ func (t *CmdSecGenCert) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			store, ok := o.(object.SecureKeystorer)
+			store, ok := o.(object.SecureKeystore)
 			if !ok {
 				return nil, fmt.Errorf("%s is not a secure keystore", o)
 			}

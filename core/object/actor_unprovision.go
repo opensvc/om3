@@ -18,7 +18,7 @@ type OptsUnprovision struct {
 }
 
 // Unprovision stops and frees the local instance of the object
-func (t *core) Unprovision(options OptsUnprovision) error {
+func (t *actor) Unprovision(options OptsUnprovision) error {
 	props := actioncontext.Unprovision
 	ctx := context.Background()
 	ctx = actioncontext.WithOptions(ctx, options)
@@ -35,7 +35,7 @@ func (t *core) Unprovision(options OptsUnprovision) error {
 	return t.lockedUnprovision(ctx)
 }
 
-func (t *core) lockedUnprovision(ctx context.Context) error {
+func (t *actor) lockedUnprovision(ctx context.Context) error {
 	if err := t.slaveUnprovision(ctx); err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (t *core) lockedUnprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t *core) masterUnprovision(ctx context.Context) error {
+func (t *actor) masterUnprovision(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Debug().Str("rid", r.RID()).Msg("unprovision resource")
 		leader := actioncontext.IsLeader(ctx)
@@ -53,6 +53,6 @@ func (t *core) masterUnprovision(ctx context.Context) error {
 	})
 }
 
-func (t *core) slaveUnprovision(ctx context.Context) error {
+func (t *actor) slaveUnprovision(ctx context.Context) error {
 	return nil
 }

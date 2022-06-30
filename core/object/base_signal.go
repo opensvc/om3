@@ -13,7 +13,7 @@ type (
 	}
 )
 
-func (t *core) SignalResource(rid string, sig syscall.Signal) error {
+func (t *actor) SignalResource(rid string, sig syscall.Signal) error {
 	t.Resources()
 	r := t.ResourceByID(rid)
 	if r == nil {

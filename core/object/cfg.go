@@ -12,6 +12,10 @@ import (
 )
 
 type (
+	cfg struct {
+		keystore
+	}
+
 	//
 	// Cfg is the cfg-kind object.
 	//
@@ -25,14 +29,14 @@ type (
 	// A Signal can be sent to consumer processes upon exposed key value
 	// changes.
 	//
-	Cfg struct {
-		keystore
+	Cfg interface {
+		Keystore
 	}
 )
 
 // NewCfg allocates a cfg kind object.
-func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
-	s := &Cfg{}
+func NewCfg(p path.T, opts ...funcopt.O) (*cfg, error) {
+	s := &cfg{}
 	s.customEncode = cfgEncode
 	s.customDecode = cfgDecode
 	if err := s.core.init(s, p, opts...); err != nil {
@@ -42,7 +46,7 @@ func NewCfg(p path.T, opts ...funcopt.O) (*Cfg, error) {
 	return s, nil
 }
 
-func (t Cfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t cfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 

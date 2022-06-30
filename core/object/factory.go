@@ -82,3 +82,12 @@ func NewActorFromPath(p path.T, opts ...funcopt.O) (Actor, error) {
 		return o.(Actor), nil
 	}
 }
+
+// NewKeystoreFromPath returns a Keystore interface from an object path
+func NewKeystoreFromPath(p path.T, opts ...funcopt.O) (Keystore, error) {
+	if o, err := NewFromPath(p, opts...); err != nil {
+		return nil, err
+	} else {
+		return o.(Keystore), nil
+	}
+}
