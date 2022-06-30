@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	RegexpScalerPrefix        = regexp.MustCompile(`^[0-9]+\.`)
+	regexpScalerPrefix        = regexp.MustCompile(`^[0-9]+\.`)
 	regexpExposedDevicesIndex = regexp.MustCompile(`.*\.exposed_devs\[([0-9]+)\]`)
 )
 
@@ -277,9 +277,9 @@ func (t core) Dereference(ref string) (string, error) {
 	case "short_name", "short_svcname":
 		return strings.SplitN(t.path.Name, ".", 1)[0], nil
 	case "scaler_name", "scaler_svcname":
-		return RegexpScalerPrefix.ReplaceAllString(t.path.Name, ""), nil
+		return regexpScalerPrefix.ReplaceAllString(t.path.Name, ""), nil
 	case "scaler_short_name", "scaler_short_svcname":
-		return strings.SplitN(RegexpScalerPrefix.ReplaceAllString(t.path.Name, ""), ".", 1)[0], nil
+		return strings.SplitN(regexpScalerPrefix.ReplaceAllString(t.path.Name, ""), ".", 1)[0], nil
 	case "namespace":
 		return t.path.Namespace, nil
 	case "kind":
