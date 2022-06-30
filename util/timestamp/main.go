@@ -51,7 +51,7 @@ func (t T) String() string {
 // IsZero reports whether t represents the Unix zero time instant,
 // January 1, 1970 UTC.
 func (t T) IsZero() bool {
-	return t.tm == zero
+	return t.tm.Equal(zero) || t.tm.Before(zero)
 }
 
 // MarshalJSON turns this type instance into a byte slice.
