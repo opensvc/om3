@@ -81,7 +81,7 @@ type (
 // to an object.
 func (t Status) GetObjectStatus(p path.T) object.Status {
 	ps := p.String()
-	data := object.NewObjectStatus()
+	data := object.NewStatus()
 	data.Path = p
 	data.Compat = t.Monitor.Compat
 	data.Object, _ = t.Monitor.Services[ps]

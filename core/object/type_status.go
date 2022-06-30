@@ -136,8 +136,8 @@ func (t Status) descString() string {
 	return strings.Join(l, " ")
 }
 
-// NewObjectStatus allocates and return a struct to host an objet full state dataset.
-func NewObjectStatus() *Status {
+// NewStatus allocates and return a struct to host an objet full state dataset.
+func NewStatus() *Status {
 	t := &Status{}
 	t.Instances = make(map[string]instance.States)
 	t.Parents = make(map[string]AggregatedStatus)
