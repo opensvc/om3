@@ -84,6 +84,12 @@ func defaultHumanRenderer(data interface{}) string {
 	switch v := data.(type) {
 	case renderer:
 		return v.Render()
+	case *time.Duration:
+		if v == nil {
+			// for example, ParseDuration() error on "eval --kw validity"
+			return "<nil>"
+		}
+		return v.String()
 	case fmt.Stringer:
 		return v.String()
 	case string:
