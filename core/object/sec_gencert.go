@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/fqdn"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -44,19 +42,6 @@ func (t *sec) GenCert(options OptsGenCert) error {
 		return err
 	}
 	return t.config.Commit()
-}
-
-func CASecPaths() []path.T {
-	ls := strings.Fields(rawconfig.ClusterSection().CASecPaths)
-	l := make([]path.T, 0)
-	for _, s := range ls {
-		p, err := path.Parse(s)
-		if err != nil {
-			continue
-		}
-		l = append(l, p)
-	}
-	return l
 }
 
 func (t *sec) genSelfSigned(priv *rsa.PrivateKey) error {
