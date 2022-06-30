@@ -5,6 +5,6 @@ package object
 //
 // This function behaves like a 'delete --unprovision'.
 //
-func (t core) Purge() error {
+func (t actor) Purge() error {
 	return t.Delete(OptsDelete{Unprovision: true})
 }
