@@ -49,7 +49,7 @@ func (t *CmdObjectRestart) run(selector *string, kind string) {
 		objectaction.WithAsyncTarget("restarted"),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewActorFromPath(p)
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}

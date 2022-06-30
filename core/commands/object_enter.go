@@ -41,7 +41,7 @@ func (t *CmdObjectEnter) run(selector *string, kind string) {
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewFromPath(p)
+			o, err := object.New(p)
 			if err != nil {
 				return nil, err
 			}

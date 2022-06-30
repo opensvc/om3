@@ -134,7 +134,7 @@ func (t *vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 		if node != "" && node != hostname.Hostname() {
 			continue
 		}
-		i, err := NewFromPath(p, WithVolatile(true))
+		i, err := New(p, WithVolatile(true))
 		if err != nil {
 			t.log.Error().Err(err).Msg("")
 			continue

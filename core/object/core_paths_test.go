@@ -85,7 +85,7 @@ func TestConfigFile(t *testing.T) {
 				"osvc_root_path": test.root,
 			})
 			p, _ := path.New(test.name, test.namespace, test.kind)
-			o, err := NewFromPath(p)
+			o, err := New(p)
 			require.Nil(t, err, "NewFromPath(p) mustn't return an error")
 			require.Equal(t, test.cf, o.(Configurer).ConfigFile())
 		})

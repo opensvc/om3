@@ -49,7 +49,7 @@ func (t *CmdKeystoreChange) run(selector *string, kind string) {
 			"value": t.Value,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			store, err := object.NewKeystoreFromPath(p)
+			store, err := object.NewKeystore(p)
 			if err != nil {
 				return nil, err
 			}

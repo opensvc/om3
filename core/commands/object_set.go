@@ -48,7 +48,7 @@ func (t *CmdObjectSet) run(selector *string, kind string) {
 			"kw": t.KeywordOps,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewConfigurerFromPath(p)
+			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}

@@ -57,7 +57,7 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("status"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewCoreFromPath(p)
+			o, err := object.NewCore(p)
 			if err != nil {
 				return nil, err
 			}

@@ -53,7 +53,7 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 		return err
 	}
 	for _, p := range paths {
-		obj, err := object.NewConfigurerFromPath(p)
+		obj, err := object.NewConfigurer(p)
 		if err != nil {
 			return err
 		}

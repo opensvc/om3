@@ -59,7 +59,7 @@ func envVars(envItem, ns, kd string) (result []string, err error) {
 func getKeysDecoder(name, ns, kd string) (decoder, error) {
 	if p, err := path.New(name, ns, kd); err != nil {
 		return nil, err
-	} else if o, err := object.NewFromPath(p); err != nil {
+	} else if o, err := object.New(p); err != nil {
 		return nil, err
 	} else if do, ok := o.(decoder); !ok {
 		return nil, fmt.Errorf("unable to get decoder ns:'%v', kind:'%v', name:'%v'", ns, kd, name)

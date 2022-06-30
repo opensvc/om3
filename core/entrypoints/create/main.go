@@ -313,7 +313,7 @@ func localFromData(pivot Pivot) error {
 }
 
 func localFromRaw(p path.T, c rawconfig.T) error {
-	o, err := object.NewFromPath(p)
+	o, err := object.New(p)
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func localFromRaw(p path.T, c rawconfig.T) error {
 }
 
 func LocalEmpty(p path.T) error {
-	o, err := object.NewFromPath(p)
+	o, err := object.New(p)
 	if err != nil {
 		return err
 	}

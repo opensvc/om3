@@ -46,7 +46,7 @@ func (t *CmdObjectFreeze) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("freeze"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewActorFromPath(p)
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}

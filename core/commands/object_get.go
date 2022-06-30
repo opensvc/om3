@@ -51,7 +51,7 @@ func (t *CmdObjectGet) run(selector *string, kind string) {
 			"eval":        t.Eval,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewFromPath(p)
+			o, err := object.New(p)
 			if err != nil {
 				return nil, err
 			}

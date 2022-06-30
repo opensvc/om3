@@ -367,7 +367,7 @@ func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 		return matching, err
 	}
 	for _, p := range paths {
-		o, err := NewConfigurerFromPath(p, WithVolatile(true))
+		o, err := NewConfigurer(p, WithVolatile(true))
 		if err != nil {
 			return nil, err
 		}
@@ -479,7 +479,7 @@ func (t *Selection) Objects(opts ...funcopt.O) ([]interface{}, error) {
 	}
 
 	for _, p := range paths {
-		obj, err := NewFromPath(p, opts...)
+		obj, err := New(p, opts...)
 		if err != nil {
 			return objs, err
 		}

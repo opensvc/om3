@@ -71,7 +71,7 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
 		return data
 	}
 	for _, p := range paths {
-		obj, err := object.NewFromPath(p)
+		obj, err := object.New(p)
 		if err != nil {
 			continue
 		}

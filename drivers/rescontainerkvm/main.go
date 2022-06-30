@@ -793,7 +793,7 @@ func (t T) hostname() string {
 }
 
 func (t *T) obj() (interface{}, error) {
-	return object.NewFromPath(t.Path, object.WithVolatile(true))
+	return object.New(t.Path, object.WithVolatile(true))
 }
 
 func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {

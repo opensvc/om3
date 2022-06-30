@@ -316,7 +316,7 @@ func (o *instCfg) configFileCheck() {
 }
 
 func (o *instCfg) setConfigure() error {
-	configure, err := object.NewConfigurerFromPath(o.path)
+	configure, err := object.NewConfigurer(o.path)
 	if err != nil {
 		o.log.Warn().Err(err).Msg("worker NewConfigurerFromPath failure")
 		o.cancel()

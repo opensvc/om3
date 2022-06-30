@@ -47,7 +47,7 @@ func (t *CmdKeystoreKeys) run(selector *string, kind string) {
 			"match": t.Match,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			store, err := object.NewKeystoreFromPath(p)
+			store, err := object.NewKeystore(p)
 			if err != nil {
 				return nil, err
 			}

@@ -47,7 +47,7 @@ func (t *CmdObjectSyncResync) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("sync resync"),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewActorFromPath(p)
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}

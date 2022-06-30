@@ -36,8 +36,8 @@ func WithVolatile(s bool) funcopt.O {
 	})
 }
 
-// NewFromPath allocates a new kinded object
-func NewFromPath(p path.T, opts ...funcopt.O) (interface{}, error) {
+// New allocates a new kinded object
+func New(p path.T, opts ...funcopt.O) (interface{}, error) {
 	switch p.Kind {
 	case kind.Svc:
 		return NewSvc(p, opts...)
@@ -56,36 +56,36 @@ func NewFromPath(p path.T, opts ...funcopt.O) (interface{}, error) {
 	}
 }
 
-// NewCoreFromPath returns a Baser interface from an object path
-func NewCoreFromPath(p path.T, opts ...funcopt.O) (Core, error) {
-	if o, err := NewFromPath(p, opts...); err != nil {
+// NewCore returns a Baser interface from an object path
+func NewCore(p path.T, opts ...funcopt.O) (Core, error) {
+	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
 		return o.(Core), nil
 	}
 }
 
-// NewConfigurerFromPath returns a Configurer interface from an object path
-func NewConfigurerFromPath(p path.T, opts ...funcopt.O) (Configurer, error) {
-	if o, err := NewFromPath(p, opts...); err != nil {
+// NewConfigurer returns a Configurer interface from an object path
+func NewConfigurer(p path.T, opts ...funcopt.O) (Configurer, error) {
+	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
 		return o.(Configurer), nil
 	}
 }
 
-// NewActorFromPath returns a Actor interface from an object path
-func NewActorFromPath(p path.T, opts ...funcopt.O) (Actor, error) {
-	if o, err := NewFromPath(p, opts...); err != nil {
+// NewActor returns a Actor interface from an object path
+func NewActor(p path.T, opts ...funcopt.O) (Actor, error) {
+	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
 		return o.(Actor), nil
 	}
 }
 
-// NewKeystoreFromPath returns a Keystore interface from an object path
-func NewKeystoreFromPath(p path.T, opts ...funcopt.O) (Keystore, error) {
-	if o, err := NewFromPath(p, opts...); err != nil {
+// NewKeystore returns a Keystore interface from an object path
+func NewKeystore(p path.T, opts ...funcopt.O) (Keystore, error) {
+	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
 		return o.(Keystore), nil

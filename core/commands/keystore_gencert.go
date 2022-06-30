@@ -47,7 +47,7 @@ func (t *CmdSecGenCert) run(selector *string, kind string) {
 		objectaction.WithRemoteAction("gencert"),
 		//objectaction.WithRemoteOptions(map[string]interface{}{}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.NewFromPath(p)
+			o, err := object.New(p)
 			if err != nil {
 				return nil, err
 			}

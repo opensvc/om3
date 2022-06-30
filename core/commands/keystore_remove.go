@@ -47,7 +47,7 @@ func (t *CmdKeystoreRemove) run(selector *string, kind string) {
 			"key": t.Key,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			store, err := object.NewKeystoreFromPath(p)
+			store, err := object.NewKeystore(p)
 			if err != nil {
 				return nil, err
 			}

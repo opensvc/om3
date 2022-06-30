@@ -340,7 +340,7 @@ func (t *T) configureVolume(v object.Vol, withUsage bool) error {
 	if err != nil {
 		return err
 	}
-	obj, err := object.NewFromPath(t.Path) // TODO: find a more efficient method
+	obj, err := object.New(t.Path) // TODO: find a more efficient method
 	if err != nil {
 		return err
 	}

@@ -166,7 +166,7 @@ func (t *T) statusData() {
 			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
-		keystore, err := object.NewKeystoreFromPath(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
@@ -220,7 +220,7 @@ func (t T) SendSignals() error {
 	type signaler interface {
 		SignalResource(string, syscall.Signal) error
 	}
-	i, err := object.NewFromPath(t.Path)
+	i, err := object.New(t.Path)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
-		keystore, err := object.NewKeystoreFromPath(md.FromStore, object.WithVolatile(true))
+		keystore, err := object.NewKeystore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
 			t.Log().Warn().Msgf("store %s init error: %s", md.FromStore, err)
 		}

@@ -208,7 +208,7 @@ func (t *T) SetUUID(uuid string) error {
 	t.UUID = uuid
 
 	// set in the object config file
-	obj, err := object.NewConfigurerFromPath(t.Path)
+	obj, err := object.NewConfigurer(t.Path)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func (t *T) SetUUID(uuid string) error {
 
 func (t *T) UnsetUUID() error {
 	// unset in the object config file
-	obj, err := object.NewConfigurerFromPath(t.Path)
+	obj, err := object.NewConfigurer(t.Path)
 	if err != nil {
 		return err
 	}

@@ -45,7 +45,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 		log.Error().Err(err).Msgf("update file time %s", tmpFilename)
 		return
 	}
-	configure, err := object.NewConfigurerFromPath(p, object.WithConfigFile(f.Name()), object.WithVolatile(true))
+	configure, err := object.NewConfigurer(p, object.WithConfigFile(f.Name()), object.WithVolatile(true))
 	if err != nil {
 		log.Error().Err(err).Msgf("configure error for %s", p)
 		return

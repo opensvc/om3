@@ -52,7 +52,7 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 		return err
 	}
 	for _, p := range paths {
-		obj, err := object.NewFromPath(p)
+		obj, err := object.New(p)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "skip %s: %s\n", p, err)
 			continue

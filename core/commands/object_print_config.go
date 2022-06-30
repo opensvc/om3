@@ -77,7 +77,7 @@ func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (rawconfig.T, e
 }
 
 func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
-	obj, err := object.NewConfigurerFromPath(p)
+	obj, err := object.NewConfigurer(p)
 	if err != nil {
 		return rawconfig.T{}, err
 	}

@@ -164,7 +164,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s parse path", p)
 		}
-		obj, err := NewCoreFromPath(p, WithVolatile(true))
+		obj, err := NewCore(p, WithVolatile(true))
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s init", p)
 		}
@@ -184,7 +184,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s parse path", p)
 		}
-		obj, err := NewCoreFromPath(p, WithVolatile(true))
+		obj, err := NewCore(p, WithVolatile(true))
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s init", p)
 		}

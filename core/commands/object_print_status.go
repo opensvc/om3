@@ -87,7 +87,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 	}
 	var errs error
 	for _, p := range paths {
-		obj, err := object.NewCoreFromPath(p)
+		obj, err := object.NewCore(p)
 		if err != nil {
 			errs = xerrors.Append(errs, err)
 			continue
