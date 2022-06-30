@@ -13,11 +13,11 @@ import (
 )
 
 // PrintSchedule display the object scheduling table
-func (t *core) PrintSchedule() schedule.Table {
+func (t *actor) PrintSchedule() schedule.Table {
 	return t.Schedules()
 }
 
-func (t *core) lastFilepath(action string, rid string, base string) string {
+func (t *actor) lastFilepath(action string, rid string, base string) string {
 	base = "last_" + base
 	if rid != "" {
 		base = base + "_" + rid
@@ -25,11 +25,11 @@ func (t *core) lastFilepath(action string, rid string, base string) string {
 	return filepath.Join(VarDir(t.path), "scheduler", base)
 }
 
-func (t *core) lastSuccessFilepath(action string, rid string, base string) string {
+func (t *actor) lastSuccessFilepath(action string, rid string, base string) string {
 	return filepath.Join(t.lastFilepath(action, rid, base) + ".success")
 }
 
-func (t *core) loadLast(action string, rid string, base string) time.Time {
+func (t *actor) loadLast(action string, rid string, base string) time.Time {
 	fpath := t.lastFilepath(action, rid, base)
 	b, err := os.ReadFile(fpath)
 	if err != nil {
@@ -46,7 +46,7 @@ func (t *core) loadLast(action string, rid string, base string) time.Time {
 	return time.Unix(0, 0)
 }
 
-func (t *core) newScheduleEntry(action string, keyStr string, base string) schedule.Entry {
+func (t *actor) newScheduleEntry(action string, keyStr string, base string) schedule.Entry {
 	k := key.Parse(keyStr)
 	def, err := t.config.GetStringStrict(k)
 	if err != nil {
@@ -62,7 +62,7 @@ func (t *core) newScheduleEntry(action string, keyStr string, base string) sched
 	}
 }
 
-func (t *core) Schedules() schedule.Table {
+func (t *actor) Schedules() schedule.Table {
 	table := schedule.NewTable(
 		t.newScheduleEntry("status", "status_schedule", "status"),
 		t.newScheduleEntry("compliance_auto", "comp_schedule", "comp_check"),
