@@ -56,8 +56,8 @@ func NewFromPath(p path.T, opts ...funcopt.O) (interface{}, error) {
 	}
 }
 
-// NewBaserFromPath returns a Baser interface from an object path
-func NewBaserFromPath(p path.T, opts ...funcopt.O) (Core, error) {
+// NewCoreFromPath returns a Baser interface from an object path
+func NewCoreFromPath(p path.T, opts ...funcopt.O) (Core, error) {
 	if o, err := NewFromPath(p, opts...); err != nil {
 		return nil, err
 	} else {

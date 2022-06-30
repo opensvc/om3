@@ -276,7 +276,7 @@ func (t keystore) postInstall(k string) error {
 		return err
 	}
 	for _, p := range paths {
-		o, err := NewBaserFromPath(p, WithVolatile(true))
+		o, err := NewCoreFromPath(p, WithVolatile(true))
 		if err != nil {
 			return err
 		}

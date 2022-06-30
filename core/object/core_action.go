@@ -164,11 +164,11 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s parse path", p)
 		}
-		baser, err := NewBaserFromPath(p, WithVolatile(true))
+		obj, err := NewCoreFromPath(p, WithVolatile(true))
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s init", p)
 		}
-		instanceStatus, err := baser.Status(OptsStatus{})
+		instanceStatus, err := obj.Status(OptsStatus{})
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s status", p)
 		}
@@ -184,11 +184,11 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s parse path", p)
 		}
-		baser, err := NewBaserFromPath(p, WithVolatile(true))
+		obj, err := NewCoreFromPath(p, WithVolatile(true))
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s init", p)
 		}
-		instanceStatus, err := baser.Status(OptsStatus{})
+		instanceStatus, err := obj.Status(OptsStatus{})
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s status", p)
 		}
