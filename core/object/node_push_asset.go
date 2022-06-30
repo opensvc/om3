@@ -74,7 +74,11 @@ type (
 		Targets  []san.Path             `json:"targets"`
 	}
 
-	Prober interface {
+	// prober is responsible for a bunch of asset properties, and is
+	// able to report them one by one.
+	// Most prober use a command output, syscall, file content cache
+	// where the properties can be found (ex: dmidecode)
+	prober interface {
 		Get(string) (interface{}, error)
 	}
 )
@@ -99,7 +103,7 @@ func (t AssetData) AssetValues() []AssetValue {
 	return l
 }
 
-func (t Node) assetValueFromProbe(kw string, title string, probe Prober, dflt interface{}) (data AssetValue) {
+func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data AssetValue) {
 	data.Title = title
 	k := key.Parse(kw)
 	if t.MergedConfig().HasKey(k) {
