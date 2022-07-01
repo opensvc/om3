@@ -25,7 +25,7 @@ type (
 
 	// Keystore is the base interface of sec, cfg and usr objects
 	Keystore interface {
-		Core
+		corer
 		HasKey(name string) bool
 		Add(OptsAdd) error
 		AddKey(name string, b []byte) error

@@ -139,7 +139,7 @@ func (t *vol) HoldersExcept(ctx context.Context, p path.T) path.L {
 			t.log.Error().Err(err).Msg("")
 			continue
 		}
-		o, ok := i.(ResourceLister)
+		o, ok := i.(resourceLister)
 		if !ok {
 			continue
 		}

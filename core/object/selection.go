@@ -34,9 +34,6 @@ type (
 		installedSet       *set.Set
 		server             string
 	}
-
-	// SelectionDoFunc describes a function to execute on the selected objects.
-	SelectionDoFunc func(path.T) (interface{}, error)
 )
 
 const (

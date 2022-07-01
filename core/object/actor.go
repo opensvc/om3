@@ -30,25 +30,25 @@ type (
 		actionResourceDeps *actionresdeps.Store
 	}
 
-	// Freezer is implemented by object kinds supporting freeze and thaw.
-	Freezer interface {
+	// freezer is implemented by object kinds supporting freeze and thaw.
+	freezer interface {
 		Freeze() error
 		Unfreeze() error
 		Thaw() error
 		Frozen() timestamp.T
 	}
 
-	// ResourceLister provides a method to list and filter resources
-	ResourceLister interface {
+	// resourceLister provides a method to list and filter resources
+	resourceLister interface {
 		Resources() resource.Drivers
 		IsDesc() bool
 	}
 
 	// Actor is implemented by object kinds supporting start, stop, ...
 	Actor interface {
-		Core
-		ResourceLister
-		Freezer
+		corer
+		resourceLister
+		freezer
 		PG() *pg.Config
 		IsVolatile() bool
 		Status(OptsStatus) (instance.Status, error)
@@ -187,7 +187,7 @@ func (t actor) ResourceByID(rid string) resource.Driver {
 }
 
 func listResources(i interface{}) resource.Drivers {
-	if lister, ok := i.(ResourceLister); ok {
+	if lister, ok := i.(resourceLister); ok {
 		return lister.Resources()
 	}
 	return resource.Drivers{}

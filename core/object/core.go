@@ -46,8 +46,8 @@ type (
 		postCommit func() error
 	}
 
-	// Core is implemented by all object kinds.
-	Core interface {
+	// corer is implemented by all object kinds.
+	corer interface {
 		Configurer
 		Path() path.T
 		FQDN() string

@@ -142,7 +142,7 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 	q <- false
 }
 
-func (t *actor) abortStart(ctx context.Context, l ResourceLister) (err error) {
+func (t *actor) abortStart(ctx context.Context, l resourceLister) (err error) {
 	if actioncontext.Props(ctx).Name != "start" {
 		return nil
 	}
@@ -204,7 +204,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t *actor) abortStartDrivers(ctx context.Context, l ResourceLister) (err error) {
+func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err error) {
 	t.log.Log().Msg("abort tests")
 	t.log.Debug().Msg("call resource drivers abort start")
 	sb := statusbus.FromContext(ctx)
