@@ -89,7 +89,7 @@ func defaultHumanRenderer(data interface{}) string {
 			// for example, ParseDuration() error on "eval --kw validity"
 			return ""
 		}
-		return v.String()
+		return v.String() + "\n"
 	case fmt.Stringer:
 		return v.String()
 	case string:
