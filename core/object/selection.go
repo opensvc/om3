@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"strings"
-	"time"
 
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
@@ -21,16 +19,10 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
-	// renderer is implemented by data type stored in ActionResults.Data.
-	renderer interface {
-		Render() string
-	}
-
 	// Selection is the selection structure
 	Selection struct {
 		SelectorExpression string
@@ -43,29 +35,8 @@ type (
 		server             string
 	}
 
-	// BaseAction describes common options of actions to execute on the selected objects or node.
-	BaseAction struct {
-		Lock        bool
-		LockTimeout time.Duration
-		LockGroup   string
-		Action      string
-	}
-
-	// Action describes an action to execute on the selected objects.
-	Action struct {
-		BaseAction
-		Run func(path.T) (interface{}, error)
-	}
-
-	// ActionResult is a predictible type of actions return value, for reflect.
-	ActionResult struct {
-		Nodename      string        `json:"nodename"`
-		Path          path.T        `json:"path"`
-		Data          interface{}   `json:"data"`
-		Error         error         `json:"error,omitempty"`
-		Panic         interface{}   `json:"panic,omitempty"`
-		HumanRenderer func() string `json:"-"`
-	}
+	// SelectionDoFunc describes a function to execute on the selected objects.
+	SelectionDoFunc func(path.T) (interface{}, error)
 )
 
 const (
@@ -76,36 +47,6 @@ var (
 	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
 )
-
-func defaultHumanRenderer(data interface{}) string {
-	if data == nil {
-		return ""
-	}
-	switch v := data.(type) {
-	case renderer:
-		return v.Render()
-	case *time.Duration:
-		if v == nil {
-			// for example, ParseDuration() error on "eval --kw validity"
-			return ""
-		}
-		return v.String() + "\n"
-	case fmt.Stringer:
-		return v.String()
-	case string:
-		return v + "\n"
-	case []string:
-		s := ""
-		for _, e := range v {
-			s += e + "\n"
-		}
-		return s
-	case []byte:
-		return string(v)
-	default:
-		return ""
-	}
-}
 
 // NewSelection allocates a new object selection
 func NewSelection(selector string, opts ...funcopt.O) *Selection {
@@ -424,48 +365,6 @@ func (t *Selection) daemonExpand() error {
 		return err
 	}
 	return json.Unmarshal(b, &t.paths)
-}
-
-// Do executes in parallel the action on all selected objects supporting
-// the action.
-func (t *Selection) Do(action Action) ([]ActionResult, error) {
-	results := make([]ActionResult, 0)
-
-	paths, err := t.Expand()
-	if err != nil {
-		return results, err
-	}
-
-	q := make(chan ActionResult, len(t.paths))
-	started := 0
-
-	for _, p := range paths {
-		go func(p path.T) {
-			result := ActionResult{
-				Path:     p,
-				Nodename: hostname.Hostname(),
-			}
-			defer func() {
-				if r := recover(); r != nil {
-					result.Panic = r
-					fmt.Println(string(debug.Stack()))
-					q <- result
-				}
-			}()
-			data, err := action.Run(p)
-			result.Data = data
-			result.Error = errors.Wrapf(err, "%s", p)
-			result.HumanRenderer = func() string { return defaultHumanRenderer(data) }
-			q <- result
-		}(p)
-		started++
-	}
-
-	for i := 0; i < started; i++ {
-		r := <-q
-		results = append(results, r)
-	}
-	return results, nil
 }
 
 // Objects returns the selected list of objects. This function relays its

@@ -3,10 +3,12 @@ package action
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/path"
 )
 
 type (
@@ -108,6 +110,21 @@ type (
 		DoAsync()
 		Options() T
 	}
+
+	// Result is a predictible type of actions return value, for reflect.
+	Result struct {
+		Nodename      string        `json:"nodename"`
+		Path          path.T        `json:"path"`
+		Data          interface{}   `json:"data"`
+		Error         error         `json:"error,omitempty"`
+		Panic         interface{}   `json:"panic,omitempty"`
+		HumanRenderer func() string `json:"-"`
+	}
+
+	// renderer is implemented by data type stored in ActionResults.Data.
+	renderer interface {
+		Render() string
+	}
 )
 
 // Do is the switch method between local, remote or async mode.
@@ -141,4 +158,34 @@ func Do(t Actioner) error {
 		m.DoWatch(getter, os.Stdout)
 	}
 	return err
+}
+
+func DefaultHumanRenderer(data interface{}) string {
+	if data == nil {
+		return ""
+	}
+	switch v := data.(type) {
+	case renderer:
+		return v.Render()
+	case *time.Duration:
+		if v == nil {
+			// for example, ParseDuration() error on "eval --kw validity"
+			return ""
+		}
+		return v.String() + "\n"
+	case fmt.Stringer:
+		return v.String()
+	case string:
+		return v + "\n"
+	case []string:
+		s := ""
+		for _, e := range v {
+			s += e + "\n"
+		}
+		return s
+	case []byte:
+		return string(v)
+	default:
+		return ""
+	}
 }

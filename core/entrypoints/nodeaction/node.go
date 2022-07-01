@@ -11,10 +11,10 @@ import (
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/action"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -22,7 +22,7 @@ type (
 	// method implementation differ.
 	T struct {
 		action.T
-		Node object.NodeAction
+		Func func() (interface{}, error)
 	}
 )
 
@@ -161,7 +161,7 @@ func WithServer(s string) funcopt.O {
 func WithLocalRun(f func() (interface{}, error)) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.Node.Run = f
+		t.Func = f
 		return nil
 	})
 }
@@ -172,7 +172,7 @@ func (t T) Options() action.T {
 }
 
 func (t T) DoLocal() error {
-	r := object.NewNode().Do(t.Node)
+	r := nodeDo(t.Func)
 	human := func() string {
 		if r.Error != nil {
 			log.Error().Msgf("%s", r.Error)
@@ -200,7 +200,7 @@ func (t T) DoLocal() error {
 	output.Renderer{
 		Format:        t.Format,
 		Color:         t.Color,
-		Data:          []object.ActionResult{r},
+		Data:          []action.Result{r},
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
@@ -265,4 +265,18 @@ func (t T) DoRemote() {
 
 func (t T) Do() error {
 	return action.Do(t)
+}
+
+func nodeDo(fn func() (interface{}, error)) action.Result {
+	data, err := fn()
+	result := action.Result{
+		Nodename:      hostname.Hostname(),
+		HumanRenderer: func() string { return action.DefaultHumanRenderer(data) },
+	}
+	result.Data = data
+	result.Error = err
+	if result.Error != nil {
+		log.Error().Err(result.Error).Msg("do")
+	}
+	return result
 }

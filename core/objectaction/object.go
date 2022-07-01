@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime/debug"
 
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/xerrors"
 	"opensvc.com/opensvc/util/xsession"
@@ -28,7 +30,7 @@ type (
 	// method implementation differ.
 	T struct {
 		action.T
-		Object object.Action
+		Func func(path.T) (interface{}, error)
 	}
 
 	// ZerologHook implements the zerolog.Hook interface, ie a Run func executed on Event
@@ -231,7 +233,7 @@ func WithServer(s string) funcopt.O {
 func WithLocalRun(f func(path.T) (interface{}, error)) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.Object.Run = f
+		t.Func = f
 		return nil
 	})
 }
@@ -268,7 +270,7 @@ func (t T) DoLocal() error {
 		fmt.Println(xsession.ID)
 		fmt.Printf("%s", spinner)
 	}
-	rs, err := sel.Do(t.Object)
+	rs, err := selectionDo(sel, t.Func)
 	if spinner != nil {
 		spinner.Disable()
 		spinner.Erase()
@@ -424,4 +426,46 @@ func (t T) Do() {
 		os.Exit(1)
 	}
 	os.Exit(0)
+}
+
+// Do executes in parallel the action on all selected objects supporting
+// the action.
+func selectionDo(selection *object.Selection, fn func(path.T) (interface{}, error)) ([]action.Result, error) {
+	results := make([]action.Result, 0)
+
+	paths, err := selection.Expand()
+	if err != nil {
+		return results, err
+	}
+
+	q := make(chan action.Result, len(paths))
+	started := 0
+
+	for _, p := range paths {
+		go func(p path.T) {
+			result := action.Result{
+				Path:     p,
+				Nodename: hostname.Hostname(),
+			}
+			defer func() {
+				if r := recover(); r != nil {
+					result.Panic = r
+					fmt.Println(string(debug.Stack()))
+					q <- result
+				}
+			}()
+			data, err := fn(p)
+			result.Data = data
+			result.Error = errors.Wrapf(err, "%s", p)
+			result.HumanRenderer = func() string { return action.DefaultHumanRenderer(data) }
+			q <- result
+		}(p)
+		started++
+	}
+
+	for i := 0; i < started; i++ {
+		r := <-q
+		results = append(results, r)
+	}
+	return results, nil
 }
