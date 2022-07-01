@@ -56,7 +56,7 @@ func New(p path.T, opts ...funcopt.O) (interface{}, error) {
 	}
 }
 
-// NewCore returns a Baser interface from an object path
+// NewCore returns a corer interface from an object path
 func NewCore(p path.T, opts ...funcopt.O) (corer, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
