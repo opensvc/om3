@@ -3,7 +3,7 @@ package object
 import "opensvc.com/opensvc/util/compliance"
 
 type (
-	Compliancer interface {
+	compliancer interface {
 		ComplianceAttachModuleset(options OptsObjectComplianceAttachModuleset) error
 		ComplianceAttachRuleset(options OptsObjectComplianceAttachRuleset) error
 		ComplianceAuto(options OptsObjectComplianceAuto) (*compliance.Run, error)

@@ -19,7 +19,7 @@ type (
 	//
 	Svc interface {
 		Actor
-		Compliancer
+		compliancer
 	}
 )
 
