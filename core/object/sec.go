@@ -42,7 +42,7 @@ func NewSec(p path.T, opts ...funcopt.O) (*sec, error) {
 	s := &sec{}
 	s.customEncode = secEncode
 	s.customDecode = secDecode
-	if err := s.core.init(s, p, opts...); err != nil {
+	if err := s.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)

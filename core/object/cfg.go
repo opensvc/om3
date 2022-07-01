@@ -39,7 +39,7 @@ func NewCfg(p path.T, opts ...funcopt.O) (*cfg, error) {
 	s := &cfg{}
 	s.customEncode = cfgEncode
 	s.customDecode = cfgDecode
-	if err := s.core.init(s, p, opts...); err != nil {
+	if err := s.init(s, p, opts...); err != nil {
 		return s, err
 	}
 	s.Config().RegisterPostCommit(s.postCommit)

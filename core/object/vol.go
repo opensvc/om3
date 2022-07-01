@@ -38,7 +38,7 @@ type (
 // NewVol allocates a vol kind object.
 func NewVol(p path.T, opts ...funcopt.O) (*vol, error) {
 	s := &vol{}
-	err := s.core.init(s, p, opts...)
+	err := s.init(s, p, opts...)
 	return s, err
 }
 

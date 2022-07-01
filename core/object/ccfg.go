@@ -38,7 +38,7 @@ var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeyw
 // NewCcfg allocates a ccfg kind object.
 func NewCcfg(p path.T, opts ...funcopt.O) (*ccfg, error) {
 	s := &ccfg{}
-	err := s.core.init(s, p, opts...)
+	err := s.init(s, p, opts...)
 	return s, err
 }
 

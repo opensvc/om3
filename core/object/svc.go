@@ -26,7 +26,7 @@ type (
 // NewSvc allocates a svc kind object.
 func NewSvc(p path.T, opts ...funcopt.O) (*svc, error) {
 	s := &svc{}
-	err := s.core.init(s, p, opts...)
+	err := s.init(s, p, opts...)
 	return s, err
 }
 
