@@ -178,7 +178,7 @@ func (t TDuration) convert(s string) (*time.Duration, error) {
 	if _, err := strconv.Atoi(s); err == nil {
 		s = s + "s"
 	}
-	duration, err := time.ParseDuration(s)
+	duration, err := ParseDuration(s)
 	if err != nil {
 		return nil, err
 	}
