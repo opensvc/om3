@@ -4,76 +4,14 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/ssrathi/go-attr"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/version"
 	"opensvc.com/opensvc/util/asset"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/render/tree"
 	"opensvc.com/opensvc/util/san"
 )
 
 type (
-	AssetValue struct {
-		Name   string      `json:"-"`
-		Source string      `json:"source"`
-		Title  string      `json:"title"`
-		Value  interface{} `json:"value"`
-		Error  string      `json:"error,omitempty"`
-	}
-
-	AssetData struct {
-		Nodename     AssetValue `json:"nodename"`
-		FQDN         AssetValue `json:"fqdn"`
-		Version      AssetValue `json:"version"`
-		OSName       AssetValue `json:"os_name"`
-		OSVendor     AssetValue `json:"os_vendor"`
-		OSRelease    AssetValue `json:"os_release"`
-		OSKernel     AssetValue `json:"os_kernel"`
-		OSArch       AssetValue `json:"os_arch"`
-		MemBytes     AssetValue `json:"mem_bytes"`
-		MemSlots     AssetValue `json:"mem_slots"`
-		MemBanks     AssetValue `json:"mem_banks"`
-		CPUFreq      AssetValue `json:"cpu_freq"`
-		CPUThreads   AssetValue `json:"cpu_threads"`
-		CPUCores     AssetValue `json:"cpu_cores"`
-		CPUDies      AssetValue `json:"cpu_dies"`
-		CPUModel     AssetValue `json:"cpu_model"`
-		Serial       AssetValue `json:"serial"`
-		Model        AssetValue `json:"model"`
-		Manufacturer AssetValue `json:"manufacturer"`
-		BIOSVersion  AssetValue `json:"bios_version"`
-		SPVersion    AssetValue `json:"sp_version"`
-		NodeEnv      AssetValue `json:"node_env"`
-		AssetEnv     AssetValue `json:"asset_env"`
-		ListenerPort AssetValue `json:"listener_port"`
-		ClusterID    AssetValue `json:"cluster_id"`
-		Enclosure    AssetValue `json:"enclosure"`
-		TZ           AssetValue `json:"tz"`
-		ConnectTo    AssetValue `json:"connect_to"`
-		SecZone      AssetValue `json:"sec_zone"`
-		LastBoot     AssetValue `json:"last_boot"`
-		BootID       AssetValue `json:"boot_id"`
-		LocCountry   AssetValue `json:"loc_country"`
-		LocCity      AssetValue `json:"loc_city"`
-		LocBuilding  AssetValue `json:"loc_building"`
-		LocRoom      AssetValue `json:"loc_room"`
-		LocRack      AssetValue `json:"loc_rack"`
-		LocAddr      AssetValue `json:"loc_addr"`
-		LocFloor     AssetValue `json:"loc_floor"`
-		LocZIP       AssetValue `json:"loc_zip"`
-		TeamInteg    AssetValue `json:"team_integ"`
-		TeamSupport  AssetValue `json:"team_support"`
-
-		GIDS     []asset.Group          `json:"gids"`
-		UIDS     []asset.User           `json:"uids"`
-		Hardware []asset.Device         `json:"hardware"`
-		LAN      map[string][]asset.LAN `json:"lan"`
-		HBA      []san.HostBusAdapter   `json:"hba"`
-		Targets  []san.Path             `json:"targets"`
-	}
-
 	// prober is responsible for a bunch of asset properties, and is
 	// able to report them one by one.
 	// Most prober use a command output, syscall, file content cache
@@ -83,31 +21,11 @@ type (
 	}
 )
 
-const (
-	assetSrcProbe   = "probe"
-	assetSrcDefault = "default"
-	assetSrcConfig  = "config"
-)
-
-func (t AssetData) AssetValues() []AssetValue {
-	l := make([]AssetValue, 0)
-	m, _ := attr.Values(t)
-	for k, v := range m {
-		av, ok := v.(AssetValue)
-		if !ok {
-			continue
-		}
-		av.Name, _ = attr.GetTag(t, k, "json")
-		l = append(l, av)
-	}
-	return l
-}
-
-func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data AssetValue) {
+func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt interface{}) (data asset.Value) {
 	data.Title = title
 	k := key.Parse(kw)
 	if t.MergedConfig().HasKey(k) {
-		data.Source = assetSrcConfig
+		data.Source = asset.SrcConfig
 		s, err := t.MergedConfig().Eval(k)
 		if err == nil {
 			data.Value = s
@@ -117,7 +35,7 @@ func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt in
 	if probe != nil {
 		s, err := probe.Get(k.Option)
 		if err == nil {
-			data.Source = assetSrcProbe
+			data.Source = asset.SrcProbe
 			data.Value = s
 			return
 		}
@@ -125,36 +43,31 @@ func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt in
 			data.Error = fmt.Sprint(err)
 		}
 	}
-	data.Source = assetSrcDefault
+	data.Source = asset.SrcDefault
 	data.Value = dflt
 	return
 }
 
-func (t Node) assetAgentVersion() (data AssetValue) {
+func (t Node) assetAgentVersion() (data asset.Value) {
 	data.Title = "agent version"
-	data.Source = assetSrcProbe
+	data.Source = asset.SrcProbe
 	data.Value = version.Version
 	return
 }
 
-func (t Node) assetNodename() (data AssetValue) {
+func (t Node) assetNodename() (data asset.Value) {
 	data.Title = "nodename"
-	data.Source = assetSrcProbe
+	data.Source = asset.SrcProbe
 	data.Value = hostname.Hostname()
 	return
 }
 
-func (t Node) assetValueClusterID() (data AssetValue) {
+func (t Node) assetValueClusterID() (data asset.Value) {
 	k := key.T{Section: "cluster", Option: "id"}
 	data.Title = "cluster id"
-	data.Source = assetSrcProbe
+	data.Source = asset.SrcProbe
 	data.Value, _ = t.MergedConfig().Eval(k)
 	return
-}
-
-func NewAssetData() AssetData {
-	t := AssetData{}
-	return t
 }
 
 //
@@ -164,7 +77,7 @@ func NewAssetData() AssetData {
 // * probes
 // * default (code)
 //
-func (t Node) PushAsset() (AssetData, error) {
+func (t Node) PushAsset() (asset.Data, error) {
 	data, err := t.getAsset()
 	if err != nil {
 		return data, err
@@ -175,8 +88,8 @@ func (t Node) PushAsset() (AssetData, error) {
 	return data, nil
 }
 
-func (t Node) getAsset() (AssetData, error) {
-	data := NewAssetData()
+func (t Node) getAsset() (asset.Data, error) {
+	data := asset.NewData()
 
 	// from core
 	data.ClusterID = t.assetValueClusterID()
@@ -235,120 +148,7 @@ func (t Node) getAsset() (AssetData, error) {
 	return data, nil
 }
 
-func (t AssetData) Render() string {
-	tr := tree.New()
-	tr.AddColumn().AddText(hostname.Hostname()).SetColor(rawconfig.Color.Bold)
-	tr.AddColumn().AddText("Value").SetColor(rawconfig.Color.Bold)
-	tr.AddColumn().AddText("Source").SetColor(rawconfig.Color.Bold)
-
-	node := func(v AssetValue) *tree.Node {
-		val := ""
-		if v.Value != nil {
-			val = fmt.Sprint(v.Value)
-		}
-		n := tr.AddNode()
-		n.AddColumn().AddText(v.Title).SetColor(rawconfig.Color.Primary)
-		n.AddColumn().AddText(val)
-		n.AddColumn().AddText(v.Source)
-		return n
-	}
-
-	_ = node(t.Nodename)
-	_ = node(t.FQDN)
-	_ = node(t.Version)
-	_ = node(t.OSName)
-	_ = node(t.OSVendor)
-	_ = node(t.OSRelease)
-	_ = node(t.OSKernel)
-	_ = node(t.OSArch)
-	_ = node(t.MemBytes)
-	_ = node(t.MemSlots)
-	_ = node(t.MemBanks)
-	_ = node(t.CPUFreq)
-	_ = node(t.CPUThreads)
-	_ = node(t.CPUCores)
-	_ = node(t.CPUDies)
-	_ = node(t.CPUModel)
-	_ = node(t.Serial)
-	_ = node(t.Model)
-	_ = node(t.Manufacturer)
-	_ = node(t.BIOSVersion)
-	_ = node(t.SPVersion)
-	_ = node(t.NodeEnv)
-	_ = node(t.AssetEnv)
-	_ = node(t.Enclosure)
-	_ = node(t.ListenerPort)
-	_ = node(t.ClusterID)
-	_ = node(t.TZ)
-	_ = node(t.ConnectTo)
-	_ = node(t.SecZone)
-	_ = node(t.LastBoot)
-	_ = node(t.BootID)
-	_ = node(t.LocCountry)
-	_ = node(t.LocCity)
-	_ = node(t.LocBuilding)
-	_ = node(t.LocRoom)
-	_ = node(t.LocRack)
-	_ = node(t.LocAddr)
-	_ = node(t.LocFloor)
-	_ = node(t.LocZIP)
-	_ = node(t.TeamInteg)
-	_ = node(t.TeamSupport)
-
-	n := tr.AddNode()
-	n.AddColumn().AddText("hardware").SetColor(rawconfig.Color.Primary)
-	n.AddColumn().AddText(fmt.Sprint(len(t.Hardware)))
-	n.AddColumn().AddText(assetSrcProbe)
-	for _, e := range t.Hardware {
-		l := n.AddNode()
-		l.AddColumn().AddText(e.Type + " " + e.Path)
-		l.AddColumn().AddText(e.Class + ": " + e.Description)
-	}
-
-	n = tr.AddNode()
-	n.AddColumn().AddText("uids").SetColor(rawconfig.Color.Primary)
-	n.AddColumn().AddText(fmt.Sprint(len(t.UIDS)))
-	n.AddColumn().AddText(assetSrcProbe)
-
-	n = tr.AddNode()
-	n.AddColumn().AddText("gids").SetColor(rawconfig.Color.Primary)
-	n.AddColumn().AddText(fmt.Sprint(len(t.GIDS)))
-	n.AddColumn().AddText(assetSrcProbe)
-
-	nbAddr := 0
-	for _, v := range t.LAN {
-		nbAddr = nbAddr + len(v)
-	}
-	n = tr.AddNode()
-	n.AddColumn().AddText("ip addresses").SetColor(rawconfig.Color.Primary)
-	n.AddColumn().AddText(fmt.Sprint(nbAddr))
-	n.AddColumn().AddText(assetSrcProbe)
-	for _, v := range t.LAN {
-		for _, e := range v {
-			s := e.Address
-			if e.Mask != "" {
-				s = s + "/" + e.Mask
-			}
-			l := n.AddNode()
-			l.AddColumn().AddText(s)
-			l.AddColumn().AddText(e.Intf)
-		}
-	}
-
-	n = tr.AddNode()
-	n.AddColumn().AddText("host bus adapters").SetColor(rawconfig.Color.Primary)
-	n.AddColumn().AddText(fmt.Sprint(len(t.HBA)))
-	n.AddColumn().AddText(assetSrcProbe)
-	for _, v := range t.HBA {
-		l := n.AddNode()
-		l.AddColumn().AddText(v.ID)
-		l.AddColumn().AddText(v.Type)
-	}
-
-	return tr.Render()
-}
-
-func (t Node) pushAsset(data AssetData) error {
+func (t Node) pushAsset(data asset.Data) error {
 	//hn := hostname.Hostname()
 	hba := func() []interface{} {
 		vars := []string{
@@ -436,7 +236,7 @@ func (t Node) pushAsset(data AssetData) error {
 	props := func() []interface{} {
 		vars := make([]string, 0)
 		vals := make([]string, 0)
-		for _, av := range data.AssetValues() {
+		for _, av := range data.Values() {
 			if av.Name == "boot_id" {
 				continue
 			}
