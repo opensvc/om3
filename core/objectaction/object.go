@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/actionrouter"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
@@ -29,7 +29,7 @@ type (
 	// T has the same attributes as Action, but the interface
 	// method implementation differ.
 	T struct {
-		action.T
+		actionrouter.T
 		Func func(path.T) (interface{}, error)
 	}
 
@@ -239,7 +239,7 @@ func WithLocalRun(f func(path.T) (interface{}, error)) funcopt.O {
 }
 
 // Options returns the base Action struct
-func (t T) Options() action.T {
+func (t T) Options() actionrouter.T {
 	return t.T
 }
 
@@ -418,7 +418,7 @@ func (t T) DoRemote() {
 }
 
 func (t T) Do() {
-	err := action.Do(t)
+	err := actionrouter.Do(t)
 	if err != nil {
 		if fmt.Sprint(err) != "" {
 			fmt.Fprintln(os.Stderr, err)
@@ -430,20 +430,20 @@ func (t T) Do() {
 
 // Do executes in parallel the action on all selected objects supporting
 // the action.
-func selectionDo(selection *object.Selection, fn func(path.T) (interface{}, error)) ([]action.Result, error) {
-	results := make([]action.Result, 0)
+func selectionDo(selection *object.Selection, fn func(path.T) (interface{}, error)) ([]actionrouter.Result, error) {
+	results := make([]actionrouter.Result, 0)
 
 	paths, err := selection.Expand()
 	if err != nil {
 		return results, err
 	}
 
-	q := make(chan action.Result, len(paths))
+	q := make(chan actionrouter.Result, len(paths))
 	started := 0
 
 	for _, p := range paths {
 		go func(p path.T) {
-			result := action.Result{
+			result := actionrouter.Result{
 				Path:     p,
 				Nodename: hostname.Hostname(),
 			}
@@ -457,7 +457,7 @@ func selectionDo(selection *object.Selection, fn func(path.T) (interface{}, erro
 			data, err := fn(p)
 			result.Data = data
 			result.Error = errors.Wrapf(err, "%s", p)
-			result.HumanRenderer = func() string { return action.DefaultHumanRenderer(data) }
+			result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
 			q <- result
 		}(p)
 		started++

@@ -9,8 +9,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/actionrouter"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/entrypoints/action"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
@@ -18,10 +18,9 @@ import (
 )
 
 type (
-	// T has the same attributes as Action, but the interface
-	// method implementation differ.
+	// T has is an actionrouter.T with a node func
 	T struct {
-		action.T
+		actionrouter.T
 		Func func() (interface{}, error)
 	}
 )
@@ -167,7 +166,7 @@ func WithLocalRun(f func() (interface{}, error)) funcopt.O {
 }
 
 // Options returns the base Action struct
-func (t T) Options() action.T {
+func (t T) Options() actionrouter.T {
 	return t.T
 }
 
@@ -200,7 +199,7 @@ func (t T) DoLocal() error {
 	output.Renderer{
 		Format:        t.Format,
 		Color:         t.Color,
-		Data:          []action.Result{r},
+		Data:          []actionrouter.Result{r},
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
@@ -264,14 +263,14 @@ func (t T) DoRemote() {
 }
 
 func (t T) Do() error {
-	return action.Do(t)
+	return actionrouter.Do(t)
 }
 
-func nodeDo(fn func() (interface{}, error)) action.Result {
+func nodeDo(fn func() (interface{}, error)) actionrouter.Result {
 	data, err := fn()
-	result := action.Result{
+	result := actionrouter.Result{
 		Nodename:      hostname.Hostname(),
-		HumanRenderer: func() string { return action.DefaultHumanRenderer(data) },
+		HumanRenderer: func() string { return actionrouter.DefaultHumanRenderer(data) },
 	}
 	result.Data = data
 	result.Error = err
