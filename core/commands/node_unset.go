@@ -2,8 +2,8 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/nodeaction"
 	"opensvc.com/opensvc/core/flag"
+	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 

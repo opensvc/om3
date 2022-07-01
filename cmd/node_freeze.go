@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/entrypoints/nodeaction"
+	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 
