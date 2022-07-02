@@ -10,19 +10,19 @@ type (
 		OptForce
 	}
 
-	// SysreportReq structures the POST /register request body
-	SysreportReq struct {
+	// sysreportReq structures the POST /register request body
+	sysreportReq struct {
 		Nodename string `json:"nodename"`
 		App      string `json:"app,omitempty"`
 	}
 
-	// SysreportRes structures the POST /register response body
-	SysreportRes struct {
-		Data  SysreportResData `json:"data"`
+	// sysreportRes structures the POST /register response body
+	sysreportRes struct {
+		Data  sysreportResData `json:"data"`
 		Info  string           `json:"info"`
 		Error string           `json:"error"`
 	}
-	SysreportResData struct {
+	sysreportResData struct {
 		UUID string `json:"uuid"`
 	}
 )

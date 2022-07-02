@@ -24,19 +24,19 @@ type (
 		App      string `flag:"collector_app"`
 	}
 
-	// RegisterReq structures the POST /register request body
-	RegisterReq struct {
+	// registerReq structures the POST /register request body
+	registerReq struct {
 		Nodename string `json:"nodename"`
 		App      string `json:"app,omitempty"`
 	}
 
-	// RegisterRes structures the POST /register response body
-	RegisterRes struct {
-		Data  RegisterResData `json:"data"`
+	// registerRes structures the POST /register response body
+	registerRes struct {
+		Data  registerResData `json:"data"`
 		Info  string          `json:"info"`
 		Error string          `json:"error"`
 	}
-	RegisterResData struct {
+	registerResData struct {
 		UUID string `json:"uuid"`
 	}
 )
@@ -117,7 +117,7 @@ func (t Node) registerAsUser(options OptsNodeRegister) error {
 	if app == "" {
 		app = t.MergedConfig().GetString(key.Parse("node.app"))
 	}
-	reqData := RegisterReq{
+	reqData := registerReq{
 		Nodename: hostname.Hostname(),
 		App:      app,
 	}
@@ -141,7 +141,7 @@ func (t Node) registerAsUser(options OptsNodeRegister) error {
 		}
 	}
 	dec := json.NewDecoder(response.Body)
-	data := RegisterRes{}
+	data := registerRes{}
 	if err := dec.Decode(&data); err != nil {
 		return errors.Wrapf(err, "decode response body")
 	}
