@@ -47,7 +47,7 @@ func (t *keystore) ChangeKeyFrom(name string, from string) error {
 	if name == "" {
 		return fmt.Errorf("key name can not be empty")
 	}
-	if t.HasKey(name) {
+	if !t.HasKey(name) {
 		return fmt.Errorf("key does not exist: %s. use the add action.", name)
 	}
 	if err := t.alterFrom(name, from); err != nil {
