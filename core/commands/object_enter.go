@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
@@ -16,6 +15,10 @@ type (
 	CmdObjectEnter struct {
 		ObjectSelector string `flag:"object"`
 		RID            string `flag:"rid"`
+	}
+
+	enterer interface {
+		Enter(ctx context.Context, rid string) error
 	}
 )
 
@@ -43,16 +46,12 @@ func (t *CmdObjectEnter) run(selector *string, kind string) {
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.New(p)
+			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
-			c, ok := o.(object.Enterer)
-			if !ok {
-				return nil, fmt.Errorf("%s is not a enterer", o)
-			}
 			ctx := context.Background()
-			return nil, c.Enter(ctx, t.RID)
+			return nil, o.Enter(ctx, t.RID)
 		}),
 	).Do()
 }

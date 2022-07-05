@@ -65,6 +65,7 @@ type (
 		SetProvisioned(context.Context) error
 		SetUnprovisioned(context.Context) error
 		SyncResync(context.Context) error
+		Enter(context.Context, string) error
 	}
 )
 

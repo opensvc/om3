@@ -11,10 +11,6 @@ import (
 )
 
 type (
-	Enterer interface {
-		Enter(ctx context.Context, rid string) error
-	}
-
 	// Configurer is implemented by object kinds supporting get, set, unset, eval, edit, ...
 	Configurer interface {
 		ConfigFile() string
