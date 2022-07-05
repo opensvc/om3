@@ -183,11 +183,11 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 		return devIntf.Remove()
 	})
 	t.Log().Info().Msgf("md uuid is %s", dev.UUID())
-	if err := t.SetUUID(dev.UUID()); err != nil {
+	if err := t.SetUUID(ctx, dev.UUID()); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {
-		return t.UnsetUUID()
+		return t.UnsetUUID(ctx)
 	})
 	return nil
 }
@@ -203,7 +203,7 @@ func (t T) uuidKey() key.T {
 	return k
 }
 
-func (t *T) SetUUID(uuid string) error {
+func (t *T) SetUUID(ctx context.Context, uuid string) error {
 	// set in this driver
 	t.UUID = uuid
 
@@ -217,19 +217,19 @@ func (t *T) SetUUID(uuid string) error {
 		Op:    keyop.Set,
 		Value: uuid,
 	}
-	if err = obj.SetKeys(op); err != nil {
+	if err = obj.Set(ctx, op); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) UnsetUUID() error {
+func (t *T) UnsetUUID(ctx context.Context) error {
 	// unset in the object config file
 	obj, err := object.NewConfigurer(t.Path)
 	if err != nil {
 		return err
 	}
-	if err = obj.UnsetKeys(t.uuidKey()); err != nil {
+	if err = obj.Unset(ctx, t.uuidKey()); err != nil {
 		return err
 	}
 
@@ -255,7 +255,7 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	if err := devIntf.Remove(); err != nil {
 		return err
 	}
-	if err := t.UnsetUUID(); err != nil {
+	if err := t.UnsetUUID(ctx); err != nil {
 		return err
 	}
 	return nil

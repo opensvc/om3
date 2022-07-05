@@ -1,8 +1,12 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
@@ -11,7 +15,8 @@ type (
 	// NodeSet is the cobra flag set of the start command.
 	NodeSet struct {
 		OptsGlobal
-		object.OptsSet
+		OptsLock
+		KeywordOps []string `flag:"kwops"`
 	}
 )
 
@@ -45,7 +50,11 @@ func (t *NodeSet) run() {
 			"kw": t.KeywordOps,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Set(t.OptsSet)
+			n := object.NewNode()
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			return nil, n.Set(ctx, keyop.ParseOps(t.KeywordOps)...)
 		}),
 	).Do()
 }

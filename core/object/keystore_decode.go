@@ -9,12 +9,6 @@ const (
 	DefaultInstalledFileMode os.FileMode = 0644
 )
 
-// OptsDecode is the options of the Decode function of all keystore objects.
-type OptsDecode struct {
-	OptsLock
-	Key string `flag:"key"`
-}
-
 // Get returns a keyword value
 func (t *keystore) decode(keyname string) ([]byte, error) {
 	var (

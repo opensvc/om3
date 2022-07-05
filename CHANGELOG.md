@@ -4,6 +4,14 @@
 
 ### core
 
+* **breaking change:** remove the --eval flag of the get command.
+
+	users need to use the "eval" command instead.
+
+* **breaking change:** remove the --unprovision flag of the delete command.
+
+	users need to use the "unprovision && delete" sequence instead.
+
 * **breaking change:** command flags that accept a duration now require a unit.
 
 	change --waitlock=60 to --waitlock=1m

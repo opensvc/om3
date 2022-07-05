@@ -11,7 +11,7 @@ type (
 	// CmdNodeComplianceDetachRuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceDetachRuleset struct {
 		OptsGlobal
-		object.OptsNodeComplianceDetachRuleset
+		OptRuleset
 	}
 )
 
@@ -46,7 +46,11 @@ func (t *CmdNodeComplianceDetachRuleset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceDetachRuleset(t.OptsNodeComplianceDetachRuleset)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return nil, comp.DetachRuleset(t.Ruleset)
 		}),
 	).Do()
 }

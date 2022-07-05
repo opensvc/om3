@@ -44,7 +44,11 @@ func (t *CmdNodeComplianceListModules) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceListModules()
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return comp.ListModuleNames()
 		}),
 	).Do()
 }

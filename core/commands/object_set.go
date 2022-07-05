@@ -1,8 +1,12 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
@@ -13,7 +17,8 @@ type (
 	CmdObjectSet struct {
 		Command *cobra.Command
 		OptsGlobal
-		object.OptsSet
+		OptsLock
+		KeywordOps []string `flag:"kwops"`
 	}
 )
 
@@ -52,7 +57,10 @@ func (t *CmdObjectSet) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Set(t.OptsSet)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			return nil, o.Set(ctx, keyop.ParseOps(t.KeywordOps)...)
 		}),
 	).Do()
 }

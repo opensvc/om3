@@ -1,20 +1,19 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
 	// CmdObjectGet is the cobra flag set of the get command.
 	CmdObjectGet struct {
 		OptsGlobal
-		object.OptsGet
+		Keyword string `flag:"kw"`
 	}
 )
 
@@ -46,20 +45,14 @@ func (t *CmdObjectGet) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("get"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"kw":          t.Keyword,
-			"impersonate": t.Impersonate,
-			"eval":        t.Eval,
+			"kw": t.Keyword,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.New(p)
+			c, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}
-			c, ok := o.(object.Configurer)
-			if !ok {
-				return nil, fmt.Errorf("%s is not a configurer", o)
-			}
-			return c.Get(t.OptsGet)
+			return c.Get(key.Parse(t.Keyword))
 		}),
 	).Do()
 }

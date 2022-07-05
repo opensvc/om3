@@ -160,9 +160,9 @@ func (t T) IsZero() bool {
 
 func FromContext(ctx context.Context, l ResourceLister) *T {
 	props := actioncontext.Props(ctx)
-	rid := actioncontext.ResourceSelectorRID(ctx)
-	tag := actioncontext.ResourceSelectorTag(ctx)
-	subset := actioncontext.ResourceSelectorSubset(ctx)
+	rid := actioncontext.RID(ctx)
+	tag := actioncontext.Tag(ctx)
+	subset := actioncontext.Subset(ctx)
 	return New(
 		l,
 		WithRID(rid),

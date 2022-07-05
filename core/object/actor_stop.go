@@ -7,26 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-// OptsStop is the options of the Stop object method.
-type OptsStop struct {
-	OptsLock
-	OptsResourceSelector
-	OptTo
-	OptForce
-	OptDryRun
-}
-
 // Stop stops the local instance of the object
-func (t *actor) Stop(options OptsStop) error {
-	props := actioncontext.Stop
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) Stop(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Stop)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("stop", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}

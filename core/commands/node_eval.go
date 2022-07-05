@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
@@ -11,7 +14,9 @@ type (
 	// NodeEval is the cobra flag set of the start command.
 	NodeEval struct {
 		OptsGlobal
-		object.OptsEval
+		OptsLock
+		Keyword     string `flag:"kw"`
+		Impersonate string `flag:"impersonate"`
 	}
 )
 
@@ -46,7 +51,11 @@ func (t *NodeEval) run() {
 			"impersonate": t.Impersonate,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Eval(t.OptsEval)
+			n := object.NewNode()
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			return n.EvalAs(ctx, t.Keyword, t.Impersonate)
 		}),
 	).Do()
 }

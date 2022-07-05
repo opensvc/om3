@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -13,7 +14,8 @@ import (
 type (
 	// CmdObjectEnter is the cobra flag set of the get command.
 	CmdObjectEnter struct {
-		object.OptsEnter
+		ObjectSelector string `flag:"object"`
+		RID            string `flag:"rid"`
 	}
 )
 
@@ -49,7 +51,8 @@ func (t *CmdObjectEnter) run(selector *string, kind string) {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a enterer", o)
 			}
-			return nil, c.Enter(t.OptsEnter)
+			ctx := context.Background()
+			return nil, c.Enter(ctx, t.RID)
 		}),
 	).Do()
 }

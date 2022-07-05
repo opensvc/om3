@@ -11,7 +11,7 @@ type (
 	// CmdNodeComplianceAttachModuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceAttachModuleset struct {
 		OptsGlobal
-		object.OptsNodeComplianceAttachModuleset
+		OptModuleset
 	}
 )
 
@@ -46,7 +46,11 @@ func (t *CmdNodeComplianceAttachModuleset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceAttachModuleset(t.OptsNodeComplianceAttachModuleset)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return nil, comp.AttachModuleset(t.Moduleset)
 		}),
 	).Do()
 }

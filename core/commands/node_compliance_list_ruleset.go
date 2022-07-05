@@ -11,7 +11,7 @@ type (
 	// CmdNodeComplianceListRuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceListRuleset struct {
 		OptsGlobal
-		object.OptsNodeComplianceListRuleset
+		OptRuleset
 	}
 )
 
@@ -45,7 +45,11 @@ func (t *CmdNodeComplianceListRuleset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceListRuleset(t.OptsNodeComplianceListRuleset)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return comp.ListRulesets(t.Ruleset)
 		}),
 	).Do()
 }

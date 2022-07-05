@@ -80,32 +80,21 @@ func New() resource.Driver {
 }
 
 func (t T) startVolume(ctx context.Context, volume object.Vol) error {
-	options := object.OptsStart{}
-	//options.Leader = actioncontext.IsLeader(ctx)
-	return volume.Start(options)
+	return volume.Start(ctx)
 }
 
 func (t T) stopVolume(ctx context.Context, volume object.Vol, force bool) error {
-	options := object.OptsStop{}
-	options.Force = force
-	//options.Leader = actioncontext.IsLeader(ctx)
+	ctx = actioncontext.WithForce(ctx, true)
 	holders := volume.HoldersExcept(ctx, t.Path)
 	if len(holders) > 0 {
 		t.Log().Info().Msgf("skip %s stop: active users: %s", volume.Path(), holders)
 		return nil
 	}
-	return volume.Stop(options)
+	return volume.Stop(ctx)
 }
 
 func (t T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status, error) {
-	options := object.OptsStatus{}
-	ctxOptions := actioncontext.Options(ctx)
-	if i, ok := ctxOptions.(object.OptsStatus); ok {
-		options.Refresh = i.Refresh
-	} else {
-		options.Refresh = true
-	}
-	return volume.Status(options)
+	return volume.FreshStatus(ctx)
 }
 
 func (t T) Start(ctx context.Context) error {
@@ -363,7 +352,8 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if volume, err = t.createVolume(volume); err != nil {
 		return err
 	}
-	return volume.Provision(object.OptsProvision{})
+	//ctx = actioncontext.WithLeader(false)
+	return volume.Provision(ctx)
 }
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
@@ -375,7 +365,8 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("%s is already unprovisioned", volume.Path())
 		return nil
 	}
-	return volume.Unprovision(object.OptsUnprovision{})
+	//ctx = actioncontext.WithLeader(false)
+	return volume.Unprovision(ctx)
 }
 
 func (t T) Provisioned() (provisioned.T, error) {

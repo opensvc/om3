@@ -99,6 +99,15 @@ func (t Op) String() string {
 	return toString[t]
 }
 
+func ParseOps(kws []string) L {
+	l := make(L, len(kws))
+	for i, kw := range kws {
+		op := Parse(kw)
+		l[i] = *op
+	}
+	return l
+}
+
 // ParseOp returns an operator from its string representation.
 func ParseOp(s string) Op {
 	t, ok := toID[s]

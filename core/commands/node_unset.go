@@ -1,17 +1,22 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
 	// NodeUnset is the cobra flag set of the start command.
 	NodeUnset struct {
 		OptsGlobal
-		object.OptsUnset
+		OptsLock
+		Keywords []string `flag:"kws"`
 	}
 )
 
@@ -45,7 +50,12 @@ func (t *NodeUnset) run() {
 			"kw": t.Keywords,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Unset(t.OptsUnset)
+			n := object.NewNode()
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			kws := key.ParseL(t.Keywords)
+			return nil, n.Unset(ctx, kws...)
 		}),
 	).Do()
 }

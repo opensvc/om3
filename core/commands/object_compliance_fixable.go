@@ -12,7 +12,10 @@ type (
 	// CmdObjectComplianceFixable is the cobra flag set of the sysreport command.
 	CmdObjectComplianceFixable struct {
 		OptsGlobal
-		object.OptsObjectComplianceFixable
+		OptModuleset
+		OptModule
+		OptForce
+		OptAttach
 	}
 )
 
@@ -56,7 +59,17 @@ func (t *CmdObjectComplianceFixable) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return o.ComplianceFixable(t.OptsObjectComplianceFixable)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				run := comp.NewRun()
+				run.SetModulesetsExpr(t.Moduleset)
+				run.SetModulesExpr(t.Module)
+				run.SetForce(t.Force)
+				run.SetAttach(t.Attach)
+				err = run.Fixable()
+				return run, err
 			}
 		}),
 	).Do()

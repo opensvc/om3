@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
@@ -11,7 +14,8 @@ type (
 	// NodeGet is the cobra flag set of the start command.
 	NodeGet struct {
 		OptsGlobal
-		object.OptsGet
+		OptsLock
+		Keyword string `flag:"kw"`
 	}
 )
 
@@ -42,12 +46,15 @@ func (t *NodeGet) run() {
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("get"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"kw":          t.Keyword,
-			"impersonate": t.Impersonate,
-			"eval":        t.Eval,
+			"kw": t.Keyword,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Get(t.OptsGet)
+			n := object.NewNode()
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			return n.Get(ctx, t.Keyword)
+
 		}),
 	).Do()
 }

@@ -12,7 +12,7 @@ type (
 	// CmdKeystoreDecode is the cobra flag set of the decode command.
 	CmdKeystoreDecode struct {
 		OptsGlobal
-		object.OptsDecode
+		Key string `flag:"key"`
 	}
 )
 
@@ -51,8 +51,7 @@ func (t *CmdKeystoreDecode) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return store.Decode(t.OptsDecode)
-
+			return store.DecodeKey(t.Key)
 		}),
 	).Do()
 }

@@ -1,10 +1,12 @@
 package object
 
-//
+import "context"
+
 // Purge is the 'purge' object action entrypoint.
-//
-// This function behaves like a 'delete --unprovision'.
-//
-func (t actor) Purge() error {
-	return t.Delete(OptsDelete{Unprovision: true})
+// It chains unprovision and delete actions.
+func (t actor) Purge(ctx context.Context) error {
+	if err := t.Unprovision(ctx); err != nil {
+		return err
+	}
+	return t.Delete(ctx)
 }

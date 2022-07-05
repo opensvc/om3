@@ -11,7 +11,10 @@ type (
 	// CmdNodeComplianceFix is the cobra flag set of the sysreport command.
 	CmdNodeComplianceFix struct {
 		OptsGlobal
-		object.OptsNodeComplianceFix
+		OptModuleset
+		OptModule
+		OptForce
+		OptAttach
 	}
 )
 
@@ -48,7 +51,17 @@ func (t *CmdNodeComplianceFix) run() {
 			"attach":    t.Attach,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceFix(t.OptsNodeComplianceFix)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			run := comp.NewRun()
+			run.SetModulesetsExpr(t.Moduleset)
+			run.SetModulesExpr(t.Module)
+			run.SetForce(t.Force)
+			run.SetAttach(t.Attach)
+			err = run.Fix()
+			return run, err
 		}),
 	).Do()
 }

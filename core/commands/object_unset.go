@@ -1,18 +1,23 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
 	// CmdObjectUnset is the cobra flag set of the set command.
 	CmdObjectUnset struct {
 		OptsGlobal
-		object.OptsUnset
+		OptsLock
+		Keywords []string `flag:"kws"`
 	}
 )
 
@@ -51,7 +56,11 @@ func (t *CmdObjectUnset) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Unset(t.OptsUnset)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			kws := key.ParseL(t.Keywords)
+			return nil, o.Unset(ctx, kws...)
 		}),
 	).Do()
 }

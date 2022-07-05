@@ -1,21 +1,25 @@
 package object
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/util/key"
 )
 
-// Get returns a keyword value
-func (t *Node) Get(options OptsGet) (interface{}, error) {
-	k := key.Parse(options.Keyword)
-	if options.Eval {
-		v, err := t.mergedConfig.EvalAs(k, options.Impersonate)
-		return v, err
-	}
+// Get returns a keyword unevaluated value
+func (t *Node) Get(ctx context.Context, kw string) (interface{}, error) {
+	k := key.Parse(kw)
 	return t.config.Get(k), nil
 }
 
-// Eval returns a keyword value
-func (t *Node) Eval(options OptsEval) (interface{}, error) {
-	k := key.Parse(options.Keyword)
-	return t.mergedConfig.EvalAs(k, options.Impersonate)
+// Eval returns a keyword evaluated value
+func (t *Node) Eval(ctx context.Context, kw string) (interface{}, error) {
+	k := key.Parse(kw)
+	return t.mergedConfig.EvalAs(k, "")
+}
+
+// EvalAs returns a keyword evaluated value, as if the evaluator was another node
+func (t *Node) EvalAs(ctx context.Context, kw string, impersonate string) (interface{}, error) {
+	k := key.Parse(kw)
+	return t.mergedConfig.EvalAs(k, impersonate)
 }

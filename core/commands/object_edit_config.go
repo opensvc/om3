@@ -23,7 +23,8 @@ type (
 	// CmdObjectEditConfig is the cobra flag set of the print config command.
 	CmdObjectEditConfig struct {
 		OptsGlobal
-		object.OptsEditConfig
+		Discard bool `flag:"discard"`
+		Recover bool `flag:"recover"`
 	}
 )
 
@@ -71,7 +72,15 @@ func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 }
 
 func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error {
-	err := obj.EditConfig(t.OptsEditConfig)
+	var err error
+	switch {
+	case t.Discard:
+		err = obj.DiscardAndEditConfig()
+	case t.Recover:
+		err = obj.RecoverAndEditConfig()
+	default:
+		err = obj.EditConfig()
+	}
 	if errors.Is(err, xconfig.ErrEditPending) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -154,6 +163,10 @@ func (t *CmdObjectEditConfig) run(selector *string, kind string) {
 		c   *client.T
 		err error
 	)
+	if t.Discard && t.Recover {
+		fmt.Fprint(os.Stderr, "discard and recover options are mutually exclusive")
+		os.Exit(1)
+	}
 	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		log.Error().Err(err).Msg("")

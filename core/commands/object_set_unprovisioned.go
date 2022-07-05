@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -12,7 +15,9 @@ type (
 	// CmdObjectSetUnprovisioned is the cobra flag set of the set provisioned command.
 	CmdObjectSetUnprovisioned struct {
 		OptsGlobal
-		object.OptsSetUnprovisioned
+		OptsLock
+		OptsResourceSelector
+		OptDryRun
 	}
 )
 
@@ -53,7 +58,14 @@ func (t *CmdObjectSetUnprovisioned) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.SetUnprovisioned(t.OptsSetUnprovisioned)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			ctx = actioncontext.WithRID(ctx, t.RID)
+			ctx = actioncontext.WithTag(ctx, t.Tag)
+			ctx = actioncontext.WithSubset(ctx, t.Subset)
+			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
+			return nil, o.SetUnprovisioned(ctx)
 		}),
 	).Do()
 }

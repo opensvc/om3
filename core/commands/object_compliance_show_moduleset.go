@@ -6,13 +6,14 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
 	// CmdObjectComplianceShowModuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceShowModuleset struct {
 		OptsGlobal
-		object.OptsObjectComplianceShowModuleset
+		OptModuleset
 	}
 )
 
@@ -53,7 +54,17 @@ func (t *CmdObjectComplianceShowModuleset) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return o.ComplianceShowModuleset(t.OptsObjectComplianceShowModuleset)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				modsets := xstrings.Split(t.Moduleset, ",")
+				data, err := comp.GetData(modsets)
+				if err != nil {
+					return nil, err
+				}
+				tree := data.ModulesetsTree()
+				return tree, nil
 			}
 		}),
 	).Do()

@@ -8,17 +8,6 @@ import (
 	"opensvc.com/opensvc/util/xmap"
 )
 
-// OptsKeys is the options of the Keys function of all data objects.
-type OptsKeys struct {
-	OptsLock
-	Match string `flag:"match"`
-}
-
-// Get returns a keyword value
-func (t *keystore) Keys(options OptsKeys) ([]string, error) {
-	return t.MatchingKeys(options.Match)
-}
-
 //
 // MatchingDirs returns the list of all directories and parent directories
 // hosting keys in the store's virtual filesystem.

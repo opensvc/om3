@@ -7,23 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-type OptsSetProvisioned struct {
-	OptsResourceSelector
-	OptsLock
-	OptDryRun
-}
-
 // SetProvisioned starts the local instance of the object
-func (t *actor) SetProvisioned(options OptsSetProvisioned) error {
-	props := actioncontext.SetProvisioned
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) SetProvisioned(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.SetProvisioned)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("set provisioned", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}

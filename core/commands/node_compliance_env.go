@@ -11,7 +11,8 @@ type (
 	// CmdNodeComplianceEnv is the cobra flag set of the sysreport command.
 	CmdNodeComplianceEnv struct {
 		OptsGlobal
-		object.OptsNodeComplianceEnv
+		OptModuleset
+		OptModule
 	}
 )
 
@@ -47,7 +48,14 @@ func (t *CmdNodeComplianceEnv) run() {
 			"module":    t.Module,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceEnv(t.OptsNodeComplianceEnv)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			run := comp.NewRun()
+			run.SetModulesetsExpr(t.Moduleset)
+			run.SetModulesExpr(t.Module)
+			return run.Env()
 		}),
 	).Do()
 }

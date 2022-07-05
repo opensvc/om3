@@ -12,7 +12,7 @@ type (
 	// CmdObjectComplianceAttachRuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceAttachRuleset struct {
 		OptsGlobal
-		object.OptsObjectComplianceAttachRuleset
+		OptRuleset
 	}
 )
 
@@ -54,7 +54,11 @@ func (t *CmdObjectComplianceAttachRuleset) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return nil, o.ComplianceAttachRuleset(t.OptsObjectComplianceAttachRuleset)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				return nil, comp.AttachRuleset(t.Ruleset)
 			}
 		}),
 	).Do()

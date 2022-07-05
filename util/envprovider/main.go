@@ -13,9 +13,8 @@ import (
 
 type (
 	decoder interface {
-		Decode(object.OptsDecode) ([]byte, error)
-		Keys(object.OptsKeys) ([]string, error)
-		Exists() bool
+		DecodeKey(keyname string) ([]byte, error)
+		MatchingKeys(match string) ([]string, error)
 	}
 )
 
@@ -59,12 +58,12 @@ func envVars(envItem, ns, kd string) (result []string, err error) {
 func getKeysDecoder(name, ns, kd string) (decoder, error) {
 	if p, err := path.New(name, ns, kd); err != nil {
 		return nil, err
+	} else if !object.Exists(p) {
+		return nil, fmt.Errorf("'%s' doesn't exists", p)
 	} else if o, err := object.New(p); err != nil {
 		return nil, err
 	} else if do, ok := o.(decoder); !ok {
 		return nil, fmt.Errorf("unable to get decoder ns:'%v', kind:'%v', name:'%v'", ns, kd, name)
-	} else if !do.Exists() {
-		return nil, fmt.Errorf("'%v' doesn't exists", do)
 	} else {
 		return do, nil
 	}
@@ -77,10 +76,7 @@ func getKeys(name, ns, kd, match string) (s []string, err error) {
 	if o, err = getKeysDecoder(name, ns, kd); err != nil {
 		return nil, err
 	}
-	keysOptions := object.OptsKeys{
-		Match: match,
-	}
-	if keys, err = o.Keys(keysOptions); err != nil {
+	if keys, err = o.MatchingKeys(match); err != nil {
 		return nil, err
 	}
 	if len(keys) == 0 {
@@ -106,10 +102,7 @@ func getKey(name, ns, kd, key string) (string, error) {
 
 func decodeKey(o decoder, key string) (s string, err error) {
 	var b []byte
-	decodeOption := object.OptsDecode{
-		Key: key,
-	}
-	if b, err = o.Decode(decodeOption); err != nil {
+	if b, err = o.DecodeKey(key); err != nil {
 		return "", errors.Wrapf(err, "env decode from %s", o)
 	}
 	return string(b), nil

@@ -11,7 +11,7 @@ type (
 	// CmdNodeComplianceAttachRuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceAttachRuleset struct {
 		OptsGlobal
-		object.OptsNodeComplianceAttachRuleset
+		OptRuleset
 	}
 )
 
@@ -46,7 +46,11 @@ func (t *CmdNodeComplianceAttachRuleset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceAttachRuleset(t.OptsNodeComplianceAttachRuleset)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return nil, comp.AttachRuleset(t.Ruleset)
 		}),
 	).Do()
 }

@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -21,35 +22,32 @@ import (
 	"opensvc.com/opensvc/util/timestamp"
 )
 
-// OptsStatus is the options of the Start object method.
-type OptsStatus struct {
-	OptsLock
-	Refresh bool `flag:"refresh"`
-	//Status string `flag:"status"`
-}
-
 func (t *core) statusFile() string {
 	return filepath.Join(t.varDir(), "status.json")
 }
 
-func (t *core) Status(options OptsStatus) (instance.Status, error) {
+func (t *core) FreshStatus(ctx context.Context) (instance.Status, error) {
+	return t.statusEval(ctx)
+}
+
+func (t *core) Status(ctx context.Context) (instance.Status, error) {
 	var (
 		data instance.Status
 		err  error
 	)
-	if options.Refresh || t.statusDumpOutdated() {
-		return t.statusEval(options)
+	if t.statusDumpOutdated() {
+		return t.statusEval(ctx)
 	}
 	if data, err = t.statusLoad(); err == nil {
 		return data, nil
 	}
 	// corrupted status.json => eval
-	return t.statusEval(options)
+	return t.statusEval(ctx)
 }
 
-func (t *core) statusEval(options OptsStatus) (instance.Status, error) {
-	props := actioncontext.Status
-	unlock, err := t.lockAction(props, options.OptsLock)
+func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}

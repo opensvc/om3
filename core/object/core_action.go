@@ -168,7 +168,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s init", p)
 		}
-		instanceStatus, err := obj.Status(OptsStatus{})
+		instanceStatus, err := obj.Status(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s status", p)
 		}
@@ -188,7 +188,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s init", p)
 		}
-		instanceStatus, err := obj.Status(OptsStatus{})
+		instanceStatus, err := obj.Status(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "hard affinity object %s status", p)
 		}

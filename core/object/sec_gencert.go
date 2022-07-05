@@ -19,13 +19,8 @@ import (
 	"opensvc.com/opensvc/util/key"
 )
 
-// OptsUnset is the options of the Unset object method.
-type OptsGenCert struct {
-	OptsLock
-}
-
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.
-func (t *sec) GenCert(options OptsGenCert) error {
+func (t *sec) GenCert() error {
 	var err error
 	priv, err := t.getPriv()
 	if err != nil {

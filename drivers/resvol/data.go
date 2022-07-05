@@ -260,7 +260,7 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 			continue
 		}
 		for _, k := range matches {
-			if err = keystore.InstallKey(k, md.ToPath, t.Perm, t.DirPerm, t.User, t.Group); err != nil {
+			if err = keystore.InstallKeyTo(k, md.ToPath, t.Perm, t.DirPerm, t.User, t.Group); err != nil {
 				return changed, err
 			}
 			changed = true

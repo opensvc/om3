@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -13,7 +16,11 @@ type (
 	CmdObjectStop struct {
 		OptsGlobal
 		OptsAsync
-		object.OptsStop
+		OptsLock
+		OptsResourceSelector
+		OptTo
+		OptForce
+		OptDryRun
 	}
 )
 
@@ -54,7 +61,16 @@ func (t *CmdObjectStop) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Stop(t.OptsStop)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			ctx = actioncontext.WithRID(ctx, t.RID)
+			ctx = actioncontext.WithTag(ctx, t.Tag)
+			ctx = actioncontext.WithSubset(ctx, t.Subset)
+			ctx = actioncontext.WithTo(ctx, t.To)
+			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
+			return nil, o.Stop(ctx)
 		}),
 	).Do()
 }

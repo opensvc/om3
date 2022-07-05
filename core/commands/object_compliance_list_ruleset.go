@@ -12,7 +12,7 @@ type (
 	// CmdObjectComplianceListRuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceListRuleset struct {
 		OptsGlobal
-		object.OptsObjectComplianceListRuleset
+		OptRuleset
 	}
 )
 
@@ -52,7 +52,11 @@ func (t *CmdObjectComplianceListRuleset) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return o.ComplianceListRuleset(t.OptsObjectComplianceListRuleset)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				return comp.ListRulesets(t.Ruleset)
 			}
 		}),
 	).Do()

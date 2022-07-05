@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/ssrathi/go-attr"
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
@@ -51,21 +51,20 @@ type (
 		freezer
 		PG() *pg.Config
 		IsVolatile() bool
-		Status(OptsStatus) (instance.Status, error)
 		ResourceSets() resourceset.L
 		ResourceByID(rid string) resource.Driver
 		GetActionResDeps() *actionresdeps.Store
 		ConfigureResources()
 
-		Restart(OptsStart) error
-		Run(OptsRun) error
-		Start(OptsStart) error
-		Stop(OptsStop) error
-		Provision(OptsProvision) error
-		Unprovision(OptsUnprovision) error
-		SetProvisioned(OptsSetProvisioned) error
-		SetUnprovisioned(OptsSetUnprovisioned) error
-		SyncResync(OptsSyncResync) error
+		Restart(context.Context) error
+		Run(context.Context) error
+		Start(context.Context) error
+		Stop(context.Context) error
+		Provision(context.Context) error
+		Unprovision(context.Context) error
+		SetProvisioned(context.Context) error
+		SetUnprovisioned(context.Context) error
+		SyncResync(context.Context) error
 	}
 )
 

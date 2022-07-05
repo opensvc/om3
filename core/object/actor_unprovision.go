@@ -7,27 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-// OptsUnprovision is the options of the Unprovision object method.
-type OptsUnprovision struct {
-	OptsLock
-	OptsResourceSelector
-	OptTo
-	OptForce
-	OptLeader
-	OptDryRun
-}
-
 // Unprovision stops and frees the local instance of the object
-func (t *actor) Unprovision(options OptsUnprovision) error {
-	props := actioncontext.Unprovision
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) Unprovision(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Unprovision)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("unprovision", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}

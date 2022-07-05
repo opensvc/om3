@@ -11,7 +11,6 @@ type (
 	// NodeValidateConfig is the cobra flag set of the start command.
 	NodeValidateConfig struct {
 		OptsGlobal
-		object.OptsValidateConfig
 	}
 )
 
@@ -43,7 +42,7 @@ func (t *NodeValidateConfig) run() {
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("push_asset"),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ValidateConfig(t.OptsValidateConfig)
+			return object.NewNode().ValidateConfig()
 		}),
 	).Do()
 }

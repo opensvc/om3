@@ -1,20 +1,20 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
 	// CmdObjectEval is the cobra flag set of the get command.
 	CmdObjectEval struct {
 		OptsGlobal
-		object.OptsEval
+		Keyword     string `flag:"kw"`
+		Impersonate string `flag:"impersonate"`
 	}
 )
 
@@ -51,15 +51,11 @@ func (t *CmdObjectEval) run(selector *string, kind string) {
 			"eval":        true,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
-			o, err := object.New(p)
+			c, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}
-			c, ok := o.(object.Configurer)
-			if !ok {
-				return nil, fmt.Errorf("%s is not a configurer", o)
-			}
-			return c.Eval(t.OptsEval)
+			return c.EvalAs(key.Parse(t.Keyword), t.Impersonate)
 		}),
 	).Do()
 }

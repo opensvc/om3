@@ -74,7 +74,7 @@ func (t T) ListRulesets(filter string) ([]string, error) {
 	}
 	err = t.collectorClient.CallFor(&data, "comp_list_rulesets", filter, hostname.Hostname())
 	if err != nil {
-		return data, err
+		return nil, err
 	}
 	return data, nil
 }

@@ -51,7 +51,11 @@ func (t *CmdObjectComplianceShowRuleset) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return o.ComplianceShowRuleset()
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				return comp.GetRulesets()
 			}
 		}),
 	).Do()

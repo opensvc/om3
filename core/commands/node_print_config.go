@@ -11,7 +11,8 @@ type (
 	// NodePrintConfig is the cobra flag set of the start command.
 	NodePrintConfig struct {
 		OptsGlobal
-		object.OptsPrintConfig
+		Eval        bool   `flag:"eval"`
+		Impersonate string `flag:"impersonate"`
 	}
 )
 
@@ -47,7 +48,13 @@ func (t *NodePrintConfig) run() {
 			"eval":        t.Eval,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().PrintConfig(t.OptsPrintConfig)
+			n := object.NewNode()
+			switch {
+			case t.Eval:
+				return n.EvalConfigAs(t.Impersonate)
+			default:
+				return n.PrintConfig()
+			}
 		}),
 	).Do()
 }

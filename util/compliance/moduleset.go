@@ -128,7 +128,7 @@ func (t T) ListModulesets(filter string) ([]string, error) {
 	}
 	err = t.collectorClient.CallFor(&data, "comp_list_modulesets", filter)
 	if err != nil {
-		return data, err
+		return nil, err
 	}
 	return data, nil
 }

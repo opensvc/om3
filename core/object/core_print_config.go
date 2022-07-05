@@ -4,17 +4,15 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
-// OptsPrintConfig is the options of the PrintConfig object method.
-type OptsPrintConfig struct {
-	OptsLock
-	Eval        bool   `flag:"eval"`
-	Impersonate string `flag:"impersonate"`
+// PrintConfig gets a keyword value
+func (t *core) PrintConfig() (rawconfig.T, error) {
+	return t.config.Raw(), nil
 }
 
-// PrintConfig gets a keyword value
-func (t *core) PrintConfig(options OptsPrintConfig) (rawconfig.T, error) {
-	if options.Eval {
-		return t.config.RawEvaluatedAs(options.Impersonate)
-	}
-	return t.config.Raw(), nil
+func (t *core) EvalConfig() (rawconfig.T, error) {
+	return t.config.RawEvaluated()
+}
+
+func (t *core) EvalConfigAs(nodename string) (rawconfig.T, error) {
+	return t.config.RawEvaluatedAs(nodename)
 }

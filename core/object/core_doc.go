@@ -10,62 +10,59 @@ import (
 	"opensvc.com/opensvc/util/key"
 )
 
-// OptsGet is the options of the Get function of all base objects.
-type OptsDoc struct {
-	Keyword string `flag:"kw"`
-	Driver  string `flag:"driver"`
+func drvDoc(drvID driver.ID, kwName string) (string, error) {
+	factory := resource.NewResourceFunc(drvID)
+	if factory == nil {
+		return "", fmt.Errorf("driver not found")
+	}
+	r := factory()
+	buff := ""
+	store := keywords.Store(r.Manifest().Keywords)
+	sort.Sort(store)
+	for _, kw := range store {
+		if (kwName != "") && kw.Option != kwName {
+			continue
+		}
+		buff += kw.Doc()
+		buff += "\n"
+	}
+	return buff, nil
 }
 
-// Get returns a keyword value
-func (t *core) Doc(options OptsDoc) (string, error) {
-	drvDoc := func(drvID driver.ID, kwName string) (string, error) {
-		factory := resource.NewResourceFunc(drvID)
-		if factory == nil {
-			return "", fmt.Errorf("driver not found")
+func (t core) defaultDoc() (string, error) {
+	buff := ""
+	sort.Sort(keywordStore)
+	for _, kw := range keywordStore {
+		if kw.Section != "DEFAULT" {
+			continue
 		}
-		r := factory()
-		buff := ""
-		store := keywords.Store(r.Manifest().Keywords)
-		sort.Sort(store)
-		for _, kw := range store {
-			if (kwName != "") && kw.Option != kwName {
-				continue
-			}
-			buff += kw.Doc()
-			buff += "\n"
+		if !kw.Kind.Has(t.path.Kind) {
+			continue
 		}
-		return buff, nil
+		buff += kw.Doc()
+		buff += "\n"
 	}
-	defaultDoc := func() (string, error) {
-		buff := ""
-		sort.Sort(keywordStore)
-		for _, kw := range keywordStore {
-			if kw.Section != "DEFAULT" {
-				continue
-			}
-			if !kw.Kind.Has(t.path.Kind) {
-				continue
-			}
-			buff += kw.Doc()
-			buff += "\n"
-		}
-		return buff, nil
-	}
+	return buff, nil
+}
 
-	k := key.Parse(options.Keyword)
+// KeywordDoc returns the documentation of a single keyword.
+func (t *core) KeywordDoc(s string) (string, error) {
+	k := key.Parse(s)
 	switch {
-	case options.Driver != "":
-		drvID := driver.Parse(options.Driver)
-		return drvDoc(drvID, options.Keyword)
 	case k.Option != "":
 		return t.config.Doc(k)
 	case k.Section == "DEFAULT":
-		return defaultDoc()
+		return t.defaultDoc()
 	case k.Section != "":
 		drvID, _ := driverIDFromRID(t, k.Section)
 		return drvDoc(drvID, "")
 	default:
-		return "?", nil
+		return "", nil
 	}
-	return "", nil
+}
+
+// DriverDoc returns the documentation of all keywords of the specified driver.
+func (t *core) DriverDoc(s string) (string, error) {
+	drvID := driver.Parse(s)
+	return drvDoc(drvID, s)
 }

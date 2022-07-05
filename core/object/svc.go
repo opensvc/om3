@@ -19,7 +19,6 @@ type (
 	//
 	Svc interface {
 		Actor
-		compliancer
 	}
 )
 

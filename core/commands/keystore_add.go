@@ -12,7 +12,10 @@ type (
 	// CmdKeystoreAdd is the cobra flag set of the decode command.
 	CmdKeystoreAdd struct {
 		OptsGlobal
-		object.OptsAdd
+		OptsLock
+		Key   string `flag:"key"`
+		From  string `flag:"from"`
+		Value string `flag:"value"`
 	}
 )
 
@@ -21,6 +24,7 @@ func (t *CmdKeystoreAdd) Init(kind string, parent *cobra.Command, selector *stri
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
 	flag.Install(cmd, t)
+	cmd.MarkFlagsMutuallyExclusive("from", "value")
 }
 
 func (t *CmdKeystoreAdd) cmd(kind string, selector *string) *cobra.Command {
@@ -28,12 +32,6 @@ func (t *CmdKeystoreAdd) cmd(kind string, selector *string) *cobra.Command {
 		Use:   "add",
 		Short: "add new keys",
 		Run: func(cmd *cobra.Command, args []string) {
-			if !cmd.Flags().Changed("value") {
-				t.Value = nil
-			}
-			if !cmd.Flags().Changed("from") {
-				t.From = nil
-			}
 			t.run(selector, kind)
 		},
 	}
@@ -59,7 +57,12 @@ func (t *CmdKeystoreAdd) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.Add(t.OptsAdd)
+			switch {
+			case t.From != "":
+				return nil, store.AddKeyFrom(t.Key, t.From)
+			default:
+				return nil, store.AddKey(t.Key, []byte(t.Value))
+			}
 		}),
 	).Do()
 }

@@ -11,7 +11,7 @@ type (
 	// CmdNodeComplianceListModuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceListModuleset struct {
 		OptsGlobal
-		object.OptsNodeComplianceListModuleset
+		OptModuleset
 	}
 )
 
@@ -45,7 +45,11 @@ func (t *CmdNodeComplianceListModuleset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceListModuleset(t.OptsNodeComplianceListModuleset)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return comp.ListModulesets(t.Moduleset)
 		}),
 	).Do()
 }

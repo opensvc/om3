@@ -1,19 +1,16 @@
 package object
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/xconfig"
 )
 
-// OptsValidateConfig is the options of the ValidateConfig object method.
-type OptsValidateConfig struct {
-	OptsLock
-}
-
 // ValidateConfig
-func (t *core) ValidateConfig(options OptsValidateConfig) (xconfig.ValidateAlerts, error) {
-	props := actioncontext.ValidateConfig
-	unlock, err := t.lockAction(props, options.OptsLock)
+func (t *core) ValidateConfig(ctx context.Context) (xconfig.ValidateAlerts, error) {
+	ctx = actioncontext.WithProps(ctx, actioncontext.ValidateConfig)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return xconfig.ValidateAlerts{}, err
 	}

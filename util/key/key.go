@@ -2,10 +2,13 @@ package key
 
 import "strings"
 
-type T struct {
-	Section string `json:"section"`
-	Option  string `json:"option"`
-}
+type (
+	T struct {
+		Section string `json:"section"`
+		Option  string `json:"option"`
+	}
+	L []T
+)
 
 func New(section, option string) T {
 	if section == "" && option != "" {
@@ -15,6 +18,14 @@ func New(section, option string) T {
 		Section: section,
 		Option:  option,
 	}
+}
+
+func ParseL(l []string) L {
+	kws := make(L, len(l))
+	for _, s := range l {
+		kws = append(kws, Parse(s))
+	}
+	return kws
 }
 
 func Parse(s string) T {

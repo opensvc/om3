@@ -23,7 +23,8 @@ type (
 	CmdObjectPrintConfig struct {
 		Command *cobra.Command
 		OptsGlobal
-		object.OptsPrintConfig
+		Eval        bool   `flag:"eval"`
+		Impersonate string `flag:"impersonate"`
 	}
 )
 
@@ -81,7 +82,13 @@ func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
 	if err != nil {
 		return rawconfig.T{}, err
 	}
-	return obj.PrintConfig(t.OptsPrintConfig)
+	if t.Eval {
+		if t.Impersonate != "" {
+			return obj.EvalConfigAs(t.Impersonate)
+		}
+		return obj.EvalConfig()
+	}
+	return obj.PrintConfig()
 }
 
 func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconfig.T, error) {

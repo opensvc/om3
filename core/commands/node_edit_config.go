@@ -13,7 +13,8 @@ type (
 	// CmdObjectEditConfig is the cobra flag set of the print config command.
 	NodeEditConfig struct {
 		OptsGlobal
-		EditConfig object.OptsEditConfig
+		Discard bool `flag:"discard"`
+		Recover bool `flag:"recover"`
 	}
 )
 
@@ -22,6 +23,7 @@ func (t *NodeEditConfig) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
 	flag.Install(cmd, t)
+	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
 }
 
 func (t *NodeEditConfig) cmd() *cobra.Command {
@@ -36,7 +38,18 @@ func (t *NodeEditConfig) cmd() *cobra.Command {
 }
 
 func (t *NodeEditConfig) run() {
-	if err := object.NewNode().EditConfig(t.EditConfig); err != nil {
+	var err error
+	switch {
+	//case t.Discard && t.Recover:
+	//        return errors.New("discard and recover options are mutually exclusive")
+	case t.Discard:
+		err = object.NewNode().DiscardAndEditConfig()
+	case t.Recover:
+		err = object.NewNode().RecoverAndEditConfig()
+	default:
+		err = object.NewNode().EditConfig()
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

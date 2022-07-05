@@ -11,7 +11,7 @@ type (
 	// NodeDelete is the cobra flag set of the delete command.
 	NodeDelete struct {
 		OptsGlobal
-		object.OptsDelete
+		RID string `flag:"rid"`
 	}
 )
 
@@ -42,11 +42,10 @@ func (t *NodeDelete) run() {
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("delete"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"rid":         t.OptsDelete.RID,
-			"unprovision": t.OptsDelete.Unprovision,
+			"rid": t.RID,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Delete(t.OptsDelete)
+			return nil, object.NewNode().DeleteSection(t.RID)
 		}),
 	).Do()
 }

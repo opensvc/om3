@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -12,7 +15,10 @@ type (
 	// CmdObjectSyncResync is the cobra flag set of the sync resync command.
 	CmdObjectSyncResync struct {
 		OptsGlobal
-		object.OptsSyncResync
+		OptsLock
+		OptsResourceSelector
+		OptForce
+		OptDryRun
 	}
 )
 
@@ -51,7 +57,15 @@ func (t *CmdObjectSyncResync) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.SyncResync(t.OptsSyncResync)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			ctx = actioncontext.WithRID(ctx, t.RID)
+			ctx = actioncontext.WithTag(ctx, t.Tag)
+			ctx = actioncontext.WithSubset(ctx, t.Subset)
+			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
+			return nil, o.SyncResync(ctx)
 		}),
 	).Do()
 }

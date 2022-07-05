@@ -7,28 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-// OptsProvision is the options of the Provision object method.
-type OptsProvision struct {
-	OptsLock
-	OptsResourceSelector
-	OptDryRun
-	OptTo
-	OptForce
-	OptLeader
-	OptDisableRollback
-}
-
 // Provision allocates and starts the local instance of the object
-func (t *actor) Provision(options OptsProvision) error {
-	props := actioncontext.Provision
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) Provision(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Provision)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("provision", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}
@@ -36,7 +22,7 @@ func (t *actor) Provision(options OptsProvision) error {
 	if err := t.lockedProvision(ctx); err != nil {
 		return err
 	}
-	if options.IsRollbackDisabled() {
+	if actioncontext.IsRollbackDisabled(ctx) {
 		// --disable-rollback handling
 		return nil
 	}

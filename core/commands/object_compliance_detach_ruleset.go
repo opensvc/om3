@@ -12,7 +12,7 @@ type (
 	// CmdObjectComplianceDetachRuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceDetachRuleset struct {
 		OptsGlobal
-		object.OptsObjectComplianceDetachRuleset
+		OptRuleset
 	}
 )
 
@@ -54,7 +54,11 @@ func (t *CmdObjectComplianceDetachRuleset) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return nil, o.ComplianceDetachRuleset(t.OptsObjectComplianceDetachRuleset)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				return nil, comp.DetachRuleset(t.Ruleset)
 			}
 		}),
 	).Do()

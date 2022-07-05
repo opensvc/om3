@@ -22,7 +22,7 @@ type (
 	CmdObjectEdit struct {
 		Command *cobra.Command
 		OptsGlobal
-		object.OptsEditKey
+		Key string `flag:"key"`
 	}
 )
 
@@ -79,7 +79,7 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 }
 
 func (t *CmdObjectEdit) doLocal(obj object.Keystore, c *client.T) error {
-	return obj.EditKey(t.OptsEditKey)
+	return obj.EditKey(t.Key)
 }
 
 func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {

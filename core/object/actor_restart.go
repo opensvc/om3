@@ -1,15 +1,11 @@
 package object
 
+import "context"
+
 // Restart stops then starts the local instance of the object
-func (t *actor) Restart(options OptsStart) error {
-	if err := t.Stop(OptsStop{
-		OptsLock:             options.OptsLock,
-		OptsResourceSelector: options.OptsResourceSelector,
-		OptTo:                options.OptTo,
-		OptForce:             options.OptForce,
-		OptDryRun:            options.OptDryRun,
-	}); err != nil {
+func (t *actor) Restart(ctx context.Context) error {
+	if err := t.Stop(ctx); err != nil {
 		return err
 	}
-	return t.Start(options)
+	return t.Start(ctx)
 }

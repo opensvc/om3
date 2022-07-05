@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"io/ioutil"
@@ -20,10 +21,6 @@ import (
 )
 
 type (
-	OptsInstall struct {
-		Key string `flag:"key"`
-	}
-
 	vKeyType int
 
 	vKey struct {
@@ -241,18 +238,18 @@ func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 	return true, os.Chtimes(dst, mtime, mtime)
 }
 
-func (t keystore) Install(options OptsInstall) error {
-	return t.postInstall(options.Key)
+func (t keystore) InstallKey(keyName string) error {
+	return t.postInstall(keyName)
 }
 
-func (t keystore) InstallKey(k string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) error {
-	t.log.Debug().Msgf("install key=%s to %s", k, dst)
-	keys, err := t.resolveKey(k)
+func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) error {
+	t.log.Debug().Msgf("install key=%s to %s", keyName, dst)
+	keys, err := t.resolveKey(keyName)
 	if err != nil {
 		return errors.Wrapf(err, "%s", t.path)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key=%s not found", t.path, k)
+		return fmt.Errorf("%s key=%s not found", t.path, keyName)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
@@ -291,7 +288,8 @@ func (t keystore) postInstall(k string) error {
 				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
 				continue
 			}
-			st, err := vol.Status(OptsStatus{})
+			ctx := context.Background()
+			st, err := vol.Status(ctx)
 			if err != nil {
 				t.log.Warn().Msgf("post install %s %s: %s", p, r.RID(), err)
 				continue

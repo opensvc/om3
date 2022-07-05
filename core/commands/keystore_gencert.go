@@ -14,7 +14,6 @@ type (
 	// CmdKeystoreRemove is the cobra flag set of the remove command.
 	CmdSecGenCert struct {
 		OptsGlobal
-		object.OptsGenCert
 	}
 )
 
@@ -55,7 +54,7 @@ func (t *CmdSecGenCert) run(selector *string, kind string) {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a secure keystore", o)
 			}
-			return nil, store.GenCert(t.OptsGenCert)
+			return nil, store.GenCert()
 		}),
 	).Do()
 }

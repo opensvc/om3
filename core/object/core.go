@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
+	"opensvc.com/opensvc/util/compliance"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
@@ -46,14 +48,20 @@ type (
 		postCommit func() error
 	}
 
+	compliancer interface {
+		NewCompliance() (*compliance.T, error)
+	}
+
 	// corer is implemented by all object kinds.
 	corer interface {
 		Configurer
+		compliancer
 		Path() path.T
 		FQDN() string
 		IsVolatile() bool
 		SetVolatile(v bool)
-		Status(OptsStatus) (instance.Status, error)
+		Status(context.Context) (instance.Status, error)
+		FreshStatus(context.Context) (instance.Status, error)
 	}
 )
 

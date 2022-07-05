@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/opensvc/fcntllock"
@@ -17,18 +18,19 @@ func (t *core) lockPath(group string) (path string) {
 	return
 }
 
-func (t *core) lockAction(action actioncontext.Properties, options OptsLock) (func(), error) {
+func (t *core) lockAction(ctx context.Context) (func(), error) {
 	unlock := func() {}
-	if !action.MustLock {
+	props := actioncontext.Props(ctx)
+	if !props.MustLock {
 		return unlock, nil
 	}
-	if options.Disable {
+	if actioncontext.IsLockDisabled(ctx) {
 		// --nolock handling
 		return unlock, nil
 	}
-	p := t.lockPath(action.LockGroup)
+	p := t.lockPath(props.LockGroup)
 	lock := flock.New(p, xsession.ID, fcntllock.New)
-	err := lock.Lock(options.Timeout, action.Name)
+	err := lock.Lock(actioncontext.LockTimeout(ctx), props.Name)
 	if err != nil {
 		return unlock, err
 	}

@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +10,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -331,7 +333,5 @@ func LocalEmpty(p path.T) error {
 }
 
 func setKeywords(oc object.Configurer, kws []string) error {
-	return oc.Set(object.OptsSet{
-		KeywordOps: kws,
-	})
+	return oc.Set(context.Background(), keyop.ParseOps(kws)...)
 }

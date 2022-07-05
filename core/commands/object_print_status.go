@@ -1,12 +1,14 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/cluster"
@@ -24,7 +26,8 @@ type (
 	// CmdObjectPrintStatus is the cobra flag set of the status command.
 	CmdObjectPrintStatus struct {
 		OptsGlobal
-		object.OptsStatus
+		OptsLock
+		Refresh bool `flag:"refresh"`
 	}
 )
 
@@ -86,13 +89,21 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 		return data, err
 	}
 	var errs error
+	ctx := context.Background()
+	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 	for _, p := range paths {
 		obj, err := object.NewCore(p)
 		if err != nil {
 			errs = xerrors.Append(errs, err)
 			continue
 		}
-		status, err := obj.Status(t.OptsStatus)
+		var status instance.Status
+		if t.Refresh {
+			status, err = obj.FreshStatus(ctx)
+		} else {
+			status, err = obj.Status(ctx)
+		}
 		if err != nil {
 			errs = xerrors.Append(errs, err)
 			continue

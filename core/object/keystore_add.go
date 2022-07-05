@@ -9,68 +9,72 @@ import (
 	"opensvc.com/opensvc/util/uri"
 )
 
-// OptsAdd is the options of the Decode function of all keystore objects.
-type OptsAdd struct {
-	OptsLock
-	Key   string  `flag:"key"`
-	From  *string `flag:"from"`
-	Value *string `flag:"value"`
-}
-
-func (t *keystore) add(name string, from, value *string) error {
-	if name == "" {
-		return fmt.Errorf("key name can not be empty")
-	}
+// AddKey sets a new key and commits immediately
+func (t *keystore) AddKey(name string, b []byte) error {
 	if t.HasKey(name) {
-		if value == nil && from == nil {
-			return nil
-		}
 		return fmt.Errorf("key already exist: %s. use the change action.", name)
 	}
-	return t.alter(name, from, value)
-}
-
-func (t *keystore) change(name string, from, value *string) error {
-	if name == "" {
-		return fmt.Errorf("key name can not be empty")
-	}
-	return t.alter(name, from, value)
-}
-
-func (t *keystore) alter(name string, from, value *string) error {
-	var (
-		err error
-	)
-	switch {
-	case from != nil && *from != "":
-		u := uri.New(*from)
-		switch {
-		case u.IsValid():
-			err = t.fromURI(name, u)
-		case file.ExistsAndRegular(*from):
-			err = t.fromRegular(name, *from)
-		case file.ExistsAndDir(*from):
-			err = t.fromDir(name, *from)
-		default:
-			err = fmt.Errorf("unexpected value source: %s", *from)
-		}
-	default:
-		err = t.fromValue(name, value)
-	}
-	if err != nil {
+	if err := t.addKey(name, b); err != nil {
 		return err
 	}
 	return t.config.Commit()
 }
 
-func (t *keystore) fromValue(name string, value *string) error {
-	var b []byte
-	if value == nil {
-		b = []byte{}
-	} else {
-		b = []byte(*value)
+// ChangeKey changes the value of a existing key and commits immediately
+func (t *keystore) ChangeKey(name string, b []byte) error {
+	if !t.HasKey(name) {
+		return fmt.Errorf("key does not exist: %s. use the add action.", name)
 	}
-	return t.addKey(name, b)
+	if err := t.addKey(name, b); err != nil {
+		return err
+	}
+	return t.config.Commit()
+}
+func (t *keystore) AddKeyFrom(name string, from string) error {
+	if name == "" {
+		return fmt.Errorf("key name can not be empty")
+	}
+	if t.HasKey(name) {
+		return fmt.Errorf("key already exist: %s. use the change action.", name)
+	}
+	if err := t.alterFrom(name, from); err != nil {
+		return err
+	}
+	return t.config.Commit()
+}
+
+func (t *keystore) ChangeKeyFrom(name string, from string) error {
+	if name == "" {
+		return fmt.Errorf("key name can not be empty")
+	}
+	if t.HasKey(name) {
+		return fmt.Errorf("key does not exist: %s. use the add action.", name)
+	}
+	if err := t.alterFrom(name, from); err != nil {
+		return err
+	}
+	return t.config.Commit()
+}
+
+func (t *keystore) alterFrom(name string, from string) error {
+	var err error
+	switch {
+	case from != "":
+		u := uri.New(from)
+		switch {
+		case u.IsValid():
+			err = t.fromURI(name, u)
+		case file.ExistsAndRegular(from):
+			err = t.fromRegular(name, from)
+		case file.ExistsAndDir(from):
+			err = t.fromDir(name, from)
+		default:
+			err = fmt.Errorf("unexpected value source: %s", from)
+		}
+	default:
+		err = fmt.Errorf("empty value source")
+	}
+	return err
 }
 
 func (t *keystore) fromRegular(name string, p string) error {
@@ -97,6 +101,12 @@ func (t *keystore) fromURI(name string, u uri.T) error {
 
 // Note: addKey does not commit, so it can be used multiple times efficiently.
 func (t *keystore) addKey(name string, b []byte) error {
+	if name == "" {
+		return fmt.Errorf("key name can not be empty")
+	}
+	if b == nil {
+		b = []byte{}
+	}
 	s, err := t.customEncode(b)
 	if err != nil {
 		return err
@@ -113,12 +123,4 @@ func (t *keystore) addKey(name string, b []byte) error {
 		t.log.Info().Str("key", name).Int("len", len(s)).Msg("key set")
 	}
 	return nil
-}
-
-// AddKey sets a key and commits immediately
-func (t *keystore) AddKey(name string, b []byte) error {
-	if err := t.addKey(name, b); err != nil {
-		return err
-	}
-	return t.config.Commit()
 }

@@ -27,37 +27,24 @@ type (
 	Keystore interface {
 		corer
 		HasKey(name string) bool
-		Add(OptsAdd) error
 		AddKey(name string, b []byte) error
-		Change(OptsAdd) error
-		Decode(OptsDecode) ([]byte, error)
+		AddKeyFrom(name string, from string) error
+		ChangeKey(name string, b []byte) error
+		ChangeKeyFrom(name string, from string) error
 		DecodeKey(keyname string) ([]byte, error)
-		Keys(OptsKeys) ([]string, error)
+		AllKeys() ([]string, error)
 		MatchingKeys(string) ([]string, error)
-		Remove(OptsRemove) error
-		RemoveKey(keyname string) error
-		EditKey(OptsEditKey) error
-		Install(OptsInstall) error
-		InstallKey(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
+		RemoveKey(name string) error
+		EditKey(name string) error
+		InstallKey(name string) error
+		InstallKeyTo(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
 	}
 
 	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).
 	SecureKeystore interface {
-		GenCert(OptsGenCert) error
+		GenCert() error
 	}
 )
-
-func (t keystore) Add(options OptsAdd) error {
-	return t.add(options.Key, options.From, options.Value)
-}
-
-func (t keystore) Change(options OptsAdd) error {
-	return t.change(options.Key, options.From, options.Value)
-}
-
-func (t keystore) Decode(options OptsDecode) ([]byte, error) {
-	return t.decode(options.Key)
-}
 
 func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)

@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -35,7 +36,7 @@ func Realpath(s string, namespace string) (string, error) {
 	if err != nil {
 		return s, err
 	}
-	st, err := vol.Status(OptsStatus{})
+	st, err := vol.Status(context.Background())
 	if err != nil {
 		return s, err
 	}
@@ -86,7 +87,7 @@ func Realdevpath(s string, namespace string) (string, error) {
 		if err != nil {
 			return s, err
 		}
-		st, err := vol.Status(OptsStatus{})
+		st, err := vol.Status(context.Background())
 		if err != nil {
 			return s, err
 		}

@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"opensvc.com/opensvc/core/driver"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/volaccess"
@@ -78,7 +80,7 @@ type (
 	}
 	volumer interface {
 		FQDN() string
-		SetKeywords([]string) error
+		Set(context.Context, ...keyop.T) error
 	}
 )
 
@@ -313,7 +315,7 @@ func ConfigureVolume(p Pooler, vol volumer, size float64, format bool, acs volac
 	kws = append(kws, nodeKeywords(nodes)...)
 	kws = append(kws, statusScheduleKeywords(p)...)
 	kws = append(kws, syncKeywords()...)
-	if err := vol.SetKeywords(kws); err != nil {
+	if err := vol.Set(context.Background(), keyop.ParseOps(kws)...); err != nil {
 		return err
 	}
 	return nil

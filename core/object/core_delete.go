@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,13 +9,6 @@ import (
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/util/file"
 )
-
-type OptsDelete struct {
-	OptsLock
-	OptDryRun
-	RID         string `flag:"rid"`
-	Unprovision bool   `flag:"unprovision"`
-}
 
 //
 // Delete is the 'delete' object action entrypoint.
@@ -25,20 +19,23 @@ type OptsDelete struct {
 // If a resource selector is set, only delete the corresponding
 // sections in the configuration file.
 //
-func (t core) Delete(options OptsDelete) error {
-	props := actioncontext.Delete
-	unlock, err := t.lockAction(props, options.OptsLock)
+func (t core) DeleteSection(ctx context.Context, rid string) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Delete)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	return t.lockedDelete(options)
+	return t.deleteSections(rid)
 }
 
-func (t core) lockedDelete(opts OptsDelete) error {
-	if opts.RID != "" {
-		return t.deleteSections(opts.RID)
+func (t core) Delete(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Delete)
+	unlock, err := t.lockAction(ctx)
+	if err != nil {
+		return err
 	}
+	defer unlock()
 	return t.deleteInstance()
 }
 

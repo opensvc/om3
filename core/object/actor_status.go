@@ -14,37 +14,40 @@ import (
 	"opensvc.com/opensvc/util/timestamp"
 )
 
+func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
+	ctx, stop := statusbus.WithContext(ctx, t.path)
+	defer stop()
+	return t.statusEval(ctx)
+}
+
 // Status returns the service status dataset
-func (t *actor) Status(options OptsStatus) (instance.Status, error) {
+func (t *actor) Status(ctx context.Context) (instance.Status, error) {
 	var (
 		data instance.Status
 		err  error
 	)
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
 	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
-
-	if options.Refresh || t.statusDumpOutdated() {
-		return t.statusEval(ctx, options)
+	if t.statusDumpOutdated() {
+		return t.statusEval(ctx)
 	}
 	if data, err = t.statusLoad(); err == nil {
 		return data, nil
 	}
 	// corrupted status.json => eval
-	return t.statusEval(ctx, options)
+	return t.statusEval(ctx)
 }
 
 func (t *actor) postActionStatusEval(ctx context.Context) {
-	if _, err := t.statusEval(ctx, OptsStatus{}); err != nil {
+	if _, err := t.statusEval(ctx); err != nil {
 		t.log.Debug().Err(err).Msg("a status refresh is already in progress")
 	}
 }
 
-func (t *actor) statusEval(ctx context.Context, options OptsStatus) (instance.Status, error) {
-	props := actioncontext.Status
-	unlock, err := t.lockAction(props, options.OptsLock)
+func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}

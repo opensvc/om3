@@ -12,7 +12,7 @@ type (
 	// CmdObjectComplianceDetachModuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceDetachModuleset struct {
 		OptsGlobal
-		object.OptsObjectComplianceDetachModuleset
+		OptModuleset
 	}
 )
 
@@ -54,7 +54,11 @@ func (t *CmdObjectComplianceDetachModuleset) run(selector *string, kind string) 
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return nil, o.ComplianceDetachModuleset(t.OptsObjectComplianceDetachModuleset)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				return nil, comp.DetachModuleset(t.Moduleset)
 			}
 		}),
 	).Do()

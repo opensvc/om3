@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -14,7 +16,7 @@ type (
 	// CmdObjectValidateConfig is the cobra flag set of the get command.
 	CmdObjectValidateConfig struct {
 		OptsGlobal
-		object.OptsValidateConfig
+		OptsLock
 	}
 )
 
@@ -55,7 +57,10 @@ func (t *CmdObjectValidateConfig) run(selector *string, kind string) {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a configurer", o)
 			}
-			return c.ValidateConfig(t.OptsValidateConfig)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			return c.ValidateConfig(ctx)
 		}),
 	).Do()
 }

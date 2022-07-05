@@ -10,9 +10,8 @@ import (
 func TestVolatileFuncOpt(t *testing.T) {
 	t.Run("volatile funcopt", func(t *testing.T) {
 		p, _ := path.Parse("ci/svc/alpha")
-		o, err := New(p, WithVolatile(true))
-		i := o.(*Svc)
-		assert.Nil(t, err, "NewFromPath(p) mustn't return an error")
-		assert.Equal(t, i.IsVolatile(), true)
+		o, err := NewSvc(p, WithVolatile(true))
+		assert.NoError(t, err)
+		assert.Equal(t, o.IsVolatile(), true)
 	})
 }

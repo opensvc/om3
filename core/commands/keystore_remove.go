@@ -12,7 +12,7 @@ type (
 	// CmdKeystoreRemove is the cobra flag set of the remove command.
 	CmdKeystoreRemove struct {
 		OptsGlobal
-		object.OptsRemove
+		Key string `flag:"key"`
 	}
 )
 
@@ -51,7 +51,7 @@ func (t *CmdKeystoreRemove) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.Remove(t.OptsRemove)
+			return nil, store.RemoveKey(t.Key)
 		}),
 	).Do()
 }

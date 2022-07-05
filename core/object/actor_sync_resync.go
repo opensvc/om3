@@ -7,25 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-// OptsSyncResync is the options of the SyncResync object method.
-type OptsSyncResync struct {
-	OptsLock
-	OptsResourceSelector
-	OptForce
-	OptDryRun
-}
-
 // SyncResync re-establishes the data synchronization
-func (t *actor) SyncResync(options OptsSyncResync) error {
-	props := actioncontext.SyncResync
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) SyncResync(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.SyncResync)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("sync_resync", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}

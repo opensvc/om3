@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -9,36 +10,23 @@ import (
 	"opensvc.com/opensvc/core/xconfig"
 )
 
-// OptsSet is the options of the Set object method.
-type OptsSet struct {
-	OptsLock
-	KeywordOps []string `flag:"kwops"`
-}
-
 // Set changes or adds a keyword and its value in the configuration file.
-func (t *core) Set(options OptsSet) error {
-	unlock, err := t.lockAction(actioncontext.Set, options.OptsLock)
+func (t *core) Set(ctx context.Context, kops ...keyop.T) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Set)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	return setKeywords(t.config, options.KeywordOps)
+	return setKeys(t.config, kops...)
 }
 
-func (t *core) SetKeywords(kws []string) error {
-	return setKeywords(t.config, kws)
-}
-
-func (t *core) SetKeys(kops ...keyop.T) error {
+func (t *core) setKeys(kops ...keyop.T) error {
 	return setKeys(t.config, kops...)
 }
 
 func setKeywords(cf *xconfig.T, kws []string) error {
-	l := make([]keyop.T, len(kws))
-	for i, kw := range kws {
-		op := keyop.Parse(kw)
-		l[i] = *op
-	}
+	l := keyop.ParseOps(kws)
 	return setKeys(cf, l...)
 }
 

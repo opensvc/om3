@@ -14,7 +14,8 @@ type (
 	// CmdObjectDoc is the cobra flag set of the doc command.
 	CmdObjectDoc struct {
 		OptsGlobal
-		object.OptsDoc
+		Keyword string `flag:"kw"`
+		Driver  string `flag:"driver"`
 	}
 )
 
@@ -23,6 +24,7 @@ func (t *CmdObjectDoc) Init(kind string, parent *cobra.Command, selector *string
 	cmd := t.cmd(kind, selector)
 	parent.AddCommand(cmd)
 	flag.Install(cmd, t)
+	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
 }
 
 func (t *CmdObjectDoc) cmd(kind string, selector *string) *cobra.Command {
@@ -58,7 +60,14 @@ func (t *CmdObjectDoc) run(selector *string, kind string) {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a configurer", o)
 			}
-			return c.Doc(t.OptsDoc)
+			switch {
+			case t.Driver != "":
+				return c.DriverDoc(t.Driver)
+			case t.Keyword != "":
+				return c.KeywordDoc(t.Keyword)
+			default:
+				return "", nil
+			}
 		}),
 	).Do()
 }

@@ -11,7 +11,7 @@ type (
 	// CmdNodeSysreport is the cobra flag set of the sysreport command.
 	CmdNodeSysreport struct {
 		OptsGlobal
-		object.OptsNodeSysreport
+		OptForce
 	}
 )
 
@@ -46,7 +46,13 @@ func (t *CmdNodeSysreport) run() {
 			"force":  t.Force,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Sysreport(t.OptsNodeSysreport)
+			n := object.NewNode()
+			sr, err := n.NewSysreport()
+			if err != nil {
+				return nil, err
+			}
+			sr.SetForce(t.Force)
+			return nil, sr.Do()
 		}),
 	).Do()
 }

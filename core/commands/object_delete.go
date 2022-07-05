@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -12,7 +15,9 @@ type (
 	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectDelete struct {
 		OptsGlobal
-		object.OptsDelete
+		OptsLock
+		OptDryRun
+		RID string `flag:"rid"`
 	}
 )
 
@@ -43,15 +48,21 @@ func (t *CmdObjectDelete) run(selector *string, kind string) {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("delete"),
 		objectaction.WithRemoteOptions(map[string]interface{}{
-			"unprovision": t.Unprovision,
-			"rid":         t.RID,
+			"rid": t.RID,
 		}),
 		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
 			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Delete(t.OptsDelete)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			if t.RID != "" {
+				return nil, o.DeleteSection(ctx, t.RID)
+			} else {
+				return nil, o.Delete(ctx)
+			}
 		}),
 	).Do()
 }

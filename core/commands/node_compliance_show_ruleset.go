@@ -44,7 +44,11 @@ func (t *CmdNodeComplianceShowRuleset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceShowRuleset()
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			return comp.GetRulesets()
 		}),
 	).Do()
 }

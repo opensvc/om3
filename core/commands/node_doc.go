@@ -11,7 +11,8 @@ type (
 	// NodeDoc is the cobra flag set of the node doc command.
 	NodeDoc struct {
 		OptsGlobal
-		object.OptsDoc
+		Keyword string `flag:"kw"`
+		Driver  string `flag:"driver"`
 	}
 )
 
@@ -20,6 +21,7 @@ func (t *NodeDoc) Init(parent *cobra.Command) {
 	cmd := t.cmd()
 	parent.AddCommand(cmd)
 	flag.Install(cmd, t)
+	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
 }
 
 func (t *NodeDoc) cmd() *cobra.Command {
@@ -47,7 +49,15 @@ func (t *NodeDoc) run() {
 
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Doc(t.OptsDoc)
+			n := object.NewNode()
+			switch {
+			case t.Driver != "":
+				return n.DriverDoc(t.Driver)
+			case t.Keyword != "":
+				return n.KeywordDoc(t.Keyword)
+			default:
+				return "", nil
+			}
 		}),
 	).Do()
 }

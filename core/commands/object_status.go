@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -12,7 +15,8 @@ type (
 	// CmdObjectStatus is the cobra flag set of the status command.
 	CmdObjectStatus struct {
 		OptsGlobal
-		object.OptsStatus
+		OptsLock
+		Refresh bool `flag:"refresh"`
 	}
 )
 
@@ -61,7 +65,14 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return o.Status(t.OptsStatus)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			if t.Refresh {
+				return o.Status(ctx)
+			} else {
+				return o.FreshStatus(ctx)
+			}
 		}),
 	).Do()
 }

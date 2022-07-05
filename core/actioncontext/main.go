@@ -9,56 +9,143 @@ import (
 )
 
 type (
-	key      int
-	isCroner interface {
-		IsCron() bool
-	}
-	isConfirmer interface {
-		IsConfirm() bool
-	}
-	isForcer interface {
-		IsForce() bool
-	}
-	isLeaderer interface {
-		IsLeader() bool
-	}
-	toStrer interface {
-		ToStr() string
-	}
-	isDryRuner interface {
-		IsDryRun() bool
-	}
-	isRollbackDisableder interface {
-		IsRollbackDisabled() bool
-	}
-	isLockDisableder interface {
-		IsLockDisabled() bool
-	}
-	lockTimeouter interface {
-		LockTimeout() time.Duration
-	}
-	rider interface {
-		ResourceSelectorRID() string
-	}
-	tager interface {
-		ResourceSelectorTag() string
-	}
-	subseter interface {
-		ResourceSelectorSubset() string
-	}
+	key int
 )
 
 const (
-	optionsKey key = iota
+	confirmKey key = iota
+	cronKey
 	propsKey
+	ridKey
+	tagKey
+	subsetKey
+	forceKey
+	lockTimeoutKey
+	lockDisabledKey
+	toKey
+	dryRunKey
+	rollbackDisabledKey
+	leaderKey
 )
 
-func WithOptions(ctx context.Context, options interface{}) context.Context {
-	return context.WithValue(ctx, optionsKey, options)
+func WithLockDisabled(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, lockDisabledKey, v)
+}
+func IsLockDisabled(ctx context.Context) bool {
+	if i := ctx.Value(lockDisabledKey); i != nil {
+		return i.(bool)
+	}
+	return false
 }
 
-func Options(ctx context.Context) interface{} {
-	return ctx.Value(optionsKey)
+func WithRollbackDisabled(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, rollbackDisabledKey, v)
+}
+func IsRollbackDisabled(ctx context.Context) bool {
+	if i := ctx.Value(rollbackDisabledKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithDryRun(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, dryRunKey, v)
+}
+func IsDryRun(ctx context.Context) bool {
+	if i := ctx.Value(dryRunKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithLeader(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, leaderKey, v)
+}
+func IsLeader(ctx context.Context) bool {
+	if i := ctx.Value(leaderKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithConfirm(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, confirmKey, v)
+}
+func IsConfirm(ctx context.Context) bool {
+	if i := ctx.Value(confirmKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithCron(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, cronKey, v)
+}
+func IsCron(ctx context.Context) bool {
+	if i := ctx.Value(cronKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithForce(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, forceKey, v)
+}
+func IsForce(ctx context.Context) bool {
+	if i := ctx.Value(forceKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithTo(ctx context.Context, s string) context.Context {
+	return context.WithValue(ctx, toKey, s)
+}
+func To(ctx context.Context) string {
+	if i := ctx.Value(toKey); i != nil {
+		return i.(string)
+	}
+	return ""
+}
+
+func WithRID(ctx context.Context, s string) context.Context {
+	return context.WithValue(ctx, ridKey, s)
+}
+func RID(ctx context.Context) string {
+	if i := ctx.Value(ridKey); i != nil {
+		return i.(string)
+	}
+	return ""
+}
+
+func WithTag(ctx context.Context, s string) context.Context {
+	return context.WithValue(ctx, tagKey, s)
+}
+func Tag(ctx context.Context) string {
+	if i := ctx.Value(tagKey); i != nil {
+		return i.(string)
+	}
+	return ""
+}
+
+func WithSubset(ctx context.Context, s string) context.Context {
+	return context.WithValue(ctx, subsetKey, s)
+}
+func Subset(ctx context.Context) string {
+	if i := ctx.Value(subsetKey); i != nil {
+		return i.(string)
+	}
+	return ""
+}
+
+func WithLockTimeout(ctx context.Context, d time.Duration) context.Context {
+	return context.WithValue(ctx, lockTimeoutKey, d)
+}
+func LockTimeout(ctx context.Context) time.Duration {
+	if i := ctx.Value(lockTimeoutKey); i != nil {
+		return i.(time.Duration)
+	}
+	return 5 * time.Second
 }
 
 func WithProps(ctx context.Context, props Properties) context.Context {
@@ -74,88 +161,4 @@ func WithProps(ctx context.Context, props Properties) context.Context {
 
 func Props(ctx context.Context) Properties {
 	return ctx.Value(propsKey).(Properties)
-}
-
-func To(ctx context.Context) string {
-	if o, ok := Options(ctx).(toStrer); ok {
-		return o.ToStr()
-	}
-	return ""
-}
-
-func IsConfirm(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isConfirmer); ok {
-		return o.IsConfirm()
-	}
-	return false
-}
-
-func IsCron(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isCroner); ok {
-		return o.IsCron()
-	}
-	return false
-}
-
-func IsDryRun(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isDryRuner); ok {
-		return o.IsDryRun()
-	}
-	return false
-}
-
-func IsRollbackDisabled(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isRollbackDisableder); ok {
-		return o.IsRollbackDisabled()
-	}
-	return false
-}
-
-func IsForce(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isForcer); ok {
-		return o.IsForce()
-	}
-	return false
-}
-
-func IsLeader(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isLeaderer); ok {
-		return o.IsLeader()
-	}
-	return false
-}
-
-func IsLockDisabled(ctx context.Context) bool {
-	if o, ok := Options(ctx).(isLockDisableder); ok {
-		return o.IsLockDisabled()
-	}
-	return false
-}
-
-func LockTimeout(ctx context.Context) time.Duration {
-	if o, ok := Options(ctx).(lockTimeouter); ok {
-		return o.LockTimeout()
-	}
-	return time.Second * 0
-}
-
-func ResourceSelectorRID(ctx context.Context) string {
-	if o, ok := Options(ctx).(rider); ok {
-		return o.ResourceSelectorRID()
-	}
-	return ""
-}
-
-func ResourceSelectorTag(ctx context.Context) string {
-	if o, ok := Options(ctx).(tager); ok {
-		return o.ResourceSelectorTag()
-	}
-	return ""
-}
-
-func ResourceSelectorSubset(ctx context.Context) string {
-	if o, ok := Options(ctx).(subseter); ok {
-		return o.ResourceSelectorSubset()
-	}
-	return ""
 }

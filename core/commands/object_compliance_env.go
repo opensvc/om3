@@ -12,7 +12,8 @@ type (
 	// CmdObjectComplianceEnv is the cobra flag set of the sysreport command.
 	CmdObjectComplianceEnv struct {
 		OptsGlobal
-		object.OptsObjectComplianceEnv
+		OptModuleset
+		OptModule
 	}
 )
 
@@ -54,7 +55,14 @@ func (t *CmdObjectComplianceEnv) run(selector *string, kind string) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {
-				return o.ComplianceEnv(t.OptsObjectComplianceEnv)
+				comp, err := o.NewCompliance()
+				if err != nil {
+					return nil, err
+				}
+				run := comp.NewRun()
+				run.SetModulesetsExpr(t.Moduleset)
+				run.SetModulesExpr(t.Module)
+				return run.Env()
 			}
 		}),
 	).Do()

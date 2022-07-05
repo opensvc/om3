@@ -7,23 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-type OptsSetUnprovisioned struct {
-	OptsResourceSelector
-	OptsLock
-	OptDryRun
-}
-
 // SetUnprovisioned starts the local instance of the object
-func (t *actor) SetUnprovisioned(options OptsSetUnprovisioned) error {
-	props := actioncontext.SetUnprovisioned
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) SetUnprovisioned(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.SetUnprovisioned)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("set unprovisioned", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}

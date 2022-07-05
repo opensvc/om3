@@ -5,13 +5,14 @@ import (
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
 	// CmdNodeComplianceShowModuleset is the cobra flag set of the sysreport command.
 	CmdNodeComplianceShowModuleset struct {
 		OptsGlobal
-		object.OptsNodeComplianceShowModuleset
+		OptModuleset
 	}
 )
 
@@ -46,7 +47,17 @@ func (t *CmdNodeComplianceShowModuleset) run() {
 			"moduleset": t.Moduleset,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ComplianceShowModuleset(t.OptsNodeComplianceShowModuleset)
+			comp, err := object.NewNode().NewCompliance()
+			if err != nil {
+				return nil, err
+			}
+			modsets := xstrings.Split(t.Moduleset, ",")
+			data, err := comp.GetData(modsets)
+			if err != nil {
+				return nil, err
+			}
+			tree := data.ModulesetsTree()
+			return tree, nil
 		}),
 	).Do()
 }

@@ -12,7 +12,7 @@ type (
 	// CmdKeystoreKeys is the cobra flag set of the keys command.
 	CmdKeystoreKeys struct {
 		OptsGlobal
-		object.OptsKeys
+		Match string `flag:"match"`
 	}
 )
 
@@ -51,7 +51,7 @@ func (t *CmdKeystoreKeys) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return store.Keys(t.OptsKeys)
+			return store.MatchingKeys(t.Match)
 		}),
 	).Do()
 }

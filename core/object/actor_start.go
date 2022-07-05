@@ -7,27 +7,14 @@ import (
 	"opensvc.com/opensvc/core/resource"
 )
 
-// OptsStart is the options of the Start object method.
-type OptsStart struct {
-	OptsLock
-	OptsResourceSelector
-	OptTo
-	OptForce
-	OptDisableRollback
-	OptDryRun
-}
-
 // Start starts the local instance of the object
-func (t *actor) Start(options OptsStart) error {
-	props := actioncontext.Start
-	ctx := context.Background()
-	ctx = actioncontext.WithOptions(ctx, options)
-	ctx = actioncontext.WithProps(ctx, props)
+func (t *actor) Start(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Start)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
 	t.setenv("start", false)
-	unlock, err := t.lockAction(props, options.OptsLock)
+	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
 	}

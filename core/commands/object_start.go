@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
+	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -13,7 +16,12 @@ type (
 	CmdObjectStart struct {
 		OptsGlobal
 		OptsAsync
-		object.OptsStart
+		OptsLock
+		OptsResourceSelector
+		OptTo
+		OptForce
+		OptDisableRollback
+		OptDryRun
 	}
 )
 
@@ -54,7 +62,17 @@ func (t *CmdObjectStart) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Start(t.OptsStart)
+			ctx := context.Background()
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+			ctx = actioncontext.WithRID(ctx, t.RID)
+			ctx = actioncontext.WithTag(ctx, t.Tag)
+			ctx = actioncontext.WithSubset(ctx, t.Subset)
+			ctx = actioncontext.WithTo(ctx, t.To)
+			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
+			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
+			return nil, o.Start(ctx)
 		}),
 	).Do()
 }
