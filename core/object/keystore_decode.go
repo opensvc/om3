@@ -2,11 +2,6 @@ package object
 
 import (
 	"fmt"
-	"os"
-)
-
-const (
-	DefaultInstalledFileMode os.FileMode = 0644
 )
 
 // Get returns a keyword value
