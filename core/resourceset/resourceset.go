@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/pg"
@@ -155,6 +154,9 @@ func (t T) Resources() resource.Drivers {
 }
 
 func (t T) ReconfigureResource(r resource.Driver) error {
+	if t.ResourceLister == nil {
+		panic(errors.WithStack(errors.New("resourceset has no ResourceLister set")))
+	}
 	return t.ResourceLister.ReconfigureResource(r)
 }
 
@@ -172,32 +174,28 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	return l
 }
 
-func (t T) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) (hitBarrier bool, err error) {
+func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn DoFunc) (hasHitBarrier bool, err error) {
 	rsetResources := t.Resources()
 	resources := l.Resources().Intersection(rsetResources)
 	if l.IsDesc() {
 		// Align the resources order with the ResourceLister order.
 		resources.Reverse()
 	}
-	if barrier != "" && resources.HasRID(barrier) {
-		hitBarrier = true
-		resources = resources.Truncate(barrier)
-	}
+	resources, hasHitBarrier = resources.Truncate(barrier)
 	pg.FromContext(ctx).Register(t.PG)
 	for _, r := range resources {
 		pg.FromContext(ctx).Register(r.GetPG())
 	}
 	if t.Parallel {
-		err = t.doParallel(ctx, l, resources, fn)
+		err = t.doParallel(ctx, l, resources, desc, fn)
 	} else {
-		err = t.doSerial(ctx, l, resources, fn)
+		err = t.doSerial(ctx, l, resources, desc, fn)
 	}
 	return
 }
 
-func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
+func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
 	var err error
-	actionName := actioncontext.Props(ctx).Name
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
@@ -223,7 +221,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	nResources := len(resources)
 	for i := 0; i < nResources; i++ {
 		res := <-q
-		t.Log().Log().Msgf("wait %s parallel %s: %d/%d running", t.Name, actionName, nResources-i, nResources)
+		t.Log().Log().Msgf("wait %s parallel %s: %d/%d running", t.Name, desc, nResources-i, nResources)
 		if res.Resource.IsOptional() {
 			continue
 		}
@@ -232,13 +230,12 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	return errs
 }
 
-func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, fn DoFunc) error {
-	actionName := actioncontext.Props(ctx).Name
+func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
 	for _, r := range resources {
 		var err error
 		c := make(chan error, 1)
 		if err = l.ReconfigureResource(r); err == nil {
-			r.Log().Log().Msgf("%s %s", actionName, r.RID())
+			t.Log().Log().Msgf("%s %s", desc, r.RID())
 			c <- fn(ctx, r)
 		}
 		select {
@@ -261,17 +258,17 @@ func (t L) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
-func (t L) Do(ctx context.Context, l ResourceLister, barrier string, fn DoFunc) error {
+func (t L) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn DoFunc) error {
 	if l.IsDesc() {
 		// Align the resourceset order with the ResourceLister order.
 		t.Reverse()
 	}
 	for _, rset := range t {
-		hitBarrier, err := rset.Do(ctx, l, barrier, fn)
+		hasHitBarrier, err := rset.Do(ctx, l, barrier, desc, fn)
 		if err != nil {
 			return err
 		}
-		if hitBarrier {
+		if hasHitBarrier {
 			break
 		}
 	}

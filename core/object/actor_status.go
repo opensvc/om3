@@ -117,7 +117,7 @@ func (t *actor) subsetsStatus() map[string]instance.SubsetStatus {
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) error {
 	data.Resources = make(map[string]resource.ExposedStatus)
 	var mu sync.Mutex
-	return t.ResourceSets().Do(ctx, t, "", func(ctx context.Context, r resource.Driver) error {
+	return t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
 		xd := resource.GetExposedStatus(ctx, r)
 		mu.Lock()
 		data.Resources[r.RID()] = xd

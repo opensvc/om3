@@ -172,19 +172,21 @@ func (t Drivers) Reverse() {
 }
 
 //
-// Truncate returns the drivers list from 0 to the driver with <rid>.
+// Truncate returns the drivers list from first to the driver with <rid>.
 // If rid is not set, return the whole driver list.
+// The second return value is true if the rid was found, whatever the
+// truncation done.
 //
-func (t Drivers) Truncate(rid string) Drivers {
+func (t Drivers) Truncate(rid string) (Drivers, bool) {
 	if rid == "" {
-		return t
+		return t, false
 	}
 	l := make(Drivers, 0)
 	for _, r := range t {
 		l = append(l, r)
 		if r.RID() == rid {
-			break
+			return l, true
 		}
 	}
-	return l
+	return l, false
 }

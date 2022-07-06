@@ -68,7 +68,6 @@ func (t *actor) setenv(action string, leader bool) {
 }
 
 func (t *actor) preAction(ctx context.Context) error {
-	t.log.Info().Strs("argv", os.Args).Str("origin", env.Origin()).Msg("do")
 	if err := t.notifyAction(ctx); err != nil {
 		action := actioncontext.Props(ctx)
 		t.Log().Debug().Err(err).Msgf("unable to notify %v preAction", action.Name)
@@ -108,23 +107,23 @@ func (t *actor) rollback(ctx context.Context) error {
 
 func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
 	props := actioncontext.Props(ctx)
-	timeout := t.actionTimeout(props.TimeoutKeywords)
+	timeout, source := t.actionTimeout(props.TimeoutKeywords)
+	t.log.Debug().Msgf("action timeout set to %s from keyword %s", timeout, source)
 	if timeout == 0 {
 		return ctx, func() {}
 	}
 	return context.WithTimeout(ctx, timeout)
 }
 
-func (t *actor) actionTimeout(kwNames []string) time.Duration {
+func (t *actor) actionTimeout(kwNames []string) (time.Duration, string) {
 	for _, kwName := range kwNames {
 		k := key.Parse(kwName)
 		timeout := t.Config().GetDuration(k)
 		if timeout != nil {
-			t.log.Debug().Msgf("action timeout set to %s from keyword %s", timeout, kwName)
-			return *timeout
+			return *timeout, kwName
 		}
 	}
-	return 0
+	return 0, ""
 }
 
 func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
@@ -236,6 +235,7 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 }
 
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
+	t.log.Info().Strs("argv", os.Args).Str("origin", env.Origin()).Msg("do")
 	pg.FromContext(ctx).Register(t.pg)
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
@@ -247,6 +247,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer t.postActionStatusEval(ctx)
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
+	action := actioncontext.Props(ctx)
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if linkToer, ok := r.(resource.LinkToer); ok {
@@ -274,7 +275,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 				// On descending action, do action on linkers first.
 				if l.IsDesc() {
-					if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
+					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, filter(fn)); err != nil {
 						return err
 					}
 				}
@@ -283,7 +284,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				}
 				// On ascending action, do action on linkers last.
 				if !l.IsDesc() {
-					if err := t.ResourceSets().Do(ctx, l, b, filter(fn)); err != nil {
+					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, filter(fn)); err != nil {
 						return err
 					}
 				}
@@ -291,7 +292,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			}
 		}
 	}
-	t.ResourceSets().Do(ctx, l, b, func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctx, l, b, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		sb := statusbus.FromContext(ctx)
 		sb.Post(r.RID(), resource.Status(ctx, r), false)
 		return nil
@@ -299,7 +300,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if err := t.abortStart(ctx, l); err != nil {
 		return err
 	}
-	if err := t.ResourceSets().Do(ctx, l, b, linkWrap(fn)); err != nil {
+	if err := t.ResourceSets().Do(ctx, l, b, action.Name, linkWrap(fn)); err != nil {
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
 				t.Log().Err(errRollback).Msg("rollback")
