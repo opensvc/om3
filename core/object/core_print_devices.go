@@ -1,8 +1,6 @@
 package object
 
 import (
-	"strings"
-
 	"opensvc.com/opensvc/core/objectdevice"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/device"
@@ -37,57 +35,32 @@ func (t *actor) newObjectdevice(dev *device.T, role objectdevice.Role, r resourc
 	}
 }
 
-// PrintDevices display the object base, sub and exposed devices
-func (t *actor) PrintDevices(options OptsPrintDevices) objectdevice.L {
-	var exposed, sub, base, claimed bool
-	m := make(map[string]interface{})
-	for _, role := range strings.Split(options.Roles, ",") {
-		m[role] = nil
-	}
-	if _, ok := m["all"]; ok {
-		return t.printDevices(true, true, true, true)
-	}
-	if _, ok := m["exposed"]; ok {
-		exposed = true
-	}
-	if _, ok := m["sub"]; ok {
-		sub = true
-	}
-	if _, ok := m["base"]; ok {
-		base = true
-	}
-	if _, ok := m["claimed"]; ok {
-		claimed = true
-	}
-	return t.printDevices(exposed, sub, base, claimed)
-}
-
-func (t *actor) printDevices(exposed, sub, base, claimed bool) objectdevice.L {
+func (t *actor) PrintDevices(roles objectdevice.Role) objectdevice.L {
 	l := objectdevice.NewList()
 	for _, r := range t.Resources() {
 		var i interface{} = r
-		if exposed {
+		if roles&objectdevice.RoleExposed != 0 {
 			if o, ok := i.(devExposer); ok {
 				for _, dev := range o.ExposedDevices() {
 					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleExposed, r))
 				}
 			}
 		}
-		if sub {
+		if roles&objectdevice.RoleSub != 0 {
 			if o, ok := i.(devUser); ok {
 				for _, dev := range o.SubDevices() {
 					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleSub, r))
 				}
 			}
 		}
-		if base {
+		if roles&objectdevice.RoleBase != 0 {
 			if o, ok := i.(devBaser); ok {
 				for _, dev := range o.BaseDevices() {
 					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleBase, r))
 				}
 			}
 		}
-		if claimed {
+		if roles&objectdevice.RoleClaimed != 0 {
 			if o, ok := i.(devClaimer); ok {
 				for _, dev := range o.ClaimedDevices() {
 					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleClaimed, r))

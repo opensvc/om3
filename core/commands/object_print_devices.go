@@ -20,10 +20,10 @@ type (
 	// CmdObjectPrintDevices is the cobra flag set of the print devices command.
 	CmdObjectPrintDevices struct {
 		OptsGlobal
-		object.OptsPrintDevices
+		Roles string `flag:"devroles"`
 	}
 	devicer interface {
-		PrintDevices(object.OptsPrintDevices) objectdevice.L
+		PrintDevices(roles objectdevice.Role) objectdevice.L
 	}
 )
 
@@ -79,7 +79,8 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
 		if !ok {
 			continue
 		}
-		table := i.PrintDevices(t.OptsPrintDevices)
+		roles := objectdevice.ParseRoles(t.Roles)
+		table := i.PrintDevices(roles)
 		data = data.Add(table)
 	}
 	return data

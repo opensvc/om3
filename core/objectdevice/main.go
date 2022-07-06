@@ -3,6 +3,7 @@ package objectdevice
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/path"
@@ -22,7 +23,7 @@ type (
 )
 
 const (
-	RoleExposed Role = iota
+	RoleExposed Role = 1 << iota
 	RoleSub
 	RoleBase
 	RoleClaimed
@@ -58,6 +59,25 @@ func (t L) Add(more ...interface{}) L {
 		}
 	}
 	return append(t, l...)
+}
+
+func ParseRoles(s string) Role {
+	var roles Role
+	for _, role := range strings.Split(s, ",") {
+		switch role {
+		case "all":
+			roles = RoleExposed | RoleSub | RoleBase | RoleClaimed
+		case "exposed":
+			roles = roles | RoleExposed
+		case "sub":
+			roles = roles | RoleSub
+		case "base":
+			roles = roles | RoleBase
+		case "claimed":
+			roles = roles | RoleClaimed
+		}
+	}
+	return Role(roles)
 }
 
 func (t Role) String() string {
