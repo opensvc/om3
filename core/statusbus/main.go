@@ -314,7 +314,8 @@ func NewObjectBus(p path.T) *ObjT {
 
 func WithContext(ctx context.Context, p path.T) (context.Context, func()) {
 	if sb := FromContext(ctx); sb != nil {
-		panic("the context already has a statusbus")
+		// the context already has a statusbus
+		return ctx, func() {}
 	}
 	sb := NewObjectBus(p)
 	sb.bus.Start()
