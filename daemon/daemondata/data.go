@@ -89,6 +89,10 @@ type (
 	donneSetter interface {
 		setDone(bool)
 	}
+
+	dataByter interface {
+		setDataByte(b []byte)
+	}
 )
 
 // dropCmd drops commands with side effects
@@ -99,5 +103,7 @@ func dropCmd(c interface{}) {
 		cmd.setError(nil)
 	case donneSetter:
 		cmd.setDone(true)
+	case dataByter:
+		cmd.setDataByte([]byte{})
 	}
 }

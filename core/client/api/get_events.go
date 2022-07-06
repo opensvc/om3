@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/event"
 )
@@ -62,13 +63,33 @@ func (t GetEvents) GetRaw() (chan []byte, error) {
 
 // Do fetchs an Event stream from the agent api
 func (t GetEvents) Do() (chan event.Event, error) {
-	q, err := t.eventsBase()
-	if err != nil {
-		return nil, err
-	}
+	// TODO add a stopper to allow Do clients to stop fetching event streams retries
+
 	out := make(chan event.Event, 1000)
-	go marshalMessages(q, out)
-	return out, nil
+	errChan := make(chan error)
+
+	go func() {
+		defer close(out)
+		defer close(errChan)
+		hasRunOnce := false
+		for {
+			q, err := t.eventsBase()
+			if err != nil {
+				if !hasRunOnce {
+					// Notify initial create request failure
+					errChan <- err
+				}
+				return
+			}
+			if !hasRunOnce {
+				hasRunOnce = true
+				errChan <- nil
+			}
+			marshalMessages(q, out)
+		}
+	}()
+	err := <-errChan
+	return out, err
 }
 
 func marshalMessages(q chan []byte, out chan event.Event) {
@@ -97,7 +118,7 @@ func (t GetEvents) eventsBase() (chan []byte, error) {
 
 func (t GetEvents) newRequest() *request.T {
 	req := request.New()
-	req.Action = "events"
+	req.Action = "daemon/events"
 	req.Options["selector"] = t.selector
 	req.Options["namespace"] = t.namespace
 	req.Options["full"] = t.relatives

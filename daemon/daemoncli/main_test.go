@@ -1,9 +1,6 @@
 package daemoncli
 
 import (
-	"bytes"
-	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,7 +10,6 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/daemon/monitor/smon"
 	"opensvc.com/opensvc/test_conf_helper"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
@@ -125,42 +121,6 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 			require.Nil(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
-		})
-	}
-}
-
-func TestDaemonStartThenEventsReadAtLeastOneEvent(t *testing.T) {
-	smon.SetCmdPathForTest("/bin/false")
-
-	for _, url := range cases {
-		t.Run(url, func(t *testing.T) {
-			//if !privileged() {
-			//	t.Skip("need root")
-			//}
-			defer setupClusterConf(t)()
-			cli, err := newClient(url)
-			require.Nil(t, err)
-			daemonCli := New(cli)
-			go func() {
-				require.Nil(t, daemonCli.Start())
-			}()
-			require.Nil(t, daemonCli.WaitRunning())
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			// smallest size of event to read
-			b := make([]byte, 87)
-			go func() {
-				require.Nil(t, daemonCli.Events())
-			}()
-			_, err = r.Read(b)
-			require.Nil(t, err)
-			os.Stdout = old
-			readString := string(bytes.TrimRight(b, "\x00"))
-			fmt.Printf("Read: %s\n", readString)
-
-			require.Containsf(t, readString, "event_subscribe",
-				"Expected '%s' in \n%s\n", "event_subscribe", readString)
 		})
 	}
 }
