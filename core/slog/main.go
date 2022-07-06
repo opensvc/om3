@@ -212,7 +212,17 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 		if ts2, ok = events[j].m["t"]; !ok {
 			return true
 		}
-		return ts1.(float64) < ts2.(float64)
+		sts1, ok1 := ts1.(string)
+		sts2, ok2 := ts2.(string)
+		if ok1 && ok2 {
+			return sts1 < sts2
+		}
+		fts1, ok1 := ts1.(float64)
+		fts2, ok2 := ts2.(float64)
+		if ok1 && ok2 {
+			return fts1 < fts2
+		}
+		return false
 	})
 	return events, errs
 }
