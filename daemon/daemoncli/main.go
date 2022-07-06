@@ -216,16 +216,21 @@ func (t *T) running() bool {
 }
 
 func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool) error {
-	max := time.After(timeout)
+	t := time.NewTimer(timeout)
+	defer func() {
+		if !t.Stop() {
+			<-t.C
+		}
+	}()
 	for {
 		select {
-		case <-max:
+		case <-t.C:
 			return errors.New("timeout reached")
 		default:
 			if f() == expected {
 				return nil
 			}
-			<-time.After(retryDelay)
+			time.Sleep(retryDelay)
 		}
 	}
 }

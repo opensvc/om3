@@ -187,10 +187,16 @@ func (t *T) Wait(name TName, id string, timeout time.Duration) interface{} {
 	if timeout == 0 {
 		return <-iC
 	}
+	timer := time.NewTimer(timeout)
+	defer func() {
+		if !timer.Stop() {
+			<-timer.C
+		}
+	}()
 	select {
 	case s := <-iC:
 		return s
-	case <-time.After(timeout):
+	case <-timer.C:
 		return nil
 	}
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
 )
@@ -176,10 +177,16 @@ func (t *T) Wait(p path.T, rid string, timeout time.Duration) status.T {
 	if timeout == 0 {
 		return <-resp
 	}
+	timer := time.NewTimer(timeout)
+	defer func() {
+		if !timer.Stop() {
+			<-timer.C
+		}
+	}()
 	select {
 	case s := <-resp:
 		return s
-	case <-time.After(timeout):
+	case <-timer.C:
 		return status.Undef
 	}
 }
