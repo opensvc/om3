@@ -17,13 +17,6 @@ import (
 )
 
 type (
-	// OptsNodeRegister is the options of the Register function.
-	OptsNodeRegister struct {
-		User     string `flag:"collector_user"`
-		Password string `flag:"collector_password"`
-		App      string `flag:"collector_app"`
-	}
-
 	// registerReq structures the POST /register request body
 	registerReq struct {
 		Nodename string `json:"nodename"`
@@ -54,8 +47,8 @@ type (
 //
 // If app is not set, the node is added to any app under the user's
 // responsibility.
-func (t Node) Register(options OptsNodeRegister) error {
-	if err := t.register(options); err != nil {
+func (t Node) Register(user, password, app string) error {
+	if err := t.register(user, password, app); err != nil {
 		return err
 	}
 	if _, err := t.PushAsset(); err != nil {
@@ -78,32 +71,30 @@ func (t Node) Register(options OptsNodeRegister) error {
 	} else {
 		t.Log().Info().Msgf("sent initial patch inventory (%d)", len(data))
 	}
-	/*
-		if _, err := t.PushDisks(); err != nil {
-			return err
-		}
-		if _, err := t.SysReport(); err != nil {
-			return err
-		}
-	*/
+	if _, err := t.PushDisks(); err != nil {
+		return err
+	}
+	if err := t.Sysreport(); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (t Node) register(options OptsNodeRegister) error {
-	if options.User == "" {
+func (t Node) register(user, password, app string) error {
+	if user == "" {
 		return t.registerAsNode()
 	} else {
-		return t.registerAsUser(options)
+		return t.registerAsUser(user, password, app)
 	}
 }
 
-func (t Node) registerAsUser(options OptsNodeRegister) error {
-	if options.Password == "" {
+func (t Node) registerAsUser(user, password, app string) error {
+	if password == "" {
 		fmt.Printf("Password: ")
 		if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
 			return err
 		} else {
-			options.Password = string(b)
+			password = string(b)
 			fmt.Println("")
 		}
 	}
@@ -113,7 +104,6 @@ func (t Node) registerAsUser(options OptsNodeRegister) error {
 		return err
 	}
 	url.Path += "/register"
-	app := options.App
 	if app == "" {
 		app = t.MergedConfig().GetString(key.Parse("node.app"))
 	}
@@ -126,7 +116,7 @@ func (t Node) registerAsUser(options OptsNodeRegister) error {
 		return errors.Wrap(err, "encode request body")
 	}
 	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
-	req.SetBasicAuth(options.User, options.Password)
+	req.SetBasicAuth(user, password)
 	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
 	if err != nil {

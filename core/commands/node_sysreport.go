@@ -47,12 +47,11 @@ func (t *CmdNodeSysreport) run() {
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n := object.NewNode()
-			sr, err := n.NewSysreport()
-			if err != nil {
-				return nil, err
+			if t.Force {
+				return nil, n.ForceSysreport()
+			} else {
+				return nil, n.Sysreport()
 			}
-			sr.SetForce(t.Force)
-			return nil, sr.Do()
 		}),
 	).Do()
 }

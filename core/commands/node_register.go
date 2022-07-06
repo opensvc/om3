@@ -11,7 +11,9 @@ type (
 	// CmdNodeRegister is the cobra flag set of the start command.
 	CmdNodeRegister struct {
 		OptsGlobal
-		object.OptsNodeRegister
+		User     string `flag:"collector_user"`
+		Password string `flag:"collector_password"`
+		App      string `flag:"collector_app"`
 	}
 )
 
@@ -45,7 +47,7 @@ func (t *CmdNodeRegister) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Register(t.OptsNodeRegister)
+			return nil, object.NewNode().Register(t.User, t.Password, t.App)
 		}),
 	).Do()
 }
