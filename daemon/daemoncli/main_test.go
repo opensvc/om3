@@ -13,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/daemon/monitor/smon"
 	"opensvc.com/opensvc/test_conf_helper"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
@@ -129,12 +130,7 @@ func TestStop(t *testing.T) {
 }
 
 func TestDaemonStartThenEventsReadAtLeastOneEvent(t *testing.T) {
-	setupCli, err := newClient(daemonenv.UrlUxRaw)
-	require.Nil(t, err)
-	go func() {
-		require.Nil(t, New(setupCli).Start())
-	}()
-	require.Nil(t, New(setupCli).WaitRunning())
+	smon.SetCmdPathForTest("/bin/false")
 
 	for _, url := range cases {
 		t.Run(url, func(t *testing.T) {

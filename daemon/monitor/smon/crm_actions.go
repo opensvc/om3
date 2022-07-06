@@ -6,6 +6,24 @@ import (
 	"opensvc.com/opensvc/util/command"
 )
 
+var (
+	cmdPath string
+)
+
+func init() {
+	var err error
+	cmdPath, err = os.Executable()
+	if err != nil {
+		cmdPath = "/bin/false"
+	}
+}
+
+// SetCmdPathForTest set the opensvc command path for tests
+func SetCmdPathForTest(s string) {
+	// TODO use another method to create dedicated side effects for tests
+	cmdPath = s
+}
+
 func (o *smon) crmStart() error {
 	return o.crmAction(o.path.String(), "start", "--local")
 }
@@ -19,11 +37,6 @@ func (o *smon) crmStop() error {
 }
 
 func (o *smon) crmAction(cmdArgs ...string) error {
-	cmdPath, err := os.Executable()
-	if err != nil {
-		o.log.Error().Err(err).Msgf("unable to detect opensvc executable")
-		return err
-	}
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
