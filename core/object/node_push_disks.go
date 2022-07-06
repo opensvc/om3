@@ -7,7 +7,7 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 )
 
-func AllObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
+func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
 	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))
 	objs, err := sel.Objects(WithVolatile(true))
@@ -19,7 +19,7 @@ func AllObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 }
 
 func (t Node) PushDisks() (disks.Disks, error) {
-	claims, err := AllObjectsDeviceClaims()
+	claims, err := allObjectsDeviceClaims()
 	if err != nil {
 		return nil, err
 	}
