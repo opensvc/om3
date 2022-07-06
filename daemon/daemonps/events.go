@@ -26,7 +26,7 @@ func SubEvent(cmdC chan<- interface{}, name string, fn func(event.Event)) uuid.U
 		Op: ps.OpCreate,
 		Id: "subscribe-event",
 		Value: event.Event{
-			Kind:      "event-subscribe",
+			Kind:      "event_subscribe",
 			ID:        0,
 			Timestamp: timestamp.Now(),
 			Data:      jsonMsg("subscribe name: " + name),
@@ -52,7 +52,7 @@ func UnSubEvent(cmdC chan<- interface{}, id uuid.UUID) {
 			Op: ps.OpCreate,
 			Id: "unsubscribe-event",
 			Value: event.Event{
-				Kind:      "event-unsubscribe",
+				Kind:      "event_unsubscribe",
 				ID:        0,
 				Timestamp: timestamp.Now(),
 				Data:      jsonMsg("unsubscribe name: " + name),

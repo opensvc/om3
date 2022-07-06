@@ -16,6 +16,10 @@ var (
 	lastMessageType = "undef"
 )
 
+func (o opGetHbMessage) setDataByte(err error) {
+	o.data <- []byte{}
+}
+
 // GetHbMessage provides the hb message to send on remotes
 //
 // It decides which type of message is needed

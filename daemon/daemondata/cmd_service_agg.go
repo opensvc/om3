@@ -26,6 +26,14 @@ type (
 	}
 )
 
+func (o opDelServiceAgg) setError(err error) {
+	o.err <- err
+}
+
+func (o opSetServiceAgg) setError(err error) {
+	o.err <- err
+}
+
 func (o opDelServiceAgg) call(d *data) {
 	d.counterCmd <- idDelServiceAgg
 	s := o.path.String()

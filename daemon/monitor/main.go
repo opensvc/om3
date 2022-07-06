@@ -81,13 +81,15 @@ func (t *T) MainStop() error {
 func (t *T) loop(c chan bool) {
 	t.log.Info().Msg("loop started")
 	c <- true
+	ticker := time.NewTicker(t.loopDelay)
+	defer ticker.Stop()
 	t.aLoop()
 	for {
 		select {
 		case <-t.ctx.Done():
 			t.log.Info().Msg("loop stopped")
 			return
-		case <-time.After(t.loopDelay):
+		case <-ticker.C:
 			t.aLoop()
 		}
 	}

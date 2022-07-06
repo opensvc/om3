@@ -37,7 +37,7 @@ func Sub(cmdC chan<- interface{}, ns, op uint, name string, matching string, fn 
 		Name:     name,
 	}
 	go PubEvent(cmdC, event.Event{
-		Kind:      "event-subscribe",
+		Kind:      "event_subscribe",
 		ID:        0,
 		Timestamp: timestamp.Now(),
 		Data:      jsonMsg("subscribe name: " + name),
@@ -50,7 +50,7 @@ func UnSub(cmdC chan<- interface{}, id uuid.UUID) {
 	name := ps.Unsub(cmdC, id)
 	if name != "" {
 		go PubEvent(cmdC, event.Event{
-			Kind:      "event-unsubscribe",
+			Kind:      "event_unsubscribe",
 			ID:        0,
 			Timestamp: timestamp.Now(),
 			Data:      jsonMsg("unsubscribe name: " + name),

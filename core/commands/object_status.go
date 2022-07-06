@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -69,9 +70,9 @@ func (t *CmdObjectStatus) run(selector *string, kind string) {
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			if t.Refresh {
-				return o.Status(ctx)
-			} else {
 				return o.FreshStatus(ctx)
+			} else {
+				return o.Status(ctx)
 			}
 		}),
 	).Do()

@@ -21,6 +21,10 @@ type (
 	}
 )
 
+func (o opDelSmon) setError(err error) {
+	o.err <- err
+}
+
 func (o opDelSmon) call(d *data) {
 	d.counterCmd <- idDelSmon
 	s := o.path.String()

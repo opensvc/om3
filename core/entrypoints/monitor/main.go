@@ -245,8 +245,9 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 			m.doOneShot(*d, true, out)
 		}
 	}()
-	t := time.Tick(displayInterval)
 	go func() {
+		ticker := time.NewTicker(displayInterval)
+		defer ticker.Stop()
 		b := &[]byte{}
 		changes := false
 		for {
@@ -254,7 +255,7 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 			case tb := <-bChan:
 				b = tb
 				changes = true
-			case <-t:
+			case <-ticker.C:
 				if !changes {
 					continue
 				}

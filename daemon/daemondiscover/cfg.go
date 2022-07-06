@@ -22,10 +22,15 @@ import (
 func (d *discover) cfg() {
 	d.log.Info().Msg("cfg started")
 	defer func() {
-		done := time.After(dropCmdTimeout)
+		t := time.NewTimer(dropCmdTimeout)
+		defer func() {
+			if !t.Stop() {
+				<-t.C
+			}
+		}()
 		for {
 			select {
-			case <-done:
+			case <-t.C:
 				return
 			case <-d.cfgCmdC:
 			}

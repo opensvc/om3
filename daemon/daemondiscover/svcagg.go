@@ -14,10 +14,15 @@ func (d *discover) agg() {
 	log := d.log.With().Str("_func", "agg").Logger()
 	log.Info().Msg("started")
 	defer func() {
-		done := time.After(dropCmdTimeout)
+		t := time.NewTimer(dropCmdTimeout)
+		defer func() {
+			if !t.Stop() {
+				<-t.C
+			}
+		}()
 		for {
 			select {
-			case <-done:
+			case <-t.C:
 				return
 			case <-d.svcaggCmdC:
 			}

@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -95,6 +96,13 @@ func (t *T) start() error {
 	t.listener = &http.Server{Addr: t.addr, Handler: routehttp.New(t.ctx)}
 	go func() {
 		started <- true
+		for _, fname := range []string{t.certFile, t.keyFile} {
+			if !file.Exists(fname) {
+				t.log.Error().Msgf("can't listen: absent file %s", fname)
+				t.stop()
+				return
+			}
+		}
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
 		if err != http.ErrServerClosed && !strings.Contains(err.Error(), "use of closed network connection") {
 			t.log.Debug().Err(err).Msg("listener ends with unexpected error ")

@@ -259,6 +259,8 @@ func getClient() *http.Client {
 
 func httpClientServer() {
 	httpClient := newClient()
+	t := time.NewTicker(httpClientTimeout + time.Second)
+	defer t.Stop()
 	for {
 		select {
 		case c := <-httpClientC:
@@ -266,11 +268,11 @@ func httpClientServer() {
 		case <-httpClientRenew:
 			previous := httpClient
 			go func() {
-				<-time.After(2 * httpClientTimeout)
+				time.Sleep(2 * httpClientTimeout)
 				previous.CloseIdleConnections()
 			}()
 			httpClient = newClient()
-		case <-time.After(httpClientTimeout + time.Second):
+		case <-t.C:
 			httpClient.CloseIdleConnections()
 		}
 	}

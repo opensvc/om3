@@ -22,10 +22,6 @@ func (t T) NewGetEvents() *api.GetEvents {
 	return api.NewGetEvents(t)
 }
 
-func (t T) NewGetEventsDemo() *api.GetEventsDemo {
-	return api.NewGetEventsDemo(t)
-}
-
 func (t T) NewGetSchedules() *api.GetSchedules {
 	return api.NewGetSchedules(t)
 }

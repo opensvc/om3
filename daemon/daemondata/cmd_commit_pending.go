@@ -15,6 +15,10 @@ type opCommitPending struct {
 	done chan<- bool
 }
 
+func (o opCommitPending) setDone(b bool) {
+	o.done <- b
+}
+
 func (o opCommitPending) call(d *data) {
 	d.counterCmd <- idCommitPending
 	d.log.Debug().Msg("opCommitPending")

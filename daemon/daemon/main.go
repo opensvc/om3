@@ -182,6 +182,8 @@ func (t *T) loop(c chan bool) {
 	t.loopEnabled.Enable()
 	t.aLoop()
 	c <- true
+	ticker := time.NewTicker(t.loopDelay)
+	defer ticker.Stop()
 	for {
 		select {
 		case a := <-t.loopC:
@@ -189,7 +191,7 @@ func (t *T) loop(c chan bool) {
 			t.log.Info().Msg("loop stopped")
 			a.done <- "loop stopped"
 			return
-		case <-time.After(t.loopDelay):
+		case <-ticker.C:
 			t.aLoop()
 		}
 	}

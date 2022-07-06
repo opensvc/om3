@@ -1,9 +1,6 @@
 package daemoncli
 
 import (
-	"bytes"
-	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -124,47 +121,6 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 			require.Nil(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
-		})
-	}
-}
-
-func TestDaemonStartThenEventsReadAtLeastOneEvent(t *testing.T) {
-	setupCli, err := newClient(daemonenv.UrlUxRaw)
-	require.Nil(t, err)
-	go func() {
-		require.Nil(t, New(setupCli).Start())
-	}()
-	require.Nil(t, New(setupCli).WaitRunning())
-
-	for _, url := range cases {
-		t.Run(url, func(t *testing.T) {
-			//if !privileged() {
-			//	t.Skip("need root")
-			//}
-			defer setupClusterConf(t)()
-			cli, err := newClient(url)
-			require.Nil(t, err)
-			daemonCli := New(cli)
-			go func() {
-				require.Nil(t, daemonCli.Start())
-			}()
-			require.Nil(t, daemonCli.WaitRunning())
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			// smallest size of event to read
-			b := make([]byte, 87)
-			go func() {
-				require.Nil(t, daemonCli.Events())
-			}()
-			_, err = r.Read(b)
-			require.Nil(t, err)
-			os.Stdout = old
-			readString := string(bytes.TrimRight(b, "\x00"))
-			fmt.Printf("Read: %s\n", readString)
-
-			require.Containsf(t, readString, "event-subscribe",
-				"Expected '%s' in \n%s\n", "event-subscribe", readString)
 		})
 	}
 }

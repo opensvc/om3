@@ -52,6 +52,21 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	for {
 		select {
 		case <-ctx.Done():
+			bg, cleanupCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			go func() {
+				d.log.Debug().Msg("drop pending cmds")
+				defer cleanupCancel()
+				for {
+					select {
+					case c := <-cmdC:
+						dropCmd(c)
+					case <-bg.Done():
+						d.log.Debug().Msg("drop pending cmds done")
+						return
+					}
+				}
+			}()
+
 			cancel()
 			return
 		case <-ticker.C:
@@ -63,5 +78,32 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 				counterCmd <- idUndef
 			}
 		}
+	}
+}
+
+type (
+	errorSetter interface {
+		setError(err error)
+	}
+
+	donneSetter interface {
+		setDone(bool)
+	}
+
+	dataByter interface {
+		setDataByte(b []byte)
+	}
+)
+
+// dropCmd drops commands with side effects
+func dropCmd(c interface{}) {
+	// TODO implement all side effects
+	switch cmd := c.(type) {
+	case errorSetter:
+		cmd.setError(nil)
+	case donneSetter:
+		cmd.setDone(true)
+	case dataByter:
+		cmd.setDataByte([]byte{})
 	}
 }

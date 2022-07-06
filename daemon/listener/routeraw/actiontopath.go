@@ -8,14 +8,14 @@ type (
 )
 
 var actionToPath = map[string]rawToHttp{
-	"daemon_running":    {"GET", "/daemon/running"},
-	"daemon_status":     {"GET", "/daemon/status"},
-	"daemon_stop":       {"POST", "/daemon/stop"},
-	"daemon_eventsdemo": {"GET", "/daemon/eventsdemo"},
+	"daemon_running": {"GET", "/daemon/running"},
+	"daemon_status":  {"GET", "/daemon/status"},
+	"daemon_stop":    {"POST", "/daemon/stop"},
+	"daemon_events":  {"GET", "/daemon/events"},
 
-	"daemon/running":    {"GET", "/daemon/running"},
-	"daemon/stop":       {"POST", "/daemon/stop"},
-	"daemon/eventsdemo": {"GET", "/daemon/eventsdemo"},
+	"daemon/running": {"GET", "/daemon/running"},
+	"daemon/stop":    {"POST", "/daemon/stop"},
+	"daemon/events":  {"GET", "/daemon/events"},
 
 	"object/config":   {"GET", "/object/config"},
 	"object_config":   {"GET", "/object/config"},
