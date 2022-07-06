@@ -27,6 +27,10 @@ type (
 	}
 )
 
+func (o opDelInstanceStatus) setError(err error) {
+	o.err <- err
+}
+
 func (o opDelInstanceStatus) call(d *data) {
 	d.counterCmd <- idDelInstanceStatus
 	s := o.path.String()

@@ -21,6 +21,14 @@ type (
 	}
 )
 
+func (o opSetInstanceConfig) setError(err error) {
+	o.err <- err
+}
+
+func (o opDelInstanceConfig) setError(err error) {
+	o.err <- err
+}
+
 func (o opDelInstanceConfig) call(d *data) {
 	d.counterCmd <- idDelInstanceConfig
 	s := o.path.String()
