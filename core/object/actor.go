@@ -371,7 +371,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		deps := i.ActionResourceDeps()
 		t.actionResourceDeps.RegisterSlice(deps)
 	}
-	r.Log().Debug().Msgf("configured resource: %+v", r)
+	//r.Log().Debug().Msgf("configured resource: %+v", r)
 	return nil
 }
 
