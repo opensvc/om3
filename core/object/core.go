@@ -87,7 +87,7 @@ func (t *core) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) erro
 		return err
 	}
 	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: false,
+		ConsoleLoggingEnabled: zerolog.GlobalLevel() == zerolog.DebugLevel,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             t.logDir(), // contains the ns/kind
