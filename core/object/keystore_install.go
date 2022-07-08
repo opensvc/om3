@@ -277,7 +277,7 @@ func (t keystore) postInstall(k string) error {
 		if err != nil {
 			return err
 		}
-		for _, r := range ResourcesByDrivergroups(o, []driver.Group{driver.GroupVolume}) {
+		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume}) {
 			var i interface{} = r
 			v := i.(resvoler)
 			if !v.HasMetadata(t.path, k) {

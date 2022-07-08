@@ -17,7 +17,10 @@ var (
 )
 
 //
-// translation rules:
+// Realpath expand a volume-relative path to a host full path.
+//
+// Example:
+//
 // INPUT        VOL     OUPUT            COMMENT
 // /path                /path            host full path
 // myvol/path   myvol   /srv/myvol/path  vol head relative path

@@ -35,6 +35,7 @@ type (
 		Log() *zerolog.Logger
 		VarDir() string
 		ResourceByID(string) Driver
+		ResourcesByDrivergroups([]driver.Group) Drivers
 	}
 
 	Setenver interface {

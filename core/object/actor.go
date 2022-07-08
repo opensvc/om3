@@ -200,7 +200,11 @@ func listResourceSets(i interface{}) resourceset.L {
 	return resourceset.L{}
 }
 
-func ResourcesByDrivergroups(i interface{}, drvgrps []driver.Group) resource.Drivers {
+func (t actor) ResourcesByDrivergroups(drvgrps []driver.Group) resource.Drivers {
+	return resourcesByDrivergroups(t, drvgrps)
+}
+
+func resourcesByDrivergroups(i interface{}, drvgrps []driver.Group) resource.Drivers {
 	l := make([]resource.Driver, 0)
 	for _, r := range listResources(i) {
 		drvgrp := r.ID().DriverGroup()

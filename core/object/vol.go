@@ -62,11 +62,10 @@ func (t *vol) Head() string {
 	type header interface {
 		Head() string
 	}
-	drvgrps := []driver.Group{
+	l := t.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupFS,
 		driver.GroupVolume,
-	}
-	l := ResourcesByDrivergroups(t, drvgrps)
+	})
 	for _, r := range l {
 		var i interface{} = r
 		o, ok := i.(header)
@@ -93,7 +92,7 @@ func (t *vol) Device() *device.T {
 	}
 	rids := make([]string, 0)
 	candidates := make(map[string]devicer)
-	l := ResourcesByDrivergroups(t, []driver.Group{
+	l := t.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupDisk,
 		driver.GroupVolume,
 	})

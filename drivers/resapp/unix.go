@@ -15,7 +15,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -110,8 +109,8 @@ func (t *T) CommonStop(ctx context.Context, r resource.Driver) (err error) {
 
 func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 	sb := statusbus.FromContext(ctx)
-	o := t.GetObject()
-	l := object.ResourcesByDrivergroups(o, []driver.Group{
+	o := t.GetObjectDriver()
+	l := o.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupIP,
 		driver.GroupFS,
 		driver.GroupShare,
