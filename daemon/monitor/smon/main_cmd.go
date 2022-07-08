@@ -40,12 +40,17 @@ func (o *smon) cmdSvcAggUpdated(c moncmd.MonSvcAggUpdated) {
 }
 
 func (o *smon) cmdSetSmonClient(c instance.Monitor) {
+	strVal := c.GlobalExpect
+	if strVal == statusIdle {
+		strVal = "unset"
+	}
+	o.log.Info().Msgf("client request global expect to %s %+v", strVal, c)
+	if o.state.Status != statusIdle {
+		msg := "can't set global expect to " + strVal + ", state is not idle: " + o.state.Status
+		o.log.Info().Msg(msg)
+		return
+	}
 	if c.GlobalExpect != o.state.GlobalExpect {
-		strVal := c.GlobalExpect
-		if strVal == statusIdle {
-			strVal = "unset"
-		}
-		o.log.Info().Msgf("client request global expect to %s %+v", strVal, c)
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
 		o.state.GlobalExpectUpdated = c.GlobalExpectUpdated
