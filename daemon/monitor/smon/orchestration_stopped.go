@@ -22,6 +22,7 @@ func (o *smon) orchestrateStopped() {
 	switch o.state.Status {
 	case statusIdle:
 		o.stoppedFromIdle()
+	case statusStopping:
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate stopped from %s", o.state.Status)
 	}
