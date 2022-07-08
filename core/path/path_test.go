@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"opensvc.com/opensvc/core/kind"
 )
 
 func TestNew(t *testing.T) {
@@ -310,5 +311,61 @@ func TestMatch(t *testing.T) {
 		t.Logf("%s", testName)
 		path, _ := New(test.name, test.namespace, test.kind)
 		assert.Equal(t, test.match, path.Match(test.pattern))
+	}
+}
+
+func TestMerge(t *testing.T) {
+	l1 := L{
+		T{"s1", "ns1", kind.Svc},
+		T{"s2", "ns2", kind.Svc},
+	}
+	l2 := L{
+		T{"s2", "ns2", kind.Svc},
+		T{"v1", "ns1", kind.Vol},
+	}
+	l1l2 := L{
+		T{"s1", "ns1", kind.Svc},
+		T{"s2", "ns2", kind.Svc},
+		T{"v1", "ns1", kind.Vol},
+	}
+	l2l1 := L{
+		T{"s2", "ns2", kind.Svc},
+		T{"v1", "ns1", kind.Vol},
+		T{"s1", "ns1", kind.Svc},
+	}
+	merged := l1.Merge(l2)
+	assert.Equal(t, merged.String(), l1l2.String())
+	merged = l2.Merge(l1)
+	assert.Equal(t, merged.String(), l2l1.String())
+
+}
+
+func TestFilter(t *testing.T) {
+	l := L{
+		T{"s1", "ns1", kind.Svc},
+		T{"s2", "ns2", kind.Svc},
+		T{"v1", "ns1", kind.Vol},
+	}
+	tests := []struct {
+		pattern  string
+		expected L
+	}{
+		{
+			"s*",
+			L{
+				T{"s1", "ns1", kind.Svc},
+				T{"s2", "ns2", kind.Svc},
+			},
+		},
+		{
+			"*/vol/*",
+			L{
+				T{"v1", "ns1", kind.Vol},
+			},
+		},
+	}
+	for _, test := range tests {
+		filtered := l.Filter(test.pattern)
+		assert.Equal(t, filtered.String(), test.expected.String())
 	}
 }

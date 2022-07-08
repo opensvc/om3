@@ -30,7 +30,7 @@ type (
 	// Relation is an object path or an instance path (path@node).
 	Relation string
 
-	// L is a list of path T. This type is a facility to provide a Stringer.
+	// L is a list of object paths.
 	L []T
 )
 
@@ -271,6 +271,31 @@ func (t L) String() string {
 		l[i] = p.String()
 	}
 	return strings.Join(l, ",")
+}
+
+func (t L) Filter(pattern string) L {
+	l := make(L, 0)
+	for _, p := range t {
+		if p.Match(pattern) {
+			l = append(l, p)
+		}
+	}
+	return l
+}
+
+func (t L) Merge(other L) L {
+	m := make(map[T]interface{})
+	l := make(L, 0)
+	for _, p := range t {
+		m[p] = nil
+		l = append(l, p)
+	}
+	for _, p := range other {
+		if _, ok := m[p]; !ok {
+			l = append(l, p)
+		}
+	}
+	return l
 }
 
 //
