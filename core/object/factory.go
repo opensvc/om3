@@ -56,12 +56,12 @@ func New(p path.T, opts ...funcopt.O) (interface{}, error) {
 	}
 }
 
-// NewCore returns a corer interface from an object path
-func NewCore(p path.T, opts ...funcopt.O) (corer, error) {
+// NewCore returns a Core interface from an object path
+func NewCore(p path.T, opts ...funcopt.O) (Core, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
-		return o.(corer), nil
+		return o.(Core), nil
 	}
 }
 

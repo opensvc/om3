@@ -19,7 +19,7 @@ type (
 	// the definition found in node.conf.
 	//
 	Ccfg interface {
-		corer
+		Core
 	}
 )
 

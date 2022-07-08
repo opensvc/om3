@@ -46,7 +46,7 @@ type (
 
 	// Actor is implemented by object kinds supporting start, stop, ...
 	Actor interface {
-		corer
+		Core
 		resourceLister
 		freezer
 		PG() *pg.Config

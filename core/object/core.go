@@ -48,8 +48,8 @@ type (
 		NewCompliance() (*compliance.T, error)
 	}
 
-	// corer is implemented by all object kinds.
-	corer interface {
+	// Core is implemented by all object kinds.
+	Core interface {
 		Configurer
 		compliancer
 		Path() path.T
