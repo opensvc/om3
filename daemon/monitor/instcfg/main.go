@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -308,6 +309,7 @@ func (o *instCfg) configFileCheck() {
 	}
 	cfg := o.cfg
 	cfg.Nodename = o.localhost
+	sort.Strings(nodes)
 	cfg.Scope = nodes
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Updated = timestamp.New(mtime)
