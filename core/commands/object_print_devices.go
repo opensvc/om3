@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectdevice"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 )
@@ -61,9 +62,9 @@ func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) objectdevi
 
 func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
 	data := objectdevice.NewList()
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		selector,
-		object.SelectionWithLocal(true),
+		objectselector.SelectionWithLocal(true),
 	)
 	paths, err := sel.Expand()
 	if err != nil {

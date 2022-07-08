@@ -13,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/editor"
@@ -47,7 +48,7 @@ func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command 
 }
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
-	sel := object.NewSelection(selector)
+	sel := objectselector.NewSelection(selector)
 	wc := clientcontext.IsSet()
 	paths, err := sel.Expand()
 	if err != nil {

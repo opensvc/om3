@@ -10,10 +10,12 @@ import (
 	"github.com/danwakefield/fnmatch"
 	"github.com/pkg/errors"
 
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
@@ -371,4 +373,47 @@ func (t T) ConfigFile() string {
 // Exists returns true if the object configuration file exists.
 func (t T) Exists() bool {
 	return file.Exists(t.ConfigFile())
+}
+
+// List returns a list of every object path with a locally installed configuration file.
+func List() (L, error) {
+	l := make(L, 0)
+	matches := make([]string, 0)
+	patterns := []string{
+		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),                // root svc
+		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),              // root other
+		fmt.Sprintf("%s/namespaces/*/*/*.conf", rawconfig.Paths.Etc), // namespaces
+	}
+	for _, pattern := range patterns {
+		m, err := filepath.Glob(pattern)
+		if err != nil {
+			return l, err
+		}
+		matches = append(matches, m...)
+	}
+	replacements := []string{
+		fmt.Sprintf("%s/", rawconfig.Paths.EtcNs),
+		fmt.Sprintf("%s/", rawconfig.Paths.Etc),
+	}
+	envNamespace := env.Namespace()
+	envKind := kind.New(env.Kind())
+	for _, ps := range matches {
+		for _, r := range replacements {
+			ps = strings.Replace(ps, r, "", 1)
+			ps = strings.Replace(ps, r, "", 1)
+		}
+		ps = xstrings.TrimLast(ps, 5) // strip trailing .conf
+		p, err := Parse(ps)
+		if err != nil {
+			continue
+		}
+		if envKind != kind.Invalid && envKind != p.Kind {
+			continue
+		}
+		if envNamespace != "" && envNamespace != p.Namespace {
+			continue
+		}
+		l = append(l, p)
+	}
+	return l, nil
 }

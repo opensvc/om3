@@ -6,6 +6,7 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 // WithConfigFile sets a non-standard configuration location.
@@ -34,6 +35,19 @@ func WithVolatile(s bool) funcopt.O {
 		o.volatile = s
 		return nil
 	})
+}
+
+func NewList(paths path.L, opts ...funcopt.O) ([]interface{}, error) {
+	var errs error
+	l := make([]interface{}, 0)
+	for _, p := range paths {
+		if obj, err := New(p, opts...); err != nil {
+			xerrors.Append(errs, err)
+		} else {
+			l = append(l, obj)
+		}
+	}
+	return l, errs
 }
 
 // New allocates a new kinded object

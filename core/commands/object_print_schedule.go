@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/schedule"
@@ -58,9 +59,9 @@ func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) schedule.
 
 func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 	data := schedule.NewTable()
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		selector,
-		object.SelectionWithLocal(true),
+		objectselector.SelectionWithLocal(true),
 	)
 	type scheduler interface {
 		PrintSchedule() schedule.Table

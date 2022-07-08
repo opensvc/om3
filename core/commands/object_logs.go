@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/slog"
 	"opensvc.com/opensvc/util/render"
 )
@@ -39,9 +39,9 @@ func (t *CmdObjectLogs) cmd(kind string, selector *string) *cobra.Command {
 }
 
 func (t *CmdObjectLogs) local(selStr string) error {
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		selStr,
-		object.SelectionWithLocal(true),
+		objectselector.SelectionWithLocal(true),
 	)
 	paths, err := sel.Expand()
 	if err != nil {

@@ -3,14 +3,18 @@ package object
 import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/collector"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/disks"
 	"opensvc.com/opensvc/util/hostname"
 )
 
 func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {
 	claims := disks.NewObjectsDeviceClaims()
-	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))
-	objs, err := sel.Objects(WithVolatile(true))
+	paths, err := path.List()
+	if err != nil {
+		return claims, err
+	}
+	objs, err := NewList(paths.Filter("*/svc/*").Merge(paths.Filter("*/vol/*")), WithVolatile(true))
 	if err != nil {
 		return claims, err
 	}

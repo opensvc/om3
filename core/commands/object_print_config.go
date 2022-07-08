@@ -13,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -50,9 +51,9 @@ type result map[string]rawconfig.T
 
 func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, error) {
 	data := make(result)
-	paths, err := object.NewSelection(
+	paths, err := objectselector.NewSelection(
 		selector,
-		object.SelectionWithLocal(true),
+		objectselector.SelectionWithLocal(true),
 	).Expand()
 	if err != nil {
 		return data, err

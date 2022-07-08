@@ -15,6 +15,7 @@ import (
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -79,9 +80,9 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.S
 
 func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, error) {
 	data := make([]object.Status, 0)
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		selector,
-		object.SelectionWithLocal(true),
+		objectselector.SelectionWithLocal(true),
 	)
 	h := hostname.Hostname()
 	paths, err := sel.Expand()
@@ -167,9 +168,9 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		mergedSelector,
-		object.SelectionWithClient(c),
+		objectselector.SelectionWithClient(c),
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {

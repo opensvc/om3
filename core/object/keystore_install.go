@@ -261,18 +261,23 @@ func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, di
 
 func (t keystore) postInstall(k string) error {
 	changedVolumes := make(map[path.T]interface{})
-	sel := NewSelection(t.path.Namespace+"/svc/*", SelectionWithLocal(true))
 	type resvoler interface {
 		InstallDataByKind(kind.T) (bool, error)
 		HasMetadata(p path.T, k string) bool
 		Volume() (Vol, error)
 		SendSignals() error
 	}
-	paths, err := sel.Expand()
+	paths, err := path.List()
 	if err != nil {
 		return err
 	}
 	for _, p := range paths {
+		if p.Namespace != t.path.Namespace {
+			continue
+		}
+		if p.Kind != kind.Svc {
+			continue
+		}
 		o, err := NewCore(p, WithVolatile(true))
 		if err != nil {
 			return err

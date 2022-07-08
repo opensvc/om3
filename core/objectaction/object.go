@@ -13,7 +13,7 @@ import (
 
 	"opensvc.com/opensvc/core/actionrouter"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -260,9 +260,9 @@ func (t T) DoLocal() error {
 		Str("format", t.Format).
 		Str("selector", t.ObjectSelector).
 		Msg("do local object selection action")
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		t.ObjectSelector,
-		object.SelectionWithLocal(true),
+		objectselector.SelectionWithLocal(true),
 	)
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
 		spinner = xspin.New("wave")
@@ -359,9 +359,9 @@ func (t T) DoAsync() {
 		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
-	sel := object.NewSelection(
+	sel := objectselector.NewSelection(
 		t.ObjectSelector,
-		object.SelectionWithClient(c),
+		objectselector.SelectionWithClient(c),
 	)
 	paths, err := sel.Expand()
 	if err != nil {
@@ -430,7 +430,7 @@ func (t T) Do() {
 
 // Do executes in parallel the action on all selected objects supporting
 // the action.
-func selectionDo(selection *object.Selection, fn func(path.T) (interface{}, error)) ([]actionrouter.Result, error) {
+func selectionDo(selection *objectselector.Selection, fn func(path.T) (interface{}, error)) ([]actionrouter.Result, error) {
 	results := make([]actionrouter.Result, 0)
 
 	paths, err := selection.Expand()

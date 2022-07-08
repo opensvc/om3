@@ -8,7 +8,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/create"
 	"opensvc.com/opensvc/core/flag"
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
 )
 
@@ -90,10 +90,10 @@ func (t *CmdObjectCreate) parseSelector(selector *string, kind string) (path.T, 
 	}
 	// now we know the path is valid. Verify it is non-existing or matches only one object.
 	objectSelector := mergeSelector(*selector, t.ObjectSelector, kind, "**")
-	paths, err := object.NewSelection(
+	paths, err := objectselector.NewSelection(
 		objectSelector,
-		object.SelectionWithLocal(t.Local),
-		object.SelectionWithServer(t.Server),
+		objectselector.SelectionWithLocal(t.Local),
+		objectselector.SelectionWithServer(t.Server),
 	).Expand()
 	if err == nil && len(paths) > 1 {
 		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions.")

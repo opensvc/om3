@@ -1,9 +1,8 @@
-package object
+package objectselector
 
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -15,11 +14,9 @@ import (
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/xstrings"
 )
 
 type (
@@ -29,8 +26,8 @@ type (
 		hasClient          bool
 		client             *client.T
 		local              bool
-		paths              []path.T
-		installed          []path.T
+		paths              path.L
+		installed          path.L
 		installedSet       *set.Set
 		server             string
 	}
@@ -96,7 +93,7 @@ func (t Selection) String() string {
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
 //
-func (t *Selection) Expand() ([]path.T, error) {
+func (t *Selection) Expand() (path.L, error) {
 	if t.paths != nil {
 		return t.paths, nil
 	}
@@ -149,49 +146,6 @@ func (t *Selection) expand() error {
 		}
 	}
 	return t.localExpand()
-}
-
-// listInstalled returns a list of every object path with a locally installed configuration file.
-func listInstalled() ([]path.T, error) {
-	l := make([]path.T, 0)
-	matches := make([]string, 0)
-	patterns := []string{
-		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),                // root svc
-		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),              // root other
-		fmt.Sprintf("%s/namespaces/*/*/*.conf", rawconfig.Paths.Etc), // namespaces
-	}
-	for _, pattern := range patterns {
-		m, err := filepath.Glob(pattern)
-		if err != nil {
-			return l, err
-		}
-		matches = append(matches, m...)
-	}
-	replacements := []string{
-		fmt.Sprintf("%s/", rawconfig.Paths.EtcNs),
-		fmt.Sprintf("%s/", rawconfig.Paths.Etc),
-	}
-	envNamespace := env.Namespace()
-	envKind := kind.New(env.Kind())
-	for _, ps := range matches {
-		for _, r := range replacements {
-			ps = strings.Replace(ps, r, "", 1)
-			ps = strings.Replace(ps, r, "", 1)
-		}
-		ps = xstrings.TrimLast(ps, 5) // strip trailing .conf
-		p, err := path.Parse(ps)
-		if err != nil {
-			continue
-		}
-		if envKind != kind.Invalid && envKind != p.Kind {
-			continue
-		}
-		if envNamespace != "" && envNamespace != p.Namespace {
-			continue
-		}
-		l = append(l, p)
-	}
-	return l, nil
 }
 
 func (t *Selection) localExpand() error {
@@ -269,12 +223,12 @@ func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
 // getInstalled returns the list of all paths with a locally installed
 // configuration file.
 //
-func (t *Selection) getInstalled() ([]path.T, error) {
+func (t *Selection) getInstalled() (path.L, error) {
 	if t.installed != nil {
 		return t.installed, nil
 	}
 	var err error
-	t.installed, err = listInstalled()
+	t.installed, err = path.List()
 	if err != nil {
 		return t.installed, err
 	}
@@ -286,7 +240,7 @@ func (t *Selection) getInstalledSet() (*set.Set, error) {
 		return t.installedSet, nil
 	}
 	var err error
-	t.installed, err = listInstalled()
+	t.installed, err = path.List()
 	if err != nil {
 		return t.installedSet, err
 	}
@@ -305,7 +259,7 @@ func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 		return matching, err
 	}
 	for _, p := range paths {
-		o, err := NewConfigurer(p, WithVolatile(true))
+		o, err := object.NewConfigurer(p, object.WithVolatile(true))
 		if err != nil {
 			return nil, err
 		}
@@ -375,7 +329,7 @@ func (t *Selection) Objects(opts ...funcopt.O) ([]interface{}, error) {
 	}
 
 	for _, p := range paths {
-		obj, err := New(p, opts...)
+		obj, err := object.New(p, opts...)
 		if err != nil {
 			return objs, err
 		}

@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/check"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/exe"
 	"opensvc.com/opensvc/util/hostname"
@@ -21,8 +22,11 @@ import (
 func (t Node) Checks() (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.Paths.Drivers, "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
-	sel := NewSelection("*/vol/*,*/svc/*", SelectionWithLocal(true))
-	objs, err := sel.Objects(WithVolatile(true))
+	paths, err := path.List()
+	if err != nil {
+		return *check.NewResultSet(), err
+	}
+	objs, err := NewList(paths.Filter("*/svc/*").Merge(paths.Filter("*/vol/*")), WithVolatile(true))
 	if err != nil {
 		return *check.NewResultSet(), err
 	}

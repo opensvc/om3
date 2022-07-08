@@ -5,7 +5,7 @@ import (
 	"os"
 	"sort"
 
-	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 )
@@ -21,10 +21,10 @@ type List struct {
 
 // Do prints the formatted object selection
 func (t List) Do() {
-	selection := object.NewSelection(
+	selection := objectselector.NewSelection(
 		t.ObjectSelector,
-		object.SelectionWithLocal(t.Local),
-		object.SelectionWithServer(t.Server),
+		objectselector.SelectionWithLocal(t.Local),
+		objectselector.SelectionWithServer(t.Server),
 	)
 	data := make([]string, 0)
 	paths, err := selection.Expand()
