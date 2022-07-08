@@ -16,10 +16,6 @@ import (
 	_ "opensvc.com/opensvc/drivers/chkfsudf"
 )
 
-// OptsNodeChecks is the options of the Checks function.
-type OptsNodeChecks struct {
-}
-
 // Checks finds and runs the check drivers.
 // Results are aggregated and sent to the collector.
 func (t Node) Checks() (check.ResultSet, error) {

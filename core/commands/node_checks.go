@@ -11,7 +11,6 @@ type (
 	// CmdNodeChecks is the cobra flag set of the start command.
 	CmdNodeChecks struct {
 		OptsGlobal
-		object.OptsNodeChecks
 	}
 )
 
