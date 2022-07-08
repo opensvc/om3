@@ -24,6 +24,9 @@ import (
 type (
 	// scanner func may be registered by drivers or other components
 	scanner func() ([]string, error)
+
+	// L is a list of capabilities expressed as strings
+	L []string
 )
 
 var (
@@ -31,8 +34,17 @@ var (
 	ErrorNeedScan = errors.New("capabilities not yet scanned")
 
 	scanners []scanner
-	caps     []string
+	caps     L
 )
+
+// Render is a human rendered for node capabilities
+func (t L) Render() string {
+	s := ""
+	for _, c := range t {
+		s = s + c + "\n"
+	}
+	return s
+}
 
 // Register add new s scanner function to scanners list
 func Register(s scanner) {
@@ -40,8 +52,8 @@ func Register(s scanner) {
 }
 
 // Data return copy of capabilities
-func Data() []string {
-	return []string(cache())
+func Data() L {
+	return cache()
 }
 
 // Has return true if capability cap exists
@@ -57,9 +69,9 @@ func Has(cap string) bool {
 // Scan refresh capabilities from the scanners function calls, then
 // it update capabilities list stored on file system
 func Scan() error {
-	newCaps := make([]string, 0)
+	newCaps := make(L, 0)
 	runChan := make(chan int, runtime.GOMAXPROCS(0))
-	resChan := make(chan []string)
+	resChan := make(chan L)
 	for _, s := range scanners {
 		go runScanner(s, runChan, resChan)
 	}
@@ -78,20 +90,20 @@ func Scan() error {
 }
 
 // lazy loader for capabilities list stored on file system
-func cache() []string {
+func cache() L {
 	if caps != nil {
 		return caps
 	}
 	newCaps, err := Load()
 	if err != nil {
-		caps = []string{}
+		caps = L{}
 		return caps
 	}
 	caps = newCaps
 	return caps
 }
 
-func save(newCaps []string) error {
+func save(newCaps L) error {
 	if data, err := json.Marshal(newCaps); err != nil {
 		return err
 	} else {
@@ -100,7 +112,7 @@ func save(newCaps []string) error {
 }
 
 // Load fetch existing capabilities from its backend file
-func Load() (loadedCaps []string, err error) {
+func Load() (loadedCaps L, err error) {
 	var data []byte
 	if data, err = ioutil.ReadFile(getPath()); err != nil {
 		return loadedCaps, ErrorNeedScan
@@ -111,15 +123,15 @@ func Load() (loadedCaps []string, err error) {
 	return
 }
 
-func runScanner(sc scanner, running chan int, result chan []string) {
+func runScanner(sc scanner, running chan int, result chan L) {
 	running <- 1
 	defer func() { <-running }()
 	scannerCaps, err := sc()
 	if err != nil {
-		result <- []string{}
+		result <- L{}
 		return
 	}
-	result <- scannerCaps
+	result <- L(scannerCaps)
 }
 
 func getPath() string {
