@@ -9,8 +9,8 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
-// NodePaths contains lazy initialized object paths on the node filesystem.
-type NodePaths struct {
+// nodePaths contains lazy initialized object paths on the node filesystem.
+type nodePaths struct {
 	varDir    string
 	logDir    string
 	tmpDir    string

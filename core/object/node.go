@@ -22,7 +22,7 @@ type (
 		configFile   string
 		config       *xconfig.T
 		mergedConfig *xconfig.T
-		paths        NodePaths
+		paths        nodePaths
 	}
 )
 
