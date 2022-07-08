@@ -7,11 +7,11 @@ import (
 	"fmt"
 
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/vpath"
 	"opensvc.com/opensvc/drivers/resdisk"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/udevadm"
@@ -147,7 +147,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("%s is already provisioned", vg.FQN())
 		return nil
 	}
-	if pvs, err := object.Realdevpaths(t.PVs, t.Path.Namespace); err != nil {
+	if pvs, err := vpath.HostDevpaths(t.PVs, t.Path.Namespace); err != nil {
 		return err
 	} else {
 		return vgi.Create(t.Size, pvs, t.Options)

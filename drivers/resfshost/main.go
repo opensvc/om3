@@ -11,11 +11,11 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/vpath"
 	"opensvc.com/opensvc/drivers/resfsdir"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/file"
@@ -170,7 +170,7 @@ func (t T) devpath() string {
 	if t.fs().IsVirtual() {
 		return "none"
 	}
-	if p, err := object.Realdevpath(t.Device, t.Path.Namespace); err == nil {
+	if p, err := vpath.HostDevpath(t.Device, t.Path.Namespace); err == nil {
 		return p
 	} else {
 		t.Log().Debug().Err(err).Msg("")

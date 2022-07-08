@@ -1,4 +1,7 @@
-package object
+// vpath is a helper package easing the expansion of a virtual path like
+// vol1/etc/nginx.conf to a host path like
+// /srv/svc1data.ns1.vol.clu1/etc/nginx.conf
+package vpath
 
 import (
 	"context"
@@ -6,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
@@ -25,7 +29,7 @@ var (
 // /path                /path            host full path
 // myvol/path   myvol   /srv/myvol/path  vol head relative path
 //
-func Realpath(s string, namespace string) (string, error) {
+func HostPath(s string, namespace string) (string, error) {
 	l := strings.SplitN(s, "/", 2)
 	if len(l[0]) == 0 {
 		return s, nil
@@ -35,7 +39,7 @@ func Realpath(s string, namespace string) (string, error) {
 		Namespace: namespace,
 		Kind:      kind.Vol,
 	}
-	vol, err := NewVol(volPath)
+	vol, err := object.NewVol(volPath)
 	if err != nil {
 		return s, err
 	}
@@ -51,9 +55,10 @@ func Realpath(s string, namespace string) (string, error) {
 	return vol.Head() + "/" + l[1], nil
 }
 
-func Realpaths(l []string, namespace string) ([]string, error) {
+// HostPaths applies the HostPath function to each path of the input list
+func HostPaths(l []string, namespace string) ([]string, error) {
 	for i, s := range l {
-		if s2, err := Realpath(s, namespace); err != nil {
+		if s2, err := HostPath(s, namespace); err != nil {
 			return l, err
 		} else {
 			l[i] = s2
@@ -69,7 +74,7 @@ func Realpaths(l []string, namespace string) ([]string, error) {
 // /dev/sda1            /dev/sda1   host full path
 // myvol        myvol   /dev/sda1   vol dev path in host
 //
-func Realdevpath(s string, namespace string) (string, error) {
+func HostDevpath(s string, namespace string) (string, error) {
 	if strings.HasPrefix(s, "/dev/") {
 		return s, nil
 	} else if file.ExistsAndRegular(s) {
@@ -86,7 +91,7 @@ func Realdevpath(s string, namespace string) (string, error) {
 			Namespace: namespace,
 			Kind:      kind.Vol,
 		}
-		vol, err := NewVol(volPath)
+		vol, err := object.NewVol(volPath)
 		if err != nil {
 			return s, err
 		}
@@ -107,9 +112,10 @@ func Realdevpath(s string, namespace string) (string, error) {
 	}
 }
 
-func Realdevpaths(l []string, namespace string) ([]string, error) {
+// HostDevpaths applies the HostDevpath function to each path of the input list
+func HostDevpaths(l []string, namespace string) ([]string, error) {
 	for i, s := range l {
-		if s2, err := Realdevpath(s, namespace); err != nil {
+		if s2, err := HostDevpath(s, namespace); err != nil {
 			return l, err
 		} else {
 			l[i] = s2

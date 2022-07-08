@@ -29,6 +29,7 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/vpath"
 	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/envprovider"
@@ -544,11 +545,11 @@ func (t *T) prefix() (string, error) {
 
 func (t *T) getConfigFile() (string, error) {
 	if t.ConfigFile != "" {
-		return object.Realpath(t.ConfigFile, t.Path.Namespace)
+		return vpath.HostPath(t.ConfigFile, t.Path.Namespace)
 	}
 	if t.DataDir != "" {
 		p := filepath.Join(t.DataDir, t.Name, "config")
-		return object.Realpath(p, t.Path.Namespace)
+		return vpath.HostPath(p, t.Path.Namespace)
 	}
 	relDir := "/var/lib/lxc"
 
@@ -636,7 +637,7 @@ func (t T) rootfsFromConfigFile() (string, error) {
 
 func (t *T) getRootDir() (string, error) {
 	if t.RootDir != "" {
-		return object.Realpath(t.RootDir, t.Path.Namespace)
+		return vpath.HostPath(t.RootDir, t.Path.Namespace)
 	}
 	return t.rootDirFromConfigFile()
 }
@@ -660,7 +661,7 @@ func (t *T) dataDir() (string, error) {
 	if p, ok := t.cache["dataDir"]; ok {
 		return p.(string), nil
 	}
-	if p, err := object.Realpath(t.DataDir, t.Path.Namespace); err == nil {
+	if p, err := vpath.HostPath(t.DataDir, t.Path.Namespace); err == nil {
 		t.cache["dataDir"] = p
 		return p, nil
 	} else {

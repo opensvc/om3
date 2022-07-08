@@ -24,13 +24,13 @@ import (
 
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/fqdn"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/vpath"
 	"opensvc.com/opensvc/util/envprovider"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pg"
@@ -225,7 +225,7 @@ func (t T) mounts() ([]mount.Mount, error) {
 		if len(m.Target) == 0 {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
 		}
-		if srcRealpath, err := object.Realpath(m.Source, t.Path.Namespace); err != nil {
+		if srcRealpath, err := vpath.HostPath(m.Source, t.Path.Namespace); err != nil {
 			return mounts, err
 		} else {
 			m.Source = srcRealpath
