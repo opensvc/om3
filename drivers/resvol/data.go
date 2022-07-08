@@ -162,7 +162,7 @@ func (t T) parseReference(s string, filter kind.T, head string) Metadata {
 
 func (t *T) statusData() {
 	for _, md := range t.getMetadata() {
-		if !object.Exists(md.FromStore) {
+		if !md.FromStore.Exists() {
 			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}
@@ -241,7 +241,7 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 	var changed bool
 
 	for _, md := range t.getMetadataByKind(filter) {
-		if !object.Exists(md.FromStore) {
+		if !md.FromStore.Exists() {
 			t.Log().Warn().Msgf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromKey)
 			continue
 		}

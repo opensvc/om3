@@ -2,8 +2,6 @@ package object
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/google/uuid"
@@ -11,10 +9,8 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/compliance"
-	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/logging"
@@ -34,8 +30,8 @@ type (
 
 		// caches
 		id         uuid.UUID
-		configData []byte
 		configFile string
+		configData []byte
 		config     *xconfig.T
 		node       *Node
 		paths      struct {
@@ -130,25 +126,9 @@ func (t *core) Path() path.T {
 //
 func (t core) ConfigFile() string {
 	if t.configFile == "" {
-		t.configFile = ConfigFile(t.path)
+		t.configFile = t.path.ConfigFile()
 	}
 	return t.configFile
-}
-
-func ConfigFile(p path.T) string {
-	s := p.String()
-	switch p.Namespace {
-	case "", "root":
-		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
-	default:
-		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, s)
-	}
-	return filepath.FromSlash(s)
-}
-
-// Exists returns true if the object configuration file exists.
-func Exists(p path.T) bool {
-	return file.Exists(ConfigFile(p))
 }
 
 //

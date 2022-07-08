@@ -58,7 +58,7 @@ func envVars(envItem, ns, kd string) (result []string, err error) {
 func getKeysDecoder(name, ns, kd string) (decoder, error) {
 	if p, err := path.New(name, ns, kd); err != nil {
 		return nil, err
-	} else if !object.Exists(p) {
+	} else if !p.Exists() {
 		return nil, fmt.Errorf("'%s' doesn't exists", p)
 	} else if o, err := object.New(p); err != nil {
 		return nil, err

@@ -170,7 +170,7 @@ func (t *sec) getCASec() (*sec, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid ca secret path: %s", s)
 	}
-	if !Exists(p) {
+	if !p.Exists() {
 		return nil, fmt.Errorf("secret %s does not exist", p.String())
 	}
 	return NewSec(p, WithVolatile(true))

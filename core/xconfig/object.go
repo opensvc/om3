@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewObject configures and returns a Viper instance
+// NewObject configures and returns a T instance pointer
 func NewObject(p string, others ...interface{}) (t *T, err error) {
 	cf := filepath.FromSlash(p)
 	t = &T{

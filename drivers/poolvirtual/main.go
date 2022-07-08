@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/pool"
 	"opensvc.com/opensvc/core/xconfig"
@@ -67,13 +66,13 @@ func (t *T) translate(name string, size float64, shared bool) ([]string, error) 
 	if err != nil {
 		return nil, errors.Wrapf(err, "unexpected template")
 	}
-	if !object.Exists(template) {
+	if !template.Exists() {
 		return nil, errors.Errorf("template object %s does not exist", template)
 	}
 	if template.Kind != kind.Vol {
 		return nil, errors.Errorf("template object %s is not a vol", template)
 	}
-	config, err := xconfig.NewObject(object.ConfigFile(template))
+	config, err := xconfig.NewObject(template.ConfigFile())
 	if err != nil {
 		return nil, err
 	}

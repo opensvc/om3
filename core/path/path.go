@@ -12,6 +12,7 @@ import (
 
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -321,6 +322,28 @@ func (t T) LogDir() string {
 	return filepath.FromSlash(s)
 }
 
+//
+// LogFile returns the object log file path on the local filesystem.
+//
 func (t T) LogFile() string {
 	return filepath.Join(t.LogDir(), t.Name+".log")
+}
+
+//
+// ConfigFile returns the object configuration file path on the local filesystem.
+//
+func (t T) ConfigFile() string {
+	s := t.String()
+	switch t.Namespace {
+	case "", "root":
+		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
+	default:
+		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, s)
+	}
+	return filepath.FromSlash(s)
+}
+
+// Exists returns true if the object configuration file exists.
+func (t T) Exists() bool {
+	return file.Exists(t.ConfigFile())
 }

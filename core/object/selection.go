@@ -323,7 +323,7 @@ func (t *Selection) localExactExpand(s string) (*set.Set, error) {
 	if err != nil {
 		return matching, err
 	}
-	if !Exists(p) {
+	if !p.Exists() {
 		return matching, nil
 	}
 	matching.Insert(p.String())
