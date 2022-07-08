@@ -1,6 +1,8 @@
 package smon
 
 import (
+	"strings"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
@@ -44,9 +46,14 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 	if strVal == statusIdle {
 		strVal = "unset"
 	}
-	for _, status := range o.instSmon {
+	for node, status := range o.instSmon {
 		if status.GlobalExpect == c.GlobalExpect {
-			msg := "set smon: already targeting " + strVal
+			msg := "set smon: already targeting " + strVal + " (on node " + node + ")"
+			o.log.Info().Msg(msg)
+			return
+		}
+		if strings.HasSuffix(status.Status, "ing") {
+			msg := "set smon: can't set global expect to " + strVal + " (node " + node + " is " + status.Status + ")"
 			o.log.Info().Msg(msg)
 			return
 		}
