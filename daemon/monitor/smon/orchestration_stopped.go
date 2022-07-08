@@ -53,6 +53,10 @@ func (o *smon) stoppedFromIdle() {
 }
 
 func (o *smon) stoppedFromReady() {
+	o.log.Warn().Msg("reset ready state global expect is stopped")
+	o.clearPending()
+	o.change = true
+	o.state.Status = statusIdle
 	o.stoppedClearIfReached()
 }
 
