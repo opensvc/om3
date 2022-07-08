@@ -50,6 +50,11 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		o.log.Info().Msg(msg)
 		return
 	}
+	if o.state.GlobalExpect != globalExpectUnset {
+		msg := "can't set global expect to " + strVal + ", global expect is already set: " + o.state.GlobalExpect
+		o.log.Info().Msg(msg)
+		return
+	}
 	if c.GlobalExpect != o.state.GlobalExpect {
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
