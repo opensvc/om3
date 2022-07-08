@@ -151,8 +151,8 @@ func (t *Selection) expand() error {
 	return t.localExpand()
 }
 
-// Installed returns a list Path of every object with a locally installed configuration file.
-func Installed() ([]path.T, error) {
+// listInstalled returns a list of every object path with a locally installed configuration file.
+func listInstalled() ([]path.T, error) {
 	l := make([]path.T, 0)
 	matches := make([]string, 0)
 	patterns := []string{
@@ -274,7 +274,7 @@ func (t *Selection) getInstalled() ([]path.T, error) {
 		return t.installed, nil
 	}
 	var err error
-	t.installed, err = Installed()
+	t.installed, err = listInstalled()
 	if err != nil {
 		return t.installed, err
 	}
@@ -286,7 +286,7 @@ func (t *Selection) getInstalledSet() (*set.Set, error) {
 		return t.installedSet, nil
 	}
 	var err error
-	t.installed, err = Installed()
+	t.installed, err = listInstalled()
 	if err != nil {
 		return t.installedSet, err
 	}
