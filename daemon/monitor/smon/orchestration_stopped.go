@@ -22,6 +22,8 @@ func (o *smon) orchestrateStopped() {
 	switch o.state.Status {
 	case statusIdle:
 		o.stoppedFromIdle()
+	case statusReady:
+		o.stoppedFromReady()
 	case statusStopping:
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate stopped from %s", o.state.Status)
@@ -48,6 +50,13 @@ func (o *smon) stoppedFromIdle() {
 			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusStopping, newState: statusIdle})
 		}
 	}()
+}
+
+func (o *smon) stoppedFromReady() {
+	if o.pendingCancel == nil {
+		o.stoppedClearIfReached()
+		return
+	}
 }
 
 func (o *smon) stoppedFromAny() {
