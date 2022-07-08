@@ -46,12 +46,6 @@ func (o *smon) startedFromIdle() {
 	if o.startedClearIfReached() {
 		return
 	}
-	if o.svcAgg.Avail == status.Up {
-		o.log.Info().Msg("aggregated status is up, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
-		return
-	}
 	if o.hasBetterCandidateForStarted() {
 		o.log.Debug().Msg("better candidate found for started")
 		return
@@ -144,6 +138,14 @@ func (o *smon) startedClearIfReached() bool {
 		if o.state.LocalExpect != statusStarted {
 			o.state.LocalExpect = statusStarted
 		}
+		o.clearPending()
+		return true
+	}
+	if o.svcAgg.Avail == status.Up {
+		o.log.Info().Msg("aggregated status is up, unset global expect")
+		o.change = true
+		o.state.GlobalExpect = globalExpectUnset
+		o.state.Status = statusIdle
 		o.clearPending()
 		return true
 	}
