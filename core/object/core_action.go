@@ -308,7 +308,9 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 		return err
 	}
-	t.CleanPG(ctx)
+	if action.Order.IsDesc() {
+		t.CleanPG(ctx)
+	}
 	return nil
 }
 

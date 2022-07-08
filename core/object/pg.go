@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pg"
@@ -93,14 +92,11 @@ func (t *core) pgConfig(section string) *pg.Config {
 }
 
 func (t *core) CleanPG(ctx context.Context) {
-	action := actioncontext.Props(ctx)
-	if action.Order.IsDesc() {
-		for _, run := range pg.FromContext(ctx).Clean() {
-			if run.Err != nil {
-				t.log.Error().Err(run.Err).Msgf("clean pg %s", run.Config.ID)
-			} else if run.Changed {
-				t.log.Info().Msgf("clean pg %s", run.Config.ID)
-			}
+	for _, run := range pg.FromContext(ctx).Clean() {
+		if run.Err != nil {
+			t.log.Error().Err(run.Err).Msgf("clean pg %s", run.Config.ID)
+		} else if run.Changed {
+			t.log.Info().Msgf("clean pg %s", run.Config.ID)
 		}
 	}
 }
