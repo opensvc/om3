@@ -25,6 +25,10 @@ func (o *smon) orchestrateStopped() {
 	case statusReady:
 		o.stoppedFromReady()
 	case statusStopping:
+	case statusStopFailed:
+		o.stoppedFromFailed()
+	case statusStartFailed:
+		o.stoppedFromFailed()
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate stopped from %s", o.state.Status)
 	}
@@ -53,8 +57,15 @@ func (o *smon) stoppedFromIdle() {
 }
 
 func (o *smon) stoppedFromReady() {
-	o.log.Warn().Msg("reset ready state global expect is stopped")
+	o.log.Info().Msg("reset ready state global expect is stopped")
 	o.clearPending()
+	o.change = true
+	o.state.Status = statusIdle
+	o.stoppedClearIfReached()
+}
+
+func (o *smon) stoppedFromFailed() {
+	o.log.Info().Msg("reset %s state global expect is stopped")
 	o.change = true
 	o.state.Status = statusIdle
 	o.stoppedClearIfReached()
