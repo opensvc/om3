@@ -12,6 +12,10 @@ func (o *smon) orchestrate() {
 		o.orchestrateStarted()
 	case globalExpectStopped:
 		o.orchestrateStopped()
+	case globalExpectFrozen:
+		o.orchestrateFrozen()
+	case globalExpectThawed:
+		o.orchestrateThawed()
 	}
 	o.updateIfChange()
 }
