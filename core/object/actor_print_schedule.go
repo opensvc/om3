@@ -22,7 +22,7 @@ func (t *actor) lastFilepath(action string, rid string, base string) string {
 	if rid != "" {
 		base = base + "_" + rid
 	}
-	return filepath.Join(VarDir(t.path), "scheduler", base)
+	return filepath.Join(t.VarDir(), "scheduler", base)
 }
 
 func (t *actor) lastSuccessFilepath(action string, rid string, base string) string {

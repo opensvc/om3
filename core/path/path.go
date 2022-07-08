@@ -3,12 +3,15 @@ package path
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
 	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -267,4 +270,57 @@ func (t L) String() string {
 		l[i] = p.String()
 	}
 	return strings.Join(l, ",")
+}
+
+//
+// VarDir returns the directory on the local filesystem where the object
+// variable persistent data is stored as files.
+//
+func (t T) VarDir() string {
+	var s string
+	switch t.Namespace {
+	case "", "root":
+		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.Var, t.Kind, t.Name)
+	default:
+		s = fmt.Sprintf("%s/namespaces/%s", rawconfig.Paths.Var, t)
+	}
+	return filepath.FromSlash(s)
+}
+
+//
+// TmpDir returns the directory on the local filesystem where the object
+// stores its temporary files.
+//
+func (t T) TmpDir() string {
+	var s string
+	switch {
+	case t.Namespace != "", t.Namespace != "root":
+		s = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Tmp, t.Namespace, t.Kind)
+	case t.Kind == kind.Svc, t.Kind == kind.Ccfg:
+		s = fmt.Sprintf("%s", rawconfig.Paths.Tmp)
+	default:
+		s = fmt.Sprintf("%s/%s", rawconfig.Paths.Tmp, t.Kind)
+	}
+	return filepath.FromSlash(s)
+}
+
+//
+// LogDir returns the directory on the local filesystem where the object
+// stores its temporary files.
+//
+func (t T) LogDir() string {
+	var s string
+	switch {
+	case t.Namespace != "", t.Namespace != "root":
+		s = fmt.Sprintf("%s/namespaces/%s/%s", rawconfig.Paths.Log, t.Namespace, t.Kind)
+	case t.Kind == kind.Svc, t.Kind == kind.Ccfg:
+		s = fmt.Sprintf("%s", rawconfig.Paths.Log)
+	default:
+		s = fmt.Sprintf("%s/%s", rawconfig.Paths.Log, t.Kind)
+	}
+	return filepath.FromSlash(s)
+}
+
+func (t T) LogFile() string {
+	return filepath.Join(t.LogDir(), t.Name+".log")
 }

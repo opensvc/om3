@@ -11,7 +11,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/hpcloud/tail"
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/xerrors"
@@ -171,7 +170,7 @@ func GetEventStreamFromNode(filters map[string]interface{}) (*Stream, error) {
 func GetEventStreamFromObjects(paths []path.T, filters map[string]interface{}) (*Stream, error) {
 	files := make([]string, len(paths))
 	for i := 0; i < len(paths); i += 1 {
-		files[i] = object.LogFile(paths[i])
+		files[i] = paths[i].LogFile()
 	}
 	return GetEventStreamFromFiles(files, filters)
 }
@@ -196,7 +195,7 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 	events := make(Events, 0)
 	var errs error
 	for _, p := range paths {
-		fpath := object.LogFile(p)
+		fpath := p.LogFile()
 		more, err := GetEventsFromFile(fpath, filters)
 		if err != nil {
 			xerrors.Append(errs, err)

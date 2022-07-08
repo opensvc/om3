@@ -14,7 +14,7 @@ func (t *core) lockPath(group string) (path string) {
 	if group == "" {
 		group = "generic"
 	}
-	path = filepath.Join(VarDir(t.path), "lock", group)
+	path = filepath.Join(t.path.VarDir(), "lock", group)
 	return
 }
 
