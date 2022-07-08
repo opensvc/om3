@@ -17,6 +17,9 @@ func (o *smon) orchestrateStarted() {
 		o.log.Warn().Msg("no solution for orchestrate started")
 		return
 	}
+	if !o.isConvergedGlobalExpect() {
+		return
+	}
 	switch o.state.Status {
 	case statusIdle:
 		o.startedFromIdle()
@@ -134,9 +137,6 @@ func (o *smon) startedFromStartFailed() {
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		if !o.isConvergedGlobalExpect() {
-			return true
-		}
 		o.log.Info().Msg("local status is started, unset global expect")
 		o.change = true
 		o.state.Status = statusIdle

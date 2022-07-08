@@ -16,6 +16,9 @@ func (o *smon) orchestrateStopped() {
 		o.log.Warn().Msg("no solution for orchestrate stopped")
 		return
 	}
+	if !o.isConvergedGlobalExpect() {
+		return
+	}
 	switch o.state.Status {
 	case statusIdle:
 		o.stoppedFromIdle()
@@ -55,9 +58,6 @@ func (o *smon) stoppedFromAny() {
 
 func (o *smon) stoppedClearIfReached() bool {
 	if o.isLocalStopped() {
-		if !o.isConvergedGlobalExpect() {
-			return true
-		}
 		o.log.Info().Msg("local status is stopped, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
