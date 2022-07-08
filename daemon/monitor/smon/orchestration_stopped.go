@@ -53,10 +53,7 @@ func (o *smon) stoppedFromIdle() {
 }
 
 func (o *smon) stoppedFromReady() {
-	if o.pendingCancel == nil {
-		o.stoppedClearIfReached()
-		return
-	}
+	o.stoppedClearIfReached()
 }
 
 func (o *smon) stoppedFromAny() {
