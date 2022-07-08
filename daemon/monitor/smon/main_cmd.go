@@ -44,17 +44,22 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 	if strVal == statusIdle {
 		strVal = "unset"
 	}
-	o.log.Info().Msgf("client request global expect to %s %+v", strVal, c)
-	if o.state.Status != statusIdle {
-		msg := "can't set global expect to " + strVal + ", state is not idle: " + o.state.Status
-		o.log.Info().Msg(msg)
-		return
+	for _, status := range o.instSmon {
+		if status.GlobalExpect == c.GlobalExpect {
+			msg := "set smon: already targeting " + strVal
+			o.log.Info().Msg(msg)
+			return
+		}
 	}
-	if o.state.GlobalExpect != globalExpectUnset {
-		msg := "can't set global expect to " + strVal + ", global expect is already set: " + o.state.GlobalExpect
-		o.log.Info().Msg(msg)
-		return
+	switch c.GlobalExpect {
+	case globalExpectStarted:
+		if o.svcAgg.Avail == status.Up {
+			msg := "set smon: already started"
+			o.log.Info().Msg(msg)
+			return
+		}
 	}
+	o.log.Info().Msgf("set smon: client request global expect to %s %+v", strVal, c)
 	if c.GlobalExpect != o.state.GlobalExpect {
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
