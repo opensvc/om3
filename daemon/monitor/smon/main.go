@@ -85,9 +85,16 @@ var (
 	localExpectStarted = "started"
 	localExpectUnset   = ""
 
+	statusThawing      = "thawing"
+	statusThawedFailed = "unfreeze failed"
+	statusFreezing     = "freezing"
+	statusFreezeFailed = "freeze failed"
+
 	globalExpectUnset   = ""
 	globalExpectStarted = "started"
 	globalExpectStopped = "stopped"
+	globalExpectFrozen  = "frozen"
+	globalExpectThawed  = "thawed"
 )
 
 // Start launch goroutine smon worker for a local instance state

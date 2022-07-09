@@ -17,6 +17,9 @@ func (o *smon) orchestrateStarted() {
 		o.log.Warn().Msg("no solution for orchestrate started")
 		return
 	}
+	if !o.isConvergedGlobalExpect() {
+		return
+	}
 	switch o.state.Status {
 	case statusIdle:
 		o.startedFromIdle()
@@ -41,12 +44,6 @@ func (o *smon) orchestrateStarted() {
 // else => state -> ready, start ready routine
 func (o *smon) startedFromIdle() {
 	if o.startedClearIfReached() {
-		return
-	}
-	if o.svcAgg.Avail == status.Up {
-		o.log.Info().Msg("aggregated status is up, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
 		return
 	}
 	if o.hasBetterCandidateForStarted() {
@@ -134,9 +131,6 @@ func (o *smon) startedFromStartFailed() {
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		if !o.isConvergedGlobalExpect() {
-			return true
-		}
 		o.log.Info().Msg("local status is started, unset global expect")
 		o.change = true
 		o.state.Status = statusIdle
@@ -144,6 +138,14 @@ func (o *smon) startedClearIfReached() bool {
 		if o.state.LocalExpect != statusStarted {
 			o.state.LocalExpect = statusStarted
 		}
+		o.clearPending()
+		return true
+	}
+	if o.svcAgg.Avail == status.Up {
+		o.log.Info().Msg("aggregated status is up, unset global expect")
+		o.change = true
+		o.state.GlobalExpect = globalExpectUnset
+		o.state.Status = statusIdle
 		o.clearPending()
 		return true
 	}

@@ -1,6 +1,8 @@
 package smon
 
 import (
+	"strings"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
@@ -40,12 +42,32 @@ func (o *smon) cmdSvcAggUpdated(c moncmd.MonSvcAggUpdated) {
 }
 
 func (o *smon) cmdSetSmonClient(c instance.Monitor) {
-	if c.GlobalExpect != o.state.GlobalExpect {
-		strVal := c.GlobalExpect
-		if strVal == statusIdle {
-			strVal = "unset"
+	strVal := c.GlobalExpect
+	if strVal == statusIdle {
+		strVal = "unset"
+	}
+	for node, status := range o.instSmon {
+		if status.GlobalExpect == c.GlobalExpect {
+			msg := "set smon: already targeting " + strVal + " (on node " + node + ")"
+			o.log.Info().Msg(msg)
+			return
 		}
-		o.log.Info().Msgf("client request global expect to %s %+v", strVal, c)
+		if strings.HasSuffix(status.Status, "ing") {
+			msg := "set smon: can't set global expect to " + strVal + " (node " + node + " is " + status.Status + ")"
+			o.log.Info().Msg(msg)
+			return
+		}
+	}
+	switch c.GlobalExpect {
+	case globalExpectStarted:
+		if o.svcAgg.Avail == status.Up {
+			msg := "set smon: already started"
+			o.log.Info().Msg(msg)
+			return
+		}
+	}
+	o.log.Info().Msgf("set smon: client request global expect to %s %+v", strVal, c)
+	if c.GlobalExpect != o.state.GlobalExpect {
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
 		o.state.GlobalExpectUpdated = c.GlobalExpectUpdated
