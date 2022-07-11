@@ -105,6 +105,12 @@ func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.Cfg
 					for _, n := range pending.Scope {
 						if n == d.localNode {
 							if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Config[s]; !ok {
+								if remoteSmon, ok := pendingNode.Services.Smon[s]; ok {
+									if remoteSmon.GlobalExpect == "purged" {
+										// remote service has purge in progress
+										continue
+									}
+								}
 								// removed config file local
 								p, err := path.Parse(s)
 								if err != nil {
