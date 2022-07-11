@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/fatih/color"
@@ -224,4 +225,20 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 		return false
 	})
 	return events, errs
+}
+
+func (t Events) MatchString(key, pattern string) bool {
+	for _, ev := range t {
+		if val, ok := ev.m[key]; !ok {
+			continue
+		} else {
+			switch s := val.(type) {
+			case string:
+				if v, err := regexp.MatchString(pattern, s); (err != nil) && v {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
