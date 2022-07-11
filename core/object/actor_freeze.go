@@ -1,9 +1,12 @@
 package object
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
+	"opensvc.com/opensvc/core/actioncontext"
+	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -31,7 +34,11 @@ func (t *actor) Frozen() timestamp.T {
 // Freeze creates a persistant flag file that prevents orchestration
 // of the object instance.
 //
-func (t *actor) Freeze() error {
+func (t *actor) Freeze(ctx context.Context) error {
+	ctx, stop := statusbus.WithContext(ctx, t.path)
+	defer stop()
+	ctx = actioncontext.WithProps(ctx, actioncontext.Freeze)
+	defer t.postActionStatusEval(ctx)
 	p := t.frozenFile()
 	if file.Exists(p) {
 		return nil
@@ -55,7 +62,11 @@ func (t *actor) Freeze() error {
 // Unfreeze removes the persistant flag file that prevents orchestration
 // of the object instance.
 //
-func (t *actor) Unfreeze() error {
+func (t *actor) Unfreeze(ctx context.Context) error {
+	ctx, stop := statusbus.WithContext(ctx, t.path)
+	defer stop()
+	ctx = actioncontext.WithProps(ctx, actioncontext.Unfreeze)
+	defer t.postActionStatusEval(ctx)
 	p := t.frozenFile()
 	if !file.Exists(p) {
 		return nil
@@ -66,12 +77,4 @@ func (t *actor) Unfreeze() error {
 	}
 	t.log.Info().Msg("now unfrozen")
 	return nil
-}
-
-//
-// Thaw removes the persistant flag file that prevents orchestration
-// of the object instance. Synomym of Unfreeze.
-//
-func (t *actor) Thaw() error {
-	return t.Unfreeze()
 }

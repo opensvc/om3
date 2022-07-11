@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -71,7 +73,7 @@ func (t *CmdObjectUnfreeze) run(selector *string, kind string) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Unfreeze()
+			return nil, o.Unfreeze(context.Background())
 		}),
 	).Do()
 }

@@ -64,11 +64,3 @@ func (t *Node) Unfreeze() error {
 	log.Info().Msg("now unfrozen")
 	return nil
 }
-
-//
-// Thaw removes the persistant flag file that prevents orchestration
-// of the object instance. Synomym of Unfreeze.
-//
-func (t *Node) Thaw() error {
-	return t.Unfreeze()
-}

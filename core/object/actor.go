@@ -32,9 +32,8 @@ type (
 
 	// freezer is implemented by object kinds supporting freeze and thaw.
 	freezer interface {
-		Freeze() error
-		Unfreeze() error
-		Thaw() error
+		Freeze(ctx context.Context) error
+		Unfreeze(ctx context.Context) error
 		Frozen() timestamp.T
 	}
 

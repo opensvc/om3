@@ -58,6 +58,7 @@ var (
 		Local:       true,
 		LocalExpect: "unset",
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		PG:          true,
 	}
 	GenCert = Properties{
 		Name:       "gen_cert",
@@ -213,19 +214,20 @@ var (
 		Kinds:           []kind.T{kind.Svc},
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 	}
-	Thaw = Properties{
-		Name:        "thaw",
-		Target:      "thawed",
-		Progress:    "thawing",
-		Local:       true,
-		LocalExpect: "unset",
-		Kinds:       []kind.T{kind.Svc, kind.Vol},
-	}
 	TOC = Properties{
 		Name:        "toc",
 		Progress:    "tocing",
 		Order:       ordering.Desc,
 		LocalExpect: "",
+	}
+	Unfreeze = Properties{
+		Name:        "unfreeze",
+		Target:      "thawed",
+		Progress:    "thawing",
+		Local:       true,
+		LocalExpect: "unset",
+		Kinds:       []kind.T{kind.Svc, kind.Vol},
+		PG:          true,
 	}
 	Unprovision = Properties{
 		Name:            "unprovision",

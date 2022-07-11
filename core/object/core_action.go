@@ -357,7 +357,7 @@ func (t *actor) mayFreeze(ctx context.Context) error {
 		t.log.Debug().Msg("skip freeze: orchestrate value")
 		return nil
 	}
-	return t.Freeze()
+	return t.Freeze(ctx)
 }
 
 func (t *actor) orchestrateWantsFreeze() bool {
