@@ -110,8 +110,8 @@ func Load(env map[string]string) {
 	if env == nil {
 		env = readEnvFile()
 	}
-	root, _ := env["osvc_root_path"]
-	python, _ := env["osvc_python"]
+	root, _ := env["OSVC_ROOT_PATH"]
+	python, _ := env["OSVC_PYTHON"]
 	setDefaults(root)
 	nodeViper.SetDefault("paths.python", python)
 
