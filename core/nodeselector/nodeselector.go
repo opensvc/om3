@@ -10,6 +10,7 @@ import (
 
 	"github.com/danwakefield/fnmatch"
 	"github.com/golang-collections/collections/set"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/errgo.v2/fmt/errors"
 
@@ -39,6 +40,7 @@ type (
 		knownNodes         []string
 		knownNodesSet      *set.Set
 		info               NodesInfo
+		log                zerolog.Logger
 	}
 )
 
@@ -50,6 +52,7 @@ var (
 func New(selector string, opts ...funcopt.O) *T {
 	t := &T{
 		SelectorExpression: selector,
+		log:                log.Logger,
 	}
 	_ = funcopt.Apply(t, opts...)
 	return t
@@ -61,6 +64,15 @@ func WithClient(client *client.T) funcopt.O {
 		t := i.(*T)
 		t.client = client
 		t.hasClient = true
+		return nil
+	})
+}
+
+// WithClient sets the client struct key
+func WithLogger(log zerolog.Logger) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.log = log
 		return nil
 	})
 }
@@ -110,10 +122,10 @@ func (t *T) Expand() []string {
 		return t.nodes
 	}
 	if err := t.expand(); err != nil {
-		log.Debug().Msg(err.Error())
+		t.log.Debug().Msg(err.Error())
 		return t.nodes
 	}
-	log.Debug().
+	t.log.Debug().
 		Bool("local", t.local).
 		Str("selector", t.SelectorExpression).
 		Strs("result", t.nodes).
@@ -164,7 +176,7 @@ func (t *T) expand() error {
 			if clientcontext.IsSet() {
 				return err
 			} else {
-				log.Debug().Msgf("%s daemon expansion error: %s", t, err)
+				t.log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 			}
 		}
 	}
@@ -331,7 +343,7 @@ func (t T) getLocalNodesInfo() (NodesInfo, error) {
 		data NodesInfo
 	)
 	p := filepath.Join(rawconfig.Paths.Var, "nodes_info.json")
-	log.Debug().Msgf("load %s", p)
+	t.log.Debug().Msgf("load %s", p)
 	if b, err = ioutil.ReadFile(p); err != nil {
 		return data, err
 	}
