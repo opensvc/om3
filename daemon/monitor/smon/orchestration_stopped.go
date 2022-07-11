@@ -19,9 +19,14 @@ func (o *smon) orchestrateStopped() {
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
+	if o.instStatus[o.localhost].Frozen.IsZero() {
+		o.stoppedFromThawed()
+		return
+	}
 	switch o.state.Status {
 	case statusIdle:
 		o.stoppedFromIdle()
+	case statusFreezing:
 	case statusReady:
 		o.stoppedFromReady()
 	case statusStopping:
@@ -32,6 +37,19 @@ func (o *smon) orchestrateStopped() {
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate stopped from %s", o.state.Status)
 	}
+}
+
+func (o *smon) stoppedFromThawed() {
+	o.change = true
+	o.state.Status = statusFreezing
+	go func() {
+		o.log.Info().Msg("run action freeze")
+		if err := o.crmFreeze(); err != nil {
+			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
+		} else {
+			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
+		}
+	}()
 }
 
 // stoppedFromIdle handle global expect stopped orchestration from idle

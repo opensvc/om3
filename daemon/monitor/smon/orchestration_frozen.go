@@ -25,8 +25,6 @@ func (o *smon) frozenFromIdle() {
 		if err := o.crmFreeze(); err != nil {
 			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
 		} else {
-			// TODO verify why crmFreeze don't update status
-			o.crmStatus()
 			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
 		}
 	}()

@@ -20,6 +20,10 @@ func (o *smon) orchestrateStarted() {
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
+	if !o.instStatus[o.localhost].Frozen.IsZero() {
+		o.startedFromFrozen()
+		return
+	}
 	switch o.state.Status {
 	case statusIdle:
 		o.startedFromIdle()
@@ -31,6 +35,7 @@ func (o *smon) orchestrateStarted() {
 		o.startedFromAny()
 	case statusStopping:
 		o.startedFromAny()
+	case statusThawing:
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate started from %s", o.state.Status)
 	}
@@ -69,6 +74,19 @@ func (o *smon) startedFromIdle() {
 			return
 		}
 	}(o.pendingCtx)
+}
+
+func (o *smon) startedFromFrozen() {
+	o.change = true
+	o.state.Status = statusThawing
+	go func() {
+		o.log.Info().Msg("run action unfreeze")
+		if err := o.crmUnfreeze(); err != nil {
+			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
+		} else {
+			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusThawing, newState: statusIdle})
+		}
+	}()
 }
 
 func (o *smon) startedFromReady() {
