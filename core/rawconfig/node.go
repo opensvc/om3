@@ -112,8 +112,10 @@ func Load(env map[string]string) {
 	}
 	root, _ := env["osvc_root_path"]
 	python, _ := env["osvc_python"]
+	clusterName, _ := env["osvc_cluster_name"]
 	setDefaults(root)
 	nodeViper.SetDefault("paths.python", python)
+	nodeViper.SetDefault("cluster.name", clusterName)
 
 	if err := nodeViper.Unmarshal(&fromViper); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)
