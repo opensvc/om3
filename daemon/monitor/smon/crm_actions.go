@@ -36,6 +36,14 @@ func (o *smon) crmStop() error {
 	return o.crmAction(o.path.String(), "stop", "--local")
 }
 
+func (o *smon) crmUnfreeze() error {
+	return o.crmAction(o.path.String(), "unfreeze", "--local")
+}
+
+func (o *smon) crmFreeze() error {
+	return o.crmAction(o.path.String(), "freeze", "--local")
+}
+
 func (o *smon) crmAction(cmdArgs ...string) error {
 	cmd := command.New(
 		command.WithName(cmdPath),
