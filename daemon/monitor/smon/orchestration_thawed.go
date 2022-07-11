@@ -25,8 +25,6 @@ func (o *smon) ThawedFromIdle() {
 		if err := o.crmUnfreeze(); err != nil {
 			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
 		} else {
-			// TODO verify why crmUnfreeze don't update status
-			o.crmStatus()
 			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusThawing, newState: statusIdle})
 		}
 	}()
