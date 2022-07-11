@@ -1,6 +1,6 @@
 //go:build linux
 
-package cmd
+package driverdb
 
 import (
 	_ "opensvc.com/opensvc/drivers/networkbridge"

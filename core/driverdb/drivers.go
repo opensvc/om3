@@ -1,6 +1,7 @@
-package cmd
+package driverdb
 
 import (
+	_ "opensvc.com/opensvc/drivers/pooldirectory"
 	_ "opensvc.com/opensvc/drivers/poolshm"
 	_ "opensvc.com/opensvc/drivers/poolvirtual"
 	_ "opensvc.com/opensvc/drivers/poolzpool"
@@ -26,3 +27,7 @@ import (
 	_ "opensvc.com/opensvc/drivers/resvhostenvoy"
 	_ "opensvc.com/opensvc/drivers/resvol"
 )
+
+func Load() {
+	return
+}

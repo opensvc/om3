@@ -18,6 +18,7 @@ package main
 
 import (
 	"opensvc.com/opensvc/cmd"
+	_ "opensvc.com/opensvc/core/driverdb"
 )
 
 func main() {
