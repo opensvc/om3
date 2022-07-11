@@ -97,6 +97,7 @@ var (
 	localExpectStarted = "started"
 	localExpectUnset   = ""
 
+	globalExpectAbort         = "abort"
 	globalExpectFrozen        = "frozen"
 	globalExpectProvisioned   = "provisioned"
 	globalExpectPurged        = "purged"

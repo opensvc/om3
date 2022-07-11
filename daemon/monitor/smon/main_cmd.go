@@ -59,6 +59,10 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		}
 	}
 	switch c.GlobalExpect {
+	case globalExpectAbort:
+		c.GlobalExpect = globalExpectUnset
+	case globalExpectUnset:
+		return
 	case globalExpectStarted:
 		if o.svcAgg.Avail == status.Up {
 			msg := "set smon: already started"
