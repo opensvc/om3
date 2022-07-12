@@ -2,7 +2,6 @@ package genbus
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -120,7 +119,7 @@ func TestClusterStatusBus(t *testing.T) {
 	exBus.Post("data#1", data1, true)
 	assert.Equal(t, data1, exBus.Get("data#1"))
 	hookId1 := exBus.Register("data#1", func(i interface{}) {
-		fmt.Printf("Value data#1 changed to %v\n", i)
+		t.Logf("Value data#1 changed to %v\n", i)
 	})
 
 	exBus.Post("data#1", data2, false)
@@ -138,14 +137,13 @@ func TestClusterStatusBus(t *testing.T) {
 	duration := 2 * time.Millisecond
 
 	go func() {
-		time.Sleep(2 * duration)
+		time.Sleep(3 * duration)
 		exBus.Post("data#2", data2, false)
 	}()
 
-	assert.NotEqual(t, data2, exBus.Get("data#2"))
-	assert.Equal(t, nil, exBus.Get("data#2"))
-	assert.NotEqual(t, data2, exBus.Wait("data#2", duration))
-	assert.Equal(t, data2, exBus.Wait("data#2", duration))
+	assert.Nil(t, exBus.Get("data#2"))              // not posted yet
+	assert.Nil(t, exBus.Wait("data#2", 2*duration)) // not posted yet
+	assert.Equal(t, data2, exBus.Wait("data#2", 2*duration))
 	assert.Equal(t, data2, exBus.Get("data#2"))
 
 	assert.Equal(t, data2, exBus.Get("data#2"))
