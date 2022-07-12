@@ -50,7 +50,33 @@ func TestSubThenPub(t *testing.T) {
 	for _, s := range toPublish {
 		Pub(cmdC, Publication{Value: s})
 	}
-	require.Equal(t, published, toPublish)
+	tr1 := time.NewTimer(time.Microsecond)
+	tr2 := time.NewTimer(2 * time.Millisecond)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-tr1.C:
+				if len(published) != len(toPublish) {
+					tr1.Reset(time.Microsecond)
+				} else {
+					if !tr2.Stop() {
+						<-tr2.C
+					}
+					done <- true
+					return
+				}
+			case <-tr2.C:
+				if !tr1.Stop() {
+					<-tr1.C
+				}
+				done <- true
+				return
+			}
+		}
+	}()
+	<-done
+	require.Equal(t, toPublish, published)
 }
 
 func TestSubNsThenPub(t *testing.T) {
@@ -131,7 +157,6 @@ func TestSubPubUnSubPubWithoutFilter(t *testing.T) {
 	cmdC, cancel := newRun(t.Name())
 	defer cancel()
 	toPublish := []string{"foo", "foo1", "foo2"}
-	expectedPublished := []string{"foo", "foo1", "foo2"}
 
 	var published []string
 	id := Sub(cmdC, Subscription{Name: t.Name()}, func(s interface{}) {
@@ -148,5 +173,31 @@ func TestSubPubUnSubPubWithoutFilter(t *testing.T) {
 	for _, s := range toPublish {
 		Pub(cmdC, Publication{Ns: NsSvcAgg, Value: s})
 	}
-	require.Equal(t, published, expectedPublished)
+	tr1 := time.NewTimer(time.Microsecond)
+	tr2 := time.NewTimer(2 * time.Millisecond)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-tr1.C:
+				if len(published) != len(toPublish) {
+					tr1.Reset(time.Microsecond)
+				} else {
+					if !tr2.Stop() {
+						<-tr2.C
+					}
+					done <- true
+					return
+				}
+			case <-tr2.C:
+				if !tr1.Stop() {
+					<-tr1.C
+				}
+				done <- true
+				return
+			}
+		}
+	}()
+	<-done
+	require.Equal(t, toPublish, published)
 }
