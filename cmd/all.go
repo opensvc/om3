@@ -103,6 +103,7 @@ func init() {
 		cmdPrintDevices     commands.CmdObjectPrintDevices
 		cmdPrintSchedule    commands.CmdObjectPrintSchedule
 		cmdPrintStatus      commands.CmdObjectPrintStatus
+		cmdPurge            commands.CmdObjectPurge
 		cmdProvision        commands.CmdObjectProvision
 		cmdRestart          commands.CmdObjectRestart
 		cmdRun              commands.CmdObjectRun
@@ -135,6 +136,7 @@ func init() {
 	cmdLogs.Init(kind, head, &selectorFlag)
 	cmdLs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
+	cmdPurge.Init(kind, head, &selectorFlag)
 	cmdProvision.Init(kind, head, &selectorFlag)
 	cmdRestart.Init(kind, head, &selectorFlag)
 	cmdRun.Init(kind, head, &selectorFlag)
