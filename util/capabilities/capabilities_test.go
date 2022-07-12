@@ -47,7 +47,7 @@ func TestLoad(t *testing.T) {
 	cases := []struct {
 		name        string
 		data        []byte
-		expectedCap []string
+		expectedCap L
 	}{
 		{"when 2 caps", []byte(`["c1","c2"]`), []string{"c1", "c2"}},
 		{"when no caps", []byte(`[]`), []string{}},
@@ -102,7 +102,7 @@ func TestScan(t *testing.T) {
 		_, cleanup := setup(t)
 		defer cleanup()
 		assert.Nil(t, Scan())
-		assert.Equalf(t, []string{}, caps, "must have empty caps")
+		assert.Equalf(t, L{}, caps, "must have empty caps")
 	})
 
 	t.Run("return error is not able to update cache", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestScan(t *testing.T) {
 			assert.True(t, Has("b"))
 			assert.True(t, Has("c"))
 			assert.Falsef(t, Has("not"), "failed Scanner cap must be ignored")
-			assert.Equalf(t, []string{"a", "b", "c"}, caps, "must have succeed scanners")
+			assert.Equalf(t, L{"a", "b", "c"}, caps, "must have succeed scanners")
 		})
 		t.Run("make scanned capabilities persistent", func(t *testing.T) {
 			loadedCaps, err := Load()
