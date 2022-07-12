@@ -45,7 +45,7 @@ func (t T) Time() time.Time {
 }
 
 func (t T) String() string {
-	return fmt.Sprintf("%d.%d", t.tm.Unix(), t.tm.Nanosecond())
+	return fmt.Sprintf("%d.%.09d", t.tm.Unix(), t.tm.Nanosecond())
 }
 
 // IsZero reports whether t represents the Unix zero time instant,
