@@ -1,7 +1,6 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -337,7 +336,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section:    "node",
 		Option:     "env",
 		Default:    "TST",
-		Candidates: envs.List,
+		Candidates: validEnvs,
 		Text:       "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation).",
 	},
 	{

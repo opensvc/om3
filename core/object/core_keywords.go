@@ -2,7 +2,6 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/envs"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/kind"
@@ -214,7 +213,7 @@ var keywordStore = keywords.Store{
 		Aliases:     []string{"service_type"},
 		Inherit:     keywords.InheritHead,
 		DefaultText: "Same as the node env",
-		Candidates:  envs.List,
+		Candidates:  validEnvs,
 		Text:        "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation). The default value is the node :kw:`env`.",
 	},
 	{
