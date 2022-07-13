@@ -32,6 +32,10 @@ func (o *smon) crmFreeze() error {
 	return o.crmAction(o.path.String(), "freeze", "--local")
 }
 
+func (o *smon) crmProvision() error {
+	return o.crmAction(o.path.String(), "provision", "--local")
+}
+
 func (o *smon) crmProvisionLeader() error {
 	return o.crmAction(o.path.String(), "provision", "--leader", "--local")
 }

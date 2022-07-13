@@ -79,6 +79,7 @@ var (
 	statusFreezeFailed      = "freeze failed"
 	statusFreezing          = "freezing"
 	statusIdle              = "idle"
+	statusProvisioned       = "provisioned"
 	statusProvisioning      = "provisioning"
 	statusProvisionFailed   = "provision failed"
 	statusPurgeFailed       = "purge failed"
@@ -93,6 +94,7 @@ var (
 	statusUnProvisioned     = "unprovisioned"
 	statusUnProvisionFailed = "unprovision failed"
 	statusUnProvisioning    = "unprovisioning"
+	statusWaitLeader        = "wait leader"
 
 	localExpectStarted = "started"
 	localExpectUnset   = ""
