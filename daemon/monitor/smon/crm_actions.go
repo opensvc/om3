@@ -24,6 +24,22 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
+func (o *smon) crmDelete() error {
+	return o.crmAction(o.path.String(), "delete")
+}
+
+func (o *smon) crmFreeze() error {
+	return o.crmAction(o.path.String(), "freeze", "--local")
+}
+
+func (o *smon) crmProvision() error {
+	return o.crmAction(o.path.String(), "provision", "--local")
+}
+
+func (o *smon) crmProvisionLeader() error {
+	return o.crmAction(o.path.String(), "provision", "--leader", "--local")
+}
+
 func (o *smon) crmStart() error {
 	return o.crmAction(o.path.String(), "start", "--local")
 }
@@ -40,8 +56,8 @@ func (o *smon) crmUnfreeze() error {
 	return o.crmAction(o.path.String(), "unfreeze", "--local")
 }
 
-func (o *smon) crmFreeze() error {
-	return o.crmAction(o.path.String(), "freeze", "--local")
+func (o *smon) crmUnprovisionLeader() error {
+	return o.crmAction(o.path.String(), "unprovision", "--leader", "--local")
 }
 
 func (o *smon) crmAction(cmdArgs ...string) error {

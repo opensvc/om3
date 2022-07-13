@@ -8,14 +8,20 @@ func (o *smon) orchestrate() {
 	}
 
 	switch o.state.GlobalExpect {
+	case globalExpectFrozen:
+		o.orchestrateFrozen()
+	case globalExpectProvisioned:
+		o.orchestrateProvisioned()
+	case globalExpectPurged:
+		o.orchestratePurged()
 	case globalExpectStarted:
 		o.orchestrateStarted()
 	case globalExpectStopped:
 		o.orchestrateStopped()
-	case globalExpectFrozen:
-		o.orchestrateFrozen()
 	case globalExpectThawed:
 		o.orchestrateThawed()
+	case globalExpectUnProvisioned:
+		o.orchestrateUnProvisioned()
 	}
 	o.updateIfChange()
 }

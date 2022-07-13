@@ -91,7 +91,7 @@ func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.Cfg
 	if hasPendingNode && hasCommittedNode {
 		for s, pending := range pendingNode.Services.Config {
 			if committed, ok := committedNode.Services.Config[s]; ok {
-				if pending.Updated.Time().Unix() > committed.Updated.Time().Unix() {
+				if pending.Updated.Time().After(committed.Updated.Time()) {
 					p, err := path.Parse(s)
 					if err != nil {
 						continue
@@ -105,6 +105,12 @@ func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.Cfg
 					for _, n := range pending.Scope {
 						if n == d.localNode {
 							if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Config[s]; !ok {
+								if remoteSmon, ok := pendingNode.Services.Smon[s]; ok {
+									if remoteSmon.GlobalExpect == "purged" {
+										// remote service has purge in progress
+										continue
+									}
+								}
 								// removed config file local
 								p, err := path.Parse(s)
 								if err != nil {
@@ -181,7 +187,13 @@ func (d *data) getStatusDiffForNode(node string) ([]moncmd.InstStatusDeleted, []
 	if hasPendingNode && hasCommittedNode {
 		for s, pending := range pendingNode.Services.Status {
 			if committed, ok := committedNode.Services.Status[s]; ok {
-				if pending.Updated.Time().Unix() > committed.Updated.Time().Unix() {
+				pendingUpdated := pending.Updated.Time()
+				committedUpdated := committed.Updated.Time()
+				var needUpdate bool
+				if committedUpdated.Before(pendingUpdated) {
+					needUpdate = true
+				}
+				if needUpdate {
 					p, err := path.Parse(s)
 					if err != nil {
 						continue
@@ -253,8 +265,8 @@ func (d *data) getSmonDiffForNode(node string) ([]moncmd.SmonDeleted, []moncmd.S
 	if hasPendingNode && hasCommittedNode {
 		for s, pending := range pendingNode.Services.Smon {
 			if committed, ok := committedNode.Services.Smon[s]; ok {
-				globalExpectUpdated := pending.GlobalExpectUpdated.Time().Unix() > committed.GlobalExpectUpdated.Time().Unix()
-				statusUpdated := pending.StatusUpdated.Time().Unix() > committed.StatusUpdated.Time().Unix()
+				globalExpectUpdated := pending.GlobalExpectUpdated.Time().After(committed.GlobalExpectUpdated.Time())
+				statusUpdated := pending.StatusUpdated.Time().After(committed.StatusUpdated.Time())
 				if globalExpectUpdated || statusUpdated {
 					p, err := path.Parse(s)
 					if err != nil {
