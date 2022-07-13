@@ -45,7 +45,10 @@ func (t T) Time() time.Time {
 }
 
 func (t T) String() string {
-	return fmt.Sprintf("%d.%.09d", t.tm.Unix(), t.tm.Nanosecond())
+	// TODO use nanosecond: this "%d.%06d" is a temp fix on issue with daemondata
+	// invalid timestamp after remote node path is applied
+	return fmt.Sprintf("%d.%06d", t.tm.Unix(), t.tm.Nanosecond())
+	//return fmt.Sprintf("%d.%.09d", t.tm.Unix(), t.tm.Nanosecond())
 }
 
 // IsZero reports whether t represents the Unix zero time instant,
