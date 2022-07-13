@@ -1,7 +1,7 @@
 package object
 
 import (
-	"os"
+	"os/user"
 	"strings"
 	"testing"
 
@@ -78,15 +78,18 @@ func TestConfigFile(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			if strings.Contains(testName, "cluster cfg, package install") && os.Getpid() != 0 {
-				t.Skip("skipped for non root user")
+			if strings.Contains(testName, "cluster cfg, package install") {
+				if usr, err := user.Current(); err == nil && usr.Uid != "0" {
+					t.Skip("skipped for non root user")
+				}
 			}
 			rawconfig.Load(map[string]string{
-				"osvc_root_path": test.root,
+				"osvc_root_path":    test.root,
+				"osvc_cluster_name": "test",
 			})
 			p, _ := path.New(test.name, test.namespace, test.kind)
 			o, err := New(p)
-			require.Nil(t, err, "NewFromPath(p) mustn't return an error")
+			require.Nil(t, err, "New(p) mustn't return an error")
 			require.Equal(t, test.cf, o.(Configurer).ConfigFile())
 		})
 	}
