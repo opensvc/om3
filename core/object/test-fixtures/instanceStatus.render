@@ -1,4 +1,4 @@
-node1                up    warn idle started          
+node1                up    warn idle daemon-down      
 ├ fs#1     ........  up    fs.flag                    
 ├ fs#2     ........  up    fs.flag                    
 │                          info: info msg             
