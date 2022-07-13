@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"opensvc.com/opensvc/test_conf_helper"
 
 	"github.com/stretchr/testify/require"
 )
@@ -30,22 +32,12 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 			{"warn", "DeadlineExceeded"},
 		},
 	}
-	getCmd := func(_ string) []string {
-		args := []string{"svcapp", "print", "status", "-r", "--format", "flat_json"}
-		return args
-	}
-
-	confs := []configs{
-		{"svcapp_print_status_status_log.conf", "svcapp.conf"},
-	}
-	if executeArgsTest(t, getCmd, confs) {
-		return
-	}
-
 	td := t.TempDir()
-	t.Logf("run 'om %v'", strings.Join(getCmd(""), " "))
-	cmd := exec.Command(os.Args[0], "-test.run=TestAppPrintStatusFlatJson")
-	cmd.Env = append(os.Environ(), "TC_NAME=TestAppPrintStatusFlatJson", "TC_PATHSVC="+td)
+	args := []string{"svcapp", "print", "status", "-r", "--format", "flat_json"}
+	test_conf_helper.InstallSvcFile(t, "svcapp_print_status_status_log.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	t.Logf("run 'om %v'", strings.Join(args, " "))
+	cmd := exec.Command(os.Args[0], args...)
+	cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 	out, err := cmd.CombinedOutput()
 	require.Nil(t, err, "got: \n%v", string(out))
 
