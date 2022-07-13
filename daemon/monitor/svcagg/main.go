@@ -1,4 +1,4 @@
-// Package svcAggStatus is responsible for of object.AggregatedStatus
+// Package svcagg is responsible for of object.AggregatedStatus
 //
 // It provides the cluster data ["monitor", "services," <svcname>]
 //
@@ -89,12 +89,13 @@ func (o *svcAggStatus) worker(nodes []string) {
 		case <-o.ctx.Done():
 			return
 		case ev := <-o.cmdC:
-			o.srcEvent = ev
+			o.srcEvent = nil
 			switch c := (*ev).(type) {
 			case moncmd.CfgUpdated:
 				if _, ok := o.instStatus[c.Node]; ok {
 					continue
 				}
+				o.srcEvent = ev
 				o.instStatus[c.Node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, c.Node)
 				o.updateStatus()
 			case moncmd.CfgDeleted:
@@ -108,6 +109,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 					o.log.Info().Msgf("skipped instance change on unknown node: %s", c.Node)
 					continue
 				}
+				o.srcEvent = ev
 				o.instStatus[c.Node] = c.Status
 				o.updateStatus()
 			default:

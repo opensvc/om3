@@ -16,7 +16,10 @@ func (o *smon) cmdSvcAggUpdated(c moncmd.MonSvcAggUpdated) {
 			srcNode := srcCmd.Node
 			if _, ok := o.instStatus[srcNode]; ok {
 				instStatus := srcCmd.Status
-				o.instStatus[srcNode] = instStatus
+				if o.instStatus[srcNode].Updated.Time().Before(instStatus.Updated.Time()) {
+					// only update if more recent
+					o.instStatus[srcNode] = instStatus
+				}
 			}
 		case moncmd.CfgUpdated:
 			if srcCmd.Node == o.localhost {
@@ -54,11 +57,15 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		}
 		if strings.HasSuffix(status.Status, "ing") {
 			msg := "set smon: can't set global expect to " + strVal + " (node " + node + " is " + status.Status + ")"
-			o.log.Info().Msg(msg)
+			o.log.Error().Msg(msg)
 			return
 		}
 	}
 	switch c.GlobalExpect {
+	case globalExpectAbort:
+		c.GlobalExpect = globalExpectUnset
+	case globalExpectUnset:
+		return
 	case globalExpectStarted:
 		if o.svcAgg.Avail == status.Up {
 			msg := "set smon: already started"
