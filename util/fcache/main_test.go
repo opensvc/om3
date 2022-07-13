@@ -12,8 +12,7 @@ import (
 )
 
 func TestOutput(t *testing.T) {
-	td, tdCleanup := testhelper.Tempdir(t)
-	defer tdCleanup()
+	td := t.TempDir()
 	tf, cleanup := testhelper.TempFile(t, td)
 	defer cleanup()
 	rawconfig.Load(map[string]string{"osvc_root_path": td})

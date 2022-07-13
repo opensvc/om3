@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,8 +32,7 @@ func TestAppStopTrigger(t *testing.T) {
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopTrigger")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)

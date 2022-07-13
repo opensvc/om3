@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,8 +44,7 @@ func TestCfgKeys(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestCfgKeys")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -90,8 +88,7 @@ func TestCfgDecodeKeys(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestCfgDecodeKeys")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)

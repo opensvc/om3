@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/core/client"
@@ -34,14 +33,13 @@ func privileged() bool {
 }
 
 func setupClusterConf(t *testing.T) func() {
-	td, tdCleanup := testhelper.Tempdir(t)
+	td := t.TempDir()
 	test_conf_helper.InstallSvcFile(
 		t,
 		"cluster.conf",
 		filepath.Join(td, "etc", "cluster.conf"))
 	rawconfig.Load(map[string]string{"osvc_root_path": td})
 	cleanup := func() {
-		tdCleanup()
 		rawconfig.Load(map[string]string{})
 		hostname.Impersonate("node1")()
 	}

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -18,8 +17,7 @@ func TestInstanceStates_Render(t *testing.T) {
 	cases := []string{"instanceStatus"}
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, tdCleanup := testhelper.Tempdir(t)
-			defer tdCleanup()
+			td := t.TempDir()
 			rawconfig.Load(map[string]string{"osvc_root_path": td})
 			defer rawconfig.Load(map[string]string{})
 

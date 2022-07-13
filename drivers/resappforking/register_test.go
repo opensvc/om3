@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/object"
@@ -28,8 +27,7 @@ func getAppRid(rid string, resources []resource.Driver) *T {
 }
 
 func TestKeywords(t *testing.T) {
-	td, cleanup := testhelper.Tempdir(t)
-	defer cleanup()
+	td := t.TempDir()
 
 	test_conf_helper.InstallSvcFile(t, "svc1.conf", filepath.Join(td, "etc", "svc1.conf"))
 	rawconfig.Load(map[string]string{"osvc_root_path": td})

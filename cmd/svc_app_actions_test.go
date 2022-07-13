@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -150,8 +149,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	t.Run("logInfo", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "logInfo"
 		var msg string
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
@@ -171,8 +169,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("logError", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "logError"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -189,8 +186,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("exit with error", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "logError"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -200,8 +196,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("environment", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "env"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -230,8 +225,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("default type is forking", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "cwdWithDefaultType"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -244,8 +238,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("cwd", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "cwd"
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -259,8 +252,7 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"badUser", "badGroup", "badUserGroup"} {
 		t.Run("invalid credentials "+name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -273,8 +265,7 @@ func TestAppStop(t *testing.T) {
 	}
 
 	t.Run("valid user and group", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		var name string
 		if privUser, err := usergroup.IsPrivileged(); err != nil {
 			t.Fail()
@@ -305,8 +296,7 @@ func TestAppStop(t *testing.T) {
 	t.Run("when stop is true and script not found into <svcname>.d", func(t *testing.T) {
 		name := "stopTrueScript"
 		var msg string
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
 		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -325,8 +315,7 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"true", "True", "T"} {
 		t.Run("when stop is true like ("+name+")", func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			name := "stop" + name
 			var msg string
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
@@ -348,8 +337,7 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"0", "f", "F", "false", "FALSE", "False"} {
 		t.Run("when stop is false like ("+name+")", func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			name := "stop" + name
 			var msg string
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
@@ -372,8 +360,7 @@ func TestAppStop(t *testing.T) {
 	t.Run("when no command stop", func(t *testing.T) {
 		for _, name := range []string{"stopEmpty", "stopUndef"} {
 			t.Run(name, func(t *testing.T) {
-				td, cleanup := testhelper.Tempdir(t)
-				defer cleanup()
+				td := t.TempDir()
 				var msg string
 				t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 				cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -392,8 +379,7 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("stop value true without script keyword exit non 0", func(t *testing.T) {
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 		name := "stopScriptUndef"
 		var msg string
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
@@ -414,8 +400,7 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("configs_environment", func(t *testing.T) {
 		name := "configEnv"
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -429,8 +414,7 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("secrets_environment", func(t *testing.T) {
 		name := "secretEnv"
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -444,8 +428,7 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("secrets_environment_matcher", func(t *testing.T) {
 		name := "secretEnvMatchers"
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -459,8 +442,7 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("config_environment_matcher", func(t *testing.T) {
 		name := "configEnvMatchers"
-		td, cleanup := testhelper.Tempdir(t)
-		defer cleanup()
+		td := t.TempDir()
 
 		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
@@ -524,8 +506,7 @@ func TestAppStopStartSequence(t *testing.T) {
 
 	for name := range cases {
 		t.Run("orderBasedOnStartId:"+name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopStartSequence")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -572,8 +553,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopComplexCommand")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -625,8 +605,7 @@ func TestAppStopLimit(t *testing.T) {
 					}
 				}
 			}
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopLimit")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -659,8 +638,7 @@ func TestAppStopTimeout(t *testing.T) {
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopTimeout")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -747,8 +725,7 @@ func TestAppStartRollback(t *testing.T) {
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestAppStartRollback")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)

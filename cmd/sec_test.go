@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,8 +39,7 @@ func TestSecKeys(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			td, cleanup := testhelper.Tempdir(t)
-			defer cleanup()
+			td := t.TempDir()
 			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
 			cmd := exec.Command(os.Args[0], "-test.run=TestSecKeys")
 			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
@@ -85,8 +83,7 @@ func TestSecDecodeKeys(t *testing.T) {
 	if executeArgsTest(t, getCmd, []configs{}) {
 		return
 	}
-	td, cleanup := testhelper.Tempdir(t)
-	defer cleanup()
+	td := t.TempDir()
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
@@ -146,10 +143,9 @@ func TestKeyActions(t *testing.T) {
 	if executeArgsTest(t, getCmd, []configs{}) {
 		return
 	}
-	td, cleanup := testhelper.Tempdir(t)
+	td := t.TempDir()
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	test_conf_helper.InstallSvcFile(t, "sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
-	defer cleanup()
 
 	for _, name := range []string{
 		"add",

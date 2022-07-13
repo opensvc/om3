@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opensvc/testhelper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
@@ -23,13 +22,10 @@ var (
 )
 
 func prepareConfig(t *testing.T) (td string, cleanup func()) {
-	testDir, tdCleanup := testhelper.Tempdir(t)
-	rawconfig.Load(map[string]string{"osvc_root_path": testDir})
-
-	td = testDir
+	td = t.TempDir()
+	rawconfig.Load(map[string]string{"osvc_root_path": td})
 	cleanup = func() {
 		rawconfig.Load(map[string]string{})
-		tdCleanup()
 	}
 	return
 }

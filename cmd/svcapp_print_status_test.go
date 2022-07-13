@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,8 +42,7 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 		return
 	}
 
-	td, cleanup := testhelper.Tempdir(t)
-	defer cleanup()
+	td := t.TempDir()
 	t.Logf("run 'om %v'", strings.Join(getCmd(""), " "))
 	cmd := exec.Command(os.Args[0], "-test.run=TestAppPrintStatusFlatJson")
 	cmd.Env = append(os.Environ(), "TC_NAME=TestAppPrintStatusFlatJson", "TC_PATHSVC="+td)
