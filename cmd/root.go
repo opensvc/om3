@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"opensvc.com/opensvc/core/driverdb"
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/osagentservice"
 	"opensvc.com/opensvc/core/path"
@@ -198,6 +199,7 @@ func setExecuteArgs(args []string) {
 // Example:
 //  ExecuteArgs([]string{"mysvc*", "ls"})
 func ExecuteArgs(args []string) {
+	driverdb.Load()
 	setExecuteArgs(args)
 	if err := root.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
