@@ -234,7 +234,7 @@ func (t Events) MatchString(key, pattern string) bool {
 		} else {
 			switch s := val.(type) {
 			case string:
-				if v, err := regexp.MatchString(pattern, s); (err != nil) && v {
+				if v, err := regexp.MatchString(pattern, s); (err == nil) && v {
 					return true
 				}
 			}
