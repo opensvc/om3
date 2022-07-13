@@ -110,7 +110,10 @@ func Load(env map[string]string) {
 	if env == nil {
 		env = readEnvFile()
 	}
-	root, _ := env["osvc_root_path"]
+	root := os.Getenv("OSVC_ROOT_PATH")
+	if root == "" {
+		root, _ = env["osvc_root_path"]
+	}
 	python, _ := env["osvc_python"]
 	clusterName, _ := env["osvc_cluster_name"]
 	setDefaults(root)
