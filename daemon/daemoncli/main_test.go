@@ -39,9 +39,10 @@ func setupClusterConf(t *testing.T) func() {
 		"cluster.conf",
 		filepath.Join(td, "etc", "cluster.conf"))
 	rawconfig.Load(map[string]string{"osvc_root_path": td})
+	revertHostname := hostname.Impersonate("node1")
 	cleanup := func() {
 		rawconfig.Load(map[string]string{})
-		hostname.Impersonate("node1")()
+		revertHostname()
 	}
 	return cleanup
 }

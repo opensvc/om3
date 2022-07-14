@@ -9,9 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 func TestMain(m *testing.M) {
+	defer hostname.Impersonate("node1")()
+	if td := os.Getenv("OSVC_ROOT_PATH"); td != "" {
+		os.Mkdir(filepath.Join(td, "var"), os.ModePerm)
+	}
 	switch os.Getenv("GO_TEST_MODE") {
 	case "":
 		// test mode
@@ -20,6 +25,7 @@ func TestMain(m *testing.M) {
 
 	case "off":
 		// test bypass mode
+		os.Setenv("LANG", "C.UTF-8")
 		Execute()
 	}
 }

@@ -30,20 +30,18 @@ func TestSecKeys(t *testing.T) {
 		return args
 	}
 
-	configurations := []configs{
-		{"sec1.conf", "namespaces/test/sec/sec1.conf"},
-	}
-	if executeArgsTest(t, getCmd, configurations) {
-		return
-	}
+	td := t.TempDir()
+	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestSecKeys")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
+			t.Logf("out:\n%s", out)
 			require.Nilf(t, err, string(out))
 			if strings.Contains(name, "json") {
 				type (
@@ -56,6 +54,7 @@ func TestSecKeys(t *testing.T) {
 				var response []jsonResponse
 				err := json.Unmarshal(out, &response)
 				require.Nil(t, err)
+				require.Len(t, response, 1, "unexpected json response")
 				assert.Equalf(t, strings.Split(tc.expectedResults, "\n"), response[0].Data, "got:\n%v", string(out))
 			} else {
 				assert.Equal(t, tc.expectedResults, string(out))
@@ -80,18 +79,16 @@ func TestSecDecodeKeys(t *testing.T) {
 		return args
 	}
 
-	if executeArgsTest(t, getCmd, []configs{}) {
-		return
-	}
 	td := t.TempDir()
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestSecDecodeKeys")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			assert.Equal(t, tc.expectedResults, string(out))
@@ -158,9 +155,10 @@ func TestKeyActions(t *testing.T) {
 		"keysAfterRemove1",
 	} {
 		tc := cases[name]
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestKeyActions")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, string(out))
 		if tc.expectedResults != "" {

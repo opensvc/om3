@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"opensvc.com/opensvc/test_conf_helper"
 	"opensvc.com/opensvc/util/usergroup"
 )
 
@@ -138,23 +139,19 @@ func TestAppStop(t *testing.T) {
 		return args
 	}
 
-	confs := []configs{
-		{"cluster.conf", "cluster.conf"},
-		{"svcappforking.conf", "svcappforking.conf"},
-		{"cfg1_svcappforking.conf", "cfg/svcappforking.conf"},
-		{"sec1_svcappforking.conf", "sec/svcappforking.conf"},
-	}
-	if executeArgsTest(t, getCmd, confs) {
-		return
-	}
+	td := t.TempDir()
+	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	test_conf_helper.InstallSvcFile(t, "svcappforking.conf", filepath.Join(td, "etc", "svcappforking.conf"))
+	test_conf_helper.InstallSvcFile(t, "cfg1_svcappforking.conf", filepath.Join(td, "etc", "cfg", "svcappforking.conf"))
+	test_conf_helper.InstallSvcFile(t, "sec1_svcappforking.conf", filepath.Join(td, "etc", "sec", "svcappforking.conf"))
 
 	t.Run("logInfo", func(t *testing.T) {
-		td := t.TempDir()
 		name := "logInfo"
 		var msg string
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
@@ -169,11 +166,11 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("logError", func(t *testing.T) {
-		td := t.TempDir()
 		name := "logError"
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, _ := cmd.CombinedOutput()
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
 			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
@@ -186,21 +183,21 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("exit with error", func(t *testing.T) {
-		td := t.TempDir()
 		name := "logError"
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		_, err := cmd.CombinedOutput()
 		assert.NotNil(t, err)
 	})
 
 	t.Run("environment", func(t *testing.T) {
-		td := t.TempDir()
 		name := "env"
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -225,11 +222,11 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("default type is forking", func(t *testing.T) {
-		td := t.TempDir()
 		name := "cwdWithDefaultType"
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -238,11 +235,11 @@ func TestAppStop(t *testing.T) {
 	})
 
 	t.Run("cwd", func(t *testing.T) {
-		td := t.TempDir()
 		name := "cwd"
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, "got: %s", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -252,10 +249,10 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"badUser", "badGroup", "badUserGroup"} {
 		t.Run("invalid credentials "+name, func(t *testing.T) {
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			assert.NotNil(t, err, "got: '\n%v'", string(out))
 			for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -265,7 +262,6 @@ func TestAppStop(t *testing.T) {
 	}
 
 	t.Run("valid user and group", func(t *testing.T) {
-		td := t.TempDir()
 		var name string
 		if privUser, err := usergroup.IsPrivileged(); err != nil {
 			t.Fail()
@@ -274,9 +270,10 @@ func TestAppStop(t *testing.T) {
 		} else {
 			name = "nonRoot"
 		}
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 
 		if name == "root" {
 			out, err := cmd.CombinedOutput()
@@ -296,10 +293,10 @@ func TestAppStop(t *testing.T) {
 	t.Run("when stop is true and script not found into <svcname>.d", func(t *testing.T) {
 		name := "stopTrueScript"
 		var msg string
-		td := t.TempDir()
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
@@ -315,12 +312,12 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"true", "True", "T"} {
 		t.Run("when stop is true like ("+name+")", func(t *testing.T) {
-			td := t.TempDir()
 			name := "stop" + name
 			var msg string
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			exitError, ok := err.(*exec.ExitError)
 			if ok {
@@ -337,12 +334,12 @@ func TestAppStop(t *testing.T) {
 
 	for _, name := range []string{"0", "f", "F", "false", "FALSE", "False"} {
 		t.Run("when stop is false like ("+name+")", func(t *testing.T) {
-			td := t.TempDir()
 			name := "stop" + name
 			var msg string
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			exitError, ok := err.(*exec.ExitError)
 			if ok {
@@ -360,11 +357,11 @@ func TestAppStop(t *testing.T) {
 	t.Run("when no command stop", func(t *testing.T) {
 		for _, name := range []string{"stopEmpty", "stopUndef"} {
 			t.Run(name, func(t *testing.T) {
-				td := t.TempDir()
 				var msg string
-				t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-				cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-				cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+				args := getCmd(name)
+				t.Logf("run 'om %v'", strings.Join(args, " "))
+				cmd := exec.Command(os.Args[0], args...)
+				cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 				out, err := cmd.CombinedOutput()
 				exitError, ok := err.(*exec.ExitError)
 				if ok {
@@ -373,18 +370,18 @@ func TestAppStop(t *testing.T) {
 					msg = ""
 				}
 				require.Nilf(t, err, "err: '%v', stderr: '%v', out='%v'", err, msg, string(out))
-				require.NotContains(t, string(out), "running", "expected no running")
+				require.NotContains(t, string(out), "INF run ", "expected no run")
 			})
 		}
 	})
 
 	t.Run("stop value true without script keyword exit non 0", func(t *testing.T) {
-		td := t.TempDir()
 		name := "stopScriptUndef"
 		var msg string
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
@@ -400,11 +397,11 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("configs_environment", func(t *testing.T) {
 		name := "configEnv"
-		td := t.TempDir()
 
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -414,11 +411,11 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("secrets_environment", func(t *testing.T) {
 		name := "secretEnv"
-		td := t.TempDir()
 
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -428,11 +425,11 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("secrets_environment_matcher", func(t *testing.T) {
 		name := "secretEnvMatchers"
-		td := t.TempDir()
 
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nil(t, err)
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -442,11 +439,11 @@ func TestAppStop(t *testing.T) {
 
 	t.Run("config_environment_matcher", func(t *testing.T) {
 		name := "configEnvMatchers"
-		td := t.TempDir()
 
-		t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-		cmd := exec.Command(os.Args[0], "-test.run=TestAppStop")
-		cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+		args := getCmd(name)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, "got '%v'", string(out))
 		for _, expected := range strings.Split(cases[name].expectedResults, "\n") {
@@ -494,22 +491,20 @@ func TestAppStopStartSequence(t *testing.T) {
 		} else {
 			action = "stop"
 		}
-		args := []string{"svcapp", action, "--colorlog", "no", "--local"}
+		args := []string{"svcapp", action, "--debug", "--colorlog", "no", "--local"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
 
-	confs := []configs{{"svcapp1.conf", "svcapp.conf"}}
-	if executeArgsTest(t, getCmd, confs) {
-		return
-	}
+	td := t.TempDir()
+	test_conf_helper.InstallSvcFile(t, "svcapp1.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name := range cases {
 		t.Run("orderBasedOnStartId:"+name, func(t *testing.T) {
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopStartSequence")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
 			compile, err := regexp.Compile("out=.app#([a-z0-9]+) ")
@@ -541,28 +536,26 @@ func TestAppStopComplexCommand(t *testing.T) {
 		},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--local", "--colorlog=no"}
+		args := []string{"svcapp", "stop", "--local", "--debug", "--colorlog=no"}
 		args = append(args, cases[name].ExtraArgs...)
 		return args
 	}
 
-	confs := []configs{{"svcappComplexCommand.conf", "svcapp.conf"}}
-	if executeArgsTest(t, getCmd, confs) {
-		return
-	}
+	td := t.TempDir()
+	test_conf_helper.InstallSvcFile(t, "svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
-	for name := range cases {
+	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopComplexCommand")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
-			for _, expected := range cases[name].Expected {
+			for _, expected := range test.Expected {
 				assert.Containsf(t, string(out), "out="+expected, "got:\n%v", string(out))
 			}
-			for _, notExpected := range cases[name].NotExpected {
+			for _, notExpected := range test.NotExpected {
 				assert.NotContainsf(t, string(out), "out="+notExpected, "got:\n%v", string(out))
 			}
 		})
@@ -587,16 +580,14 @@ func TestAppStopLimit(t *testing.T) {
 		"solaris": {"limit_memlock", "limit_nproc"},
 	}
 	getCmd := func(name string) []string {
-		args := []string{"svcapp", "stop", "--local", "--colorlog=no", "--rid", "app#" + name}
+		args := []string{"svcapp", "stop", "--local", "--colorlog=no", "--debug", "--rid", "app#" + name}
 		return args
 	}
 
-	confs := []configs{{"svcappforking_limit.conf", "svcapp.conf"}}
-	if executeArgsTest(t, getCmd, confs) {
-		return
-	}
+	td := t.TempDir()
+	test_conf_helper.InstallSvcFile(t, "svcappforking_limit.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
-	for name := range cases {
+	for name, expecteds := range cases {
 		t.Run(name, func(t *testing.T) {
 			if toSkip, ok := skipGOOS[runtime.GOOS]; ok {
 				for _, testToSkipp := range toSkip {
@@ -605,14 +596,14 @@ func TestAppStopLimit(t *testing.T) {
 					}
 				}
 			}
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopLimit")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, "got '%v'", string(out))
-			for _, expected := range cases[name] {
+			for _, expected := range expecteds {
 				assert.Containsf(t, string(out), "out="+expected, "got:\n%v", string(out))
 			}
 		})
@@ -631,17 +622,15 @@ func TestAppStopTimeout(t *testing.T) {
 		return args
 	}
 
-	confs := []configs{{"svcappforking_timeout.conf", "svcapp.conf"}}
-	if executeArgsTest(t, getCmd, confs) {
-		return
-	}
+	td := t.TempDir()
+	test_conf_helper.InstallSvcFile(t, "svcappforking_timeout.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStopTimeout")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			args := getCmd(name)
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			if cases[name] {
 				require.Nilf(t, err, "expected succeed, got '%v'", string(out))
@@ -653,6 +642,7 @@ func TestAppStopTimeout(t *testing.T) {
 }
 
 func TestAppStartRollback(t *testing.T) {
+	td := t.TempDir()
 	cases := map[string]struct {
 		rids               []string
 		extraArgs          []string
@@ -717,30 +707,37 @@ func TestAppStartRollback(t *testing.T) {
 		}
 		return args
 	}
-
-	confs := []configs{{"svcapp-rollback.conf", "svcapp.conf"}}
-	if executeArgsTest(t, getCmd, confs) {
-		return
+	cleanup := func() {
+		fpaths, err := filepath.Glob(filepath.Join(td, "var", "*.trace"))
+		require.NoError(t, err)
+		for _, fpath := range fpaths {
+			t.Logf("cleanup: remove %s", fpath)
+			require.NoError(t, os.Remove(fpath))
+		}
 	}
 
-	for name := range cases {
+	test_conf_helper.InstallSvcFile(t, "svcapp-rollback.conf", filepath.Join(td, "etc", "svcapp.conf"))
+
+	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			td := t.TempDir()
-			t.Logf("run 'om %v'", strings.Join(getCmd(name), " "))
-			cmd := exec.Command(os.Args[0], "-test.run=TestAppStartRollback")
-			cmd.Env = append(os.Environ(), "TC_NAME="+name, "TC_PATHSVC="+td)
+			cleanup()
+			args := getCmd(name)
+			args = append(args, "--debug")
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd := exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
 			out, err := cmd.CombinedOutput()
 			t.Logf("output:\n%v", string(out))
-			expectedExitCode := cases[name].exitCode
+			expectedExitCode := test.exitCode
 			if expectedExitCode == 0 {
 				t.Run("expected exit code 0", func(t *testing.T) {
-					t.Logf("from 'om %v'", strings.Join(getCmd(name), " "))
-					require.Nilf(t, err, "unexpected exit code: %v, out: '%v'", err, string(out))
+					t.Logf("from 'om %v'", strings.Join(args, " "))
+					require.NoErrorf(t, err, "unexpected exit code: %v", err)
 				})
 			} else {
 				t.Run("expected exit code non 0", func(t *testing.T) {
-					t.Logf("from 'om %v'", strings.Join(getCmd(name), " "))
-					require.IsTypef(t, &exec.ExitError{}, err, "unexpected error type %v, out: '%v'", err, string(out))
+					t.Logf("from 'om %v'", strings.Join(args, " "))
+					require.IsTypef(t, &exec.ExitError{}, err, "unexpected error type %v", err)
 					require.Equalf(
 						t,
 						expectedExitCode,
@@ -750,10 +747,9 @@ func TestAppStartRollback(t *testing.T) {
 				})
 			}
 
-			expectedStart := cases[name].expectedStart
 			t.Run("expected start", func(t *testing.T) {
-				t.Logf("from 'om %v'\nexpected starts: %v", strings.Join(getCmd(name), " "), expectedStart)
-				for _, rid := range expectedStart {
+				t.Logf("from 'om %v'\nexpected starts: %v", strings.Join(args, " "), test.expectedStart)
+				for _, rid := range test.expectedStart {
 					trace := "app#" + rid + "-start.trace"
 					assert.FileExistsf(
 						t,
@@ -765,10 +761,9 @@ func TestAppStartRollback(t *testing.T) {
 				}
 			})
 
-			expectedRollback := cases[name].expectedRollback
 			t.Run("expected rollback", func(t *testing.T) {
-				t.Logf("from 'om %v'\nexpected rollbacks: %v", strings.Join(getCmd(name), " "), expectedRollback)
-				for _, rid := range expectedRollback {
+				t.Logf("from 'om %v'\nexpected rollbacks: %v", strings.Join(args, " "), test.expectedRollback)
+				for _, rid := range test.expectedRollback {
 					trace := "app#" + rid + "-rollback.trace"
 					assert.FileExistsf(
 						t,
@@ -780,10 +775,9 @@ func TestAppStartRollback(t *testing.T) {
 				}
 			})
 
-			unexpectedStart := cases[name].unexpectedStart
 			t.Run("unexpected start", func(t *testing.T) {
-				t.Logf("from 'om %v'\nunexpected starts: %v", strings.Join(getCmd(name), " "), unexpectedStart)
-				for _, rid := range unexpectedStart {
+				t.Logf("from 'om %v'\nunexpected starts: %v", strings.Join(args, " "), test.unexpectedStart)
+				for _, rid := range test.unexpectedStart {
 					trace := "app#" + rid + "-start.trace"
 					assert.NoFileExists(
 						t,
@@ -795,10 +789,9 @@ func TestAppStartRollback(t *testing.T) {
 				}
 			})
 
-			unexpectedRollback := cases[name].unexpectedRollback
 			t.Run("unexpected rollback", func(t *testing.T) {
-				t.Logf("from 'om %v'\nunexpected rollback: %v", strings.Join(getCmd(name), " "), unexpectedRollback)
-				for _, rid := range unexpectedRollback {
+				t.Logf("from 'om %v'\nunexpected rollback: %v", strings.Join(args, " "), test.unexpectedRollback)
+				for _, rid := range test.unexpectedRollback {
 					trace := "app#" + rid + "-rollback.trace"
 					assert.NoFileExists(
 						t,
