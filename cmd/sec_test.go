@@ -137,9 +137,6 @@ func TestKeyActions(t *testing.T) {
 		return args
 	}
 
-	if executeArgsTest(t, getCmd, []configs{}) {
-		return
-	}
 	td := t.TempDir()
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	test_conf_helper.InstallSvcFile(t, "sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
