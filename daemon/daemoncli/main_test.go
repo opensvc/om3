@@ -1,13 +1,16 @@
-package daemoncli
+package daemoncli_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemoncli"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/test_conf_helper"
 	"opensvc.com/opensvc/util/funcopt"
@@ -32,19 +35,24 @@ func privileged() bool {
 	return false
 }
 
-func setupClusterConf(t *testing.T) func() {
-	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(
-		t,
-		"cluster.conf",
-		filepath.Join(td, "etc", "cluster.conf"))
-	rawconfig.Load(map[string]string{"osvc_root_path": td})
-	revertHostname := hostname.Impersonate("node1")
-	cleanup := func() {
-		rawconfig.Load(map[string]string{})
-		revertHostname()
+func TestMain(m *testing.M) {
+	defer hostname.Impersonate("node1")()
+	defer rawconfig.Load(map[string]string{})
+	if td := os.Getenv("OSVC_ROOT_PATH"); td != "" {
+		os.Mkdir(filepath.Join(td, "var"), os.ModePerm)
+		os.Mkdir(filepath.Join(td, "var", "certs"), os.ModePerm)
 	}
-	return cleanup
+	switch os.Getenv("GO_TEST_MODE") {
+	case "":
+		// test mode
+		os.Setenv("GO_TEST_MODE", "off")
+		os.Exit(m.Run())
+
+	case "off":
+		// test bypass mode
+		os.Setenv("LANG", "C.UTF-8")
+		cmd.Execute()
+	}
 }
 
 func newClient(serverUrl string) (*client.T, error) {
@@ -64,23 +72,31 @@ func newClient(serverUrl string) (*client.T, error) {
 	return client.New(clientOptions...)
 }
 
+func setup(t *testing.T, td string) {
+	rawconfig.Load(map[string]string{
+		"osvc_root_path": td,
+	})
+	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+}
+
 func TestDaemonStartThenStop(t *testing.T) {
 	for _, url := range cases {
 		//if !privileged() {
 		//	t.Skip("need root")
 		//}
 		t.Run(url, func(t *testing.T) {
-			defer setupClusterConf(t)()
+			td := t.TempDir()
+			setup(t, td)
 			cli, err := newClient(url)
-			require.Nil(t, err)
-			daemonCli := New(cli)
+			require.NoError(t, err)
+			daemonCli := daemoncli.New(cli)
 			require.False(t, daemonCli.Running())
 			go func() {
-				require.Nil(t, daemonCli.Start())
+				require.NoError(t, daemonCli.Start())
 			}()
-			require.Nil(t, daemonCli.WaitRunning())
+			require.NoError(t, daemonCli.WaitRunning())
 			require.True(t, daemonCli.Running())
-			require.Nil(t, daemonCli.Stop())
+			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
 		})
 	}
@@ -89,20 +105,21 @@ func TestDaemonStartThenStop(t *testing.T) {
 func TestDaemonReStartThenStop(t *testing.T) {
 	for _, url := range cases {
 		t.Run(url, func(t *testing.T) {
-			defer setupClusterConf(t)()
+			td := t.TempDir()
+			setup(t, td)
 			cli, err := newClient(url)
-			require.Nil(t, err)
-			daemonCli := New(cli)
+			require.NoError(t, err)
+			daemonCli := daemoncli.New(cli)
 			//if !privileged() {
 			//	t.Skip("need root")
 			//}
 			require.False(t, daemonCli.Running())
 			go func() {
-				require.Nil(t, daemonCli.ReStart())
+				require.NoError(t, daemonCli.ReStart())
 			}()
-			require.Nil(t, daemonCli.WaitRunning())
+			require.NoError(t, daemonCli.WaitRunning())
 			require.True(t, daemonCli.Running())
-			require.Nil(t, daemonCli.Stop())
+			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
 		})
 	}
@@ -112,13 +129,13 @@ func TestStop(t *testing.T) {
 	for _, url := range cases {
 		t.Run(url, func(t *testing.T) {
 			cli, err := newClient(url)
-			require.Nil(t, err)
-			daemonCli := New(cli)
+			require.NoError(t, err)
+			daemonCli := daemoncli.New(cli)
 			//if !privileged() {
 			//	t.Skip("need root")
 			//}
 			require.False(t, daemonCli.Running())
-			require.Nil(t, daemonCli.Stop())
+			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
 		})
 	}
