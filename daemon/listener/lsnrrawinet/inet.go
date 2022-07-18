@@ -11,6 +11,9 @@ import (
 )
 
 func (t *T) stop() error {
+	if t.listener == nil {
+		return nil
+	}
 	if err := (*t.listener).Close(); err != nil {
 		t.log.Error().Err(err).Msg("listener Close failure")
 		return err
