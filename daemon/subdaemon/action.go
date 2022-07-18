@@ -129,8 +129,10 @@ func (t *T) stop() (done chan string) {
 				t.log.Debug().Msgf("done %d of %d", i, subToWait)
 			}
 		}
-		if err := t.main.MainStop(); err != nil {
-			t.log.Error().Err(err).Msg("MainStop failed")
+		if t.main != nil {
+			if err := t.main.MainStop(); err != nil {
+				t.log.Error().Err(err).Msg("MainStop failed")
+			}
 		}
 		done <- "stopped"
 	}()
