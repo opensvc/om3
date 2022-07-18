@@ -168,6 +168,9 @@ func unpadPKCSS(b []byte, blockSize int) ([]byte, error) {
 		return nil, errors.New("data is empty")
 	}
 	paddingLength := int(b[len(b)-1])
+	if paddingLength > len(b) {
+		return nil, errors.Errorf("PKCSS padding (%d) is longer than message (%d)", paddingLength, len(b))
+	}
 	for _, el := range b[len(b)-paddingLength:] {
 		if el != byte(paddingLength) {
 			errStr := fmt.Sprintf("padding had malformed entry '%x', expected '%x'", paddingLength, el)
