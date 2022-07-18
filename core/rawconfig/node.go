@@ -45,6 +45,7 @@ type (
 	}
 
 	clusterSection struct {
+		ID         string `mapstructure:"id"`
 		Name       string `mapstructure:"name"`
 		Secret     string `mapstructure:"secret"`
 		CASecPaths string `mapstructure:"ca"`

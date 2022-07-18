@@ -1,24 +1,24 @@
 package daemondata
 
 import (
+	"strings"
+
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
 func newData(counterCmd chan<- interface{}) *data {
-	node := object.NewNode()
-	config := node.MergedConfig()
 	localNode := hostname.Hostname()
 	localNodeStatus := newNodeStatus(localNode)
 	status := cluster.Status{
 		Cluster: cluster.Info{
-			ID:    config.Get(key.New("cluster", "id")),
-			Name:  config.Get(key.New("cluster", "name")),
-			Nodes: config.GetSlice(key.New("cluster", "nodes")),
+			ID:    rawconfig.ClusterSection().ID,
+			Name:  rawconfig.ClusterSection().Name,
+			Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
 		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
