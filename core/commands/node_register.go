@@ -47,7 +47,11 @@ func (t *CmdNodeRegister) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Register(t.User, t.Password, t.App)
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return nil, n.Register(t.User, t.Password, t.App)
 		}),
 	).Do()
 }

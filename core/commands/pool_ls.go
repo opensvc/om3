@@ -61,7 +61,12 @@ func (t *PoolLs) run() {
 }
 
 func (t *PoolLs) extractLocal() []string {
-	return object.NewNode().ListPools()
+	n, err := object.NewNode()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	return n.ListPools()
 }
 
 func (t *PoolLs) extractDaemon() []string {

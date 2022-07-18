@@ -3,7 +3,11 @@ package object
 import "opensvc.com/opensvc/util/compliance"
 
 func (t core) NewCompliance() (*compliance.T, error) {
-	client, err := t.Node().CollectorComplianceClient()
+	n, err := t.Node()
+	if err != nil {
+		return nil, err
+	}
+	client, err := n.CollectorComplianceClient()
 	if err != nil {
 		return nil, err
 	}

@@ -27,10 +27,12 @@ type (
 )
 
 // NewNode allocates a node.
-func NewNode(opts ...funcopt.O) *Node {
+func NewNode(opts ...funcopt.O) (*Node, error) {
 	t := &Node{}
-	t.init(opts...)
-	return t
+	if err := t.init(opts...); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (t *Node) init(opts ...funcopt.O) error {

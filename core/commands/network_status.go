@@ -70,7 +70,10 @@ func (t *NetworkStatus) run() {
 }
 
 func (t *NetworkStatus) extractLocal() (network.StatusList, error) {
-	n := object.NewNode()
+	n, err := object.NewNode()
+	if err != nil {
+		return nil, err
+	}
 	return network.ShowNetworksByName(n, t.Name), nil
 }
 

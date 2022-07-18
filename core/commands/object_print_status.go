@@ -89,6 +89,11 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 	if err != nil {
 		return data, err
 	}
+	n, err := object.NewNode()
+	if err != nil {
+		return data, err
+	}
+
 	var errs error
 	ctx := context.Background()
 	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
@@ -117,7 +122,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 				h: {
 					Node: instance.Node{
 						Name:   h,
-						Frozen: object.NewNode().Frozen(),
+						Frozen: n.Frozen(),
 					},
 					Status: status,
 				},

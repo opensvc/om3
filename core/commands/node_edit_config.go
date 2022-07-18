@@ -38,16 +38,20 @@ func (t *NodeEditConfig) cmd() *cobra.Command {
 }
 
 func (t *NodeEditConfig) run() {
-	var err error
+	n, err := object.NewNode()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	switch {
 	//case t.Discard && t.Recover:
 	//        return errors.New("discard and recover options are mutually exclusive")
 	case t.Discard:
-		err = object.NewNode().DiscardAndEditConfig()
+		err = n.DiscardAndEditConfig()
 	case t.Recover:
-		err = object.NewNode().RecoverAndEditConfig()
+		err = n.RecoverAndEditConfig()
 	default:
-		err = object.NewNode().EditConfig()
+		err = n.EditConfig()
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

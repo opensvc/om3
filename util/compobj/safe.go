@@ -49,7 +49,10 @@ func collectorSafeGetFile(uuid string) ([]byte, error) {
 }
 
 func collectorRestGet(uri string) (*http.Response, error) {
-	node := object.NewNode()
+	node, err := object.NewNode()
+	if err != nil {
+		return nil, err
+	}
 	user := hostname.Hostname()
 	password := node.Config().GetString(key.Parse("node.uuid"))
 	client := node.CollectorRestAPIClient()

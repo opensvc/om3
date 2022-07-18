@@ -135,12 +135,16 @@ func (t core) ConfigFile() string {
 // Node returns a cache Node struct pointer. If none is already cached,
 // allocate a new Node{} and cache it.
 //
-func (t *core) Node() *Node {
+func (t *core) Node() (*Node, error) {
 	if t.node != nil {
-		return t.node
+		return t.node, nil
 	}
-	t.node = NewNode()
-	return t.node
+	if n, err := NewNode(); err != nil {
+		return nil, err
+	} else {
+		t.node = n
+		return t.node, nil
+	}
 }
 
 func (t core) Log() *zerolog.Logger {

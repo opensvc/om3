@@ -73,7 +73,10 @@ func (t *T) MainStart() error {
 
 // start function configure and start hb#x.rx, hb#x.tx drivers
 func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) error {
-	n := clusterhb.New()
+	n, err := clusterhb.New()
+	if err != nil {
+		return err
+	}
 	registeredDataC := make([]chan []byte, 0)
 	for _, h := range n.Hbs() {
 		h.Configure(ctx)

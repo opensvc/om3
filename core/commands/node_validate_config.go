@@ -42,7 +42,11 @@ func (t *NodeValidateConfig) run() {
 		nodeaction.WithServer(t.Server),
 		nodeaction.WithRemoteAction("push_asset"),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().ValidateConfig()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return n.ValidateConfig()
 		}),
 	).Do()
 }

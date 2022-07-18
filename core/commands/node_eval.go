@@ -51,7 +51,10 @@ func (t *NodeEval) run() {
 			"impersonate": t.Impersonate,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			n := object.NewNode()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
 			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)

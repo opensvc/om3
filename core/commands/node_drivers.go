@@ -46,7 +46,11 @@ func (t *NodeDrivers) run() {
 
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().Drivers()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return n.Drivers()
 		}),
 	).Do()
 }

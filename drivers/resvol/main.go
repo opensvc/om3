@@ -296,8 +296,10 @@ func (t *T) lockedCreateVolume(volume object.Vol) (object.Vol, error) {
 // garanty the pool is of the same type).
 //
 func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
-	var err error
-	node := object.NewNode() // TODO: find a more efficient method
+	node, err := object.NewNode()
+	if err != nil {
+		return nil, err
+	}
 	l := pool.NewLookup(node)
 	l.Name = t.Pool
 	l.Type = t.PoolType
@@ -329,7 +331,7 @@ func (t *T) configureVolume(v object.Vol, withUsage bool) error {
 	if err != nil {
 		return err
 	}
-	obj, err := object.New(t.Path) // TODO: find a more efficient method
+	obj, err := object.New(t.Path)
 	if err != nil {
 		return err
 	}

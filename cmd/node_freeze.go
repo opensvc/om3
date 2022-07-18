@@ -35,7 +35,11 @@ func nodeFreezeCmdRun(_ *cobra.Command, _ []string) {
 		nodeaction.WithColor(colorFlag),
 		nodeaction.WithLocal(nodeFreezeLocalFlag),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Freeze()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return nil, n.Freeze()
 		}),
 	).Do()
 }

@@ -49,7 +49,10 @@ func (t *NodeDoc) run() {
 
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			n := object.NewNode()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
 			switch {
 			case t.Driver != "":
 				return n.DriverDoc(t.Driver)

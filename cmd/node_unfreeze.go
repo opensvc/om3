@@ -36,7 +36,11 @@ func nodeUnfreezeCmdRun(_ *cobra.Command, _ []string) {
 		nodeaction.WithColor(colorFlag),
 		nodeaction.WithLocal(nodeUnfreezeLocalFlag),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().Unfreeze()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return nil, n.Unfreeze()
 		}),
 	).Do()
 }

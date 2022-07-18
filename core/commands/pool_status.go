@@ -70,10 +70,15 @@ func (t *PoolStatus) run() {
 }
 
 func (t *PoolStatus) extractLocal() (pool.StatusList, error) {
+	n, err := object.NewNode()
+	if err != nil {
+		return nil, err
+	}
+
 	if t.Name == "" {
-		return object.NewNode().ShowPools(), nil
+		return n.ShowPools(), nil
 	} else {
-		return object.NewNode().ShowPoolsByName(t.Name), nil
+		return n.ShowPoolsByName(t.Name), nil
 	}
 }
 

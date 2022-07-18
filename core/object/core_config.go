@@ -42,7 +42,7 @@ func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	}
 	t.config.Path = t.path
 	t.config.Referrer = referrer
-	t.config.NodeReferrer = t.Node()
+	t.config.NodeReferrer, err = t.Node()
 	return err
 }
 
@@ -304,7 +304,9 @@ func (t core) Dereference(ref string) (string, error) {
 	case "initd":
 		return filepath.Join(filepath.Dir(t.ConfigFile()), t.path.Name+".d"), nil
 	case "collector_api":
-		if url, err := t.Node().CollectorRestAPIURL(); err != nil {
+		if n, err := t.Node(); err != nil {
+			return "", err
+		} else if url, err := n.CollectorRestAPIURL(); err != nil {
 			return "", err
 		} else {
 			return url.String(), nil
@@ -322,9 +324,17 @@ func (t core) Dereference(ref string) (string, error) {
 	case "dnsnodes":
 		return ref, fmt.Errorf("TODO")
 	case "dnsuxsock":
-		return t.Node().DNSUDSFile(), nil
+		if n, err := t.Node(); err != nil {
+			return "", err
+		} else {
+			return n.DNSUDSFile(), nil
+		}
 	case "dnsuxsockd":
-		return t.Node().DNSUDSDir(), nil
+		if n, err := t.Node(); err != nil {
+			return "", err
+		} else {
+			return n.DNSUDSDir(), nil
+		}
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):

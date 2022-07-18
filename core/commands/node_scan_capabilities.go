@@ -51,7 +51,11 @@ func (t *NodeScanCapabilities) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().NodeScanCapabilities()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return n.NodeScanCapabilities()
 		}),
 	).Do()
 }

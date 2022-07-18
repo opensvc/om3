@@ -311,13 +311,25 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		}
 	}
 	getDNS := func() ([]string, error) {
-		return t.Node().Nameservers()
+		n, err := t.Node()
+		if err != nil {
+			return nil, err
+		}
+		return n.Nameservers()
 	}
 	getCNIConfig := func() (string, error) {
-		return t.Node().CNIConfig()
+		n, err := t.Node()
+		if err != nil {
+			return "", err
+		}
+		return n.CNIConfig()
 	}
 	getCNIPlugins := func() (string, error) {
-		return t.Node().CNIPlugins()
+		n, err := t.Node()
+		if err != nil {
+			return "", err
+		}
+		return n.CNIPlugins()
 	}
 
 	setAttr := func(c manifest.Context) error {

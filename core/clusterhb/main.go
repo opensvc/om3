@@ -15,10 +15,15 @@ type (
 	}
 )
 
-func New() *T {
-	return &T{
-		Node: object.NewNode(),
+func New() (*T, error) {
+	n, err := object.NewNode()
+	if err != nil {
+		return nil, err
 	}
+	t := &T{
+		Node: n,
+	}
+	return t, nil
 }
 
 // Hbs returns list of hbcfg.Confer objects from node/cluster config

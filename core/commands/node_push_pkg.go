@@ -62,7 +62,11 @@ func (t *NodePushPkg) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().PushPkg()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return n.PushPkg()
 		}),
 	).Do()
 }

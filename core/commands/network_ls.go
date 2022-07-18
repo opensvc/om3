@@ -62,7 +62,11 @@ func (t *NetworkLs) run() {
 }
 
 func (t *NetworkLs) extractLocal() []string {
-	n := object.NewNode()
+	n, err := object.NewNode()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	return network.List(n)
 }
 

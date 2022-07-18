@@ -46,7 +46,11 @@ func (t *NetworkSetup) run() {
 }
 
 func (t *NetworkSetup) doLocal() {
-	n := object.NewNode()
+	n, err := object.NewNode()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err := network.Setup(n); err != nil {
 		os.Exit(1)
 	}

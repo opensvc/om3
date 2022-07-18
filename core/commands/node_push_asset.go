@@ -62,7 +62,11 @@ func (t *NodePushAsset) run() {
 			"format": t.Format,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return object.NewNode().PushAsset()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return n.PushAsset()
 		}),
 	).Do()
 }

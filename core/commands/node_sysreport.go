@@ -46,7 +46,10 @@ func (t *CmdNodeSysreport) run() {
 			"force":  t.Force,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			n := object.NewNode()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
 			if t.Force {
 				return nil, n.ForceSysreport()
 			} else {

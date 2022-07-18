@@ -48,7 +48,11 @@ func (t *CmdNodeComplianceEnv) run() {
 			"module":    t.Module,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			comp, err := object.NewNode().NewCompliance()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			comp, err := n.NewCompliance()
 			if err != nil {
 				return nil, err
 			}

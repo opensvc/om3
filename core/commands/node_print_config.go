@@ -48,7 +48,10 @@ func (t *NodePrintConfig) run() {
 			"eval":        t.Eval,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			n := object.NewNode()
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
 			switch {
 			case t.Eval:
 				return n.EvalConfigAs(t.Impersonate)

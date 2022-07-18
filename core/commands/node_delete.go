@@ -45,7 +45,11 @@ func (t *NodeDelete) run() {
 			"rid": t.RID,
 		}),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
-			return nil, object.NewNode().DeleteSection(t.RID)
+			n, err := object.NewNode()
+			if err != nil {
+				return nil, err
+			}
+			return nil, n.DeleteSection(t.RID)
 		}),
 	).Do()
 }
