@@ -39,7 +39,7 @@ func (o opApplyRemoteFull) call(d *data) {
 	} else {
 		var eventData json.RawMessage = eventB
 		eventId++
-		daemonps.PubEvent(d.pubSub, event.Event{
+		daemonps.PubEvent(d.bus, event.Event{
 			Kind:      "patch",
 			ID:        eventId,
 			Timestamp: timestamp.Now(),

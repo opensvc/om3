@@ -37,8 +37,8 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 	daemon := daemonctx.Daemon(r.Context())
 	if daemon.Running() {
 		logger.Info().Msg("stopping")
-		if err := daemon.StopAndQuit(); err != nil {
-			msg := "StopAndQuit"
+		if err := daemon.Stop(); err != nil {
+			msg := "Stop"
 			logger.Error().Err(err).Msg(msg)
 			_, _ = write([]byte(msg + " " + err.Error()))
 		}
@@ -53,7 +53,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
 	logger.Debug().Msg("starting")
 	ctx := r.Context()
-	evCmdC := daemonctx.DaemonPubSubCmd(ctx)
+	bus := daemonctx.DaemonPubSubBus(ctx)
 	done := make(chan bool)
 	var httpBody bool
 	if r.Header.Get("accept") == "text/event-stream" {
@@ -101,8 +101,8 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := daemonps.SubEvent(evCmdC, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
-	defer daemonps.UnSubEvent(evCmdC, subId)
+	subId := daemonps.SubEvent(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
+	defer daemonps.UnSubEvent(bus, subId)
 	go func() {
 		for {
 			select {

@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 
@@ -44,22 +45,22 @@ func (o opCommitPending) call(d *data) {
 	d.committed = d.pending.DeepCopy()
 
 	for _, cfgDelete := range cfgDeletes {
-		daemonps.PubCfgDelete(d.pubSub, cfgDelete.Path.String(), cfgDelete)
+		daemonps.PubCfgDelete(d.bus, cfgDelete.Path.String(), cfgDelete)
 	}
 	for _, cfgUpdates := range cfgUpdates {
-		daemonps.PubCfgUpdate(d.pubSub, cfgUpdates.Path.String(), cfgUpdates)
+		daemonps.PubCfgUpdate(d.bus, cfgUpdates.Path.String(), cfgUpdates)
 	}
 	for _, w := range statusDeletes {
-		daemonps.PubInstStatusDelete(d.pubSub, w.Path.String(), w)
+		daemonps.PubInstStatusDelete(d.bus, w.Path.String(), w)
 	}
 	for _, w := range statusUpdates {
-		daemonps.PubInstStatusUpdated(d.pubSub, w.Path.String(), w)
+		daemonps.PubInstStatusUpdated(d.bus, w.Path.String(), w)
 	}
 	for _, w := range smonDeletes {
-		daemonps.PubSmonDelete(d.pubSub, w.Path.String(), w)
+		daemonps.PubSmonDelete(d.bus, w.Path.String(), w)
 	}
 	for _, w := range smonUpdates {
-		daemonps.PubSmonUpdated(d.pubSub, w.Path.String(), w)
+		daemonps.PubSmonUpdated(d.bus, w.Path.String(), w)
 	}
 
 	d.log.Debug().
@@ -171,7 +172,7 @@ func (d *data) eventCommitPendingOps() {
 	} else {
 		eventId++
 		var data json.RawMessage = eventB
-		daemonps.PubEvent(d.pubSub, event.Event{
+		daemonps.PubEvent(d.bus, event.Event{
 			Kind:      "patch",
 			ID:        eventId,
 			Timestamp: timestamp.Now(),
@@ -192,10 +193,15 @@ func (d *data) eventCommitPendingOps() {
 // When a remote node requires a full hb message pendingOps and patchQueue are purged
 //
 // It creates new version of committed Status
-func (t T) CommitPending() {
+func (t T) CommitPending(ctx context.Context) {
 	done := make(chan bool)
 	t.cmdC <- opCommitPending{
 		done: done,
 	}
-	<-done
+	select {
+	case <-ctx.Done():
+		return
+	case <-done:
+		return
+	}
 }

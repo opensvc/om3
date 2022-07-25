@@ -64,7 +64,7 @@ func (t *T) newDaemonRouter() *chi.Mux {
 func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemonctx.WithDaemonPubSubCmd(r.Context(), daemonctx.DaemonPubSubCmd(parent))
+			ctx := daemonctx.WithDaemonPubSubBus(r.Context(), daemonctx.DaemonPubSubBus(parent))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

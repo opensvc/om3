@@ -14,6 +14,7 @@ package daemondiscover
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -32,7 +33,9 @@ type (
 		ctx        context.Context
 		log        zerolog.Logger
 
-		moncfg       map[string]struct{}
+		// moncfg stores instcfg routines stop funcs
+		moncfg map[string]func()
+
 		monCfgCmdC   map[string]chan<- *moncmd.T
 		svcAggCancel map[string]context.CancelFunc
 		svcAgg       map[string]map[string]struct{}
@@ -64,14 +67,16 @@ var (
 
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create
-func Start(ctx context.Context) error {
+func Start(ctx context.Context) (func(), error) {
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
 		cfgCmdC:    make(chan *moncmd.T),
 		svcaggCmdC: make(chan *moncmd.T),
 
 		ctx:    ctx,
-		log:    daemonlogctx.Logger(ctx).With().Str("_pkg", "daemondiscover").Logger(),
-		moncfg: make(map[string]struct{}),
+		log:    daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
+		moncfg: make(map[string]func()),
 
 		monCfgCmdC:   make(map[string]chan<- *moncmd.T),
 		svcAggCancel: make(map[string]context.CancelFunc),
@@ -83,11 +88,27 @@ func Start(ctx context.Context) error {
 		fetcherUpdated:    make(map[string]timestamp.T),
 		localhost:         hostname.Hostname(),
 	}
-	if err := d.fsWatcherStart(); err != nil {
-		d.log.Error().Err(err).Msg("fsWatcherStart")
-		return err
+	stopFSWatcher, err := d.fsWatcherStart()
+	if err != nil {
+		d.log.Error().Err(err).Msg("start")
+		return stopFSWatcher, err
 	}
-	go d.cfg()
-	go d.agg()
-	return nil
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		d.cfg()
+	}()
+	go func() {
+		defer wg.Done()
+		d.agg()
+	}()
+	cancelAndWait := func() {
+		stopFSWatcher()
+		for _, stop := range d.moncfg {
+			stop()
+		}
+		cancel() // stop cfg and agg via context cancel
+		wg.Wait()
+	}
+	return cancelAndWait, nil
 }

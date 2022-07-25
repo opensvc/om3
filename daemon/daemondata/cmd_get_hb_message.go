@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -23,12 +24,17 @@ func (o opGetHbMessage) setDataByte(err error) {
 // GetHbMessage provides the hb message to send on remotes
 //
 // It decides which type of message is needed
-func (t T) GetHbMessage() []byte {
+func (t T) GetHbMessage(ctx context.Context) []byte {
 	b := make(chan []byte)
 	t.cmdC <- opGetHbMessage{
 		data: b,
 	}
-	return <-b
+	select {
+	case <-ctx.Done():
+		return nil
+	case msg := <-b:
+		return msg
+	}
 }
 
 func (o opGetHbMessage) call(d *data) {

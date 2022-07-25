@@ -49,10 +49,10 @@ type (
 	}
 
 	trace struct {
+		*sync.RWMutex
 		count        int
 		countDetails map[string]int
 		countMax     int
-		lock         *sync.RWMutex
 	}
 
 	noopTrace struct {
@@ -91,7 +91,7 @@ func (tt *TT) TraceRDump() Stat {
 func NewTracer() *TT {
 	return &TT{
 		t: &trace{
-			lock:         &sync.RWMutex{},
+			RWMutex:      &sync.RWMutex{},
 			countDetails: make(map[string]int),
 		},
 	}
@@ -118,8 +118,8 @@ func (t *noopTrace) TraceRDump() Stat {
 }
 
 func (t *trace) TraceRDump() Stat {
-	t.lock.RLock()
-	defer t.lock.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return Stat{
 		Count:   t.count,
 		Max:     t.countMax,
@@ -128,14 +128,14 @@ func (t *trace) TraceRDump() Stat {
 }
 
 func (t *trace) Value() int {
-	t.lock.RLock()
-	defer t.lock.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.count
 }
 
 func (t *trace) values() map[string]int {
-	t.lock.RLock()
-	defer t.lock.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	newMap := make(map[string]int)
 	for key, value := range t.countDetails {
 		newMap[key] = value
@@ -144,14 +144,14 @@ func (t *trace) values() map[string]int {
 }
 
 func (t *trace) Max() int {
-	t.lock.RLock()
-	defer t.lock.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.countMax
 }
 
 func (t *trace) inc(name string) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	t.count = t.count + 1
 	if _, ok := t.countDetails[name]; ok {
 		t.countDetails[name] = t.countDetails[name] + 1
@@ -164,8 +164,8 @@ func (t *trace) inc(name string) {
 }
 
 func (t *trace) dec(name string) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	t.count = t.count - 1
 	t.countDetails[name] = t.countDetails[name] - 1
 }

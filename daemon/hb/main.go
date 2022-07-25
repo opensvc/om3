@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondatactx"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -22,8 +22,6 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
 		log          zerolog.Logger
 		routineTrace routineTracer
 		rootDaemon   subdaemon.RootManager
@@ -39,35 +37,31 @@ type (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
+	t.log = log.Logger.With().Str("sub", "hb").Logger()
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("hb funcopt.Apply")
 		return nil
 	}
-	t.log = daemonlogctx.Logger(t.ctx)
 	t.T = subdaemon.New(
 		subdaemon.WithName("hb"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
-		subdaemon.WithContext(t.ctx),
 	)
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
 	return t
 }
 
-func (t *T) MainStart() error {
-	t.log.Info().Msg("mgr starting")
-	data := hbctrl.New(t.ctx)
-	go data.Start()
+func (t *T) MainStart(ctx context.Context) error {
+	data := hbctrl.New()
+	go data.Start(ctx)
 	msgC := make(chan *hbtype.Msg)
 
-	err := t.start(t.ctx, data, msgC)
+	err := t.start(ctx, data, msgC)
 	if err != nil {
 		return err
 	}
-
-	t.log.Info().Msg("mgr started")
 	return nil
 }
 
@@ -99,7 +93,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	go func() {
 		// multiplex data messages to hb tx drivers
 		var dataC <-chan []byte
-		dataC = daemonctx.HBSendQ(t.ctx)
+		dataC = daemonctx.HBSendQ(ctx)
 		if dataC == nil {
 			t.log.Error().Msg("unable to retrieve HBSendQ")
 			return
@@ -125,6 +119,8 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		dataBus := daemondatactx.DaemonData(ctx)
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case <-demoCtx.Done():
 				t.log.Debug().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 				demoCtx, cancel = context.WithTimeout(bgCtx, 10*time.Second)
@@ -150,7 +146,6 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 }
 
 func (t *T) MainStop() error {
-	t.log.Info().Msg("mgr stopping")
 	for _, tx := range t.txs {
 		err := tx.Stop()
 		if err != nil {
@@ -163,6 +158,5 @@ func (t *T) MainStop() error {
 			return err
 		}
 	}
-	t.log.Info().Msg("mgr stopped")
 	return nil
 }

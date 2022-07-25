@@ -38,11 +38,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -117,13 +117,10 @@ type (
 )
 
 // New return a new hb controller
-func New(parent context.Context) *T {
-	ctx, cancel := context.WithCancel(parent)
+func New() *T {
 	return &T{
-		cmd:    make(chan interface{}),
-		ctx:    ctx,
-		log:    daemonlogctx.Logger(parent).With().Str("Name", "hbctrl").Logger(),
-		cancel: cancel,
+		cmd: make(chan interface{}),
+		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
 	}
 }
 
@@ -135,13 +132,14 @@ func (t *T) Stop() {
 }
 
 // Start Watch and respond on Cmd chan, until a Stop() call
-func (t *T) Start() {
+func (t *T) Start(ctx context.Context) {
+	t.ctx, t.cancel = context.WithCancel(ctx)
 	t.log.Info().Msg("start")
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	hbBeatings := make(map[string]map[string]cluster.HeartbeatPeerStatus)
-	pubSubCmd := daemonctx.DaemonPubSubCmd(t.ctx)
-	defer t.log.Info().Msgf("done: %v", events)
+	bus := daemonctx.DaemonPubSubBus(t.ctx)
+	defer t.log.Info().Msgf("stopped: %v", events)
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -165,7 +163,7 @@ func (t *T) Start() {
 				}
 				var data json.RawMessage
 				data = []byte("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
-				daemonps.PubEvent(pubSubCmd, event.Event{
+				daemonps.PubEvent(bus, event.Event{
 					Kind:      o.Name,
 					ID:        0,
 					Timestamp: timestamp.Now(),

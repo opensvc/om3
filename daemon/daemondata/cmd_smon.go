@@ -35,7 +35,7 @@ func (o opDelSmon) call(d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubSmonDelete(d.pubSub, s, moncmd.SmonDeleted{
+	daemonps.PubSmonDelete(d.bus, s, moncmd.SmonDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -51,7 +51,7 @@ func (o opSetSmon) call(d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubSmonUpdated(d.pubSub, s, moncmd.SmonUpdated{
+	daemonps.PubSmonUpdated(d.bus, s, moncmd.SmonUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,

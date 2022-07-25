@@ -70,13 +70,13 @@ func (o *svcAggStatus) worker(nodes []string) {
 	o.log.Info().Msg("started")
 	defer o.log.Info().Msg("done")
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
-	c := daemonctx.DaemonPubSubCmd(o.ctx)
-	defer ps.UnSub(c, ps.SubInstStatus(c, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
+	bus := daemonctx.DaemonPubSubBus(o.ctx)
+	defer ps.UnSub(bus, ps.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
+	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
+	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
-		o.instStatus[node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
 	}
 	o.update()
 	defer o.delete()
@@ -96,7 +96,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 					continue
 				}
 				o.srcEvent = ev
-				o.instStatus[c.Node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, c.Node)
+				o.instStatus[c.Node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, c.Node)
 				o.updateStatus()
 			case moncmd.CfgDeleted:
 				if _, ok := o.instStatus[c.Node]; !ok {
@@ -146,7 +146,7 @@ func (o *svcAggStatus) updateStatus() {
 }
 
 func (o *svcAggStatus) delete() {
-	if err := daemondata.DelServiceAgg(o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelServiceAgg(o.ctx, o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelServiceAgg")
 	}
 	o.discoverCmdC <- moncmd.New(moncmd.MonSvcAggDone{Path: o.path})
@@ -155,7 +155,7 @@ func (o *svcAggStatus) delete() {
 func (o *svcAggStatus) update() {
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
-	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
+	if err := daemondata.SetServiceAgg(o.ctx, o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
 		o.log.Error().Err(err).Msg("SetServiceAgg")
 	}
 }

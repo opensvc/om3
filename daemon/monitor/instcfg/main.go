@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
@@ -31,7 +33,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	ps "opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/monitor/smon"
 	"opensvc.com/opensvc/daemon/remoteconfig"
@@ -76,24 +78,37 @@ var (
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) func() {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
+	ctx, cancel := context.WithCancel(parent)
+	var wg sync.WaitGroup
 
 	o := &instCfg{
 		cfg:          instance.Config{Path: p},
 		path:         p,
 		id:           id,
-		log:          daemonlogctx.Logger(parent).With().Str("_pkg", "instcfg").Str("_id", p.String()).Logger(),
+		log:          log.Logger.With().Str("sub", "instcfg").Str("file", p.String()).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
 		cmdC:         make(chan *moncmd.T),
-		dataCmdC:     daemonctx.DaemonDataCmd(parent),
+		dataCmdC:     daemonctx.DaemonDataCmd(ctx),
 		discoverCmdC: svcDiscoverCmd,
 		filename:     filename,
 	}
-	go o.worker(parent)
-	return
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		o.worker(ctx)
+		o.log.Debug().Msg("worker stopped")
+	}()
+	stop := func() {
+		o.log.Debug().Msg("stop")
+		cancel()
+		wg.Wait()
+		o.log.Debug().Msg("stopped")
+	}
+	return stop
 }
 
 // worker watch for local instCfg config file updates until file is removed
@@ -104,17 +119,17 @@ func (o *instCfg) worker(parent context.Context) {
 	defer moncmd.DropPendingCmd(o.cmdC, dropCmdTimeout)
 	defer o.done()
 	clusterId := clusterPath.String()
-	c := daemonctx.DaemonPubSubCmd(o.ctx)
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "instance-config self cfg update", o.path.String(), o.onEv))
+	bus := daemonctx.DaemonPubSubBus(o.ctx)
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "instance-config self cfg update", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
-		defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "instance-config cluster cfg update", clusterId, o.onEv))
+		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "instance-config cluster cfg update", clusterId, o.onEv))
 	}
 
 	if err := o.watchFile(); err != nil {
 		o.log.Error().Err(err).Msg("watch file")
 		return
 	}
-	// delay initial configure, view on storm file creation
+	// delay initial configure, seen on storm file creation
 	time.Sleep(delayInitialConfigure)
 	if err := o.setConfigure(); err != nil {
 		o.log.Error().Err(err).Msg("setConfigure")
@@ -122,11 +137,6 @@ func (o *instCfg) worker(parent context.Context) {
 	}
 	o.configFileCheck()
 	defer o.delete()
-	select {
-	case <-o.ctx.Done():
-		return
-	default:
-	}
 	if err := smon.Start(o.ctx, o.path, o.cfg.Scope); err != nil {
 		o.log.Error().Err(err).Msg("fail to start smon worker")
 		return
@@ -238,7 +248,9 @@ func (o *instCfg) cmdCfgUpdatedRemote(c moncmd.CfgUpdated) {
 }
 
 func (o *instCfg) onEv(i interface{}) {
-	o.cmdC <- moncmd.New(i)
+	select {
+	case o.cmdC <- moncmd.New(i):
+	}
 }
 
 // updateCfg update iCfg.cfg when newCfg differ from iCfg.cfg
@@ -248,7 +260,7 @@ func (o *instCfg) updateCfg(newCfg *instance.Config) {
 		return
 	}
 	o.cfg = *newCfg
-	if err := daemondata.SetInstanceConfig(o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
+	if err := daemondata.SetInstanceConfig(o.ctx, o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
 }
@@ -329,17 +341,22 @@ func (o *instCfg) setConfigure() error {
 }
 
 func (o *instCfg) delete() {
-	if err := daemondata.DelInstanceConfig(o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelInstanceConfig(o.ctx, o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceConfig")
 	}
-	if err := daemondata.DelInstanceStatus(o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelInstanceStatus(o.ctx, o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceStatus")
 	}
 }
 
 func (o *instCfg) done() {
-	o.discoverCmdC <- moncmd.New(moncmd.MonCfgDone{
+	op := moncmd.New(moncmd.MonCfgDone{
 		Path:     o.path,
 		Filename: o.filename,
 	})
+	select {
+	case <-o.ctx.Done():
+		return
+	case o.discoverCmdC <- op:
+	}
 }

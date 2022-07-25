@@ -3,6 +3,7 @@ package remoteconfig
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"opensvc.com/opensvc/core/client"
@@ -81,7 +82,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 }
 
 func fetchFromApi(p path.T, node string) (b []byte, updated timestamp.T, err error) {
-	url := "raw://" + node + ":" + daemonenv.RawPort
+	url := fmt.Sprintf("raw://%s:%d", node, daemonenv.RawPort)
 	var (
 		cli   *client.T
 		readB []byte

@@ -58,8 +58,8 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		LocalExpect:         payload.LocalExpect,
 		Status:              payload.State,
 	}
-	evCmdC := daemonctx.DaemonPubSubCmd(r.Context())
-	daemonps.PubSetSmonUpdated(evCmdC, p.String(), moncmd.SetSmon{
+	bus := daemonctx.DaemonPubSubBus(r.Context())
+	daemonps.PubSetSmonUpdated(bus, p.String(), moncmd.SetSmon{
 		Path:    p,
 		Node:    hostname.Hostname(),
 		Monitor: smon,

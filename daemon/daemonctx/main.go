@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/daemon/subdaemon"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -13,11 +14,11 @@ type (
 )
 
 var (
-	contextDaemon      = contextKey("daemon")
-	contextDaemonData  = contextKey("daemondata-cmd")
-	contextDaemonPSCmd = contextKey("daemon-pub-sub-cmd")
-	contextHBSendQueue = contextKey("hb-sendQ")
-	contextUuid        = contextKey("uuid")
+	contextDaemon          = contextKey("daemon")
+	contextDaemonData      = contextKey("daemondata-cmd")
+	contextDaemonPubSubBus = contextKey("daemon-pub-sub-bus")
+	contextHBSendQueue     = contextKey("hb-sendQ")
+	contextUuid            = contextKey("uuid")
 )
 
 func (c contextKey) String() string {
@@ -33,14 +34,13 @@ func DaemonDataCmd(ctx context.Context) chan<- interface{} {
 	panic("unable to retrieve context DaemonDataCmd")
 }
 
-// DaemonPubSubCmd function returns DaemonPubSubCmd from context
-func DaemonPubSubCmd(ctx context.Context) (cmdC chan<- interface{}) {
-	var ok bool
-	cmdC, ok = ctx.Value(contextDaemonPSCmd).(chan<- interface{})
+// DaemonPubSubBus function returns DaemonPubSubBus from context
+func DaemonPubSubBus(ctx context.Context) *pubsub.Bus {
+	bus, ok := ctx.Value(contextDaemonPubSubBus).(*pubsub.Bus)
 	if ok {
-		return
+		return bus
 	}
-	panic("unable to retrieve context DaemonPubSubCmd")
+	panic("unable to retrieve context DaemonPubSubBus")
 }
 
 // HBSendQ function returns HBSendQ from context
@@ -58,9 +58,9 @@ func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.C
 	return context.WithValue(parent, contextDaemonData, cmd)
 }
 
-// WithDaemonPubSubCmd function returns copy of parent with daemon pub sub cmd.
-func WithDaemonPubSubCmd(parent context.Context, cmd chan<- interface{}) context.Context {
-	return context.WithValue(parent, contextDaemonPSCmd, cmd)
+// WithDaemonPubSubBus function returns copy of parent with daemon pub sub cmd.
+func WithDaemonPubSubBus(parent context.Context, bus *pubsub.Bus) context.Context {
+	return context.WithValue(parent, contextDaemonPubSubBus, bus)
 }
 
 // WithHBSendQ function returns copy of parent with HBSendQ.

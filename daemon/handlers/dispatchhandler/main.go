@@ -7,6 +7,7 @@ package dispatchhandler
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -153,7 +154,7 @@ func (d *dispatch) httpRequest(node string) *http.Request {
 	)
 	newRequest.Header.Set(daemonenv.HeaderMultiplexed, "true")
 	newRequest.Header.Del(daemonenv.HeaderNode)
-	newRequest.URL.Host = node + ":" + daemonenv.HttpPort
+	newRequest.URL.Host = fmt.Sprintf("%s:%d", node, daemonenv.HttpPort)
 
 	newRequest.URL.Scheme = "https"
 	newRequest.RequestURI = ""
@@ -280,7 +281,7 @@ func httpClientServer() {
 
 func newClient() *http.Client {
 	var tp *http2.Transport
-	cer, err := tls.LoadX509KeyPair(daemonenv.CertFile, daemonenv.KeyFile)
+	cer, err := tls.LoadX509KeyPair(daemonenv.CertFile(), daemonenv.KeyFile())
 	if err != nil {
 		tp = &http2.Transport{
 			TLSClientConfig: &tls.Config{

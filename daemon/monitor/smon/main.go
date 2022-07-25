@@ -149,13 +149,13 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 func (o *smon) worker(initialNodes []string) {
 	defer o.log.Info().Msg("done")
 
-	c := daemonctx.DaemonPubSubCmd(o.ctx)
-	defer ps.UnSub(c, ps.SubSvcAgg(c, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubSetSmon(c, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubSmon(c, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
+	bus := daemonctx.DaemonPubSubBus(o.ctx)
+	defer ps.UnSub(bus, ps.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
+	defer ps.UnSub(bus, ps.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
+	defer ps.UnSub(bus, ps.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
 
 	for _, node := range initialNodes {
-		o.instStatus[node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
 	}
 	o.updateIfChange()
 	defer o.delete()
@@ -187,14 +187,14 @@ func (o *smon) onEv(i interface{}) {
 }
 
 func (o *smon) delete() {
-	if err := daemondata.DelSmon(o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelSmon(o.ctx, o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelSmon")
 	}
 }
 
 func (o *smon) update() {
 	newValue := o.state
-	if err := daemondata.SetSmon(o.dataCmdC, o.path, newValue); err != nil {
+	if err := daemondata.SetSmon(o.ctx, o.dataCmdC, o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetSmon")
 	}
 }

@@ -1,171 +1,160 @@
 package subdaemon
 
 import (
-	"errors"
+	"context"
+	"sort"
+
+	"github.com/pkg/errors"
 )
 
-// Start() will start the main daemon
-// The manager daemon is responsible ot starting its sub daemons
-func (t *T) Start() error {
-	if t.Running() {
-		t.log.Info().Msg("already started")
-		return nil
+// Start starts the control loop, the main loop and sub daemons
+func (t *T) Start(ctx context.Context) error {
+	t.ctx, t.cancel = context.WithCancel(ctx)
+	if err := t.startControl(); err != nil {
+		return err
 	}
-	return t.callAction("starting", "started")
-}
-
-// Stop() will stop the sub daemons, then the main sub daemon
-func (t *T) Stop() error {
-	if !t.Running() {
-		t.log.Info().Msg("already stopped")
-		return nil
+	if err := t.do("start"); err != nil {
+		return err
 	}
-	return t.callAction("stopping", "stopped")
-}
-
-// Quit will stop the daemon routines
-//
-// no more register or action are then possible
-func (t *T) actionsQuit() error {
-	return t.callAction("quit", "done")
-}
-
-// ReStart() will stop sub daemon, then main daemon, then start the main daemon
-//
-// The main daemon is responsible ot starting its sub daemons
-func (t *T) ReStart() error {
-	return t.callAction("restarting", "restarted")
-}
-
-func (t *T) actions() error {
-	if t.actionsEnabled() {
-		return errors.New("call actions() on enabled")
-	}
-	t.mgrActionC = make(chan mgrAction)
-	running := make(chan bool)
-	go func() {
-		defer t.Trace(t.Name() + "-actions")()
-		t.mgrActionEnable.Enable()
-		running <- true
-		for {
-			select {
-			case a := <-t.mgrActionC:
-				switch a.do {
-				case "quit":
-					t.log.Debug().Msg("actions quit")
-					t.mgrActionEnable.Disable()
-					a.done <- "done"
-					return
-				case "starting":
-					t.log.Debug().Msg("actions start")
-					if !t.Running() {
-						<-t.start()
-					}
-					a.done <- "started"
-					t.running.Enable()
-				case "restarting":
-					t.log.Debug().Msg("actions restart")
-					if t.Running() {
-						<-t.stop()
-					}
-					<-t.start()
-					a.done <- "restarted"
-					t.running.Enable()
-				case "stopping":
-					t.log.Debug().Msg("actions stop")
-					if t.Running() {
-						<-t.stop()
-					}
-					a.done <- "stopped"
-					t.running.Disable()
-				}
-			}
-		}
-	}()
-	<-running
 	return nil
 }
 
-func (t *T) actionsEnabled() bool {
-	return t.mgrActionEnable.Enabled()
-}
-
-func (t *T) stop() (done chan string) {
-	t.log.Debug().Msg("stopping subs")
-	done = make(chan string)
-	subToWait := 0
-	subDone := make(chan string)
-	for sub := range t.subs() {
-		subToWait = subToWait + 1
-		sub := sub
-		name := sub.Name()
-		go func() {
-			defer t.Trace(t.Name() + "-WaitDone")()
-			sub.WaitDone()
-		}()
-		go func() {
-			defer t.Trace(t.Name() + "-stopping-sub")()
-			t.log.Debug().Msgf("stopping sub %s", name)
-			if err := sub.Stop(); err != nil {
-				t.log.Error().Err(err).Msgf("stop sub %s failed", name)
-			}
-			if err := sub.Quit(); err != nil {
-				t.log.Error().Err(err).Msgf("quit %s failed", name)
-			}
-			t.log.Info().Msgf("stop sub %s done", name)
-			if err := t.UnRegister(sub); err != nil {
-				t.log.Error().Err(err).Msgf("UnRegister %s failed", name)
-			}
-			subDone <- name
-		}()
+// Stop stops the sub daemons, then the main loop, and the control loop
+func (t *T) Stop() error {
+	if !t.enabled.Enabled() {
+		t.log.Debug().Msg("already stopped")
+		return nil
 	}
-	go func() {
-		defer t.Trace(t.Name() + "-stopping-sub-wait")()
-		if subToWait > 0 {
-			t.log.Info().Msgf("waiting for %d sub managers", subToWait)
-			for i := 1; i <= subToWait; i++ {
-				t.log.Debug().Msgf("waiting %d of %d", i, subToWait)
-				<-subDone
-				t.log.Debug().Msgf("done %d of %d", i, subToWait)
-			}
-		}
-		if t.main != nil {
-			if err := t.main.MainStop(); err != nil {
-				t.log.Error().Err(err).Msg("MainStop failed")
-			}
-		}
-		done <- "stopped"
-	}()
-
-	return done
-}
-
-func (t *T) start() (done chan string) {
-	done = make(chan string)
-	go func() {
-		defer t.Trace(t.Name() + "-MainStart")()
-		if err := t.main.MainStart(); err != nil {
-			t.log.Error().Err(err).Msg("start failed")
-		}
-		done <- "started"
-	}()
-	return done
-}
-
-func (t *T) callAction(do, wanted string) error {
-	t.log.Info().Msgf("callAction do: %s", do)
-	if !t.actionsEnabled() {
-		err := errors.New("callAction " + do + " on disabled action main")
-		t.log.Error().Err(err).Msg("callAction")
+	if err := t.do("stop"); err != nil {
+		t.log.Error().Err(err).Msg("stop")
 		return err
 	}
-	resChan := make(chan string)
-	t.mgrActionC <- mgrAction{do, resChan}
-	t.log.Debug().Msgf("waiting %s", wanted)
-	if result := <-resChan; result != wanted {
-		t.log.Error().Msgf("%s failed got %s instead of %s", do, result, wanted)
-		return errors.New(result)
+	t.Wait()
+	return nil
+}
+
+// Restart chains stop and start
+func (t *T) Restart(ctx context.Context) error {
+	if err := t.Stop(); err != nil {
+		return err
 	}
-	t.log.Info().Msgf("callAction done: %s => %s", do, wanted)
+	t.log.Debug().Msg("restart reached the bottom")
+	if err := t.Start(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startControl() error {
+	if t.enabled.Enabled() {
+		// for ex: restart, start-start
+		return nil
+	}
+	running := make(chan bool)
+	t.Add(1)
+	go func() {
+		defer t.Done()
+		defer t.Trace(t.Name() + "-control")()
+		running <- true
+		t.controlLoop()
+	}()
+	<-running
+	t.log.Debug().Msg("enable control")
+	t.enabled.Enable()
+	return nil
+}
+
+func (t *T) controlLoop() {
+	for {
+		select {
+		case <-t.ctx.Done():
+			// stop receiving new commands, but don't exit the loop
+			// so the stop handler exits with a last result.
+			t.enabled.Disable()
+		case a := <-t.controlChan:
+			switch a.name {
+			case "start":
+				a.done <- t.start()
+			case "stop":
+				if err := t.stop(); err != nil {
+					a.done <- err
+					return
+				}
+				t.disable()
+				a.done <- nil
+				return // exit control routine
+			default:
+				a.done <- errors.Errorf("unknown action: %s", a.name)
+			}
+		}
+	}
+}
+
+// call via do() only for serialization
+func (t *T) stop() error {
+	if !t.Running() {
+		t.log.Debug().Msgf("already stopped")
+		return nil
+	}
+	newChildren := make([]Manager, 0)
+	for i := len(t.children) - 1; i >= 0; i -= 1 {
+		sub := t.children[i]
+		name := sub.Name()
+		if err := sub.Stop(); err != nil {
+			// prevent sub unregistering
+			newChildren = append(newChildren, sub)
+			t.log.Error().Err(err).Msgf("stop %s failed", name)
+		}
+	}
+	sort.SliceStable(newChildren, func(i, j int) bool {
+		return i > j
+	})
+	t.children = newChildren
+	if err := t.main.MainStop(); err != nil {
+		t.log.Error().Err(err).Msg("main stop failed")
+		return err
+	}
+	t.running.Disable()
+	t.cancel() // exits the control loop
+	t.log.Info().Msgf("stopped children and main")
+	return nil
+}
+
+// call via do() only for serialization
+func (t *T) start() error {
+	if t.Running() {
+		t.log.Debug().Msg("already started")
+		return nil
+	}
+	t.log.Debug().Msg("start")
+	if err := t.main.MainStart(t.ctx); err != nil {
+		t.log.Error().Err(err).Msg("start")
+		return err
+	}
+	t.running.Enable()
+	t.log.Info().Msgf("started")
+	return nil
+}
+
+// call via do() only for serialization
+func (t *T) Register(sub Manager) error {
+	t.children = append(t.children, sub)
+	return nil
+}
+
+// do is a synchronous controlAction submitter
+func (t *T) do(what string) error {
+	if !t.enabled.Enabled() {
+		err := errors.Errorf("disabled sub")
+		t.log.Error().Err(err).Msgf("%s", what)
+		return err
+	}
+	t.log.Debug().Msgf("queue %s", what)
+	resChan := make(chan error)
+	t.controlChan <- controlAction{what, resChan}
+	if err := <-resChan; err != nil {
+		t.log.Error().Err(err).Msgf("%s", what)
+		return err
+	}
 	return nil
 }

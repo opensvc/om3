@@ -9,5 +9,6 @@ import (
 
 // DaemonData function returns new DaemonData from context DaemonDataCmd
 func DaemonData(ctx context.Context) *daemondata.T {
-	return daemondata.New(daemonctx.DaemonDataCmd(ctx))
+	bus := daemonctx.DaemonDataCmd(ctx)
+	return daemondata.New(bus)
 }

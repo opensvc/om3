@@ -95,7 +95,7 @@ func (o opApplyRemotePatch) call(d *data) {
 		} else {
 			data = eventB
 			eventId++
-			daemonps.PubEvent(d.pubSub, event.Event{
+			daemonps.PubEvent(d.bus, event.Event{
 				Kind:      "patch",
 				ID:        eventId,
 				Timestamp: timestamp.Now(),

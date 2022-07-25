@@ -44,7 +44,7 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 	} else {
 		dataCmd := daemonctx.DaemonDataCmd(r.Context())
 		log.Debug().Msgf("SetInstanceStatus on %s", postStatus.Path)
-		if err := daemondata.SetInstanceStatus(dataCmd, p, postStatus.Data); err != nil {
+		if err := daemondata.SetInstanceStatus(r.Context(), dataCmd, p, postStatus.Data); err != nil {
 			log.Error().Err(err).Msgf("SetInstanceStatus %s", p)
 		}
 	}

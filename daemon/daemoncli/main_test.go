@@ -73,10 +73,10 @@ func newClient(serverUrl string) (*client.T, error) {
 }
 
 func setup(t *testing.T, td string) {
+	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	rawconfig.Load(map[string]string{
 		"osvc_root_path": td,
 	})
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 }
 
 func TestDaemonStartThenStop(t *testing.T) {

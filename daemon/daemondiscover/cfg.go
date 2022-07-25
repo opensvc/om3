@@ -22,28 +22,26 @@ import (
 func (d *discover) cfg() {
 	d.log.Info().Msg("cfg started")
 	defer func() {
-		t := time.NewTimer(dropCmdTimeout)
-		defer func() {
-			if !t.Stop() {
-				<-t.C
-			}
-		}()
+		t := time.NewTicker(dropCmdTimeout)
+		defer t.Stop()
 		for {
 			select {
+			case <-d.ctx.Done():
+				return
 			case <-t.C:
 				return
 			case <-d.cfgCmdC:
 			}
 		}
 	}()
-	c := daemonctx.DaemonPubSubCmd(d.ctx)
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
+	bus := daemonctx.DaemonPubSubBus(d.ctx)
+	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
+	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
 
 	for {
 		select {
 		case <-d.ctx.Done():
-			d.log.Info().Msg("cfg done")
+			d.log.Info().Msg("cfg stopped")
 			return
 		case i := <-d.cfgCmdC:
 			switch c := (*i).(type) {
@@ -71,7 +69,10 @@ func (d *discover) cfg() {
 }
 
 func (d *discover) onEvCfg(i interface{}) {
-	d.cfgCmdC <- moncmd.New(i)
+	select {
+	case <-d.ctx.Done():
+	case d.cfgCmdC <- moncmd.New(i):
+	}
 }
 
 func (d *discover) cmdLocalCfgFileAdded(p path.T, filename string) {
@@ -79,8 +80,8 @@ func (d *discover) cmdLocalCfgFileAdded(p path.T, filename string) {
 	if _, ok := d.moncfg[s]; ok {
 		return
 	}
-	instcfg.Start(d.ctx, p, filename, d.cfgCmdC)
-	d.moncfg[s] = struct{}{}
+	stop := instcfg.Start(d.ctx, p, filename, d.cfgCmdC)
+	d.moncfg[s] = stop
 }
 
 func (d *discover) cmdInstCfgDone(p path.T, filename string) {

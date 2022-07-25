@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -22,8 +22,6 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
@@ -46,54 +44,49 @@ func New(opts ...funcopt.O) *T {
 		return nil
 	}
 	name := "lsnr-http-ux"
-	t.log = daemonlogctx.Logger(t.ctx).With().
-		Str("addr", t.addr).
-		Str("sub", name).
-		Logger()
-	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
+	t.log = log.Logger.With().Str("addr", t.addr).Str("sub", name).Logger()
 	t.T = subdaemon.New(
 		subdaemon.WithName(name),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
-		subdaemon.WithContext(t.ctx),
 	)
 	return t
 }
 
-func (t *T) MainStart() error {
-	t.log.Debug().Msg("mgr starting")
+func (t *T) MainStart(ctx context.Context) error {
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name())()
-		if err := t.start(); err != nil {
+		if err := t.start(ctx); err != nil {
 			t.log.Error().Err(err).Msg("mgr start failure")
 		}
 		started <- true
 	}()
 	<-started
-	t.log.Debug().Msg("mgr started")
 	return nil
 }
 
 func (t *T) MainStop() error {
-	t.log.Debug().Msg("mgr stopping")
 	if err := t.stop(); err != nil {
 		t.log.Error().Err(err).Msg("mgr stop failure")
 	}
-	t.log.Debug().Msg("mgr stopped")
 	return nil
 }
 
 func (t *T) stop() error {
+	if t.listener == nil {
+		t.log.Info().Msg("listener already closed")
+		return nil
+	}
 	if err := (*t.listener).Close(); err != nil {
 		t.log.Error().Err(err).Msg("listener Close failure")
 		return err
 	}
-	t.log.Info().Msg("listener Closed")
+	t.log.Info().Msg("listener closed")
 	return nil
 }
 
-func (t *T) start() error {
+func (t *T) start(ctx context.Context) error {
 	t.log.Info().Msg("listener starting")
 	if err := os.RemoveAll(t.addr); err != nil {
 		t.log.Error().Err(err).Msg("RemoveAll")
@@ -102,7 +95,7 @@ func (t *T) start() error {
 	started := make(chan bool)
 	s := &http2.Server{}
 	server := http.Server{
-		Handler: h2c.NewHandler(routehttp.New(t.ctx), s),
+		Handler: h2c.NewHandler(routehttp.New(ctx), s),
 	}
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {

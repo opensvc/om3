@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 )
@@ -8,24 +10,44 @@ import (
 // DelInstanceConfig
 //
 // committed.Monitor.Node.*.services.config.*
-func DelInstanceConfig(c chan<- interface{}, p path.T) error {
+func DelInstanceConfig(ctx context.Context, c chan<- interface{}, p path.T) error {
 	err := make(chan error)
-	c <- opDelInstanceConfig{
+	op := opDelInstanceConfig{
 		err:  err,
 		path: p,
 	}
-	return <-err
+	select {
+	case <-ctx.Done():
+		return nil
+	case c <- op:
+		select {
+		case <-ctx.Done():
+			return nil
+		case e := <-err:
+			return e
+		}
+	}
 }
 
 // SetInstanceConfig
 //
 // committed.Monitor.Node.*.services.config.*
-func SetInstanceConfig(c chan<- interface{}, p path.T, v instance.Config) error {
+func SetInstanceConfig(ctx context.Context, c chan<- interface{}, p path.T, v instance.Config) error {
 	err := make(chan error)
-	c <- opSetInstanceConfig{
+	op := opSetInstanceConfig{
 		err:   err,
 		path:  p,
 		value: v,
 	}
-	return <-err
+	select {
+	case <-ctx.Done():
+		return nil
+	case c <- op:
+		select {
+		case <-ctx.Done():
+			return nil
+		case e := <-err:
+			return e
+		}
+	}
 }

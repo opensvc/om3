@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondatactx"
@@ -40,47 +41,43 @@ func New(opts ...funcopt.O) *T {
 	t := &T{
 		loopDelay:   1000 * time.Millisecond,
 		loopEnabled: enable.New(),
+		log:         log.Logger.With().Str("name", "monitor").Logger(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("monitor funcopt.Apply")
 		return nil
 	}
-	t.ctx, t.cancel = context.WithCancel(t.ctx)
 	t.T = subdaemon.New(
 		subdaemon.WithName("monitor"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
-		subdaemon.WithContext(t.ctx),
 	)
-	t.log = t.Log()
 	t.loopC = make(chan action)
 	return t
 }
 
-func (t *T) MainStart() error {
-	t.log.Info().Msg("mgr starting")
-	started := make(chan bool)
+func (t *T) MainStart(ctx context.Context) error {
+	t.ctx, t.cancel = context.WithCancel(ctx)
+	started := make(chan error)
+	t.Add(1)
 	go func() {
+		defer t.Done()
 		defer t.Trace(t.Name() + "-loop")()
-		defer t.cancel()
-		t.loop(started)
+		started <- nil
+		t.loop()
 	}()
 	<-started
-	t.log.Info().Msg("mgr started")
 	return nil
 }
 
 func (t *T) MainStop() error {
-	t.log.Info().Msg("mgr stopping")
 	t.cancel()
-	t.log.Info().Msg("mgr stopped")
 	return nil
 }
 
-func (t *T) loop(c chan bool) {
+func (t *T) loop() {
 	t.log.Info().Msg("loop started")
-	c <- true
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
 	t.aLoop()
@@ -96,10 +93,18 @@ func (t *T) loop(c chan bool) {
 }
 
 func (t *T) aLoop() {
-	t.log.Debug().Msg("loop")
+	t.log.Debug().Msg("commit pending daemon data")
 	dataCmd := daemondatactx.DaemonData(t.ctx)
-	dataCmd.CommitPending()
-	if msg := dataCmd.GetHbMessage(); len(msg) > 0 {
-		daemonctx.HBSendQ(t.ctx) <- msg
+	dataCmd.CommitPending(t.ctx)
+	msg := dataCmd.GetHbMessage(t.ctx)
+	if msg == nil {
+		t.log.Debug().Msg("don't queue a <nil> hb message")
+		return
 	}
+	if len(msg) == 0 {
+		t.log.Debug().Msg("don't queue a empty hb message")
+		return
+	}
+	t.log.Debug().Msg("queue a new hb message")
+	daemonctx.HBSendQ(t.ctx) <- msg
 }

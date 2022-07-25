@@ -22,11 +22,15 @@ type (
 )
 
 func (o opSetInstanceConfig) setError(err error) {
-	o.err <- err
+	select {
+	case o.err <- err:
+	}
 }
 
 func (o opDelInstanceConfig) setError(err error) {
-	o.err <- err
+	select {
+	case o.err <- err:
+	}
 }
 
 func (o opDelInstanceConfig) call(d *data) {
@@ -39,11 +43,13 @@ func (o opDelInstanceConfig) call(d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubCfgDelete(d.pubSub, s, moncmd.CfgDeleted{
+	daemonps.PubCfgDelete(d.bus, s, moncmd.CfgDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
-	o.err <- nil
+	select {
+	case o.err <- nil:
+	}
 }
 
 func (o opSetInstanceConfig) call(d *data) {
@@ -55,10 +61,12 @@ func (o opSetInstanceConfig) call(d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubCfgUpdate(d.pubSub, s, moncmd.CfgUpdated{
+	daemonps.PubCfgUpdate(d.bus, s, moncmd.CfgUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Config: o.value,
 	})
-	o.err <- nil
+	select {
+	case o.err <- nil:
+	}
 }
