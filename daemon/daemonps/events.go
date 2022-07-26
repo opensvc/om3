@@ -24,6 +24,9 @@ func PubEvent(bus *pubsub.Bus, e event.Event) {
 // SubEvent subscribes on namespace NsEvent
 func SubEvent(bus *pubsub.Bus, name string, fn func(event.Event)) uuid.UUID {
 	f := func(i interface{}) {
+		if i == nil {
+			panic("should we support <nil> events here?")
+		}
 		fn(i.(event.Event))
 	}
 	publication := pubsub.Publication{
