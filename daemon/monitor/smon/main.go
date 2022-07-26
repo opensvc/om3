@@ -155,7 +155,7 @@ func (o *smon) worker(initialNodes []string) {
 	defer ps.UnSub(bus, ps.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
 
 	for _, node := range initialNodes {
-		o.instStatus[node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
 	}
 	o.updateIfChange()
 	defer o.delete()

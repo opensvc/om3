@@ -29,10 +29,10 @@ func DelInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T) erro
 	}
 }
 
-// GelInstanceStatus
+// GetInstanceStatus
 //
 // committed.Monitor.Node.<localhost>.services.status.*
-func GelInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T, node string) instance.Status {
+func GetInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T, node string) instance.Status {
 	status := make(chan instance.Status)
 	op := opGetInstanceStatus{
 		status: status,

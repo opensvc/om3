@@ -76,7 +76,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
-		o.instStatus[node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
 	}
 	o.update()
 	defer o.delete()
@@ -96,7 +96,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 					continue
 				}
 				o.srcEvent = ev
-				o.instStatus[c.Node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, c.Node)
+				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, c.Node)
 				o.updateStatus()
 			case moncmd.CfgDeleted:
 				if _, ok := o.instStatus[c.Node]; !ok {
