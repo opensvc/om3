@@ -37,7 +37,7 @@ func (t T) GetHbMessage(ctx context.Context) []byte {
 	}
 }
 
-func (o opGetHbMessage) call(d *data) {
+func (o opGetHbMessage) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetHbMessage
 	d.log.Debug().Msg("opGetHbMessage")
 	var nextMessageType string
@@ -68,13 +68,19 @@ func (o opGetHbMessage) call(d *data) {
 		b, err := json.Marshal(d.patchQueue)
 		if err != nil {
 			d.log.Error().Err(err).Msg("opGetHbMessage marshal patch queue")
-			o.data <- []byte{}
+			select {
+			case <-ctx.Done():
+			case o.data <- []byte{}:
+			}
 			return
 		}
 		delta := patchQueue{}
 		if err := json.Unmarshal(b, &delta); err != nil {
 			d.log.Error().Err(err).Msg("opGetHbMessage unmarshal patch queue")
-			o.data <- []byte{}
+			select {
+			case <-ctx.Done():
+			case o.data <- []byte{}:
+			}
 			return
 		}
 		msg = hbtype.MsgPatch{
@@ -105,9 +111,15 @@ func (o opGetHbMessage) call(d *data) {
 		return
 	}
 	if b, err := json.Marshal(msg); err != nil {
-		o.data <- []byte{}
+		select {
+		case <-ctx.Done():
+		case o.data <- []byte{}:
+		}
 	} else {
-		o.data <- b
+		select {
+		case <-ctx.Done():
+		case o.data <- b:
+		}
 	}
 }
 

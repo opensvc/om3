@@ -38,7 +38,7 @@ func setup(t *testing.T, td string) {
 	rawconfig.Load(map[string]string{
 		"osvc_root_path": td,
 	})
-	require.NoError(t, os.MkdirAll(rawconfig.Paths.Etc, os.ModePerm))
+	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm))
 	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm))
 	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm))
 	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(rawconfig.Paths.Etc, "cluster.conf"))

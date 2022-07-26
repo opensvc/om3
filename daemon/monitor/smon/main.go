@@ -25,13 +25,13 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
@@ -133,7 +133,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		cancel:        cancel,
 		cmdC:          make(chan *moncmd.T),
 		dataCmdC:      daemonctx.DaemonDataCmd(ctx),
-		log:           daemonlogctx.Logger(ctx).With().Str("_smon", p.String()).Logger(),
+		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instSmon:      make(map[string]instance.Monitor),
 		localhost:     hostname.Hostname(),
@@ -147,7 +147,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 
 // worker watch for local smon updates
 func (o *smon) worker(initialNodes []string) {
-	defer o.log.Info().Msg("done")
+	defer o.log.Debug().Msg("done")
 
 	bus := daemonctx.DaemonPubSubBus(o.ctx)
 	defer ps.UnSub(bus, ps.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
@@ -162,7 +162,7 @@ func (o *smon) worker(initialNodes []string) {
 
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
 	go o.crmStatus()
-	o.log.Info().Msg("started")
+	o.log.Debug().Msg("started")
 	for {
 		select {
 		case <-o.ctx.Done():

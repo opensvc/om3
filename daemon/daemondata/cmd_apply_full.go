@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 
 	"opensvc.com/opensvc/core/cluster"
@@ -16,7 +17,7 @@ type opApplyRemoteFull struct {
 	done     chan<- bool
 }
 
-func (o opApplyRemoteFull) call(d *data) {
+func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	d.counterCmd <- idApplyFull
 	d.log.Debug().Msgf("opApplyRemoteFull %s", o.nodename)
 	d.pending.Monitor.Nodes[o.nodename] = *o.full
@@ -53,7 +54,10 @@ func (o opApplyRemoteFull) call(d *data) {
 		Interface("pending gen", d.pending.Monitor.Nodes[o.nodename].Gen).
 		Interface("full.gen", o.full.Gen).
 		Msgf("opApplyRemoteFull %s", o.nodename)
-	o.done <- true
+	select {
+	case <-ctx.Done():
+	case o.done <- true:
+	}
 }
 
 func (t T) ApplyFull(nodename string, full *cluster.NodeStatus) {

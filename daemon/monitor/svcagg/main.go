@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
@@ -20,8 +21,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	ps "opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -60,20 +60,20 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		dataCmdC:     daemonctx.DaemonDataCmd(ctx),
 		instStatus:   make(map[string]instance.Status),
 		ctx:          ctx,
-		log:          daemonlogctx.Logger(ctx).With().Str("_svcagg", id).Logger(),
+		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),
 	}
 	go o.worker(cfg.Scope)
 	return nil
 }
 
 func (o *svcAggStatus) worker(nodes []string) {
-	o.log.Info().Msg("started")
-	defer o.log.Info().Msg("done")
+	o.log.Debug().Msg("started")
+	defer o.log.Debug().Msg("done")
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
 	bus := daemonctx.DaemonPubSubBus(o.ctx)
-	defer ps.UnSub(bus, ps.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
-	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
-	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
+	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
 		o.instStatus[node] = daemondata.GelInstanceStatus(o.ctx, o.dataCmdC, o.path, node)

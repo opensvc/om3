@@ -9,7 +9,7 @@ import (
 )
 
 type (
-	CfgFsWatcherCreate struct {
+	Exit struct {
 		Path     path.T
 		Filename string
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/timestamp"
@@ -33,10 +34,12 @@ type (
 		ctx        context.Context
 		log        zerolog.Logger
 
-		// moncfg stores instcfg routines stop funcs
-		moncfg map[string]func()
+		// moncfg is a map of instance config handlers, indexed by object
+		// path string representation.
+		// The discover loop routes to instcfg.T.cmdC channels the commands
+		// initiated by watcher-events.
+		moncfg map[string]*instcfg.T
 
-		monCfgCmdC   map[string]chan<- *moncmd.T
 		svcAggCancel map[string]context.CancelFunc
 		svcAgg       map[string]map[string]struct{}
 
@@ -74,13 +77,11 @@ func Start(ctx context.Context) (func(), error) {
 		cfgCmdC:    make(chan *moncmd.T),
 		svcaggCmdC: make(chan *moncmd.T),
 
-		ctx:    ctx,
-		log:    daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
-		moncfg: make(map[string]func()),
+		ctx: ctx,
+		log: daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
-		monCfgCmdC:   make(map[string]chan<- *moncmd.T),
-		svcAggCancel: make(map[string]context.CancelFunc),
-		svcAgg:       make(map[string]map[string]struct{}),
+		svcAgg: make(map[string]map[string]struct{}),
+		moncfg: make(map[string]*instcfg.T),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
@@ -104,8 +105,8 @@ func Start(ctx context.Context) (func(), error) {
 	}()
 	cancelAndWait := func() {
 		stopFSWatcher()
-		for _, stop := range d.moncfg {
-			stop()
+		for _, cfg := range d.moncfg {
+			cfg.Cancel()
 		}
 		cancel() // stop cfg and agg via context cancel
 		wg.Wait()

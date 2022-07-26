@@ -10,7 +10,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	ps "opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/remoteconfig"
@@ -35,8 +35,8 @@ func (d *discover) cfg() {
 		}
 	}()
 	bus := daemonctx.DaemonPubSubBus(d.ctx)
-	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
-	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
 
 	for {
 		select {
@@ -45,10 +45,12 @@ func (d *discover) cfg() {
 			return
 		case i := <-d.cfgCmdC:
 			switch c := (*i).(type) {
-			case moncmd.CfgFsWatcherCreate:
-				d.cmdLocalCfgFileAdded(c.Path, c.Filename)
+			case moncmd.CfgFileUpdated:
+				d.onCfgFileUpdated(c)
+			case moncmd.CfgFileRemoved:
+				d.onCfgFileRemoved(c)
 			case moncmd.MonCfgDone:
-				d.cmdInstCfgDone(c.Path, c.Filename)
+				d.onInstCfgDone(c)
 			case moncmd.CfgUpdated:
 				if c.Node == d.localhost {
 					continue
@@ -75,22 +77,28 @@ func (d *discover) onEvCfg(i interface{}) {
 	}
 }
 
-func (d *discover) cmdLocalCfgFileAdded(p path.T, filename string) {
-	s := p.String()
+func (d *discover) onCfgFileRemoved(c moncmd.CfgFileRemoved) {
+	s := c.Path.String()
 	if _, ok := d.moncfg[s]; ok {
-		return
+		d.moncfg[s].CmdC <- moncmd.New(c)
 	}
-	stop := instcfg.Start(d.ctx, p, filename, d.cfgCmdC)
-	d.moncfg[s] = stop
 }
 
-func (d *discover) cmdInstCfgDone(p path.T, filename string) {
-	s := p.String()
+func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
+	s := c.Path.String()
+	if _, ok := d.moncfg[s]; !ok {
+		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
+	}
+	d.moncfg[s].CmdC <- moncmd.New(c)
+}
+
+func (d *discover) onInstCfgDone(c moncmd.MonCfgDone) {
+	s := c.Path.String()
 	if _, ok := d.moncfg[s]; ok {
 		delete(d.moncfg, s)
 	}
-	if file.Exists(filename) {
-		d.cmdLocalCfgFileAdded(p, filename)
+	if file.Exists(c.Filename) {
+		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
 	}
 }
 

@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"context"
+	"reflect"
 	"runtime"
 	"time"
 
@@ -76,6 +77,7 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 			if c, ok := cmd.(caller); ok {
 				c.call(ctx, d)
 			} else {
+				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				counterCmd <- idUndef
 			}
 		}

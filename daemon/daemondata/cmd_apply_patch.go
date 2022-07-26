@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -25,7 +26,7 @@ var (
 	eventId uint64
 )
 
-func (o opApplyRemotePatch) call(d *data) {
+func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	d.counterCmd <- idApplyPatch
 	d.log.Debug().Msgf("opApplyRemotePatch for %s", o.nodename)
 	var (
@@ -67,7 +68,10 @@ func (o opApplyRemotePatch) call(d *data) {
 			err := errors.New("ApplyRemotePatch invalid patch gen: " + genS)
 			d.log.Info().Err(err).Msgf("need full %s", o.nodename)
 			d.remotesNeedFull[o.nodename] = true
-			o.err <- err
+			select {
+			case <-ctx.Done():
+			case o.err <- err:
+			}
 			return
 		}
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
@@ -76,7 +80,10 @@ func (o opApplyRemotePatch) call(d *data) {
 		if err != nil {
 			d.log.Info().Err(err).Msgf("patch apply %s gen %s need full", o.nodename, genS)
 			d.remotesNeedFull[o.nodename] = true
-			o.err <- err
+			select {
+			case <-ctx.Done():
+			case o.err <- err:
+			}
 			return
 		}
 
@@ -90,7 +97,10 @@ func (o opApplyRemotePatch) call(d *data) {
 		}
 		if eventB, err := json.Marshal(absolutePatch); err != nil {
 			d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", o.nodename)
-			o.err <- err
+			select {
+			case <-ctx.Done():
+			case o.err <- err:
+			}
 			return
 		} else {
 			data = eventB
@@ -107,7 +117,10 @@ func (o opApplyRemotePatch) call(d *data) {
 	pendingNode = cluster.NodeStatus{}
 	if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
 		d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", o.nodename)
-		o.err <- err
+		select {
+		case <-ctx.Done():
+		case o.err <- err:
+		}
 		return
 	}
 	d.mergedFromPeer[o.nodename] = pendingNodeGen
@@ -123,7 +136,10 @@ func (o opApplyRemotePatch) call(d *data) {
 		Interface("pendingNode.Gen", d.pending.Monitor.Nodes[o.nodename].Gen).
 		Interface("remotesNeedFull", d.remotesNeedFull).
 		Msgf("opApplyRemotePatch for %s", o.nodename)
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }
 
 func (t T) ApplyPatch(nodename string, msg *hbtype.Msg) error {

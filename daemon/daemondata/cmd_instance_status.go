@@ -51,8 +51,8 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 		Node: d.localNode,
 	})
 	select {
-	case o.err <- nil:
 	case <-ctx.Done():
+	case o.err <- nil:
 	}
 }
 
@@ -65,8 +65,8 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 		}
 	}
 	select {
-	case o.status <- s:
 	case <-ctx.Done():
+	case o.status <- s:
 	}
 }
 
@@ -85,7 +85,7 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 		Status: o.value,
 	})
 	select {
-	case o.err <- nil:
 	case <-ctx.Done():
+	case o.err <- nil:
 	}
 }

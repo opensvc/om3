@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -19,9 +21,12 @@ type opPushOps struct {
 	done chan<- bool
 }
 
-func (o opPushOps) call(d *data) {
+func (o opPushOps) call(ctx context.Context, d *data) {
 	d.counterCmd <- idPushOps
 	d.log.Debug().Msgf("opPushOps")
 	d.pendingOps = append(d.pendingOps, o.ops...)
-	o.done <- true
+	select {
+	case <-ctx.Done():
+	case o.done <- true:
+	}
 }

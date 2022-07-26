@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonps"
@@ -33,7 +35,7 @@ func (o opDelInstanceConfig) setError(err error) {
 	}
 }
 
-func (o opDelInstanceConfig) call(d *data) {
+func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelInstanceConfig
 	s := o.path.String()
 	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Config[s]; ok {
@@ -48,11 +50,12 @@ func (o opDelInstanceConfig) call(d *data) {
 		Node: d.localNode,
 	})
 	select {
+	case <-ctx.Done():
 	case o.err <- nil:
 	}
 }
 
-func (o opSetInstanceConfig) call(d *data) {
+func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceConfig
 	s := o.path.String()
 	op := jsondelta.Operation{
@@ -67,6 +70,7 @@ func (o opSetInstanceConfig) call(d *data) {
 		Config: o.value,
 	})
 	select {
+	case <-ctx.Done():
 	case o.err <- nil:
 	}
 }

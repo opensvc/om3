@@ -211,7 +211,10 @@ func (b *Bus) Start(ctx context.Context) {
 						}
 						subQueue[id] <- c.data
 					}
-					c.resp <- true
+					select {
+					case <-b.ctx.Done():
+					case c.resp <- true:
+					}
 				case cmdSub:
 					id := uuid.New()
 					subs[id] = c.fn

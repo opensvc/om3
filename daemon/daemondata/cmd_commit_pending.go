@@ -20,7 +20,7 @@ func (o opCommitPending) setDone(b bool) {
 	o.done <- b
 }
 
-func (o opCommitPending) call(d *data) {
+func (o opCommitPending) call(ctx context.Context, d *data) {
 	d.counterCmd <- idCommitPending
 	d.log.Debug().Msg("opCommitPending")
 	requireFull := d.updateGens()
@@ -69,7 +69,10 @@ func (o opCommitPending) call(d *data) {
 		Interface("remotesNeedFull", d.remotesNeedFull).
 		Interface("gens", d.pending.Monitor.Nodes[d.localNode].Gen).
 		Msg("opCommitPending")
-	o.done <- true
+	select {
+	case <-ctx.Done():
+	case o.done <- true:
+	}
 }
 
 // updateGens updates local NodeStatus gens from remotesNeedFull and mergedFromPeer

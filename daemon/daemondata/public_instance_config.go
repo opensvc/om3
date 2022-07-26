@@ -32,7 +32,7 @@ func DelInstanceConfig(ctx context.Context, c chan<- interface{}, p path.T) erro
 // SetInstanceConfig
 //
 // committed.Monitor.Node.*.services.config.*
-func SetInstanceConfig(ctx context.Context, c chan<- interface{}, p path.T, v instance.Config) error {
+func SetInstanceConfig(ctx context.Context, dataCmdC chan<- interface{}, p path.T, v instance.Config) error {
 	err := make(chan error)
 	op := opSetInstanceConfig{
 		err:   err,
@@ -42,7 +42,7 @@ func SetInstanceConfig(ctx context.Context, c chan<- interface{}, p path.T, v in
 	select {
 	case <-ctx.Done():
 		return nil
-	case c <- op:
+	case dataCmdC <- op:
 		select {
 		case <-ctx.Done():
 			return nil

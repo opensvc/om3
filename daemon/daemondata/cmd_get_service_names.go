@@ -1,10 +1,12 @@
 package daemondata
 
+import "context"
+
 type opGetServiceNames struct {
 	services chan<- []string
 }
 
-func (o opGetServiceNames) call(d *data) {
+func (o opGetServiceNames) call(ctx context.Context, d *data) {
 
 	paths := make(map[string]bool)
 	for node := range d.committed.Monitor.Nodes {
@@ -16,7 +18,10 @@ func (o opGetServiceNames) call(d *data) {
 	for s := range paths {
 		services = append(services, s)
 	}
-	o.services <- services
+	select {
+	case <-ctx.Done():
+	case o.services <- services:
+	}
 }
 
 // GetServiceNames returns service names from cluster nodes dataset config
