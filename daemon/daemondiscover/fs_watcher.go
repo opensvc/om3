@@ -57,8 +57,8 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		log.Info().Msg("started")
 		nodeConf := filepath.Join(rawconfig.Paths.Etc, "node.conf")
 		const createDeleteMask = fsnotify.Create | fsnotify.Remove
-		const updateMask = fsnotify.Write | fsnotify.Create | fsnotify.Remove | fsnotify.Rename | fsnotify.Chmod
 		const needReAddMask = fsnotify.Remove | fsnotify.Rename
+		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
 		//
 		// Add directory watch for:
 		//  etc/
@@ -83,11 +83,21 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					}
 				case filename == nodeConf:
 					// nothing special here. just watch.
+					if err := watcher.Add(filename); err != nil {
+						log.Error().Err(err).Msgf("add file watch %s", filename)
+					} else {
+						log.Debug().Msgf("add file watch %s", filename)
+					}
 				case strings.HasSuffix(filename, ".conf"):
 					p, err := filenameToPath(filename)
 					if err != nil {
 						log.Warn().Err(err).Msgf("do not watch invalid config file %s", filename)
 						return nil
+					}
+					if err := watcher.Add(filename); err != nil {
+						log.Error().Err(err).Msgf("add file %s", filename)
+					} else {
+						log.Debug().Msgf("add file %s", filename)
 					}
 					d.cfgCmdC <- moncmd.New(moncmd.CfgFileUpdated{Path: p, Filename: filename})
 				}
@@ -129,9 +139,9 @@ func (d *discover) fsWatcherStart() (func(), error) {
 								return
 							} else {
 								if err := watcher.Add(filename); err != nil {
-									log.Error().Err(err).Msgf("re-add file %s", filename)
+									log.Error().Err(err).Msgf("re-add file watch %s", filename)
 								} else {
-									log.Debug().Msgf("re-add file %s", filename)
+									log.Debug().Msgf("re-add file watch %s", filename)
 								}
 							}
 						}

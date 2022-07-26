@@ -93,7 +93,6 @@ func (t *T) loop() {
 }
 
 func (t *T) aLoop() {
-	t.log.Debug().Msg("commit pending daemon data")
 	dataCmd := daemondatactx.DaemonData(t.ctx)
 	dataCmd.CommitPending(t.ctx)
 	msg := dataCmd.GetHbMessage(t.ctx)
