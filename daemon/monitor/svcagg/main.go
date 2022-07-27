@@ -70,7 +70,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
-	bus := daemonctx.DaemonPubSubBus(o.ctx)
+	bus := pubsub.BusFromContext(o.ctx)
 	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))

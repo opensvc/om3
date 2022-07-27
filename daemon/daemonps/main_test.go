@@ -12,25 +12,25 @@ import (
 )
 
 func TestDaemonPubSub(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	cmdC := pubsub.Start(ctx, t.Name())
+	bus := pubsub.NewBus(t.Name())
+	bus.Start(context.Background())
+	defer bus.Stop()
 	var (
 		eventKinds    = []string{"hb_stale", "hb_beating"}
 		expectedKinds = []string{"event_subscribe", "hb_stale", "hb_beating"}
 		detectedKinds []string
 	)
 	defer UnSubEvent(
-		cmdC,
-		SubEvent(cmdC,
-			"description 1",
+		bus,
+		SubEvent(bus,
+			"subscription_name_1",
 			func(e event.Event) {
 				t.Logf("detected event %s", e.Kind)
 				detectedKinds = append(detectedKinds, e.Kind)
 			}))
 	time.Sleep(1 * time.Millisecond)
 	for _, kind := range eventKinds {
-		PubEvent(cmdC, event.Event{Kind: kind})
+		PubEvent(bus, event.Event{Kind: kind})
 	}
 	time.Sleep(1 * time.Millisecond)
 	require.ElementsMatch(t, expectedKinds, detectedKinds)

@@ -9,7 +9,7 @@
 	status := dataBus.GetStatus() // retrieve daemon data
 	bus.ApplyFull("remote-1", remoteNodeStatus)
 	bus.ApplyPatch("remote-1", patchMsg)
-	bus.CommitPending()
+	bus.CommitPending(context.Background())
 	status = bus.GetStatus()
 	localNodeStatus := bus.GetLocalNodeStatus()
 */

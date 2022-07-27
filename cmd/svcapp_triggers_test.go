@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -40,7 +40,7 @@ func TestAppStopTrigger(t *testing.T) {
 		"succeedTriggers":        0,
 	}
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "svcappforking_trigger.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcappforking_trigger.conf", filepath.Join(td, "etc", "svcapp.conf"))
 	for name, expected := range cases {
 		t.Run(name, func(t *testing.T) {
 			args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}

@@ -9,7 +9,6 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
@@ -34,7 +33,7 @@ func (d *discover) cfg() {
 			}
 		}
 	}()
-	bus := daemonctx.DaemonPubSubBus(d.ctx)
+	bus := pubsub.BusFromContext(d.ctx)
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
 

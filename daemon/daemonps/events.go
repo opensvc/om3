@@ -25,7 +25,8 @@ func PubEvent(bus *pubsub.Bus, e event.Event) {
 func SubEvent(bus *pubsub.Bus, name string, fn func(event.Event)) uuid.UUID {
 	f := func(i interface{}) {
 		if i == nil {
-			panic("should we support <nil> events here?")
+			// happens after pubsub queue is closed (on Unsub)
+			return
 		}
 		fn(i.(event.Event))
 	}

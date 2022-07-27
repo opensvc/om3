@@ -109,7 +109,7 @@ func (o *T) worker(ctx context.Context) {
 	defer moncmd.DropPendingCmd(o.CmdC, dropCmdTimeout)
 	defer o.done()
 	clusterId := clusterPath.String()
-	bus := daemonctx.DaemonPubSubBus(ctx)
+	bus := pubsub.BusFromContext(ctx)
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "instance-config self cfg update", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
 		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "instance-config cluster cfg update", clusterId, o.onEv))

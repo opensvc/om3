@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/handlers/dispatchhandler"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 var (
@@ -53,7 +54,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
 	logger.Debug().Msg("starting")
 	ctx := r.Context()
-	bus := daemonctx.DaemonPubSubBus(ctx)
+	bus := pubsub.BusFromContext(ctx)
 	done := make(chan bool)
 	var httpBody bool
 	if r.Header.Get("accept") == "text/event-stream" {

@@ -109,7 +109,7 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	bus := pubsub.NewBus("daemon")
 	bus.Start(t.ctx)
-	t.ctx = daemonctx.WithDaemonPubSubBus(t.ctx, bus)
+	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
 	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan []byte))

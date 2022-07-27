@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/test_conf_helper"
-
 	"github.com/stretchr/testify/require"
+
+	"opensvc.com/opensvc/testhelper"
 )
 
 func TestAppPrintStatusFlatJson(t *testing.T) {
@@ -34,7 +34,7 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 	}
 	td := t.TempDir()
 	args := []string{"svcapp", "print", "status", "-r", "--format", "flat_json"}
-	test_conf_helper.InstallSvcFile(t, "svcapp_print_status_status_log.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcapp_print_status_status_log.conf", filepath.Join(td, "etc", "svcapp.conf"))
 	t.Logf("run 'om %v'", strings.Join(args, " "))
 	cmd := exec.Command(os.Args[0], args...)
 	cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)

@@ -12,7 +12,7 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemoncli"
 	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/usergroup"
@@ -20,10 +20,10 @@ import (
 
 var (
 	cases = []string{
-		daemonenv.UrlInetHttp,
-		daemonenv.UrlUxHttp,
-		daemonenv.UrlInetRaw,
-		daemonenv.UrlUxRaw,
+		daemonenv.UrlInetHttp(),
+		daemonenv.UrlUxHttp(),
+		daemonenv.UrlInetRaw(),
+		daemonenv.UrlUxRaw(),
 	}
 )
 
@@ -57,23 +57,23 @@ func TestMain(m *testing.M) {
 
 func newClient(serverUrl string) (*client.T, error) {
 	clientOptions := []funcopt.O{client.WithURL(serverUrl)}
-	if serverUrl == daemonenv.UrlInetHttp {
+	if serverUrl == daemonenv.UrlInetHttp() {
 		clientOptions = append(clientOptions,
 			client.WithInsecureSkipVerify())
 
 		clientOptions = append(clientOptions,
-			client.WithCertificate(daemonenv.CertFile))
+			client.WithCertificate(daemonenv.CertFile()))
 
 		clientOptions = append(clientOptions,
 
-			client.WithKey(daemonenv.KeyFile),
+			client.WithKey(daemonenv.KeyFile()),
 		)
 	}
 	return client.New(clientOptions...)
 }
 
 func setup(t *testing.T, td string) {
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	testhelper.InstallFile(t, "../../testdata/cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
 	rawconfig.Load(map[string]string{
 		"osvc_root_path": td,
 	})

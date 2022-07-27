@@ -14,7 +14,7 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -41,9 +41,9 @@ func setup(t *testing.T, td string) {
 	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm))
 	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm))
 	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm))
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(rawconfig.Paths.Etc, "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "private_key", filepath.Join(rawconfig.Paths.Var, "certs", "private_key"))
-	test_conf_helper.InstallSvcFile(t, "certificate_chain", filepath.Join(rawconfig.Paths.Var, "certs", "certificate_chain"))
+	testhelper.InstallFile(t, "../../testdata/cluster.conf", filepath.Join(rawconfig.Paths.Etc, "cluster.conf"))
+	testhelper.InstallFile(t, "../../testdata/private_key", filepath.Join(rawconfig.Paths.Var, "certs", "private_key"))
+	testhelper.InstallFile(t, "../../testdata/certificate_chain", filepath.Join(rawconfig.Paths.Var, "certs", "certificate_chain"))
 	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
 }
 

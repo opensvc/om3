@@ -42,8 +42,8 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -138,7 +138,7 @@ func (t *T) Start(ctx context.Context) {
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	hbBeatings := make(map[string]map[string]cluster.HeartbeatPeerStatus)
-	bus := daemonctx.DaemonPubSubBus(t.ctx)
+	bus := pubsub.BusFromContext(t.ctx)
 	defer t.log.Info().Msgf("stopped: %v", events)
 	for {
 		select {

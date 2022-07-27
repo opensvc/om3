@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/callcount"
 	"opensvc.com/opensvc/util/jsondelta"
@@ -46,7 +45,7 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	d := newData(counterCmd)
 	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
 	d.log.Info().Msg("starting")
-	d.bus = daemonctx.DaemonPubSubBus(ctx)
+	d.bus = pubsub.BusFromContext(ctx)
 
 	defer d.log.Info().Msg("stopped")
 	ticker := time.NewTicker(time.Second)

@@ -17,6 +17,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
 	"opensvc.com/opensvc/daemon/handlers/objecthandler"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -64,7 +65,7 @@ func (t *T) newDaemonRouter() *chi.Mux {
 func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemonctx.WithDaemonPubSubBus(r.Context(), daemonctx.DaemonPubSubBus(parent))
+			ctx := pubsub.ContextWithBus(r.Context(), pubsub.BusFromContext(parent)) // Why ?
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

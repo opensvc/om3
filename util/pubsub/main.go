@@ -85,6 +85,8 @@ const (
 const (
 	// NsAll operation value can be used for all name spaces
 	NsAll = iota
+
+	contextBusKey = 0
 )
 
 type (
@@ -359,4 +361,16 @@ func (b Bus) Unsub(id uuid.UUID) string {
 	case <-b.ctx.Done():
 		return ""
 	}
+}
+
+// ContextWithBus stores the bus in the context and returns the new context.
+func ContextWithBus(ctx context.Context, bus *Bus) context.Context {
+	return context.WithValue(ctx, contextBusKey, bus)
+}
+
+func BusFromContext(ctx context.Context) *Bus {
+	if bus, ok := ctx.Value(contextBusKey).(*Bus); ok {
+		return bus
+	}
+	panic("unable to retrieve pubsub bus from context")
 }

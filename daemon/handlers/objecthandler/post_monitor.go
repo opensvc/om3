@@ -7,11 +7,11 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
@@ -58,7 +58,7 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		LocalExpect:         payload.LocalExpect,
 		Status:              payload.State,
 	}
-	bus := daemonctx.DaemonPubSubBus(r.Context())
+	bus := pubsub.BusFromContext(r.Context())
 	daemonps.PubSetSmonUpdated(bus, p.String(), moncmd.SetSmon{
 		Path:    p,
 		Node:    hostname.Hostname(),

@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 )
 
 type (
@@ -38,7 +38,7 @@ func TestCfgKeys(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
+	testhelper.InstallFile(t, "../testdata/cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestCfgDecodeKeys(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
+	testhelper.InstallFile(t, "../testdata/cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

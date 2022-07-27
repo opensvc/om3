@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 )
 
 func TestSecKeys(t *testing.T) {
@@ -31,8 +31,8 @@ func TestSecKeys(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
+	testhelper.InstallFile(t, "../testdata/cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	testhelper.InstallFile(t, "../testdata/sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -80,8 +80,8 @@ func TestSecDecodeKeys(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
+	testhelper.InstallFile(t, "../testdata/cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	testhelper.InstallFile(t, "../testdata/sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -138,8 +138,8 @@ func TestKeyActions(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
+	testhelper.InstallFile(t, "../testdata/cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	testhelper.InstallFile(t, "../testdata/sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
 
 	for _, name := range []string{
 		"add",

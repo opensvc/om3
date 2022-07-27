@@ -6,8 +6,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/pubsub"
 )
+
+func setup(t *testing.T, td string) {
+	defer hostname.Impersonate("node1")()
+	defer rawconfig.Load(map[string]string{})
+	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+	rawconfig.Load(map[string]string{
+		"osvc_root_path": td,
+	})
+}
 
 func (t *T) send(e CmdEvent) {
 	t.log.Info().Msgf("send event %s", e)
@@ -15,9 +29,15 @@ func (t *T) send(e CmdEvent) {
 }
 
 func TestEvent(t *testing.T) {
-	ctrl := New(context.Background())
+	ctx := context.Background()
+	psbus := pubsub.NewBus("daemon")
+	psbus.Start(ctx)
+	ctx = pubsub.ContextWithBus(ctx, psbus)
+	defer psbus.Stop()
+
+	ctrl := New()
 	go func() {
-		ctrl.Start()
+		ctrl.Start(ctx)
 	}()
 	sendEvents := 0
 	sendE := func(name string) {

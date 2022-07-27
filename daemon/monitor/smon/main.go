@@ -149,7 +149,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 func (o *smon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
-	bus := daemonctx.DaemonPubSubBus(o.ctx)
+	bus := pubsub.BusFromContext(o.ctx)
 	defer ps.UnSub(bus, ps.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
 	defer ps.UnSub(bus, ps.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
 	defer ps.UnSub(bus, ps.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))

@@ -11,7 +11,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 )
 
 func getAppRid(rid string, resources []resource.Driver) *T {
@@ -29,7 +29,7 @@ func getAppRid(rid string, resources []resource.Driver) *T {
 func TestKeywords(t *testing.T) {
 	td := t.TempDir()
 
-	test_conf_helper.InstallSvcFile(t, "svc1.conf", filepath.Join(td, "etc", "svc1.conf"))
+	testhelper.InstallFile(t, "../testdata/svc1.conf", filepath.Join(td, "etc", "svc1.conf"))
 	rawconfig.Load(map[string]string{"osvc_root_path": td})
 	defer rawconfig.Load(map[string]string{})
 

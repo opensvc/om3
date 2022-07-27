@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/usergroup"
 )
 
@@ -140,10 +140,10 @@ func TestAppStop(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "svcappforking.conf", filepath.Join(td, "etc", "svcappforking.conf"))
-	test_conf_helper.InstallSvcFile(t, "cfg1_svcappforking.conf", filepath.Join(td, "etc", "cfg", "svcappforking.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec1_svcappforking.conf", filepath.Join(td, "etc", "sec", "svcappforking.conf"))
+	testhelper.InstallFile(t, "../testdata/cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+	testhelper.InstallFile(t, "../testdata/svcappforking.conf", filepath.Join(td, "etc", "svcappforking.conf"))
+	testhelper.InstallFile(t, "../testdata/cfg1_svcappforking.conf", filepath.Join(td, "etc", "cfg", "svcappforking.conf"))
+	testhelper.InstallFile(t, "../testdata/sec1_svcappforking.conf", filepath.Join(td, "etc", "sec", "svcappforking.conf"))
 
 	t.Run("logInfo", func(t *testing.T) {
 		name := "logInfo"
@@ -497,7 +497,7 @@ func TestAppStopStartSequence(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "svcapp1.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcapp1.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name := range cases {
 		t.Run("orderBasedOnStartId:"+name, func(t *testing.T) {
@@ -542,7 +542,7 @@ func TestAppStopComplexCommand(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcappComplexCommand.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -585,7 +585,7 @@ func TestAppStopLimit(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "svcappforking_limit.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcappforking_limit.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name, expecteds := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -623,7 +623,7 @@ func TestAppStopTimeout(t *testing.T) {
 	}
 
 	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "svcappforking_timeout.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcappforking_timeout.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -716,7 +716,7 @@ func TestAppStartRollback(t *testing.T) {
 		}
 	}
 
-	test_conf_helper.InstallSvcFile(t, "svcapp-rollback.conf", filepath.Join(td, "etc", "svcapp.conf"))
+	testhelper.InstallFile(t, "../testdata/svcapp-rollback.conf", filepath.Join(td, "etc", "svcapp.conf"))
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {

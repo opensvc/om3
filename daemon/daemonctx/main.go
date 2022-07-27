@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -14,11 +13,10 @@ type (
 )
 
 var (
-	contextDaemon          = contextKey("daemon")
-	contextDaemonData      = contextKey("daemondata-cmd")
-	contextDaemonPubSubBus = contextKey("daemon-pub-sub-bus")
-	contextHBSendQueue     = contextKey("hb-sendQ")
-	contextUuid            = contextKey("uuid")
+	contextDaemon      = contextKey("daemon")
+	contextDaemonData  = contextKey("daemondata-cmd")
+	contextHBSendQueue = contextKey("hb-sendQ")
+	contextUuid        = contextKey("uuid")
 )
 
 func (c contextKey) String() string {
@@ -34,15 +32,6 @@ func DaemonDataCmd(ctx context.Context) chan<- interface{} {
 	panic("unable to retrieve context DaemonDataCmd")
 }
 
-// DaemonPubSubBus function returns DaemonPubSubBus from context
-func DaemonPubSubBus(ctx context.Context) *pubsub.Bus {
-	bus, ok := ctx.Value(contextDaemonPubSubBus).(*pubsub.Bus)
-	if ok {
-		return bus
-	}
-	panic("unable to retrieve context DaemonPubSubBus")
-}
-
 // HBSendQ function returns HBSendQ from context
 func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
 	var ok bool
@@ -56,11 +45,6 @@ func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
 // WithDaemonDataCmd function returns copy of parent with daemonCmd.
 func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.Context {
 	return context.WithValue(parent, contextDaemonData, cmd)
-}
-
-// WithDaemonPubSubBus function returns copy of parent with daemon pub sub cmd.
-func WithDaemonPubSubBus(parent context.Context, bus *pubsub.Bus) context.Context {
-	return context.WithValue(parent, contextDaemonPubSubBus, bus)
 }
 
 // WithHBSendQ function returns copy of parent with HBSendQ.

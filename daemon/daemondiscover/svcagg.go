@@ -3,7 +3,6 @@ package daemondiscover
 import (
 	"time"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/monitor/svcagg"
@@ -26,7 +25,7 @@ func (d *discover) agg() {
 			}
 		}
 	}()
-	bus := daemonctx.DaemonPubSubBus(d.ctx)
+	bus := pubsub.BusFromContext(d.ctx)
 	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "agg-from-cfg-create", "", d.onEvAgg))
 	for {
 		select {
