@@ -122,6 +122,9 @@ type (
 )
 
 type (
+	cmdDie struct {
+	}
+
 	cmdPub struct {
 		id   string
 		op   uint
@@ -228,11 +231,16 @@ func (b *Bus) Start(ctx context.Context) {
 					subQueue[id] = queue
 					fn := c.fn
 					started := make(chan bool)
+					b.Add(1)
 					go func() {
+						b.Done()
 						started <- true
 						for {
 							select {
 							case i := <-queue:
+								if _, ok := i.(cmdDie); ok {
+									return
+								}
 								fn(i)
 							case <-b.ctx.Done():
 								return
@@ -248,13 +256,12 @@ func (b *Bus) Start(ctx context.Context) {
 						continue
 					}
 					queue := subQueue[c.subId]
+					queue <- cmdDie{}
 					delete(subs, c.subId)
 					delete(subNames, c.subId)
 					delete(subNs, c.subId)
 					delete(subOps, c.subId)
 					delete(subQueue, c.subId)
-					// end subscriber dispatcher
-					close(queue)
 					select {
 					case <-b.ctx.Done():
 					case c.resp <- name:
