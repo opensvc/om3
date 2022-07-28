@@ -36,7 +36,7 @@ func Setup(t *testing.T) Env {
 		env.Root = t.TempDir()
 	}
 	if env.ClusterName == "" {
-		env.ClusterName = "testCluster"
+		env.ClusterName = "cluster1"
 	}
 	env.TestingT = t
 	return SetupEnv(env)
