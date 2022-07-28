@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -32,12 +31,12 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 			{"warn", "DeadlineExceeded"},
 		},
 	}
-	td := t.TempDir()
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/svcapp_print_status_status_log.conf", "etc/svcapp.conf")
 	args := []string{"svcapp", "print", "status", "-r", "--format", "flat_json"}
-	testhelper.InstallFile(t, "../testdata/svcapp_print_status_status_log.conf", filepath.Join(td, "etc", "svcapp.conf"))
 	t.Logf("run 'om %v'", strings.Join(args, " "))
 	cmd := exec.Command(os.Args[0], args...)
-	cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
+	cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 	out, err := cmd.CombinedOutput()
 	require.Nil(t, err, "got: \n%v", string(out))
 

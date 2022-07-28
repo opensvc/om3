@@ -9,17 +9,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/timestamp"
 )
 
 func TestInstanceStates_Render(t *testing.T) {
+	testhelper.Setup(t)
 	cases := []string{"instanceStatus"}
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td := t.TempDir()
-			rawconfig.Load(map[string]string{"osvc_root_path": td})
-			defer rawconfig.Load(map[string]string{})
 
 			b, err := ioutil.ReadFile(filepath.Join("test-fixtures", name+".json"))
 			require.Nil(t, err)

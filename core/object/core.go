@@ -85,7 +85,7 @@ func (t *core) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) erro
 	t.log = logging.Configure(logging.Config{
 		ConsoleLoggingEnabled: zerolog.GlobalLevel() == zerolog.DebugLevel,
 		EncodeLogsAsJSON:      true,
-		FileLoggingEnabled:    true,
+		FileLoggingEnabled:    !t.volatile,
 		Directory:             t.logDir(), // contains the ns/kind
 		Filename:              t.path.Name + ".log",
 		MaxSize:               5,

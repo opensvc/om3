@@ -2,54 +2,31 @@ package daemon_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/testhelper"
-	"opensvc.com/opensvc/util/hostname"
 )
 
 func TestMain(m *testing.M) {
-	defer hostname.Impersonate("node1")()
-	defer rawconfig.Load(map[string]string{})
-	switch os.Getenv("GO_TEST_MODE") {
-	case "":
-		// test mode
-		os.Setenv("GO_TEST_MODE", "off")
-		os.Exit(m.Run())
-
-	case "off":
-		// test bypass mode
-		os.Setenv("LANG", "C.UTF-8")
-		cmd.Execute()
-	}
+	testhelper.Main(m, cmd.ExecuteArgs)
 }
 
-func setup(t *testing.T, td string) {
-	rawconfig.Load(map[string]string{
-		"osvc_root_path": td,
-	})
-	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm))
-	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm))
-	require.NoError(t, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm))
-	testhelper.InstallFile(t, "../../testdata/cluster.conf", filepath.Join(rawconfig.Paths.Etc, "cluster.conf"))
-	testhelper.InstallFile(t, "../../testdata/private_key", filepath.Join(rawconfig.Paths.Var, "certs", "private_key"))
-	testhelper.InstallFile(t, "../../testdata/certificate_chain", filepath.Join(rawconfig.Paths.Var, "certs", "certificate_chain"))
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+func setup(t *testing.T) testhelper.Env {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../../testdata/private_key", "var/certs/private_key")
+	env.InstallFile("../../testdata/certificate_chain", "var/certs/certificate_chain")
+	return env
 }
 
 func TestDaemon(t *testing.T) {
 	var main *daemon.T
-	setup(t, t.TempDir())
+	setup(t)
 
 	t.Log("New")
 	main = daemon.New(

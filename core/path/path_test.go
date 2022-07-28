@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/testhelper"
 )
 
 func TestNew(t *testing.T) {
@@ -367,5 +369,79 @@ func TestFilter(t *testing.T) {
 	for _, test := range tests {
 		filtered := l.Filter(test.pattern)
 		assert.Equal(t, filtered.String(), test.expected.String())
+	}
+}
+
+func TestConfigFile(t *testing.T) {
+	tests := map[string]struct {
+		name      string
+		namespace string
+		kind      string
+		cf        string
+		root      string
+	}{
+		"namespaced, package install": {
+			name:      "svc1",
+			namespace: "ns1",
+			kind:      "svc",
+			cf:        "/etc/opensvc/namespaces/ns1/svc/svc1.conf",
+			root:      "",
+		},
+		"rooted svc, package install": {
+			name:      "svc1",
+			namespace: "",
+			kind:      "svc",
+			cf:        "/etc/opensvc/svc1.conf",
+			root:      "",
+		},
+		"rooted cfg, package install": {
+			name:      "cfg1",
+			namespace: "",
+			kind:      "cfg",
+			cf:        "/etc/opensvc/cfg/cfg1.conf",
+			root:      "",
+		},
+		"cluster cfg, package install": {
+			name:      "cluster",
+			namespace: "",
+			kind:      "ccfg",
+			cf:        "/etc/opensvc/cluster.conf",
+			root:      "",
+		},
+		"namespaced, dev install": {
+			name:      "svc1",
+			namespace: "ns1",
+			kind:      "svc",
+			cf:        "/opt/opensvc/etc/namespaces/ns1/svc/svc1.conf",
+			root:      "/opt/opensvc",
+		},
+		"rooted svc, dev install": {
+			name:      "svc1",
+			namespace: "",
+			kind:      "svc",
+			cf:        "/opt/opensvc/etc/svc1.conf",
+			root:      "/opt/opensvc",
+		},
+		"rooted cfg, dev install": {
+			name:      "cfg1",
+			namespace: "",
+			kind:      "cfg",
+			cf:        "/opt/opensvc/etc/cfg/cfg1.conf",
+			root:      "/opt/opensvc",
+		},
+		"cluster cfg, dev install": {
+			name:      "cluster",
+			namespace: "",
+			kind:      "ccfg",
+			cf:        "/opt/opensvc/etc/cluster.conf",
+			root:      "/opt/opensvc",
+		},
+	}
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			_ = testhelper.SetupEnv(t, testhelper.Env{Root: test.root})
+			p, _ := New(test.name, test.namespace, test.kind)
+			require.Equal(t, test.cf, p.ConfigFile())
+		})
 	}
 }

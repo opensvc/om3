@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime/debug"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -129,6 +130,7 @@ func Configure(config Config) *Logger {
 
 func newRollingFile(config Config) (io.Writer, error) {
 	if err := os.MkdirAll(config.Directory, 0744); err != nil {
+		debug.PrintStack()
 		log.Error().Err(err).Str("path", config.Directory).Msg("can't create log directory")
 		return nil, err
 	}

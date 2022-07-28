@@ -4,20 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -45,26 +41,7 @@ func LoadPatch(t *testing.T, name string) *hbtype.Msg {
 }
 
 func TestMain(m *testing.M) {
-	defer hostname.Impersonate("node1")()
-	defer rawconfig.Load(map[string]string{})
-	switch os.Getenv("GO_TEST_MODE") {
-	case "":
-		// test mode
-		os.Setenv("GO_TEST_MODE", "off")
-		os.Exit(m.Run())
-
-	case "off":
-		// test bypass mode
-		os.Setenv("LANG", "C.UTF-8")
-		cmd.Execute()
-	}
-}
-
-func setup(t *testing.T, td string) {
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
-	rawconfig.Load(map[string]string{
-		"osvc_root_path": td,
-	})
+	testhelper.Main(m, cmd.ExecuteArgs)
 }
 
 func TestDaemonData(t *testing.T) {
@@ -75,12 +52,12 @@ func TestDaemonData(t *testing.T) {
 		err                               error
 	)
 
-	setup(t, t.TempDir())
+	testhelper.Setup(t)
 
 	ctx := context.Background()
 	psbus := pubsub.NewBus("daemon")
 	psbus.Start(ctx)
-	ctx = daemonctx.WithDaemonPubSubBus(ctx, psbus)
+	ctx = pubsub.ContextWithBus(ctx, psbus)
 	defer psbus.Stop()
 
 	cmdC, cancel := daemondata.Start(ctx)
