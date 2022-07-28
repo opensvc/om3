@@ -119,6 +119,15 @@ type (
 		// Value is the thing to publish
 		Value interface{}
 	}
+
+	activeSubscription struct {
+		fn       func(interface{})
+		op       uint
+		ns       uint
+		matching string
+		name     string
+		q        chan interface{}
+	}
 )
 
 type (
@@ -190,12 +199,7 @@ func (b *Bus) Start(ctx context.Context) {
 	b.Add(1)
 	go func() {
 		defer b.Done()
-		subs := make(map[uuid.UUID]func(interface{}))
-		subNames := make(map[uuid.UUID]string)
-		subNs := make(map[uuid.UUID]uint)
-		subOps := make(map[uuid.UUID]uint)
-		subMatching := make(map[uuid.UUID]string)
-		subQueue := make(map[uuid.UUID]chan interface{})
+		subs := make(map[uuid.UUID]activeSubscription)
 		started <- true
 		for {
 			select {
@@ -204,17 +208,18 @@ func (b *Bus) Start(ctx context.Context) {
 			case cmd := <-b.cmdC:
 				switch c := cmd.(type) {
 				case cmdPub:
-					for id := range subs {
-						if subNs[id] != NsAll && subNs[id] != c.ns {
+					for _, sub := range subs {
+						if sub.ns != NsAll && sub.ns != c.ns {
 							continue
 						}
-						if subOps[id] != OpAll && subOps[id] != c.op {
+						if sub.op != OpAll && sub.op != c.op {
 							continue
 						}
-						if len(subMatching[id]) != 0 && subMatching[id] != c.id {
+						if len(sub.matching) != 0 && sub.matching != c.id {
 							continue
 						}
-						subQueue[id] <- c.data
+						b.log.Debug().Msgf("route %+v to subscriber %s", c.data, sub.name)
+						sub.q <- c.data
 					}
 					select {
 					case <-b.ctx.Done():
@@ -222,14 +227,15 @@ func (b *Bus) Start(ctx context.Context) {
 					}
 				case cmdSub:
 					id := uuid.New()
-					subs[id] = c.fn
-					subNames[id] = c.name
-					subNs[id] = c.ns
-					subOps[id] = c.op
-					subMatching[id] = c.matching
-					queue := make(chan interface{}, 100)
-					subQueue[id] = queue
-					fn := c.fn
+					sub := activeSubscription{
+						name:     c.name,
+						ns:       c.ns,
+						op:       c.op,
+						matching: c.matching,
+						fn:       c.fn,
+						q:        make(chan interface{}, 100),
+					}
+					subs[id] = sub
 					started := make(chan bool)
 					b.Add(1)
 					go func() {
@@ -237,11 +243,11 @@ func (b *Bus) Start(ctx context.Context) {
 						started <- true
 						for {
 							select {
-							case i := <-queue:
+							case i := <-sub.q:
 								if _, ok := i.(cmdDie); ok {
 									return
 								}
-								fn(i)
+								sub.fn(i)
 							case <-b.ctx.Done():
 								return
 							}
@@ -249,24 +255,19 @@ func (b *Bus) Start(ctx context.Context) {
 					}()
 					<-started
 					c.resp <- id
-					b.log.Debug().Msgf("subscribe %s", c.name)
+					b.log.Debug().Msgf("subscribe %s", sub.name)
 				case cmdUnsub:
-					name, ok := subNames[c.subId]
+					sub, ok := subs[c.subId]
 					if !ok {
 						continue
 					}
-					queue := subQueue[c.subId]
-					queue <- cmdDie{}
+					sub.q <- cmdDie{}
 					delete(subs, c.subId)
-					delete(subNames, c.subId)
-					delete(subNs, c.subId)
-					delete(subOps, c.subId)
-					delete(subQueue, c.subId)
 					select {
 					case <-b.ctx.Done():
-					case c.resp <- name:
+					case c.resp <- sub.name:
 					}
-					b.log.Debug().Msgf("unsubscribe %s", name)
+					b.log.Debug().Msgf("unsubscribe %s", sub.name)
 				}
 			}
 		}
