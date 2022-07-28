@@ -1,0 +1,51 @@
+{
+  "kind": "patch",
+  "deltas": {
+    "19": [
+      [
+        [
+          "stats",
+          "score"
+        ],
+        0
+      ]
+    ],
+    "20": [
+      [
+        [
+          "stats",
+          "load_15m"
+        ],
+        0.5
+      ],
+      [
+        [
+          "stats",
+          "mem_total"
+        ],
+        1000
+      ]
+    ],
+    "21": [
+      [
+        [
+          "stats",
+          "mem_avail"
+        ],
+        10
+      ],
+      [
+        [
+          "stats",
+          "swap_total"
+        ],
+        11
+      ]
+    ]
+  },
+  "gen": {
+    "node-1": 20,
+    "node-2": 21
+  },
+  "updated": 1646318612.8798919
+}
