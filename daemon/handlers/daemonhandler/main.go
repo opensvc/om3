@@ -50,6 +50,8 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Events feeds Patch or Events in rss format.
+// TODO: Honor namespace and selection parameters.
 func Events(w http.ResponseWriter, r *http.Request) {
 	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
 	logger.Debug().Msg("starting")

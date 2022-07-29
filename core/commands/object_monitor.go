@@ -51,8 +51,9 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	m.SetSections([]string{"objects"})
 
 	if t.Watch {
-		getter := cli.NewGetEvents().SetSelector(mergedSelector)
-		if err := m.DoWatch(getter, os.Stdout); err != nil {
+		evGetter := cli.NewGetEvents().SetSelector(mergedSelector)
+		statusGetter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
+		if err := m.DoWatchDemo(statusGetter, evGetter, os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
