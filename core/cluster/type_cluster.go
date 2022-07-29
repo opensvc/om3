@@ -1,6 +1,11 @@
 package cluster
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"opensvc.com/opensvc/core/objectselector"
+	"opensvc.com/opensvc/core/path"
+)
 
 type (
 	// Status describes the full Cluster state.
@@ -34,4 +39,76 @@ func (s *Status) DeepCopy() *Status {
 		return nil
 	}
 	return &newStatus
+}
+
+// WithSelector purges the dataset from objects not matching the selector expression
+func (s *Status) WithSelector(selector string) *Status {
+	if selector == "" {
+		return s
+	}
+	paths, err := objectselector.NewSelection(
+		selector,
+		objectselector.SelectionWithLocal(true),
+	).Expand()
+	if err != nil {
+		return s
+	}
+	selected := paths.StrMap()
+	for nodename, nodeData := range s.Monitor.Nodes {
+		for ps, _ := range nodeData.Services.Config {
+			if !selected.Has(ps) {
+				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
+			}
+		}
+		for ps, _ := range nodeData.Services.Smon {
+			if !selected.Has(ps) {
+				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
+			}
+		}
+		for ps, _ := range nodeData.Services.Status {
+			if !selected.Has(ps) {
+				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
+			}
+		}
+	}
+	for ps, _ := range s.Monitor.Services {
+		if !selected.Has(ps) {
+			delete(s.Monitor.Services, ps)
+		}
+	}
+	return s
+}
+
+// WithSelector purges the dataset from objects not matching the namespace
+func (s *Status) WithNamespace(namespace string) *Status {
+	if namespace == "" {
+		return s
+	}
+	for nodename, nodeData := range s.Monitor.Nodes {
+		for ps, _ := range nodeData.Services.Config {
+			p, _ := path.Parse(ps)
+			if p.Namespace != namespace {
+				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
+			}
+		}
+		for ps, _ := range nodeData.Services.Smon {
+			p, _ := path.Parse(ps)
+			if p.Namespace != namespace {
+				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
+			}
+		}
+		for ps, _ := range nodeData.Services.Status {
+			p, _ := path.Parse(ps)
+			if p.Namespace != namespace {
+				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
+			}
+		}
+	}
+	for ps, _ := range s.Monitor.Services {
+		p, _ := path.Parse(ps)
+		if p.Namespace != namespace {
+			delete(s.Monitor.Services, ps)
+		}
+	}
+	return s
 }

@@ -34,6 +34,9 @@ type (
 
 	// L is a list of object paths.
 	L []T
+
+	// M is a map indexed by path string representation.
+	M map[string]interface{}
 )
 
 const (
@@ -283,6 +286,21 @@ func (t L) Filter(pattern string) L {
 		}
 	}
 	return l
+}
+
+// StrMap converts L into a map indexed by path string representation.
+// This format is useful for fast Has(string) bool functions.
+func (t L) StrMap() M {
+	m := make(M)
+	for _, p := range t {
+		m[p.String()] = nil
+	}
+	return m
+}
+
+func (t M) Has(s string) bool {
+	_, ok := t[s]
+	return ok
 }
 
 func (t L) Merge(other L) L {
