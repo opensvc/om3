@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
@@ -43,6 +44,7 @@ func New(ctx context.Context) *T {
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Mount("/daemon", t.newDaemonRouter())
 	mux.Mount("/object", objecthandler.Router())
+	mux.Mount("/debug", middleware.Profiler())
 
 	t.mux = mux
 	return t
