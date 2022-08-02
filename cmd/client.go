@@ -9,14 +9,10 @@ import (
 func newClient() (*client.T, error) {
 	clientOptions := []funcopt.O{client.WithURL(serverFlag)}
 	if serverFlag == daemonenv.UrlInetHttp() {
-		clientOptions = append(clientOptions,
-			client.WithInsecureSkipVerify())
-
-		clientOptions = append(clientOptions,
-			client.WithCertificate(daemonenv.CertFile()))
-
-		clientOptions = append(clientOptions,
-
+		clientOptions = append(
+			clientOptions,
+			client.WithInsecureSkipVerify(),
+			client.WithCertificate(daemonenv.CertFile()),
 			client.WithKey(daemonenv.KeyFile()),
 		)
 	}

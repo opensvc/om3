@@ -17,6 +17,7 @@ var (
 	contextDaemonData  = contextKey("daemondata-cmd")
 	contextHBSendQueue = contextKey("hb-sendQ")
 	contextUuid        = contextKey("uuid")
+	contextListenAddr  = contextKey("listen-addr")
 )
 
 func (c contextKey) String() string {
@@ -78,4 +79,18 @@ func Uuid(ctx context.Context) uuid.UUID {
 		return id
 	}
 	return uuid.UUID{}
+}
+
+// WithListenAddr function returns copy of parent with uuid.
+func WithListenAddr(parent context.Context, addr string) context.Context {
+	return context.WithValue(parent, contextListenAddr, addr)
+}
+
+// ListenAddr function returns uuid from context
+func ListenAddr(ctx context.Context) string {
+	id, ok := ctx.Value(contextListenAddr).(string)
+	if ok {
+		return id
+	}
+	return ""
 }

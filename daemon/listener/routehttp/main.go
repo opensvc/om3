@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
+	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
@@ -32,10 +33,14 @@ type (
 func New(ctx context.Context) *T {
 	t := &T{}
 	mux := chi.NewRouter()
+	mux.Use(listenAddrMiddleWare(ctx))
+	mux.Use(daemonauth.MiddleWare(ctx))
 	mux.Use(daemonMiddleWare(ctx))
 	mux.Use(daemondataMiddleWare(ctx))
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
+	mux.Get("/auth/node/token", daemonauth.GetNodeToken)
+	mux.Get("/auth/user/token", daemonauth.GetUserToken)
 	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Post("/object_monitor", objecthandler.PostMonitor)
 	mux.Post("/object_status", objecthandler.PostStatus)
@@ -99,6 +104,17 @@ func daemondataMiddleWare(parent context.Context) func(http.Handler) http.Handle
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := daemonctx.WithDaemonDataCmd(r.Context(), daemonctx.DaemonDataCmd(parent))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// listenAddrMiddleWare adds the listen addr to the request context, for use by the ux auth middleware
+func listenAddrMiddleWare(parent context.Context) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			addr := daemonctx.ListenAddr(parent)
+			ctx := daemonctx.WithListenAddr(r.Context(), addr)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

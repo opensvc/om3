@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -52,6 +53,7 @@ func New(opts ...funcopt.O) *T {
 }
 
 func (t *T) MainStart(ctx context.Context) error {
+	ctx = daemonctx.WithListenAddr(ctx, t.addr)
 	started := make(chan error)
 	go func() {
 		defer t.Trace(t.Name())()

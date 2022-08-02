@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpinet"
@@ -115,6 +116,9 @@ func New(opts ...funcopt.O) *T {
 func (t *T) MainStart(ctx context.Context) error {
 	node, err := object.NewNode()
 	if err != nil {
+		return err
+	}
+	if err := daemonauth.Init(); err != nil {
 		return err
 	}
 	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "tls_port"))

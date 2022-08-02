@@ -12,6 +12,7 @@ require (
 	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
 	github.com/cvaroqui/ini v1.66.7-0.20220627091046-b218d4fc5c30
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
 	github.com/eidolon/wordwrap v0.0.0-20161011182207-e0f54129b8bb
@@ -20,6 +21,7 @@ require (
 	github.com/g8rswimmer/error-chain v1.0.0
 	github.com/gdamore/tcell/v2 v2.3.1
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0
@@ -46,6 +48,8 @@ require (
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.20.0
+	github.com/shaj13/go-guardian/v2 v2.11.5
+	github.com/shaj13/libcache v1.0.5
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
@@ -73,8 +77,10 @@ require (
 	github.com/coreos/go-iptables v0.5.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/goccy/go-json v0.7.6 // indirect
 	github.com/godbus/dbus/v5 v5.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
@@ -84,6 +90,12 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/koneu/natend v0.0.0-20150829182554-ec0926ea948d // indirect
+	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
+	github.com/lestrrat-go/httpcc v1.0.0 // indirect
+	github.com/lestrrat-go/iter v1.0.1 // indirect
+	github.com/lestrrat-go/jwx v1.2.6 // indirect
+	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
