@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/rawconfig"
 
@@ -187,6 +188,9 @@ func (t T) GetStream(r request.T) (chan []byte, error) {
 }
 
 func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
+	if resp == nil {
+		return errors.Errorf("<nil> event")
+	}
 	br := bufio.NewReader(resp.Body)
 	delim := []byte{':', ' '}
 	defer resp.Body.Close()
