@@ -24,7 +24,6 @@ import (
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -48,7 +47,7 @@ type (
 		remoteCfgFetchCancel map[string]context.CancelFunc
 
 		// fetcherUpdated map[svc] updated timestamp of svc config being fetched
-		fetcherUpdated map[string]timestamp.T
+		fetcherUpdated map[string]time.Time
 
 		// fetcherFrom map[svc] node
 		fetcherFrom map[string]string
@@ -86,7 +85,7 @@ func Start(ctx context.Context) (func(), error) {
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
-		fetcherUpdated:    make(map[string]timestamp.T),
+		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
 	}
 	stopFSWatcher, err := d.fsWatcherStart()

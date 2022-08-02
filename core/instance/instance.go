@@ -3,6 +3,7 @@ package instance
 import (
 	"encoding/json"
 	"sort"
+	"time"
 
 	"github.com/guregu/null"
 	"github.com/rs/zerolog/log"
@@ -17,7 +18,6 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/stringslice"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -26,8 +26,8 @@ type (
 		GlobalExpect        string                    `json:"global_expect"`
 		LocalExpect         string                    `json:"local_expect"`
 		Status              string                    `json:"status"`
-		StatusUpdated       timestamp.T               `json:"status_updated"`
-		GlobalExpectUpdated timestamp.T               `json:"global_expect_updated"`
+		StatusUpdated       time.Time                 `json:"status_updated"`
+		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
 		Placement           string                    `json:"placement"`
 		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
 	}
@@ -35,18 +35,18 @@ type (
 	// MonitorRestart describes the restart states maintained by the daemon
 	// for an object instance.
 	MonitorRestart struct {
-		Retries int         `json:"retries"`
-		Updated timestamp.T `json:"updated"`
+		Retries int       `json:"retries"`
+		Updated time.Time `json:"updated"`
 	}
 
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Nodename string      `json:"-"`
-		Path     path.T      `json:"-"`
-		Checksum string      `json:"csum"`
-		Scope    []string    `json:"scope"`
-		Updated  timestamp.T `json:"updated"`
+		Nodename string    `json:"-"`
+		Path     path.T    `json:"-"`
+		Checksum string    `json:"csum"`
+		Scope    []string  `json:"scope"`
+		Updated  time.Time `json:"updated"`
 	}
 
 	// Status describes the instance status.
@@ -60,7 +60,7 @@ type (
 		Overall     status.T                          `json:"overall"`
 		Csum        string                            `json:"csum,omitempty"`
 		Env         string                            `json:"env,omitempty"`
-		Frozen      timestamp.T                       `json:"frozen,omitempty"`
+		Frozen      time.Time                         `json:"frozen,omitempty"`
 		Kind        kind.T                            `json:"kind"`
 		Optional    status.T                          `json:"optional,omitempty"`
 		Orchestrate string                            `json:"orchestrate,omitempty"` // TODO enum
@@ -69,7 +69,7 @@ type (
 		Priority    priority.T                        `json:"priority,omitempty"`
 		Provisioned provisioned.T                     `json:"provisioned,omitempty"`
 		Preserved   bool                              `json:"preserved,omitempty"`
-		Updated     timestamp.T                       `json:"updated"`
+		Updated     time.Time                         `json:"updated"`
 		FlexTarget  int                               `json:"flex_target,omitempty"`
 		FlexMin     int                               `json:"flex_min,omitempty"`
 		FlexMax     int                               `json:"flex_max,omitempty"`

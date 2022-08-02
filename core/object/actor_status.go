@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"sync"
+	"time"
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/instance"
@@ -11,7 +12,6 @@ import (
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -63,7 +63,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err
 	data.Placement = t.Placement()
 	data.Priority = t.Priority()
 	data.Kind = t.path.Kind
-	data.Updated = timestamp.Now()
+	data.Updated = time.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())

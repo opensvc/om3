@@ -1,14 +1,14 @@
 package cluster
 
-import "opensvc.com/opensvc/util/timestamp"
+import "time"
 
 type (
 	// ThreadStatus describes a OpenSVC daemon thread: when the thread
 	// was last configured, when it was created, its current state and thread
 	// id.
 	ThreadStatus struct {
-		Configured timestamp.T   `json:"configured"`
-		Created    timestamp.T   `json:"created"`
+		Configured time.Time     `json:"configured"`
+		Created    time.Time     `json:"created"`
 		State      string        `json:"state"`
 		TID        int64         `json:"tid"`
 		Alerts     []ThreadAlert `json:"alerts,omitempty"`
@@ -46,7 +46,7 @@ type (
 	// HeartbeatPeerStatus describes the status of the communication
 	// with a specific peer node.
 	HeartbeatPeerStatus struct {
-		Beating bool        `json:"beating"`
-		Last    timestamp.T `json:"last"`
+		Beating bool      `json:"beating"`
+		Last    time.Time `json:"last"`
 	}
 )

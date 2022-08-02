@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
@@ -12,7 +13,6 @@ import (
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -54,7 +54,7 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	smon = instance.Monitor{
 		GlobalExpect:        payload.GlobalExpect,
-		GlobalExpectUpdated: timestamp.Now(),
+		GlobalExpectUpdated: time.Now(),
 		LocalExpect:         payload.LocalExpect,
 		Status:              payload.State,
 	}

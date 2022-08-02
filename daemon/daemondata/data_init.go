@@ -2,13 +2,13 @@ package daemondata
 
 import (
 	"strings"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func newData(counterCmd chan<- interface{}) *data {
@@ -56,7 +56,7 @@ func newNodeStatus(localNode string) cluster.NodeStatus {
 		Arbitrators:     map[string]cluster.ArbitratorStatus{},
 		Compat:          10,
 		Env:             "",
-		Frozen:          timestamp.T{},
+		Frozen:          time.Time{},
 		Gen:             map[string]uint64{localNode: 1},
 		Labels:          map[string]string{},
 		MinAvailMemPct:  0,

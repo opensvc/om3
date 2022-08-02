@@ -91,7 +91,7 @@ func (d *data) getCfgDiffForNode(node string) ([]moncmd.CfgDeleted, []moncmd.Cfg
 	if hasPendingNode && hasCommittedNode {
 		for s, pending := range pendingNode.Services.Config {
 			if committed, ok := committedNode.Services.Config[s]; ok {
-				if pending.Updated.Time().After(committed.Updated.Time()) {
+				if pending.Updated.After(committed.Updated) {
 					p, err := path.Parse(s)
 					if err != nil {
 						continue
@@ -187,13 +187,7 @@ func (d *data) getStatusDiffForNode(node string) ([]moncmd.InstStatusDeleted, []
 	if hasPendingNode && hasCommittedNode {
 		for s, pending := range pendingNode.Services.Status {
 			if committed, ok := committedNode.Services.Status[s]; ok {
-				pendingUpdated := pending.Updated.Time()
-				committedUpdated := committed.Updated.Time()
-				var needUpdate bool
-				if committedUpdated.Before(pendingUpdated) {
-					needUpdate = true
-				}
-				if needUpdate {
+				if committed.Updated.Before(pending.Updated) {
 					p, err := path.Parse(s)
 					if err != nil {
 						continue
@@ -265,8 +259,8 @@ func (d *data) getSmonDiffForNode(node string) ([]moncmd.SmonDeleted, []moncmd.S
 	if hasPendingNode && hasCommittedNode {
 		for s, pending := range pendingNode.Services.Smon {
 			if committed, ok := committedNode.Services.Smon[s]; ok {
-				globalExpectUpdated := pending.GlobalExpectUpdated.Time().After(committed.GlobalExpectUpdated.Time())
-				statusUpdated := pending.StatusUpdated.Time().After(committed.StatusUpdated.Time())
+				globalExpectUpdated := pending.GlobalExpectUpdated.After(committed.GlobalExpectUpdated)
+				statusUpdated := pending.StatusUpdated.After(committed.StatusUpdated)
 				if globalExpectUpdated || statusUpdated {
 					p, err := path.Parse(s)
 					if err != nil {

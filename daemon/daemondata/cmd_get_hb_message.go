@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opGetHbMessage struct {
@@ -87,7 +87,7 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 			Kind:     "patch",
 			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
 			Gen:      d.getGens(),
-			Updated:  timestamp.Now(),
+			Updated:  time.Now(),
 			Deltas:   delta,
 			Nodename: d.localNode,
 		}
@@ -96,7 +96,7 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 			Kind:     "full",
 			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
 			Gen:      d.getGens(),
-			Updated:  timestamp.Now(),
+			Updated:  time.Now(),
 			Full:     *GetNodeStatus(d.committed, d.localNode).DeepCopy(),
 			Nodename: d.localNode,
 		}

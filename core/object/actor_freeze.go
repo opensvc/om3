@@ -4,11 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 //
@@ -21,13 +21,13 @@ func (t *actor) frozenFile() string {
 }
 
 // Frozen returns the unix timestamp of the last freeze.
-func (t *actor) Frozen() timestamp.T {
+func (t *actor) Frozen() time.Time {
 	p := t.frozenFile()
 	fi, err := os.Stat(p)
 	if err != nil {
-		return timestamp.NewZero()
+		return time.Time{}
 	}
-	return timestamp.New(fi.ModTime())
+	return fi.ModTime()
 }
 
 //

@@ -3,10 +3,10 @@ package object
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 // lockName is the path of the file to use as an action lock.
@@ -15,13 +15,13 @@ func (t *Node) frozenFile() string {
 }
 
 // Frozen returns the unix timestamp of the last freeze.
-func (t *Node) Frozen() timestamp.T {
+func (t *Node) Frozen() time.Time {
 	p := t.frozenFile()
 	fi, err := os.Stat(p)
 	if err != nil {
-		return timestamp.NewZero()
+		return time.Time{}
 	}
-	return timestamp.New(fi.ModTime())
+	return fi.ModTime()
 }
 
 //

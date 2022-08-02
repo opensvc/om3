@@ -6,7 +6,6 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 // peerWatch starts a new peer watcher of nodename for hbId
@@ -48,7 +47,7 @@ func (t *T) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 					}
 					cancel()
 					beatingCtx, cancel = context.WithTimeout(t.ctx, timeout)
-					peer.Last = timestamp.Now()
+					peer.Last = time.Now()
 					update(peer)
 				} else if peer.Beating {
 					event("hb_stale")

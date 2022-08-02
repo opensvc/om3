@@ -82,3 +82,11 @@ For example, a [md#1] section needs reformatting as:
   In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
   If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
 
+
+### daemon
+
+* **breaking change:** switch to time.Time in RFC3389 format in all internal and exposed data
+
+	A unix timestamp was previously used, but it was tedious for users to understand the json data. And go makes the time.Time type unavoidable anyway, so the performance argument for timestamps doesn't stand anymore.
+
+

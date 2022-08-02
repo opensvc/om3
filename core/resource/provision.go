@@ -10,7 +10,6 @@ import (
 
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -46,11 +45,6 @@ func provisionedFileModTime(t Driver) time.Time {
 	return file.ModTime(provisionedFile(t))
 }
 
-// provisionedTimestamp returns the provisioned state cache file modification time.
-func provisionedTimestamp(t Driver) timestamp.T {
-	return timestamp.New(provisionedFileModTime(t))
-}
-
 //
 // getProvisionStatus returns the resource provisioned state from the on-disk cache and its
 // state change time.
@@ -64,7 +58,7 @@ func getProvisionStatus(t Driver) ProvisionStatus {
 	} else {
 		data.State = state
 	}
-	data.Mtime = provisionedTimestamp(t)
+	data.Mtime = provisionedFileModTime(t)
 	return data
 }
 

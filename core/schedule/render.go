@@ -1,16 +1,17 @@
 package schedule
 
 import (
+	"time"
+
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/render/tree"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
-func SprintTime(t timestamp.T) string {
-	if t.IsZero() || t.Time().IsZero() {
+func SprintTime(t time.Time) string {
+	if t.IsZero() {
 		return "-"
 	}
-	return t.Render()
+	return t.Format(time.RFC3339)
 }
 
 func (t Table) Render() string {

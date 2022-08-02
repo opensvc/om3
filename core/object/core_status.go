@@ -19,7 +19,6 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func (t *core) statusFile() string {
@@ -63,7 +62,7 @@ func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.Placement = t.Placement()
 	data.Priority = t.Priority()
 	data.Kind = t.path.Kind
-	data.Updated = timestamp.Now()
+	data.Updated = time.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
@@ -127,7 +126,7 @@ func csumStatusDataRecurse(w io.Writer, d interface{}) error {
 //
 // csumStatusData returns the string representation of the checksum of the
 // status.json content, adding recursively all data keys except
-// timestamp and checksum fields.
+// time and checksum fields.
 //
 func csumStatusData(data instance.Status) string {
 	w := md5.New()

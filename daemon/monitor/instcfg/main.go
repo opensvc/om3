@@ -41,7 +41,6 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/stringslice"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -60,7 +59,7 @@ type (
 		forceRefresh bool
 
 		fetchCtx     context.Context
-		fetchUpdated timestamp.T
+		fetchUpdated time.Time
 		fetchCancel  context.CancelFunc
 
 		CmdC         chan *moncmd.T
@@ -218,14 +217,14 @@ func (o *T) cmdCfgUpdated(c moncmd.CfgUpdated) {
 // pending obsolete fetcher is canceled.
 //
 func (o *T) cmdCfgUpdatedRemote(c moncmd.CfgUpdated) {
-	remoteCfgUpdated := c.Config.Updated.Time().Unix()
-	if o.cfg.Updated.Time().Unix() >= remoteCfgUpdated {
+	remoteCfgUpdated := c.Config.Updated
+	if o.cfg.Updated.Unix() >= remoteCfgUpdated.Unix() {
 		return
 	}
 	// need fetch
 	if o.fetchCtx != nil {
 		// fetcher is running
-		if o.fetchUpdated.Time().Unix() >= remoteCfgUpdated {
+		if o.fetchUpdated.Unix() >= remoteCfgUpdated.Unix() {
 			return
 		} else {
 			o.log.Info().Msgf("cancel current fetcher a more recent config file exists on %s", c.Node)
@@ -317,7 +316,7 @@ func (o *T) configFileCheck() {
 	sort.Strings(nodes)
 	cfg.Scope = nodes
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
-	cfg.Updated = timestamp.New(mtime)
+	cfg.Updated = mtime
 	o.lastMtime = mtime
 	o.updateCfg(&cfg)
 }

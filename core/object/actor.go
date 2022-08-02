@@ -18,7 +18,6 @@ import (
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pg"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -34,7 +33,7 @@ type (
 	freezer interface {
 		Freeze(ctx context.Context) error
 		Unfreeze(ctx context.Context) error
-		Frozen() timestamp.T
+		Frozen() time.Time
 	}
 
 	// resourceLister provides a method to list and filter resources

@@ -36,7 +36,6 @@ import (
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -205,7 +204,7 @@ func (o *smon) updateIfChange() {
 		return
 	}
 	o.change = false
-	o.state.StatusUpdated = timestamp.Now()
+	o.state.StatusUpdated = time.Now()
 	previousVal := o.previousState
 	newVal := o.state
 	if newVal.Status != previousVal.Status {

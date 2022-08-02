@@ -15,7 +15,6 @@ import (
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func (d *discover) cfg() {
@@ -109,7 +108,7 @@ func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance
 	d.log.Info().Msgf("cmdRemoteCfgUpdated for node %s, path %s", node, p)
 	if remoteUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s
-		if remoteCfg.Updated.Time().After(remoteUpdated.Time()) {
+		if remoteCfg.Updated.After(remoteUpdated) {
 			d.log.Info().Msgf("cancel pending remote cfg fetcher, more recent config from %s on %s", s, node)
 			d.cancelFetcher(s)
 		} else {
@@ -178,7 +177,7 @@ func (d *discover) cancelFetcher(s string) {
 	delete(d.fetcherFrom, s)
 }
 
-func (d *discover) fetchCfgFromRemote(p path.T, node string, updated timestamp.T) {
+func (d *discover) fetchCfgFromRemote(p path.T, node string, updated time.Time) {
 	s := p.String()
 	if n, ok := d.fetcherFrom[s]; ok {
 		d.log.Error().Msgf("fetcher already in progress for %s from %s", s, n)

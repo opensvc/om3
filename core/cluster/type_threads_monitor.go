@@ -2,12 +2,12 @@ package cluster
 
 import (
 	"encoding/json"
+	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -32,7 +32,7 @@ type (
 		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
 		Compat          uint64                      `json:"compat"`
 		Env             string                      `json:"env"`
-		Frozen          timestamp.T                 `json:"frozen"`
+		Frozen          time.Time                   `json:"frozen"`
 		Gen             map[string]uint64           `json:"gen"`
 		Labels          map[string]string           `json:"labels"`
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
@@ -56,10 +56,10 @@ type (
 
 	// NodeMonitor describes the in-daemon states of a node
 	NodeMonitor struct {
-		GlobalExpect        string      `json:"global_expect"`
-		Status              string      `json:"status"`
-		StatusUpdated       timestamp.T `json:"status_updated"`
-		GlobalExpectUpdated timestamp.T `json:"global_expect_updated"`
+		GlobalExpect        string    `json:"global_expect"`
+		Status              string    `json:"status"`
+		StatusUpdated       time.Time `json:"status_updated"`
+		GlobalExpectUpdated time.Time `json:"global_expect_updated"`
 	}
 
 	// NodeServices groups instances configuration digest and status

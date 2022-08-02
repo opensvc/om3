@@ -56,7 +56,7 @@ func (t *actor) newScheduleEntry(action string, keyStr string, base string) sche
 		Node:       hostname.Hostname(),
 		Path:       t.path,
 		Action:     action,
-		Last:       timestamp.New(t.loadLast(action, "", base)),
+		Last:       t.loadLast(action, "", base),
 		Key:        k.String(),
 		Definition: def,
 	}

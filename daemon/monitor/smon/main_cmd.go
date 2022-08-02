@@ -16,7 +16,7 @@ func (o *smon) cmdSvcAggUpdated(c moncmd.MonSvcAggUpdated) {
 			srcNode := srcCmd.Node
 			if _, ok := o.instStatus[srcNode]; ok {
 				instStatus := srcCmd.Status
-				if o.instStatus[srcNode].Updated.Time().Before(instStatus.Updated.Time()) {
+				if o.instStatus[srcNode].Updated.Before(instStatus.Updated) {
 					// only update if more recent
 					o.instStatus[srcNode] = instStatus
 				}

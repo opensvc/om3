@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
@@ -14,7 +15,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
@@ -41,8 +41,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 		return
 	}
 	_ = f.Close()
-	mtime := updated.Time()
-	if err := os.Chtimes(tmpFilename, mtime, mtime); err != nil {
+	if err := os.Chtimes(tmpFilename, updated, updated); err != nil {
 		log.Error().Err(err).Msgf("update file time %s", tmpFilename)
 		return
 	}
@@ -81,7 +80,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 	}
 }
 
-func fetchFromApi(p path.T, node string) (b []byte, updated timestamp.T, err error) {
+func fetchFromApi(p path.T, node string) (b []byte, updated time.Time, err error) {
 	url := fmt.Sprintf("raw://%s:%d", node, daemonenv.RawPort)
 	var (
 		cli   *client.T
@@ -97,7 +96,7 @@ func fetchFromApi(p path.T, node string) (b []byte, updated timestamp.T, err err
 	}
 	type response struct {
 		Data    string
-		Updated timestamp.T `json:"mtime"`
+		Updated time.Time `json:"mtime"`
 	}
 	resp := response{}
 	if err = json.Unmarshal(readB, &resp); err != nil {

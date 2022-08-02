@@ -5,12 +5,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -22,8 +22,8 @@ type (
 	}
 
 	Data struct {
-		Updated timestamp.T `json:"mtime"`
-		Data    string      `json:"data"`
+		Updated time.Time `json:"mtime"`
+		Data    string    `json:"data"`
 	}
 	GetConfigResponse struct {
 		Status int  `json:"status"`
@@ -84,7 +84,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 	resp := GetConfigResponse{
 		Status: 0,
 		Data: Data{
-			Updated: timestamp.New(mtime),
+			Updated: mtime,
 			Data:    string(b),
 		},
 	}
