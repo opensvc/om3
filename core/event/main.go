@@ -2,9 +2,9 @@ package event
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -21,8 +21,8 @@ type (
 		// ID is a unique event id
 		ID uint64 `json:"id"`
 
-		// Timestamp is the time the event was published
-		Timestamp timestamp.T `json:"ts"`
+		// Time is the time the event was published
+		Time time.Time `json:"t"`
 
 		// Data is the free-format dataset of the event
 		Data *json.RawMessage `json:"data"`

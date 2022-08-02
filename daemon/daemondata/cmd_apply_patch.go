@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strconv"
+	"time"
 
 	"gopkg.in/errgo.v2/fmt/errors"
 
@@ -13,7 +14,6 @@ import (
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opApplyRemotePatch struct {
@@ -106,10 +106,10 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			data = eventB
 			eventId++
 			daemonps.PubEvent(d.bus, event.Event{
-				Kind:      "patch",
-				ID:        eventId,
-				Timestamp: timestamp.Now(),
-				Data:      &data,
+				Kind: "patch",
+				ID:   eventId,
+				Time: time.Now(),
+				Data: &data,
 			})
 		}
 		pendingNodeGen = gen

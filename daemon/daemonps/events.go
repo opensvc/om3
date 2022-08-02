@@ -3,12 +3,12 @@ package daemonps
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 // PubEvent publish a new event.Event on namespace NsEvent
@@ -35,10 +35,10 @@ func SubEvent(bus *pubsub.Bus, name string, fn func(event.Event)) uuid.UUID {
 		Op: pubsub.OpCreate,
 		Id: "subscribe-event",
 		Value: event.Event{
-			Kind:      "event_subscribe",
-			ID:        0,
-			Timestamp: timestamp.Now(),
-			Data:      jsonMsg("subscribe name: " + name),
+			Kind: "event_subscribe",
+			ID:   0,
+			Time: time.Now(),
+			Data: jsonMsg("subscribe name: " + name),
 		},
 	}
 
@@ -61,10 +61,10 @@ func UnSubEvent(bus *pubsub.Bus, id uuid.UUID) {
 			Op: pubsub.OpCreate,
 			Id: "unsubscribe-event",
 			Value: event.Event{
-				Kind:      "event_unsubscribe",
-				ID:        0,
-				Timestamp: timestamp.Now(),
-				Data:      jsonMsg("unsubscribe name: " + name),
+				Kind: "event_unsubscribe",
+				ID:   0,
+				Time: time.Now(),
+				Data: jsonMsg("unsubscribe name: " + name),
 			},
 		}
 		go bus.Pub(publication)

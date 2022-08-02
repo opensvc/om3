@@ -44,7 +44,6 @@ import (
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -164,10 +163,10 @@ func (t *T) Start(ctx context.Context) {
 				var data json.RawMessage
 				data = []byte("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
 				daemonps.PubEvent(bus, event.Event{
-					Kind:      o.Name,
-					ID:        0,
-					Timestamp: timestamp.Now(),
-					Data:      &data,
+					Kind: o.Name,
+					ID:   0,
+					Time: time.Now(),
+					Data: &data,
 				})
 				t.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 			case GetEventStats:

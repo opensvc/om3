@@ -1,11 +1,12 @@
 package daemonps
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/core/event"
 	ps "opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 const (
@@ -37,10 +38,10 @@ func Sub(bus *ps.Bus, ns, op uint, name string, matching string, fn func(i inter
 		Name:     name,
 	}
 	go PubEvent(bus, event.Event{
-		Kind:      "event_subscribe",
-		ID:        0,
-		Timestamp: timestamp.Now(),
-		Data:      jsonMsg("subscribe name: " + name),
+		Kind: "event_subscribe",
+		ID:   0,
+		Time: time.Now(),
+		Data: jsonMsg("subscribe name: " + name),
 	})
 
 	return bus.Sub(subscription, fn)
@@ -50,10 +51,10 @@ func UnSub(bus *ps.Bus, id uuid.UUID) {
 	name := bus.Unsub(id)
 	if name != "" {
 		go PubEvent(bus, event.Event{
-			Kind:      "event_unsubscribe",
-			ID:        0,
-			Timestamp: timestamp.Now(),
-			Data:      jsonMsg("unsubscribe name: " + name),
+			Kind: "event_unsubscribe",
+			ID:   0,
+			Time: time.Now(),
+			Data: jsonMsg("unsubscribe name: " + name),
 		})
 	}
 }

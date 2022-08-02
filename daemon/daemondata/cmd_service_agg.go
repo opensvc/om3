@@ -3,6 +3,7 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/object"
@@ -10,7 +11,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -50,10 +50,10 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			eventId++
 			var data json.RawMessage = eventB
 			daemonps.PubEvent(d.bus, event.Event{
-				Kind:      "patch",
-				ID:        eventId,
-				Timestamp: timestamp.Now(),
-				Data:      &data,
+				Kind: "patch",
+				ID:   eventId,
+				Time: time.Now(),
+				Data: &data,
 			})
 		}
 	}
@@ -83,10 +83,10 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		eventId++
 		var data json.RawMessage = eventB
 		daemonps.PubEvent(d.bus, event.Event{
-			Kind:      "patch",
-			ID:        eventId,
-			Timestamp: timestamp.Now(),
-			Data:      &data,
+			Kind: "patch",
+			ID:   eventId,
+			Time: time.Now(),
+			Data: &data,
 		})
 	}
 	daemonps.PubSvcAggUpdate(d.bus, s, moncmd.MonSvcAggUpdated{

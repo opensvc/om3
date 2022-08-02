@@ -9,7 +9,7 @@ import (
 
 // Render formats a opensvc agent event
 func Render(e Event) string {
-	s := fmt.Sprintf("%s %s\n", e.Timestamp, e.Kind)
+	s := fmt.Sprintf("%s %s\n", e.Time, e.Kind)
 	if e.Kind == "event" {
 		s += output.SprintFlat(*e.Data)
 	} else if e.Data != nil {

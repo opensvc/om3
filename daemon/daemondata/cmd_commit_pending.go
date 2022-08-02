@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opCommitPending struct {
@@ -176,10 +176,10 @@ func (d *data) eventCommitPendingOps() {
 		eventId++
 		var data json.RawMessage = eventB
 		daemonps.PubEvent(d.bus, event.Event{
-			Kind:      "patch",
-			ID:        eventId,
-			Timestamp: timestamp.Now(),
-			Data:      &data,
+			Kind: "patch",
+			ID:   eventId,
+			Time: time.Now(),
+			Data: &data,
 		})
 	}
 }

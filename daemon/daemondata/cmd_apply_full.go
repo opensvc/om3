@@ -3,12 +3,12 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opApplyRemoteFull struct {
@@ -41,10 +41,10 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 		var eventData json.RawMessage = eventB
 		eventId++
 		daemonps.PubEvent(d.bus, event.Event{
-			Kind:      "patch",
-			ID:        eventId,
-			Timestamp: timestamp.Now(),
-			Data:      &eventData,
+			Kind: "patch",
+			ID:   eventId,
+			Time: time.Now(),
+			Data: &eventData,
 		})
 	}
 
