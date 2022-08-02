@@ -24,6 +24,8 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 		log.Error().Err(err).Msg("read body request")
 		w.WriteHeader(500)
 		return
+	} else if len(reqBody) == 0 {
+		// pass
 	} else if err := json.Unmarshal(reqBody, &payload); err != nil {
 		log.Error().Err(err).Msg("request body unmarshal")
 		w.WriteHeader(500)

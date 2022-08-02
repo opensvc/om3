@@ -80,6 +80,8 @@ func getEventsPayload(w http.ResponseWriter, r *http.Request) (eventsPayload, er
 
 	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
 		return payload, errors.Wrap(err, "read body request")
+	} else if len(reqBody) == 0 {
+		// pass
 	} else if err := json.Unmarshal(reqBody, &payload); err != nil {
 		return payload, errors.Wrap(err, "request body unmarshal")
 	}
