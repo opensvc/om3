@@ -10,10 +10,22 @@ import (
 type (
 	// Event describes a opensvc daemon event
 	Event struct {
-		Kind      string           `json:"kind"`
-		ID        uint64           `json:"id"`
-		Timestamp timestamp.T      `json:"ts"`
-		Data      *json.RawMessage `json:"data"`
+		// Kind can be either "patch" or "event".
+		// A patch is a change to the cluster dataset.
+		//
+		// Event subscribers can maintain a clone of the
+		// cluster dataset by patching a full with received
+		// patch events.
+		Kind string `json:"kind"`
+
+		// ID is a unique event id
+		ID uint64 `json:"id"`
+
+		// Timestamp is the time the event was published
+		Timestamp timestamp.T `json:"ts"`
+
+		// Data is the free-format dataset of the event
+		Data *json.RawMessage `json:"data"`
 	}
 )
 
