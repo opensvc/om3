@@ -35,6 +35,13 @@ func init() {
 		cmdStatus           commands.CmdObjectStatus
 		cmdUnset            commands.CmdObjectUnset
 		cmdValidateConfig   commands.CmdObjectValidateConfig
+
+		cmdAdd     commands.CmdKeystoreAdd
+		cmdChange  commands.CmdKeystoreChange
+		cmdDecode  commands.CmdKeystoreDecode
+		cmdKeys    commands.CmdKeystoreKeys
+		cmdRemove  commands.CmdKeystoreRemove
+		cmdGenCert commands.CmdSecGenCert
 	)
 
 	kind := "usr"
@@ -53,6 +60,13 @@ func init() {
 	cmdSet.Init(kind, head, &selectorFlag)
 	cmdStatus.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
+
+	cmdAdd.Init(kind, head, &selectorFlag)
+	cmdChange.Init(kind, head, &selectorFlag)
+	cmdDecode.Init(kind, head, &selectorFlag)
+	cmdKeys.Init(kind, head, &selectorFlag)
+	cmdRemove.Init(kind, head, &selectorFlag)
+	cmdGenCert.Init(kind, head, &selectorFlag)
 
 	if sub := makeSubPrint(); sub != nil {
 		head.AddCommand(sub)
