@@ -7,12 +7,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/handlers/dispatchhandler"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/util/pubsub"
 )
 
 var (
@@ -48,76 +45,4 @@ func Stop(w http.ResponseWriter, r *http.Request) {
 		logger.Info().Msg(msg)
 		_, _ = write([]byte(msg))
 	}
-}
-
-// Events feeds Patch or Events in rss format.
-// TODO: Honor namespace and selection parameters.
-func Events(w http.ResponseWriter, r *http.Request) {
-	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
-	logger.Debug().Msg("starting")
-	ctx := r.Context()
-	bus := pubsub.BusFromContext(ctx)
-	done := make(chan bool)
-	var httpBody bool
-	if r.Header.Get("accept") == "text/event-stream" {
-		httpBody = true
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-control", "no-store")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Transfer-Encoding", "chunked")
-	}
-
-	w.WriteHeader(http.StatusOK)
-	evChan := make(chan event.Event)
-	getEvent := func(ev event.Event) {
-		evChan <- ev
-	}
-	writeEvent := func(ev event.Event) {
-		b, err := json.Marshal(ev)
-		if err != nil {
-			logger.Error().Err(err).Interface("event", ev).Msg("Marshal")
-			return
-		}
-		logger.Debug().Msgf("send fragment: %#v", ev)
-
-		var endMsg, msg []byte
-		if httpBody {
-			endMsg = []byte("\n\n")
-			msg = append([]byte("data: "), b...)
-		} else {
-			endMsg = []byte("\n\n\x00")
-			msg = append([]byte(""), b...)
-		}
-
-		msg = append(msg, endMsg...)
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-		if _, err := write(msg); err != nil {
-			logger.Error().Err(err).Msg("write failure")
-			done <- true
-			return
-		}
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-	}
-	subId := daemonps.SubEvent(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
-	defer daemonps.UnSubEvent(bus, subId)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				done <- true
-				return
-			case ev := <-evChan:
-				writeEvent(ev)
-			}
-		}
-	}()
-
-	<-done
-	logger.Debug().Msg("done")
 }
