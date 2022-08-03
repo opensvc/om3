@@ -9,7 +9,7 @@ import (
 
 type (
 	usr struct {
-		keystore
+		sec
 	}
 
 	//
@@ -20,8 +20,7 @@ type (
 	// for OpenID access (where grants are embedded in the trusted token)
 	//
 	Usr interface {
-		Keystore
-		SecureKeystore
+		Sec
 	}
 )
 
