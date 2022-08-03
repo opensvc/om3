@@ -11,6 +11,8 @@ import (
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/shaj13/go-guardian/v2/auth"
+	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
 	"opensvc.com/opensvc/daemon/daemonenv"
 )
@@ -30,8 +32,15 @@ func jsonEncode(w io.Writer, data interface{}) error {
 	return enc.Encode(data)
 }
 
+func initToken() auth.Strategy {
+	log.Logger.Info().Msg("init token auth strategy")
+	if err := initJWT(); err != nil {
+		return nil
+	}
+	return token.New(token.NoOpAuthenticate, cache)
+}
+
 func initJWT() error {
-	log.Logger.Info().Msg("init token factory")
 	jwtSignKeyFile = daemonenv.KeyFile()
 	jwtVerifyKeyFile = daemonenv.CertFile()
 
@@ -46,7 +55,7 @@ func initJWT() error {
 			return err
 		}
 		if jwtVerifyKeyFile == "" {
-			return fmt.Errorf("key file is set to the path of a RSA key. In this case, the certificate file must also be set to the path of the RSA public key.")
+			return errors.Errorf("key file is set to the path of a RSA key. In this case, the certificate file must also be set to the path of the RSA public key.")
 		}
 		if verifyBytes, err = ioutil.ReadFile(jwtVerifyKeyFile); err != nil {
 			return err

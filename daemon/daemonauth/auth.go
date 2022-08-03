@@ -19,7 +19,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/basic"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/union"
 )
 
@@ -67,8 +66,8 @@ func validateNode(ctx context.Context, r *http.Request, username, password strin
 	if storedPassword != password {
 		return nil, errors.Errorf("wrong cluster.secret")
 	}
-	grant := []string{"root"}
-	info := auth.NewUserInfo(username, "", nil, makeGrantExtensions(grant))
+	grants := NewGrants("root")
+	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
 	return info, nil
 }
 
@@ -89,8 +88,8 @@ func validateUser(ctx context.Context, r *http.Request, username, password strin
 	if string(storedPassword) != password {
 		return nil, errors.Errorf("wrong password")
 	}
-	grant := usr.Config().GetSlice(key.T{"DEFAULT", "grant"})
-	info := auth.NewUserInfo(username, "", nil, makeGrantExtensions(grant))
+	grants := NewGrants(usr.Config().GetSlice(key.T{"DEFAULT", "grant"})...)
+	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
 	return info, nil
 }
 
@@ -99,15 +98,9 @@ func (t uxStrategy) Authenticate(ctx context.Context, r *http.Request) (auth.Inf
 	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return nil, errors.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
 	}
-	grant := []string{"root"}
-	info := auth.NewUserInfo("root", "", nil, makeGrantExtensions(grant))
+	grants := NewGrants("root")
+	info := auth.NewUserInfo("root", "", nil, grants.Extensions())
 	return info, nil
-}
-
-func makeGrantExtensions(grant []string) auth.Extensions {
-	ext := make(auth.Extensions)
-	ext["grant"] = grant
-	return ext
 }
 
 func initCache() error {
@@ -138,11 +131,6 @@ func initBasicUser() auth.Strategy {
 	return basicUserStrategy
 }
 
-func initToken() auth.Strategy {
-	log.Logger.Info().Msg("init token auth strategy")
-	return token.New(token.NoOpAuthenticate, cache)
-}
-
 func initUX() auth.Strategy {
 	log.Logger.Info().Msg("init ux auth strategy")
 	s := &uxStrategy{}
@@ -154,19 +142,13 @@ func Init() error {
 		return err
 	}
 	l := make([]auth.Strategy, 0)
-	if err := initJWT(); err != nil {
-		log.Logger.Warn().Msgf("disable JWT: %s", err)
-		return err
-	} else {
-		l = append(l, initToken())
+	for _, fn := range []func() auth.Strategy{initUX, initToken, initX509, initBasicNode, initBasicUser} {
+		s := fn()
+		if s == nil {
+			continue
+		}
+		l = append(l, s)
 	}
-	l = append(
-		l,
-		initUX(),
-		initBasicNode(),
-		initBasicUser(),
-		//initLDAP(),
-	)
 	strategies = union.New(l...)
 	return nil
 }
