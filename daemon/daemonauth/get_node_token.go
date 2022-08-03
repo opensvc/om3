@@ -39,7 +39,7 @@ func GetNodeToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
-	AppendToken(token, user)
+	auth.Append(TokenStrategy, token, user)
 
 	jsonEncode(w, TokenResponse{
 		TokenExpireAt: tokenExpireAt,

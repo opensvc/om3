@@ -27,14 +27,14 @@ func GetUserToken(w http.ResponseWriter, r *http.Request) {
 	claims := map[string]interface{}{
 		"exp":        tokenExpireAt.Unix(),
 		"authorized": true,
-		"privileges": user.GetExtensions()["grant"],
+		"grant":      user.GetExtensions()["grant"],
 	}
 	_, token, err := TokenAuth.Encode(claims)
 	if err != nil {
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
-	AppendToken(token, user)
+	auth.Append(TokenStrategy, token, user)
 
 	jsonEncode(w, TokenResponse{
 		TokenExpireAt: tokenExpireAt,

@@ -33,14 +33,15 @@ var (
 	cache         libcache.Cache
 )
 
-func AppendToken(key interface{}, info auth.Info) error {
-	return auth.Append(TokenStrategy, key, info)
-}
-
+// User returns the logged in user information stored in the request context.
+// This func hides the go-guardian pkg from the handlers.
 func User(r *http.Request) auth.Info {
 	return auth.User(r)
 }
 
+// MiddleWare breaks the chain if none of the configured authentication strategy succeeds.
+// On success, the user information is added to the request context, so it is available
+// to handlers via User().
 func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -59,12 +60,12 @@ func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
 }
 
 func validateNode(ctx context.Context, r *http.Request, username, password string) (auth.Info, error) {
-	storedPassword := rawconfig.NodeSection().UUID
+	storedPassword := rawconfig.ClusterSection().Secret
 	if storedPassword == "" {
-		return nil, errors.Errorf("no node.uuid set")
+		return nil, errors.Errorf("no cluster.secret set")
 	}
 	if storedPassword != password {
-		return nil, errors.Errorf("wrong node.uuid")
+		return nil, errors.Errorf("wrong cluster.secret")
 	}
 	grant := []string{"root"}
 	info := auth.NewUserInfo(username, "", nil, makeGrantExtensions(grant))
