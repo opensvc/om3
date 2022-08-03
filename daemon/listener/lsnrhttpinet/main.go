@@ -2,6 +2,7 @@ package lsnrhttpinet
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"strings"
 
@@ -96,7 +97,13 @@ func (t *T) start(ctx context.Context) error {
 		}
 	}
 	started := make(chan bool)
-	t.listener = &http.Server{Addr: t.addr, Handler: routehttp.New(ctx)}
+	t.listener = &http.Server{
+		Addr:    t.addr,
+		Handler: routehttp.New(ctx),
+		TLSConfig: &tls.Config{
+			ClientAuth: tls.RequestClientCert,
+		},
+	}
 	go func() {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
