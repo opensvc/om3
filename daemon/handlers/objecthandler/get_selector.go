@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
 
@@ -30,8 +30,8 @@ func GetSelector(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selector := payload.ObjectSelector
-	dataBus := daemondatactx.DaemonData(r.Context())
-	paths := dataBus.GetServiceNames()
+	daemonData := daemondata.FromContext(r.Context())
+	paths := daemonData.GetServiceNames()
 	matchedPaths := make([]string, 0)
 	for _, ps := range paths {
 		p, _ := path.Parse(ps)

@@ -19,7 +19,6 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
@@ -57,7 +56,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		id:           id,
 		cmdC:         make(chan *moncmd.T),
 		discoverCmdC: svcAggDiscoverCmd,
-		dataCmdC:     daemonctx.DaemonDataCmd(ctx),
+		dataCmdC:     daemondata.BusFromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
 		ctx:          ctx,
 		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),

@@ -30,7 +30,6 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/daemonps"
@@ -89,7 +88,7 @@ func Start(ctx context.Context, p path.T, filename string, svcDiscoverCmd chan<-
 		localhost:    localhost,
 		forceRefresh: false,
 		CmdC:         make(chan *moncmd.T),
-		dataCmdC:     daemonctx.DaemonDataCmd(ctx),
+		dataCmdC:     daemondata.BusFromContext(ctx),
 		discoverCmdC: svcDiscoverCmd,
 		filename:     filename,
 	}

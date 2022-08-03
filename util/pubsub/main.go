@@ -73,6 +73,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type (
+	contextKey int
+)
+
 const (
 	// OpAll can be used on Subscription to subscribe on all operations
 	OpAll = iota
@@ -86,7 +90,7 @@ const (
 	// NsAll operation value can be used for all name spaces
 	NsAll = iota
 
-	contextBusKey = 0
+	busContextKey contextKey = 0
 )
 
 type (
@@ -373,11 +377,11 @@ func (b Bus) Unsub(id uuid.UUID) string {
 
 // ContextWithBus stores the bus in the context and returns the new context.
 func ContextWithBus(ctx context.Context, bus *Bus) context.Context {
-	return context.WithValue(ctx, contextBusKey, bus)
+	return context.WithValue(ctx, busContextKey, bus)
 }
 
 func BusFromContext(ctx context.Context) *Bus {
-	if bus, ok := ctx.Value(contextBusKey).(*Bus); ok {
+	if bus, ok := ctx.Value(busContextKey).(*Bus); ok {
 		return bus
 	}
 	panic("unable to retrieve pubsub bus from context")

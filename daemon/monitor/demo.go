@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemondatactx"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/timestamp"
 )
@@ -23,7 +22,7 @@ var (
 
 func (t *T) demoLoop() {
 	// For demo
-	dataCmd := daemondatactx.DaemonData(t.ctx)
+	dataCmd := daemondata.FromContext(t.ctx)
 	dataCmd.PushOps([]jsondelta.Operation{
 		{
 			OpPath:  jsondelta.OperationPath{"monitor", "status_updated"},

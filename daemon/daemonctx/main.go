@@ -14,7 +14,6 @@ type (
 
 var (
 	contextDaemon      = contextKey("daemon")
-	contextDaemonData  = contextKey("daemondata-cmd")
 	contextHBSendQueue = contextKey("hb-sendQ")
 	contextUuid        = contextKey("uuid")
 	contextListenAddr  = contextKey("listen-addr")
@@ -22,15 +21,6 @@ var (
 
 func (c contextKey) String() string {
 	return "daemonctx." + string(c)
-}
-
-// DaemonDataCmd function returns new DaemonDataCmd from context
-func DaemonDataCmd(ctx context.Context) chan<- interface{} {
-	cmdC, ok := ctx.Value(contextDaemonData).(chan<- interface{})
-	if ok {
-		return cmdC
-	}
-	panic("unable to retrieve context DaemonDataCmd")
 }
 
 // HBSendQ function returns HBSendQ from context
@@ -41,11 +31,6 @@ func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
 		return
 	}
 	return nil
-}
-
-// WithDaemonDataCmd function returns copy of parent with daemonCmd.
-func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.Context {
-	return context.WithValue(parent, contextDaemonData, cmd)
 }
 
 // WithHBSendQ function returns copy of parent with HBSendQ.

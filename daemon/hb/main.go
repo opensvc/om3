@@ -11,7 +11,7 @@ import (
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -116,7 +116,7 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 		bgCtx := context.Background()
 		demoCtx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
 		defer cancel()
-		dataBus := daemondatactx.DaemonData(ctx)
+		daemonData := daemondata.FromContext(ctx)
 		for {
 			select {
 			case <-ctx.Done():
@@ -129,14 +129,14 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 				t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				switch msg.Kind {
 				case "patch":
-					err := dataBus.ApplyPatch(msg.Nodename, msg)
+					err := daemonData.ApplyPatch(msg.Nodename, msg)
 					if err != nil {
 						t.log.Error().Err(err).Msgf("ApplyPatch %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 					}
 				case "full":
-					dataBus.ApplyFull(msg.Nodename, &msg.Full)
+					daemonData.ApplyFull(msg.Nodename, &msg.Full)
 				case "ping":
-					dataBus.ApplyPing(msg.Nodename)
+					daemonData.ApplyPing(msg.Nodename)
 				}
 				count++
 			}

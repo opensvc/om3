@@ -16,6 +16,7 @@ import (
 
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
 	"opensvc.com/opensvc/daemon/handlers/objecthandler"
@@ -103,7 +104,7 @@ func daemonMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 func daemondataMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemonctx.WithDaemonDataCmd(r.Context(), daemonctx.DaemonDataCmd(parent))
+			ctx := daemondata.ContextWithBus(r.Context(), daemondata.BusFromContext(parent))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

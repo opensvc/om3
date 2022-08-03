@@ -115,7 +115,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan []byte))
 
 	dataCmd, dataCmdCancel := daemondata.Start(t.ctx)
-	t.ctx = daemonctx.WithDaemonDataCmd(t.ctx, dataCmd)
+	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 
 	defer func() {
 		t.cancelFuncs = append(t.cancelFuncs, func() {

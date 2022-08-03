@@ -7,7 +7,6 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
@@ -42,7 +41,7 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
-		dataCmd := daemonctx.DaemonDataCmd(r.Context())
+		dataCmd := daemondata.BusFromContext(r.Context())
 		log.Debug().Msgf("SetInstanceStatus on %s", postStatus.Path)
 		if err := daemondata.SetInstanceStatus(r.Context(), dataCmd, p, postStatus.Data); err != nil {
 			log.Error().Err(err).Msgf("SetInstanceStatus %s", p)

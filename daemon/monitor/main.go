@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -93,9 +93,9 @@ func (t *T) loop() {
 }
 
 func (t *T) aLoop() {
-	dataCmd := daemondatactx.DaemonData(t.ctx)
-	dataCmd.CommitPending(t.ctx)
-	msg := dataCmd.GetHbMessage(t.ctx)
+	daemonData := daemondata.FromContext(t.ctx)
+	daemonData.CommitPending(t.ctx)
+	msg := daemonData.GetHbMessage(t.ctx)
 	if msg == nil {
 		t.log.Debug().Msg("don't queue a <nil> hb message")
 		return

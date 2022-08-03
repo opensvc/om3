@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
 
@@ -31,7 +31,7 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	databus := daemondatactx.DaemonData(r.Context())
+	databus := daemondata.FromContext(r.Context())
 	status := databus.GetStatus().
 		WithSelector(payload.Selector).
 		WithNamespace(payload.Namespace)
