@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth/v5"
@@ -17,7 +19,16 @@ import (
 	"opensvc.com/opensvc/daemon/daemonenv"
 )
 
+type (
+	// TokenResponse is the struct returned as response to GET /auth/token
+	TokenResponse struct {
+		Token         string    `json:"token"`
+		TokenExpireAt time.Time `json:"token_expire_at"`
+	}
+)
+
 var (
+	tokenStrategy    auth.Strategy
 	TokenAuth        *jwtauth.JWTAuth
 	verifyBytes      []byte
 	verifyKey        *rsa.PublicKey
@@ -37,12 +48,13 @@ func initToken() auth.Strategy {
 	if err := initJWT(); err != nil {
 		return nil
 	}
-	return token.New(token.NoOpAuthenticate, cache)
+	tokenStrategy = token.New(token.NoOpAuthenticate, cache)
+	return tokenStrategy
 }
 
 func initJWT() error {
-	jwtSignKeyFile = daemonenv.KeyFile()
-	jwtVerifyKeyFile = daemonenv.CertFile()
+	jwtSignKeyFile = daemonenv.CAKeyFile()
+	jwtVerifyKeyFile = daemonenv.CACertFile()
 
 	if jwtSignKeyFile == "" && jwtVerifyKeyFile == "" {
 		return fmt.Errorf("the system/sec/cert-{clustername} listener private_key and certificate must exist.")
@@ -77,4 +89,39 @@ func initJWT() error {
 		//	TokenAuth = jwtauth.New("HMAC", []byte(jwtSignKey), nil)
 	}
 	return nil
+}
+
+//
+// GetToken     godoc
+// @Summary      Get a authentication token
+// @Description  Get a authentication token from a user's credentials submitted with basic login.
+// @Security     BasicAuth
+// @Security     BearerAuth
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  TokenResponse
+// @Failure      403  {string}  string
+// @Failure      500  {string}  string  "Internal Server Error"
+// @Router       /auth/user/token  [get]
+//
+func GetToken(w http.ResponseWriter, r *http.Request) {
+	exp := time.Minute * 10
+	user := auth.User(r)
+	tokenExpireAt := time.Now().Add(exp)
+	claims := map[string]interface{}{
+		"exp":        tokenExpireAt.Unix(),
+		"authorized": true,
+		"grant":      user.GetExtensions()["grant"],
+	}
+	_, token, err := TokenAuth.Encode(claims)
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+	auth.Append(tokenStrategy, token, user)
+
+	jsonEncode(w, TokenResponse{
+		TokenExpireAt: tokenExpireAt,
+		Token:         token,
+	})
 }

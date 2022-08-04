@@ -27,9 +27,8 @@ type (
 )
 
 var (
-	strategies    union.Union
-	TokenStrategy auth.Strategy
-	cache         libcache.Cache
+	strategies union.Union
+	cache      libcache.Cache
 )
 
 // User returns the logged in user information stored in the request context.
@@ -106,16 +105,18 @@ func (t uxStrategy) Authenticate(ctx context.Context, r *http.Request) (auth.Inf
 func initCache() error {
 	cache = libcache.FIFO.New(0)
 	cache.SetTTL(time.Minute * 5)
-	q := make(chan libcache.Event)
-	cache.Notify(q, libcache.Remove)
-	go func() {
-		for {
-			select {
-			case ev := <-q:
-				cache.Peek(ev.Key)
+	/*
+		q := make(chan libcache.Event)
+		cache.Notify(q, libcache.Remove)
+		go func() {
+			for {
+				select {
+				case ev := <-q:
+					cache.Peek(ev.Key)
+				}
 			}
-		}
-	}()
+		}()
+	*/
 	return nil
 }
 

@@ -16,7 +16,15 @@ var (
 	HeaderMultiplexed = "o-multiplexed"
 )
 
+func CAKeyFile() string {
+	return filepath.Join(rawconfig.Paths.Certs, "ca_private_key")
+}
+
 func CACertFile() string {
+	return filepath.Join(rawconfig.Paths.Certs, "ca_certificate_chain")
+}
+
+func CAsCertFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "ca_certificates")
 }
 

@@ -20,7 +20,7 @@ func initX509() auth.Strategy {
 }
 
 func ParseCertificate() *crypto_x509.Certificate {
-	ca, err := ioutil.ReadFile(daemonenv.CACertFile())
+	ca, err := ioutil.ReadFile(daemonenv.CAsCertFile())
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("read ca certificate")
 		return nil
