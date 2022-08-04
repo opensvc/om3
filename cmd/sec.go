@@ -54,6 +54,8 @@ func init() {
 		cmdInstall commands.CmdKeystoreInstall
 		cmdRemove  commands.CmdKeystoreRemove
 		cmdGenCert commands.CmdSecGenCert
+		cmdFullPEM commands.CmdFullPEM
+		cmdPKCS    commands.CmdPKCS
 	)
 
 	kind := "sec"
@@ -68,6 +70,8 @@ func init() {
 	cmdEdit.Init(kind, head, &selectorFlag)
 	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
+	cmdFullPEM.Init(kind, head, &selectorFlag)
+	cmdPKCS.Init(kind, head, &selectorFlag)
 	cmdGenCert.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdKeys.Init(kind, head, &selectorFlag)
