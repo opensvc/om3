@@ -15,6 +15,8 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/xerrors"
+	"opensvc.com/opensvc/util/xmap"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -131,6 +133,20 @@ func (t T) String() string {
 
 func (t T) IsZero() bool {
 	return t.Name == "" && t.Namespace == "" && t.Kind == kind.Invalid
+}
+
+// ParseList returns a new path.L from a []string path list.
+func ParseList(l ...string) (L, error) {
+	var errs error
+	paths := make(L, 0)
+	for _, s := range l {
+		if p, err := Parse(s); err != nil {
+			xerrors.Append(errs, err)
+		} else {
+			paths = append(paths, p)
+		}
+	}
+	return paths, errs
 }
 
 // Parse returns a new path struct from a path string representation
@@ -296,6 +312,15 @@ func (t L) StrMap() M {
 		m[p.String()] = nil
 	}
 	return m
+}
+
+// Namespaces return the list of unique namespaces in L
+func (t L) Namespaces() []string {
+	m := make(map[string]interface{})
+	for _, p := range t {
+		m[p.Namespace] = nil
+	}
+	return xmap.Keys(m)
 }
 
 func (t M) Has(s string) bool {
