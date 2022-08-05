@@ -153,6 +153,11 @@ func (t *T) MainStop() error {
 
 func (t *T) loop(ctx context.Context) {
 	t.log.Info().Msg("loop started")
+	if err := startCertFS(); err != nil {
+		t.log.Err(err).Msgf("start certificates volatile fs")
+	} else {
+		defer stopCertFS()
+	}
 	t.aLoop()
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
