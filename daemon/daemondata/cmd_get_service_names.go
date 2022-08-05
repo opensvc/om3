@@ -1,6 +1,10 @@
 package daemondata
 
-import "context"
+import (
+	"context"
+
+	"opensvc.com/opensvc/core/path"
+)
 
 type opGetServiceNames struct {
 	services chan<- []string
@@ -33,4 +37,10 @@ func (t T) GetServiceNames() []string {
 		services: services,
 	}
 	return <-services
+}
+
+func (t T) GetNamespaces() []string {
+	l := t.GetServiceNames()
+	paths, _ := path.ParseList(l...)
+	return paths.Namespaces()
 }
