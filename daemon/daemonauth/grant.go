@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/shaj13/go-guardian/v2/auth"
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/daemon/daemondata"
 )
 
 type (
@@ -49,6 +51,7 @@ func NewGrants(l ...string) Grants {
 	return t
 }
 
+// List return the grants in the string slice format
 func (t Grants) List() []string {
 	l := make([]string, len(t))
 	for i, g := range t {
@@ -57,15 +60,57 @@ func (t Grants) List() []string {
 	return l
 }
 
+// Extensions return the grants in go-guardian Extensions format.
 func (t Grants) Extensions() auth.Extensions {
 	ext := make(auth.Extensions)
 	ext["grant"] = t.List()
 	return ext
 }
 
+// HasRoot returns true if any of the grants is "root"
 func (t Grants) HasRoot() bool {
 	for _, g := range t {
 		if g.Role() == RoleRoot {
+			return true
+		}
+	}
+	return false
+}
+
+// FilterPaths return the list of path.T allowed by grants of <role>
+func (t Grants) FilterPaths(r *http.Request, role Role, l path.L) path.L {
+	fl := make(path.L, 0)
+	for _, p := range l {
+		if t.MatchPath(r, role, p) {
+			fl = append(fl, p)
+		}
+	}
+	return fl
+}
+
+// MatchPath returns true if path <p> is allowed by grants of <role>
+func (t Grants) MatchPath(r *http.Request, role Role, p path.T) bool {
+	for _, grant := range t {
+		if grant.Match(r, role, p.Namespace) {
+			return true
+		}
+	}
+	return false
+}
+
+// Match returns true if the path <p> is allowed by this grant
+func (t Grant) Match(r *http.Request, role Role, namespace string) bool {
+	if t.Role() != role {
+		return false
+	}
+	if namespace == "" {
+		return true
+	}
+	if t.NamespaceSelector() == "" {
+		return true
+	}
+	for _, ns := range t.Namespaces(r) {
+		if ns == namespace {
 			return true
 		}
 	}
@@ -109,4 +154,11 @@ func (t Grant) Role() Role {
 func (t Grant) NamespaceSelector() string {
 	_, selector := t.split()
 	return selector
+}
+
+// Namespaces returns the list of unique namespace names found in the
+// daemon data.
+func (t Grant) Namespaces(r *http.Request) []string {
+	bus := daemondata.FromContext(r.Context())
+	return bus.GetNamespaces()
 }
