@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/daemonps"
@@ -47,7 +48,10 @@ func allowEventEvent(r *http.Request, ev event.Event, selected path.M) bool {
 
 func allowEvent(r *http.Request, ev event.Event, payload eventsPayload) bool {
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "daemonhandler.allowEvent").Logger()
-	// TODO: bypass if root grant
+	grants := daemonauth.UserGrants(r)
+	if grants.HasRoot() {
+		return true
+	}
 
 	// selected paths
 	paths, err := objectselector.NewSelection(
@@ -58,9 +62,8 @@ func allowEvent(r *http.Request, ev event.Event, payload eventsPayload) bool {
 		log.Error().Err(err).Msg("expand selector")
 		return false
 	}
+	grants.FilterPaths(r, daemonauth.RoleGuest, paths)
 	selected := paths.StrMap()
-
-	// TODO: get user allowed object StrMap (from grants), merge with "selected"
 
 	switch {
 	case ev.Kind == "patch":
