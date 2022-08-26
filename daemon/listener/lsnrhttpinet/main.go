@@ -101,14 +101,16 @@ func (t *T) start(ctx context.Context) error {
 		Addr:    t.addr,
 		Handler: routehttp.New(ctx),
 		TLSConfig: &tls.Config{
-			ClientAuth: tls.RequestClientCert,
+			ClientAuth: tls.NoClientCert,
 		},
 	}
 	go func() {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
-		if err != http.ErrServerClosed && !strings.Contains(err.Error(), "use of closed network connection") {
-			t.log.Debug().Err(err).Msg("listener ends with unexpected error ")
+		if err == http.ErrServerClosed || strings.Contains(err.Error(), "use of closed network connection") {
+			t.log.Debug().Err(err).Msg("listener ends with expected error ")
+		} else {
+			t.log.Error().Err(err).Msg("listener ends with unexpected error ")
 		}
 		t.log.Info().Msg("listener stopped")
 	}()

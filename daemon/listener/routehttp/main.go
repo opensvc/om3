@@ -47,6 +47,8 @@ func New(ctx context.Context) *T {
 	mux.Get("/object_selector", objecthandler.GetSelector)
 	mux.Get("/object_config", objecthandler.GetConfig)
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
+	mux.Get("/node_log", daemonhandler.GetNodeLog)
+	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
 	mux.Mount("/daemon", t.newDaemonRouter())
 	mux.Mount("/object", objecthandler.Router())
 	mux.Mount("/debug", middleware.Profiler())

@@ -22,13 +22,13 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 	payload := getDaemonStatus{}
 	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else if len(reqBody) == 0 {
 		// pass
 	} else if err := json.Unmarshal(reqBody, &payload); err != nil {
 		log.Error().Err(err).Msg("request body unmarshal")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	databus := daemondata.FromContext(r.Context())
@@ -40,7 +40,7 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(status)
 	if err != nil {
 		log.Error().Err(err).Msg("marshal status")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	_, _ = write(b)

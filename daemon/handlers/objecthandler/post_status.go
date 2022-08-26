@@ -29,7 +29,7 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 	postStatus := PostObjectStatus{}
 	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else if err := json.Unmarshal(reqBody, &postStatus); err != nil {
 		log.Error().Err(err).Msg("request body unmarshal")
@@ -52,11 +52,11 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(response)
 	if err != nil {
 		log.Error().Err(err).Msg("Marshal response")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if _, err := write(b); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }

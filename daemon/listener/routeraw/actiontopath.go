@@ -8,6 +8,11 @@ type (
 )
 
 var actionToPath = map[string]rawToHttp{
+	"node_log":     {"GET", "/node/log"},
+	"node/log":     {"GET", "/node/log"},
+	"node_backlog": {"GET", "/node/backlog"},
+	"node/backlog": {"GET", "/node/backlog"},
+
 	"daemon_running": {"GET", "/daemon/running"},
 	"daemon_status":  {"GET", "/daemon/status"},
 	"daemon_stop":    {"POST", "/daemon/stop"},

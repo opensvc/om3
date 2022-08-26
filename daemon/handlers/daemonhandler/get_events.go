@@ -109,7 +109,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	payload, err := getEventsPayload(w, r)
 	if err != nil {
 		log.Error().Err(err).Msg("parse request body")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	// prepare the SSE response
