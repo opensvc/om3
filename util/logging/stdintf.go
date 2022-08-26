@@ -13,15 +13,15 @@ import (
 var _ StdLogger = &stdlog.Logger{}
 
 type StdLogger interface {
-	Panic(v ...interface{})
-	Panicln(v ...interface{})
-	Panicf(format string, v ...interface{})
-	Fatal(v ...interface{})
-	Fatalln(v ...interface{})
-	Fatalf(format string, v ...interface{})
-	Print(v ...interface{})
-	Println(v ...interface{})
-	Printf(format string, v ...interface{})
+	Panic(v ...any)
+	Panicln(v ...any)
+	Panicf(format string, v ...any)
+	Fatal(v ...any)
+	Fatalln(v ...any)
+	Fatalf(format string, v ...any)
+	Print(v ...any)
+	Println(v ...any)
+	Printf(format string, v ...any)
 }
 
 func StandardLogger(log zerolog.Logger) StdLogger {
@@ -32,41 +32,41 @@ type stdLogger struct {
 	log zerolog.Logger
 }
 
-func (s *stdLogger) Panic(v ...interface{}) {
+func (s *stdLogger) Panic(v ...any) {
 	s.log.Panic().Msg(fmt.Sprint(v...))
 }
 
-func (s *stdLogger) Panicln(v ...interface{}) {
+func (s *stdLogger) Panicln(v ...any) {
 	s.log.Panic().Msg(fmt.Sprintln(v...))
 }
 
-func (s *stdLogger) Panicf(format string, v ...interface{}) {
+func (s *stdLogger) Panicf(format string, v ...any) {
 	s.log.Panic().Msg(fmt.Sprintf(format, v...))
 }
 
-func (s *stdLogger) Fatal(v ...interface{}) {
+func (s *stdLogger) Fatal(v ...any) {
 	s.log.Fatal().Msg(fmt.Sprint(v...))
 	os.Exit(1)
 }
 
-func (s *stdLogger) Fatalln(v ...interface{}) {
+func (s *stdLogger) Fatalln(v ...any) {
 	s.log.Fatal().Msg(fmt.Sprintln(v...))
 	os.Exit(1)
 }
 
-func (s *stdLogger) Fatalf(format string, v ...interface{}) {
+func (s *stdLogger) Fatalf(format string, v ...any) {
 	s.log.Fatal().Msg(fmt.Sprintf(format, v...))
 	os.Exit(1)
 }
 
-func (s *stdLogger) Print(v ...interface{}) {
+func (s *stdLogger) Print(v ...any) {
 	s.log.Info().Msg(fmt.Sprint(v...))
 }
 
-func (s *stdLogger) Println(v ...interface{}) {
+func (s *stdLogger) Println(v ...any) {
 	s.log.Info().Msg(fmt.Sprintln(v...))
 }
 
-func (s *stdLogger) Printf(format string, v ...interface{}) {
+func (s *stdLogger) Printf(format string, v ...any) {
 	s.log.Info().Msg(fmt.Sprintf(format, v...))
 }
