@@ -58,6 +58,7 @@ type (
 		SetVolatile(v bool)
 		Status(context.Context) (instance.Status, error)
 		FreshStatus(context.Context) (instance.Status, error)
+		Nodes() []string
 	}
 )
 

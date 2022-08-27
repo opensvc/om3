@@ -12,16 +12,7 @@ import (
 // GetNodeLog describes the node log request options.
 type GetNodeLog struct {
 	client  GetStreamer
-	filters map[string]interface{}
-}
-
-func (t *GetNodeLog) SetFilters(m map[string]interface{}) *GetNodeLog {
-	t.filters = m
-	return t
-}
-
-func (t GetNodeLog) Filters() map[string]interface{} {
-	return t.filters
+	Filters map[string]interface{}
 }
 
 // NewGetNodeLog allocates a GetNodeLog struct and sets
@@ -29,7 +20,7 @@ func (t GetNodeLog) Filters() map[string]interface{} {
 func NewGetNodeLog(t GetStreamer) *GetNodeLog {
 	options := &GetNodeLog{
 		client:  t,
-		filters: make(map[string]interface{}),
+		Filters: make(map[string]interface{}),
 	}
 	return options
 }
@@ -67,6 +58,6 @@ func (t GetNodeLog) stream() (chan []byte, error) {
 func (t GetNodeLog) newRequest() *request.T {
 	req := request.New()
 	req.Action = "node_log"
-	req.Options["filters"] = t.filters
+	req.Options["filters"] = t.Filters
 	return req
 }

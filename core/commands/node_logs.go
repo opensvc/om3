@@ -72,7 +72,8 @@ func (t *NodeLogs) stream(node string) {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	streamer := c.NewGetNodeLog().SetFilters(t.Filters())
+	streamer := c.NewGetNodeLog()
+	streamer.Filters = t.Filters()
 	events, err := streamer.Do()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -117,8 +118,8 @@ func (t *NodeLogs) remote() error {
 	return nil
 }
 
-func (t NodeLogs) Filters() map[string]interface{} {
-	filters := make(map[string]interface{})
+func (t NodeLogs) Filters() map[string]any {
+	filters := make(map[string]any)
 	if t.SID != "" {
 		filters["sid"] = t.SID
 	}

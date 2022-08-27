@@ -30,4 +30,9 @@ var actionToPath = map[string]rawToHttp{
 	"object_selector": {"GET", "/object/selector"},
 	"object/status":   {"POST", "/object/status"},
 	"object_status":   {"POST", "/object/status"},
+
+	"objects_log":     {"GET", "/objects/log"},
+	"objects/log":     {"GET", "/objects/log"},
+	"objects_backlog": {"GET", "/objects/backlog"},
+	"objects/backlog": {"GET", "/objects/backlog"},
 }
