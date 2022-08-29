@@ -82,10 +82,9 @@ func GetObjectsLog(w http.ResponseWriter, r *http.Request) {
 	grants := daemonauth.UserGrants(r)
 	allowed := make(path.L, 0)
 	for _, p := range payload.Paths {
-		if !grants.MatchPath(r, daemonauth.RoleGuest, p) {
-			continue
+		if grants.HasRoot() || grants.MatchPath(r, daemonauth.RoleGuest, p) {
+			allowed = append(allowed, p)
 		}
-		allowed = append(allowed, p)
 	}
 
 	// prepare the SSE response
