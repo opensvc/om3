@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
@@ -29,15 +29,18 @@ func GetSelector(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	selector := payload.ObjectSelector
 	daemonData := daemondata.FromContext(r.Context())
-	paths := daemonData.GetServiceNames()
-	matchedPaths := make([]string, 0)
-	for _, ps := range paths {
-		p, _ := path.Parse(ps)
-		if p.Match(selector) {
-			matchedPaths = append(matchedPaths, ps)
-		}
+	paths := daemonData.GetServicePaths()
+	selection := objectselector.NewSelection(
+		payload.ObjectSelector,
+		objectselector.SelectionWithInstalled(paths),
+		objectselector.SelectionWithLocal(true),
+	)
+	matchedPaths, err := selection.Expand()
+	if err != nil {
+		log.Error().Err(err).Msg("expand selection")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	b, err := json.Marshal(matchedPaths)
 	if err != nil {

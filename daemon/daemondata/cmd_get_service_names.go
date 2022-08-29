@@ -28,8 +28,7 @@ func (o opGetServiceNames) call(ctx context.Context, d *data) {
 	}
 }
 
-// GetServiceNames returns service names from cluster nodes dataset config
-//
+// GetServiceNames returns the clusterwide list of path.T.String() parsed from the cluster dataset, in
 // committed.Monitor.Nodes[*].Services.Config[*]
 func (t T) GetServiceNames() []string {
 	services := make(chan []string)
@@ -39,8 +38,14 @@ func (t T) GetServiceNames() []string {
 	return <-services
 }
 
-func (t T) GetNamespaces() []string {
+// GetServicePaths returns the clusterwide path.L parsed from the cluster dataset, in
+// committed.Monitor.Nodes[*].Services.Config[*]
+func (t T) GetServicePaths() path.L {
 	l := t.GetServiceNames()
 	paths, _ := path.ParseList(l...)
-	return paths.Namespaces()
+	return paths
+}
+
+func (t T) GetNamespaces() []string {
+	return t.GetServicePaths().Namespaces()
 }

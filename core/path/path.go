@@ -227,7 +227,7 @@ func (t T) Match(pattern string) bool {
 		return true
 	}
 	l := strings.Split(pattern, "/")
-	f := fnmatch.FNM_IGNORECASE | fnmatch.FNM_PATHNAME
+	f := fnmatch.FNM_IGNORECASE
 	if strings.Contains(pattern, "**") {
 		s := t.FQN()
 		if fnmatch.Match(pattern, s, f) {
