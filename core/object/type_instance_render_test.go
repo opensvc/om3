@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/testhelper"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func TestInstanceStates_Render(t *testing.T) {
@@ -25,9 +24,9 @@ func TestInstanceStates_Render(t *testing.T) {
 			var instanceStatus instance.Status
 			err = json.Unmarshal(b, &instanceStatus)
 			require.Nil(t, err)
-			timestampZero := timestamp.New(time.Unix(0, 0))
+			var timeZero time.Time
 			instanceState := instance.States{
-				Node:   instance.Node{Name: "node1", Frozen: timestampZero},
+				Node:   instance.Node{Name: "node1", Frozen: timeZero},
 				Status: instanceStatus,
 			}
 			goldenFile := filepath.Join("test-fixtures", name+".render")
