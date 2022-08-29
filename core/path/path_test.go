@@ -439,7 +439,10 @@ func TestConfigFile(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			_ = testhelper.SetupEnv(t, testhelper.Env{Root: test.root})
+			_ = testhelper.SetupEnv(testhelper.Env{
+				TestingT: t,
+				Root:     test.root,
+			})
 			p, _ := New(test.name, test.namespace, test.kind)
 			require.Equal(t, test.cf, p.ConfigFile())
 		})

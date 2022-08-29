@@ -50,9 +50,9 @@ func SetupEnv(env Env) Env {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
 
-	require.NoError(env.TestingT, os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm))
-	require.NoError(env.TestingT, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm))
-	require.NoError(env.TestingT, os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm))
+	os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm)
+	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm)
+	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm)
 
 	return env
 }
