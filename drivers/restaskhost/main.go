@@ -320,3 +320,11 @@ func (t T) notifyRunDone() error {
 	t.Log().Debug().Msg("daemon notified the run is done")
 	return nil
 }
+
+func (t T) ScheduleOptions() resource.ScheduleOptions {
+	return resource.ScheduleOptions{
+		Action: "run",
+		Option: "schedule",
+		Base:   "",
+	}
+}

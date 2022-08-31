@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -28,12 +29,24 @@ type (
 		routineTrace routineTracer
 		loopDelay    time.Duration
 
-		m scheduleMap
+		events  chan any
+		delayed delayedMap
 	}
-	scheduleMap   map[string]schedule.Table
+	delayedMap   map[string]delayedEntry
+	delayedEntry struct {
+		Queued   time.Time
+		schedule schedule.Entry
+		cancel   func()
+	}
 	routineTracer interface {
 		Trace(string) func()
 		Stats() routinehelper.Stat
+	}
+
+	cmdRunDone struct {
+		schedule schedule.Entry
+		begin    time.Time
+		end      time.Time
 	}
 )
 
@@ -41,7 +54,9 @@ func New(opts ...funcopt.O) *T {
 	t := &T{
 		loopDelay: time.Second,
 		log:       log.Logger.With().Str("name", "scheduler").Logger(),
-		m:         make(scheduleMap),
+		//m:         make(scheduleMap),
+		events:  make(chan any),
+		delayed: make(delayedMap),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -54,6 +69,81 @@ func New(opts ...funcopt.O) *T {
 		subdaemon.WithRoutineTracer(&t.TT),
 	)
 	return t
+}
+
+func entryKey(p path.T, k string) string {
+	return fmt.Sprintf("%s:%s", p, k)
+}
+
+func (t delayedMap) Add(e schedule.Entry, cancel func()) {
+	k := entryKey(e.Path, e.Action)
+	t[k] = delayedEntry{
+		Queued:   time.Now(),
+		schedule: e,
+		cancel:   cancel,
+	}
+}
+
+func (t delayedMap) Del(e schedule.Entry) {
+	k := entryKey(e.Path, e.Action)
+	delayed, ok := t[k]
+	if !ok {
+		return
+	}
+	delayed.cancel()
+	delete(t, k)
+}
+
+func (t delayedMap) DelPath(p path.T) {
+	for _, e := range t {
+		if e.schedule.Path != p {
+			continue
+		}
+		t.Del(e.schedule)
+	}
+}
+
+func (t delayedMap) Purge() {
+	for k, e := range t {
+		e.cancel()
+		delete(t, k)
+	}
+}
+
+func (t *T) scheduleEntry(e schedule.Entry) {
+	now := time.Now() // keep before GetNext call
+	next, _, err := e.GetNext()
+	if err != nil {
+		t.log.Error().Err(err).Str("action", e.Action).Str("definition", e.Definition).Msg("get next")
+		t.delayed.Del(e)
+		return
+	}
+	if next.Before(now) {
+		t.delayed.Del(e)
+		return
+	}
+	e.Next = next
+	delay := next.Sub(now)
+	t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Msgf("schedule to run at %s (in %s)", next, delay)
+	tmr := time.AfterFunc(delay, func() {
+		begin := time.Now()
+		t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Msg("run")
+		// TODO
+		end := time.Now()
+		t.events <- cmdRunDone{
+			schedule: e,
+			begin:    begin,
+			end:      end,
+		}
+	})
+	cancel := func() {
+		if tmr == nil {
+			return
+		}
+		tmr.Stop()
+	}
+	t.delayed.Add(e, cancel)
+	return
 }
 
 func (t *T) MainStart(ctx context.Context) error {
@@ -72,6 +162,7 @@ func (t *T) MainStart(ctx context.Context) error {
 
 func (t *T) MainStop() error {
 	t.cancel()
+	t.delayed.Purge()
 	return nil
 }
 
@@ -80,12 +171,11 @@ func (t *T) loop() {
 	//daemonData := daemondata.FromContext(t.ctx)
 	//daemonData.GetServicePaths()
 
-	events := make(chan any)
 	relayEvent := func(ev any) {
-		events <- ev
+		t.events <- ev
 	}
 	bus := pubsub.BusFromContext(t.ctx)
-	// TODO
+	// TODO: node.conf events
 	//defer daemonps.UnSub(bus, daemonps.SubNodeCfg(bus, pubsub.OpUpdate, "scheduler-on-cfg-create", "", relayEvent))
 	//defer daemonps.UnSub(bus, daemonps.SubNodeCfg(bus, pubsub.OpDelete, "scheduler-on-cfg-delete", "", relayEvent))
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "scheduler-on-cfg-create", "", relayEvent))
@@ -93,8 +183,14 @@ func (t *T) loop() {
 
 	for {
 		select {
-		case ev := <-events:
+		case ev := <-t.events:
 			switch c := ev.(type) {
+			case cmdRunDone:
+				// cleanup routine
+				t.delayed.Del(c.schedule)
+				// schedule next run
+				c.schedule.Last = c.begin
+				t.scheduleEntry(c.schedule)
 			case moncmd.CfgUpdated:
 				// triggered on daemon start up too
 				t.schedule(c.Path)
@@ -120,16 +216,11 @@ func (t *T) schedule(p path.T) {
 		// only actor objects have scheduled actions
 		return
 	}
-	ps := p.String()
-	t.m[ps] = o.PrintSchedule()
 	for _, e := range o.PrintSchedule() {
-		// TODO
-		e.Next = time.Time{}
-		t.log.Info().Msgf("schedule %s %s", ps, e.Key)
+		t.scheduleEntry(e)
 	}
 }
 
 func (t *T) unschedule(p path.T) {
-	ps := p.String()
-	delete(t.m, ps)
+	t.delayed.DelPath(p)
 }
