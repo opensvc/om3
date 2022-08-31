@@ -1,4 +1,4 @@
-package monitor
+package scheduler
 
 import (
 	"opensvc.com/opensvc/daemon/routinehelper"

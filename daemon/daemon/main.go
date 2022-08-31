@@ -20,6 +20,7 @@ import (
 	"opensvc.com/opensvc/daemon/listener"
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/routinehelper"
+	"opensvc.com/opensvc/daemon/scheduler"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/pubsub"
@@ -59,6 +60,11 @@ var (
 			return hb.New(
 				hb.WithRoutineTracer(&t.TT),
 				hb.WithRootDaemon(t),
+			)
+		},
+		func(t *T) subdaemon.Manager {
+			return scheduler.New(
+				scheduler.WithRoutineTracer(&t.TT),
 			)
 		},
 	}

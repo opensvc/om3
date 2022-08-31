@@ -22,17 +22,17 @@ type (
 
 func NewTable(entries ...Entry) Table {
 	t := make([]Entry, 0)
-	return Table(t).AddEntries(entries)
+	return Table(t).AddEntries(entries...)
 }
 
 func (t Table) Add(i interface{}) Table {
 	switch o := i.(type) {
-	case Entry:
-		return t.AddEntry(o)
 	case Table:
 		return t.AddTable(o)
-	case []Entry:
+	case Entry:
 		return t.AddEntries(o)
+	case []Entry:
+		return t.AddEntries(o...)
 	default:
 		return t
 	}
@@ -42,10 +42,6 @@ func (t Table) AddTable(l Table) Table {
 	return append(t, l...)
 }
 
-func (t Table) AddEntries(l []Entry) Table {
+func (t Table) AddEntries(l ...Entry) Table {
 	return append(t, l...)
-}
-
-func (t Table) AddEntry(e Entry) Table {
-	return append(t, e)
 }
