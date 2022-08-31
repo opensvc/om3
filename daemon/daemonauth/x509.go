@@ -42,6 +42,8 @@ func CreateVerifyOptions() crypto_x509.VerifyOptions {
 	opts := crypto_x509.VerifyOptions{}
 	opts.KeyUsages = []crypto_x509.ExtKeyUsage{crypto_x509.ExtKeyUsageClientAuth}
 	opts.Roots = crypto_x509.NewCertPool()
-	opts.Roots.AddCert(ParseCertificate())
+	if cert := ParseCertificate(); cert != nil {
+		opts.Roots.AddCert(cert)
+	}
 	return opts
 }
