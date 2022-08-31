@@ -14,6 +14,7 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
@@ -64,6 +65,7 @@ type (
 		SetUnprovisioned(context.Context) error
 		SyncResync(context.Context) error
 		Enter(context.Context, string) error
+		PrintSchedule() schedule.Table
 	}
 )
 
