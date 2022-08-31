@@ -11,12 +11,16 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
+	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
 	"opensvc.com/opensvc/daemon/handlers/objecthandler"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -30,18 +34,26 @@ type (
 func New(ctx context.Context) *T {
 	t := &T{}
 	mux := chi.NewRouter()
+	mux.Use(listenAddrMiddleWare(ctx))
+	mux.Use(daemonauth.MiddleWare(ctx))
 	mux.Use(daemonMiddleWare(ctx))
 	mux.Use(daemondataMiddleWare(ctx))
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
+	mux.Get("/auth/token", daemonauth.GetToken)
+	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Post("/object_monitor", objecthandler.PostMonitor)
 	mux.Post("/object_status", objecthandler.PostStatus)
 	mux.Get("/object_selector", objecthandler.GetSelector)
 	mux.Get("/object_config", objecthandler.GetConfig)
-	mux.Get("/daemon_status", daemonhandler.GetStatus)
+	mux.Get("/objects_log", objecthandler.GetObjectsLog)
+	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
+	mux.Get("/node_log", daemonhandler.GetNodeLog)
+	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
 	mux.Mount("/daemon", t.newDaemonRouter())
 	mux.Mount("/object", objecthandler.Router())
+	mux.Mount("/debug", middleware.Profiler())
 
 	t.mux = mux
 	return t
@@ -64,7 +76,7 @@ func (t *T) newDaemonRouter() *chi.Mux {
 func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemonctx.WithDaemonPubSubCmd(r.Context(), daemonctx.DaemonPubSubCmd(parent))
+			ctx := pubsub.ContextWithBus(r.Context(), pubsub.BusFromContext(parent)) // Why ?
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -77,7 +89,7 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 			log := daemonlogctx.Logger(parent)
 			ctx := daemonlogctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
 			ctx = daemonctx.WithUuid(ctx, reqUuid)
-			log.Info().Str("METHOD", r.Method).Str("PATH", r.URL.Path).Msg("request")
+			log.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -95,7 +107,18 @@ func daemonMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 func daemondataMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemonctx.WithDaemonDataCmd(r.Context(), daemonctx.DaemonDataCmd(parent))
+			ctx := daemondata.ContextWithBus(r.Context(), daemondata.BusFromContext(parent))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// listenAddrMiddleWare adds the listen addr to the request context, for use by the ux auth middleware
+func listenAddrMiddleWare(parent context.Context) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			addr := daemonctx.ListenAddr(parent)
+			ctx := daemonctx.WithListenAddr(r.Context(), addr)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

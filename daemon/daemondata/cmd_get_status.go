@@ -1,14 +1,21 @@
 package daemondata
 
-import "opensvc.com/opensvc/core/cluster"
+import (
+	"context"
+
+	"opensvc.com/opensvc/core/cluster"
+)
 
 type opGetStatus struct {
 	status chan<- *cluster.Status
 }
 
-func (o opGetStatus) call(d *data) {
+func (o opGetStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetStatus
-	o.status <- d.pending.DeepCopy()
+	select {
+	case <-ctx.Done():
+	case o.status <- d.pending.DeepCopy():
+	}
 }
 
 func (t T) GetStatus() *cluster.Status {

@@ -2,21 +2,22 @@ package daemondata
 
 import (
 	"context"
+	"reflect"
 	"runtime"
 	"time"
 
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/callcount"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
 	caller interface {
-		call(*data)
+		call(context.Context, *data)
 	}
 
 	data struct {
@@ -31,7 +32,7 @@ type (
 		localNode       string
 		counterCmd      chan<- interface{}
 		log             zerolog.Logger
-		pubSub          chan<- interface{}
+		bus             *pubsub.Bus
 	}
 
 	gens       map[string]uint64
@@ -42,9 +43,9 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	counterCmd, cancel := callcount.Start(ctx, idToName)
 	defer cancel()
 	d := newData(counterCmd)
-	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemon-data").Logger()
+	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
 	d.log.Info().Msg("starting")
-	d.pubSub = daemonctx.DaemonPubSubCmd(ctx)
+	d.bus = pubsub.BusFromContext(ctx)
 
 	defer d.log.Info().Msg("stopped")
 	ticker := time.NewTicker(time.Second)
@@ -59,7 +60,7 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 				for {
 					select {
 					case c := <-cmdC:
-						dropCmd(c)
+						dropCmd(ctx, c)
 					case <-bg.Done():
 						d.log.Debug().Msg("drop pending cmds done")
 						return
@@ -67,14 +68,15 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 				}
 			}()
 
-			cancel()
+			//		cancel()
 			return
 		case <-ticker.C:
 			d.pending.Monitor.Routines = runtime.NumGoroutine()
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
-				c.call(d)
+				c.call(ctx, d)
 			} else {
+				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				counterCmd <- idUndef
 			}
 		}
@@ -83,27 +85,27 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 
 type (
 	errorSetter interface {
-		setError(err error)
+		setError(context.Context, error)
 	}
 
-	donneSetter interface {
-		setDone(bool)
+	doneSetter interface {
+		setDone(context.Context, bool)
 	}
 
 	dataByter interface {
-		setDataByte(b []byte)
+		setDataByte(context.Context, []byte)
 	}
 )
 
 // dropCmd drops commands with side effects
-func dropCmd(c interface{}) {
+func dropCmd(ctx context.Context, c interface{}) {
 	// TODO implement all side effects
 	switch cmd := c.(type) {
 	case errorSetter:
-		cmd.setError(nil)
-	case donneSetter:
-		cmd.setDone(true)
+		cmd.setError(ctx, nil)
+	case doneSetter:
+		cmd.setDone(ctx, true)
 	case dataByter:
-		cmd.setDataByte([]byte{})
+		cmd.setDataByte(ctx, []byte{})
 	}
 }

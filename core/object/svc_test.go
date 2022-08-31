@@ -5,16 +5,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/testhelper"
 
 	_ "opensvc.com/opensvc/core/driverdb"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/slog"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/key"
@@ -42,35 +41,21 @@ flag1 = /tmp/{fqdn}.1
 `)
 
 func TestMain(m *testing.M) {
-	switch os.Getenv("GO_TEST_MODE") {
-	case "":
-		// test mode
-		os.Setenv("GO_TEST_MODE", "off")
-		os.Exit(m.Run())
-
-	case "off":
-		// test bypass mode
-		cmd.ExecuteArgs(os.Args[1:])
-	}
+	testhelper.Main(m, cmd.ExecuteArgs)
 }
 
 func TestAppStart(t *testing.T) {
+	testhelper.Setup(t)
 	t.Run("conf1", func(t *testing.T) {
 		var conf []byte
 		conf = append(conf, sectionApp0...)
 		conf = append(conf, sectionApp1...)
 		conf = append(conf, sectionEnv...)
 
-		rawconfig.Load(map[string]string{
-			"osvc_root_path":    t.TempDir(),
-			"osvc_cluster_name": "test",
-		})
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-
 		p, err := path.Parse("conf1")
 		assert.NoError(t, err)
 
-		s, err := object.NewSvc(p, object.WithConfigData(conf), object.WithVolatile(true))
+		s, err := object.NewSvc(p, object.WithConfigData(conf))
 		assert.NoError(t, err)
 
 		fpath := s.Config().GetString(key.T{"env", "flag0"})

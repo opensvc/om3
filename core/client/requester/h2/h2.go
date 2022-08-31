@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/rawconfig"
 
@@ -23,8 +24,11 @@ import (
 type (
 	// T is the agent HTTP/2 requester
 	T struct {
-		Client http.Client `json:"-"`
-		URL    string      `json:"url"`
+		Certificate string
+		Username    string
+		Password    string      `json:"-"`
+		Client      http.Client `json:"-"`
+		URL         string      `json:"url"`
 	}
 )
 
@@ -73,24 +77,36 @@ func NewUDS(url string) (*T, error) {
 		},
 	}
 	r.URL = "http://localhost"
-	r.Client = http.Client{Transport: tp, Timeout: 30 * time.Second}
+	r.Client = http.Client{
+		Transport: tp,
+		Timeout:   5 * time.Second,
+	}
 	return r, nil
 }
 
-func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool) (*T, error) {
-	r := &T{}
-	cer, err := tls.LoadX509KeyPair(clientCertificate, clientKey)
-	if err != nil {
-		return nil, err
+func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, username, password string) (*T, error) {
+	r := &T{
+		Username: username,
+		Password: password,
 	}
 	tp := &http2.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecureSkipVerify,
-			Certificates:       []tls.Certificate{cer},
-		},
+		TLSClientConfig: &tls.Config{},
+	}
+	if (clientCertificate != "") && (clientKey != "") {
+		cer, err := tls.LoadX509KeyPair(clientCertificate, clientKey)
+		if err != nil {
+			return nil, err
+		}
+		tp.TLSClientConfig.Certificates = []tls.Certificate{cer}
+		tp.TLSClientConfig.InsecureSkipVerify = insecureSkipVerify
+	} else {
+		tp.TLSClientConfig.InsecureSkipVerify = true
 	}
 	r.URL = url
-	r.Client = http.Client{Transport: tp}
+	r.Client = http.Client{
+		Transport: tp,
+		Timeout:   5 * time.Second,
+	}
 	return r, nil
 }
 
@@ -102,6 +118,9 @@ func (t T) newRequest(method string, r request.T) (*http.Request, error) {
 		return nil, err
 	}
 	req.Header.Set("o-node", r.Node)
+	if t.Password != "" {
+		req.SetBasicAuth(t.Username, t.Password)
+	}
 	return req, nil
 }
 
@@ -123,6 +142,9 @@ func (t T) doReqReadResponse(method string, r request.T) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("%s: %s", r, resp.Status)
+	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -187,6 +209,9 @@ func (t T) GetStream(r request.T) (chan []byte, error) {
 }
 
 func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
+	if resp == nil {
+		return errors.Errorf("<nil> event")
+	}
 	br := bufio.NewReader(resp.Body)
 	delim := []byte{':', ' '}
 	defer resp.Body.Close()

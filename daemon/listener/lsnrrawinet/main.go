@@ -5,8 +5,9 @@ import (
 	"net"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/routeraw"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -17,8 +18,6 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
 		listener     *net.Listener
 		log          zerolog.Logger
 		routineTrace routineTracer
@@ -43,40 +42,35 @@ func New(opts ...funcopt.O) *T {
 		return nil
 	}
 	name := "lsnr-raw-inet"
-	t.log = daemonlogctx.Logger(t.ctx).With().
+	t.log = log.Logger.With().
 		Str("addr", t.addr).
 		Str("sub", name).
 		Logger()
-	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
 	t.T = subdaemon.New(
 		subdaemon.WithName(name),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
-		subdaemon.WithContext(t.ctx),
 	)
 	return t
 }
 
-func (t *T) MainStart() error {
-	t.log.Debug().Msg("mgr starting")
+func (t *T) MainStart(ctx context.Context) error {
+	ctx = daemonctx.WithListenAddr(ctx, t.addr)
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name())()
-		if err := t.start(); err != nil {
+		if err := t.start(ctx); err != nil {
 			t.log.Error().Err(err).Msgf("mgr start failure")
 		}
 		started <- true
 	}()
 	<-started
-	t.log.Debug().Msg("mgr started")
 	return nil
 }
 
 func (t *T) MainStop() error {
-	t.log.Debug().Msg("mgr stopping")
 	if err := t.stop(); err != nil {
 		t.log.Error().Err(err).Msg("mgr stop failure")
 	}
-	t.log.Debug().Msg("mgr stopped")
 	return nil
 }

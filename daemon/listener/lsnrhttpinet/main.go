@@ -2,12 +2,15 @@ package lsnrhttpinet
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/listener/routehttp"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -19,8 +22,6 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
 		listener     *http.Server
 		log          zerolog.Logger
 		routineTrace routineTracer
@@ -43,45 +44,43 @@ func New(opts ...funcopt.O) *T {
 		return nil
 	}
 	name := "lsnr-http-inet"
-	t.log = daemonlogctx.Logger(t.ctx).With().
-		Str("addr", t.addr).
-		Str("sub", name).
-		Logger()
-	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
+	t.log = log.Logger.With().Str("addr", t.addr).Str("sub", name).Logger()
 	t.T = subdaemon.New(
 		subdaemon.WithName("lsnr-http-inet"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
-		subdaemon.WithContext(t.ctx),
 	)
 	return t
 }
 
-func (t *T) MainStart() error {
-	t.log.Debug().Msg("mgr starting")
-	started := make(chan bool)
+func (t *T) MainStart(ctx context.Context) error {
+	ctx = daemonctx.WithListenAddr(ctx, t.addr)
+	started := make(chan error)
 	go func() {
 		defer t.Trace(t.Name())()
-		if err := t.start(); err != nil {
-			t.log.Error().Err(err).Msg("mgr start failure")
+		if err := t.start(ctx); err != nil {
+			started <- err
+			return
 		}
-		started <- true
+		started <- nil
 	}()
-	<-started
-	t.log.Debug().Msg("started")
+	if err := <-started; err != nil {
+		return err
+	}
 	return nil
 }
 
 func (t *T) MainStop() error {
-	t.log.Debug().Msg("mgr stopping")
 	if err := t.stop(); err != nil {
-		t.log.Error().Err(err).Msg("mgr stop failure")
+		return err
 	}
-	t.log.Debug().Msg("mgr stopped")
 	return nil
 }
 
 func (t *T) stop() error {
+	if t.listener == nil {
+		return nil
+	}
 	if err := (*t.listener).Close(); err != nil {
 		t.log.Error().Err(err).Msg("listener Close failure")
 		return err
@@ -90,22 +89,28 @@ func (t *T) stop() error {
 	return nil
 }
 
-func (t *T) start() error {
+func (t *T) start(ctx context.Context) error {
 	t.log.Info().Msg("listener starting")
+	for _, fname := range []string{t.certFile, t.keyFile} {
+		if !file.Exists(fname) {
+			return errors.Errorf("can't listen: %s does not exist", fname)
+		}
+	}
 	started := make(chan bool)
-	t.listener = &http.Server{Addr: t.addr, Handler: routehttp.New(t.ctx)}
+	t.listener = &http.Server{
+		Addr:    t.addr,
+		Handler: routehttp.New(ctx),
+		TLSConfig: &tls.Config{
+			ClientAuth: tls.NoClientCert,
+		},
+	}
 	go func() {
 		started <- true
-		for _, fname := range []string{t.certFile, t.keyFile} {
-			if !file.Exists(fname) {
-				t.log.Error().Msgf("can't listen: absent file %s", fname)
-				t.stop()
-				return
-			}
-		}
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
-		if err != http.ErrServerClosed && !strings.Contains(err.Error(), "use of closed network connection") {
-			t.log.Debug().Err(err).Msg("listener ends with unexpected error ")
+		if err == http.ErrServerClosed || strings.Contains(err.Error(), "use of closed network connection") {
+			t.log.Debug().Err(err).Msg("listener ends with expected error ")
+		} else {
+			t.log.Error().Err(err).Msg("listener ends with unexpected error ")
 		}
 		t.log.Info().Msg("listener stopped")
 	}()

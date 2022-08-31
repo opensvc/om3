@@ -6,29 +6,29 @@ import (
 
 type (
 	T struct {
+		*sync.RWMutex
 		enabled bool
-		lock    *sync.RWMutex
 	}
 )
 
 func New() *T {
-	return &T{lock: &sync.RWMutex{}}
+	return &T{RWMutex: &sync.RWMutex{}}
 }
 
 func (t *T) Enable() {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	t.enabled = true
 }
 
 func (t *T) Disable() {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	t.enabled = false
 }
 
 func (t *T) Enabled() bool {
-	t.lock.RLock()
-	defer t.lock.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.enabled == true
 }

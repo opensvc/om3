@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -9,6 +10,7 @@ import (
 	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/clientcontext"
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/funcopt"
 )
 
@@ -19,6 +21,8 @@ type (
 		insecureSkipVerify bool
 		clientCertificate  string
 		clientKey          string
+		username           string
+		password           string
 		requester          api.Requester
 	}
 )
@@ -101,6 +105,24 @@ func WithKey(s string) funcopt.O {
 	})
 }
 
+// WithUsername sets the username to use for login.
+func WithUsername(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.username = s
+		return nil
+	})
+}
+
+// WithPassword sets the password to use for login.
+func WithPassword(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.password = s
+		return nil
+	})
+}
+
 // configure allocates a new requester with a requester for the server found in Config,
 // or for the server found in Context.
 func (t *T) configure() error {
@@ -124,6 +146,8 @@ func (t *T) newRequester() (err error) {
 		t.url = "https://" + t.url[6:]
 	}
 	switch {
+	case t.url == "":
+		t.requester, err = reqh2.NewUDS(t.url)
 	case t.url == "raw", t.url == "raw://", t.url == "raw:///":
 		t.url = ""
 		t.requester, err = reqjsonrpc.New(t.url)
@@ -139,10 +163,14 @@ func (t *T) newRequester() (err error) {
 	case strings.HasSuffix(t.url, "h2.sock"):
 		t.requester, err = reqh2.NewUDS(t.url)
 	case strings.HasPrefix(t.url, reqh2.InetPrefix):
-		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify)
+		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password)
 	default:
-		t.url = ""
-		t.requester, err = reqh2.NewUDS(t.url)
+		// TODO: support username/password in url ?
+		if !strings.Contains(t.url, ":") {
+			t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
+		}
+		t.url = reqh2.InetPrefix + t.url
+		t.requester, err = reqh2.NewInet(t.url, "", "", t.insecureSkipVerify, t.username, t.password)
 	}
 	return err
 }

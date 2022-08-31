@@ -2,14 +2,14 @@ package moncmd
 
 import (
 	"context"
+	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
-	CfgFsWatcherCreate struct {
+	Exit struct {
 		Path     path.T
 		Filename string
 	}
@@ -44,7 +44,7 @@ type (
 		Path     path.T
 		Node     string
 		Filename string
-		Updated  timestamp.T
+		Updated  time.Time
 		Ctx      context.Context
 		Err      chan error
 	}

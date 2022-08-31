@@ -2,11 +2,15 @@ package listener
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/listener/lsnrhttpinet"
@@ -17,14 +21,13 @@ import (
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx          context.Context
-		cancel       context.CancelFunc
 		log          zerolog.Logger
 		loopC        chan action
 		loopDelay    time.Duration
@@ -54,8 +57,7 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrrawux.New(
 					lsnrrawux.WithRoutineTracer(&t.TT),
-					lsnrrawux.WithAddr(daemonenv.PathUxRaw),
-					lsnrrawux.WithContext(t.ctx),
+					lsnrrawux.WithAddr(daemonenv.PathUxRaw()),
 				)
 			},
 		},
@@ -63,8 +65,7 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrrawinet.New(
 					lsnrrawinet.WithRoutineTracer(&t.TT),
-					lsnrrawinet.WithAddr(":"+daemonenv.RawPort),
-					lsnrrawinet.WithContext(t.ctx),
+					lsnrrawinet.WithAddr(fmt.Sprintf(":%d", daemonenv.RawPort)),
 				)
 			},
 		},
@@ -72,10 +73,9 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpinet.New(
 					lsnrhttpinet.WithRoutineTracer(&t.TT),
-					lsnrhttpinet.WithAddr(":"+daemonenv.HttpPort),
-					lsnrhttpinet.WithCertFile(daemonenv.CertFile),
-					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile),
-					lsnrhttpinet.WithContext(t.ctx),
+					lsnrhttpinet.WithAddr(fmt.Sprintf(":%d", daemonenv.HttpPort)),
+					lsnrhttpinet.WithCertFile(daemonenv.CertFile()),
+					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
 				)
 			},
 		},
@@ -83,10 +83,9 @@ var (
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpux.New(
 					lsnrhttpux.WithRoutineTracer(&t.TT),
-					lsnrhttpux.WithAddr(daemonenv.PathUxHttp),
-					lsnrhttpux.WithCertFile(daemonenv.CertFile),
-					lsnrhttpux.WithKeyFile(daemonenv.KeyFile),
-					lsnrhttpux.WithContext(t.ctx),
+					lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
+					lsnrhttpux.WithCertFile(daemonenv.CertFile()),
+					lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
 				)
 			},
 		},
@@ -97,6 +96,7 @@ func New(opts ...funcopt.O) *T {
 	t := &T{
 		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
+		log:         log.Logger.With().Str("name", "listener").Logger(),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -107,58 +107,62 @@ func New(opts ...funcopt.O) *T {
 		subdaemon.WithName("listener"),
 		subdaemon.WithMainManager(t),
 		subdaemon.WithRoutineTracer(&t.TT),
-		subdaemon.WithContext(t.ctx),
 	)
 	t.log = t.Log()
 	t.loopC = make(chan action)
 	return t
 }
 
-func (t *T) MainStart() error {
-	t.log.Info().Msg("mgr starting")
+func (t *T) MainStart(ctx context.Context) error {
+	node, err := object.NewNode()
+	if err != nil {
+		return err
+	}
+	if err := startCertFS(); err != nil {
+		t.log.Err(err).Msgf("start certificates volatile fs")
+	}
+	if err := daemonauth.Init(); err != nil {
+		return err
+	}
+	daemonenv.HttpPort = node.Config().GetInt(key.New("listener", "tls_port"))
+	daemonenv.RawPort = node.Config().GetInt(key.New("listener", "port"))
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name() + "-loop")()
-		defer t.cancel()
-		t.loop(started)
+		defer stopCertFS()
+		//defer t.cancel()
+		started <- true
+		t.loop(ctx)
 	}()
-	t.httpHandler = routehttp.New(t.ctx)
+	t.httpHandler = routehttp.New(ctx)
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
-		if err := sub.subActions.Init(); err != nil {
-			t.log.Err(err).Msgf("%s Init", subName)
-			return err
-		}
 		if err := t.Register(sub.subActions); err != nil {
 			t.log.Err(err).Msgf("%s register", subName)
 			return err
 		}
-		if err := sub.subActions.Start(); err != nil {
+		if err := sub.subActions.Start(ctx); err != nil {
 			t.log.Err(err).Msgf("%s start", subName)
 			return err
 		}
 	}
 	<-started
-	t.log.Info().Msg("mgr started")
 	return nil
 }
 
 func (t *T) MainStop() error {
-	t.log.Info().Msg("mgr stopping")
-	t.cancel()
-	t.log.Info().Msg("mgr stopped")
+	//t.cancel()
 	return nil
 }
 
-func (t *T) loop(c chan bool) {
+func (t *T) loop(ctx context.Context) {
 	t.log.Info().Msg("loop started")
 	t.aLoop()
-	c <- true
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-t.ctx.Done():
+		case <-ctx.Done():
 			t.log.Info().Msg("loop stopped")
 			return
 		case <-ticker.C:

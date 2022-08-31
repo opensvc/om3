@@ -9,17 +9,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/timestamp"
+	"opensvc.com/opensvc/testhelper"
 )
 
 func TestInstanceStates_Render(t *testing.T) {
+	testhelper.Setup(t)
 	cases := []string{"instanceStatus"}
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
-			td := t.TempDir()
-			rawconfig.Load(map[string]string{"osvc_root_path": td})
-			defer rawconfig.Load(map[string]string{})
 
 			b, err := ioutil.ReadFile(filepath.Join("test-fixtures", name+".json"))
 			require.Nil(t, err)
@@ -27,9 +24,9 @@ func TestInstanceStates_Render(t *testing.T) {
 			var instanceStatus instance.Status
 			err = json.Unmarshal(b, &instanceStatus)
 			require.Nil(t, err)
-			timestampZero := timestamp.New(time.Unix(0, 0))
+			var timeZero time.Time
 			instanceState := instance.States{
-				Node:   instance.Node{Name: "node1", Frozen: timestampZero},
+				Node:   instance.Node{Name: "node1", Frozen: timeZero},
 				Status: instanceStatus,
 			}
 			goldenFile := filepath.Join("test-fixtures", name+".render")

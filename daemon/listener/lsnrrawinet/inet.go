@@ -1,6 +1,7 @@
 package lsnrrawinet
 
 import (
+	"context"
 	"net"
 	"strings"
 	"time"
@@ -22,13 +23,13 @@ func (t *T) stop() error {
 	return nil
 }
 
-func (t *T) start() error {
+func (t *T) start(ctx context.Context) error {
 	listener, err := net.Listen("tcp", t.addr)
 	if err != nil {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
 	}
-	mux := routeraw.New(routehttp.New(t.ctx), t.log, 5*time.Second)
+	mux := routeraw.New(routehttp.New(ctx), t.log, 5*time.Second)
 	c := make(chan bool)
 	go func() {
 		c <- true

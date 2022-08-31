@@ -9,7 +9,7 @@
 	status := dataBus.GetStatus() // retrieve daemon data
 	bus.ApplyFull("remote-1", remoteNodeStatus)
 	bus.ApplyPatch("remote-1", patchMsg)
-	bus.CommitPending()
+	bus.CommitPending(context.Background())
 	status = bus.GetStatus()
 	localNodeStatus := bus.GetLocalNodeStatus()
 */
@@ -17,12 +17,14 @@ package daemondata
 
 import (
 	"context"
+	"sync"
 )
 
 type (
 	// T struct holds a daemondata manager cmdC to submit orders
 	T struct {
-		cmdC chan<- interface{}
+		cmdC   chan<- interface{}
+		cancel func()
 	}
 )
 
@@ -32,8 +34,16 @@ type (
 func Start(parent context.Context) (chan<- interface{}, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
 	cmdC := make(chan interface{})
-	go run(ctx, cmdC)
-	return cmdC, cancel
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		run(ctx, cmdC)
+	}()
+	return cmdC, func() {
+		cancel()
+		wg.Wait()
+	}
 }
 
 // New returns a new *T from an existing daemondata manager

@@ -1,15 +1,48 @@
-package daemondatatest
+package daemondata_test
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/pubsub"
 )
+
+func loadFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	path := filepath.Join("test-fixtures", name)
+	b, err := ioutil.ReadFile(path)
+	require.Nil(t, err)
+	return b
+}
+
+func LoadFull(t *testing.T, name string) *cluster.NodeStatus {
+	t.Helper()
+	var full cluster.NodeStatus
+	require.Nil(t, json.Unmarshal(loadFixture(t, name), &full))
+	return &full
+}
+
+func LoadPatch(t *testing.T, name string) *hbtype.Msg {
+	t.Helper()
+	var msg hbtype.Msg
+	require.Nil(t, json.Unmarshal(loadFixture(t, name), &msg))
+	return &msg
+}
+
+func TestMain(m *testing.M) {
+	testhelper.Main(m, cmd.ExecuteArgs)
+}
 
 func TestDaemonData(t *testing.T) {
 	var (
@@ -18,9 +51,18 @@ func TestDaemonData(t *testing.T) {
 		localNodeStatus, remoteNodeStatus *cluster.NodeStatus
 		err                               error
 	)
-	_ = err
-	cmdC, cancel := daemondata.Start(context.Background())
+
+	testhelper.Setup(t)
+
+	ctx := context.Background()
+	psbus := pubsub.NewBus("daemon")
+	psbus.Start(ctx)
+	ctx = pubsub.ContextWithBus(ctx, psbus)
+	defer psbus.Stop()
+
+	cmdC, cancel := daemondata.Start(ctx)
 	defer cancel()
+
 	bus := daemondata.New(cmdC)
 	localNode := hostname.Hostname()
 	remoteHost := "node2"
@@ -28,15 +70,16 @@ func TestDaemonData(t *testing.T) {
 	tName = "getLocalNodeStatus return status with local status initialized"
 	t.Run(tName, func(t *testing.T) {
 		localNodeStatus = bus.GetLocalNodeStatus()
-		require.Equal(t, localNodeStatus.Gen[localNode], uint64(0))
-		require.Equal(t, localNodeStatus.Monitor.Status, "")
+		require.NotNil(t, localNodeStatus)
+		require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
+		require.Equal(t, "", localNodeStatus.Monitor.Status)
 	})
 
 	tName = "GetStatus return status with local status initialized"
 	t.Run(tName, func(t *testing.T) {
 		status = bus.GetStatus()
 		localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-		require.NotNil(t, localNodeStatus)
+		t.Logf("got localNodeStatus: %#v", localNodeStatus)
 		require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
 		require.Equal(t, "", localNodeStatus.Monitor.Status)
 
@@ -69,25 +112,25 @@ func TestDaemonData(t *testing.T) {
 		t.Run("pending are not applied until commit", func(t *testing.T) {
 			status = bus.GetStatus()
 			localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-			require.Equal(t, localNodeStatus.Monitor.Status, "")
+			require.Equal(t, "", localNodeStatus.Monitor.Status)
 			require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
 			remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
 			require.Nil(t, remoteNodeStatus)
 
 			t.Log("CommitPending")
-			bus.CommitPending()
+			bus.CommitPending(context.Background())
 			t.Run("result has pending changes applied after CommitPending", func(t *testing.T) {
 				status = bus.GetStatus()
 				localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-				require.Equal(t, localNodeStatus.Monitor.Status, "CommitPending-1")
+				require.Equal(t, "CommitPending-1", localNodeStatus.Monitor.Status)
 				require.Equal(t, uint64(1), localNodeStatus.Gen[localNode])
 				remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
-				require.Equal(t, remoteNodeStatus.Monitor.Status, "idle-t1")
+				require.Equal(t, "idle-t1", remoteNodeStatus.Monitor.Status)
 			})
 			t.Run("localNode now know about remote gens", func(t *testing.T) {
 				localNodeStatus = daemondata.GetNodeStatus(status, localNode)
 				require.Len(t, localNodeStatus.Gen, 2)
-				require.Equal(t, localNodeStatus.Gen[remoteHost], full.Gen[remoteHost])
+				require.Equal(t, full.Gen[remoteHost], localNodeStatus.Gen[remoteHost])
 			})
 		})
 	})
@@ -101,22 +144,22 @@ func TestDaemonData(t *testing.T) {
 		err = bus.ApplyPatch(remoteHost, patchMsg)
 		require.Nil(t, err)
 		t.Log("CommitPending")
-		bus.CommitPending()
+		bus.CommitPending(context.Background())
 		status = bus.GetStatus()
 		remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
 		require.NotNil(t, remoteNodeStatus)
 		t.Run("verify patch applied", func(t *testing.T) {
-			require.Equal(t, remoteNodeStatus.Stats.Load15M, 0.5)
-			require.Equal(t, remoteNodeStatus.Stats.MemTotalMB, uint64(1000))
-			require.Equal(t, remoteNodeStatus.Stats.MemAvailPct, uint64(10))
-			require.Equal(t, remoteNodeStatus.Stats.SwapTotalMB, uint64(11))
+			require.Equal(t, 0.5, remoteNodeStatus.Stats.Load15M)
+			require.Equal(t, uint64(1000), remoteNodeStatus.Stats.MemTotalMB)
+			require.Equal(t, uint64(10), remoteNodeStatus.Stats.MemAvailPct)
+			require.Equal(t, uint64(11), remoteNodeStatus.Stats.SwapTotalMB)
 		})
 		t.Run("expect local node know now new remote gen", func(t *testing.T) {
 			localNodeStatus = daemondata.GetNodeStatus(status, localNode)
 			require.Equal(t, uint64(21), localNodeStatus.Gen[remoteHost])
 		})
 		t.Run("verify older gen patch are not applied", func(t *testing.T) {
-			require.Equal(t, remoteNodeStatus.Stats.Score, full.Stats.Score)
+			require.Equal(t, full.Stats.Score, remoteNodeStatus.Stats.Score, full.Stats.Score)
 		})
 		t.Run("When delta contains patch in future", func(t *testing.T) {
 			patchMsg = LoadPatch(t, "patch-node2-t4.json")
@@ -127,7 +170,7 @@ func TestDaemonData(t *testing.T) {
 			})
 			t.Run("ensure future delta not applied to pending", func(t *testing.T) {
 				t.Log("CommitPending")
-				bus.CommitPending()
+				bus.CommitPending(context.Background())
 				status = bus.GetStatus()
 				remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
 				require.NotNil(t, remoteNodeStatus)

@@ -3,62 +3,71 @@ package daemonps
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/core/event"
-	ps "opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 // PubEvent publish a new event.Event on namespace NsEvent
-func PubEvent(cmdC chan<- interface{}, e event.Event) {
-	ps.Pub(cmdC, ps.Publication{Ns: NsEvent, Op: ps.OpCreate, Value: e})
+func PubEvent(bus *pubsub.Bus, e event.Event) {
+	publication := pubsub.Publication{
+		Ns:    NsEvent,
+		Op:    pubsub.OpCreate,
+		Value: e,
+	}
+	bus.Pub(publication)
 }
 
 // SubEvent subscribes on namespace NsEvent
-func SubEvent(cmdC chan<- interface{}, name string, fn func(event.Event)) uuid.UUID {
+func SubEvent(bus *pubsub.Bus, name string, fn func(event.Event)) uuid.UUID {
 	f := func(i interface{}) {
+		if i == nil {
+			// happens after pubsub queue is closed (on Unsub)
+			return
+		}
 		fn(i.(event.Event))
 	}
-	publication := ps.Publication{
+	publication := pubsub.Publication{
 		Ns: NsEvent,
-		Op: ps.OpCreate,
+		Op: pubsub.OpCreate,
 		Id: "subscribe-event",
 		Value: event.Event{
-			Kind:      "event_subscribe",
-			ID:        0,
-			Timestamp: timestamp.Now(),
-			Data:      jsonMsg("subscribe name: " + name),
+			Kind: "event_subscribe",
+			ID:   0,
+			Time: time.Now(),
+			Data: jsonMsg("subscribe name: " + name),
 		},
 	}
 
-	go ps.Pub(cmdC, publication)
+	go bus.Pub(publication)
 
-	subscription := ps.Subscription{
+	subscription := pubsub.Subscription{
 		Ns:   NsEvent,
-		Op:   ps.OpCreate,
+		Op:   pubsub.OpCreate,
 		Name: name,
 	}
-	return ps.Sub(cmdC, subscription, f)
+	return bus.Sub(subscription, f)
 }
 
 // UnSubEvent unsubscribes a subscription on namespace NsEvent
-func UnSubEvent(cmdC chan<- interface{}, id uuid.UUID) {
-	name := ps.Unsub(cmdC, id)
+func UnSubEvent(bus *pubsub.Bus, id uuid.UUID) {
+	name := bus.Unsub(id)
 	if name != "" {
-		publication := ps.Publication{
+		publication := pubsub.Publication{
 			Ns: NsEvent,
-			Op: ps.OpCreate,
+			Op: pubsub.OpCreate,
 			Id: "unsubscribe-event",
 			Value: event.Event{
-				Kind:      "event_unsubscribe",
-				ID:        0,
-				Timestamp: timestamp.Now(),
-				Data:      jsonMsg("unsubscribe name: " + name),
+				Kind: "event_unsubscribe",
+				ID:   0,
+				Time: time.Now(),
+				Data: jsonMsg("unsubscribe name: " + name),
 			},
 		}
-		go ps.Pub(cmdC, publication)
+		go bus.Pub(publication)
 	}
 }
 

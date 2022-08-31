@@ -7,14 +7,14 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func PubSvcAggDelete(cmdC chan<- interface{}, id string, v moncmd.MonSvcAggDeleted) {
-	Pub(cmdC, NsAgg, pubsub.OpDelete, id, v)
+func PubSvcAggDelete(bus *pubsub.Bus, id string, v moncmd.MonSvcAggDeleted) {
+	Pub(bus, NsAgg, pubsub.OpDelete, id, v)
 }
 
-func PubSvcAggUpdate(cmdC chan<- interface{}, id string, v moncmd.MonSvcAggUpdated) {
-	Pub(cmdC, NsAgg, pubsub.OpUpdate, id, v)
+func PubSvcAggUpdate(bus *pubsub.Bus, id string, v moncmd.MonSvcAggUpdated) {
+	Pub(bus, NsAgg, pubsub.OpUpdate, id, v)
 }
 
-func SubSvcAgg(cmdC chan<- interface{}, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
-	return Sub(cmdC, NsAgg, op, name, matching, fn)
+func SubSvcAgg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+	return Sub(bus, NsAgg, op, name, matching, fn)
 }

@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 )
 
 func TestSecKeys(t *testing.T) {
@@ -30,16 +29,16 @@ func TestSecKeys(t *testing.T) {
 		return args
 	}
 
-	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../testdata/sec1.conf", "etc/namespaces/test/sec/sec1.conf")
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			args := getCmd(name)
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd := exec.Command(os.Args[0], args...)
-			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
 			t.Logf("out:\n%s", out)
 			require.Nilf(t, err, string(out))
@@ -79,16 +78,16 @@ func TestSecDecodeKeys(t *testing.T) {
 		return args
 	}
 
-	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec1.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../testdata/sec1.conf", "etc/namespaces/test/sec/sec1.conf")
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			args := getCmd(name)
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd := exec.Command(os.Args[0], args...)
-			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			assert.Equal(t, tc.expectedResults, string(out))
@@ -137,9 +136,9 @@ func TestKeyActions(t *testing.T) {
 		return args
 	}
 
-	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
-	test_conf_helper.InstallSvcFile(t, "sec_empty.conf", filepath.Join(td, "etc", "namespaces", "test", "sec", "sec1.conf"))
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../testdata/sec_empty.conf", "etc/namespaces/test/sec/sec1.conf")
 
 	for _, name := range []string{
 		"add",
@@ -155,7 +154,7 @@ func TestKeyActions(t *testing.T) {
 		args := getCmd(name)
 		t.Logf("run 'om %v'", strings.Join(args, " "))
 		cmd := exec.Command(os.Args[0], args...)
-		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		out, err := cmd.CombinedOutput()
 		require.Nilf(t, err, string(out))
 		if tc.expectedResults != "" {

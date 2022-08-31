@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 )
 
 type (
@@ -37,15 +36,15 @@ func TestCfgKeys(t *testing.T) {
 		return args
 	}
 
-	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cfg1.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg1.conf"))
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/cfg1.conf", "etc/namespaces/test/cfg/cfg1.conf")
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			args := getCmd(name)
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd := exec.Command(os.Args[0], args...)
-			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			t.Logf("got:\n%s\n", string(out))
@@ -77,15 +76,15 @@ func TestCfgDecodeKeys(t *testing.T) {
 		return args
 	}
 
-	td := t.TempDir()
-	test_conf_helper.InstallSvcFile(t, "cfg2.conf", filepath.Join(td, "etc", "namespaces", "test", "cfg", "cfg2.conf"))
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/cfg2.conf", "etc/namespaces/test/cfg/cfg2.conf")
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			args := getCmd(name)
 			t.Logf("run 'om %v'", strings.Join(args, " "))
 			cmd := exec.Command(os.Args[0], args...)
-			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+td)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
 			require.Nilf(t, err, string(out))
 			assert.Equal(t, tc.expectedResults, string(out))

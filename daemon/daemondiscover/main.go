@@ -14,15 +14,16 @@ package daemondiscover
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -32,8 +33,12 @@ type (
 		ctx        context.Context
 		log        zerolog.Logger
 
-		moncfg       map[string]struct{}
-		monCfgCmdC   map[string]chan<- *moncmd.T
+		// moncfg is a map of instance config handlers, indexed by object
+		// path string representation.
+		// The discover loop routes to instcfg.T.cmdC channels the commands
+		// initiated by watcher-events.
+		moncfg map[string]*instcfg.T
+
 		svcAggCancel map[string]context.CancelFunc
 		svcAgg       map[string]map[string]struct{}
 
@@ -42,7 +47,7 @@ type (
 		remoteCfgFetchCancel map[string]context.CancelFunc
 
 		// fetcherUpdated map[svc] updated timestamp of svc config being fetched
-		fetcherUpdated map[string]timestamp.T
+		fetcherUpdated map[string]time.Time
 
 		// fetcherFrom map[svc] node
 		fetcherFrom map[string]string
@@ -64,30 +69,46 @@ var (
 
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create
-func Start(ctx context.Context) error {
+func Start(ctx context.Context) (func(), error) {
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
 		cfgCmdC:    make(chan *moncmd.T),
 		svcaggCmdC: make(chan *moncmd.T),
 
-		ctx:    ctx,
-		log:    daemonlogctx.Logger(ctx).With().Str("_pkg", "daemondiscover").Logger(),
-		moncfg: make(map[string]struct{}),
+		ctx: ctx,
+		log: daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
-		monCfgCmdC:   make(map[string]chan<- *moncmd.T),
-		svcAggCancel: make(map[string]context.CancelFunc),
-		svcAgg:       make(map[string]map[string]struct{}),
+		svcAgg: make(map[string]map[string]struct{}),
+		moncfg: make(map[string]*instcfg.T),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
-		fetcherUpdated:    make(map[string]timestamp.T),
+		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
 	}
-	if err := d.fsWatcherStart(); err != nil {
-		d.log.Error().Err(err).Msg("fsWatcherStart")
-		return err
+	stopFSWatcher, err := d.fsWatcherStart()
+	if err != nil {
+		d.log.Error().Err(err).Msg("start")
+		return stopFSWatcher, err
 	}
-	go d.cfg()
-	go d.agg()
-	return nil
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		d.cfg()
+	}()
+	go func() {
+		defer wg.Done()
+		d.agg()
+	}()
+	cancelAndWait := func() {
+		stopFSWatcher()
+		for _, cfg := range d.moncfg {
+			cfg.Cancel()
+		}
+		cancel() // stop cfg and agg via context cancel
+		wg.Wait()
+	}
+	return cancelAndWait, nil
 }

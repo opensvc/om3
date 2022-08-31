@@ -25,18 +25,16 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -132,8 +130,8 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		ctx:           ctx,
 		cancel:        cancel,
 		cmdC:          make(chan *moncmd.T),
-		dataCmdC:      daemonctx.DaemonDataCmd(ctx),
-		log:           daemonlogctx.Logger(ctx).With().Str("_smon", p.String()).Logger(),
+		dataCmdC:      daemondata.BusFromContext(ctx),
+		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instSmon:      make(map[string]instance.Monitor),
 		localhost:     hostname.Hostname(),
@@ -147,22 +145,22 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 
 // worker watch for local smon updates
 func (o *smon) worker(initialNodes []string) {
-	defer o.log.Info().Msg("done")
+	defer o.log.Debug().Msg("done")
 
-	c := daemonctx.DaemonPubSubCmd(o.ctx)
-	defer ps.UnSub(c, ps.SubSvcAgg(c, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubSetSmon(c, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
-	defer ps.UnSub(c, ps.SubSmon(c, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
+	bus := pubsub.BusFromContext(o.ctx)
+	defer ps.UnSub(bus, ps.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
+	defer ps.UnSub(bus, ps.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
+	defer ps.UnSub(bus, ps.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
 
 	for _, node := range initialNodes {
-		o.instStatus[node] = daemondata.GelInstanceStatus(o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
 	}
 	o.updateIfChange()
 	defer o.delete()
 
 	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
 	go o.crmStatus()
-	o.log.Info().Msg("started")
+	o.log.Debug().Msg("started")
 	for {
 		select {
 		case <-o.ctx.Done():
@@ -187,14 +185,14 @@ func (o *smon) onEv(i interface{}) {
 }
 
 func (o *smon) delete() {
-	if err := daemondata.DelSmon(o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelSmon(o.ctx, o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelSmon")
 	}
 }
 
 func (o *smon) update() {
 	newValue := o.state
-	if err := daemondata.SetSmon(o.dataCmdC, o.path, newValue); err != nil {
+	if err := daemondata.SetSmon(o.ctx, o.dataCmdC, o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetSmon")
 	}
 }
@@ -205,7 +203,7 @@ func (o *smon) updateIfChange() {
 		return
 	}
 	o.change = false
-	o.state.StatusUpdated = timestamp.Now()
+	o.state.StatusUpdated = time.Now()
 	previousVal := o.previousState
 	newVal := o.state
 	if newVal.Status != previousVal.Status {

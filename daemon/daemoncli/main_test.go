@@ -1,29 +1,25 @@
 package daemoncli_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemoncli"
 	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/usergroup"
 )
 
 var (
 	cases = []string{
-		daemonenv.UrlInetHttp,
-		daemonenv.UrlUxHttp,
-		daemonenv.UrlInetRaw,
-		daemonenv.UrlUxRaw,
+		daemonenv.UrlInetHttp(),
+		daemonenv.UrlUxHttp(),
+		daemonenv.UrlInetRaw(),
+		daemonenv.UrlUxRaw(),
 	}
 )
 
@@ -36,47 +32,29 @@ func privileged() bool {
 }
 
 func TestMain(m *testing.M) {
-	defer hostname.Impersonate("node1")()
-	defer rawconfig.Load(map[string]string{})
-	if td := os.Getenv("OSVC_ROOT_PATH"); td != "" {
-		os.Mkdir(filepath.Join(td, "var"), os.ModePerm)
-		os.Mkdir(filepath.Join(td, "var", "certs"), os.ModePerm)
-	}
-	switch os.Getenv("GO_TEST_MODE") {
-	case "":
-		// test mode
-		os.Setenv("GO_TEST_MODE", "off")
-		os.Exit(m.Run())
-
-	case "off":
-		// test bypass mode
-		os.Setenv("LANG", "C.UTF-8")
-		cmd.Execute()
-	}
+	testhelper.Main(m, cmd.ExecuteArgs)
 }
 
 func newClient(serverUrl string) (*client.T, error) {
 	clientOptions := []funcopt.O{client.WithURL(serverUrl)}
-	if serverUrl == daemonenv.UrlInetHttp {
+	if serverUrl == daemonenv.UrlInetHttp() {
 		clientOptions = append(clientOptions,
 			client.WithInsecureSkipVerify())
 
 		clientOptions = append(clientOptions,
-			client.WithCertificate(daemonenv.CertFile))
+			client.WithCertificate(daemonenv.CertFile()))
 
 		clientOptions = append(clientOptions,
 
-			client.WithKey(daemonenv.KeyFile),
+			client.WithKey(daemonenv.KeyFile()),
 		)
 	}
 	return client.New(clientOptions...)
 }
 
-func setup(t *testing.T, td string) {
-	rawconfig.Load(map[string]string{
-		"osvc_root_path": td,
-	})
-	test_conf_helper.InstallSvcFile(t, "cluster.conf", filepath.Join(td, "etc", "cluster.conf"))
+func setup(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 }
 
 func TestDaemonStartThenStop(t *testing.T) {
@@ -85,8 +63,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 		//	t.Skip("need root")
 		//}
 		t.Run(url, func(t *testing.T) {
-			td := t.TempDir()
-			setup(t, td)
+			setup(t)
 			cli, err := newClient(url)
 			require.NoError(t, err)
 			daemonCli := daemoncli.New(cli)
@@ -105,8 +82,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 func TestDaemonReStartThenStop(t *testing.T) {
 	for _, url := range cases {
 		t.Run(url, func(t *testing.T) {
-			td := t.TempDir()
-			setup(t, td)
+			setup(t)
 			cli, err := newClient(url)
 			require.NoError(t, err)
 			daemonCli := daemoncli.New(cli)

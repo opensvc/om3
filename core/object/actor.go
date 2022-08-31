@@ -14,11 +14,11 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceset"
+	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pg"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -34,7 +34,7 @@ type (
 	freezer interface {
 		Freeze(ctx context.Context) error
 		Unfreeze(ctx context.Context) error
-		Frozen() timestamp.T
+		Frozen() time.Time
 	}
 
 	// resourceLister provides a method to list and filter resources
@@ -65,6 +65,7 @@ type (
 		SetUnprovisioned(context.Context) error
 		SyncResync(context.Context) error
 		Enter(context.Context, string) error
+		PrintSchedule() schedule.Table
 	}
 )
 

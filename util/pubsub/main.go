@@ -65,11 +65,16 @@ package pubsub
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
+type (
+	contextKey int
 )
 
 const (
@@ -84,6 +89,8 @@ const (
 const (
 	// NsAll operation value can be used for all name spaces
 	NsAll = iota
+
+	busContextKey contextKey = 0
 )
 
 type (
@@ -116,9 +123,21 @@ type (
 		// Value is the thing to publish
 		Value interface{}
 	}
+
+	activeSubscription struct {
+		fn       func(interface{})
+		op       uint
+		ns       uint
+		matching string
+		name     string
+		q        chan interface{}
+	}
 )
 
 type (
+	cmdDie struct {
+	}
+
 	cmdPub struct {
 		id   string
 		op   uint
@@ -140,121 +159,182 @@ type (
 		subId uuid.UUID
 		resp  chan<- string
 	}
+
+	Bus struct {
+		sync.WaitGroup
+		name   string
+		cmdC   chan interface{}
+		cancel func()
+		log    zerolog.Logger
+		ctx    context.Context
+	}
 )
 
-// Start runs a new pub sub
-//
-// returns the created pub sub cmd chan
-//
-func Start(ctx context.Context, name string) chan<- interface{} {
-	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "pubSub").Str("name", name).Logger()
-	started := make(chan struct{})
-	cmdC := make(chan interface{})
+var (
+	bus *Bus
+)
+
+// Stop stops the default bus
+func Stop() {
+	bus.Stop()
+}
+
+// Start starts the default bus
+func Start(ctx context.Context) {
+	if bus == nil {
+		bus = NewBus("default")
+	}
+	bus.Start(ctx)
+}
+
+// StartBus allocate and runs a new Bus and return a pointer
+func NewBus(name string) *Bus {
+	b := &Bus{}
+	b.name = name
+	b.cmdC = make(chan interface{})
+	b.log = log.Logger.With().Str("bus", name).Logger()
+	return b
+}
+
+func (b *Bus) Start(ctx context.Context) {
+	b.ctx, b.cancel = context.WithCancel(ctx)
+	started := make(chan bool)
+	b.Empty() // flush cmds queued while we were stopped ?
+	b.Add(1)
 	go func() {
-		subs := make(map[uuid.UUID]func(interface{}))
-		subNames := make(map[uuid.UUID]string)
-		subNs := make(map[uuid.UUID]uint)
-		subOps := make(map[uuid.UUID]uint)
-		subMatching := make(map[uuid.UUID]string)
-		subQueue := make(map[uuid.UUID]chan interface{})
-		defer func() {
-			go func() {
-				log.Info().Msg("stopping")
-				defer log.Info().Msg("stopped")
-				ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-				defer cancel()
-				for {
-					select {
-					case <-cmdC:
-					case <-ctx.Done():
-						return
-					}
-				}
-			}()
-		}()
-		started <- struct{}{}
+		defer b.Done()
+		subs := make(map[uuid.UUID]activeSubscription)
+		started <- true
 		for {
 			select {
-			case <-ctx.Done():
+			case <-b.ctx.Done():
 				return
-			case cmd := <-cmdC:
+			case cmd := <-b.cmdC:
 				switch c := cmd.(type) {
 				case cmdPub:
-					for id := range subs {
-						if subNs[id] != NsAll && subNs[id] != c.ns {
+					for _, sub := range subs {
+						if sub.ns != NsAll && sub.ns != c.ns {
 							continue
 						}
-						if subOps[id] != OpAll && subOps[id] != c.op {
+						if sub.op != OpAll && sub.op != c.op {
 							continue
 						}
-						if len(subMatching[id]) != 0 && subMatching[id] != c.id {
+						if len(sub.matching) != 0 && sub.matching != c.id {
 							continue
 						}
-						subQueue[id] <- c.data
+						b.log.Debug().Msgf("route %+v to subscriber %s", c.data, sub.name)
+						sub.q <- c.data
 					}
-					c.resp <- true
+					select {
+					case <-b.ctx.Done():
+					case c.resp <- true:
+					}
 				case cmdSub:
 					id := uuid.New()
-					subs[id] = c.fn
-					subNames[id] = c.name
-					subNs[id] = c.ns
-					subOps[id] = c.op
-					subMatching[id] = c.matching
-					queue := make(chan interface{}, 100)
-					subQueue[id] = queue
-					fn := c.fn
-					started := make(chan struct{})
+					sub := activeSubscription{
+						name:     c.name,
+						ns:       c.ns,
+						op:       c.op,
+						matching: c.matching,
+						fn:       c.fn,
+						q:        make(chan interface{}, 100),
+					}
+					subs[id] = sub
+					started := make(chan bool)
+					b.Add(1)
 					go func() {
-						started <- struct{}{}
-						for i := range queue {
-							fn(i)
+						b.Done()
+						started <- true
+						for {
+							select {
+							case i := <-sub.q:
+								if _, ok := i.(cmdDie); ok {
+									return
+								}
+								sub.fn(i)
+							case <-b.ctx.Done():
+								return
+							}
 						}
 					}()
 					<-started
 					c.resp <- id
-					log.Debug().Msgf("subscribe %s", c.name)
+					b.log.Debug().Msgf("subscribe %s", sub.name)
 				case cmdUnsub:
-					name, ok := subNames[c.subId]
+					sub, ok := subs[c.subId]
 					if !ok {
 						continue
 					}
-					queue := subQueue[c.subId]
+					sub.q <- cmdDie{}
 					delete(subs, c.subId)
-					delete(subNames, c.subId)
-					delete(subNs, c.subId)
-					delete(subOps, c.subId)
-					delete(subQueue, c.subId)
-					// end subscriber dispatcher
-					close(queue)
-					c.resp <- name
-					log.Debug().Msgf("unsubscribe %s", name)
+					select {
+					case <-b.ctx.Done():
+					case c.resp <- sub.name:
+					}
+					b.log.Debug().Msgf("unsubscribe %s", sub.name)
 				}
 			}
 		}
 	}()
 	<-started
-	log.Info().Msg("started")
-	return cmdC
+	b.log.Info().Msg("started")
+}
+
+func (b *Bus) Empty() {
+	defer b.log.Info().Msg("empty channel")
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-b.cmdC:
+		case <-ticker.C:
+			return
+		}
+	}
+}
+
+func (b *Bus) Stop() {
+	if b == nil {
+		return
+	}
+	if b.cancel != nil {
+		f := b.cancel
+		b.cancel = nil
+		f()
+		b.Wait()
+		b.log.Info().Msg("stopped")
+		b.Empty()
+	}
 }
 
 // Pub function publish a new p Publication
-func Pub(cmdC chan<- interface{}, p Publication) {
+func (b Bus) Pub(p Publication) {
 	done := make(chan bool)
-	cmdC <- cmdPub{
+	op := cmdPub{
 		id:   p.Id,
 		op:   p.Op,
 		ns:   p.Ns,
 		data: p.Value,
 		resp: done,
 	}
-	<-done
+	select {
+	case b.cmdC <- op:
+	case <-b.ctx.Done():
+		return
+	}
+	select {
+	case <-done:
+		return
+	case <-b.ctx.Done():
+		return
+	}
 }
 
 // Sub function submit a new Subscription on pub-sub
 // It returns the subscription uuid.UUID (can be used to un-subscribe)
-func Sub(cmdC chan<- interface{}, s Subscription, fn func(interface{})) uuid.UUID {
+func (b Bus) Sub(s Subscription, fn func(interface{})) uuid.UUID {
 	respC := make(chan uuid.UUID)
-	cmdC <- cmdSub{
+	op := cmdSub{
 		fn:       fn,
 		op:       s.Op,
 		ns:       s.Ns,
@@ -262,15 +342,47 @@ func Sub(cmdC chan<- interface{}, s Subscription, fn func(interface{})) uuid.UUI
 		name:     s.Name,
 		resp:     respC,
 	}
-	return <-respC
+	select {
+	case b.cmdC <- op:
+	case <-b.ctx.Done():
+		return uuid.UUID{}
+	}
+	select {
+	case uuid := <-respC:
+		return uuid
+	case <-b.ctx.Done():
+		return uuid.UUID{}
+	}
 }
 
 // Unsub function remove a subscription
-func Unsub(cmdC chan<- interface{}, id uuid.UUID) string {
+func (b Bus) Unsub(id uuid.UUID) string {
 	respC := make(chan string)
-	cmdC <- cmdUnsub{
+	op := cmdUnsub{
 		subId: id,
 		resp:  respC,
 	}
-	return <-respC
+	select {
+	case b.cmdC <- op:
+	case <-b.ctx.Done():
+		return ""
+	}
+	select {
+	case s := <-respC:
+		return s
+	case <-b.ctx.Done():
+		return ""
+	}
+}
+
+// ContextWithBus stores the bus in the context and returns the new context.
+func ContextWithBus(ctx context.Context, bus *Bus) context.Context {
+	return context.WithValue(ctx, busContextKey, bus)
+}
+
+func BusFromContext(ctx context.Context) *Bus {
+	if bus, ok := ctx.Value(busContextKey).(*Bus); ok {
+		return bus
+	}
+	panic("unable to retrieve pubsub bus from context")
 }

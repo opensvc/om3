@@ -1,23 +1,21 @@
 /*
     Package subDaemon provides main and sub daemon management features
 
-	Start, Stop, Init, Quit, Restart
+	Start, Stop, Restart
 
-	2 go routines are used:
-        reg routine to manage registration of sub daemons (under responsability of this subdaemon)
-        actions routine that manage Start/Stop/Restart
+	1 go routines is used to serialize Start/Stop/Restart
 
-	a sub daemon can also manage other daemons (that can also contain some other sub daemons)
+	A subdaemon can have subdaemons
 */
 package subdaemon
 
 import (
 	"context"
+	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/util/funcopt"
@@ -26,32 +24,22 @@ import (
 
 type (
 	T struct {
+		sync.WaitGroup
 		routinehelper.TT
-		ctx             context.Context
-		cancel          context.CancelFunc
-		name            string
-		log             zerolog.Logger
-		logName         string
-		subSvc          map[string]Manager
-		main            Manager
-		mgrActionC      chan mgrAction
-		mgrActionEnable *enable.T
-		regActionC      chan registerAction
-		regActionEnable *enable.T
-		enabled         *enable.T
-		running         *enable.T
-		done            chan bool
+		ctx         context.Context
+		cancel      context.CancelFunc
+		name        string
+		log         zerolog.Logger
+		children    []Manager
+		main        Manager
+		controlChan chan controlAction
+		enabled     *enable.T
+		running     *enable.T
 	}
 
-	registerAction struct {
-		action   string
-		managerC chan Manager
-		done     chan string
-	}
-
-	mgrAction struct {
-		do   string
-		done chan string
+	controlAction struct {
+		name string
+		done chan error
 	}
 )
 
@@ -60,15 +48,21 @@ func (t *T) Log() zerolog.Logger {
 }
 
 func (t *T) Name() string {
+	if t == nil {
+		return ""
+	}
 	return t.name
 }
 
-// Enabled() returns true is daemon is enabled
-//
-// It accecpts registration of other subdaemons
-// It accecpts actions Stop/Start/Quit
-func (t *T) Enabled() bool {
+// Enabled() returns true is daemon control actions are handled
+func (t T) Enabled() bool {
 	return t.enabled.Enabled()
+}
+
+// no more register or control action are then possible
+func (t *T) disable() {
+	t.log.Debug().Msg("disable")
+	t.enabled.Disable()
 }
 
 // Running() returns true when MainManager daemon has been started
@@ -76,100 +70,18 @@ func (t *T) Running() bool {
 	return t.running.Enabled()
 }
 
-// Init() will start daemon routine management
-//
-// o register routine to allow register sub daemons
-// o action to allow action on daemon
-func (t *T) Init() error {
-	if t.Enabled() {
-		err := errors.New("call Init on already initialized")
-		t.log.Error().Err(err).Msg("Init failed")
-		return err
-	}
-	t.done = make(chan bool)
-	if err := t.subRegister(); err != nil {
-		t.log.Error().Err(err).Msg("Init")
-		return err
-	}
-	if err := t.actions(); err != nil {
-		t.log.Error().Err(err).Msg("Init")
-		return err
-	}
-	t.enabled.Enable()
-	return nil
-}
-
-func (t *T) WaitDone() {
-	t.log.Debug().Msg("WaitDone for Daemon ended")
-	<-t.done
-	select {
-	case <-t.done:
-	default:
-		// Don't block other waiters
-		close(t.done)
-	}
-	t.log.Info().Msg("Daemon ended")
-}
-
-// Quit will stop the 2 daemon routines
-// o reg routine
-// o action routine
-func (t *T) Quit() error {
-	if !t.Enabled() {
-		err := errors.New("call quit on already disabled")
-		t.log.Error().Err(err).Msg("Quit")
-		return err
-	}
-	if err := t.subRegisterQuit(); err != nil {
-		t.log.Error().Err(err).Msg("subRegisterQuit")
-		return err
-	}
-	if err := t.actionsQuit(); err != nil {
-		t.log.Error().Err(err).Msg("actionsQuit")
-		return err
-	}
-	t.enabled.Disable()
-	t.done <- true
-	return nil
-}
-
-// StopAndQuit() stop and quit daemon
-func (t *T) StopAndQuit() error {
-	if err := t.Stop(); err != nil {
-		t.log.Error().Err(err).Msg("daemon Stop")
-		return err
-	}
-	done := make(chan bool)
-	go func() {
-		t.WaitDone()
-		done <- true
-	}()
-	if err := t.Quit(); err != nil {
-		t.log.Error().Err(err).Msg("daemon Quit")
-		return err
-	}
-	<-done
-	return nil
-}
-
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		regActionEnable: enable.New(),
-		mgrActionEnable: enable.New(),
-		enabled:         enable.New(),
-		running:         enable.New(),
-		logName:         "daemon",
+		enabled:     enable.New(),
+		running:     enable.New(),
+		controlChan: make(chan controlAction),
+		children:    make([]Manager, 0),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Error().Err(err).Msg("subdaemon funcopt.Apply")
 		return nil
 	}
-	t.log = daemonlogctx.Logger(t.ctx).
-		With().
-		Str("n", hostname.Hostname()).
-		Logger()
-	t.ctx = daemonlogctx.WithLogger(t.ctx, t.log)
-	t.subSvc = make(map[string]Manager)
+	t.log = log.Logger.With().Str("sub", t.name).Str("n", hostname.Hostname()).Logger()
 	return t
 }

@@ -1,106 +1,92 @@
-package daemon
+package daemon_test
 
 import (
+	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"opensvc.com/opensvc/cmd"
+	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/daemon/routinehelper"
+	"opensvc.com/opensvc/testhelper"
 )
 
+func TestMain(m *testing.M) {
+	testhelper.Main(m, cmd.ExecuteArgs)
+}
+
+func setup(t *testing.T) testhelper.Env {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../../testdata/private_key", "var/certs/private_key")
+	env.InstallFile("../../testdata/certificate_chain", "var/certs/certificate_chain")
+	return env
+}
+
 func TestDaemon(t *testing.T) {
-	var main *T
+	var main *daemon.T
+	setup(t)
 
-	t.Run("New", func(t *testing.T) {
-		main = New(WithRoutineTracer(routinehelper.NewTracer()))
-		require.NotNil(t, main)
-		require.False(t, main.Enabled(), "Enable()")
-		require.False(t, main.Running(), "Running()")
-		require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
-		t.Run("Init", func(t *testing.T) {
-			require.Nil(t, main.Init())
-			require.True(t, main.Enabled(), "Enable()")
-			require.False(t, main.Running(), "Running()")
-			t.Run("Start", func(t *testing.T) {
-				require.Nil(t, main.Start())
-				require.True(t, main.Enabled(), "Enable()")
-				require.True(t, main.Running(), "Running()")
-				t.Run("Stop after Start", func(t *testing.T) {
-					require.Nil(t, main.Stop())
-					require.True(t, main.Enabled(), "Enable()")
-					require.False(t, main.Running(), "Running()")
-					time.Sleep(10 * time.Millisecond)
-					require.Equalf(t, 2, main.TraceRDump().Count, "found %#v", main.TraceRDump())
-					t.Run("ReStart after Stop", func(t *testing.T) {
-						require.Nil(t, main.ReStart())
-						require.True(t, main.Enabled(), "Enable()")
-						require.True(t, main.Running(), "Running()")
-						t.Run("ReStart after Restart", func(t *testing.T) {
-							require.Nil(t, main.ReStart())
-							require.True(t, main.Enabled(), "Enable()")
-							require.True(t, main.Running(), "Running()")
-							t.Run("Start after Restart", func(t *testing.T) {
-								require.Nil(t, main.ReStart())
-								require.True(t, main.Enabled(), "Enable()")
-								require.True(t, main.Running(), "Running()")
-								t.Run("Restarts", func(t *testing.T) {
-									for i := 0; i < 5; i++ {
-										t.Log("restarting")
-										require.Nil(t, main.ReStart())
-										t.Log("restarted")
-										require.True(t, main.Enabled(), "Enable()")
-										require.True(t, main.Running(), "Running()")
-									}
-									t.Run("Stop after Start", func(t *testing.T) {
-										require.Nil(t, main.Stop())
-										require.True(t, main.Enabled(), "Enable()")
-										require.False(t, main.Running(), "Running()")
-										t.Run("Stop again", func(t *testing.T) {
-											require.Nil(t, main.Stop())
-											require.True(t, main.Enabled(), "Enable()")
-											require.False(t, main.Running(), "Running()")
-											t.Run("Quit after Stop", func(t *testing.T) {
-												go func() {
-													require.Nil(t, main.Quit())
-												}()
-												main.WaitDone()
-												require.False(t, main.Enabled(), "Enable()")
-												require.False(t, main.Running(), "Running()")
-												time.Sleep(20 * time.Millisecond)
-												require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
-											})
-										})
-									})
-								})
-							})
-						})
-					})
-				})
-			})
-		})
-	})
+	t.Log("New")
+	main = daemon.New(
+		daemon.WithRoutineTracer(routinehelper.NewTracer()),
+	)
+	require.NotNil(t, main)
+	require.False(t, main.Enabled(), "The daemon should not be Enabled after New")
+	require.False(t, main.Running(), "The daemon should not be Running after New")
+	require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
 
-	t.Run("RunDaemon then StopAndQuit", func(t *testing.T) {
-		main, err := RunDaemon()
-		require.NotNil(t, main)
-		require.Nil(t, err)
-		require.True(t, main.Enabled(), "Enable()")
-		require.True(t, main.Running(), "Running()")
-		t.Run("Running after start is true", func(t *testing.T) {
-			require.True(t, main.Running())
-			t.Run("StopAndQuit", func(t *testing.T) {
-				require.Nil(t, main.StopAndQuit())
-				require.False(t, main.Enabled(), "Enable()")
-				require.False(t, main.Running(), "Running()")
-				t.Run("ensure no more daemon routine", func(t *testing.T) {
-					time.Sleep(20 * time.Millisecond)
-					require.Equalf(t, 0, main.TraceRDump().Count, "found %#v", main.TraceRDump())
-					t.Run("Running after stop is false", func(t *testing.T) {
-						require.False(t, main.Running())
-					})
-				})
-			})
-		})
-	})
+	t.Log("Start")
+	require.NoError(t, main.Start(context.Background()))
+	require.True(t, main.Enabled(), "The daemon should be Enabled after Start")
+	require.True(t, main.Running(), "The daemon should be Running after Start")
+
+	t.Log("Restart")
+	require.NoError(t, main.Restart(context.Background()))
+	require.True(t, main.Enabled(), "The daemon should be Enabled after Restart")
+	require.True(t, main.Running(), "The daemon should be Running after Restart")
+
+	t.Log("Stop")
+	require.NoError(t, main.Stop())
+	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
+	require.False(t, main.Running(), "The daemon should not be Running after Stop")
+	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
+
+	t.Log("Stop")
+	require.NoError(t, main.Stop())
+	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
+	require.False(t, main.Running(), "The daemon should not be Running after Stop")
+
+	t.Log("Restart")
+	require.NoError(t, main.Restart(context.Background()))
+	require.True(t, main.Enabled(), "The daemon should be Enabled after Restart")
+	require.True(t, main.Running(), "The daemon should be Running after Restart")
+
+	t.Log("Restart")
+	require.NoError(t, main.Restart(context.Background()))
+	require.True(t, main.Enabled(), "The daemon should be Enabled after Restart")
+	require.True(t, main.Running(), "The daemon should be Running after Restart")
+
+	t.Log("Stop")
+	require.NoError(t, main.Stop())
+	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
+	require.False(t, main.Running(), "The daemon should not be Running after Stop")
+
+	main.Wait()
+	main.Wait() // verify we don't block on calling WaitDone() multiple times
+	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
+
+	t.Log("RunDaemon")
+	main, err := daemon.RunDaemon()
+	require.NotNil(t, main)
+	require.NoError(t, err)
+	require.True(t, main.Enabled(), "The daemon should be Enabled after RunDaemon")
+	require.True(t, main.Running(), "The daemon should be Running after RunDaemon")
+
+	t.Log("Stop")
+	require.NoError(t, main.Stop())
+	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
+	require.False(t, main.Running(), "The daemon should not be Running after Stop")
+	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
 }

@@ -43,6 +43,8 @@ type (
 	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).
 	SecureKeystore interface {
 		GenCert() error
+		PKCS() ([]byte, error)
+		FullPEM() (string, error)
 	}
 )
 

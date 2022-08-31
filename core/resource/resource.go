@@ -26,7 +26,6 @@ import (
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/pg"
-	"opensvc.com/opensvc/util/timestamp"
 	"opensvc.com/opensvc/util/xsession"
 )
 
@@ -133,7 +132,7 @@ type (
 
 	// ProvisionStatus define if and when the resource became provisioned.
 	ProvisionStatus struct {
-		Mtime timestamp.T   `json:"mtime,omitempty"`
+		Mtime time.Time     `json:"mtime,omitempty"`
 		State provisioned.T `json:"state"`
 	}
 
@@ -196,7 +195,7 @@ type (
 	Hook int
 
 	ExposedStatusInfoSchedAction struct {
-		Last timestamp.T `json:"last"`
+		Last time.Time `json:"last"`
 	}
 )
 

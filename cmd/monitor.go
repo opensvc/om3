@@ -38,8 +38,8 @@ func monCmdRun(_ *cobra.Command, _ []string) {
 		return
 	}
 	if monWatchFlag {
-		evGetter := cli.NewGetEvents()
-		statusGetter := cli.NewGetDaemonStatus().SetSelector(daemonStatusSelectorFlag)
+		evGetter := cli.NewGetEvents().SetSelector(monSelectorFlag)
+		statusGetter := cli.NewGetDaemonStatus().SetSelector(monSelectorFlag)
 		if err = m.DoWatchDemo(statusGetter, evGetter, os.Stdout); err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 			return

@@ -7,14 +7,14 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func PubInstStatusDelete(cmdC chan<- interface{}, id string, v moncmd.InstStatusDeleted) {
-	Pub(cmdC, NsStatus, pubsub.OpDelete, id, v)
+func PubInstStatusDelete(bus *pubsub.Bus, id string, v moncmd.InstStatusDeleted) {
+	Pub(bus, NsStatus, pubsub.OpDelete, id, v)
 }
 
-func PubInstStatusUpdated(cmdC chan<- interface{}, id string, v moncmd.InstStatusUpdated) {
-	Pub(cmdC, NsStatus, pubsub.OpUpdate, id, v)
+func PubInstStatusUpdated(bus *pubsub.Bus, id string, v moncmd.InstStatusUpdated) {
+	Pub(bus, NsStatus, pubsub.OpUpdate, id, v)
 }
 
-func SubInstStatus(cmdC chan<- interface{}, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
-	return Sub(cmdC, NsStatus, op, name, matching, fn)
+func SubInstStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+	return Sub(bus, NsStatus, op, name, matching, fn)
 }

@@ -12,8 +12,10 @@ import (
 	"github.com/fatih/color"
 	"github.com/hpcloud/tail"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/logging"
 	"opensvc.com/opensvc/util/xerrors"
 )
 
@@ -24,19 +26,19 @@ type (
 		q        chan Event
 	}
 	Event struct {
-		b []byte
-		m map[string]interface{}
+		B []byte
+		M map[string]interface{}
 	}
 	Events []Event
 )
 
 func (event Event) Map() map[string]interface{} {
-	return event.m
+	return event.M
 }
 
 func (event Event) IsMatching(filters map[string]interface{}) bool {
 	for k, v := range filters {
-		if current, ok := event.m[k]; !ok || (current != v) {
+		if current, ok := event.M[k]; !ok || (current != v) {
 			return false
 		}
 	}
@@ -47,11 +49,11 @@ func (event Event) RenderConsole() {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
-	_, _ = w.Write(event.b)
+	_, _ = w.Write(event.B)
 }
 
 func (event Event) RenderData() {
-	fmt.Printf("%s\n", string(event.b))
+	fmt.Printf("%s\n", string(event.B))
 }
 
 func (event Event) Render(format string) {
@@ -68,13 +70,13 @@ func (events Events) RenderConsole() {
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
 	for _, event := range events {
-		_, _ = w.Write(event.b)
+		_, _ = w.Write(event.B)
 	}
 }
 
 func (events Events) RenderData() {
 	for _, event := range events {
-		fmt.Printf("%s\n", string(event.b))
+		fmt.Printf("%s\n", string(event.B))
 	}
 }
 
@@ -92,7 +94,7 @@ func NewEvent(b []byte) (Event, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return Event{}, err
 	} else {
-		return Event{b: b, m: m}, nil
+		return Event{B: b, M: m}, nil
 	}
 }
 
@@ -141,7 +143,11 @@ func (stream *Stream) Stop() error {
 }
 
 func (stream *Stream) Follow(fpath string) error {
-	t, err := tail.TailFile(fpath, tail.Config{Follow: true, ReOpen: true})
+	t, err := tail.TailFile(fpath, tail.Config{
+		Follow: true,
+		ReOpen: true,
+		Logger: logging.StandardLogger(log.Logger),
+	})
 	if err != nil {
 		return err
 	}
@@ -203,13 +209,18 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 		}
 		events = append(events, more...)
 	}
+	events.Sort()
+	return events, errs
+}
+
+func (events Events) Sort() {
 	sort.Slice(events, func(i, j int) bool {
 		var ts1, ts2 interface{}
 		var ok bool
-		if ts1, ok = events[i].m["t"]; !ok {
+		if ts1, ok = events[i].M["t"]; !ok {
 			return false
 		}
-		if ts2, ok = events[j].m["t"]; !ok {
+		if ts2, ok = events[j].M["t"]; !ok {
 			return true
 		}
 		sts1, ok1 := ts1.(string)
@@ -224,12 +235,11 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 		}
 		return false
 	})
-	return events, errs
 }
 
 func (t Events) MatchString(key, pattern string) bool {
 	for _, ev := range t {
-		if val, ok := ev.m[key]; !ok {
+		if val, ok := ev.M[key]; !ok {
 			continue
 		} else {
 			switch s := val.(type) {

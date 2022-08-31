@@ -9,48 +9,46 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonctx"
-	ps "opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 func (d *discover) cfg() {
 	d.log.Info().Msg("cfg started")
 	defer func() {
-		t := time.NewTimer(dropCmdTimeout)
-		defer func() {
-			if !t.Stop() {
-				<-t.C
-			}
-		}()
+		t := time.NewTicker(dropCmdTimeout)
+		defer t.Stop()
 		for {
 			select {
+			case <-d.ctx.Done():
+				return
 			case <-t.C:
 				return
 			case <-d.cfgCmdC:
 			}
 		}
 	}()
-	c := daemonctx.DaemonPubSubCmd(d.ctx)
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
+	bus := pubsub.BusFromContext(d.ctx)
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
 
 	for {
 		select {
 		case <-d.ctx.Done():
-			d.log.Info().Msg("cfg done")
+			d.log.Info().Msg("cfg stopped")
 			return
 		case i := <-d.cfgCmdC:
 			switch c := (*i).(type) {
-			case moncmd.CfgFsWatcherCreate:
-				d.cmdLocalCfgFileAdded(c.Path, c.Filename)
+			case moncmd.CfgFileUpdated:
+				d.onCfgFileUpdated(c)
+			case moncmd.CfgFileRemoved:
+				d.onCfgFileRemoved(c)
 			case moncmd.MonCfgDone:
-				d.cmdInstCfgDone(c.Path, c.Filename)
+				d.onInstCfgDone(c)
 			case moncmd.CfgUpdated:
 				if c.Node == d.localhost {
 					continue
@@ -71,25 +69,34 @@ func (d *discover) cfg() {
 }
 
 func (d *discover) onEvCfg(i interface{}) {
-	d.cfgCmdC <- moncmd.New(i)
-}
-
-func (d *discover) cmdLocalCfgFileAdded(p path.T, filename string) {
-	s := p.String()
-	if _, ok := d.moncfg[s]; ok {
-		return
+	select {
+	case <-d.ctx.Done():
+	case d.cfgCmdC <- moncmd.New(i):
 	}
-	instcfg.Start(d.ctx, p, filename, d.cfgCmdC)
-	d.moncfg[s] = struct{}{}
 }
 
-func (d *discover) cmdInstCfgDone(p path.T, filename string) {
-	s := p.String()
+func (d *discover) onCfgFileRemoved(c moncmd.CfgFileRemoved) {
+	s := c.Path.String()
+	if _, ok := d.moncfg[s]; ok {
+		d.moncfg[s].CmdC <- moncmd.New(c)
+	}
+}
+
+func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
+	s := c.Path.String()
+	if _, ok := d.moncfg[s]; !ok {
+		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
+	}
+	d.moncfg[s].CmdC <- moncmd.New(c)
+}
+
+func (d *discover) onInstCfgDone(c moncmd.MonCfgDone) {
+	s := c.Path.String()
 	if _, ok := d.moncfg[s]; ok {
 		delete(d.moncfg, s)
 	}
-	if file.Exists(filename) {
-		d.cmdLocalCfgFileAdded(p, filename)
+	if file.Exists(c.Filename) {
+		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
 	}
 }
 
@@ -101,7 +108,7 @@ func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance
 	d.log.Info().Msgf("cmdRemoteCfgUpdated for node %s, path %s", node, p)
 	if remoteUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s
-		if remoteCfg.Updated.Time().After(remoteUpdated.Time()) {
+		if remoteCfg.Updated.After(remoteUpdated) {
 			d.log.Info().Msgf("cancel pending remote cfg fetcher, more recent config from %s on %s", s, node)
 			d.cancelFetcher(s)
 		} else {
@@ -170,7 +177,7 @@ func (d *discover) cancelFetcher(s string) {
 	delete(d.fetcherFrom, s)
 }
 
-func (d *discover) fetchCfgFromRemote(p path.T, node string, updated timestamp.T) {
+func (d *discover) fetchCfgFromRemote(p path.T, node string, updated time.Time) {
 	s := p.String()
 	if n, ok := d.fetcherFrom[s]; ok {
 		d.log.Error().Msgf("fetcher already in progress for %s from %s", s, n)

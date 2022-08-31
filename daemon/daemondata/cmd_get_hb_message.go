@@ -1,11 +1,12 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opGetHbMessage struct {
@@ -23,15 +24,20 @@ func (o opGetHbMessage) setDataByte(err error) {
 // GetHbMessage provides the hb message to send on remotes
 //
 // It decides which type of message is needed
-func (t T) GetHbMessage() []byte {
+func (t T) GetHbMessage(ctx context.Context) []byte {
 	b := make(chan []byte)
 	t.cmdC <- opGetHbMessage{
 		data: b,
 	}
-	return <-b
+	select {
+	case <-ctx.Done():
+		return nil
+	case msg := <-b:
+		return msg
+	}
 }
 
-func (o opGetHbMessage) call(d *data) {
+func (o opGetHbMessage) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetHbMessage
 	d.log.Debug().Msg("opGetHbMessage")
 	var nextMessageType string
@@ -62,20 +68,26 @@ func (o opGetHbMessage) call(d *data) {
 		b, err := json.Marshal(d.patchQueue)
 		if err != nil {
 			d.log.Error().Err(err).Msg("opGetHbMessage marshal patch queue")
-			o.data <- []byte{}
+			select {
+			case <-ctx.Done():
+			case o.data <- []byte{}:
+			}
 			return
 		}
 		delta := patchQueue{}
 		if err := json.Unmarshal(b, &delta); err != nil {
 			d.log.Error().Err(err).Msg("opGetHbMessage unmarshal patch queue")
-			o.data <- []byte{}
+			select {
+			case <-ctx.Done():
+			case o.data <- []byte{}:
+			}
 			return
 		}
 		msg = hbtype.MsgPatch{
 			Kind:     "patch",
 			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
 			Gen:      d.getGens(),
-			Updated:  timestamp.Now(),
+			Updated:  time.Now(),
 			Deltas:   delta,
 			Nodename: d.localNode,
 		}
@@ -84,7 +96,7 @@ func (o opGetHbMessage) call(d *data) {
 			Kind:     "full",
 			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
 			Gen:      d.getGens(),
-			Updated:  timestamp.Now(),
+			Updated:  time.Now(),
 			Full:     *GetNodeStatus(d.committed, d.localNode).DeepCopy(),
 			Nodename: d.localNode,
 		}
@@ -99,9 +111,15 @@ func (o opGetHbMessage) call(d *data) {
 		return
 	}
 	if b, err := json.Marshal(msg); err != nil {
-		o.data <- []byte{}
+		select {
+		case <-ctx.Done():
+		case o.data <- []byte{}:
+		}
 	} else {
-		o.data <- b
+		select {
+		case <-ctx.Done():
+		case o.data <- b:
+		}
 	}
 }
 

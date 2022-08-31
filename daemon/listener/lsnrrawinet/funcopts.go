@@ -1,19 +1,9 @@
 package lsnrrawinet
 
 import (
-	"context"
-
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/util/funcopt"
 )
-
-func WithContext(parent context.Context) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
-		t := i.(*T)
-		t.ctx, t.cancel = context.WithCancel(parent)
-		return nil
-	})
-}
 
 func WithRoutineTracer(o routinehelper.Tracer) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

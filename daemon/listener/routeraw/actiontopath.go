@@ -8,6 +8,11 @@ type (
 )
 
 var actionToPath = map[string]rawToHttp{
+	"node_log":     {"GET", "/node/log"},
+	"node/log":     {"GET", "/node/log"},
+	"node_backlog": {"GET", "/node/backlog"},
+	"node/backlog": {"GET", "/node/backlog"},
+
 	"daemon_running": {"GET", "/daemon/running"},
 	"daemon_status":  {"GET", "/daemon/status"},
 	"daemon_stop":    {"POST", "/daemon/stop"},
@@ -25,4 +30,9 @@ var actionToPath = map[string]rawToHttp{
 	"object_selector": {"GET", "/object/selector"},
 	"object/status":   {"POST", "/object/status"},
 	"object_status":   {"POST", "/object/status"},
+
+	"objects_log":     {"GET", "/objects/log"},
+	"objects/log":     {"GET", "/objects/log"},
+	"objects_backlog": {"GET", "/objects/backlog"},
+	"objects/backlog": {"GET", "/objects/backlog"},
 }

@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/timestamp"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -54,12 +54,12 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	smon = instance.Monitor{
 		GlobalExpect:        payload.GlobalExpect,
-		GlobalExpectUpdated: timestamp.Now(),
+		GlobalExpectUpdated: time.Now(),
 		LocalExpect:         payload.LocalExpect,
 		Status:              payload.State,
 	}
-	evCmdC := daemonctx.DaemonPubSubCmd(r.Context())
-	daemonps.PubSetSmonUpdated(evCmdC, p.String(), moncmd.SetSmon{
+	bus := pubsub.BusFromContext(r.Context())
+	daemonps.PubSetSmonUpdated(bus, p.String(), moncmd.SetSmon{
 		Path:    p,
 		Node:    hostname.Hostname(),
 		Monitor: smon,

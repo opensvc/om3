@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonps"
@@ -27,11 +29,14 @@ type (
 	}
 )
 
-func (o opDelInstanceStatus) setError(err error) {
-	o.err <- err
+func (o opDelInstanceStatus) setError(ctx context.Context, err error) {
+	select {
+	case o.err <- err:
+	case <-ctx.Done():
+	}
 }
 
-func (o opDelInstanceStatus) call(d *data) {
+func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelInstanceStatus
 	s := o.path.String()
 	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Status[s]; ok {
@@ -41,25 +46,31 @@ func (o opDelInstanceStatus) call(d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubInstStatusDelete(d.pubSub, s, moncmd.InstStatusDeleted{
+	daemonps.PubInstStatusDelete(d.bus, s, moncmd.InstStatusDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }
 
-func (o opGetInstanceStatus) call(d *data) {
+func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetInstanceStatus
+	s := instance.Status{}
 	if nodeStatus, ok := d.pending.Monitor.Nodes[o.node]; ok {
 		if instStatus, ok := nodeStatus.Services.Status[o.path.String()]; ok {
-			o.status <- instStatus
-			return
+			s = instStatus
 		}
 	}
-	o.status <- instance.Status{}
+	select {
+	case <-ctx.Done():
+	case o.status <- s:
+	}
 }
 
-func (o opSetInstanceStatus) call(d *data) {
+func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceStatus
 	s := o.path.String()
 	op := jsondelta.Operation{
@@ -68,10 +79,13 @@ func (o opSetInstanceStatus) call(d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubInstStatusUpdated(d.pubSub, s, moncmd.InstStatusUpdated{
+	daemonps.PubInstStatusUpdated(d.bus, s, moncmd.InstStatusUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,
 	})
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }

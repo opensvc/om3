@@ -81,6 +81,17 @@ func SelectionWithServer(server string) funcopt.O {
 	})
 }
 
+// SelectionWithInstalled forces a list of installed path.T
+// The daemon knows the path of objects with no local instance, so better
+// to use that instead of crawling etc/ via path.List()
+func SelectionWithInstalled(installed path.L) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*Selection)
+		t.installed = installed
+		return nil
+	})
+}
+
 func (t Selection) String() string {
 	return fmt.Sprintf("Selection{%s}", t.SelectorExpression)
 }
@@ -239,13 +250,12 @@ func (t *Selection) getInstalledSet() (*set.Set, error) {
 	if t.installedSet != nil {
 		return t.installedSet, nil
 	}
-	var err error
-	t.installed, err = path.List()
+	installed, err := t.getInstalled()
 	if err != nil {
 		return t.installedSet, err
 	}
 	t.installedSet = set.New()
-	for _, p := range t.installed {
+	for _, p := range installed {
 		t.installedSet.Insert(p.String())
 	}
 	return t.installedSet, nil

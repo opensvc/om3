@@ -1,15 +1,13 @@
 package object
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/schedule"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 // PrintSchedule display the object scheduling table
@@ -31,19 +29,7 @@ func (t *actor) lastSuccessFilepath(action string, rid string, base string) stri
 
 func (t *actor) loadLast(action string, rid string, base string) time.Time {
 	fpath := t.lastFilepath(action, rid, base)
-	b, err := os.ReadFile(fpath)
-	if err != nil {
-		return time.Unix(0, 0)
-	}
-	s := strings.TrimSpace(string(b))
-	if ti, err := timestamp.Parse(s); err == nil {
-		return ti
-	}
-	loc := time.Now().Location()
-	if ti, err := time.ParseInLocation("2006-01-02 15:04:05.9", s, loc); err == nil {
-		return ti.UTC()
-	}
-	return time.Unix(0, 0)
+	return file.ModTime(fpath)
 }
 
 func (t *actor) newScheduleEntry(action string, keyStr string, base string) schedule.Entry {
@@ -56,7 +42,7 @@ func (t *actor) newScheduleEntry(action string, keyStr string, base string) sche
 		Node:       hostname.Hostname(),
 		Path:       t.path,
 		Action:     action,
-		Last:       timestamp.New(t.loadLast(action, "", base)),
+		Last:       t.loadLast(action, "", base),
 		Key:        k.String(),
 		Definition: def,
 	}

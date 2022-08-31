@@ -3,8 +3,7 @@ package cluster
 import (
 	"encoding/json"
 	"strings"
-
-	"opensvc.com/opensvc/util/timestamp"
+	"time"
 )
 
 type (
@@ -14,7 +13,7 @@ type (
 	// NodeStats embeds all daemon threads and each objet system
 	// resource usage metrics.
 	NodeStats struct {
-		Timestamp  timestamp.T            `json:"timestamp"`
+		Timestamp  time.Time              `json:"time"`
 		Collector  ThreadStats            `json:"collector"`
 		Daemon     ThreadStats            `json:"daemon"`
 		DNS        ThreadStats            `json:"dns"`
@@ -35,7 +34,7 @@ type (
 
 	// CPUStats holds CPU resource usage metrics.
 	CPUStats struct {
-		Time timestamp.T `json:"time"`
+		Time uint64 `json:"time"`
 	}
 
 	// MemStats holds CPU resource usage metrics.
@@ -61,12 +60,12 @@ type (
 
 	// ObjectStats holds an object (ie cgroup) system resource usage metrics
 	ObjectStats struct {
-		Blk     BlkStats    `json:"blk"`
-		Net     NetStats    `json:"net"`
-		Mem     MemStats    `json:"mem"`
-		CPU     CPUStats    `json:"cpu"`
-		Tasks   uint64      `json:"tasks"`
-		Created timestamp.T `json:"created"`
+		Blk     BlkStats  `json:"blk"`
+		Net     NetStats  `json:"net"`
+		Mem     MemStats  `json:"mem"`
+		CPU     CPUStats  `json:"cpu"`
+		Tasks   uint64    `json:"tasks"`
+		Created time.Time `json:"created"`
 	}
 )
 

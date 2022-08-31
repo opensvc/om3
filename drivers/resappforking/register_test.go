@@ -1,7 +1,6 @@
 package resappforking
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -9,9 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/test_conf_helper"
+	"opensvc.com/opensvc/testhelper"
 )
 
 func getAppRid(rid string, resources []resource.Driver) *T {
@@ -27,11 +25,8 @@ func getAppRid(rid string, resources []resource.Driver) *T {
 }
 
 func TestKeywords(t *testing.T) {
-	td := t.TempDir()
-
-	test_conf_helper.InstallSvcFile(t, "svc1.conf", filepath.Join(td, "etc", "svc1.conf"))
-	rawconfig.Load(map[string]string{"osvc_root_path": td})
-	defer rawconfig.Load(map[string]string{})
+	env := testhelper.Setup(t)
+	env.InstallFile("test-fixtures/svc1.conf", "etc/svc1.conf")
 
 	p, err := path.New("svc1", "", "")
 	require.Nil(t, err)

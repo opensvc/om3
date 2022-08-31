@@ -2,9 +2,10 @@
 package hbtype
 
 import (
+	"time"
+
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -13,7 +14,7 @@ type (
 		Kind     string                     `json:"kind"`
 		Compat   uint64                     `json:"compat"`
 		Gen      map[string]uint64          `json:"gen"`
-		Updated  timestamp.T                `json:"updated"`
+		Updated  time.Time                  `json:"updated"`
 		Ping     cluster.NodeMonitor        `json:"monitor"`
 		Deltas   map[string]jsondelta.Patch `json:"deltas"`
 		Full     cluster.NodeStatus         `json:"full"`
@@ -25,7 +26,7 @@ type (
 		Kind     string             `json:"kind,omitempty"`
 		Compat   uint64             `json:"compat,omitempty"`
 		Gen      map[string]uint64  `json:"gen,omitempty"`
-		Updated  timestamp.T        `json:"updated,omitempty"`
+		Updated  time.Time          `json:"updated,omitempty"`
 		Full     cluster.NodeStatus `json:"full,omitempty"`
 		Nodename string             `json:"nodename,omitempty"`
 	}
@@ -35,7 +36,7 @@ type (
 		Kind     string                     `json:"kind,omitempty"`
 		Compat   uint64                     `json:"compat,omitempty"`
 		Gen      map[string]uint64          `json:"gen,omitempty"`
-		Updated  timestamp.T                `json:"updated,omitempty"`
+		Updated  time.Time                  `json:"updated,omitempty"`
 		Deltas   map[string]jsondelta.Patch `json:"deltas,omitempty"`
 		Nodename string                     `json:"nodename,omitempty"`
 	}
@@ -45,7 +46,7 @@ type (
 		Kind     string              `json:"kind,omitempty"`
 		Compat   uint64              `json:"compat,omitempty"`
 		Gen      map[string]uint64   `json:"gen,omitempty"`
-		Updated  timestamp.T         `json:"updated,omitempty"`
+		Updated  time.Time           `json:"updated,omitempty"`
 		Ping     cluster.NodeMonitor `json:"monitor,omitempty"` // monitor from 2.1
 		Nodename string              `json:"nodename,omitempty"`
 	}

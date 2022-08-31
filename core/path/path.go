@@ -15,6 +15,8 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/xerrors"
+	"opensvc.com/opensvc/util/xmap"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -34,6 +36,9 @@ type (
 
 	// L is a list of object paths.
 	L []T
+
+	// M is a map indexed by path string representation.
+	M map[string]interface{}
 )
 
 const (
@@ -130,6 +135,20 @@ func (t T) IsZero() bool {
 	return t.Name == "" && t.Namespace == "" && t.Kind == kind.Invalid
 }
 
+// ParseList returns a new path.L from a []string path list.
+func ParseList(l ...string) (L, error) {
+	var errs error
+	paths := make(L, 0)
+	for _, s := range l {
+		if p, err := Parse(s); err != nil {
+			xerrors.Append(errs, err)
+		} else {
+			paths = append(paths, p)
+		}
+	}
+	return paths, errs
+}
+
 // Parse returns a new path struct from a path string representation
 func Parse(s string) (T, error) {
 	var (
@@ -208,7 +227,7 @@ func (t T) Match(pattern string) bool {
 		return true
 	}
 	l := strings.Split(pattern, "/")
-	f := fnmatch.FNM_IGNORECASE | fnmatch.FNM_PATHNAME
+	f := fnmatch.FNM_IGNORECASE
 	if strings.Contains(pattern, "**") {
 		s := t.FQN()
 		if fnmatch.Match(pattern, s, f) {
@@ -283,6 +302,30 @@ func (t L) Filter(pattern string) L {
 		}
 	}
 	return l
+}
+
+// StrMap converts L into a map indexed by path string representation.
+// This format is useful for fast Has(string) bool functions.
+func (t L) StrMap() M {
+	m := make(M)
+	for _, p := range t {
+		m[p.String()] = nil
+	}
+	return m
+}
+
+// Namespaces return the list of unique namespaces in L
+func (t L) Namespaces() []string {
+	m := make(map[string]interface{})
+	for _, p := range t {
+		m[p.Namespace] = nil
+	}
+	return xmap.Keys(m)
+}
+
+func (t M) Has(s string) bool {
+	_, ok := t[s]
+	return ok
 }
 
 func (t L) Merge(other L) L {

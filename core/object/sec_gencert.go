@@ -22,16 +22,12 @@ import (
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.
 func (t *sec) GenCert() error {
 	var err error
-	priv, err := t.getPriv()
-	if err != nil {
-		return err
-	}
 	ca := t.CertInfo("ca")
 	switch ca {
 	case "":
-		err = t.genSelfSigned(priv)
+		err = t.genSelfSigned()
 	default:
-		err = t.genCASigned(priv, ca)
+		err = t.genCASigned(ca)
 	}
 	if err != nil {
 		return err
@@ -39,22 +35,34 @@ func (t *sec) GenCert() error {
 	return t.config.Commit()
 }
 
-func (t *sec) genSelfSigned(priv *rsa.PrivateKey) error {
+func (t *sec) genSelfSigned() error {
 	t.log.Debug().Msg("generate a self-signed certificate")
+	priv, err := t.getPriv()
+	if err != nil {
+		return err
+	}
 	tmpl, err := t.template(true, priv)
 	if err != nil {
 		return err
 	}
-	_, certBytes, err := genCert(&tmpl, &tmpl, priv)
+	_, certBytes, err := genCert(&tmpl, &tmpl, &priv.PublicKey, priv)
 	if err != nil {
 		return err
 	}
 	return t.addKey("certificate", certBytes)
 }
 
-func (t *sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
-	t.log.Debug().Msgf("generate a certificate signed by the CA in %s", ca)
+func (t *sec) genCASigned(ca string) error {
+	t.log.Debug().Msgf("generate a certificate signed by the %s CA", ca)
+	priv, err := t.getPriv()
+	if err != nil {
+		return err
+	}
 	caCert, caCertBytes, err := t.getCACert()
+	if err != nil {
+		return err
+	}
+	caPriv, err := t.getCAPriv()
 	if err != nil {
 		return err
 	}
@@ -62,7 +70,7 @@ func (t *sec) genCASigned(priv *rsa.PrivateKey, ca string) error {
 	if err != nil {
 		return err
 	}
-	_, certBytes, err := genCert(&tmpl, caCert, priv)
+	_, certBytes, err := genCert(&tmpl, caCert, &priv.PublicKey, caPriv)
 	if err != nil {
 		return err
 	}
@@ -152,12 +160,12 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		MaxPathLen:            2,
 		IPAddresses:           t.IPAddressesFromAltNames(),
 		DNSNames:              t.DNSNamesFromAltNames(),
 	}
 	if isCA {
 		template.IsCA = true
+		template.MaxPathLen = 2
 		template.KeyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage |= x509.KeyUsageCRLSign
 	}
@@ -273,8 +281,8 @@ func (t *sec) genPriv() (*rsa.PrivateKey, error) {
 	return priv, nil
 }
 
-func genCert(template, parent *x509.Certificate, priv *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, &priv.PublicKey, priv)
+func genCert(template, parent *x509.Certificate, pub interface{}, priv *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, pub, priv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create certificate: " + err.Error())
 	}

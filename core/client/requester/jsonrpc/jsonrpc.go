@@ -13,6 +13,7 @@ import (
 
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -141,15 +142,21 @@ func (t T) GetStream(req request.T) (chan []byte, error) {
 }
 
 func New(url string) (*T, error) {
+	var inet bool
 	if url == "" {
 		url = defaultUDSPath()
+		inet = false
 	} else {
+		inet = strings.Contains(url, ":")
 		url = strings.Replace(url, UDSPrefix, "/", 1)
 		url = strings.Replace(url, InetPrefix, "", 1)
 	}
+	if !strings.Contains(url, ":") {
+		url += fmt.Sprintf(":%d", daemonenv.RawPort)
+	}
 	r := &T{
 		URL:  url,
-		Inet: strings.Contains(url, ":"),
+		Inet: inet,
 	}
 	return r, nil
 }

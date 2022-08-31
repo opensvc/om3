@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"context"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonps"
@@ -25,7 +27,7 @@ func (o opDelSmon) setError(err error) {
 	o.err <- err
 }
 
-func (o opDelSmon) call(d *data) {
+func (o opDelSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelSmon
 	s := o.path.String()
 	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Smon[s]; ok {
@@ -35,14 +37,17 @@ func (o opDelSmon) call(d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubSmonDelete(d.pubSub, s, moncmd.SmonDeleted{
+	daemonps.PubSmonDelete(d.bus, s, moncmd.SmonDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }
 
-func (o opSetSmon) call(d *data) {
+func (o opSetSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetSmon
 	s := o.path.String()
 	op := jsondelta.Operation{
@@ -51,10 +56,13 @@ func (o opSetSmon) call(d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubSmonUpdated(d.pubSub, s, moncmd.SmonUpdated{
+	daemonps.PubSmonUpdated(d.bus, s, moncmd.SmonUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,
 	})
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }

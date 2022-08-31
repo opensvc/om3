@@ -13,7 +13,7 @@ var (
 	delayExistAfterRemove = 100 * time.Millisecond
 )
 
-func (o *instCfg) watchFile() error {
+func (o *T) watchFile() error {
 	log := o.log.With().Str("func", "instcfg.watchFile").Str("cfgfile", o.filename).Logger()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -47,7 +47,7 @@ func (o *instCfg) watchFile() error {
 						time.Sleep(delayExistAfterRemove)
 						if !file.Exists(o.filename) {
 							log.Info().Msg("file removed")
-							o.cmdC <- moncmd.New(moncmd.CfgFileRemoved{})
+							o.CmdC <- moncmd.New(moncmd.CfgFileRemoved{})
 							return
 						} else {
 							log.Debug().Msg("re-add watch")
@@ -57,7 +57,7 @@ func (o *instCfg) watchFile() error {
 						}
 					}
 					log.Debug().Msg("file updated")
-					o.cmdC <- moncmd.New(moncmd.CfgFileUpdated{})
+					o.CmdC <- moncmd.New(moncmd.CfgFileUpdated{})
 				}
 			case err := <-watcher.Errors:
 				log.Error().Err(err).Msg("watcher.Errors")

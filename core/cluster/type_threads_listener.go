@@ -2,18 +2,17 @@ package cluster
 
 import (
 	"net"
-
-	"opensvc.com/opensvc/util/timestamp"
+	"time"
 )
 
 type (
 	// ListenerThreadSession describes statistics of a session of the api listener.
 	ListenerThreadSession struct {
-		Addr      string      `json:"addr"`
-		Created   timestamp.T `json:"created"`
-		Encrypted bool        `json:"encrypted"`
-		Progress  string      `json:"progress"`
-		TID       uint64      `json:"tid"`
+		Addr      string    `json:"addr"`
+		Created   time.Time `json:"created"`
+		Encrypted bool      `json:"encrypted"`
+		Progress  string    `json:"progress"`
+		TID       uint64    `json:"tid"`
 	}
 
 	// ListenerThreadClient describes the statistics of all session of a single client the api listener.

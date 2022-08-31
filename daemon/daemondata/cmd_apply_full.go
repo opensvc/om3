@@ -1,13 +1,14 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type opApplyRemoteFull struct {
@@ -16,7 +17,7 @@ type opApplyRemoteFull struct {
 	done     chan<- bool
 }
 
-func (o opApplyRemoteFull) call(d *data) {
+func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	d.counterCmd <- idApplyFull
 	d.log.Debug().Msgf("opApplyRemoteFull %s", o.nodename)
 	d.pending.Monitor.Nodes[o.nodename] = *o.full
@@ -39,11 +40,11 @@ func (o opApplyRemoteFull) call(d *data) {
 	} else {
 		var eventData json.RawMessage = eventB
 		eventId++
-		daemonps.PubEvent(d.pubSub, event.Event{
-			Kind:      "patch",
-			ID:        eventId,
-			Timestamp: timestamp.Now(),
-			Data:      &eventData,
+		daemonps.PubEvent(d.bus, event.Event{
+			Kind: "patch",
+			ID:   eventId,
+			Time: time.Now(),
+			Data: &eventData,
 		})
 	}
 
@@ -53,7 +54,10 @@ func (o opApplyRemoteFull) call(d *data) {
 		Interface("pending gen", d.pending.Monitor.Nodes[o.nodename].Gen).
 		Interface("full.gen", o.full.Gen).
 		Msgf("opApplyRemoteFull %s", o.nodename)
-	o.done <- true
+	select {
+	case <-ctx.Done():
+	case o.done <- true:
+	}
 }
 
 func (t T) ApplyFull(nodename string, full *cluster.NodeStatus) {

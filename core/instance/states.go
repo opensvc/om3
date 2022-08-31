@@ -1,6 +1,6 @@
 package instance
 
-import "opensvc.com/opensvc/util/timestamp"
+import "time"
 
 type (
 	// States groups config and status of the object instance as seen by the daemon.
@@ -13,7 +13,7 @@ type (
 
 	// Node contains the node information displayed in print status.
 	Node struct {
-		Name   string      `json:"name"`
-		Frozen timestamp.T `json:"frozen,omitempty"`
+		Name   string    `json:"name"`
+		Frozen time.Time `json:"frozen,omitempty"`
 	}
 )

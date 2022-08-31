@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -20,17 +21,13 @@ var (
 		RunE:    daemonStartCmdRun,
 	}
 	daemonStartForeground bool
+	cpuprofile            string
 )
 
 func init() {
 	daemonCmd.AddCommand(daemonStartCmd)
-	daemonStartCmd.Flags().BoolVarP(
-		&daemonStartForeground,
-		"foreground",
-		"f",
-		false,
-		"Run the daemon in foreground mode.")
-
+	daemonStartCmd.Flags().BoolVarP(&daemonStartForeground, "foreground", "f", false, "Run the daemon in foreground mode.")
+	daemonStartCmd.Flags().StringVar(&cpuprofile, "cpuprofile", "", "Dump a cpu pprof in this file on exit.")
 }
 
 func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
@@ -39,6 +36,20 @@ func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
 		os.Exit(1)
 	}
 	if daemonStartForeground {
+		if cpuprofile != "" {
+			f, err := os.Create(cpuprofile)
+			if err != nil {
+				log.Logger.Fatal().Err(err).Msg("could not create CPU profile")
+				os.Exit(1)
+			}
+			defer f.Close() // error handling omitted for example
+			if err := pprof.StartCPUProfile(f); err != nil {
+				log.Logger.Fatal().Err(err).Msg("could not start CPU profile")
+				os.Exit(1)
+			}
+			defer pprof.StopCPUProfile()
+		}
+
 		if err := daemoncli.New(cli).Start(); err != nil {
 			log.Logger.Error().Err(err).Msg("daemoncli.Run")
 			os.Exit(1)

@@ -23,6 +23,7 @@ package callcount
 
 import (
 	"context"
+	"sync"
 )
 
 type (
@@ -45,9 +46,17 @@ func Start(parent context.Context, mapping map[int]string) (chan<- interface{}, 
 	}
 	ctx, cancel := context.WithCancel(parent)
 	c := make(chan interface{})
-	go run(ctx, c, mapping)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		run(ctx, c, mapping)
+	}()
 	var cmdC chan<- interface{} = c
-	return cmdC, cancel
+	return cmdC, func() {
+		cancel()
+		wg.Wait()
+	}
 }
 
 // Get return current Counts

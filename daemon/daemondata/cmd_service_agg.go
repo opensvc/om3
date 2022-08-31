@@ -1,7 +1,9 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/object"
@@ -9,7 +11,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/timestamp"
 )
 
 type (
@@ -34,7 +35,7 @@ func (o opSetServiceAgg) setError(err error) {
 	o.err <- err
 }
 
-func (o opDelServiceAgg) call(d *data) {
+func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelServiceAgg
 	s := o.path.String()
 	if _, ok := d.pending.Monitor.Services[s]; ok {
@@ -48,22 +49,25 @@ func (o opDelServiceAgg) call(d *data) {
 		} else {
 			eventId++
 			var data json.RawMessage = eventB
-			daemonps.PubEvent(d.pubSub, event.Event{
-				Kind:      "patch",
-				ID:        eventId,
-				Timestamp: timestamp.Now(),
-				Data:      &data,
+			daemonps.PubEvent(d.bus, event.Event{
+				Kind: "patch",
+				ID:   eventId,
+				Time: time.Now(),
+				Data: &data,
 			})
 		}
 	}
-	daemonps.PubSvcAggDelete(d.pubSub, s, moncmd.MonSvcAggDeleted{
+	daemonps.PubSvcAggDelete(d.bus, s, moncmd.MonSvcAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }
 
-func (o opSetServiceAgg) call(d *data) {
+func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetServiceAgg
 	s := o.path.String()
 	d.pending.Monitor.Services[s] = o.value
@@ -78,18 +82,21 @@ func (o opSetServiceAgg) call(d *data) {
 	} else {
 		eventId++
 		var data json.RawMessage = eventB
-		daemonps.PubEvent(d.pubSub, event.Event{
-			Kind:      "patch",
-			ID:        eventId,
-			Timestamp: timestamp.Now(),
-			Data:      &data,
+		daemonps.PubEvent(d.bus, event.Event{
+			Kind: "patch",
+			ID:   eventId,
+			Time: time.Now(),
+			Data: &data,
 		})
 	}
-	daemonps.PubSvcAggUpdate(d.pubSub, s, moncmd.MonSvcAggUpdated{
+	daemonps.PubSvcAggUpdate(d.bus, s, moncmd.MonSvcAggUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		SvcAgg: o.value,
 		SrcEv:  o.srcEv,
 	})
-	o.err <- nil
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
 }

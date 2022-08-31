@@ -1,20 +1,20 @@
 package subdaemon
 
+import "context"
+
 type (
 	Manager interface {
-		Quit() error
 		Running() bool
-		Init() error
-		Start() error
+		Start(context.Context) error
 		Stop() error
-		Name() string
-		MainStart() error
+		MainStart(context.Context) error
 		MainStop() error
-		WaitDone()
+		Name() string
+		Register(Manager) error
 	}
 
 	RootManager interface {
 		Running() bool
-		StopAndQuit() error
+		Stop() error
 	}
 )

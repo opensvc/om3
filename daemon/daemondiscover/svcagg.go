@@ -3,7 +3,6 @@ package daemondiscover
 import (
 	"time"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
 	ps "opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/monitor/svcagg"
@@ -11,29 +10,27 @@ import (
 )
 
 func (d *discover) agg() {
-	log := d.log.With().Str("_func", "agg").Logger()
+	log := d.log.With().Str("func", "agg").Logger()
 	log.Info().Msg("started")
 	defer func() {
-		t := time.NewTimer(dropCmdTimeout)
-		defer func() {
-			if !t.Stop() {
-				<-t.C
-			}
-		}()
+		t := time.NewTicker(dropCmdTimeout)
+		defer t.Stop()
 		for {
 			select {
+			case <-d.ctx.Done():
+				return
 			case <-t.C:
 				return
 			case <-d.svcaggCmdC:
 			}
 		}
 	}()
-	c := daemonctx.DaemonPubSubCmd(d.ctx)
-	defer ps.UnSub(c, ps.SubCfg(c, pubsub.OpUpdate, "agg-from-cfg-create", "", d.onEvAgg))
+	bus := pubsub.BusFromContext(d.ctx)
+	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "agg-from-cfg-create", "", d.onEvAgg))
 	for {
 		select {
 		case <-d.ctx.Done():
-			log.Info().Msg("done")
+			log.Info().Msg("stopped")
 			return
 		case i := <-d.svcaggCmdC:
 			switch c := (*i).(type) {
@@ -44,7 +41,7 @@ func (d *discover) agg() {
 				if _, ok := d.svcAgg[s]; !ok {
 					log.Info().Msgf("discover new object %s", s)
 					if err := svcagg.Start(d.ctx, c.Path, c.Config, d.svcaggCmdC); err != nil {
-						d.log.Error().Err(err).Msgf("svcAgg.Start %s", s)
+						log.Error().Err(err).Msgf("svcAgg.Start %s", s)
 						return
 					}
 					d.svcAgg[s] = make(map[string]struct{})
@@ -57,5 +54,8 @@ func (d *discover) agg() {
 }
 
 func (d *discover) onEvAgg(i interface{}) {
-	d.svcaggCmdC <- moncmd.New(i)
+	select {
+	case <-d.ctx.Done():
+	case d.svcaggCmdC <- moncmd.New(i):
+	}
 }

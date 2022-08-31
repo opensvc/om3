@@ -31,8 +31,8 @@ type (
 		client *client.T
 		node   string
 	}
-	waitDowner interface {
-		WaitDone()
+	waiter interface {
+		Wait()
 	}
 )
 
@@ -56,7 +56,7 @@ func (t *T) Start() error {
 		return err
 	}
 	if d != nil {
-		d.WaitDone()
+		d.Wait()
 	}
 	return nil
 }
@@ -82,7 +82,7 @@ func (t *T) ReStart() error {
 	if err != nil {
 		return err
 	}
-	d.WaitDone()
+	d.Wait()
 	return nil
 }
 
@@ -161,7 +161,7 @@ func (t *T) stop() error {
 	return nil
 }
 
-func (t *T) start() (waitDowner, error) {
+func (t *T) start() (waiter, error) {
 	log.Debug().Msg("cli-start check if not already running")
 	if t.running() {
 		log.Debug().Msg("Already started")
@@ -176,7 +176,7 @@ func (t *T) start() (waitDowner, error) {
 	return d, nil
 }
 
-func (t *T) restart() (waitDowner, error) {
+func (t *T) restart() (waiter, error) {
 	if err := t.stop(); err != nil {
 		return nil, err
 	}

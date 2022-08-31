@@ -1,6 +1,7 @@
 package lsnrrawux
 
 import (
+	"context"
 	"net"
 	"os"
 	"strings"
@@ -11,6 +12,10 @@ import (
 )
 
 func (t *T) stop() error {
+	if t.listener == nil {
+		t.log.Info().Msg("listener already stopped")
+		return nil
+	}
 	if err := (*t.listener).Close(); err != nil {
 		t.log.Error().Err(err).Msg("close failed")
 		return err
@@ -19,12 +24,12 @@ func (t *T) stop() error {
 	return nil
 }
 
-func (t *T) start() error {
+func (t *T) start(ctx context.Context) error {
 	if err := os.RemoveAll(t.addr); err != nil {
 		t.log.Error().Err(err).Msg("RemoveAll")
 		return err
 	}
-	mux := routeraw.New(routehttp.New(t.ctx), t.log, 5*time.Second)
+	mux := routeraw.New(routehttp.New(ctx), t.log, 5*time.Second)
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {
 		t.log.Error().Err(err).Msg("listen failed")

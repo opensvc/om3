@@ -9,7 +9,7 @@ import (
 
 type (
 	usr struct {
-		keystore
+		sec
 	}
 
 	//
@@ -20,14 +20,15 @@ type (
 	// for OpenID access (where grants are embedded in the trusted token)
 	//
 	Usr interface {
-		Keystore
-		SecureKeystore
+		Sec
 	}
 )
 
 // NewUsr allocates a usr kind object.
 func NewUsr(p path.T, opts ...funcopt.O) (*usr, error) {
 	s := &usr{}
+	s.customEncode = secEncode
+	s.customDecode = secDecode
 	if err := s.init(s, p, opts...); err != nil {
 		return s, err
 	}

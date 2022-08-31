@@ -14,33 +14,13 @@ type (
 
 var (
 	contextDaemon      = contextKey("daemon")
-	contextDaemonData  = contextKey("daemondata-cmd")
-	contextDaemonPSCmd = contextKey("daemon-pub-sub-cmd")
 	contextHBSendQueue = contextKey("hb-sendQ")
 	contextUuid        = contextKey("uuid")
+	contextListenAddr  = contextKey("listen-addr")
 )
 
 func (c contextKey) String() string {
 	return "daemonctx." + string(c)
-}
-
-// DaemonDataCmd function returns new DaemonDataCmd from context
-func DaemonDataCmd(ctx context.Context) chan<- interface{} {
-	cmdC, ok := ctx.Value(contextDaemonData).(chan<- interface{})
-	if ok {
-		return cmdC
-	}
-	panic("unable to retrieve context DaemonDataCmd")
-}
-
-// DaemonPubSubCmd function returns DaemonPubSubCmd from context
-func DaemonPubSubCmd(ctx context.Context) (cmdC chan<- interface{}) {
-	var ok bool
-	cmdC, ok = ctx.Value(contextDaemonPSCmd).(chan<- interface{})
-	if ok {
-		return
-	}
-	panic("unable to retrieve context DaemonPubSubCmd")
 }
 
 // HBSendQ function returns HBSendQ from context
@@ -51,16 +31,6 @@ func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
 		return
 	}
 	return nil
-}
-
-// WithDaemonDataCmd function returns copy of parent with daemonCmd.
-func WithDaemonDataCmd(parent context.Context, cmd chan<- interface{}) context.Context {
-	return context.WithValue(parent, contextDaemonData, cmd)
-}
-
-// WithDaemonPubSubCmd function returns copy of parent with daemon pub sub cmd.
-func WithDaemonPubSubCmd(parent context.Context, cmd chan<- interface{}) context.Context {
-	return context.WithValue(parent, contextDaemonPSCmd, cmd)
 }
 
 // WithHBSendQ function returns copy of parent with HBSendQ.
@@ -94,4 +64,18 @@ func Uuid(ctx context.Context) uuid.UUID {
 		return id
 	}
 	return uuid.UUID{}
+}
+
+// WithListenAddr function returns copy of parent with uuid.
+func WithListenAddr(parent context.Context, addr string) context.Context {
+	return context.WithValue(parent, contextListenAddr, addr)
+}
+
+// ListenAddr function returns uuid from context
+func ListenAddr(ctx context.Context) string {
+	id, ok := ctx.Value(contextListenAddr).(string)
+	if ok {
+		return id
+	}
+	return ""
 }

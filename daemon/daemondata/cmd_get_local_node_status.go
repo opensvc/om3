@@ -1,14 +1,21 @@
 package daemondata
 
-import "opensvc.com/opensvc/core/cluster"
+import (
+	"context"
+
+	"opensvc.com/opensvc/core/cluster"
+)
 
 type opGetLocalNodeStatus struct {
 	localStatus chan<- *cluster.NodeStatus
 }
 
-func (o opGetLocalNodeStatus) call(d *data) {
+func (o opGetLocalNodeStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetLocalNodeStatus
-	o.localStatus <- GetNodeStatus(d.committed, d.localNode)
+	select {
+	case <-ctx.Done():
+	case o.localStatus <- GetNodeStatus(d.committed, d.localNode):
+	}
 }
 
 func (t T) GetLocalNodeStatus() *cluster.NodeStatus {

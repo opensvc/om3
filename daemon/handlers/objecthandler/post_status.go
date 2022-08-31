@@ -7,7 +7,6 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
@@ -30,7 +29,7 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 	postStatus := PostObjectStatus{}
 	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else if err := json.Unmarshal(reqBody, &postStatus); err != nil {
 		log.Error().Err(err).Msg("request body unmarshal")
@@ -42,9 +41,9 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
-		dataCmd := daemonctx.DaemonDataCmd(r.Context())
+		dataCmd := daemondata.BusFromContext(r.Context())
 		log.Debug().Msgf("SetInstanceStatus on %s", postStatus.Path)
-		if err := daemondata.SetInstanceStatus(dataCmd, p, postStatus.Data); err != nil {
+		if err := daemondata.SetInstanceStatus(r.Context(), dataCmd, p, postStatus.Data); err != nil {
 			log.Error().Err(err).Msgf("SetInstanceStatus %s", p)
 		}
 	}
@@ -53,11 +52,11 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(response)
 	if err != nil {
 		log.Error().Err(err).Msg("Marshal response")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if _, err := write(b); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }

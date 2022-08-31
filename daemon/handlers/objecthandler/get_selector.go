@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemondatactx"
+	"opensvc.com/opensvc/core/objectselector"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
 
@@ -22,31 +22,34 @@ func GetSelector(w http.ResponseWriter, r *http.Request) {
 	payload := GetObjectSelector{}
 	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else if err := json.Unmarshal(reqBody, &payload); err != nil {
 		log.Error().Err(err).Msg("request body unmarshal")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	selector := payload.ObjectSelector
-	dataBus := daemondatactx.DaemonData(r.Context())
-	paths := dataBus.GetServiceNames()
-	matchedPaths := make([]string, 0)
-	for _, ps := range paths {
-		p, _ := path.Parse(ps)
-		if p.Match(selector) {
-			matchedPaths = append(matchedPaths, ps)
-		}
+	daemonData := daemondata.FromContext(r.Context())
+	paths := daemonData.GetServicePaths()
+	selection := objectselector.NewSelection(
+		payload.ObjectSelector,
+		objectselector.SelectionWithInstalled(paths),
+		objectselector.SelectionWithLocal(true),
+	)
+	matchedPaths, err := selection.Expand()
+	if err != nil {
+		log.Error().Err(err).Msg("expand selection")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	b, err := json.Marshal(matchedPaths)
 	if err != nil {
 		log.Error().Err(err).Msg("Marshal response")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if _, err := write(b); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }

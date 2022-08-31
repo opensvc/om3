@@ -90,8 +90,6 @@ func Copy(src string, dst string) (err error) {
 	if _, err := io.Copy(w, r); err != nil {
 		return err
 	}
-	r.Close()
-	w.Close()
 	return nil
 }
 
