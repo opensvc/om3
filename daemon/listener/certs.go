@@ -12,11 +12,24 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/filesystems"
+	"opensvc.com/opensvc/util/findmnt"
 )
 
-func startCertFS() error {
+func mountCertFS() error {
+	if v, err := findmnt.Has("none", rawconfig.Paths.Certs); err != nil {
+		return err
+	} else if v {
+		return nil
+	}
 	tmpfs := filesystems.FromType("tmpfs")
 	if err := tmpfs.Mount("none", rawconfig.Paths.Certs, "rw,nosuid,nodev,noexec,relatime,size=1m"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func startCertFS() error {
+	if err := mountCertFS(); err != nil {
 		return err
 	}
 	certPath, _ := path.Parse("system/sec/cert-" + rawconfig.ClusterSection().Name)

@@ -118,6 +118,9 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := startCertFS(); err != nil {
+		t.log.Err(err).Msgf("start certificates volatile fs")
+	}
 	if err := daemonauth.Init(); err != nil {
 		return err
 	}
@@ -126,6 +129,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name() + "-loop")()
+		defer stopCertFS()
 		//defer t.cancel()
 		started <- true
 		t.loop(ctx)
@@ -153,11 +157,6 @@ func (t *T) MainStop() error {
 
 func (t *T) loop(ctx context.Context) {
 	t.log.Info().Msg("loop started")
-	if err := startCertFS(); err != nil {
-		t.log.Err(err).Msgf("start certificates volatile fs")
-	} else {
-		defer stopCertFS()
-	}
 	t.aLoop()
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
