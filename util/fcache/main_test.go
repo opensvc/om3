@@ -1,13 +1,14 @@
 package fcache
 
 import (
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"testing"
 	"time"
 
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
+
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
@@ -20,7 +21,7 @@ func TestOutput(t *testing.T) {
 
 	getRealCommandOutput := func() ([]byte, error) {
 		value := []byte(time.Now().Format("15:04:05.000000000"))
-		return value, ioutil.WriteFile(tf, value, 0644)
+		return value, os.WriteFile(tf, value, 0644)
 	}
 
 	t.Run("return value from command output", func(t *testing.T) {

@@ -2,7 +2,6 @@ package xconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/hexops/gotextdiff"
@@ -10,6 +9,7 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/util/editor"
 	"opensvc.com/opensvc/util/file"
 )
@@ -36,10 +36,10 @@ func Diff(a, b string) (string, error) {
 		err    error
 		ab, bb []byte
 	)
-	if ab, err = ioutil.ReadFile(a); err != nil {
+	if ab, err = os.ReadFile(a); err != nil {
 		return "", err
 	}
-	if bb, err = ioutil.ReadFile(b); err != nil {
+	if bb, err = os.ReadFile(b); err != nil {
 		return "", err
 	}
 	edits := myers.ComputeEdits(span.URIFromPath(a), string(ab), string(bb))

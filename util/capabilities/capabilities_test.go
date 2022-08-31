@@ -2,11 +2,11 @@ package capabilities
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
@@ -33,7 +33,7 @@ func TestLoad(t *testing.T) {
 	t.Run("return ErrorNeedScan when current capabilities is corrupt", func(t *testing.T) {
 		capFile, cleanup := setup(t)
 		defer cleanup()
-		assert.Nil(t, ioutil.WriteFile(capFile, []byte{}, 0666))
+		assert.Nil(t, os.WriteFile(capFile, []byte{}, 0666))
 		_, err := Load()
 		assert.Equal(t, ErrorNeedScan, err)
 
@@ -54,7 +54,7 @@ func TestLoad(t *testing.T) {
 		t.Run("succeed and has expected cap "+tc.name, func(t *testing.T) {
 			capFile, cleanup := setup(t)
 			defer cleanup()
-			assert.Nil(t, ioutil.WriteFile(capFile, tc.data, 0666))
+			assert.Nil(t, os.WriteFile(capFile, tc.data, 0666))
 			loadCaps, err := Load()
 			assert.Nil(t, err)
 			assert.Equal(t, tc.expectedCap, loadCaps)
@@ -76,7 +76,7 @@ func TestHas(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			capFile, cleanup := setup(t)
 			defer cleanup()
-			assert.Nil(t, ioutil.WriteFile(capFile, tc.data, 0666))
+			assert.Nil(t, os.WriteFile(capFile, tc.data, 0666))
 			for _, c := range tc.expectedCap {
 				t.Run("has expected "+c, func(t *testing.T) {
 					assert.True(t, Has(c))

@@ -3,18 +3,17 @@
 // Scan() use registered scanners functions to update capabilities list, then
 // store this capabilities list on filesystem.
 //
-// Has(cap) use capabilities file to verify if cap exists
+// # Has(cap) use capabilities file to verify if cap exists
 //
 // A global list of registered scanner functions may be Registered to scanner
 // list.
 // Registered scanners are called to refresh capabilities during Scan()
-//
 package capabilities
 
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"sort"
 
@@ -107,14 +106,14 @@ func save(newCaps L) error {
 	if data, err := json.Marshal(newCaps); err != nil {
 		return err
 	} else {
-		return ioutil.WriteFile(getPath(), data, 0600)
+		return os.WriteFile(getPath(), data, 0600)
 	}
 }
 
 // Load fetch existing capabilities from its backend file
 func Load() (loadedCaps L, err error) {
 	var data []byte
-	if data, err = ioutil.ReadFile(getPath()); err != nil {
+	if data, err = os.ReadFile(getPath()); err != nil {
 		return loadedCaps, ErrorNeedScan
 	}
 	if err = json.Unmarshal(data, &loadedCaps); err != nil {

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"path/filepath"
 	"strings"
@@ -89,7 +88,7 @@ func (t T) doReqReadResponse(method string, req request.T) ([]byte, error) {
 		return b, err
 	}
 	defer rc.Close()
-	b, err = ioutil.ReadAll(rc)
+	b, err = io.ReadAll(rc)
 	if err != nil {
 		return b, err
 	}

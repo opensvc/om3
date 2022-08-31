@@ -3,13 +3,13 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/file"
 )
@@ -140,6 +140,6 @@ func writeCNIConfig(fpath string, data interface{}) error {
 	if b, err := json.MarshalIndent(data, "", "   "); err != nil {
 		return err
 	} else {
-		return ioutil.WriteFile(fpath, b, 0644)
+		return os.WriteFile(fpath, b, 0644)
 	}
 }

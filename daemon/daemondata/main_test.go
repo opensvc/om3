@@ -3,7 +3,7 @@ package daemondata_test
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,7 +21,7 @@ import (
 func loadFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	path := filepath.Join("test-fixtures", name)
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	require.Nil(t, err)
 	return b
 }

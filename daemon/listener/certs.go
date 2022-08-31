@@ -2,11 +2,12 @@ package listener
 
 import (
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"os/user"
 	"strings"
 
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -89,7 +90,7 @@ func startCertFS() error {
 	}
 	if len(b) > 0 {
 		dst := daemonenv.CAsCertFile()
-		if err := ioutil.WriteFile(dst, b, fmode); err != nil {
+		if err := os.WriteFile(dst, b, fmode); err != nil {
 			return err
 		}
 		log.Logger.Info().Strs("ca", validCA).Msgf("installed %s", dst)

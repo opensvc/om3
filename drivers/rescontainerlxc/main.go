@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -839,7 +838,7 @@ func (t T) setCpusetCloneChildren() error {
 	sort.Sort(sort.StringSlice(paths))
 
 	setFile := func(p string, v []byte) error {
-		b, err := ioutil.ReadFile(p)
+		b, err := os.ReadFile(p)
 		if err != nil {
 			t.Log().Debug().Msgf("%s does not exist", p)
 			return nil
@@ -848,7 +847,7 @@ func (t T) setCpusetCloneChildren() error {
 			t.Log().Debug().Msgf("%s already set to %s", p, v)
 			return nil
 		}
-		err = ioutil.WriteFile(p, v, 0644)
+		err = os.WriteFile(p, v, 0644)
 		if err != nil {
 			return err
 		}
@@ -858,7 +857,7 @@ func (t T) setCpusetCloneChildren() error {
 	alignFile := func(p string) error {
 		base := filepath.Base(p)
 		ref := filepath.Join(cpusetDir, base)
-		b, err := ioutil.ReadFile(ref)
+		b, err := os.ReadFile(ref)
 		if err != nil {
 			t.Log().Debug().Msgf("%s does not exist", ref)
 			return nil

@@ -3,11 +3,12 @@ package daemonhandler
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
@@ -81,7 +82,7 @@ func allowEvent(r *http.Request, ev event.Event, payload eventsPayload) bool {
 func getEventsPayload(w http.ResponseWriter, r *http.Request) (eventsPayload, error) {
 	var payload eventsPayload
 
-	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
+	if reqBody, err := io.ReadAll(r.Body); err != nil {
 		return payload, errors.Wrap(err, "read body request")
 	} else if len(reqBody) == 0 {
 		// pass

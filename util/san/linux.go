@@ -4,7 +4,6 @@ package san
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +13,7 @@ import (
 
 func isPortPresent(tp string) bool {
 	p := filepath.Dir(tp) + "/port_state"
-	buff, err := ioutil.ReadFile(p)
+	buff, err := os.ReadFile(p)
 	if err != nil {
 		return false
 	}
@@ -56,7 +55,7 @@ func FCPaths() ([]Path, error) {
 			tps = append(tps, some...)
 		}
 		for _, tp := range tps {
-			b, err := ioutil.ReadFile(tp)
+			b, err := os.ReadFile(tp)
 			if err != nil {
 				continue
 			}

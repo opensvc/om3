@@ -2,7 +2,7 @@
 
 package systemd
 
-import "io/ioutil"
+import "os"
 
 var (
 	procOneComm = "/proc/1/comm"
@@ -14,7 +14,7 @@ func HasSystemd() bool {
 		b   []byte
 		err error
 	)
-	if b, err = ioutil.ReadFile(procOneComm); err != nil {
+	if b, err = os.ReadFile(procOneComm); err != nil {
 		return false
 	}
 	return string(b) == "systemd\n"
