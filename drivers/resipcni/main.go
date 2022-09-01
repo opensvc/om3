@@ -7,8 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"path/filepath"
 
 	"opensvc.com/opensvc/core/actionresdeps"
@@ -340,7 +340,7 @@ func (t T) netConfFile() string {
 
 func (t T) netConfBytes() ([]byte, error) {
 	s := t.netConfFile()
-	return ioutil.ReadFile(s)
+	return os.ReadFile(s)
 }
 
 func (t T) netConf() (types.NetConf, error) {

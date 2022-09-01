@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -17,11 +17,11 @@ func Test_ExecuteCommand(t *testing.T) {
 	if err = root.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = ioutil.ReadAll(b)
+	_, err = io.ReadAll(b)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = ioutil.ReadAll(stderr)
+	_, err = io.ReadAll(stderr)
 	if err != nil {
 		t.Fatal()
 	}

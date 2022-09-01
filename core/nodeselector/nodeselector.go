@@ -3,7 +3,7 @@ package nodeselector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -101,22 +101,18 @@ func (t T) String() string {
 	return fmt.Sprintf("NodeSelector{%s}", t.SelectorExpression)
 }
 
-//
 // LocalExpand resolves a selector expression into a list of object paths
 // without asking the daemon for nodes information.
-//
 func LocalExpand(s string) []string {
 	return New(s, WithLocal(true)).Expand()
 }
 
-//
 // Expand resolves a selector expression into a list of object paths.
 //
 // First try to resolve using the daemon (remote or local), as the
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
 // looks up knownNodes configuration files.
-//
 func (t *T) Expand() []string {
 	if t.nodes != nil {
 		return t.nodes
@@ -133,10 +129,8 @@ func (t *T) Expand() []string {
 	return t.nodes
 }
 
-//
 // ExpandSet returns a set of the paths returned by Expand. Usually to
 // benefit from the .Has() function.
-//
 func (t *T) ExpandSet() *set.Set {
 	s := set.New()
 	for _, p := range t.Expand() {
@@ -344,7 +338,7 @@ func (t T) getLocalNodesInfo() (NodesInfo, error) {
 	)
 	p := filepath.Join(rawconfig.Paths.Var, "nodes_info.json")
 	t.log.Debug().Msgf("load %s", p)
-	if b, err = ioutil.ReadFile(p); err != nil {
+	if b, err = os.ReadFile(p); err != nil {
 		return data, err
 	}
 	if err = json.Unmarshal(b, &data); err != nil {

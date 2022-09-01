@@ -2,7 +2,7 @@ package daemonhandler
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -20,7 +20,7 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("starting")
 
 	payload := getDaemonStatus{}
-	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
+	if reqBody, err := io.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
 		w.WriteHeader(http.StatusInternalServerError)
 		return

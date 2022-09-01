@@ -2,12 +2,13 @@ package object
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/testhelper"
 )
@@ -18,7 +19,7 @@ func TestInstanceStates_Render(t *testing.T) {
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
 
-			b, err := ioutil.ReadFile(filepath.Join("test-fixtures", name+".json"))
+			b, err := os.ReadFile(filepath.Join("test-fixtures", name+".json"))
 			require.Nil(t, err)
 
 			var instanceStatus instance.Status
@@ -35,10 +36,10 @@ func TestInstanceStates_Render(t *testing.T) {
 			if *update {
 				//
 				t.Logf("updating golden file %s with current result", goldenFile)
-				err = ioutil.WriteFile(goldenFile, []byte(s), 0644)
+				err = os.WriteFile(goldenFile, []byte(s), 0644)
 				require.Nil(t, err)
 			}
-			expected, err := ioutil.ReadFile(goldenFile)
+			expected, err := os.ReadFile(goldenFile)
 			require.Nil(t, err)
 
 			require.Equal(t, string(expected), s)

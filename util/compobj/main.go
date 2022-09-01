@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 )
@@ -239,7 +240,7 @@ func getNormalFile(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := ioutil.ReadAll(response.Body)
+	b, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}

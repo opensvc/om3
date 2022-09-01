@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -16,6 +16,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
+
 	"opensvc.com/opensvc/daemon/daemonenv"
 )
 
@@ -59,7 +60,7 @@ func initJWT() error {
 	if jwtSignKeyFile == "" && jwtVerifyKeyFile == "" {
 		return fmt.Errorf("the system/sec/cert-{clustername} listener private_key and certificate must exist.")
 	} else if jwtSignKeyFile != "" {
-		signBytes, err := ioutil.ReadFile(jwtSignKeyFile)
+		signBytes, err := os.ReadFile(jwtSignKeyFile)
 		if err != nil {
 			return err
 		}
@@ -69,7 +70,7 @@ func initJWT() error {
 		if jwtVerifyKeyFile == "" {
 			return errors.Errorf("key file is set to the path of a RSA key. In this case, the certificate file must also be set to the path of the RSA public key.")
 		}
-		if verifyBytes, err = ioutil.ReadFile(jwtVerifyKeyFile); err != nil {
+		if verifyBytes, err = os.ReadFile(jwtVerifyKeyFile); err != nil {
 			return err
 		}
 		if verifyKey, err = jwt.ParseRSAPublicKeyFromPEM(verifyBytes); err != nil {
@@ -91,7 +92,6 @@ func initJWT() error {
 	return nil
 }
 
-//
 // GetToken     godoc
 // @Summary      Get a authentication token
 // @Description  Get a authentication token from a user's credentials submitted with basic login.
@@ -103,7 +103,6 @@ func initJWT() error {
 // @Failure      403  {string}  string
 // @Failure      500  {string}  string  "Internal Server Error"
 // @Router       /auth/user/token  [get]
-//
 func GetToken(w http.ResponseWriter, r *http.Request) {
 	exp := time.Minute * 10
 	user := auth.User(r)

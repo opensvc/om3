@@ -2,11 +2,12 @@ package daemonhandler
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/slog"
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
@@ -19,7 +20,7 @@ type logPayload struct {
 func getLogPayload(w http.ResponseWriter, r *http.Request) (logPayload, error) {
 	var payload logPayload
 
-	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
+	if reqBody, err := io.ReadAll(r.Body); err != nil {
 		return payload, errors.Wrap(err, "read body request")
 	} else if len(reqBody) == 0 {
 		// pass

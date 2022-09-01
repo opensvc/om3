@@ -2,7 +2,7 @@ package objecthandler
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"opensvc.com/opensvc/core/objectselector"
@@ -20,7 +20,7 @@ func GetSelector(w http.ResponseWriter, r *http.Request) {
 	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetSelector")
 	log.Debug().Msg("starting")
 	payload := GetObjectSelector{}
-	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
+	if reqBody, err := io.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
 		w.WriteHeader(http.StatusInternalServerError)
 		return

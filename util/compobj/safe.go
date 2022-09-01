@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -74,7 +75,7 @@ func collectorRestGetFile(uri string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	return b, err
 }
 
@@ -88,7 +89,7 @@ func collectorSafeGetMeta(uuid string) (SafeFileMeta, error) {
 		return SafeFileMeta{}, err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return SafeFileMeta{}, err
 	}

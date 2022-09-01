@@ -3,7 +3,7 @@ package daemonauth
 import (
 	crypto_x509 "crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"
@@ -20,7 +20,7 @@ func initX509() auth.Strategy {
 }
 
 func ParseCertificate() *crypto_x509.Certificate {
-	ca, err := ioutil.ReadFile(daemonenv.CAsCertFile())
+	ca, err := os.ReadFile(daemonenv.CAsCertFile())
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("read ca certificate")
 		return nil

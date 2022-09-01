@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
+
 	"opensvc.com/opensvc/core/collector"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/device"
@@ -272,7 +272,7 @@ func (t *T) collectCommand(s string) error {
 func (t *T) write(path string, buff []byte) error {
 	var cached []byte
 	if file.Exists(path) {
-		if cached, _ = ioutil.ReadFile(path); bytes.Compare(cached, buff) == 0 {
+		if cached, _ = os.ReadFile(path); bytes.Compare(cached, buff) == 0 {
 			//srLog.Debug().Str("path", path).Msg("mark full, unchanged")
 			t.full[path] = nil
 			return nil

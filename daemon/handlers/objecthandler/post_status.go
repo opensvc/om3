@@ -2,7 +2,7 @@ package objecthandler
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"opensvc.com/opensvc/core/instance"
@@ -27,7 +27,7 @@ func PostStatus(w http.ResponseWriter, r *http.Request) {
 	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.PostStatus")
 	log.Debug().Msg("starting")
 	postStatus := PostObjectStatus{}
-	if reqBody, err := ioutil.ReadAll(r.Body); err != nil {
+	if reqBody, err := io.ReadAll(r.Body); err != nil {
 		log.Error().Err(err).Msg("read body request")
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -7,7 +7,6 @@ package restaskhost
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -196,7 +195,7 @@ func (t T) writeLastRun(retcode int) error {
 
 func (t T) readLastRun() (int, error) {
 	p := t.lastRunFile()
-	if b, err := ioutil.ReadFile(p); err != nil {
+	if b, err := os.ReadFile(p); err != nil {
 		return 0, err
 	} else {
 		return strconv.Atoi(strings.TrimSpace(string(b)))

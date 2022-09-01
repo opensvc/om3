@@ -2,7 +2,7 @@ package instance
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -13,7 +13,7 @@ import (
 func TestInstanceStatusUnmarshalJSON(t *testing.T) {
 	var instanceStatus Status
 	path := filepath.Join("test-fixtures", "instanceStatus.json")
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	require.Nil(t, err)
 	err = json.Unmarshal(b, &instanceStatus)
 	require.Nil(t, err)
@@ -22,7 +22,7 @@ func TestInstanceStatusUnmarshalJSON(t *testing.T) {
 func TestInstanceStatusDeprecatedMonitorRestartUnmarshalJSON(t *testing.T) {
 	var instanceStatus Status
 	path := filepath.Join("test-fixtures", "instanceStatusDeprecatedMonitorRestart.json")
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	require.Nil(t, err)
 	err = json.Unmarshal(b, &instanceStatus)
 	require.Nil(t, err)

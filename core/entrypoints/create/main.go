@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/iancoleman/orderedmap"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/keyop"
@@ -33,10 +34,8 @@ type (
 	Pivot map[string]rawconfig.T
 )
 
-//
 // WithPath sets the path string representation of the single object to create.
 // If multiple objects are to be created, use WithNamespace() instead.
-//
 func WithPath(p path.T) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -45,12 +44,10 @@ func WithPath(p path.T) funcopt.O {
 	})
 }
 
-//
 // WithConfig sets the location of the configuration file of the single object to create.
 // The value can be a URL or a local file path, or /dev/stdin.
 // If multiple objects are to be created, set to /dev/stdin and feed a json map indexed
 // by object path.
-//
 func WithConfig(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -59,11 +56,9 @@ func WithConfig(s string) funcopt.O {
 	})
 }
 
-//
 // WithNamespace sets the name of the namespace where to create the new objects.
 // If a path is given via WithPath(), the namespace part of the path is overridden
 // by this namespace parameter.
-//
 func WithNamespace(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -237,7 +232,7 @@ func rawFromScratch(p path.T) (Pivot, error) {
 
 func rawFromStdinNested(namespace string) (Pivot, error) {
 	pivot := make(Pivot)
-	b, err := ioutil.ReadAll(os.Stdin)
+	b, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return pivot, err
 	}
@@ -283,7 +278,7 @@ func pathFromMetadata(data *orderedmap.OrderedMap) (path.T, error) {
 }
 
 func rawFromStdinFlat(p path.T) (Pivot, error) {
-	b, err := ioutil.ReadAll(os.Stdin)
+	b, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return nil, err
 	}

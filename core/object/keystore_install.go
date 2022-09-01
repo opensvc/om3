@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/danwakefield/fnmatch"
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
@@ -232,7 +232,7 @@ func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 	if mode != nil {
 		perm = *mode
 	}
-	if err := ioutil.WriteFile(dst, b, perm); err != nil {
+	if err := os.WriteFile(dst, b, perm); err != nil {
 		return true, err
 	}
 	return true, os.Chtimes(dst, mtime, mtime)

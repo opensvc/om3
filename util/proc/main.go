@@ -3,7 +3,6 @@ package proc
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,7 +27,7 @@ var (
 
 func parseFile(p string) ([]string, error) {
 	l := make([]string, 0)
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return l, err
 	}
