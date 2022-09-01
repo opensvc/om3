@@ -68,12 +68,12 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-func entryKey(p path.T, k string) string {
-	return fmt.Sprintf("%s:%s", p, k)
+func entryKey(e schedule.Entry) string {
+	return fmt.Sprintf("%s:%s", e.Path, e.Key)
 }
 
 func (t Jobs) Add(e schedule.Entry, cancel func()) {
-	k := entryKey(e.Path, e.Action)
+	k := entryKey(e)
 	t[k] = Job{
 		Queued:   time.Now(),
 		schedule: e,
@@ -82,7 +82,7 @@ func (t Jobs) Add(e schedule.Entry, cancel func()) {
 }
 
 func (t Jobs) Del(e schedule.Entry) {
-	k := entryKey(e.Path, e.Action)
+	k := entryKey(e)
 	jobs, ok := t[k]
 	if !ok {
 		return
@@ -124,7 +124,7 @@ func (t *T) scheduleEntry(e schedule.Entry) {
 	}
 	e.Next = next
 	delay := next.Sub(now)
-	t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Msgf("schedule to run at %s (in %s)", next, delay)
+	t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Str("key", e.Key).Msgf("schedule to run at %s (in %s)", next, delay)
 	tmr := time.AfterFunc(delay, func() {
 		begin := time.Now()
 		if begin.Sub(next) < 500*time.Millisecond {
