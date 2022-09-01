@@ -96,14 +96,12 @@ func (t Selection) String() string {
 	return fmt.Sprintf("Selection{%s}", t.SelectorExpression)
 }
 
-//
 // Expand resolves a selector expression into a list of object paths.
 //
 // First try to resolve using the daemon (remote or local), as the
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
 // looks up installed configuration files.
-//
 func (t *Selection) Expand() (path.L, error) {
 	if t.paths != nil {
 		return t.paths, nil
@@ -113,10 +111,8 @@ func (t *Selection) Expand() (path.L, error) {
 	return t.paths, err
 }
 
-//
 // ExpandSet returns a set of the paths returned by Expand. Usually to
 // benefit from the .Has() function.
-//
 func (t *Selection) ExpandSet() (*set.Set, error) {
 	s := set.New()
 	paths, err := t.Expand()
@@ -140,6 +136,7 @@ func (t *Selection) add(p path.T) {
 }
 
 func (t *Selection) expand() error {
+	t.paths = make(path.L, 0)
 	if !t.local {
 		if !t.hasClient {
 			c, _ := client.New(
@@ -230,10 +227,8 @@ func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
 	}
 }
 
-//
 // getInstalled returns the list of all paths with a locally installed
 // configuration file.
-//
 func (t *Selection) getInstalled() (path.L, error) {
 	if t.installed != nil {
 		return t.installed, nil
