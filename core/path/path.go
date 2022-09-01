@@ -39,6 +39,13 @@ type (
 
 	// M is a map indexed by path string representation.
 	M map[string]interface{}
+
+	// Metadata is the parsed representation of a path, used by api handlers to ease dumb clients access to individual path fields.
+	Metadata struct {
+		Name      string `json:"name"`
+		Namespace string `json:"namespace"`
+		Kind      kind.T `json:"kind"`
+	}
 )
 
 const (
@@ -131,6 +138,15 @@ func (t T) String() string {
 	return s + t.Name
 }
 
+// ToMetadata returns the parsed representation of the path
+func (t *T) ToMetadata() *Metadata {
+	return &Metadata{
+		Name:      t.Name,
+		Namespace: t.Namespace,
+		Kind:      t.Kind,
+	}
+}
+
 func (t T) IsZero() bool {
 	return t.Name == "" && t.Namespace == "" && t.Kind == kind.Invalid
 }
@@ -213,7 +229,6 @@ func (t *T) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-//
 // Match returns true if the object matches the pattern, using a fnmatch
 // matching algorithm with a few special cases to mask the root namespace
 // tricks and the svc object kind as default.
@@ -221,7 +236,6 @@ func (t *T) UnmarshalJSON(b []byte) error {
 // Trick:
 // The 'f*' pattern matches all svc objects in the root namespace.
 // The '*' pattern matches all svc objects in all namespaces.
-//
 func (t T) Match(pattern string) bool {
 	if pattern == "**" {
 		return true
@@ -343,10 +357,8 @@ func (t L) Merge(other L) L {
 	return l
 }
 
-//
 // VarDir returns the directory on the local filesystem where the object
 // variable persistent data is stored as files.
-//
 func (t T) VarDir() string {
 	var s string
 	switch t.Namespace {
@@ -358,10 +370,8 @@ func (t T) VarDir() string {
 	return filepath.FromSlash(s)
 }
 
-//
 // TmpDir returns the directory on the local filesystem where the object
 // stores its temporary files.
-//
 func (t T) TmpDir() string {
 	var s string
 	switch {
@@ -375,10 +385,8 @@ func (t T) TmpDir() string {
 	return filepath.FromSlash(s)
 }
 
-//
 // LogDir returns the directory on the local filesystem where the object
 // stores its temporary files.
-//
 func (t T) LogDir() string {
 	var s string
 	switch {
@@ -392,16 +400,12 @@ func (t T) LogDir() string {
 	return filepath.FromSlash(s)
 }
 
-//
 // LogFile returns the object log file path on the local filesystem.
-//
 func (t T) LogFile() string {
 	return filepath.Join(t.LogDir(), t.Name+".log")
 }
 
-//
 // ConfigFile returns the object configuration file path on the local filesystem.
-//
 func (t T) ConfigFile() string {
 	s := t.String()
 	switch t.Namespace {
