@@ -27,13 +27,12 @@ type (
 		cancel       context.CancelFunc
 		log          zerolog.Logger
 		routineTrace routineTracer
-		loopDelay    time.Duration
 
-		events  chan any
-		delayed delayedMap
+		events chan any
+		jobs   Jobs
 	}
-	delayedMap   map[string]delayedEntry
-	delayedEntry struct {
+	Jobs map[string]Job
+	Job  struct {
 		Queued   time.Time
 		schedule schedule.Entry
 		cancel   func()
@@ -43,7 +42,7 @@ type (
 		Stats() routinehelper.Stat
 	}
 
-	cmdRunDone struct {
+	eventJobDone struct {
 		schedule schedule.Entry
 		begin    time.Time
 		end      time.Time
@@ -52,11 +51,9 @@ type (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay: time.Second,
-		log:       log.Logger.With().Str("name", "scheduler").Logger(),
-		//m:         make(scheduleMap),
-		events:  make(chan any),
-		delayed: make(delayedMap),
+		log:    log.Logger.With().Str("name", "scheduler").Logger(),
+		events: make(chan any),
+		jobs:   make(Jobs),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -75,26 +72,26 @@ func entryKey(p path.T, k string) string {
 	return fmt.Sprintf("%s:%s", p, k)
 }
 
-func (t delayedMap) Add(e schedule.Entry, cancel func()) {
+func (t Jobs) Add(e schedule.Entry, cancel func()) {
 	k := entryKey(e.Path, e.Action)
-	t[k] = delayedEntry{
+	t[k] = Job{
 		Queued:   time.Now(),
 		schedule: e,
 		cancel:   cancel,
 	}
 }
 
-func (t delayedMap) Del(e schedule.Entry) {
+func (t Jobs) Del(e schedule.Entry) {
 	k := entryKey(e.Path, e.Action)
-	delayed, ok := t[k]
+	jobs, ok := t[k]
 	if !ok {
 		return
 	}
-	delayed.cancel()
+	jobs.cancel()
 	delete(t, k)
 }
 
-func (t delayedMap) DelPath(p path.T) {
+func (t Jobs) DelPath(p path.T) {
 	for _, e := range t {
 		if e.schedule.Path != p {
 			continue
@@ -103,7 +100,7 @@ func (t delayedMap) DelPath(p path.T) {
 	}
 }
 
-func (t delayedMap) Purge() {
+func (t Jobs) Purge() {
 	for k, e := range t {
 		e.cancel()
 		delete(t, k)
@@ -111,15 +108,18 @@ func (t delayedMap) Purge() {
 }
 
 func (t *T) scheduleEntry(e schedule.Entry) {
+	// clean up the existing job
+	t.jobs.Del(e)
+
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
 		t.log.Error().Err(err).Str("action", e.Action).Str("definition", e.Definition).Msg("get next")
-		t.delayed.Del(e)
+		t.jobs.Del(e)
 		return
 	}
 	if next.Before(now) {
-		t.delayed.Del(e)
+		t.jobs.Del(e)
 		return
 	}
 	e.Next = next
@@ -127,10 +127,14 @@ func (t *T) scheduleEntry(e schedule.Entry) {
 	t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Msgf("schedule to run at %s (in %s)", next, delay)
 	tmr := time.AfterFunc(delay, func() {
 		begin := time.Now()
+		if begin.Sub(next) < 500*time.Millisecond {
+			// prevent drift if the gap is small
+			begin = next
+		}
 		t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Msg("run")
 		// TODO
 		end := time.Now()
-		t.events <- cmdRunDone{
+		t.events <- eventJobDone{
 			schedule: e,
 			begin:    begin,
 			end:      end,
@@ -142,7 +146,7 @@ func (t *T) scheduleEntry(e schedule.Entry) {
 		}
 		tmr.Stop()
 	}
-	t.delayed.Add(e, cancel)
+	t.jobs.Add(e, cancel)
 	return
 }
 
@@ -162,7 +166,7 @@ func (t *T) MainStart(ctx context.Context) error {
 
 func (t *T) MainStop() error {
 	t.cancel()
-	t.delayed.Purge()
+	t.jobs.Purge()
 	return nil
 }
 
@@ -185,10 +189,8 @@ func (t *T) loop() {
 		select {
 		case ev := <-t.events:
 			switch c := ev.(type) {
-			case cmdRunDone:
-				// cleanup routine
-				t.delayed.Del(c.schedule)
-				// schedule next run
+			case eventJobDone:
+				// reschedule
 				c.schedule.Last = c.begin
 				t.scheduleEntry(c.schedule)
 			case moncmd.CfgUpdated:
@@ -222,5 +224,5 @@ func (t *T) schedule(p path.T) {
 }
 
 func (t *T) unschedule(p path.T) {
-	t.delayed.DelPath(p)
+	t.jobs.DelPath(p)
 }
