@@ -1,0 +1,110 @@
+package cmd
+
+import (
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"opensvc.com/opensvc/testhelper"
+)
+
+func TestGenCert(t *testing.T) {
+	cases := []struct {
+		name         string
+		keywords     []string
+		expectedKeys []string
+	}{
+		{
+			name: "system/sec/ca-cluster1",
+			keywords: []string{
+				"c=fr",
+				"ts=oise",
+				"o=opensvc",
+				"ou=lab",
+				"cn=cert1",
+				"email=admin@opensvc.com",
+				"validity=10y",
+			},
+			expectedKeys: []string{"private_key", "certificate", "certificate_chain"},
+		},
+		{
+			name: "system/sec/cert-cluster1",
+			keywords: []string{
+				"ca=system/sec/ca-cluster1",
+				"cn=vip.local",
+			},
+			expectedKeys: []string{"private_key", "certificate", "certificate_chain"},
+		},
+	}
+
+	env := testhelper.Setup(t)
+	env.InstallFile("../testdata/cluster.conf", "etc/cluster.conf")
+
+	for _, tc := range cases {
+		name := tc.name
+		keywords := tc.keywords
+		expectedKeys := tc.expectedKeys
+		t.Run(name, func(t *testing.T) {
+			var args []string
+			var cmd *exec.Cmd
+			var out []byte
+			var err error
+
+			args = append([]string{name}, "create")
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd = exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+			out, err = cmd.CombinedOutput()
+			t.Logf("out:\n%s", out)
+			require.Nilf(t, err, string(out))
+
+			args = append([]string{name, "set"}, keywords...)
+			for _, kw := range keywords {
+				args = append(args, "--kw", kw)
+			}
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd = exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+			out, err = cmd.CombinedOutput()
+			t.Logf("out:\n%s", out)
+			require.Nilf(t, err, string(out))
+
+			args = []string{name, "print", "config"}
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd = exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+			out, err = cmd.CombinedOutput()
+			t.Logf("out:\n%s", out)
+			require.Nilf(t, err, string(out))
+
+			args = []string{name, "gencert"}
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd = exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+			out, err = cmd.CombinedOutput()
+			t.Logf("out:\n%s", out)
+			require.Nilf(t, err, string(out))
+
+			args = []string{name, "print", "config"}
+			t.Logf("run 'om %v'", strings.Join(args, " "))
+			cmd = exec.Command(os.Args[0], args...)
+			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+			out, err = cmd.CombinedOutput()
+			t.Logf("out:\n%s", out)
+			require.Nilf(t, err, string(out))
+
+			for _, key := range expectedKeys {
+				args = []string{name, "decode", "--key", key}
+				t.Logf("run 'om %v'", strings.Join(args, " "))
+				cmd = exec.Command(os.Args[0], args...)
+				cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+				out, err = cmd.CombinedOutput()
+				t.Logf("out:\n%s", out)
+				require.Nilf(t, err, string(out))
+			}
+		})
+	}
+}

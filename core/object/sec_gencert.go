@@ -49,7 +49,13 @@ func (t *sec) genSelfSigned() error {
 	if err != nil {
 		return err
 	}
-	return t.addKey("certificate", certBytes)
+	if err := t.addKey("certificate", certBytes); err != nil {
+		return err
+	}
+	if err := t.addKey("certificate_chain", certBytes); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t *sec) genCASigned(ca string) error {
