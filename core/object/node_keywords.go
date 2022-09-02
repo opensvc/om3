@@ -212,14 +212,9 @@ var nodePrivateKeywords = []keywords.Keyword{
 		Text:    "Override for the corresponding pushasset discovery probe.",
 	},
 	{
-		Section: "centera",
+		Section: "array",
 		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushcentera` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "xtremio",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushxtremio` node action. See usr/share/doc/schedule for the schedule syntax.",
+		Text:    "Schedule parameter for the :c-action:`pusharray` node action. See usr/share/doc/schedule for the schedule syntax.",
 	},
 	{
 		Section: "array",
@@ -229,84 +224,14 @@ var nodePrivateKeywords = []keywords.Keyword{
 		Text:    "The name of the array. If not provided, fallback to the section name suffix.",
 	},
 	{
-		Section: "hp3par",
+		Section: "backup",
 		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushhp3par` node action. See usr/share/doc/schedule for the schedule syntax.",
+		Text:    "Schedule parameter for the :c-action:`pushbackup` node action. See usr/share/doc/schedule for the schedule syntax.",
 	},
 	{
-		Section: "emcvnx",
+		Section: "switch",
 		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushvnx` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "freenas",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushfreenas` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "hcs",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushhcs` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "dorado",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushdorado` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "gcedisks",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushgcedisks` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "sym",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushsym` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "nsr",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushnsr` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "hds",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushhds` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "necism",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushnecism` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "eva",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pusheva` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "ibmds",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushibmds` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "ibmsvc",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushibmsvc` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "vioserver",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushvioserver` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "netapp",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushnetapp` node action. See usr/share/doc/schedule for the schedule syntax.",
-	},
-	{
-		Section: "brocade",
-		Option:  "schedule",
-		Text:    "Schedule parameter for the :c-action:`pushbrocade` node action. See usr/share/doc/schedule for the schedule syntax.",
+		Text:    "Schedule parameter for the :c-action:`pushswitch` node action. See usr/share/doc/schedule for the schedule syntax.",
 	},
 }
 
