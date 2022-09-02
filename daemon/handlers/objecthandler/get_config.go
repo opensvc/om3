@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
+	"github.com/iancoleman/orderedmap"
+
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
@@ -15,15 +17,17 @@ import (
 
 type (
 	GetObjectConfigOptions struct {
-		Path string `json:"path"`
+		Path        string `json:"path"`
+		Evaluate    bool   `json:"evaluate"`
+		Impersonate string `json:"impersonate"`
 	}
 	GetObjectConfig struct {
 		Options GetObjectConfigOptions `json:"options"`
 	}
 
 	Data struct {
-		Updated time.Time `json:"mtime"`
-		Data    string    `json:"data"`
+		Updated time.Time              `json:"mtime"`
+		Data    *orderedmap.OrderedMap `json:"data"`
 	}
 	GetConfigResponse struct {
 		Status int  `json:"status"`
@@ -32,47 +36,53 @@ type (
 )
 
 func GetConfig(w http.ResponseWriter, r *http.Request) {
+	var b []byte
+	var err error
+	var resp = GetConfigResponse{
+		Data: Data{},
+	}
+	var data *orderedmap.OrderedMap
 	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetConfig")
 	log.Debug().Msg("starting")
-	payload := GetObjectConfig{}
+	payload := GetObjectConfigOptions{}
 	if r.Body == nil {
-		log.Error().Msg("can't read request body")
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Info().Msg("can't read request body")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if reqBody, err := io.ReadAll(r.Body); err != nil {
-		log.Error().Err(err).Msg("read body request")
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Info().Err(err).Msg("read body request")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
 		if err := json.Unmarshal(reqBody, &payload); err != nil {
-			log.Error().Err(err).Msg("request body unmarshal")
-			w.WriteHeader(http.StatusInternalServerError)
+			log.Info().Err(err).Msg("request body unmarshal")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	}
 
-	pathEtc := rawconfig.Paths.Etc
-	objPath, err := path.Parse(payload.Options.Path)
+	objPath, err := path.Parse(payload.Path)
 	if err != nil {
-		log.Error().Err(err).Msgf("invalid path: %s", payload.Options.Path)
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Info().Err(err).Msgf("invalid path: %s", payload.Path)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	var prefix string
-	if objPath.Namespace != "root" {
-		prefix = "namespaces/"
+	if payload.Impersonate != "" && !payload.Evaluate {
+		// Force evaluate when impersonate
+		payload.Evaluate = true
 	}
-	filename := pathEtc + "/" + prefix + objPath.String() + ".conf"
+	filename := objPath.ConfigFile()
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
-		log.Error().Msgf("configFile no present(mtime) %s %s", filename, mtime)
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Error().Msgf("configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	b, err := os.ReadFile(filename)
+	resp.Data.Updated = mtime
+	data, err = configData(objPath, payload.Evaluate, payload.Impersonate)
 	if err != nil {
-		log.Error().Msgf("can't read %s", filename)
+		log.Error().Err(err).Msgf("can't get configData for %s %s", objPath, filename)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -81,21 +91,37 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	resp := GetConfigResponse{
-		Status: 0,
-		Data: Data{
-			Updated: mtime,
-			Data:    string(b),
-		},
-	}
-	respB, err := json.Marshal(resp)
+	data.Set("metadata", objPath.ToMetadata())
+	resp.Data.Data = data
+	b, err = json.Marshal(resp)
 	if err != nil {
-		log.Error().Err(err).Msgf("marshal response error %s", filename)
+		log.Error().Err(err).Msgf("marshal response error %s %s", objPath, filename)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if _, err := write(respB); err != nil {
+	if _, err := write(b); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func configData(p path.T, eval bool, impersonate string) (data *orderedmap.OrderedMap, err error) {
+	var o object.Configurer
+	var config rawconfig.T
+	if o, err = object.NewConfigurer(p, object.WithVolatile(true)); err != nil {
+		return
+	}
+	if eval {
+		if impersonate != "" {
+			config, err = o.EvalConfigAs(impersonate)
+		} else {
+			config, err = o.EvalConfig()
+		}
+	} else {
+		config, err = o.PrintConfig()
+	}
+	if err != nil {
+		return
+	}
+	return config.Data, nil
 }
