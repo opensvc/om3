@@ -54,6 +54,10 @@ func (t T) NewGetObjectConfig() *api.GetObjectConfig {
 	return api.NewGetObjectConfig(t)
 }
 
+func (t T) NewGetObjectConfigFile() *api.GetObjectConfigFile {
+	return api.NewGetObjectConfigFile(t)
+}
+
 func (t T) NewGetObjectSelector() *api.GetObjectSelector {
 	return api.NewGetObjectSelector(t)
 }

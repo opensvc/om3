@@ -3,13 +3,13 @@ package remoteconfig
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
@@ -81,26 +81,30 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 }
 
 func fetchFromApi(p path.T, node string) (b []byte, updated time.Time, err error) {
-	url := fmt.Sprintf("raw://%s:%d", node, daemonenv.RawPort)
 	var (
 		cli   *client.T
 		readB []byte
 	)
-	if cli, err = client.New(client.WithURL(url)); err != nil {
+	cli, err = client.New(
+		client.WithURL(daemonenv.UrlHttpNode(node)),
+		client.WithPassword(rawconfig.ClusterSection().Secret),
+		client.WithCertificate(daemonenv.CertFile()),
+	)
+	if err != nil {
 		return
 	}
-	handle := cli.NewGetObjectConfig()
+	handle := cli.NewGetObjectConfigFile()
 	handle.ObjectSelector = p.String()
 	if readB, err = handle.Do(); err != nil {
 		return
 	}
 	type response struct {
-		Data    string
+		Data    []byte
 		Updated time.Time `json:"mtime"`
 	}
 	resp := response{}
 	if err = json.Unmarshal(readB, &resp); err != nil {
 		return
 	}
-	return []byte(resp.Data), resp.Updated, nil
+	return resp.Data, resp.Updated, nil
 }

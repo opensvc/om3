@@ -18,17 +18,15 @@ type (
 	}
 )
 
-//
 // parse tries to abstract the status code, error and info strings
 // parsing in the response body, returning Go-friendly errors.
-//
 func parse(b []byte, err error) ([]byte, error) {
 	//log.Debug().Err(err).Bytes("b", b).Msg("parse response")
 	if err != nil {
 		return b, err
 	}
 	data := &schema1{}
-	if err := json.Unmarshal(b, &data); err != nil || data.Status == nil {
+	if err := json.Unmarshal(b, &data); (err != nil) || (data == nil) || (data.Status == nil) {
 		// not a schema1 response => let it go as-is
 		//log.Debug().Bytes("b", b).Msg("parse")
 		return b, nil
