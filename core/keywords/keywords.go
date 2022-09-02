@@ -126,7 +126,7 @@ func (t Store) Lookup(k key.T, kd kind.T, sectionType string) Keyword {
 		if kw.Section == "" {
 			return kw
 		}
-		if sectionType != "" && !stringslice.Has(sectionType, kw.Types) {
+		if sectionType != "" && len(kw.Types) > 0 && !stringslice.Has(sectionType, kw.Types) {
 			continue
 		}
 		if k.Section == kw.Section || driverGroup == kw.Section {
