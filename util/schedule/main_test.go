@@ -160,8 +160,8 @@ func TestParsedInterval(t *testing.T) {
 			parsed, err := parse(data.Expression)
 			require.ErrorIs(t, err, nil)
 			require.Len(t, parsed, 1)
-			require.Len(t, parsed[0].Timeranges, 1)
-			require.Equal(t, data.Duration, parsed[0].Timeranges[0].Interval)
+			require.Len(t, parsed[0].timeranges, 1)
+			require.Equal(t, data.Duration, parsed[0].timeranges[0].interval)
 		})
 	}
 }

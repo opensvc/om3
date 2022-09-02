@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -54,12 +55,18 @@ func (t *actor) Schedules() schedule.Table {
 		t.newScheduleEntry("compliance_auto", "comp_schedule", "comp_check"),
 	)
 	needResMon := false
+	type scheduleOptioner interface {
+		ScheduleOptions() resource.ScheduleOptions
+	}
 	for _, r := range listResources(t) {
 		if !needResMon && r.IsMonitored() {
 			needResMon = true
 		}
-		if i, ok := r.(scheduler); ok {
-			table = table.Add(i.Schedules())
+		if i, ok := r.(scheduleOptioner); ok {
+			opts := i.ScheduleOptions()
+			rid := r.RID()
+			e := t.newScheduleEntry(opts.Action, key.T{rid, opts.Option}.String(), opts.Base)
+			table = table.Add(e)
 		}
 	}
 	if needResMon {

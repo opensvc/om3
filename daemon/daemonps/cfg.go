@@ -18,3 +18,15 @@ func PubCfgUpdate(bus *pubsub.Bus, id string, v moncmd.CfgUpdated) {
 func SubCfg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
 	return Sub(bus, NsCfg, op, name, matching, fn)
 }
+
+func PubCfgFileRemove(bus *pubsub.Bus, id string, v moncmd.CfgFileRemoved) {
+	Pub(bus, NsCfgFile, pubsub.OpDelete, id, v)
+}
+
+func PubCfgFileUpdate(bus *pubsub.Bus, id string, v moncmd.CfgFileUpdated) {
+	Pub(bus, NsCfgFile, pubsub.OpUpdate, id, v)
+}
+
+func SubCfgFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+	return Sub(bus, NsCfgFile, op, name, matching, fn)
+}

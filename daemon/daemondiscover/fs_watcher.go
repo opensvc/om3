@@ -2,7 +2,7 @@ package daemondiscover
 
 import (
 	"context"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -13,8 +13,10 @@ import (
 
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 const (
@@ -23,6 +25,7 @@ const (
 
 func (d *discover) fsWatcherStart() (func(), error) {
 	log := d.log.With().Str("func", "fsWatch").Logger()
+	bus := pubsub.BusFromContext(d.ctx)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Error().Err(err).Msg("start")
@@ -69,11 +72,11 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		//  etc/*.conf
 		//  etc/namespaces/*/*.conf
 		//
-		err = filepath.Walk(
+		err = filepath.WalkDir(
 			rawconfig.Paths.Etc,
-			func(filename string, info os.FileInfo, err error) error {
+			func(filename string, entry fs.DirEntry, err error) error {
 				switch {
-				case info.IsDir():
+				case entry.IsDir():
 					if strings.HasPrefix(filename, rawconfig.Paths.Etc+"/namespaces/") {
 						if err := d.fsWatcher.Add(filename); err != nil {
 							log.Error().Err(err).Msgf("add dir watch %s", filename)
@@ -81,16 +84,17 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							log.Info().Msgf("add dir watch %s", filename)
 						}
 					}
-				case filename == nodeConf:
-					// nothing special here. just watch.
-					if err := watcher.Add(filename); err != nil {
-						log.Error().Err(err).Msgf("add file watch %s", filename)
-					} else {
-						log.Debug().Msgf("add file watch %s", filename)
+				default:
+					if !strings.HasSuffix(filename, ".conf") {
+						return nil
 					}
-				case strings.HasSuffix(filename, ".conf"):
-					p, err := filenameToPath(filename)
-					if err != nil {
+					var (
+						p   path.T
+						err error
+					)
+					if filename == nodeConf {
+						// pass
+					} else if p, err = filenameToPath(filename); err != nil {
 						log.Warn().Err(err).Msgf("do not watch invalid config file %s", filename)
 						return nil
 					}
@@ -99,7 +103,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					} else {
 						log.Debug().Msgf("add file %s", filename)
 					}
-					d.cfgCmdC <- moncmd.New(moncmd.CfgFileUpdated{Path: p, Filename: filename})
+					daemonps.PubCfgFileUpdate(bus, "fs_watcher emit cfgfile.update", moncmd.CfgFileUpdated{Path: p, Filename: filename})
 				}
 				return nil
 			},
@@ -120,17 +124,21 @@ func (d *discover) fsWatcherStart() (func(), error) {
 				log.Debug().Msgf("event: %s", event)
 				filename := event.Name
 				switch {
-				case (filename == nodeConf) && (event.Op&updateMask != 0):
-					rawconfig.LoadSections()
 				case strings.HasSuffix(filename, ".conf"):
-					p, err := filenameToPath(filename)
-					if err != nil {
+					var (
+						p   path.T
+						err error
+					)
+					if filename == nodeConf {
+						rawconfig.LoadSections()
+					} else if p, err = filenameToPath(filename); err != nil {
 						log.Warn().Err(err).Msgf("%s", filename)
+						continue
 					}
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s", filename)
-						d.cfgCmdC <- moncmd.New(moncmd.CfgFileRemoved{Path: p, Filename: filename})
+						daemonps.PubCfgFileRemove(bus, "fs_watcher emit cfgfile.remove", moncmd.CfgFileRemoved{Path: p, Filename: filename})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
@@ -146,7 +154,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s", filename)
-						d.cfgCmdC <- moncmd.New(moncmd.CfgFileUpdated{Path: p, Filename: filename})
+						daemonps.PubCfgFileUpdate(bus, "fs_watcher emit cfgfile.update", moncmd.CfgFileUpdated{Path: p, Filename: filename})
 					}
 				}
 

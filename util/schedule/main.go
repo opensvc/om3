@@ -31,14 +31,14 @@ var (
 	SchedFmt    = "%s: %s"
 	AllMonths   = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 	AllWeekdays = []int{1, 2, 3, 4, 5, 6, 7}
-	AllDays     = []Day{
-		{Weekday: 1},
-		{Weekday: 2},
-		{Weekday: 3},
-		{Weekday: 4},
-		{Weekday: 5},
-		{Weekday: 6},
-		{Weekday: 7},
+	AllDays     = []day{
+		{weekday: 1},
+		{weekday: 2},
+		{weekday: 3},
+		{weekday: 4},
+		{weekday: 5},
+		{weekday: 6},
+		{weekday: 7},
 	}
 	CalendarNames = map[string]int{
 		"jan":       1,
@@ -83,29 +83,34 @@ var (
 
 type (
 	direction int
-	Timerange struct {
-		Probabilistic bool
-		Interval      time.Duration
-		Begin         time.Duration // since 00:00:00
-		End           time.Duration // since 00:00:00
+	timerange struct {
+		probabilistic bool
+		interval      time.Duration
+		begin         time.Duration // since 00:00:00
+		end           time.Duration // since 00:00:00
 	}
-	Timeranges []Timerange
-	Day        struct {
-		Weekday  int
-		Monthday int
+	timeranges []timerange
+	day        struct {
+		weekday  int
+		monthday int
 	}
-	ExprData struct {
-		Timeranges Timeranges
-		Days       []Day
-		Weeks      []int
-		Months     []int
-		Raw        string
-		Exclude    bool
+
+	// Schedule is a single parsed scheduling expression
+	Schedule struct {
+		timeranges timeranges
+		days       []day
+		weeks      []int
+		months     []int
+		raw        string
+		exclude    bool
 	}
-	ExprDataset []ExprData
-	Expr        struct {
+
+	// Schedules is a list of Schedule, applying a union logic to allowed ranges
+	Schedules []Schedule
+
+	Expr struct {
 		raw     string
-		dataset ExprDataset
+		dataset Schedules
 	}
 )
 
@@ -121,9 +126,9 @@ func (t *Expr) Append(s string) error {
 	return t.makeDataset()
 }
 
-func (t *Expr) AppendExprDataset(ds ExprDataset) {
+func (t *Expr) AppendExprDataset(ds Schedules) {
 	for _, data := range ds {
-		t.raw = strings.Join([]string{t.raw, data.Raw}, " ")
+		t.raw = strings.Join([]string{t.raw, data.raw}, " ")
 		t.dataset = append(t.dataset, data)
 	}
 }
@@ -132,7 +137,7 @@ func (t Expr) String() string {
 	return t.raw
 }
 
-func (t *Expr) Dataset() ExprDataset {
+func (t *Expr) Dataset() Schedules {
 	_ = t.makeDataset()
 	return t.dataset
 }
@@ -169,21 +174,21 @@ func monthDays(tm time.Time) int {
 
 // ContextualizeDays returns a copy of Days with the "nth-from-tail" monthdays
 // evaluated using the actual number of days in the <tm> month
-func (t ExprData) ContextualizeDays(tm time.Time) []Day {
+func (t Schedule) ContextualizeDays(tm time.Time) []day {
 	max := monthDays(tm)
-	days := make([]Day, len(t.Days))
-	for i, day := range t.Days {
-		days[i] = day
-		if day.Monthday == 0 {
+	days := make([]day, len(t.days))
+	for i, d := range t.days {
+		days[i] = d
+		if d.monthday == 0 {
 			continue
 		}
-		if day.Monthday > 0 {
+		if d.monthday > 0 {
 			continue
 		}
-		if -day.Monthday > max {
+		if -d.monthday > max {
 			continue
 		}
-		days[i].Monthday = max + day.Monthday + 1
+		days[i].monthday = max + d.monthday + 1
 	}
 	return days
 }
@@ -200,16 +205,16 @@ func isTooSoon(tm, last time.Time, interval time.Duration) bool {
 }
 
 // After returns true if Begin > <tm>
-func (t Timerange) After(tm time.Time) bool {
-	begin := t.Begin
+func (t timerange) After(tm time.Time) bool {
+	begin := t.begin
 	seconds := tm.Sub(time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location()))
 	return begin >= seconds
 }
 
 // TestIncludes returns ErrNotAllowed if <tm> is not in the Timerange
-func (t Timerange) TestIncludes(tm time.Time) error {
-	begin := t.Begin
-	end := t.End
+func (t timerange) TestIncludes(tm time.Time) error {
+	begin := t.begin
+	end := t.end
 	seconds := tm.Sub(time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location()))
 
 	switch {
@@ -229,11 +234,11 @@ func (t Timerange) TestIncludes(tm time.Time) error {
 			return nil
 		}
 	}
-	return errors.Wrapf(ErrNotAllowed, "not in timerange %s-%s", t.Begin, t.End)
+	return errors.Wrapf(ErrNotAllowed, "not in timerange %s-%s", t.begin, t.end)
 }
 
 // TestIncludes returns true if <tm> is in the Timerange
-func (t Timerange) Includes(tm time.Time) bool {
+func (t timerange) Includes(tm time.Time) bool {
 	err := t.TestIncludes(tm)
 	return err == nil
 }
@@ -247,14 +252,14 @@ func (t Timerange) Includes(tm time.Time) bool {
 // This algo is meant to level collector's load which peaks
 // when tasks trigger at the same second on every nodes.
 //
-func (tr Timerange) Delay(tm time.Time) time.Duration {
-	if !tr.Probabilistic {
+func (tr timerange) Delay(tm time.Time) time.Duration {
+	if !tr.probabilistic {
 		return 0
 	}
-	begin := tr.Begin
-	end := tr.End
+	begin := tr.begin
+	end := tr.end
 	seconds := tm.Sub(time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location()))
-	if tr.Begin > tr.End {
+	if tr.begin > tr.end {
 		end += time.Hour * 24
 	}
 	if seconds < begin {
@@ -268,7 +273,7 @@ func (tr Timerange) Delay(tm time.Time) time.Duration {
 		return 0
 	}
 
-	if tr.Interval < length {
+	if tr.interval < length {
 		// don't delay if interval < period length, because the user
 		// expects the action to run multiple times in the period. And
 		// '@<n>' interval-only schedule are already different across
@@ -279,8 +284,8 @@ func (tr Timerange) Delay(tm time.Time) time.Duration {
 	return time.Duration(float64(remaining) * rand.Float64())
 }
 
-func (t Timeranges) Including(tm time.Time) Timeranges {
-	trs := make(Timeranges, 0)
+func (t timeranges) Including(tm time.Time) timeranges {
+	trs := make(timeranges, 0)
 	for _, tr := range t {
 		if !tr.Includes(tm) {
 			continue
@@ -290,8 +295,8 @@ func (t Timeranges) Including(tm time.Time) Timeranges {
 	return trs
 }
 
-func (t Timeranges) After(tm time.Time) Timeranges {
-	trs := make(Timeranges, 0)
+func (t timeranges) After(tm time.Time) timeranges {
+	trs := make(timeranges, 0)
 	for _, tr := range t {
 		if !tr.After(tm) {
 			continue
@@ -301,17 +306,17 @@ func (t Timeranges) After(tm time.Time) Timeranges {
 	return trs
 }
 
-func (t Timeranges) SortedByIntervalAndBegin() Timeranges {
-	trs := make(Timeranges, len(t))
+func (t timeranges) SortedByIntervalAndBegin() timeranges {
+	trs := make(timeranges, len(t))
 	for i, tr := range t {
 		trs[i] = tr
 	}
 	sort.Slice(trs, func(i, j int) bool {
 		switch {
-		case trs[i].Interval < trs[j].Interval:
+		case trs[i].interval < trs[j].interval:
 			return true
-		case trs[i].Interval == trs[j].Interval:
-			return trs[i].Interval < trs[j].Interval
+		case trs[i].interval == trs[j].interval:
+			return trs[i].interval < trs[j].interval
 		default:
 			return false
 		}
@@ -319,59 +324,59 @@ func (t Timeranges) SortedByIntervalAndBegin() Timeranges {
 	return trs
 }
 
-func (t ExprData) GetTimerange(tm, last time.Time) (time.Time, time.Duration, error) {
+func (t Schedule) GetTimerange(tm, last time.Time) (time.Time, time.Duration, error) {
 	// if the candidate date is inside timeranges, return (candidate, smallest interval)
-	trs := t.Timeranges.Including(tm).SortedByIntervalAndBegin()
+	trs := t.timeranges.Including(tm).SortedByIntervalAndBegin()
 	for _, tr := range trs {
-		if isTooSoon(tm, last, tr.Interval) {
-			tmi := last.Add(tr.Interval)
+		if isTooSoon(tm, last, tr.interval) {
+			tmi := last.Add(tr.interval)
 			if tr.Includes(tmi) {
-				return tmi, tr.Interval, nil
+				return tmi, tr.interval, nil
 			}
 			return tm, 0, ErrNotAllowed
 		}
-		if tr.Probabilistic {
+		if tr.probabilistic {
 			delay := tr.Delay(tm)
 			tmi := tm.Add(delay)
-			return tmi, tr.Interval - delay, nil
+			return tmi, tr.interval - delay, nil
 		}
-		return tm, tr.Interval, nil
+		return tm, tr.interval, nil
 	}
 
 	// the candidate date is outside timeranges, return the closest range's (begin, interval)
-	trs = t.Timeranges.After(tm).SortedByIntervalAndBegin()
+	trs = t.timeranges.After(tm).SortedByIntervalAndBegin()
 	for _, tr := range trs {
 		tm := time.Date(
 			tm.Year(), tm.Month(), tm.Day(),
 			0, 0, 0, 0,
 			tm.Location(),
-		).Add(tr.Begin)
-		if isTooSoon(tm, last, tr.Interval) {
-			tmi := last.Add(tr.Interval)
+		).Add(tr.begin)
+		if isTooSoon(tm, last, tr.interval) {
+			tmi := last.Add(tr.interval)
 			if tr.Includes(tmi) {
-				return tmi, tr.Interval, nil
+				return tmi, tr.interval, nil
 			}
 			continue
 		}
-		if tr.Probabilistic {
+		if tr.probabilistic {
 			delay := tr.Delay(tm)
 			tmi := tm.Add(delay)
-			return tmi, tr.Interval - delay, nil
+			return tmi, tr.interval - delay, nil
 		}
-		return tm, tr.Interval, nil
+		return tm, tr.interval, nil
 	}
 
 	return tm, 0, ErrNotAllowed
 }
 
-func (t ExprData) IsInWeeks(tm time.Time) bool {
+func (t Schedule) IsInWeeks(tm time.Time) bool {
 	err := t.TestIsInWeeks(tm)
 	return err == nil
 }
 
-func (t ExprData) TestIsInWeeks(tm time.Time) error {
+func (t Schedule) TestIsInWeeks(tm time.Time) error {
 	_, ref := tm.ISOWeek()
-	for _, week := range t.Weeks {
+	for _, week := range t.weeks {
 		if week == ref {
 			return nil
 		}
@@ -379,14 +384,14 @@ func (t ExprData) TestIsInWeeks(tm time.Time) error {
 	return errors.Wrap(ErrNotAllowed, "not in allowed weeks")
 }
 
-func (t ExprData) IsInMonths(tm time.Time) bool {
+func (t Schedule) IsInMonths(tm time.Time) bool {
 	err := t.TestIsInMonths(tm)
 	return err == nil
 }
 
-func (t ExprData) TestIsInMonths(tm time.Time) error {
+func (t Schedule) TestIsInMonths(tm time.Time) error {
 	ref := int(tm.Month())
-	for _, month := range t.Months {
+	for _, month := range t.months {
 		if month == ref {
 			return nil
 		}
@@ -394,27 +399,27 @@ func (t ExprData) TestIsInMonths(tm time.Time) error {
 	return errors.Wrap(ErrNotAllowed, "not in allowed months")
 }
 
-func (t ExprData) IsInDays(tm time.Time) bool {
+func (t Schedule) IsInDays(tm time.Time) bool {
 	err := t.TestIsInDays(tm)
 	return err == nil
 }
 
-func (t ExprData) TestIsInDays(tm time.Time) error {
+func (t Schedule) TestIsInDays(tm time.Time) error {
 	weekday := ISOWeekday(tm)
-	isInDay := func(day Day) error {
-		if weekday != day.Weekday {
+	isInDay := func(d day) error {
+		if weekday != d.weekday {
 			return ErrNotAllowed
 		}
-		if day.Monthday == 0 {
+		if d.monthday == 0 {
 			return nil
 		}
-		if tm.Day() != day.Monthday {
+		if tm.Day() != d.monthday {
 			return ErrNotAllowed
 		}
 		return nil
 	}
-	for _, day := range t.ContextualizeDays(tm) {
-		if err := isInDay(day); err == nil {
+	for _, d := range t.ContextualizeDays(tm) {
+		if err := isInDay(d); err == nil {
 			return nil
 		} else if errors.Is(err, ErrNotAllowed) {
 			// maybe next day is allowed
@@ -452,25 +457,25 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	}
 
 	// isInTimerangeInterval validates the last task run is old enough to allow running again.
-	isInTimerangeInterval := func(tr Timerange) error {
-		if tr.Interval == 0 {
+	isInTimerangeInterval := func(tr timerange) error {
+		if tr.interval == 0 {
 			return errors.Wrap(ErrNotAllowed, "interval set to 0")
 		}
 		if last.IsZero() {
 			return nil
 		}
-		if !needActionInterval(tr.Interval) {
+		if !needActionInterval(tr.interval) {
 			return errors.Wrap(ErrNotAllowed, "last run too soon")
 		}
 		return nil
 	}
 
 	// timerangeRemainingDelay returns the delay from now to the end of the timerange
-	timerangeRemainingDelay := func(tr Timerange) time.Duration {
-		begin := tr.Begin
-		end := tr.End
+	timerangeRemainingDelay := func(tr timerange) time.Duration {
+		begin := tr.begin
+		end := tr.end
 		seconds := tm.Sub(time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location()))
-		if tr.Begin > tr.End {
+		if tr.begin > tr.end {
 			end += time.Hour * 24
 		}
 		if seconds < begin {
@@ -492,19 +497,19 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	// Returns ErrNotAllowed if the validation fails the timerange
 	// constraints.
 	//
-	isInTimeranges := func(d ExprData) (time.Duration, error) {
-		if len(d.Timeranges) == 0 {
+	isInTimeranges := func(d Schedule) (time.Duration, error) {
+		if len(d.timeranges) == 0 {
 			return 0, errors.Wrap(ErrNotAllowed, "no timeranges")
 		}
 		ec := errchain.New()
 		ec.Add(ErrNotAllowed)
-		for _, tr := range d.Timeranges {
+		for _, tr := range d.timeranges {
 			if err := tr.TestIncludes(tm); errors.Is(err, ErrNotAllowed) {
 				ec.Add(err)
 				continue
 			} else if err != nil {
 				return 0, err
-			} else if d.Exclude {
+			} else if d.exclude {
 				return timerangeRemainingDelay(tr), nil
 			}
 			if err := isInTimerangeInterval(tr); errors.Is(err, ErrNotAllowed) {
@@ -519,7 +524,7 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 		return 0, ec
 	}
 
-	validate := func(d ExprData) (time.Duration, error) {
+	validate := func(d Schedule) (time.Duration, error) {
 		if err := d.TestIsInMonths(tm); err != nil {
 			return 0, err
 		}
@@ -545,8 +550,8 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 		if err != nil {
 			return delay, err
 		}
-		if d.Exclude {
-			return delay, errors.Wrapf(ErrExcluded, "schedule element '%s', delay '%s'", d.Raw, delay)
+		if d.exclude {
+			return delay, errors.Wrapf(ErrExcluded, "schedule element '%s', delay '%s'", d.raw, delay)
 		}
 		return delay, nil
 	}
@@ -557,15 +562,15 @@ func (t *Expr) Test(tm time.Time) (time.Duration, error) {
 	return t.TestWithLast(tm, time.Time{})
 }
 
-func newExprDataset() ExprDataset {
-	return make(ExprDataset, 0)
+func newExprDataset() Schedules {
+	return make(Schedules, 0)
 }
 
 // Includes returns the filtered elements with .Exclude=false
-func (t ExprDataset) Includes() ExprDataset {
-	l := make(ExprDataset, 0)
+func (t Schedules) Includes() Schedules {
+	l := make(Schedules, 0)
 	for _, data := range t {
-		if !data.Exclude {
+		if !data.exclude {
 			l = append(l, data)
 		}
 	}
@@ -573,22 +578,22 @@ func (t ExprDataset) Includes() ExprDataset {
 }
 
 // Excludes returns the filtered elements with .Exclude=true
-func (t ExprDataset) Excludes() ExprDataset {
-	l := make(ExprDataset, 0)
+func (t Schedules) Excludes() Schedules {
+	l := make(Schedules, 0)
 	for _, data := range t {
-		if data.Exclude {
+		if data.exclude {
 			l = append(l, data)
 		}
 	}
 	return l
 }
 
-func newExprData() *ExprData {
-	data := &ExprData{
-		Timeranges: make(Timeranges, 0),
-		Days:       make([]Day, 0),
-		Weeks:      make([]int, 0),
-		Months:     make([]int, 0),
+func newExprData() *Schedule {
+	data := &Schedule{
+		timeranges: make(timeranges, 0),
+		days:       make([]day, 0),
+		weeks:      make([]int, 0),
+		months:     make([]int, 0),
 	}
 	return data
 }
@@ -609,7 +614,7 @@ func normalizeExpression(s string) []string {
 	return []string{s}
 }
 
-func parse(s string) (ExprDataset, error) {
+func parse(s string) (Schedules, error) {
 	ds := newExprDataset()
 	for _, expr := range normalizeExpression(s) {
 		if data, err := parseExpr(expr); err != nil {
@@ -621,13 +626,13 @@ func parse(s string) (ExprDataset, error) {
 	return ds, nil
 }
 
-func parseExpr(s string) (ExprData, error) {
+func parseExpr(s string) (Schedule, error) {
 	var (
 		exclude bool
 		err     error
 	)
 	data := newExprData()
-	data.Raw = s
+	data.raw = s
 	s = strings.TrimSpace(s)
 	if len(s) == 0 {
 		return *data, nil
@@ -642,49 +647,49 @@ func parseExpr(s string) (ExprData, error) {
 	elements := strings.Fields(s)
 	switch len(elements) {
 	case 1:
-		if data.Timeranges, err = parseTimeranges(elements[0]); err != nil {
+		if data.timeranges, err = parseTimeranges(elements[0]); err != nil {
 			return *data, err
 		}
-		data.Days = AllDays
-		data.Weeks = allWeeksThisYear()
-		data.Months = AllMonths
+		data.days = AllDays
+		data.weeks = allWeeksThisYear()
+		data.months = AllMonths
 	case 2:
-		if data.Timeranges, err = parseTimeranges(elements[0]); err != nil {
+		if data.timeranges, err = parseTimeranges(elements[0]); err != nil {
 			return *data, err
 		}
-		if data.Days, err = parseDays(elements[1]); err != nil {
+		if data.days, err = parseDays(elements[1]); err != nil {
 			return *data, err
 		}
-		data.Weeks = allWeeksThisYear()
-		data.Months = AllMonths
+		data.weeks = allWeeksThisYear()
+		data.months = AllMonths
 	case 3:
-		if data.Timeranges, err = parseTimeranges(elements[0]); err != nil {
+		if data.timeranges, err = parseTimeranges(elements[0]); err != nil {
 			return *data, err
 		}
-		if data.Days, err = parseDays(elements[1]); err != nil {
+		if data.days, err = parseDays(elements[1]); err != nil {
 			return *data, err
 		}
-		if data.Weeks, err = parseWeeks(elements[2]); err != nil {
+		if data.weeks, err = parseWeeks(elements[2]); err != nil {
 			return *data, err
 		}
-		data.Months = AllMonths
+		data.months = AllMonths
 	case 4:
-		if data.Timeranges, err = parseTimeranges(elements[0]); err != nil {
+		if data.timeranges, err = parseTimeranges(elements[0]); err != nil {
 			return *data, err
 		}
-		if data.Days, err = parseDays(elements[1]); err != nil {
+		if data.days, err = parseDays(elements[1]); err != nil {
 			return *data, err
 		}
-		if data.Weeks, err = parseWeeks(elements[2]); err != nil {
+		if data.weeks, err = parseWeeks(elements[2]); err != nil {
 			return *data, err
 		}
-		if data.Months, err = parseMonths(elements[3]); err != nil {
+		if data.months, err = parseMonths(elements[3]); err != nil {
 			return *data, err
 		}
 	default:
 		return *data, errors.Wrapf(ErrInvalid, "number of elements must be between 1-4: %s", s)
 	}
-	data.Exclude = exclude
+	data.exclude = exclude
 	return *data, nil
 }
 
@@ -726,7 +731,7 @@ func parseTime(s string) (time.Duration, error) {
 	}
 }
 
-func parseTimeranges(s string) (Timeranges, error) {
+func parseTimeranges(s string) (timeranges, error) {
 	minDuration := time.Second * 1
 	parse := func(s string) (time.Duration, time.Duration, error) {
 		var (
@@ -762,18 +767,18 @@ func parseTimeranges(s string) (Timeranges, error) {
 		}
 		return begin, end, nil
 	}
-	l := make(Timeranges, 0)
+	l := make(timeranges, 0)
 	for _, spec := range strings.Split(s, ",") {
-		tr := Timerange{
-			End:      (time.Hour * 24) - 1,
-			Interval: time.Hour * 24,
+		tr := timerange{
+			end:      (time.Hour * 24) - 1,
+			interval: time.Hour * 24,
 		}
 		if len(spec) == 0 {
 			l = append(l, tr)
 			continue
 		}
 		if spec[0] == []byte("~")[0] {
-			tr.Probabilistic = true
+			tr.probabilistic = true
 			spec = spec[1:]
 		}
 		if spec == "*" {
@@ -786,11 +791,11 @@ func parseTimeranges(s string) (Timeranges, error) {
 			if begin, end, err := parse(spec); err != nil {
 				return nil, err
 			} else {
-				tr.Begin = begin
-				tr.End = end
-				tr.Interval = defaultInterval(begin, end)
-				if tr.Interval < (minDuration + 1) {
-					tr.Probabilistic = false
+				tr.begin = begin
+				tr.end = end
+				tr.interval = defaultInterval(begin, end)
+				if tr.interval < (minDuration + 1) {
+					tr.probabilistic = false
 				}
 				l = append(l, tr)
 				continue
@@ -800,8 +805,8 @@ func parseTimeranges(s string) (Timeranges, error) {
 			if begin, end, err := parse(elements[0]); err != nil {
 				return nil, err
 			} else {
-				tr.Begin = begin
-				tr.End = end
+				tr.begin = begin
+				tr.end = end
 				defInterval = defaultInterval(begin, end)
 			}
 			if _, err := strconv.Atoi(elements[1]); err == nil {
@@ -812,13 +817,13 @@ func parseTimeranges(s string) (Timeranges, error) {
 			if interval, err := converters.Duration.Convert(elements[1]); err != nil {
 				return nil, errors.Wrapf(ErrInvalid, "%s", err)
 			} else {
-				tr.Interval = *interval.(*time.Duration)
-				if tr.Interval == 0 {
+				tr.interval = *interval.(*time.Duration)
+				if tr.interval == 0 {
 					// discard '...@0' timerange
 					continue
 				}
-				if defInterval < (minDuration+1) || tr.Interval < defInterval {
-					tr.Probabilistic = false
+				if defInterval < (minDuration+1) || tr.interval < defInterval {
+					tr.probabilistic = false
 				}
 				l = append(l, tr)
 				continue
@@ -837,7 +842,7 @@ func defaultInterval(begin, end time.Duration) time.Duration {
 	return (time.Hour*24 - begin) + end + 1
 }
 
-func parseDay(s string) ([]Day, error) {
+func parseDay(s string) ([]day, error) {
 	dayOfWeekStr := s
 	dayOfMonth := 0
 	elements := strings.Split(s, ":")
@@ -880,16 +885,16 @@ func parseDay(s string) ([]Day, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := make([]Day, len(days))
+	l := make([]day, len(days))
 	for i, d := range days {
-		l[i].Monthday = dayOfMonth
-		l[i].Weekday = d
+		l[i].monthday = dayOfMonth
+		l[i].weekday = d
 	}
 	return l, nil
 }
 
-func parseDays(s string) ([]Day, error) {
-	l := make([]Day, 0)
+func parseDays(s string) ([]day, error) {
+	l := make([]day, 0)
 	for _, sub := range strings.Split(s, ",") {
 		if more, err := parseDay(sub); err == nil {
 			l = append(l, more...)
@@ -1123,23 +1128,23 @@ func (t *Expr) Next(opts ...funcopt.O) (time.Time, time.Duration, error) {
 	return next, interval, nil
 }
 
-func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Time, time.Duration) {
+func getNext(data Schedule, options nextOptionsT, excludes Schedules) (time.Time, time.Duration) {
 	var (
 		next     time.Time
 		interval time.Duration
 	)
 
-	isValidDay := func(tm time.Time, days []Day) bool {
+	isValidDay := func(tm time.Time, days []day) bool {
 		weekday := ISOWeekday(tm)
 		monthday := int(tm.Day())
 		for _, d := range days {
-			if d.Weekday != weekday {
+			if d.weekday != weekday {
 				continue
 			}
-			if d.Monthday == 0 {
+			if d.monthday == 0 {
 				return true
 			}
-			if d.Monthday == monthday {
+			if d.monthday == monthday {
 				return true
 			}
 		}
@@ -1147,7 +1152,7 @@ func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Ti
 	}
 
 	validate := func(tm time.Time) (time.Duration, error) {
-		expr := New(data.Raw)
+		expr := New(data.raw)
 		expr.AppendExprDataset(excludes)
 		return expr.TestWithLast(tm, options.Last)
 	}
@@ -1162,7 +1167,7 @@ func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Ti
 		return tm, 0, ErrNextDay
 	}
 
-	daily := func(tm time.Time, days []Day) (time.Time, time.Duration, error) {
+	daily := func(tm time.Time, days []day) (time.Time, time.Duration, error) {
 		var err error
 		if !data.IsInWeeks(tm) {
 			return nextDay(tm)
@@ -1191,7 +1196,7 @@ func getNext(data ExprData, options nextOptionsT, excludes ExprDataset) (time.Ti
 	year1 := int(tm.Year())
 	month1 := int(tm.Month())
 	for year := year1; year <= year1+1; year += 1 {
-		for _, month := range data.Months {
+		for _, month := range data.months {
 			var firstDay int
 			if year == year1 {
 				if month < month1 {

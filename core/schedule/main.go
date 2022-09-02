@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/path"
+	usched "opensvc.com/opensvc/util/schedule"
 )
 
 type (
@@ -44,4 +45,9 @@ func (t Table) AddTable(l Table) Table {
 
 func (t Table) AddEntries(l ...Entry) Table {
 	return append(t, l...)
+}
+
+func (t Entry) GetNext() (time.Time, time.Duration, error) {
+	sc := usched.New(t.Definition)
+	return sc.Next(usched.NextWithLast(t.Last))
 }

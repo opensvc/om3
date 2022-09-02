@@ -108,17 +108,22 @@ func (o *T) worker(ctx context.Context) {
 	defer o.done()
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(ctx)
-	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "instance-config self cfg update", o.path.String(), o.onEv))
+	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg own Cfg update", o.path.String(), o.onEv))
+	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, o.path.String()+" instcfg own CfgFile update", o.path.String(), o.onEv))
+	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, o.path.String()+" instcfg own CfgFile remove", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
-		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "instance-config cluster cfg update", clusterId, o.onEv))
+		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg cluster Cfg update", clusterId, o.onEv))
 	}
 
 	// delay initial configure, seen on storm file creation
 	time.Sleep(delayInitialConfigure)
+
 	if err := o.setConfigure(); err != nil {
 		o.log.Error().Err(err).Msg("setConfigure")
 		return
 	}
+
+	// do once what we do later on moncmd.CfgFileUpdated
 	o.configFileCheck()
 	defer o.delete()
 	if err := smon.Start(o.ctx, o.path, o.cfg.Scope); err != nil {

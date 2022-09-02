@@ -88,11 +88,6 @@ func Start(ctx context.Context) (func(), error) {
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
 	}
-	stopFSWatcher, err := d.fsWatcherStart()
-	if err != nil {
-		d.log.Error().Err(err).Msg("start")
-		return stopFSWatcher, err
-	}
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
@@ -102,6 +97,13 @@ func Start(ctx context.Context) (func(), error) {
 		defer wg.Done()
 		d.agg()
 	}()
+
+	stopFSWatcher, err := d.fsWatcherStart()
+	if err != nil {
+		d.log.Error().Err(err).Msg("start")
+		return stopFSWatcher, err
+	}
+
 	cancelAndWait := func() {
 		stopFSWatcher()
 		for _, cfg := range d.moncfg {
