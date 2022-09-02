@@ -44,6 +44,10 @@ func UrlInetHttp() string {
 	return fmt.Sprintf("https://localhost:%d", HttpPort)
 }
 
+func UrlHttpNode(node string) string {
+	return fmt.Sprintf("https://%s:%d", node, HttpPort)
+}
+
 func UrlUxRaw() string {
 	return "raw://" + PathUxRaw()
 }

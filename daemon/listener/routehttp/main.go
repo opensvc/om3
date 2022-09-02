@@ -1,8 +1,7 @@
 /*
-	Package httpmux provides http mux
+Package httpmux provides http mux
 
-	It defines routing for Opensvc listener daemons
-
+It defines routing for Opensvc listener daemons
 */
 package routehttp
 
@@ -47,6 +46,7 @@ func New(ctx context.Context) *T {
 	mux.Post("/object_status", objecthandler.PostStatus)
 	mux.Get("/object_selector", objecthandler.GetSelector)
 	mux.Get("/object_config", objecthandler.GetConfig)
+	mux.Get("/object_config_file", objecthandler.GetConfigFile)
 	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
 	mux.Get("/node_log", daemonhandler.GetNodeLog)
