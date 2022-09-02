@@ -34,6 +34,7 @@ const (
 	GroupArray
 	GroupSwitch
 	GroupStonith
+	GroupBackup
 )
 
 var (
@@ -59,6 +60,7 @@ var (
 		"array":       GroupArray,
 		"switch":      GroupSwitch,
 		"stonith":     GroupStonith,
+		"backup":      GroupBackup,
 	}
 	toGroupString = map[Group]string{
 		GroupIP:          "ip",
@@ -80,6 +82,7 @@ var (
 		GroupArray:       "array",
 		GroupSwitch:      "switch",
 		GroupStonith:     "stonith",
+		GroupBackup:      "backup",
 	}
 )
 
