@@ -19,6 +19,11 @@ type (
 		Filename string
 	}
 
+	CfgFileDiscovered struct {
+		Path     path.T
+		Filename string
+	}
+
 	CfgFileRemoved struct {
 		Path     path.T
 		Filename string

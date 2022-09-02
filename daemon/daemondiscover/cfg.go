@@ -35,6 +35,8 @@ func (d *discover) cfg() {
 	bus := pubsub.BusFromContext(d.ctx)
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
+	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, "discover.cfg cfgfile.update", "", d.onEvCfg))
+	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, "discover.cfg cfgfile.delete", "", d.onEvCfg))
 
 	for {
 		select {
@@ -50,14 +52,8 @@ func (d *discover) cfg() {
 			case moncmd.MonCfgDone:
 				d.onInstCfgDone(c)
 			case moncmd.CfgUpdated:
-				if c.Node == d.localhost {
-					continue
-				}
 				d.cmdRemoteCfgUpdated(c.Path, c.Node, c.Config)
 			case moncmd.CfgDeleted:
-				if c.Node == d.localhost {
-					continue
-				}
 				d.cmdRemoteCfgDeleted(c.Path, c.Node)
 			case moncmd.RemoteFileConfig:
 				d.cmdRemoteCfgFetched(c)
@@ -77,6 +73,10 @@ func (d *discover) onEvCfg(i interface{}) {
 
 func (d *discover) onCfgFileRemoved(c moncmd.CfgFileRemoved) {
 	s := c.Path.String()
+	if s == "" {
+		// node config
+		return
+	}
 	if _, ok := d.moncfg[s]; ok {
 		d.moncfg[s].CmdC <- moncmd.New(c)
 	}
@@ -84,10 +84,13 @@ func (d *discover) onCfgFileRemoved(c moncmd.CfgFileRemoved) {
 
 func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
 	s := c.Path.String()
+	if s == "" {
+		// node config
+		return
+	}
 	if _, ok := d.moncfg[s]; !ok {
 		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
 	}
-	d.moncfg[s].CmdC <- moncmd.New(c)
 }
 
 func (d *discover) onInstCfgDone(c moncmd.MonCfgDone) {
@@ -101,6 +104,9 @@ func (d *discover) onInstCfgDone(c moncmd.MonCfgDone) {
 }
 
 func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {
+	if node == d.localhost {
+		return
+	}
 	s := p.String()
 	if _, ok := d.moncfg[s]; ok {
 		return
@@ -125,6 +131,9 @@ func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance
 }
 
 func (d *discover) cmdRemoteCfgDeleted(p path.T, node string) {
+	if node == d.localhost {
+		return
+	}
 	s := p.String()
 	if fetchFrom, ok := d.fetcherFrom[s]; ok {
 		if fetchFrom == node {

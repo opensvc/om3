@@ -107,7 +107,7 @@ func (t Jobs) Purge() {
 	}
 }
 
-func (t *T) scheduleEntry(e schedule.Entry) {
+func (t *T) createJob(e schedule.Entry) {
 	// clean up the existing job
 	t.jobs.Del(e)
 
@@ -179,24 +179,22 @@ func (t *T) loop() {
 		t.events <- ev
 	}
 	bus := pubsub.BusFromContext(t.ctx)
-	// TODO: node.conf events
-	//defer daemonps.UnSub(bus, daemonps.SubNodeCfg(bus, pubsub.OpUpdate, "scheduler-on-cfg-create", "", relayEvent))
-	//defer daemonps.UnSub(bus, daemonps.SubNodeCfg(bus, pubsub.OpDelete, "scheduler-on-cfg-delete", "", relayEvent))
-	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "scheduler-on-cfg-create", "", relayEvent))
-	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "scheduler-on-cfg-delete", "", relayEvent))
+	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, "scheduler-on-cfg-file-create", "", relayEvent))
+	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, "scheduler-on-cfg-file-remove", "", relayEvent))
 
 	for {
 		select {
 		case ev := <-t.events:
 			switch c := ev.(type) {
 			case eventJobDone:
-				// reschedule
+				// remember last run
 				c.schedule.Last = c.begin
-				t.scheduleEntry(c.schedule)
-			case moncmd.CfgUpdated:
+				// reschedule
+				t.createJob(c.schedule)
+			case moncmd.CfgFileUpdated:
 				// triggered on daemon start up too
 				t.schedule(c.Path)
-			case moncmd.CfgDeleted:
+			case moncmd.CfgFileRemoved:
 				t.unschedule(c.Path)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
@@ -208,9 +206,28 @@ func (t *T) loop() {
 }
 
 func (t *T) schedule(p path.T) {
+	if p.IsZero() {
+		t.scheduleNode()
+	} else {
+		t.scheduleObject(p)
+	}
+}
+
+func (t *T) scheduleNode() {
+	o, err := object.NewNode()
+	if err != nil {
+		t.log.Error().Err(err).Msg("schedule node")
+		return
+	}
+	for _, e := range o.PrintSchedule() {
+		t.createJob(e)
+	}
+}
+
+func (t *T) scheduleObject(p path.T) {
 	i, err := object.New(p, object.WithVolatile(true))
 	if err != nil {
-		t.log.Error().Err(err).Msgf("schedule %s", p)
+		t.log.Error().Err(err).Msgf("schedule object %s", p)
 		return
 	}
 	o, ok := i.(object.Actor)
@@ -219,7 +236,7 @@ func (t *T) schedule(p path.T) {
 		return
 	}
 	for _, e := range o.PrintSchedule() {
-		t.scheduleEntry(e)
+		t.createJob(e)
 	}
 }
 
