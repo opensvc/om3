@@ -219,10 +219,10 @@ func (b *Bus) Start(ctx context.Context) {
 						if sub.op != OpAll && sub.op != c.op {
 							continue
 						}
-						if len(sub.matching) != 0 && sub.matching != c.id {
+						if sub.matching != "" && sub.matching != c.id {
 							continue
 						}
-						b.log.Debug().Msgf("route %+v to subscriber %s", c.data, sub.name)
+						b.log.Debug().Msgf("route %#v to subscriber %s", c.data, sub.name)
 						sub.q <- c.data
 					}
 					select {
