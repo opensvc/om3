@@ -138,7 +138,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s", filename)
-						daemonps.PubCfgFileRemove(bus, "fs_watcher emit cfgfile.remove", moncmd.CfgFileRemoved{Path: p, Filename: filename})
+						daemonps.PubCfgFileRemove(bus, p.String(), moncmd.CfgFileRemoved{Path: p, Filename: filename})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
