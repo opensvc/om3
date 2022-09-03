@@ -36,7 +36,6 @@ func (d *discover) cfg() {
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "discover.cfg cfg.update", "", d.onEvCfg))
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "discover.cfg cfg.delete", "", d.onEvCfg))
 	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, "discover.cfg cfgfile.update", "", d.onEvCfg))
-	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, "discover.cfg cfgfile.delete", "", d.onEvCfg))
 
 	for {
 		select {
@@ -47,8 +46,6 @@ func (d *discover) cfg() {
 			switch c := (*i).(type) {
 			case moncmd.CfgFileUpdated:
 				d.onCfgFileUpdated(c)
-			case moncmd.CfgFileRemoved:
-				d.onCfgFileRemoved(c)
 			case moncmd.MonCfgDone:
 				d.onInstCfgDone(c)
 			case moncmd.CfgUpdated:
@@ -68,17 +65,6 @@ func (d *discover) onEvCfg(i interface{}) {
 	select {
 	case <-d.ctx.Done():
 	case d.cfgCmdC <- moncmd.New(i):
-	}
-}
-
-func (d *discover) onCfgFileRemoved(c moncmd.CfgFileRemoved) {
-	s := c.Path.String()
-	if s == "" {
-		// node config
-		return
-	}
-	if _, ok := d.moncfg[s]; ok {
-		d.moncfg[s].CmdC <- moncmd.New(c)
 	}
 }
 

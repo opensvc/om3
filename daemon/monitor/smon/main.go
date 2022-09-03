@@ -16,7 +16,6 @@
 //		=> convergeGlobalExpectFromRemote
 //		=> orchestrate
 //		=> pub new state if change
-//
 package smon
 
 import (
@@ -153,7 +152,7 @@ func (o *smon) worker(initialNodes []string) {
 	defer ps.UnSub(bus, ps.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
 
 	for _, node := range initialNodes {
-		o.instStatus[node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
 	}
 	o.updateIfChange()
 	defer o.delete()
@@ -185,14 +184,14 @@ func (o *smon) onEv(i interface{}) {
 }
 
 func (o *smon) delete() {
-	if err := daemondata.DelSmon(o.ctx, o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelSmon(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelSmon")
 	}
 }
 
 func (o *smon) update() {
 	newValue := o.state
-	if err := daemondata.SetSmon(o.ctx, o.dataCmdC, o.path, newValue); err != nil {
+	if err := daemondata.SetSmon(o.dataCmdC, o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetSmon")
 	}
 }

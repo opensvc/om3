@@ -74,7 +74,9 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 			d.pending.Monitor.Routines = runtime.NumGoroutine()
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
+				// d.log.Debug().Msgf("daemondata cmd -> %s", reflect.TypeOf(c))
 				c.call(ctx, d)
+				// d.log.Debug().Msgf("daemondata cmd <- %s", reflect.TypeOf(c))
 			} else {
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				counterCmd <- idUndef

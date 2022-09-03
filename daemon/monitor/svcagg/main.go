@@ -5,7 +5,6 @@
 // worker ends when context is done or when no more service instance config exist
 //
 // worker watch on instance status updates to refresh object.AggregatedStatus
-//
 package svcagg
 
 import (
@@ -75,7 +74,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
-		o.instStatus[node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, node)
+		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
 	}
 	o.update()
 	defer o.delete()
@@ -95,7 +94,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 					continue
 				}
 				o.srcEvent = ev
-				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.ctx, o.dataCmdC, o.path, c.Node)
+				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
 				o.updateStatus()
 			case moncmd.CfgDeleted:
 				if _, ok := o.instStatus[c.Node]; !ok {
@@ -145,7 +144,7 @@ func (o *svcAggStatus) updateStatus() {
 }
 
 func (o *svcAggStatus) delete() {
-	if err := daemondata.DelServiceAgg(o.ctx, o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelServiceAgg(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelServiceAgg")
 	}
 	o.discoverCmdC <- moncmd.New(moncmd.MonSvcAggDone{Path: o.path})
@@ -154,7 +153,7 @@ func (o *svcAggStatus) delete() {
 func (o *svcAggStatus) update() {
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
-	if err := daemondata.SetServiceAgg(o.ctx, o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
+	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
 		o.log.Error().Err(err).Msg("SetServiceAgg")
 	}
 }
