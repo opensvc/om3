@@ -19,14 +19,9 @@ func DelServiceAgg(ctx context.Context, c chan<- interface{}, p path.T) error {
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }
 
@@ -43,13 +38,8 @@ func SetServiceAgg(ctx context.Context, c chan<- interface{}, p path.T, v object
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }

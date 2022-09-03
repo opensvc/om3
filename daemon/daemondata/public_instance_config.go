@@ -18,14 +18,9 @@ func DelInstanceConfig(ctx context.Context, c chan<- interface{}, p path.T) erro
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }
 
@@ -41,13 +36,8 @@ func SetInstanceConfig(ctx context.Context, dataCmdC chan<- interface{}, p path.
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case dataCmdC <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }

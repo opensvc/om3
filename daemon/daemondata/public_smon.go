@@ -18,14 +18,9 @@ func DelSmon(ctx context.Context, c chan<- interface{}, p path.T) error {
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }
 
@@ -41,13 +36,8 @@ func SetSmon(ctx context.Context, c chan<- interface{}, p path.T, v instance.Mon
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }

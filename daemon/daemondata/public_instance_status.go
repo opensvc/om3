@@ -18,14 +18,9 @@ func DelInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T) erro
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
 }
 
@@ -43,12 +38,7 @@ func GetInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T, node
 	case <-ctx.Done():
 		return instance.Status{}
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return instance.Status{}
-		case e := <-status:
-			return e
-		}
+		return <-status
 	}
 }
 
@@ -64,14 +54,8 @@ func SetInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T, v in
 	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	case c <- op:
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-err:
-			return e
-		}
+		return <-err
 	}
-
 }
