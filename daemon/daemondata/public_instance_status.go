@@ -1,8 +1,6 @@
 package daemondata
 
 import (
-	"context"
-
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 )
@@ -10,52 +8,40 @@ import (
 // DelInstanceStatus
 //
 // committed.Monitor.Node.<localhost>.services.status.*
-func DelInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T) error {
+func DelInstanceStatus(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
 	op := opDelInstanceStatus{
 		err:  err,
 		path: p,
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case c <- op:
-		return <-err
-	}
+	c <- op
+	return <-err
 }
 
 // GetInstanceStatus
 //
 // committed.Monitor.Node.<localhost>.services.status.*
-func GetInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T, node string) instance.Status {
+func GetInstanceStatus(c chan<- interface{}, p path.T, node string) instance.Status {
 	status := make(chan instance.Status)
 	op := opGetInstanceStatus{
 		status: status,
 		path:   p,
 		node:   node,
 	}
-	select {
-	case <-ctx.Done():
-		return instance.Status{}
-	case c <- op:
-		return <-status
-	}
+	c <- op
+	return <-status
 }
 
 // SetInstanceStatus
 //
 // committed.Monitor.Node.<localhost>.services.status.*
-func SetInstanceStatus(ctx context.Context, c chan<- interface{}, p path.T, v instance.Status) error {
+func SetInstanceStatus(c chan<- interface{}, p path.T, v instance.Status) error {
 	err := make(chan error)
 	op := opSetInstanceStatus{
 		err:   err,
 		path:  p,
 		value: v,
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case c <- op:
-		return <-err
-	}
+	c <- op
+	return <-err
 }

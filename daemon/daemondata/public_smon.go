@@ -1,8 +1,6 @@
 package daemondata
 
 import (
-	"context"
-
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 )
@@ -10,34 +8,26 @@ import (
 // DelSmon
 //
 // committed.Monitor.Node.<localhost>.services.smon.*
-func DelSmon(ctx context.Context, c chan<- interface{}, p path.T) error {
+func DelSmon(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
 	op := opDelSmon{
 		err:  err,
 		path: p,
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case c <- op:
-		return <-err
-	}
+	c <- op
+	return <-err
 }
 
 // SetSmon
 //
 // committed.Monitor.Node.<localhost>.services.smon.*
-func SetSmon(ctx context.Context, c chan<- interface{}, p path.T, v instance.Monitor) error {
+func SetSmon(c chan<- interface{}, p path.T, v instance.Monitor) error {
 	err := make(chan error)
 	op := opSetSmon{
 		err:   err,
 		path:  p,
 		value: v,
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case c <- op:
-		return <-err
-	}
+	c <- op
+	return <-err
 }

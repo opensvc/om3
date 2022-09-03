@@ -12,7 +12,6 @@
 //
 // The worker also listen for cluster config updates to refresh its config to
 // reflect scopes changes.
-//
 package instcfg
 
 import (
@@ -219,7 +218,6 @@ func (o *T) cmdCfgUpdated(c moncmd.CfgUpdated) {
 // from updated is already running.
 //
 // pending obsolete fetcher is canceled.
-//
 func (o *T) cmdCfgUpdatedRemote(c moncmd.CfgUpdated) {
 	remoteCfgUpdated := c.Config.Updated
 	if o.cfg.Updated.Unix() >= remoteCfgUpdated.Unix() {
@@ -256,7 +254,7 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 		return
 	}
 	o.cfg = *newCfg
-	if err := daemondata.SetInstanceConfig(o.ctx, o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
+	if err := daemondata.SetInstanceConfig(o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
 }
@@ -266,7 +264,7 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 //		if config file absent cancel worker
 //		if updated time or checksum has changed:
 //	       reload load config
-// 		   updateCfg
+//		   updateCfg
 //
 //		when localhost is not anymore in scope then ends worker
 func (o *T) configFileCheck() {
@@ -337,10 +335,10 @@ func (o *T) setConfigure() error {
 }
 
 func (o *T) delete() {
-	if err := daemondata.DelInstanceConfig(o.ctx, o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelInstanceConfig(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceConfig")
 	}
-	if err := daemondata.DelInstanceStatus(o.ctx, o.dataCmdC, o.path); err != nil {
+	if err := daemondata.DelInstanceStatus(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceStatus")
 	}
 }
