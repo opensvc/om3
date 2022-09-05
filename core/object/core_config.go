@@ -33,17 +33,20 @@ func (t *core) reloadConfig() error {
 
 func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	var err error
-	var sources []interface{}
+	var sources []any
+	cf := t.ConfigFile()
 	if t.configData != nil {
-		sources = append(sources, t.configData)
+		sources = []any{t.configData}
+	} else {
+		sources = []any{cf}
 	}
-	if t.config, err = xconfig.NewObject(t.ConfigFile(), sources...); err != nil {
+	if t.config, err = xconfig.NewObject(cf, sources...); err != nil {
 		return err
 	}
 	t.config.Path = t.path
 	t.config.Referrer = referrer
 	t.config.NodeReferrer, err = t.Node()
-	return err
+	return nil
 }
 
 func (t core) Config() *xconfig.T {

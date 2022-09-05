@@ -215,7 +215,7 @@ func rawFromConfigURI(p path.T, u uri.T) (Pivot, error) {
 
 func rawFromConfigFile(p path.T, fpath string) (Pivot, error) {
 	pivot := make(Pivot)
-	c, err := xconfig.NewObject(fpath)
+	c, err := xconfig.NewObject("", fpath)
 	if err != nil {
 		return pivot, err
 	}

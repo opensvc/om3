@@ -111,7 +111,7 @@ func fetchConfig(p path.T, c *client.T) (s string, err error) {
 
 func pushConfig(p path.T, fName string, c *client.T) (err error) {
 	var cfg *xconfig.T
-	if cfg, err = xconfig.NewObject(fName); err != nil {
+	if cfg, err = xconfig.NewObject("", fName); err != nil {
 		return err
 	}
 	req := c.NewPostObjectCreate()

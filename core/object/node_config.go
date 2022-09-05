@@ -32,16 +32,21 @@ func (t *Node) ClusterConfigFile() string {
 }
 
 func (t *Node) loadConfig() error {
-	var err error
-	if t.config, err = xconfig.NewObject(t.ConfigFile()); err != nil {
+	nodeConfigFile := t.ConfigFile()
+	if config, err := xconfig.NewObject(nodeConfigFile, nodeConfigFile); err != nil {
 		return err
+	} else {
+		t.config = config
+		t.config.Referrer = t
 	}
-	t.config.Referrer = t
-	if t.mergedConfig, err = xconfig.NewObject(t.ClusterConfigFile(), t.ConfigFile()); err != nil {
+	clusterConfigFile := t.ClusterConfigFile()
+	if config, err := xconfig.NewObject(clusterConfigFile, clusterConfigFile, nodeConfigFile); err != nil {
 		return err
+	} else {
+		t.mergedConfig = config
+		t.mergedConfig.Referrer = t
 	}
-	t.mergedConfig.Referrer = t
-	return err
+	return nil
 }
 
 func (t Node) Config() *xconfig.T {
