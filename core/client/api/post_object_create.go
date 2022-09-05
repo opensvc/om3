@@ -12,6 +12,7 @@ type PostObjectCreate struct {
 	Template       string                 `json:"template,omitempty"`
 	Provision      bool                   `json:"provision,omitempty"`
 	Restore        bool                   `json:"restore,omitempty"`
+	Force          bool                   `json:"force,omitempty"`
 	Data           map[string]interface{} `json:"data,omitempty"`
 }
 

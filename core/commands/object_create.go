@@ -19,7 +19,6 @@ type (
 		OptsLock
 		OptsResourceSelector
 		OptTo
-		OptForce
 		Template    string   `flag:"template"`
 		Config      string   `flag:"config"`
 		Keywords    []string `flag:"kwops"`
@@ -27,6 +26,7 @@ type (
 		Interactive bool     `flag:"interactive"`
 		Provision   bool     `flag:"provision"`
 		Restore     bool     `flag:"restore"`
+		Force       bool     `flag:"createforce"`
 		Namespace   string   `flag:"createnamespace"`
 	}
 )
@@ -72,6 +72,7 @@ func (t *CmdObjectCreate) runErr(selector *string, kind string) error {
 		create.WithConfig(t.Config),
 		create.WithKeywords(t.Keywords),
 		create.WithRestore(t.Restore),
+		create.WithForce(t.Force),
 	)
 	if err != nil {
 		return err

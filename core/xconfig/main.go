@@ -2,7 +2,6 @@ package xconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +14,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/path"
@@ -561,15 +561,18 @@ func (t *T) write() (err error) {
 		return err
 	}
 	base := filepath.Base(t.ConfigFilePath)
-	if f, err = ioutil.TempFile(dir, "."+base+".*"); err != nil {
+	if f, err = os.CreateTemp(dir, "."+base+".*"); err != nil {
 		return err
 	}
 	fName := f.Name()
 	defer os.Remove(fName)
-	if err = t.file.SaveTo(fName); err != nil {
+	if _, err = t.file.WriteTo(f); err != nil {
 		return err
 	}
-	if _, err = t.file.WriteTo(f); err != nil {
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
 		return err
 	}
 	if err := os.Rename(fName, t.ConfigFilePath); err != nil {
@@ -1026,6 +1029,7 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 }
 
 func (t *T) LoadRaw(configData rawconfig.T) error {
+	t.changed = true
 	file := ini.Empty()
 	if configData.Data == nil {
 		t.file = file
@@ -1160,4 +1164,30 @@ func (t T) DeleteSections(sections []string) error {
 
 func (t T) ModTime() time.Time {
 	return file.ModTime(t.ConfigFilePath)
+}
+
+func (t *T) SetKeys(kops ...keyop.T) error {
+	return setKeys(t, kops...)
+}
+
+func setKeys(cf *T, kops ...keyop.T) error {
+	changes := 0
+	for _, op := range kops {
+		if op.IsZero() {
+			return fmt.Errorf("invalid set expression: %s", op)
+		}
+		log.Debug().
+			Stringer("key", op.Key).
+			Stringer("op", op.Op).
+			Str("val", op.Value).
+			Msg("set")
+		if err := cf.Set(op); err != nil {
+			return err
+		}
+		changes++
+	}
+	if changes > 0 {
+		return cf.Commit()
+	}
+	return nil
 }
