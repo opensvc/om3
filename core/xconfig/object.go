@@ -1,9 +1,12 @@
 package xconfig
 
 import (
+	"bytes"
 	"path/filepath"
+	"reflect"
 
 	"github.com/cvaroqui/ini"
+	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 )
 
@@ -24,6 +27,13 @@ func NewObject(p string, sources ...any) (*T, error) {
 		AllowPythonMultilineValues: true,
 		SpaceBeforeInlineComment:   true,
 	}
+	for i, source := range sources {
+		src, err := toIniSource(source)
+		if err != nil {
+			return nil, err
+		}
+		sources[i] = src
+	}
 	if len(sources) == 0 {
 		sources = append(sources, []byte{})
 	}
@@ -33,4 +43,34 @@ func NewObject(p string, sources ...any) (*T, error) {
 		t.file = f
 	}
 	return t, nil
+}
+
+func toIniSource(i any) (any, error) {
+	cf := ini.Empty()
+	switch data := i.(type) {
+	case []byte:
+		return data, nil
+	case string:
+		return data, nil
+	case orderedmap.OrderedMap:
+		for _, sectionTitle := range data.Keys() {
+			sectionIntf, _ := data.Get(sectionTitle)
+			section, err := cf.NewSection(sectionTitle)
+			if err != nil {
+				return nil, err
+			}
+			switch sectionData := sectionIntf.(type) {
+			case orderedmap.OrderedMap:
+				for _, option := range sectionData.Keys() {
+					value, _ := sectionData.Get(option)
+					section.Key(option).SetValue(value.(string))
+				}
+			}
+		}
+		b := bytes.NewBuffer([]byte{})
+		cf.WriteTo(b)
+		return b.Bytes(), nil
+	default:
+		return nil, errors.Errorf("unsupported WithConfigData() type: %s", reflect.TypeOf(data))
+	}
 }

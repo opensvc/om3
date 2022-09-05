@@ -31,7 +31,7 @@ type (
 		// caches
 		id         uuid.UUID
 		configFile string
-		configData []byte
+		configData any
 		config     *xconfig.T
 		node       *Node
 		paths      struct {
