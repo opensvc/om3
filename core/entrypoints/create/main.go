@@ -180,11 +180,10 @@ func (t T) fromStdin() error {
 }
 
 func (t T) fromData(pivot Pivot) error {
-	// TODO: kws
 	if clientcontext.IsSet() {
 		return t.submit(pivot)
 	}
-	return localFromData(pivot)
+	return localFromData(pivot, t.keywords)
 }
 
 func (t T) rawFromTemplate() (Pivot, error) {
@@ -295,13 +294,13 @@ func rawFromBytesFlat(p path.T, b []byte) (Pivot, error) {
 	return pivot, nil
 }
 
-func localFromData(pivot Pivot) error {
+func localFromData(pivot Pivot, kws []string) error {
 	for opath, c := range pivot {
 		p, err := path.Parse(opath)
 		if err != nil {
 			return err
 		}
-		if err = localFromRaw(p, c); err != nil {
+		if err = localFromRaw(p, c, kws); err != nil {
 			return err
 		}
 		fmt.Println(opath, "commited")
@@ -309,24 +308,29 @@ func localFromData(pivot Pivot) error {
 	return nil
 }
 
-func localFromRaw(p path.T, c rawconfig.T) error {
+func localFromRaw(p path.T, c rawconfig.T, kws []string) error {
 	o, err := object.New(p)
 	if err != nil {
 		return err
 	}
 	oc := o.(object.Configurer)
-	return oc.Config().CommitData(c)
-}
-
-func LocalEmpty(p path.T) error {
-	o, err := object.New(p)
-	if err != nil {
+	if err := oc.Config().LoadRaw(c); err != nil {
 		return err
 	}
-	oc := o.(object.Configurer)
+	if err := oc.Set(context.Background(), keyop.ParseOps(kws)...); err != nil {
+		return err
+	}
 	return oc.Config().Commit()
 }
 
-func setKeywords(oc object.Configurer, kws []string) error {
-	return oc.Set(context.Background(), keyop.ParseOps(kws)...)
+func LocalEmpty(p path.T, kws []string) error {
+	o, err := object.New(p)
+	if err != nil {
+		return err
+	}
+	oc := o.(object.Configurer)
+	if err := oc.Set(context.Background(), keyop.ParseOps(kws)...); err != nil {
+		return err
+	}
+	return oc.Config().Commit()
 }

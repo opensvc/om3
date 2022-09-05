@@ -1025,8 +1025,12 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
-func (t *T) replaceFile(configData rawconfig.T) error {
+func (t *T) LoadRaw(configData rawconfig.T) error {
 	file := ini.Empty()
+	if configData.Data == nil {
+		t.file = file
+		return nil
+	}
 	for _, section := range configData.Data.Keys() {
 		m, _ := configData.Data.Get(section)
 		omap, ok := m.(orderedmap.OrderedMap)
@@ -1077,7 +1081,7 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		return nil
 	}
 	if !configData.IsZero() {
-		if err := t.replaceFile(configData); err != nil {
+		if err := t.LoadRaw(configData); err != nil {
 			return err
 		}
 	}
