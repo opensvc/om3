@@ -20,7 +20,7 @@ func WithConfigFile(s string) funcopt.O {
 
 // WithConfigData sets configuration overriding what is installed in the config file
 // Useful for testing volatile services.
-func WithConfigData(b []byte) funcopt.O {
+func WithConfigData(b any) funcopt.O {
 	return funcopt.F(func(t interface{}) error {
 		o := t.(*core)
 		o.configData = b
