@@ -72,7 +72,8 @@ func (t *T) translate(name string, size float64, shared bool) ([]string, error) 
 	if template.Kind != kind.Vol {
 		return nil, errors.Errorf("template object %s is not a vol", template)
 	}
-	config, err := xconfig.NewObject(template.ConfigFile())
+	cf := template.ConfigFile()
+	config, err := xconfig.NewObject("", cf)
 	if err != nil {
 		return nil, err
 	}
