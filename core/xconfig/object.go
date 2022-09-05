@@ -2,6 +2,7 @@ package xconfig
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"reflect"
 
@@ -47,24 +48,74 @@ func NewObject(p string, sources ...any) (*T, error) {
 
 func toIniSource(i any) (any, error) {
 	cf := ini.Empty()
+	doOption := func(section *ini.Section, option string, i any) {
+		section.Key(option).SetValue(fmt.Sprint(i))
+	}
+	doSection := func(cf *ini.File, sectionTitle string, i any) error {
+		section, err := cf.NewSection(sectionTitle)
+		if err != nil {
+			return err
+		}
+		switch sectionData := i.(type) {
+		case map[string]string:
+			for option, value := range sectionData {
+				doOption(section, option, value)
+			}
+		case map[string]any:
+			for option, value := range sectionData {
+				doOption(section, option, value)
+			}
+		case *orderedmap.OrderedMap:
+			for _, option := range sectionData.Keys() {
+				value, _ := sectionData.Get(option)
+				doOption(section, option, value)
+			}
+		case orderedmap.OrderedMap:
+			for _, option := range sectionData.Keys() {
+				value, _ := sectionData.Get(option)
+				doOption(section, option, value)
+			}
+		}
+		return nil
+	}
 	switch data := i.(type) {
 	case []byte:
 		return data, nil
 	case string:
 		return data, nil
+	case map[string]map[string]any:
+		for sectionTitle, sectionIntf := range data {
+			if err := doSection(cf, sectionTitle, sectionIntf); err != nil {
+				return nil, err
+			}
+		}
+		b := bytes.NewBuffer([]byte{})
+		cf.WriteTo(b)
+		return b.Bytes(), nil
+	case map[string]map[string]string:
+		for sectionTitle, sectionIntf := range data {
+			if err := doSection(cf, sectionTitle, sectionIntf); err != nil {
+				return nil, err
+			}
+		}
+		b := bytes.NewBuffer([]byte{})
+		cf.WriteTo(b)
+		return b.Bytes(), nil
+	case *orderedmap.OrderedMap:
+		for _, sectionTitle := range data.Keys() {
+			sectionIntf, _ := data.Get(sectionTitle)
+			if err := doSection(cf, sectionTitle, sectionIntf); err != nil {
+				return nil, err
+			}
+		}
+		b := bytes.NewBuffer([]byte{})
+		cf.WriteTo(b)
+		return b.Bytes(), nil
 	case orderedmap.OrderedMap:
 		for _, sectionTitle := range data.Keys() {
 			sectionIntf, _ := data.Get(sectionTitle)
-			section, err := cf.NewSection(sectionTitle)
-			if err != nil {
+			if err := doSection(cf, sectionTitle, sectionIntf); err != nil {
 				return nil, err
-			}
-			switch sectionData := sectionIntf.(type) {
-			case orderedmap.OrderedMap:
-				for _, option := range sectionData.Keys() {
-					value, _ := sectionData.Get(option)
-					section.Key(option).SetValue(value.(string))
-				}
 			}
 		}
 		b := bytes.NewBuffer([]byte{})

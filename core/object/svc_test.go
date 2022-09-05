@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"opensvc.com/opensvc/cmd"
@@ -72,5 +73,65 @@ func TestAppStart(t *testing.T) {
 		events, err := slog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID})
 		assert.NoError(t, err)
 		assert.Truef(t, events.MatchString("cmd", ".*touch.*"), "logs should contain a cmd~/touch/ event")
+	})
+}
+
+// TestWithConfigData exercizes different data types passed to object.WithConfigData(any)
+func TestWithConfigData(t *testing.T) {
+	testhelper.Setup(t)
+	t.Run("conf1", func(t *testing.T) {
+		var (
+			o   object.Svc
+			err error
+		)
+		p, _ := path.Parse("conf1")
+		conf1 := map[string]map[string]string{
+			"app#1": {
+				"start": "/usr/bin/touch {env.flag1}",
+				"stop":  "/usr/bin/rm -f {env.flag1}",
+				"check": "/usr/bin/test -f {env.flag1}",
+			},
+			"env": {
+				"flag0": "/tmp/{fqdn}.0",
+				"flag1": "/tmp/{fqdn}.1",
+				"foo1":  "1",
+			},
+		}
+		o, err = object.NewSvc(p, object.WithConfigData(conf1))
+		assert.NoError(t, err)
+		assert.Equal(t, "1", o.Config().GetString(key.Parse("env.foo1")))
+
+		conf2 := map[string]map[string]any{
+			"app#1": {
+				"start": "/usr/bin/touch {env.flag1}",
+				"stop":  "/usr/bin/rm -f {env.flag1}",
+				"check": "/usr/bin/test -f {env.flag1}",
+			},
+			"env": {
+				"flag0": "/tmp/{fqdn}.0",
+				"flag1": "/tmp/{fqdn}.1",
+				"foo1":  1,
+			},
+		}
+		o, err = object.NewSvc(p, object.WithConfigData(conf2))
+		assert.NoError(t, err)
+		assert.Equal(t, "1", o.Config().GetString(key.Parse("env.foo1")))
+
+		env3 := orderedmap.New()
+		env3.Set("foo1", 1)
+		conf3 := orderedmap.New()
+		conf3.Set("env", env3)
+		o, err = object.NewSvc(p, object.WithConfigData(conf3))
+		assert.NoError(t, err)
+		assert.Equal(t, "1", o.Config().GetString(key.Parse("env.foo1")))
+
+		conf4 := orderedmap.New()
+		conf4.Set("env", map[string]any{
+			"foo1": 1,
+		})
+		o, err = object.NewSvc(p, object.WithConfigData(conf4))
+		assert.NoError(t, err)
+		assert.Equal(t, "1", o.Config().GetString(key.Parse("env.foo1")))
+
 	})
 }
