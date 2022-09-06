@@ -49,8 +49,14 @@ func (d *discover) cfg() {
 			case moncmd.MonCfgDone:
 				d.onInstCfgDone(c)
 			case moncmd.CfgUpdated:
+				if c.Node == d.localhost {
+					continue
+				}
 				d.cmdRemoteCfgUpdated(c.Path, c.Node, c.Config)
 			case moncmd.CfgDeleted:
+				if c.Node == d.localhost {
+					continue
+				}
 				d.cmdRemoteCfgDeleted(c.Path, c.Node)
 			case moncmd.RemoteFileConfig:
 				d.cmdRemoteCfgFetched(c)
@@ -90,9 +96,6 @@ func (d *discover) onInstCfgDone(c moncmd.MonCfgDone) {
 }
 
 func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {
-	if node == d.localhost {
-		return
-	}
 	s := p.String()
 	if _, ok := d.moncfg[s]; ok {
 		return
@@ -117,9 +120,6 @@ func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance
 }
 
 func (d *discover) cmdRemoteCfgDeleted(p path.T, node string) {
-	if node == d.localhost {
-		return
-	}
 	s := p.String()
 	if fetchFrom, ok := d.fetcherFrom[s]; ok {
 		if fetchFrom == node {
