@@ -21,6 +21,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -72,6 +73,8 @@ var (
 	dropCmdTimeout = 100 * time.Millisecond
 
 	delayInitialConfigure = 100 * time.Millisecond
+
+	configFileCheckError = errors.New("config file check")
 )
 
 // Start launch goroutine instCfg worker for a local instance config
@@ -118,12 +121,13 @@ func (o *T) worker(ctx context.Context) {
 	time.Sleep(delayInitialConfigure)
 
 	if err := o.setConfigure(); err != nil {
-		o.log.Error().Err(err).Msg("setConfigure")
 		return
 	}
 
 	// do once what we do later on moncmd.CfgFileUpdated
-	o.configFileCheck()
+	if err := o.configFileCheck(); err != nil {
+		return
+	}
 	defer o.delete()
 	if err := smon.Start(o.ctx, o.path, o.cfg.Scope); err != nil {
 		o.log.Error().Err(err).Msg("fail to start smon worker")
@@ -152,10 +156,14 @@ func (o *T) worker(ctx context.Context) {
 				o.cmdRemoteCfgFetched(c)
 			case moncmd.CfgUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
-				o.cmdCfgUpdated(c)
+				if err := o.cmdCfgUpdated(c); err != nil {
+					return
+				}
 			case moncmd.CfgFileUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
-				o.configFileCheck()
+				if err := o.configFileCheck(); err != nil {
+					return
+				}
 			case moncmd.CfgFileRemoved:
 				o.log.Debug().Msgf("recv %#v", c)
 				return
@@ -191,7 +199,7 @@ func (o *T) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
 	return
 }
 
-func (o *T) cmdCfgUpdated(c moncmd.CfgUpdated) {
+func (o *T) cmdCfgUpdated(c moncmd.CfgUpdated) error {
 	var clusterUpdate bool
 	if c.Path.String() == clusterPath.String() {
 		clusterUpdate = true
@@ -201,15 +209,15 @@ func (o *T) cmdCfgUpdated(c moncmd.CfgUpdated) {
 			o.cmdCfgUpdatedRemote(c)
 		} else if o.path.Kind != kind.Sec && !stringslice.Has(o.localhost, c.Config.Scope) {
 			o.log.Error().Msgf("not in scope: %s", c.Config.Scope)
-			return
 		} else {
 			o.cmdCfgUpdatedRemote(c)
 		}
 	} else if clusterUpdate && o.path.String() != clusterPath.String() {
 		o.log.Info().Msg("local cluster config changed => refresh cfg")
 		o.forceRefresh = true
-		o.configFileCheck()
+		return o.configFileCheck()
 	}
+	return nil
 }
 
 // cmdCfgUpdatedRemote retrieve config file from remote node
@@ -267,51 +275,45 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 //		   updateCfg
 //
 //		when localhost is not anymore in scope then ends worker
-func (o *T) configFileCheck() {
+func (o *T) configFileCheck() error {
 	mtime := file.ModTime(o.filename)
 	if mtime.IsZero() {
-		o.log.Info().Msgf("configFile no present(mtime) %s", o.filename)
-		o.Cancel()
-		return
+		o.log.Info().Msgf("configFile no mtime %s", o.filename)
+		return configFileCheckError
 	}
 	if mtime.Equal(o.lastMtime) && !o.forceRefresh {
 		o.log.Debug().Msg("same mtime, skip")
-		return
+		return nil
 	}
 	checksum, err := file.MD5(o.filename)
 	if err != nil {
 		o.log.Info().Msgf("configFile no present(md5sum)")
-		o.Cancel()
-		return
+		return configFileCheckError
 	}
 	if o.path.String() == clusterPath.String() {
 		rawconfig.LoadSections()
 	}
 	if err := o.setConfigure(); err != nil {
-		o.log.Error().Err(err).Msg("setConfigure")
-		return
+		return configFileCheckError
 	}
 	o.forceRefresh = false
 	nodes := o.configure.Config().Referrer.Nodes()
 	if len(nodes) == 0 {
 		o.log.Info().Msg("configFile empty nodes")
-		o.Cancel()
-		return
+		return configFileCheckError
 	}
 	newMtime := file.ModTime(o.filename)
 	if newMtime.IsZero() {
-		o.log.Info().Msg("configFile no present(mtime)")
-		o.Cancel()
-		return
+		o.log.Info().Msgf("configFile no more mtime %s", o.filename)
+		return configFileCheckError
 	}
 	if !newMtime.Equal(mtime) {
 		o.log.Info().Msg("configFile changed(wait next evaluation)")
-		return
+		return nil
 	}
 	if !stringslice.Has(o.localhost, nodes) {
 		o.log.Info().Msg("localhost not anymore an instance node")
-		o.Cancel()
-		return
+		return configFileCheckError
 	}
 	cfg := o.cfg
 	cfg.Nodename = o.localhost
@@ -321,13 +323,13 @@ func (o *T) configFileCheck() {
 	cfg.Updated = mtime
 	o.lastMtime = mtime
 	o.updateCfg(&cfg)
+	return nil
 }
 
 func (o *T) setConfigure() error {
 	configure, err := object.NewConfigurer(o.path)
 	if err != nil {
-		o.log.Warn().Err(err).Msg("worker NewConfigurerFromPath failure")
-		o.Cancel()
+		o.log.Warn().Err(err).Msg("NewConfigurer failure")
 		return err
 	}
 	o.configure = configure
