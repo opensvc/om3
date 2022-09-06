@@ -52,10 +52,10 @@ func (t *T) Configure(ctx context.Context) {
 	timeout := t.GetDuration("timeout", 5*time.Second)
 	portI := t.GetInt("port")
 	port := strconv.Itoa(portI)
-	nodes := t.GetSlice("nodes")
+	nodes := t.GetStrings("nodes")
 	if len(nodes) == 0 {
 		k := key.T{Section: "cluster", Option: "nodes"}
-		nodes = t.Config().GetSlice(k)
+		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
 	log.Debug().Msgf("Configure %s, timeout=%s port=%s nodes=%s onodes=%s", t.Name(), timeout, port, nodes, oNodes)

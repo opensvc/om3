@@ -58,7 +58,7 @@ type (
 	Config interface {
 		GetString(key.T) string
 		GetStringStrict(key.T) (string, error)
-		GetSlice(key.T) []string
+		GetStrings(key.T) []string
 	}
 	Pooler interface {
 		SetName(string)
@@ -193,9 +193,9 @@ func pk(poolName, s string) key.T {
 	return key.New("pool#"+poolName, s)
 }
 
-func (t *T) GetSlice(s string) []string {
+func (t *T) GetStrings(s string) []string {
 	k := pk(t.name, s)
-	return t.Config().GetSlice(k)
+	return t.Config().GetStrings(k)
 }
 
 func (t *T) GetString(s string) string {

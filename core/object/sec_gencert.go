@@ -108,7 +108,7 @@ func (t *sec) CertInfoNotAfter() (time.Time, error) {
 
 func (t *sec) IPAddressesFromAltNames() []net.IP {
 	l := []net.IP{net.ParseIP("127.0.0.1")}
-	for _, word := range t.config.GetSlice(key.Parse("alt_names")) {
+	for _, word := range t.config.GetStrings(key.Parse("alt_names")) {
 		ip := net.ParseIP(word)
 		if ip == nil {
 			continue
@@ -120,7 +120,7 @@ func (t *sec) IPAddressesFromAltNames() []net.IP {
 
 func (t *sec) DNSNamesFromAltNames() []string {
 	l := []string{}
-	for _, word := range t.config.GetSlice(key.Parse("alt_names")) {
+	for _, word := range t.config.GetStrings(key.Parse("alt_names")) {
 		if !fqdn.IsValid(word) && !hostname.IsValid(word) {
 			continue
 		}

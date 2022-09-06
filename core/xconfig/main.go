@@ -356,12 +356,12 @@ func (t *T) GetStringStrict(k key.T) (string, error) {
 	}
 }
 
-func (t *T) GetSlice(k key.T) []string {
-	val, _ := t.GetSliceStrict(k)
+func (t *T) GetStrings(k key.T) []string {
+	val, _ := t.GetStringsStrict(k)
 	return val
 }
 
-func (t *T) GetSliceStrict(k key.T) ([]string, error) {
+func (t *T) GetStringsStrict(k key.T) ([]string, error) {
 	if v, err := t.Eval(k); err != nil {
 		return []string{}, err
 	} else {

@@ -160,9 +160,9 @@ func (t *T) GetDuration(s string, defaultValue time.Duration) time.Duration {
 	return *found
 }
 
-func (t *T) GetSlice(s string) []string {
+func (t *T) GetStrings(s string) []string {
 	k := key.New(t.name, s)
-	nodes := t.Config().GetSlice(k)
+	nodes := t.Config().GetStrings(k)
 	return nodes
 }
 
