@@ -56,7 +56,7 @@ func (t *Node) newScheduleEntry(action, keyStr, rid, base string) schedule.Entry
 func (t *Node) Schedules() schedule.Table {
 	table := schedule.NewTable(
 		t.newScheduleEntry("pushasset", "asset.schedule", "", "asset_push"),
-		t.newScheduleEntry("reboot", "asset.schedule", "", "auto_reboot"),
+		t.newScheduleEntry("reboot", "reboot.schedule", "", "auto_reboot"),
 		t.newScheduleEntry("checks", "checks.schedule", "", "checks_push"),
 		t.newScheduleEntry("compliance_auto", "compliance.schedule", "", "comp_check"),
 		t.newScheduleEntry("pushdisks", "disks.schedule", "", "disks_push"),
