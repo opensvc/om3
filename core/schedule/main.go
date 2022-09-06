@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/key"
 	usched "opensvc.com/opensvc/util/schedule"
 )
 
@@ -50,4 +51,9 @@ func (t Table) AddEntries(l ...Entry) Table {
 func (t Entry) GetNext() (time.Time, time.Duration, error) {
 	sc := usched.New(t.Definition)
 	return sc.Next(usched.NextWithLast(t.Last))
+}
+
+func (t Entry) RID() string {
+	k := key.Parse(t.Key)
+	return k.Section
 }

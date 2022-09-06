@@ -46,6 +46,7 @@ type (
 		schedule schedule.Entry
 		begin    time.Time
 		end      time.Time
+		err      error
 	}
 )
 
@@ -131,13 +132,13 @@ func (t *T) createJob(e schedule.Entry) {
 			// prevent drift if the gap is small
 			begin = next
 		}
-		t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Msg("run")
-		// TODO
+		err := t.action(e)
 		end := time.Now()
 		t.events <- eventJobDone{
 			schedule: e,
 			begin:    begin,
 			end:      end,
+			err:      err,
 		}
 	})
 	cancel := func() {
