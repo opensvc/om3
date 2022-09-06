@@ -154,7 +154,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s", filename)
-						daemonps.PubCfgFileUpdate(bus, "fs_watcher emit cfgfile.update", moncmd.CfgFileUpdated{Path: p, Filename: filename})
+						daemonps.PubCfgFileUpdate(bus, p.String(), moncmd.CfgFileUpdated{Path: p, Filename: filename})
 					}
 				}
 
