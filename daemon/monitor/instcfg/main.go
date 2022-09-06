@@ -4,20 +4,18 @@
 // It provides the cluster data at ["monitor", "nodes", localhost, "services",
 // "config, <instance>]
 // It watches local config file to load updates.
-// It watches more recent remote config to refresh local config file.
 // It watches for local cluster config update to refresh scopes.
 //
-// The worker routine is terminated when config file is not any more present, or
-// when context is done.
+// The instcfg also starts smon object (with instcfg context)
+// => this will end smon object
 //
-// The worker also listen for cluster config updates to refresh its config to
-// reflect scopes changes.
+// The worker routine is terminated when config file is not any more present, or
+// when daemon discover context is done.
 package instcfg
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"sort"
 	"time"
 
@@ -31,11 +29,9 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/monitor/smon"
-	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
@@ -44,9 +40,7 @@ import (
 
 type (
 	T struct {
-		cfg    instance.Config
-		ctx    context.Context
-		Cancel context.CancelFunc
+		cfg instance.Config
 
 		path         path.T
 		id           string
@@ -56,10 +50,6 @@ type (
 		lastMtime    time.Time
 		localhost    string
 		forceRefresh bool
-
-		fetchCtx     context.Context
-		fetchUpdated time.Time
-		fetchCancel  context.CancelFunc
 
 		CmdC         chan *moncmd.T
 		dataCmdC     chan<- interface{}
@@ -78,7 +68,7 @@ var (
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(ctx context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) *T {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -90,27 +80,23 @@ func Start(ctx context.Context, p path.T, filename string, svcDiscoverCmd chan<-
 		localhost:    localhost,
 		forceRefresh: false,
 		CmdC:         make(chan *moncmd.T),
-		dataCmdC:     daemondata.BusFromContext(ctx),
+		dataCmdC:     daemondata.BusFromContext(parent),
 		discoverCmdC: svcDiscoverCmd,
 		filename:     filename,
 	}
 	go func() {
 		defer o.log.Debug().Msg("stopped")
-		o.worker(ctx)
+		o.worker(parent)
 	}()
-	return o
 }
 
 // worker watch for local instCfg config file updates until file is removed
-func (o *T) worker(ctx context.Context) {
+func (o *T) worker(parent context.Context) {
 	defer o.log.Debug().Msg("done")
-	o.ctx, o.Cancel = context.WithCancel(ctx)
-	defer o.Cancel()
 	defer moncmd.DropPendingCmd(o.CmdC, dropCmdTimeout)
-	defer o.done()
+	defer o.done(parent)
 	clusterId := clusterPath.String()
-	bus := pubsub.BusFromContext(ctx)
-	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg own Cfg update", o.path.String(), o.onEv))
+	bus := pubsub.BusFromContext(parent)
 	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, o.path.String()+" instcfg own CfgFile update", o.path.String(), o.onEv))
 	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, o.path.String()+" instcfg own CfgFile remove", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
@@ -129,34 +115,30 @@ func (o *T) worker(ctx context.Context) {
 		return
 	}
 	defer o.delete()
-	if err := smon.Start(o.ctx, o.path, o.cfg.Scope); err != nil {
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+	if err := smon.Start(ctx, o.path, o.cfg.Scope); err != nil {
 		o.log.Error().Err(err).Msg("fail to start smon worker")
 		return
 	}
 	o.log.Debug().Msg("started")
 	for {
-		if o.fetchCtx != nil {
-			select {
-			case <-o.fetchCtx.Done():
-				o.fetchCancel()
-				o.fetchCtx = nil
-			default:
-			}
-		}
 		select {
-		case <-o.ctx.Done():
+		case <-parent.Done():
 			return
 		case i := <-o.CmdC:
 			switch c := (*i).(type) {
 			case moncmd.Exit:
 				log.Debug().Msg("eat poison pill")
 				return
-			case moncmd.RemoteFileConfig:
-				o.log.Debug().Msgf("recv %#v", c)
-				o.cmdRemoteCfgFetched(c)
 			case moncmd.CfgUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
-				if err := o.cmdCfgUpdated(c); err != nil {
+				if c.Node != o.localhost {
+					// only watch local cluster config updates
+					continue
+				}
+				o.log.Info().Msg("local cluster config changed => refresh cfg")
+				if err := o.configFileCheck(); err != nil {
 					return
 				}
 			case moncmd.CfgFileUpdated:
@@ -172,81 +154,6 @@ func (o *T) worker(ctx context.Context) {
 			}
 		}
 	}
-}
-
-func (o *T) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
-	select {
-	case <-c.Ctx.Done():
-		o.fetchCtx = nil
-		c.Err <- nil
-		return
-	default:
-		defer o.fetchCancel()
-		var prefix string
-		if c.Path.Namespace != "root" {
-			prefix = "namespaces/"
-		}
-		s := c.Path.String()
-		confFile := rawconfig.Paths.Etc + "/" + prefix + s + ".conf"
-		o.log.Info().Msgf("install fetched config %s from %s", s, c.Node)
-		err := os.Rename(c.Filename, confFile)
-		if err != nil {
-			o.log.Error().Err(err).Msgf("can't install fetched config to %s", confFile)
-		}
-		o.fetchCtx = nil
-		c.Err <- err
-	}
-	return
-}
-
-func (o *T) cmdCfgUpdated(c moncmd.CfgUpdated) error {
-	var clusterUpdate bool
-	if c.Path.String() == clusterPath.String() {
-		clusterUpdate = true
-	}
-	if c.Node != o.localhost {
-		if clusterUpdate {
-			o.cmdCfgUpdatedRemote(c)
-		} else if o.path.Kind != kind.Sec && !stringslice.Has(o.localhost, c.Config.Scope) {
-			o.log.Error().Msgf("not in scope: %s", c.Config.Scope)
-		} else {
-			o.cmdCfgUpdatedRemote(c)
-		}
-	} else if clusterUpdate && o.path.String() != clusterPath.String() {
-		o.log.Info().Msg("local cluster config changed => refresh cfg")
-		o.forceRefresh = true
-		return o.configFileCheck()
-	}
-	return nil
-}
-
-// cmdCfgUpdatedRemote retrieve config file from remote node
-//
-// it returns without any actions when current updated is newer, or if a fetcher
-// from updated is already running.
-//
-// pending obsolete fetcher is canceled.
-func (o *T) cmdCfgUpdatedRemote(c moncmd.CfgUpdated) {
-	remoteCfgUpdated := c.Config.Updated
-	if o.cfg.Updated.Unix() >= remoteCfgUpdated.Unix() {
-		return
-	}
-	// need fetch
-	if o.fetchCtx != nil {
-		// fetcher is running
-		if o.fetchUpdated.Unix() >= remoteCfgUpdated.Unix() {
-			return
-		} else {
-			o.log.Info().Msgf("cancel current fetcher a more recent config file exists on %s", c.Node)
-			o.fetchCancel()
-		}
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	o.fetchCtx = ctx
-	o.fetchCancel = cancel
-	o.fetchUpdated = c.Config.Updated
-	o.log.Info().Msgf("fetching more recent config from node %s", c.Node)
-	go remoteconfig.Fetch(daemonlogctx.WithLogger(ctx, o.log), o.path, c.Node, o.CmdC)
 }
 
 func (o *T) onEv(i interface{}) {
@@ -345,13 +252,13 @@ func (o *T) delete() {
 	}
 }
 
-func (o *T) done() {
+func (o *T) done(parent context.Context) {
 	op := moncmd.New(moncmd.MonCfgDone{
 		Path:     o.path,
 		Filename: o.filename,
 	})
 	select {
-	case <-o.ctx.Done():
+	case <-parent.Done():
 		return
 	case o.discoverCmdC <- op:
 	}
