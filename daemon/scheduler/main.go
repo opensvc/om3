@@ -112,10 +112,12 @@ func (t *T) createJob(e schedule.Entry) {
 	// clean up the existing job
 	t.jobs.Del(e)
 
+	log := t.log.With().Str("action", e.Action).Stringer("path", e.Path).Str("key", e.Key).Logger()
+
 	now := time.Now() // keep before GetNext call
 	next, _, err := e.GetNext()
 	if err != nil {
-		t.log.Error().Err(err).Str("action", e.Action).Str("definition", e.Definition).Msg("get next")
+		log.Error().Err(err).Str("definition", e.Definition).Msg("get next")
 		t.jobs.Del(e)
 		return
 	}
@@ -125,7 +127,7 @@ func (t *T) createJob(e schedule.Entry) {
 	}
 	e.Next = next
 	delay := next.Sub(now)
-	t.log.Info().Str("action", e.Action).Stringer("path", e.Path).Str("key", e.Key).Msgf("schedule to run at %s (in %s)", next, delay)
+	log.Info().Msgf("schedule to run at %s (in %s)", next, delay)
 	tmr := time.AfterFunc(delay, func() {
 		begin := time.Now()
 		if begin.Sub(next) < 500*time.Millisecond {
@@ -133,7 +135,22 @@ func (t *T) createJob(e schedule.Entry) {
 			begin = next
 		}
 		err := t.action(e)
+
+		// remember last run, to not run the job too soon after a daemon restart
+		if err := e.SetLastRun(begin); err != nil {
+			log.Error().Err(err).Msg("update last run failed")
+		}
+
+		// remember last success, for users benefit
+		if err == nil {
+			if err := e.SetLastSuccess(begin); err != nil {
+				log.Error().Err(err).Msg("update last success failed")
+			}
+		}
+
+		// store end time, for duration sampling
 		end := time.Now()
+
 		t.events <- eventJobDone{
 			schedule: e,
 			begin:    begin,
