@@ -46,8 +46,6 @@ func (d *discover) cfg() {
 			switch c := (*i).(type) {
 			case moncmd.CfgFileUpdated:
 				d.onCfgFileUpdated(c)
-			case moncmd.MonCfgDone:
-				d.onInstCfgDone(c)
 			case moncmd.CfgUpdated:
 				if c.Node == d.localhost {
 					continue
@@ -55,9 +53,10 @@ func (d *discover) cfg() {
 				d.cmdRemoteCfgUpdated(c.Path, c.Node, c.Config)
 			case moncmd.CfgDeleted:
 				if c.Node == d.localhost {
-					continue
+					d.cmdLocalCfgDeleted(c.Path)
+				} else {
+					d.cmdRemoteCfgDeleted(c.Path, c.Node)
 				}
-				d.cmdRemoteCfgDeleted(c.Path, c.Node)
 			case moncmd.RemoteFileConfig:
 				d.cmdRemoteCfgFetched(c)
 			default:
@@ -80,39 +79,55 @@ func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
 		// node config
 		return
 	}
-	if _, ok := d.moncfg[s]; !ok {
-		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
+	mtime := file.ModTime(c.Filename)
+	if mtime.IsZero() {
+		d.log.Info().Msgf("configFile no present(mtime) %s", c.Filename)
+		return
 	}
+	if _, ok := d.cfgMTime[s]; !ok {
+		if err := instcfg.Start(d.ctx, c.Path, c.Filename); err != nil {
+			return
+		}
+	}
+	d.cfgMTime[s] = mtime
 }
 
-func (d *discover) onInstCfgDone(c moncmd.MonCfgDone) {
-	s := c.Path.String()
-	if _, ok := d.moncfg[s]; ok {
-		delete(d.moncfg, s)
+// cmdLocalCfgDeleted starts a new instcfg when a local configuration file exists
+func (d *discover) cmdLocalCfgDeleted(p path.T) {
+	s := p.String()
+	filename := p.ConfigFile()
+
+	delete(d.cfgMTime, s)
+	mtime := file.ModTime(filename)
+	if mtime.IsZero() {
+		return
 	}
-	if file.Exists(c.Filename) {
-		d.moncfg[s] = instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC)
+	if err := instcfg.Start(d.ctx, p, filename); err != nil {
+		return
 	}
+	d.cfgMTime[s] = mtime
 }
 
 func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {
 	s := p.String()
-	if _, ok := d.moncfg[s]; ok {
-		return
+	if mtime, ok := d.cfgMTime[s]; ok {
+		if mtime.After(remoteCfg.Updated) {
+			// our version is more recent than remote one
+			return
+		}
 	}
-	d.log.Info().Msgf("cmdRemoteCfgUpdated for node %s, path %s", node, p)
-	if remoteUpdated, ok := d.fetcherUpdated[s]; ok {
-		// fetcher in progress for s
-		if remoteCfg.Updated.After(remoteUpdated) {
-			d.log.Info().Msgf("cancel pending remote cfg fetcher, more recent config from %s on %s", s, node)
+	if remoteFetcherUpdated, ok := d.fetcherUpdated[s]; ok {
+		// fetcher in progress for s, verify if new fetcher is required
+		if remoteCfg.Updated.After(remoteFetcherUpdated) {
+			d.log.Warn().Msgf("cancel pending remote cfg fetcher, more recent config from %s on %s", s, node)
 			d.cancelFetcher(s)
 		} else {
-			d.log.Error().Msgf("cmdRemoteCfgUpdated for node %s, path %s not more recent", node, p)
+			// let running fetcher does its job
 			return
 		}
 	}
 	if p.Kind != kind.Sec && !d.inScope(&remoteCfg) {
-		d.log.Error().Msgf("cmdRemoteCfgUpdated for node %s, path %s not in scope", node, p)
+		// skip not a sec and not in scopes
 		return
 	}
 	d.log.Info().Msgf("fetch config %s from node %s", s, node)

@@ -51,9 +51,8 @@ type (
 		localhost    string
 		forceRefresh bool
 
-		CmdC         chan *moncmd.T
-		dataCmdC     chan<- interface{}
-		discoverCmdC chan<- *moncmd.T
+		cmdC     chan *moncmd.T
+		dataCmdC chan<- interface{}
 	}
 )
 
@@ -62,13 +61,11 @@ var (
 
 	dropCmdTimeout = 100 * time.Millisecond
 
-	delayInitialConfigure = 100 * time.Millisecond
-
 	configFileCheckError = errors.New("config file check")
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) {
+func Start(parent context.Context, p path.T, filename string) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -79,22 +76,32 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
-		CmdC:         make(chan *moncmd.T),
+		cmdC:         make(chan *moncmd.T),
 		dataCmdC:     daemondata.BusFromContext(parent),
-		discoverCmdC: svcDiscoverCmd,
 		filename:     filename,
 	}
+
+	if err := o.setConfigure(); err != nil {
+		return err
+	}
+
+	// do once what we do later on moncmd.CfgFileUpdated
+	if err := o.configFileCheck(); err != nil {
+		return err
+	}
+
 	go func() {
 		defer o.log.Debug().Msg("stopped")
+		defer o.delete()
 		o.worker(parent)
 	}()
+	return nil
 }
 
 // worker watch for local instCfg config file updates until file is removed
 func (o *T) worker(parent context.Context) {
 	defer o.log.Debug().Msg("done")
-	defer moncmd.DropPendingCmd(o.CmdC, dropCmdTimeout)
-	defer o.done(parent)
+	defer moncmd.DropPendingCmd(o.cmdC, dropCmdTimeout)
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(parent)
 	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, o.path.String()+" instcfg own CfgFile update", o.path.String(), o.onEv))
@@ -103,18 +110,6 @@ func (o *T) worker(parent context.Context) {
 		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg cluster Cfg update", clusterId, o.onEv))
 	}
 
-	// delay initial configure, seen on storm file creation
-	time.Sleep(delayInitialConfigure)
-
-	if err := o.setConfigure(); err != nil {
-		return
-	}
-
-	// do once what we do later on moncmd.CfgFileUpdated
-	if err := o.configFileCheck(); err != nil {
-		return
-	}
-	defer o.delete()
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	if err := smon.Start(ctx, o.path, o.cfg.Scope); err != nil {
@@ -126,7 +121,7 @@ func (o *T) worker(parent context.Context) {
 		select {
 		case <-parent.Done():
 			return
-		case i := <-o.CmdC:
+		case i := <-o.cmdC:
 			switch c := (*i).(type) {
 			case moncmd.Exit:
 				log.Debug().Msg("eat poison pill")
@@ -158,7 +153,7 @@ func (o *T) worker(parent context.Context) {
 
 func (o *T) onEv(i interface{}) {
 	select {
-	case o.CmdC <- moncmd.New(i):
+	case o.cmdC <- moncmd.New(i):
 	}
 }
 
@@ -249,17 +244,5 @@ func (o *T) delete() {
 	}
 	if err := daemondata.DelInstanceStatus(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceStatus")
-	}
-}
-
-func (o *T) done(parent context.Context) {
-	op := moncmd.New(moncmd.MonCfgDone{
-		Path:     o.path,
-		Filename: o.filename,
-	})
-	select {
-	case <-parent.Done():
-		return
-	case o.discoverCmdC <- op:
 	}
 }
