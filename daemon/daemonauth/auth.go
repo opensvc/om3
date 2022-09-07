@@ -87,7 +87,7 @@ func validateUser(ctx context.Context, r *http.Request, username, password strin
 	if string(storedPassword) != password {
 		return nil, errors.Errorf("wrong password")
 	}
-	grants := NewGrants(usr.Config().GetSlice(key.T{"DEFAULT", "grant"})...)
+	grants := NewGrants(usr.Config().GetStrings(key.T{"DEFAULT", "grant"})...)
 	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
 	return info, nil
 }

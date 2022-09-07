@@ -15,7 +15,9 @@ const (
 	NsCfgFile
 	NsCfg
 	NsAgg
+	NsNmon
 	NsSmon
+	NsSetNmon
 	NsSetSmon
 	NsStatus
 )

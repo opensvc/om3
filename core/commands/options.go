@@ -96,19 +96,4 @@ type (
 	OptLeader struct {
 		Leader bool `flag:"leader"`
 	}
-
-	OptsCreate struct {
-		OptsLock
-		OptsResourceSelector
-		OptTo
-		OptForce
-		Template    string   `flag:"template"`
-		Config      string   `flag:"config"`
-		Keywords    []string `flag:"kwops"`
-		Env         string   `flag:"env"`
-		Interactive bool     `flag:"interactive"`
-		Provision   bool     `flag:"provision"`
-		Restore     bool     `flag:"restore"`
-		Namespace   string   `flag:"createnamespace"`
-	}
 )

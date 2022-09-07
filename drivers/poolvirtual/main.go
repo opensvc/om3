@@ -45,15 +45,15 @@ func (t T) template() (path.T, error) {
 }
 
 func (t T) optionalVolumeEnv() []string {
-	return t.GetSlice("optional_volume_env")
+	return t.GetStrings("optional_volume_env")
 }
 
 func (t T) volumeEnv() []string {
-	return t.GetSlice("volume_env")
+	return t.GetStrings("volume_env")
 }
 
 func (t T) Capabilities() []string {
-	return t.GetSlice("capabilities")
+	return t.GetStrings("capabilities")
 }
 
 func (t T) Usage() (pool.StatusUsage, error) {

@@ -101,6 +101,10 @@ var Tags = map[string]Opt{
 		Long: "sid",
 		Desc: "filter on the session id of an action",
 	},
+	"createforce": Opt{
+		Long: "force",
+		Desc: "allow overwriting existing configuration files. beware: changing the configuration of a live monitored service may cause a monitor action.",
+	},
 	"createnamespace": Opt{
 		Long: "namespace",
 		Desc: "where to create the new objects",

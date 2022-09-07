@@ -225,13 +225,13 @@ func (t *T) Set(option, value string) error {
 	return nil
 }
 
-func (t *T) GetSlice(s string) []string {
+func (t *T) GetStrings(s string) []string {
 	k := t.key(s)
-	return t.Config().GetSlice(k)
+	return t.Config().GetStrings(k)
 }
 
 func (t *T) Tables() []string {
-	return t.GetSlice("tables")
+	return t.GetStrings("tables")
 }
 
 // AllowEmptyNetwork returns true if the driver supports

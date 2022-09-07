@@ -1,13 +1,13 @@
 package create
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/iancoleman/orderedmap"
+	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
@@ -30,6 +30,7 @@ type (
 		template  string
 		keywords  []string
 		restore   bool
+		force     bool
 	}
 	Pivot map[string]rawconfig.T
 )
@@ -91,6 +92,14 @@ func WithClient(c *client.T) funcopt.O {
 	})
 }
 
+func WithForce(v bool) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.force = v
+		return nil
+	})
+}
+
 func WithRestore(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -131,6 +140,7 @@ func (t *T) submit(pivot Pivot) error {
 	}
 	req := t.client.NewPostObjectCreate()
 	req.Restore = t.restore
+	req.Force = t.force
 	req.Data = data
 	if _, err := req.Do(); err != nil {
 		return err
@@ -180,11 +190,10 @@ func (t T) fromStdin() error {
 }
 
 func (t T) fromData(pivot Pivot) error {
-	// TODO: kws
 	if clientcontext.IsSet() {
 		return t.submit(pivot)
 	}
-	return localFromData(pivot)
+	return t.localFromData(pivot)
 }
 
 func (t T) rawFromTemplate() (Pivot, error) {
@@ -295,13 +304,13 @@ func rawFromBytesFlat(p path.T, b []byte) (Pivot, error) {
 	return pivot, nil
 }
 
-func localFromData(pivot Pivot) error {
+func (t T) localFromData(pivot Pivot) error {
 	for opath, c := range pivot {
 		p, err := path.Parse(opath)
 		if err != nil {
 			return err
 		}
-		if err = localFromRaw(p, c); err != nil {
+		if err = t.localFromRaw(p, c); err != nil {
 			return err
 		}
 		fmt.Println(opath, "commited")
@@ -309,24 +318,41 @@ func localFromData(pivot Pivot) error {
 	return nil
 }
 
-func localFromRaw(p path.T, c rawconfig.T) error {
+func (t T) localFromRaw(p path.T, c rawconfig.T) error {
+	if !t.force && p.Exists() {
+		return errors.Errorf("%s already exists", p)
+	}
 	o, err := object.New(p)
 	if err != nil {
 		return err
 	}
 	oc := o.(object.Configurer)
-	return oc.Config().CommitData(c)
-}
-
-func LocalEmpty(p path.T) error {
-	o, err := object.New(p)
-	if err != nil {
+	if err := oc.Config().LoadRaw(c); err != nil {
 		return err
 	}
-	oc := o.(object.Configurer)
+	if err := oc.Config().SetKeys(keyop.ParseOps(t.keywords)...); err != nil {
+		return err
+	}
 	return oc.Config().Commit()
 }
 
-func setKeywords(oc object.Configurer, kws []string) error {
-	return oc.Set(context.Background(), keyop.ParseOps(kws)...)
+func (t T) localEmpty(p path.T) error {
+	if !t.force && p.Exists() {
+		return errors.Errorf("%s already exists", p)
+	}
+	o, err := object.New(p)
+	if err != nil {
+		return err
+	}
+	oc := o.(object.Configurer)
+
+	// empty any existing config
+	c := rawconfig.New()
+	if err := oc.Config().LoadRaw(c); err != nil {
+		return err
+	}
+	if err := oc.Config().SetKeys(keyop.ParseOps(t.keywords)...); err != nil {
+		return err
+	}
+	return oc.Config().Commit()
 }

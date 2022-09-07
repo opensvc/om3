@@ -141,6 +141,31 @@ func ModTime(p string) (mtime time.Time) {
 }
 
 //
+// Touch updates the atime and mtime of an existing file, or creates the file if it
+// does not exist yet.
+//
+func Touch(p string, tm time.Time) error {
+	if err := os.Chtimes(p, tm, tm); err == nil {
+		return nil
+	} else if os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(p), os.ModePerm); err != nil {
+			return err
+		}
+		if !Exists(p) {
+			if f, err := os.Create(p); err != nil {
+				return err
+			} else {
+				defer f.Close()
+			}
+		}
+		if err := os.Chtimes(p, tm, tm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+//
 // IsPerm returns true if the file current permissions are the same as the target.
 //
 func IsPerm(p string, perm os.FileMode) (bool, error) {

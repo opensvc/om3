@@ -120,7 +120,7 @@ func (t Node) PostCommit() error {
 
 func (t Node) Nodes() []string {
 	k := key.T{Section: "cluster", Option: "nodes"}
-	nodes := t.MergedConfig().GetSlice(k)
+	nodes := t.MergedConfig().GetStrings(k)
 	if len(nodes) == 0 {
 		return []string{hostname.Hostname()}
 	}

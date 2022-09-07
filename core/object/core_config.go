@@ -138,7 +138,7 @@ func (t core) Peers() []string {
 func (t core) Children() []path.Relation {
 	data := make([]path.Relation, 0)
 	k := key.Parse("children")
-	l, err := t.config.GetSliceStrict(k)
+	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
 		t.log.Error().Err(err).Msg("")
 		return data
@@ -152,7 +152,7 @@ func (t core) Children() []path.Relation {
 func (t core) Parents() []path.Relation {
 	data := make([]path.Relation, 0)
 	k := key.Parse("parents")
-	l, err := t.config.GetSliceStrict(k)
+	l, err := t.config.GetStringsStrict(k)
 	if err != nil {
 		t.log.Error().Err(err).Msg("")
 		return data

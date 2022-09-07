@@ -20,6 +20,7 @@ import (
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -67,7 +68,9 @@ func (t T) Run(ctx context.Context) error {
 }
 
 func (t T) lockedRun(ctx context.Context) (err error) {
-	defer t.notifyRunDone()
+	if !env.HasDaemonOrigin() {
+		defer t.notifyRunDone()
+	}
 	var opts []funcopt.O
 	if err := t.handleConfirmation(ctx); err != nil {
 		return err
