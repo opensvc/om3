@@ -153,14 +153,25 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		os.Exit(1)
 	}
 	var render func() string
-	if _, err := path.Parse(*selector); err == nil {
+	if p, err := path.Parse(*selector); err == nil {
 		render = func() string {
-			return data[*selector].Render()
+			d, _ := data[*selector].Data.Get("data")
+			o, err := object.NewConfigurer(
+				p,
+				object.WithVolatile(true),
+				object.WithConfigData(d),
+			)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			n, _ := o.PrintConfig()
+			return n.Render()
 		}
 		output.Renderer{
 			Format:        t.Format,
 			Color:         t.Color,
-			Data:          data[*selector],
+			Data:          data[*selector].Data,
 			HumanRenderer: render,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
