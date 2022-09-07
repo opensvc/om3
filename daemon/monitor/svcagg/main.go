@@ -104,7 +104,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 				o.updateStatus()
 			case moncmd.InstStatusUpdated:
 				if _, ok := o.instStatus[c.Node]; !ok {
-					o.log.Info().Msgf("skipped instance change on unknown node: %s", c.Node)
+					o.log.Debug().Msgf("skip instance change from unknown node: %s", c.Node)
 					continue
 				}
 				o.srcEvent = ev
