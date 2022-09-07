@@ -11,11 +11,13 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/schedule"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -28,8 +30,9 @@ type (
 		log          zerolog.Logger
 		routineTrace routineTracer
 
-		events chan any
-		jobs   Jobs
+		events  chan any
+		jobs    Jobs
+		enabled bool
 	}
 	Jobs map[string]Job
 	Job  struct {
@@ -47,6 +50,21 @@ type (
 		begin    time.Time
 		end      time.Time
 		err      error
+	}
+)
+
+var (
+	skipActionIfUnprovisionned = map[string]bool{
+		"sync_all":         true,
+		"compliance_auto":  true,
+		"resource_monitor": true,
+		"run":              true,
+	}
+	incompatibleNodeMonitorStatus = map[string]bool{
+		"init":        true,
+		"upgrade":     true,
+		"shutting":    true,
+		"maintenance": true,
 	}
 )
 
@@ -84,11 +102,11 @@ func (t Jobs) Add(e schedule.Entry, cancel func()) {
 
 func (t Jobs) Del(e schedule.Entry) {
 	k := entryKey(e)
-	jobs, ok := t[k]
+	job, ok := t[k]
 	if !ok {
 		return
 	}
-	jobs.cancel()
+	job.cancel()
 	delete(t, k)
 }
 
@@ -111,6 +129,10 @@ func (t Jobs) Purge() {
 func (t *T) createJob(e schedule.Entry) {
 	// clean up the existing job
 	t.jobs.Del(e)
+
+	if !t.enabled {
+		return
+	}
 
 	log := t.log.With().Str("action", e.Action).Stringer("path", e.Path).Str("key", e.Key).Logger()
 
@@ -190,15 +212,14 @@ func (t *T) MainStop() error {
 
 func (t *T) loop() {
 	t.log.Info().Msg("loop started")
-	//daemonData := daemondata.FromContext(t.ctx)
-	//daemonData.GetServicePaths()
 
 	relayEvent := func(ev any) {
 		t.events <- ev
 	}
 	bus := pubsub.BusFromContext(t.ctx)
-	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, "scheduler-on-cfg-file-create", "", relayEvent))
-	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, "scheduler-on-cfg-file-remove", "", relayEvent))
+	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpUpdate, "scheduler-on-inst-status-update", "", relayEvent))
+	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
+	defer daemonps.UnSub(bus, daemonps.SubNmon(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
 
 	for {
 		select {
@@ -209,11 +230,12 @@ func (t *T) loop() {
 				c.schedule.Last = c.begin
 				// reschedule
 				t.createJob(c.schedule)
-			case moncmd.CfgFileUpdated:
-				// triggered on daemon start up too
-				t.schedule(c.Path)
-			case moncmd.CfgFileRemoved:
-				t.unschedule(c.Path)
+			case moncmd.InstStatusDeleted:
+				t.onInstStatusDeleted(c)
+			case moncmd.InstStatusUpdated:
+				t.onInstStatusUpdated(c)
+			case moncmd.NmonUpdated:
+				t.onNmonUpdated(c)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
 			}
@@ -223,7 +245,70 @@ func (t *T) loop() {
 	}
 }
 
+func (t *T) onInstStatusDeleted(c moncmd.InstStatusDeleted) {
+	if c.Node == hostname.Hostname() {
+		// discard peer node events
+		return
+	}
+	t.log.Info().Stringer("path", c.Path).Msgf("unschedule (instance deleted)")
+	t.unschedule(c.Path)
+}
+
+func (t *T) onInstStatusUpdated(c moncmd.InstStatusUpdated) {
+	if c.Node == hostname.Hostname() {
+		// discard peer node events
+		return
+	}
+	provisioned := c.Status.Provisioned.Bool()
+	hasAnyJob := t.hasAnyJob(c.Path)
+	switch {
+	case provisioned:
+		t.schedule(c.Path)
+	case !provisioned && hasAnyJob:
+		t.log.Info().Stringer("path", c.Path).Msgf("unschedule (instance no longer provisionned)")
+		t.unschedule(c.Path)
+	}
+}
+
+func (t *T) onNmonUpdated(c moncmd.NmonUpdated) {
+	if c.Node == hostname.Hostname() {
+		// discard peer node events
+		return
+	}
+	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.Status]
+	switch {
+	case incompatible && t.enabled:
+		t.log.Info().Msgf("unschedule all (node monitor status is now %s)", c.Monitor.Status)
+		t.jobs.Purge()
+		t.enabled = false
+	case !incompatible && !t.enabled:
+		t.log.Info().Msgf("schedule all (node monitor status is now %s)", c.Monitor.Status)
+		t.scheduleAll()
+		t.enabled = true
+	}
+}
+
+func (t *T) hasAnyJob(p path.T) bool {
+	for _, job := range t.jobs {
+		if job.schedule.Path == p {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *T) scheduleAll() {
+	daemonData := daemondata.FromContext(t.ctx)
+	for _, p := range daemonData.GetServicePaths() {
+		t.scheduleObject(p)
+	}
+	t.scheduleNode()
+}
+
 func (t *T) schedule(p path.T) {
+	if !t.enabled {
+		return
+	}
 	if p.IsZero() {
 		t.scheduleNode()
 	} else {

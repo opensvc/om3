@@ -9,6 +9,7 @@ const (
 	idDelInstanceConfig
 	idDelInstanceStatus
 	idDelServiceAgg
+	idDelNmon
 	idDelSmon
 	idGetHbMessage
 	idGetInstanceStatus
@@ -19,6 +20,7 @@ const (
 	idSetInstanceConfig
 	idSetInstanceStatus
 	idSetServiceAgg
+	idSetNmon
 	idSetSmon
 	idStats
 )
@@ -33,6 +35,7 @@ var (
 		idDelInstanceConfig:  "del-instance-config",
 		idDelInstanceStatus:  "del-instance-status",
 		idDelServiceAgg:      "del-service-agg",
+		idDelNmon:            "del-nmon",
 		idDelSmon:            "del-smon",
 		idGetHbMessage:       "get-hb-message",
 		idGetInstanceStatus:  "get-instance-status",
@@ -43,6 +46,7 @@ var (
 		idSetServiceAgg:      "set-service-agg",
 		idSetInstanceConfig:  "set-instance-config",
 		idSetInstanceStatus:  "set-instance-status",
+		idSetNmon:            "set-nmon",
 		idSetSmon:            "set-smon",
 		idStats:              "stats",
 	}

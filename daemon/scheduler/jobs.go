@@ -43,6 +43,8 @@ func (o T) action(e schedule.Entry) error {
 		cmdArgs = append(cmdArgs, "push", "stats", "--local")
 	case "sysreport":
 		cmdArgs = append(cmdArgs, "sysreport", "--local")
+	//case "sync_all":
+	//	cmdArgs = append(cmdArgs, "sync", "all", "--local")
 	//case "collect_stats":
 	//	cmdArgs = append(cmdArgs, "collect", "stats", "--local")
 	//case "dequeue_actions":
@@ -53,13 +55,18 @@ func (o T) action(e schedule.Entry) error {
 		o.log.Error().Str("action", e.Action).Stringer("path", e.Path).Msg("unknown scheduler action")
 		return errors.Errorf("unknown scheduler action")
 	}
-	environment := env.DaemonOriginSetenvArgs()
+	var cmdEnv []string
+	cmdEnv = append(
+		cmdEnv,
+		env.DaemonOriginSetenvArg(),
+		env.ParentSessionIDSetenvArg(),
+	)
 
 	cmd := command.New(
 		command.WithName(os.Args[0]),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(&o.log),
-		command.WithEnv(environment),
+		command.WithEnv(cmdEnv),
 	)
 	o.log.Debug().Msgf("-> exec %s", cmd)
 	if err := cmd.Run(); err != nil {

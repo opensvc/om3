@@ -1,16 +1,21 @@
 package env
 
-import "os"
+import (
+	"os"
+
+	"opensvc.com/opensvc/util/xsession"
+)
 
 var (
 	ActionOriginVar    = "OSVC_ACTION_ORIGIN"
 	ActionOriginUser   = "user"
 	ActionOriginDaemon = "daemon"
 
-	NameVar      = "OSVC_NAME"
-	NamespaceVar = "OSVC_NAMESPACE"
-	KindVar      = "OSVC_KIND"
-	ContextVar   = "OSVC_CONTEXT"
+	ParentSessionIDVar = "OSVC_PARENT_SESSION_UUID"
+	NameVar            = "OSVC_NAME"
+	NamespaceVar       = "OSVC_NAMESPACE"
+	KindVar            = "OSVC_KIND"
+	ContextVar         = "OSVC_CONTEXT"
 )
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
@@ -30,11 +35,18 @@ func Origin() string {
 	return s
 }
 
-// DaemonOriginSetenvArgs returns the args to pass to environment variable
+// DaemonOriginSetenvArg returns the arg to pass to environment variable
 // setter functions to hint the called CRM command was launched from a daemon
 // policy.
-func DaemonOriginSetenvArgs() []string {
-	return []string{ActionOriginVar + "=" + ActionOriginDaemon}
+func DaemonOriginSetenvArg() string {
+	return ActionOriginVar + "=" + ActionOriginDaemon
+}
+
+// ParentSessionIDSetenvArg returns the arg to pass to environment variable
+// setter functions to hint the called CRM command was launched with a different
+// session id.
+func ParentSessionIDSetenvArg() string {
+	return ParentSessionIDVar + "=" + xsession.ID
 }
 
 // Namespace returns the namespace filter forced via the OSVC_NAMESPACE environment
