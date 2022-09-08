@@ -19,6 +19,7 @@ import (
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
 	"opensvc.com/opensvc/daemon/monitor"
+	"opensvc.com/opensvc/daemon/monitor/nmon"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/scheduler"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -146,6 +147,9 @@ func (t *T) MainStart(ctx context.Context) error {
 		if err := sub.Start(t.ctx); err != nil {
 			return err
 		}
+	}
+	if err := nmon.Start(t.ctx); err != nil {
+		return err
 	}
 	cancelDaemonDiscover, err := daemondiscover.Start(t.ctx)
 	if err != nil {

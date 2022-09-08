@@ -32,7 +32,7 @@ func (t *T) demoLoop() {
 	})
 	status := dataCmd.GetStatus()
 	for remote, v := range demoAvails {
-		remoteNodeStatus := daemondata.GetNodeStatus(status, remote)
+		remoteNodeStatus := status.GetNodeStatus(remote)
 		if remoteNodeStatus != nil {
 			if demoStatus, ok := remoteNodeStatus.Services.Status[demoSvc]; ok {
 				if v != demoStatus.Avail.String() {
