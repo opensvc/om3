@@ -7,8 +7,8 @@ type contextKey int
 const busContextKey contextKey = 0
 
 // BusFromContext function returns the command chan stored in the context
-func BusFromContext(ctx context.Context) chan<- interface{} {
-	cmdC, ok := ctx.Value(busContextKey).(chan<- interface{})
+func BusFromContext(ctx context.Context) chan<- any {
+	cmdC, ok := ctx.Value(busContextKey).(chan<- any)
 	if ok {
 		return cmdC
 	}
@@ -16,7 +16,7 @@ func BusFromContext(ctx context.Context) chan<- interface{} {
 }
 
 // ContextWithBus function returns copy of parent, including the daemon data command chan.
-func ContextWithBus(parent context.Context, cmd chan<- interface{}) context.Context {
+func ContextWithBus(parent context.Context, cmd chan<- any) context.Context {
 	return context.WithValue(parent, busContextKey, cmd)
 }
 

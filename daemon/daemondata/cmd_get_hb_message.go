@@ -97,7 +97,7 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 			Compat:   d.committed.Monitor.Nodes[d.localNode].Compat,
 			Gen:      d.getGens(),
 			Updated:  time.Now(),
-			Full:     *GetNodeStatus(d.committed, d.localNode).DeepCopy(),
+			Full:     d.committed.GetNodeStatus(d.localNode).DeepCopy(),
 			Nodename: d.localNode,
 		}
 	case "ping":

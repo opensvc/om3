@@ -77,6 +77,15 @@ type (
 	}
 )
 
+// GetNodeStatus extracts from the cluster dataset all information relative
+// to node status.
+func (s Status) GetNodeStatus(nodename string) *NodeStatus {
+	if nodeStatus, ok := s.Monitor.Nodes[nodename]; ok {
+		return &nodeStatus
+	}
+	return nil
+}
+
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
 func (t Status) GetObjectStatus(p path.T) object.Status {
@@ -115,14 +124,14 @@ func (t Status) GetObjectStatus(p path.T) object.Status {
 	return *data
 }
 
-func (n *NodeStatus) DeepCopy() *NodeStatus {
+func (n *NodeStatus) DeepCopy() NodeStatus {
 	b, err := json.Marshal(n)
 	if err != nil {
-		return nil
+		return NodeStatus{}
 	}
 	nodeStatus := NodeStatus{}
 	if err := json.Unmarshal(b, &nodeStatus); err != nil {
-		return nil
+		return NodeStatus{}
 	}
-	return &nodeStatus
+	return nodeStatus
 }

@@ -29,6 +29,7 @@ type (
 		cancel       context.CancelFunc
 		log          zerolog.Logger
 		routineTrace routineTracer
+		databus      *daemondata.T
 
 		events  chan any
 		jobs    Jobs
@@ -216,6 +217,7 @@ func (t *T) loop() {
 	relayEvent := func(ev any) {
 		t.events <- ev
 	}
+	t.databus = daemondata.FromContext(t.ctx)
 	bus := pubsub.BusFromContext(t.ctx)
 	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpUpdate, "scheduler-on-inst-status-update", "", relayEvent))
 	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
@@ -246,7 +248,7 @@ func (t *T) loop() {
 }
 
 func (t *T) onInstStatusDeleted(c moncmd.InstStatusDeleted) {
-	if c.Node == hostname.Hostname() {
+	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
 	}
@@ -255,7 +257,7 @@ func (t *T) onInstStatusDeleted(c moncmd.InstStatusDeleted) {
 }
 
 func (t *T) onInstStatusUpdated(c moncmd.InstStatusUpdated) {
-	if c.Node == hostname.Hostname() {
+	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
 	}
@@ -271,18 +273,18 @@ func (t *T) onInstStatusUpdated(c moncmd.InstStatusUpdated) {
 }
 
 func (t *T) onNmonUpdated(c moncmd.NmonUpdated) {
-	if c.Node == hostname.Hostname() {
+	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
 	}
 	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.Status]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Info().Msgf("unschedule all (node monitor status is now %s)", c.Monitor.Status)
+		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Monitor.Status)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Info().Msgf("schedule all (node monitor status is now %s)", c.Monitor.Status)
+		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.Status)
 		t.scheduleAll()
 		t.enabled = true
 	}
@@ -298,8 +300,7 @@ func (t *T) hasAnyJob(p path.T) bool {
 }
 
 func (t *T) scheduleAll() {
-	daemonData := daemondata.FromContext(t.ctx)
-	for _, p := range daemonData.GetServicePaths() {
+	for _, p := range t.databus.GetServicePaths() {
 		t.scheduleObject(p)
 	}
 	t.scheduleNode()
@@ -338,6 +339,7 @@ func (t *T) scheduleObject(p path.T) {
 		// only actor objects have scheduled actions
 		return
 	}
+	t.log.Info().Msgf("schedule object %s", p)
 	for _, e := range o.PrintSchedule() {
 		t.createJob(e)
 	}

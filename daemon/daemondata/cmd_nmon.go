@@ -18,6 +18,10 @@ type (
 		err   chan<- error
 		value cluster.NodeMonitor
 	}
+	opGetNmon struct {
+		node  string
+		value chan<- cluster.NodeMonitor
+	}
 )
 
 func (o opDelNmon) setError(err error) {
@@ -39,6 +43,18 @@ func (o opDelNmon) call(ctx context.Context, d *data) {
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
+	}
+}
+
+func (o opGetNmon) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetNmon
+	s := cluster.NodeMonitor{}
+	if nodeStatus, ok := d.pending.Monitor.Nodes[o.node]; ok {
+		s = nodeStatus.Monitor
+	}
+	select {
+	case <-ctx.Done():
+	case o.value <- s:
 	}
 }
 
