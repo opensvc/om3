@@ -50,6 +50,7 @@ type (
 		lastMtime    time.Time
 		localhost    string
 		forceRefresh bool
+		published    bool
 
 		cmdC     chan *moncmd.T
 		dataCmdC chan<- interface{}
@@ -65,7 +66,7 @@ var (
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(parent context.Context, p path.T, filename string) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -85,14 +86,11 @@ func Start(parent context.Context, p path.T, filename string) error {
 		return err
 	}
 
-	// do once what we do later on moncmd.CfgFileUpdated
-	if err := o.configFileCheck(); err != nil {
-		return err
-	}
-
 	go func() {
 		defer o.log.Debug().Msg("stopped")
-		defer o.delete()
+		defer func() {
+			o.done(parent, svcDiscoverCmd)
+		}()
 		o.worker(parent)
 	}()
 	return nil
@@ -109,6 +107,12 @@ func (o *T) worker(parent context.Context) {
 	if o.path.String() != clusterId {
 		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg cluster Cfg update", clusterId, o.onEv))
 	}
+
+	// do once what we do later on moncmd.CfgFileUpdated
+	if err := o.configFileCheck(); err != nil {
+		return
+	}
+	defer o.delete()
 
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
@@ -139,6 +143,7 @@ func (o *T) worker(parent context.Context) {
 			case moncmd.CfgFileUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
 				if err := o.configFileCheck(); err != nil {
+					o.log.Error().Err(err).Msg("configFileCheck error")
 					return
 				}
 			case moncmd.CfgFileRemoved:
@@ -167,6 +172,7 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 	if err := daemondata.SetInstanceConfig(o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
+	o.published = true
 }
 
 // configFileCheck verify if config file has been changed
@@ -239,10 +245,24 @@ func (o *T) setConfigure() error {
 }
 
 func (o *T) delete() {
-	if err := daemondata.DelInstanceConfig(o.dataCmdC, o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelInstanceConfig")
+	if o.published {
+		if err := daemondata.DelInstanceConfig(o.dataCmdC, o.path); err != nil {
+			o.log.Error().Err(err).Msg("DelInstanceConfig")
+		}
 	}
 	if err := daemondata.DelInstanceStatus(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceStatus")
+	}
+}
+
+func (o *T) done(parent context.Context, doneChan chan<- *moncmd.T) {
+	op := moncmd.New(moncmd.MonCfgDone{
+		Path:     o.path,
+		Filename: o.filename,
+	})
+	select {
+	case <-parent.Done():
+		return
+	case doneChan <- op:
 	}
 }

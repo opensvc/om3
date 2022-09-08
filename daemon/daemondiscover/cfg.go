@@ -51,10 +51,10 @@ func (d *discover) cfg() {
 					continue
 				}
 				d.cmdRemoteCfgUpdated(c.Path, c.Node, c.Config)
+			case moncmd.MonCfgDone:
+				d.cmdMonCfgDone(c)
 			case moncmd.CfgDeleted:
-				if c.Node == d.localhost {
-					d.cmdLocalCfgDeleted(c.Path)
-				} else {
+				if c.Node != "" && c.Node != d.localhost {
 					d.cmdRemoteCfgDeleted(c.Path, c.Node)
 				}
 			case moncmd.RemoteFileConfig:
@@ -85,7 +85,7 @@ func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
 		return
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
-		if err := instcfg.Start(d.ctx, c.Path, c.Filename); err != nil {
+		if err := instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC); err != nil {
 			return
 		}
 	}
@@ -93,16 +93,17 @@ func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
 }
 
 // cmdLocalCfgDeleted starts a new instcfg when a local configuration file exists
-func (d *discover) cmdLocalCfgDeleted(p path.T) {
+func (d *discover) cmdMonCfgDone(c moncmd.MonCfgDone) {
+	filename := c.Filename
+	p := c.Path
 	s := p.String()
-	filename := p.ConfigFile()
 
 	delete(d.cfgMTime, s)
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
 		return
 	}
-	if err := instcfg.Start(d.ctx, p, filename); err != nil {
+	if err := instcfg.Start(d.ctx, p, filename, d.cfgCmdC); err != nil {
 		return
 	}
 	d.cfgMTime[s] = mtime
@@ -111,8 +112,14 @@ func (d *discover) cmdLocalCfgDeleted(p path.T) {
 func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {
 	s := p.String()
 	if mtime, ok := d.cfgMTime[s]; ok {
-		if mtime.After(remoteCfg.Updated) {
+		if !remoteCfg.Updated.After(mtime) {
 			// our version is more recent than remote one
+			return
+		}
+	} else {
+		// Not yet started instcfg, but file exists
+		localUpdated := file.ModTime(p.ConfigFile())
+		if !remoteCfg.Updated.After(localUpdated) {
 			return
 		}
 	}
