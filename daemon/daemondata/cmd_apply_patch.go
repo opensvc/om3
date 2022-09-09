@@ -33,6 +33,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		pendingB []byte
 		err      error
 		data     json.RawMessage
+		changes  bool
 	)
 	pendingNode, ok := d.pending.Monitor.Nodes[o.nodename]
 	if !ok {
@@ -41,12 +42,6 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		return
 	}
 	pendingNodeGen := pendingNode.Gen[o.nodename]
-	pendingB, err = json.Marshal(pendingNode)
-	if err != nil {
-		d.log.Error().Err(err).Msgf("Marshal pendingNode %s", o.nodename)
-		o.err <- err
-		return
-	}
 	deltas := o.msg.Deltas
 	var sortGen []uint64
 	for k := range deltas {
@@ -73,6 +68,16 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			case o.err <- err:
 			}
 			return
+		}
+		if !changes {
+			// initiate pendingB
+			pendingB, err = json.Marshal(pendingNode)
+			if err != nil {
+				d.log.Error().Err(err).Msgf("Marshal pendingNode %s", o.nodename)
+				o.err <- err
+				return
+			}
+			changes = true
 		}
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
 		d.log.Debug().Msgf("ApplyRemotePatch applying %s gen %s", o.nodename, genS)
@@ -114,14 +119,17 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		}
 		pendingNodeGen = gen
 	}
-	pendingNode = cluster.NodeStatus{}
-	if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
-		d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", o.nodename)
-		select {
-		case <-ctx.Done():
-		case o.err <- err:
+	if changes {
+		// patches has been applied get update pendingNode
+		pendingNode = cluster.NodeStatus{}
+		if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
+			d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", o.nodename)
+			select {
+			case <-ctx.Done():
+			case o.err <- err:
+			}
+			return
 		}
-		return
 	}
 	d.mergedFromPeer[o.nodename] = pendingNodeGen
 	if gen, ok := o.msg.Gen[d.localNode]; ok {
