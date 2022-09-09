@@ -14,6 +14,6 @@ func PubInstStatusUpdated(bus *pubsub.Bus, id string, v InstStatusUpdated) {
 	Pub(bus, NsStatus, pubsub.OpUpdate, id, v)
 }
 
-func SubInstStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+func SubInstStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsStatus, op, name, matching, fn)
 }

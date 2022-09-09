@@ -153,7 +153,7 @@ type (
 	}
 )
 
-func NewMsg(arg interface{}) *Msg {
+func NewMsg(arg any) *Msg {
 	var t Msg
 	t = arg
 	return &t

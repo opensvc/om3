@@ -14,7 +14,7 @@ func PubCfgUpdate(bus *pubsub.Bus, id string, v CfgUpdated) {
 	Pub(bus, NsCfg, pubsub.OpUpdate, id, v)
 }
 
-func SubCfg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+func SubCfg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsCfg, op, name, matching, fn)
 }
 
@@ -26,7 +26,7 @@ func PubCfgFileUpdate(bus *pubsub.Bus, id string, v CfgFileUpdated) {
 	Pub(bus, NsCfgFile, pubsub.OpUpdate, id, v)
 }
 
-func SubCfgFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+func SubCfgFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsCfgFile, op, name, matching, fn)
 }
 
@@ -38,6 +38,6 @@ func PubFrozenFileUpdate(bus *pubsub.Bus, id string, v FrozenFileUpdated) {
 	Pub(bus, NsFrozenFile, pubsub.OpUpdate, id, v)
 }
 
-func SubFrozenFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+func SubFrozenFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsFrozenFile, op, name, matching, fn)
 }

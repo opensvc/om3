@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func Pub(bus *pubsub.Bus, ns, op uint, id string, i interface{}) {
+func Pub(bus *pubsub.Bus, ns, op uint, id string, i any) {
 	publication := pubsub.Publication{
 		Ns:    ns,
 		Op:    op,
@@ -19,7 +19,7 @@ func Pub(bus *pubsub.Bus, ns, op uint, id string, i interface{}) {
 	bus.Pub(publication)
 }
 
-func Sub(bus *pubsub.Bus, ns, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+func Sub(bus *pubsub.Bus, ns, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	subscription := pubsub.Subscription{
 		Ns:       ns,
 		Op:       op,

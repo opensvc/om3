@@ -5,7 +5,7 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func SubFrozen(bus *pubsub.Bus, name string, matching string, fn func(i interface{})) uuid.UUID {
+func SubFrozen(bus *pubsub.Bus, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsFrozen, pubsub.OpUpdate, name, matching, fn)
 }
 
