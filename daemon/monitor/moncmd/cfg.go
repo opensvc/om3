@@ -19,12 +19,17 @@ type (
 		Filename string
 	}
 
-	CfgFileDiscovered struct {
+	CfgFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
-	CfgFileRemoved struct {
+	FrozenFileUpdated struct {
+		Path     path.T
+		Filename string
+	}
+
+	FrozenFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
