@@ -1,4 +1,4 @@
-// Package daemondiscover implements object discovery for daemon
+// Package discover implements object discovery for daemon
 //
 // It watches config filesystem to create initial instance config worker when
 // config file is created. Instance config worker is then responsible for
@@ -9,7 +9,7 @@
 // directory.
 //
 // It is responsible for initial aggregated worker creation.
-package daemondiscover
+package discover
 
 import (
 	"context"

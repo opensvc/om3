@@ -1,4 +1,4 @@
-package daemondiscover
+package discover
 
 import (
 	"time"
