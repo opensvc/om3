@@ -1,8 +1,6 @@
 package smon
 
-import (
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
-)
+import "opensvc.com/opensvc/daemon/daemonps"
 
 func (o *smon) orchestrateThawed() {
 	if !o.isConvergedGlobalExpect() {
@@ -23,9 +21,9 @@ func (o *smon) ThawedFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action unfreeze")
 		if err := o.crmUnfreeze(); err != nil {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
+			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
 		} else {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusThawing, newState: statusIdle})
+			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
 		}
 	}()
 	return

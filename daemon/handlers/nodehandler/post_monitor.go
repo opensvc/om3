@@ -8,7 +8,6 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -38,7 +37,7 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	cmd := moncmd.SetNmon{
+	cmd := daemonps.SetNmon{
 		Node: hostname.Hostname(),
 		Monitor: cluster.NodeMonitor{
 			GlobalExpect: payload.GlobalExpect,

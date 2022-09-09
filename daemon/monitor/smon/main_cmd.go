@@ -5,14 +5,14 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/daemonps"
 )
 
 // cmdSvcAggUpdated updateIfChange state global expect from aggregated status
-func (o *smon) cmdSvcAggUpdated(c moncmd.MonSvcAggUpdated) {
+func (o *smon) cmdSvcAggUpdated(c daemonps.MonSvcAggUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := (*c.SrcEv).(type) {
-		case moncmd.InstStatusUpdated:
+		case daemonps.InstStatusUpdated:
 			srcNode := srcCmd.Node
 			if _, ok := o.instStatus[srcNode]; ok {
 				instStatus := srcCmd.Status
@@ -21,7 +21,7 @@ func (o *smon) cmdSvcAggUpdated(c moncmd.MonSvcAggUpdated) {
 					o.instStatus[srcNode] = instStatus
 				}
 			}
-		case moncmd.CfgUpdated:
+		case daemonps.CfgUpdated:
 			if srcCmd.Node == o.localhost {
 				cfgNodes := make(map[string]struct{})
 				for _, node := range srcCmd.Config.Scope {
@@ -83,7 +83,7 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 	}
 }
 
-func (o *smon) cmdSmonUpdated(c moncmd.SmonUpdated) {
+func (o *smon) cmdSmonUpdated(c daemonps.SmonUpdated) {
 	node := c.Node
 	if node == o.localhost {
 		return

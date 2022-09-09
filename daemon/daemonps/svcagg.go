@@ -3,15 +3,14 @@ package daemonps
 import (
 	"github.com/google/uuid"
 
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func PubSvcAggDelete(bus *pubsub.Bus, id string, v moncmd.MonSvcAggDeleted) {
+func PubSvcAggDelete(bus *pubsub.Bus, id string, v MonSvcAggDeleted) {
 	Pub(bus, NsAgg, pubsub.OpDelete, id, v)
 }
 
-func PubSvcAggUpdate(bus *pubsub.Bus, id string, v moncmd.MonSvcAggUpdated) {
+func PubSvcAggUpdate(bus *pubsub.Bus, id string, v MonSvcAggUpdated) {
 	Pub(bus, NsAgg, pubsub.OpUpdate, id, v)
 }
 

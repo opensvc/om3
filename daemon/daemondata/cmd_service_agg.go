@@ -9,7 +9,6 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -23,7 +22,7 @@ type (
 		err   chan<- error
 		path  path.T
 		value object.AggregatedStatus
-		srcEv *moncmd.T
+		srcEv *daemonps.Msg
 	}
 )
 
@@ -57,7 +56,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	daemonps.PubSvcAggDelete(d.bus, s, moncmd.MonSvcAggDeleted{
+	daemonps.PubSvcAggDelete(d.bus, s, daemonps.MonSvcAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -89,7 +88,7 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 			Data: &data,
 		})
 	}
-	daemonps.PubSvcAggUpdate(d.bus, s, moncmd.MonSvcAggUpdated{
+	daemonps.PubSvcAggUpdate(d.bus, s, daemonps.MonSvcAggUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		SvcAgg: o.value,

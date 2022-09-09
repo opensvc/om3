@@ -3,15 +3,14 @@ package daemonps
 import (
 	"github.com/google/uuid"
 
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func PubNmonDelete(bus *pubsub.Bus, v moncmd.NmonDeleted) {
+func PubNmonDelete(bus *pubsub.Bus, v NmonDeleted) {
 	Pub(bus, NsNmon, pubsub.OpDelete, "", v)
 }
 
-func PubNmonUpdated(bus *pubsub.Bus, v moncmd.NmonUpdated) {
+func PubNmonUpdated(bus *pubsub.Bus, v NmonUpdated) {
 	Pub(bus, NsNmon, pubsub.OpUpdate, "", v)
 }
 
@@ -19,7 +18,7 @@ func SubNmon(bus *pubsub.Bus, op uint, name string, fn func(i interface{})) uuid
 	return Sub(bus, NsNmon, op, name, "", fn)
 }
 
-func PubSetNmon(bus *pubsub.Bus, v moncmd.SetNmon) {
+func PubSetNmon(bus *pubsub.Bus, v SetNmon) {
 	Pub(bus, NsSetNmon, pubsub.OpUpdate, "", v)
 }
 

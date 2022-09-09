@@ -2,7 +2,6 @@ package daemonps
 
 import (
 	"github.com/google/uuid"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -10,6 +9,6 @@ func SubFrozen(bus *pubsub.Bus, name string, matching string, fn func(i interfac
 	return Sub(bus, NsFrozen, pubsub.OpUpdate, name, matching, fn)
 }
 
-func PubFrozen(bus *pubsub.Bus, id string, v moncmd.Frozen) {
+func PubFrozen(bus *pubsub.Bus, id string, v Frozen) {
 	Pub(bus, NsFrozen, pubsub.OpUpdate, id, v)
 }

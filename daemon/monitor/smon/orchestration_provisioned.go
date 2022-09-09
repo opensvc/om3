@@ -3,7 +3,7 @@ package smon
 import (
 	"time"
 
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/daemonps"
 )
 
 func (o *smon) orchestrateProvisioned() {
@@ -29,9 +29,9 @@ func (o *smon) provisionedFromIdle() {
 		go func() {
 			o.log.Info().Msg("run action provision leader for provisioned global expect")
 			if err := o.crmProvisionLeader(); err != nil {
-				o.cmdC <- moncmd.New(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
+				o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
 			} else {
-				o.cmdC <- moncmd.New(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
+				o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
 				// TODO remove o.crmStatus() when updated is valid
 				go func() {
 					time.Sleep(time.Second)
@@ -59,9 +59,9 @@ func (o *smon) provisionedFromWaitLeader() {
 	go func() {
 		o.log.Info().Msg("run action provision non leader for provisioned global expect")
 		if err := o.crmProvision(); err != nil {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
+			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
 		} else {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
+			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
 			// TODO remove o.crmStatus() when updated is valid
 			go func() {
 				time.Sleep(time.Second)

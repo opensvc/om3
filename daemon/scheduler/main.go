@@ -13,7 +13,6 @@ import (
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -232,11 +231,11 @@ func (t *T) loop() {
 				c.schedule.Last = c.begin
 				// reschedule
 				t.createJob(c.schedule)
-			case moncmd.InstStatusDeleted:
+			case daemonps.InstStatusDeleted:
 				t.onInstStatusDeleted(c)
-			case moncmd.InstStatusUpdated:
+			case daemonps.InstStatusUpdated:
 				t.onInstStatusUpdated(c)
-			case moncmd.NmonUpdated:
+			case daemonps.NmonUpdated:
 				t.onNmonUpdated(c)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
@@ -247,7 +246,7 @@ func (t *T) loop() {
 	}
 }
 
-func (t *T) onInstStatusDeleted(c moncmd.InstStatusDeleted) {
+func (t *T) onInstStatusDeleted(c daemonps.InstStatusDeleted) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -256,7 +255,7 @@ func (t *T) onInstStatusDeleted(c moncmd.InstStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
-func (t *T) onInstStatusUpdated(c moncmd.InstStatusUpdated) {
+func (t *T) onInstStatusUpdated(c daemonps.InstStatusUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -272,7 +271,7 @@ func (t *T) onInstStatusUpdated(c moncmd.InstStatusUpdated) {
 	}
 }
 
-func (t *T) onNmonUpdated(c moncmd.NmonUpdated) {
+func (t *T) onNmonUpdated(c daemonps.NmonUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return

@@ -1,8 +1,6 @@
 package smon
 
-import (
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
-)
+import "opensvc.com/opensvc/daemon/daemonps"
 
 func (o *smon) orchestrateUnProvisioned() {
 	if !o.isConvergedGlobalExpect() {
@@ -24,9 +22,9 @@ func (o *smon) UnProvisionedFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action unprovision")
 		if err := o.crmUnprovisionLeader(); err != nil {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisionFailed})
+			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisionFailed})
 		} else {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusUnProvisioning, newState: statusIdle})
+			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusIdle})
 		}
 	}()
 	return

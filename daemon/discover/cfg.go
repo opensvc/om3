@@ -11,7 +11,6 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonps"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
@@ -44,20 +43,20 @@ func (d *discover) cfg() {
 			return
 		case i := <-d.cfgCmdC:
 			switch c := (*i).(type) {
-			case moncmd.CfgFileUpdated:
+			case daemonps.CfgFileUpdated:
 				d.onCfgFileUpdated(c)
-			case moncmd.CfgUpdated:
+			case daemonps.CfgUpdated:
 				if c.Node == d.localhost {
 					continue
 				}
 				d.cmdRemoteCfgUpdated(c.Path, c.Node, c.Config)
-			case moncmd.MonCfgDone:
+			case daemonps.MonCfgDone:
 				d.cmdMonCfgDone(c)
-			case moncmd.CfgDeleted:
+			case daemonps.CfgDeleted:
 				if c.Node != "" && c.Node != d.localhost {
 					d.cmdRemoteCfgDeleted(c.Path, c.Node)
 				}
-			case moncmd.RemoteFileConfig:
+			case daemonps.RemoteFileConfig:
 				d.cmdRemoteCfgFetched(c)
 			default:
 				d.log.Error().Interface("cmd", i).Msg("unknown cmd")
@@ -69,11 +68,11 @@ func (d *discover) cfg() {
 func (d *discover) onEvCfg(i interface{}) {
 	select {
 	case <-d.ctx.Done():
-	case d.cfgCmdC <- moncmd.New(i):
+	case d.cfgCmdC <- daemonps.NewMsg(i):
 	}
 }
 
-func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
+func (d *discover) onCfgFileUpdated(c daemonps.CfgFileUpdated) {
 	s := c.Path.String()
 	if s == "" {
 		// node config
@@ -93,7 +92,7 @@ func (d *discover) onCfgFileUpdated(c moncmd.CfgFileUpdated) {
 }
 
 // cmdLocalCfgDeleted starts a new instcfg when a local configuration file exists
-func (d *discover) cmdMonCfgDone(c moncmd.MonCfgDone) {
+func (d *discover) cmdMonCfgDone(c daemonps.MonCfgDone) {
 	filename := c.Filename
 	p := c.Path
 	s := p.String()
@@ -151,7 +150,7 @@ func (d *discover) cmdRemoteCfgDeleted(p path.T, node string) {
 	}
 }
 
-func (d *discover) cmdRemoteCfgFetched(c moncmd.RemoteFileConfig) {
+func (d *discover) cmdRemoteCfgFetched(c daemonps.RemoteFileConfig) {
 	defer d.cancelFetcher(c.Path.String())
 	select {
 	case <-c.Ctx.Done():

@@ -6,7 +6,6 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -45,7 +44,7 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubCfgDelete(d.bus, s, moncmd.CfgDeleted{
+	daemonps.PubCfgDelete(d.bus, s, daemonps.CfgDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -64,7 +63,7 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubCfgUpdate(d.bus, s, moncmd.CfgUpdated{
+	daemonps.PubCfgUpdate(d.bus, s, daemonps.CfgUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Config: o.value,
