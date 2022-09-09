@@ -42,7 +42,7 @@ func User(r *http.Request) auth.Info {
 // MiddleWare breaks the chain if none of the configured authentication strategy succeeds.
 // On success, the user information is added to the request context, so it is available
 // to handlers via User().
-func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
+func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, user, err := strategies.AuthenticateRequest(r)
@@ -59,7 +59,7 @@ func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
 	}
 }
 
-func validateNode(ctx context.Context, r *http.Request, username, password string) (auth.Info, error) {
+func validateNode(_ context.Context, _ *http.Request, username, password string) (auth.Info, error) {
 	if username == "" {
 		return nil, errors.Errorf("empty user")
 	}
@@ -79,7 +79,7 @@ func validateNode(ctx context.Context, r *http.Request, username, password strin
 	return info, nil
 }
 
-func validateUser(ctx context.Context, r *http.Request, username, password string) (auth.Info, error) {
+func validateUser(_ context.Context, _ *http.Request, username, password string) (auth.Info, error) {
 	usrPath := path.T{
 		Name:      username,
 		Namespace: "system",
@@ -96,12 +96,12 @@ func validateUser(ctx context.Context, r *http.Request, username, password strin
 	if string(storedPassword) != password {
 		return nil, errors.Errorf("wrong password")
 	}
-	grants := NewGrants(usr.Config().GetStrings(key.T{"DEFAULT", "grant"})...)
+	grants := NewGrants(usr.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"})...)
 	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
 	return info, nil
 }
 
-func (t uxStrategy) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
+func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Info, error) {
 	addr := daemonctx.ListenAddr(ctx)
 	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return nil, errors.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
