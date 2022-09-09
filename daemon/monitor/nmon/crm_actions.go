@@ -45,11 +45,11 @@ func (o *nmon) crmAction(cmdArgs ...string) error {
 		command.WithEnv(cmdEnv),
 		command.WithLogger(&o.log),
 	)
-	o.log.Debug().Msgf("-> exec %s %s", cmdPath, cmdArgs)
+	o.log.Debug().Msgf("-> exec %s %s", cmdPath, cmd)
 	if err := cmd.Run(); err != nil {
-		o.log.Error().Err(err).Msgf("failed %s", cmdArgs)
+		o.log.Error().Err(err).Msgf("failed %s", cmd)
 		return err
 	}
-	o.log.Debug().Msgf("<- exec %s %s", cmdPath, cmdArgs)
+	o.log.Debug().Msgf("<- exec %s %s", cmdPath, cmd)
 	return nil
 }

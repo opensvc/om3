@@ -14,7 +14,7 @@ import (
 
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemondiscover"
+	"opensvc.com/opensvc/daemon/discover"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/listener"
@@ -151,13 +151,13 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := nmon.Start(t.ctx); err != nil {
 		return err
 	}
-	cancelDaemonDiscover, err := daemondiscover.Start(t.ctx)
+	cancelDiscover, err := discover.Start(t.ctx)
 	if err != nil {
 		return err
 	}
 	t.cancelFuncs = append(t.cancelFuncs, func() {
 		t.log.Debug().Msg("stop daemon discover")
-		cancelDaemonDiscover()
+		cancelDiscover()
 		t.log.Debug().Msg("stopped daemon discover")
 	})
 	return nil

@@ -285,8 +285,8 @@ func (t *T) onNmonUpdated(c moncmd.NmonUpdated) {
 		t.enabled = false
 	case !incompatible && !t.enabled:
 		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.Status)
-		t.scheduleAll()
 		t.enabled = true
+		t.scheduleAll()
 	}
 }
 

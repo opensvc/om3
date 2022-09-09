@@ -12,6 +12,8 @@ import (
 const (
 	NsAll = ps.NsAll + iota
 	NsEvent
+	NsFrozen
+	NsFrozenFile
 	NsCfgFile
 	NsCfg
 	NsAgg

@@ -1,4 +1,4 @@
-package daemondiscover
+package discover
 
 import (
 	"context"
@@ -62,6 +62,17 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		const createDeleteMask = fsnotify.Create | fsnotify.Remove
 		const needReAddMask = fsnotify.Remove | fsnotify.Rename
 		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+
+		// Add directory watch for:
+		//  var/node/
+		varNodeDir := filepath.Join(rawconfig.Paths.Var, "node")
+		nodeFrozenFile := filepath.Join(varNodeDir, "frozen")
+		if err := d.fsWatcher.Add(varNodeDir); err != nil {
+			log.Error().Err(err).Msgf("add dir watch %s", varNodeDir)
+		} else {
+			log.Info().Msgf("add dir watch %s", varNodeDir)
+		}
+
 		//
 		// Add directory watch for:
 		//  etc/
@@ -94,7 +105,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					)
 					if filename == nodeConf {
 						// pass
-					} else if p, err = filenameToPath(filename); err != nil {
+					} else if p, err = cfgFilenameToPath(filename); err != nil {
 						log.Warn().Err(err).Msgf("do not watch invalid config file %s", filename)
 						return nil
 					}
@@ -124,6 +135,38 @@ func (d *discover) fsWatcherStart() (func(), error) {
 				log.Debug().Msgf("event: %s", event)
 				filename := event.Name
 				switch {
+				case strings.HasSuffix(filename, "frozen"):
+					var (
+						p   path.T
+						err error
+					)
+					if filename == nodeFrozenFile {
+						// pass
+					} else if p, err = frozenFilenameToPath(filename); err != nil {
+						log.Warn().Err(err).Msgf("%s", filename)
+						continue
+					}
+					switch {
+					case event.Op&fsnotify.Remove != 0:
+						log.Debug().Msgf("detect removed file %s", filename)
+						daemonps.PubFrozenFileRemove(bus, p.String(), moncmd.FrozenFileRemoved{Path: p, Filename: filename})
+					case event.Op&updateMask != 0:
+						if event.Op&needReAddMask != 0 {
+							time.Sleep(delayExistAfterRemove)
+							if !file.Exists(filename) {
+								log.Info().Msg("file removed")
+								return
+							} else {
+								if err := watcher.Add(filename); err != nil {
+									log.Error().Err(err).Msgf("re-add file watch %s", filename)
+								} else {
+									log.Debug().Msgf("re-add file watch %s", filename)
+								}
+							}
+						}
+						log.Debug().Msgf("detect updated file %s", filename)
+						daemonps.PubFrozenFileUpdate(bus, p.String(), moncmd.FrozenFileUpdated{Path: p, Filename: filename})
+					}
 				case strings.HasSuffix(filename, ".conf"):
 					var (
 						p   path.T
@@ -131,7 +174,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					)
 					if filename == nodeConf {
 						rawconfig.LoadSections()
-					} else if p, err = filenameToPath(filename); err != nil {
+					} else if p, err = cfgFilenameToPath(filename); err != nil {
 						log.Warn().Err(err).Msgf("%s", filename)
 						continue
 					}
@@ -164,10 +207,18 @@ func (d *discover) fsWatcherStart() (func(), error) {
 	return stop, nil
 }
 
-func filenameToPath(filename string) (path.T, error) {
-	svcName := strings.TrimPrefix(filename, rawconfig.Paths.Etc+"/")
+func cfgFilenameToPath(filename string) (path.T, error) {
+	return filenameToPath(filename, rawconfig.Paths.Etc, ".conf")
+}
+
+func frozenFilenameToPath(filename string) (path.T, error) {
+	return filenameToPath(filename, rawconfig.Paths.Var, "")
+}
+
+func filenameToPath(filename, prefix, suffix string) (path.T, error) {
+	svcName := strings.TrimPrefix(filename, prefix+"/")
 	svcName = strings.TrimPrefix(svcName, "namespaces/")
-	svcName = strings.TrimSuffix(svcName, ".conf")
+	svcName = strings.TrimSuffix(svcName, suffix)
 	if len(svcName) == 0 {
 		return path.T{}, errors.New("skipped null filename")
 	}

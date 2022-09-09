@@ -30,3 +30,15 @@ func PubCfgFileUpdate(bus *pubsub.Bus, id string, v moncmd.CfgFileUpdated) {
 func SubCfgFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
 	return Sub(bus, NsCfgFile, op, name, matching, fn)
 }
+
+func PubFrozenFileRemove(bus *pubsub.Bus, id string, v moncmd.FrozenFileRemoved) {
+	Pub(bus, NsFrozenFile, pubsub.OpDelete, id, v)
+}
+
+func PubFrozenFileUpdate(bus *pubsub.Bus, id string, v moncmd.FrozenFileUpdated) {
+	Pub(bus, NsFrozenFile, pubsub.OpUpdate, id, v)
+}
+
+func SubFrozenFile(bus *pubsub.Bus, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
+	return Sub(bus, NsFrozenFile, op, name, matching, fn)
+}

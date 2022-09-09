@@ -6,7 +6,6 @@ func (o *nmon) orchestrate() {
 		// no expected status to reach
 		return
 	}
-
 	switch o.state.GlobalExpect {
 	case globalExpectFrozen:
 		o.orchestrateFrozen()

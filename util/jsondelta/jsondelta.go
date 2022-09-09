@@ -9,7 +9,7 @@ import (
 
 type (
 	// OperationPath is a list of keys and indices like ["a", "b", 1]
-	OperationPath []interface{}
+	OperationPath []any
 
 	// Operation describes a dataset change
 	Operation struct {
@@ -88,7 +88,7 @@ func NewOperation(b *json.RawMessage) Operation {
 }
 
 // NewOperationPath allocates and initializes an OperationPath
-func NewOperationPath(data []interface{}) OperationPath {
+func NewOperationPath(data []any) OperationPath {
 	p := OperationPath{}
 	for _, v := range data {
 		p = append(p, v)
@@ -97,7 +97,7 @@ func NewOperationPath(data []interface{}) OperationPath {
 }
 
 // NewOptValue allocates and initializes an OpValue
-func NewOptValue(v interface{}) *json.RawMessage {
+func NewOptValue(v any) *json.RawMessage {
 	var b json.RawMessage
 	b, _ = json.Marshal(v)
 	return &b
@@ -127,9 +127,9 @@ func (o Operation) value() *lazyNode {
 }
 
 // ValueInterface decodes the operation value into an interface.
-func (o Operation) ValueInterface() (interface{}, error) {
+func (o Operation) ValueInterface() (any, error) {
 	if obj := o.OpValue; obj != nil {
-		var v interface{}
+		var v any
 		err := json.Unmarshal(*obj, &v)
 		if err != nil {
 			return nil, err
