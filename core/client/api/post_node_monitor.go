@@ -9,6 +9,7 @@ import (
 type PostNodeMonitor struct {
 	Base
 	GlobalExpect string `json:"global_expect"`
+	Status       string `json:"status"`
 }
 
 // NewPostNodeMonitor allocates a PostNodeMonitor struct and sets

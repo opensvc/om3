@@ -51,7 +51,6 @@ type (
 
 		scopeNodes []string
 		nmons      map[string]cluster.NodeMonitor
-		nodeStatus map[string]*cluster.NodeStatus
 
 		cancelReady context.CancelFunc
 		localhost   string
@@ -115,7 +114,6 @@ func Start(parent context.Context) error {
 		localhost:     hostname.Hostname(),
 		change:        true,
 		nmons:         make(map[string]cluster.NodeMonitor),
-		nodeStatus:    make(map[string]*cluster.NodeStatus),
 	}
 
 	go o.worker()
@@ -128,13 +126,12 @@ func (o *nmon) worker() {
 
 	bus := pubsub.BusFromContext(o.ctx)
 	defer ps.UnSub(bus, ps.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv))
+	defer ps.UnSub(bus, ps.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv))
+	defer ps.UnSub(bus, ps.SubSetNmon(bus, "nmon setnmon", o.onEv))
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for _, node := range initialNodes {
 		o.nmons[node] = daemondata.GetNmon(o.dataCmdC, node)
-		if d := daemondata.GetNodeStatus(o.dataCmdC, node); d != nil {
-			o.nodeStatus[node] = d
-		}
 	}
 	o.updateIfChange()
 	defer o.delete()
@@ -151,8 +148,10 @@ func (o *nmon) worker() {
 				o.onSetNmonCmd(c)
 			case moncmd.NmonUpdated:
 				o.onNmonUpdated(c)
+			case moncmd.NmonDeleted:
+				o.onNmonDeleted(c)
 			case cmdOrchestrate:
-				o.needOrchestrate(c)
+				o.onOrchestrate(c)
 			}
 		}
 	}

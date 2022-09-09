@@ -19,10 +19,10 @@ func SubNmon(bus *pubsub.Bus, op uint, name string, fn func(i interface{})) uuid
 	return Sub(bus, NsNmon, op, name, "", fn)
 }
 
-func PubSetNmonUpdated(bus *pubsub.Bus, v moncmd.SetNmon) {
+func PubSetNmon(bus *pubsub.Bus, v moncmd.SetNmon) {
 	Pub(bus, NsSetNmon, pubsub.OpUpdate, "", v)
 }
 
-func SubSetNmon(bus *pubsub.Bus, op uint, name string, fn func(i interface{})) uuid.UUID {
-	return Sub(bus, NsSetNmon, op, name, "", fn)
+func SubSetNmon(bus *pubsub.Bus, name string, fn func(i interface{})) uuid.UUID {
+	return Sub(bus, NsSetNmon, pubsub.OpUpdate, name, "", fn)
 }
