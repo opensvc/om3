@@ -1,5 +1,5 @@
 /*
-Package httpmux provides http mux
+Package routehttp provides http mux
 
 It defines routing for Opensvc listener daemons
 */
@@ -98,7 +98,7 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	}
 }
 
-func logRequestMiddleWare(parent context.Context) func(http.Handler) http.Handler {
+func logRequestMiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user := auth.User(r).GetUserName()
