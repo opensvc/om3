@@ -4,11 +4,13 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/shaj13/libcache"
 	_ "github.com/shaj13/libcache/fifo"
+
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -31,7 +33,7 @@ var (
 	cache      libcache.Cache
 )
 
-// User returns the logged in user information stored in the request context.
+// User returns the logged-in user information stored in the request context.
 // This func hides the go-guardian pkg from the handlers.
 func User(r *http.Request) auth.Info {
 	return auth.User(r)
@@ -50,7 +52,7 @@ func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
 				http.Error(w, http.StatusText(code), code)
 				return
 			}
-			log.Logger.Info().Msgf("user %s authenticated", user.GetUserName())
+			log.Logger.Debug().Msgf("user %s authenticated", user.GetUserName())
 			r = auth.RequestWithUser(user, r)
 			next.ServeHTTP(w, r)
 		})
@@ -58,7 +60,14 @@ func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
 }
 
 func validateNode(ctx context.Context, r *http.Request, username, password string) (auth.Info, error) {
-	storedPassword := rawconfig.ClusterSection().Secret
+	if username == "" {
+		return nil, errors.Errorf("empty user")
+	}
+	clusterSection := rawconfig.ClusterSection()
+	if !strings.Contains(" "+clusterSection.Nodes+" ", username) {
+		return nil, errors.Errorf("user %s is not a cluster node", username)
+	}
+	storedPassword := clusterSection.Secret
 	if storedPassword == "" {
 		return nil, errors.Errorf("no cluster.secret set")
 	}
@@ -66,7 +75,7 @@ func validateNode(ctx context.Context, r *http.Request, username, password strin
 		return nil, errors.Errorf("wrong cluster.secret")
 	}
 	grants := NewGrants("root")
-	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
+	info := auth.NewUserInfo("node-"+username, "", nil, grants.Extensions())
 	return info, nil
 }
 
