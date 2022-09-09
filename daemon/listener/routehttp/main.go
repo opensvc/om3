@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/shaj13/go-guardian/v2/auth"
 
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
@@ -33,11 +34,12 @@ type (
 func New(ctx context.Context) *T {
 	t := &T{}
 	mux := chi.NewRouter()
+	mux.Use(logMiddleWare(ctx))
 	mux.Use(listenAddrMiddleWare(ctx))
 	mux.Use(daemonauth.MiddleWare(ctx))
+	mux.Use(logRequestMiddleWare(ctx))
 	mux.Use(daemonMiddleWare(ctx))
 	mux.Use(daemondataMiddleWare(ctx))
-	mux.Use(logMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
 	mux.Get("/auth/token", daemonauth.GetToken)
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
@@ -89,8 +91,22 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 			log := daemonlogctx.Logger(parent)
 			ctx := daemonlogctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
 			ctx = daemonctx.WithUuid(ctx, reqUuid)
-			log.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func logRequestMiddleWare(parent context.Context) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := auth.User(r).GetUserName()
+			log := daemonlogctx.Logger(r.Context())
+			if user != "" {
+				log = log.With().Str("user", user).Logger()
+				r = r.WithContext(daemonlogctx.WithLogger(r.Context(), log))
+			}
+			log.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("request")
+			next.ServeHTTP(w, r)
 		})
 	}
 }
