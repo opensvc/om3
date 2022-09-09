@@ -88,6 +88,7 @@ func fetchFromApi(p path.T, node string) (b []byte, updated time.Time, err error
 	cli, err = client.New(
 		client.WithURL(daemonenv.UrlHttpNode(node)),
 		client.WithPassword(rawconfig.ClusterSection().Secret),
+		client.WithUsername(hostname.Hostname()),
 		client.WithCertificate(daemonenv.CertFile()),
 	)
 	if err != nil {

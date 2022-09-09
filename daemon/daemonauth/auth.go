@@ -4,11 +4,13 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/shaj13/libcache"
 	_ "github.com/shaj13/libcache/fifo"
+
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -31,7 +33,7 @@ var (
 	cache      libcache.Cache
 )
 
-// User returns the logged in user information stored in the request context.
+// User returns the logged-in user information stored in the request context.
 // This func hides the go-guardian pkg from the handlers.
 func User(r *http.Request) auth.Info {
 	return auth.User(r)
@@ -40,7 +42,7 @@ func User(r *http.Request) auth.Info {
 // MiddleWare breaks the chain if none of the configured authentication strategy succeeds.
 // On success, the user information is added to the request context, so it is available
 // to handlers via User().
-func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
+func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, user, err := strategies.AuthenticateRequest(r)
@@ -50,15 +52,22 @@ func MiddleWare(ctx context.Context) func(http.Handler) http.Handler {
 				http.Error(w, http.StatusText(code), code)
 				return
 			}
-			log.Logger.Info().Msgf("user %s authenticated", user.GetUserName())
+			log.Logger.Debug().Msgf("user %s authenticated", user.GetUserName())
 			r = auth.RequestWithUser(user, r)
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func validateNode(ctx context.Context, r *http.Request, username, password string) (auth.Info, error) {
-	storedPassword := rawconfig.ClusterSection().Secret
+func validateNode(_ context.Context, _ *http.Request, username, password string) (auth.Info, error) {
+	if username == "" {
+		return nil, errors.Errorf("empty user")
+	}
+	clusterSection := rawconfig.ClusterSection()
+	if !strings.Contains(" "+clusterSection.Nodes+" ", username) {
+		return nil, errors.Errorf("user %s is not a cluster node", username)
+	}
+	storedPassword := clusterSection.Secret
 	if storedPassword == "" {
 		return nil, errors.Errorf("no cluster.secret set")
 	}
@@ -66,11 +75,11 @@ func validateNode(ctx context.Context, r *http.Request, username, password strin
 		return nil, errors.Errorf("wrong cluster.secret")
 	}
 	grants := NewGrants("root")
-	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
+	info := auth.NewUserInfo("node-"+username, "", nil, grants.Extensions())
 	return info, nil
 }
 
-func validateUser(ctx context.Context, r *http.Request, username, password string) (auth.Info, error) {
+func validateUser(_ context.Context, _ *http.Request, username, password string) (auth.Info, error) {
 	usrPath := path.T{
 		Name:      username,
 		Namespace: "system",
@@ -87,12 +96,12 @@ func validateUser(ctx context.Context, r *http.Request, username, password strin
 	if string(storedPassword) != password {
 		return nil, errors.Errorf("wrong password")
 	}
-	grants := NewGrants(usr.Config().GetStrings(key.T{"DEFAULT", "grant"})...)
+	grants := NewGrants(usr.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"})...)
 	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
 	return info, nil
 }
 
-func (t uxStrategy) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
+func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Info, error) {
 	addr := daemonctx.ListenAddr(ctx)
 	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return nil, errors.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
