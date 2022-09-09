@@ -1,4 +1,4 @@
-package daemonps
+package msgbus
 
 import (
 	"time"
@@ -6,26 +6,11 @@ import (
 	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/core/event"
-	ps "opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
-const (
-	NsAll = ps.NsAll + iota
-	NsEvent
-	NsFrozen
-	NsFrozenFile
-	NsCfgFile
-	NsCfg
-	NsAgg
-	NsNmon
-	NsSmon
-	NsSetNmon
-	NsSetSmon
-	NsStatus
-)
-
-func Pub(bus *ps.Bus, ns, op uint, id string, i interface{}) {
-	publication := ps.Publication{
+func Pub(bus *pubsub.Bus, ns, op uint, id string, i any) {
+	publication := pubsub.Publication{
 		Ns:    ns,
 		Op:    op,
 		Id:    id,
@@ -34,8 +19,8 @@ func Pub(bus *ps.Bus, ns, op uint, id string, i interface{}) {
 	bus.Pub(publication)
 }
 
-func Sub(bus *ps.Bus, ns, op uint, name string, matching string, fn func(i interface{})) uuid.UUID {
-	subscription := ps.Subscription{
+func Sub(bus *pubsub.Bus, ns, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	subscription := pubsub.Subscription{
 		Ns:       ns,
 		Op:       op,
 		Matching: matching,
@@ -51,7 +36,7 @@ func Sub(bus *ps.Bus, ns, op uint, name string, matching string, fn func(i inter
 	return bus.Sub(subscription, fn)
 }
 
-func UnSub(bus *ps.Bus, id uuid.UUID) {
+func UnSub(bus *pubsub.Bus, id uuid.UUID) {
 	name := bus.Unsub(id)
 	if name != "" {
 		go PubEvent(bus, event.Event{

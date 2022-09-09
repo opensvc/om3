@@ -4,8 +4,7 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -37,7 +36,7 @@ func (o opDelNmon) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubNmonDelete(d.bus, moncmd.NmonDeleted{
+	msgbus.PubNmonDelete(d.bus, msgbus.NmonDeleted{
 		Node: d.localNode,
 	})
 	select {
@@ -66,7 +65,7 @@ func (o opSetNmon) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubNmonUpdated(d.bus, moncmd.NmonUpdated{
+	msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
 		Node:    d.localNode,
 		Monitor: o.value,
 	})

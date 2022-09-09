@@ -3,8 +3,8 @@ package discover
 import (
 	"time"
 
-	ps "opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
+	ps "opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/monitor/svcagg"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -34,9 +34,9 @@ func (d *discover) agg() {
 			return
 		case i := <-d.svcaggCmdC:
 			switch c := (*i).(type) {
-			case moncmd.MonSvcAggDone:
+			case msgbus.MonSvcAggDone:
 				delete(d.svcAgg, c.Path.String())
-			case moncmd.CfgUpdated:
+			case msgbus.CfgUpdated:
 				s := c.Path.String()
 				if _, ok := d.svcAgg[s]; !ok {
 					log.Info().Msgf("discover new object %s", s)
@@ -56,6 +56,6 @@ func (d *discover) agg() {
 func (d *discover) onEvAgg(i interface{}) {
 	select {
 	case <-d.ctx.Done():
-	case d.svcaggCmdC <- moncmd.New(i):
+	case d.svcaggCmdC <- msgbus.NewMsg(i):
 	}
 }

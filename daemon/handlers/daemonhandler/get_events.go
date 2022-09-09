@@ -15,7 +15,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -168,8 +168,8 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := daemonps.SubEvent(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
-	defer daemonps.UnSubEvent(bus, subId)
+	subId := msgbus.SubEvent(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
+	defer msgbus.UnSubEvent(bus, subId)
 	go func() {
 		for {
 			select {

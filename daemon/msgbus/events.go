@@ -1,5 +1,5 @@
-// Package daemonps define pub-sub namespaces for daemon
-package daemonps
+// Package msgbus define pub-sub namespaces for daemon
+package msgbus
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ func PubEvent(bus *pubsub.Bus, e event.Event) {
 
 // SubEvent subscribes on namespace NsEvent
 func SubEvent(bus *pubsub.Bus, name string, fn func(event.Event)) uuid.UUID {
-	f := func(i interface{}) {
+	f := func(i any) {
 		if i == nil {
 			// happens after pubsub queue is closed (on Unsub)
 			return

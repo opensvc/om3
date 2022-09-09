@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 )
 
-func (o *nmon) onSetNmonCmd(c moncmd.SetNmon) {
+func (o *nmon) onSetNmonCmd(c msgbus.SetNmon) {
 	strVal := c.Monitor.GlobalExpect
 	if strVal == statusIdle {
 		strVal = "unset"
@@ -47,16 +47,16 @@ func (o *nmon) onSetNmonCmd(c moncmd.SetNmon) {
 	}
 }
 
-func (o *nmon) onFrozenFileRemoved(c moncmd.FrozenFileRemoved) {
+func (o *nmon) onFrozenFileRemoved(c msgbus.FrozenFileRemoved) {
 	daemondata.SetNodeFrozen(o.dataCmdC, time.Time{})
 }
 
-func (o *nmon) onFrozenFileUpdated(c moncmd.FrozenFileUpdated) {
+func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
 	tm := file.ModTime(c.Filename)
 	daemondata.SetNodeFrozen(o.dataCmdC, tm)
 }
 
-func (o *nmon) onNmonDeleted(c moncmd.NmonDeleted) {
+func (o *nmon) onNmonDeleted(c msgbus.NmonDeleted) {
 	o.log.Debug().Msgf("deleted nmon for node %s", c.Node)
 	delete(o.nmons, c.Node)
 	o.convergeGlobalExpectFromRemote()
@@ -65,7 +65,7 @@ func (o *nmon) onNmonDeleted(c moncmd.NmonDeleted) {
 	o.updateIfChange()
 }
 
-func (o *nmon) onNmonUpdated(c moncmd.NmonUpdated) {
+func (o *nmon) onNmonUpdated(c msgbus.NmonUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Monitor.GlobalExpect)
 	o.nmons[c.Node] = c.Monitor
 	o.convergeGlobalExpectFromRemote()

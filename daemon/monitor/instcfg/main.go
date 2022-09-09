@@ -29,8 +29,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/monitor/smon"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -52,7 +51,7 @@ type (
 		forceRefresh bool
 		published    bool
 
-		cmdC     chan *moncmd.T
+		cmdC     chan *msgbus.Msg
 		dataCmdC chan<- interface{}
 	}
 )
@@ -60,13 +59,13 @@ type (
 var (
 	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
 
-	dropCmdTimeout = 100 * time.Millisecond
+	dropMsgTimeout = 100 * time.Millisecond
 
 	configFileCheckError = errors.New("config file check")
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *moncmd.T) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *msgbus.Msg) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -77,7 +76,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
-		cmdC:         make(chan *moncmd.T),
+		cmdC:         make(chan *msgbus.Msg),
 		dataCmdC:     daemondata.BusFromContext(parent),
 		filename:     filename,
 	}
@@ -99,16 +98,16 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 // worker watch for local instCfg config file updates until file is removed
 func (o *T) worker(parent context.Context) {
 	defer o.log.Debug().Msg("done")
-	defer moncmd.DropPendingCmd(o.cmdC, dropCmdTimeout)
+	defer msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(parent)
-	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpUpdate, o.path.String()+" instcfg own CfgFile update", o.path.String(), o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubCfgFile(bus, pubsub.OpDelete, o.path.String()+" instcfg own CfgFile remove", o.path.String(), o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpUpdate, o.path.String()+" instcfg own CfgFile update", o.path.String(), o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpDelete, o.path.String()+" instcfg own CfgFile remove", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
-		defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg cluster Cfg update", clusterId, o.onEv))
+		defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg cluster Cfg update", clusterId, o.onEv))
 	}
 
-	// do once what we do later on moncmd.CfgFileUpdated
+	// do once what we do later on msgbus.CfgFileUpdated
 	if err := o.configFileCheck(); err != nil {
 		return
 	}
@@ -127,10 +126,10 @@ func (o *T) worker(parent context.Context) {
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
-			case moncmd.Exit:
+			case msgbus.Exit:
 				log.Debug().Msg("eat poison pill")
 				return
-			case moncmd.CfgUpdated:
+			case msgbus.CfgUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
 				if c.Node != o.localhost {
 					// only watch local cluster config updates
@@ -140,13 +139,13 @@ func (o *T) worker(parent context.Context) {
 				if err := o.configFileCheck(); err != nil {
 					return
 				}
-			case moncmd.CfgFileUpdated:
+			case msgbus.CfgFileUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
 				if err := o.configFileCheck(); err != nil {
 					o.log.Error().Err(err).Msg("configFileCheck error")
 					return
 				}
-			case moncmd.CfgFileRemoved:
+			case msgbus.CfgFileRemoved:
 				o.log.Debug().Msgf("recv %#v", c)
 				return
 			default:
@@ -158,7 +157,7 @@ func (o *T) worker(parent context.Context) {
 
 func (o *T) onEv(i interface{}) {
 	select {
-	case o.cmdC <- moncmd.New(i):
+	case o.cmdC <- msgbus.NewMsg(i):
 	}
 }
 
@@ -255,8 +254,8 @@ func (o *T) delete() {
 	}
 }
 
-func (o *T) done(parent context.Context, doneChan chan<- *moncmd.T) {
-	op := moncmd.New(moncmd.MonCfgDone{
+func (o *T) done(parent context.Context, doneChan chan<- *msgbus.Msg) {
+	op := msgbus.NewMsg(msgbus.MonCfgDone{
 		Path:     o.path,
 		Filename: o.filename,
 	})

@@ -42,7 +42,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -162,7 +162,7 @@ func (t *T) Start(ctx context.Context) {
 				}
 				var data json.RawMessage
 				data = []byte("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
-				daemonps.PubEvent(bus, event.Event{
+				msgbus.PubEvent(bus, event.Event{
 					Kind: o.Name,
 					ID:   0,
 					Time: time.Now(),

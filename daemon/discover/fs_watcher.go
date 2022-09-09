@@ -13,8 +13,7 @@ import (
 
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -114,7 +113,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					} else {
 						log.Debug().Msgf("add file %s", filename)
 					}
-					daemonps.PubCfgFileUpdate(bus, "fs_watcher emit cfgfile.update", moncmd.CfgFileUpdated{Path: p, Filename: filename})
+					msgbus.PubCfgFileUpdate(bus, "fs_watcher emit cfgfile.update", msgbus.CfgFileUpdated{Path: p, Filename: filename})
 				}
 				return nil
 			},
@@ -149,7 +148,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s", filename)
-						daemonps.PubFrozenFileRemove(bus, p.String(), moncmd.FrozenFileRemoved{Path: p, Filename: filename})
+						msgbus.PubFrozenFileRemove(bus, p.String(), msgbus.FrozenFileRemoved{Path: p, Filename: filename})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
@@ -165,7 +164,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s", filename)
-						daemonps.PubFrozenFileUpdate(bus, p.String(), moncmd.FrozenFileUpdated{Path: p, Filename: filename})
+						msgbus.PubFrozenFileUpdate(bus, p.String(), msgbus.FrozenFileUpdated{Path: p, Filename: filename})
 					}
 				case strings.HasSuffix(filename, ".conf"):
 					var (
@@ -181,7 +180,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s", filename)
-						daemonps.PubCfgFileRemove(bus, p.String(), moncmd.CfgFileRemoved{Path: p, Filename: filename})
+						msgbus.PubCfgFileRemove(bus, p.String(), msgbus.CfgFileRemoved{Path: p, Filename: filename})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
@@ -197,7 +196,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s", filename)
-						daemonps.PubCfgFileUpdate(bus, p.String(), moncmd.CfgFileUpdated{Path: p, Filename: filename})
+						msgbus.PubCfgFileUpdate(bus, p.String(), msgbus.CfgFileUpdated{Path: p, Filename: filename})
 					}
 				}
 

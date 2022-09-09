@@ -7,7 +7,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -40,7 +40,7 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	} else {
 		var eventData json.RawMessage = eventB
 		eventId++
-		daemonps.PubEvent(d.bus, event.Event{
+		msgbus.PubEvent(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

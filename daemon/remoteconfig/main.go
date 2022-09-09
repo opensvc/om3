@@ -13,11 +13,11 @@ import (
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 )
 
-func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
+func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) {
 	id := daemondata.InstanceId(p, node)
 	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "remoteconfig").Str("id", id).Logger()
 	b, updated, err := fetchFromApi(p, node)
@@ -68,7 +68,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *moncmd.T) {
 		return
 	default:
 		err := make(chan error)
-		cmdC <- moncmd.New(moncmd.RemoteFileConfig{
+		cmdC <- msgbus.NewMsg(msgbus.RemoteFileConfig{
 			Path:     p,
 			Node:     node,
 			Filename: f.Name(),

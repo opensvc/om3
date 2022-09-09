@@ -6,9 +6,8 @@ import (
 	"net/http"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -38,7 +37,7 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	cmd := moncmd.SetNmon{
+	cmd := msgbus.SetNmon{
 		Node: hostname.Hostname(),
 		Monitor: cluster.NodeMonitor{
 			GlobalExpect: payload.GlobalExpect,
@@ -46,7 +45,7 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	daemonps.PubSetNmon(bus, cmd)
+	msgbus.PubSetNmon(bus, cmd)
 
 	response := postNodeMonitorResponse{0, "instance monitor pushed pending ops"}
 	b, err := json.Marshal(response)

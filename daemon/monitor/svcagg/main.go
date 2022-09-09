@@ -19,8 +19,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -31,15 +30,15 @@ type (
 		id     string
 		nodes  map[string]struct{}
 
-		cmdC         chan *moncmd.T
-		discoverCmdC chan<- *moncmd.T
+		cmdC         chan *msgbus.Msg
+		discoverCmdC chan<- *msgbus.Msg
 		dataCmdC     chan<- interface{}
 
 		// instance status map for nodes used to compute AggregatedStatus
 		instStatus map[string]instance.Status
 
 		// srcEvent is the source event that create svcAggStatus update
-		srcEvent *moncmd.T
+		srcEvent *msgbus.Msg
 
 		ctx context.Context
 		log zerolog.Logger
@@ -47,13 +46,13 @@ type (
 )
 
 // Start launch goroutine svcAggStatus worker for a service
-func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd chan<- *moncmd.T) error {
+func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd chan<- *msgbus.Msg) error {
 	id := p.String()
 	o := &svcAggStatus{
 		status:       object.AggregatedStatus{},
 		path:         p,
 		id:           id,
-		cmdC:         make(chan *moncmd.T),
+		cmdC:         make(chan *msgbus.Msg),
 		discoverCmdC: svcAggDiscoverCmd,
 		dataCmdC:     daemondata.BusFromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
@@ -67,11 +66,11 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 func (o *svcAggStatus) worker(nodes []string) {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
-	defer moncmd.DropPendingCmd(o.cmdC, time.Second)
+	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
 	bus := pubsub.BusFromContext(o.ctx)
-	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
@@ -89,20 +88,20 @@ func (o *svcAggStatus) worker(nodes []string) {
 		case ev := <-o.cmdC:
 			o.srcEvent = nil
 			switch c := (*ev).(type) {
-			case moncmd.CfgUpdated:
+			case msgbus.CfgUpdated:
 				if _, ok := o.instStatus[c.Node]; ok {
 					continue
 				}
 				o.srcEvent = ev
 				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
 				o.updateStatus()
-			case moncmd.CfgDeleted:
+			case msgbus.CfgDeleted:
 				if _, ok := o.instStatus[c.Node]; !ok {
 					continue
 				}
 				delete(o.instStatus, c.Node)
 				o.updateStatus()
-			case moncmd.InstStatusUpdated:
+			case msgbus.InstStatusUpdated:
 				if _, ok := o.instStatus[c.Node]; !ok {
 					o.log.Debug().Msgf("skip instance change from unknown node: %s", c.Node)
 					continue
@@ -118,7 +117,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 }
 
 func (o *svcAggStatus) onEv(i interface{}) {
-	o.cmdC <- moncmd.New(i)
+	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *svcAggStatus) updateStatus() {
@@ -147,7 +146,7 @@ func (o *svcAggStatus) delete() {
 	if err := daemondata.DelServiceAgg(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelServiceAgg")
 	}
-	o.discoverCmdC <- moncmd.New(moncmd.MonSvcAggDone{Path: o.path})
+	o.discoverCmdC <- msgbus.NewMsg(msgbus.MonSvcAggDone{Path: o.path})
 }
 
 func (o *svcAggStatus) update() {

@@ -1,8 +1,6 @@
 package smon
 
-import (
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
-)
+import "opensvc.com/opensvc/daemon/msgbus"
 
 func (o *smon) orchestrateFrozen() {
 	if !o.isConvergedGlobalExpect() {
@@ -23,9 +21,9 @@ func (o *smon) frozenFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action freeze")
 		if err := o.crmFreeze(); err != nil {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
 		} else {
-			o.cmdC <- moncmd.New(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
 		}
 	}()
 	return

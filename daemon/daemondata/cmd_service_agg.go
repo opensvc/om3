@@ -8,8 +8,7 @@ import (
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -23,7 +22,7 @@ type (
 		err   chan<- error
 		path  path.T
 		value object.AggregatedStatus
-		srcEv *moncmd.T
+		srcEv *msgbus.Msg
 	}
 )
 
@@ -49,7 +48,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 		} else {
 			eventId++
 			var data json.RawMessage = eventB
-			daemonps.PubEvent(d.bus, event.Event{
+			msgbus.PubEvent(d.bus, event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
@@ -57,7 +56,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	daemonps.PubSvcAggDelete(d.bus, s, moncmd.MonSvcAggDeleted{
+	msgbus.PubSvcAggDelete(d.bus, s, msgbus.MonSvcAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -82,14 +81,14 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 	} else {
 		eventId++
 		var data json.RawMessage = eventB
-		daemonps.PubEvent(d.bus, event.Event{
+		msgbus.PubEvent(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),
 			Data: &data,
 		})
 	}
-	daemonps.PubSvcAggUpdate(d.bus, s, moncmd.MonSvcAggUpdated{
+	msgbus.PubSvcAggUpdate(d.bus, s, msgbus.MonSvcAggUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		SvcAgg: o.value,

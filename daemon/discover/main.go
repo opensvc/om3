@@ -20,14 +20,14 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
 	discover struct {
-		cfgCmdC    chan *moncmd.T
-		svcaggCmdC chan *moncmd.T
+		cfgCmdC    chan *msgbus.Msg
+		svcaggCmdC chan *msgbus.Msg
 		ctx        context.Context
 		log        zerolog.Logger
 
@@ -70,8 +70,8 @@ func Start(ctx context.Context) (func(), error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
-		cfgCmdC:    make(chan *moncmd.T),
-		svcaggCmdC: make(chan *moncmd.T),
+		cfgCmdC:    make(chan *msgbus.Msg),
+		svcaggCmdC: make(chan *msgbus.Msg),
 		cfgMTime:   make(map[string]time.Time),
 		ctx:        ctx,
 		log:        daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
