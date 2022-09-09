@@ -8,6 +8,22 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/pubsub"
+)
+
+const (
+	NsAll = pubsub.NsAll + iota
+	NsEvent
+	NsFrozen
+	NsFrozenFile
+	NsCfgFile
+	NsCfg
+	NsAgg
+	NsNmon
+	NsSmon
+	NsSetNmon
+	NsSetSmon
+	NsStatus
 )
 
 type (
