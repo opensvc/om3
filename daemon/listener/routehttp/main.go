@@ -88,8 +88,10 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqUuid := uuid.New()
+			addr := daemonctx.ListenAddr(parent)
 			log := daemonlogctx.Logger(parent)
-			ctx := daemonlogctx.WithLogger(r.Context(), log.With().Str("request-uuid", reqUuid.String()).Logger())
+			log = log.With().Str("request-uuid", reqUuid.String()).Str("addr", addr).Logger()
+			ctx := daemonlogctx.WithLogger(r.Context(), log)
 			ctx = daemonctx.WithUuid(ctx, reqUuid)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
