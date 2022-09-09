@@ -5,7 +5,7 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -44,7 +44,7 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubCfgDelete(d.bus, s, daemonps.CfgDeleted{
+	msgbus.PubCfgDelete(d.bus, s, msgbus.CfgDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -63,7 +63,7 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubCfgUpdate(d.bus, s, daemonps.CfgUpdated{
+	msgbus.PubCfgUpdate(d.bus, s, msgbus.CfgUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Config: o.value,

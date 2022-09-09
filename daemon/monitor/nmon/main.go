@@ -29,7 +29,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -41,7 +41,7 @@ type (
 
 		ctx      context.Context
 		cancel   context.CancelFunc
-		cmdC     chan *daemonps.Msg
+		cmdC     chan *msgbus.Msg
 		dataCmdC chan<- any
 		log      zerolog.Logger
 
@@ -107,7 +107,7 @@ func Start(parent context.Context) error {
 		previousState: previousState,
 		ctx:           ctx,
 		cancel:        cancel,
-		cmdC:          make(chan *daemonps.Msg),
+		cmdC:          make(chan *msgbus.Msg),
 		dataCmdC:      daemondata.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
@@ -124,11 +124,11 @@ func (o *nmon) worker() {
 	defer o.log.Debug().Msg("done")
 
 	bus := pubsub.BusFromContext(o.ctx)
-	defer daemonps.UnSub(bus, daemonps.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubSetNmon(bus, "nmon setnmon", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSetNmon(bus, "nmon setnmon", o.onEv))
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for _, node := range initialNodes {
@@ -136,7 +136,7 @@ func (o *nmon) worker() {
 	}
 	o.updateIfChange()
 	defer o.delete()
-	defer daemonps.DropPendingMsg(o.cmdC, time.Second)
+	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
 	o.log.Debug().Msg("started")
 
 	for {
@@ -145,15 +145,15 @@ func (o *nmon) worker() {
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
-			case daemonps.SetNmon:
+			case msgbus.SetNmon:
 				o.onSetNmonCmd(c)
-			case daemonps.NmonUpdated:
+			case msgbus.NmonUpdated:
 				o.onNmonUpdated(c)
-			case daemonps.NmonDeleted:
+			case msgbus.NmonDeleted:
 				o.onNmonDeleted(c)
-			case daemonps.FrozenFileRemoved:
+			case msgbus.FrozenFileRemoved:
 				o.onFrozenFileRemoved(c)
-			case daemonps.FrozenFileUpdated:
+			case msgbus.FrozenFileUpdated:
 				o.onFrozenFileUpdated(c)
 			case cmdOrchestrate:
 				o.onOrchestrate(c)
@@ -163,7 +163,7 @@ func (o *nmon) worker() {
 }
 
 func (o *nmon) onEv(i interface{}) {
-	o.cmdC <- daemonps.NewMsg(i)
+	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *nmon) delete() {

@@ -12,7 +12,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -218,9 +218,9 @@ func (t *T) loop() {
 	}
 	t.databus = daemondata.FromContext(t.ctx)
 	bus := pubsub.BusFromContext(t.ctx)
-	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpUpdate, "scheduler-on-inst-status-update", "", relayEvent))
-	defer daemonps.UnSub(bus, daemonps.SubInstStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
-	defer daemonps.UnSub(bus, daemonps.SubNmon(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpUpdate, "scheduler-on-inst-status-update", "", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
 
 	for {
 		select {
@@ -231,11 +231,11 @@ func (t *T) loop() {
 				c.schedule.Last = c.begin
 				// reschedule
 				t.createJob(c.schedule)
-			case daemonps.InstStatusDeleted:
+			case msgbus.InstStatusDeleted:
 				t.onInstStatusDeleted(c)
-			case daemonps.InstStatusUpdated:
+			case msgbus.InstStatusUpdated:
 				t.onInstStatusUpdated(c)
-			case daemonps.NmonUpdated:
+			case msgbus.NmonUpdated:
 				t.onNmonUpdated(c)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
@@ -246,7 +246,7 @@ func (t *T) loop() {
 	}
 }
 
-func (t *T) onInstStatusDeleted(c daemonps.InstStatusDeleted) {
+func (t *T) onInstStatusDeleted(c msgbus.InstStatusDeleted) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -255,7 +255,7 @@ func (t *T) onInstStatusDeleted(c daemonps.InstStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
-func (t *T) onInstStatusUpdated(c daemonps.InstStatusUpdated) {
+func (t *T) onInstStatusUpdated(c msgbus.InstStatusUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -271,7 +271,7 @@ func (t *T) onInstStatusUpdated(c daemonps.InstStatusUpdated) {
 	}
 }
 
-func (t *T) onNmonUpdated(c daemonps.NmonUpdated) {
+func (t *T) onNmonUpdated(c msgbus.NmonUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return

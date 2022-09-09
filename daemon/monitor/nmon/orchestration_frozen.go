@@ -2,7 +2,7 @@ package nmon
 
 import (
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 func (o *nmon) orchestrateFrozen() {
@@ -24,9 +24,9 @@ func (o *nmon) frozenFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action freeze")
 		if err := o.crmFreeze(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
 		}
 	}()
 	return

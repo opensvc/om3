@@ -30,7 +30,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -44,7 +44,7 @@ type (
 		id       string
 		ctx      context.Context
 		cancel   context.CancelFunc
-		cmdC     chan *daemonps.Msg
+		cmdC     chan *msgbus.Msg
 		dataCmdC chan<- interface{}
 		log      zerolog.Logger
 
@@ -127,7 +127,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		id:            id,
 		ctx:           ctx,
 		cancel:        cancel,
-		cmdC:          make(chan *daemonps.Msg),
+		cmdC:          make(chan *msgbus.Msg),
 		dataCmdC:      daemondata.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
@@ -146,9 +146,9 @@ func (o *smon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
 	bus := pubsub.BusFromContext(o.ctx)
-	defer daemonps.UnSub(bus, daemonps.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
-	defer daemonps.UnSub(bus, daemonps.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
 
 	for _, node := range initialNodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
@@ -156,7 +156,7 @@ func (o *smon) worker(initialNodes []string) {
 	o.updateIfChange()
 	defer o.delete()
 
-	defer daemonps.DropPendingMsg(o.cmdC, time.Second)
+	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
 	go o.crmStatus()
 	o.log.Debug().Msg("started")
 	for {
@@ -165,11 +165,11 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
-			case daemonps.MonSvcAggUpdated:
+			case msgbus.MonSvcAggUpdated:
 				o.cmdSvcAggUpdated(c)
-			case daemonps.SetSmon:
+			case msgbus.SetSmon:
 				o.cmdSetSmonClient(c.Monitor)
-			case daemonps.SmonUpdated:
+			case msgbus.SmonUpdated:
 				o.cmdSmonUpdated(c)
 			case cmdOrchestrate:
 				o.needOrchestrate(c)
@@ -179,7 +179,7 @@ func (o *smon) worker(initialNodes []string) {
 }
 
 func (o *smon) onEv(i interface{}) {
-	o.cmdC <- daemonps.NewMsg(i)
+	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *smon) delete() {

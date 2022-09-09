@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
 )
@@ -25,7 +25,7 @@ func (o opSetNodeFrozen) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubFrozen(d.bus, hostname.Hostname(), daemonps.Frozen{
+	msgbus.PubFrozen(d.bus, hostname.Hostname(), msgbus.Frozen{
 		Node:  hostname.Hostname(),
 		Path:  path.T{},
 		Value: o.value,

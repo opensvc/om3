@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 var (
@@ -45,9 +45,9 @@ func (o *smon) stoppedFromThawed() {
 	go func() {
 		o.log.Info().Msg("run action freeze")
 		if err := o.crmFreeze(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
 		}
 	}()
 }
@@ -67,9 +67,9 @@ func (o *smon) stoppedFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action stop")
 		if err := o.crmStop(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusStopFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusStopFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusIdle})
 		}
 	}()
 }

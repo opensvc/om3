@@ -5,7 +5,7 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -45,7 +45,7 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubInstStatusDelete(d.bus, s, daemonps.InstStatusDeleted{
+	msgbus.PubInstStatusDelete(d.bus, s, msgbus.InstStatusDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -78,7 +78,7 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubInstStatusUpdated(d.bus, s, daemonps.InstStatusUpdated{
+	msgbus.PubInstStatusUpdated(d.bus, s, msgbus.InstStatusUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,

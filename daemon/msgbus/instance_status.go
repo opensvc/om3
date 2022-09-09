@@ -1,4 +1,4 @@
-package daemonps
+package msgbus
 
 import (
 	"github.com/google/uuid"

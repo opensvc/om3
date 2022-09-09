@@ -2,7 +2,7 @@ package nmon
 
 import (
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 func (o *nmon) orchestrateThawed() {
@@ -24,9 +24,9 @@ func (o *nmon) ThawedFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action unfreeze")
 		if err := o.crmUnfreeze(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
 		}
 	}()
 	return

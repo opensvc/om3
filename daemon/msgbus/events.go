@@ -1,5 +1,5 @@
-// Package daemonps define pub-sub namespaces for daemon
-package daemonps
+// Package msgbus define pub-sub namespaces for daemon
+package msgbus
 
 import (
 	"encoding/json"

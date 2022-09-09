@@ -8,7 +8,7 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
@@ -58,7 +58,7 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		Status:              payload.State,
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	daemonps.PubSetSmonUpdated(bus, p.String(), daemonps.SetSmon{
+	msgbus.PubSetSmonUpdated(bus, p.String(), msgbus.SetSmon{
 		Path:    p,
 		Node:    hostname.Hostname(),
 		Monitor: smon,

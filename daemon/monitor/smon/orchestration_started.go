@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 var (
@@ -69,7 +69,7 @@ func (o *smon) startedFromIdle() {
 				return
 			}
 			go func() {
-				o.cmdC <- daemonps.NewMsg(cmdOrchestrate{})
+				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{})
 			}()
 			return
 		}
@@ -82,9 +82,9 @@ func (o *smon) startedFromFrozen() {
 	go func() {
 		o.log.Info().Msg("run action unfreeze")
 		if err := o.crmUnfreeze(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
 		}
 	}()
 }
@@ -119,9 +119,9 @@ func (o *smon) startedFromReady() {
 		go func() {
 			o.log.Info().Msg("run action start")
 			if err := o.crmStart(); err != nil {
-				o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusStarting, newState: statusStartFailed})
+				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStarting, newState: statusStartFailed})
 			} else {
-				o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusStarting, newState: statusIdle})
+				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStarting, newState: statusIdle})
 			}
 		}()
 		return

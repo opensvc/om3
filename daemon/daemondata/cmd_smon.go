@@ -5,7 +5,7 @@ import (
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -36,7 +36,7 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	daemonps.PubSmonDelete(d.bus, s, daemonps.SmonDeleted{
+	msgbus.PubSmonDelete(d.bus, s, msgbus.SmonDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -55,7 +55,7 @@ func (o opSetSmon) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	daemonps.PubSmonUpdated(d.bus, s, daemonps.SmonUpdated{
+	msgbus.PubSmonUpdated(d.bus, s, msgbus.SmonUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,

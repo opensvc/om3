@@ -2,7 +2,7 @@ package smon
 
 import (
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 func (o *smon) orchestratePurged() {
@@ -29,7 +29,7 @@ func (o *smon) purgedFromIdle() {
 		return
 	}
 	go func() {
-		o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusIdle, newState: statusUnProvisioned})
+		o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusIdle, newState: statusUnProvisioned})
 	}()
 	return
 }
@@ -48,9 +48,9 @@ func (o *smon) purgedFromUnProvisioned() {
 	go func() {
 		o.log.Info().Msg("run action delete")
 		if err := o.crmDelete(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusDeleting, newState: statusPurgeFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusDeleting, newState: statusPurgeFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusDeleting, newState: statusDeleted})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusDeleting, newState: statusDeleted})
 		}
 	}()
 	return
@@ -63,9 +63,9 @@ func (o *smon) purgedFromIdleUp() {
 	go func() {
 		o.log.Info().Msg("run action stop")
 		if err := o.crmStop(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusStopFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusStopFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusIdle})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusIdle})
 		}
 	}()
 	return
@@ -78,9 +78,9 @@ func (o *smon) purgedFromIdleProvisioned() {
 	go func() {
 		o.log.Info().Msg("run action unprovision")
 		if err := o.crmUnprovisionLeader(); err != nil {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusPurgeFailed})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusPurgeFailed})
 		} else {
-			o.cmdC <- daemonps.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisioned})
+			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisioned})
 		}
 	}()
 	return

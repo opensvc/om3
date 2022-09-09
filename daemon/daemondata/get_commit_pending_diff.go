@@ -2,10 +2,10 @@ package daemondata
 
 import (
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 )
 
-func (d *data) getCfgDiff() (deletes []daemonps.CfgDeleted, updates []daemonps.CfgUpdated) {
+func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUpdated) {
 	nodes := make(map[string]struct{})
 	for n := range d.pending.Monitor.Nodes {
 		if n == d.localNode {
@@ -31,7 +31,7 @@ func (d *data) getCfgDiff() (deletes []daemonps.CfgDeleted, updates []daemonps.C
 	return
 }
 
-func (d *data) getStatusDiff() (deletes []daemonps.InstStatusDeleted, updates []daemonps.InstStatusUpdated) {
+func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []msgbus.InstStatusUpdated) {
 	nodes := make(map[string]struct{})
 	for n := range d.pending.Monitor.Nodes {
 		if n == d.localNode {
@@ -57,7 +57,7 @@ func (d *data) getStatusDiff() (deletes []daemonps.InstStatusDeleted, updates []
 	return
 }
 
-func (d *data) getSmonDiff() (deletes []daemonps.SmonDeleted, updates []daemonps.SmonUpdated) {
+func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.SmonUpdated) {
 	nodes := make(map[string]struct{})
 	for n := range d.pending.Monitor.Nodes {
 		if n == d.localNode {
@@ -83,9 +83,9 @@ func (d *data) getSmonDiff() (deletes []daemonps.SmonDeleted, updates []daemonps
 	return
 }
 
-func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps.CfgUpdated) {
-	deletes := make([]daemonps.CfgDeleted, 0)
-	updates := make([]daemonps.CfgUpdated, 0)
+func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.CfgUpdated) {
+	deletes := make([]msgbus.CfgDeleted, 0)
+	updates := make([]msgbus.CfgUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
 	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
 	if hasPendingNode && hasCommittedNode {
@@ -96,7 +96,7 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 					if err != nil {
 						continue
 					}
-					updates = append(updates, daemonps.CfgUpdated{
+					updates = append(updates, msgbus.CfgUpdated{
 						Path:   p,
 						Node:   node,
 						Config: *pending.DeepCopy(),
@@ -116,7 +116,7 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 								if err != nil {
 									continue
 								}
-								updates = append(updates, daemonps.CfgUpdated{
+								updates = append(updates, msgbus.CfgUpdated{
 									Path:   p,
 									Node:   node,
 									Config: *pending.DeepCopy(),
@@ -131,7 +131,7 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 				if err != nil {
 					continue
 				}
-				updates = append(updates, daemonps.CfgUpdated{
+				updates = append(updates, msgbus.CfgUpdated{
 					Path:   p,
 					Node:   node,
 					Config: *pending.DeepCopy(),
@@ -144,7 +144,7 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 				if err != nil {
 					continue
 				}
-				deletes = append(deletes, daemonps.CfgDeleted{
+				deletes = append(deletes, msgbus.CfgDeleted{
 					Path: p,
 					Node: node,
 				})
@@ -157,7 +157,7 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 			if err != nil {
 				continue
 			}
-			updates = append(updates, daemonps.CfgUpdated{
+			updates = append(updates, msgbus.CfgUpdated{
 				Path:   p,
 				Node:   node,
 				Config: *cfg.DeepCopy(),
@@ -170,7 +170,7 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 			if err != nil {
 				continue
 			}
-			deletes = append(deletes, daemonps.CfgDeleted{
+			deletes = append(deletes, msgbus.CfgDeleted{
 				Path: p,
 				Node: node,
 			})
@@ -179,9 +179,9 @@ func (d *data) getCfgDiffForNode(node string) ([]daemonps.CfgDeleted, []daemonps
 	return deletes, updates
 }
 
-func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, []daemonps.InstStatusUpdated) {
-	deletes := make([]daemonps.InstStatusDeleted, 0)
-	updates := make([]daemonps.InstStatusUpdated, 0)
+func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []msgbus.InstStatusUpdated) {
+	deletes := make([]msgbus.InstStatusDeleted, 0)
+	updates := make([]msgbus.InstStatusUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
 	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
 	if hasPendingNode && hasCommittedNode {
@@ -192,7 +192,7 @@ func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, 
 					if err != nil {
 						continue
 					}
-					updates = append(updates, daemonps.InstStatusUpdated{
+					updates = append(updates, msgbus.InstStatusUpdated{
 						Path:   p,
 						Node:   node,
 						Status: *pending.DeepCopy(),
@@ -203,7 +203,7 @@ func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, 
 				if err != nil {
 					continue
 				}
-				updates = append(updates, daemonps.InstStatusUpdated{
+				updates = append(updates, msgbus.InstStatusUpdated{
 					Path:   p,
 					Node:   node,
 					Status: *pending.DeepCopy(),
@@ -216,7 +216,7 @@ func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, 
 				if err != nil {
 					continue
 				}
-				deletes = append(deletes, daemonps.InstStatusDeleted{
+				deletes = append(deletes, msgbus.InstStatusDeleted{
 					Path: p,
 					Node: node,
 				})
@@ -229,7 +229,7 @@ func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, 
 			if err != nil {
 				continue
 			}
-			updates = append(updates, daemonps.InstStatusUpdated{
+			updates = append(updates, msgbus.InstStatusUpdated{
 				Path:   p,
 				Node:   node,
 				Status: *cfg.DeepCopy(),
@@ -242,7 +242,7 @@ func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, 
 			if err != nil {
 				continue
 			}
-			deletes = append(deletes, daemonps.InstStatusDeleted{
+			deletes = append(deletes, msgbus.InstStatusDeleted{
 				Path: p,
 				Node: node,
 			})
@@ -251,9 +251,9 @@ func (d *data) getStatusDiffForNode(node string) ([]daemonps.InstStatusDeleted, 
 	return deletes, updates
 }
 
-func (d *data) getSmonDiffForNode(node string) ([]daemonps.SmonDeleted, []daemonps.SmonUpdated) {
-	deletes := make([]daemonps.SmonDeleted, 0)
-	updates := make([]daemonps.SmonUpdated, 0)
+func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.SmonUpdated) {
+	deletes := make([]msgbus.SmonDeleted, 0)
+	updates := make([]msgbus.SmonUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
 	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
 	if hasPendingNode && hasCommittedNode {
@@ -266,7 +266,7 @@ func (d *data) getSmonDiffForNode(node string) ([]daemonps.SmonDeleted, []daemon
 					if err != nil {
 						continue
 					}
-					updates = append(updates, daemonps.SmonUpdated{
+					updates = append(updates, msgbus.SmonUpdated{
 						Path:   p,
 						Node:   node,
 						Status: *pending.DeepCopy(),
@@ -277,7 +277,7 @@ func (d *data) getSmonDiffForNode(node string) ([]daemonps.SmonDeleted, []daemon
 				if err != nil {
 					continue
 				}
-				updates = append(updates, daemonps.SmonUpdated{
+				updates = append(updates, msgbus.SmonUpdated{
 					Path:   p,
 					Node:   node,
 					Status: *pending.DeepCopy(),
@@ -290,7 +290,7 @@ func (d *data) getSmonDiffForNode(node string) ([]daemonps.SmonDeleted, []daemon
 				if err != nil {
 					continue
 				}
-				deletes = append(deletes, daemonps.SmonDeleted{
+				deletes = append(deletes, msgbus.SmonDeleted{
 					Path: p,
 					Node: node,
 				})
@@ -303,7 +303,7 @@ func (d *data) getSmonDiffForNode(node string) ([]daemonps.SmonDeleted, []daemon
 			if err != nil {
 				continue
 			}
-			updates = append(updates, daemonps.SmonUpdated{
+			updates = append(updates, msgbus.SmonUpdated{
 				Path:   p,
 				Node:   node,
 				Status: *cfg.DeepCopy(),
@@ -316,7 +316,7 @@ func (d *data) getSmonDiffForNode(node string) ([]daemonps.SmonDeleted, []daemon
 			if err != nil {
 				continue
 			}
-			deletes = append(deletes, daemonps.SmonDeleted{
+			deletes = append(deletes, msgbus.SmonDeleted{
 				Path: p,
 				Node: node,
 			})

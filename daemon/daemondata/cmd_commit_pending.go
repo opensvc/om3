@@ -8,7 +8,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/daemonps"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -45,22 +45,22 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	d.committed = d.pending.DeepCopy()
 
 	for _, cfgDelete := range cfgDeletes {
-		daemonps.PubCfgDelete(d.bus, cfgDelete.Path.String(), cfgDelete)
+		msgbus.PubCfgDelete(d.bus, cfgDelete.Path.String(), cfgDelete)
 	}
 	for _, cfgUpdates := range cfgUpdates {
-		daemonps.PubCfgUpdate(d.bus, cfgUpdates.Path.String(), cfgUpdates)
+		msgbus.PubCfgUpdate(d.bus, cfgUpdates.Path.String(), cfgUpdates)
 	}
 	for _, w := range statusDeletes {
-		daemonps.PubInstStatusDelete(d.bus, w.Path.String(), w)
+		msgbus.PubInstStatusDelete(d.bus, w.Path.String(), w)
 	}
 	for _, w := range statusUpdates {
-		daemonps.PubInstStatusUpdated(d.bus, w.Path.String(), w)
+		msgbus.PubInstStatusUpdated(d.bus, w.Path.String(), w)
 	}
 	for _, w := range smonDeletes {
-		daemonps.PubSmonDelete(d.bus, w.Path.String(), w)
+		msgbus.PubSmonDelete(d.bus, w.Path.String(), w)
 	}
 	for _, w := range smonUpdates {
-		daemonps.PubSmonUpdated(d.bus, w.Path.String(), w)
+		msgbus.PubSmonUpdated(d.bus, w.Path.String(), w)
 	}
 
 	d.log.Debug().
@@ -175,7 +175,7 @@ func (d *data) eventCommitPendingOps() {
 	} else {
 		eventId++
 		var data json.RawMessage = eventB
-		daemonps.PubEvent(d.bus, event.Event{
+		msgbus.PubEvent(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

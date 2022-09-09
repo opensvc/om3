@@ -1,4 +1,4 @@
-package daemonps
+package msgbus
 
 import (
 	"context"
