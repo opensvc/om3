@@ -2,8 +2,11 @@ package nmon
 
 import (
 	"strings"
+	"time"
 
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/monitor/moncmd"
+	"opensvc.com/opensvc/util/file"
 )
 
 func (o *nmon) onSetNmonCmd(c moncmd.SetNmon) {
@@ -44,8 +47,17 @@ func (o *nmon) onSetNmonCmd(c moncmd.SetNmon) {
 	}
 }
 
+func (o *nmon) onFrozenFileRemoved(c moncmd.FrozenFileRemoved) {
+	daemondata.SetNodeFrozen(o.dataCmdC, time.Time{})
+}
+
+func (o *nmon) onFrozenFileUpdated(c moncmd.FrozenFileUpdated) {
+	tm := file.ModTime(c.Filename)
+	daemondata.SetNodeFrozen(o.dataCmdC, tm)
+}
+
 func (o *nmon) onNmonDeleted(c moncmd.NmonDeleted) {
-	o.log.Debug().Msgf("deleted instance nmon for node %s", c.Node)
+	o.log.Debug().Msgf("deleted nmon for node %s", c.Node)
 	delete(o.nmons, c.Node)
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
@@ -54,7 +66,7 @@ func (o *nmon) onNmonDeleted(c moncmd.NmonDeleted) {
 }
 
 func (o *nmon) onNmonUpdated(c moncmd.NmonUpdated) {
-	o.log.Debug().Msgf("updated instance nmon from node %s  -> %s", c.Node, c.Monitor.GlobalExpect)
+	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Monitor.GlobalExpect)
 	o.nmons[c.Node] = c.Monitor
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()

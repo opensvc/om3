@@ -127,6 +127,8 @@ func (o *nmon) worker() {
 	bus := pubsub.BusFromContext(o.ctx)
 	defer ps.UnSub(bus, ps.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv))
 	defer ps.UnSub(bus, ps.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv))
+	defer ps.UnSub(bus, ps.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv))
+	defer ps.UnSub(bus, ps.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv))
 	defer ps.UnSub(bus, ps.SubSetNmon(bus, "nmon setnmon", o.onEv))
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
@@ -150,6 +152,10 @@ func (o *nmon) worker() {
 				o.onNmonUpdated(c)
 			case moncmd.NmonDeleted:
 				o.onNmonDeleted(c)
+			case moncmd.FrozenFileRemoved:
+				o.onFrozenFileRemoved(c)
+			case moncmd.FrozenFileUpdated:
+				o.onFrozenFileUpdated(c)
 			case cmdOrchestrate:
 				o.onOrchestrate(c)
 			}
