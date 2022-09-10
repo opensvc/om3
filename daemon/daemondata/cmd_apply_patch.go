@@ -135,9 +135,9 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	if gen, ok := o.msg.Gen[d.localNode]; ok {
 		d.mergedOnPeer[o.nodename] = gen
 	}
-	pendingNode.Gen[o.nodename] = pendingNodeGen
-	pendingNode.Gen[d.localNode] = o.msg.Gen[d.localNode]
+	pendingNode.Gen = o.msg.Gen
 	d.pending.Monitor.Nodes[o.nodename] = pendingNode
+	d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = o.msg.Gen[o.nodename]
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).
 		Interface("mergedOnPeer", d.mergedOnPeer).
