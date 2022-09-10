@@ -8,11 +8,13 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/slog"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render"
 )
 
@@ -46,6 +48,7 @@ func (t *NodeLogs) cmd() *cobra.Command {
 func (t *NodeLogs) backlog(node string) (slog.Events, error) {
 	c, err := client.New(
 		client.WithURL(node),
+		client.WithUsername(hostname.Hostname()),
 		client.WithPassword(rawconfig.ClusterSection().Secret),
 	)
 	if err != nil {
@@ -66,6 +69,7 @@ func (t *NodeLogs) backlog(node string) (slog.Events, error) {
 func (t *NodeLogs) stream(node string) {
 	c, err := client.New(
 		client.WithURL(node),
+		client.WithUsername(hostname.Hostname()),
 		client.WithPassword(rawconfig.ClusterSection().Secret),
 	)
 	if err != nil {
