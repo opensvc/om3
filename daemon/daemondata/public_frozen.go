@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// SetNodeFrozen sets committed.Monitor.Node.<localhost>.frozen
+// SetNodeFrozen sets Monitor.Node.<localhost>.frozen
 func SetNodeFrozen(c chan<- interface{}, tm time.Time) error {
 	err := make(chan error)
 	op := opSetNodeFrozen{

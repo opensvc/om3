@@ -7,7 +7,7 @@ import (
 
 // DelSmon
 //
-// committed.Monitor.Node.<localhost>.services.smon.*
+// Monitor.Node.<localhost>.services.smon.*
 func DelSmon(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
 	op := opDelSmon{
@@ -20,7 +20,7 @@ func DelSmon(c chan<- interface{}, p path.T) error {
 
 // SetSmon
 //
-// committed.Monitor.Node.<localhost>.services.smon.*
+// Monitor.Node.<localhost>.services.smon.*
 func SetSmon(c chan<- interface{}, p path.T, v instance.Monitor) error {
 	err := make(chan error)
 	op := opSetSmon{
