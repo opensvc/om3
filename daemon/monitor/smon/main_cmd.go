@@ -97,6 +97,19 @@ func (o *smon) cmdSmonUpdated(c msgbus.SmonUpdated) {
 	o.updateIfChange()
 }
 
+func (o *smon) cmdSmonDeleted(c msgbus.SmonDeleted) {
+	node := c.Node
+	if node == o.localhost {
+		return
+	}
+	o.log.Debug().Msgf("delete remote instance smon from node %s", node)
+	delete(o.instSmon, c.Node)
+	o.convergeGlobalExpectFromRemote()
+	o.updateIfChange()
+	o.orchestrate()
+	o.updateIfChange()
+}
+
 func (o *smon) needOrchestrate(c cmdOrchestrate) {
 	if o.state.Status == c.state {
 		o.change = true
