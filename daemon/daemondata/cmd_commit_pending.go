@@ -65,33 +65,33 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 		if node == d.localNode {
 			continue
 		}
-		if committed, ok := d.committed.Monitor.Nodes[node]; ok {
-			if gen != committed.Gen[node] {
+		if previous, ok := d.previous.Monitor.Nodes[node]; ok {
+			if gen != previous.Gen[node] {
 				if remoteMon, ok := d.pending.Monitor.Nodes[node]; ok {
-					d.log.Debug().Msgf("updated committed for %s gen %d", node, gen)
-					d.committed.Monitor.Nodes[node] = remoteMon.DeepCopy()
+					d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
+					d.previous.Monitor.Nodes[node] = remoteMon.DeepCopy()
 				} else {
-					d.log.Error().Msgf("no pending %s mergedFromPeer %d != commited %d", node, gen, committed.Gen[node])
+					d.log.Error().Msgf("no pending %s mergedFromPeer %d != previous %d", node, gen, previous.Gen[node])
 				}
 			}
 		} else if remoteMon, ok := d.pending.Monitor.Nodes[node]; ok {
-			d.log.Debug().Msgf("updated committed for %s gen %d", node, gen)
-			d.committed.Monitor.Nodes[node] = remoteMon.DeepCopy()
+			d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
+			d.previous.Monitor.Nodes[node] = remoteMon.DeepCopy()
 		} else {
-			d.log.Debug().Msgf("remove committed for %s", node)
-			delete(d.committed.Monitor.Nodes, node)
+			d.log.Debug().Msgf("remove previous for %s", node)
+			delete(d.previous.Monitor.Nodes, node)
 		}
 	}
-	if committed, ok := d.committed.Monitor.Nodes[d.localNode]; ok {
-		if committed.Gen[d.localNode] != d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode] {
-			d.log.Debug().Msgf("updated local committed for %s gen %d", d.localNode, d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode])
+	if previous, ok := d.previous.Monitor.Nodes[d.localNode]; ok {
+		if previous.Gen[d.localNode] != d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode] {
+			d.log.Debug().Msgf("updated local previous for %s gen %d", d.localNode, d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode])
 			local := d.pending.Monitor.Nodes[d.localNode]
-			d.committed.Monitor.Nodes[d.localNode] = local.DeepCopy()
+			d.previous.Monitor.Nodes[d.localNode] = local.DeepCopy()
 		}
 	} else {
-		d.log.Debug().Msgf("create local committed for %s gen %d", d.localNode, d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode])
+		d.log.Debug().Msgf("create local previous for %s gen %d", d.localNode, d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode])
 		local := d.pending.Monitor.Nodes[d.localNode]
-		d.committed.Monitor.Nodes[d.localNode] = local.DeepCopy()
+		d.previous.Monitor.Nodes[d.localNode] = local.DeepCopy()
 	}
 
 	d.log.Debug().
@@ -227,7 +227,7 @@ func (d *data) eventCommitPendingOps() {
 //
 // # When a remote node requires a full hb message pendingOps and patchQueue are purged
 //
-// It creates new version of committed Status
+// It creates new version of previous Status
 func (t T) CommitPending(ctx context.Context) {
 	done := make(chan bool)
 	t.cmdC <- opCommitPending{

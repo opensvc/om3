@@ -36,7 +36,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		Heartbeats: nil,
 	}
 	return &data{
-		committed:       &status,
+		previous:        &status,
 		pending:         status.DeepCopy(),
 		localNode:       localNode,
 		counterCmd:      counterCmd,
