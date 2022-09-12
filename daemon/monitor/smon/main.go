@@ -158,7 +158,9 @@ func (o *smon) worker(initialNodes []string) {
 	defer o.delete()
 
 	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
-	go o.crmStatus()
+	if err := o.crmStatus(); err != nil {
+		o.log.Error().Err(err).Msg("error during initial crm status")
+	}
 	o.log.Debug().Msg("started")
 	for {
 		select {
