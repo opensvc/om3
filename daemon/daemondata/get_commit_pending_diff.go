@@ -20,12 +20,12 @@ func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUp
 		nodes[n] = struct{}{}
 	}
 	for n := range nodes {
-		cfgDeletes, cfgUpdates := d.getCfgDiffForNode(n)
-		if len(cfgDeletes) > 0 {
-			deletes = append(deletes, cfgDeletes...)
+		deleted, updated := d.getCfgDiffForNode(n)
+		if len(deleted) > 0 {
+			deletes = append(deletes, deleted...)
 		}
-		if len(cfgUpdates) > 0 {
-			updates = append(updates, cfgUpdates...)
+		if len(updated) > 0 {
+			updates = append(updates, updated...)
 		}
 	}
 	return
@@ -46,12 +46,12 @@ func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []ms
 		nodes[n] = struct{}{}
 	}
 	for n := range nodes {
-		cfgDeletes, cfgUpdates := d.getStatusDiffForNode(n)
-		if len(cfgDeletes) > 0 {
-			deletes = append(deletes, cfgDeletes...)
+		deleted, updated := d.getStatusDiffForNode(n)
+		if len(deleted) > 0 {
+			deletes = append(deletes, deleted...)
 		}
-		if len(cfgUpdates) > 0 {
-			updates = append(updates, cfgUpdates...)
+		if len(updated) > 0 {
+			updates = append(updates, updated...)
 		}
 	}
 	return
@@ -72,12 +72,12 @@ func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.Smo
 		nodes[n] = struct{}{}
 	}
 	for n := range nodes {
-		deleteOnNode, updateOnNode := d.getSmonDiffForNode(n)
-		if len(deleteOnNode) > 0 {
-			deletes = append(deletes, deleteOnNode...)
+		deleted, updated := d.getSmonDiffForNode(n)
+		if len(deleted) > 0 {
+			deletes = append(deletes, deleted...)
 		}
-		if len(updateOnNode) > 0 {
-			updates = append(updates, updateOnNode...)
+		if len(updated) > 0 {
+			updates = append(updates, updated...)
 		}
 	}
 	return
