@@ -54,10 +54,15 @@ func (m *Message) DecryptWithNode() ([]byte, string, error) {
 	msg := &encryptedMessage{}
 	err := json.Unmarshal(m.Data, msg)
 	if err != nil {
-		return nil, "", err
+		retErr := errors.New("analyse message unmarshal failure: " + err.Error())
+		return nil, "", retErr
 	}
 	// TODO: test nodename and clustername, plug blacklist
 	b, err = decode(msg.Data, msg.IV, key)
+	if err != nil {
+		retErr := errors.New("analyse message decode failure: " + err.Error())
+		return b, "", retErr
+	}
 	return b, msg.NodeName, err
 }
 
