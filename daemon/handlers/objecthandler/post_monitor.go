@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -52,10 +51,9 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	smon = instance.Monitor{
-		GlobalExpect:        payload.GlobalExpect,
-		GlobalExpectUpdated: time.Now(),
-		LocalExpect:         payload.LocalExpect,
-		Status:              payload.State,
+		GlobalExpect: payload.GlobalExpect,
+		//LocalExpect:         payload.LocalExpect,
+		//Status:              payload.State,
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	msgbus.PubSetSmonUpdated(bus, p.String(), msgbus.SetSmon{
