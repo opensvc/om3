@@ -1,7 +1,7 @@
 package smon
 
 import (
-	"strings"
+	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
@@ -55,11 +55,6 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 			o.log.Info().Msg(msg)
 			return
 		}
-		if strings.HasSuffix(status.Status, "ing") {
-			msg := "set smon: can't set global expect to " + strVal + " (node " + node + " is " + status.Status + ")"
-			o.log.Error().Msg(msg)
-			return
-		}
 	}
 	switch c.GlobalExpect {
 	case globalExpectAbort:
@@ -77,7 +72,7 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 	if c.GlobalExpect != o.state.GlobalExpect {
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
-		o.state.GlobalExpectUpdated = c.GlobalExpectUpdated
+		o.state.GlobalExpectUpdated = time.Now()
 		o.updateIfChange()
 		o.orchestrate()
 	}
