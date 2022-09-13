@@ -40,6 +40,8 @@ const (
 var (
 	udsRetryConnect      = 10
 	udsRetryConnectDelay = 10 * time.Millisecond
+
+	clientTimeout = 5 * time.Second
 )
 
 func (t T) String() string {
@@ -79,7 +81,7 @@ func NewUDS(url string) (*T, error) {
 	r.URL = "http://localhost"
 	r.Client = http.Client{
 		Transport: tp,
-		Timeout:   5 * time.Second,
+		Timeout:   clientTimeout,
 	}
 	return r, nil
 }
@@ -105,7 +107,7 @@ func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, 
 	r.URL = url
 	r.Client = http.Client{
 		Transport: tp,
-		Timeout:   5 * time.Second,
+		Timeout:   clientTimeout,
 	}
 	return r, nil
 }
