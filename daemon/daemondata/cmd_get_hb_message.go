@@ -111,6 +111,7 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 		return
 	}
 	if b, err := json.Marshal(msg); err != nil {
+		d.log.Error().Err(err).Msgf("opGetHbMessage Marshal failure for %i", msg)
 		select {
 		case <-ctx.Done():
 		case o.data <- []byte{}:
