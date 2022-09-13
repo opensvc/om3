@@ -87,50 +87,24 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 	deletes := make([]msgbus.CfgDeleted, 0)
 	updates := make([]msgbus.CfgUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	committedNode, hasCommittedNode := d.previous.Monitor.Nodes[node]
-	if hasPendingNode && hasCommittedNode {
+	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Config {
-			if previous, ok := committedNode.Services.Config[s]; ok {
-				if pending.Updated.After(previous.Updated) {
-					p, err := path.Parse(s)
-					if err != nil {
-						continue
-					}
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			if previous, ok := previousNode.Services.Config[s]; ok {
+				// object config exists, compare date
+				if !previous.Updated.Equal(pending.Updated) {
 					updates = append(updates, msgbus.CfgUpdated{
 						Path:   p,
 						Node:   node,
 						Config: *pending.DeepCopy(),
 					})
-				} else {
-					for _, n := range pending.Scope {
-						if n == d.localNode {
-							if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Config[s]; !ok {
-								if remoteSmon, ok := pendingNode.Services.Smon[s]; ok {
-									if remoteSmon.GlobalExpect == "purged" {
-										// remote service has purge in progress
-										continue
-									}
-								}
-								// removed config file local
-								p, err := path.Parse(s)
-								if err != nil {
-									continue
-								}
-								updates = append(updates, msgbus.CfgUpdated{
-									Path:   p,
-									Node:   node,
-									Config: *pending.DeepCopy(),
-								})
-								break
-							}
-						}
-					}
 				}
 			} else {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
+				// no previous object
 				updates = append(updates, msgbus.CfgUpdated{
 					Path:   p,
 					Node:   node,
@@ -138,7 +112,8 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 				})
 			}
 		}
-		for s := range committedNode.Services.Config {
+		for s := range previousNode.Services.Config {
+			// search for deleted objects
 			if _, ok := pendingNode.Services.Config[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
@@ -163,9 +138,9 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 				Config: *cfg.DeepCopy(),
 			})
 		}
-	} else if hasCommittedNode {
+	} else if hasPreviousNode {
 		// all previous cfg are deleted
-		for s := range committedNode.Services.Config {
+		for s := range previousNode.Services.Config {
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -186,12 +161,12 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
 	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Status {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
 			if previous, ok := previousNode.Services.Status[s]; ok {
-				if previous.Updated.Before(pending.Updated) {
-					p, err := path.Parse(s)
-					if err != nil {
-						continue
-					}
+				if !pending.Updated.Equal(previous.Updated) {
 					updates = append(updates, msgbus.InstStatusUpdated{
 						Path:   p,
 						Node:   node,
@@ -199,10 +174,6 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 					})
 				}
 			} else {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
 				updates = append(updates, msgbus.InstStatusUpdated{
 					Path:   p,
 					Node:   node,
