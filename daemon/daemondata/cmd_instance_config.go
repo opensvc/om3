@@ -38,6 +38,7 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelInstanceConfig
 	s := o.path.String()
 	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Config[s]; ok {
+		delete(d.pending.Monitor.Nodes[d.localNode].Services.Config, s)
 		op := jsondelta.Operation{
 			OpPath: jsondelta.OperationPath{"services", "config", s},
 			OpKind: "remove",
@@ -57,6 +58,7 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceConfig
 	s := o.path.String()
+	d.pending.Monitor.Nodes[d.localNode].Services.Config[s] = o.value
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"services", "config", s},
 		OpValue: jsondelta.NewOptValue(o.value),
