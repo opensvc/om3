@@ -67,7 +67,7 @@ func (f Frame) sNodeVersionLine() string {
 }
 
 func (f Frame) sNodeCompatLine() string {
-	if f.Current.Monitor.Compat {
+	if f.Current.Cluster.Status.Compat {
 		return ""
 	}
 	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator)

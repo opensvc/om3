@@ -20,7 +20,13 @@ type (
 	}
 
 	TCluster struct {
-		Config ClusterConfig `json:"config"`
+		Config ClusterConfig  `json:"config"`
+		Status TClusterStatus `json:"status"`
+	}
+
+	TClusterStatus struct {
+		Compat bool `json:"compat"`
+		Frozen bool `json:"frozen"`
 	}
 
 	// ClusterConfig decribes the cluster id, name and nodes

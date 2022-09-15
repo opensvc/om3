@@ -17,8 +17,6 @@ type (
 	// making.
 	MonitorThreadStatus struct {
 		ThreadStatus
-		Compat   bool                               `json:"compat"`
-		Frozen   bool                               `json:"frozen"`
 		Nodes    map[string]NodeStatus              `json:"nodes"`
 		Services map[string]object.AggregatedStatus `json:"services"`
 		Routines int                                `json:"routines"`
@@ -92,7 +90,6 @@ func (t Status) GetObjectStatus(p path.T) object.Status {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p
-	data.Compat = t.Monitor.Compat
 	data.Object, _ = t.Monitor.Services[ps]
 	for nodename, ndata := range t.Monitor.Nodes {
 		var ok bool

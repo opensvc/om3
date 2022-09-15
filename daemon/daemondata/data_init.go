@@ -21,6 +21,10 @@ func newData(counterCmd chan<- interface{}) *data {
 				Name:  rawconfig.ClusterSection().Name,
 				Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
 			},
+			Status: cluster.TClusterStatus{
+				Compat: false,
+				Frozen: true,
+			},
 		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
@@ -28,8 +32,6 @@ func newData(counterCmd chan<- interface{}) *data {
 		Listener:  cluster.ListenerThreadStatus{},
 		Monitor: cluster.MonitorThreadStatus{
 			ThreadStatus: cluster.ThreadStatus{},
-			Compat:       false,
-			Frozen:       false,
 			Nodes: map[string]cluster.NodeStatus{
 				localNode: localNodeStatus,
 			},
