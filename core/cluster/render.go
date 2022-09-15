@@ -130,7 +130,7 @@ func (f *Frame) scanData() {
 		}
 	}
 	f.info.paths = make([]string, 0)
-	for path := range f.Current.Monitor.Services {
+	for path := range f.Current.Cluster.Object {
 		f.info.paths = append(f.info.paths, path)
 	}
 	sort.Strings(f.info.paths)

@@ -81,7 +81,7 @@ func (f Frame) sObjectRunning(path string) string {
 		}
 	}
 
-	if s, ok := f.Current.Monitor.Services[path]; ok {
+	if s, ok := f.Current.Cluster.Object[path]; ok {
 		avail = s.Avail
 	}
 
@@ -106,7 +106,7 @@ func sObjectAvail(d object.AggregatedStatus) string {
 }
 
 func (f Frame) sObject(path string) string {
-	d := f.Current.Monitor.Services[path]
+	d := f.Current.Cluster.Object[path]
 	c3 := sObjectAvail(d) + sObjectWarning(d) + sObjectPlacement(d)
 	s := fmt.Sprintf(" %s\t", bold(path))
 	s += fmt.Sprintf("%s\t", c3)

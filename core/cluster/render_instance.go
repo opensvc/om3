@@ -10,7 +10,7 @@ import (
 
 func (f Frame) sObjectInstance(path string, node string) string {
 	s := ""
-	avail := f.Current.Monitor.Services[path].Avail
+	avail := f.Current.Cluster.Object[path].Avail
 	if status, ok := f.Current.Monitor.Nodes[node].Services.Status[path]; ok {
 		smon, hasSmon := f.Current.Monitor.Nodes[node].Services.Smon[path]
 		if !hasSmon {

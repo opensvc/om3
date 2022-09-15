@@ -9,7 +9,7 @@ import (
 //func (t *Status) MarshalJSON()([]byte, error) {}
 
 // UnmarshalJSON loads a byte array into a cluster.Status struct
-func (t *Status) UnmarshalJSON(b []byte) error {
+func (s *Status) UnmarshalJSON(b []byte) error {
 	var (
 		m   map[string]interface{}
 		ds  Status
@@ -59,6 +59,6 @@ func (t *Status) UnmarshalJSON(b []byte) error {
 		}
 	}
 
-	*t = ds
+	*s = ds
 	return nil
 }

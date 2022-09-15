@@ -13,13 +13,12 @@ import (
 type (
 
 	// MonitorThreadStatus describes the OpenSVC daemon monitor thread state,
-	// which is responsible for the node DataSets aggregation and decision
-	// making.
+	// which is responsible for the node DataSets aggregation and
+	// decision-making.
 	MonitorThreadStatus struct {
 		ThreadStatus
-		Nodes    map[string]NodeStatus              `json:"nodes"`
-		Services map[string]object.AggregatedStatus `json:"services"`
-		Routines int                                `json:"routines"`
+		Nodes    map[string]NodeStatus `json:"nodes"`
+		Routines int                   `json:"routines"`
 	}
 
 	// NodeStatus holds a node DataSet.
@@ -77,7 +76,7 @@ type (
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s Status) GetNodeStatus(nodename string) *NodeStatus {
+func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
 	if nodeStatus, ok := s.Monitor.Nodes[nodename]; ok {
 		return &nodeStatus
 	}
@@ -86,12 +85,12 @@ func (s Status) GetNodeStatus(nodename string) *NodeStatus {
 
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
-func (t Status) GetObjectStatus(p path.T) object.Status {
+func (s *Status) GetObjectStatus(p path.T) object.Status {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p
-	data.Object, _ = t.Monitor.Services[ps]
-	for nodename, ndata := range t.Monitor.Nodes {
+	data.Object, _ = s.Cluster.Object[ps]
+	for nodename, ndata := range s.Monitor.Nodes {
 		var ok bool
 		instanceStates := instance.States{}
 		instanceStates.Node.Frozen = ndata.Frozen
@@ -107,15 +106,15 @@ func (t Status) GetObjectStatus(p path.T) object.Status {
 		data.Instances[nodename] = instanceStates
 		for _, relative := range instanceStates.Status.Parents {
 			ps := relative.String()
-			data.Parents[ps] = t.Monitor.Services[ps]
+			data.Parents[ps] = s.Cluster.Object[ps]
 		}
 		for _, relative := range instanceStates.Status.Children {
 			ps := relative.String()
-			data.Children[ps] = t.Monitor.Services[ps]
+			data.Children[ps] = s.Cluster.Object[ps]
 		}
 		for _, relative := range instanceStates.Status.Slaves {
 			ps := relative.String()
-			data.Slaves[ps] = t.Monitor.Services[ps]
+			data.Slaves[ps] = s.Cluster.Object[ps]
 		}
 	}
 	return *data

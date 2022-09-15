@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
 )
@@ -20,8 +21,9 @@ type (
 	}
 
 	TCluster struct {
-		Config ClusterConfig  `json:"config"`
-		Status TClusterStatus `json:"status"`
+		Config ClusterConfig                      `json:"config"`
+		Status TClusterStatus                     `json:"status"`
+		Object map[string]object.AggregatedStatus `json:"object"`
 	}
 
 	TClusterStatus struct {
@@ -29,7 +31,7 @@ type (
 		Frozen bool `json:"frozen"`
 	}
 
-	// ClusterConfig decribes the cluster id, name and nodes
+	// ClusterConfig describes the cluster id, name and nodes
 	// The cluster name is used as the right most part of cluster dns
 	// names.
 	ClusterConfig struct {
@@ -65,59 +67,59 @@ func (s *Status) WithSelector(selector string) *Status {
 	}
 	selected := paths.StrMap()
 	for nodename, nodeData := range s.Monitor.Nodes {
-		for ps, _ := range nodeData.Services.Config {
+		for ps := range nodeData.Services.Config {
 			if !selected.Has(ps) {
 				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
 			}
 		}
-		for ps, _ := range nodeData.Services.Smon {
+		for ps := range nodeData.Services.Smon {
 			if !selected.Has(ps) {
 				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
 			}
 		}
-		for ps, _ := range nodeData.Services.Status {
+		for ps := range nodeData.Services.Status {
 			if !selected.Has(ps) {
 				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
 			}
 		}
 	}
-	for ps, _ := range s.Monitor.Services {
+	for ps := range s.Cluster.Object {
 		if !selected.Has(ps) {
-			delete(s.Monitor.Services, ps)
+			delete(s.Cluster.Object, ps)
 		}
 	}
 	return s
 }
 
-// WithSelector purges the dataset from objects not matching the namespace
+// WithNamespace purges the dataset from objects not matching the namespace
 func (s *Status) WithNamespace(namespace string) *Status {
 	if namespace == "" {
 		return s
 	}
 	for nodename, nodeData := range s.Monitor.Nodes {
-		for ps, _ := range nodeData.Services.Config {
+		for ps := range nodeData.Services.Config {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
 				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
 			}
 		}
-		for ps, _ := range nodeData.Services.Smon {
+		for ps := range nodeData.Services.Smon {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
 				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
 			}
 		}
-		for ps, _ := range nodeData.Services.Status {
+		for ps := range nodeData.Services.Status {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
 				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
 			}
 		}
 	}
-	for ps, _ := range s.Monitor.Services {
+	for ps := range s.Cluster.Object {
 		p, _ := path.Parse(ps)
 		if p.Namespace != namespace {
-			delete(s.Monitor.Services, ps)
+			delete(s.Cluster.Object, ps)
 		}
 	}
 	return s

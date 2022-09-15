@@ -151,7 +151,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 		return []object.Status{}, err
 	}
 	data := make([]object.Status, 0)
-	for ps := range clusterStatus.Monitor.Services {
+	for ps := range clusterStatus.Cluster.Object {
 		p, err := path.Parse(ps)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", p, err)
