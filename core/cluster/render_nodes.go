@@ -11,14 +11,14 @@ import (
 
 func (f Frame) sNodeScoreLine() string {
 	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("score"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeScore(n) + "\t"
 	}
 	return s
 }
 func (f Frame) sNodeLoadLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("load15m"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeLoad(n) + "\t"
 	}
 	return s
@@ -26,7 +26,7 @@ func (f Frame) sNodeLoadLine() string {
 
 func (f Frame) sNodeMemLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("mem"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeMem(n) + "\t"
 	}
 	return s
@@ -34,7 +34,7 @@ func (f Frame) sNodeMemLine() string {
 
 func (f Frame) sNodeSwapLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("swap"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeSwap(n) + "\t"
 	}
 	return s
@@ -42,7 +42,7 @@ func (f Frame) sNodeSwapLine() string {
 
 func (f Frame) sNodeWarningsLine() string {
 	s := fmt.Sprintf("%s\t\t\t%s\t", bold("state"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeMonState(n)
 		s += f.sNodeFrozen(n)
 		s += f.sNodeMonTarget(n)
@@ -53,14 +53,14 @@ func (f Frame) sNodeWarningsLine() string {
 
 func (f Frame) sNodeVersionLine() string {
 	versions := set.New()
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		versions.Insert(f.sNodeVersion(n))
 	}
 	if versions.Len() == 1 {
 		return ""
 	}
 	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeVersion(n) + "\t"
 	}
 	return s + "\n"
@@ -71,7 +71,7 @@ func (f Frame) sNodeCompatLine() string {
 		return ""
 	}
 	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator)
-	for _, n := range f.Current.Config.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeCompat(n) + "\t"
 	}
 	return s + "\n"

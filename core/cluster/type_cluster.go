@@ -10,13 +10,17 @@ import (
 type (
 	// Status describes the full Cluster state.
 	Status struct {
-		Config     ClusterConfig                    `json:"config"`
+		Cluster    TCluster                         `json:"cluster"`
 		Collector  CollectorThreadStatus            `json:"collector"`
 		DNS        DNSThreadStatus                  `json:"dns"`
 		Scheduler  SchedulerThreadStatus            `json:"scheduler"`
 		Listener   ListenerThreadStatus             `json:"listener"`
 		Monitor    MonitorThreadStatus              `json:"monitor"`
 		Heartbeats map[string]HeartbeatThreadStatus `json:"-"`
+	}
+
+	TCluster struct {
+		Config ClusterConfig `json:"config"`
 	}
 
 	// ClusterConfig decribes the cluster id, name and nodes

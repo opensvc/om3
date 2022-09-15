@@ -15,10 +15,12 @@ func newData(counterCmd chan<- interface{}) *data {
 	localNode := hostname.Hostname()
 	localNodeStatus := newNodeStatus(localNode)
 	status := cluster.Status{
-		Config: cluster.ClusterConfig{
-			ID:    rawconfig.ClusterSection().ID,
-			Name:  rawconfig.ClusterSection().Name,
-			Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
+		Cluster: cluster.TCluster{
+			Config: cluster.ClusterConfig{
+				ID:    rawconfig.ClusterSection().ID,
+				Name:  rawconfig.ClusterSection().Name,
+				Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
+			},
 		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
