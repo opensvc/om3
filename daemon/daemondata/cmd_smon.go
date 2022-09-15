@@ -30,6 +30,7 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelSmon
 	s := o.path.String()
 	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Smon[s]; ok {
+		delete(d.pending.Monitor.Nodes[d.localNode].Services.Smon, s)
 		op := jsondelta.Operation{
 			OpPath: jsondelta.OperationPath{"services", "smon", s},
 			OpKind: "remove",
@@ -49,6 +50,7 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 func (o opSetSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetSmon
 	s := o.path.String()
+	d.pending.Monitor.Nodes[d.localNode].Services.Smon[s] = o.value
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"services", "smon", s},
 		OpValue: jsondelta.NewOptValue(o.value),

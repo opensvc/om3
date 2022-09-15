@@ -22,7 +22,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) 
 	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "remoteconfig").Str("id", id).Logger()
 	b, updated, err := fetchFromApi(p, node)
 	if err != nil {
-		log.Error().Err(err).Msgf("fetchFromApi %s", id)
+		log.Info().Err(err).Msgf("fetchFromApi %s", id)
 		return
 	}
 	f, err := os.CreateTemp("", p.Name+".conf.*.tmp")
@@ -87,8 +87,8 @@ func fetchFromApi(p path.T, node string) (b []byte, updated time.Time, err error
 	)
 	cli, err = client.New(
 		client.WithURL(daemonenv.UrlHttpNode(node)),
-		client.WithPassword(rawconfig.ClusterSection().Secret),
 		client.WithUsername(hostname.Hostname()),
+		client.WithPassword(rawconfig.ClusterSection().Secret),
 		client.WithCertificate(daemonenv.CertFile()),
 	)
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
@@ -42,8 +41,6 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	statusDeletes, statusUpdates := d.getStatusDiff()
 	smonDeletes, smonUpdates := d.getSmonDiff()
 
-	d.committed = d.pending.DeepCopy()
-
 	for _, cfgDelete := range cfgDeletes {
 		msgbus.PubCfgDelete(d.bus, cfgDelete.Path.String(), cfgDelete)
 	}
@@ -61,6 +58,39 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	}
 	for _, w := range smonUpdates {
 		msgbus.PubSmonUpdated(d.bus, w.Path.String(), w)
+	}
+
+	for node, gen := range d.mergedFromPeer {
+		if node == d.localNode {
+			continue
+		}
+		if previous, ok := d.previous.Monitor.Nodes[node]; ok {
+			if gen != previous.Gen[node] {
+				if remoteMon, ok := d.pending.Monitor.Nodes[node]; ok {
+					d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
+					d.previous.Monitor.Nodes[node] = remoteMon.DeepCopy()
+				} else {
+					d.log.Error().Msgf("no pending %s mergedFromPeer %d != previous %d", node, gen, previous.Gen[node])
+				}
+			}
+		} else if remoteMon, ok := d.pending.Monitor.Nodes[node]; ok {
+			d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
+			d.previous.Monitor.Nodes[node] = remoteMon.DeepCopy()
+		} else {
+			d.log.Debug().Msgf("remove previous for %s", node)
+			delete(d.previous.Monitor.Nodes, node)
+		}
+	}
+	if previous, ok := d.previous.Monitor.Nodes[d.localNode]; ok {
+		if previous.Gen[d.localNode] != d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode] {
+			d.log.Debug().Msgf("updated local previous for %s gen %d", d.localNode, d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode])
+			local := d.pending.Monitor.Nodes[d.localNode]
+			d.previous.Monitor.Nodes[d.localNode] = local.DeepCopy()
+		}
+	} else {
+		d.log.Debug().Msgf("create local previous for %s gen %d", d.localNode, d.pending.Monitor.Nodes[d.localNode].Gen[d.localNode])
+		local := d.pending.Monitor.Nodes[d.localNode]
+		d.previous.Monitor.Nodes[d.localNode] = local.DeepCopy()
 	}
 
 	d.log.Debug().
@@ -128,36 +158,11 @@ func (d *data) updateFromPendingOps() bool {
 	if len(d.pendingOps) > 0 {
 		d.gen++
 		d.patchQueue[strconv.FormatUint(d.gen, 10)] = d.pendingOps
-		err := d.applyCommitPendingOps()
-		if err != nil {
-			d.log.Error().Err(err).Msg("updateFromPendingOps failure during applyCommitPendingOps, some pending changes may be lost")
-		}
+		d.eventCommitPendingOps()
 		d.resetPendingOps()
 		return true
 	}
 	return false
-}
-
-func (d *data) applyCommitPendingOps() error {
-	patch := jsondelta.NewPatchFromOperations(d.pendingOps)
-	pendingB, err := json.Marshal(d.pending.Monitor.Nodes[d.localNode])
-	if err != nil {
-		d.log.Error().Err(err).Msg("can't marshal pending local NodeStatus")
-		return err
-	}
-	if pendingB, err := patch.Apply(pendingB); err != nil {
-		d.log.Error().Err(err).Msg("can't patch.Apply on local NodeStatus")
-		return err
-	} else {
-		pendingNode := cluster.NodeStatus{}
-		if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
-			d.log.Error().Err(err).Msg("can't unmarshal patched local NodeStatus")
-			return err
-		}
-		d.pending.Monitor.Nodes[d.localNode] = pendingNode
-		d.eventCommitPendingOps()
-	}
-	return nil
 }
 
 func (d *data) eventCommitPendingOps() {
@@ -187,15 +192,16 @@ func (d *data) eventCommitPendingOps() {
 // CommitPending handle a commit of pending changes to T
 //
 // It maintains local NodeStatus Gens
-//   from patch/full/ping operations
-//   reset gen values for nodes that needs full hb message
-//   increase local gen when pendingOps exists
 //
-// It moves pendingOps to patchQueue, evict already applied gens from patchQueue
+//	from patch/full/ping operations
+//	reset gen values for nodes that needs full hb message
+//	increase local gen when pendingOps exists
 //
-// When a remote node requires a full hb message pendingOps and patchQueue are purged
+// # It moves pendingOps to patchQueue, evict already applied gens from patchQueue
 //
-// It creates new version of committed Status
+// # When a remote node requires a full hb message pendingOps and patchQueue are purged
+//
+// It creates new version of previous Status
 func (t T) CommitPending(ctx context.Context) {
 	done := make(chan bool)
 	t.cmdC <- opCommitPending{

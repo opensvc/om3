@@ -7,7 +7,7 @@ import (
 
 // DelInstanceConfig
 //
-// committed.Monitor.Node.*.services.config.*
+// Monitor.Node.*.services.config.*
 func DelInstanceConfig(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
 	op := opDelInstanceConfig{
@@ -20,7 +20,7 @@ func DelInstanceConfig(c chan<- interface{}, p path.T) error {
 
 // SetInstanceConfig
 //
-// committed.Monitor.Node.*.services.config.*
+// Monitor.Node.*.services.config.*
 func SetInstanceConfig(dataCmdC chan<- interface{}, p path.T, v instance.Config) error {
 	err := make(chan error)
 	op := opSetInstanceConfig{

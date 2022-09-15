@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
@@ -14,6 +15,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/slog"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/render"
 	"opensvc.com/opensvc/util/xmap"
 )
@@ -56,6 +58,7 @@ func (t *CmdObjectLogs) cmd(kind string, selector *string) *cobra.Command {
 func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) {
 	c, err := client.New(
 		client.WithURL(node),
+		client.WithUsername(hostname.Hostname()),
 		client.WithPassword(rawconfig.ClusterSection().Secret),
 	)
 	if err != nil {
@@ -78,6 +81,7 @@ func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) 
 func (t *CmdObjectLogs) stream(node string, paths path.L) {
 	c, err := client.New(
 		client.WithURL(node),
+		client.WithUsername(hostname.Hostname()),
 		client.WithPassword(rawconfig.ClusterSection().Secret),
 	)
 	if err != nil {

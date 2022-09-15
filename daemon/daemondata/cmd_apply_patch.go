@@ -3,6 +3,7 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strconv"
 	"time"
@@ -28,7 +29,7 @@ var (
 
 func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	d.counterCmd <- idApplyPatch
-	d.log.Debug().Msgf("opApplyRemotePatch for %s", o.nodename)
+	d.log.Debug().Msgf("apply remote patch for %s", o.nodename)
 	var (
 		pendingB []byte
 		err      error
@@ -37,7 +38,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	)
 	pendingNode, ok := d.pending.Monitor.Nodes[o.nodename]
 	if !ok {
-		d.log.Debug().Msgf("skip patch unknown remote %s", o.nodename)
+		d.log.Debug().Msgf("apply remote patch skip unknown remote %s", o.nodename)
 		o.err <- nil
 		return
 	}
@@ -52,7 +53,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		sortGen = append(sortGen, gen)
 	}
 	sort.Slice(sortGen, func(i, j int) bool { return sortGen[i] < sortGen[j] })
-	d.log.Debug().Msgf("ApplyRemotePatch patch sequence %v", sortGen)
+	d.log.Debug().Msgf("apply remote patch for %s sequence %v", o.nodename, sortGen)
 	parentPath := jsondelta.OperationPath{"monitor", "nodes", o.nodename}
 	for _, gen := range sortGen {
 		genS := strconv.FormatUint(gen, 10)
@@ -60,7 +61,8 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			continue
 		}
 		if gen > pendingNodeGen+1 {
-			err := errors.New("ApplyRemotePatch invalid patch gen: " + genS)
+			msg := fmt.Sprintf("apply remote patch for %s found broken sequence on gen %d from sequence %v", o.nodename, gen, sortGen)
+			err = errors.New(msg)
 			d.log.Info().Err(err).Msgf("need full %s", o.nodename)
 			d.remotesNeedFull[o.nodename] = true
 			select {
@@ -80,10 +82,10 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			changes = true
 		}
 		patch := jsondelta.NewPatchFromOperations(deltas[genS])
-		d.log.Debug().Msgf("ApplyRemotePatch applying %s gen %s", o.nodename, genS)
+		d.log.Debug().Msgf("apply remote patch for %s applying gen %s", o.nodename, genS)
 		pendingB, err = patch.Apply(pendingB)
 		if err != nil {
-			d.log.Info().Err(err).Msgf("patch apply %s gen %s need full", o.nodename, genS)
+			d.log.Info().Err(err).Msgf("apply remote patch for %s gen %s need full", o.nodename, genS)
 			d.remotesNeedFull[o.nodename] = true
 			select {
 			case <-ctx.Done():
@@ -135,15 +137,15 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	if gen, ok := o.msg.Gen[d.localNode]; ok {
 		d.mergedOnPeer[o.nodename] = gen
 	}
-	pendingNode.Gen[o.nodename] = pendingNodeGen
-	pendingNode.Gen[d.localNode] = o.msg.Gen[d.localNode]
+	pendingNode.Gen = o.msg.Gen
 	d.pending.Monitor.Nodes[o.nodename] = pendingNode
+	d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = o.msg.Gen[o.nodename]
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).
 		Interface("mergedOnPeer", d.mergedOnPeer).
 		Interface("pendingNode.Gen", d.pending.Monitor.Nodes[o.nodename].Gen).
 		Interface("remotesNeedFull", d.remotesNeedFull).
-		Msgf("opApplyRemotePatch for %s", o.nodename)
+		Msgf("apply remote patch for %s", o.nodename)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

@@ -149,6 +149,7 @@ func (o *smon) worker(initialNodes []string) {
 	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
 	defer msgbus.UnSub(bus, msgbus.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
 	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpDelete, "smon smon.delete", o.id, o.onEv))
 
 	for _, node := range initialNodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
@@ -157,7 +158,9 @@ func (o *smon) worker(initialNodes []string) {
 	defer o.delete()
 
 	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
-	go o.crmStatus()
+	if err := o.crmStatus(); err != nil {
+		o.log.Error().Err(err).Msg("error during initial crm status")
+	}
 	o.log.Debug().Msg("started")
 	for {
 		select {
@@ -171,6 +174,8 @@ func (o *smon) worker(initialNodes []string) {
 				o.cmdSetSmonClient(c.Monitor)
 			case msgbus.SmonUpdated:
 				o.cmdSmonUpdated(c)
+			case msgbus.SmonDeleted:
+				o.cmdSmonDeleted(c)
 			case cmdOrchestrate:
 				o.needOrchestrate(c)
 			}

@@ -13,19 +13,19 @@ func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUp
 		}
 		nodes[n] = struct{}{}
 	}
-	for n := range d.committed.Monitor.Nodes {
+	for n := range d.previous.Monitor.Nodes {
 		if n == d.localNode {
 			continue
 		}
 		nodes[n] = struct{}{}
 	}
 	for n := range nodes {
-		cfgDeletes, cfgUpdates := d.getCfgDiffForNode(n)
-		if len(cfgDeletes) > 0 {
-			deletes = append(deletes, cfgDeletes...)
+		deleted, updated := d.getCfgDiffForNode(n)
+		if len(deleted) > 0 {
+			deletes = append(deletes, deleted...)
 		}
-		if len(cfgUpdates) > 0 {
-			updates = append(updates, cfgUpdates...)
+		if len(updated) > 0 {
+			updates = append(updates, updated...)
 		}
 	}
 	return
@@ -39,19 +39,19 @@ func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []ms
 		}
 		nodes[n] = struct{}{}
 	}
-	for n := range d.committed.Monitor.Nodes {
+	for n := range d.previous.Monitor.Nodes {
 		if n == d.localNode {
 			continue
 		}
 		nodes[n] = struct{}{}
 	}
 	for n := range nodes {
-		cfgDeletes, cfgUpdates := d.getStatusDiffForNode(n)
-		if len(cfgDeletes) > 0 {
-			deletes = append(deletes, cfgDeletes...)
+		deleted, updated := d.getStatusDiffForNode(n)
+		if len(deleted) > 0 {
+			deletes = append(deletes, deleted...)
 		}
-		if len(cfgUpdates) > 0 {
-			updates = append(updates, cfgUpdates...)
+		if len(updated) > 0 {
+			updates = append(updates, updated...)
 		}
 	}
 	return
@@ -65,19 +65,19 @@ func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.Smo
 		}
 		nodes[n] = struct{}{}
 	}
-	for n := range d.committed.Monitor.Nodes {
+	for n := range d.previous.Monitor.Nodes {
 		if n == d.localNode {
 			continue
 		}
 		nodes[n] = struct{}{}
 	}
 	for n := range nodes {
-		deleteOnNode, updateOnNode := d.getSmonDiffForNode(n)
-		if len(deleteOnNode) > 0 {
-			deletes = append(deletes, deleteOnNode...)
+		deleted, updated := d.getSmonDiffForNode(n)
+		if len(deleted) > 0 {
+			deletes = append(deletes, deleted...)
 		}
-		if len(updateOnNode) > 0 {
-			updates = append(updates, updateOnNode...)
+		if len(updated) > 0 {
+			updates = append(updates, updated...)
 		}
 	}
 	return
@@ -87,50 +87,24 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 	deletes := make([]msgbus.CfgDeleted, 0)
 	updates := make([]msgbus.CfgUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
-	if hasPendingNode && hasCommittedNode {
+	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Config {
-			if committed, ok := committedNode.Services.Config[s]; ok {
-				if pending.Updated.After(committed.Updated) {
-					p, err := path.Parse(s)
-					if err != nil {
-						continue
-					}
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			if previous, ok := previousNode.Services.Config[s]; ok {
+				// object config exists, compare date
+				if !previous.Updated.Equal(pending.Updated) {
 					updates = append(updates, msgbus.CfgUpdated{
 						Path:   p,
 						Node:   node,
 						Config: *pending.DeepCopy(),
 					})
-				} else {
-					for _, n := range pending.Scope {
-						if n == d.localNode {
-							if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Config[s]; !ok {
-								if remoteSmon, ok := pendingNode.Services.Smon[s]; ok {
-									if remoteSmon.GlobalExpect == "purged" {
-										// remote service has purge in progress
-										continue
-									}
-								}
-								// removed config file local
-								p, err := path.Parse(s)
-								if err != nil {
-									continue
-								}
-								updates = append(updates, msgbus.CfgUpdated{
-									Path:   p,
-									Node:   node,
-									Config: *pending.DeepCopy(),
-								})
-								break
-							}
-						}
-					}
 				}
 			} else {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
+				// no previous object
 				updates = append(updates, msgbus.CfgUpdated{
 					Path:   p,
 					Node:   node,
@@ -138,7 +112,8 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 				})
 			}
 		}
-		for s := range committedNode.Services.Config {
+		for s := range previousNode.Services.Config {
+			// search for deleted objects
 			if _, ok := pendingNode.Services.Config[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
@@ -163,9 +138,9 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 				Config: *cfg.DeepCopy(),
 			})
 		}
-	} else if hasCommittedNode {
-		// all committed cfg are deleted
-		for s := range committedNode.Services.Config {
+	} else if hasPreviousNode {
+		// all previous cfg are deleted
+		for s := range previousNode.Services.Config {
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -183,15 +158,15 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 	deletes := make([]msgbus.InstStatusDeleted, 0)
 	updates := make([]msgbus.InstStatusUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
-	if hasPendingNode && hasCommittedNode {
+	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Status {
-			if committed, ok := committedNode.Services.Status[s]; ok {
-				if committed.Updated.Before(pending.Updated) {
-					p, err := path.Parse(s)
-					if err != nil {
-						continue
-					}
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			if previous, ok := previousNode.Services.Status[s]; ok {
+				if !pending.Updated.Equal(previous.Updated) {
 					updates = append(updates, msgbus.InstStatusUpdated{
 						Path:   p,
 						Node:   node,
@@ -199,10 +174,6 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 					})
 				}
 			} else {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
 				updates = append(updates, msgbus.InstStatusUpdated{
 					Path:   p,
 					Node:   node,
@@ -210,7 +181,7 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 				})
 			}
 		}
-		for s := range committedNode.Services.Status {
+		for s := range previousNode.Services.Status {
 			if _, ok := pendingNode.Services.Status[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
@@ -235,9 +206,9 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 				Status: *cfg.DeepCopy(),
 			})
 		}
-	} else if hasCommittedNode {
-		// all committed status are deleted
-		for s := range committedNode.Services.Status {
+	} else if hasPreviousNode {
+		// all previous status are deleted
+		for s := range previousNode.Services.Status {
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -255,12 +226,12 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 	deletes := make([]msgbus.SmonDeleted, 0)
 	updates := make([]msgbus.SmonUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	committedNode, hasCommittedNode := d.committed.Monitor.Nodes[node]
-	if hasPendingNode && hasCommittedNode {
+	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Smon {
-			if committed, ok := committedNode.Services.Smon[s]; ok {
-				globalExpectUpdated := pending.GlobalExpectUpdated.After(committed.GlobalExpectUpdated)
-				statusUpdated := pending.StatusUpdated.After(committed.StatusUpdated)
+			if previous, ok := previousNode.Services.Smon[s]; ok {
+				globalExpectUpdated := pending.GlobalExpectUpdated.After(previous.GlobalExpectUpdated)
+				statusUpdated := pending.StatusUpdated.After(previous.StatusUpdated)
 				if globalExpectUpdated || statusUpdated {
 					p, err := path.Parse(s)
 					if err != nil {
@@ -284,7 +255,7 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 				})
 			}
 		}
-		for s := range committedNode.Services.Smon {
+		for s := range previousNode.Services.Smon {
 			if _, ok := pendingNode.Services.Smon[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
@@ -309,9 +280,9 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 				Status: *cfg.DeepCopy(),
 			})
 		}
-	} else if hasCommittedNode {
-		// all committed status are deleted
-		for s := range committedNode.Services.Smon {
+	} else if hasPreviousNode {
+		// all previous status are deleted
+		for s := range previousNode.Services.Smon {
 			p, err := path.Parse(s)
 			if err != nil {
 				continue

@@ -17,7 +17,6 @@ const (
 	idGetServiceNames
 	idGetNmon
 	idGetStatus
-	idPushOps
 	idSetInstanceConfig
 	idSetInstanceStatus
 	idSetServiceAgg
@@ -43,7 +42,6 @@ var (
 		idGetNodeStatus:     "get-node-status",
 		idGetServiceNames:   "get-service-names",
 		idGetStatus:         "get-status",
-		idPushOps:           "push-ops",
 		idSetServiceAgg:     "set-service-agg",
 		idSetInstanceConfig: "set-instance-config",
 		idSetInstanceStatus: "set-instance-status",

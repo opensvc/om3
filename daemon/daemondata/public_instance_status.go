@@ -7,7 +7,7 @@ import (
 
 // DelInstanceStatus
 //
-// committed.Monitor.Node.<localhost>.services.status.*
+// Monitor.Node.<localhost>.services.status.*
 func DelInstanceStatus(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
 	op := opDelInstanceStatus{
@@ -20,7 +20,7 @@ func DelInstanceStatus(c chan<- interface{}, p path.T) error {
 
 // GetInstanceStatus
 //
-// committed.Monitor.Node.<localhost>.services.status.*
+// Monitor.Node.<localhost>.services.status.*
 func GetInstanceStatus(c chan<- interface{}, p path.T, node string) instance.Status {
 	status := make(chan instance.Status)
 	op := opGetInstanceStatus{
@@ -34,7 +34,7 @@ func GetInstanceStatus(c chan<- interface{}, p path.T, node string) instance.Sta
 
 // SetInstanceStatus
 //
-// committed.Monitor.Node.<localhost>.services.status.*
+// Monitor.Node.<localhost>.services.status.*
 func SetInstanceStatus(c chan<- interface{}, p path.T, v instance.Status) error {
 	err := make(chan error)
 	op := opSetInstanceStatus{

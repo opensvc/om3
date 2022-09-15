@@ -8,6 +8,11 @@ import (
 
 var (
 	cmdPath string
+
+	maxRunners = 50
+
+	// runners chan limit number of // crmActions to maxRunners
+	runners = make(chan struct{}, maxRunners)
 )
 
 func init() {
@@ -61,6 +66,10 @@ func (o *smon) crmUnprovisionLeader() error {
 }
 
 func (o *smon) crmAction(cmdArgs ...string) error {
+	runners <- struct{}{}
+	defer func() {
+		<-runners
+	}()
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),

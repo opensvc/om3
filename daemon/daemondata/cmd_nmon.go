@@ -30,6 +30,7 @@ func (o opDelNmon) setError(err error) {
 func (o opDelNmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelNmon
 	if _, ok := d.pending.Monitor.Nodes[d.localNode]; ok {
+		delete(d.pending.Monitor.Nodes, d.localNode)
 		op := jsondelta.Operation{
 			OpPath: jsondelta.OperationPath{"monitor"},
 			OpKind: "remove",
@@ -59,6 +60,8 @@ func (o opGetNmon) call(ctx context.Context, d *data) {
 
 func (o opSetNmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetNmon
+	pendingMonitorLocalNode := d.pending.Monitor.Nodes[d.localNode]
+	pendingMonitorLocalNode.Monitor = o.value
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"monitor"},
 		OpValue: jsondelta.NewOptValue(o.value),

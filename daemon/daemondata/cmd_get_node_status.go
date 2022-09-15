@@ -13,9 +13,10 @@ type opGetNodeStatus struct {
 
 func (o opGetNodeStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetNodeStatus
+	nodeStatus := d.pending.GetNodeStatus(o.node).DeepCopy()
 	select {
 	case <-ctx.Done():
-	case o.result <- d.committed.GetNodeStatus(o.node):
+	case o.result <- &nodeStatus:
 	}
 }
 

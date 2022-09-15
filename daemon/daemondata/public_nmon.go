@@ -2,7 +2,7 @@ package daemondata
 
 import "opensvc.com/opensvc/core/cluster"
 
-// DelNmon deletes committed.Monitor.Node.<localhost>.monitor
+// DelNmon deletes Monitor.Node.<localhost>.monitor
 func DelNmon(c chan<- interface{}) error {
 	err := make(chan error)
 	op := opDelNmon{
@@ -12,7 +12,7 @@ func DelNmon(c chan<- interface{}) error {
 	return <-err
 }
 
-// SetNmon sets committed.Monitor.Node.<localhost>.monitor
+// SetNmon sets Monitor.Node.<localhost>.monitor
 func SetNmon(c chan<- interface{}, v cluster.NodeMonitor) error {
 	err := make(chan error)
 	op := opSetNmon{
@@ -23,7 +23,7 @@ func SetNmon(c chan<- interface{}, v cluster.NodeMonitor) error {
 	return <-err
 }
 
-// GetNmon returns committed.Monitor.Node.<node>.monitor
+// GetNmon returns Monitor.Node.<node>.monitor
 func GetNmon(c chan<- interface{}, node string) cluster.NodeMonitor {
 	value := make(chan cluster.NodeMonitor)
 	op := opGetNmon{
@@ -34,7 +34,7 @@ func GetNmon(c chan<- interface{}, node string) cluster.NodeMonitor {
 	return <-value
 }
 
-// GetNodeMonitor returns committed.Monitor.Node.<node>.monitor
+// GetNodeMonitor returns Monitor.Node.<node>.monitor
 func (t T) GetNodeMonitor(node string) cluster.NodeMonitor {
 	return GetNmon(t.cmdC, node)
 }

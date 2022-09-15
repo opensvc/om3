@@ -13,8 +13,8 @@ type opGetServiceNames struct {
 func (o opGetServiceNames) call(ctx context.Context, d *data) {
 
 	paths := make(map[string]bool)
-	for node := range d.committed.Monitor.Nodes {
-		for s := range d.committed.Monitor.Nodes[node].Services.Config {
+	for node := range d.pending.Monitor.Nodes {
+		for s := range d.pending.Monitor.Nodes[node].Services.Config {
 			paths[s] = true
 		}
 	}
@@ -29,7 +29,7 @@ func (o opGetServiceNames) call(ctx context.Context, d *data) {
 }
 
 // GetServiceNames returns the clusterwide list of path.T.String() parsed from the cluster dataset, in
-// committed.Monitor.Nodes[*].Services.Config[*]
+// Monitor.Nodes[*].Services.Config[*]
 func (t T) GetServiceNames() []string {
 	services := make(chan []string)
 	t.cmdC <- opGetServiceNames{
@@ -39,7 +39,7 @@ func (t T) GetServiceNames() []string {
 }
 
 // GetServicePaths returns the clusterwide path.L parsed from the cluster dataset, in
-// committed.Monitor.Nodes[*].Services.Config[*]
+// Monitor.Nodes[*].Services.Config[*]
 func (t T) GetServicePaths() path.L {
 	l := t.GetServiceNames()
 	paths, _ := path.ParseList(l...)

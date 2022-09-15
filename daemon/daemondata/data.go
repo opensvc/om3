@@ -21,8 +21,13 @@ type (
 	}
 
 	data struct {
-		committed       *cluster.Status // pending dataset committed
-		pending         *cluster.Status
+		// previous holds a deepcopy of pending data just after commit, it
+		// is used to publish diff for other nodes
+		previous *cluster.Status
+
+		// pending is the live current data (after apply patch, commit local pendingOps)
+		pending *cluster.Status
+
 		pendingOps      []jsondelta.Operation // local data pending operations not yet in patchQueue
 		patchQueue      patchQueue            // local data patch queue for remotes
 		gen             uint64                // gen of local NodeStatus

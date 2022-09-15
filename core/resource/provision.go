@@ -45,10 +45,8 @@ func provisionedFileModTime(t Driver) time.Time {
 	return file.ModTime(provisionedFile(t))
 }
 
-//
 // getProvisionStatus returns the resource provisioned state from the on-disk cache and its
 // state change time.
-//
 func getProvisionStatus(t Driver) ProvisionStatus {
 	var (
 		data ProvisionStatus
@@ -158,8 +156,9 @@ func Provisioned(t Driver) (provisioned.T, error) {
 		}
 	*/
 	if v, err := t.Provisioned(); err == nil {
-		err = setProvisionedValue(v.Bool(), t)
-		return v, err
+		provBool := v.Bool()
+		err = setProvisionedValue(provBool, t)
+		return provisioned.FromBool(provBool), err
 	} else {
 		return v, nil
 	}

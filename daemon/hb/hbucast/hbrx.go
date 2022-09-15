@@ -131,8 +131,11 @@ func (r *rx) handle(conn encryptconn.ConnNoder) {
 	defer func() { msgBufferChan <- data }()
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
-		r.log.Debug().Err(err).Msgf("read err: %v", data)
+		r.log.Error().Err(err).Msg("ReadWithNode failure")
 		return
+	}
+	if i >= (msgMaxSize - 10000) {
+		r.log.Warn().Msgf("ReadWithNode huge message from %s: %d", nodename, i)
 	}
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(data[:i], &msg); err != nil {
