@@ -92,7 +92,11 @@ func (t *core) pgConfig(section string) *pg.Config {
 }
 
 func (t *core) CleanPG(ctx context.Context) {
-	for _, run := range pg.FromContext(ctx).Clean() {
+	mgr := pg.FromContext(ctx)
+	if mgr == nil {
+		return
+	}
+	for _, run := range mgr.Clean() {
 		if run.Err != nil {
 			t.log.Error().Err(run.Err).Msgf("clean pg %s", run.Config.ID)
 		} else if run.Changed {

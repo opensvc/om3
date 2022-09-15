@@ -237,7 +237,9 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	wd, _ := os.Getwd()
 	t.log.Info().Strs("argv", os.Args).Str("cwd", wd).Str("origin", env.Origin()).Msg("do")
-	pg.FromContext(ctx).Register(t.pg)
+	if mgr := pg.FromContext(ctx); mgr != nil {
+		mgr.Register(t.pg)
+	}
 	ctx, cancel := t.withTimeout(ctx)
 	defer cancel()
 	if err := t.preAction(ctx); err != nil {
