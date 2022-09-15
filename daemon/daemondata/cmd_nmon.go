@@ -60,8 +60,9 @@ func (o opGetNmon) call(ctx context.Context, d *data) {
 
 func (o opSetNmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetNmon
-	pendingMonitorLocalNode := d.pending.Monitor.Nodes[d.localNode]
-	pendingMonitorLocalNode.Monitor = o.value
+	newValue := d.pending.Monitor.Nodes[d.localNode]
+	newValue.Monitor = o.value
+	d.pending.Monitor.Nodes[d.localNode] = newValue
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"monitor"},
 		OpValue: jsondelta.NewOptValue(o.value),
