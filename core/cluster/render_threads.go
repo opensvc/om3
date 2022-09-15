@@ -103,7 +103,7 @@ func (f Frame) wThreadHeartbeat(name string, data HeartbeatThreadStatus) string 
 	}
 	s += "\t"
 	s += f.info.separator + "\t"
-	for _, peer := range f.Current.Cluster.Nodes {
+	for _, peer := range f.Current.Config.Nodes {
 		if peer == hostname.Hostname() {
 			s += iconNotApplicable + "\t"
 			continue

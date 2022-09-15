@@ -25,7 +25,7 @@ func (t *Status) UnmarshalJSON(b []byte) error {
 		tmp, err = json.Marshal(v)
 		switch k {
 		case "cluster":
-			if err := json.Unmarshal(tmp, &ds.Cluster); err != nil {
+			if err := json.Unmarshal(tmp, &ds.Config); err != nil {
 				return err
 			}
 		case "monitor":
