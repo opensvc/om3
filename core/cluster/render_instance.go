@@ -11,8 +11,8 @@ import (
 func (f Frame) sObjectInstance(path string, node string) string {
 	s := ""
 	avail := f.Current.Cluster.Object[path].Avail
-	if status, ok := f.Current.Monitor.Nodes[node].Services.Status[path]; ok {
-		smon, hasSmon := f.Current.Monitor.Nodes[node].Services.Smon[path]
+	if status, ok := f.Current.Cluster.Node[node].Services.Status[path]; ok {
+		smon, hasSmon := f.Current.Cluster.Node[node].Services.Smon[path]
 		if !hasSmon {
 			smon = instance.Monitor{}
 		}
@@ -25,7 +25,7 @@ func (f Frame) sObjectInstance(path string, node string) string {
 		s += sObjectInstanceMonitorStatus(smon)
 		s += sObjectInstanceMonitorGlobalExpect(smon)
 		s += "\t"
-	} else if cf, ok := f.Current.Monitor.Nodes[hostname.Hostname()].Services.Config[path]; !ok {
+	} else if cf, ok := f.Current.Cluster.Node[hostname.Hostname()].Services.Config[path]; !ok {
 		return "\t"
 	} else if stringslice.Has(node, cf.Scope) {
 		s += iconUndef + "\t"

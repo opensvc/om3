@@ -7,13 +7,13 @@ import (
 
 func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUpdated) {
 	nodes := make(map[string]struct{})
-	for n := range d.pending.Monitor.Nodes {
+	for n := range d.pending.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
 		nodes[n] = struct{}{}
 	}
-	for n := range d.previous.Monitor.Nodes {
+	for n := range d.previous.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
@@ -33,13 +33,13 @@ func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUp
 
 func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []msgbus.InstStatusUpdated) {
 	nodes := make(map[string]struct{})
-	for n := range d.pending.Monitor.Nodes {
+	for n := range d.pending.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
 		nodes[n] = struct{}{}
 	}
-	for n := range d.previous.Monitor.Nodes {
+	for n := range d.previous.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
@@ -59,13 +59,13 @@ func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []ms
 
 func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.SmonUpdated) {
 	nodes := make(map[string]struct{})
-	for n := range d.pending.Monitor.Nodes {
+	for n := range d.pending.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
 		nodes[n] = struct{}{}
 	}
-	for n := range d.previous.Monitor.Nodes {
+	for n := range d.previous.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
@@ -86,8 +86,8 @@ func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.Smo
 func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.CfgUpdated) {
 	deletes := make([]msgbus.CfgDeleted, 0)
 	updates := make([]msgbus.CfgUpdated, 0)
-	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
+	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
 	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Config {
 			p, err := path.Parse(s)
@@ -157,8 +157,8 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []msgbus.InstStatusUpdated) {
 	deletes := make([]msgbus.InstStatusDeleted, 0)
 	updates := make([]msgbus.InstStatusUpdated, 0)
-	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
+	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
 	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Status {
 			p, err := path.Parse(s)
@@ -225,8 +225,8 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.SmonUpdated) {
 	deletes := make([]msgbus.SmonDeleted, 0)
 	updates := make([]msgbus.SmonUpdated, 0)
-	pendingNode, hasPendingNode := d.pending.Monitor.Nodes[node]
-	previousNode, hasPreviousNode := d.previous.Monitor.Nodes[node]
+	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
+	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
 	if hasPendingNode && hasPreviousNode {
 		for s, pending := range pendingNode.Services.Smon {
 			if previous, ok := previousNode.Services.Smon[s]; ok {

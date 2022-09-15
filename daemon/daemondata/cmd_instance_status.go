@@ -38,8 +38,8 @@ func (o opDelInstanceStatus) setError(ctx context.Context, err error) {
 func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelInstanceStatus
 	s := o.path.String()
-	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Status[s]; ok {
-		delete(d.pending.Monitor.Nodes[d.localNode].Services.Status, s)
+	if _, ok := d.pending.Cluster.Node[d.localNode].Services.Status[s]; ok {
+		delete(d.pending.Cluster.Node[d.localNode].Services.Status, s)
 		op := jsondelta.Operation{
 			OpPath: jsondelta.OperationPath{"services", "status", s},
 			OpKind: "remove",
@@ -59,7 +59,7 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetInstanceStatus
 	s := instance.Status{}
-	if nodeStatus, ok := d.pending.Monitor.Nodes[o.node]; ok {
+	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		if instStatus, ok := nodeStatus.Services.Status[o.path.String()]; ok {
 			s = instStatus
 		}
@@ -73,7 +73,7 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceStatus
 	s := o.path.String()
-	d.pending.Monitor.Nodes[d.localNode].Services.Status[s] = o.value
+	d.pending.Cluster.Node[d.localNode].Services.Status[s] = o.value
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"services", "status", s},
 		OpValue: jsondelta.NewOptValue(o.value),

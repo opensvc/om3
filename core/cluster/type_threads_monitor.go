@@ -17,8 +17,7 @@ type (
 	// decision-making.
 	MonitorThreadStatus struct {
 		ThreadStatus
-		Nodes    map[string]NodeStatus `json:"nodes"`
-		Routines int                   `json:"routines"`
+		Routines int `json:"routines"`
 	}
 
 	// NodeStatus holds a node DataSet.
@@ -77,7 +76,7 @@ type (
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
 func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
-	if nodeStatus, ok := s.Monitor.Nodes[nodename]; ok {
+	if nodeStatus, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeStatus
 	}
 	return nil
@@ -90,7 +89,7 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	data := object.NewStatus()
 	data.Path = p
 	data.Object, _ = s.Cluster.Object[ps]
-	for nodename, ndata := range s.Monitor.Nodes {
+	for nodename, ndata := range s.Cluster.Node {
 		var ok bool
 		instanceStates := instance.States{}
 		instanceStates.Node.Frozen = ndata.Frozen

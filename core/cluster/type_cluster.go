@@ -24,6 +24,8 @@ type (
 		Config ClusterConfig                      `json:"config"`
 		Status TClusterStatus                     `json:"status"`
 		Object map[string]object.AggregatedStatus `json:"object"`
+
+		Node map[string]NodeStatus `json:"node"`
 	}
 
 	TClusterStatus struct {
@@ -66,20 +68,20 @@ func (s *Status) WithSelector(selector string) *Status {
 		return s
 	}
 	selected := paths.StrMap()
-	for nodename, nodeData := range s.Monitor.Nodes {
+	for nodename, nodeData := range s.Cluster.Node {
 		for ps := range nodeData.Services.Config {
 			if !selected.Has(ps) {
-				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
+				delete(s.Cluster.Node[nodename].Services.Config, ps)
 			}
 		}
 		for ps := range nodeData.Services.Smon {
 			if !selected.Has(ps) {
-				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
+				delete(s.Cluster.Node[nodename].Services.Smon, ps)
 			}
 		}
 		for ps := range nodeData.Services.Status {
 			if !selected.Has(ps) {
-				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
+				delete(s.Cluster.Node[nodename].Services.Status, ps)
 			}
 		}
 	}
@@ -96,23 +98,23 @@ func (s *Status) WithNamespace(namespace string) *Status {
 	if namespace == "" {
 		return s
 	}
-	for nodename, nodeData := range s.Monitor.Nodes {
+	for nodename, nodeData := range s.Cluster.Node {
 		for ps := range nodeData.Services.Config {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
-				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
+				delete(s.Cluster.Node[nodename].Services.Config, ps)
 			}
 		}
 		for ps := range nodeData.Services.Smon {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
-				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
+				delete(s.Cluster.Node[nodename].Services.Smon, ps)
 			}
 		}
 		for ps := range nodeData.Services.Status {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
-				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
+				delete(s.Cluster.Node[nodename].Services.Status, ps)
 			}
 		}
 	}

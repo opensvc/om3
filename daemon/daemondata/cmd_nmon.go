@@ -29,8 +29,8 @@ func (o opDelNmon) setError(err error) {
 
 func (o opDelNmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelNmon
-	if _, ok := d.pending.Monitor.Nodes[d.localNode]; ok {
-		delete(d.pending.Monitor.Nodes, d.localNode)
+	if _, ok := d.pending.Cluster.Node[d.localNode]; ok {
+		delete(d.pending.Cluster.Node, d.localNode)
 		op := jsondelta.Operation{
 			OpPath: jsondelta.OperationPath{"monitor"},
 			OpKind: "remove",
@@ -49,7 +49,7 @@ func (o opDelNmon) call(ctx context.Context, d *data) {
 func (o opGetNmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetNmon
 	s := cluster.NodeMonitor{}
-	if nodeStatus, ok := d.pending.Monitor.Nodes[o.node]; ok {
+	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		s = nodeStatus.Monitor
 	}
 	select {
@@ -60,9 +60,9 @@ func (o opGetNmon) call(ctx context.Context, d *data) {
 
 func (o opSetNmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetNmon
-	newValue := d.pending.Monitor.Nodes[d.localNode]
+	newValue := d.pending.Cluster.Node[d.localNode]
 	newValue.Monitor = o.value
-	d.pending.Monitor.Nodes[d.localNode] = newValue
+	d.pending.Cluster.Node[d.localNode] = newValue
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"monitor"},
 		OpValue: jsondelta.NewOptValue(o.value),

@@ -26,6 +26,10 @@ func newData(counterCmd chan<- interface{}) *data {
 				Frozen: true,
 			},
 			Object: map[string]object.AggregatedStatus{},
+
+			Node: map[string]cluster.NodeStatus{
+				localNode: localNodeStatus,
+			},
 		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
@@ -33,9 +37,6 @@ func newData(counterCmd chan<- interface{}) *data {
 		Listener:  cluster.ListenerThreadStatus{},
 		Monitor: cluster.MonitorThreadStatus{
 			ThreadStatus: cluster.ThreadStatus{},
-			Nodes: map[string]cluster.NodeStatus{
-				localNode: localNodeStatus,
-			},
 		},
 		Heartbeats: nil,
 	}

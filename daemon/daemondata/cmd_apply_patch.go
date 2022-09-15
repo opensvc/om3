@@ -36,7 +36,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		data     json.RawMessage
 		changes  bool
 	)
-	pendingNode, ok := d.pending.Monitor.Nodes[o.nodename]
+	pendingNode, ok := d.pending.Cluster.Node[o.nodename]
 	if !ok {
 		d.log.Debug().Msgf("apply remote patch skip unknown remote %s", o.nodename)
 		o.err <- nil
@@ -54,7 +54,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	}
 	sort.Slice(sortGen, func(i, j int) bool { return sortGen[i] < sortGen[j] })
 	d.log.Debug().Msgf("apply remote patch for %s sequence %v", o.nodename, sortGen)
-	parentPath := jsondelta.OperationPath{"monitor", "nodes", o.nodename}
+	parentPath := jsondelta.OperationPath{"cluster", "node", o.nodename}
 	for _, gen := range sortGen {
 		genS := strconv.FormatUint(gen, 10)
 		if gen <= pendingNodeGen {
@@ -138,12 +138,12 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		d.mergedOnPeer[o.nodename] = gen
 	}
 	pendingNode.Gen = o.msg.Gen
-	d.pending.Monitor.Nodes[o.nodename] = pendingNode
-	d.pending.Monitor.Nodes[d.localNode].Gen[o.nodename] = o.msg.Gen[o.nodename]
+	d.pending.Cluster.Node[o.nodename] = pendingNode
+	d.pending.Cluster.Node[d.localNode].Gen[o.nodename] = o.msg.Gen[o.nodename]
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).
 		Interface("mergedOnPeer", d.mergedOnPeer).
-		Interface("pendingNode.Gen", d.pending.Monitor.Nodes[o.nodename].Gen).
+		Interface("pendingNode.Gen", d.pending.Cluster.Node[o.nodename].Gen).
 		Interface("remotesNeedFull", d.remotesNeedFull).
 		Msgf("apply remote patch for %s", o.nodename)
 	select {

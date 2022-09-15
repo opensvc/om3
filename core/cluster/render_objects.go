@@ -43,7 +43,7 @@ func sObjectWarning(d object.AggregatedStatus) string {
 
 func (f Frame) scalerInstancesUp(path string) int {
 	actual := 0
-	for _, node := range f.Current.Monitor.Nodes {
+	for _, node := range f.Current.Cluster.Node {
 		for p, instance := range node.Services.Status {
 			l := strings.SplitN(p, ".", 2)
 			if len(l) == 2 && l[1] == path && instance.Avail == status.Up {
@@ -61,7 +61,7 @@ func (f Frame) sObjectRunning(path string) string {
 	avail := status.NotApplicable
 
 	var scale null.Int
-	for _, node := range f.Current.Monitor.Nodes {
+	for _, node := range f.Current.Cluster.Node {
 		if instance, ok := node.Services.Status[path]; ok {
 			if instance.Avail == status.Up {
 				actual++

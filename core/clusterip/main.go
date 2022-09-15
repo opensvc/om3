@@ -81,7 +81,7 @@ func (t T) LoadTreeNode(head *tree.Node) {
 
 func (t L) Load(clusterStatus cluster.Status) L {
 	l := NewL()
-	for nodename, nodeData := range clusterStatus.Monitor.Nodes {
+	for nodename, nodeData := range clusterStatus.Cluster.Node {
 		for ps, instanceData := range nodeData.Services.Status {
 			for rid, resourceData := range instanceData.Resources {
 				if ipIntf, ok := resourceData.Info["ipaddr"]; ok {
