@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -24,11 +23,11 @@ func (t Node) Exists() bool {
 }
 
 func (t *Node) ConfigFile() string {
-	return filepath.Join(rawconfig.Paths.Etc, "node.conf")
+	return rawconfig.NodeConfigFile()
 }
 
 func (t *Node) ClusterConfigFile() string {
-	return filepath.Join(rawconfig.Paths.Etc, "cluster.conf")
+	return rawconfig.ClusterConfigFile()
 }
 
 func (t *Node) loadConfig() error {

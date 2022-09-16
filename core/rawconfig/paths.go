@@ -42,3 +42,11 @@ type (
 		Drivers string `mapstructure:"drivers"`
 	}
 )
+
+func NodeConfigFile() string {
+	return filepath.Join(Paths.Etc, "node.conf")
+}
+
+func ClusterConfigFile() string {
+	return filepath.Join(Paths.Etc, "cluster.conf")
+}
