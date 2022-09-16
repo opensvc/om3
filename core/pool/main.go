@@ -59,6 +59,8 @@ type (
 		GetString(key.T) string
 		GetStringStrict(key.T) (string, error)
 		GetStrings(key.T) []string
+		GetBool(k key.T) bool
+		GetSize(k key.T) *int64
 	}
 	Pooler interface {
 		SetName(string)
@@ -201,6 +203,16 @@ func (t *T) GetStrings(s string) []string {
 func (t *T) GetString(s string) string {
 	k := pk(t.name, s)
 	return t.Config().GetString(k)
+}
+
+func (t *T) GetBool(s string) bool {
+	k := pk(t.name, s)
+	return t.Config().GetBool(k)
+}
+
+func (t *T) GetSize(s string) *int64 {
+	k := pk(t.name, s)
+	return t.Config().GetSize(k)
 }
 
 func (t *T) MkfsOptions() string {
