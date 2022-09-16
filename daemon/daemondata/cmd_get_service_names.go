@@ -14,8 +14,10 @@ func (o opGetServiceNames) call(ctx context.Context, d *data) {
 
 	paths := make(map[string]bool)
 	for node := range d.pending.Cluster.Node {
-		for s := range d.pending.Cluster.Node[node].Services.Config {
-			paths[s] = true
+		for s, inst := range d.pending.Cluster.Node[node].Instance {
+			if inst.Config != nil {
+				paths[s] = true
+			}
 		}
 	}
 	services := make([]string, 0)
@@ -29,7 +31,7 @@ func (o opGetServiceNames) call(ctx context.Context, d *data) {
 }
 
 // GetServiceNames returns the clusterwide list of path.T.String() parsed from the cluster dataset, in
-// cluster.node[*].Services.Config[*]
+// cluster.node[*].instance[*].config
 func (t T) GetServiceNames() []string {
 	services := make(chan []string)
 	t.cmdC <- opGetServiceNames{

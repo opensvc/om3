@@ -11,24 +11,29 @@ import (
 func (f Frame) sObjectInstance(path string, node string) string {
 	s := ""
 	avail := f.Current.Cluster.Object[path].Avail
-	if status, ok := f.Current.Cluster.Node[node].Services.Status[path]; ok {
-		smon, hasSmon := f.Current.Cluster.Node[node].Services.Smon[path]
-		if !hasSmon {
-			smon = instance.Monitor{}
+	if inst, ok := f.Current.Cluster.Node[node].Instance[path]; ok {
+		if inst.Status != nil {
+			var smon instance.Monitor
+			if inst.Monitor != nil {
+				smon = *inst.Monitor
+			} else {
+				smon = instance.Monitor{}
+			}
+			instStatus := *inst.Status
+			s += sObjectInstanceAvail(avail, instStatus)
+			s += sObjectInstanceOverall(instStatus)
+			s += sObjectInstanceDRP(instStatus)
+			s += sObjectInstanceLeader(smon)
+			s += sObjectInstanceFrozen(instStatus)
+			s += sObjectInstanceUnprovisioned(instStatus)
+			s += sObjectInstanceMonitorStatus(smon)
+			s += sObjectInstanceMonitorGlobalExpect(smon)
+			s += "\t"
+		} else if localInst, ok := f.Current.Cluster.Node[hostname.Hostname()].Instance[path]; !ok || localInst.Config == nil {
+			return "\t"
+		} else if stringslice.Has(node, localInst.Config.Scope) {
+			s += iconUndef + "\t"
 		}
-		s += sObjectInstanceAvail(avail, status)
-		s += sObjectInstanceOverall(status)
-		s += sObjectInstanceDRP(status)
-		s += sObjectInstanceLeader(smon)
-		s += sObjectInstanceFrozen(status)
-		s += sObjectInstanceUnprovisioned(status)
-		s += sObjectInstanceMonitorStatus(smon)
-		s += sObjectInstanceMonitorGlobalExpect(smon)
-		s += "\t"
-	} else if cf, ok := f.Current.Cluster.Node[hostname.Hostname()].Services.Config[path]; !ok {
-		return "\t"
-	} else if stringslice.Has(node, cf.Scope) {
-		s += iconUndef + "\t"
 	}
 	return s
 }

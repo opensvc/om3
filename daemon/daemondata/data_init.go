@@ -67,12 +67,8 @@ func newNodeStatus(localNode string) cluster.NodeStatus {
 		MinAvailMemPct:  0,
 		MinAvailSwapPct: 0,
 		Monitor:         cluster.NodeMonitor{},
-		Services: cluster.NodeServices{
-			Config: map[string]instance.Config{},
-			Status: map[string]instance.Status{},
-			Smon:   map[string]instance.Monitor{},
-		},
-		Stats: cluster.NodeStatusStats{},
+		Instance:        map[string]instance.Instance{},
+		Stats:           cluster.NodeStatusStats{},
 	}
 	return nodeStatus
 }

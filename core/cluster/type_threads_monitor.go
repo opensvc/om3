@@ -34,8 +34,9 @@ type (
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		Monitor         NodeMonitor                 `json:"monitor"`
-		Services        NodeServices                `json:"services"`
-		Stats           NodeStatusStats             `json:"stats"`
+		//Services        NodeServices                 `json:"services"`
+		Instance map[string]instance.Instance `json:"instance"`
+		Stats    NodeStatusStats              `json:"stats"`
 		//Locks map[string]Lock `json:"locks"`
 	}
 
@@ -90,18 +91,19 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	data.Path = p
 	data.Object, _ = s.Cluster.Object[ps]
 	for nodename, ndata := range s.Cluster.Node {
-		var ok bool
 		instanceStates := instance.States{}
 		instanceStates.Node.Frozen = ndata.Frozen
 		instanceStates.Node.Name = nodename
-		instanceStates.Status, ok = ndata.Services.Status[ps]
+		inst, ok := ndata.Instance[ps]
 		if !ok {
 			continue
 		}
-		instanceStates.Config, ok = ndata.Services.Config[ps]
-		if !ok {
+		if inst.Status == nil || inst.Config == nil {
 			continue
 		}
+
+		instanceStates.Status = *inst.Status
+		instanceStates.Config = *inst.Config
 		data.Instances[nodename] = instanceStates
 		for _, relative := range instanceStates.Status.Parents {
 			ps := relative.String()

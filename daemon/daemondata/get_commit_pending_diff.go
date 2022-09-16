@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 )
@@ -89,32 +90,51 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
 	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
 	if hasPendingNode && hasPreviousNode {
-		for s, pending := range pendingNode.Services.Config {
+		for s, pendingInstance := range pendingNode.Instance {
+			var previousValue *instance.Config
+			var detectUpdate, detectDelete bool
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
 			}
-			if previous, ok := previousNode.Services.Config[s]; ok {
-				// object config exists, compare date
-				if !previous.Updated.Equal(pending.Updated) {
-					updates = append(updates, msgbus.CfgUpdated{
-						Path:   p,
-						Node:   node,
-						Config: *pending.DeepCopy(),
-					})
+			pendingValue := pendingInstance.Config
+			if previousInstance, ok := previousNode.Instance[s]; ok {
+				previousValue = previousInstance.Config
+			}
+			if pendingValue != nil && previousValue != nil {
+				// a previous config exists, compare
+				if pendingValue.Updated.Equal(previousValue.Updated) {
+					// not an update
+					continue
 				}
-			} else {
-				// no previous object
+				// config updated
+				detectUpdate = true
+			} else if pendingValue == nil && previousValue != nil {
+				// config deleted
+				detectDelete = true
+			} else if pendingValue != nil && previousValue == nil {
+				// config added
+				detectUpdate = true
+			}
+			if detectUpdate {
 				updates = append(updates, msgbus.CfgUpdated{
 					Path:   p,
 					Node:   node,
-					Config: *pending.DeepCopy(),
+					Config: *pendingValue.DeepCopy(),
+				})
+			} else if detectDelete {
+				deletes = append(deletes, msgbus.CfgDeleted{
+					Path: p,
+					Node: node,
 				})
 			}
 		}
-		for s := range previousNode.Services.Config {
-			// search for deleted objects
-			if _, ok := pendingNode.Services.Config[s]; !ok {
+		for s, previousInstance := range previousNode.Instance {
+			// look for existing previous instance config, where no more instance exists
+			if previousInstance.Config == nil {
+				continue
+			}
+			if _, ok := pendingNode.Instance[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
 					continue
@@ -126,8 +146,11 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 			}
 		}
 	} else if hasPendingNode {
-		// all pending cfg are new
-		for s, cfg := range pendingNode.Services.Config {
+		// all pending instance with config are new
+		for s, pendingInstance := range pendingNode.Instance {
+			if pendingInstance.Config == nil {
+				continue
+			}
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -135,12 +158,15 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 			updates = append(updates, msgbus.CfgUpdated{
 				Path:   p,
 				Node:   node,
-				Config: *cfg.DeepCopy(),
+				Config: *pendingInstance.Config.DeepCopy(),
 			})
 		}
 	} else if hasPreviousNode {
-		// all previous cfg are deleted
-		for s := range previousNode.Services.Config {
+		// all previous instance with config are deleted
+		for s, previousInstance := range previousNode.Instance {
+			if previousInstance.Config == nil {
+				continue
+			}
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -159,30 +185,53 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 	updates := make([]msgbus.InstStatusUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
 	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
+
 	if hasPendingNode && hasPreviousNode {
-		for s, pending := range pendingNode.Services.Status {
+		for s, pendingInstance := range pendingNode.Instance {
+			var previousValue *instance.Status
+			var detectUpdate, detectDelete bool
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
 			}
-			if previous, ok := previousNode.Services.Status[s]; ok {
-				if !pending.Updated.Equal(previous.Updated) {
-					updates = append(updates, msgbus.InstStatusUpdated{
-						Path:   p,
-						Node:   node,
-						Status: *pending.DeepCopy(),
-					})
+			pendingValue := pendingInstance.Status
+			if previousInstance, ok := previousNode.Instance[s]; ok {
+				previousValue = previousInstance.Status
+			}
+			if pendingValue != nil && previousValue != nil {
+				// a previous status exists, compare
+				if pendingValue.Updated.Equal(previousValue.Updated) {
+					// not an update
+					continue
 				}
-			} else {
+				// status updated
+				detectUpdate = true
+			} else if pendingValue == nil && previousValue != nil {
+				// status deleted
+				detectDelete = true
+			} else if pendingValue != nil && previousValue == nil {
+				// status added
+				detectUpdate = true
+			}
+			if detectUpdate {
 				updates = append(updates, msgbus.InstStatusUpdated{
 					Path:   p,
 					Node:   node,
-					Status: *pending.DeepCopy(),
+					Status: *pendingValue.DeepCopy(),
+				})
+			} else if detectDelete {
+				deletes = append(deletes, msgbus.InstStatusDeleted{
+					Path: p,
+					Node: node,
 				})
 			}
 		}
-		for s := range previousNode.Services.Status {
-			if _, ok := pendingNode.Services.Status[s]; !ok {
+		for s, previousInstance := range previousNode.Instance {
+			// look for existing previous instance status, where no more instance exists
+			if previousInstance.Status == nil {
+				continue
+			}
+			if _, ok := pendingNode.Instance[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
 					continue
@@ -194,8 +243,11 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 			}
 		}
 	} else if hasPendingNode {
-		// all pending status are new
-		for s, cfg := range pendingNode.Services.Status {
+		// all pending instance with status are new
+		for s, pendingInstance := range pendingNode.Instance {
+			if pendingInstance.Status == nil {
+				continue
+			}
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -203,12 +255,15 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 			updates = append(updates, msgbus.InstStatusUpdated{
 				Path:   p,
 				Node:   node,
-				Status: *cfg.DeepCopy(),
+				Status: *pendingInstance.Status.DeepCopy(),
 			})
 		}
 	} else if hasPreviousNode {
-		// all previous status are deleted
-		for s := range previousNode.Services.Status {
+		// all previous instance with status are deleted
+		for s, previousInstance := range previousNode.Instance {
+			if previousInstance.Status == nil {
+				continue
+			}
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -225,38 +280,58 @@ func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []
 func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.SmonUpdated) {
 	deletes := make([]msgbus.SmonDeleted, 0)
 	updates := make([]msgbus.SmonUpdated, 0)
+
 	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
 	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
+
 	if hasPendingNode && hasPreviousNode {
-		for s, pending := range pendingNode.Services.Smon {
-			if previous, ok := previousNode.Services.Smon[s]; ok {
-				globalExpectUpdated := pending.GlobalExpectUpdated.After(previous.GlobalExpectUpdated)
-				statusUpdated := pending.StatusUpdated.After(previous.StatusUpdated)
-				if globalExpectUpdated || statusUpdated {
-					p, err := path.Parse(s)
-					if err != nil {
-						continue
-					}
-					updates = append(updates, msgbus.SmonUpdated{
-						Path:   p,
-						Node:   node,
-						Status: *pending.DeepCopy(),
-					})
-				}
-			} else {
-				p, err := path.Parse(s)
-				if err != nil {
+		for s, pendingInstance := range pendingNode.Instance {
+			var previousValue *instance.Monitor
+			var detectUpdate, detectDelete bool
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			pendingValue := pendingInstance.Monitor
+			if previousInstance, ok := previousNode.Instance[s]; ok {
+				previousValue = previousInstance.Monitor
+			}
+			if pendingValue != nil && previousValue != nil {
+				// a previous monitor exists, compare
+				globalExpectUpdated := pendingValue.GlobalExpectUpdated.After(previousValue.GlobalExpectUpdated)
+				statusUpdated := pendingValue.StatusUpdated.After(previousValue.StatusUpdated)
+				if !globalExpectUpdated && !statusUpdated {
+					// not an update
 					continue
 				}
+				// monitor updated
+				detectUpdate = true
+			} else if pendingValue == nil && previousValue != nil {
+				// monitor deleted
+				detectDelete = true
+			} else if pendingValue != nil && previousValue == nil {
+				// monitor added
+				detectUpdate = true
+			}
+			if detectUpdate {
 				updates = append(updates, msgbus.SmonUpdated{
 					Path:   p,
 					Node:   node,
-					Status: *pending.DeepCopy(),
+					Status: *pendingValue.DeepCopy(),
+				})
+			} else if detectDelete {
+				deletes = append(deletes, msgbus.SmonDeleted{
+					Path: p,
+					Node: node,
 				})
 			}
 		}
-		for s := range previousNode.Services.Smon {
-			if _, ok := pendingNode.Services.Smon[s]; !ok {
+		for s, previousInstance := range previousNode.Instance {
+			// look for existing previous instance monitor, where no more instance exists
+			if previousInstance.Status == nil {
+				continue
+			}
+			if _, ok := pendingNode.Instance[s]; !ok {
 				p, err := path.Parse(s)
 				if err != nil {
 					continue
@@ -268,8 +343,11 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 			}
 		}
 	} else if hasPendingNode {
-		// all pending status are new
-		for s, cfg := range pendingNode.Services.Smon {
+		// all pending instance with monitor are new
+		for s, pendingInstance := range pendingNode.Instance {
+			if pendingInstance.Monitor == nil {
+				continue
+			}
 			p, err := path.Parse(s)
 			if err != nil {
 				continue
@@ -277,12 +355,15 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 			updates = append(updates, msgbus.SmonUpdated{
 				Path:   p,
 				Node:   node,
-				Status: *cfg.DeepCopy(),
+				Status: *pendingInstance.Monitor.DeepCopy(),
 			})
 		}
 	} else if hasPreviousNode {
-		// all previous status are deleted
-		for s := range previousNode.Services.Smon {
+		// all previous instance with monitor are deleted
+		for s, previousInstance := range previousNode.Instance {
+			if previousInstance.Monitor == nil {
+				continue
+			}
 			p, err := path.Parse(s)
 			if err != nil {
 				continue

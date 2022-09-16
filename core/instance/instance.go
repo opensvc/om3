@@ -21,6 +21,12 @@ import (
 )
 
 type (
+	Instance struct {
+		Config  *Config  `json:"config"`
+		Monitor *Monitor `json:"monitor"`
+		Status  *Status  `json:"status"`
+	}
+
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
 		GlobalExpect        string                    `json:"global_expect"`
@@ -135,12 +141,10 @@ func (t *MonitorRestart) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-//
 // SortedResources returns a list of resource identifiers sorted by:
 // 1/ driver group
 // 2/ subset
 // 3/ resource name
-//
 func (t *Status) SortedResources() []resource.ExposedStatus {
 	l := make([]resource.ExposedStatus, 0)
 	for k, v := range t.Resources {
@@ -202,17 +206,15 @@ func (a ResourceOrder) Less(i, j int) bool {
 	}
 }
 
-//
 // resourceFlagsString formats resource flags as a vector of characters.
 //
-//   R  Running
-//   M  Monitored
-//   D  Disabled
-//   O  Optional
-//   E  Encap
-//   P  Provisioned
-//   S  Standby
-//
+//	R  Running
+//	M  Monitored
+//	D  Disabled
+//	O  Optional
+//	E  Encap
+//	P  Provisioned
+//	S  Standby
 func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) string {
 	flags := ""
 

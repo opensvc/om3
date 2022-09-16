@@ -69,19 +69,9 @@ func (s *Status) WithSelector(selector string) *Status {
 	}
 	selected := paths.StrMap()
 	for nodename, nodeData := range s.Cluster.Node {
-		for ps := range nodeData.Services.Config {
+		for ps := range nodeData.Instance {
 			if !selected.Has(ps) {
-				delete(s.Cluster.Node[nodename].Services.Config, ps)
-			}
-		}
-		for ps := range nodeData.Services.Smon {
-			if !selected.Has(ps) {
-				delete(s.Cluster.Node[nodename].Services.Smon, ps)
-			}
-		}
-		for ps := range nodeData.Services.Status {
-			if !selected.Has(ps) {
-				delete(s.Cluster.Node[nodename].Services.Status, ps)
+				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}
@@ -99,22 +89,10 @@ func (s *Status) WithNamespace(namespace string) *Status {
 		return s
 	}
 	for nodename, nodeData := range s.Cluster.Node {
-		for ps := range nodeData.Services.Config {
+		for ps := range nodeData.Instance {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
-				delete(s.Cluster.Node[nodename].Services.Config, ps)
-			}
-		}
-		for ps := range nodeData.Services.Smon {
-			p, _ := path.Parse(ps)
-			if p.Namespace != namespace {
-				delete(s.Cluster.Node[nodename].Services.Smon, ps)
-			}
-		}
-		for ps := range nodeData.Services.Status {
-			p, _ := path.Parse(ps)
-			if p.Namespace != namespace {
-				delete(s.Cluster.Node[nodename].Services.Status, ps)
+				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}

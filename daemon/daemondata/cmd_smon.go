@@ -29,10 +29,11 @@ func (o opDelSmon) setError(err error) {
 func (o opDelSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelSmon
 	s := o.path.String()
-	if _, ok := d.pending.Cluster.Node[d.localNode].Services.Smon[s]; ok {
-		delete(d.pending.Cluster.Node[d.localNode].Services.Smon, s)
+	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Monitor != nil {
+		inst.Monitor = nil
+		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
 		op := jsondelta.Operation{
-			OpPath: jsondelta.OperationPath{"services", "smon", s},
+			OpPath: jsondelta.OperationPath{"instance", s, "monitor"},
 			OpKind: "remove",
 		}
 		d.pendingOps = append(d.pendingOps, op)
@@ -49,12 +50,23 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 
 func (o opSetSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetSmon
+	var op jsondelta.Operation
 	s := o.path.String()
-	d.pending.Cluster.Node[d.localNode].Services.Smon[s] = o.value
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"services", "smon", s},
-		OpValue: jsondelta.NewOptValue(o.value),
-		OpKind:  "replace",
+	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
+		inst.Monitor = &o.value
+		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
+		op = jsondelta.Operation{
+			OpPath:  jsondelta.OperationPath{"instance", s, "monitor"},
+			OpValue: jsondelta.NewOptValue(o.value),
+			OpKind:  "replace",
+		}
+	} else {
+		d.pending.Cluster.Node[d.localNode].Instance[s] = instance.Instance{Monitor: &o.value}
+		op = jsondelta.Operation{
+			OpPath:  jsondelta.OperationPath{"instance", s},
+			OpValue: jsondelta.NewOptValue(instance.Instance{Monitor: &o.value}),
+			OpKind:  "replace",
+		}
 	}
 	d.pendingOps = append(d.pendingOps, op)
 	msgbus.PubSmonUpdated(d.bus, s, msgbus.SmonUpdated{
