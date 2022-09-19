@@ -13,15 +13,11 @@ import (
 type (
 
 	// MonitorThreadStatus describes the OpenSVC daemon monitor thread state,
-	// which is responsible for the node DataSets aggregation and decision
-	// making.
+	// which is responsible for the node DataSets aggregation and
+	// decision-making.
 	MonitorThreadStatus struct {
 		ThreadStatus
-		Compat   bool                               `json:"compat"`
-		Frozen   bool                               `json:"frozen"`
-		Nodes    map[string]NodeStatus              `json:"nodes"`
-		Services map[string]object.AggregatedStatus `json:"services"`
-		Routines int                                `json:"routines"`
+		Routines int `json:"routines"`
 	}
 
 	// NodeStatus holds a node DataSet.
@@ -38,8 +34,9 @@ type (
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		Monitor         NodeMonitor                 `json:"monitor"`
-		Services        NodeServices                `json:"services"`
-		Stats           NodeStatusStats             `json:"stats"`
+		//Services        NodeServices                 `json:"services"`
+		Instance map[string]instance.Instance `json:"instance"`
+		Stats    NodeStatusStats              `json:"stats"`
 		//Locks map[string]Lock `json:"locks"`
 	}
 
@@ -79,8 +76,8 @@ type (
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s Status) GetNodeStatus(nodename string) *NodeStatus {
-	if nodeStatus, ok := s.Monitor.Nodes[nodename]; ok {
+func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
+	if nodeStatus, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeStatus
 	}
 	return nil
@@ -88,37 +85,37 @@ func (s Status) GetNodeStatus(nodename string) *NodeStatus {
 
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
-func (t Status) GetObjectStatus(p path.T) object.Status {
+func (s *Status) GetObjectStatus(p path.T) object.Status {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p
-	data.Compat = t.Monitor.Compat
-	data.Object, _ = t.Monitor.Services[ps]
-	for nodename, ndata := range t.Monitor.Nodes {
-		var ok bool
+	data.Object, _ = s.Cluster.Object[ps]
+	for nodename, ndata := range s.Cluster.Node {
 		instanceStates := instance.States{}
 		instanceStates.Node.Frozen = ndata.Frozen
 		instanceStates.Node.Name = nodename
-		instanceStates.Status, ok = ndata.Services.Status[ps]
+		inst, ok := ndata.Instance[ps]
 		if !ok {
 			continue
 		}
-		instanceStates.Config, ok = ndata.Services.Config[ps]
-		if !ok {
+		if inst.Status == nil || inst.Config == nil {
 			continue
 		}
+
+		instanceStates.Status = *inst.Status
+		instanceStates.Config = *inst.Config
 		data.Instances[nodename] = instanceStates
 		for _, relative := range instanceStates.Status.Parents {
 			ps := relative.String()
-			data.Parents[ps] = t.Monitor.Services[ps]
+			data.Parents[ps] = s.Cluster.Object[ps]
 		}
 		for _, relative := range instanceStates.Status.Children {
 			ps := relative.String()
-			data.Children[ps] = t.Monitor.Services[ps]
+			data.Children[ps] = s.Cluster.Object[ps]
 		}
 		for _, relative := range instanceStates.Status.Slaves {
 			ps := relative.String()
-			data.Slaves[ps] = t.Monitor.Services[ps]
+			data.Slaves[ps] = s.Cluster.Object[ps]
 		}
 	}
 	return *data

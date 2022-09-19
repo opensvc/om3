@@ -27,7 +27,7 @@ type (
 )
 
 func getCfg(c *JournalData, node, name string) *Config {
-	b, err := c.MarshalPath(OperationPath{"monitor", "nodes", node, "services", "config", name})
+	b, err := c.MarshalPath(OperationPath{"cluster", "node", node, "services", "config", name})
 	if err != nil {
 		return nil
 	}
@@ -89,7 +89,7 @@ func TestJournal(t *testing.T) {
 		monitor := getInitialMonitor([]string{svc1})
 		svcToAdd := []string{"Svc2", "Svc3"}
 		fromSvcConfigPath := func(svc string, v ...interface{}) OperationPath {
-			return append(OperationPath{"monitor", "nodes", "node1",
+			return append(OperationPath{"cluster", "node", "node1",
 				"services", "config", svc}, v...)
 		}
 
@@ -151,7 +151,7 @@ func TestJournal(t *testing.T) {
 			}
 
 			t.Run("Keys", func(t *testing.T) {
-				path := OperationPath{"monitor", "nodes", "node1", "services", "config"}
+				path := OperationPath{"cluster", "node", "node1", "services", "config"}
 				keys, err := container.Keys(path)
 				t.Logf("found keys: %s", keys)
 				require.Equal(t, []string{"Svc1", "Svc2", "Svc3"}, keys)

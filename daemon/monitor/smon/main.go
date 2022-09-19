@@ -1,8 +1,8 @@
 // Package smon is responsible for of local instance state
 //
 //	It provides the cluster data:
-//		["monitor", "nodes", <localhost>, "services", "status", <instance>, "monitor"]
-//		["monitor", "nodes", <localhost>, "services", "smon", <instance>]
+//		["cluster", "node", <localhost>, "services", "status", <instance>, "monitor"]
+//		["cluster", "node", <localhost>, "services", "smon", <instance>]
 //
 //	smon are created by the local instcfg, with parent context instcfg context.
 //	instcfg done => smon done

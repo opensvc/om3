@@ -8,7 +8,7 @@ import (
 
 // DelServiceAgg
 //
-// Monitor.Services.*
+// cluster.object.*
 func DelServiceAgg(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
 	op := opDelServiceAgg{
@@ -21,7 +21,7 @@ func DelServiceAgg(c chan<- interface{}, p path.T) error {
 
 // SetServiceAgg
 //
-// Monitor.Services.*
+// cluster.object.*
 func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus, ev *msgbus.Msg) error {
 	err := make(chan error)
 	op := opSetServiceAgg{

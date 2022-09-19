@@ -1,7 +1,7 @@
 // Package instcfg is responsible for local instance.Config
 //
 // New instCfg are created by daemon discover.
-// It provides the cluster data at ["monitor", "nodes", localhost, "services",
+// It provides the cluster data at ["cluster", "node", localhost, "services",
 // "config, <instance>]
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
@@ -29,8 +29,8 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/monitor/smon"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"

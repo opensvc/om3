@@ -15,10 +15,21 @@ func newData(counterCmd chan<- interface{}) *data {
 	localNode := hostname.Hostname()
 	localNodeStatus := newNodeStatus(localNode)
 	status := cluster.Status{
-		Cluster: cluster.Info{
-			ID:    rawconfig.ClusterSection().ID,
-			Name:  rawconfig.ClusterSection().Name,
-			Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
+		Cluster: cluster.TCluster{
+			Config: cluster.ClusterConfig{
+				ID:    rawconfig.ClusterSection().ID,
+				Name:  rawconfig.ClusterSection().Name,
+				Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
+			},
+			Status: cluster.TClusterStatus{
+				Compat: false,
+				Frozen: true,
+			},
+			Object: map[string]object.AggregatedStatus{},
+
+			Node: map[string]cluster.NodeStatus{
+				localNode: localNodeStatus,
+			},
 		},
 		Collector: cluster.CollectorThreadStatus{},
 		DNS:       cluster.DNSThreadStatus{},
@@ -26,12 +37,6 @@ func newData(counterCmd chan<- interface{}) *data {
 		Listener:  cluster.ListenerThreadStatus{},
 		Monitor: cluster.MonitorThreadStatus{
 			ThreadStatus: cluster.ThreadStatus{},
-			Compat:       false,
-			Frozen:       false,
-			Nodes: map[string]cluster.NodeStatus{
-				localNode: localNodeStatus,
-			},
-			Services: map[string]object.AggregatedStatus{},
 		},
 		Heartbeats: nil,
 	}
@@ -62,12 +67,8 @@ func newNodeStatus(localNode string) cluster.NodeStatus {
 		MinAvailMemPct:  0,
 		MinAvailSwapPct: 0,
 		Monitor:         cluster.NodeMonitor{},
-		Services: cluster.NodeServices{
-			Config: map[string]instance.Config{},
-			Status: map[string]instance.Status{},
-			Smon:   map[string]instance.Monitor{},
-		},
-		Stats: cluster.NodeStatusStats{},
+		Instance:        map[string]instance.Instance{},
+		Stats:           cluster.NodeStatusStats{},
 	}
 	return nodeStatus
 }

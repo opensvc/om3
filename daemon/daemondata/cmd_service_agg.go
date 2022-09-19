@@ -37,10 +37,10 @@ func (o opSetServiceAgg) setError(err error) {
 func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelServiceAgg
 	s := o.path.String()
-	if _, ok := d.pending.Monitor.Services[s]; ok {
-		delete(d.pending.Monitor.Services, s)
+	if _, ok := d.pending.Cluster.Object[s]; ok {
+		delete(d.pending.Cluster.Object, s)
 		patch := jsondelta.Patch{jsondelta.Operation{
-			OpPath: jsondelta.OperationPath{"monitor", "services", s},
+			OpPath: jsondelta.OperationPath{"cluster", "object", s},
 			OpKind: "remove",
 		}}
 		if eventB, err := json.Marshal(patch); err != nil {
@@ -69,10 +69,10 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetServiceAgg
 	s := o.path.String()
-	d.pending.Monitor.Services[s] = o.value
+	d.pending.Cluster.Object[s] = o.value
 
 	patch := jsondelta.Patch{jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"monitor", "services", s},
+		OpPath:  jsondelta.OperationPath{"cluster", "object", s},
 		OpValue: jsondelta.NewOptValue(o.value),
 		OpKind:  "replace",
 	}}

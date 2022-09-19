@@ -43,10 +43,13 @@ func sObjectWarning(d object.AggregatedStatus) string {
 
 func (f Frame) scalerInstancesUp(path string) int {
 	actual := 0
-	for _, node := range f.Current.Monitor.Nodes {
-		for p, instance := range node.Services.Status {
+	for _, node := range f.Current.Cluster.Node {
+		for p, inst := range node.Instance {
+			if inst.Status == nil {
+				continue
+			}
 			l := strings.SplitN(p, ".", 2)
-			if len(l) == 2 && l[1] == path && instance.Avail == status.Up {
+			if len(l) == 2 && l[1] == path && inst.Status.Avail == status.Up {
 				actual++
 			}
 		}
@@ -61,27 +64,31 @@ func (f Frame) sObjectRunning(path string) string {
 	avail := status.NotApplicable
 
 	var scale null.Int
-	for _, node := range f.Current.Monitor.Nodes {
-		if instance, ok := node.Services.Status[path]; ok {
-			if instance.Avail == status.Up {
+	for _, node := range f.Current.Cluster.Node {
+		if inst, ok := node.Instance[path]; ok {
+			if inst.Status == nil {
+				continue
+			}
+			instanceStatus := *inst.Status
+			if instanceStatus.Avail == status.Up {
 				actual++
 			}
 			if expected == 0 {
 				switch {
-				case !instance.Scale.IsZero():
-					expected = int(instance.Scale.ValueOrZero())
-				case instance.Topology == topology.Flex:
-					expected = instance.FlexTarget
-				case instance.Topology == topology.Failover:
+				case !instanceStatus.Scale.IsZero():
+					expected = int(instanceStatus.Scale.ValueOrZero())
+				case instanceStatus.Topology == topology.Flex:
+					expected = instanceStatus.FlexTarget
+				case instanceStatus.Topology == topology.Failover:
 					expected = 1
 				}
 			}
-			orchestrate = instance.Orchestrate
-			scale = instance.Scale
+			orchestrate = instanceStatus.Orchestrate
+			scale = instanceStatus.Scale
 		}
 	}
 
-	if s, ok := f.Current.Monitor.Services[path]; ok {
+	if s, ok := f.Current.Cluster.Object[path]; ok {
 		avail = s.Avail
 	}
 
@@ -106,13 +113,13 @@ func sObjectAvail(d object.AggregatedStatus) string {
 }
 
 func (f Frame) sObject(path string) string {
-	d := f.Current.Monitor.Services[path]
+	d := f.Current.Cluster.Object[path]
 	c3 := sObjectAvail(d) + sObjectWarning(d) + sObjectPlacement(d)
 	s := fmt.Sprintf(" %s\t", bold(path))
 	s += fmt.Sprintf("%s\t", c3)
 	s += fmt.Sprintf("%s\t", f.sObjectRunning(path))
 	s += fmt.Sprintf("%s\t", f.info.separator)
-	for _, node := range f.Current.Cluster.Nodes {
+	for _, node := range f.Current.Cluster.Config.Nodes {
 		s += f.sObjectInstance(path, node)
 	}
 	return s

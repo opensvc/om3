@@ -85,7 +85,7 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 		}
 		msg = hbtype.MsgPatch{
 			Kind:     "patch",
-			Compat:   d.pending.Monitor.Nodes[d.localNode].Compat,
+			Compat:   d.pending.Cluster.Node[d.localNode].Compat,
 			Gen:      d.getGens(),
 			Updated:  time.Now(),
 			Deltas:   delta,
@@ -94,7 +94,7 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 	case "full":
 		msg = hbtype.MsgFull{
 			Kind:     "full",
-			Compat:   d.pending.Monitor.Nodes[d.localNode].Compat,
+			Compat:   d.pending.Cluster.Node[d.localNode].Compat,
 			Gen:      d.getGens(),
 			Updated:  time.Now(),
 			Full:     d.pending.GetNodeStatus(d.localNode).DeepCopy(),

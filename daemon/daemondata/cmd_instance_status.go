@@ -38,10 +38,11 @@ func (o opDelInstanceStatus) setError(ctx context.Context, err error) {
 func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelInstanceStatus
 	s := o.path.String()
-	if _, ok := d.pending.Monitor.Nodes[d.localNode].Services.Status[s]; ok {
-		delete(d.pending.Monitor.Nodes[d.localNode].Services.Status, s)
+	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Status != nil {
+		inst.Status = nil
+		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
 		op := jsondelta.Operation{
-			OpPath: jsondelta.OperationPath{"services", "status", s},
+			OpPath: jsondelta.OperationPath{"instance", s, "status"},
 			OpKind: "remove",
 		}
 		d.pendingOps = append(d.pendingOps, op)
@@ -59,9 +60,9 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetInstanceStatus
 	s := instance.Status{}
-	if nodeStatus, ok := d.pending.Monitor.Nodes[o.node]; ok {
-		if instStatus, ok := nodeStatus.Services.Status[o.path.String()]; ok {
-			s = instStatus
+	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
+		if inst, ok := nodeStatus.Instance[o.path.String()]; ok && inst.Status != nil {
+			s = *inst.Status
 		}
 	}
 	select {
@@ -72,12 +73,23 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 
 func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceStatus
+	var op jsondelta.Operation
 	s := o.path.String()
-	d.pending.Monitor.Nodes[d.localNode].Services.Status[s] = o.value
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"services", "status", s},
-		OpValue: jsondelta.NewOptValue(o.value),
-		OpKind:  "replace",
+	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
+		inst.Status = &o.value
+		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
+		op = jsondelta.Operation{
+			OpPath:  jsondelta.OperationPath{"instance", s, "status"},
+			OpValue: jsondelta.NewOptValue(o.value),
+			OpKind:  "replace",
+		}
+	} else {
+		d.pending.Cluster.Node[d.localNode].Instance[s] = instance.Instance{Status: &o.value}
+		op = jsondelta.Operation{
+			OpPath:  jsondelta.OperationPath{"instance", s},
+			OpValue: jsondelta.NewOptValue(instance.Instance{Status: &o.value}),
+			OpKind:  "replace",
+		}
 	}
 	d.pendingOps = append(d.pendingOps, op)
 	msgbus.PubInstStatusUpdated(d.bus, s, msgbus.InstStatusUpdated{

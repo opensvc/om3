@@ -114,7 +114,7 @@ func (f *Frame) Render() string {
 }
 
 func (f *Frame) scanData() {
-	f.info.nodeCount = len(f.Current.Cluster.Nodes)
+	f.info.nodeCount = len(f.Current.Cluster.Config.Nodes)
 	// +1 for the separator between static cols and node cols
 	f.info.columns = staticCols + f.info.nodeCount + 1
 	f.info.empty = strings.Repeat("\t", f.info.columns)
@@ -124,13 +124,13 @@ func (f *Frame) scanData() {
 	} else {
 		f.info.separator = " "
 	}
-	for _, v := range f.Current.Monitor.Nodes {
+	for _, v := range f.Current.Cluster.Node {
 		for name := range v.Arbitrators {
 			f.info.arbitrators[name] = 1
 		}
 	}
 	f.info.paths = make([]string, 0)
-	for path := range f.Current.Monitor.Services {
+	for path := range f.Current.Cluster.Object {
 		f.info.paths = append(f.info.paths, path)
 	}
 	sort.Strings(f.info.paths)
@@ -138,7 +138,7 @@ func (f *Frame) scanData() {
 
 func (f Frame) title(s string) string {
 	s += "\t\t\t\t"
-	for _, v := range f.Current.Cluster.Nodes {
+	for _, v := range f.Current.Cluster.Config.Nodes {
 		s += bold(v) + "\t"
 	}
 	return s

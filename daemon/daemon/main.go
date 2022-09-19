@@ -1,7 +1,7 @@
 /*
-	Package daemon provide the subdaemon main responsible ot other opensvc daemons
+Package daemon provide the subdaemon main responsible ot other opensvc daemons
 
-    It is responsible for other sub daemons (monitor, ...)
+It is responsible for other sub daemons (monitor, ...)
 */
 package daemon
 

@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
 )
@@ -10,7 +11,7 @@ import (
 type (
 	// Status describes the full Cluster state.
 	Status struct {
-		Cluster    Info                             `json:"cluster"`
+		Cluster    TCluster                         `json:"cluster"`
 		Collector  CollectorThreadStatus            `json:"collector"`
 		DNS        DNSThreadStatus                  `json:"dns"`
 		Scheduler  SchedulerThreadStatus            `json:"scheduler"`
@@ -19,10 +20,23 @@ type (
 		Heartbeats map[string]HeartbeatThreadStatus `json:"-"`
 	}
 
-	// Info decribes the cluster id, name and nodes
+	TCluster struct {
+		Config ClusterConfig                      `json:"config"`
+		Status TClusterStatus                     `json:"status"`
+		Object map[string]object.AggregatedStatus `json:"object"`
+
+		Node map[string]NodeStatus `json:"node"`
+	}
+
+	TClusterStatus struct {
+		Compat bool `json:"compat"`
+		Frozen bool `json:"frozen"`
+	}
+
+	// ClusterConfig describes the cluster id, name and nodes
 	// The cluster name is used as the right most part of cluster dns
 	// names.
-	Info struct {
+	ClusterConfig struct {
 		ID    string   `json:"id"`
 		Name  string   `json:"name"`
 		Nodes []string `json:"nodes"`
@@ -54,60 +68,38 @@ func (s *Status) WithSelector(selector string) *Status {
 		return s
 	}
 	selected := paths.StrMap()
-	for nodename, nodeData := range s.Monitor.Nodes {
-		for ps, _ := range nodeData.Services.Config {
+	for nodename, nodeData := range s.Cluster.Node {
+		for ps := range nodeData.Instance {
 			if !selected.Has(ps) {
-				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
-			}
-		}
-		for ps, _ := range nodeData.Services.Smon {
-			if !selected.Has(ps) {
-				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
-			}
-		}
-		for ps, _ := range nodeData.Services.Status {
-			if !selected.Has(ps) {
-				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
+				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}
-	for ps, _ := range s.Monitor.Services {
+	for ps := range s.Cluster.Object {
 		if !selected.Has(ps) {
-			delete(s.Monitor.Services, ps)
+			delete(s.Cluster.Object, ps)
 		}
 	}
 	return s
 }
 
-// WithSelector purges the dataset from objects not matching the namespace
+// WithNamespace purges the dataset from objects not matching the namespace
 func (s *Status) WithNamespace(namespace string) *Status {
 	if namespace == "" {
 		return s
 	}
-	for nodename, nodeData := range s.Monitor.Nodes {
-		for ps, _ := range nodeData.Services.Config {
+	for nodename, nodeData := range s.Cluster.Node {
+		for ps := range nodeData.Instance {
 			p, _ := path.Parse(ps)
 			if p.Namespace != namespace {
-				delete(s.Monitor.Nodes[nodename].Services.Config, ps)
-			}
-		}
-		for ps, _ := range nodeData.Services.Smon {
-			p, _ := path.Parse(ps)
-			if p.Namespace != namespace {
-				delete(s.Monitor.Nodes[nodename].Services.Smon, ps)
-			}
-		}
-		for ps, _ := range nodeData.Services.Status {
-			p, _ := path.Parse(ps)
-			if p.Namespace != namespace {
-				delete(s.Monitor.Nodes[nodename].Services.Status, ps)
+				delete(s.Cluster.Node[nodename].Instance, ps)
 			}
 		}
 	}
-	for ps, _ := range s.Monitor.Services {
+	for ps := range s.Cluster.Object {
 		p, _ := path.Parse(ps)
 		if p.Namespace != namespace {
-			delete(s.Monitor.Services, ps)
+			delete(s.Cluster.Object, ps)
 		}
 	}
 	return s

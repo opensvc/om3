@@ -48,6 +48,8 @@ func (o *smon) provisionedFromIdle() {
 
 func (o *smon) provisionedFromWaitLeader() {
 	if o.provisionedClearIfReached() {
+		o.change = true
+		o.state.Status = statusIdle
 		return
 	}
 	if !o.hasLeaderProvisioned() {

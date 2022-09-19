@@ -27,7 +27,7 @@ func (f Frame) wThreadCollector() string {
 	}
 	s += "\t"
 	s += f.info.separator + "\t"
-	for _, v := range f.Current.Monitor.Nodes {
+	for _, v := range f.Current.Cluster.Node {
 		if v.Speaker {
 			s += green("O") + "\t"
 		} else {
@@ -103,7 +103,7 @@ func (f Frame) wThreadHeartbeat(name string, data HeartbeatThreadStatus) string 
 	}
 	s += "\t"
 	s += f.info.separator + "\t"
-	for _, peer := range f.Current.Cluster.Nodes {
+	for _, peer := range f.Current.Cluster.Config.Nodes {
 		if peer == hostname.Hostname() {
 			s += iconNotApplicable + "\t"
 			continue

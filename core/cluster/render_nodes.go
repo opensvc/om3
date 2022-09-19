@@ -11,14 +11,14 @@ import (
 
 func (f Frame) sNodeScoreLine() string {
 	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("score"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeScore(n) + "\t"
 	}
 	return s
 }
 func (f Frame) sNodeLoadLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("load15m"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeLoad(n) + "\t"
 	}
 	return s
@@ -26,7 +26,7 @@ func (f Frame) sNodeLoadLine() string {
 
 func (f Frame) sNodeMemLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("mem"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeMem(n) + "\t"
 	}
 	return s
@@ -34,7 +34,7 @@ func (f Frame) sNodeMemLine() string {
 
 func (f Frame) sNodeSwapLine() string {
 	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("swap"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeSwap(n) + "\t"
 	}
 	return s
@@ -42,7 +42,7 @@ func (f Frame) sNodeSwapLine() string {
 
 func (f Frame) sNodeWarningsLine() string {
 	s := fmt.Sprintf("%s\t\t\t%s\t", bold("state"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeMonState(n)
 		s += f.sNodeFrozen(n)
 		s += f.sNodeMonTarget(n)
@@ -53,46 +53,46 @@ func (f Frame) sNodeWarningsLine() string {
 
 func (f Frame) sNodeVersionLine() string {
 	versions := set.New()
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		versions.Insert(f.sNodeVersion(n))
 	}
 	if versions.Len() == 1 {
 		return ""
 	}
 	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeVersion(n) + "\t"
 	}
 	return s + "\n"
 }
 
 func (f Frame) sNodeCompatLine() string {
-	if f.Current.Monitor.Compat {
+	if f.Current.Cluster.Status.Compat {
 		return ""
 	}
 	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator)
-	for _, n := range f.Current.Cluster.Nodes {
+	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeCompat(n) + "\t"
 	}
 	return s + "\n"
 }
 
 func (f Frame) sNodeScore(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%d", val.Stats.Score)
 	}
 	return ""
 }
 
 func (f Frame) sNodeLoad(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%.1f", val.Stats.Load15M)
 	}
 	return ""
 }
 
 func (f Frame) sNodeMem(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.MemTotalMB == 0 {
 			return hiblue("-")
 		}
@@ -117,7 +117,7 @@ func (f Frame) sNodeMem(n string) string {
 }
 
 func (f Frame) sNodeSwap(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.SwapTotalMB == 0 {
 			return hiblue("-")
 		}
@@ -142,7 +142,7 @@ func (f Frame) sNodeSwap(n string) string {
 }
 
 func (f Frame) sNodeMonState(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Monitor.Status != "idle" {
 			return val.Monitor.Status
 		}
@@ -151,7 +151,7 @@ func (f Frame) sNodeMonState(n string) string {
 }
 
 func (f Frame) sNodeFrozen(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if !val.Frozen.IsZero() {
 			return iconFrozen
 		}
@@ -160,7 +160,7 @@ func (f Frame) sNodeFrozen(n string) string {
 }
 
 func (f Frame) sNodeMonTarget(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Monitor.GlobalExpect != "" {
 			return rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect)
 		}
@@ -169,14 +169,14 @@ func (f Frame) sNodeMonTarget(n string) string {
 }
 
 func (f Frame) sNodeCompat(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%d", val.Compat)
 	}
 	return ""
 }
 
 func (f Frame) sNodeVersion(n string) string {
-	if val, ok := f.Current.Monitor.Nodes[n]; ok {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%s", val.Agent)
 	}
 	return ""
