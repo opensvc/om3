@@ -20,23 +20,22 @@ type (
 		Routines int `json:"routines"`
 	}
 
-	// NodeStatus holds a node DataSet.
-	NodeStatus struct {
-		Agent           string                      `json:"agent"`
-		Speaker         bool                        `json:"speaker"`
-		API             uint64                      `json:"api"`
-		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
-		Compat          uint64                      `json:"compat"`
-		Env             string                      `json:"env"`
-		Frozen          time.Time                   `json:"frozen"`
-		Gen             map[string]uint64           `json:"gen"`
-		Labels          map[string]string           `json:"labels"`
-		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
-		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
-		Monitor         NodeMonitor                 `json:"monitor"`
-		//Services        NodeServices                 `json:"services"`
-		Instance map[string]instance.Instance `json:"instance"`
-		Stats    NodeStatusStats              `json:"stats"`
+	// TNode holds a node DataSet.
+	TNode struct {
+		Agent           string                       `json:"agent"`
+		Speaker         bool                         `json:"speaker"`
+		API             uint64                       `json:"api"`
+		Arbitrators     map[string]ArbitratorStatus  `json:"arbitrators"`
+		Compat          uint64                       `json:"compat"`
+		Env             string                       `json:"env"`
+		Frozen          time.Time                    `json:"frozen"`
+		Gen             map[string]uint64            `json:"gen"`
+		Labels          map[string]string            `json:"labels"`
+		MinAvailMemPct  uint64                       `json:"min_avail_mem"`
+		MinAvailSwapPct uint64                       `json:"min_avail_swap"`
+		Monitor         NodeMonitor                  `json:"monitor"`
+		Instance        map[string]instance.Instance `json:"instance"`
+		Stats           NodeStatusStats              `json:"stats"`
 		//Locks map[string]Lock `json:"locks"`
 	}
 
@@ -76,7 +75,7 @@ type (
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
+func (s *Status) GetNodeStatus(nodename string) *TNode {
 	if nodeStatus, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeStatus
 	}
@@ -121,14 +120,14 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	return *data
 }
 
-func (n *NodeStatus) DeepCopy() NodeStatus {
+func (n *TNode) DeepCopy() TNode {
 	b, err := json.Marshal(n)
 	if err != nil {
-		return NodeStatus{}
+		return TNode{}
 	}
-	nodeStatus := NodeStatus{}
+	nodeStatus := TNode{}
 	if err := json.Unmarshal(b, &nodeStatus); err != nil {
-		return NodeStatus{}
+		return TNode{}
 	}
 	return nodeStatus
 }

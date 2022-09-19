@@ -123,7 +123,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	}
 	if changes {
 		// patches has been applied get update pendingNode
-		pendingNode = cluster.NodeStatus{}
+		pendingNode = cluster.TNode{}
 		if err := json.Unmarshal(pendingB, &pendingNode); err != nil {
 			d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", o.nodename)
 			select {

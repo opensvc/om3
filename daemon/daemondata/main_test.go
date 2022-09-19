@@ -26,9 +26,9 @@ func loadFixture(t *testing.T, name string) []byte {
 	return b
 }
 
-func LoadFull(t *testing.T, name string) *cluster.NodeStatus {
+func LoadFull(t *testing.T, name string) *cluster.TNode {
 	t.Helper()
-	var full cluster.NodeStatus
+	var full cluster.TNode
 	require.Nil(t, json.Unmarshal(loadFixture(t, name), &full))
 	return &full
 }
@@ -48,7 +48,7 @@ func TestDaemonData(t *testing.T) {
 	var (
 		tName                             string
 		status                            *cluster.Status
-		localNodeStatus, remoteNodeStatus *cluster.NodeStatus
+		localNodeStatus, remoteNodeStatus *cluster.TNode
 		err                               error
 	)
 

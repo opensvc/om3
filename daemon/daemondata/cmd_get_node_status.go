@@ -8,7 +8,7 @@ import (
 
 type opGetNodeStatus struct {
 	node   string
-	result chan<- *cluster.NodeStatus
+	result chan<- *cluster.TNode
 }
 
 func (o opGetNodeStatus) call(ctx context.Context, d *data) {
@@ -20,8 +20,8 @@ func (o opGetNodeStatus) call(ctx context.Context, d *data) {
 	}
 }
 
-func (t T) GetNodeStatus(node string) *cluster.NodeStatus {
-	result := make(chan *cluster.NodeStatus)
+func (t T) GetNodeStatus(node string) *cluster.TNode {
+	result := make(chan *cluster.TNode)
 	t.cmdC <- opGetNodeStatus{
 		node:   node,
 		result: result,
