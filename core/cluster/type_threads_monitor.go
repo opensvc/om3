@@ -22,25 +22,29 @@ type (
 
 	// TNode holds a node DataSet.
 	TNode struct {
-		Agent           string                       `json:"agent"`
-		Speaker         bool                         `json:"speaker"`
-		API             uint64                       `json:"api"`
-		Arbitrators     map[string]ArbitratorStatus  `json:"arbitrators"`
-		Compat          uint64                       `json:"compat"`
-		Env             string                       `json:"env"`
-		Frozen          time.Time                    `json:"frozen"`
-		Gen             map[string]uint64            `json:"gen"`
-		Labels          map[string]string            `json:"labels"`
-		MinAvailMemPct  uint64                       `json:"min_avail_mem"`
-		MinAvailSwapPct uint64                       `json:"min_avail_swap"`
-		Monitor         NodeMonitor                  `json:"monitor"`
-		Instance        map[string]instance.Instance `json:"instance"`
-		Stats           NodeStatusStats              `json:"stats"`
+		Instance map[string]instance.Instance `json:"instance"`
+		Monitor  NodeMonitor                  `json:"monitor"`
+		Stats    NodeStatusStats              `json:"stats"`
+		Status   TNodeStatus                  `json:"status"`
 		//Locks map[string]Lock `json:"locks"`
 	}
 
+	TNodeStatus struct {
+		Agent           string                      `json:"agent"`
+		API             uint64                      `json:"api"`
+		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
+		Compat          uint64                      `json:"compat"`
+		Env             string                      `json:"env"`
+		Frozen          time.Time                   `json:"frozen"`
+		Gen             map[string]uint64           `json:"gen"`
+		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
+		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
+		Speaker         bool                        `json:"speaker"`
+		Labels          map[string]string           `json:"labels"`
+	}
+
 	// NodeStatusStats describes systems (cpu, mem, swap) resource usage of a node
-	// and a opensvc-specific score.
+	// and an opensvc-specific score.
 	NodeStatusStats struct {
 		Load15M      float64 `json:"load_15m"`
 		MemAvailPct  uint64  `json:"mem_avail"`
@@ -66,7 +70,7 @@ type (
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
-	// if it is joinable.
+	// if it is join-able.
 	ArbitratorStatus struct {
 		Name   string   `json:"name"`
 		Status status.T `json:"status"`
@@ -91,7 +95,7 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	data.Object, _ = s.Cluster.Object[ps]
 	for nodename, ndata := range s.Cluster.Node {
 		instanceStates := instance.States{}
-		instanceStates.Node.Frozen = ndata.Frozen
+		instanceStates.Node.Frozen = ndata.Status.Frozen
 		instanceStates.Node.Name = nodename
 		inst, ok := ndata.Instance[ps]
 		if !ok {
