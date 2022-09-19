@@ -60,9 +60,9 @@ func newNodeData(localNode string) cluster.TNode {
 		Stats:    cluster.NodeStatusStats{},
 		Status: cluster.TNodeStatus{
 			Agent:           "3.0-0",
-			API:             7,
+			API:             8,
 			Arbitrators:     map[string]cluster.ArbitratorStatus{},
-			Compat:          10,
+			Compat:          11,
 			Env:             "",
 			Frozen:          time.Time{},
 			Gen:             map[string]uint64{localNode: 1},
