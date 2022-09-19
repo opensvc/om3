@@ -30,7 +30,7 @@ type (
 
 		pendingOps      []jsondelta.Operation // local data pending operations not yet in patchQueue
 		patchQueue      patchQueue            // local data patch queue for remotes
-		gen             uint64                // gen of local TNode
+		gen             uint64                // gen of local TNodeData
 		mergedFromPeer  gens                  // remote dateset gen merged locally
 		mergedOnPeer    gens                  // local dataset gen merged remotely
 		remotesNeedFull map[string]bool

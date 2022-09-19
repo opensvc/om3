@@ -25,7 +25,7 @@ type (
 		Status TClusterStatus                     `json:"status"`
 		Object map[string]object.AggregatedStatus `json:"object"`
 
-		Node map[string]TNode `json:"node"`
+		Node map[string]TNodeData `json:"node"`
 	}
 
 	TClusterStatus struct {

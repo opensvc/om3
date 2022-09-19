@@ -27,7 +27,7 @@ func newData(counterCmd chan<- interface{}) *data {
 			},
 			Object: map[string]object.AggregatedStatus{},
 
-			Node: map[string]cluster.TNode{
+			Node: map[string]cluster.TNodeData{
 				localNode: nodeData,
 			},
 		},
@@ -53,8 +53,8 @@ func newData(counterCmd chan<- interface{}) *data {
 	}
 }
 
-func newNodeData(localNode string) cluster.TNode {
-	nodeStatus := cluster.TNode{
+func newNodeData(localNode string) cluster.TNodeData {
+	nodeStatus := cluster.TNodeData{
 		Instance: map[string]instance.Instance{},
 		Monitor:  cluster.NodeMonitor{},
 		Stats:    cluster.NodeStatusStats{},

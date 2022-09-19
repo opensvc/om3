@@ -20,8 +20,8 @@ type (
 		Routines int `json:"routines"`
 	}
 
-	// TNode holds a node DataSet.
-	TNode struct {
+	// TNodeData holds a node DataSet.
+	TNodeData struct {
 		Instance map[string]instance.Instance `json:"instance"`
 		Monitor  NodeMonitor                  `json:"monitor"`
 		Stats    NodeStatusStats              `json:"stats"`
@@ -79,7 +79,7 @@ type (
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *TNode {
+func (s *Status) GetNodeStatus(nodename string) *TNodeData {
 	if nodeStatus, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeStatus
 	}
@@ -124,14 +124,14 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	return *data
 }
 
-func (n *TNode) DeepCopy() TNode {
+func (n *TNodeData) DeepCopy() TNodeData {
 	b, err := json.Marshal(n)
 	if err != nil {
-		return TNode{}
+		return TNodeData{}
 	}
-	nodeStatus := TNode{}
+	nodeStatus := TNodeData{}
 	if err := json.Unmarshal(b, &nodeStatus); err != nil {
-		return TNode{}
+		return TNodeData{}
 	}
 	return nodeStatus
 }

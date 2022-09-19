@@ -17,7 +17,7 @@ type (
 		Updated  time.Time                  `json:"updated"`
 		Ping     cluster.NodeMonitor        `json:"monitor"`
 		Deltas   map[string]jsondelta.Patch `json:"deltas"`
-		Full     cluster.TNode              `json:"full"`
+		Full     cluster.TNodeData          `json:"full"`
 		Nodename string                     `json:"nodename"`
 	}
 
@@ -27,7 +27,7 @@ type (
 		Compat   uint64            `json:"compat,omitempty"`
 		Gen      map[string]uint64 `json:"gen,omitempty"`
 		Updated  time.Time         `json:"updated,omitempty"`
-		Full     cluster.TNode     `json:"full,omitempty"`
+		Full     cluster.TNodeData `json:"full,omitempty"`
 		Nodename string            `json:"nodename,omitempty"`
 	}
 
