@@ -20,28 +20,31 @@ type (
 		Routines int `json:"routines"`
 	}
 
-	// NodeStatus holds a node DataSet.
-	NodeStatus struct {
+	// TNodeData holds a node DataSet.
+	TNodeData struct {
+		Instance map[string]instance.Instance `json:"instance"`
+		Monitor  NodeMonitor                  `json:"monitor"`
+		Stats    NodeStatusStats              `json:"stats"`
+		Status   TNodeStatus                  `json:"status"`
+		//Locks map[string]Lock `json:"locks"`
+	}
+
+	TNodeStatus struct {
 		Agent           string                      `json:"agent"`
-		Speaker         bool                        `json:"speaker"`
 		API             uint64                      `json:"api"`
 		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
 		Compat          uint64                      `json:"compat"`
 		Env             string                      `json:"env"`
 		Frozen          time.Time                   `json:"frozen"`
 		Gen             map[string]uint64           `json:"gen"`
-		Labels          map[string]string           `json:"labels"`
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
-		Monitor         NodeMonitor                 `json:"monitor"`
-		//Services        NodeServices                 `json:"services"`
-		Instance map[string]instance.Instance `json:"instance"`
-		Stats    NodeStatusStats              `json:"stats"`
-		//Locks map[string]Lock `json:"locks"`
+		Speaker         bool                        `json:"speaker"`
+		Labels          map[string]string           `json:"labels"`
 	}
 
 	// NodeStatusStats describes systems (cpu, mem, swap) resource usage of a node
-	// and a opensvc-specific score.
+	// and an opensvc-specific score.
 	NodeStatusStats struct {
 		Load15M      float64 `json:"load_15m"`
 		MemAvailPct  uint64  `json:"mem_avail"`
@@ -67,18 +70,50 @@ type (
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
-	// if it is joinable.
+	// if it is join-able.
 	ArbitratorStatus struct {
 		Name   string   `json:"name"`
 		Status status.T `json:"status"`
 	}
 )
 
+func (nodeStatus *TNodeStatus) DeepCopy() *TNodeStatus {
+	result := *nodeStatus
+	newArbitrator := make(map[string]ArbitratorStatus)
+	for n, v := range nodeStatus.Arbitrators {
+		newArbitrator[n] = v
+	}
+	result.Arbitrators = newArbitrator
+
+	newGen := make(map[string]uint64)
+	for n, v := range nodeStatus.Gen {
+		newGen[n] = v
+	}
+	result.Gen = newGen
+
+	newLabel := make(map[string]string)
+	for n, v := range nodeStatus.Labels {
+		newLabel[n] = v
+	}
+	result.Labels = newLabel
+
+	return &result
+}
+
+// GetNodeData extracts from the cluster dataset all information relative
+// to node data.
+func (s *Status) GetNodeData(nodename string) *TNodeData {
+	if nodeData, ok := s.Cluster.Node[nodename]; ok {
+		return &nodeData
+	}
+	return nil
+}
+
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
-	if nodeStatus, ok := s.Cluster.Node[nodename]; ok {
-		return &nodeStatus
+func (s *Status) GetNodeStatus(nodename string) *TNodeStatus {
+	if nodeData, ok := s.Cluster.Node[nodename]; ok {
+		return &nodeData.Status
 	}
 	return nil
 }
@@ -92,7 +127,7 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	data.Object, _ = s.Cluster.Object[ps]
 	for nodename, ndata := range s.Cluster.Node {
 		instanceStates := instance.States{}
-		instanceStates.Node.Frozen = ndata.Frozen
+		instanceStates.Node.Frozen = ndata.Status.Frozen
 		instanceStates.Node.Name = nodename
 		inst, ok := ndata.Instance[ps]
 		if !ok {
@@ -121,14 +156,14 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	return *data
 }
 
-func (n *NodeStatus) DeepCopy() NodeStatus {
+func (n *TNodeData) DeepCopy() *TNodeData {
 	b, err := json.Marshal(n)
 	if err != nil {
-		return NodeStatus{}
+		return &TNodeData{}
 	}
-	nodeStatus := NodeStatus{}
+	nodeStatus := TNodeData{}
 	if err := json.Unmarshal(b, &nodeStatus); err != nil {
-		return NodeStatus{}
+		return &TNodeData{}
 	}
-	return nodeStatus
+	return &nodeStatus
 }

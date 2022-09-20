@@ -22,6 +22,33 @@ type (
 	}
 )
 
+// DelInstanceConfig
+//
+// Monitor.Node.*.services.config.*
+func DelInstanceConfig(c chan<- interface{}, p path.T) error {
+	err := make(chan error)
+	op := opDelInstanceConfig{
+		err:  err,
+		path: p,
+	}
+	c <- op
+	return <-err
+}
+
+// SetInstanceConfig
+//
+// Monitor.Node.*.services.config.*
+func SetInstanceConfig(dataCmdC chan<- interface{}, p path.T, v instance.Config) error {
+	err := make(chan error)
+	op := opSetInstanceConfig{
+		err:   err,
+		path:  p,
+		value: v,
+	}
+	dataCmdC <- op
+	return <-err
+}
+
 func (o opSetInstanceConfig) setError(err error) {
 	select {
 	case o.err <- err:

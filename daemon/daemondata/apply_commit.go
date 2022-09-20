@@ -26,13 +26,13 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	if requireFull {
 		genChanged := d.updateFromPendingOps()
 		if genChanged {
-			d.pending.Cluster.Node[d.localNode].Gen[d.localNode] = d.gen
+			d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
 		}
 		d.resetPatchQueue()
 	} else {
 		genChanged := d.updateFromPendingOps()
 		if genChanged {
-			d.pending.Cluster.Node[d.localNode].Gen[d.localNode] = d.gen
+			d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
 		}
 		d.purgeAppliedPatchQueue()
 	}
@@ -65,39 +65,39 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 			continue
 		}
 		if previous, ok := d.previous.Cluster.Node[node]; ok {
-			if gen != previous.Gen[node] {
+			if gen != previous.Status.Gen[node] {
 				if remoteMon, ok := d.pending.Cluster.Node[node]; ok {
 					d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
-					d.previous.Cluster.Node[node] = remoteMon.DeepCopy()
+					d.previous.Cluster.Node[node] = *remoteMon.DeepCopy()
 				} else {
-					d.log.Error().Msgf("no pending %s mergedFromPeer %d != previous %d", node, gen, previous.Gen[node])
+					d.log.Error().Msgf("no pending %s mergedFromPeer %d != previous %d", node, gen, previous.Status.Gen[node])
 				}
 			}
 		} else if remoteMon, ok := d.pending.Cluster.Node[node]; ok {
 			d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
-			d.previous.Cluster.Node[node] = remoteMon.DeepCopy()
+			d.previous.Cluster.Node[node] = *remoteMon.DeepCopy()
 		} else {
 			d.log.Debug().Msgf("remove previous for %s", node)
 			delete(d.previous.Cluster.Node, node)
 		}
 	}
 	if previous, ok := d.previous.Cluster.Node[d.localNode]; ok {
-		if previous.Gen[d.localNode] != d.pending.Cluster.Node[d.localNode].Gen[d.localNode] {
-			d.log.Debug().Msgf("updated local previous for %s gen %d", d.localNode, d.pending.Cluster.Node[d.localNode].Gen[d.localNode])
+		if previous.Status.Gen[d.localNode] != d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] {
+			d.log.Debug().Msgf("updated local previous for %s gen %d", d.localNode, d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode])
 			local := d.pending.Cluster.Node[d.localNode]
-			d.previous.Cluster.Node[d.localNode] = local.DeepCopy()
+			d.previous.Cluster.Node[d.localNode] = *local.DeepCopy()
 		}
 	} else {
-		d.log.Debug().Msgf("create local previous for %s gen %d", d.localNode, d.pending.Cluster.Node[d.localNode].Gen[d.localNode])
+		d.log.Debug().Msgf("create local previous for %s gen %d", d.localNode, d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode])
 		local := d.pending.Cluster.Node[d.localNode]
-		d.previous.Cluster.Node[d.localNode] = local.DeepCopy()
+		d.previous.Cluster.Node[d.localNode] = *local.DeepCopy()
 	}
 
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).
 		Interface("mergedOnPeer", d.mergedOnPeer).
 		Interface("remotesNeedFull", d.remotesNeedFull).
-		Interface("gens", d.pending.Cluster.Node[d.localNode].Gen).
+		Interface("gens", d.pending.Cluster.Node[d.localNode].Status.Gen).
 		Msg("opCommitPending")
 	select {
 	case <-ctx.Done():
@@ -118,7 +118,7 @@ func (d *data) updateGens() (requireFull bool) {
 		}
 	}
 	for n, gen := range d.mergedFromPeer {
-		d.pending.Cluster.Node[d.localNode].Gen[n] = gen
+		d.pending.Cluster.Node[d.localNode].Status.Gen[n] = gen
 	}
 	return
 }

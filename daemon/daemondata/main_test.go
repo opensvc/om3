@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/hostname"
@@ -20,15 +22,15 @@ import (
 
 func loadFixture(t *testing.T, name string) []byte {
 	t.Helper()
-	path := filepath.Join("test-fixtures", name)
+	path := filepath.Join("testdata", name)
 	b, err := os.ReadFile(path)
 	require.Nil(t, err)
 	return b
 }
 
-func LoadFull(t *testing.T, name string) *cluster.NodeStatus {
+func LoadFull(t *testing.T, name string) *cluster.TNodeData {
 	t.Helper()
-	var full cluster.NodeStatus
+	var full cluster.TNodeData
 	require.Nil(t, json.Unmarshal(loadFixture(t, name), &full))
 	return &full
 }
@@ -44,22 +46,22 @@ func TestMain(m *testing.M) {
 	testhelper.Main(m, cmd.ExecuteArgs)
 }
 
+// TestDaemonData runs sequence of data updates withing t.Run, and fail fast on
+// first error
+//
+// This is why each t.Run is followed by require.False(t, t.Failed()) // fail on first error
 func TestDaemonData(t *testing.T) {
-	var (
-		tName                             string
-		status                            *cluster.Status
-		localNodeStatus, remoteNodeStatus *cluster.NodeStatus
-		err                               error
-	)
-
 	testhelper.Setup(t)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	t.Logf("start daemon bus")
 	psbus := pubsub.NewBus("daemon")
 	psbus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, psbus)
 	defer psbus.Stop()
 
+	t.Logf("start daemondata")
 	cmdC, cancel := daemondata.Start(ctx)
 	defer cancel()
 
@@ -67,122 +69,229 @@ func TestDaemonData(t *testing.T) {
 	localNode := hostname.Hostname()
 	remoteHost := "node2"
 
-	tName = "getLocalNodeStatus return status with local status initialized"
-	t.Run(tName, func(t *testing.T) {
-		localNodeStatus = bus.GetLocalNodeStatus()
-		require.NotNil(t, localNodeStatus)
-		require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
-		require.Equal(t, "", localNodeStatus.Monitor.Status)
-	})
-
-	tName = "GetStatus return status with local status initialized"
-	t.Run(tName, func(t *testing.T) {
-		status = bus.GetStatus()
-		localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-		t.Logf("got localNodeStatus: %#v", localNodeStatus)
-		require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
-		require.Equal(t, "", localNodeStatus.Monitor.Status)
-
-		tName = "updates on GetStatus result are local"
-		t.Run(tName, func(t *testing.T) {
-			localNodeStatus.Monitor.Status = "foo"
-			localNodeStatus.Gen[localNode] = 1
-			status = bus.GetStatus()
-			localNodeStatus = daemondata.GetNodeStatus(status, localNode)
+	t.Run("from initialized", func(t *testing.T) {
+		t.Run("GetStatus return status with local status initialized", func(t *testing.T) {
+			localNodeStatus := bus.GetNodeStatus(localNode)
 			require.NotNil(t, localNodeStatus)
-			require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
-			require.Equal(t, "", localNodeStatus.Monitor.Status)
+			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],
+				"expected local node gen 1, got %+v", localNodeStatus)
+			cluster := bus.GetStatus().Cluster
+			require.Equal(t, "cluster1", cluster.Config.Name)
+			require.Equalf(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID,
+				"got %+v", cluster)
 		})
+		require.False(t, t.Failed()) // fail on first error
+
+		t.Run("GetNodeData return node data with local data initialized", func(t *testing.T) {
+			localNodeData := bus.GetNodeData(localNode)
+			require.Equalf(t, "", localNodeData.Monitor.Status,
+				"got %+v", localNodeData)
+		})
+		require.False(t, t.Failed()) // fail on first error
 	})
+	require.False(t, t.Failed()) // fail on first error
 
-	t.Run("ApplyFull vs CommitPending", func(t *testing.T) {
-		status = bus.GetStatus()
-		localNodeStatus := daemondata.GetNodeStatus(status, localNode)
-		localNodeStatus.Monitor.Status = "CommitPending-1"
-		localNodeStatus.Gen[localNode] = 1
-
-		t.Logf("ApplyFull localnode updates CommitPending-1")
-		bus.ApplyFull(localNode, localNodeStatus)
-
-		full := LoadFull(t, "full-node2-t1.json")
-		t.Logf("ApplyFull remote updates")
-		bus.ApplyFull(remoteHost, full)
-
-		status = bus.GetStatus()
-		t.Run("pending are not applied until commit", func(t *testing.T) {
-			status = bus.GetStatus()
-			localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-			require.Equal(t, "", localNodeStatus.Monitor.Status)
-			require.Equal(t, uint64(0), localNodeStatus.Gen[localNode])
-			remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
-			require.Nil(t, remoteNodeStatus)
-
-			t.Log("CommitPending")
-			bus.CommitPending(context.Background())
-			t.Run("result has pending changes applied after CommitPending", func(t *testing.T) {
-				status = bus.GetStatus()
-				localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-				require.Equal(t, "CommitPending-1", localNodeStatus.Monitor.Status)
-				require.Equal(t, uint64(1), localNodeStatus.Gen[localNode])
-				remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
-				require.Equal(t, "idle-t1", remoteNodeStatus.Monitor.Status)
-			})
-			t.Run("localNode now know about remote gens", func(t *testing.T) {
-				localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-				require.Len(t, localNodeStatus.Gen, 2)
-				require.Equal(t, full.Gen[remoteHost], localNodeStatus.Gen[remoteHost])
-			})
-		})
+	t.Run("Ensure GetNodeData result is a deep copy", func(t *testing.T) {
+		localNodeData := bus.GetNodeData(localNode)
+		localNodeData.Monitor.Status = "foo"
+		localNodeData.Status.Gen[localNode] = 30
+		localNodeData = bus.GetNodeData(localNode)
+		require.NotNil(t, localNodeData)
+		require.Equal(t, uint64(1), localNodeData.Status.Gen[localNode])
+		require.Equal(t, "", localNodeData.Monitor.Status)
 	})
+	require.False(t, t.Failed()) // fail on first error
 
-	t.Run("ApplyPatch vs CommitPending", func(t *testing.T) {
-		full := LoadFull(t, "full-node2-t1.json")
-		t.Logf("ApplyFull remote updates t1")
-		bus.ApplyFull(remoteHost, full)
-		patchMsg := LoadPatch(t, "patch-node2-t2.json")
-		t.Logf("ApplyPatch remote updates")
-		err = bus.ApplyPatch(remoteHost, patchMsg)
-		require.Nil(t, err)
-		t.Log("CommitPending")
-		bus.CommitPending(context.Background())
-		status = bus.GetStatus()
-		remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
-		require.NotNil(t, remoteNodeStatus)
-		t.Run("verify patch applied", func(t *testing.T) {
-			require.Equal(t, 0.5, remoteNodeStatus.Stats.Load15M)
-			require.Equal(t, uint64(1000), remoteNodeStatus.Stats.MemTotalMB)
-			require.Equal(t, uint64(10), remoteNodeStatus.Stats.MemAvailPct)
-			require.Equal(t, uint64(11), remoteNodeStatus.Stats.SwapTotalMB)
-		})
-		t.Run("expect local node know now new remote gen", func(t *testing.T) {
-			localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-			require.Equal(t, uint64(21), localNodeStatus.Gen[remoteHost])
-		})
-		t.Run("verify older gen patch are not applied", func(t *testing.T) {
-			require.Equal(t, full.Stats.Score, remoteNodeStatus.Stats.Score, full.Stats.Score)
-		})
-		t.Run("When delta contains patch in future", func(t *testing.T) {
-			patchMsg = LoadPatch(t, "patch-node2-t4.json")
-			t.Logf("ApplyPatch remote updates")
-			err = bus.ApplyPatch(remoteHost, patchMsg)
-			t.Run("expect ApplyPatch error", func(t *testing.T) {
-				require.Equal(t, "ApplyRemotePatch invalid patch gen: 23", err.Error())
-			})
-			t.Run("ensure future delta not applied to pending", func(t *testing.T) {
-				t.Log("CommitPending")
-				bus.CommitPending(context.Background())
-				status = bus.GetStatus()
-				remoteNodeStatus = daemondata.GetNodeStatus(status, remoteHost)
-				require.NotNil(t, remoteNodeStatus)
-				require.Equal(t, uint64(21), remoteNodeStatus.Gen[remoteHost])
-			})
-			t.Run("expect local node now needs full from remote", func(t *testing.T) {
-				localNodeStatus = daemondata.GetNodeStatus(status, localNode)
-				require.Equal(t, uint64(0), localNodeStatus.Gen[remoteHost])
-			})
-		})
+	t.Run("Ensure GetNmon result is a deep copy", func(t *testing.T) {
+		localNodeMonitor := bus.GetNmon(localNode)
+		initialStatusUpdated := localNodeMonitor.StatusUpdated
+		initialGlobalExpectUpdated := localNodeMonitor.GlobalExpectUpdated
+		localNodeMonitor.Status = "foo"
+		localNodeMonitor.StatusUpdated = time.Now()
+		localNodeMonitor.GlobalExpect = "newGe"
+		localNodeMonitor.GlobalExpectUpdated = time.Now()
+
+		localNodeMonitor = bus.GetNmon(localNode)
+		require.Equal(t, "", localNodeMonitor.Status)
+		require.Equal(t, initialStatusUpdated, localNodeMonitor.StatusUpdated)
+		require.Equal(t, "", localNodeMonitor.GlobalExpect)
+		require.Equal(t, initialGlobalExpectUpdated, localNodeMonitor.GlobalExpectUpdated)
 	})
+	require.False(t, t.Failed()) // fail on first error
 
-	t.Logf("stats: %v", bus.Stats())
+	t.Run("ApplyFull", func(t *testing.T) {
+		t.Run("localnode CommitPending-1", func(t *testing.T) {
+			localNodeData := bus.GetNodeData(localNode)
+			localNodeData.Monitor.Status = "CommitPending-1"
+			localNodeData.Status.Gen[localNode] = 5
+			t.Logf("ApplyFull from local node data copy updates")
+			bus.ApplyFull(localNode, localNodeData)
+			t.Logf("Verify ApplyFull changes applied CommitPending-1")
+			localNodeStatus := bus.GetNodeStatus(localNode)
+			require.Equal(t, "CommitPending-1", localNodeData.Monitor.Status)
+			require.Equal(t, localNodeData.Status.Gen[localNode], localNodeStatus.Gen[localNode])
+		})
+		require.False(t, t.Failed()) // fail on first error
 
+		t.Run("remote updates full-node2-t1.json", func(t *testing.T) {
+			full := LoadFull(t, "full-node2-t1.json")
+			t.Log("apply full from remote")
+			bus.ApplyFull(remoteHost, full)
+
+			for _, commit := range []bool{false, true} {
+				name := "verify data"
+				if commit {
+					name = name + " after commit"
+					t.Log("run CommitPending")
+					bus.CommitPending(ctx)
+				} else {
+					name = name + " before commit"
+				}
+				t.Run(name, func(t *testing.T) {
+					if commit {
+						t.Log("run CommitPending")
+						bus.CommitPending(ctx)
+					}
+
+					t.Run("remote node status gen updated from full generations", func(t *testing.T) {
+						require.Equal(t, full.Status.Gen, bus.GetNodeStatus(remoteHost).Gen)
+					})
+
+					t.Run("local node status gen update generation of remote", func(t *testing.T) {
+						require.Equal(t, full.Status.Gen[remoteHost], bus.GetNodeStatus(localNode).Gen[remoteHost])
+					})
+
+					t.Run("remote node instance is applied", func(t *testing.T) {
+						require.Equal(t,
+							full.Instance["flagspeed1"].Status.Updated,
+							bus.GetNodeData(remoteHost).Instance["flagspeed1"].Status.Updated)
+					})
+
+					t.Run("local node status gen updated after commit", func(t *testing.T) {
+						require.Equal(t, full.Status.Gen[remoteHost], bus.GetNodeStatus(localNode).Gen[remoteHost])
+					})
+					require.False(t, t.Failed()) // fail on first error
+				})
+				require.False(t, t.Failed()) // fail on first error
+			}
+
+		})
+		require.False(t, t.Failed()) // fail on first error
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("ApplyPatch", func(t *testing.T) {
+		for _, commit := range []bool{false, true} {
+			name := "verify data"
+			if commit {
+				name = name + " after commit"
+				t.Log("run CommitPending")
+				bus.CommitPending(ctx)
+			} else {
+				name = name + " before commit"
+			}
+			t.Run(name, func(t *testing.T) {
+				if commit {
+					t.Log("run CommitPending")
+					bus.CommitPending(ctx)
+				}
+				t.Log("prepare test with apply full remote data for node from full-node2-t1.json")
+				full := LoadFull(t, "full-node2-t1.json")
+				bus.ApplyFull(remoteHost, full)
+
+				t.Run("ApplyPatch remote updates patch-node2-t2.json", func(t *testing.T) {
+					patchMsg := LoadPatch(t, "patch-node2-t2.json")
+					t.Logf("ApplyPatch remote updates patch-node2-t2.json")
+					require.NoError(t, bus.ApplyPatch(remoteHost, patchMsg))
+
+					t.Run("verify patch applied", func(t *testing.T) {
+						remoteNodeData := bus.GetNodeData(remoteHost)
+						require.NotNil(t, remoteNodeData)
+						require.Equal(t, 0.5, remoteNodeData.Stats.Load15M)
+						require.Equal(t, uint64(1000), remoteNodeData.Stats.MemTotalMB)
+						require.Equal(t, uint64(10), remoteNodeData.Stats.MemAvailPct)
+						require.Equal(t, uint64(11), remoteNodeData.Stats.SwapTotalMB)
+
+						require.Equal(t, patchMsg.Gen[remoteHost], remoteNodeData.Status.Gen[remoteHost])
+					})
+					require.False(t, t.Failed()) // fail on first error
+
+					t.Run("Verify local node status gen is updated", func(t *testing.T) {
+						require.Equal(t, patchMsg.Gen[remoteHost], bus.GetNodeStatus(localNode).Gen[remoteHost])
+					})
+					require.False(t, t.Failed()) // fail on first error
+				})
+				require.False(t, t.Failed()) // fail on first error
+
+				t.Run("apply patch skip already applied gen", func(t *testing.T) {
+					patchMsg := LoadPatch(t, "patch-node2-t3-with-t2-changed.json")
+					require.NoError(t, bus.ApplyPatch(remoteHost, patchMsg))
+					remoteNodeData := bus.GetNodeData(remoteHost)
+					require.Equal(t, 0.5, remoteNodeData.Stats.Load15M,
+						"hum hacked gen 21 has been reapplied !")
+					require.Equal(t, uint(2), remoteNodeData.Stats.Score,
+						"hum gen 22 has not been applied !")
+				})
+				require.False(t, t.Failed()) // fail on first error
+
+				t.Run("When delta contains patch in future", func(t *testing.T) {
+					patchMsg := LoadPatch(t, "patch-node2-t4.json")
+					t.Logf("ApplyPatch remote updates")
+					err := bus.ApplyPatch(remoteHost, patchMsg)
+					t.Run("expect ApplyPatch error", func(t *testing.T) {
+						require.Contains(t, err.Error(), "found broken sequence on gen 24 from")
+					})
+					require.False(t, t.Failed()) // fail on first error
+
+					t.Run("ensure future delta not applied to pending", func(t *testing.T) {
+						t.Log("CommitPending")
+						bus.CommitPending(context.Background())
+						remoteNodeData := bus.GetNodeData(remoteHost)
+						require.NotNil(t, remoteNodeData)
+						require.Equal(t, uint(2), bus.GetNodeData(remoteHost).Stats.Score,
+							"hum some remote data should has been applied !")
+					})
+					require.False(t, t.Failed()) // fail on first error
+
+					t.Run("expect local node now needs full from remote", func(t *testing.T) {
+						localNodeStatus := bus.GetNodeStatus(localNode)
+						require.Equal(t, uint64(0), localNodeStatus.Gen[remoteHost])
+					})
+					require.False(t, t.Failed()) // fail on first error
+				})
+				require.False(t, t.Failed()) // fail on first error
+			})
+			require.False(t, t.Failed()) // fail on first error
+		}
+		require.False(t, t.Failed()) // fail on first error
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("verify cluster schema", func(t *testing.T) {
+		cluster := bus.GetStatus().Cluster
+
+		// cluster.node.<node>.config
+		require.Equal(t, "cluster1", cluster.Config.Name)
+		// TODO ensure expected cluster id from test cluster.conf file
+		require.Equal(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID)
+		//require.Equal(t, []string{"node1", "node2"}, cluster.Config.Nodes)
+
+		// cluster.node.<node>.status
+		require.Equal(t, false, cluster.Status.Compat)
+
+		// instance
+		remoteNodeInstanceX := cluster.Node["node2"].Instance["flagspeed1"]
+		require.Equal(t, status.Down, remoteNodeInstanceX.Status.Avail)
+		require.Equal(t, "ed9806c3df631c153cd091402e4612dd", remoteNodeInstanceX.Config.Checksum)
+		require.Equal(t, "starting", remoteNodeInstanceX.Monitor.Status)
+		require.Equal(t, "96b20b237e78d7e663f80d4bf6a997b0", remoteNodeInstanceX.Status.Csum)
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("bus count stats", func(t *testing.T) {
+		for name, count := range bus.Stats() {
+			require.Greaterf(t, count, uint64(0), "expect %s count > 0", name)
+			t.Logf("cout %s: %d", name, count)
+		}
+	})
 }

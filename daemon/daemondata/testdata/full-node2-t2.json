@@ -1,34 +1,63 @@
 {
-  "compat": 10,
-  "api": 7,
-  "agent": "2.1-1371",
+  "config": {
+    "id": "",
+    "name": "",
+    "nodes": [
+      "node1",
+      "node2"
+    ]
+  },
+  "status": {
+    "compat": 10,
+    "api": 7,
+    "agent": "2.1-1371",
+    "env": "PRD",
+    "labels": {
+      "group": "1"
+    },
+    "frozen": "2022-09-17T12:53:41.928853995+02:00",
+    "min_avail_mem": 2,
+    "min_avail_swap": 10,
+    "speaker": false,
+    "gen": {
+      "node1": 17,
+      "node2": 19
+    }
+  },
   "monitor": {
     "status": "idle-t1",
-    "status_updated": 1646318631.3293839
-  },
-  "labels": {
-    "group": "1"
+    "status_updated": "2022-09-17T12:53:41.928853995+02:00"
   },
   "targets": [],
-  "services": {
-    "status": {
-      "cluster": {
-        "updated": 1646318624.6537936,
+  "instance": {
+    "cluster": {
+      "status": {
+        "updated": "2022-09-17T12:53:41.928853995+02:00",
         "kind": "ccfg",
-        "csum": "a7a79239cadee30e6d0135a7c72334e5",
-        "monitor": {
-          "status": "idle",
-          "placement": ""
-        }
+        "csum": "a7a79239cadee30e6d0135a7c72334e5"
       },
-      "flagspeed1": {
-        "updated": 1646318624.668758,
+      "monitor": {
+        "status": "idle",
+        "placement": ""
+      },
+      "config": {
+        "updated": "2022-09-17T12:53:41.928853995+02:00",
+        "csum": "e5b4d315313005b87ca54ee64dcb25d1",
+        "scope": [
+          "node1",
+          "node2"
+        ]
+      }
+    },
+    "flagspeed1": {
+      "status": {
+        "updated": "2022-09-17T12:53:41.928853995+02:00",
         "kind": "svc",
         "app": "default",
         "env": "PRD",
         "placement": "nodes order",
         "topology": "failover",
-        "frozen": 1632210613.348759,
+        "frozen": "2022-09-17T12:53:41.928853995+02:00",
         "subsets": {},
         "resources": {
           "fs#1": {
@@ -37,7 +66,7 @@
             "label": "fs.flag",
             "provisioned": {
               "state": true,
-              "mtime": 1632210628.3362496
+              "mtime": "2022-09-17T12:53:41.928853995+02:00"
             }
           }
         },
@@ -68,32 +97,20 @@
           "status": "idle",
           "placement": ""
         }
-      }
-    },
-    "config": {
-      "flagspeed1": {
-        "updated": 1632210613.356763,
-        "csum": "ed9806c3df631c153cd091402e4612dd",
-        "scope": [
-          "node1"
-        ]
       },
-      "cluster": {
-        "updated": 1646236929.7547646,
-        "csum": "e5b4d315313005b87ca54ee64dcb25d1",
+      "monitor": {
+        "status": "starting",
+        "placement": ""
+      },
+      "config": {
+        "updated": "2022-09-17T12:53:41.928853995+02:00",
+        "csum": "ed9806c3df631c153cd091402e4612dd",
         "scope": [
           "node1",
           "node2"
         ]
       }
     }
-  },
-  "gen": {
-    "node1": 17,
-    "node2": 19
-  },
-  "config": {
-    "csum": "25f7b3d78642eaa9a3735be81d1b9650"
   },
   "stats": {
     "load_15m": 0.4,
@@ -102,12 +119,5 @@
     "swap_total": 979,
     "swap_avail": 100,
     "score": 99
-  },
-  "frozen": 1646318508.5070543,
-  "env": "PRD",
-  "locks": {},
-  "speaker": false,
-  "min_avail_mem": 2,
-  "min_avail_swap": 10,
-  "updated": 1646318631.444554
+  }
 }

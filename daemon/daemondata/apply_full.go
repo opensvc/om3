@@ -13,7 +13,7 @@ import (
 
 type opApplyRemoteFull struct {
 	nodename string
-	full     *cluster.NodeStatus
+	full     *cluster.TNodeData
 	done     chan<- bool
 }
 
@@ -21,12 +21,13 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	d.counterCmd <- idApplyFull
 	d.log.Debug().Msgf("opApplyRemoteFull %s", o.nodename)
 	d.pending.Cluster.Node[o.nodename] = *o.full
-	d.mergedFromPeer[o.nodename] = o.full.Gen[o.nodename]
+	d.mergedFromPeer[o.nodename] = o.full.Status.Gen[o.nodename]
 	d.remotesNeedFull[o.nodename] = false
-	if gen, ok := d.pending.Cluster.Node[o.nodename].Gen[d.localNode]; ok {
+	if gen, ok := d.pending.Cluster.Node[o.nodename].Status.Gen[d.localNode]; ok {
 		d.mergedOnPeer[o.nodename] = gen
 	}
 
+	d.pending.Cluster.Node[d.localNode].Status.Gen[o.nodename] = o.full.Status.Gen[o.nodename]
 	absolutePatch := jsondelta.Patch{
 		jsondelta.Operation{
 			OpPath:  jsondelta.OperationPath{"cluster", "node", o.nodename},
@@ -51,8 +52,8 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	d.log.Debug().
 		Interface("remotesNeedFull", d.remotesNeedFull).
 		Interface("mergedOnPeer", d.mergedOnPeer).
-		Interface("pending gen", d.pending.Cluster.Node[o.nodename].Gen).
-		Interface("full.gen", o.full.Gen).
+		Interface("pending gen", d.pending.Cluster.Node[o.nodename].Status.Gen).
+		Interface("full.gen", o.full.Status.Gen).
 		Msgf("opApplyRemoteFull %s", o.nodename)
 	select {
 	case <-ctx.Done():
@@ -60,7 +61,7 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	}
 }
 
-func (t T) ApplyFull(nodename string, full *cluster.NodeStatus) {
+func (t T) ApplyFull(nodename string, full *cluster.TNodeData) {
 	done := make(chan bool)
 	t.cmdC <- opApplyRemoteFull{
 		nodename: nodename,

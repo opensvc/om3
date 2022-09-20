@@ -17,18 +17,18 @@ type (
 		Updated  time.Time                  `json:"updated"`
 		Ping     cluster.NodeMonitor        `json:"monitor"`
 		Deltas   map[string]jsondelta.Patch `json:"deltas"`
-		Full     cluster.NodeStatus         `json:"full"`
+		Full     cluster.TNodeData          `json:"full"`
 		Nodename string                     `json:"nodename"`
 	}
 
 	// MsgFull struct holds kind full hb message
 	MsgFull struct {
-		Kind     string             `json:"kind,omitempty"`
-		Compat   uint64             `json:"compat,omitempty"`
-		Gen      map[string]uint64  `json:"gen,omitempty"`
-		Updated  time.Time          `json:"updated,omitempty"`
-		Full     cluster.NodeStatus `json:"full,omitempty"`
-		Nodename string             `json:"nodename,omitempty"`
+		Kind     string            `json:"kind,omitempty"`
+		Compat   uint64            `json:"compat,omitempty"`
+		Gen      map[string]uint64 `json:"gen,omitempty"`
+		Updated  time.Time         `json:"updated,omitempty"`
+		Full     cluster.TNodeData `json:"full,omitempty"`
+		Nodename string            `json:"nodename,omitempty"`
 	}
 
 	// MsgPatch struct holds kind patch hb message

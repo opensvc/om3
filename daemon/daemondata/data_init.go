@@ -13,7 +13,7 @@ import (
 
 func newData(counterCmd chan<- interface{}) *data {
 	localNode := hostname.Hostname()
-	localNodeStatus := newNodeStatus(localNode)
+	nodeData := newNodeData(localNode)
 	status := cluster.Status{
 		Cluster: cluster.TCluster{
 			Config: cluster.ClusterConfig{
@@ -27,8 +27,8 @@ func newData(counterCmd chan<- interface{}) *data {
 			},
 			Object: map[string]object.AggregatedStatus{},
 
-			Node: map[string]cluster.NodeStatus{
-				localNode: localNodeStatus,
+			Node: map[string]cluster.TNodeData{
+				localNode: nodeData,
 			},
 		},
 		Collector: cluster.CollectorThreadStatus{},
@@ -47,28 +47,30 @@ func newData(counterCmd chan<- interface{}) *data {
 		counterCmd:      counterCmd,
 		mergedFromPeer:  make(gens),
 		mergedOnPeer:    make(gens),
-		gen:             localNodeStatus.Gen[localNode],
+		gen:             nodeData.Status.Gen[localNode],
 		remotesNeedFull: make(map[string]bool),
 		patchQueue:      make(patchQueue),
 	}
 }
 
-func newNodeStatus(localNode string) cluster.NodeStatus {
-	nodeStatus := cluster.NodeStatus{
-		Agent:           "3.0-0",
-		Speaker:         false,
-		API:             7,
-		Arbitrators:     map[string]cluster.ArbitratorStatus{},
-		Compat:          10,
-		Env:             "",
-		Frozen:          time.Time{},
-		Gen:             map[string]uint64{localNode: 1},
-		Labels:          map[string]string{},
-		MinAvailMemPct:  0,
-		MinAvailSwapPct: 0,
-		Monitor:         cluster.NodeMonitor{},
-		Instance:        map[string]instance.Instance{},
-		Stats:           cluster.NodeStatusStats{},
+func newNodeData(localNode string) cluster.TNodeData {
+	nodeStatus := cluster.TNodeData{
+		Instance: map[string]instance.Instance{},
+		Monitor:  cluster.NodeMonitor{},
+		Stats:    cluster.NodeStatusStats{},
+		Status: cluster.TNodeStatus{
+			Agent:           "3.0-0",
+			API:             8,
+			Arbitrators:     map[string]cluster.ArbitratorStatus{},
+			Compat:          11,
+			Env:             "",
+			Frozen:          time.Time{},
+			Gen:             map[string]uint64{localNode: 1},
+			Labels:          map[string]string{},
+			MinAvailMemPct:  0,
+			MinAvailSwapPct: 0,
+			Speaker:         false,
+		},
 	}
 	return nodeStatus
 }
