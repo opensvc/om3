@@ -79,9 +79,9 @@ type (
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *TNodeData {
-	if nodeStatus, ok := s.Cluster.Node[nodename]; ok {
-		return &nodeStatus
+func (s *Status) GetNodeStatus(nodename string) *TNodeStatus {
+	if nodeData, ok := s.Cluster.Node[nodename]; ok {
+		return &nodeData.Status
 	}
 	return nil
 }
