@@ -99,7 +99,7 @@ func (f Frame) sNodeMem(n string) string {
 		if val.Stats.MemAvailPct == 0 {
 			return hiblue("-")
 		}
-		limit := 100 - val.MinAvailMemPct
+		limit := 100 - val.Status.MinAvailMemPct
 		usage := 100 - val.Stats.MemAvailPct
 		total := sizeconv.BSizeCompactFromMB(val.Stats.MemTotalMB)
 		var s string
@@ -124,7 +124,7 @@ func (f Frame) sNodeSwap(n string) string {
 		if val.Stats.SwapAvailPct == 0 {
 			return hiblue("-")
 		}
-		limit := 100 - val.MinAvailSwapPct
+		limit := 100 - val.Status.MinAvailSwapPct
 		usage := 100 - val.Stats.SwapAvailPct
 		total := sizeconv.BSizeCompactFromMB(val.Stats.SwapTotalMB)
 		var s string
@@ -152,7 +152,7 @@ func (f Frame) sNodeMonState(n string) string {
 
 func (f Frame) sNodeFrozen(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		if !val.Frozen.IsZero() {
+		if !val.Status.Frozen.IsZero() {
 			return iconFrozen
 		}
 	}
@@ -170,14 +170,14 @@ func (f Frame) sNodeMonTarget(n string) string {
 
 func (f Frame) sNodeCompat(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		return fmt.Sprintf("%d", val.Compat)
+		return fmt.Sprintf("%d", val.Status.Compat)
 	}
 	return ""
 }
 
 func (f Frame) sNodeVersion(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		return fmt.Sprintf("%s", val.Agent)
+		return fmt.Sprintf("%s", val.Status.Agent)
 	}
 	return ""
 }

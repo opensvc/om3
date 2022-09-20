@@ -28,7 +28,7 @@ func (f Frame) wThreadCollector() string {
 	s += "\t"
 	s += f.info.separator + "\t"
 	for _, v := range f.Current.Cluster.Node {
-		if v.Speaker {
+		if v.Status.Speaker {
 			s += green("O") + "\t"
 		} else {
 			s += "\t"

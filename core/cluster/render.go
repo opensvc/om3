@@ -125,7 +125,7 @@ func (f *Frame) scanData() {
 		f.info.separator = " "
 	}
 	for _, v := range f.Current.Cluster.Node {
-		for name := range v.Arbitrators {
+		for name := range v.Status.Arbitrators {
 			f.info.arbitrators[name] = 1
 		}
 	}
