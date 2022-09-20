@@ -27,6 +27,7 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 		d.mergedOnPeer[o.nodename] = gen
 	}
 
+	d.pending.Cluster.Node[d.localNode].Status.Gen[o.nodename] = o.full.Status.Gen[o.nodename]
 	absolutePatch := jsondelta.Patch{
 		jsondelta.Operation{
 			OpPath:  jsondelta.OperationPath{"cluster", "node", o.nodename},
