@@ -50,3 +50,11 @@ func (o opGetServiceNames) call(ctx context.Context, d *data) {
 	case o.services <- services:
 	}
 }
+
+type (
+	TInstanceId = string
+)
+
+func InstanceId(p path.T, node string) TInstanceId {
+	return TInstanceId(node + ":" + p.String())
+}
