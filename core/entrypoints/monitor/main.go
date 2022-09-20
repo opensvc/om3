@@ -213,16 +213,19 @@ func (m T) DoWatchDemo(statusGetter Getter, eventGetter EventGetter, out io.Writ
 			return err
 		}
 		// unexpected: avoid fast looping
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 	}
-	return nil
 }
 
 func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
 	var (
-		data   cluster.Status
-		err    error
-		events chan event.Event
+		b        []byte
+		data     cluster.Status
+		err      error
+		events   chan event.Event
+		dataChan = make(chan *cluster.Status)
+
+		patches = make(jsondelta.Patch, 0)
 
 		displayInterval = 500 * time.Millisecond
 	)
@@ -230,7 +233,7 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 	if err != nil {
 		return err
 	}
-	var b []byte
+
 	b, err = statusGetter.Get()
 	if err != nil {
 		return err
@@ -238,51 +241,46 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 	if err := json.Unmarshal(b, &data); err != nil {
 		return err
 	}
-	dataChan := make(chan *cluster.Status)
-	bChan := make(chan *[]byte)
-	go func() {
+
+	go func(d *cluster.Status) {
+		m.doOneShot(*d, true, out)
+		// show data when new data published on dataChan
 		for d := range dataChan {
 			m.doOneShot(*d, true, out)
 		}
-	}()
-	go func() {
-		ticker := time.NewTicker(displayInterval)
-		defer ticker.Stop()
-		b := &[]byte{}
-		changes := false
-		for {
-			select {
-			case tb := <-bChan:
-				b = tb
-				changes = true
-			case <-ticker.C:
-				if !changes {
-					continue
+	}(&data)
+
+	ticker := time.NewTicker(displayInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case e, ok := <-events:
+			if !ok {
+				fmt.Fprintf(os.Stderr, "no more events\n")
+				return nil
+			}
+			switch e.Kind {
+			case "patch", "full":
+				patches = append(patches, jsondelta.NewPatch(*e.Data)...)
+			}
+		case <-ticker.C:
+			if len(patches) > 0 {
+				if newB, err := patches.Apply(b); err != nil {
+					fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\nlen(patches): %d\n", err, len(patches))
+					fmt.Fprintf(os.Stderr, "patches: %+v\n", patches)
+					fmt.Fprintf(os.Stderr, "b: %s\n", b)
+					return err
+				} else {
+					b = newB
 				}
-				if err := json.Unmarshal(*b, &data); err != nil {
-					fmt.Fprintf(os.Stderr, "unmarshal event data %s", err)
-					return
+				data := cluster.Status{}
+				if err := json.Unmarshal(b, &data); err != nil {
+					fmt.Fprintf(os.Stderr, "unmarshal data %s\ndata: %s", err, b)
+					return err
 				}
+				patches = make(jsondelta.Patch, 0)
 				dataChan <- &data
-				changes = false
 			}
 		}
-	}()
-	dataChan <- &data
-	for e := range events {
-		switch e.Kind {
-		case "event":
-			continue
-		case "patch", "full":
-			// pass
-		default:
-			continue
-		}
-
-		if err := handleEvent(&b, e); err != nil {
-			return errors.Wrap(err, "handle event")
-		}
-		bChan <- &b
 	}
-	return nil
 }
