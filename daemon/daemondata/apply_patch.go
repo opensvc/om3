@@ -43,6 +43,11 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		return
 	}
 	pendingNodeGen := pendingNode.Status.Gen[o.nodename]
+	if o.msg.Gen[o.nodename] < pendingNodeGen {
+		d.log.Debug().Msgf("apply remote patch for %s drop message gen %d < %d", o.nodename, o.msg.Gen[o.nodename], pendingNodeGen)
+		o.err <- nil
+		return
+	}
 	deltas := o.msg.Deltas
 	var sortGen []uint64
 	for k := range deltas {
@@ -145,6 +150,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		Interface("mergedOnPeer", d.mergedOnPeer).
 		Interface("pendingNode.Gen", d.pending.Cluster.Node[o.nodename].Status.Gen).
 		Interface("remotesNeedFull", d.remotesNeedFull).
+		Interface("patch_sequence", sortGen).
 		Msgf("apply remote patch for %s", o.nodename)
 	select {
 	case <-ctx.Done():
