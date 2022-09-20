@@ -77,6 +77,38 @@ type (
 	}
 )
 
+func (nodeStatus *TNodeStatus) DeepCopy() *TNodeStatus {
+	result := *nodeStatus
+	newArbitrator := make(map[string]ArbitratorStatus)
+	for n, v := range nodeStatus.Arbitrators {
+		newArbitrator[n] = v
+	}
+	result.Arbitrators = newArbitrator
+
+	newGen := make(map[string]uint64)
+	for n, v := range nodeStatus.Gen {
+		newGen[n] = v
+	}
+	result.Gen = newGen
+
+	newLabel := make(map[string]string)
+	for n, v := range nodeStatus.Labels {
+		newLabel[n] = v
+	}
+	result.Labels = newLabel
+
+	return &result
+}
+
+// GetNodeData extracts from the cluster dataset all information relative
+// to node data.
+func (s *Status) GetNodeData(nodename string) *TNodeData {
+	if nodeData, ok := s.Cluster.Node[nodename]; ok {
+		return &nodeData
+	}
+	return nil
+}
+
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
 func (s *Status) GetNodeStatus(nodename string) *TNodeStatus {
