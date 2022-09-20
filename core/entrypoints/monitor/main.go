@@ -264,13 +264,17 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 			}
 		case <-ticker.C:
 			if len(patches) > 0 {
-				if b, err = patches.Apply(b); err != nil {
-					fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\n", err)
+				if newB, err := patches.Apply(b); err != nil {
+					fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\nlen(patches): %d\n", err, len(patches))
+					fmt.Fprintf(os.Stderr, "patches: %+v\n", patches)
+					fmt.Fprintf(os.Stderr, "b: %s\n", b)
 					return err
+				} else {
+					b = newB
 				}
 				data := cluster.Status{}
 				if err := json.Unmarshal(b, &data); err != nil {
-					fmt.Fprintf(os.Stderr, "unmarshal data %s\n", err)
+					fmt.Fprintf(os.Stderr, "unmarshal data %s\ndata: %s", err, b)
 					return err
 				}
 				patches = make(jsondelta.Patch, 0)
