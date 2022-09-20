@@ -124,14 +124,14 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	return *data
 }
 
-func (n *TNodeData) DeepCopy() TNodeData {
+func (n *TNodeData) DeepCopy() *TNodeData {
 	b, err := json.Marshal(n)
 	if err != nil {
-		return TNodeData{}
+		return &TNodeData{}
 	}
 	nodeStatus := TNodeData{}
 	if err := json.Unmarshal(b, &nodeStatus); err != nil {
-		return TNodeData{}
+		return &TNodeData{}
 	}
-	return nodeStatus
+	return &nodeStatus
 }
