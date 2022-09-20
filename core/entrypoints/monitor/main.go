@@ -243,6 +243,7 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 	}
 
 	go func(d *cluster.Status) {
+		m.doOneShot(*d, true, out)
 		// show data when new data published on dataChan
 		for d := range dataChan {
 			m.doOneShot(*d, true, out)
