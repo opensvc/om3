@@ -85,19 +85,20 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 		}
 		msg = hbtype.MsgPatch{
 			Kind:     "patch",
-			Compat:   d.pending.Cluster.Node[d.localNode].Compat,
+			Compat:   d.pending.Cluster.Node[d.localNode].Status.Compat,
 			Gen:      d.getGens(),
 			Updated:  time.Now(),
 			Deltas:   delta,
 			Nodename: d.localNode,
 		}
 	case "full":
+		nodeData := d.pending.Cluster.Node[d.localNode]
 		msg = hbtype.MsgFull{
 			Kind:     "full",
-			Compat:   d.pending.Cluster.Node[d.localNode].Compat,
+			Compat:   nodeData.Status.Compat,
 			Gen:      d.getGens(),
 			Updated:  time.Now(),
-			Full:     d.pending.GetNodeStatus(d.localNode).DeepCopy(),
+			Full:     *nodeData.DeepCopy(),
 			Nodename: d.localNode,
 		}
 	case "ping":
