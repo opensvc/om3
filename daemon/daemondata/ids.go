@@ -13,6 +13,7 @@ const (
 	idDelSmon
 	idGetHbMessage
 	idGetInstanceStatus
+	idGetNodeData
 	idGetNodeStatus
 	idGetServiceNames
 	idGetNmon
@@ -39,6 +40,7 @@ var (
 		idDelSmon:           "del-smon",
 		idGetHbMessage:      "get-hb-message",
 		idGetInstanceStatus: "get-instance-status",
+		idGetNodeData:       "get-node-data",
 		idGetNodeStatus:     "get-node-status",
 		idGetServiceNames:   "get-service-names",
 		idGetStatus:         "get-status",
