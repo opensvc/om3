@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -98,6 +99,23 @@ func TestDaemonData(t *testing.T) {
 		require.NotNil(t, localNodeData)
 		require.Equal(t, uint64(1), localNodeData.Status.Gen[localNode])
 		require.Equal(t, "", localNodeData.Monitor.Status)
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("Ensure GetNmon result is a deep copy", func(t *testing.T) {
+		localNodeMonitor := bus.GetNmon(localNode)
+		initialStatusUpdated := localNodeMonitor.StatusUpdated
+		initialGlobalExpectUpdated := localNodeMonitor.GlobalExpectUpdated
+		localNodeMonitor.Status = "foo"
+		localNodeMonitor.StatusUpdated = time.Now()
+		localNodeMonitor.GlobalExpect = "newGe"
+		localNodeMonitor.GlobalExpectUpdated = time.Now()
+
+		localNodeMonitor = bus.GetNmon(localNode)
+		require.Equal(t, "", localNodeMonitor.Status)
+		require.Equal(t, initialStatusUpdated, localNodeMonitor.StatusUpdated)
+		require.Equal(t, "", localNodeMonitor.GlobalExpect)
+		require.Equal(t, initialGlobalExpectUpdated, localNodeMonitor.GlobalExpectUpdated)
 	})
 	require.False(t, t.Failed()) // fail on first error
 
