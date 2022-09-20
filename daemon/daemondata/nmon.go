@@ -2,9 +2,12 @@ package daemondata
 
 import (
 	"context"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -13,13 +16,19 @@ type (
 		err chan<- error
 	}
 
+	opGetNmon struct {
+		node  string
+		value chan<- cluster.NodeMonitor
+	}
+
 	opSetNmon struct {
 		err   chan<- error
 		value cluster.NodeMonitor
 	}
-	opGetNmon struct {
-		node  string
-		value chan<- cluster.NodeMonitor
+
+	opSetNodeFrozen struct {
+		err   chan<- error
+		value time.Time
 	}
 )
 
@@ -55,6 +64,17 @@ func SetNmon(c chan<- interface{}, v cluster.NodeMonitor) error {
 	op := opSetNmon{
 		err:   err,
 		value: v,
+	}
+	c <- op
+	return <-err
+}
+
+// SetNodeFrozen sets Monitor.Node.<localhost>.frozen
+func SetNodeFrozen(c chan<- interface{}, tm time.Time) error {
+	err := make(chan error)
+	op := opSetNodeFrozen{
+		err:   err,
+		value: tm,
 	}
 	c <- op
 	return <-err
@@ -109,6 +129,25 @@ func (o opSetNmon) call(ctx context.Context, d *data) {
 	msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
 		Node:    d.localNode,
 		Monitor: o.value,
+	})
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
+}
+
+func (o opSetNodeFrozen) call(ctx context.Context, d *data) {
+	d.counterCmd <- idSetNmon
+	op := jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"frozen"},
+		OpValue: jsondelta.NewOptValue(o.value),
+		OpKind:  "replace",
+	}
+	d.pendingOps = append(d.pendingOps, op)
+	msgbus.PubFrozen(d.bus, hostname.Hostname(), msgbus.Frozen{
+		Node:  hostname.Hostname(),
+		Path:  path.T{},
+		Value: o.value,
 	})
 	select {
 	case <-ctx.Done():
