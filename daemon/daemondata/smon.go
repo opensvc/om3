@@ -22,6 +22,33 @@ type (
 	}
 )
 
+// DelSmon
+//
+// cluster.node.<localhost>.instance.<path>.monitor
+func DelSmon(c chan<- interface{}, p path.T) error {
+	err := make(chan error)
+	op := opDelSmon{
+		err:  err,
+		path: p,
+	}
+	c <- op
+	return <-err
+}
+
+// SetSmon
+//
+// cluster.node.<localhost>.instance.<path>.monitor
+func SetSmon(c chan<- interface{}, p path.T, v instance.Monitor) error {
+	err := make(chan error)
+	op := opSetSmon{
+		err:   err,
+		path:  p,
+		value: v,
+	}
+	c <- op
+	return <-err
+}
+
 func (o opDelSmon) setError(err error) {
 	o.err <- err
 }
