@@ -75,12 +75,11 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 		} else {
 			eventId++
-			var data json.RawMessage = eventB
 			msgbus.PubEvent(d.bus, event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
-				Data: &data,
+				Data: eventB,
 			})
 		}
 	}
@@ -108,12 +107,11 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		var data json.RawMessage = eventB
 		msgbus.PubEvent(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),
-			Data: &data,
+			Data: eventB,
 		})
 	}
 	msgbus.PubSvcAggUpdate(d.bus, s, msgbus.MonSvcAggUpdated{

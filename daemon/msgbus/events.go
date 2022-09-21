@@ -71,7 +71,6 @@ func UnSubEvent(bus *pubsub.Bus, id uuid.UUID) {
 	}
 }
 
-func jsonMsg(msg string) *json.RawMessage {
-	d := json.RawMessage("\"" + msg + "\"")
-	return &d
+func jsonMsg(msg string) json.RawMessage {
+	return json.RawMessage("\"" + msg + "\"")
 }

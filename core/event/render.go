@@ -11,9 +11,9 @@ import (
 func Render(e Event) string {
 	s := fmt.Sprintf("%s %s\n", e.Time, e.Kind)
 	if e.Kind == "event" {
-		s += output.SprintFlat(*e.Data)
+		s += output.SprintFlat(e.Data)
 	} else if e.Data != nil {
-		patch := jsondelta.NewPatch(*e.Data)
+		patch := jsondelta.NewPatch(e.Data)
 		s += patch.Render()
 	}
 	return s

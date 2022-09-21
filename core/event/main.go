@@ -25,7 +25,7 @@ type (
 		Time time.Time `json:"t"`
 
 		// Data is the free-format dataset of the event
-		Data *json.RawMessage `json:"data"`
+		Data json.RawMessage `json:"data"`
 	}
 )
 

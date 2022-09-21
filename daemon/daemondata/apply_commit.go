@@ -179,12 +179,11 @@ func (d *data) eventCommitPendingOps() {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		var data json.RawMessage = eventB
 		msgbus.PubEvent(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),
-			Data: &data,
+			Data: eventB,
 		})
 	}
 }
