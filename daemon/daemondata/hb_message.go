@@ -56,10 +56,11 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 		}
 	}
 	if nextMessageType != lastMessageType {
+		localGen := d.pending.Cluster.Node[d.localNode].Status.Gen
 		if nextMessageType == "full" {
-			d.log.Info().Msgf("hb message full needed for remotes %s", strings.Join(remoteNeedFull, ", "))
+			d.log.Info().Msgf("hb message full needed for remotes %s local gens: %v", strings.Join(remoteNeedFull, ", "), localGen)
 		}
-		d.log.Info().Msgf("hb message type change %s -> %s", lastMessageType, nextMessageType)
+		d.log.Info().Msgf("hb message type change %s -> %s local gens: %v", lastMessageType, nextMessageType, localGen)
 	}
 	lastMessageType = nextMessageType
 	var msg interface{}
