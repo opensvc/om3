@@ -79,21 +79,24 @@ func (o opSetSmon) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetSmon
 	var op jsondelta.Operation
 	s := o.path.String()
+	value := o.value.DeepCopy()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
-		inst.Monitor = &o.value
+		inst.Monitor = value
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
-		op = jsondelta.Operation{
-			OpPath:  jsondelta.OperationPath{"instance", s, "monitor"},
-			OpValue: jsondelta.NewOptValue(o.value),
-			OpKind:  "replace",
-		}
+
 	} else {
-		d.pending.Cluster.Node[d.localNode].Instance[s] = instance.Instance{Monitor: &o.value}
+		d.pending.Cluster.Node[d.localNode].Instance[s] = instance.Instance{Monitor: value}
 		op = jsondelta.Operation{
 			OpPath:  jsondelta.OperationPath{"instance", s},
-			OpValue: jsondelta.NewOptValue(instance.Instance{Monitor: &o.value}),
+			OpValue: jsondelta.NewOptValue(struct{}{}),
 			OpKind:  "replace",
 		}
+		d.pendingOps = append(d.pendingOps, op)
+	}
+	op = jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"instance", s, "monitor"},
+		OpValue: jsondelta.NewOptValue(*value),
+		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
 	msgbus.PubSmonUpdated(d.bus, s, msgbus.SmonUpdated{
