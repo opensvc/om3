@@ -76,8 +76,8 @@ func GetFCPaths() ([]Path, error) {
 	return l, nil
 }
 
-func GetISCSIPaths() ([]Path, error) {
-	l := make([]Path, 0)
+func GetISCSIPaths() (Paths, error) {
+	l := make(Paths, 0)
 	hbas, err := GetISCSIHostBusAdapters()
 	if err != nil {
 		return l, err
@@ -92,7 +92,7 @@ func GetISCSIPaths() ([]Path, error) {
 	}
 	for _, line := range strings.Split(buff, "\n") {
 		v := strings.Fields(line)
-		for i := len(v); i > 0; i -= 1 {
+		for i := len(v) - 1; i >= 0; i -= 1 {
 			id := v[i]
 			if !strings.HasPrefix(id, "iqn.") {
 				continue
@@ -112,6 +112,7 @@ func iscsiadmSession() (string, error) {
 	cmd := command.New(
 		command.WithName("iscsiadm"),
 		command.WithVarArgs("-m", "session"),
+		command.WithBufferedStdout(),
 	)
 	b, err := cmd.Output()
 	return string(b), err
