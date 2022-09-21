@@ -43,6 +43,18 @@ type (
 	}
 )
 
+func DNSUDSDir() string {
+	return filepath.Join(Paths.Var, "dns")
+}
+
+func DNSUDSFile() string {
+	return filepath.Join(Paths.Var, "dns", "pdns.sock")
+}
+
+func NodeVarDir() string {
+	return filepath.Join(Paths.Var, "node")
+}
+
 func NodeConfigFile() string {
 	return filepath.Join(Paths.Etc, "node.conf")
 }

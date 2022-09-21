@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
@@ -50,8 +51,32 @@ func NewList(paths path.L, opts ...funcopt.O) ([]interface{}, error) {
 	return l, errs
 }
 
+func toPathType(id any) (path.T, error) {
+	var p path.T
+	switch i := id.(type) {
+	case string:
+		if parsed, err := path.Parse(i); err != nil {
+			return p, err
+		} else {
+			p = parsed
+		}
+		return p, nil
+	case path.T:
+		p = i
+		return p, nil
+	default:
+		return p, errors.Errorf("unsupported object path type: %#v", i)
+	}
+}
+
 // New allocates a new kinded object
-func New(p path.T, opts ...funcopt.O) (interface{}, error) {
+func New(id any, opts ...funcopt.O) (any, error) {
+	var p path.T
+	if parsed, err := toPathType(id); err != nil {
+		return nil, err
+	} else {
+		p = parsed
+	}
 	switch p.Kind {
 	case kind.Svc:
 		return NewSvc(p, opts...)
@@ -71,7 +96,7 @@ func New(p path.T, opts ...funcopt.O) (interface{}, error) {
 }
 
 // NewCore returns a Core interface from an object path
-func NewCore(p path.T, opts ...funcopt.O) (Core, error) {
+func NewCore(p any, opts ...funcopt.O) (Core, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
@@ -80,7 +105,7 @@ func NewCore(p path.T, opts ...funcopt.O) (Core, error) {
 }
 
 // NewConfigurer returns a Configurer interface from an object path
-func NewConfigurer(p path.T, opts ...funcopt.O) (Configurer, error) {
+func NewConfigurer(p any, opts ...funcopt.O) (Configurer, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
@@ -89,7 +114,7 @@ func NewConfigurer(p path.T, opts ...funcopt.O) (Configurer, error) {
 }
 
 // NewActor returns a Actor interface from an object path
-func NewActor(p path.T, opts ...funcopt.O) (Actor, error) {
+func NewActor(p any, opts ...funcopt.O) (Actor, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {
@@ -98,7 +123,7 @@ func NewActor(p path.T, opts ...funcopt.O) (Actor, error) {
 }
 
 // NewKeystore returns a Keystore interface from an object path
-func NewKeystore(p path.T, opts ...funcopt.O) (Keystore, error) {
+func NewKeystore(p any, opts ...funcopt.O) (Keystore, error) {
 	if o, err := New(p, opts...); err != nil {
 		return nil, err
 	} else {

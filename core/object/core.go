@@ -78,8 +78,12 @@ func (t *core) List() (string, error) {
 	return t.path.String(), nil
 }
 
-func (t *core) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) error {
-	t.path = p
+func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error {
+	if parsed, err := toPathType(id); err != nil {
+		return err
+	} else {
+		t.path = parsed
+	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return err
 	}

@@ -102,9 +102,9 @@ func (t Node) Dereference(ref string) (string, error) {
 	case "short_name", "short_nodename":
 		return strings.SplitN(hostname.Hostname(), ".", 1)[0], nil
 	case "dnsuxsock":
-		return t.DNSUDSFile(), nil
+		return rawconfig.DNSUDSFile(), nil
 	case "dnsuxsockd":
-		return t.DNSUDSDir(), nil
+		return rawconfig.DNSUDSDir(), nil
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):

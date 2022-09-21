@@ -327,17 +327,9 @@ func (t core) Dereference(ref string) (string, error) {
 	case "dnsnodes":
 		return ref, fmt.Errorf("TODO")
 	case "dnsuxsock":
-		if n, err := t.Node(); err != nil {
-			return "", err
-		} else {
-			return n.DNSUDSFile(), nil
-		}
+		return rawconfig.DNSUDSFile(), nil
 	case "dnsuxsockd":
-		if n, err := t.Node(); err != nil {
-			return "", err
-		} else {
-			return n.DNSUDSDir(), nil
-		}
+		return rawconfig.DNSUDSDir(), nil
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):

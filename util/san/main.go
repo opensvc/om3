@@ -7,11 +7,13 @@ const (
 )
 
 type (
-	Path struct {
+	Paths []Path
+	Path  struct {
 		HostBusAdapter HostBusAdapter
 		TargetPort     TargetPort
 	}
-	TargetPort struct {
+	TargetPorts []TargetPort
+	TargetPort  struct {
 		ID string `json:"tgt_id"`
 	}
 	HostBusAdapter struct {

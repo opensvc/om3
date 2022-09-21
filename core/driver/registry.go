@@ -1,7 +1,7 @@
 package driver
 
 type (
-	Registry map[ID]interface{}
+	Registry map[ID]any
 )
 
 var (
@@ -12,7 +12,7 @@ func NewRegistry() Registry {
 	return make(Registry)
 }
 
-func Register(id ID, allocator interface{}) {
+func Register(id ID, allocator any) {
 	registry[id] = allocator
 }
 
@@ -20,7 +20,7 @@ func Exists(id ID) bool {
 	return Get(id) != nil
 }
 
-func Get(id ID) interface{} {
+func Get(id ID) any {
 	allocator, ok := registry[id]
 	if !ok {
 		// <group>.<name> driver not found, ... try <group>
@@ -33,7 +33,7 @@ func Get(id ID) interface{} {
 	return allocator
 }
 
-func GetStrict(id ID) interface{} {
+func GetStrict(id ID) any {
 	allocator, _ := registry[id]
 	return allocator
 }

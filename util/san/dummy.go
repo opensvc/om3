@@ -2,10 +2,10 @@
 
 package san
 
-func Paths() ([]Path, error) {
+func GetPaths() ([]Path, error) {
 	return []Path{}, nil
 }
 
-func HostBusAdapters() ([]HostBusAdapter, error) {
+func GetHostBusAdapters() ([]HostBusAdapter, error) {
 	return []HostBusAdapter{}, nil
 }

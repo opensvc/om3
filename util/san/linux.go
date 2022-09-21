@@ -20,14 +20,14 @@ func isPortPresent(tp string) bool {
 	return !strings.Contains(string(buff), "Not Present")
 }
 
-func Paths() ([]Path, error) {
+func GetPaths() ([]Path, error) {
 	l := make([]Path, 0)
-	if paths, err := FCPaths(); err == nil {
+	if paths, err := GetFCPaths(); err == nil {
 		l = append(l, paths...)
 	} else {
 		return l, err
 	}
-	if paths, err := ISCSIPaths(); err == nil {
+	if paths, err := GetISCSIPaths(); err == nil {
 		l = append(l, paths...)
 	} else {
 		return l, err
@@ -35,9 +35,9 @@ func Paths() ([]Path, error) {
 	return l, nil
 }
 
-func FCPaths() ([]Path, error) {
+func GetFCPaths() ([]Path, error) {
 	l := make([]Path, 0)
-	hbas, err := HostBusAdapters()
+	hbas, err := GetHostBusAdapters()
 	if err != nil {
 		return l, err
 	}
@@ -76,9 +76,9 @@ func FCPaths() ([]Path, error) {
 	return l, nil
 }
 
-func ISCSIPaths() ([]Path, error) {
+func GetISCSIPaths() ([]Path, error) {
 	l := make([]Path, 0)
-	hbas, err := ISCSIHostBusAdapters()
+	hbas, err := GetISCSIHostBusAdapters()
 	if err != nil {
 		return l, err
 	}
@@ -117,14 +117,14 @@ func iscsiadmSession() (string, error) {
 	return string(b), err
 }
 
-func HostBusAdapters() ([]HostBusAdapter, error) {
+func GetHostBusAdapters() ([]HostBusAdapter, error) {
 	l := make([]HostBusAdapter, 0)
-	if more, err := FCHostBusAdapters(); err == nil {
+	if more, err := GetFCHostBusAdapters(); err == nil {
 		l = append(l, more...)
 	} else {
 		return l, err
 	}
-	if more, err := ISCSIHostBusAdapters(); err == nil {
+	if more, err := GetISCSIHostBusAdapters(); err == nil {
 		l = append(l, more...)
 	} else {
 		return l, err
@@ -132,7 +132,7 @@ func HostBusAdapters() ([]HostBusAdapter, error) {
 	return l, nil
 }
 
-func ISCSIHostBusAdapters() ([]HostBusAdapter, error) {
+func GetISCSIHostBusAdapters() ([]HostBusAdapter, error) {
 	l := make([]HostBusAdapter, 0)
 	hba := HostBusAdapter{
 		Type: ISCSI,
@@ -152,7 +152,7 @@ func ISCSIHostBusAdapters() ([]HostBusAdapter, error) {
 	return l, nil
 }
 
-func FCHostBusAdapters() ([]HostBusAdapter, error) {
+func GetFCHostBusAdapters() ([]HostBusAdapter, error) {
 	l := make([]HostBusAdapter, 0)
 	matches, err := filepath.Glob("/sys/class/fc_host/host*/port_name")
 	if err != nil {

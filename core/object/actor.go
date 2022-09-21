@@ -10,7 +10,6 @@ import (
 	"opensvc.com/opensvc/core/actionresdeps"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourceset"
@@ -73,7 +72,7 @@ func (t *actor) PG() *pg.Config {
 	return t.pg
 }
 
-func (t *actor) init(referrer xconfig.Referrer, p path.T, opts ...funcopt.O) error {
+func (t *actor) init(referrer xconfig.Referrer, p any, opts ...funcopt.O) error {
 	if err := t.core.init(referrer, p, opts...); err != nil {
 		return err
 	}

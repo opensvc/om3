@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -15,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/volaccess"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/san"
 	"opensvc.com/opensvc/util/sizeconv"
 )
 
@@ -504,4 +506,24 @@ func (t Status) HasCapability(s string) bool {
 	}
 	return false
 
+}
+
+func (t *T) GetISCSIMappings(nodes []string) (san.Paths, error) {
+	paths, err := t.GetMappings(nodes)
+	if err != nil {
+		return nil, err
+	}
+	filteredPaths := make(san.Paths, 0)
+	for _, p := range paths {
+		if p.HostBusAdapter.Type != san.ISCSI {
+			continue
+		}
+		filteredPaths = append(filteredPaths, p)
+	}
+	return filteredPaths, nil
+}
+
+func (t *T) GetMappings(nodes []string) (san.Paths, error) {
+	paths := make(san.Paths, 0)
+	return paths, errors.New("TODO")
 }
