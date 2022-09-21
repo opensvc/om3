@@ -15,8 +15,8 @@ import (
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -37,7 +37,7 @@ func allowEventEvent(r *http.Request, ev event.Event, selected path.M) bool {
 	var d struct {
 		Path path.T `json:"path"`
 	}
-	if err := json.Unmarshal([]byte(*ev.Data), &d); err != nil {
+	if err := json.Unmarshal([]byte(ev.Data), &d); err != nil {
 		log.Error().Err(err).Msg("extract object path from event event")
 		return false
 	}

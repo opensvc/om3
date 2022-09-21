@@ -114,13 +114,12 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			}
 			return
 		} else {
-			var data json.RawMessage = eventB
 			eventId++
 			msgbus.PubEvent(d.bus, event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
-				Data: &data,
+				Data: eventB,
 			})
 		}
 		pendingNodeGen = gen

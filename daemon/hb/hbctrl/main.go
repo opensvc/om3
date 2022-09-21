@@ -1,33 +1,34 @@
 /*
-	Package hbctrl manage data from hb thew a Cmd chan
+Package hbctrl manage data from hb thew a Cmd chan
 
-	Example:
-		ctrl := New(context.Background())
-		ctrl.start()
+Example:
 
-		// from another hb#2.tx routine
-		// Add a watchers for hb#2.rx nodes node2 and node3
-		// watchers are responsible for firing hb_stale/hb_beating event to
-		// controller for hbId + remote nodename
-		cmdC <- hbctrl.CmdAddWatcher{
-			HbId:     "hb#2.tx",
-			Nodename: "node2",
-			Ctx:      ctx,
-			Timeout:  r.timeout,
-		}
-		cmdC <- hbctrl.CmdAddWatcher{
-			HbId:     "hb#2.tx",
-			Nodename: "node3",
-			Ctx:      ctx,
-			Timeout:  r.timeout,
-		}
+	ctrl := New(context.Background())
+	ctrl.start()
 
-		//set the success status of node2
-		ctrl.cmdC() <- hbctrl.CmdSetPeerSuccess{
-			Nodename: "node2",
-			HbId:     "hb#2.tx",
-			Success:  true,
-		}
+	// from another hb#2.tx routine
+	// Add a watchers for hb#2.rx nodes node2 and node3
+	// watchers are responsible for firing hb_stale/hb_beating event to
+	// controller for hbId + remote nodename
+	cmdC <- hbctrl.CmdAddWatcher{
+		HbId:     "hb#2.tx",
+		Nodename: "node2",
+		Ctx:      ctx,
+		Timeout:  r.timeout,
+	}
+	cmdC <- hbctrl.CmdAddWatcher{
+		HbId:     "hb#2.tx",
+		Nodename: "node3",
+		Ctx:      ctx,
+		Timeout:  r.timeout,
+	}
+
+	//set the success status of node2
+	ctrl.cmdC() <- hbctrl.CmdSetPeerSuccess{
+		Nodename: "node2",
+		HbId:     "hb#2.tx",
+		Success:  true,
+	}
 */
 package hbctrl
 
@@ -160,13 +161,12 @@ func (t *T) Start(ctx context.Context) {
 				} else {
 					events[o.Name] = 1
 				}
-				var data json.RawMessage
-				data = []byte("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
+				data := json.RawMessage("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
 				msgbus.PubEvent(bus, event.Event{
 					Kind: o.Name,
 					ID:   0,
 					Time: time.Now(),
-					Data: &data,
+					Data: data,
 				})
 				t.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 			case GetEventStats:

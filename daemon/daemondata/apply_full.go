@@ -39,13 +39,12 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	if eventB, err := json.Marshal(absolutePatch); err != nil {
 		d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", o.nodename)
 	} else {
-		var eventData json.RawMessage = eventB
 		eventId++
 		msgbus.PubEvent(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),
-			Data: &eventData,
+			Data: eventB,
 		})
 	}
 
