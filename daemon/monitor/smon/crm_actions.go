@@ -9,7 +9,7 @@ import (
 var (
 	cmdPath string
 
-	maxRunners = 50
+	maxRunners = 25
 
 	// runners chan limit number of // crmActions to maxRunners
 	runners = make(chan struct{}, maxRunners)
