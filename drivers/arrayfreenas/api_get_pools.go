@@ -186,7 +186,6 @@ func ParseGetPoolsResponse(rsp *http.Response) (*GetPoolsResponse, error) {
 	}
 
 	switch {
-	//case strings.Contains(rsp.Header.Get("Content-Type"), "application/json") && rsp.StatusCode == 200:
 	case rsp.StatusCode == 200:
 		var dest PoolsResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

@@ -218,7 +218,6 @@ func ParseGetISCSIExtentsResponse(rsp *http.Response) (*GetISCSIExtentsResponse,
 	}
 
 	switch {
-	//case strings.Contains(rsp.Header.Get("Content-Type"), "application/json") && rsp.StatusCode == 200:
 	case rsp.StatusCode == 200:
 		var dest ISCSIExtentsResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

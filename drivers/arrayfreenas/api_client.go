@@ -4825,7 +4825,7 @@ func ParseCreateCronJobResponse(rsp *http.Response) (*CreateCronJobResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest CronJob
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -4867,7 +4867,7 @@ func ParseGetCronJobResponse(rsp *http.Response) (*GetCronJobResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest CronJob
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -4893,7 +4893,7 @@ func ParseUpdateCronJobResponse(rsp *http.Response) (*UpdateCronJobResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest CronJob
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -4935,7 +4935,7 @@ func ParseCreateGroupResponse(rsp *http.Response) (*CreateGroupResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest GroupResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -4977,7 +4977,7 @@ func ParseGetGroupResponse(rsp *http.Response) (*GetGroupResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest Group
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5003,7 +5003,7 @@ func ParseUpdateGroupResponse(rsp *http.Response) (*UpdateGroupResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest GroupResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5029,7 +5029,7 @@ func ParseGetNetworkConfigurationResponse(rsp *http.Response) (*GetNetworkConfig
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest NetworkConfig
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5055,34 +5055,8 @@ func ParseGetNetworkSummaryResponse(rsp *http.Response) (*GetNetworkSummaryRespo
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest NetworkSummary
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateDatasetResponse parses an HTTP response from a UpdateDatasetWithResponse call
-func ParseUpdateDatasetResponse(rsp *http.Response) (*UpdateDatasetResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateDatasetResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Dataset
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -5107,7 +5081,7 @@ func ParseGetServiceResponse(rsp *http.Response) (*GetServiceResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest Service
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5133,7 +5107,7 @@ func ParseListSharesNFSResponse(rsp *http.Response) (*ListSharesNFSResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest SharesNFSResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5159,7 +5133,7 @@ func ParseCreateShareNFSResponse(rsp *http.Response) (*CreateShareNFSResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest ShareNFS
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5201,7 +5175,7 @@ func ParseGetShareNFSResponse(rsp *http.Response) (*GetShareNFSResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest ShareNFS
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5227,7 +5201,7 @@ func ParseUpdateShareNFSResponse(rsp *http.Response) (*UpdateShareNFSResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest ShareNFS
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5253,7 +5227,7 @@ func ParseListSharesSMBResponse(rsp *http.Response) (*ListSharesSMBResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest SharesSMBResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5279,7 +5253,7 @@ func ParseCreateShareSMBResponse(rsp *http.Response) (*CreateShareSMBResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest ShareSMB
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5321,7 +5295,7 @@ func ParseGetShareSMBResponse(rsp *http.Response) (*GetShareSMBResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest ShareSMB
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5347,7 +5321,7 @@ func ParseUpdateShareSMBResponse(rsp *http.Response) (*UpdateShareSMBResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest ShareSMB
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5373,7 +5347,7 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest UsersResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5399,7 +5373,7 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest UserResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5441,7 +5415,7 @@ func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5467,7 +5441,7 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest UserResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5493,7 +5467,7 @@ func ParseGetUserShellChoicesResponse(rsp *http.Response) (*GetUserShellChoicesR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest UserShellChoices
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5519,7 +5493,7 @@ func ParseListVMSResponse(rsp *http.Response) (*ListVMSResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest VMSResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5545,7 +5519,7 @@ func ParseGetVMResponse(rsp *http.Response) (*GetVMResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest VM
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

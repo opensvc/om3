@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 // CreateDatasetParams defines model for CreateDatasetParams.
@@ -125,7 +124,7 @@ func ParseCreateDatasetResponse(rsp *http.Response) (*CreateDatasetResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case rsp.StatusCode == 200:
 		var dest Dataset
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
