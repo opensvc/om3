@@ -14,7 +14,7 @@ import (
 type (
 	opGetNodeStatus struct {
 		node   string
-		result chan<- *cluster.TNodeStatus
+		result chan<- *cluster.NodeStatus
 	}
 	opSetNodeStatusFrozen struct {
 		err   chan<- error
@@ -23,13 +23,13 @@ type (
 )
 
 // GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
-func (t T) GetNodeStatus(node string) *cluster.TNodeStatus {
+func (t T) GetNodeStatus(node string) *cluster.NodeStatus {
 	return GetNodeStatus(t.cmdC, node)
 }
 
 // GetNodeStatus returns deep copy of cluster.Node.<node>.status
-func GetNodeStatus(c chan<- any, node string) *cluster.TNodeStatus {
-	result := make(chan *cluster.TNodeStatus)
+func GetNodeStatus(c chan<- any, node string) *cluster.NodeStatus {
+	result := make(chan *cluster.NodeStatus)
 	op := opGetNodeStatus{
 		result: result,
 		node:   node,

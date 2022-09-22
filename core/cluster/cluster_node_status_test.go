@@ -11,7 +11,7 @@ import (
 
 func Test_TNodeStatus_DeepCopy(t *testing.T) {
 	t1 := time.Now()
-	value := &TNodeStatus{
+	value := &NodeStatus{
 		Agent: "a",
 		API:   12,
 		Arbitrators: map[string]ArbitratorStatus{

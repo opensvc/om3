@@ -13,7 +13,7 @@ import (
 
 type opApplyRemoteFull struct {
 	nodename string
-	full     *cluster.TNodeData
+	full     *cluster.NodeData
 	done     chan<- bool
 }
 
@@ -60,7 +60,7 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	}
 }
 
-func (t T) ApplyFull(nodename string, full *cluster.TNodeData) {
+func (t T) ApplyFull(nodename string, full *cluster.NodeData) {
 	done := make(chan bool)
 	t.cmdC <- opApplyRemoteFull{
 		nodename: nodename,

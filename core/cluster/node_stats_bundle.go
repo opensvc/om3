@@ -8,11 +8,11 @@ import (
 
 type (
 	// Stats is a map of node statistics.
-	Stats map[string]NodeStats
+	Stats map[string]NodeStatsBundle
 
-	// NodeStats embeds all daemon threads and each objet system
+	// NodeStatsBundle embeds all daemon threads and each objet system
 	// resource usage metrics.
-	NodeStats struct {
+	NodeStatsBundle struct {
 		Timestamp  time.Time              `json:"time"`
 		Collector  ThreadStats            `json:"collector"`
 		Daemon     ThreadStats            `json:"daemon"`
@@ -70,10 +70,10 @@ type (
 )
 
 // UnmarshalJSON loads a byte array into a DaemonStatus struct
-func (t *NodeStats) UnmarshalJSON(b []byte) error {
+func (t *NodeStatsBundle) UnmarshalJSON(b []byte) error {
 	var (
 		m   map[string]interface{}
-		ns  NodeStats
+		ns  NodeStatsBundle
 		err error
 		tmp []byte
 	)

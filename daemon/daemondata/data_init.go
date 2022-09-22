@@ -17,19 +17,19 @@ func newData(counterCmd chan<- interface{}) *data {
 	localNode := hostname.Hostname()
 	nodeData := newNodeData(localNode)
 	status := cluster.Status{
-		Cluster: cluster.TCluster{
+		Cluster: cluster.Cluster{
 			Config: cluster.ClusterConfig{
 				ID:    rawconfig.ClusterSection().ID,
 				Name:  rawconfig.ClusterSection().Name,
 				Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
 			},
-			Status: cluster.TClusterStatus{
+			Status: cluster.ClusterStatus{
 				Compat: false,
 				Frozen: true,
 			},
 			Object: map[string]object.AggregatedStatus{},
 
-			Node: map[string]cluster.TNodeData{
+			Node: map[string]cluster.NodeData{
 				localNode: nodeData,
 			},
 		},
@@ -55,12 +55,12 @@ func newData(counterCmd chan<- interface{}) *data {
 	}
 }
 
-func newNodeData(localNode string) cluster.TNodeData {
-	nodeStatus := cluster.TNodeData{
+func newNodeData(localNode string) cluster.NodeData {
+	nodeStatus := cluster.NodeData{
 		Instance: map[string]instance.Instance{},
 		Monitor:  cluster.NodeMonitor{},
-		Stats:    cluster.NodeStatusStats{},
-		Status: cluster.TNodeStatus{
+		Stats:    cluster.NodeStats{},
+		Status: cluster.NodeStatus{
 			Agent:           "3.0-0",
 			API:             8,
 			Arbitrators:     map[string]cluster.ArbitratorStatus{},

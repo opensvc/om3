@@ -367,8 +367,8 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 
 func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 	var (
-		nextNode, prevNode cluster.TNodeData
-		next, prev         cluster.TNodeStatus
+		nextNode, prevNode cluster.NodeData
+		next, prev         cluster.NodeStatus
 		hasNext, hasPrev   bool
 	)
 	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
