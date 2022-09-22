@@ -116,7 +116,7 @@ type (
 
 	NodeStatusUpdated struct {
 		Node string
-		Data cluster.TNodeStatus
+		Data cluster.NodeStatus
 	}
 
 	NodeStatusLabelsUpdated struct {

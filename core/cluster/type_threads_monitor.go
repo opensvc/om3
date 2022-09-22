@@ -22,16 +22,16 @@ type (
 		Routines int `json:"routines"`
 	}
 
-	// TNodeData holds a node DataSet.
-	TNodeData struct {
+	// NodeData holds a node DataSet.
+	NodeData struct {
 		Instance map[string]instance.Instance `json:"instance"`
 		Monitor  NodeMonitor                  `json:"monitor"`
 		Stats    NodeStatusStats              `json:"stats"`
-		Status   TNodeStatus                  `json:"status"`
+		Status   NodeStatus                   `json:"status"`
 		//Locks map[string]Lock `json:"locks"`
 	}
 
-	TNodeStatus struct {
+	NodeStatus struct {
 		Agent           string                      `json:"agent"`
 		API             uint64                      `json:"api"`
 		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
@@ -80,7 +80,7 @@ type (
 	}
 )
 
-func (nodeStatus *TNodeStatus) DeepCopy() *TNodeStatus {
+func (nodeStatus *NodeStatus) DeepCopy() *NodeStatus {
 	result := *nodeStatus
 	newArbitrator := make(map[string]ArbitratorStatus)
 	for n, v := range nodeStatus.Arbitrators {
@@ -101,7 +101,7 @@ func (nodeStatus *TNodeStatus) DeepCopy() *TNodeStatus {
 
 // GetNodeData extracts from the cluster dataset all information relative
 // to node data.
-func (s *Status) GetNodeData(nodename string) *TNodeData {
+func (s *Status) GetNodeData(nodename string) *NodeData {
 	if nodeData, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeData
 	}
@@ -110,7 +110,7 @@ func (s *Status) GetNodeData(nodename string) *TNodeData {
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *TNodeStatus {
+func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
 	if nodeData, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeData.Status
 	}
@@ -155,14 +155,14 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 	return *data
 }
 
-func (n *TNodeData) DeepCopy() *TNodeData {
+func (n *NodeData) DeepCopy() *NodeData {
 	b, err := json.Marshal(n)
 	if err != nil {
-		return &TNodeData{}
+		return &NodeData{}
 	}
-	nodeStatus := TNodeData{}
+	nodeStatus := NodeData{}
 	if err := json.Unmarshal(b, &nodeStatus); err != nil {
-		return &TNodeData{}
+		return &NodeData{}
 	}
 	return &nodeStatus
 }

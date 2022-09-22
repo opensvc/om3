@@ -7,13 +7,13 @@ import (
 )
 
 // GetNodeData returns daemondata deep copy of cluster.Node.<node>
-func (t T) GetNodeData(node string) *cluster.TNodeData {
+func (t T) GetNodeData(node string) *cluster.NodeData {
 	return GetNodeData(t.cmdC, node)
 }
 
 // GetNodeData returns deep copy of cluster.Node.<node>
-func GetNodeData(c chan<- any, node string) *cluster.TNodeData {
-	result := make(chan *cluster.TNodeData)
+func GetNodeData(c chan<- any, node string) *cluster.NodeData {
+	result := make(chan *cluster.NodeData)
 	op := opGetNodeData{
 		result: result,
 		node:   node,
@@ -24,7 +24,7 @@ func GetNodeData(c chan<- any, node string) *cluster.TNodeData {
 
 type opGetNodeData struct {
 	node   string
-	result chan<- *cluster.TNodeData
+	result chan<- *cluster.NodeData
 }
 
 func (o opGetNodeData) call(ctx context.Context, d *data) {

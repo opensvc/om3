@@ -28,9 +28,9 @@ func loadFixture(t *testing.T, name string) []byte {
 	return b
 }
 
-func LoadFull(t *testing.T, name string) *cluster.TNodeData {
+func LoadFull(t *testing.T, name string) *cluster.NodeData {
 	t.Helper()
-	var full cluster.TNodeData
+	var full cluster.NodeData
 	require.Nil(t, json.Unmarshal(loadFixture(t, name), &full))
 	return &full
 }

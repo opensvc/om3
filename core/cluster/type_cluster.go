@@ -11,7 +11,7 @@ import (
 type (
 	// Status describes the full Cluster state.
 	Status struct {
-		Cluster    TCluster                         `json:"cluster"`
+		Cluster    Cluster                          `json:"cluster"`
 		Collector  CollectorThreadStatus            `json:"collector"`
 		DNS        DNSThreadStatus                  `json:"dns"`
 		Scheduler  SchedulerThreadStatus            `json:"scheduler"`
@@ -20,15 +20,15 @@ type (
 		Heartbeats map[string]HeartbeatThreadStatus `json:"-"`
 	}
 
-	TCluster struct {
+	Cluster struct {
 		Config ClusterConfig                      `json:"config"`
-		Status TClusterStatus                     `json:"status"`
+		Status ClusterStatus                      `json:"status"`
 		Object map[string]object.AggregatedStatus `json:"object"`
 
-		Node map[string]TNodeData `json:"node"`
+		Node map[string]NodeData `json:"node"`
 	}
 
-	TClusterStatus struct {
+	ClusterStatus struct {
 		Compat bool `json:"compat"`
 		Frozen bool `json:"frozen"`
 	}
