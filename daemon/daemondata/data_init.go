@@ -59,7 +59,7 @@ func newNodeData(localNode string) cluster.NodeData {
 	nodeStatus := cluster.NodeData{
 		Instance: map[string]instance.Instance{},
 		Monitor:  cluster.NodeMonitor{},
-		Stats:    cluster.NodeStatusStats{},
+		Stats:    cluster.NodeStats{},
 		Status: cluster.NodeStatus{
 			Agent:           "3.0-0",
 			API:             8,

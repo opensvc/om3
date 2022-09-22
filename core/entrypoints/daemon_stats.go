@@ -51,8 +51,8 @@ func (t DaemonStats) Do() error {
 func parseDaemonStats(b []byte) (cluster.Stats, error) {
 	type (
 		nodeData struct {
-			Status int               `json:"status"`
-			Data   cluster.NodeStats `json:"data"`
+			Status int                     `json:"status"`
+			Data   cluster.NodeStatsBundle `json:"data"`
 		}
 		responseType struct {
 			Status int                 `json:"status"`
