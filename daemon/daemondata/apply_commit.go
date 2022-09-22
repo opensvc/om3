@@ -37,7 +37,7 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 		d.purgeAppliedPatchQueue()
 	}
 
-	d.pubMsgFromNodeStatusDiff()
+	d.pubMsgFromNodeDataDiff()
 	cfgDeletes, cfgUpdates := d.getInstCfgDiff()
 	statusDeletes, statusUpdates := d.getInstStatusDiff()
 	smonDeletes, smonUpdates := d.getSmonDiff()

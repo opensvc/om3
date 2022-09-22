@@ -48,3 +48,9 @@ func (n *NodeData) DeepCopy() *NodeData {
 	}
 	return &nodeStatus
 }
+
+func (n *NodeMonitor) DeepCopy() *NodeMonitor {
+	var d NodeMonitor
+	d = *n
+	return &d
+}

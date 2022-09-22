@@ -41,7 +41,7 @@ func (o *nmon) onSetNmonCmd(c msgbus.SetNmon) {
 	if c.Monitor.GlobalExpect != o.state.GlobalExpect {
 		o.change = true
 		o.state.GlobalExpect = c.Monitor.GlobalExpect
-		o.state.GlobalExpectUpdated = c.Monitor.GlobalExpectUpdated
+		o.state.GlobalExpectUpdated = time.Now()
 		o.updateIfChange()
 		o.orchestrate()
 	}

@@ -100,11 +100,7 @@ func (d *discover) setNodeLabels() {
 		d.log.Error().Err(err).Msg("on node.conf change, error updating labels")
 		return
 	}
-	labels, err := node.Labels()
-	if err != nil {
-		d.log.Error().Err(err).Msg("on node.conf change, error updating labels")
-		return
-	}
+	labels := node.Labels()
 	fmt.Println("TODO: daemon/discover/cfg.go::setNodeLabels() must set daemondata and publish an event", labels)
 }
 
