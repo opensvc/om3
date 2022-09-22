@@ -87,21 +87,23 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceConfig
 	var op jsondelta.Operation
 	s := o.path.String()
+	value := o.value.DeepCopy()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
-		inst.Config = &o.value
+		inst.Config = value
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
-		op = jsondelta.Operation{
-			OpPath:  jsondelta.OperationPath{"instance", s, "config"},
-			OpValue: jsondelta.NewOptValue(o.value),
-			OpKind:  "replace",
-		}
 	} else {
-		d.pending.Cluster.Node[d.localNode].Instance[s] = instance.Instance{Config: &o.value}
+		d.pending.Cluster.Node[d.localNode].Instance[s] = instance.Instance{Config: value}
 		op = jsondelta.Operation{
 			OpPath:  jsondelta.OperationPath{"instance", s},
-			OpValue: jsondelta.NewOptValue(instance.Instance{Config: &o.value}),
+			OpValue: jsondelta.NewOptValue(struct{}{}),
 			OpKind:  "replace",
 		}
+		d.pendingOps = append(d.pendingOps, op)
+	}
+	op = jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"instance", s, "config"},
+		OpValue: jsondelta.NewOptValue(*value),
+		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
 

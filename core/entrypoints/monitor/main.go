@@ -221,14 +221,14 @@ func (m T) DoWatchDemo(statusGetter Getter, eventGetter EventGetter, out io.Writ
 func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Status, error) {
 	newB, err := p.Apply(b)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\npatch len: %d\n", err, len(p))
-		_, _ = fmt.Fprintf(os.Stderr, "patches: %+v\n", p)
-		_, _ = fmt.Fprintf(os.Stderr, "data to patch: %s\n", b)
+		//_, _ = fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\npatch len: %d\n", err, len(p))
+		//_, _ = fmt.Fprintf(os.Stderr, "patches: %+v\n", p)
+		//_, _ = fmt.Fprintf(os.Stderr, "data to patch: %s\n", b)
 		return nil, nil, err
 	}
 	data := cluster.Status{}
 	if err := json.Unmarshal(newB, &data); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unmarshal data %s\ndocument: %s", err, b)
+		//_, _ = fmt.Fprintf(os.Stderr, "unmarshal data %s\ndocument: %s", err, b)
 		return nil, nil, err
 	}
 	return newB, &data, nil
@@ -317,9 +317,8 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 					delete(patchById, s)
 				}
 				if len(patches) > 0 {
-					_, _ = fmt.Fprintf(os.Stderr, "patches len: %d nextId: %d patch set ids: %v from availables ids: %v\n",
-						len(patches), nextId, idToDelete, sortIds)
-					_, _, err := patchedStatus(b, patches)
+					//_, _ = fmt.Fprintf(os.Stderr, "patches len: %d nextId: %d patch set ids: %v from availables ids: %v\n",
+					//	len(patches), nextId, idToDelete, sortIds)
 					b, data, err = patchedStatus(b, patches)
 					if err != nil {
 						return err
