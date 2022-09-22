@@ -21,8 +21,7 @@ func (t *Node) VarDir() string {
 	if t.paths.varDir != "" {
 		return t.paths.varDir
 	}
-	p := fmt.Sprintf("%s/%s", rawconfig.Paths.Var, "node")
-	t.paths.varDir = filepath.FromSlash(p)
+	t.paths.varDir = rawconfig.NodeVarDir()
 	if err := os.MkdirAll(t.paths.varDir, os.ModePerm); err != nil {
 		log.Error().Msgf("%s", err)
 	}
@@ -57,13 +56,9 @@ func (t *Node) DNSUDSDir() string {
 	if t.paths.dnsUDSDir != "" {
 		return t.paths.dnsUDSDir
 	}
-	t.paths.dnsUDSDir = filepath.Join(t.VarDir(), "dns")
+	t.paths.dnsUDSDir = rawconfig.DNSUDSDir()
 	if err := os.MkdirAll(t.paths.dnsUDSDir, os.ModePerm); err != nil {
 		log.Error().Msgf("%s", err)
 	}
 	return t.paths.dnsUDSDir
-}
-
-func (t *Node) DNSUDSFile() string {
-	return filepath.Join(t.DNSUDSDir(), "pdns.sock")
 }

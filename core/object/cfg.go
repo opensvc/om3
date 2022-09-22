@@ -6,7 +6,6 @@ import (
 	"unicode"
 
 	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
 )
@@ -35,7 +34,7 @@ type (
 )
 
 // NewCfg allocates a cfg kind object.
-func NewCfg(p path.T, opts ...funcopt.O) (*cfg, error) {
+func NewCfg(p any, opts ...funcopt.O) (*cfg, error) {
 	s := &cfg{}
 	s.customEncode = cfgEncode
 	s.customDecode = cfgDecode

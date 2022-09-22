@@ -8,7 +8,6 @@ import (
 
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
 )
@@ -38,7 +37,7 @@ type (
 )
 
 // NewSec allocates a sec kind object.
-func NewSec(p path.T, opts ...funcopt.O) (*sec, error) {
+func NewSec(p any, opts ...funcopt.O) (*sec, error) {
 	s := &sec{}
 	s.customEncode = secEncode
 	s.customDecode = secDecode

@@ -6,9 +6,11 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/san"
 )
 
 func newData(counterCmd chan<- interface{}) *data {
@@ -66,7 +68,8 @@ func newNodeData(localNode string) cluster.TNodeData {
 			Env:             "",
 			Frozen:          time.Time{},
 			Gen:             map[string]uint64{localNode: 1},
-			Labels:          map[string]string{},
+			Labels:          nodesinfo.Labels{},
+			Paths:           san.Paths{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
 			Speaker:         false,

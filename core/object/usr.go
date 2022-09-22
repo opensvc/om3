@@ -2,7 +2,6 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
 )
@@ -25,7 +24,7 @@ type (
 )
 
 // NewUsr allocates a usr kind object.
-func NewUsr(p path.T, opts ...funcopt.O) (*usr, error) {
+func NewUsr(p any, opts ...funcopt.O) (*usr, error) {
 	s := &usr{}
 	s.customEncode = secEncode
 	s.customDecode = secDecode

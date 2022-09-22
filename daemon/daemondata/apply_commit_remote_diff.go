@@ -1,27 +1,41 @@
 package daemondata
 
 import (
+	"reflect"
+
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/xmap"
 )
 
-func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUpdated) {
-	nodes := make(map[string]struct{})
+func (d *data) getPeersFromPrevAndPending() []string {
+	nodes := make(map[string]any)
 	for n := range d.pending.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
-		nodes[n] = struct{}{}
+		nodes[n] = nil
 	}
 	for n := range d.previous.Cluster.Node {
 		if n == d.localNode {
 			continue
 		}
-		nodes[n] = struct{}{}
+		nodes[n] = nil
 	}
-	for n := range nodes {
-		deleted, updated := d.getCfgDiffForNode(n)
+	return xmap.Keys(nodes)
+}
+
+func (d *data) pubMsgFromNodeStatusDiff() {
+	for _, node := range d.getPeersFromPrevAndPending() {
+		d.pubMsgFromNodeStatusDiffForNode(node)
+	}
+}
+
+func (d *data) getInstCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUpdated) {
+	for _, node := range d.getPeersFromPrevAndPending() {
+		deleted, updated := d.getInstCfgDiffForNode(node)
 		if len(deleted) > 0 {
 			deletes = append(deletes, deleted...)
 		}
@@ -32,22 +46,9 @@ func (d *data) getCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUp
 	return
 }
 
-func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []msgbus.InstStatusUpdated) {
-	nodes := make(map[string]struct{})
-	for n := range d.pending.Cluster.Node {
-		if n == d.localNode {
-			continue
-		}
-		nodes[n] = struct{}{}
-	}
-	for n := range d.previous.Cluster.Node {
-		if n == d.localNode {
-			continue
-		}
-		nodes[n] = struct{}{}
-	}
-	for n := range nodes {
-		deleted, updated := d.getStatusDiffForNode(n)
+func (d *data) getInstStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []msgbus.InstStatusUpdated) {
+	for _, node := range d.getPeersFromPrevAndPending() {
+		deleted, updated := d.getInstStatusDiffForNode(node)
 		if len(deleted) > 0 {
 			deletes = append(deletes, deleted...)
 		}
@@ -59,21 +60,8 @@ func (d *data) getStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []ms
 }
 
 func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.SmonUpdated) {
-	nodes := make(map[string]struct{})
-	for n := range d.pending.Cluster.Node {
-		if n == d.localNode {
-			continue
-		}
-		nodes[n] = struct{}{}
-	}
-	for n := range d.previous.Cluster.Node {
-		if n == d.localNode {
-			continue
-		}
-		nodes[n] = struct{}{}
-	}
-	for n := range nodes {
-		deleted, updated := d.getSmonDiffForNode(n)
+	for _, node := range d.getPeersFromPrevAndPending() {
+		deleted, updated := d.getSmonDiffForNode(node)
 		if len(deleted) > 0 {
 			deletes = append(deletes, deleted...)
 		}
@@ -84,7 +72,7 @@ func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.Smo
 	return
 }
 
-func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.CfgUpdated) {
+func (d *data) getInstCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.CfgUpdated) {
 	deletes := make([]msgbus.CfgDeleted, 0)
 	updates := make([]msgbus.CfgUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
@@ -180,7 +168,7 @@ func (d *data) getCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.Cfg
 	return deletes, updates
 }
 
-func (d *data) getStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []msgbus.InstStatusUpdated) {
+func (d *data) getInstStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []msgbus.InstStatusUpdated) {
 	deletes := make([]msgbus.InstStatusDeleted, 0)
 	updates := make([]msgbus.InstStatusUpdated, 0)
 	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
@@ -375,4 +363,52 @@ func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.S
 		}
 	}
 	return deletes, updates
+}
+
+func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
+	var (
+		nextNode, prevNode cluster.TNodeData
+		next, prev         cluster.TNodeStatus
+		hasNext, hasPrev   bool
+	)
+	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
+		next = nextNode.Status
+	}
+	if prevNode, hasPrev = d.previous.Cluster.Node[node]; hasPrev {
+		prev = prevNode.Status
+	}
+
+	onUpdate := func() {
+		var changed bool
+		if !reflect.DeepEqual(prev.Labels, next.Labels) {
+			msgbus.PubNodeStatusLabelsUpdate(d.bus, node, msgbus.NodeStatusLabelsUpdated{
+				Node: node,
+				Data: next.Labels.DeepCopy(),
+			})
+			changed = true
+		}
+		if changed || !reflect.DeepEqual(prev, next) {
+			msgbus.PubNodeStatusUpdate(d.bus, node, msgbus.NodeStatusUpdated{
+				Node: node,
+				Data: *next.DeepCopy(),
+			})
+		}
+	}
+	onCreate := func() {
+		msgbus.PubNodeStatusLabelsUpdate(d.bus, node, msgbus.NodeStatusLabelsUpdated{
+			Node: node,
+			Data: next.Labels.DeepCopy(),
+		})
+		msgbus.PubNodeStatusUpdate(d.bus, node, msgbus.NodeStatusUpdated{
+			Node: node,
+			Data: *next.DeepCopy(),
+		})
+	}
+
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
+	}
 }

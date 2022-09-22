@@ -1,7 +1,9 @@
 package driverdb
 
 import (
+	_ "opensvc.com/opensvc/drivers/arrayfreenas"
 	_ "opensvc.com/opensvc/drivers/pooldirectory"
+	_ "opensvc.com/opensvc/drivers/poolfreenas"
 	_ "opensvc.com/opensvc/drivers/poolshm"
 	_ "opensvc.com/opensvc/drivers/poolvirtual"
 	_ "opensvc.com/opensvc/drivers/poolzpool"

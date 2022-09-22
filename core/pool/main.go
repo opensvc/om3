@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -15,6 +16,7 @@ import (
 	"opensvc.com/opensvc/core/volaccess"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/san"
 	"opensvc.com/opensvc/util/sizeconv"
 )
 
@@ -59,6 +61,8 @@ type (
 		GetString(key.T) string
 		GetStringStrict(key.T) (string, error)
 		GetStrings(key.T) []string
+		GetBool(k key.T) bool
+		GetSize(k key.T) *int64
 	}
 	Pooler interface {
 		SetName(string)
@@ -201,6 +205,16 @@ func (t *T) GetStrings(s string) []string {
 func (t *T) GetString(s string) string {
 	k := pk(t.name, s)
 	return t.Config().GetString(k)
+}
+
+func (t *T) GetBool(s string) bool {
+	k := pk(t.name, s)
+	return t.Config().GetBool(k)
+}
+
+func (t *T) GetSize(s string) *int64 {
+	k := pk(t.name, s)
+	return t.Config().GetSize(k)
 }
 
 func (t *T) MkfsOptions() string {
@@ -492,4 +506,24 @@ func (t Status) HasCapability(s string) bool {
 	}
 	return false
 
+}
+
+func (t *T) GetISCSIMappings(nodes []string) (san.Paths, error) {
+	paths, err := t.GetMappings(nodes)
+	if err != nil {
+		return nil, err
+	}
+	filteredPaths := make(san.Paths, 0)
+	for _, p := range paths {
+		if p.HostBusAdapter.Type != san.ISCSI {
+			continue
+		}
+		filteredPaths = append(filteredPaths, p)
+	}
+	return filteredPaths, nil
+}
+
+func (t *T) GetMappings(nodes []string) (san.Paths, error) {
+	paths := make(san.Paths, 0)
+	return paths, errors.New("TODO")
 }

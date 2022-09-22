@@ -2,7 +2,6 @@ package object
 
 import (
 	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/key"
 )
@@ -36,7 +35,7 @@ var ccfgPrivateKeywords = []keywords.Keyword{
 var ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
 
 // NewCcfg allocates a ccfg kind object.
-func NewCcfg(p path.T, opts ...funcopt.O) (*ccfg, error) {
+func NewCcfg(p any, opts ...funcopt.O) (*ccfg, error) {
 	s := &ccfg{}
 	err := s.init(s, p, opts...)
 	return s, err

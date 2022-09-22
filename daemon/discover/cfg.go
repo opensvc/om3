@@ -2,15 +2,17 @@ package discover
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/pubsub"
@@ -75,7 +77,8 @@ func (d *discover) onEvCfg(i interface{}) {
 func (d *discover) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
 	s := c.Path.String()
 	if s == "" {
-		// node config
+		// node config file change
+		d.setNodeLabels()
 		return
 	}
 	mtime := file.ModTime(c.Filename)
@@ -89,6 +92,20 @@ func (d *discover) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
 		}
 	}
 	d.cfgMTime[s] = mtime
+}
+
+func (d *discover) setNodeLabels() {
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		d.log.Error().Err(err).Msg("on node.conf change, error updating labels")
+		return
+	}
+	labels, err := node.Labels()
+	if err != nil {
+		d.log.Error().Err(err).Msg("on node.conf change, error updating labels")
+		return
+	}
+	fmt.Println("TODO: daemon/discover/cfg.go::setNodeLabels() must set daemondata and publish an event", labels)
 }
 
 // cmdLocalCfgDeleted starts a new instcfg when a local configuration file exists

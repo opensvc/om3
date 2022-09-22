@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/util/san"
 )
 
 type (
@@ -40,7 +42,8 @@ type (
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		Speaker         bool                        `json:"speaker"`
-		Labels          map[string]string           `json:"labels"`
+		Labels          nodesinfo.Labels            `json:"labels"`
+		Paths           san.Paths                   `json:"paths"`
 	}
 
 	// NodeStatusStats describes systems (cpu, mem, swap) resource usage of a node
@@ -90,12 +93,8 @@ func (nodeStatus *TNodeStatus) DeepCopy() *TNodeStatus {
 		newGen[n] = v
 	}
 	result.Gen = newGen
-
-	newLabel := make(map[string]string)
-	for n, v := range nodeStatus.Labels {
-		newLabel[n] = v
-	}
-	result.Labels = newLabel
+	result.Labels = nodeStatus.Labels.DeepCopy()
+	result.Paths = nodeStatus.Paths.DeepCopy()
 
 	return &result
 }

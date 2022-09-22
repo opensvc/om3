@@ -39,6 +39,7 @@ const (
 	idGetInstanceStatus
 	idGetNodeData
 	idGetNodeStatus
+	idGetNodesInfo
 	idGetServiceNames
 	idGetNmon
 	idGetStatus
@@ -66,6 +67,7 @@ var (
 		idGetInstanceStatus: "get-instance-status",
 		idGetNodeData:       "get-node-data",
 		idGetNodeStatus:     "get-node-status",
+		idGetNodesInfo:      "get-nodes-info",
 		idGetServiceNames:   "get-service-names",
 		idGetStatus:         "get-status",
 		idSetServiceAgg:     "set-service-agg",

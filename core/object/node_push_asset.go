@@ -126,8 +126,8 @@ func (t Node) getAsset() (asset.Data, error) {
 	data.GIDS, _ = asset.Groups()
 	data.Hardware, _ = asset.Hardware()
 	data.LAN, _ = asset.GetLANS()
-	data.HBA, _ = san.HostBusAdapters()
-	data.Targets, _ = san.Paths()
+	data.HBA, _ = san.GetHostBusAdapters()
+	data.Targets, _ = san.GetPaths()
 
 	// from config only
 	data.SecZone = t.assetValueFromProbe("node.sec_zone", "security zone", nil, nil)

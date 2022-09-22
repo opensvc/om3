@@ -182,9 +182,11 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn Do
 		resources.Reverse()
 	}
 	resources, hasHitBarrier = resources.Truncate(barrier)
-	pg.FromContext(ctx).Register(t.PG)
-	for _, r := range resources {
-		pg.FromContext(ctx).Register(r.GetPG())
+	if pgMgr := pg.FromContext(ctx); pgMgr != nil {
+		pgMgr.Register(t.PG)
+		for _, r := range resources {
+			pgMgr.Register(r.GetPG())
+		}
 	}
 	if t.Parallel {
 		err = t.doParallel(ctx, l, resources, desc, fn)

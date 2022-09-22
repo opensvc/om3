@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -24,11 +23,11 @@ func (t Node) Exists() bool {
 }
 
 func (t *Node) ConfigFile() string {
-	return filepath.Join(rawconfig.Paths.Etc, "node.conf")
+	return rawconfig.NodeConfigFile()
 }
 
 func (t *Node) ClusterConfigFile() string {
-	return filepath.Join(rawconfig.Paths.Etc, "cluster.conf")
+	return rawconfig.ClusterConfigFile()
 }
 
 func (t *Node) loadConfig() error {
@@ -103,9 +102,9 @@ func (t Node) Dereference(ref string) (string, error) {
 	case "short_name", "short_nodename":
 		return strings.SplitN(hostname.Hostname(), ".", 1)[0], nil
 	case "dnsuxsock":
-		return t.DNSUDSFile(), nil
+		return rawconfig.DNSUDSFile(), nil
 	case "dnsuxsockd":
-		return t.DNSUDSDir(), nil
+		return rawconfig.DNSUDSDir(), nil
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):
@@ -154,4 +153,8 @@ func (t *Node) CNIPlugins() (string, error) {
 	} else {
 		return s.(string), nil
 	}
+}
+
+func (t *Node) Labels() (map[string]string, error) {
+	return t.config.SectionMap("labels")
 }

@@ -81,7 +81,7 @@ type (
 		Hardware []Device             `json:"hardware"`
 		LAN      map[string][]LAN     `json:"lan"`
 		HBA      []san.HostBusAdapter `json:"hba"`
-		Targets  []san.Path           `json:"targets"`
+		Targets  san.Paths            `json:"targets"`
 	}
 
 	Device struct {
@@ -227,9 +227,18 @@ func (t Data) Render() string {
 	n.AddColumn().AddText(fmt.Sprint(len(t.HBA)))
 	n.AddColumn().AddText(SrcProbe)
 	for _, v := range t.HBA {
-		l := n.AddNode()
-		l.AddColumn().AddText(v.ID)
-		l.AddColumn().AddText(v.Type)
+		n1 := n.AddNode()
+		n1.AddColumn().AddText(v.ID)
+		n1.AddColumn().AddText(v.Type)
+		targets := t.Targets.WithHBAID(v.ID)
+		if len(targets) > 0 {
+			n2 := n1.AddNode()
+			n2.AddColumn().AddText("targets").SetColor(rawconfig.Color.Primary)
+			for _, tgt := range targets {
+				n3 := n2.AddNode()
+				n3.AddColumn().AddText(tgt.TargetPort.ID)
+			}
+		}
 	}
 
 	return tr.Render()
