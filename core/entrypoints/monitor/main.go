@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/inancgumus/screen"
@@ -67,7 +69,7 @@ func (m *T) SetColor(v string) {
 }
 
 // SetFormat sets the rendering format option. Default is "auto", interpreted as
-// human readable.
+// human-readable.
 func (m *T) SetFormat(v string) {
 	m.format = v
 }
@@ -97,7 +99,7 @@ type EventGetter interface {
 	Do() (chan event.Event, error)
 }
 
-// Do renders the cluster status
+// Do function renders the cluster status
 func (m T) Do(getter Getter, out io.Writer) error {
 	var err error
 	b, err := getter.Get()
@@ -120,7 +122,6 @@ func (m T) DoWatch(eventGetter EventBGetter, out io.Writer) error {
 		// unexpected: avoid fast looping
 		time.Sleep(100 * time.Millisecond)
 	}
-	return nil
 }
 
 func (m T) watch(eventGetter EventBGetter, out io.Writer) error {
@@ -143,8 +144,8 @@ func (m T) watch(eventGetter EventBGetter, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	b = *evt.Data
-	if err := json.Unmarshal(*evt.Data, &data); err != nil {
+	b = evt.Data
+	if err := json.Unmarshal(evt.Data, &data); err != nil {
 		return err
 	}
 	m.doOneShot(data, true, out)
@@ -178,7 +179,7 @@ func (m T) watch(eventGetter EventBGetter, out io.Writer) error {
 }
 
 func handleEvent(b *[]byte, e event.Event) (err error) {
-	patch := jsondelta.NewPatch(*e.Data)
+	patch := jsondelta.NewPatch(e.Data)
 	*b, err = patch.Apply(*b)
 	return
 }
@@ -217,15 +218,32 @@ func (m T) DoWatchDemo(statusGetter Getter, eventGetter EventGetter, out io.Writ
 	}
 }
 
+func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Status, error) {
+	newB, err := p.Apply(b)
+	if err != nil {
+		//_, _ = fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\npatch len: %d\n", err, len(p))
+		//_, _ = fmt.Fprintf(os.Stderr, "patches: %+v\n", p)
+		//_, _ = fmt.Fprintf(os.Stderr, "data to patch: %s\n", b)
+		return nil, nil, err
+	}
+	data := cluster.Status{}
+	if err := json.Unmarshal(newB, &data); err != nil {
+		//_, _ = fmt.Fprintf(os.Stderr, "unmarshal data %s\ndocument: %s", err, b)
+		return nil, nil, err
+	}
+	return newB, &data, nil
+}
+
 func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
 	var (
 		b        []byte
-		data     cluster.Status
+		data     *cluster.Status
 		err      error
 		events   chan event.Event
 		dataChan = make(chan *cluster.Status)
 
-		patches = make(jsondelta.Patch, 0)
+		patchById = make(map[string][]jsondelta.Operation)
+		nextId    uint64
 
 		displayInterval = 500 * time.Millisecond
 	)
@@ -246,9 +264,10 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 		m.doOneShot(*d, true, out)
 		// show data when new data published on dataChan
 		for d := range dataChan {
+			//_, _ = fmt.Fprintf(os.Stderr, "doOneShot %v\n", d.Cluster.Node[hostname.Hostname()].Status.Gen)
 			m.doOneShot(*d, true, out)
 		}
-	}(&data)
+	}(data)
 
 	ticker := time.NewTicker(displayInterval)
 	defer ticker.Stop()
@@ -256,30 +275,56 @@ func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer
 		select {
 		case e, ok := <-events:
 			if !ok {
-				fmt.Fprintf(os.Stderr, "no more events\n")
+				_, _ = fmt.Fprintf(os.Stderr, "no more events\n")
 				return nil
 			}
 			switch e.Kind {
 			case "patch", "full":
-				patches = append(patches, jsondelta.NewPatch(*e.Data)...)
+				s := strconv.FormatUint(e.ID, 10)
+				patchById[s] = jsondelta.NewPatch(e.Data)
 			}
 		case <-ticker.C:
-			if len(patches) > 0 {
-				if newB, err := patches.Apply(b); err != nil {
-					fmt.Fprintf(os.Stderr, "patches.Apply failure: %s\nlen(patches): %d\n", err, len(patches))
-					fmt.Fprintf(os.Stderr, "patches: %+v\n", patches)
-					fmt.Fprintf(os.Stderr, "b: %s\n", b)
-					return err
-				} else {
-					b = newB
+			if len(patchById) > 0 {
+				sortIds := make([]uint64, 0)
+				for s := range patchById {
+					id, err := strconv.ParseUint(s, 10, 64)
+					if err != nil {
+						continue
+					}
+					sortIds = append(sortIds, id)
 				}
-				data := cluster.Status{}
-				if err := json.Unmarshal(b, &data); err != nil {
-					fmt.Fprintf(os.Stderr, "unmarshal data %s\ndata: %s", err, b)
-					return err
+				sort.Slice(sortIds, func(i, j int) bool { return sortIds[i] < sortIds[j] })
+				patches := make([]jsondelta.Operation, 0)
+				if nextId == 0 {
+					// init nextId from first patch ev.ID
+					nextId = sortIds[0]
 				}
-				patches = make(jsondelta.Patch, 0)
-				dataChan <- &data
+				idToDelete := make([]string, 0)
+				for _, id := range sortIds {
+					if id > nextId {
+						_, _ = fmt.Fprintf(os.Stderr, "break %d != %s, sortIds:%v\n",
+							id, nextId, sortIds)
+						break
+					} else if id < nextId && (nextId-id) > 20 {
+						_, _ = fmt.Fprintf(os.Stderr, "reset break %d != %s, sortIds:%v\n",
+							id, nextId, sortIds)
+						return nil
+					}
+					nextId++
+					s := strconv.FormatUint(id, 10)
+					patches = append(patches, patchById[s]...)
+					idToDelete = append(idToDelete, s)
+					delete(patchById, s)
+				}
+				if len(patches) > 0 {
+					//_, _ = fmt.Fprintf(os.Stderr, "patches len: %d nextId: %d patch set ids: %v from availables ids: %v\n",
+					//	len(patches), nextId, idToDelete, sortIds)
+					b, data, err = patchedStatus(b, patches)
+					if err != nil {
+						return err
+					}
+					dataChan <- data
+				}
 			}
 		}
 	}

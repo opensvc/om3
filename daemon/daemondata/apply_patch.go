@@ -33,7 +33,6 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	var (
 		pendingB []byte
 		err      error
-		data     json.RawMessage
 		changes  bool
 	)
 	pendingNode, ok := d.pending.Cluster.Node[o.nodename]
@@ -115,13 +114,12 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			}
 			return
 		} else {
-			data = eventB
 			eventId++
 			msgbus.PubEvent(d.bus, event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
-				Data: &data,
+				Data: eventB,
 			})
 		}
 		pendingNodeGen = gen
