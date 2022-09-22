@@ -1,10 +1,7 @@
 package nodeselector
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -16,6 +13,7 @@ import (
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
@@ -23,13 +21,6 @@ import (
 )
 
 type (
-	NodesInfo map[string]NodeInfo
-
-	NodeInfo struct {
-		Labels  map[string]string
-		Targets interface{}
-	}
-
 	T struct {
 		SelectorExpression string
 		hasClient          bool
@@ -39,7 +30,7 @@ type (
 		server             string
 		knownNodes         []string
 		knownNodesSet      *set.Set
-		info               NodesInfo
+		info               nodesinfo.NodesInfo
 		log                zerolog.Logger
 	}
 )
@@ -60,7 +51,7 @@ func New(selector string, opts ...funcopt.O) *T {
 
 // WithClient sets the client struct key
 func WithClient(client *client.T) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.client = client
 		t.hasClient = true
@@ -70,7 +61,7 @@ func WithClient(client *client.T) funcopt.O {
 
 // WithClient sets the client struct key
 func WithLogger(log zerolog.Logger) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.log = log
 		return nil
@@ -81,16 +72,26 @@ func WithLogger(log zerolog.Logger) funcopt.O {
 // daemon, which might result in an sub-selection of what the
 // daemon would expand the selector to.
 func WithLocal(v bool) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.local = v
 		return nil
 	})
 }
 
+// WithNodesInfo allow in-daemon callers to bypass nodesinfo.Load and nodesinfo.Req
+// as they can access the NodesInfo faster from the data bus.
+func WithNodesInfo(v nodesinfo.NodesInfo) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.info = v
+		return nil
+	})
+}
+
 // WithServer sets the server struct key
 func WithServer(server string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.server = server
 		return nil
@@ -180,7 +181,7 @@ func (t *T) expand() error {
 		if err != nil {
 			return err
 		}
-		pset.Do(func(i interface{}) {
+		pset.Do(func(i any) {
 			if node, ok := i.(string); !ok {
 				return
 			} else {
@@ -305,55 +306,31 @@ func (t T) daemonKnownNodes() ([]string, error) {
 	}
 }
 
-func (t *T) getNodesInfo() (NodesInfo, error) {
+func (t *T) getNodesInfo() (nodesinfo.NodesInfo, error) {
 	var err error
 	if t.info != nil {
 		return t.info, nil
 	}
 	if t.local {
-		if t.info, err = t.getLocalNodesInfo(); err == nil {
+		if t.info, err = nodesinfo.Load(); err == nil {
 			return t.info, nil
 		}
-		if t.info, err = t.getDaemonNodesInfo(); err == nil {
+		if t.client == nil {
+			// no fallback possible
+			return nil, err
+		}
+		if t.info, err = nodesinfo.ReqWithClient(t.client); err == nil {
 			return t.info, nil
 		}
 		return nil, err
 	}
-	if t.info, err = t.getDaemonNodesInfo(); err == nil {
+	if t.info, err = nodesinfo.ReqWithClient(t.client); err == nil {
 		return t.info, nil
 	} else if clientcontext.IsSet() {
 		return nil, err
 	}
-	if t.info, err = t.getLocalNodesInfo(); err != nil {
+	if t.info, err = nodesinfo.Load(); err != nil {
 		return nil, err
 	}
 	return t.info, nil
-}
-
-func (t T) getLocalNodesInfo() (NodesInfo, error) {
-	var (
-		err  error
-		b    []byte
-		data NodesInfo
-	)
-	p := filepath.Join(rawconfig.Paths.Var, "nodes_info.json")
-	t.log.Debug().Msgf("load %s", p)
-	if b, err = os.ReadFile(p); err != nil {
-		return data, err
-	}
-	if err = json.Unmarshal(b, &data); err != nil {
-		return data, err
-	}
-	return data, nil
-}
-
-func (t T) getDaemonNodesInfo() (NodesInfo, error) {
-	data := make(NodesInfo)
-	handle := t.client.NewGetNodesInfo()
-	b, err := handle.Do()
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(b, &data)
-	return data, err
 }

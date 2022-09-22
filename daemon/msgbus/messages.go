@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/pubsub"
@@ -21,6 +22,8 @@ const (
 	NsCfg
 	NsAgg
 	NsNmon
+	NsNodeStatus
+	NsNodeStatusLabels
 	NsSmon
 	NsSetNmon
 	NsSetSmon
@@ -109,6 +112,16 @@ type (
 	SetNmon struct {
 		Node    string
 		Monitor cluster.NodeMonitor
+	}
+
+	NodeStatusUpdated struct {
+		Node string
+		Data cluster.TNodeStatus
+	}
+
+	NodeStatusLabelsUpdated struct {
+		Node string
+		Data nodesinfo.Labels
 	}
 
 	NmonDeleted struct {
@@ -283,4 +296,20 @@ func PubSvcAggUpdate(bus *pubsub.Bus, id string, v MonSvcAggUpdated) {
 
 func SubSvcAgg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsAgg, op, name, matching, fn)
+}
+
+func PubNodeStatusUpdate(bus *pubsub.Bus, id string, v NodeStatusUpdated) {
+	Pub(bus, NsNodeStatus, pubsub.OpUpdate, id, v)
+}
+
+func SubNodeStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsNodeStatus, op, name, matching, fn)
+}
+
+func PubNodeStatusLabelsUpdate(bus *pubsub.Bus, id string, v NodeStatusLabelsUpdated) {
+	Pub(bus, NsNodeStatus, pubsub.OpUpdate, id, v)
+}
+
+func SubNodeStatusLabels(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsNodeStatusLabels, op, name, matching, fn)
 }

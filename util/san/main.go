@@ -39,3 +39,32 @@ func (t Paths) WithHBAID(id string) Paths {
 	}
 	return l
 }
+
+func (t Paths) DeepCopy() Paths {
+	l := make(Paths, len(t))
+	for i, p := range l {
+		l[i] = p.DeepCopy()
+	}
+	return l
+}
+
+func (t Path) DeepCopy() Path {
+	return Path{
+		HostBusAdapter: t.HostBusAdapter.DeepCopy(),
+		TargetPort:     t.TargetPort.DeepCopy(),
+	}
+}
+
+func (t HostBusAdapter) DeepCopy() HostBusAdapter {
+	return HostBusAdapter{
+		ID:   t.ID,
+		Type: t.Type,
+		Host: t.Host,
+	}
+}
+
+func (t TargetPort) DeepCopy() TargetPort {
+	return TargetPort{
+		ID: t.ID,
+	}
+}

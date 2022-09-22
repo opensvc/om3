@@ -31,9 +31,9 @@ func WithConfigData(b any) funcopt.O {
 
 // WithVolatile makes sure not data is ever written by the object.
 func WithVolatile(s bool) funcopt.O {
-	return funcopt.F(func(t interface{}) error {
-		o := t.(*core)
-		o.volatile = s
+	return funcopt.F(func(t any) error {
+		o := t.(volatiler)
+		o.SetVolatile(s)
 		return nil
 	})
 }

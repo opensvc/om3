@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/array"
 	"opensvc.com/opensvc/core/driver"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/sizeconv"
@@ -53,33 +54,79 @@ func (t *Array) Run(args []string) error {
 		blocksize   string
 		datasetName string
 		size        string
+		mappings    string
 		sparse      bool
 	)
 	parent := &cobra.Command{
 		Use:   "array",
 		Short: "Manage a truenas storage array",
 	}
+
+	mapCmd := &cobra.Command{
+		Use:   "map",
+		Short: "map commands",
+	}
+	unmapCmd := &cobra.Command{
+		Use:   "unmap",
+		Short: "unmap commands",
+	}
 	addCmd := &cobra.Command{
 		Use:   "add",
 		Short: "add commands",
 	}
+	delCmd := &cobra.Command{
+		Use:   "del",
+		Short: "del commands",
+	}
+
+	unmapDiskCmd := &cobra.Command{
+		Use:   "disk",
+		Short: "unmap a zvol-type dataset",
+		Run: func(_ *cobra.Command, _ []string) {
+			fmt.Println("TODO")
+		},
+	}
+	mapDiskCmd := &cobra.Command{
+		Use:   "disk",
+		Short: "map a zvol-type dataset",
+		Run: func(_ *cobra.Command, _ []string) {
+			fmt.Println("TODO")
+		},
+	}
+	delDiskCmd := &cobra.Command{
+		Use:   "disk",
+		Short: "unmap a zvol-type dataset and delete",
+		Run: func(_ *cobra.Command, _ []string) {
+			fmt.Println("TODO")
+		},
+	}
+	addDiskCmd := &cobra.Command{
+		Use:   "disk",
+		Short: "add a zvol-type dataset and map",
+		Run: func(_ *cobra.Command, _ []string) {
+			/*
+				if data, err := t.addZvol(datasetName, size, blocksize, sparse); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				} else {
+					dump(data)
+				}
+			*/
+			nodesInfo, err := nodesinfo.Get()
+			fmt.Println("xx", nodesInfo, err)
+		},
+	}
+	addDiskCmd.Flags().StringVar(&datasetName, "name", "", "")
+	addDiskCmd.Flags().StringVar(&blocksize, "blocksize", "512", "")
+	addDiskCmd.Flags().StringVar(&size, "size", "", "")
+	addDiskCmd.Flags().StringVar(&mappings, "mappings", "", "")
+	addDiskCmd.Flags().BoolVar(&sparse, "sparse", true, "")
+
 	addZvolCmd := &cobra.Command{
 		Use:   "zvol",
 		Short: "add a zvol-type dataset",
 		Run: func(_ *cobra.Command, _ []string) {
-			params := CreateDatasetParams{
-				Name:         datasetName,
-				Type:         &DatasetTypeVolume,
-				Volblocksize: &blocksize,
-				Sparse:       &sparse,
-			}
-			if i, err := sizeconv.FromSize(size); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			} else {
-				params.Volsize = &i
-			}
-			if data, err := t.CreateDataset(params); err != nil {
+			if data, err := t.addZvol(datasetName, size, blocksize, sparse); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			} else {
@@ -92,10 +139,6 @@ func (t *Array) Run(args []string) error {
 	addZvolCmd.Flags().StringVar(&size, "size", "", "")
 	addZvolCmd.Flags().BoolVar(&sparse, "sparse", true, "")
 
-	delCmd := &cobra.Command{
-		Use:   "del",
-		Short: "del commands",
-	}
 	delZvolCmd := &cobra.Command{
 		Use:   "zvol",
 		Short: "del a zvol-type dataset",
@@ -228,23 +271,51 @@ func (t *Array) Run(args []string) error {
 	parent.SetArgs(os.Args[4:])
 
 	parent.AddCommand(addCmd)
-	addCmd.AddCommand(addZvolCmd)
 	parent.AddCommand(delCmd)
-	delCmd.AddCommand(delZvolCmd)
 	parent.AddCommand(getCmd)
+	parent.AddCommand(mapCmd)
+	parent.AddCommand(unmapCmd)
+	parent.AddCommand(updateCmd)
+
+	addCmd.AddCommand(addDiskCmd)
+	addCmd.AddCommand(addZvolCmd)
+
+	delCmd.AddCommand(delDiskCmd)
+	delCmd.AddCommand(delZvolCmd)
+
 	getCmd.AddCommand(getPoolsCmd)
 	getCmd.AddCommand(getDatasetsCmd)
 	getCmd.AddCommand(getDatasetCmd)
 	getCmd.AddCommand(getSystemInfoCmd)
 	getCmd.AddCommand(getISCSICmd)
+
 	getISCSICmd.AddCommand(getISCSITargetsCmd)
 	getISCSICmd.AddCommand(getISCSITargetExtentsCmd)
 	getISCSICmd.AddCommand(getISCSIExtentsCmd)
 	getISCSICmd.AddCommand(getISCSIInitiatorsCmd)
-	parent.AddCommand(updateCmd)
+
+	mapCmd.AddCommand(mapDiskCmd)
+
+	unmapCmd.AddCommand(unmapDiskCmd)
+
 	updateCmd.AddCommand(updateZvolCmd)
 
 	return parent.Execute()
+}
+
+func (t Array) addZvol(datasetName, size, blocksize string, sparse bool) (*Dataset, error) {
+	params := CreateDatasetParams{
+		Name:         datasetName,
+		Type:         &DatasetTypeVolume,
+		Volblocksize: &blocksize,
+		Sparse:       &sparse,
+	}
+	if i, err := sizeconv.FromSize(size); err != nil {
+		return nil, err
+	} else {
+		params.Volsize = &i
+	}
+	return t.CreateDataset(params)
 }
 
 func (t Array) username() string {

@@ -753,7 +753,7 @@ func (t *T) replaceReferences(v string, section string, impersonate string) (str
 	return v, nil
 }
 
-func (t T) sectionMap(section string) (map[string]string, error) {
+func (t T) SectionMap(section string) (map[string]string, error) {
 	s, err := t.file.GetSection(section)
 	if err != nil {
 		return nil, errors.Wrapf(ErrExist, "section '%s'", section)
@@ -765,7 +765,7 @@ func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, e
 	if impersonate == "" {
 		impersonate = hostname.Hostname()
 	}
-	s, err := t.sectionMap(k.Section)
+	s, err := t.SectionMap(k.Section)
 	if err != nil {
 		return "", err
 	}

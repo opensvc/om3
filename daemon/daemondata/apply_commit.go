@@ -37,15 +37,16 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 		d.purgeAppliedPatchQueue()
 	}
 
-	cfgDeletes, cfgUpdates := d.getCfgDiff()
-	statusDeletes, statusUpdates := d.getStatusDiff()
+	d.pubMsgFromNodeStatusDiff()
+	cfgDeletes, cfgUpdates := d.getInstCfgDiff()
+	statusDeletes, statusUpdates := d.getInstStatusDiff()
 	smonDeletes, smonUpdates := d.getSmonDiff()
 
-	for _, cfgDelete := range cfgDeletes {
-		msgbus.PubCfgDelete(d.bus, cfgDelete.Path.String(), cfgDelete)
+	for _, w := range cfgDeletes {
+		msgbus.PubCfgDelete(d.bus, w.Path.String(), w)
 	}
-	for _, cfgUpdates := range cfgUpdates {
-		msgbus.PubCfgUpdate(d.bus, cfgUpdates.Path.String(), cfgUpdates)
+	for _, w := range cfgUpdates {
+		msgbus.PubCfgUpdate(d.bus, w.Path.String(), w)
 	}
 	for _, w := range statusDeletes {
 		msgbus.PubInstStatusDelete(d.bus, w.Path.String(), w)

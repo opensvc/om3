@@ -48,14 +48,18 @@ type (
 		NewCompliance() (*compliance.T, error)
 	}
 
+	volatiler interface {
+		IsVolatile() bool
+		SetVolatile(v bool)
+	}
+
 	// Core is implemented by all object kinds.
 	Core interface {
 		Configurer
 		compliancer
+		volatiler
 		Path() path.T
 		FQDN() string
-		IsVolatile() bool
-		SetVolatile(v bool)
 		Status(context.Context) (instance.Status, error)
 		FreshStatus(context.Context) (instance.Status, error)
 		Nodes() []string

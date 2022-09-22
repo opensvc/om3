@@ -53,6 +53,10 @@ func (t Node) String() string {
 	return fmt.Sprintf("node")
 }
 
+func (t *Node) SetVolatile(v bool) {
+	t.volatile = v
+}
+
 func (t Node) IsVolatile() bool {
 	return t.volatile
 }
