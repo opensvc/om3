@@ -27,9 +27,10 @@ func (d *data) getPeersFromPrevAndPending() []string {
 	return xmap.Keys(nodes)
 }
 
-func (d *data) pubMsgFromNodeStatusDiff() {
+func (d *data) pubMsgFromNodeDataDiff() {
 	for _, node := range d.getPeersFromPrevAndPending() {
 		d.pubMsgFromNodeStatusDiffForNode(node)
+		d.pubMsgFromNodeMonitorDiffForNode(node)
 	}
 }
 
@@ -402,6 +403,42 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 		msgbus.PubNodeStatusUpdate(d.bus, node, msgbus.NodeStatusUpdated{
 			Node: node,
 			Data: *next.DeepCopy(),
+		})
+	}
+
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
+	}
+}
+
+func (d *data) pubMsgFromNodeMonitorDiffForNode(node string) {
+	var (
+		nextNode, prevNode cluster.NodeData
+		next, prev         cluster.NodeMonitor
+		hasNext, hasPrev   bool
+	)
+	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
+		next = nextNode.Monitor
+	}
+	if prevNode, hasPrev = d.previous.Cluster.Node[node]; hasPrev {
+		prev = prevNode.Monitor
+	}
+
+	onUpdate := func() {
+		if !reflect.DeepEqual(prev, next) {
+			msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
+				Node:    node,
+				Monitor: *next.DeepCopy(),
+			})
+		}
+	}
+	onCreate := func() {
+		msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
+			Node:    node,
+			Monitor: *next.DeepCopy(),
 		})
 	}
 

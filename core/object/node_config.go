@@ -155,6 +155,6 @@ func (t *Node) CNIPlugins() (string, error) {
 	}
 }
 
-func (t *Node) Labels() (map[string]string, error) {
+func (t *Node) Labels() map[string]string {
 	return t.config.SectionMap("labels")
 }

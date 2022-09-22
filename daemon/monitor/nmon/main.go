@@ -1,18 +1,15 @@
-// Package nmon is responsible for of local instance state
+// Package nmon is responsible for of the local node monitor state
 //
 //	It provides the cluster data:
 //		["cluster", "node", <localhost>, "services", "status", <instance>, "monitor"]
 //		["cluster", "node", <localhost>, "services", "nmon", <instance>]
 //
-//	nmon are created by the local instcfg, with parent context instcfg context.
-//	instcfg done => nmon done
-//
-//	worker watches on local instance status updates to clear reached status
+//	worker watches on local status updates to clear reached status
 //		=> unsetStatusWhenReached
 //		=> orchestrate
 //		=> pub new state if change
 //
-//	worker watches on remote instance nmon updates converge global expects
+//	worker watches on remote nmon updates converge global expects
 //		=> convergeGlobalExpectFromRemote
 //		=> orchestrate
 //		=> pub new state if change
