@@ -301,7 +301,7 @@ func (b *Bus) Start(ctx context.Context) {
 				case cmdUnsub:
 					sub, ok := subs[c.subId]
 					if !ok {
-						continue
+						break
 					}
 					sub.q <- cmdDie{}
 					delete(subs, c.subId)
