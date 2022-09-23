@@ -2,7 +2,6 @@ package discover
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/remoteconfig"
@@ -101,7 +101,8 @@ func (d *discover) setNodeLabels() {
 		return
 	}
 	labels := node.Labels()
-	fmt.Println("TODO: daemon/discover/cfg.go::setNodeLabels() must set daemondata and publish an event", labels)
+	databus := daemondata.BusFromContext(d.ctx)
+	daemondata.SetNodeStatusLabels(databus, labels)
 }
 
 // cmdLocalCfgDeleted starts a new instcfg when a local configuration file exists

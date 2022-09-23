@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
@@ -19,6 +20,10 @@ type (
 	opSetNodeStatusFrozen struct {
 		err   chan<- error
 		value time.Time
+	}
+	opSetNodeStatusLabels struct {
+		err   chan<- error
+		value nodesinfo.Labels
 	}
 )
 
@@ -72,6 +77,38 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
 	msgbus.PubFrozen(d.bus, hostname.Hostname(), msgbus.Frozen{
 		Node:  hostname.Hostname(),
 		Path:  path.T{},
+		Value: o.value,
+	})
+	select {
+	case <-ctx.Done():
+	case o.err <- nil:
+	}
+}
+
+// SetNodeStatusLabels sets Monitor.Node.<localhost>.frozen
+func SetNodeStatusLabels(c chan<- interface{}, labels nodesinfo.Labels) error {
+	err := make(chan error)
+	op := opSetNodeStatusLabels{
+		err:   err,
+		value: labels,
+	}
+	c <- op
+	return <-err
+}
+
+func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
+	d.counterCmd <- idSetNmon
+	v := d.pending.Cluster.Node[d.localNode]
+	v.Status.Labels = o.value
+	d.pending.Cluster.Node[d.localNode] = v
+	op := jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"status", "labels"},
+		OpValue: jsondelta.NewOptValue(o.value),
+		OpKind:  "replace",
+	}
+	d.pendingOps = append(d.pendingOps, op)
+	msgbus.PubNodeStatusLabelsUpdate(d.bus, msgbus.NodeStatusLabelsUpdated{
+		Node:  hostname.Hostname(),
 		Value: o.value,
 	})
 	select {
