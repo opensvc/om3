@@ -115,13 +115,13 @@ type (
 	}
 
 	NodeStatusUpdated struct {
-		Node string
-		Data cluster.NodeStatus
+		Node  string
+		Value cluster.NodeStatus
 	}
 
 	NodeStatusLabelsUpdated struct {
-		Node string
-		Data nodesinfo.Labels
+		Node  string
+		Value nodesinfo.Labels
 	}
 
 	NmonDeleted struct {
@@ -298,16 +298,16 @@ func SubSvcAgg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i
 	return Sub(bus, NsAgg, op, name, matching, fn)
 }
 
-func PubNodeStatusUpdate(bus *pubsub.Bus, id string, v NodeStatusUpdated) {
-	Pub(bus, NsNodeStatus, pubsub.OpUpdate, id, v)
+func PubNodeStatusUpdate(bus *pubsub.Bus, v NodeStatusUpdated) {
+	Pub(bus, NsNodeStatus, pubsub.OpUpdate, "", v)
 }
 
 func SubNodeStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsNodeStatus, op, name, matching, fn)
 }
 
-func PubNodeStatusLabelsUpdate(bus *pubsub.Bus, id string, v NodeStatusLabelsUpdated) {
-	Pub(bus, NsNodeStatus, pubsub.OpUpdate, id, v)
+func PubNodeStatusLabelsUpdate(bus *pubsub.Bus, v NodeStatusLabelsUpdated) {
+	Pub(bus, NsNodeStatus, pubsub.OpUpdate, "", v)
 }
 
 func SubNodeStatusLabels(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {

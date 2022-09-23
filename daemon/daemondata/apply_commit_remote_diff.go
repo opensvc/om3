@@ -382,27 +382,27 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 	onUpdate := func() {
 		var changed bool
 		if !reflect.DeepEqual(prev.Labels, next.Labels) {
-			msgbus.PubNodeStatusLabelsUpdate(d.bus, node, msgbus.NodeStatusLabelsUpdated{
-				Node: node,
-				Data: next.Labels.DeepCopy(),
+			msgbus.PubNodeStatusLabelsUpdate(d.bus, msgbus.NodeStatusLabelsUpdated{
+				Node:  node,
+				Value: next.Labels.DeepCopy(),
 			})
 			changed = true
 		}
 		if changed || !reflect.DeepEqual(prev, next) {
-			msgbus.PubNodeStatusUpdate(d.bus, node, msgbus.NodeStatusUpdated{
-				Node: node,
-				Data: *next.DeepCopy(),
+			msgbus.PubNodeStatusUpdate(d.bus, msgbus.NodeStatusUpdated{
+				Node:  node,
+				Value: *next.DeepCopy(),
 			})
 		}
 	}
 	onCreate := func() {
-		msgbus.PubNodeStatusLabelsUpdate(d.bus, node, msgbus.NodeStatusLabelsUpdated{
-			Node: node,
-			Data: next.Labels.DeepCopy(),
+		msgbus.PubNodeStatusLabelsUpdate(d.bus, msgbus.NodeStatusLabelsUpdated{
+			Node:  node,
+			Value: next.Labels.DeepCopy(),
 		})
-		msgbus.PubNodeStatusUpdate(d.bus, node, msgbus.NodeStatusUpdated{
-			Node: node,
-			Data: *next.DeepCopy(),
+		msgbus.PubNodeStatusUpdate(d.bus, msgbus.NodeStatusUpdated{
+			Node:  node,
+			Value: *next.DeepCopy(),
 		})
 	}
 
