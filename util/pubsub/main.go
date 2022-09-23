@@ -181,7 +181,8 @@ type (
 var (
 	bus *Bus
 
-	cmdDurationWarn = time.Second
+	cmdDurationWarn    = time.Second
+	notifyDurationWarn = time.Second
 
 	OpToName = []string{"all operations", "create", "read", "update", "delete"}
 )
@@ -269,6 +270,16 @@ func (b *Bus) Start(ctx context.Context) {
 					b.Add(1)
 					go func() {
 						b.Done()
+						watchSubscription := &durationlog.T{Log: b.log.With().Str("subscription", c.name).Logger()}
+						watchSubscriptionCtx, watchSubscriptionCancel := context.WithCancel(context.Background())
+						defer watchSubscriptionCancel()
+						var beginNotify = make(chan interface{})
+						var endNotify = make(chan bool)
+						b.Add(1)
+						go func() {
+							defer b.Done()
+							watchSubscription.WarnExceeded(watchSubscriptionCtx, beginNotify, endNotify, notifyDurationWarn)
+						}()
 						started <- true
 						for {
 							select {
@@ -276,7 +287,9 @@ func (b *Bus) Start(ctx context.Context) {
 								if _, ok := i.(cmdDie); ok {
 									return
 								}
+								beginNotify <- i
 								sub.fn(i)
+								endNotify <- true
 							case <-b.ctx.Done():
 								return
 							}
