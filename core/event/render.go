@@ -18,3 +18,7 @@ func Render(e Event) string {
 	}
 	return s
 }
+
+func (e Event) String() string {
+	return fmt.Sprintf("event %s %d", e.Kind, e.ID)
+}
