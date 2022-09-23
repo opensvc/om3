@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -168,7 +169,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := msgbus.SubEvent(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent)
+	subId := msgbus.SubEventWithTimeout(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent, time.Second)
 	defer msgbus.UnSubEvent(bus, subId)
 	go func() {
 		for {
