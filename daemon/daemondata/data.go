@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/callcount"
+	"opensvc.com/opensvc/util/durationlog"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -44,6 +45,10 @@ type (
 	patchQueue map[string]jsondelta.Patch
 )
 
+var (
+	cmdDurationWarn = time.Second
+)
+
 func run(ctx context.Context, cmdC <-chan interface{}) {
 	counterCmd, cancel := callcount.Start(ctx, idToName)
 	defer cancel()
@@ -55,6 +60,16 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	defer d.log.Info().Msg("stopped")
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+
+	watchCmd := &durationlog.T{Log: d.log}
+	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
+	defer watchDurationCancel()
+	var beginCmd = make(chan interface{})
+	var endCmd = make(chan bool)
+	go func() {
+		watchCmd.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn)
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -73,15 +88,14 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 				}
 			}()
 
-			//		cancel()
 			return
 		case <-ticker.C:
 			d.pending.Monitor.Routines = runtime.NumGoroutine()
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
-				// d.log.Debug().Msgf("daemondata cmd -> %s", reflect.TypeOf(c))
+				beginCmd <- cmd
 				c.call(ctx, d)
-				// d.log.Debug().Msgf("daemondata cmd <- %s", reflect.TypeOf(c))
+				endCmd <- true
 			} else {
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				counterCmd <- idUndef
