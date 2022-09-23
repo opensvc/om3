@@ -65,12 +65,16 @@ package pubsub
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"opensvc.com/opensvc/util/durationlog"
 )
 
 type (
@@ -168,10 +172,18 @@ type (
 		log    zerolog.Logger
 		ctx    context.Context
 	}
+
+	stringer interface {
+		String() string
+	}
 )
 
 var (
 	bus *Bus
+
+	cmdDurationWarn = time.Second
+
+	OpToName = []string{"all operations", "create", "read", "update", "delete"}
 )
 
 // Stop stops the default bus
@@ -203,6 +215,18 @@ func (b *Bus) Start(ctx context.Context) {
 	b.Add(1)
 	go func() {
 		defer b.Done()
+
+		watchDuration := &durationlog.T{Log: b.log}
+		watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
+		defer watchDurationCancel()
+		var beginCmd = make(chan interface{})
+		var endCmd = make(chan bool)
+		b.Add(1)
+		go func() {
+			defer b.Done()
+			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn)
+		}()
+
 		subs := make(map[uuid.UUID]activeSubscription)
 		started <- true
 		for {
@@ -210,6 +234,7 @@ func (b *Bus) Start(ctx context.Context) {
 			case <-b.ctx.Done():
 				return
 			case cmd := <-b.cmdC:
+				beginCmd <- cmd
 				switch c := cmd.(type) {
 				case cmdPub:
 					for _, sub := range subs {
@@ -273,6 +298,7 @@ func (b *Bus) Start(ctx context.Context) {
 					}
 					b.log.Debug().Msgf("unsubscribe %s", sub.name)
 				}
+				endCmd <- true
 			}
 		}
 	}()
@@ -385,4 +411,23 @@ func BusFromContext(ctx context.Context) *Bus {
 		return bus
 	}
 	panic("unable to retrieve pubsub bus from context")
+}
+
+func (o cmdPub) String() string {
+	var dataS string
+	switch data := o.data.(type) {
+	case stringer:
+		dataS = data.String()
+	default:
+		dataS = reflect.TypeOf(data).String()
+	}
+	return fmt.Sprintf("publish id '%s' %s on namespace %d data: %s", o.id, OpToName[o.op], o.ns, dataS)
+}
+
+func (o cmdSub) String() string {
+	return fmt.Sprintf("subscribe '%s' for %d on namespace %d", o.name, OpToName[o.op], o.ns)
+}
+
+func (o cmdUnsub) String() string {
+	return fmt.Sprintf("unsubscribe '%s'", o.subId)
 }
