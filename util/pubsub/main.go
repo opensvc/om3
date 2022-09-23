@@ -65,12 +65,17 @@ package pubsub
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"opensvc.com/opensvc/util/durationlog"
 )
 
 type (
@@ -108,6 +113,11 @@ type (
 
 		// Name is a description of the subscription
 		Name string
+
+		// Timeout define the subscription max duration for the callback
+		// when non 0, if subscription callback duration exceed Timeout, the
+		// subscription is removed
+		Timeout time.Duration
 	}
 
 	// Publication struct holds a new publication
@@ -125,19 +135,24 @@ type (
 	}
 
 	activeSubscription struct {
-		fn       func(interface{})
+		fn       func(interface{}) error
 		op       uint
 		ns       uint
 		matching string
 		name     string
 		q        chan interface{}
+
+		// duration define the max duration for a callback,
+		// when non 0, the subscription is kill if callback duration exceeds duration
+		duration time.Duration
+		subId    uuid.UUID
+
+		// cancel defines the subscription canceler
+		cancel context.CancelFunc
 	}
 )
 
 type (
-	cmdDie struct {
-	}
-
 	cmdPub struct {
 		id   string
 		op   uint
@@ -153,6 +168,7 @@ type (
 		matching string
 		name     string
 		resp     chan<- uuid.UUID
+		timeout  time.Duration
 	}
 
 	cmdUnsub struct {
@@ -168,10 +184,19 @@ type (
 		log    zerolog.Logger
 		ctx    context.Context
 	}
+
+	stringer interface {
+		String() string
+	}
 )
 
 var (
 	bus *Bus
+
+	cmdDurationWarn    = time.Second
+	notifyDurationWarn = time.Second
+
+	OpToName = []string{"all operations", "create", "read", "update", "delete"}
 )
 
 // Stop stops the default bus
@@ -203,6 +228,18 @@ func (b *Bus) Start(ctx context.Context) {
 	b.Add(1)
 	go func() {
 		defer b.Done()
+
+		watchDuration := &durationlog.T{Log: b.log}
+		watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
+		defer watchDurationCancel()
+		var beginCmd = make(chan interface{})
+		var endCmd = make(chan bool)
+		b.Add(1)
+		go func() {
+			defer b.Done()
+			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "msg")
+		}()
+
 		subs := make(map[uuid.UUID]activeSubscription)
 		started <- true
 		for {
@@ -210,6 +247,7 @@ func (b *Bus) Start(ctx context.Context) {
 			case <-b.ctx.Done():
 				return
 			case cmd := <-b.cmdC:
+				beginCmd <- cmd
 				switch c := cmd.(type) {
 				case cmdPub:
 					for _, sub := range subs {
@@ -231,27 +269,62 @@ func (b *Bus) Start(ctx context.Context) {
 					}
 				case cmdSub:
 					id := uuid.New()
+					subCtx, subCtxCancel := context.WithCancel(context.Background())
 					sub := activeSubscription{
 						name:     c.name,
 						ns:       c.ns,
 						op:       c.op,
 						matching: c.matching,
-						fn:       c.fn,
+						fn:       createCallBack(c.fn, c.timeout),
 						q:        make(chan interface{}, 100),
+						subId:    id,
+						duration: c.timeout,
+						cancel:   subCtxCancel,
 					}
 					subs[id] = sub
 					started := make(chan bool)
 					b.Add(1)
 					go func() {
 						b.Done()
+						defer sub.cancel()
+						defer func() {
+							// empty any pending message for this subscription
+							ticker := time.NewTicker(2 * time.Second)
+							defer ticker.Stop()
+							for {
+								select {
+								case <-sub.q:
+								case <-ticker.C:
+									return
+								}
+							}
+						}()
+						watchSubscription := &durationlog.T{Log: b.log}
+						var beginNotify = make(chan interface{})
+						var endNotify = make(chan bool)
+						b.Add(1)
+						go func() {
+							defer b.Done()
+							watchSubscription.WarnExceeded(subCtx, beginNotify, endNotify, notifyDurationWarn, "msg: notify: '"+c.name+"'")
+						}()
 						started <- true
 						for {
 							select {
+							case <-subCtx.Done():
+								return
 							case i := <-sub.q:
-								if _, ok := i.(cmdDie); ok {
+								beginNotify <- i
+								startTime := time.Now()
+								if sub.fn(i) != nil {
+									// the subscription is too slow, kill it
+									// then ask for unsubcribe
+									b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify kill: %s: '%s'",
+										time.Now().Sub(startTime).Seconds(), sub.subId, sub.name)
+									sub.cancel()
+									go b.Unsub(sub.subId)
 									return
 								}
-								sub.fn(i)
+								endNotify <- true
 							case <-b.ctx.Done():
 								return
 							}
@@ -263,9 +336,9 @@ func (b *Bus) Start(ctx context.Context) {
 				case cmdUnsub:
 					sub, ok := subs[c.subId]
 					if !ok {
-						continue
+						break
 					}
-					sub.q <- cmdDie{}
+					sub.cancel()
 					delete(subs, c.subId)
 					select {
 					case <-b.ctx.Done():
@@ -273,6 +346,7 @@ func (b *Bus) Start(ctx context.Context) {
 					}
 					b.log.Debug().Msgf("unsubscribe %s", sub.name)
 				}
+				endCmd <- true
 			}
 		}
 	}()
@@ -341,6 +415,7 @@ func (b Bus) Sub(s Subscription, fn func(interface{})) uuid.UUID {
 		matching: s.Matching,
 		name:     s.Name,
 		resp:     respC,
+		timeout:  s.Timeout,
 	}
 	select {
 	case b.cmdC <- op:
@@ -385,4 +460,50 @@ func BusFromContext(ctx context.Context) *Bus {
 		return bus
 	}
 	panic("unable to retrieve pubsub bus from context")
+}
+
+// createCallBack returns wrapper to f that will return error when f duration exceeds timeout
+// When timeout is 0, wrapper will always return nil
+func createCallBack(f func(interface{}), timeout time.Duration) func(interface{}) error {
+	if timeout == 0 {
+		return func(i interface{}) error {
+			f(i)
+			return nil
+		}
+	} else {
+		return func(i interface{}) error {
+			done := make(chan bool)
+			timer := time.NewTimer(timeout)
+			go func() {
+				f(i)
+				done <- true
+			}()
+			select {
+			case <-done:
+				timer.Stop()
+				return nil
+			case <-timer.C:
+				return errors.New("timeout")
+			}
+		}
+	}
+}
+
+func (o cmdPub) String() string {
+	var dataS string
+	switch data := o.data.(type) {
+	case stringer:
+		dataS = data.String()
+	default:
+		dataS = reflect.TypeOf(data).String()
+	}
+	return fmt.Sprintf("publish: id '%s' %s on namespace %d data: %s", o.id, OpToName[o.op], o.ns, dataS)
+}
+
+func (o cmdSub) String() string {
+	return fmt.Sprintf("subscribe: '%s' for %d on namespace %d", o.name, OpToName[o.op], o.ns)
+}
+
+func (o cmdUnsub) String() string {
+	return fmt.Sprintf("unsubscribe: id '%s'", o.subId)
 }
