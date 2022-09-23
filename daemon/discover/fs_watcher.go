@@ -71,6 +71,10 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		} else {
 			log.Info().Msgf("add dir watch %s", varNodeDir)
 		}
+		if !file.ModTime(nodeFrozenFile).IsZero() {
+			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
+			msgbus.PubFrozenFileUpdate(bus, "", msgbus.FrozenFileUpdated{Filename: nodeFrozenFile})
+		}
 
 		//
 		// Add directory watch for:
@@ -147,7 +151,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					}
 					switch {
 					case event.Op&fsnotify.Remove != 0:
-						log.Debug().Msgf("detect removed file %s", filename)
+						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
 						msgbus.PubFrozenFileRemove(bus, p.String(), msgbus.FrozenFileRemoved{Path: p, Filename: filename})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
@@ -163,7 +167,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 								}
 							}
 						}
-						log.Debug().Msgf("detect updated file %s", filename)
+						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						msgbus.PubFrozenFileUpdate(bus, p.String(), msgbus.FrozenFileUpdated{Path: p, Filename: filename})
 					}
 				case strings.HasSuffix(filename, ".conf"):
@@ -179,7 +183,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					}
 					switch {
 					case event.Op&fsnotify.Remove != 0:
-						log.Debug().Msgf("detect removed file %s", filename)
+						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
 						msgbus.PubCfgFileRemove(bus, p.String(), msgbus.CfgFileRemoved{Path: p, Filename: filename})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
@@ -195,7 +199,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 								}
 							}
 						}
-						log.Debug().Msgf("detect updated file %s", filename)
+						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						msgbus.PubCfgFileUpdate(bus, p.String(), msgbus.CfgFileUpdated{Path: p, Filename: filename})
 					}
 				}
