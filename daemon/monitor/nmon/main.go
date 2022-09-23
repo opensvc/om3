@@ -24,11 +24,13 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/san"
 )
 
 type (
@@ -126,11 +128,14 @@ func (o *nmon) worker() {
 	defer msgbus.UnSub(bus, msgbus.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv))
 	defer msgbus.UnSub(bus, msgbus.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv))
 	defer msgbus.UnSub(bus, msgbus.SubSetNmon(bus, "nmon setnmon", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubNodeStatusLabels(bus, pubsub.OpUpdate, "nmon labels.update", "", o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubNodeStatusPaths(bus, pubsub.OpUpdate, "nmon paths.update", "", o.onEv))
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for _, node := range initialNodes {
 		o.nmons[node] = daemondata.GetNmon(o.dataCmdC, node)
 	}
+	o.setNodeStatusPaths()
 	o.updateIfChange()
 	defer o.delete()
 	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
@@ -152,6 +157,10 @@ func (o *nmon) worker() {
 				o.onFrozenFileRemoved(c)
 			case msgbus.FrozenFileUpdated:
 				o.onFrozenFileUpdated(c)
+			case msgbus.NodeStatusPathsUpdated:
+				o.onNodeStatusPathsUpdated(c)
+			case msgbus.NodeStatusLabelsUpdated:
+				o.onNodeStatusLabelsUpdated(c)
 			case cmdOrchestrate:
 				o.onOrchestrate(c)
 			}
@@ -232,4 +241,30 @@ func (o *nmon) logFromTo(from, to string) (string, string) {
 		to = "unset"
 	}
 	return from, to
+}
+
+func (o *nmon) setNodeStatusPaths() {
+	if paths, err := san.GetPaths(); err != nil {
+		o.log.Error().Err(err).Msg("get san paths")
+	} else if err := daemondata.SetNodeStatusPaths(o.dataCmdC, paths); err != nil {
+		o.log.Error().Err(err).Msg("set san paths")
+	}
+}
+
+func (o *nmon) onNodeStatusPathsUpdated(c msgbus.NodeStatusPathsUpdated) {
+	o.saveNodesInfo()
+}
+
+func (o *nmon) onNodeStatusLabelsUpdated(c msgbus.NodeStatusLabelsUpdated) {
+	o.saveNodesInfo()
+}
+
+func (o *nmon) saveNodesInfo() {
+	data := *daemondata.GetNodesInfo(o.dataCmdC)
+	if err := nodesinfo.Save(data); err != nil {
+		o.log.Error().Err(err).Msg("save nodes info")
+	} else {
+		o.log.Info().Msg("nodes info cache refreshed")
+	}
+
 }

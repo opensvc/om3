@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/san"
 )
 
 const (
@@ -24,6 +25,7 @@ const (
 	NsNmon
 	NsNodeStatus
 	NsNodeStatusLabels
+	NsNodeStatusPaths
 	NsSmon
 	NsSetNmon
 	NsSetSmon
@@ -122,6 +124,11 @@ type (
 	NodeStatusLabelsUpdated struct {
 		Node  string
 		Value nodesinfo.Labels
+	}
+
+	NodeStatusPathsUpdated struct {
+		Node  string
+		Value san.Paths
 	}
 
 	NmonDeleted struct {
@@ -307,9 +314,17 @@ func SubNodeStatus(bus *pubsub.Bus, op uint, name string, matching string, fn fu
 }
 
 func PubNodeStatusLabelsUpdate(bus *pubsub.Bus, v NodeStatusLabelsUpdated) {
-	Pub(bus, NsNodeStatus, pubsub.OpUpdate, "", v)
+	Pub(bus, NsNodeStatusLabels, pubsub.OpUpdate, "", v)
 }
 
 func SubNodeStatusLabels(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsNodeStatusLabels, op, name, matching, fn)
+}
+
+func PubNodeStatusPathsUpdate(bus *pubsub.Bus, v NodeStatusPathsUpdated) {
+	Pub(bus, NsNodeStatusPaths, pubsub.OpUpdate, "", v)
+}
+
+func SubNodeStatusPaths(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsNodeStatusPaths, op, name, matching, fn)
 }
