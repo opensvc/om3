@@ -42,7 +42,7 @@ func (t Paths) WithHBAID(id string) Paths {
 
 func (t Paths) DeepCopy() Paths {
 	l := make(Paths, len(t))
-	for i, p := range l {
+	for i, p := range t {
 		l[i] = p.DeepCopy()
 	}
 	return l
