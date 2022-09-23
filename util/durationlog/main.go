@@ -20,7 +20,7 @@ type (
 )
 
 // WarnExceeded log when delay between <-begin and <-end exceeds maxDuration.
-func (t *T) WarnExceeded(ctx context.Context, begin <-chan interface{}, end <-chan bool, maxDuration time.Duration) {
+func (t *T) WarnExceeded(ctx context.Context, begin <-chan interface{}, end <-chan bool, maxDuration time.Duration, desc string) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	var startTime time.Time
@@ -36,12 +36,12 @@ func (t *T) WarnExceeded(ctx context.Context, begin <-chan interface{}, end <-ch
 			cmd = nil
 		case <-ticker.C:
 			if cmd != nil && time.Now().Sub(startTime) > maxDuration {
-				duration := time.Now().Sub(startTime)
+				duration := time.Now().Sub(startTime).Seconds()
 				switch c := cmd.(type) {
 				case stringer:
-					t.Log.Warn().Msgf("max duration exceeded %s: %s", duration, c.String())
+					t.Log.Warn().Msgf("max duration exceeded %.02fs: %s: %s", duration, desc, c.String())
 				default:
-					t.Log.Warn().Msgf("max duration exceeded %s: %s", duration, reflect.TypeOf(cmd))
+					t.Log.Warn().Msgf("max duration exceeded %.02fs: %s: %s", duration, desc, reflect.TypeOf(cmd).Name())
 				}
 			}
 		}
