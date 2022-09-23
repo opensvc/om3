@@ -225,7 +225,7 @@ func (b *Bus) Start(ctx context.Context) {
 		b.Add(1)
 		go func() {
 			defer b.Done()
-			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn)
+			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "msg")
 		}()
 
 		subs := make(map[uuid.UUID]activeSubscription)
@@ -270,7 +270,7 @@ func (b *Bus) Start(ctx context.Context) {
 					b.Add(1)
 					go func() {
 						b.Done()
-						watchSubscription := &durationlog.T{Log: b.log.With().Str("subscription", c.name).Logger()}
+						watchSubscription := &durationlog.T{Log: b.log}
 						watchSubscriptionCtx, watchSubscriptionCancel := context.WithCancel(context.Background())
 						defer watchSubscriptionCancel()
 						var beginNotify = make(chan interface{})
@@ -278,7 +278,7 @@ func (b *Bus) Start(ctx context.Context) {
 						b.Add(1)
 						go func() {
 							defer b.Done()
-							watchSubscription.WarnExceeded(watchSubscriptionCtx, beginNotify, endNotify, notifyDurationWarn)
+							watchSubscription.WarnExceeded(watchSubscriptionCtx, beginNotify, endNotify, notifyDurationWarn, "msg: notify: '"+c.name+"'")
 						}()
 						started <- true
 						for {
@@ -434,13 +434,13 @@ func (o cmdPub) String() string {
 	default:
 		dataS = reflect.TypeOf(data).String()
 	}
-	return fmt.Sprintf("publish id '%s' %s on namespace %d data: %s", o.id, OpToName[o.op], o.ns, dataS)
+	return fmt.Sprintf("publish: id '%s' %s on namespace %d data: %s", o.id, OpToName[o.op], o.ns, dataS)
 }
 
 func (o cmdSub) String() string {
-	return fmt.Sprintf("subscribe '%s' for %d on namespace %d", o.name, OpToName[o.op], o.ns)
+	return fmt.Sprintf("subscribe: '%s' for %d on namespace %d", o.name, OpToName[o.op], o.ns)
 }
 
 func (o cmdUnsub) String() string {
-	return fmt.Sprintf("unsubscribe '%s'", o.subId)
+	return fmt.Sprintf("unsubscribe: id '%s'", o.subId)
 }

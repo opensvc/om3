@@ -67,7 +67,7 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	var beginCmd = make(chan interface{})
 	var endCmd = make(chan bool)
 	go func() {
-		watchCmd.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn)
+		watchCmd.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "data")
 	}()
 
 	for {
