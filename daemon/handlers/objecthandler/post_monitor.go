@@ -22,8 +22,9 @@ type (
 	}
 
 	postObjectMonitorResponse struct {
-		status int    `json:"status"`
-		info   string `json:"info"`
+		Status int               `json:"status"`
+		Info   string            `json:"info"`
+		Pub    PostObjectMonitor `json:"published_set_smon"`
 	}
 )
 
@@ -56,13 +57,14 @@ func PostMonitor(w http.ResponseWriter, r *http.Request) {
 		//Status:              payload.State,
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	msgbus.PubSetSmonUpdated(bus, p.String(), msgbus.SetSmon{
+	msg := msgbus.SetSmon{
 		Path:    p,
 		Node:    hostname.Hostname(),
 		Monitor: smon,
-	})
+	}
+	msgbus.PubSetSmonUpdated(bus, p.String(), msg)
 
-	response := postObjectMonitorResponse{0, "instance monitor pushed pending ops"}
+	response := postObjectMonitorResponse{Status: 0, Info: "daemon notified for monitor changed", Pub: payload}
 	b, err := json.Marshal(response)
 	if err != nil {
 		log.Error().Err(err).Msg("Marshal response")
