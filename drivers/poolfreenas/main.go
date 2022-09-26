@@ -67,7 +67,7 @@ func (t T) arrayName() string {
 }
 
 func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi"}
+	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi", "shared"}
 }
 
 func (t T) Usage() (pool.StatusUsage, error) {
