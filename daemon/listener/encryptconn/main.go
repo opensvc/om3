@@ -1,5 +1,5 @@
 /*
-	Package encryptconn provides encrypted/decrypted net.Conn
+Package encryptconn provides encrypted/decrypted net.Conn
 */
 package encryptconn
 
@@ -15,6 +15,9 @@ type (
 	// T struct provides net.Conn over enc net.Conn
 	T struct {
 		net.Conn
+
+		// srcNode is the encrypter nodename returned by ReadWithNode
+		srcNode string
 	}
 
 	ConnNoder interface {
@@ -51,7 +54,7 @@ func (t *T) Write(b []byte) (n int, err error) {
 //
 // read and decrypt data read from t.Conn
 func (t *T) Read(b []byte) (n int, err error) {
-	n, _, err = t.ReadWithNode(b)
+	n, t.srcNode, err = t.ReadWithNode(b)
 	return
 }
 
@@ -69,4 +72,9 @@ func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 	}
 	i := copy(b, data)
 	return i, nodename, nil
+}
+
+// SrcNode returns the encrypter nodename
+func (t *T) SrcNode() string {
+	return t.srcNode
 }

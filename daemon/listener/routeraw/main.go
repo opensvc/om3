@@ -1,7 +1,7 @@
 /*
-	Package rawmux provides raw multiplexer from httpmux
+Package rawmux provides raw multiplexer from httpmux
 
-	It can be used by raw listeners to Serve accepted connexions
+It can be used by raw listeners to Serve accepted connexions
 */
 package routeraw
 
@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 
 	clientrequest "opensvc.com/opensvc/core/client/request"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/listener/routeresponse"
 )
@@ -33,6 +34,9 @@ type (
 		SetWriteDeadline(time.Time) error
 	}
 
+	srcNoder interface {
+		SrcNode() string
+	}
 	// request struct holds the translated raw request for http mux
 	request struct {
 		method  string
@@ -54,7 +58,7 @@ func New(mux http.Handler, log zerolog.Logger, timeout time.Duration) *T {
 
 // Serve function is an adapter to serve raw call from http mux
 //
-// Serve can be used on raw listeners accepted connexions
+// # Serve can be used on raw listeners accepted connexions
 //
 // 1- raw request will be decoded to create to http request
 // 2- http request will be served from http mux ServeHTTP
@@ -113,6 +117,8 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 	httpHeader := http.Header{}
 	if srcRequest.Node != "" {
 		httpHeader.Set(daemonenv.HeaderNode, srcRequest.Node)
+	} else if noder, ok := w.(srcNoder); ok {
+		httpHeader.Set(daemonenv.HeaderNode, noder.SrcNode())
 	}
 	return &request{
 		method:  matched.method,
@@ -128,6 +134,7 @@ func (r *request) do(resp *routeresponse.Response) error {
 	body := r.body
 	request, err := http.NewRequest(r.method, r.path, body)
 	request.Header = r.header
+	request.SetBasicAuth(r.header.Get(daemonenv.HeaderNode), rawconfig.ClusterSection().Secret)
 	if err != nil {
 		return err
 	}
