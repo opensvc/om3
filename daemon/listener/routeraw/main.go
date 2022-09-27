@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/pkg/errors"
@@ -37,6 +38,7 @@ type (
 	srcNoder interface {
 		SrcNode() string
 	}
+
 	// request struct holds the translated raw request for http mux
 	request struct {
 		method  string
@@ -114,6 +116,14 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 		msg := "no matched rules for action: " + srcRequest.Action
 		return nil, errors.New(msg)
 	}
+	value := url.Values{}
+	for k, v := range srcRequest.QueryArgs {
+		value.Add(k, v)
+	}
+	reqUrl := url.URL{
+		Path:     matched.path,
+		RawQuery: value.Encode(),
+	}
 	httpHeader := http.Header{}
 	if srcRequest.Node != "" {
 		httpHeader.Set(daemonenv.HeaderNode, srcRequest.Node)
@@ -122,7 +132,7 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 	}
 	return &request{
 		method:  matched.method,
-		path:    matched.path,
+		path:    reqUrl.RequestURI(),
 		handler: t.httpMux.ServeHTTP,
 		body:    bytes.NewReader(b),
 		header:  httpHeader,
