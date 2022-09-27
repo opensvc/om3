@@ -8,7 +8,7 @@ import (
 // resolver options.
 type GetObjectSelector struct {
 	Base
-	ObjectSelector string `json:"selector"`
+	ObjectSelector string `json:"-"`
 }
 
 // NewGetObjectSelector allocates a GetObjectSelector struct and sets
@@ -18,13 +18,14 @@ func NewGetObjectSelector(t Getter) *GetObjectSelector {
 		ObjectSelector: "**",
 	}
 	r.SetClient(t)
-	r.SetAction("object_selector")
+	r.SetAction("object/selector")
 	r.SetMethod("GET")
 	return r
 }
 
 // Do fetchs the daemon statistics structure from the agent api
 func (t GetObjectSelector) Do() ([]byte, error) {
+	t.SetQueryArgs(map[string]string{"selector": t.ObjectSelector})
 	req := request.NewFor(t)
 	return Route(t.client, *req)
 }

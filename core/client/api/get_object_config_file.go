@@ -16,13 +16,14 @@ func NewGetObjectConfigFile(t Getter) *GetObjectConfigFile {
 	r := &GetObjectConfigFile{}
 	r.SetClient(t)
 	r.SetNode("ANY")
-	r.SetAction("object_config_file")
+	r.SetAction("object/file")
 	r.SetMethod("GET")
 	return r
 }
 
 // Do submits the request.
 func (t GetObjectConfigFile) Do() ([]byte, error) {
+	t.SetQueryArgs(map[string]string{"path": t.ObjectSelector})
 	req := request.NewFor(t)
 	return Route(t.client, *req)
 }
