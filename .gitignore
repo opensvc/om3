@@ -1,6 +1,7 @@
 **/*
 !**/*.go
 !**/*.json
+!**/*.yaml
 !**/
 !go.sum
 !go.mod
