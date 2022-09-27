@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -115,7 +116,16 @@ func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, 
 func (t T) newRequest(method string, r request.T) (*http.Request, error) {
 	jsonStr, _ := json.Marshal(r.Options)
 	body := bytes.NewBuffer(jsonStr)
-	req, err := http.NewRequest(method, t.URL+"/"+r.Action, body)
+
+	value := url.Values{}
+	for k, v := range r.QueryArgs {
+		value.Add(k, v)
+	}
+	reqUrl := url.URL{
+		Path:     t.URL + "/" + r.Action,
+		RawQuery: value.Encode(),
+	}
+	req, err := http.NewRequest(method, reqUrl.RequestURI(), body)
 	if err != nil {
 		return nil, err
 	}
