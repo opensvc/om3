@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shaj13/go-guardian/v2/auth"
 
+	"opensvc.com/opensvc/daemon/daemonapi"
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -42,14 +43,10 @@ func New(ctx context.Context) *T {
 	mux.Use(daemonMiddleWare(ctx))
 	mux.Use(daemondataMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
+	daemonapi.Register(mux)
 	mux.Get("/auth/token", daemonauth.GetToken)
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Post("/daemon_stop", daemonhandler.Stop)
-	mux.Post("/object_monitor", objecthandler.PostMonitor)
-	mux.Post("/object_status", objecthandler.PostStatus)
-	mux.Get("/object_selector", objecthandler.GetSelector)
-	mux.Get("/object_config", objecthandler.GetConfig)
-	mux.Get("/object_config_file", objecthandler.GetConfigFile)
 	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
 	mux.Post("/node_monitor", nodehandler.PostMonitor)
@@ -57,7 +54,6 @@ func New(ctx context.Context) *T {
 	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
 	mux.Get("/nodes_info", daemonhandler.GetNodesInfo)
 	mux.Mount("/daemon", t.newDaemonRouter())
-	mux.Mount("/object", objecthandler.Router())
 	mux.Mount("/debug", middleware.Profiler())
 
 	t.mux = mux
