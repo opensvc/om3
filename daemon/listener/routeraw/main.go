@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	clientrequest "opensvc.com/opensvc/core/client/request"
@@ -113,8 +112,8 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 	t.log.Debug().Msgf("newRequestFrom: %s, options: %s", srcRequest, srcRequest.Options)
 	matched, ok := actionToPath[srcRequest.Action]
 	if !ok {
-		msg := "no matched rules for action: " + srcRequest.Action
-		return nil, errors.New(msg)
+		matched.method = srcRequest.Method
+		matched.path = srcRequest.Action
 	}
 	value := url.Values{}
 	for k, v := range srcRequest.QueryArgs {
