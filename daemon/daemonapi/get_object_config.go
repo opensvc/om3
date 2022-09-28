@@ -1,10 +1,8 @@
-package objecthandler
+package daemonapi
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
-	"time"
 
 	"github.com/iancoleman/orderedmap"
 
@@ -15,62 +13,32 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-type (
-	GetObjectConfigOptions struct {
-		Path        string `json:"path"`
-		Evaluate    bool   `json:"evaluate"`
-		Impersonate string `json:"impersonate"`
+func (p *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params GetObjectConfigParams) {
+	var (
+		evaluate    bool
+		impersonate string
+	)
+	if params.Evaluate != nil {
+		evaluate = *params.Evaluate
 	}
-	GetObjectConfig struct {
-		Options GetObjectConfigOptions `json:"options"`
+	if params.Impersonate != nil {
+		impersonate = *params.Impersonate
 	}
-
-	Data struct {
-		Updated time.Time              `json:"mtime"`
-		Data    *orderedmap.OrderedMap `json:"data"`
-	}
-	GetConfigResponse struct {
-		Status int  `json:"status"`
-		Data   Data `json:"data"`
-	}
-)
-
-func GetConfig(w http.ResponseWriter, r *http.Request) {
 	var b []byte
 	var err error
-	var resp = GetConfigResponse{
-		Data: Data{},
-	}
 	var data *orderedmap.OrderedMap
-	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetConfig")
+	write, log := handlerhelper.GetWriteAndLog(w, r, "GetObjectConfig")
 	log.Debug().Msg("starting")
-	payload := GetObjectConfigOptions{}
-	if r.Body == nil {
-		log.Info().Msg("can't read request body")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if reqBody, err := io.ReadAll(r.Body); err != nil {
-		log.Info().Err(err).Msg("read body request")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	} else {
-		if err := json.Unmarshal(reqBody, &payload); err != nil {
-			log.Info().Err(err).Msg("request body unmarshal")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	}
 
-	objPath, err := path.Parse(payload.Path)
+	objPath, err := path.Parse(params.Path)
 	if err != nil {
-		log.Info().Err(err).Msgf("invalid path: %s", payload.Path)
+		log.Info().Err(err).Msgf("invalid path: %s", params.Path)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if payload.Impersonate != "" && !payload.Evaluate {
+	if impersonate != "" && !evaluate {
 		// Force evaluate when impersonate
-		payload.Evaluate = true
+		evaluate = true
 	}
 	filename := objPath.ConfigFile()
 	mtime := file.ModTime(filename)
@@ -79,8 +47,8 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp.Data.Updated = mtime
-	data, err = configData(objPath, payload.Evaluate, payload.Impersonate)
+
+	data, err = configData(objPath, evaluate, impersonate)
 	if err != nil {
 		log.Error().Err(err).Msgf("can't get configData for %s %s", objPath, filename)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -91,8 +59,18 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	respData := make(map[string]interface{})
+	respData["metadata"] = objPath.ToMetadata()
+	for _, k := range data.Keys() {
+		if v, ok := data.Get(k); ok {
+			respData[k] = v
+		}
+	}
 	data.Set("metadata", objPath.ToMetadata())
-	resp.Data.Data = data
+	resp := ObjectConfig{
+		Data:  &respData,
+		Mtime: &mtime,
+	}
 	b, err = json.Marshal(resp)
 	if err != nil {
 		log.Error().Err(err).Msgf("marshal response error %s %s", objPath, filename)

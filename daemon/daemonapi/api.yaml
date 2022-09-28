@@ -1,0 +1,199 @@
+openapi: 3.0.0
+info:
+  title: opensvc api
+  version: 3.0.0
+servers:
+  - url: http://localhost:1215/api
+paths:
+  /object/config:
+    get:
+      operationId: GetObjectConfig
+      parameters:
+        - $ref: '#/components/parameters/queryObjectPath'
+        - name: evaluate
+          in: query
+          description: evaluate
+          schema:
+            type: boolean
+        - name: impersonate
+          in: query
+          description: impersonate the evaluation as node
+          schema:
+            type: string
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/objectConfig'
+  /object/file:
+    get:
+      operationId: GetObjectFile
+      parameters:
+        - $ref: '#/components/parameters/queryObjectPath'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/objectFile'
+  /object/monitor:
+    post:
+      operationId: PostObjectMonitor
+      requestBody:
+        description: monitor
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectMonitor'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /object/selector:
+    get:
+      operationId: GetObjectSelector
+      parameters:
+        - $ref: '#/components/parameters/queryObjectSelector'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/objectSelector'
+  /object/status:
+    post:
+      operationId: PostObjectStatus
+      requestBody:
+        description: post object status
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectStatus'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Error:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Error code
+        message:
+          type: string
+          description: Error message
+    objectConfig:
+      type: object
+      properties:
+        "mtime":
+          type: string
+          format: date-time
+        "data":
+          type: object
+    objectFile:
+      type: object
+      required:
+        - mtime
+        - data
+      properties:
+        "mtime":
+          type: string
+          format: date-time
+        "data":
+          type: string
+          format: byte
+    objectPath:
+      type: string
+    objectSelector:
+      type: array
+      items:
+        $ref: '#/components/schemas/objectPath'
+    instanceStatus:
+      type: object
+      required:
+        - avail
+        - overall
+        - updated
+        - frozen
+        - provisioned
+      properties:
+        avail:
+          $ref: '#/components/schemas/status'
+        overall:
+          $ref: '#/components/schemas/status'
+        optional:
+          $ref: '#/components/schemas/status'
+        provisioned:
+          type: boolean
+        "frozen":
+          type: string
+          format: date-time
+        "updated":
+          type: string
+          format: date-time
+        "kind":
+          type: string
+    PostObjectMonitor:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+        global_expect:
+          type: string
+    PostObjectStatus:
+      type: object
+      required:
+        - path
+        - status
+      properties:
+        path:
+          type: string
+        status:
+          $ref: '#/components/schemas/instanceStatus'
+    status:
+      type: string
+  parameters:
+    queryObjectPath:
+      name: path
+      in: query
+      description: object path
+      required: true
+      schema:
+        type: string
+    queryObjectSelector:
+      name: selector
+      in: query
+      description: object selector
+      required: true
+      schema:
+        type: string
+    postObjectMonitor:
+      name: selector
+      in: query
+      description: object selector
+      required: true
+      schema:
+        type: string

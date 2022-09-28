@@ -149,9 +149,9 @@ func New(url string) (*T, error) {
 		inet = strings.Contains(url, ":")
 		url = strings.Replace(url, UDSPrefix, "/", 1)
 		url = strings.Replace(url, InetPrefix, "", 1)
-	}
-	if !strings.Contains(url, ":") {
-		url += fmt.Sprintf(":%d", daemonenv.RawPort)
+		if !strings.Contains(url, ":") {
+			url += fmt.Sprintf(":%d", daemonenv.RawPort)
+		}
 	}
 	r := &T{
 		URL:  url,

@@ -1,0 +1,6 @@
+package: daemonapi
+generate:
+  chi-server: true
+  models: false
+  embedded-spec: true
+output: codegen_server_gen.go
