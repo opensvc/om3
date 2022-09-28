@@ -19,7 +19,7 @@ type PostObjectMonitor struct {
 func NewPostObjectMonitor(t Poster) *PostObjectMonitor {
 	r := &PostObjectMonitor{}
 	r.SetClient(t)
-	r.SetAction("object_monitor")
+	r.SetAction("object/monitor")
 	r.SetMethod("POST")
 	return r
 }

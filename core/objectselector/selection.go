@@ -16,7 +16,9 @@ import (
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -141,6 +143,8 @@ func (t *Selection) expand() error {
 		if !t.hasClient {
 			c, _ := client.New(
 				client.WithURL(t.server),
+				client.WithUsername(hostname.Hostname()),
+				client.WithPassword(rawconfig.ClusterSection().Secret),
 			)
 			t.client = c
 			t.hasClient = true

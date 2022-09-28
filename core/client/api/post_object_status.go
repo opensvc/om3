@@ -10,7 +10,7 @@ import (
 type PostObjectStatus struct {
 	Base
 	Path string          `json:"path"`
-	Data instance.Status `json:"data"`
+	Data instance.Status `json:"status"`
 }
 
 // NewPostObjectStatus allocates a PostObjectStatus struct and sets
@@ -18,7 +18,7 @@ type PostObjectStatus struct {
 func NewPostObjectStatus(t Poster) *PostObjectStatus {
 	r := &PostObjectStatus{}
 	r.SetClient(t)
-	r.SetAction("object_status")
+	r.SetAction("object/status")
 	r.SetMethod("POST")
 	return r
 }
