@@ -13,6 +13,7 @@ import (
 
 	"opensvc.com/opensvc/core/actionrouter"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/path"
@@ -287,8 +288,16 @@ func (t T) DoLocal() error {
 			Tree() *tree.Tree
 		}
 		s := ""
-		for _, r := range rs {
+		manyResults := len(rs) > 1
+		for i, r := range rs {
 			switch {
+			case errors.Is(r.Error, object.ErrDisabled):
+				if manyResults {
+					fmt.Printf("%s: %s\n", r.Path, r.Error)
+				} else {
+					fmt.Printf("%s\n", r.Error)
+				}
+				rs[i].Error = nil
 			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
 				log.Error().Err(r.Error).Msg("")
 			case r.Panic != nil:
@@ -456,7 +465,7 @@ func selectionDo(selection *objectselector.Selection, fn func(path.T) (interface
 			}()
 			data, err := fn(p)
 			result.Data = data
-			result.Error = errors.Wrapf(err, "%s", p)
+			result.Error = err
 			result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }
 			q <- result
 		}(p)

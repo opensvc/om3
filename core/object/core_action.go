@@ -38,6 +38,7 @@ type (
 
 var (
 	ErrInvalidNode = errors.New("invalid node")
+	ErrDisabled    = errors.New("object instance is disabled")
 )
 
 func (t *actor) validateAction() error {
@@ -235,6 +236,9 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 }
 
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
+	if t.IsDisabled() {
+		return ErrDisabled
+	}
 	wd, _ := os.Getwd()
 	t.log.Info().Strs("argv", os.Args).Str("cwd", wd).Str("origin", env.Origin()).Msg("do")
 	if mgr := pg.FromContext(ctx); mgr != nil {

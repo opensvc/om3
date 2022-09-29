@@ -53,6 +53,7 @@ type (
 		ResourceByID(rid string) resource.Driver
 		GetActionResDeps() *actionresdeps.Store
 		ConfigureResources()
+		IsDisabled() bool
 
 		Restart(context.Context) error
 		Run(context.Context) error
@@ -397,4 +398,11 @@ func (t actor) GetActionResDeps() *actionresdeps.Store {
 // IsDesc is a requirement of the ResourceLister interface. actor Resources() is always ascending.
 func (t *actor) IsDesc() bool {
 	return false
+}
+
+// IsDisabled returns true if the object config evaluates DEFAULT.disable as true.
+// CRM actions are skipped on a disabled instance.
+func (t actor) IsDisabled() bool {
+	k := key.Parse("disable")
+	return t.config.GetBool(k)
 }

@@ -67,7 +67,7 @@ func (t T) arrayName() string {
 }
 
 func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi"}
+	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi", "shared"}
 }
 
 func (t T) Usage() (pool.StatusUsage, error) {
@@ -122,16 +122,16 @@ func (t *T) GetMappings(nodes []string) (san.Paths, error) {
 	return t.T.GetISCSIMappings(nodes)
 }
 
-func (t *T) GetTargets() (san.TargetPorts, error) {
+func (t *T) GetTargets() (san.Targets, error) {
 	a := t.array()
 	data, err := a.GetISCSITargets()
 	if err != nil {
 		return nil, err
 	}
-	ports := make(san.TargetPorts, 0)
+	ports := make(san.Targets, 0)
 	for _, d := range data {
-		ports = append(ports, san.TargetPort{
-			ID: d.Name,
+		ports = append(ports, san.Target{
+			Name: d.Name,
 		})
 	}
 	return ports, nil

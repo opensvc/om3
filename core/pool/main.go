@@ -76,6 +76,15 @@ type (
 		SetConfig(Config)
 		Config() Config
 	}
+	DiskCreator interface {
+		// Separator is the string to use as the separator between
+		// name and hostname in the array-side disk name. Some array
+		// have a restricted characterset for such names, so better
+		// let the pool driver decide.
+		Separator() string
+
+		CreateDisk(name string, size float64, nodes []string) error
+	}
 	Translater interface {
 		Translate(name string, size float64, shared bool) ([]string, error)
 	}
@@ -145,6 +154,10 @@ func Driver(t string) func() Pooler {
 		return drv
 	}
 	return nil
+}
+
+func (t T) Separator() string {
+	return "-"
 }
 
 func (t T) Name() string {
@@ -515,7 +528,7 @@ func (t *T) GetISCSIMappings(nodes []string) (san.Paths, error) {
 	}
 	filteredPaths := make(san.Paths, 0)
 	for _, p := range paths {
-		if p.HostBusAdapter.Type != san.ISCSI {
+		if p.Initiator.Type != san.ISCSI {
 			continue
 		}
 		filteredPaths = append(filteredPaths, p)

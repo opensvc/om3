@@ -76,12 +76,12 @@ type (
 		TeamInteg    Value `json:"team_integ"`
 		TeamSupport  Value `json:"team_support"`
 
-		GIDS     []Group              `json:"gids"`
-		UIDS     []User               `json:"uids"`
-		Hardware []Device             `json:"hardware"`
-		LAN      map[string][]LAN     `json:"lan"`
-		HBA      []san.HostBusAdapter `json:"hba"`
-		Targets  san.Paths            `json:"targets"`
+		GIDS     []Group          `json:"gids"`
+		UIDS     []User           `json:"uids"`
+		Hardware []Device         `json:"hardware"`
+		LAN      map[string][]LAN `json:"lan"`
+		HBA      []san.Initiator  `json:"hba"`
+		Targets  san.Paths        `json:"targets"`
 	}
 
 	Device struct {
@@ -228,15 +228,15 @@ func (t Data) Render() string {
 	n.AddColumn().AddText(SrcProbe)
 	for _, v := range t.HBA {
 		n1 := n.AddNode()
-		n1.AddColumn().AddText(v.ID)
+		n1.AddColumn().AddText(v.Name)
 		n1.AddColumn().AddText(v.Type)
-		targets := t.Targets.WithHBAID(v.ID)
-		if len(targets) > 0 {
+		sanPaths := t.Targets.WithInitiatorName(v.Name)
+		if len(sanPaths) > 0 {
 			n2 := n1.AddNode()
 			n2.AddColumn().AddText("targets").SetColor(rawconfig.Color.Primary)
-			for _, tgt := range targets {
+			for _, sanPath := range sanPaths {
 				n3 := n2.AddNode()
-				n3.AddColumn().AddText(tgt.TargetPort.ID)
+				n3.AddColumn().AddText(sanPath.Target.Name)
 			}
 		}
 	}

@@ -3,22 +3,12 @@
 package san
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"opensvc.com/opensvc/util/command"
 )
-
-func isPortPresent(tp string) bool {
-	p := filepath.Dir(tp) + "/port_state"
-	buff, err := os.ReadFile(p)
-	if err != nil {
-		return false
-	}
-	return !strings.Contains(string(buff), "Not Present")
-}
 
 func GetPaths() ([]Path, error) {
 	l := make([]Path, 0)
@@ -35,57 +25,76 @@ func GetPaths() ([]Path, error) {
 	return l, nil
 }
 
+func isPortPresent(d string) bool {
+	p := d + "/port_state"
+	buff, err := os.ReadFile(p)
+	if err != nil {
+		return false
+	}
+	return !strings.Contains(string(buff), "Not Present")
+}
+
+func readWWPN(d string) (string, error) {
+	p := d + "/port_name"
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return "", err
+	}
+	id := string(b)
+	id = strings.TrimSpace(id)
+	id = strings.Replace(id, "0x", "", 1)
+	return id, nil
+}
+
 func GetFCPaths() ([]Path, error) {
 	l := make([]Path, 0)
-	hbas, err := GetHostBusAdapters()
-	if err != nil {
-		return l, err
+	matches := make([]string, 0)
+	if some, err := filepath.Glob("/sys/class/fc_transport/target*"); err == nil {
+		matches = append(matches, some...)
 	}
-	for _, hba := range hbas {
-		if hba.Type != "fc" {
+	if some, err := filepath.Glob("/sys/class/fc_remote_ports/rport-*"); err == nil {
+		matches = append(matches, some...)
+	}
+	for _, d := range matches {
+		wwpn, err := readWWPN(d)
+		if err != nil {
 			continue
 		}
-		tps := make([]string, 0)
-		p := fmt.Sprintf("/sys/class/fc_transport/target%s:*/port_name", hba.Host)
-		if some, err := filepath.Glob(p); err == nil {
-			tps = append(tps, some...)
+		if !isPortPresent(d) {
+			continue
 		}
-		p = fmt.Sprintf("/sys/class/fc_remote_ports/rport-%s:*/port_name", hba.Host)
-		if some, err := filepath.Glob(p); err == nil {
-			tps = append(tps, some...)
+		hbtl := d
+		hbtl = strings.TrimPrefix(hbtl, "target")
+		hbtl = strings.TrimPrefix(hbtl, "rport-")
+		host := "host" + hbtl[0:strings.Index(hbtl, ":")]
+		if err != nil {
+			continue
 		}
-		for _, tp := range tps {
-			b, err := os.ReadFile(tp)
-			if err != nil {
-				continue
-			}
-			id := string(b)
-			id = strings.TrimSpace(id)
-			id = strings.Replace(id, "0x", "", 1)
-			if !isPortPresent(tp) {
-				continue
-			}
-			l = append(l, Path{
-				HostBusAdapter: hba,
-				TargetPort: TargetPort{
-					ID: id,
-				},
-			})
+		initiator, err := GetFCInitiator("/sys/class/fc_host/" + host)
+		if err != nil {
+			continue
 		}
+		l = append(l, Path{
+			Initiator: initiator,
+			Target: Target{
+				Type: FC,
+				Name: wwpn,
+			},
+		})
 	}
 	return l, nil
 }
 
 func GetISCSIPaths() (Paths, error) {
 	l := make(Paths, 0)
-	hbas, err := GetISCSIHostBusAdapters()
+	initiators, err := GetISCSIInitiators()
 	if err != nil {
 		return l, err
 	}
-	if len(hbas) == 0 {
+	if len(initiators) == 0 {
 		return l, nil
 	}
-	hba := hbas[0]
+	initiator := initiators[0]
 	buff, err := iscsiadmSession()
 	if err != nil {
 		return l, err
@@ -93,14 +102,15 @@ func GetISCSIPaths() (Paths, error) {
 	for _, line := range strings.Split(buff, "\n") {
 		v := strings.Fields(line)
 		for i := len(v) - 1; i >= 0; i -= 1 {
-			id := v[i]
-			if !strings.HasPrefix(id, "iqn.") {
+			name := v[i]
+			if !strings.HasPrefix(name, "iqn.") {
 				continue
 			}
 			l = append(l, Path{
-				HostBusAdapter: hba,
-				TargetPort: TargetPort{
-					ID: id,
+				Initiator: initiator,
+				Target: Target{
+					Type: ISCSI,
+					Name: name,
 				},
 			})
 		}
@@ -118,14 +128,14 @@ func iscsiadmSession() (string, error) {
 	return string(b), err
 }
 
-func GetHostBusAdapters() ([]HostBusAdapter, error) {
-	l := make([]HostBusAdapter, 0)
-	if more, err := GetFCHostBusAdapters(); err == nil {
+func GetInitiators() ([]Initiator, error) {
+	l := make([]Initiator, 0)
+	if more, err := GetFCInitiators(); err == nil {
 		l = append(l, more...)
 	} else {
 		return l, err
 	}
-	if more, err := GetISCSIHostBusAdapters(); err == nil {
+	if more, err := GetISCSIInitiators(); err == nil {
 		l = append(l, more...)
 	} else {
 		return l, err
@@ -133,9 +143,9 @@ func GetHostBusAdapters() ([]HostBusAdapter, error) {
 	return l, nil
 }
 
-func GetISCSIHostBusAdapters() ([]HostBusAdapter, error) {
-	l := make([]HostBusAdapter, 0)
-	hba := HostBusAdapter{
+func GetISCSIInitiators() ([]Initiator, error) {
+	l := make([]Initiator, 0)
+	initiator := Initiator{
 		Type: ISCSI,
 	}
 	p := "/etc/iscsi/initiatorname.iscsi"
@@ -148,37 +158,46 @@ func GetISCSIHostBusAdapters() ([]HostBusAdapter, error) {
 	if len(w) < 2 {
 		return l, err
 	}
-	hba.ID = strings.TrimRight(w[1], "\n\r")
-	l = append(l, hba)
+	initiator.Name = strings.TrimRight(w[1], "\n\r")
+	l = append(l, initiator)
 	return l, nil
 }
 
-func GetFCHostBusAdapters() ([]HostBusAdapter, error) {
-	l := make([]HostBusAdapter, 0)
-	matches, err := filepath.Glob("/sys/class/fc_host/host*/port_name")
+func GetFCInitiator(hostLink string) (Initiator, error) {
+	initiator := Initiator{}
+	host := filepath.Base(hostLink)
+	initiator.Name = host
+	hostLinkTarget, err := os.Readlink(hostLink)
+	if err != nil {
+		return initiator, err
+	}
+	if strings.Contains(hostLinkTarget, "/eth") {
+		initiator.Type = FCOE
+	} else {
+		initiator.Type = FC
+	}
+	if b, err := os.ReadFile(hostLink + "/port_name"); err != nil {
+		return initiator, err
+	} else {
+		id := string(b)
+		id = strings.TrimRight(id, "\n\r")
+		initiator.Name = id
+	}
+	return initiator, nil
+}
+
+func GetFCInitiators() ([]Initiator, error) {
+	l := make([]Initiator, 0)
+	matches, err := filepath.Glob("/sys/class/fc_host/host*")
 	if err != nil {
 		return l, err
 	}
 	for _, m := range matches {
-		hba := HostBusAdapter{}
-		hostLink := filepath.Dir(m)
-		hostLinkTarget, err := os.Readlink(hostLink)
-		if err != nil {
-			return l, err
-		}
-		if strings.Contains(hostLinkTarget, "/eth") {
-			hba.Type = FCOE
-		} else {
-			hba.Type = FC
-		}
-		if b, err := os.ReadFile(m); err != nil {
+		if initiator, err := GetFCInitiator(m); err != nil {
 			return l, err
 		} else {
-			id := string(b)
-			id = strings.TrimRight(id, "\n\r")
-			hba.ID = id
+			l = append(l, initiator)
 		}
-		l = append(l, hba)
 	}
 	return l, nil
 }

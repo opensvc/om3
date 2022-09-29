@@ -1,10 +1,20 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.0.0
+  version: 3.0.1
 servers:
   - url: http://localhost:1215/api
 paths:
+  /nodes/info:
+    get:
+      operationId: GetNodesInfo
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/nodesInfo'
   /object/config:
     get:
       operationId: GetObjectConfig
@@ -103,13 +113,83 @@ components:
         message:
           type: string
           description: Error message
+    nodesInfo:
+      type: array
+      items:
+        $ref: '#/components/schemas/nodeInfo'
+    nodeInfo:
+      type: object
+      required:
+        - nodename
+        - labels
+        - paths
+      properties:
+        nodename:
+          type: string
+          description: nodename is the name of the node where the labels and paths are coming from.
+        labels:
+          type: array
+          description: labels is the list of node labels.
+          items:
+            $ref: '#/components/schemas/nodeLabel'
+        paths:
+          type: array
+          description: paths is the list of node to storage array san paths.
+          items:
+            $ref: '#/components/schemas/sanPath'
+    nodeLabel:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: name is the label name.
+        value:
+          type: string
+          description: value is the label value.
+    sanPath:
+      type: object
+      required:
+        - initiator
+        - target
+      properties:
+        initiator:
+          $ref: '#/components/schemas/sanPathInitiator'
+        target:
+          $ref: '#/components/schemas/sanPathTarget'
+    sanPathInitiator:
+      type: object
+      description: initiator is the host side san path endpoint.
+      properties:
+        name:
+          type: string
+          description: name is a worldwide unique path endpoint identifier.
+          example: iqn.2004-10.com.ubuntu:01:e6bd4a3b554
+        type:
+          type: string
+          description: type is the endpoint type.
+          example: iscsi
+    sanPathTarget:
+      type: object
+      description: target is the storage array side san path endpoint.
+      properties:
+        name:
+          type: string
+          description: name is a worldwide unique path endpoint identifier.
+          example: iqn.2009-11.com.opensvc.srv:dev2n1.storage.target.1
+        type:
+          type: string
+          description: type is a the endpoint type.
+          example: iscsi
     objectConfig:
       type: object
       properties:
-        "mtime":
+        mtime:
           type: string
           format: date-time
-        "data":
+        data:
           type: object
     objectFile:
       type: object
@@ -117,10 +197,10 @@ components:
         - mtime
         - data
       properties:
-        "mtime":
+        mtime:
           type: string
           format: date-time
-        "data":
+        data:
           type: string
           format: byte
     objectPath:
@@ -146,13 +226,13 @@ components:
           $ref: '#/components/schemas/status'
         provisioned:
           type: boolean
-        "frozen":
+        frozen:
           type: string
           format: date-time
-        "updated":
+        updated:
           type: string
           format: date-time
-        "kind":
+        kind:
           type: string
     PostObjectMonitor:
       type: object

@@ -39,6 +39,30 @@ type InstanceStatus struct {
 	Updated     time.Time `json:"updated"`
 }
 
+// NodeInfo defines model for nodeInfo.
+type NodeInfo struct {
+	// labels is the list of node labels.
+	Labels []NodeLabel `json:"labels"`
+
+	// nodename is the name of the node where the labels and paths are coming from.
+	Nodename string `json:"nodename"`
+
+	// paths is the list of node to storage array san paths.
+	Paths []SanPath `json:"paths"`
+}
+
+// NodeLabel defines model for nodeLabel.
+type NodeLabel struct {
+	// name is the label name.
+	Name string `json:"name"`
+
+	// value is the label value.
+	Value string `json:"value"`
+}
+
+// NodesInfo defines model for nodesInfo.
+type NodesInfo = []NodeInfo
+
 // ObjectConfig defines model for objectConfig.
 type ObjectConfig struct {
 	Data  *map[string]interface{} `json:"data,omitempty"`
@@ -56,6 +80,36 @@ type ObjectPath = string
 
 // ObjectSelector defines model for objectSelector.
 type ObjectSelector = []ObjectPath
+
+// SanPath defines model for sanPath.
+type SanPath struct {
+	// initiator is the host side san path endpoint.
+	Initiator SanPathInitiator `json:"initiator"`
+
+	// target is the storage array side san path endpoint.
+	Target SanPathTarget `json:"target"`
+}
+
+// initiator is the host side san path endpoint.
+type SanPathInitiator struct {
+	// id is a worldwide unique identifier.
+	Id *string `json:"id,omitempty"`
+
+	// name is a the endpoint name.
+	Name *string `json:"name,omitempty"`
+
+	// type is a the endpoint type.
+	Type *string `json:"type,omitempty"`
+}
+
+// target is the storage array side san path endpoint.
+type SanPathTarget struct {
+	// id is a worldwide unique identifier.
+	Id *string `json:"id,omitempty"`
+
+	// type is a the endpoint type.
+	Type *string `json:"type,omitempty"`
+}
 
 // Status defines model for status.
 type Status = string

@@ -591,6 +591,10 @@ var keywordStore = keywords.Store{
 		Scopable: true,
 		Text:     "The name of the pool this volume was allocated from.",
 	},
+	{
+		Option: "type",
+		Text:   "The resource driver name.",
+	},
 }
 
 func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
