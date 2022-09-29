@@ -12,28 +12,28 @@ type (
 
 	// Path is a hba:target link
 	Path struct {
-		HostBusAdapter HostBusAdapter
-		TargetPort     TargetPort
+		Initiator Initiator `json:"initiator"`
+		Target    Target    `json:"target"`
 	}
 
-	TargetPorts []TargetPort
+	Targets []Target
 
-	TargetPort struct {
-		ID string `json:"tgt_id"`
+	Target struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
 	}
 
-	HostBusAdapter struct {
-		ID   string `json:"hba_id"`
-		Type string `json:"hba_type"`
-		Host string `json:"host"`
+	Initiator struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
 	}
 )
 
-// WithHBAID returns the list of paths whose hba id matches the argument.
-func (t Paths) WithHBAID(id string) Paths {
+// WithInitiatorName returns the list of paths whose initiator name matches the argument.
+func (t Paths) WithInitiatorName(name string) Paths {
 	l := make(Paths, 0)
 	for _, path := range t {
-		if path.HostBusAdapter.ID == id {
+		if path.Initiator.Name == name {
 			l = append(l, path)
 		}
 	}
@@ -50,21 +50,21 @@ func (t Paths) DeepCopy() Paths {
 
 func (t Path) DeepCopy() Path {
 	return Path{
-		HostBusAdapter: t.HostBusAdapter.DeepCopy(),
-		TargetPort:     t.TargetPort.DeepCopy(),
+		Initiator: t.Initiator.DeepCopy(),
+		Target:    t.Target.DeepCopy(),
 	}
 }
 
-func (t HostBusAdapter) DeepCopy() HostBusAdapter {
-	return HostBusAdapter{
-		ID:   t.ID,
+func (t Initiator) DeepCopy() Initiator {
+	return Initiator{
 		Type: t.Type,
-		Host: t.Host,
+		Name: t.Name,
 	}
 }
 
-func (t TargetPort) DeepCopy() TargetPort {
-	return TargetPort{
-		ID: t.ID,
+func (t Target) DeepCopy() Target {
+	return Target{
+		Type: t.Type,
+		Name: t.Name,
 	}
 }

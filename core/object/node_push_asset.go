@@ -126,7 +126,7 @@ func (t Node) getAsset() (asset.Data, error) {
 	data.GIDS, _ = asset.Groups()
 	data.Hardware, _ = asset.Hardware()
 	data.LAN, _ = asset.GetLANS()
-	data.HBA, _ = san.GetHostBusAdapters()
+	data.HBA, _ = san.GetInitiators()
 	data.Targets, _ = san.GetPaths()
 
 	// from config only
@@ -149,7 +149,7 @@ func (t Node) getAsset() (asset.Data, error) {
 }
 
 func (t Node) pushAsset(data asset.Data) error {
-	//hn := hostname.Hostname()
+	hn := hostname.Hostname()
 	hba := func() []interface{} {
 		vars := []string{
 			"nodename",
@@ -159,8 +159,8 @@ func (t Node) pushAsset(data asset.Data) error {
 		vals := make([][]string, len(data.HBA))
 		for i, e := range data.HBA {
 			vals[i] = []string{
-				e.Host,
-				e.ID,
+				hn,
+				e.Name,
 				e.Type,
 			}
 		}
@@ -174,8 +174,8 @@ func (t Node) pushAsset(data asset.Data) error {
 		vals := make([][]string, len(data.Targets))
 		for i, e := range data.Targets {
 			vals[i] = []string{
-				e.HostBusAdapter.ID,
-				e.TargetPort.ID,
+				e.Initiator.Name,
+				e.Target.Name,
 			}
 		}
 		return []interface{}{vars, vals}

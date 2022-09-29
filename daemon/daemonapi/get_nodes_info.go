@@ -1,4 +1,4 @@
-package daemonhandler
+package daemonapi
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
 
-func GetNodesInfo(w http.ResponseWriter, r *http.Request) {
-	write, log := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.GetNodesInfo")
+func (p *DaemonApi) GetNodesInfo(w http.ResponseWriter, r *http.Request) {
+	write, log := handlerhelper.GetWriteAndLog(w, r, "GetNodesInfo")
 	log.Debug().Msg("starting")
 	databus := daemondata.FromContext(r.Context())
 	data := databus.GetNodesInfo()

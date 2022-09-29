@@ -19,6 +19,13 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.AddContext([]manifest.Context{
+		{
+			Key:  "nodes",
+			Attr: "Nodes",
+			Ref:  "object.nodes",
+		},
+	}...)
 	m.AddKeyword(resdisk.BaseKeywords...)
 	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
