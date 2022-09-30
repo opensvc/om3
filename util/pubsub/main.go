@@ -194,7 +194,7 @@ var (
 	bus *Bus
 
 	cmdDurationWarn    = time.Second
-	notifyDurationWarn = time.Second
+	notifyDurationWarn = 5 * time.Second
 
 	OpToName = []string{"all operations", "create", "read", "update", "delete"}
 )
@@ -238,6 +238,14 @@ func (b *Bus) Start(ctx context.Context) {
 		go func() {
 			defer b.Done()
 			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "msg")
+		}()
+
+		var beginNotify = make(chan string)
+		var endNotify = make(chan string)
+		b.Add(1)
+		go func() {
+			defer b.Done()
+			b.warnExceededNotification(watchDurationCtx, beginNotify, endNotify, notifyDurationWarn)
 		}()
 
 		subs := make(map[uuid.UUID]activeSubscription)
@@ -284,7 +292,7 @@ func (b *Bus) Start(ctx context.Context) {
 					subs[id] = sub
 					started := make(chan bool)
 					b.Add(1)
-					go func() {
+					go func(name string) {
 						b.Done()
 						defer sub.cancel()
 						defer func() {
@@ -299,37 +307,30 @@ func (b *Bus) Start(ctx context.Context) {
 								}
 							}
 						}()
-						watchSubscription := &durationlog.T{Log: b.log}
-						var beginNotify = make(chan interface{})
-						var endNotify = make(chan bool)
-						b.Add(1)
-						go func() {
-							defer b.Done()
-							watchSubscription.WarnExceeded(subCtx, beginNotify, endNotify, notifyDurationWarn, "msg: notify: '"+c.name+"'")
-						}()
 						started <- true
 						for {
 							select {
 							case <-subCtx.Done():
 								return
 							case i := <-sub.q:
-								beginNotify <- i
+								beginNotify <- name
 								startTime := time.Now()
 								if sub.fn(i) != nil {
 									// the subscription is too slow, kill it
-									// then ask for unsubcribe
+									// then ask for unsubscribe
 									b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify kill: %s: '%s'",
 										time.Now().Sub(startTime).Seconds(), sub.subId, sub.name)
 									sub.cancel()
 									go b.Unsub(sub.subId)
+									endNotify <- name
 									return
 								}
-								endNotify <- true
+								endNotify <- name
 							case <-b.ctx.Done():
 								return
 							}
 						}
-					}()
+					}(c.name)
 					<-started
 					c.resp <- id
 					b.log.Debug().Msgf("subscribe %s", sub.name)
@@ -506,4 +507,29 @@ func (o cmdSub) String() string {
 
 func (o cmdUnsub) String() string {
 	return fmt.Sprintf("unsubscribe: id '%s'", o.subId)
+}
+
+// warnExceededNotification log when notify duration between <-begin and <-end exceeds maxDuration.
+func (b Bus) warnExceededNotification(ctx context.Context, begin <-chan string, end <-chan string, maxDuration time.Duration) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	pending := make(map[string]time.Time)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case s := <-begin:
+			pending[s] = time.Now()
+		case s := <-end:
+			delete(pending, s)
+		case <-ticker.C:
+			now := time.Now()
+			for s, begin := range pending {
+				if now.Sub(begin) > maxDuration {
+					duration := time.Now().Sub(begin).Seconds()
+					b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify:'%s'", duration, s)
+				}
+			}
+		}
+	}
 }
