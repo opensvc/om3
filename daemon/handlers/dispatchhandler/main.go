@@ -1,11 +1,10 @@
 /*
-	Package dispatchhandler provides handlerFunc adapter to dispatch requests
-	on nodes
+Package dispatchhandler provides handlerFunc adapter to dispatch requests
+on nodes
 */
 package dispatchhandler
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"golang.org/x/net/http2"
 
 	"opensvc.com/opensvc/core/api/apimodel"
 	"opensvc.com/opensvc/daemon/daemonenv"
@@ -24,6 +22,7 @@ import (
 	"opensvc.com/opensvc/daemon/listener/routectx"
 	"opensvc.com/opensvc/daemon/listener/routeresponse"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/httpclientcache"
 )
 
 type (
@@ -58,49 +57,47 @@ type (
 )
 
 var (
-	httpClientC       = make(chan chan *http.Client)
-	httpClientRenew   = make(chan bool)
 	httpClientTimeout = 5 * time.Second
 )
 
 /*
-	New returns http.HandlerFunc that dispatch srcHandler to nodes
+		New returns http.HandlerFunc that dispatch srcHandler to nodes
 
-	When request is already multiplexed: handler is srcHandler
+		When request is already multiplexed: handler is srcHandler
 
-	When request is not multiplexed:
+		When request is not multiplexed:
 
-		request is cloned with multiplexed header set
-		cloned request is forwarded to nodes in //:
-			if node is local srcHandler is used
-    		else forward request to external node.
+			request is cloned with multiplexed header set
+			cloned request is forwarded to nodes in //:
+				if node is local srcHandler is used
+	    		else forward request to external node.
 
-		EntrypointResponse is created from endpoint responses
-		{
-			"entrypoint": "initial receiver of non multiplexed request",
-			"data": [ <EndpointResponse>, ... ],
-			"status": int,
+			EntrypointResponse is created from endpoint responses
+			{
+				"entrypoint": "initial receiver of non multiplexed request",
+				"data": [ <EndpointResponse>, ... ],
+				"status": int,
 
-			// optional: when number of endpoint responses without error is lower
-			// than minSuccess
-			"errors": "not enough succeed status"
-		}
+				// optional: when number of endpoint responses without error is lower
+				// than minSuccess
+				"errors": "not enough succeed status"
+			}
 
-		EndpointResponse:
-		{
-			"endpoint": "the endpoint node",
+			EndpointResponse:
+			{
+				"endpoint": "the endpoint node",
 
-			// data or error depending on succeed
-			"data": written []bytes from srcHandler when srcHandler status code
-					is equal successHttp
-			"error": "unexpected status code/read response error/client error"
-		}
+				// data or error depending on succeed
+				"data": written []bytes from srcHandler when srcHandler status code
+						is equal successHttp
+				"error": "unexpected status code/read response error/client error"
+			}
 
-		status code:
-			'successHttp' value: at least 'minSuccess' responses has successHttp
+			status code:
+				'successHttp' value: at least 'minSuccess' responses has successHttp
 
-			502 bad gateway:
-				number of endpoint responses without error is lower than minSuccess
+				502 bad gateway:
+					number of endpoint responses without error is lower than minSuccess
 */
 func New(srcHandler http.HandlerFunc, successHttp int, minSuccess int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -134,11 +131,6 @@ func New(srcHandler http.HandlerFunc, successHttp int, minSuccess int) http.Hand
 	}
 }
 
-// RefreshClient ask for client renewal
-func RefreshClient() {
-	httpClientRenew <- true
-}
-
 func getNodeHeader(r *http.Request) []string {
 	// TODO: evaluate nodes from path and node headers
 	nodeHeader := r.Header.Get(daemonenv.HeaderNode)
@@ -163,6 +155,15 @@ func (d *dispatch) httpRequest(node string) *http.Request {
 }
 
 func (d *dispatch) prepareResponses() error {
+	client, err := httpclientcache.Client(httpclientcache.Options{
+		CertFile:           daemonenv.CertFile(),
+		KeyFile:            daemonenv.KeyFile(),
+		Timeout:            httpClientTimeout,
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		return err
+	}
 	rChan := make(chan *dispatchResponse)
 	for _, n := range d.nodes {
 		node := n
@@ -180,7 +181,6 @@ func (d *dispatch) prepareResponses() error {
 		} else {
 			go func() {
 				d.log.Debug().Msgf("forward %s %s", newRequest.Method, newRequest.URL)
-				client := getClient()
 				resp, err := client.Do(newRequest)
 				if err != nil {
 					rChan <- &dispatchResponse{
@@ -250,58 +250,4 @@ func (d *dispatch) writeResponses(w http.ResponseWriter) error {
 		return err
 	}
 	return nil
-}
-
-func getClient() *http.Client {
-	c := make(chan *http.Client)
-	httpClientC <- c
-	return <-c
-}
-
-func httpClientServer() {
-	httpClient := newClient()
-	t := time.NewTicker(httpClientTimeout + time.Second)
-	defer t.Stop()
-	for {
-		select {
-		case c := <-httpClientC:
-			c <- httpClient
-		case <-httpClientRenew:
-			previous := httpClient
-			go func() {
-				time.Sleep(2 * httpClientTimeout)
-				previous.CloseIdleConnections()
-			}()
-			httpClient = newClient()
-		case <-t.C:
-			httpClient.CloseIdleConnections()
-		}
-	}
-}
-
-func newClient() *http.Client {
-	var tp *http2.Transport
-	cer, err := tls.LoadX509KeyPair(daemonenv.CertFile(), daemonenv.KeyFile())
-	if err != nil {
-		tp = &http2.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-				Certificates:       []tls.Certificate{cer},
-			},
-		}
-	} else {
-		tp = &http2.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-	}
-	return &http.Client{
-		Timeout:   httpClientTimeout,
-		Transport: tp,
-	}
-}
-
-func init() {
-	go httpClientServer()
 }
