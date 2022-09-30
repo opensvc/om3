@@ -115,6 +115,7 @@ require (
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect

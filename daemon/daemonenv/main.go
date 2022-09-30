@@ -56,6 +56,10 @@ func UrlUxHttp() string {
 	return "http://" + PathUxHttp()
 }
 
+func PathUxProfile() string {
+	return filepath.Join(rawconfig.Paths.Var, "lsnr", "profile.sock")
+}
+
 func PathUxRaw() string {
 	return filepath.Join(rawconfig.Paths.Var, "lsnr", "lsnr.sock")
 }
