@@ -7,12 +7,10 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/retailnext/cannula"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/daemon/daemoncli"
-	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/command"
 )
 
@@ -51,18 +49,6 @@ func daemonStartCmdRun(_ *cobra.Command, _ []string) error {
 				os.Exit(1)
 			}
 			defer pprof.StopCPUProfile()
-		} else {
-			// Starts pprof listener on lsnr/profile.sock to allow profiling without auth
-			// for local root user on node
-			//
-			// Usage example from client node:
-			//    $ nohup ssh -L 9090:/var/lib/opensvc/lsnr/profile.sock node1 'sleep 35' >/dev/null 2>&1 </dev/null &
-			//    $ pprof -http=: opensvc http://localhost:9090/debug/pprof/profile
-			//
-			// Usage example from cluster node1:
-			//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
-			//    $ pprof opensvc profile.out
-			go cannula.Start(daemonenv.PathUxProfile())
 		}
 		if err := daemoncli.New(cli).Start(); err != nil {
 			log.Logger.Error().Err(err).Msg("daemoncli.Run")

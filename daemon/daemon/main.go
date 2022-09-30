@@ -9,11 +9,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/retailnext/cannula"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/discover"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
@@ -69,6 +71,8 @@ var (
 			)
 		},
 	}
+
+	profiling = true
 )
 
 func New(opts ...funcopt.O) *T {
@@ -93,6 +97,10 @@ func New(opts ...funcopt.O) *T {
 
 // RunDaemon starts main daemon
 func RunDaemon(opts ...funcopt.O) (*T, error) {
+	if profiling {
+		go startProfiling()
+	}
+
 	main := New(opts...)
 	ctx := context.Background()
 	if err := main.Start(ctx); err != nil {
@@ -190,4 +198,18 @@ func (t *T) loop() {
 }
 
 func (t *T) aLoop() {
+}
+
+func startProfiling() {
+	// Starts pprof listener on lsnr/profile.sock to allow profiling without auth
+	// for local root user on node
+	//
+	// Usage example from client node:
+	//    $ nohup ssh -L 9090:/var/lib/opensvc/lsnr/profile.sock node1 'sleep 35' >/dev/null 2>&1 </dev/null &
+	//    $ pprof -http=: opensvc http://localhost:9090/debug/pprof/profile
+	//
+	// Usage example from cluster node1:
+	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
+	//    $ pprof opensvc profile.out
+	cannula.Start(daemonenv.PathUxProfile())
 }
