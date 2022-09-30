@@ -318,8 +318,8 @@ func (b *Bus) Start(ctx context.Context) {
 								if sub.fn(i) != nil {
 									// the subscription is too slow, kill it
 									// then ask for unsubscribe
-									b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify kill: %s: '%s'",
-										time.Now().Sub(startTime).Seconds(), sub.subId, sub.name)
+									b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify kill: subscriber: '%s' id: '%s'",
+										time.Now().Sub(startTime).Seconds(), sub.name, sub.subId)
 									sub.cancel()
 									go b.Unsub(sub.subId)
 									endNotify <- name
@@ -527,7 +527,7 @@ func (b Bus) warnExceededNotification(ctx context.Context, begin <-chan string, 
 			for s, begin := range pending {
 				if now.Sub(begin) > maxDuration {
 					duration := time.Now().Sub(begin).Seconds()
-					b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify:'%s'", duration, s)
+					b.log.Warn().Msgf("max duration exceeded %.02fs: msg: notify: subscriber: '%s'", duration, s)
 				}
 			}
 		}

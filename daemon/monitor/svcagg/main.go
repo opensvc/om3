@@ -68,9 +68,10 @@ func (o *svcAggStatus) worker(nodes []string) {
 	defer o.log.Debug().Msg("done")
 	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
 	bus := pubsub.BusFromContext(o.ctx)
-	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpUpdate, "svcagg status.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, "svcagg cfg.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpDelete, "svcagg cfg.delete", o.id, o.onEv))
+	subDesc := o.id + " svcagg"
+	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cfg.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpDelete, subDesc+" cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
