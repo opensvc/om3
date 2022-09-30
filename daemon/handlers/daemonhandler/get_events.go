@@ -169,7 +169,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := msgbus.SubEventWithTimeout(bus, "lsnr-handler-event "+daemonctx.Uuid(r.Context()).String(), getEvent, time.Second)
+	subId := msgbus.SubEventWithTimeout(bus, "lsnr-handler-event from "+r.RemoteAddr+" "+daemonctx.Uuid(r.Context()).String(), getEvent, time.Second)
 	defer msgbus.UnSubEvent(bus, subId)
 	go func() {
 		for {

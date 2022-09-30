@@ -146,10 +146,11 @@ func (o *smon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
 	bus := pubsub.BusFromContext(o.ctx)
-	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, "smon agg.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSetSmon(bus, pubsub.OpUpdate, "smon setSmon.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpUpdate, "smon smon.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpDelete, "smon smon.delete", o.id, o.onEv))
+	subDesc := o.id + " smon "
+	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, subDesc+" agg.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSetSmon(bus, pubsub.OpUpdate, subDesc+" setSmon.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpDelete, subDesc+" smon.delete", o.id, o.onEv))
 
 	for _, node := range initialNodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
