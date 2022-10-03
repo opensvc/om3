@@ -38,61 +38,6 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	}
 
 	d.pubMsgFromNodeDataDiff()
-	cfgDeletes, cfgUpdates := d.getInstCfgDiff()
-	statusDeletes, statusUpdates := d.getInstStatusDiff()
-	smonDeletes, smonUpdates := d.getSmonDiff()
-
-	for _, w := range cfgDeletes {
-		msgbus.PubCfgDelete(d.bus, w.Path.String(), w)
-	}
-	for _, w := range cfgUpdates {
-		msgbus.PubCfgUpdate(d.bus, w.Path.String(), w)
-	}
-	for _, w := range statusDeletes {
-		msgbus.PubInstStatusDelete(d.bus, w.Path.String(), w)
-	}
-	for _, w := range statusUpdates {
-		msgbus.PubInstStatusUpdated(d.bus, w.Path.String(), w)
-	}
-	for _, w := range smonDeletes {
-		msgbus.PubSmonDelete(d.bus, w.Path.String(), w)
-	}
-	for _, w := range smonUpdates {
-		msgbus.PubSmonUpdated(d.bus, w.Path.String(), w)
-	}
-
-	for node, gen := range d.mergedFromPeer {
-		if node == d.localNode {
-			continue
-		}
-		if previous, ok := d.previous.Cluster.Node[node]; ok {
-			if gen != previous.Status.Gen[node] {
-				if remoteMon, ok := d.pending.Cluster.Node[node]; ok {
-					d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
-					d.previous.Cluster.Node[node] = *remoteMon.DeepCopy()
-				} else {
-					d.log.Error().Msgf("no pending %s mergedFromPeer %d != previous %d", node, gen, previous.Status.Gen[node])
-				}
-			}
-		} else if remoteMon, ok := d.pending.Cluster.Node[node]; ok {
-			d.log.Debug().Msgf("updated previous for %s gen %d", node, gen)
-			d.previous.Cluster.Node[node] = *remoteMon.DeepCopy()
-		} else {
-			d.log.Debug().Msgf("remove previous for %s", node)
-			delete(d.previous.Cluster.Node, node)
-		}
-	}
-	if previous, ok := d.previous.Cluster.Node[d.localNode]; ok {
-		if previous.Status.Gen[d.localNode] != d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] {
-			d.log.Debug().Msgf("updated local previous for %s gen %d", d.localNode, d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode])
-			local := d.pending.Cluster.Node[d.localNode]
-			d.previous.Cluster.Node[d.localNode] = *local.DeepCopy()
-		}
-	} else {
-		d.log.Debug().Msgf("create local previous for %s gen %d", d.localNode, d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode])
-		local := d.pending.Cluster.Node[d.localNode]
-		d.previous.Cluster.Node[d.localNode] = *local.DeepCopy()
-	}
 
 	d.log.Debug().
 		Interface("mergedFromPeer", d.mergedFromPeer).
