@@ -18,6 +18,7 @@ import (
 
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/httpclientcache"
 
 	"golang.org/x/net/http2"
 )
@@ -88,27 +89,20 @@ func NewUDS(url string) (*T, error) {
 }
 
 func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, username, password string) (*T, error) {
+	client, err := httpclientcache.Client(httpclientcache.Options{
+		CertFile:           clientCertificate,
+		KeyFile:            clientKey,
+		Timeout:            clientTimeout,
+		InsecureSkipVerify: insecureSkipVerify,
+	})
+	if err != nil {
+		return nil, err
+	}
 	r := &T{
 		Username: username,
 		Password: password,
-	}
-	tp := &http2.Transport{
-		TLSClientConfig: &tls.Config{},
-	}
-	if (clientCertificate != "") && (clientKey != "") {
-		cer, err := tls.LoadX509KeyPair(clientCertificate, clientKey)
-		if err != nil {
-			return nil, err
-		}
-		tp.TLSClientConfig.Certificates = []tls.Certificate{cer}
-		tp.TLSClientConfig.InsecureSkipVerify = insecureSkipVerify
-	} else {
-		tp.TLSClientConfig.InsecureSkipVerify = true
-	}
-	r.URL = url
-	r.Client = http.Client{
-		Transport: tp,
-		Timeout:   clientTimeout,
+		URL:      url,
+		Client:   *client,
 	}
 	return r, nil
 }
