@@ -43,15 +43,15 @@ func newData(counterCmd chan<- interface{}) *data {
 		Heartbeats: nil,
 	}
 	return &data{
-		previous:        &status,
-		pending:         status.DeepCopy(),
-		localNode:       localNode,
-		counterCmd:      counterCmd,
-		mergedFromPeer:  make(gens),
-		mergedOnPeer:    make(gens),
-		gen:             nodeData.Status.Gen[localNode],
-		remotesNeedFull: make(map[string]bool),
-		patchQueue:      make(patchQueue),
+		previousRemoteInfo: make(map[string]remoteInfo),
+		pending:            status.DeepCopy(),
+		localNode:          localNode,
+		counterCmd:         counterCmd,
+		mergedFromPeer:     make(gens),
+		mergedOnPeer:       make(gens),
+		gen:                nodeData.Status.Gen[localNode],
+		remotesNeedFull:    make(map[string]bool),
+		patchQueue:         make(patchQueue),
 	}
 }
 

@@ -22,9 +22,9 @@ type (
 	}
 
 	data struct {
-		// previous holds a deepcopy of pending data just after commit, it
-		// is used to publish diff for other nodes
-		previous *cluster.Status
+		// previousRemoteInfo map[node] of remoteInfo from pending data just
+		// after commit, it is used to publish diff for other nodes
+		previousRemoteInfo map[string]remoteInfo
 
 		// pending is the live current data (after apply patch, commit local pendingOps)
 		pending *cluster.Status
@@ -43,6 +43,16 @@ type (
 
 	gens       map[string]uint64
 	patchQueue map[string]jsondelta.Patch
+
+	// remoteInfo struct holds information about remote node used to publish diff
+	remoteInfo struct {
+		nmonUpdated       time.Time
+		nodeStatus        cluster.NodeStatus
+		smonUpdated       map[string]time.Time
+		instCfgUpdated    map[string]time.Time
+		instStatusUpdated map[string]time.Time
+		gen               uint64
+	}
 )
 
 var (
