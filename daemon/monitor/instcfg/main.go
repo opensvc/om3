@@ -101,10 +101,11 @@ func (o *T) worker(parent context.Context) {
 	defer msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(parent)
-	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpUpdate, o.path.String()+" instcfg own CfgFile update", o.path.String(), o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpDelete, o.path.String()+" instcfg own CfgFile remove", o.path.String(), o.onEv))
+	subDesc := o.path.String() + " instcfg "
+	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpUpdate, subDesc+" own CfgFile update", o.path.String(), o.onEv))
+	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpDelete, subDesc+" own CfgFile remove", o.path.String(), o.onEv))
 	if o.path.String() != clusterId {
-		defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, o.path.String()+" instcfg cluster Cfg update", clusterId, o.onEv))
+		defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cluster Cfg update", clusterId, o.onEv))
 	}
 
 	// do once what we do later on msgbus.CfgFileUpdated
