@@ -2,7 +2,6 @@ package pool
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -11,6 +10,7 @@ import (
 
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/volaccess"
@@ -75,15 +75,12 @@ type (
 		Usage() (StatusUsage, error)
 		SetConfig(Config)
 		Config() Config
-	}
-	DiskCreator interface {
-		// Separator is the string to use as the separator between
-		// name and hostname in the array-side disk name. Some array
-		// have a restricted characterset for such names, so better
-		// let the pool driver decide.
 		Separator() string
-
-		CreateDisk(name string, size float64, nodes []string) error
+	}
+	ArrayPooler interface {
+		Pooler
+		GetTargets() (san.Targets, error)
+		CreateDisk(CreateDiskRequest) (CreateDiskResult, error)
 	}
 	Translater interface {
 		Translate(name string, size float64, shared bool) ([]string, error)
@@ -94,6 +91,29 @@ type (
 	volumer interface {
 		FQDN() string
 		Set(context.Context, ...keyop.T) error
+	}
+
+	CreateDiskRequest struct {
+		Name  string
+		Size  float64
+		Paths san.Paths
+	}
+	CreateDiskResult struct {
+		// Request contains the create options
+		Request CreateDiskRequest
+
+		Disks []CreatedDisk
+	}
+
+	CreatedDisk struct {
+		// ID is the created disk wwid
+		ID string
+
+		// Paths is the subset of requested san path actually setup for this disk
+		Paths san.Paths
+
+		// Driver is a driver-specific dataset
+		Driver any
 	}
 )
 
@@ -156,6 +176,10 @@ func Driver(t string) func() Pooler {
 	return nil
 }
 
+// Separator is the string to use as the separator between
+// name and hostname in the array-side disk name. Some array
+// have a restricted characterset for such names, so better
+// let the pool driver decide.
 func (t T) Separator() string {
 	return "-"
 }
@@ -521,22 +545,24 @@ func (t Status) HasCapability(s string) bool {
 
 }
 
-func (t *T) GetISCSIMappings(nodes []string) (san.Paths, error) {
-	paths, err := t.GetMappings(nodes)
+func GetMapping(p ArrayPooler, nodes []string) (san.Paths, error) {
+	targets, err := p.GetTargets()
 	if err != nil {
-		return nil, err
+		return san.Paths{}, err
+	}
+	nodesInfo, err := nodesinfo.Get()
+	if err != nil {
+		return san.Paths{}, err
 	}
 	filteredPaths := make(san.Paths, 0)
-	for _, p := range paths {
-		if p.Initiator.Type != san.ISCSI {
+	for _, node := range nodes {
+		nodeInfo, ok := nodesInfo[node]
+		if !ok {
 			continue
 		}
-		filteredPaths = append(filteredPaths, p)
+		for _, target := range targets {
+			filteredPaths = append(filteredPaths, nodeInfo.Paths.WithTargetName(target.Name)...)
+		}
 	}
 	return filteredPaths, nil
-}
-
-func (t *T) GetMappings(nodes []string) (san.Paths, error) {
-	paths := make(san.Paths, 0)
-	return paths, errors.New("TODO")
 }

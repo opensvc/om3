@@ -21,6 +21,11 @@ func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.AddContext([]manifest.Context{
 		{
+			Key:  "path",
+			Attr: "Path",
+			Ref:  "object.path",
+		},
+		{
 			Key:  "nodes",
 			Attr: "Nodes",
 			Ref:  "object.nodes",

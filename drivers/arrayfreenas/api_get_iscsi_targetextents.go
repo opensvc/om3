@@ -25,6 +25,8 @@ type ISCSITargetExtent struct {
 	TargetId int `json:"target"`
 }
 
+type ISCSITargetExtents []ISCSITargetExtent
+
 // ISCSITargetExtentsResponse defines model for ISCSITargetExtentsResponse.
 type ISCSITargetExtentsResponse = []ISCSITargetExtent
 
@@ -198,4 +200,24 @@ func ParseGetISCSITargetExtentsResponse(rsp *http.Response) (*GetISCSITargetExte
 	}
 
 	return response, nil
+}
+
+func (t ISCSITargetExtents) WithExtent(extent ISCSIExtent) ISCSITargetExtents {
+	l := make(ISCSITargetExtents, 0)
+	for _, one := range t {
+		if one.ExtentId == extent.Id {
+			l = append(l, one)
+		}
+	}
+	return l
+}
+
+func (t ISCSITargetExtents) WithTarget(target ISCSITarget) ISCSITargetExtents {
+	l := make(ISCSITargetExtents, 0)
+	for _, one := range t {
+		if one.TargetId == target.Id {
+			l = append(l, one)
+		}
+	}
+	return l
 }
