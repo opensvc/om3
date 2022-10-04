@@ -55,6 +55,8 @@ type ISCSIExtent struct {
 	Locked         bool    `json:"locked"`
 }
 
+type ISCSIExtents []ISCSIExtent
+
 // ISCSIExtentsResponse defines model for ISCSIExtentsResponse.
 type ISCSIExtentsResponse = []ISCSIExtent
 
@@ -228,4 +230,24 @@ func ParseGetISCSIExtentsResponse(rsp *http.Response) (*GetISCSIExtentsResponse,
 	}
 
 	return response, nil
+}
+
+func (t ISCSIExtents) GetByName(name string) (ISCSIExtent, bool) {
+	for _, e := range t {
+		if e.Name == name {
+
+			return e, true
+		}
+	}
+	return ISCSIExtent{}, false
+}
+
+func (t ISCSIExtents) GetByPath(s string) (ISCSIExtent, bool) {
+	for _, e := range t {
+		if e.Path == s {
+
+			return e, true
+		}
+	}
+	return ISCSIExtent{}, false
 }

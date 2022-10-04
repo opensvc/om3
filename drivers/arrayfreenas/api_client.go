@@ -233,6 +233,8 @@ type Dataset struct {
 	Xattr               *CompositeValue `json:"xattr,omitempty"`
 }
 
+type Datasets []Dataset
+
 // DeleteGroupParams defines model for DeleteGroupParams.
 type DeleteGroupParams struct {
 	DeleteUsers *bool `json:"delete_users,omitempty"`
@@ -1069,10 +1071,26 @@ type ClientInterface interface {
 	// GetDatasets request
 	GetDatasets(ctx context.Context, params *GetDatasetsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateISCSIExtent request with any body
+	CreateISCSIExtentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateISCSIExtent(ctx context.Context, body CreateISCSIExtentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateISCSITargetExtent request with any body
+	CreateISCSITargetExtentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateISCSITargetExtent(ctx context.Context, body CreateISCSITargetExtentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateDataset request with any body
 	CreateDatasetWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateDataset(ctx context.Context, body CreateDatasetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteISCSIExtent request
+	DeleteISCSIExtent(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteISCSITargetExtent request
+	DeleteISCSITargetExtent(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteDataset request
 	DeleteDataset(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3697,6 +3715,12 @@ type ClientWithResponsesInterface interface {
 	CreateDatasetWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDatasetResponse, error)
 
 	CreateDatasetWithResponse(ctx context.Context, body CreateDatasetJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDatasetResponse, error)
+
+	// DeleteISCSIExtentWithResponse request
+	DeleteISCSIExtentWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteISCSIExtentResponse, error)
+
+	// DeleteISCSITargetExtentWithResponse request
+	DeleteISCSITargetExtentWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteISCSITargetExtentResponse, error)
 
 	// DeleteDataset request
 	DeleteDatasetWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteDatasetResponse, error)

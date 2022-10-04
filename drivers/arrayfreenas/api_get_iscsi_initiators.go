@@ -26,6 +26,8 @@ type ISCSIInitiator struct {
 	Comment    string   `json:"comment"`
 }
 
+type ISCSIInitiators []ISCSIInitiator
+
 // ISCSIInitiatorsResponse defines model for ISCSIInitiatorsResponse.
 type ISCSIInitiatorsResponse = []ISCSIInitiator
 
@@ -199,4 +201,13 @@ func ParseGetISCSIInitiatorsResponse(rsp *http.Response) (*GetISCSIInitiatorsRes
 	}
 
 	return response, nil
+}
+
+func (t ISCSIInitiators) GetByID(id int) (ISCSIInitiator, bool) {
+	for _, e := range t {
+		if e.Id == id {
+			return e, true
+		}
+	}
+	return ISCSIInitiator{}, false
 }

@@ -34,6 +34,8 @@ type ISCSITarget struct {
 	Groups ISCSITargetGroups
 }
 
+type ISCSITargets []ISCSITarget
+
 type ISCSITargetGroups []ISCSITargetGroup
 
 type ISCSITargetGroup struct {
@@ -216,4 +218,24 @@ func ParseGetISCSITargetsResponse(rsp *http.Response) (*GetISCSITargetsResponse,
 	}
 
 	return response, nil
+}
+
+func (t ISCSITargets) GetByID(id int) (ISCSITarget, bool) {
+	for _, e := range t {
+		if e.Id == id {
+
+			return e, true
+		}
+	}
+	return ISCSITarget{}, false
+}
+
+func (t ISCSITargets) GetByName(name string) (ISCSITarget, bool) {
+	for _, e := range t {
+		if e.Name == name {
+
+			return e, true
+		}
+	}
+	return ISCSITarget{}, false
 }

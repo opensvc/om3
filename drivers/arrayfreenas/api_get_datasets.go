@@ -182,3 +182,13 @@ func (c *Client) GetDatasets(ctx context.Context, params *GetDatasetsParams, req
 	}
 	return c.Client.Do(req)
 }
+
+func (t Datasets) GetByName(name string) (Dataset, bool) {
+	for _, e := range t {
+		if e.Name == name {
+
+			return e, true
+		}
+	}
+	return Dataset{}, false
+}

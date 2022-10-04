@@ -10,7 +10,7 @@ import (
 	"opensvc.com/opensvc/util/command"
 )
 
-func GetPaths() ([]Path, error) {
+func GetPaths() (Paths, error) {
 	l := make([]Path, 0)
 	if paths, err := GetFCPaths(); err == nil {
 		l = append(l, paths...)

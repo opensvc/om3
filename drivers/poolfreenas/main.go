@@ -3,6 +3,7 @@
 package poolfreenas
 
 import (
+	"errors"
 	"fmt"
 
 	"opensvc.com/opensvc/core/driver"
@@ -118,10 +119,6 @@ func (t *T) BlkTranslate(name string, size float64, shared bool) ([]string, erro
 	return data, nil
 }
 
-func (t *T) GetMappings(nodes []string) (san.Paths, error) {
-	return t.T.GetISCSIMappings(nodes)
-}
-
 func (t *T) GetTargets() (san.Targets, error) {
 	a := t.array()
 	data, err := a.GetISCSITargets()
@@ -132,7 +129,39 @@ func (t *T) GetTargets() (san.Targets, error) {
 	for _, d := range data {
 		ports = append(ports, san.Target{
 			Name: d.Name,
+			Type: san.ISCSI,
 		})
 	}
 	return ports, nil
+}
+
+func (t *T) CreateDisk(options pool.CreateDiskRequest) (pool.CreateDiskResult, error) {
+	result := pool.CreateDiskResult{
+		Request: options,
+	}
+	createdDisk := pool.CreatedDisk{}
+	if len(options.Paths) == 0 {
+		return result, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
+	}
+	a := t.array()
+	blocksize := fmt.Sprint(t.blocksize())
+	sparse := t.sparse()
+	insecureTPC := t.insecureTPC()
+	size := fmt.Sprint(options.Size)
+	name := t.diskgroup() + "/" + options.Name
+	mapping := options.Paths.Mapping()
+
+	disk, err := a.AddDisk(name, size, blocksize, sparse, insecureTPC, mapping, nil)
+	if err != nil {
+		return result, nil
+	}
+	createdDisk.Driver = disk
+	createdDisk.ID = a.DiskID(*disk)
+	if paths, err := a.DiskPaths(*disk); err != nil {
+		return result, err
+	} else {
+		createdDisk.Paths = paths
+	}
+	result.Disks = []pool.CreatedDisk{createdDisk}
+	return result, nil
 }

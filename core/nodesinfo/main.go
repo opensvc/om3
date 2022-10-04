@@ -114,3 +114,14 @@ func Get() (NodesInfo, error) {
 	}
 	return nil, errs
 }
+
+// GetNodesWithAnyPaths return the list of nodes having any of the given paths.
+func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
+	l := make([]string, 0)
+	for nodename, node := range t {
+		if paths.HasAnyOf(node.Paths) {
+			l = append(l, nodename)
+		}
+	}
+	return l
+}
