@@ -144,16 +144,16 @@ func (t *T) CreateDisk(options pool.CreateDiskRequest) (pool.CreateDiskResult, e
 		return result, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
 	}
 	a := t.array()
-	blocksize := fmt.Sprint(t.blocksize())
+	blocksize := fmt.Sprint(*t.blocksize())
 	sparse := t.sparse()
 	insecureTPC := t.insecureTPC()
-	size := fmt.Sprint(options.Size)
+	size := sizeconv.ExactBSizeCompact(options.Size)
 	name := t.diskgroup() + "/" + options.Name
 	mapping := options.Paths.Mapping()
 
 	disk, err := a.AddDisk(name, size, blocksize, sparse, insecureTPC, mapping, nil)
 	if err != nil {
-		return result, nil
+		return result, err
 	}
 	createdDisk.Driver = disk
 	createdDisk.ID = a.DiskID(*disk)

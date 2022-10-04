@@ -192,7 +192,8 @@ func (t T) createDisk(ctx context.Context) error {
 			ops = append(ops, op)
 		}
 	}
-	if err = obj.Set(ctx, ops...); err != nil {
+	t.Log().Info().Msgf("set config keys: %s", ops)
+	if err := obj.Set(ctx, ops...); err != nil {
 		return err
 	}
 	return nil

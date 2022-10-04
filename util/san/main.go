@@ -135,11 +135,11 @@ func (t Paths) WithTargetName(name string) Paths {
 
 func (t Paths) Has(p Path) bool {
 	for _, other := range t {
-		if !p.IsEqual(other) {
-			return false
+		if p.IsEqual(other) {
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func (t Path) IsIn(paths Paths) bool {
