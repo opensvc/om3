@@ -2,9 +2,9 @@ package daemondata
 
 import (
 	"reflect"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/xmap"
@@ -18,7 +18,7 @@ func (d *data) getPeersFromPrevAndPending() []string {
 		}
 		nodes[n] = nil
 	}
-	for n := range d.previous.Cluster.Node {
+	for n := range d.previousRemoteInfo {
 		if n == d.localNode {
 			continue
 		}
@@ -29,356 +29,29 @@ func (d *data) getPeersFromPrevAndPending() []string {
 
 func (d *data) pubMsgFromNodeDataDiff() {
 	for _, node := range d.getPeersFromPrevAndPending() {
+		current := d.refreshPreviousUpdated(node)
+		if current == nil {
+			continue
+		}
 		d.pubMsgFromNodeStatusDiffForNode(node)
-		d.pubMsgFromNodeMonitorDiffForNode(node)
+		d.pubMsgFromNodeMonitorDiffForNode(node, current)
+		d.pubMsgFromNodeInstanceDiffForNode(node, current)
+		d.previousRemoteInfo[node] = *current
 	}
-}
-
-func (d *data) getInstCfgDiff() (deletes []msgbus.CfgDeleted, updates []msgbus.CfgUpdated) {
-	for _, node := range d.getPeersFromPrevAndPending() {
-		deleted, updated := d.getInstCfgDiffForNode(node)
-		if len(deleted) > 0 {
-			deletes = append(deletes, deleted...)
-		}
-		if len(updated) > 0 {
-			updates = append(updates, updated...)
-		}
-	}
-	return
-}
-
-func (d *data) getInstStatusDiff() (deletes []msgbus.InstStatusDeleted, updates []msgbus.InstStatusUpdated) {
-	for _, node := range d.getPeersFromPrevAndPending() {
-		deleted, updated := d.getInstStatusDiffForNode(node)
-		if len(deleted) > 0 {
-			deletes = append(deletes, deleted...)
-		}
-		if len(updated) > 0 {
-			updates = append(updates, updated...)
-		}
-	}
-	return
-}
-
-func (d *data) getSmonDiff() (deletes []msgbus.SmonDeleted, updates []msgbus.SmonUpdated) {
-	for _, node := range d.getPeersFromPrevAndPending() {
-		deleted, updated := d.getSmonDiffForNode(node)
-		if len(deleted) > 0 {
-			deletes = append(deletes, deleted...)
-		}
-		if len(updated) > 0 {
-			updates = append(updates, updated...)
-		}
-	}
-	return
-}
-
-func (d *data) getInstCfgDiffForNode(node string) ([]msgbus.CfgDeleted, []msgbus.CfgUpdated) {
-	deletes := make([]msgbus.CfgDeleted, 0)
-	updates := make([]msgbus.CfgUpdated, 0)
-	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
-	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
-	if hasPendingNode && hasPreviousNode {
-		for s, pendingInstance := range pendingNode.Instance {
-			var previousValue *instance.Config
-			var detectUpdate, detectDelete bool
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			pendingValue := pendingInstance.Config
-			if previousInstance, ok := previousNode.Instance[s]; ok {
-				previousValue = previousInstance.Config
-			}
-			if pendingValue != nil && previousValue != nil {
-				// a previous config exists, compare
-				if pendingValue.Updated.Equal(previousValue.Updated) {
-					// not an update
-					continue
-				}
-				// config updated
-				detectUpdate = true
-			} else if pendingValue == nil && previousValue != nil {
-				// config deleted
-				detectDelete = true
-			} else if pendingValue != nil && previousValue == nil {
-				// config added
-				detectUpdate = true
-			}
-			if detectUpdate {
-				updates = append(updates, msgbus.CfgUpdated{
-					Path:   p,
-					Node:   node,
-					Config: *pendingValue.DeepCopy(),
-				})
-			} else if detectDelete {
-				deletes = append(deletes, msgbus.CfgDeleted{
-					Path: p,
-					Node: node,
-				})
-			}
-		}
-		for s, previousInstance := range previousNode.Instance {
-			// look for existing previous instance config, where no more instance exists
-			if previousInstance.Config == nil {
-				continue
-			}
-			if _, ok := pendingNode.Instance[s]; !ok {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
-				deletes = append(deletes, msgbus.CfgDeleted{
-					Path: p,
-					Node: node,
-				})
-			}
-		}
-	} else if hasPendingNode {
-		// all pending instance with config are new
-		for s, pendingInstance := range pendingNode.Instance {
-			if pendingInstance.Config == nil {
-				continue
-			}
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			updates = append(updates, msgbus.CfgUpdated{
-				Path:   p,
-				Node:   node,
-				Config: *pendingInstance.Config.DeepCopy(),
-			})
-		}
-	} else if hasPreviousNode {
-		// all previous instance with config are deleted
-		for s, previousInstance := range previousNode.Instance {
-			if previousInstance.Config == nil {
-				continue
-			}
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			deletes = append(deletes, msgbus.CfgDeleted{
-				Path: p,
-				Node: node,
-			})
-		}
-	}
-	return deletes, updates
-}
-
-func (d *data) getInstStatusDiffForNode(node string) ([]msgbus.InstStatusDeleted, []msgbus.InstStatusUpdated) {
-	deletes := make([]msgbus.InstStatusDeleted, 0)
-	updates := make([]msgbus.InstStatusUpdated, 0)
-	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
-	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
-
-	if hasPendingNode && hasPreviousNode {
-		for s, pendingInstance := range pendingNode.Instance {
-			var previousValue *instance.Status
-			var detectUpdate, detectDelete bool
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			pendingValue := pendingInstance.Status
-			if previousInstance, ok := previousNode.Instance[s]; ok {
-				previousValue = previousInstance.Status
-			}
-			if pendingValue != nil && previousValue != nil {
-				// a previous status exists, compare
-				if pendingValue.Updated.Equal(previousValue.Updated) {
-					// not an update
-					continue
-				}
-				// status updated
-				detectUpdate = true
-			} else if pendingValue == nil && previousValue != nil {
-				// status deleted
-				detectDelete = true
-			} else if pendingValue != nil && previousValue == nil {
-				// status added
-				detectUpdate = true
-			}
-			if detectUpdate {
-				updates = append(updates, msgbus.InstStatusUpdated{
-					Path:   p,
-					Node:   node,
-					Status: *pendingValue.DeepCopy(),
-				})
-			} else if detectDelete {
-				deletes = append(deletes, msgbus.InstStatusDeleted{
-					Path: p,
-					Node: node,
-				})
-			}
-		}
-		for s, previousInstance := range previousNode.Instance {
-			// look for existing previous instance status, where no more instance exists
-			if previousInstance.Status == nil {
-				continue
-			}
-			if _, ok := pendingNode.Instance[s]; !ok {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
-				deletes = append(deletes, msgbus.InstStatusDeleted{
-					Path: p,
-					Node: node,
-				})
-			}
-		}
-	} else if hasPendingNode {
-		// all pending instance with status are new
-		for s, pendingInstance := range pendingNode.Instance {
-			if pendingInstance.Status == nil {
-				continue
-			}
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			updates = append(updates, msgbus.InstStatusUpdated{
-				Path:   p,
-				Node:   node,
-				Status: *pendingInstance.Status.DeepCopy(),
-			})
-		}
-	} else if hasPreviousNode {
-		// all previous instance with status are deleted
-		for s, previousInstance := range previousNode.Instance {
-			if previousInstance.Status == nil {
-				continue
-			}
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			deletes = append(deletes, msgbus.InstStatusDeleted{
-				Path: p,
-				Node: node,
-			})
-		}
-	}
-	return deletes, updates
-}
-
-func (d *data) getSmonDiffForNode(node string) ([]msgbus.SmonDeleted, []msgbus.SmonUpdated) {
-	deletes := make([]msgbus.SmonDeleted, 0)
-	updates := make([]msgbus.SmonUpdated, 0)
-
-	pendingNode, hasPendingNode := d.pending.Cluster.Node[node]
-	previousNode, hasPreviousNode := d.previous.Cluster.Node[node]
-
-	if hasPendingNode && hasPreviousNode {
-		for s, pendingInstance := range pendingNode.Instance {
-			var previousValue *instance.Monitor
-			var detectUpdate, detectDelete bool
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			pendingValue := pendingInstance.Monitor
-			if previousInstance, ok := previousNode.Instance[s]; ok {
-				previousValue = previousInstance.Monitor
-			}
-			if pendingValue != nil && previousValue != nil {
-				// a previous monitor exists, compare
-				globalExpectUpdated := pendingValue.GlobalExpectUpdated.After(previousValue.GlobalExpectUpdated)
-				statusUpdated := pendingValue.StatusUpdated.After(previousValue.StatusUpdated)
-				if !globalExpectUpdated && !statusUpdated {
-					// not an update
-					continue
-				}
-				// monitor updated
-				detectUpdate = true
-			} else if pendingValue == nil && previousValue != nil {
-				// monitor deleted
-				detectDelete = true
-			} else if pendingValue != nil && previousValue == nil {
-				// monitor added
-				detectUpdate = true
-			}
-			if detectUpdate {
-				updates = append(updates, msgbus.SmonUpdated{
-					Path:   p,
-					Node:   node,
-					Status: *pendingValue.DeepCopy(),
-				})
-			} else if detectDelete {
-				deletes = append(deletes, msgbus.SmonDeleted{
-					Path: p,
-					Node: node,
-				})
-			}
-		}
-		for s, previousInstance := range previousNode.Instance {
-			// look for existing previous instance monitor, where no more instance exists
-			if previousInstance.Status == nil {
-				continue
-			}
-			if _, ok := pendingNode.Instance[s]; !ok {
-				p, err := path.Parse(s)
-				if err != nil {
-					continue
-				}
-				deletes = append(deletes, msgbus.SmonDeleted{
-					Path: p,
-					Node: node,
-				})
-			}
-		}
-	} else if hasPendingNode {
-		// all pending instance with monitor are new
-		for s, pendingInstance := range pendingNode.Instance {
-			if pendingInstance.Monitor == nil {
-				continue
-			}
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			updates = append(updates, msgbus.SmonUpdated{
-				Path:   p,
-				Node:   node,
-				Status: *pendingInstance.Monitor.DeepCopy(),
-			})
-		}
-	} else if hasPreviousNode {
-		// all previous instance with monitor are deleted
-		for s, previousInstance := range previousNode.Instance {
-			if previousInstance.Monitor == nil {
-				continue
-			}
-			p, err := path.Parse(s)
-			if err != nil {
-				continue
-			}
-			deletes = append(deletes, msgbus.SmonDeleted{
-				Path: p,
-				Node: node,
-			})
-		}
-	}
-	return deletes, updates
 }
 
 func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 	var (
-		nextNode, prevNode cluster.NodeData
-		next, prev         cluster.NodeStatus
-		hasNext, hasPrev   bool
+		prevTime         remoteInfo
+		nextNode         cluster.NodeData
+		next, prev       cluster.NodeStatus
+		hasNext, hasPrev bool
 	)
 	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
 		next = nextNode.Status
 	}
-	if prevNode, hasPrev = d.previous.Cluster.Node[node]; hasPrev {
-		prev = prevNode.Status
-	}
-
+	prevTime, hasPrev = d.previousRemoteInfo[node]
+	prev = prevTime.nodeStatus
 	onUpdate := func() {
 		var changed bool
 		if !reflect.DeepEqual(prev.Labels, next.Labels) {
@@ -414,38 +87,169 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 	}
 }
 
-func (d *data) pubMsgFromNodeMonitorDiffForNode(node string) {
-	var (
-		nextNode, prevNode cluster.NodeData
-		next, prev         cluster.NodeMonitor
-		hasNext, hasPrev   bool
-	)
-	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
-		next = nextNode.Monitor
+func (d *data) pubMsgFromNodeMonitorDiffForNode(node string, current *remoteInfo) {
+	if current == nil {
+		return
 	}
-	if prevNode, hasPrev = d.previous.Cluster.Node[node]; hasPrev {
-		prev = prevNode.Monitor
-	}
-
-	onUpdate := func() {
-		if !reflect.DeepEqual(prev, next) {
-			msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
-				Node:    node,
-				Monitor: *next.DeepCopy(),
-			})
-		}
-	}
-	onCreate := func() {
+	prevTimes, hasPrev := d.previousRemoteInfo[node]
+	if !hasPrev || current.nmonUpdated.After(prevTimes.nmonUpdated) {
+		localMonitor := d.pending.Cluster.Node[node].Monitor
 		msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
 			Node:    node,
-			Monitor: *next.DeepCopy(),
+			Monitor: *localMonitor.DeepCopy(),
+		})
+		return
+	}
+}
+
+func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
+	if prev, ok := d.previousRemoteInfo[node]; ok {
+		if prev.gen == d.pending.Cluster.Node[node].Status.Gen[node] {
+			return nil
+		}
+	}
+	c := d.pending.Cluster.Node[node]
+	result := remoteInfo{
+		nodeStatus:        *c.Status.DeepCopy(),
+		smonUpdated:       make(map[string]time.Time),
+		instCfgUpdated:    make(map[string]time.Time),
+		instStatusUpdated: make(map[string]time.Time),
+	}
+
+	nmonUpdated := c.Monitor.StatusUpdated
+	if c.Monitor.GlobalExpectUpdated.After(nmonUpdated) {
+		nmonUpdated = c.Monitor.GlobalExpectUpdated
+	}
+	result.nmonUpdated = nmonUpdated
+
+	for p, inst := range c.Instance {
+		if inst.Status != nil {
+			instUpdated := inst.Status.Updated
+			if inst.Status.Frozen.After(instUpdated) {
+				instUpdated = inst.Status.Frozen
+			}
+			result.instStatusUpdated[p] = instUpdated
+		}
+		if inst.Config != nil {
+			result.instCfgUpdated[p] = inst.Config.Updated
+		}
+		if inst.Monitor != nil {
+			smonUpdated := inst.Monitor.StatusUpdated
+			if inst.Monitor.GlobalExpectUpdated.After(smonUpdated) {
+				smonUpdated = inst.Monitor.GlobalExpectUpdated
+			}
+			result.smonUpdated[p] = smonUpdated
+		}
+	}
+	result.gen = c.Status.Gen[node]
+
+	return &result
+}
+
+func getUpdatedRemoved(toPath map[string]path.T, previous, current map[string]time.Time) (updates, removes []string) {
+	for s, updated := range current {
+		if _, ok := toPath[s]; !ok {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			toPath[s] = p
+		}
+		if previousUpdated, ok := previous[s]; !ok {
+			// new object
+			updates = append(updates, s)
+		} else if !updated.Equal(previousUpdated) {
+			// update object
+			updates = append(updates, s)
+		}
+	}
+	for s := range previous {
+		if _, ok := toPath[s]; !ok {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			toPath[s] = p
+		}
+		if _, ok := current[s]; !ok {
+			removes = append(removes, s)
+		}
+	}
+	return
+}
+
+func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInfo) {
+	var updates, removes []string
+	toPath := make(map[string]path.T)
+	previous, ok := d.previousRemoteInfo[node]
+	if !ok {
+		previous = remoteInfo{
+			smonUpdated:       make(map[string]time.Time),
+			instCfgUpdated:    make(map[string]time.Time),
+			instStatusUpdated: make(map[string]time.Time),
+		}
+	}
+	updates, removes = getUpdatedRemoved(toPath, previous.instCfgUpdated, current.instCfgUpdated)
+	for _, s := range updates {
+		msgbus.PubCfgUpdate(d.bus, s, msgbus.CfgUpdated{
+			Path:   toPath[s],
+			Node:   node,
+			Config: *d.pending.Cluster.Node[node].Instance[s].Config.DeepCopy(),
+		})
+	}
+	for _, s := range removes {
+		msgbus.PubCfgDelete(d.bus, s, msgbus.CfgDeleted{
+			Path: toPath[s],
+			Node: node,
 		})
 	}
 
-	switch {
-	case hasNext && hasPrev:
-		onUpdate()
-	case hasNext:
-		onCreate()
+	updates, removes = getUpdatedRemoved(toPath, previous.instStatusUpdated, current.instStatusUpdated)
+	for _, s := range updates {
+		msgbus.PubInstStatusUpdated(d.bus, s, msgbus.InstStatusUpdated{
+			Path:   toPath[s],
+			Node:   node,
+			Status: *d.pending.Cluster.Node[node].Instance[s].Status.DeepCopy(),
+		})
+	}
+	for _, s := range removes {
+		msgbus.PubInstStatusDelete(d.bus, s, msgbus.InstStatusDeleted{
+			Path: toPath[s],
+			Node: node,
+		})
+	}
+
+	updates, removes = getUpdatedRemoved(toPath, previous.smonUpdated, current.smonUpdated)
+	for _, s := range updates {
+		msgbus.PubSmonUpdated(d.bus, s, msgbus.SmonUpdated{
+			Path:   toPath[s],
+			Node:   node,
+			Status: *d.pending.Cluster.Node[node].Instance[s].Monitor.DeepCopy(),
+		})
+	}
+	for _, s := range removes {
+		msgbus.PubSmonDelete(d.bus, s, msgbus.SmonDeleted{
+			Path: toPath[s],
+			Node: node,
+		})
+	}
+
+	for s, updated := range current.instCfgUpdated {
+		var update bool
+		if previousUpdated, ok := previous.instCfgUpdated[s]; !ok {
+			// new cfg object
+			update = true
+		} else if !updated.Equal(previousUpdated) {
+			// update cfg object
+			update = true
+		}
+		if update {
+
+		}
+	}
+	for s := range previous.instCfgUpdated {
+		if _, ok := current.instCfgUpdated[s]; !ok {
+			// removal cfg
+		}
 	}
 }
