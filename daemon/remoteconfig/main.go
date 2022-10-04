@@ -3,7 +3,9 @@ package remoteconfig
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"path/filepath"
 	"time"
 
 	"opensvc.com/opensvc/core/client"
@@ -25,7 +27,19 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) 
 		log.Info().Err(err).Msgf("fetchFromApi %s", id)
 		return
 	}
-	f, err := os.CreateTemp("", p.Name+".conf.*.tmp")
+	dstFile := p.ConfigFile()
+	dstDir := filepath.Dir(dstFile)
+	createTemp := func() (*os.File, error) {
+		return os.CreateTemp(dstDir, p.Name+".conf.*.tmp")
+	}
+	f, err := createTemp()
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
+			log.Info().Err(err).Msgf("create dir %s", dstDir)
+			return
+		}
+		f, err = createTemp()
+	}
 	if err != nil {
 		log.Error().Err(err).Msgf("CreateTemp for %s", id)
 		return
@@ -45,7 +59,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) 
 		log.Error().Err(err).Msgf("update file time %s", tmpFilename)
 		return
 	}
-	configure, err := object.NewConfigurer(p, object.WithConfigFile(f.Name()), object.WithVolatile(true))
+	configure, err := object.NewConfigurer(p, object.WithConfigFile(tmpFilename), object.WithVolatile(true))
 	if err != nil {
 		log.Error().Err(err).Msgf("configure error for %s", p)
 		return
@@ -71,7 +85,7 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) 
 		cmdC <- msgbus.NewMsg(msgbus.RemoteFileConfig{
 			Path:     p,
 			Node:     node,
-			Filename: f.Name(),
+			Filename: tmpFilename,
 			Updated:  updated,
 			Ctx:      ctx,
 			Err:      err,

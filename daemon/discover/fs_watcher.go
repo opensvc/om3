@@ -3,6 +3,7 @@ package discover
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -21,6 +23,32 @@ import (
 const (
 	delayExistAfterRemove = 100 * time.Millisecond
 )
+
+func dirCreated(event fsnotify.Event) bool {
+	if event.Op&fsnotify.Create == 0 {
+		return false
+	}
+	if stat, err := os.Stat(event.Name); err != nil {
+		log.Error().Err(err).Msgf("stat %s", event.Name)
+		return false
+	} else if !stat.IsDir() {
+		return false
+	}
+	return true
+}
+
+func dirRemoved(event fsnotify.Event) bool {
+	if event.Op&fsnotify.Remove == 0 {
+		return false
+	}
+	if stat, err := os.Stat(event.Name); err != nil {
+		log.Error().Err(err).Msgf("stat %s", event.Name)
+		return false
+	} else if !stat.IsDir() {
+		return false
+	}
+	return true
+}
 
 func (d *discover) fsWatcherStart() (func(), error) {
 	log := d.log.With().Str("func", "fsWatch").Logger()
@@ -36,15 +64,6 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		}
 	}
 	d.fsWatcher = watcher
-	for _, filename := range []string{rawconfig.Paths.Etc, rawconfig.Paths.Etc + "/namespaces"} {
-		if err := d.fsWatcher.Add(filename); err != nil {
-			log.Error().Err(err).Msgf("add %s", filename)
-			cleanup()
-			return func() {}, err
-		} else {
-			log.Info().Msgf("add dir %s", filename)
-		}
-	}
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(d.ctx)
 	stop := func() {
@@ -52,51 +71,21 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		cancel()
 		wg.Wait()
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cleanup()
-		log.Info().Msg("started")
-		nodeConf := filepath.Join(rawconfig.Paths.Etc, "node.conf")
-		const createDeleteMask = fsnotify.Create | fsnotify.Remove
-		const needReAddMask = fsnotify.Remove | fsnotify.Rename
-		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+	nodeConf := filepath.Join(rawconfig.Paths.Etc, "node.conf")
 
-		// Add directory watch for:
-		//  var/node/
-		varNodeDir := filepath.Join(rawconfig.Paths.Var, "node")
-		nodeFrozenFile := filepath.Join(varNodeDir, "frozen")
-		if err := d.fsWatcher.Add(varNodeDir); err != nil {
-			log.Error().Err(err).Msgf("add dir watch %s", varNodeDir)
-		} else {
-			log.Info().Msgf("add dir watch %s", varNodeDir)
-		}
-		if !file.ModTime(nodeFrozenFile).IsZero() {
-			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
-			msgbus.PubFrozenFileUpdate(bus, "", msgbus.FrozenFileUpdated{Filename: nodeFrozenFile})
-		}
-
-		//
-		// Add directory watch for:
-		//  etc/
-		//  etc/namespaces/
-		//  etc/namespaces/*
-		//
-		// Add config file watches
-		//  etc/*.conf
-		//  etc/namespaces/*/*.conf
-		//
-		err = filepath.WalkDir(
-			rawconfig.Paths.Etc,
+	//
+	// Add directory watch for head and its subdirs, and for .conf files
+	//
+	initDirWatches := func(head string) error {
+		return filepath.WalkDir(
+			head,
 			func(filename string, entry fs.DirEntry, err error) error {
 				switch {
 				case entry.IsDir():
-					if strings.HasPrefix(filename, rawconfig.Paths.Etc+"/namespaces/") {
-						if err := d.fsWatcher.Add(filename); err != nil {
-							log.Error().Err(err).Msgf("add dir watch %s", filename)
-						} else {
-							log.Info().Msgf("add dir watch %s", filename)
-						}
+					if err := d.fsWatcher.Add(filename); err != nil {
+						log.Error().Err(err).Msgf("add dir watch %s", filename)
+					} else {
+						log.Info().Msgf("add dir watch %s", filename)
 					}
 				default:
 					if !strings.HasSuffix(filename, ".conf") {
@@ -112,18 +101,49 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						log.Warn().Err(err).Msgf("do not watch invalid config file %s", filename)
 						return nil
 					}
-					if err := watcher.Add(filename); err != nil {
-						log.Error().Err(err).Msgf("add file %s", filename)
-					} else {
-						log.Debug().Msgf("add file %s", filename)
-					}
+					/*
+						if err := watcher.Add(filename); err != nil {
+							log.Error().Err(err).Msgf("add file %s", filename)
+						} else {
+							log.Debug().Msgf("add file %s", filename)
+						}
+					*/
 					msgbus.PubCfgFileUpdate(bus, "fs_watcher emit cfgfile.update", msgbus.CfgFileUpdated{Path: p, Filename: filename})
 				}
 				return nil
 			},
 		)
-		if err != nil {
-			log.Error().Err(err).Msg("walk")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer cleanup()
+		log.Info().Msg("started")
+		const createDeleteMask = fsnotify.Create | fsnotify.Remove
+		const needReAddMask = fsnotify.Remove | fsnotify.Rename
+		const updateMask = fsnotify.Remove | fsnotify.Rename | fsnotify.Write | fsnotify.Create | fsnotify.Chmod
+
+		// Add directory watches for:
+		//  etc/
+		//  var/node/
+		varNodeDir := filepath.Join(rawconfig.Paths.Var, "node")
+		nodeFrozenFile := filepath.Join(varNodeDir, "frozen")
+		for _, dir := range []string{rawconfig.Paths.Etc, varNodeDir} {
+			if err := d.fsWatcher.Add(dir); err != nil {
+				log.Error().Err(err).Msgf("add dir watch %s", dir)
+			} else {
+				log.Info().Msgf("add dir watch %s", dir)
+			}
+		}
+
+		if !file.ModTime(nodeFrozenFile).IsZero() {
+			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
+			msgbus.PubFrozenFileUpdate(bus, "", msgbus.FrozenFileUpdated{Filename: nodeFrozenFile})
+		}
+
+		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
+			log.Error().Err(err).Msgf("init fs watches walking %s", rawconfig.Paths.Etc)
 		}
 
 		// watcher-events handler loop
@@ -202,8 +222,22 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						msgbus.PubCfgFileUpdate(bus, p.String(), msgbus.CfgFileUpdated{Path: p, Filename: filename})
 					}
+				case dirCreated(event):
+					if err := d.fsWatcher.Add(filename); err != nil {
+						log.Error().Err(err).Msgf("add dir watch %s", filename)
+					} else {
+						log.Info().Msgf("add dir watch %s", filename)
+					}
+					if err := initDirWatches(filename); err != nil {
+						log.Error().Err(err).Msgf("init fs watches walking %s", filename)
+					}
+				case dirRemoved(event):
+					if err := d.fsWatcher.Remove(filename); err != nil {
+						log.Error().Err(err).Msgf("remove dir watch %s", filename)
+					} else {
+						log.Info().Msgf("remove dir watch %s", filename)
+					}
 				}
-
 			}
 		}
 	}()
