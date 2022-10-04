@@ -1,6 +1,4 @@
 // Package httpclientcache serve http client from cache.
-//
-// It calls CloseIdleConnections every 30s for cached http client
 package httpclientcache
 
 import (
@@ -35,9 +33,6 @@ type (
 var (
 	getClientChan   = make(chan getClient)
 	purgeClientChan = make(chan bool)
-
-	closeIdleInterval = 30 * time.Second
-	clientDurationMax = 2 * time.Hour
 )
 
 func (o Options) String() string {
@@ -75,18 +70,12 @@ func init() {
 
 func server() {
 	dbClient := make(map[string]*http.Client)
-	closeIdleTicker := time.NewTicker(closeIdleInterval)
-	defer closeIdleTicker.Stop()
 	for {
 		select {
 		case <-purgeClientChan:
 			for s, client := range dbClient {
 				client.CloseIdleConnections()
 				delete(dbClient, s)
-			}
-		case <-closeIdleTicker.C:
-			for _, client := range dbClient {
-				client.CloseIdleConnections()
 			}
 		case c := <-getClientChan:
 			s := c.option.String()
