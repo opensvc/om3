@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -114,22 +115,36 @@ func Start(parent context.Context) error {
 		nmons:         make(map[string]cluster.NodeMonitor),
 	}
 
-	go o.worker()
+	bus := pubsub.BusFromContext(o.ctx)
+	uuids := o.initSubscribers(bus)
+	go func() {
+		defer func() {
+			msgbus.DropPendingMsg(o.cmdC, time.Second)
+			for _, id := range uuids {
+				msgbus.UnSub(bus, id)
+			}
+		}()
+		o.worker()
+	}()
 	return nil
+}
+
+func (o *nmon) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
+	uuids = append(uuids,
+		msgbus.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv),
+		msgbus.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv),
+		msgbus.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv),
+		msgbus.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv),
+		msgbus.SubSetNmon(bus, "nmon setnmon", o.onEv),
+		msgbus.SubNodeStatusLabels(bus, pubsub.OpUpdate, "nmon labels.update", "", o.onEv),
+		msgbus.SubNodeStatusPaths(bus, pubsub.OpUpdate, "nmon paths.update", "", o.onEv),
+	)
+	return
 }
 
 // worker watch for local nmon updates
 func (o *nmon) worker() {
 	defer o.log.Debug().Msg("done")
-
-	bus := pubsub.BusFromContext(o.ctx)
-	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSetNmon(bus, "nmon setnmon", o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubNodeStatusLabels(bus, pubsub.OpUpdate, "nmon labels.update", "", o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubNodeStatusPaths(bus, pubsub.OpUpdate, "nmon paths.update", "", o.onEv))
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for _, node := range initialNodes {
@@ -138,7 +153,6 @@ func (o *nmon) worker() {
 	o.setNodeStatusPaths()
 	o.updateIfChange()
 	defer o.delete()
-	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
 	o.log.Debug().Msg("started")
 
 	for {
