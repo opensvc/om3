@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+// Defines values for InstanceStatusProvisioned.
+const (
+	False InstanceStatusProvisioned = "false"
+	Mixed InstanceStatusProvisioned = "mixed"
+	Na    InstanceStatusProvisioned = "n/a"
+	True  InstanceStatusProvisioned = "true"
+)
+
 // Error defines model for Error.
 type Error struct {
 	// Error code
@@ -30,14 +38,17 @@ type PostObjectStatus struct {
 
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
-	Avail       Status    `json:"avail"`
-	Frozen      time.Time `json:"frozen"`
-	Kind        *string   `json:"kind,omitempty"`
-	Optional    *Status   `json:"optional,omitempty"`
-	Overall     Status    `json:"overall"`
-	Provisioned bool      `json:"provisioned"`
-	Updated     time.Time `json:"updated"`
+	Avail       Status                    `json:"avail"`
+	Frozen      time.Time                 `json:"frozen"`
+	Kind        *string                   `json:"kind,omitempty"`
+	Optional    *Status                   `json:"optional,omitempty"`
+	Overall     Status                    `json:"overall"`
+	Provisioned InstanceStatusProvisioned `json:"provisioned"`
+	Updated     time.Time                 `json:"updated"`
 }
+
+// InstanceStatusProvisioned defines model for InstanceStatus.Provisioned.
+type InstanceStatusProvisioned string
 
 // NodeInfo defines model for nodeInfo.
 type NodeInfo struct {
@@ -92,20 +103,17 @@ type SanPath struct {
 
 // initiator is the host side san path endpoint.
 type SanPathInitiator struct {
-	// id is a worldwide unique identifier.
-	Id *string `json:"id,omitempty"`
-
-	// name is a the endpoint name.
+	// name is a worldwide unique path endpoint identifier.
 	Name *string `json:"name,omitempty"`
 
-	// type is a the endpoint type.
+	// type is the endpoint type.
 	Type *string `json:"type,omitempty"`
 }
 
 // target is the storage array side san path endpoint.
 type SanPathTarget struct {
-	// id is a worldwide unique identifier.
-	Id *string `json:"id,omitempty"`
+	// name is a worldwide unique path endpoint identifier.
+	Name *string `json:"name,omitempty"`
 
 	// type is a the endpoint type.
 	Type *string `json:"type,omitempty"`
