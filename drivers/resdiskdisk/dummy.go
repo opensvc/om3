@@ -14,7 +14,13 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t T) ExposedDevices() []*device.T {
-	// TODO implement for non Linux
 	l := make([]*device.T, 0)
 	return l
+}
+
+func (t T) unconfigure() error {
+	return nil
+}
+func (t T) configure(force forceMode) error {
+	return nil
 }

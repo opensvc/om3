@@ -80,7 +80,8 @@ type (
 	ArrayPooler interface {
 		Pooler
 		GetTargets() (san.Targets, error)
-		CreateDisk(CreateDiskRequest) (CreateDiskResult, error)
+		CreateDisk(name string, size float64, paths san.Paths) ([]Disk, error)
+		DeleteDisk(name string) ([]Disk, error)
 	}
 	Translater interface {
 		Translate(name string, size float64, shared bool) ([]string, error)
@@ -93,19 +94,7 @@ type (
 		Set(context.Context, ...keyop.T) error
 	}
 
-	CreateDiskRequest struct {
-		Name  string
-		Size  float64
-		Paths san.Paths
-	}
-	CreateDiskResult struct {
-		// Request contains the create options
-		Request CreateDiskRequest
-
-		Disks []CreatedDisk
-	}
-
-	CreatedDisk struct {
+	Disk struct {
 		// ID is the created disk wwid
 		ID string
 

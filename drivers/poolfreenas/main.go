@@ -135,33 +135,47 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) CreateDisk(options pool.CreateDiskRequest) (pool.CreateDiskResult, error) {
-	result := pool.CreateDiskResult{
-		Request: options,
+func (t *T) DeleteDisk(name string) ([]pool.Disk, error) {
+	disk := pool.Disk{}
+	a := t.array()
+	drvName := t.diskgroup() + "/" + name
+	drvDisk, err := a.DelDisk(drvName)
+	if err != nil {
+		return []pool.Disk{}, err
 	}
-	createdDisk := pool.CreatedDisk{}
-	if len(options.Paths) == 0 {
-		return result, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
+	disk.Driver = drvDisk
+	disk.ID = a.DiskID(*drvDisk)
+	if paths, err := a.DiskPaths(*drvDisk); err != nil {
+		return []pool.Disk{disk}, err
+	} else {
+		disk.Paths = paths
+	}
+	return []pool.Disk{disk}, nil
+}
+
+func (t *T) CreateDisk(name string, size float64, paths san.Paths) ([]pool.Disk, error) {
+	disk := pool.Disk{}
+	if len(paths) == 0 {
+		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
 	}
 	a := t.array()
 	blocksize := fmt.Sprint(*t.blocksize())
 	sparse := t.sparse()
 	insecureTPC := t.insecureTPC()
-	size := sizeconv.ExactBSizeCompact(options.Size)
-	name := t.diskgroup() + "/" + options.Name
-	mapping := options.Paths.Mapping()
+	drvSize := sizeconv.ExactBSizeCompact(size)
+	drvName := t.diskgroup() + "/" + name
+	mapping := paths.Mapping()
 
-	disk, err := a.AddDisk(name, size, blocksize, sparse, insecureTPC, mapping, nil)
+	drvDisk, err := a.AddDisk(drvName, drvSize, blocksize, sparse, insecureTPC, mapping, nil)
 	if err != nil {
-		return result, err
+		return []pool.Disk{}, err
 	}
-	createdDisk.Driver = disk
-	createdDisk.ID = a.DiskID(*disk)
-	if paths, err := a.DiskPaths(*disk); err != nil {
-		return result, err
+	disk.Driver = drvDisk
+	disk.ID = a.DiskID(*drvDisk)
+	if paths, err := a.DiskPaths(*drvDisk); err != nil {
+		return []pool.Disk{disk}, err
 	} else {
-		createdDisk.Paths = paths
+		disk.Paths = paths
 	}
-	result.Disks = []pool.CreatedDisk{createdDisk}
-	return result, nil
+	return []pool.Disk{disk}, nil
 }
