@@ -96,6 +96,9 @@ const (
 	NsAll = iota
 
 	busContextKey contextKey = 0
+
+	// notifyQueueSizePerSubscriber defines notify max queue size for a subscriber
+	notifyQueueSizePerSubscriber = 2000
 )
 
 type (
@@ -284,7 +287,7 @@ func (b *Bus) Start(ctx context.Context) {
 						op:       c.op,
 						matching: c.matching,
 						fn:       createCallBack(c.fn, c.timeout),
-						q:        make(chan interface{}, 100),
+						q:        make(chan interface{}, notifyQueueSizePerSubscriber),
 						subId:    id,
 						duration: c.timeout,
 						cancel:   subCtxCancel,

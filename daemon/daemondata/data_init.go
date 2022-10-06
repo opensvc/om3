@@ -1,14 +1,15 @@
 package daemondata
 
 import (
+	"path/filepath"
 	"strings"
-	"time"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/san"
 )
@@ -56,6 +57,8 @@ func newData(counterCmd chan<- interface{}) *data {
 }
 
 func newNodeData(localNode string) cluster.NodeData {
+	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
+	frozen := file.ModTime(nodeFrozenFile)
 	nodeStatus := cluster.NodeData{
 		Instance: map[string]instance.Instance{},
 		Monitor:  cluster.NodeMonitor{},
@@ -66,7 +69,7 @@ func newNodeData(localNode string) cluster.NodeData {
 			Arbitrators:     map[string]cluster.ArbitratorStatus{},
 			Compat:          11,
 			Env:             "",
-			Frozen:          time.Time{},
+			Frozen:          frozen,
 			Gen:             map[string]uint64{localNode: 1},
 			Labels:          nodesinfo.Labels{},
 			Paths:           san.Paths{},

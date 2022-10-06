@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -137,20 +138,34 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		change:        true,
 	}
 
-	go o.worker(nodes)
+	bus := pubsub.BusFromContext(o.ctx)
+	uuids := o.initSubscribers(bus)
+	go func() {
+		defer func() {
+			msgbus.DropPendingMsg(o.cmdC, time.Second)
+			for _, id := range uuids {
+				msgbus.UnSub(bus, id)
+			}
+		}()
+		o.worker(nodes)
+	}()
 	return nil
+}
+
+func (o *smon) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
+	subDesc := o.id + " smon "
+	uuids = append(uuids,
+		msgbus.SubSvcAgg(bus, pubsub.OpUpdate, subDesc+" agg.update", o.id, o.onEv),
+		msgbus.SubSetSmon(bus, pubsub.OpUpdate, subDesc+" setSmon.update", o.id, o.onEv),
+		msgbus.SubSmon(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
+		msgbus.SubSmon(bus, pubsub.OpDelete, subDesc+" smon.delete", o.id, o.onEv),
+	)
+	return
 }
 
 // worker watch for local smon updates
 func (o *smon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
-
-	bus := pubsub.BusFromContext(o.ctx)
-	subDesc := o.id + " smon "
-	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, subDesc+" agg.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSetSmon(bus, pubsub.OpUpdate, subDesc+" setSmon.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubSmon(bus, pubsub.OpDelete, subDesc+" smon.delete", o.id, o.onEv))
 
 	for _, node := range initialNodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
@@ -158,7 +173,6 @@ func (o *smon) worker(initialNodes []string) {
 	o.updateIfChange()
 	defer o.delete()
 
-	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
 	if err := o.crmStatus(); err != nil {
 		o.log.Error().Err(err).Msg("error during initial crm status")
 	}
