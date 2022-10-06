@@ -28,7 +28,7 @@ func (o *smon) provisionedFromIdle() {
 		o.updateIfChange()
 		go func() {
 			o.log.Info().Msg("run action provision leader for provisioned global expect")
-			if err := o.crmProvisionLeader(); err != nil {
+			if err := o.crmProvision(true); err != nil {
 				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
 			} else {
 				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
@@ -60,7 +60,7 @@ func (o *smon) provisionedFromWaitLeader() {
 	o.updateIfChange()
 	go func() {
 		o.log.Info().Msg("run action provision non leader for provisioned global expect")
-		if err := o.crmProvision(); err != nil {
+		if err := o.crmProvision(false); err != nil {
 			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
 		} else {
 			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
