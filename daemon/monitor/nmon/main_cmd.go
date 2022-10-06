@@ -81,4 +81,6 @@ func (o *nmon) onOrchestrate(c cmdOrchestrate) {
 		o.updateIfChange()
 	}
 	o.orchestrate()
+	// avoid fast loop on bug
+	time.Sleep(50 * time.Millisecond)
 }

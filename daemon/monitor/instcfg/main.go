@@ -19,6 +19,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -85,9 +86,15 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		return err
 	}
 
+	bus := pubsub.BusFromContext(parent)
+	uuids := o.initSubscribers(bus)
 	go func() {
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
+			msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
+			for _, id := range uuids {
+				msgbus.UnSub(bus, id)
+			}
 			o.done(parent, svcDiscoverCmd)
 		}()
 		o.worker(parent)
@@ -95,18 +102,24 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 	return nil
 }
 
+func (o *T) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
+	subDesc := o.path.String() + " instcfg "
+	uuids = append(uuids,
+		msgbus.SubCfgFile(bus, pubsub.OpUpdate, subDesc+" own CfgFile update", o.path.String(), o.onEv),
+		msgbus.SubCfgFile(bus, pubsub.OpDelete, subDesc+" own CfgFile remove", o.path.String(), o.onEv),
+	)
+	clusterId := clusterPath.String()
+	if o.path.String() != clusterId {
+		uuids = append(uuids,
+			msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cluster Cfg update", clusterId, o.onEv),
+		)
+	}
+	return
+}
+
 // worker watch for local instCfg config file updates until file is removed
 func (o *T) worker(parent context.Context) {
 	defer o.log.Debug().Msg("done")
-	defer msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
-	clusterId := clusterPath.String()
-	bus := pubsub.BusFromContext(parent)
-	subDesc := o.path.String() + " instcfg "
-	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpUpdate, subDesc+" own CfgFile update", o.path.String(), o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubCfgFile(bus, pubsub.OpDelete, subDesc+" own CfgFile remove", o.path.String(), o.onEv))
-	if o.path.String() != clusterId {
-		defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cluster Cfg update", clusterId, o.onEv))
-	}
 
 	// do once what we do later on msgbus.CfgFileUpdated
 	if err := o.configFileCheck(); err != nil {

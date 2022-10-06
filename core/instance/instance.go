@@ -73,7 +73,7 @@ type (
 		Topology    topology.T                        `json:"topology,omitempty"`
 		Placement   placement.T                       `json:"placement,omitempty"`
 		Priority    priority.T                        `json:"priority,omitempty"`
-		Provisioned provisioned.T                     `json:"provisioned,omitempty"`
+		Provisioned provisioned.T                     `json:"provisioned"`
 		Preserved   bool                              `json:"preserved,omitempty"`
 		Updated     time.Time                         `json:"updated"`
 		FlexTarget  int                               `json:"flex_target,omitempty"`

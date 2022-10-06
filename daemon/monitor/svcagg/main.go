@@ -11,6 +11,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -59,19 +60,33 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		ctx:          ctx,
 		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),
 	}
-	go o.worker(cfg.Scope)
+	bus := pubsub.BusFromContext(o.ctx)
+	uuids := o.initSubscribers(bus)
+	go func() {
+		defer func() {
+			defer msgbus.DropPendingMsg(o.cmdC, time.Second)
+			for _, id := range uuids {
+				msgbus.UnSub(bus, id)
+			}
+		}()
+		o.worker(cfg.Scope)
+	}()
 	return nil
+}
+
+func (o *svcAggStatus) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
+	subDesc := o.id + " svcagg"
+	uuids = append(uuids,
+		msgbus.SubInstStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv),
+		msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cfg.update", o.id, o.onEv),
+		msgbus.SubCfg(bus, pubsub.OpDelete, subDesc+" cfg.delete", o.id, o.onEv),
+	)
+	return
 }
 
 func (o *svcAggStatus) worker(nodes []string) {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
-	defer msgbus.DropPendingMsg(o.cmdC, time.Second)
-	bus := pubsub.BusFromContext(o.ctx)
-	subDesc := o.id + " svcagg"
-	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cfg.update", o.id, o.onEv))
-	defer msgbus.UnSub(bus, msgbus.SubCfg(bus, pubsub.OpDelete, subDesc+" cfg.delete", o.id, o.onEv))
 
 	for _, node := range nodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
