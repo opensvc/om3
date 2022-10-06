@@ -11,6 +11,11 @@ func (t *core) Eval(k key.T) (interface{}, error) {
 }
 
 func (t *core) EvalAs(k key.T, impersonate string) (interface{}, error) {
+	if actor, ok := t.config.Referrer.(Actor); ok {
+		// required to eval references like {<rid>.exposed_devs}
+		actor.ConfigureResources()
+	}
+
 	v, err := t.config.EvalAs(k, impersonate)
 	switch err.(type) {
 	case xconfig.ErrPostponedRef:
