@@ -28,14 +28,12 @@ func (f Frame) sObjectInstance(path string, node string) string {
 			s += sObjectInstanceUnprovisioned(instStatus)
 			s += sObjectInstanceMonitorStatus(smon)
 			s += sObjectInstanceMonitorGlobalExpect(smon)
-			s += "\t"
 		} else if localInst, ok := f.Current.Cluster.Node[hostname.Hostname()].Instance[path]; !ok || localInst.Config == nil {
-			return "\t"
 		} else if stringslice.Has(node, localInst.Config.Scope) {
-			s += iconUndef + "\t"
+			s += iconUndef
 		}
 	}
-	return s
+	return s + "\t"
 }
 
 func sObjectInstanceAvail(objectAvail status.T, instance instance.Status) string {

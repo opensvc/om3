@@ -1,8 +1,9 @@
 package provisioned
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 )
 
 // T stores an integer value representing a service, instance
@@ -11,12 +12,9 @@ type T int
 
 const (
 	// Undef is used when a resource or instance has no provisioned state.
-	Undef T = 0
-)
-
-const (
+	Undef T = iota
 	// True means the instance or resource is known to be provisioned.
-	True T = 1 << iota
+	True
 	// False means the instance or resource is known to be not provisioned.
 	False
 	// Mixed means the instance or service is partially provisioned.
@@ -26,7 +24,7 @@ const (
 )
 
 var toString = map[T]string{
-	Undef:         "",
+	Undef:         "undef",
 	True:          "true",
 	False:         "false",
 	Mixed:         "mixed",
@@ -34,7 +32,7 @@ var toString = map[T]string{
 }
 
 var sToID = map[string]T{
-	"":      Undef,
+	"undef": Undef,
 	"true":  True,
 	"false": False,
 	"mixed": Mixed,
@@ -46,10 +44,17 @@ var bToID = map[bool]T{
 	false: False,
 }
 
-//
+// NewFromString return new T from a string representation of T
+func NewFromString(s string) (T, error) {
+	t, ok := sToID[s]
+	if ok {
+		return t, nil
+	}
+	return Undef, errors.New("invalid provisioned string: " + s)
+}
+
 // FromBool is a factory function resource drivers can use to return a
 // provisioned.T from a boolean
-//
 func FromBool(v bool) T {
 	return bToID[v]
 }
@@ -67,15 +72,13 @@ func (t T) Bool() bool {
 	}
 }
 
-//
 // FlagString returns a one character representation of the type instance.
 //
-//   .  Provisioned
-//   P  Not provisioned
-//   p  Mixed provisioned
-//   /  Not applicable
-//   ?  Unknown
-//
+//	.  Provisioned
+//	P  Not provisioned
+//	p  Mixed provisioned
+//	/  Not applicable
+//	?  Unknown
 func (t T) FlagString() string {
 	switch t {
 	case True:
@@ -94,34 +97,27 @@ func (t T) FlagString() string {
 }
 
 // MarshalJSON marshals the enum as a quoted json string
-func (t T) MarshalJSON() ([]byte, error) {
-	var buffer *bytes.Buffer
-	switch t {
-	case True, False:
-		buffer = bytes.NewBufferString(``)
-		buffer.WriteString(toString[t])
-	default:
-		buffer = bytes.NewBufferString(`"`)
-		buffer.WriteString(toString[t])
-		buffer.WriteString(`"`)
+func (t T) MarshalJSON() (b []byte, err error) {
+	v, ok := toString[t]
+	if ok {
+		return json.Marshal(v)
 	}
-	return buffer.Bytes(), nil
+	err = fmt.Errorf("MarshalJSON unexpected provisioned.T value %d", t)
+	return
 }
 
 // UnmarshalJSON unmarshals a quoted json string to the enum value
 func (t *T) UnmarshalJSON(b []byte) error {
-	var j interface{}
-	err := json.Unmarshal(b, &j)
+	var s string
+	err := json.Unmarshal(b, &s)
 	if err != nil {
 		return err
 	}
-	switch j.(type) {
-	case string:
-		*t = sToID[j.(string)]
-	case bool:
-		*t = bToID[j.(bool)]
+	v, ok := sToID[s]
+	if !ok {
+		return fmt.Errorf("unexpected provisioned value: %s", b)
 	}
-	// Note that if the string cannot be found then it will be set to the zero value.
+	*t = v
 	return nil
 }
 
@@ -141,16 +137,8 @@ func (t T) And(o T) T {
 		return t
 	}
 	// other merges
-	switch t | o {
-	case True | True:
-		return True
-	case True | False:
+	if t != o {
 		return Mixed
-	case True | Mixed:
-		return Mixed
-	case False | Mixed:
-		return Mixed
-	default:
-		return Undef
 	}
+	return o
 }

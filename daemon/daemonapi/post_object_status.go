@@ -26,7 +26,7 @@ func (d *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		log.Warn().Err(err).Msgf("can't parse path: %s", payload.Path)
+		log.Warn().Err(err).Msgf("can't parse path: %s, %s", payload.Path, payload)
 		sendErrorf(w, http.StatusBadRequest, "invalid path %s", payload.Path)
 		return
 	}
@@ -53,11 +53,11 @@ func postObjectStatusToInstanceStatus(p path.T, payload PostObjectStatus) (*inst
 		Updated: payload.Status.Updated,
 		Frozen:  payload.Status.Frozen,
 	}
-	var prov provisioned.T
-	if err := json.Unmarshal([]byte(payload.Status.Provisioned), &prov); err != nil {
+	if prov, err := provisioned.NewFromString(string(payload.Status.Provisioned)); err != nil {
 		return nil, err
+	} else {
+		instanceStatus.Provisioned = prov
 	}
-	instanceStatus.Provisioned = prov
 	if payload.Status.Optional != nil {
 		instanceStatus.Optional = status.Parse(*payload.Status.Optional)
 	}
