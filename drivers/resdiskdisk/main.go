@@ -66,30 +66,51 @@ func (t T) Info() map[string]string {
 	return m
 }
 
-func (t T) ProvisionLeader(ctx context.Context) error {
-	if v, err := t.Provisioned(); err != nil {
-		return err
-	} else if v == provisioned.True {
-		t.Log().Info().Msg("skip disk creation: the disk_id keyword is already set")
-		return t.configure(preserve)
-	} else if err := t.createDisk(ctx); err != nil {
-		return err
-	} else {
-		return t.configure(enforce)
-	}
+func (t T) UnprovisionLeaded(ctx context.Context) error {
+	return t.unconfigure()
 }
 
-func (t T) UnprovisionLeader(ctx context.Context) error {
+func (t T) ProvisionLeaded(ctx context.Context) error {
+	return t.configure(preserve)
+}
+
+func (t *T) ProvisionLeader(ctx context.Context) error {
+	var (
+		disks []pool.Disk
+		err   error
+	)
+	if t.DiskID != "" {
+		t.Log().Info().Msg("skip disk creation: the disk_id keyword is already set")
+		return t.configure(preserve)
+	}
+	if disks, err = t.createDisk(); err != nil {
+		return err
+	}
+	if err := t.setDiskIDKeywords(ctx, disks); err != nil {
+		return err
+	}
+	return t.configure(enforce)
+}
+
+func (t *T) UnprovisionLeader(ctx context.Context) error {
+	if t.DiskID == "" {
+		t.Log().Info().Msg("skip disk deletion: the disk_id keyword is not set")
+		return nil
+	}
+	if err := t.unconfigure(); err != nil {
+		return err
+	}
+	if _, err := t.deleteDisk(); err != nil {
+		return err
+	}
+	if err := t.unsetDiskIDKeywords(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (t T) ClaimedDevices() []*device.T {
 	return t.ExposedDevices()
-}
-
-// configure is os specific
-func (t T) configure(force forceMode) error {
-	return nil
 }
 
 func (t T) diskIDKey(node string) key.T {
@@ -137,34 +158,13 @@ func (t T) diskMapToNodes() []string {
 	}
 }
 
-func (t T) createDisk(ctx context.Context) error {
+func (t T) deleteDisk() ([]pool.Disk, error) {
 	p, err := t.pooler()
 	if err != nil {
-		return err
-	}
-	if t.Size == nil {
-		return errors.Errorf("the size keyword is required for disk provisioning")
-	}
-	nodesInfo, err := nodesinfo.Get()
-	if err != nil {
-		return err
-	}
-	obj, err := object.NewConfigurer(t.Path)
-	if err != nil {
-		return err
+		return []pool.Disk{}, err
 	}
 	diskName := t.diskName(p)
-	size := float64(*t.Size)
-	nodes := t.diskMapToNodes()
-	paths, err := pool.GetMapping(p, nodes)
-	if err != nil {
-		return err
-	}
-	createDiskResult, err := p.CreateDisk(pool.CreateDiskRequest{
-		Name:  diskName,
-		Size:  size,
-		Paths: paths,
-	})
+	disks, err := p.DeleteDisk(diskName)
 	var ev *zerolog.Event
 	if err != nil {
 		ev = t.Log().Error().Err(err)
@@ -172,28 +172,102 @@ func (t T) createDisk(ctx context.Context) error {
 		ev = t.Log().Info()
 	}
 	ev.Str("name", diskName).
-		Interface("result", createDiskResult).
-		Msg("create disk")
+		Interface("result", disks).
+		Msg("delete disk")
+	return disks, nil
+}
+
+func (t T) createDisk() ([]pool.Disk, error) {
+	p, err := t.pooler()
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	if t.Size == nil {
+		return []pool.Disk{}, errors.Errorf("the size keyword is required for disk provisioning")
+	}
+	diskName := t.diskName(p)
+	size := float64(*t.Size)
+	nodes := t.diskMapToNodes()
+	paths, err := pool.GetMapping(p, nodes)
+	if err != nil {
+		return []pool.Disk{}, err
+	}
+	disks, err := p.CreateDisk(diskName, size, paths)
+	if err != nil {
+		t.Log().Error().Err(err).Str("name", diskName).Interface("disks", disks).Msg("create disk")
+	} else {
+		t.Log().Info().Str("name", diskName).Interface("disks", disks).Msg("create disk")
+	}
+	return disks, err
+}
+
+func (t *T) unsetDiskIDKeywords(ctx context.Context) error {
+	obj, err := object.NewConfigurer(t.Path)
 	if err != nil {
 		return err
 	}
+	section := t.RID()
+	options := obj.Config().Keys(section)
+	keys := make([]key.T, 0)
+	save := make([]keyop.T, 0)
+	for _, option := range options {
+		switch {
+		case option == "disk_id":
+			// ok
+		case strings.HasPrefix(option, "disk_id@"):
+			// ok
+		default:
+			// not ok
+			continue
+		}
+		k := key.T{section, option}
+		keys = append(keys, k)
+		save = append(save, keyop.T{
+			Key:   k,
+			Op:    keyop.Equal,
+			Value: obj.Config().GetString(k),
+		})
+	}
+	t.Log().Info().Msgf("unset %s", save)
+	return obj.Unset(ctx, keys...)
+}
+
+func (t *T) setDiskIDKeywords(ctx context.Context, disks []pool.Disk) error {
+	obj, err := object.NewConfigurer(t.Path)
+	if err != nil {
+		return err
+	}
+	nodesInfo, err := nodesinfo.Get()
+	if err != nil {
+		return err
+	}
+	done := map[string]any{}
 	ops := keyop.L{}
-	for _, disk := range createDiskResult.Disks {
+	for _, disk := range disks {
 		if disk.ID == "" {
 			return errors.Errorf("created disk has no id: %v", disk)
 		}
 		nodes := nodesInfo.GetNodesWithAnyPaths(disk.Paths)
 		for _, node := range nodes {
+			if _, ok := done[node]; ok {
+				continue
+			}
 			op := keyop.T{
 				Key:   t.diskIDKey(node),
 				Op:    keyop.Set,
 				Value: disk.ID,
 			}
 			ops = append(ops, op)
+			done[node] = nil
 		}
 	}
-	if err = obj.Set(ctx, ops...); err != nil {
+	t.Log().Info().Msgf("set %s", ops)
+	if err := obj.Set(ctx, ops...); err != nil {
 		return err
 	}
+
+	// Set our local node DiskID resource property, for use by T.configure()
+	t.DiskID = obj.Config().GetString(key.T{t.RID(), "disk_id"})
+
 	return nil
 }

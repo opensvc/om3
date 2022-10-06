@@ -4,6 +4,7 @@ package device
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,6 +85,33 @@ func (t T) setRO(v bool) error {
 	return nil
 }
 
+func (t T) Delete() error {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return err
+	}
+	p = p + "/device/delete"
+	return ioutil.WriteFile(p, []byte("1"), os.ModePerm)
+}
+
+func (t T) Slaves() ([]*T, error) {
+	l := make([]*T, 0)
+	root, err := t.sysfsFile()
+	if err != nil {
+		return l, err
+	}
+	root = root + "/slaves"
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		dev := New("/dev/"+filepath.Base(path), WithLogger(t.log))
+		l = append(l, dev)
+		return nil
+	})
+	return l, nil
+}
+
 func (t T) Holders() ([]*T, error) {
 	l := make([]*T, 0)
 	root, err := t.sysfsFile()
@@ -131,6 +159,22 @@ func (t T) Wipe() error {
 	cmd := command.New(
 		command.WithName("wipefs"),
 		command.WithVarArgs("-a", t.path),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
+func (t T) RemoveMultipath() error {
+	cmd := command.New(
+		command.WithName("multipath"),
+		command.WithVarArgs("-f", t.path),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),

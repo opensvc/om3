@@ -23,6 +23,7 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/stringslice"
+	"opensvc.com/opensvc/util/xerrors"
 	"opensvc.com/opensvc/util/xstrings"
 )
 
@@ -99,14 +100,12 @@ func (t *T) RegisterPostCommit(fn func() error) {
 	t.postCommit = fn
 }
 
-//
 // keysLike returns the slice of key.T if
 // * k=app#1.type and option app#1.type exists (same as HasKey)
 // -or-
 // * k=app.type and option app#1.type exists
 // -or-
 // * k=app and section app#1 exists
-//
 func (t *T) keysLike(k key.T) []key.T {
 	if k.Option == "" {
 		if strings.Contains(k.Section, "#") {
@@ -586,13 +585,11 @@ func (t *T) Eval(k key.T) (interface{}, error) {
 	return t.EvalAs(k, "")
 }
 
-//
 // EvalAs returns a key value,
-// * contextualized for a node (by default the local node, customized by the
-//   impersonate option)
-// * dereferenced
-// * evaluated
-//
+//   - contextualized for a node (by default the local node, customized by the
+//     impersonate option)
+//   - dereferenced
+//   - evaluated
 func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	if t == nil {
 		return nil, errors.New("unreadable config")
@@ -731,26 +728,19 @@ func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string
 }
 
 func (t *T) replaceReferences(v string, section string, impersonate string) (string, error) {
-	errs := make([]error, 0)
+	var errs error
 	v = rawconfig.RegexpReference.ReplaceAllStringFunc(v, func(ref string) string {
-		var (
-			s string
-			e error
-		)
-		s, e = t.dereference(ref, section, impersonate)
-		if e != nil {
-			switch e.(type) {
+		s, err := t.dereference(ref, section, impersonate)
+		if err != nil {
+			switch err.(type) {
 			case ErrPostponedRef:
-				errs = append(errs, e)
+				errs = xerrors.Append(errs, err)
 			}
 			return ref
 		}
 		return s
 	})
-	for _, e := range errs {
-		return v, e
-	}
-	return v, nil
+	return v, errs
 }
 
 func (t T) SectionMap(section string) map[string]string {

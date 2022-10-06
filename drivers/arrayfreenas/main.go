@@ -545,7 +545,7 @@ func (t Array) addISCSIExtent(name, disk, blocksize string, insecureTPC bool) (*
 	if err != nil {
 		return nil, err
 	}
-	if err == nil {
+	if extent != nil {
 		return extent, nil
 	}
 	params := CreateISCSIExtentParams{
@@ -966,38 +966,38 @@ func (t Array) GetDataset(id string) (*Dataset, error) {
 }
 
 func (t Array) MapDisk(name, mapping string, lunID *int) (ISCSITargetExtentsResponse, error) {
-	l := make(ISCSITargetExtentsResponse, 0)
+	missingTargetExtents := make(ISCSITargetExtentsResponse, 0)
 	paths, err := san.ParseMapping(mapping)
 	if err != nil {
-		return l, err
+		return missingTargetExtents, err
 	} else if len(paths) == 0 {
-		return l, errors.New("no paths parsed from mapping")
+		return missingTargetExtents, errors.New("no paths parsed from mapping")
 	}
 	targets, err := t.GetISCSITargets()
 	if err != nil {
-		return l, err
+		return missingTargetExtents, err
 	}
 	extents, err := t.GetISCSIExtents()
 	if err != nil {
-		return l, err
+		return missingTargetExtents, err
 	}
 	targetextents, err := t.GetISCSITargetExtents()
 	if err != nil {
-		return l, err
+		return missingTargetExtents, err
 	}
 	for _, p := range paths {
 		target, ok := targets.GetByName(p.Target.Name)
 		if !ok {
-			return l, errors.Errorf("target %s not found", p.Target.Name)
+			return missingTargetExtents, errors.Errorf("target %s not found (%d scanned)", p.Target.Name, len(targets))
 		}
 		extentName := "zvol/" + name
 		extent, ok := extents.GetByPath(extentName)
 		if !ok {
-			return l, errors.Errorf("extent %s not found", extentName)
+			return missingTargetExtents, errors.Errorf("extent %s not found (%d scanned)", extentName, len(extents))
 		}
 		filteredTargetextents := targetextents.WithExtent(extent).WithTarget(target)
 		if len(filteredTargetextents) == 1 {
-			l = append(l, filteredTargetextents[0])
+			missingTargetExtents = append(missingTargetExtents, filteredTargetextents[0])
 			continue
 		}
 		params := CreateISCSITargetExtentParams{
@@ -1007,11 +1007,11 @@ func (t Array) MapDisk(name, mapping string, lunID *int) (ISCSITargetExtentsResp
 		}
 		d, err := t.createISCSITargetExtent(params)
 		if err != nil {
-			return l, err
+			return missingTargetExtents, err
 		}
-		l = append(l, *d)
+		missingTargetExtents = append(missingTargetExtents, *d)
 	}
-	return l, nil
+	return missingTargetExtents, nil
 }
 
 func (t Array) createISCSITargetExtent(params CreateISCSITargetExtentParams) (*ISCSITargetExtent, error) {
@@ -1073,7 +1073,7 @@ func (t Array) client() (*ClientWithResponses, error) {
 
 // DiskID return the NAA from the created disk dataset
 func (t Array) DiskID(disk Disk) string {
-	return disk.ISCSI.Extent.NAA
+	return strings.TrimPrefix(disk.ISCSI.Extent.NAA, "0x")
 }
 
 // DiskPaths return the san paths list from the created disk dataset and api query responses

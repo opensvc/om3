@@ -59,10 +59,10 @@ func (t *CmdObjectPrintConfig) extract(selector string, c *client.T) (result, er
 		return data, err
 	}
 	for _, p := range paths {
-		var err error
-		data[p.String()], err = t.extractOne(p, c)
-		if err != nil {
+		if d, err := t.extractOne(p, c); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s", p, err)
+		} else {
+			data[p.String()] = d
 		}
 	}
 	return data, nil
@@ -153,20 +153,11 @@ func (t *CmdObjectPrintConfig) run(selector *string, kind string) {
 		os.Exit(1)
 	}
 	var render func() string
-	if p, err := path.Parse(*selector); err == nil {
+	if _, err := path.Parse(*selector); err == nil {
+		// single object selection
 		render = func() string {
-			d, _ := data[*selector].Data.Get("data")
-			o, err := object.NewConfigurer(
-				p,
-				object.WithVolatile(true),
-				object.WithConfigData(d),
-			)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			n, _ := o.PrintConfig()
-			return n.Render()
+			d, _ := data[*selector]
+			return d.Render()
 		}
 		output.Renderer{
 			Format:        t.Format,

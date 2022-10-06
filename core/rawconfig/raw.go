@@ -73,7 +73,7 @@ func (t T) Render() string {
 	return s
 }
 
-func renderComment(k string, v interface{}) string {
+func renderComment(k string, v any) string {
 	vs, ok := v.(string)
 	if !ok {
 		return ""
@@ -81,14 +81,14 @@ func renderComment(k string, v interface{}) string {
 	return "# " + strings.ReplaceAll(vs, "\n", "\n# ") + "\n"
 }
 
-func renderKey(k string, v interface{}) string {
+func renderKey(k string, v any) string {
 	k = RegexpScope.ReplaceAllString(k, Colorize.Error("$1"))
 	var vs string
 	type stringer interface {
 		String() string
 	}
 	switch o := v.(type) {
-	case []interface{}:
+	case []any:
 		l := make([]string, 0)
 		for _, e := range o {
 			if s, ok := e.(string); ok {
@@ -98,7 +98,7 @@ func renderKey(k string, v interface{}) string {
 		vs = strings.Join(l, " ")
 	case *set.Set:
 		l := make([]string, 0)
-		o.Do(func(e interface{}) {
+		o.Do(func(e any) {
 			if s, ok := e.(string); ok {
 				l = append(l, s)
 			}

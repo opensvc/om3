@@ -24,7 +24,7 @@ import (
 
 var (
 	regexpScalerPrefix        = regexp.MustCompile(`^[0-9]+\.`)
-	regexpExposedDevicesIndex = regexp.MustCompile(`.*\.exposed_devs\[([0-9]+)\]`)
+	regexpExposedDevicesIndex = regexp.MustCompile(`^exposed_devs\[([0-9]+)\]`)
 )
 
 func (t *core) reloadConfig() error {
@@ -226,7 +226,7 @@ func (t core) FlexTarget() int {
 
 func (t core) dereferenceExposedDevices(ref string) (string, error) {
 	l := strings.SplitN(ref, ".", 2)
-	var i interface{} = t
+	var i any = t.config.Referrer
 	actor, ok := i.(Actor)
 	if !ok {
 		return ref, fmt.Errorf("can't dereference exposed_devs on a non-actor object: %s", ref)
@@ -250,7 +250,12 @@ func (t core) dereferenceExposedDevices(ref string) (string, error) {
 	if !ok {
 		return ref, fmt.Errorf("resource referenced by %s has no exposed devices", ref)
 	}
-	s := regexpExposedDevicesIndex.FindString(l[1])
+	re := regexp.MustCompile(`exposed_devs\[(?P<Index>[0-9]+)\]`)
+	var s string
+	matches := re.FindStringSubmatch(l[1])
+	if len(matches) == 2 {
+		s = matches[1]
+	}
 	if s == "" {
 		xdevs := o.ExposedDevices()
 		ls := make([]string, len(xdevs))
