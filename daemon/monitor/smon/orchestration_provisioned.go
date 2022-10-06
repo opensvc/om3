@@ -1,8 +1,6 @@
 package smon
 
 import (
-	"time"
-
 	"opensvc.com/opensvc/daemon/msgbus"
 )
 
@@ -32,11 +30,6 @@ func (o *smon) provisionedFromIdle() {
 				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
 			} else {
 				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
-				// TODO remove o.crmStatus() when updated is valid
-				go func() {
-					time.Sleep(time.Second)
-					o.crmStatus()
-				}()
 			}
 		}()
 		return
@@ -60,15 +53,10 @@ func (o *smon) provisionedFromWaitLeader() {
 	o.updateIfChange()
 	go func() {
 		o.log.Info().Msg("run action provision non leader for provisioned global expect")
-		if err := o.crmProvision(); err != nil {
+		if err := o.crmProvisionNonLeader(); err != nil {
 			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
 		} else {
 			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
-			// TODO remove o.crmStatus() when updated is valid
-			go func() {
-				time.Sleep(time.Second)
-				o.crmStatus()
-			}()
 		}
 	}()
 	return
@@ -76,7 +64,7 @@ func (o *smon) provisionedFromWaitLeader() {
 
 func (o *smon) provisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.Bool() {
-		o.log.Info().Msg("local is already provisioned, unset global expect")
+		o.log.Info().Msg("local status provisioned, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusIdle {

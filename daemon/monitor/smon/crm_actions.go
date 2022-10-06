@@ -37,12 +37,12 @@ func (o *smon) crmFreeze() error {
 	return o.crmAction(o.path.String(), "freeze", "--local")
 }
 
-func (o *smon) crmProvision() error {
+func (o *smon) crmProvisionNonLeader() error {
 	return o.crmAction(o.path.String(), "provision", "--local")
 }
 
 func (o *smon) crmProvisionLeader() error {
-	return o.crmAction(o.path.String(), "provision", "--leader", "--local")
+	return o.crmAction(o.path.String(), "provision", "--local", "--leader", "--disable-rollback")
 }
 
 func (o *smon) crmStart() error {
@@ -61,8 +61,12 @@ func (o *smon) crmUnfreeze() error {
 	return o.crmAction(o.path.String(), "unfreeze", "--local")
 }
 
-func (o *smon) crmUnprovisionLeader() error {
-	return o.crmAction(o.path.String(), "unprovision", "--leader", "--local")
+func (o *smon) crmUnprovision(leader bool) error {
+	args := []string{o.path.String(), "unprovision", "--local"}
+	if leader {
+		args = append(args, "--leader")
+	}
+	return o.crmAction(args...)
 }
 
 func (o *smon) crmAction(cmdArgs ...string) error {

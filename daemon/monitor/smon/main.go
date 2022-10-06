@@ -92,6 +92,7 @@ var (
 	statusUnProvisionFailed = "unprovision failed"
 	statusUnProvisioning    = "unprovisioning"
 	statusWaitLeader        = "wait leader"
+	statusWaitNonLeader     = "wait non-leader"
 
 	localExpectStarted = "started"
 	localExpectUnset   = ""
