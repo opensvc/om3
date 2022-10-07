@@ -46,13 +46,12 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 
 func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 	strVal := c.GlobalExpect
-	if strVal == statusIdle {
+	if strVal == globalExpectUnset {
 		strVal = "unset"
 	}
 	for node, status := range o.instSmon {
 		if status.GlobalExpect == c.GlobalExpect {
-			msg := "set smon: already targeting " + strVal + " (on node " + node + ")"
-			o.log.Info().Msg(msg)
+			o.log.Info().Msg(o.logMsgf("set smon: already targeting %s (on node %s)", strVal, node))
 			return
 		}
 	}
@@ -68,7 +67,7 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 			return
 		}
 	}
-	o.log.Info().Msgf("set smon: client request global expect to %s %+v", strVal, c)
+	o.log.Info().Msgf(o.logMsgf("set smon: client request global expect to %s %+v", strVal, c))
 	if c.GlobalExpect != o.state.GlobalExpect {
 		o.change = true
 		o.state.GlobalExpect = c.GlobalExpect
