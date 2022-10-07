@@ -109,6 +109,10 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
+func (t T) ReservableDevices() []*device.T {
+	return t.ExposedDevices()
+}
+
 func (t T) ClaimedDevices() []*device.T {
 	return t.ExposedDevices()
 }

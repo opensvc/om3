@@ -25,7 +25,9 @@ import (
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/pg"
+	"opensvc.com/opensvc/util/scsi"
 	"opensvc.com/opensvc/util/xsession"
 )
 
@@ -283,14 +285,12 @@ func NewResourceFunc(drvID driver.ID) func() Driver {
 	return nil
 }
 
-//
 // IsOptional returns true if the resource definition contains optional=true.
 // An optional resource does not break an object action on error.
 //
 // Resource having actions disabled are always considered optional, because
 // there is nothing we can do to change the state, which would cause
 // orchestration loops.
-//
 func (t T) IsOptional() bool {
 	if t.IsActionDisabled() {
 		return true
@@ -383,14 +383,12 @@ func (t *T) GetPGID() string {
 	return t.pg.ID
 }
 
-//
 // ApplyPGChain fetches the pg manager from the action context and
 // apply the pg configuration to all unconfigured pg on the pg id
 // hierarchy (resource=>subset=>object).
 //
 // The pg manager remembers which pg have been configured to avoid
 // doing the config twice.
-//
 func (t *T) ApplyPGChain(ctx context.Context) error {
 	mgr := pg.FromContext(ctx)
 	if mgr == nil {
@@ -442,15 +440,13 @@ func (t *T) Log() *zerolog.Logger {
 	return &t.log
 }
 
-//
 // MatchRID returns true if:
 //
-// * the pattern is a just a drivergroup name and this name matches this resource's drivergroup
-//   ex: fs#1 matches fs
-// * the pattern is a fully qualified resourceid, and its string representation equals the
-//   pattern.
-//   ex: fs#1 matches fs#1
-//
+//   - the pattern is a just a drivergroup name and this name matches this resource's drivergroup
+//     ex: fs#1 matches fs
+//   - the pattern is a fully qualified resourceid, and its string representation equals the
+//     pattern.
+//     ex: fs#1 matches fs#1
 func (t T) MatchRID(s string) bool {
 	rid, err := resourceid.Parse(s)
 	if err != nil {
@@ -701,6 +697,9 @@ func Start(ctx context.Context, r Driver) error {
 	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
+	if err := SCSIPersistentReservationStart(r); err != nil {
+		return err
+	}
 	if err := r.Start(ctx); err != nil {
 		return errors.Wrapf(err, "start")
 	}
@@ -750,6 +749,9 @@ func Stop(ctx context.Context, r Driver) error {
 	if err := r.Stop(ctx); err != nil {
 		return err
 	}
+	if err := SCSIPersistentReservationStop(r); err != nil {
+		return err
+	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Stop); err != nil {
 		return errors.Wrapf(err, "trigger")
 	}
@@ -769,6 +771,9 @@ func Status(ctx context.Context, r Driver) status.T {
 	if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
+		if err := SCSIPersistentReservationStatus(r, s); err != nil {
+			r.StatusLog().Warn(fmt.Sprint(err))
+		}
 	}
 	if r.IsStandby() {
 		switch {
@@ -778,9 +783,70 @@ func Status(ctx context.Context, r Driver) status.T {
 			s = status.StandbyDown
 		}
 	}
+
 	sb := statusbus.FromContext(ctx)
 	sb.Post(r.RID(), s, false)
 	return s
+}
+
+type devReservabler interface {
+	// ReservableDevices must be implement by every driver that wants SCSI PR.
+	ReservableDevices() []*device.T
+
+	// IsSCSIPersistentReservationPreemptAbortDisabled is exposing the resource no_preempt_abort keyword value.
+	IsSCSIPersistentReservationPreemptAbortDisabled() bool
+
+	// IsSCSIPersistentReservationEnabled is exposing the scsireserv resource keyword value.
+	IsSCSIPersistentReservationEnabled() bool
+
+	// PersistentReservationKey is exposing the prkey resource keyword value.
+	PersistentReservationKey() string
+}
+
+func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHandle {
+	var i any = r
+	o, ok := i.(devReservabler)
+	if !ok {
+		return nil
+	}
+	if !o.IsSCSIPersistentReservationEnabled() {
+		return nil
+	}
+	hdl := scsi.PersistentReservationHandle{
+		Key:       o.PersistentReservationKey(),
+		Devices:   o.ReservableDevices(),
+		NoPreempt: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
+		Log:       r.Log(),
+	}
+	return &hdl
+}
+
+func SCSIPersistentReservationStop(r Driver) error {
+	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+		return nil
+	} else {
+		return hdl.Stop()
+	}
+}
+
+func SCSIPersistentReservationStart(r Driver) error {
+	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+		return nil
+	} else {
+		return hdl.Start()
+	}
+}
+
+func SCSIPersistentReservationStatus(r Driver, s status.T) error {
+	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+		return nil
+	} else if s == status.Up {
+		return hdl.StartedStatus()
+	} else if s == status.Down {
+		return hdl.StoppedStatus()
+	} else {
+		return nil
+	}
 }
 
 // GetExposedStatus returns the resource exposed status data for embedding into the instance status data.

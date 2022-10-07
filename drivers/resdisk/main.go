@@ -2,6 +2,7 @@ package resdisk
 
 import (
 	"opensvc.com/opensvc/core/keywords"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/converters"
 )
@@ -50,3 +51,21 @@ var (
 		KWSCSIReserv,
 	}
 )
+
+func (t T) IsSCSIPersistentReservationPreemptAbortDisabled() bool {
+	return t.NoPreemptAbort
+}
+
+func (t T) IsSCSIPersistentReservationEnabled() bool {
+	return t.SCSIReserv
+}
+
+func (t T) PersistentReservationKey() string {
+	if t.PRKey != "" {
+		return t.PRKey
+	}
+	if nodePRKey := rawconfig.NodeSection().PRKey; nodePRKey != "" {
+		return nodePRKey
+	}
+	return ""
+}
