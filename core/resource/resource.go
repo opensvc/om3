@@ -17,14 +17,17 @@ import (
 
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/driver"
+	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
 	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/resourcereqs"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/statusbus"
 	"opensvc.com/opensvc/core/trigger"
 	"opensvc.com/opensvc/util/command"
+	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/scsi"
@@ -130,6 +133,12 @@ type (
 		object       interface{}
 		objectDriver ObjectDriver
 		pg           *pg.Config
+	}
+
+	SCSIPersistentReservation struct {
+		Key            string
+		NoPreemptAbort bool
+		Enabled        bool
 	}
 
 	// ProvisionStatus define if and when the resource became provisioned.
@@ -961,3 +970,45 @@ func (exposedStatus ExposedStatus) DeepCopy() *ExposedStatus {
 	}
 	return &ExposedStatus{}
 }
+
+func (t SCSIPersistentReservation) IsSCSIPersistentReservationPreemptAbortDisabled() bool {
+	return t.NoPreemptAbort
+}
+
+func (t SCSIPersistentReservation) IsSCSIPersistentReservationEnabled() bool {
+	return t.Enabled
+}
+
+func (t SCSIPersistentReservation) PersistentReservationKey() string {
+	if t.Key != "" {
+		return t.Key
+	}
+	if nodePRKey := rawconfig.NodeSection().PRKey; nodePRKey != "" {
+		return nodePRKey
+	}
+	return ""
+}
+
+var (
+	SCSIPersistentReservationKeywords = []keywords.Keyword{
+		{
+			Option:   "prkey",
+			Attr:     "SCSIPersistentReservation.Key",
+			Scopable: true,
+			Text:     "Defines a specific persistent reservation key for the resource. Takes priority over the service-level defined prkey and the node.conf specified prkey.",
+		},
+		{
+			Option:    "no_preempt_abort",
+			Attr:      "SCSIPersistentReservation.NoPreemptAbort",
+			Scopable:  true,
+			Converter: converters.Bool,
+			Text:      "If set to ``true``, OpenSVC will preempt scsi reservation with a preempt command instead of a preempt and and abort. Some scsi target implementations do not support this last mode (esx). If set to ``false`` or not set, :kw:`no_preempt_abort` can be activated on a per-resource basis.",
+		},
+		{
+			Option:    "scsireserv",
+			Attr:      "SCSIPersistentReservation.Enabled",
+			Converter: converters.Bool,
+			Text:      "If set to ``true``, OpenSVC will try to acquire a type-5 (write exclusive, registrant only) scsi3 persistent reservation on every path to every disks held by this resource. Existing reservations are preempted to not block service start-up. If the start-up was not legitimate the data are still protected from being written over from both nodes. If set to ``false`` or not set, :kw:`scsireserv` can be activated on a per-resource basis.",
+		},
+	}
+)
