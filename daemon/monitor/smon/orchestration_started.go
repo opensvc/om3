@@ -20,13 +20,11 @@ func (o *smon) orchestrateStarted() {
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
-	if !o.instStatus[o.localhost].Frozen.IsZero() {
-		o.startedFromFrozen()
-		return
-	}
 	switch o.state.Status {
 	case statusIdle:
 		o.startedFromIdle()
+	case statusThawed:
+		o.startedFromThawed()
 	case statusReady:
 		o.startedFromReady()
 	case statusStartFailed:
@@ -43,11 +41,24 @@ func (o *smon) orchestrateStarted() {
 
 // startedFromIdle handle global expect started orchestration from idle
 //
+// frozen => try startedFromFrozen
+// else   => try startedFromThawed
+func (o *smon) startedFromIdle() {
+	if !o.instStatus[o.localhost].Frozen.IsZero() {
+		o.startedFromFrozen()
+		return
+	} else {
+		o.startedFromThawed()
+	}
+}
+
+// startedFromThawed
+//
 // local started => unset global expect, set local expect started
 // svcagg.Avail Up => unset global expect, unset local expect
 // better candidate => no actions
 // else => state -> ready, start ready routine
-func (o *smon) startedFromIdle() {
+func (o *smon) startedFromThawed() {
 	if o.startedClearIfReached() {
 		return
 	}
@@ -59,8 +70,7 @@ func (o *smon) startedFromIdle() {
 		o.log.Debug().Msg("another node acting")
 		return
 	}
-	o.change = true
-	o.state.Status = statusReady
+	o.transitionTo(statusReady)
 	o.createPendingWithDuration(readyDuration)
 	go func(ctx context.Context) {
 		select {
@@ -76,54 +86,34 @@ func (o *smon) startedFromIdle() {
 	}(o.pendingCtx)
 }
 
+// startedFromFrozen idle -> thawing -> thawed or thawed failed
 func (o *smon) startedFromFrozen() {
-	o.change = true
-	o.state.Status = statusThawing
-	go func() {
-		o.log.Info().Msg("run action unfreeze")
-		if err := o.crmUnfreeze(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
-		}
-	}()
+	o.doAction(o.crmUnfreeze, statusThawing, statusThawed, statusThawedFailed)
 }
 
 func (o *smon) startedFromReady() {
 	if o.pendingCancel == nil {
-		o.log.Error().Msg("startedFromReady without pending")
-		o.change = true
-		o.state.Status = statusIdle
+		o.log.Error().Msg(o.logMsg("startedFromReady without pending"))
+		o.transitionTo(statusIdle)
 		return
 	}
 	if o.startedClearIfReached() {
 		return
 	}
 	if o.hasBetterCandidateForStarted() {
-		o.log.Info().Msg("another better candidate exists, leave ready state")
-		o.change = true
-		o.state.Status = statusIdle
+		o.log.Info().Msg(o.logMsg("another better candidate exists, leave ready state"))
+		o.transitionTo(statusIdle)
 		o.clearPending()
 		return
 	}
 	select {
 	case <-o.pendingCtx.Done():
-		o.change = true
 		defer o.clearPending()
 		if o.pendingCtx.Err() == context.Canceled {
-			o.state.Status = statusIdle
+			o.transitionTo(statusIdle)
 			return
 		}
-		o.state.Status = statusStarting
-		o.updateIfChange()
-		go func() {
-			o.log.Info().Msg("run action start")
-			if err := o.crmStart(); err != nil {
-				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStarting, newState: statusStartFailed})
-			} else {
-				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStarting, newState: statusIdle})
-			}
-		}()
+		o.doAction(o.crmStart, statusStarting, statusIdle, statusStartFailed)
 		return
 	default:
 		return
@@ -139,7 +129,7 @@ func (o *smon) startedFromAny() {
 
 func (o *smon) startedFromStartFailed() {
 	if o.svcAgg.Avail == status.Up {
-		o.log.Info().Msg("clear start failed (aggregated status is up)")
+		o.log.Info().Msg(o.logMsg("clear start failed (aggregated status is up)"))
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		o.state.Status = statusIdle
@@ -149,7 +139,7 @@ func (o *smon) startedFromStartFailed() {
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		o.log.Info().Msg("local status is started, unset global expect")
+		o.log.Info().Msg(o.logMsg("local status is started, unset global expect"))
 		o.change = true
 		o.state.Status = statusIdle
 		o.state.GlobalExpect = globalExpectUnset
@@ -160,7 +150,7 @@ func (o *smon) startedClearIfReached() bool {
 		return true
 	}
 	if o.svcAgg.Avail == status.Up {
-		o.log.Info().Msg("aggregated status is up, unset global expect")
+		o.log.Info().Msg(o.logMsg("aggregated status is up, unset global expect"))
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		o.state.Status = statusIdle
@@ -182,6 +172,8 @@ func (o *smon) hasBetterCandidateForStarted() bool {
 				return true
 			}
 		case statusStarting:
+			return true
+		case statusStarted:
 			return true
 		}
 	}
