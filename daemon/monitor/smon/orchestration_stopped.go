@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 var (
@@ -19,13 +18,11 @@ func (o *smon) orchestrateStopped() {
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
-	if o.instStatus[o.localhost].Frozen.IsZero() {
-		o.stoppedFromThawed()
-		return
-	}
 	switch o.state.Status {
 	case statusIdle:
 		o.stoppedFromIdle()
+	case statusFrozen:
+		o.stoppedFromFrozen()
 	case statusFreezing:
 	case statusReady:
 		o.stoppedFromReady()
@@ -40,38 +37,28 @@ func (o *smon) orchestrateStopped() {
 }
 
 func (o *smon) stoppedFromThawed() {
-	o.change = true
-	o.state.Status = statusFreezing
-	go func() {
-		o.log.Info().Msg("run action freeze")
-		if err := o.crmFreeze(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusFreezing, newState: statusIdle})
-		}
-	}()
+	o.doAction(o.crmFreeze, statusFreezing, statusIdle, statusFreezeFailed)
 }
 
 // stoppedFromIdle handle global expect stopped orchestration from idle
 //
-// local stopped => unset global expect, unset local expect
-// else => state -> stopping, start stop routine
+// local thawed => freezing to reach frozen
+// else         => stopping
 func (o *smon) stoppedFromIdle() {
+	if o.instStatus[o.localhost].Frozen.IsZero() {
+		o.doAction(o.crmFreeze, statusFreezing, statusFrozen, statusFreezeFailed)
+		return
+	} else {
+		o.stoppedFromFrozen()
+	}
+}
+
+func (o *smon) stoppedFromFrozen() {
 	if o.stoppedClearIfReached() {
 		return
 	}
-	o.change = true
-	o.state.Status = statusStopping
-	o.updateIfChange()
 	o.createPendingWithDuration(stopDuration)
-	go func() {
-		o.log.Info().Msg("run action stop")
-		if err := o.crmStop(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusStopFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusIdle})
-		}
-	}()
+	o.doAction(o.crmStop, statusStopping, statusIdle, statusStopFailed)
 }
 
 func (o *smon) stoppedFromReady() {
@@ -98,11 +85,14 @@ func (o *smon) stoppedFromAny() {
 
 func (o *smon) stoppedClearIfReached() bool {
 	if o.isLocalStopped() {
-		o.log.Info().Msg("local status is stopped, unset global expect")
+		o.log.Info().Msg(o.logMsg("local status is stopped, unset global expect"))
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusIdle {
 			o.state.LocalExpect = statusIdle
+		}
+		if o.state.Status != statusIdle {
+			o.state.Status = statusIdle
 		}
 		o.clearPending()
 		return true
