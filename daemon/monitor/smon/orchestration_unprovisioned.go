@@ -26,6 +26,7 @@ func (o *smon) UnProvisionedFromIdle() {
 
 func (o *smon) UnProvisionedFromWaitNonLeader() {
 	if o.UnProvisionedClearIfReached() {
+		o.transitionTo(statusIdle)
 		return
 	}
 	if !o.isUnprovisionLeader() {

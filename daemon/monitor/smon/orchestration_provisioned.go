@@ -1,9 +1,5 @@
 package smon
 
-import (
-	"opensvc.com/opensvc/daemon/msgbus"
-)
-
 func (o *smon) orchestrateProvisioned() {
 	if !o.isConvergedGlobalExpect() {
 		return
@@ -21,50 +17,28 @@ func (o *smon) provisionedFromIdle() {
 		return
 	}
 	if o.isProvisioningLeader() {
-		o.change = true
-		o.state.Status = statusProvisioning
-		o.updateIfChange()
-		go func() {
-			o.log.Info().Msg("run action provision leader for provisioned global expect")
-			if err := o.crmProvisionLeader(); err != nil {
-				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
-			} else {
-				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
-			}
-		}()
+		o.doAction(o.crmProvisionLeader, statusProvisioning, statusIdle, statusProvisionFailed)
 		return
+	} else {
+		o.transitionTo(statusWaitLeader)
 	}
-	o.change = true
-	o.state.Status = statusWaitLeader
-	o.updateIfChange()
 }
 
 func (o *smon) provisionedFromWaitLeader() {
 	if o.provisionedClearIfReached() {
-		o.change = true
-		o.state.Status = statusIdle
+		o.transitionTo(statusIdle)
 		return
 	}
 	if !o.hasLeaderProvisioned() {
 		return
 	}
-	o.change = true
-	o.state.Status = statusProvisioning
-	o.updateIfChange()
-	go func() {
-		o.log.Info().Msg("run action provision non leader for provisioned global expect")
-		if err := o.crmProvisionNonLeader(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusProvisionFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusProvisioning, newState: statusIdle})
-		}
-	}()
+	o.doAction(o.crmProvisionNonLeader, statusProvisioning, statusIdle, statusProvisionFailed)
 	return
 }
 
 func (o *smon) provisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.Bool() {
-		o.log.Info().Msg("local status provisioned, unset global expect")
+		o.log.Info().Msg("global expect provisioned local status provisioned, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusIdle {

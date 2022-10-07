@@ -44,75 +44,29 @@ func (o *smon) purgedFromDeleted() {
 }
 
 func (o *smon) purgedFromUnProvisioned() {
-	o.change = true
-	o.state.Status = statusDeleting
-	o.updateIfChange()
-	go func() {
-		o.log.Info().Msg("run action delete")
-		if err := o.crmDelete(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusDeleting, newState: statusPurgeFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusDeleting, newState: statusDeleted})
-		}
-	}()
-	return
+	o.doAction(o.crmDelete, statusDeleting, statusDeleted, statusPurgeFailed)
 }
 
 func (o *smon) purgedFromIdleUp() {
-	o.change = true
-	o.state.Status = statusStopping
-	o.updateIfChange()
-	go func() {
-		o.log.Info().Msg("run action stop")
-		if err := o.crmStop(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusStopFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusStopping, newState: statusIdle})
-		}
-	}()
-	return
+	o.doAction(o.crmStop, statusStopping, statusIdle, statusStopFailed)
 }
 
 func (o *smon) purgedFromIdleProvisioned() {
-	leader := o.isUnprovisionLeader()
-	if leader {
-		o.change = true
-		o.state.Status = statusWaitNonLeader
-		o.updateIfChange()
+	if o.isUnprovisionLeader() {
+		o.transitionTo(statusWaitNonLeader)
+		o.purgedFromWaitNonLeader()
 		return
 	}
-	o.change = true
-	o.state.Status = statusUnProvisioning
-	o.updateIfChange()
-	go func() {
-		o.log.Info().Msgf("run action unprovision leader=%v for purged global expect", leader)
-		if err := o.crmUnprovision(false); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusPurgeFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisioned})
-		}
-	}()
-	return
+	o.doAction(o.crmUnprovisionNonLeader, statusUnProvisioning, statusUnProvisioned, statusPurgeFailed)
 }
 
 func (o *smon) purgedFromWaitNonLeader() {
-	leader := o.isUnprovisionLeader()
-	if !leader {
-		o.change = true
-		o.state.Status = statusIdle
-		o.updateIfChange()
+	if !o.isUnprovisionLeader() {
+		o.transitionTo(statusIdle)
 		return
 	}
-	o.change = true
-	o.state.Status = statusUnProvisioning
-	o.updateIfChange()
-	go func() {
-		o.log.Info().Msgf("run action unprovision leader=%v for purged global expect", leader)
-		if err := o.crmUnprovision(true); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusPurgeFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisioned})
-		}
-	}()
-	return
+	if o.hasNonLeaderProvisioned() {
+		return
+	}
+	o.doAction(o.crmUnprovisionLeader, statusUnProvisioning, statusUnProvisioned, statusPurgeFailed)
 }
