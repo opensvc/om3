@@ -1,7 +1,5 @@
 package smon
 
-import "opensvc.com/opensvc/daemon/msgbus"
-
 func (o *smon) orchestrateUnProvisioned() {
 	if !o.isConvergedGlobalExpect() {
 		return
@@ -9,6 +7,8 @@ func (o *smon) orchestrateUnProvisioned() {
 	switch o.state.Status {
 	case statusIdle:
 		o.UnProvisionedFromIdle()
+	case statusWaitNonLeader:
+		o.UnProvisionedFromWaitNonLeader()
 	}
 }
 
@@ -16,23 +16,47 @@ func (o *smon) UnProvisionedFromIdle() {
 	if o.UnProvisionedClearIfReached() {
 		return
 	}
-	o.change = true
-	o.state.Status = statusUnProvisioning
-	o.updateIfChange()
-	go func() {
-		o.log.Info().Msg("run action unprovision")
-		if err := o.crmUnprovisionLeader(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusUnProvisionFailed})
-		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusUnProvisioning, newState: statusIdle})
+	if o.isUnprovisionLeader() {
+		o.transitionTo(statusWaitNonLeader)
+		return
+	} else {
+		o.doAction(o.crmUnprovisionNonLeader, statusUnProvisioning, statusIdle, statusUnProvisionFailed)
+	}
+}
+
+func (o *smon) UnProvisionedFromWaitNonLeader() {
+	if o.UnProvisionedClearIfReached() {
+		o.transitionTo(statusIdle)
+		return
+	}
+	if !o.isUnprovisionLeader() {
+		o.transitionTo(statusIdle)
+		return
+	}
+	if o.hasNonLeaderProvisioned() {
+		return
+	}
+	o.doAction(o.crmUnprovisionLeader, statusUnProvisioning, statusIdle, statusUnProvisionFailed)
+}
+
+func (o *smon) hasNonLeaderProvisioned() bool {
+	for _, node := range o.scopeNodes {
+		if node == o.localhost {
+			continue
 		}
-	}()
-	return
+		if otherInstStatus, ok := o.instStatus[node]; ok {
+			if otherInstStatus.Provisioned.Bool() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (o *smon) UnProvisionedClearIfReached() bool {
 	if !o.instStatus[o.localhost].Provisioned.Bool() {
-		o.log.Info().Msg("local status is not provisioned, unset global expect")
+		//o.log.Info().Msg("global expect unprovisioned local status is not provisioned, unset global expect")
+		o.log.Info().Msg(o.logMsg("local status is not provisioned, unset global expect"))
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusIdle {
@@ -41,4 +65,8 @@ func (o *smon) UnProvisionedClearIfReached() bool {
 		return true
 	}
 	return false
+}
+
+func (o *smon) isUnprovisionLeader() bool {
+	return o.isProvisioningLeader()
 }

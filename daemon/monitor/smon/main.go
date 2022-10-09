@@ -20,6 +20,7 @@ package smon
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -75,6 +76,7 @@ var (
 	statusDeleting          = "deleting"
 	statusFreezeFailed      = "freeze failed"
 	statusFreezing          = "freezing"
+	statusFrozen            = "frozen"
 	statusIdle              = "idle"
 	statusProvisioned       = "provisioned"
 	statusProvisioning      = "provisioning"
@@ -86,12 +88,14 @@ var (
 	statusStarting          = "starting"
 	statusStopFailed        = "stop failed"
 	statusStopping          = "stopping"
+	statusThawed            = "thawed"
 	statusThawedFailed      = "unfreeze failed"
 	statusThawing           = "thawing"
 	statusUnProvisioned     = "unprovisioned"
 	statusUnProvisionFailed = "unprovision failed"
 	statusUnProvisioning    = "unprovisioning"
 	statusWaitLeader        = "wait leader"
+	statusWaitNonLeader     = "wait non-leader"
 
 	localExpectStarted = "started"
 	localExpectUnset   = ""
@@ -215,6 +219,12 @@ func (o *smon) update() {
 	}
 }
 
+func (o *smon) transitionTo(newState string) {
+	o.change = true
+	o.state.Status = newState
+	o.updateIfChange()
+}
+
 // updateIfChange log updates and publish new state value when changed
 func (o *smon) updateIfChange() {
 	if !o.change {
@@ -224,16 +234,20 @@ func (o *smon) updateIfChange() {
 	o.state.StatusUpdated = time.Now()
 	previousVal := o.previousState
 	newVal := o.state
-	if newVal.Status != previousVal.Status {
-		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
+	fromGeS, toGeS := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
+	if newVal.GlobalExpect != previousVal.GlobalExpect {
+		if previousVal.GlobalExpect != globalExpectUnset {
+			o.log.Info().Msg(o.logMsgf("change monitor global expect %s -> %s", fromGeS, toGeS))
+		} else {
+			o.log.Info().Msgf("change monitor global expect %s -> %s", fromGeS, toGeS)
+		}
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
 		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
-		o.log.Info().Msgf("change monitor local expect %s -> %s", from, to)
+		o.log.Info().Msgf(o.logMsgf("change monitor local expect %s -> %s", from, to))
 	}
-	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		from, to := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
-		o.log.Info().Msgf("change monitor global expect %s -> %s", from, to)
+	if newVal.Status != previousVal.Status {
+		o.log.Info().Msgf(o.logMsgf("change monitor state %s -> %s", previousVal.Status, newVal.Status))
 	}
 	o.previousState = o.state
 	o.update()
@@ -275,4 +289,28 @@ func (o *smon) logFromTo(from, to string) (string, string) {
 		to = "unset"
 	}
 	return from, to
+}
+
+func (o *smon) logMsg(s string) string {
+	var msg string
+	if o.state.GlobalExpect != globalExpectUnset {
+		msg = "global expect " + o.state.GlobalExpect
+	}
+	if o.state.LocalExpect != statusIdle && o.state.LocalExpect != localExpectUnset {
+		msgLocalExpect := "local expect " + o.state.LocalExpect
+		if msg != "" {
+			msg += " " + msgLocalExpect
+		} else {
+			msg = msgLocalExpect
+		}
+	}
+	if msg != "" {
+		return msg + " " + s
+	}
+	return s
+}
+
+func (o *smon) logMsgf(format string, v ...interface{}) string {
+	s := fmt.Sprintf(format, v...)
+	return o.logMsg(s)
 }
