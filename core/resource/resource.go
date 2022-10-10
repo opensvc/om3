@@ -46,6 +46,14 @@ type (
 		Setenv()
 	}
 
+	StatusLogger interface {
+		Info(string, ...any)
+		Warn(string, ...any)
+		Error(string, ...any)
+		Reset()
+		Entries() []*StatusLogEntry
+	}
+
 	// Driver exposes what can be done with a resource
 	Driver interface {
 		Label() string
@@ -58,6 +66,7 @@ type (
 		Unprovision(context.Context) error
 
 		// common
+		StatusLog() StatusLogger
 		Trigger(trigger.Blocking, trigger.Hook, trigger.Action) error
 		Log() *zerolog.Logger
 		ID() *resourceid.T
@@ -74,14 +83,13 @@ type (
 		RID() string
 		RSubset() string
 		GetObjectDriver() ObjectDriver
-		SetObject(interface{})
-		GetObject() interface{}
+		SetObject(any)
+		GetObject() any
 		SetRID(string) error
 		SetPG(*pg.Config)
 		GetPG() *pg.Config
 		GetPGID() string
 		ApplyPGChain(context.Context) error
-		StatusLog() *StatusLog
 		TagSet() TagSet
 		VarDir() string
 		Requires(string) *resourcereqs.T
@@ -130,9 +138,25 @@ type (
 
 		statusLog    StatusLog
 		log          zerolog.Logger
-		object       interface{}
+		object       any
 		objectDriver ObjectDriver
 		pg           *pg.Config
+	}
+
+	// devReservabler is an interface implemented by resource drivers that want the core resource
+	// to handle SCSI persistent reservation on a list of devices.
+	devReservabler interface {
+		// ReservableDevices must be implement by every driver that wants SCSI PR.
+		ReservableDevices() []*device.T
+
+		// IsSCSIPersistentReservationPreemptAbortDisabled is exposing the resource no_preempt_abort keyword value.
+		IsSCSIPersistentReservationPreemptAbortDisabled() bool
+
+		// IsSCSIPersistentReservationEnabled is exposing the scsireserv resource keyword value.
+		IsSCSIPersistentReservationEnabled() bool
+
+		// PersistentReservationKey is exposing the prkey resource keyword value.
+		PersistentReservationKey() string
 	}
 
 	SCSIPersistentReservation struct {
@@ -194,7 +218,7 @@ type (
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
-		Info map[string]interface{} `json:"info,omitempty"`
+		Info map[string]any `json:"info,omitempty"`
 
 		// Restart is the number of restart to be tried before giving up.
 		Restart RestartFlag `json:"restart,omitempty"`
@@ -350,7 +374,7 @@ func (t T) RSubset() string {
 }
 
 // StatusLog returns a reference to the resource log
-func (t *T) StatusLog() *StatusLog {
+func (t *T) StatusLog() StatusLogger {
 	return &t.statusLog
 }
 
@@ -418,7 +442,7 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 }
 
 // SetObject holds the useful interface of the parent object of the resource.
-func (t *T) SetObject(o interface{}) {
+func (t *T) SetObject(o any) {
 	if _, ok := o.(ObjectDriver); !ok {
 		panic("SetObject accepts only ObjectDriver")
 	}
@@ -427,7 +451,7 @@ func (t *T) SetObject(o interface{}) {
 }
 
 // GetObject returns the object interface set by SetObjectriver upon configure.
-func (t T) GetObject() interface{} {
+func (t T) GetObject() any {
 	return t.object
 }
 
@@ -488,7 +512,7 @@ func (t T) MatchTag(s string) bool {
 
 func (t T) TagSet() TagSet {
 	s := make(TagSet, 0)
-	t.Tags.Do(func(e interface{}) { s = append(s, e.(string)) })
+	t.Tags.Do(func(e any) { s = append(s, e.(string)) })
 	return s
 }
 
@@ -723,7 +747,7 @@ func Start(ctx context.Context, r Driver) error {
 
 // Resync deactivates a resource interfacer
 func Resync(ctx context.Context, r Driver) error {
-	var i interface{} = r
+	var i any = r
 	s, ok := i.(resyncer)
 	if !ok {
 		return nil
@@ -780,8 +804,9 @@ func Status(ctx context.Context, r Driver) status.T {
 	if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
-		if err := SCSIPersistentReservationStatus(r, s); err != nil {
-			r.StatusLog().Warn(fmt.Sprint(err))
+		prStatus := SCSIPersistentReservationStatus(r)
+		if s == status.NotApplicable {
+			s.Add(prStatus)
 		}
 	}
 	if r.IsStandby() {
@@ -798,20 +823,6 @@ func Status(ctx context.Context, r Driver) status.T {
 	return s
 }
 
-type devReservabler interface {
-	// ReservableDevices must be implement by every driver that wants SCSI PR.
-	ReservableDevices() []*device.T
-
-	// IsSCSIPersistentReservationPreemptAbortDisabled is exposing the resource no_preempt_abort keyword value.
-	IsSCSIPersistentReservationPreemptAbortDisabled() bool
-
-	// IsSCSIPersistentReservationEnabled is exposing the scsireserv resource keyword value.
-	IsSCSIPersistentReservationEnabled() bool
-
-	// PersistentReservationKey is exposing the prkey resource keyword value.
-	PersistentReservationKey() string
-}
-
 func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHandle {
 	var i any = r
 	o, ok := i.(devReservabler)
@@ -822,10 +833,11 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 		return nil
 	}
 	hdl := scsi.PersistentReservationHandle{
-		Key:       o.PersistentReservationKey(),
-		Devices:   o.ReservableDevices(),
-		NoPreempt: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
-		Log:       r.Log(),
+		Key:          o.PersistentReservationKey(),
+		Devices:      o.ReservableDevices(),
+		NoPreempt:    o.IsSCSIPersistentReservationPreemptAbortDisabled(),
+		Log:          r.Log(),
+		StatusLogger: r.StatusLog(),
 	}
 	return &hdl
 }
@@ -846,15 +858,11 @@ func SCSIPersistentReservationStart(r Driver) error {
 	}
 }
 
-func SCSIPersistentReservationStatus(r Driver, s status.T) error {
+func SCSIPersistentReservationStatus(r Driver) status.T {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
-		return nil
-	} else if s == status.Up {
-		return hdl.StartedStatus()
-	} else if s == status.Down {
-		return hdl.StoppedStatus()
+		return status.NotApplicable
 	} else {
-		return nil
+		return hdl.Status()
 	}
 }
 
@@ -938,11 +946,11 @@ func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f fun
 	return f()
 }
 
-func exposedStatusInfo(t Driver) (data map[string]interface{}) {
+func exposedStatusInfo(t Driver) (data map[string]any) {
 	if i, ok := t.(StatusInfoer); ok {
 		data = i.StatusInfo()
 	} else {
-		data = make(map[string]interface{})
+		data = make(map[string]any)
 	}
 	if i, ok := t.(Scheduler); ok {
 		data["sched"] = exposedStatusInfoSched(i)

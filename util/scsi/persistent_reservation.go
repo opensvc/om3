@@ -1,12 +1,14 @@
 package scsi
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -22,12 +24,19 @@ type (
 		PreemptAbort(dev device.T, oldKey, newKey string) error
 	}
 
+	statusLogger interface {
+		Info(s string, args ...any)
+		Warn(s string, args ...any)
+		Error(s string, args ...any)
+	}
+
 	PersistentReservationHandle struct {
-		Key       string
-		Devices   []*device.T
-		NoPreempt bool
-		Log       *zerolog.Logger
-		driver    PersistentReservationDriver
+		Key                         string
+		Devices                     []*device.T
+		NoPreempt                   bool
+		Log                         *zerolog.Logger
+		StatusLogger                statusLogger
+		persistentReservationDriver PersistentReservationDriver
 	}
 )
 
@@ -51,64 +60,69 @@ func (t PersistentReservationHandle) countHandledRegistrations(registrations []s
 	return n
 }
 
-func (t *PersistentReservationHandle) StoppedStatus() error {
+func (t *PersistentReservationHandle) Status() status.T {
 	if err := t.setup(); err != nil {
-		return err
+		t.StatusLogger.Error("%s", err)
+		return status.Undef
 	}
 	if len(t.Devices) == 0 {
-		return nil
+		return status.NotApplicable
 	}
-	var errs error
+	agg := status.Undef
 	for _, dev := range t.Devices {
-		if reservation, err := t.driver.ReadReservation(*dev); err != nil {
-			errs = xerrors.Append(errs, err)
-		} else if reservation == t.Key {
-			errs = xerrors.Append(errs, errors.Errorf("%s is reserved with local host key %s", dev, reservation, t.Key))
+		if dev == nil {
+			continue
 		}
-		expectedRegistrationCount := 0
-		if registrations, err := t.driver.ReadRegistrations(*dev); err != nil {
-			errs = xerrors.Append(errs, err)
-		} else if t.countHandledRegistrations(registrations) != expectedRegistrationCount {
-			errs = xerrors.Append(errs, errors.Errorf("%d/%d registrations", dev, len(registrations), expectedRegistrationCount))
-		}
+		s := t.DeviceStatus(*dev)
+		agg.Add(s)
 	}
-	return errs
+	return agg
 }
 
-func (t *PersistentReservationHandle) StartedStatus() error {
-	if err := t.setup(); err != nil {
-		return err
+func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
+	var reservationMsg string
+	s := status.Down
+	if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
+		t.StatusLogger.Error("%s", err)
+	} else if reservation == "" {
+		reservationMsg = fmt.Sprintf("%s is not reserved", dev)
+	} else if reservation != t.Key {
+		reservationMsg = fmt.Sprintf("%s is reserved by %s", dev, reservation)
+	} else {
+		reservationMsg = fmt.Sprintf("%s is reserved", dev)
+		s = status.Up
 	}
-	if len(t.Devices) == 0 {
-		return nil
+
+	var expectedRegistrationCount int
+	if s == status.Up {
+		expectedRegistrationCount = 2 // TODO: real count
 	}
-	var errs error
-	for _, dev := range t.Devices {
-		if reservation, err := t.driver.ReadReservation(*dev); err != nil {
-			errs = xerrors.Append(errs, err)
-		} else if reservation != t.Key {
-			errs = xerrors.Append(errs, errors.Errorf("%s is reserved by %s, expected %s", dev, reservation, t.Key))
+
+	if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err != nil {
+		t.StatusLogger.Error("%s", err)
+		s = status.Undef
+	} else if t.countHandledRegistrations(registrations) != expectedRegistrationCount {
+		t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, len(registrations), expectedRegistrationCount)
+		s.Add(status.Warn)
+	} else {
+		t.StatusLogger.Info("%s, %d/%d registrations", reservationMsg, len(registrations), expectedRegistrationCount)
+		if expectedRegistrationCount > 0 {
+			s.Add(status.Up)
 		}
-		expectedRegistrationCount := 2 // TODO
-		if registrations, err := t.driver.ReadRegistrations(*dev); err != nil {
-			errs = xerrors.Append(errs, err)
-		} else if t.countHandledRegistrations(registrations) != expectedRegistrationCount {
-			errs = xerrors.Append(errs, errors.Errorf("%d/%d registrations", dev, len(registrations), expectedRegistrationCount))
-		}
 	}
-	return errs
+	return s
 }
 
 func (t *PersistentReservationHandle) setup() error {
-	if t.driver != nil {
+	if t.persistentReservationDriver != nil {
 		return nil
 	}
 	if capabilities.Has(MpathPersistCapability) {
-		t.driver = MpathPersistDriver{
+		t.persistentReservationDriver = MpathPersistDriver{
 			Log: t.Log,
 		}
 	} else if capabilities.Has(SGPersistCapability) {
-		t.driver = SGPersistDriver{
+		t.persistentReservationDriver = SGPersistDriver{
 			Log: t.Log,
 		}
 	} else {
@@ -122,10 +136,10 @@ func (t *PersistentReservationHandle) Start() error {
 		return err
 	}
 	for _, dev := range t.Devices {
-		if err := t.driver.Register(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Register(*dev, t.Key); err != nil {
 			return err
 		}
-		if err := t.driver.Reserve(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Reserve(*dev, t.Key); err != nil {
 			return err
 		}
 	}
@@ -137,10 +151,10 @@ func (t *PersistentReservationHandle) Stop() error {
 		return err
 	}
 	for _, dev := range t.Devices {
-		if err := t.driver.Release(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Release(*dev, t.Key); err != nil {
 			return err
 		}
-		if err := t.driver.Unregister(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Unregister(*dev, t.Key); err != nil {
 			return err
 		}
 	}
