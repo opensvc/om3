@@ -101,14 +101,18 @@ func (t *CmdObjectLogs) stream(node string, paths path.L) {
 	}
 }
 
+func nodesFromPath(p path.T) []string {
+	o, err := object.NewCore(p, object.WithVolatile(true))
+	if err != nil {
+		return []string{}
+	}
+	return o.Nodes()
+}
+
 func nodesFromPaths(paths path.L) []string {
 	m := make(map[string]any)
 	for _, p := range paths {
-		o, err := object.NewCore(p, object.WithVolatile(true))
-		if err != nil {
-			continue
-		}
-		for _, node := range o.Nodes() {
+		for _, node := range nodesFromPath(p) {
 			m[node] = nil
 		}
 	}

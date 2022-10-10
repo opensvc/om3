@@ -21,6 +21,8 @@ isolate lifecycles or to abstract cluster-specific knowledge.
 
 func init() {
 	var (
+		cmdAbort                     commands.CmdObjectAbort
+		cmdClear                     commands.CmdObjectClear
 		cmdCreate                    commands.CmdObjectCreate
 		cmdComplianceAttachModuleset commands.CmdObjectComplianceAttachModuleset
 		cmdComplianceDetachModuleset commands.CmdObjectComplianceDetachModuleset
@@ -72,6 +74,8 @@ func init() {
 	kind := "svc"
 	if head := makeSubSVC(); head != nil {
 		root.AddCommand(head)
+		cmdAbort.Init(kind, head, &selectorFlag)
+		cmdClear.Init(kind, head, &selectorFlag)
 		cmdCreate.Init(kind, head, &selectorFlag)
 		cmdDoc.Init(kind, head, &selectorFlag)
 		cmdDelete.Init(kind, head, &selectorFlag)

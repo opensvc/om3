@@ -149,7 +149,7 @@ func (t T) doReqReadResponse(method string, r request.T) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("%s: %s", r, resp.Status)
+		return nil, errors.Errorf("%s: %s: %s", t, r, resp.Status)
 	}
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {

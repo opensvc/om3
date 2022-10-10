@@ -49,6 +49,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectFile'
+  /object/abort:
+    post:
+      operationId: PostObjectAbort
+      requestBody:
+        description: Abort orchestration currently running on a selection of objects.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectAbort'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /object/clear:
+    post:
+      operationId: PostObjectClear
+      requestBody:
+        description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectClear'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /object/monitor:
     post:
       operationId: PostObjectMonitor
@@ -238,6 +276,20 @@ components:
           type: string
           format: date-time
         kind:
+          type: string
+    PostObjectAbort:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+    PostObjectClear:
+      type: object
+      required:
+        - path
+      properties:
+        path:
           type: string
     PostObjectMonitor:
       type: object
