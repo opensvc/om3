@@ -138,6 +138,40 @@ func (t T) Driver() (interface{}, error) {
 	return devicedriver.NewFromMajor(major, devicedriver.WithLogger(t.log)), nil
 }
 
+func (t T) IsReservable() (bool, error) {
+	if v, err := t.IsMultipath(); err != nil {
+		return false, err
+	} else if v {
+		return true, nil
+	}
+	if v, err := t.IsSCSI(); err != nil {
+		return false, err
+	} else if v {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (t T) IsMultipath() (bool, error) {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return false, err
+	}
+	p += "/dm/uuid"
+	b, err := ioutil.ReadFile(p)
+	switch {
+	case os.IsNotExist(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	}
+	s := string(b)
+	if strings.HasPrefix(s, "mpath") {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (t T) IsSCSI() (bool, error) {
 	if p, err := t.sysfsFile(); err != nil {
 		return false, err

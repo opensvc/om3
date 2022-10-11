@@ -453,6 +453,10 @@ func (t T) ExposedDevices() []*device.T {
 	return []*device.T{t.exposedDevice()}
 }
 
+func (t *T) ReservableDevices() []*device.T {
+	return t.SubDevices()
+}
+
 func (t T) SubDevices() []*device.T {
 	devp := t.getDev()
 	if devp == "" {

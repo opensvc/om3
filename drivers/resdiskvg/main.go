@@ -194,6 +194,10 @@ func (t T) ClaimedDevices() []*device.T {
 	return t.SubDevices()
 }
 
+func (t *T) ReservableDevices() []*device.T {
+	return t.SubDevices()
+}
+
 func (t T) SubDevices() []*device.T {
 	if l, err := t.vg().PVs(); err != nil {
 		t.Log().Debug().Err(err).Msg("")

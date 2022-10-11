@@ -91,10 +91,10 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	case err != nil:
 		t.StatusLogger.Error("%s exist: %s", dev, err)
 	}
-	if v, err := dev.IsSCSI(); err != nil {
-		t.StatusLogger.Error("%s is scsi: %s", dev, err)
+	if v, err := dev.IsReservable(); err != nil {
+		t.StatusLogger.Error("%s is reservable: %s", dev, err)
 	} else if !v {
-		t.StatusLogger.Info("%s is not reservable: not a scsi device", dev)
+		t.StatusLogger.Info("%s is not reservable: not a scsi or mpath device", dev)
 		return status.NotApplicable
 	}
 	if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
@@ -116,14 +116,16 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err != nil {
 		t.StatusLogger.Error("%s read registrations: %s", dev, err)
 		s = status.Undef
-	} else if t.countHandledRegistrations(registrations) != expectedRegistrationCount {
-		t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, len(registrations), expectedRegistrationCount)
-		s.Add(status.Warn)
-	} else {
-		t.StatusLogger.Info("%s, %d/%d registrations", reservationMsg, len(registrations), expectedRegistrationCount)
-		if expectedRegistrationCount > 0 {
+	} else if handledRegistrationCount := t.countHandledRegistrations(registrations); handledRegistrationCount == expectedRegistrationCount {
+		if expectedRegistrationCount == 0 {
+			t.StatusLogger.Info("%s, no registrations", reservationMsg)
+		} else {
+			t.StatusLogger.Info("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
 			s.Add(status.Up)
 		}
+	} else {
+		t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
+		s.Add(status.Warn)
 	}
 
 	// Report n/a instead of up for scsireserv status if a dev is ro

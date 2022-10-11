@@ -264,7 +264,6 @@ func (t T) Label() string {
 	return t.Name
 }
 
-//
 // poolImport imports the pool.
 // 1/ try using a dev list cache, which is fastest
 // 2/ fallback without dev list cache
@@ -272,7 +271,6 @@ func (t T) Label() string {
 // Parallel import can fail on Solaris 11.4, with a "no such
 // pool available" error. Retry in this case, if we confirm the
 // pool exists.
-//
 func (t T) poolImport() error {
 	var err error
 	for i := 0; i < 10; i += 1 {
@@ -426,6 +424,10 @@ func (t T) SubDevices() []*device.T {
 		t.Log().Debug().Err(errLoad).Msg("load sub devs cache")
 		return []*device.T{}
 	}
+}
+
+func (t *T) ReservableDevices() []*device.T {
+	return t.SubDevices()
 }
 
 func (t T) toDevices(l []string) []*device.T {

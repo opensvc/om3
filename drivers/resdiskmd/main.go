@@ -285,6 +285,10 @@ func (t T) SubDevices() []*device.T {
 	}
 }
 
+func (t *T) ReservableDevices() []*device.T {
+	return t.SubDevices()
+}
+
 func (t T) ClaimedDevices() []*device.T {
 	return t.SubDevices()
 }
