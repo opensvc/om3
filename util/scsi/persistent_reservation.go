@@ -110,6 +110,25 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 			s.Add(status.Up)
 		}
 	}
+
+	// Report n/a instead of up for scsireserv status if a dev is ro
+	//
+	// Because in this case, we can't clear the reservation until the dev is
+	// promoted rw.
+	//
+	// This happens on srdf devices that became r2 after a failover due to a crash.
+	// When the crashed node comes up again, the reservation are still held on the
+	// r2 devices, and they can't be dropped.
+	//
+	// Still report the situation as a resource log "info" message.
+	if s == status.Up {
+		if v, err := dev.IsReadOnly(); err != nil {
+			t.StatusLogger.Error("%s %s", dev, err)
+		} else if v {
+			t.StatusLogger.Info("%s is read-only")
+			s = status.NotApplicable
+		}
+	}
 	return s
 }
 
@@ -136,6 +155,10 @@ func (t *PersistentReservationHandle) Start() error {
 		return err
 	}
 	for _, dev := range t.Devices {
+		if s := t.DeviceStatus(*dev); s == status.Up {
+			t.Log.Info().Msgf("%s is already registered and reserved", dev)
+			continue
+		}
 		if err := t.persistentReservationDriver.Register(*dev, t.Key); err != nil {
 			return err
 		}
@@ -151,6 +174,10 @@ func (t *PersistentReservationHandle) Stop() error {
 		return err
 	}
 	for _, dev := range t.Devices {
+		if s := t.DeviceStatus(*dev); s == status.Down {
+			t.Log.Info().Msgf("%s is already unregistered and unreserved", dev)
+			continue
+		}
 		if err := t.persistentReservationDriver.Release(*dev, t.Key); err != nil {
 			return err
 		}
