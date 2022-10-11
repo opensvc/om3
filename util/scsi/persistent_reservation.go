@@ -2,6 +2,7 @@ package scsi
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -82,6 +83,14 @@ func (t *PersistentReservationHandle) Status() status.T {
 func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	var reservationMsg string
 	s := status.Down
+	_, err := os.Stat(dev.Path())
+	switch {
+	case os.IsNotExist(err):
+		t.StatusLogger.Info("%s does not exist", dev)
+		return status.NotApplicable
+	case err != nil:
+		t.StatusLogger.Error("%s", err)
+	}
 	if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
 		t.StatusLogger.Error("%s", err)
 	} else if reservation == "" {
