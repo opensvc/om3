@@ -138,6 +138,23 @@ func (t T) Driver() (interface{}, error) {
 	return devicedriver.NewFromMajor(major, devicedriver.WithLogger(t.log)), nil
 }
 
+func (t T) IsSCSI() (bool, error) {
+	if p, err := t.sysfsFile(); err != nil {
+		return false, err
+	} else {
+		p += "/device/scsi_device"
+		_, err := os.Stat(p)
+		switch {
+		case os.IsNotExist(err):
+			return false, nil
+		case err != nil:
+			return false, err
+		default:
+			return true, nil
+		}
+	}
+}
+
 func (t T) Remove() error {
 	driver, err := t.Driver()
 	if err != nil {

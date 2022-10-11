@@ -86,13 +86,19 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	_, err := os.Stat(dev.Path())
 	switch {
 	case os.IsNotExist(err):
-		t.StatusLogger.Info("%s does not exist", dev)
+		t.StatusLogger.Info("%s is not reservable: does not exist", dev)
 		return status.NotApplicable
 	case err != nil:
-		t.StatusLogger.Error("%s", err)
+		t.StatusLogger.Error("%s exist: %s", dev, err)
+	}
+	if v, err := dev.IsSCSI(); err != nil {
+		t.StatusLogger.Error("%s is scsi: %s", dev, err)
+	} else if !v {
+		t.StatusLogger.Info("%s is not reservable: not a scsi device", dev)
+		return status.NotApplicable
 	}
 	if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
-		t.StatusLogger.Error("%s", err)
+		t.StatusLogger.Error("%s read reservation: %s", dev, err)
 	} else if reservation == "" {
 		reservationMsg = fmt.Sprintf("%s is not reserved", dev)
 	} else if reservation != t.Key {
@@ -108,7 +114,7 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	}
 
 	if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err != nil {
-		t.StatusLogger.Error("%s", err)
+		t.StatusLogger.Error("%s read registrations: %s", dev, err)
 		s = status.Undef
 	} else if t.countHandledRegistrations(registrations) != expectedRegistrationCount {
 		t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, len(registrations), expectedRegistrationCount)
@@ -169,10 +175,10 @@ func (t *PersistentReservationHandle) Start() error {
 			continue
 		}
 		if err := t.persistentReservationDriver.Register(*dev, t.Key); err != nil {
-			return err
+			return errors.Wrapf(err, "%s spr register", dev.Path())
 		}
 		if err := t.persistentReservationDriver.Reserve(*dev, t.Key); err != nil {
-			return err
+			return errors.Wrapf(err, "%s spr reserve", dev.Path())
 		}
 	}
 	return nil
@@ -188,10 +194,10 @@ func (t *PersistentReservationHandle) Stop() error {
 			continue
 		}
 		if err := t.persistentReservationDriver.Release(*dev, t.Key); err != nil {
-			return err
+			return errors.Wrapf(err, "%s spr release", dev.Path())
 		}
 		if err := t.persistentReservationDriver.Unregister(*dev, t.Key); err != nil {
-			return err
+			return errors.Wrapf(err, "%s spr unregister", dev.Path())
 		}
 	}
 	return nil

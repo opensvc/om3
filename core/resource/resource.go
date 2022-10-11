@@ -827,9 +827,11 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 	var i any = r
 	o, ok := i.(devReservabler)
 	if !ok {
+		r.Log().Debug().Msg("does not implement reservable disks listing")
 		return nil
 	}
 	if !o.IsSCSIPersistentReservationEnabled() {
+		r.Log().Debug().Msg("scsi pr is not enabled")
 		return nil
 	}
 	hdl := scsi.PersistentReservationHandle{

@@ -26,6 +26,7 @@ import (
 type (
 	T struct {
 		resource.T
+		resource.SCSIPersistentReservation
 		Path            path.T
 		MountPoint      string         `json:"mnt"`
 		Device          string         `json:"dev"`
@@ -275,6 +276,10 @@ func (t T) isByLabel() bool {
 }
 
 func (t *T) ClaimedDevices() []*device.T {
+	return t.SubDevices()
+}
+
+func (t *T) ReservableDevices() []*device.T {
 	return t.SubDevices()
 }
 

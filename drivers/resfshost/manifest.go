@@ -4,6 +4,7 @@ import (
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/keywords"
 	"opensvc.com/opensvc/core/manifest"
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/filesystems"
 )
@@ -160,5 +161,6 @@ func (t T) Manifest() *manifest.T {
 	}...)
 	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword(KeywordsBase...)
+	m.AddKeyword(resource.SCSIPersistentReservationKeywords...)
 	return m
 }
