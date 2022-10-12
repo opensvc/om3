@@ -80,6 +80,51 @@ func (t *PersistentReservationHandle) Status() status.T {
 	return agg
 }
 
+func (t *PersistentReservationHandle) DeviceExpectedRegistrationCount(dev device.T) (int, error) {
+	pathCount := func(dev device.T) (int, error) {
+		if slaves, err := dev.Slaves(); err != nil {
+			return 0, err
+		} else {
+			return len(slaves), nil
+		}
+	}
+	hostCount := func(dev device.T) (int, error) {
+		if hosts, err := dev.SlaveHosts(); err != nil {
+			return 0, err
+		} else {
+			return len(hosts), nil
+		}
+	}
+	if v, err := dev.IsMultipath(); err != nil {
+		return 0, err
+	} else if v {
+		vendor, err := dev.Vendor()
+		if err != nil {
+			return 0, err
+		}
+		model, err := dev.Model()
+		if err != nil {
+			return 0, err
+		}
+		switch {
+		case (vendor == "3PARdata") && (model == "VV"):
+			// 3PARdata arrays transparent controller failover has S3GPR quirks.
+			// All registration via the same I are consider the same I_T, so
+			// the expected registration count is the number of I instead of the
+			// number of I_T.
+			return hostCount(dev)
+		default:
+			return pathCount(dev)
+		}
+	}
+	if v, err := dev.IsSCSI(); err != nil {
+		return 0, err
+	} else if v {
+		return 1, nil
+	}
+	return 0, nil
+}
+
 func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	var reservationMsg string
 	s := status.Down
@@ -110,7 +155,11 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 
 	var expectedRegistrationCount int
 	if s == status.Up {
-		expectedRegistrationCount = 2 // TODO: real count
+		expectedRegistrationCount, err = t.DeviceExpectedRegistrationCount(dev)
+		if err != nil {
+			t.StatusLogger.Error("%s expected registration count: %s", dev, err)
+			return status.NotApplicable
+		}
 	}
 
 	if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err != nil {

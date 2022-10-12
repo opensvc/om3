@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/devicedriver"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 func (t T) IsReadWrite() (bool, error) {
@@ -94,6 +96,41 @@ func (t T) Delete() error {
 	return ioutil.WriteFile(p, []byte("1"), os.ModePerm)
 }
 
+func (t T) SlaveHosts() ([]string, error) {
+	var errs error
+	l := make([]string, 0)
+	slaves, err := t.Slaves()
+	if err != nil {
+		return l, err
+	}
+	for _, slave := range slaves {
+		if host, err := slave.Host(); err != nil {
+			errs = xerrors.Append(errs, err)
+			continue
+		} else {
+			l = append(l, host)
+		}
+	}
+	return l, nil
+}
+
+func (t T) Host() (string, error) {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return "", err
+	}
+	p += "/device"
+	devicePath, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return "", err
+	}
+	hbtl := strings.Split(filepath.Base(devicePath), ":")
+	if len(hbtl) == 4 {
+		return "", errors.Errorf("dev %s host device path unexpected format: %s", devicePath)
+	}
+	return "host" + hbtl[0], nil
+}
+
 func (t T) Slaves() ([]*T, error) {
 	l := make([]*T, 0)
 	root, err := t.sysfsFile()
@@ -170,6 +207,51 @@ func (t T) IsMultipath() (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func (t T) Vendor() (string, error) {
+	return t.identityString("vendor")
+}
+
+func (t T) Model() (string, error) {
+	return t.identityString("model")
+}
+
+func (t T) Version() (string, error) {
+	return t.identityString("version")
+}
+
+func (t T) identityString(s string) (string, error) {
+	isMultipath, err := t.IsMultipath()
+	if err != nil {
+		return "", err
+	}
+	if isMultipath {
+		slaves, err := t.Slaves()
+		if err != nil {
+			return "", err
+		}
+		for _, slave := range slaves {
+			return slave.scsiIdentityString(s)
+		}
+		return "", errors.Errorf("%s has no slave to query for %s", t, s)
+	} else {
+		return t.scsiIdentityString(s)
+	}
+}
+
+func (t T) scsiIdentityString(s string) (string, error) {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return "", err
+	}
+	p += "/device/" + s
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		return "", err
+	}
+	id := string(b)
+	return strings.TrimSpace(id), nil
 }
 
 func (t T) IsSCSI() (bool, error) {
