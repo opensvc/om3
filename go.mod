@@ -9,6 +9,7 @@ require (
 	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
+	github.com/coreos/go-semver v0.3.0
 	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
 	github.com/cvaroqui/ini v1.66.7-0.20220627091046-b218d4fc5c30
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
