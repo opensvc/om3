@@ -241,6 +241,15 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	wd, _ := os.Getwd()
 	t.log.Info().Strs("argv", os.Args).Str("cwd", wd).Str("origin", env.Origin()).Msg("do")
+	beginTime := time.Now()
+	defer func() {
+		t.log.Info().
+			Strs("argv", os.Args).
+			Str("cwd", wd).
+			Str("origin", env.Origin()).
+			Dur("duration", time.Now().Sub(beginTime)).
+			Msg("done")
+	}()
 	if mgr := pg.FromContext(ctx); mgr != nil {
 		mgr.Register(t.pg)
 	}
@@ -321,10 +330,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	return nil
 }
 
-//
 // notifyAction signals the daemon that an action is in progress, setting the
 // instance local expect via POST /object_monitor
-//
 func (t *actor) notifyAction(ctx context.Context) error {
 	if env.HasDaemonOrigin() {
 		return nil
