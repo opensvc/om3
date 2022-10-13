@@ -2,11 +2,13 @@ package scsi
 
 import (
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/xerrors"
 )
 
@@ -64,16 +66,8 @@ func (t SGPersistDriver) Register(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) registerPath(dev device.T, key string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--register-ignore", "--param-sark", key, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--register-ignore", "--param-sark", key, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 func (t SGPersistDriver) Unregister(dev device.T, key string) error {
@@ -90,16 +84,8 @@ func (t SGPersistDriver) Unregister(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) unregisterPath(dev device.T, key string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--register-ignore", "--param-rk", key, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--register-ignore", "--param-rk", key, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 func (t SGPersistDriver) ReadReservation(dev device.T) (string, error) {
@@ -151,16 +137,8 @@ func (t SGPersistDriver) Reserve(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) reserve(dev device.T, key string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--reserve", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--reserve", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 func (t SGPersistDriver) Release(dev device.T, key string) error {
@@ -180,16 +158,8 @@ func (t SGPersistDriver) Release(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) release(dev device.T, key string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--release", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--release", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 func (t SGPersistDriver) Clear(dev device.T, key string) error {
@@ -209,16 +179,8 @@ func (t SGPersistDriver) Clear(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) clear(dev device.T, key string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--clear", "--param-rk", key, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--clear", "--param-rk", key, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 func (t SGPersistDriver) Preempt(dev device.T, oldKey, newKey string) error {
@@ -238,16 +200,8 @@ func (t SGPersistDriver) Preempt(dev device.T, oldKey, newKey string) error {
 }
 
 func (t SGPersistDriver) preempt(dev device.T, oldKey, newKey string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--preempt", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--preempt", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 func (t SGPersistDriver) PreemptAbort(dev device.T, oldKey, newKey string) error {
@@ -267,16 +221,8 @@ func (t SGPersistDriver) PreemptAbort(dev device.T, oldKey, newKey string) error
 }
 
 func (t SGPersistDriver) preemptAbort(dev device.T, oldKey, newKey string) error {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("--out", "--preempt-abort", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path()),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithEnv(t.env("0")),
-	)
-	return cmd.Run()
+	option := command.WithVarArgs("--out", "--preempt-abort", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	return t.retryOnUnitAttention(dev, option)
 }
 
 // sgPersist returns the env vars to use with sg_persist commands
@@ -285,5 +231,54 @@ func (t SGPersistDriver) env(val string) []string {
 	return []string{
 		"SG_PERSIST_O_RDONLY=" + val,
 		"SG_PERSIST_IN_RDONLY=" + val, // sg_persist >= 1.39
+	}
+}
+
+// ackUnitAttention does a --in command to acknowledge a unit attention, likely
+// caused by the previous --out command.
+func (t SGPersistDriver) ackUnitAttention(dev device.T) {
+	t.Log.Debug().Msgf("ack Unit Attention on %s.", dev)
+	_, _ = t.readReservation(dev)
+}
+
+func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O) error {
+	max := 10
+	countdown := max
+	for {
+		options = append(
+			options,
+			command.WithName("sg_persist"),
+			command.WithLogger(t.Log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithEnv(t.env("0")),
+			command.WithBufferedStderr(),
+			command.WithBufferedStdout(),
+		)
+		cmd := command.New(options...)
+		t.ackUnitAttention(dev)
+		err := cmd.Run()
+		if err == nil {
+			// all good
+			t.Log.Debug().Str("out", string(cmd.Stdout())).Msg("")
+			return err
+		}
+		if cmd.ExitCode() == 6 {
+			if countdown == 1 {
+				t.Log.Warn().Msgf("Unit Attention received from %s. max retries exhausted", dev)
+				t.Log.Info().Str("out", string(cmd.Stdout())).Msg("")
+				t.Log.Error().Str("err", string(cmd.Stderr())).Msg("")
+				return err
+			}
+			t.Log.Warn().Msgf("Unit Attention received from %s. ack and retry in 0.1s", dev)
+			countdown -= 1
+			time.Sleep(100 * time.Millisecond)
+			t.ackUnitAttention(dev)
+			continue
+		}
+		// other exit codes are not retryable
+		t.Log.Info().Str("out", string(cmd.Stdout())).Msg("")
+		t.Log.Error().Str("err", string(cmd.Stderr())).Msg("")
+		return err
+
 	}
 }
