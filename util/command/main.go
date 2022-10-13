@@ -222,11 +222,12 @@ func (t *T) Start() (err error) {
 			}
 		})
 	}
-	if log != nil && t.commandLogLevel != zerolog.Disabled {
-		log.WithLevel(t.commandLogLevel).Stringer("cmd", cmd).Msg("run")
-	}
 	if log != nil {
-		log.WithLevel(t.logLevel).Stringer("cmd", cmd).Msg("run")
+		if t.commandLogLevel != zerolog.Disabled && t.commandLogLevel > t.logLevel {
+			log.WithLevel(t.commandLogLevel).Stringer("cmd", cmd).Msg("run")
+		} else {
+			log.WithLevel(t.logLevel).Stringer("cmd", cmd).Msg("run")
+		}
 	}
 	if err = cmd.Start(); err != nil {
 		if log != nil {
@@ -377,9 +378,12 @@ func commandArgsFromString(s string) ([]string, error) {
 
 // CmdArgsFromString returns args for exec.Command from a string command 's'
 // When string command 's' contains multiple commands,
-//   exec.Command("/bin/sh", "-c", s)
+//
+//	exec.Command("/bin/sh", "-c", s)
+//
 // else
-//   exec.Command from shlex.Split(s)
+//
+//	exec.Command from shlex.Split(s)
 func CmdArgsFromString(s string) ([]string, error) {
 	return commandArgsFromString(s)
 }
