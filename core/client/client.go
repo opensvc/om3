@@ -10,8 +10,10 @@ import (
 	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/clientcontext"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -27,11 +29,9 @@ type (
 	}
 )
 
-//
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
 // make loadContext useless.
-//
 func New(opts ...funcopt.O) (*T, error) {
 	t := &T{}
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -43,19 +43,18 @@ func New(opts ...funcopt.O) (*T, error) {
 	return t, nil
 }
 
-//
 // WithURL is the option pointing the api location and protocol using the
 // [<scheme>://]<addr>[:<port>] format.
 //
 // Supported schemes:
 //
-// * raw
-//   json rpc, AES-256-CBC encrypted payload if transported by AF_INET,
-//   cleartext on unix domain socket.
-// * https
-//   http/2 with TLS
-// * tls
-//   http/2 with TLS
+//   - raw
+//     json rpc, AES-256-CBC encrypted payload if transported by AF_INET,
+//     cleartext on unix domain socket.
+//   - https
+//     http/2 with TLS
+//   - tls
+//     http/2 with TLS
 //
 // If unset, a unix domain socket connection and the http/2 protocol is
 // selected.
@@ -69,7 +68,6 @@ func New(opts ...funcopt.O) (*T, error) {
 // * /opt/opensvc/var/lsnr/h2.sock
 // * https://acme.com:1215
 // * raw://acme.com:1214
-//
 func WithURL(url string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -130,7 +128,11 @@ func (t *T) configure() error {
 		if err := t.loadContext(); err != nil {
 			return err
 		}
+	} else if t.username == "" {
+		t.username = hostname.Hostname()
+		t.password = rawconfig.ClusterSection().Secret
 	}
+
 	err := t.newRequester()
 	if err != nil {
 		return err
@@ -165,7 +167,6 @@ func (t *T) newRequester() (err error) {
 	case strings.HasPrefix(t.url, reqh2.InetPrefix):
 		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password)
 	default:
-		// TODO: support username/password in url ?
 		if !strings.Contains(t.url, ":") {
 			t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
 		}

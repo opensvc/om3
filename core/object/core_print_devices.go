@@ -8,20 +8,20 @@ import (
 
 type (
 	devExposer interface {
-		ExposedDevices() []*device.T
+		ExposedDevices() device.L
 	}
 	devUser interface {
-		SubDevices() []*device.T
+		SubDevices() device.L
 	}
 	devBaser interface {
-		BaseDevices() []*device.T
+		BaseDevices() device.L
 	}
 	devClaimer interface {
-		ClaimedDevices() []*device.T
+		ClaimedDevices() device.L
 	}
 )
 
-func (t *actor) newObjectdevice(dev *device.T, role objectdevice.Role, r resource.Driver) objectdevice.T {
+func (t *actor) newObjectdevice(dev device.T, role objectdevice.Role, r resource.Driver) objectdevice.T {
 	return objectdevice.T{
 		Device:     dev,
 		Role:       role,

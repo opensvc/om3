@@ -29,7 +29,7 @@ type (
 		IsActive() (bool, error)
 		Exists() (bool, error)
 		FQN() string
-		Devices() ([]*device.T, error)
+		Devices() (device.L, error)
 		DriverName() string
 	}
 	LVDriverProvisioner interface {
@@ -160,22 +160,22 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(v), err
 }
 
-func (t T) exposedDevice() *device.T {
+func (t T) exposedDevice() device.T {
 	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
 }
 
-func (t T) ClaimedDevices() []*device.T {
+func (t T) ClaimedDevices() device.L {
 	return t.ExposedDevices()
 }
 
-func (t T) ExposedDevices() []*device.T {
-	return []*device.T{t.exposedDevice()}
+func (t T) ExposedDevices() device.L {
+	return device.L{t.exposedDevice()}
 }
 
-func (t T) SubDevices() []*device.T {
+func (t T) SubDevices() device.L {
 	if l, err := t.lv().Devices(); err != nil {
 		t.Log().Debug().Err(err).Msg("")
-		return []*device.T{}
+		return device.L{}
 	} else {
 		return l
 	}

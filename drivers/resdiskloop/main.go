@@ -109,10 +109,8 @@ func (t T) isVolatile() bool {
 	return df.HasTypeMount("tmpfs", t.File)
 }
 
-//
 // autoProvision provisions the loop on start if the backing file is
 // hosted on a tmpfs
-//
 func (t T) autoProvision(ctx context.Context) error {
 	if t.fileExists() {
 		return nil
@@ -123,10 +121,8 @@ func (t T) autoProvision(ctx context.Context) error {
 	return t.provision(ctx)
 }
 
-//
 // autoUnprovision unprovisions the loop on stop if the backing file is
 // hosted on a tmpfs
-//
 func (t T) autoUnprovision(ctx context.Context) error {
 	if !t.fileExists() {
 		return nil
@@ -215,14 +211,15 @@ func (t T) exposedDevice(lo *loop.T) *device.T {
 	if err != nil {
 		return nil
 	}
-	return device.New(i.Name, device.WithLogger(t.Log()))
+	dev := device.New(i.Name, device.WithLogger(t.Log()))
+	return &dev
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	lo := t.loop()
 	dev := t.exposedDevice(lo)
 	if dev == nil {
-		return make([]*device.T, 0)
+		return device.L{}
 	}
-	return []*device.T{dev}
+	return device.L{*dev}
 }

@@ -1,0 +1,101 @@
+package scsi
+
+import (
+	"bufio"
+	"bytes"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+
+	"github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
+	"opensvc.com/opensvc/util/capabilities"
+	"opensvc.com/opensvc/util/command"
+)
+
+const (
+	MpathPersistCapability = "node.x.scsi.mpathpersist"
+	SGPersistCapability    = "node.x.scsi.sg_persist"
+)
+
+var (
+	mpathReservationKeyFileRegexp = regexp.MustCompile(`(?m)^\s*reservation_key\s+("file"|file)\s*$`)
+)
+
+// CapabilitiesScanner is the capabilities scanner for scsi
+func CapabilitiesScanner() ([]string, error) {
+	l := make([]string, 0)
+	if _, err := exec.LookPath("mpathpersist"); err != nil {
+		// out
+	} else if mpathReservationKeyConfigured, err := isMpathReservationKeyConfigured(); err != nil {
+		// out
+	} else if !mpathReservationKeyConfigured {
+		// out
+	} else if mpathVersionSufficent, err := isMpathVersionSufficent(); err != nil {
+		// out
+	} else if mpathVersionSufficent {
+		l = append(l, MpathPersistCapability)
+	}
+	if _, err := exec.LookPath("sg_persist"); err != nil {
+		// pass
+	} else {
+		l = append(l, SGPersistCapability)
+	}
+	return l, nil
+}
+
+func isMpathVersionSufficent() (bool, error) {
+	v, err := mpathVersion()
+	if err != nil {
+		return false, err
+	}
+	minVer, err := version.NewVersion("0.7.8")
+	if err != nil {
+		return false, err
+	}
+	curVer, err := version.NewVersion(v)
+	if err != nil {
+		return false, err
+	}
+	return minVer.LessThanOrEqual(curVer), nil
+}
+
+func mpathVersion() (string, error) {
+	cmd := command.New(
+		command.WithName("multipath"),
+		command.WithVarArgs("-h"),
+		command.WithBufferedStderr(),
+	)
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	b := cmd.Stderr()
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "multipath-tools v") {
+			words := strings.Fields(line)
+			return words[1][1:], nil
+		}
+	}
+	return "", errors.Errorf("multipath tools version not found")
+}
+
+func isMpathReservationKeyConfigured() (bool, error) {
+	b, err := ioutil.ReadFile("/etc/multipath.conf")
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return mpathReservationKeyFileRegexp.Match(b), nil
+}
+
+// register node scanners
+func init() {
+	capabilities.Register(CapabilitiesScanner)
+}

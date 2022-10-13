@@ -24,6 +24,16 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// PostObjectAbort defines model for PostObjectAbort.
+type PostObjectAbort struct {
+	Path string `json:"path"`
+}
+
+// PostObjectClear defines model for PostObjectClear.
+type PostObjectClear struct {
+	Path string `json:"path"`
+}
+
 // PostObjectMonitor defines model for PostObjectMonitor.
 type PostObjectMonitor struct {
 	GlobalExpect *string `json:"global_expect,omitempty"`
@@ -128,6 +138,12 @@ type QueryObjectPath = string
 // QueryObjectSelector defines model for queryObjectSelector.
 type QueryObjectSelector = string
 
+// PostObjectAbortJSONBody defines parameters for PostObjectAbort.
+type PostObjectAbortJSONBody = PostObjectAbort
+
+// PostObjectClearJSONBody defines parameters for PostObjectClear.
+type PostObjectClearJSONBody = PostObjectClear
+
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
 	// object path
@@ -157,6 +173,12 @@ type GetObjectSelectorParams struct {
 
 // PostObjectStatusJSONBody defines parameters for PostObjectStatus.
 type PostObjectStatusJSONBody = PostObjectStatus
+
+// PostObjectAbortJSONRequestBody defines body for PostObjectAbort for application/json ContentType.
+type PostObjectAbortJSONRequestBody = PostObjectAbortJSONBody
+
+// PostObjectClearJSONRequestBody defines body for PostObjectClear for application/json ContentType.
+type PostObjectClearJSONRequestBody = PostObjectClearJSONBody
 
 // PostObjectMonitorJSONRequestBody defines body for PostObjectMonitor for application/json ContentType.
 type PostObjectMonitorJSONRequestBody = PostObjectMonitorJSONBody

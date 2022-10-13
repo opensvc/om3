@@ -56,6 +56,7 @@ type (
 		Env       string `mapstructure:"env"`
 		Collector string `mapstructure:"dbopensvc"`
 		UUID      string `mapstructure:"uuid"`
+		PRKey     string `mapstructure:"prkey"`
 	}
 
 	loadCmd struct {

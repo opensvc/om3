@@ -19,7 +19,7 @@ type (
 	// to advertize to the core which block device it claims. Used by pushdisks
 	// to attribute disks regions to objects.
 	deviceClaimer interface {
-		ClaimedDevices() []*device.T
+		ClaimedDevices() device.L
 	}
 	resourceLister interface {
 		Resources() resource.Drivers

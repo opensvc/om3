@@ -287,14 +287,12 @@ func (t *T) lockedCreateVolume(volume object.Vol) (object.Vol, error) {
 	return volume, nil
 }
 
-//
 // poolLookup exposes some methods like ConfigureVolume, which
 // are relayed to the pool best matching the lookup criteria.
 // The withUsage critierium can be toggled on/off because it
 // may be slow to get fresh usage metrics, and only the
 // provision codepath needs them (others are satisfied with the
 // garanty the pool is of the same type).
-//
 func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	node, err := object.NewNode()
 	if err != nil {
@@ -396,10 +394,10 @@ func (t T) exposedDevice() *device.T {
 	return volume.Device()
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	dev := t.exposedDevice()
 	if dev == nil {
-		return []*device.T{}
+		return device.L{}
 	}
-	return []*device.T{dev}
+	return device.L{*dev}
 }

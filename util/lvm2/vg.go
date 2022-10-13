@@ -309,8 +309,8 @@ func (t *VG) IsActive() (bool, error) {
 	return false, nil
 }
 
-func (t *VG) Devices() ([]*device.T, error) {
-	l := make([]*device.T, 0)
+func (t *VG) Devices() (device.L, error) {
+	l := make(device.L, 0)
 	data, err := t.CachedDevicesShow()
 	if err != nil {
 		return nil, err
@@ -372,8 +372,8 @@ func (t *VG) Remove(args []string) error {
 	return nil
 }
 
-func (t *VG) PVs() ([]*device.T, error) {
-	l := make([]*device.T, 0)
+func (t *VG) PVs() (device.L, error) {
+	l := make(device.L, 0)
 	vgInfo, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
@@ -387,8 +387,8 @@ func (t *VG) PVs() ([]*device.T, error) {
 	return l, nil
 }
 
-func (t *VG) ActiveLVs() ([]*device.T, error) {
-	l := make([]*device.T, 0)
+func (t *VG) ActiveLVs() (device.L, error) {
+	l := make(device.L, 0)
 	pattern := fmt.Sprintf("/dev/mapper/%s-*", t.VGName)
 	matches, err := filepath.Glob(pattern)
 	if err != nil {

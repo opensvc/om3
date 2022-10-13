@@ -59,6 +59,8 @@ type (
 		Run(context.Context) error
 		Start(context.Context) error
 		Stop(context.Context) error
+		PRStart(context.Context) error
+		PRStop(context.Context) error
 		Provision(context.Context) error
 		Unprovision(context.Context) error
 		SetProvisioned(context.Context) error

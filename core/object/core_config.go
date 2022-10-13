@@ -232,7 +232,7 @@ func (t core) dereferenceExposedDevices(ref string) (string, error) {
 		return ref, fmt.Errorf("can't dereference exposed_devs on a non-actor object: %s", ref)
 	}
 	type exposedDeviceser interface {
-		ExposedDevices() []*device.T
+		ExposedDevices() device.L
 	}
 	if len(l) != 2 {
 		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)

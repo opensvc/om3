@@ -46,7 +46,6 @@ func (t vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
-//
 // Head returns the shortest service fs resource mount point.
 // Volume resources in the consumer services use this function return
 // value as the prefix of their own mount_point property.
@@ -55,7 +54,6 @@ func (t vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 // the shallowest candidate is returned.
 //
 // Callers must check the returned value is not empty.
-//
 func (t *vol) Head() string {
 	head := ""
 	heads := make([]string, 0)
@@ -88,7 +86,7 @@ func (t *vol) Head() string {
 
 func (t *vol) Device() *device.T {
 	type devicer interface {
-		ExposedDevices() []*device.T
+		ExposedDevices() device.L
 	}
 	rids := make([]string, 0)
 	candidates := make(map[string]devicer)
@@ -115,7 +113,7 @@ func (t *vol) Device() *device.T {
 		if len(devs) == 0 {
 			continue
 		}
-		return devs[0]
+		return &devs[0]
 	}
 	return nil
 }

@@ -43,7 +43,7 @@ type (
 		Resync() error
 		IsActive() (bool, string, error)
 		Exists() (bool, error)
-		Devices() ([]*device.T, error)
+		Devices() (device.L, error)
 		UUID() string
 		IsAutoActivated() bool
 		DisableAutoActivation() error
@@ -266,26 +266,30 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(v), err
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	if t.UUID == "" {
-		return []*device.T{}
+		return device.L{}
 	}
 	if v, err := t.isUp(); err == nil && v {
-		return []*device.T{device.New("/dev/md/"+t.Name(), device.WithLogger(t.Log()))}
+		return device.L{device.New("/dev/md/"+t.Name(), device.WithLogger(t.Log()))}
 	}
-	return []*device.T{}
+	return device.L{}
 }
 
-func (t T) SubDevices() []*device.T {
+func (t T) SubDevices() device.L {
 	if l, err := t.md().Devices(); err != nil {
 		t.Log().Debug().Err(err).Msg("")
-		return []*device.T{}
+		return device.L{}
 	} else {
 		return l
 	}
 }
 
-func (t T) ClaimedDevices() []*device.T {
+func (t *T) ReservableDevices() device.L {
+	return t.SubDevices()
+}
+
+func (t T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 

@@ -12,7 +12,7 @@ import (
 
 type (
 	T struct {
-		Device     *device.T `json:"device"`
+		Device     device.T  `json:"device"`
 		Role       Role      `json:"role"`
 		RID        string    `json:"rid"`
 		DriverID   driver.ID `json:"driver"`

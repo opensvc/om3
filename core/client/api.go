@@ -86,8 +86,16 @@ func (t T) NewPostNodeMonitor() *api.PostNodeMonitor {
 	return api.NewPostNodeMonitor(t)
 }
 
+func (t T) NewPostObjectAbort() *api.PostObjectAbort {
+	return api.NewPostObjectAbort(t)
+}
+
 func (t T) NewPostObjectAction() *api.PostObjectAction {
 	return api.NewPostObjectAction(t)
+}
+
+func (t T) NewPostObjectClear() *api.PostObjectClear {
+	return api.NewPostObjectClear(t)
 }
 
 func (t T) NewPostObjectCreate() *api.PostObjectCreate {

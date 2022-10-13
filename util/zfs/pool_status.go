@@ -138,12 +138,12 @@ func (t *Pool) VDevPaths() ([]string, error) {
 	}
 }
 
-func (t *Pool) VDevDevices() ([]*device.T, error) {
+func (t *Pool) VDevDevices() (device.L, error) {
 	paths, err := t.VDevPaths()
 	if err != nil {
-		return []*device.T{}, err
+		return device.L{}, err
 	}
-	l := make([]*device.T, len(paths))
+	l := make(device.L, len(paths))
 	for i, path := range paths {
 		l[i] = device.New(path)
 	}

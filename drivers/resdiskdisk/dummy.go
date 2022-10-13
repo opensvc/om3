@@ -13,8 +13,8 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.NotApplicable
 }
 
-func (t T) ExposedDevices() []*device.T {
-	l := make([]*device.T, 0)
+func (t T) ExposedDevices() device.L {
+	l := make(device.L, 0)
 	return l
 }
 

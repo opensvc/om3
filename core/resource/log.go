@@ -27,7 +27,7 @@ func (t StatusLogEntry) String() string {
 	return fmt.Sprintf("%s: %s", t.Level, t.Message)
 }
 
-func push(l *StatusLog, lvl Level, s string, args ...interface{}) {
+func push(l *StatusLog, lvl Level, s string, args ...any) {
 	message := fmt.Sprintf(s, args...)
 	entry := &StatusLogEntry{Level: lvl, Message: message}
 	l.entries = append(l.entries, entry)
@@ -38,17 +38,17 @@ func (l *StatusLog) Reset() {
 }
 
 // Error append an error message to the log
-func (l *StatusLog) Error(s string, args ...interface{}) {
+func (l *StatusLog) Error(s string, args ...any) {
 	push(l, "error", s, args...)
 }
 
 // Warn append a warning message to the log
-func (l *StatusLog) Warn(s string, args ...interface{}) {
+func (l *StatusLog) Warn(s string, args ...any) {
 	push(l, "warn", s, args...)
 }
 
 // Info append an info message to the log
-func (l *StatusLog) Info(s string, args ...interface{}) {
+func (l *StatusLog) Info(s string, args ...any) {
 	push(l, "info", s, args...)
 }
 

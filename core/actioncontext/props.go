@@ -131,6 +131,19 @@ var (
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
 	}
+	PRStart = Properties{
+		Name:     "prstart",
+		Local:    true,
+		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		Rollback: true,
+		PG:       true,
+	}
+	PRStop = Properties{
+		Name:  "prstop",
+		Local: true,
+		Kinds: []kind.T{kind.Svc, kind.Vol},
+		PG:    true,
+	}
 	Purge = Properties{
 		Name:            "purge",
 		Target:          "purged",

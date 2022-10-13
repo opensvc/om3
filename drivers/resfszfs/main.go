@@ -143,7 +143,7 @@ func (t T) mountPoint() string {
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t T) device() *device.T {
+func (t T) device() device.T {
 	return device.New(t.Device, device.WithLogger(t.Log()))
 }
 
@@ -470,11 +470,11 @@ func (t T) Head() string {
 	return t.MountPoint
 }
 
-func (t T) ClaimedDevices() []*device.T {
+func (t T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) SubDevices() []*device.T {
+func (t T) SubDevices() device.L {
 	devs, _ := t.pool().VDevDevices()
 	return devs
 }

@@ -56,7 +56,7 @@ func (t T) devices() DevPairs {
 		if len(x) == 2 {
 			src := device.New(x[0], device.WithLogger(t.Log()))
 			dst := device.New(x[1], device.WithLogger(t.Log()))
-			l = l.Add(src, dst)
+			l = l.Add(&src, &dst)
 			continue
 		}
 		matches, err := filepath.Glob(e)
@@ -65,7 +65,7 @@ func (t T) devices() DevPairs {
 		}
 		for _, p := range matches {
 			src := device.New(p, device.WithLogger(t.Log()))
-			l = l.Add(src, nil)
+			l = l.Add(&src, nil)
 		}
 	}
 	return l
@@ -116,7 +116,8 @@ func (t T) RealSrc(pair DevPair) (*device.T, error) {
 	if e == nil {
 		return nil, fmt.Errorf("%s: bound raw not found", p)
 	}
-	return device.New(e.CDevPath(), device.WithLogger(t.Log())), nil
+	dev := device.New(e.CDevPath(), device.WithLogger(t.Log()))
+	return &dev, nil
 }
 
 func (t *T) statusCreateBlockDevice(pair DevPair) (status.T, []string) {
@@ -510,13 +511,13 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ExposedDevices() []*device.T {
-	l := make([]*device.T, 0)
+func (t T) ExposedDevices() device.L {
+	l := make(device.L, 0)
 	for _, pair := range t.devices() {
 		if pair.Dst != nil {
-			l = append(l, pair.Dst)
+			l = append(l, *pair.Dst)
 		} else {
-			l = append(l, pair.Src)
+			l = append(l, *pair.Src)
 		}
 	}
 	return l

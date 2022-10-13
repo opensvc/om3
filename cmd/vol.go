@@ -22,6 +22,8 @@ A volume can host cfg and sec keys projections.`,
 
 func init() {
 	var (
+		cmdAbort            commands.CmdObjectAbort
+		cmdClear            commands.CmdObjectClear
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
 		cmdDoc              commands.CmdObjectDoc
@@ -38,6 +40,8 @@ func init() {
 		cmdPrintStatus      commands.CmdObjectPrintStatus
 		cmdPrintSchedule    commands.CmdObjectPrintSchedule
 		cmdProvision        commands.CmdObjectProvision
+		cmdPRStart          commands.CmdObjectPRStart
+		cmdPRStop           commands.CmdObjectPRStop
 		cmdPurge            commands.CmdObjectPurge
 		cmdRestart          commands.CmdObjectRestart
 		cmdRun              commands.CmdObjectRun
@@ -59,6 +63,8 @@ func init() {
 	head := makeSubVol()
 	root.AddCommand(head)
 
+	cmdAbort.Init(kind, head, &selectorFlag)
+	cmdClear.Init(kind, head, &selectorFlag)
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDoc.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
@@ -69,6 +75,8 @@ func init() {
 	cmdLogs.Init(kind, head, &selectorFlag)
 	cmdMonitor.Init(kind, head, &selectorFlag)
 	cmdProvision.Init(kind, head, &selectorFlag)
+	cmdPRStart.Init(kind, head, &selectorFlag)
+	cmdPRStop.Init(kind, head, &selectorFlag)
 	cmdPurge.Init(kind, head, &selectorFlag)
 	cmdRestart.Init(kind, head, &selectorFlag)
 	cmdRun.Init(kind, head, &selectorFlag)

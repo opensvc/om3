@@ -34,8 +34,8 @@ func (t T) devPath() string {
 	return matches[0]
 }
 
-func (t T) ExposedDevices() []*device.T {
-	l := make([]*device.T, 0)
+func (t T) ExposedDevices() device.L {
+	l := make(device.L, 0)
 	p, err := realpath.Realpath(t.devPath())
 	if err != nil {
 		return l

@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -14,6 +15,7 @@ type (
 		path string
 		log  *zerolog.Logger
 	}
+	L []T
 )
 
 const (
@@ -21,16 +23,16 @@ const (
 	ModeChar  uint = syscall.S_IFCHR
 )
 
-func New(path string, opts ...funcopt.O) *T {
+func New(path string, opts ...funcopt.O) T {
 	t := T{
 		path: path,
 	}
 	_ = funcopt.Apply(&t, opts...)
-	return &t
+	return t
 }
 
 func WithLogger(log *zerolog.Logger) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.log = log
 		return nil
@@ -45,11 +47,11 @@ func (t T) Path() string {
 	return t.path
 }
 
-func (t *T) RemoveHolders() error {
+func (t T) RemoveHolders() error {
 	return RemoveHolders(t)
 }
 
-func RemoveHolders(head *T) error {
+func RemoveHolders(head T) error {
 	holders, err := head.Holders()
 	if err != nil {
 		return err
@@ -80,6 +82,37 @@ func (t *T) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	*t = *New(j)
+	*t = New(j)
 	return nil
+}
+
+func (t T) SCSIPaths() (L, error) {
+	isSCSI, err := t.IsSCSI()
+	if err != nil {
+		return L{}, err
+	}
+	if isSCSI {
+		return L{t}, nil
+	}
+	isMpath, err := t.IsMultipath()
+	if err != nil {
+		return L{}, err
+	}
+	if !isMpath {
+		return L{}, nil
+	}
+	return t.Slaves()
+}
+
+func (t L) SCSIPaths() (L, error) {
+	var errs error
+	l := make(L, 0)
+	for _, dev := range t {
+		if paths, err := dev.SCSIPaths(); err != nil {
+			errs = xerrors.Append(errs, err)
+		} else {
+			l = append(l, paths...)
+		}
+	}
+	return l, errs
 }

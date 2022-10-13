@@ -178,14 +178,14 @@ func (t T) Provisioned() (provisioned.T, error) {
 	}
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	p := t.devpath()
 	return t.toDevices([]string{p})
 }
 
-func (t T) toDevices(l []string) []*device.T {
+func (t T) toDevices(l []string) device.L {
 	log := t.Log()
-	devs := make([]*device.T, 0)
+	devs := make(device.L, 0)
 	for _, s := range l {
 		dev := device.New(s, device.WithLogger(log))
 		devs = append(devs, dev)
