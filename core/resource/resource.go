@@ -714,6 +714,38 @@ func Run(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// PRStop deactivates a resource interfacer S3GPR
+func PRStop(ctx context.Context, r Driver) error {
+	defer Status(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "start requires")
+	}
+	if err := SCSIPersistentReservationStop(r); err != nil {
+		return err
+	}
+	return nil
+}
+
+// PRStart activates a resource interfacer S3GPR
+func PRStart(ctx context.Context, r Driver) error {
+	defer Status(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "start requires")
+	}
+	if err := SCSIPersistentReservationStart(r); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
