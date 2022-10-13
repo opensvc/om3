@@ -189,8 +189,8 @@ func (t *LV) IsActive() (bool, error) {
 	}
 }
 
-func (t *LV) Devices() ([]*device.T, error) {
-	l := make([]*device.T, 0)
+func (t *LV) Devices() (device.L, error) {
+	l := make(device.L, 0)
 	data := ShowData{}
 	fqn := t.FQN()
 	cmd := command.New(

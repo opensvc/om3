@@ -109,11 +109,11 @@ func (t *T) UnprovisionLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t T) ReservableDevices() []*device.T {
+func (t T) ReservableDevices() device.L {
 	return t.ExposedDevices()
 }
 
-func (t T) ClaimedDevices() []*device.T {
+func (t T) ClaimedDevices() device.L {
 	return t.ExposedDevices()
 }
 

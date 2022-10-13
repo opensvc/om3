@@ -225,8 +225,8 @@ func (t T) Exists() (bool, error) {
 	return false, nil
 }
 
-func (t T) Devices() ([]*device.T, error) {
-	l := make([]*device.T, 0)
+func (t T) Devices() (device.L, error) {
+	l := make(device.L, 0)
 	if t.uuid == "" {
 		return l, nil
 	}

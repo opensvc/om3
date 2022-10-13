@@ -32,9 +32,9 @@ type (
 		IsActive() (bool, error)
 		Exists() (bool, error)
 		FQN() string
-		Devices() ([]*device.T, error)
-		PVs() ([]*device.T, error)
-		ActiveLVs() ([]*device.T, error)
+		Devices() (device.L, error)
+		PVs() (device.L, error)
+		ActiveLVs() (device.L, error)
 		DriverName() string
 		AddTag(string) error
 		DelTag(string) error
@@ -182,26 +182,26 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.FromBool(v), err
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	if l, err := t.vg().ActiveLVs(); err == nil {
 		return l
 	} else {
-		return []*device.T{}
+		return device.L{}
 	}
 }
 
-func (t T) ClaimedDevices() []*device.T {
+func (t T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t *T) ReservableDevices() []*device.T {
+func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) SubDevices() []*device.T {
+func (t T) SubDevices() device.L {
 	if l, err := t.vg().PVs(); err != nil {
 		t.Log().Debug().Err(err).Msg("")
-		return []*device.T{}
+		return device.L{}
 	} else {
 		return l
 	}

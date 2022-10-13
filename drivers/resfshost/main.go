@@ -160,7 +160,7 @@ func (t T) mountPoint() string {
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t T) device() *device.T {
+func (t T) device() device.T {
 	return device.New(t.devpath(), device.WithLogger(t.Log()))
 }
 
@@ -275,16 +275,16 @@ func (t T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
-func (t *T) ClaimedDevices() []*device.T {
+func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t *T) ReservableDevices() []*device.T {
+func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t *T) SubDevices() []*device.T {
-	l := make([]*device.T, 0)
+func (t *T) SubDevices() device.L {
+	l := make(device.L, 0)
 	fs := t.fs()
 	if !fs.IsMultiDevice() {
 		l = append(l, t.device())

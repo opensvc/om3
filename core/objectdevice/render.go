@@ -14,10 +14,6 @@ func (t L) Render() string {
 	tree.AddColumn().AddText("Role").SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("Device").SetColor(rawconfig.Color.Bold)
 	for _, e := range t {
-		if e.Device == nil {
-			// volume with no device
-			continue
-		}
 		did := driver.NewID(e.DriverID.Group, e.DriverID.Name)
 		n := tree.AddNode()
 		n.AddColumn().AddText(e.ObjectPath.String()).SetColor(rawconfig.Color.Primary)

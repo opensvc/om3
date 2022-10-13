@@ -3,9 +3,11 @@ package scsi
 import (
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/device"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -14,7 +16,21 @@ type (
 	}
 )
 
+// ReadRegistrations read the reservation from any operating path
 func (t SGPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return []string{}, err
+	}
+	for _, path := range paths {
+		if regs, err := t.readRegistrations(path); err == nil {
+			return regs, nil
+		}
+	}
+	return []string{}, errors.Errorf("no operating path to read registrations on")
+}
+
+func (t SGPersistDriver) readRegistrations(dev device.T) ([]string, error) {
 	l := make([]string, 0)
 	cmd := command.New(
 		command.WithName("sg_persist"),
@@ -35,6 +51,19 @@ func (t SGPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
 }
 
 func (t SGPersistDriver) Register(dev device.T, key string) error {
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.registerPath(path, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t SGPersistDriver) registerPath(dev device.T, key string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--register-ignore", "--param-sark", key, dev.Path()),
@@ -48,6 +77,19 @@ func (t SGPersistDriver) Register(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) Unregister(dev device.T, key string) error {
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.unregisterPath(path, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t SGPersistDriver) unregisterPath(dev device.T, key string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--register-ignore", "--param-rk", key, dev.Path()),
@@ -61,6 +103,19 @@ func (t SGPersistDriver) Unregister(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) ReadReservation(dev device.T) (string, error) {
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return "", err
+	}
+	for _, path := range paths {
+		if key, err := t.readReservation(path); err == nil {
+			return key, nil
+		}
+	}
+	return "", errors.Errorf("no operating path to read reservation on")
+}
+
+func (t SGPersistDriver) readReservation(dev device.T) (string, error) {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--in", "--read-reservation", dev.Path()),
@@ -72,14 +127,30 @@ func (t SGPersistDriver) ReadReservation(dev device.T) (string, error) {
 		return "", err
 	}
 	for _, line := range strings.Split(string(b), "\n") {
-		if strings.HasPrefix(line, "   Key = 0x") {
-			return line[11:], nil
+		if strings.HasPrefix(line, "    Key=0x") {
+			return line[10:], nil
 		}
 	}
 	return "", nil
 }
 
 func (t SGPersistDriver) Reserve(dev device.T, key string) error {
+	var errs error
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.reserve(path, key); err == nil {
+			return nil
+		} else {
+			errs = xerrors.Append(errs, err)
+		}
+	}
+	return errors.Errorf("no %s path accepted reservation: %s", dev, errs)
+}
+
+func (t SGPersistDriver) reserve(dev device.T, key string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--reserve", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path()),
@@ -93,6 +164,22 @@ func (t SGPersistDriver) Reserve(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) Release(dev device.T, key string) error {
+	var errs error
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.release(path, key); err == nil {
+			return nil
+		} else {
+			errs = xerrors.Append(errs, err)
+		}
+	}
+	return errors.Errorf("no %s path accepted reservation release: %s", dev, errs)
+}
+
+func (t SGPersistDriver) release(dev device.T, key string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--release", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path()),
@@ -106,6 +193,22 @@ func (t SGPersistDriver) Release(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) Clear(dev device.T, key string) error {
+	var errs error
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.clear(path, key); err == nil {
+			return nil
+		} else {
+			errs = xerrors.Append(errs, err)
+		}
+	}
+	return errors.Errorf("no %s path accepted reservation clear: %s", dev, errs)
+}
+
+func (t SGPersistDriver) clear(dev device.T, key string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--clear", "--param-rk", key, dev.Path()),
@@ -119,6 +222,22 @@ func (t SGPersistDriver) Clear(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) Preempt(dev device.T, oldKey, newKey string) error {
+	var errs error
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.preempt(path, oldKey, newKey); err == nil {
+			return nil
+		} else {
+			errs = xerrors.Append(errs, err)
+		}
+	}
+	return errors.Errorf("no %s path accepted reservation preempt: %s", dev, errs)
+}
+
+func (t SGPersistDriver) preempt(dev device.T, oldKey, newKey string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--preempt", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path()),
@@ -132,6 +251,22 @@ func (t SGPersistDriver) Preempt(dev device.T, oldKey, newKey string) error {
 }
 
 func (t SGPersistDriver) PreemptAbort(dev device.T, oldKey, newKey string) error {
+	var errs error
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := t.preemptAbort(path, oldKey, newKey); err == nil {
+			return nil
+		} else {
+			errs = xerrors.Append(errs, err)
+		}
+	}
+	return errors.Errorf("no %s path accepted reservation preempt-abort: %s", dev, errs)
+}
+
+func (t SGPersistDriver) preemptAbort(dev device.T, oldKey, newKey string) error {
 	cmd := command.New(
 		command.WithName("sg_persist"),
 		command.WithVarArgs("--out", "--preempt-abort", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path()),

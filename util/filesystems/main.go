@@ -23,7 +23,7 @@ type (
 	}
 
 	subDeviceLister interface {
-		SubDevices() []*device.T
+		SubDevices() device.L
 	}
 
 	I interface {
@@ -58,7 +58,7 @@ type (
 
 var (
 	availTypesCache availTypesM
-	db              = make(map[string]interface{})
+	db              = make(map[string]any)
 )
 
 func init() {
@@ -160,7 +160,7 @@ func IsCapable(t string) bool {
 	return true
 }
 
-func CanFSCK(fs interface{}) error {
+func CanFSCK(fs any) error {
 	if i, ok := fs.(CanFSCKer); !ok {
 		return nil
 	} else {
@@ -168,12 +168,12 @@ func CanFSCK(fs interface{}) error {
 	}
 }
 
-func HasFSCK(fs interface{}) bool {
+func HasFSCK(fs any) bool {
 	_, ok := fs.(FSCKer)
 	return ok
 }
 
-func DevicesFSCK(fs interface{}, dl subDeviceLister) error {
+func DevicesFSCK(fs any, dl subDeviceLister) error {
 	i, ok := fs.(FSCKer)
 	if !ok {
 		return nil
@@ -187,7 +187,7 @@ func DevicesFSCK(fs interface{}, dl subDeviceLister) error {
 	return nil
 }
 
-func DevicesFormated(fs interface{}, dl subDeviceLister) (bool, error) {
+func DevicesFormated(fs any, dl subDeviceLister) (bool, error) {
 	i, ok := fs.(IsFormateder)
 	if !ok {
 		return false, errors.New("isFormated is not implemented")
@@ -219,7 +219,7 @@ func Types() []string {
 	return xmap.Keys(db)
 }
 
-type availTypesM map[string]interface{}
+type availTypesM map[string]any
 
 func (m availTypesM) Has(s string) bool {
 	if m == nil {

@@ -450,8 +450,8 @@ func (t T) hasAutostartFile() bool {
 	return file.Exists(p)
 }
 
-func (t T) SubDevices() []*device.T {
-	l := make([]*device.T, 0)
+func (t T) SubDevices() device.L {
+	l := make(device.L, 0)
 	cf := t.configFile()
 	f, err := os.Open(cf)
 	if err != nil {

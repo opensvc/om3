@@ -406,15 +406,15 @@ func (t T) Provisioned() (provisioned.T, error) {
 	}
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	if l, err := t.poolListZDevs(); err == nil {
 		return t.toDevices(l)
 	} else {
-		return []*device.T{}
+		return device.L{}
 	}
 }
 
-func (t T) SubDevices() []*device.T {
+func (t T) SubDevices() device.L {
 	if l, errUpd := t.updateSubDevsFile(); errUpd == nil && l != nil {
 		return t.toDevices(l)
 	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
@@ -422,17 +422,17 @@ func (t T) SubDevices() []*device.T {
 		return t.toDevices(l)
 	} else {
 		t.Log().Debug().Err(errLoad).Msg("load sub devs cache")
-		return []*device.T{}
+		return device.L{}
 	}
 }
 
-func (t *T) ReservableDevices() []*device.T {
+func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) toDevices(l []string) []*device.T {
+func (t T) toDevices(l []string) device.L {
 	log := t.Log()
-	devs := make([]*device.T, 0)
+	devs := make(device.L, 0)
 	for _, s := range l {
 		dev := device.New(s, device.WithLogger(log))
 		devs = append(devs, dev)

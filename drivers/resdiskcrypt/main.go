@@ -442,26 +442,27 @@ func (t T) exposedDevice() *device.T {
 	if devpath == "" {
 		return nil
 	}
-	return device.New(devpath, device.WithLogger(t.Log()))
+	dev := device.New(devpath, device.WithLogger(t.Log()))
+	return &dev
 }
 
-func (t T) ExposedDevices() []*device.T {
+func (t T) ExposedDevices() device.L {
 	dev := t.exposedDevice()
 	if dev == nil {
-		return []*device.T{}
+		return device.L{}
 	}
-	return []*device.T{t.exposedDevice()}
+	return device.L{*dev}
 }
 
-func (t *T) ReservableDevices() []*device.T {
+func (t *T) ReservableDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t T) SubDevices() []*device.T {
+func (t T) SubDevices() device.L {
 	devp := t.getDev()
 	if devp == "" {
-		return []*device.T{}
+		return device.L{}
 	}
 	dev := device.New(devp, device.WithLogger(t.Log()))
-	return []*device.T{dev}
+	return device.L{dev}
 }

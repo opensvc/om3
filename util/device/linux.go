@@ -131,8 +131,8 @@ func (t T) Host() (string, error) {
 	return "host" + hbtl[0], nil
 }
 
-func (t T) Slaves() ([]*T, error) {
-	l := make([]*T, 0)
+func (t T) Slaves() (L, error) {
+	l := make(L, 0)
 	root, err := t.sysfsFile()
 	if err != nil {
 		return l, err
@@ -149,8 +149,8 @@ func (t T) Slaves() ([]*T, error) {
 	return l, nil
 }
 
-func (t T) Holders() ([]*T, error) {
-	l := make([]*T, 0)
+func (t T) Holders() (L, error) {
+	l := make(L, 0)
 	root, err := t.sysfsFile()
 	if err != nil {
 		return l, err

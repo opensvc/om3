@@ -147,7 +147,7 @@ type (
 	// to handle SCSI persistent reservation on a list of devices.
 	devReservabler interface {
 		// ReservableDevices must be implement by every driver that wants SCSI PR.
-		ReservableDevices() []*device.T
+		ReservableDevices() device.L
 
 		// IsSCSIPersistentReservationPreemptAbortDisabled is exposing the resource no_preempt_abort keyword value.
 		IsSCSIPersistentReservationPreemptAbortDisabled() bool

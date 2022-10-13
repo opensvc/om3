@@ -33,7 +33,7 @@ type (
 
 	PersistentReservationHandle struct {
 		Key                         string
-		Devices                     []*device.T
+		Devices                     device.L
 		NoPreempt                   bool
 		Log                         *zerolog.Logger
 		StatusLogger                statusLogger
@@ -71,10 +71,7 @@ func (t *PersistentReservationHandle) Status() status.T {
 	}
 	agg := status.Undef
 	for _, dev := range t.Devices {
-		if dev == nil {
-			continue
-		}
-		s := t.DeviceStatus(*dev)
+		s := t.DeviceStatus(dev)
 		agg.Add(s)
 	}
 	return agg
@@ -221,14 +218,14 @@ func (t *PersistentReservationHandle) Start() error {
 		return err
 	}
 	for _, dev := range t.Devices {
-		if s := t.DeviceStatus(*dev); s == status.Up {
+		if s := t.DeviceStatus(dev); s == status.Up {
 			t.Log.Info().Msgf("%s is already registered and reserved", dev)
 			continue
 		}
-		if err := t.persistentReservationDriver.Register(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
 			return errors.Wrapf(err, "%s spr register", dev.Path())
 		}
-		if err := t.persistentReservationDriver.Reserve(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
 			return errors.Wrapf(err, "%s spr reserve", dev.Path())
 		}
 	}
@@ -240,14 +237,14 @@ func (t *PersistentReservationHandle) Stop() error {
 		return err
 	}
 	for _, dev := range t.Devices {
-		if s := t.DeviceStatus(*dev); s == status.Down {
+		if s := t.DeviceStatus(dev); s == status.Down {
 			t.Log.Info().Msgf("%s is already unregistered and unreserved", dev)
 			continue
 		}
-		if err := t.persistentReservationDriver.Release(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Release(dev, t.Key); err != nil {
 			return errors.Wrapf(err, "%s spr release", dev.Path())
 		}
-		if err := t.persistentReservationDriver.Unregister(*dev, t.Key); err != nil {
+		if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
 			return errors.Wrapf(err, "%s spr unregister", dev.Path())
 		}
 	}
