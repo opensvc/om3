@@ -34,7 +34,7 @@ type (
 	PersistentReservationHandle struct {
 		Key                         string
 		Devices                     device.L
-		NoPreempt                   bool
+		NoPreemptAbort              bool
 		Log                         *zerolog.Logger
 		StatusLogger                statusLogger
 		persistentReservationDriver PersistentReservationDriver
@@ -225,8 +225,28 @@ func (t *PersistentReservationHandle) Start() error {
 		if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
 			return errors.Wrapf(err, "%s spr register", dev.Path())
 		}
-		if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
-			return errors.Wrapf(err, "%s spr reserve", dev.Path())
+
+		if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
+			return err
+		} else if reservation == t.Key {
+			// already reserved
+		} else if reservation == "" {
+			// not reserved => Reserve action
+			if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
+				return errors.Wrapf(err, "%s spr reserve", dev.Path())
+			}
+		} else if t.NoPreemptAbort {
+			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
+				return errors.Wrapf(err, "%s spr preempt (no_preempt_abort kw)", dev.Path())
+			}
+		} else if vendor, _ := dev.Vendor(); vendor == "VMware" {
+			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
+				return errors.Wrapf(err, "%s spr preempt (VMware vdisk quirk)", dev.Path())
+			}
+		} else {
+			if err := t.persistentReservationDriver.PreemptAbort(dev, reservation, t.Key); err != nil {
+				return errors.Wrapf(err, "%s spr preempt-abort", dev.Path())
+			}
 		}
 	}
 	return nil

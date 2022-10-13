@@ -835,11 +835,11 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 		return nil
 	}
 	hdl := scsi.PersistentReservationHandle{
-		Key:          o.PersistentReservationKey(),
-		Devices:      o.ReservableDevices(),
-		NoPreempt:    o.IsSCSIPersistentReservationPreemptAbortDisabled(),
-		Log:          r.Log(),
-		StatusLogger: r.StatusLog(),
+		Key:            o.PersistentReservationKey(),
+		Devices:        o.ReservableDevices(),
+		NoPreemptAbort: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
+		Log:            r.Log(),
+		StatusLogger:   r.StatusLog(),
 	}
 	return &hdl
 }
