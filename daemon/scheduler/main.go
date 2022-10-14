@@ -10,6 +10,7 @@ import (
 
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/schedule"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -260,7 +261,7 @@ func (t *T) onInstStatusUpdated(c msgbus.InstStatusUpdated) {
 		// discard peer node events
 		return
 	}
-	provisioned := c.Status.Provisioned.Bool()
+	provisioned := c.Status.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	hasAnyJob := t.hasAnyJob(c.Path)
 	switch {
 	case provisioned:

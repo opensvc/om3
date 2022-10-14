@@ -1,8 +1,6 @@
 package smon
 
 import (
-	"time"
-
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -45,36 +43,115 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 }
 
 func (o *smon) cmdSetSmonClient(c instance.Monitor) {
-	strVal := c.GlobalExpect
-	if strVal == globalExpectUnset {
-		strVal = "unset"
-	}
-	for node, status := range o.instSmon {
-		if status.GlobalExpect == c.GlobalExpect {
-			o.log.Info().Msg(o.logMsgf("set smon: already targeting %s (on node %s)", strVal, node))
+	doStatus := func() {
+		switch c.Status {
+		case "":
+			return
+		case statusDeleted:
+		case statusDeleting:
+		case statusFreezeFailed:
+		case statusFreezing:
+		case statusFrozen:
+		case statusIdle:
+		case statusProvisioned:
+		case statusProvisioning:
+		case statusProvisionFailed:
+		case statusPurgeFailed:
+		case statusReady:
+		case statusStarted:
+		case statusStartFailed:
+		case statusStarting:
+		case statusStopFailed:
+		case statusStopping:
+		case statusThawed:
+		case statusThawedFailed:
+		case statusThawing:
+		case statusUnProvisioned:
+		case statusUnProvisionFailed:
+		case statusUnProvisioning:
+		case statusWaitLeader:
+		case statusWaitNonLeader:
+		default:
+			o.log.Warn().Msgf("invalid set smon status: %s", c.Status)
 			return
 		}
-	}
-	switch c.GlobalExpect {
-	case globalExpectAbort:
-		c.GlobalExpect = globalExpectUnset
-	case globalExpectUnset:
-		return
-	case globalExpectStarted:
-		if o.svcAgg.Avail == status.Up {
-			msg := "set smon: already started"
-			o.log.Info().Msg(msg)
+		if o.state.Status == c.Status {
+			o.log.Info().Msgf("status is already %s", c.Status)
 			return
 		}
-	}
-	o.log.Info().Msgf(o.logMsgf("set smon: client request global expect to %s %+v", strVal, c))
-	if c.GlobalExpect != o.state.GlobalExpect {
+		o.log.Info().Msgf("set status %s -> %s", o.state.Status, c.Status)
 		o.change = true
-		o.state.GlobalExpect = c.GlobalExpect
-		o.state.GlobalExpectUpdated = time.Now()
+		o.state.Status = c.Status
+	}
+
+	doGlobalExpect := func() {
+		switch c.GlobalExpect {
+		case "":
+			return
+		case globalExpectAborted:
+		case globalExpectFrozen:
+		case globalExpectProvisioned:
+		case globalExpectPurged:
+		case globalExpectStopped:
+		case globalExpectThawed:
+		case globalExpectUnProvisioned:
+		case globalExpectStarted:
+			if o.svcAgg.Avail == status.Up {
+				o.log.Info().Msg("preserve global expect: object is already started")
+				return
+			}
+		default:
+			o.log.Warn().Msgf("invalid set smon global expect: %s", c.GlobalExpect)
+			return
+		}
+		from, to := o.logFromTo(o.state.GlobalExpect, c.GlobalExpect)
+		for node, instSmon := range o.instSmon {
+			if instSmon.GlobalExpect != c.GlobalExpect && instSmon.GlobalExpect != "" && instSmon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
+				o.log.Info().Msgf("global expect is already %s on node %s", to, node)
+				return
+			}
+		}
+
+		o.log.Info().Msgf("prepare to set global expect %s -> %s", from, to)
+		if c.GlobalExpect != o.state.GlobalExpect {
+			o.change = true
+			o.state.GlobalExpect = c.GlobalExpect
+		}
+	}
+
+	doLocalExpect := func() {
+		switch c.LocalExpect {
+		case localExpectUnset:
+			return
+		case localExpectStarted:
+		default:
+			o.log.Warn().Msgf("invalid set smon local expect: %s", c.LocalExpect)
+			return
+		}
+		var target string
+		if c.LocalExpect == "unset" {
+			target = localExpectUnset
+		} else {
+			target = c.LocalExpect
+		}
+		if o.state.LocalExpect == target {
+			o.log.Info().Msgf("local expect is already %s", c.LocalExpect)
+			return
+		}
+		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, target)
+		o.change = true
+		o.state.LocalExpect = target
+	}
+
+	doStatus()
+	doGlobalExpect()
+	doLocalExpect()
+
+	if o.change {
 		o.updateIfChange()
 		o.orchestrate()
 	}
+
 }
 
 func (o *smon) cmdSmonUpdated(c msgbus.SmonUpdated) {

@@ -95,23 +95,24 @@ func (o *smon) crmAction(title string, cmdArgs ...string) error {
 		command.WithLogger(&o.log),
 	)
 	if title != "" {
-		o.log.Info().Msgf(o.logMsgf(
+		o.loggerWithState().Info().Msgf(
 			"crm action %s (local status:'%s') -> exec %s %s",
-			title, o.state.Status, cmdPath, cmdArgs))
+			title, o.state.Status, cmdPath, cmdArgs,
+		)
 	} else {
-		o.log.Debug().Msgf(o.logMsgf("-> exec %s %s", cmdPath, cmdArgs))
+		o.loggerWithState().Debug().Msgf("-> exec %s %s", cmdPath, cmdArgs)
 	}
 	if err := cmd.Run(); err != nil {
-		o.log.Error().Err(err).Msgf(o.logMsgf("failed %s %s", o.path, cmdArgs))
+		o.loggerWithState().Error().Err(err).Msgf("failed %s %s", o.path, cmdArgs)
 		return err
 	}
 	if title != "" {
-		o.log.Info().Msgf(
-			o.logMsgf(
-				"crm action %s (local status:'%s') <- exec %s %s",
-				title, o.state.Status, cmdPath, cmdArgs))
+		o.loggerWithState().Info().Msgf(
+			"crm action %s (local status:'%s') <- exec %s %s",
+			title, o.state.Status, cmdPath, cmdArgs,
+		)
 	} else {
-		o.log.Debug().Msgf(o.logMsgf("<- exec %s %s", cmdPath, cmdArgs))
+		o.loggerWithState().Debug().Msgf("<- exec %s %s", cmdPath, cmdArgs)
 	}
 	return nil
 }
