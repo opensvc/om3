@@ -1,6 +1,7 @@
 package smon
 
 import (
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/msgbus"
 )
@@ -26,7 +27,7 @@ func (o *smon) purgedFromIdle() {
 		o.purgedFromIdleUp()
 		return
 	}
-	if o.instStatus[o.localhost].Provisioned.Bool() {
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		o.purgedFromIdleProvisioned()
 		return
 	}

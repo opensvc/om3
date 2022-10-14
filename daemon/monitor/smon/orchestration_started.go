@@ -93,7 +93,7 @@ func (o *smon) startedFromFrozen() {
 
 func (o *smon) startedFromReady() {
 	if o.pendingCancel == nil {
-		o.log.Error().Msg(o.logMsg("startedFromReady without pending"))
+		o.loggerWithState().Error().Msg("startedFromReady without pending")
 		o.transitionTo(statusIdle)
 		return
 	}
@@ -101,7 +101,7 @@ func (o *smon) startedFromReady() {
 		return
 	}
 	if o.hasBetterCandidateForStarted() {
-		o.log.Info().Msg(o.logMsg("another better candidate exists, leave ready state"))
+		o.loggerWithState().Info().Msg("another better candidate exists, leave ready state")
 		o.transitionTo(statusIdle)
 		o.clearPending()
 		return
@@ -129,7 +129,7 @@ func (o *smon) startedFromAny() {
 
 func (o *smon) startedFromStartFailed() {
 	if o.svcAgg.Avail == status.Up {
-		o.log.Info().Msg(o.logMsg("clear start failed (aggregated status is up)"))
+		o.loggerWithState().Info().Msg("clear start failed (aggregated status is up)")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		o.state.Status = statusIdle
@@ -139,7 +139,7 @@ func (o *smon) startedFromStartFailed() {
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		o.log.Info().Msg(o.logMsg("local status is started, unset global expect"))
+		o.loggerWithState().Info().Msg("local status is started, unset global expect")
 		o.change = true
 		o.state.Status = statusIdle
 		o.state.GlobalExpect = globalExpectUnset
@@ -150,7 +150,7 @@ func (o *smon) startedClearIfReached() bool {
 		return true
 	}
 	if o.svcAgg.Avail == status.Up {
-		o.log.Info().Msg(o.logMsg("aggregated status is up, unset global expect"))
+		o.loggerWithState().Info().Msg("aggregated status is up, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		o.state.Status = statusIdle

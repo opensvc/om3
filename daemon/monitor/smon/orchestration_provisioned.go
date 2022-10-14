@@ -1,5 +1,7 @@
 package smon
 
+import "opensvc.com/opensvc/core/provisioned"
+
 func (o *smon) orchestrateProvisioned() {
 	if !o.isConvergedGlobalExpect() {
 		return
@@ -37,8 +39,8 @@ func (o *smon) provisionedFromWaitLeader() {
 }
 
 func (o *smon) provisionedClearIfReached() bool {
-	if o.instStatus[o.localhost].Provisioned.Bool() {
-		o.log.Info().Msg("global expect provisioned local status provisioned, unset global expect")
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		o.log.Info().Msg("provisioned orchestration: local status provisioned, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusIdle {
@@ -62,8 +64,8 @@ func (o *smon) hasLeaderProvisioned() bool {
 	leader := o.scopeNodes[0]
 	if leaderInstanceStatus, ok := o.instStatus[leader]; !ok {
 		return false
-	} else if !leaderInstanceStatus.Provisioned.Bool() {
-		return false
+	} else if leaderInstanceStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		return true
 	}
-	return true
+	return false
 }

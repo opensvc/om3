@@ -34,6 +34,7 @@ type (
 		Status              string                    `json:"status"`
 		StatusUpdated       time.Time                 `json:"status_updated"`
 		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
+		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
 		Placement           string                    `json:"placement"`
 		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
 	}

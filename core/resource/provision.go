@@ -70,14 +70,25 @@ func Provision(ctx context.Context, t Driver, leader bool) error {
 	if err := setProvisionedValue(true, t); err != nil {
 		return err
 	}
-	if err := t.Start(ctx); err != nil {
+	if err := startLeader(ctx, t, leader); err != nil {
 		return err
 	}
 	return nil
 }
 
+func isLeaded(t Driver, leader bool) bool {
+	return !t.IsStandby() && !leader && t.IsShared()
+}
+
+func startLeader(ctx context.Context, t Driver, leader bool) error {
+	if isLeaded(t, leader) {
+		return nil
+	}
+	return t.Start(ctx)
+}
+
 func provisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
-	if !t.IsStandby() && !leader && t.IsShared() {
+	if isLeaded(t, leader) {
 		return provisionLeaded(ctx, t)
 	}
 	return provisionLeader(ctx, t)
@@ -156,7 +167,7 @@ func Provisioned(t Driver) (provisioned.T, error) {
 		}
 	*/
 	if v, err := t.Provisioned(); err == nil {
-		provBool := v.Bool()
+		provBool := v.IsOneOf(provisioned.True)
 		err = setProvisionedValue(provBool, t)
 		return provisioned.FromBool(provBool), err
 	} else {

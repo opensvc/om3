@@ -85,7 +85,7 @@ func (o *smon) stoppedFromAny() {
 
 func (o *smon) stoppedClearIfReached() bool {
 	if o.isLocalStopped() {
-		o.log.Info().Msg(o.logMsg("local status is stopped, unset global expect"))
+		o.loggerWithState().Info().Msg("local status is stopped, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		if o.state.LocalExpect != statusIdle {

@@ -20,7 +20,6 @@ package smon
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -100,7 +99,7 @@ var (
 	localExpectStarted = "started"
 	localExpectUnset   = ""
 
-	globalExpectAbort         = "abort"
+	globalExpectAborted       = "aborted"
 	globalExpectFrozen        = "frozen"
 	globalExpectProvisioned   = "provisioned"
 	globalExpectPurged        = "purged"
@@ -231,23 +230,22 @@ func (o *smon) updateIfChange() {
 		return
 	}
 	o.change = false
-	o.state.StatusUpdated = time.Now()
+	now := time.Now()
 	previousVal := o.previousState
 	newVal := o.state
 	fromGeS, toGeS := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		if previousVal.GlobalExpect != globalExpectUnset {
-			o.log.Info().Msg(o.logMsgf("change monitor global expect %s -> %s", fromGeS, toGeS))
-		} else {
-			o.log.Info().Msgf("change monitor global expect %s -> %s", fromGeS, toGeS)
-		}
+		o.state.GlobalExpectUpdated = now
+		o.loggerWithState().Info().Msgf("change monitor global expect %s -> %s", fromGeS, toGeS)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
+		o.state.LocalExpectUpdated = now
 		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
-		o.log.Info().Msgf(o.logMsgf("change monitor local expect %s -> %s", from, to))
+		o.loggerWithState().Info().Msgf("change monitor local expect %s -> %s", from, to)
 	}
 	if newVal.Status != previousVal.Status {
-		o.log.Info().Msgf(o.logMsgf("change monitor state %s -> %s", previousVal.Status, newVal.Status))
+		o.state.StatusUpdated = now
+		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
 	}
 	o.previousState = o.state
 	o.update()
@@ -291,26 +289,14 @@ func (o *smon) logFromTo(from, to string) (string, string) {
 	return from, to
 }
 
-func (o *smon) logMsg(s string) string {
-	var msg string
+func (o *smon) loggerWithState() *zerolog.Logger {
+	ctx := o.log.With()
 	if o.state.GlobalExpect != globalExpectUnset {
-		msg = "global expect " + o.state.GlobalExpect
+		ctx.Str("global_expect", o.state.GlobalExpect)
 	}
 	if o.state.LocalExpect != statusIdle && o.state.LocalExpect != localExpectUnset {
-		msgLocalExpect := "local expect " + o.state.LocalExpect
-		if msg != "" {
-			msg += " " + msgLocalExpect
-		} else {
-			msg = msgLocalExpect
-		}
+		ctx.Str("local_expect", o.state.LocalExpect)
 	}
-	if msg != "" {
-		return msg + " " + s
-	}
-	return s
-}
-
-func (o *smon) logMsgf(format string, v ...interface{}) string {
-	s := fmt.Sprintf(format, v...)
-	return o.logMsg(s)
+	log := ctx.Logger()
+	return &log
 }

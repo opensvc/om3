@@ -63,13 +63,22 @@ func (t T) String() string {
 	return toString[t]
 }
 
-func (t T) Bool() bool {
-	switch t {
-	case True:
-		return true
-	default:
-		return false
+func (t T) IsNoneOf(states ...T) bool {
+	for _, s := range states {
+		if t == s {
+			return false
+		}
 	}
+	return true
+}
+
+func (t T) IsOneOf(states ...T) bool {
+	for _, s := range states {
+		if t == s {
+			return true
+		}
+	}
+	return false
 }
 
 // FlagString returns a one character representation of the type instance.

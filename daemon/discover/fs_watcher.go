@@ -28,7 +28,9 @@ func dirCreated(event fsnotify.Event) bool {
 	if event.Op&fsnotify.Create == 0 {
 		return false
 	}
-	if stat, err := os.Stat(event.Name); err != nil {
+	if stat, err := os.Stat(event.Name); os.IsNotExist(err) {
+		return false
+	} else if err != nil {
 		log.Error().Err(err).Msgf("stat %s", event.Name)
 		return false
 	} else if !stat.IsDir() {
