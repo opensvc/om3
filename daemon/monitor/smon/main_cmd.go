@@ -1,6 +1,8 @@
 package smon
 
 import (
+	"time"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -122,6 +124,9 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		if c.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
 			o.state.GlobalExpect = c.GlobalExpect
+			// update GlobalExpectUpdated now
+			// This will allow remote nodes to pickup most recent value
+			o.state.GlobalExpectUpdated = time.Now()
 		}
 	}
 

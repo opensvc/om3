@@ -235,7 +235,9 @@ func (o *smon) updateIfChange() {
 	newVal := o.state
 	fromGeS, toGeS := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		o.state.GlobalExpectUpdated = now
+		// Don't update GlobalExpectUpdated here
+		// GlobalExpectUpdated is updated only during cmdSetSmonClient and
+		// its value is used for convergeGlobalExpectFromRemote
 		o.loggerWithState().Info().Msgf("change monitor global expect %s -> %s", fromGeS, toGeS)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
