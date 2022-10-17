@@ -36,6 +36,12 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 				}
 				o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
 			}
+		case msgbus.CfgDeleted:
+			node := srcCmd.Node
+			if _, ok := o.instStatus[node]; ok {
+				o.log.Info().Msgf("drop deleted instance status from node %s", node)
+				delete(o.instStatus, node)
+			}
 		}
 	}
 	o.svcAgg = c.SvcAgg
