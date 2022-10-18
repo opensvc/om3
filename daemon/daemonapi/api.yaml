@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.1.0
+  version: 3.2.0
 servers:
   - url: http://localhost:1215/api
 paths:
@@ -121,6 +121,8 @@ paths:
   /object/status:
     post:
       operationId: PostObjectStatus
+      tags:
+        - internal
       requestBody:
         description: post object status
         required: true
@@ -151,6 +153,10 @@ components:
         message:
           type: string
           description: Error message
+    app:
+      type: string
+    kind:
+      type: string
     nodesInfo:
       type: array
       items:
@@ -251,32 +257,127 @@ components:
       type: object
       required:
         - avail
-        - overall
-        - updated
         - frozen
+        - kind
+        - overall
         - provisioned
+        - updated
       properties:
+        app:
+          $ref: '#/components/schemas/app'
         avail:
           $ref: '#/components/schemas/status'
-        overall:
-          $ref: '#/components/schemas/status'
-        optional:
-          $ref: '#/components/schemas/status'
-        provisioned:
+        children:
+          $ref: '#/components/schemas/pathRelation'
+        constraints:
+          type: boolean
+        drp:
+          type: boolean
+        csum:
           type: string
-          enum:
-            - true
-            - false
-            - mixed
-            - n/a
+        env:
+          type: string
+        flex_target:
+          type: integer
+        flex_min:
+          type: integer
+        flex_max:
+          type: integer
         frozen:
           type: string
           format: date-time
+        kind:
+          $ref: '#/components/schemas/kind'
+        optional:
+          $ref: '#/components/schemas/status'
+        orchestrate:
+          $ref: '#/components/schemas/orchestrate'
+        overall:
+          $ref: '#/components/schemas/status'
+        parents:
+          $ref: '#/components/schemas/pathRelation'
+        placement:
+          $ref: '#/components/schemas/placement'
+        preserved:
+          type: boolean
+          description: |
+            preserve is true if this status has not been updated due to a 
+            heartbeat downtime covered by a maintenance period.
+            when the maintenance period ends, the status should be unchanged, 
+            and preserve will be set to false.
+          default: false
+        priority:
+          $ref: '#/components/schemas/priority'
+        provisioned:
+          $ref: '#/components/schemas/provisioned'
+        slaves:
+          $ref: '#/components/schemas/pathRelation'
+        subsets:
+          type: array
+          description: resources properties
+          items:
+            type: object
+            required:
+              - rid
+              - parallel
+            properties:
+              rid:
+                type: string
+              parallel:
+                type: boolean
+                default: false
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/resourceExposedStatus'
+        running:
+          type: array
+          items:
+            type: string
+        scale:
+          type: integer
+        status_group:
+          type: string
+        topology:
+          $ref: '#/components/schemas/topology'
         updated:
           type: string
           format: date-time
-        kind:
-          type: string
+    orchestrate:
+      type: string
+      enum:
+        - ha
+        - start
+        - no
+      default: no
+    pathRelation:
+      type: array
+      items:
+        type: string
+        description: object path or an instance path (path@node)
+    placement:
+      type: string
+      default: none
+      description: object placement policy
+      enum:
+        - none
+        - nodes order
+        - load avg
+        - shift
+        - spread
+        - score
+    priority:
+      type: integer
+      description: scheduling priority of an object instance on a its node
+      default: 50
+    provisioned:
+      type: string
+      description: service, instance or resource provisioned state
+      enum:
+        - true
+        - false
+        - mixed
+        - n/a
     PostObjectAbort:
       type: object
       required:
@@ -310,8 +411,93 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/instanceStatus'
+    resourceExposedStatus:
+      type: object
+      required:
+        - rid
+        - label
+        - status
+        - type
+      properties:
+        rid:
+          $ref: '#/components/schemas/resourceId'
+        label:
+          type: string
+        log:
+          type: array
+          items:
+            type: object
+            required:
+              - level
+              - message
+            properties:
+              level:
+                type: string
+              message:
+                type: string
+        status:
+          $ref: '#/components/schemas/status'
+        type:
+          type: string
+        provisioned:
+          $ref: '#/components/schemas/resourceProvisionStatus'
+        disable:
+          type: boolean
+          description: hints the resource ignores all state transition actions
+        info:
+          type: object
+          description: |
+            key-value pairs providing interesting information to collect 
+            site-wide about this resource
+        monitor:
+          type: boolean
+          description: |
+            tells the daemon if it should trigger a monitor action when the 
+            resource is not up
+        optional:
+          type: boolean
+          description: |
+            is resource status aggregated into Overall instead of Avail instance status.
+            Errors in optional resource don't stop a state transition action
+        encap:
+          type: boolean
+          description: |
+            indicates that the resource is handled by the encapsulated agents, 
+            and ignored at the hypervisor level
+        standby:
+          type: boolean
+          description: |
+            resource should always be up, even after a stop state transition action
+        subset:
+          type: string
+          description: the name of the subset this resource is assigned to
+        restart:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+    resourceId:
+      type: string
+    resourceProvisionStatus:
+      type: object
+      required:
+        - state
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/provisioned'
     status:
       type: string
+    topology:
+      type: string
+      description: "object topology"
+      enum:
+        - failover
+        - flex
+      default: failover
   parameters:
     queryObjectPath:
       name: path
