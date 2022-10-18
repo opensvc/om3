@@ -1,9 +1,9 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.3.3
+  version: 3.5.0
 servers:
-  - url: http://localhost:1215/api
+  - url: https://localhost:1215
 paths:
   /nodes/info:
     get:
@@ -139,6 +139,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /openapi:
+    get:
+      operationId: GetSwagger
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
 components:
   schemas:
     app:
