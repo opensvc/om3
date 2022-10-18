@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.3.1
+  version: 3.3.2
 servers:
   - url: http://localhost:1215/api
 paths:
@@ -15,40 +15,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/nodesInfo'
-  /object/config:
-    get:
-      operationId: GetObjectConfig
-      parameters:
-        - $ref: '#/components/parameters/queryObjectPath'
-        - name: evaluate
-          in: query
-          description: evaluate
-          schema:
-            type: boolean
-        - name: impersonate
-          in: query
-          description: impersonate the evaluation as node
-          schema:
-            type: string
-      responses:
-        '200':
-          description: success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/objectConfig'
-  /object/file:
-    get:
-      operationId: GetObjectFile
-      parameters:
-        - $ref: '#/components/parameters/queryObjectPath'
-      responses:
-        '200':
-          description: success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/objectFile'
   /object/abort:
     post:
       operationId: PostObjectAbort
@@ -87,6 +53,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /object/config:
+    get:
+      operationId: GetObjectConfig
+      parameters:
+        - $ref: '#/components/parameters/queryObjectPath'
+        - name: evaluate
+          in: query
+          description: evaluate
+          schema:
+            type: boolean
+        - name: impersonate
+          in: query
+          description: impersonate the evaluation as node
+          schema:
+            type: string
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/objectConfig'
+  /object/file:
+    get:
+      operationId: GetObjectFile
+      parameters:
+        - $ref: '#/components/parameters/queryObjectPath'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/objectFile'
   /object/monitor:
     post:
       operationId: PostObjectMonitor
