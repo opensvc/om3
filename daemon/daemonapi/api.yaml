@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.3.2
+  version: 3.3.3
 servers:
   - url: http://localhost:1215/api
 paths:
@@ -173,17 +173,17 @@ components:
           $ref: '#/components/schemas/pathRelation'
         constraints:
           type: boolean
-        drp:
-          type: boolean
         csum:
           type: string
+        drp:
+          type: boolean
         env:
           type: string
-        flex_target:
+        flex_max:
           type: integer
         flex_min:
           type: integer
-        flex_max:
+        flex_target:
           type: integer
         frozen:
           type: string
@@ -212,22 +212,6 @@ components:
           $ref: '#/components/schemas/priority'
         provisioned:
           $ref: '#/components/schemas/provisioned'
-        slaves:
-          $ref: '#/components/schemas/pathRelation'
-        subsets:
-          type: array
-          description: resources properties
-          items:
-            type: object
-            required:
-              - rid
-              - parallel
-            properties:
-              rid:
-                type: string
-              parallel:
-                type: boolean
-                default: false
         resources:
           type: array
           items:
@@ -238,8 +222,24 @@ components:
             type: string
         scale:
           type: integer
+        slaves:
+          $ref: '#/components/schemas/pathRelation'
         status_group:
           type: string
+        subsets:
+          type: array
+          description: resources properties
+          items:
+            type: object
+            required:
+              - parallel
+              - rid
+            properties:
+              parallel:
+                type: boolean
+                default: false
+              rid:
+                type: string
         topology:
           $ref: '#/components/schemas/topology'
         updated:
@@ -250,18 +250,18 @@ components:
     nodeInfo:
       type: object
       required:
-        - nodename
         - labels
+        - nodename
         - paths
       properties:
-        nodename:
-          type: string
-          description: nodename is the name of the node where the labels and paths are coming from.
         labels:
           type: array
           description: labels is the list of node labels.
           items:
             $ref: '#/components/schemas/nodeLabel'
+        nodename:
+          type: string
+          description: nodename is the name of the node where the labels and paths are coming from.
         paths:
           type: array
           description: paths is the list of node to storage array san paths.
@@ -286,23 +286,23 @@ components:
     objectConfig:
       type: object
       properties:
+        data:
+          type: object
         mtime:
           type: string
           format: date-time
-        data:
-          type: object
     objectFile:
       type: object
       required:
-        - mtime
         - data
+        - mtime
       properties:
-        mtime:
-          type: string
-          format: date-time
         data:
           type: string
           format: byte
+        mtime:
+          type: string
+          format: date-time
     objectPath:
       type: string
     objectSelector:
@@ -313,8 +313,8 @@ components:
       type: string
       enum:
         - ha
-        - start
         - no
+        - start
       default: no
     pathRelation:
       type: array
@@ -326,12 +326,12 @@ components:
       default: none
       description: object placement policy
       enum:
-        - none
-        - nodes order
         - load avg
-        - shift
-        - spread
+        - nodes order
+        - none
         - score
+        - spread
+        - shift
     postObjectAbort:
       type: object
       required:
@@ -351,9 +351,9 @@ components:
       required:
         - path
       properties:
-        path:
-          type: string
         global_expect:
+          type: string
+        path:
           type: string
     postObjectStatus:
       type: object
@@ -373,20 +373,31 @@ components:
       type: string
       description: service, instance or resource provisioned state
       enum:
-        - true
         - false
         - mixed
         - n/a
+        - true
     resourceExposedStatus:
       type: object
       required:
-        - rid
         - label
+        - rid
         - status
         - type
       properties:
-        rid:
-          $ref: '#/components/schemas/resourceId'
+        disable:
+          type: boolean
+          description: hints the resource ignores all state transition actions
+        encap:
+          type: boolean
+          description: |
+            indicates that the resource is handled by the encapsulated agents, 
+            and ignored at the hypervisor level
+        info:
+          type: object
+          description: |
+            key-value pairs providing interesting information to collect 
+            site-wide about this resource
         label:
           type: string
         log:
@@ -401,20 +412,6 @@ components:
                 type: string
               message:
                 type: string
-        status:
-          $ref: '#/components/schemas/status'
-        type:
-          type: string
-        provisioned:
-          $ref: '#/components/schemas/resourceProvisionStatus'
-        disable:
-          type: boolean
-          description: hints the resource ignores all state transition actions
-        info:
-          type: object
-          description: |
-            key-value pairs providing interesting information to collect 
-            site-wide about this resource
         monitor:
           type: boolean
           description: |
@@ -425,24 +422,27 @@ components:
           description: |
             is resource status aggregated into Overall instead of Avail instance status.
             Errors in optional resource don't stop a state transition action
-        encap:
-          type: boolean
-          description: |
-            indicates that the resource is handled by the encapsulated agents, 
-            and ignored at the hypervisor level
+        provisioned:
+          $ref: '#/components/schemas/resourceProvisionStatus'
+        restart:
+          type: integer
+        rid:
+          $ref: '#/components/schemas/resourceId'
         standby:
           type: boolean
           description: |
             resource should always be up, even after a stop state transition action
+        status:
+          $ref: '#/components/schemas/status'
         subset:
           type: string
           description: the name of the subset this resource is assigned to
-        restart:
-          type: integer
         tags:
           type: array
           items:
             type: string
+        type:
+          type: string
     resourceId:
       type: string
     resourceProvisionStatus:
