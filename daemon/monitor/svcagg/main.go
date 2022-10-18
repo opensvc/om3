@@ -116,6 +116,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 					continue
 				}
 				delete(o.instStatus, c.Node)
+				o.srcEvent = ev
 				o.updateStatus()
 			case msgbus.InstStatusUpdated:
 				if _, ok := o.instStatus[c.Node]; !ok {

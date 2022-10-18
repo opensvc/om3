@@ -1,6 +1,8 @@
 package smon
 
 import (
+	"time"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -35,6 +37,12 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 					}
 				}
 				o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+			}
+		case msgbus.CfgDeleted:
+			node := srcCmd.Node
+			if _, ok := o.instStatus[node]; ok {
+				o.log.Info().Msgf("drop deleted instance status from node %s", node)
+				delete(o.instStatus, node)
 			}
 		}
 	}
@@ -116,6 +124,9 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		if c.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
 			o.state.GlobalExpect = c.GlobalExpect
+			// update GlobalExpectUpdated now
+			// This will allow remote nodes to pickup most recent value
+			o.state.GlobalExpectUpdated = time.Now()
 		}
 	}
 
