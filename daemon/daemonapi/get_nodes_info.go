@@ -8,7 +8,7 @@ import (
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 )
 
-func (p *DaemonApi) GetNodesInfo(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) GetNodesInfo(w http.ResponseWriter, r *http.Request) {
 	write, log := handlerhelper.GetWriteAndLog(w, r, "GetNodesInfo")
 	log.Debug().Msg("starting")
 	databus := daemondata.FromContext(r.Context())

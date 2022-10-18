@@ -10,7 +10,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-func (p *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params GetObjectFileParams) {
+func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params GetObjectFileParams) {
 	var b []byte
 	var err error
 	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetObjectFile")

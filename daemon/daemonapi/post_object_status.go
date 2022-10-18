@@ -19,7 +19,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemondata"
 )
 
-func (d *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
 	var (
 		err     error
 		p       path.T

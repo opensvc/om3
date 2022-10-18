@@ -13,7 +13,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-func (p *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params GetObjectConfigParams) {
+func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params GetObjectConfigParams) {
 	var (
 		evaluate    bool
 		impersonate string
