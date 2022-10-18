@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.3.0
+  version: 3.3.1
 servers:
   - url: http://localhost:1215/api
 paths:
@@ -141,6 +141,8 @@ paths:
                 $ref: '#/components/schemas/error'
 components:
   schemas:
+    app:
+      type: string
     error:
       required:
         - code
@@ -153,106 +155,6 @@ components:
         message:
           type: string
           description: Error message
-    app:
-      type: string
-    kind:
-      type: string
-    nodesInfo:
-      type: array
-      items:
-        $ref: '#/components/schemas/nodeInfo'
-    nodeInfo:
-      type: object
-      required:
-        - nodename
-        - labels
-        - paths
-      properties:
-        nodename:
-          type: string
-          description: nodename is the name of the node where the labels and paths are coming from.
-        labels:
-          type: array
-          description: labels is the list of node labels.
-          items:
-            $ref: '#/components/schemas/nodeLabel'
-        paths:
-          type: array
-          description: paths is the list of node to storage array san paths.
-          items:
-            $ref: '#/components/schemas/sanPath'
-    nodeLabel:
-      type: object
-      required:
-        - name
-        - value
-      properties:
-        name:
-          type: string
-          description: name is the label name.
-        value:
-          type: string
-          description: value is the label value.
-    sanPath:
-      type: object
-      required:
-        - initiator
-        - target
-      properties:
-        initiator:
-          $ref: '#/components/schemas/sanPathInitiator'
-        target:
-          $ref: '#/components/schemas/sanPathTarget'
-    sanPathInitiator:
-      type: object
-      description: initiator is the host side san path endpoint.
-      properties:
-        name:
-          type: string
-          description: name is a worldwide unique path endpoint identifier.
-          example: iqn.2004-10.com.ubuntu:01:e6bd4a3b554
-        type:
-          type: string
-          description: type is the endpoint type.
-          example: iscsi
-    sanPathTarget:
-      type: object
-      description: target is the storage array side san path endpoint.
-      properties:
-        name:
-          type: string
-          description: name is a worldwide unique path endpoint identifier.
-          example: iqn.2009-11.com.opensvc.srv:dev2n1.storage.target.1
-        type:
-          type: string
-          description: type is a the endpoint type.
-          example: iscsi
-    objectConfig:
-      type: object
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        data:
-          type: object
-    objectFile:
-      type: object
-      required:
-        - mtime
-        - data
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        data:
-          type: string
-          format: byte
-    objectPath:
-      type: string
-    objectSelector:
-      type: array
-      items:
-        $ref: '#/components/schemas/objectPath'
     instanceStatus:
       type: object
       required:
@@ -343,6 +245,70 @@ components:
         updated:
           type: string
           format: date-time
+    kind:
+      type: string
+    nodeInfo:
+      type: object
+      required:
+        - nodename
+        - labels
+        - paths
+      properties:
+        nodename:
+          type: string
+          description: nodename is the name of the node where the labels and paths are coming from.
+        labels:
+          type: array
+          description: labels is the list of node labels.
+          items:
+            $ref: '#/components/schemas/nodeLabel'
+        paths:
+          type: array
+          description: paths is the list of node to storage array san paths.
+          items:
+            $ref: '#/components/schemas/sanPath'
+    nodeLabel:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: name is the label name.
+        value:
+          type: string
+          description: value is the label value.
+    nodesInfo:
+      type: array
+      items:
+        $ref: '#/components/schemas/nodeInfo'
+    objectConfig:
+      type: object
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        data:
+          type: object
+    objectFile:
+      type: object
+      required:
+        - mtime
+        - data
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        data:
+          type: string
+          format: byte
+    objectPath:
+      type: string
+    objectSelector:
+      type: array
+      items:
+        $ref: '#/components/schemas/objectPath'
     orchestrate:
       type: string
       enum:
@@ -366,18 +332,6 @@ components:
         - shift
         - spread
         - score
-    priority:
-      type: integer
-      description: scheduling priority of an object instance on a its node
-      default: 50
-    provisioned:
-      type: string
-      description: service, instance or resource provisioned state
-      enum:
-        - true
-        - false
-        - mixed
-        - n/a
     postObjectAbort:
       type: object
       required:
@@ -411,6 +365,18 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/instanceStatus'
+    priority:
+      type: integer
+      description: scheduling priority of an object instance on a its node
+      default: 50
+    provisioned:
+      type: string
+      description: service, instance or resource provisioned state
+      enum:
+        - true
+        - false
+        - mixed
+        - n/a
     resourceExposedStatus:
       type: object
       required:
@@ -489,6 +455,40 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
+    sanPath:
+      type: object
+      required:
+        - initiator
+        - target
+      properties:
+        initiator:
+          $ref: '#/components/schemas/sanPathInitiator'
+        target:
+          $ref: '#/components/schemas/sanPathTarget'
+    sanPathInitiator:
+      type: object
+      description: initiator is the host side san path endpoint.
+      properties:
+        name:
+          type: string
+          description: name is a worldwide unique path endpoint identifier.
+          example: iqn.2004-10.com.ubuntu:01:e6bd4a3b554
+        type:
+          type: string
+          description: type is the endpoint type.
+          example: iscsi
+    sanPathTarget:
+      type: object
+      description: target is the storage array side san path endpoint.
+      properties:
+        name:
+          type: string
+          description: name is a worldwide unique path endpoint identifier.
+          example: iqn.2009-11.com.opensvc.srv:dev2n1.storage.target.1
+        type:
+          type: string
+          description: type is a the endpoint type.
+          example: iscsi
     status:
       type: string
     topology:
