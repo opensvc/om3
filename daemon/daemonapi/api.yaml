@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.1.0
+  version: 3.3.3
 servers:
   - url: http://localhost:1215/api
 paths:
@@ -15,6 +15,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/nodesInfo'
+  /object/abort:
+    post:
+      operationId: PostObjectAbort
+      requestBody:
+        description: Abort orchestration currently running on a selection of objects.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postObjectAbort'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+  /object/clear:
+    post:
+      operationId: PostObjectClear
+      requestBody:
+        description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postObjectClear'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /object/config:
     get:
       operationId: GetObjectConfig
@@ -49,44 +87,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectFile'
-  /object/abort:
-    post:
-      operationId: PostObjectAbort
-      requestBody:
-        description: Abort orchestration currently running on a selection of objects.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectAbort'
-      responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /object/clear:
-    post:
-      operationId: PostObjectClear
-      requestBody:
-        description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostObjectClear'
-      responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /object/monitor:
     post:
       operationId: PostObjectMonitor
@@ -96,7 +96,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostObjectMonitor'
+              $ref: '#/components/schemas/postObjectMonitor'
       responses:
         '200':
           description: success
@@ -105,7 +105,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/error'
   /object/selector:
     get:
       operationId: GetObjectSelector
@@ -121,13 +121,15 @@ paths:
   /object/status:
     post:
       operationId: PostObjectStatus
+      tags:
+        - internal
       requestBody:
         description: post object status
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostObjectStatus'
+              $ref: '#/components/schemas/postObjectStatus'
       responses:
         '200':
           description: success
@@ -136,10 +138,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/error'
 components:
   schemas:
-    Error:
+    app:
+      type: string
+    error:
       required:
         - code
         - message
@@ -151,25 +155,113 @@ components:
         message:
           type: string
           description: Error message
-    nodesInfo:
-      type: array
-      items:
-        $ref: '#/components/schemas/nodeInfo'
+    instanceStatus:
+      type: object
+      required:
+        - avail
+        - frozen
+        - kind
+        - overall
+        - provisioned
+        - updated
+      properties:
+        app:
+          $ref: '#/components/schemas/app'
+        avail:
+          $ref: '#/components/schemas/status'
+        children:
+          $ref: '#/components/schemas/pathRelation'
+        constraints:
+          type: boolean
+        csum:
+          type: string
+        drp:
+          type: boolean
+        env:
+          type: string
+        flex_max:
+          type: integer
+        flex_min:
+          type: integer
+        flex_target:
+          type: integer
+        frozen:
+          type: string
+          format: date-time
+        kind:
+          $ref: '#/components/schemas/kind'
+        optional:
+          $ref: '#/components/schemas/status'
+        orchestrate:
+          $ref: '#/components/schemas/orchestrate'
+        overall:
+          $ref: '#/components/schemas/status'
+        parents:
+          $ref: '#/components/schemas/pathRelation'
+        placement:
+          $ref: '#/components/schemas/placement'
+        preserved:
+          type: boolean
+          description: |
+            preserve is true if this status has not been updated due to a 
+            heartbeat downtime covered by a maintenance period.
+            when the maintenance period ends, the status should be unchanged, 
+            and preserve will be set to false.
+          default: false
+        priority:
+          $ref: '#/components/schemas/priority'
+        provisioned:
+          $ref: '#/components/schemas/provisioned'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/resourceExposedStatus'
+        running:
+          type: array
+          items:
+            type: string
+        scale:
+          type: integer
+        slaves:
+          $ref: '#/components/schemas/pathRelation'
+        status_group:
+          type: string
+        subsets:
+          type: array
+          description: resources properties
+          items:
+            type: object
+            required:
+              - parallel
+              - rid
+            properties:
+              parallel:
+                type: boolean
+                default: false
+              rid:
+                type: string
+        topology:
+          $ref: '#/components/schemas/topology'
+        updated:
+          type: string
+          format: date-time
+    kind:
+      type: string
     nodeInfo:
       type: object
       required:
-        - nodename
         - labels
+        - nodename
         - paths
       properties:
-        nodename:
-          type: string
-          description: nodename is the name of the node where the labels and paths are coming from.
         labels:
           type: array
           description: labels is the list of node labels.
           items:
             $ref: '#/components/schemas/nodeLabel'
+        nodename:
+          type: string
+          description: nodename is the name of the node where the labels and paths are coming from.
         paths:
           type: array
           description: paths is the list of node to storage array san paths.
@@ -187,6 +279,182 @@ components:
         value:
           type: string
           description: value is the label value.
+    nodesInfo:
+      type: array
+      items:
+        $ref: '#/components/schemas/nodeInfo'
+    objectConfig:
+      type: object
+      properties:
+        data:
+          type: object
+        mtime:
+          type: string
+          format: date-time
+    objectFile:
+      type: object
+      required:
+        - data
+        - mtime
+      properties:
+        data:
+          type: string
+          format: byte
+        mtime:
+          type: string
+          format: date-time
+    objectPath:
+      type: string
+    objectSelector:
+      type: array
+      items:
+        $ref: '#/components/schemas/objectPath'
+    orchestrate:
+      type: string
+      enum:
+        - ha
+        - no
+        - start
+      default: no
+    pathRelation:
+      type: array
+      items:
+        type: string
+        description: object path or an instance path (path@node)
+    placement:
+      type: string
+      default: none
+      description: object placement policy
+      enum:
+        - load avg
+        - nodes order
+        - none
+        - score
+        - spread
+        - shift
+    postObjectAbort:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+    postObjectClear:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+    postObjectMonitor:
+      type: object
+      required:
+        - path
+      properties:
+        global_expect:
+          type: string
+        path:
+          type: string
+    postObjectStatus:
+      type: object
+      required:
+        - path
+        - status
+      properties:
+        path:
+          type: string
+        status:
+          $ref: '#/components/schemas/instanceStatus'
+    priority:
+      type: integer
+      description: scheduling priority of an object instance on a its node
+      default: 50
+    provisioned:
+      type: string
+      description: service, instance or resource provisioned state
+      enum:
+        - false
+        - mixed
+        - n/a
+        - true
+    resourceExposedStatus:
+      type: object
+      required:
+        - label
+        - rid
+        - status
+        - type
+      properties:
+        disable:
+          type: boolean
+          description: hints the resource ignores all state transition actions
+        encap:
+          type: boolean
+          description: |
+            indicates that the resource is handled by the encapsulated agents, 
+            and ignored at the hypervisor level
+        info:
+          type: object
+          description: |
+            key-value pairs providing interesting information to collect 
+            site-wide about this resource
+        label:
+          type: string
+        log:
+          type: array
+          items:
+            type: object
+            required:
+              - level
+              - message
+            properties:
+              level:
+                type: string
+              message:
+                type: string
+        monitor:
+          type: boolean
+          description: |
+            tells the daemon if it should trigger a monitor action when the 
+            resource is not up
+        optional:
+          type: boolean
+          description: |
+            is resource status aggregated into Overall instead of Avail instance status.
+            Errors in optional resource don't stop a state transition action
+        provisioned:
+          $ref: '#/components/schemas/resourceProvisionStatus'
+        restart:
+          type: integer
+        rid:
+          $ref: '#/components/schemas/resourceId'
+        standby:
+          type: boolean
+          description: |
+            resource should always be up, even after a stop state transition action
+        status:
+          $ref: '#/components/schemas/status'
+        subset:
+          type: string
+          description: the name of the subset this resource is assigned to
+        tags:
+          type: array
+          items:
+            type: string
+        type:
+          type: string
+    resourceId:
+      type: string
+    resourceProvisionStatus:
+      type: object
+      required:
+        - state
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/provisioned'
     sanPath:
       type: object
       required:
@@ -221,97 +489,15 @@ components:
           type: string
           description: type is a the endpoint type.
           example: iscsi
-    objectConfig:
-      type: object
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        data:
-          type: object
-    objectFile:
-      type: object
-      required:
-        - mtime
-        - data
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        data:
-          type: string
-          format: byte
-    objectPath:
-      type: string
-    objectSelector:
-      type: array
-      items:
-        $ref: '#/components/schemas/objectPath'
-    instanceStatus:
-      type: object
-      required:
-        - avail
-        - overall
-        - updated
-        - frozen
-        - provisioned
-      properties:
-        avail:
-          $ref: '#/components/schemas/status'
-        overall:
-          $ref: '#/components/schemas/status'
-        optional:
-          $ref: '#/components/schemas/status'
-        provisioned:
-          type: string
-          enum:
-            - true
-            - false
-            - mixed
-            - n/a
-        frozen:
-          type: string
-          format: date-time
-        updated:
-          type: string
-          format: date-time
-        kind:
-          type: string
-    PostObjectAbort:
-      type: object
-      required:
-        - path
-      properties:
-        path:
-          type: string
-    PostObjectClear:
-      type: object
-      required:
-        - path
-      properties:
-        path:
-          type: string
-    PostObjectMonitor:
-      type: object
-      required:
-        - path
-      properties:
-        path:
-          type: string
-        global_expect:
-          type: string
-    PostObjectStatus:
-      type: object
-      required:
-        - path
-        - status
-      properties:
-        path:
-          type: string
-        status:
-          $ref: '#/components/schemas/instanceStatus'
     status:
       type: string
+    topology:
+      type: string
+      description: "object topology"
+      enum:
+        - failover
+        - flex
+      default: failover
   parameters:
     queryObjectPath:
       name: path

@@ -58,36 +58,34 @@ type (
 
 	// Status describes the instance status.
 	Status struct {
-		Nodename    string                            `json:"-"`
-		Path        path.T                            `json:"-"`
-		App         string                            `json:"app,omitempty"`
-		Avail       status.T                          `json:"avail"`
-		Constraints bool                              `json:"constraints,omitempty"`
-		DRP         bool                              `json:"drp,omitempty"`
-		Overall     status.T                          `json:"overall"`
-		Csum        string                            `json:"csum,omitempty"`
-		Env         string                            `json:"env,omitempty"`
-		Frozen      time.Time                         `json:"frozen,omitempty"`
-		Kind        kind.T                            `json:"kind"`
-		Optional    status.T                          `json:"optional,omitempty"`
-		Orchestrate string                            `json:"orchestrate,omitempty"` // TODO enum
-		Topology    topology.T                        `json:"topology,omitempty"`
-		Placement   placement.T                       `json:"placement,omitempty"`
-		Priority    priority.T                        `json:"priority,omitempty"`
-		Provisioned provisioned.T                     `json:"provisioned"`
-		Preserved   bool                              `json:"preserved,omitempty"`
-		Updated     time.Time                         `json:"updated"`
-		FlexTarget  int                               `json:"flex_target,omitempty"`
-		FlexMin     int                               `json:"flex_min,omitempty"`
-		FlexMax     int                               `json:"flex_max,omitempty"`
-		Subsets     map[string]SubsetStatus           `json:"subsets,omitempty"`
-		Resources   map[string]resource.ExposedStatus `json:"resources,omitempty"`
-		Running     ResourceRunningSet                `json:"running,omitempty"`
-		Parents     []path.Relation                   `json:"parents,omitempty"`
-		Children    []path.Relation                   `json:"children,omitempty"`
-		Slaves      []path.Relation                   `json:"slaves,omitempty"`
-		Scale       null.Int                          `json:"scale,omitempty"`
-		StatusGroup map[string]string                 `json:"status_group,omitempty"`
+		App         string                   `json:"app,omitempty"`
+		Avail       status.T                 `json:"avail"`
+		Constraints bool                     `json:"constraints,omitempty"`
+		DRP         bool                     `json:"drp,omitempty"`
+		Overall     status.T                 `json:"overall"`
+		Csum        string                   `json:"csum,omitempty"`
+		Env         string                   `json:"env,omitempty"`
+		Frozen      time.Time                `json:"frozen,omitempty"`
+		Kind        kind.T                   `json:"kind"`
+		Optional    status.T                 `json:"optional,omitempty"`
+		Orchestrate string                   `json:"orchestrate,omitempty"` // TODO enum
+		Topology    topology.T               `json:"topology,omitempty"`
+		Placement   placement.T              `json:"placement,omitempty"`
+		Priority    priority.T               `json:"priority,omitempty"`
+		Provisioned provisioned.T            `json:"provisioned"`
+		Preserved   bool                     `json:"preserved,omitempty"`
+		Updated     time.Time                `json:"updated"`
+		FlexTarget  int                      `json:"flex_target,omitempty"`
+		FlexMin     int                      `json:"flex_min,omitempty"`
+		FlexMax     int                      `json:"flex_max,omitempty"`
+		Subsets     map[string]SubsetStatus  `json:"subsets,omitempty"`
+		Resources   []resource.ExposedStatus `json:"resources,omitempty"`
+		Running     ResourceRunningSet       `json:"running,omitempty"`
+		Parents     []path.Relation          `json:"parents,omitempty"`
+		Children    []path.Relation          `json:"children,omitempty"`
+		Slaves      []path.Relation          `json:"slaves,omitempty"`
+		Scale       null.Int                 `json:"scale,omitempty"`
+		StatusGroup map[string]string        `json:"status_group,omitempty"`
 	}
 
 	// ResourceOrder is a sortable list representation of the
@@ -148,8 +146,8 @@ func (t *MonitorRestart) UnmarshalJSON(b []byte) error {
 // 3/ resource name
 func (t *Status) SortedResources() []resource.ExposedStatus {
 	l := make([]resource.ExposedStatus, 0)
-	for k, v := range t.Resources {
-		rid, err := resourceid.Parse(k)
+	for _, v := range t.Resources {
+		rid, err := resourceid.Parse(v.Rid)
 		if err != nil {
 			continue
 		}
@@ -173,9 +171,9 @@ func (t Status) DeepCopy() *Status {
 	}
 	t.Subsets = subSets
 
-	resources := make(map[string]resource.ExposedStatus)
-	for id, v := range t.Resources {
-		resources[id] = *v.DeepCopy()
+	resources := make([]resource.ExposedStatus, 0)
+	for _, v := range t.Resources {
+		resources = append(resources, *v.DeepCopy())
 	}
 	t.Resources = resources
 

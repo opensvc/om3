@@ -7,15 +7,41 @@ import (
 	"time"
 )
 
-// Defines values for InstanceStatusProvisioned.
+// Defines values for Orchestrate.
 const (
-	False InstanceStatusProvisioned = "false"
-	Mixed InstanceStatusProvisioned = "mixed"
-	Na    InstanceStatusProvisioned = "n/a"
-	True  InstanceStatusProvisioned = "true"
+	OrchestrateFalse Orchestrate = "false"
+	OrchestrateHa    Orchestrate = "ha"
+	OrchestrateStart Orchestrate = "start"
 )
 
-// Error defines model for Error.
+// Defines values for Placement.
+const (
+	LoadAvg    Placement = "load avg"
+	NodesOrder Placement = "nodes order"
+	None       Placement = "none"
+	Score      Placement = "score"
+	Shift      Placement = "shift"
+	Spread     Placement = "spread"
+)
+
+// Defines values for Provisioned.
+const (
+	ProvisionedFalse Provisioned = "false"
+	ProvisionedMixed Provisioned = "mixed"
+	ProvisionedNa    Provisioned = "n/a"
+	ProvisionedTrue  Provisioned = "true"
+)
+
+// Defines values for Topology.
+const (
+	Failover Topology = "failover"
+	Flex     Topology = "flex"
+)
+
+// App defines model for app.
+type App = string
+
+// Error defines model for error.
 type Error struct {
 	// Error code
 	Code int32 `json:"code"`
@@ -24,41 +50,58 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-// PostObjectAbort defines model for PostObjectAbort.
-type PostObjectAbort struct {
-	Path string `json:"path"`
-}
-
-// PostObjectClear defines model for PostObjectClear.
-type PostObjectClear struct {
-	Path string `json:"path"`
-}
-
-// PostObjectMonitor defines model for PostObjectMonitor.
-type PostObjectMonitor struct {
-	GlobalExpect *string `json:"global_expect,omitempty"`
-	Path         string  `json:"path"`
-}
-
-// PostObjectStatus defines model for PostObjectStatus.
-type PostObjectStatus struct {
-	Path   string         `json:"path"`
-	Status InstanceStatus `json:"status"`
-}
-
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
-	Avail       Status                    `json:"avail"`
-	Frozen      time.Time                 `json:"frozen"`
-	Kind        *string                   `json:"kind,omitempty"`
-	Optional    *Status                   `json:"optional,omitempty"`
-	Overall     Status                    `json:"overall"`
-	Provisioned InstanceStatusProvisioned `json:"provisioned"`
-	Updated     time.Time                 `json:"updated"`
+	App         *App          `json:"app,omitempty"`
+	Avail       Status        `json:"avail"`
+	Children    *PathRelation `json:"children,omitempty"`
+	Constraints *bool         `json:"constraints,omitempty"`
+	Csum        *string       `json:"csum,omitempty"`
+	Drp         *bool         `json:"drp,omitempty"`
+	Env         *string       `json:"env,omitempty"`
+	FlexMax     *int          `json:"flex_max,omitempty"`
+	FlexMin     *int          `json:"flex_min,omitempty"`
+	FlexTarget  *int          `json:"flex_target,omitempty"`
+	Frozen      time.Time     `json:"frozen"`
+	Kind        Kind          `json:"kind"`
+	Optional    *Status       `json:"optional,omitempty"`
+	Orchestrate *Orchestrate  `json:"orchestrate,omitempty"`
+	Overall     Status        `json:"overall"`
+	Parents     *PathRelation `json:"parents,omitempty"`
+
+	// object placement policy
+	Placement *Placement `json:"placement,omitempty"`
+
+	// preserve is true if this status has not been updated due to a
+	// heartbeat downtime covered by a maintenance period.
+	// when the maintenance period ends, the status should be unchanged,
+	// and preserve will be set to false.
+	Preserved *bool `json:"preserved,omitempty"`
+
+	// scheduling priority of an object instance on a its node
+	Priority *Priority `json:"priority,omitempty"`
+
+	// service, instance or resource provisioned state
+	Provisioned Provisioned              `json:"provisioned"`
+	Resources   *[]ResourceExposedStatus `json:"resources,omitempty"`
+	Running     *[]string                `json:"running,omitempty"`
+	Scale       *int                     `json:"scale,omitempty"`
+	Slaves      *PathRelation            `json:"slaves,omitempty"`
+	StatusGroup *string                  `json:"status_group,omitempty"`
+
+	// resources properties
+	Subsets *[]struct {
+		Parallel bool   `json:"parallel"`
+		Rid      string `json:"rid"`
+	} `json:"subsets,omitempty"`
+
+	// object topology
+	Topology *Topology `json:"topology,omitempty"`
+	Updated  time.Time `json:"updated"`
 }
 
-// InstanceStatusProvisioned defines model for InstanceStatus.Provisioned.
-type InstanceStatusProvisioned string
+// Kind defines model for kind.
+type Kind = string
 
 // NodeInfo defines model for nodeInfo.
 type NodeInfo struct {
@@ -102,6 +145,93 @@ type ObjectPath = string
 // ObjectSelector defines model for objectSelector.
 type ObjectSelector = []ObjectPath
 
+// Orchestrate defines model for orchestrate.
+type Orchestrate string
+
+// PathRelation defines model for pathRelation.
+type PathRelation = []string
+
+// object placement policy
+type Placement string
+
+// PostObjectAbort defines model for postObjectAbort.
+type PostObjectAbort struct {
+	Path string `json:"path"`
+}
+
+// PostObjectClear defines model for postObjectClear.
+type PostObjectClear struct {
+	Path string `json:"path"`
+}
+
+// PostObjectMonitor defines model for postObjectMonitor.
+type PostObjectMonitor struct {
+	GlobalExpect *string `json:"global_expect,omitempty"`
+	Path         string  `json:"path"`
+}
+
+// PostObjectStatus defines model for postObjectStatus.
+type PostObjectStatus struct {
+	Path   string         `json:"path"`
+	Status InstanceStatus `json:"status"`
+}
+
+// scheduling priority of an object instance on a its node
+type Priority = int
+
+// service, instance or resource provisioned state
+type Provisioned string
+
+// ResourceExposedStatus defines model for resourceExposedStatus.
+type ResourceExposedStatus struct {
+	// hints the resource ignores all state transition actions
+	Disable *bool `json:"disable,omitempty"`
+
+	// indicates that the resource is handled by the encapsulated agents,
+	// and ignored at the hypervisor level
+	Encap *bool `json:"encap,omitempty"`
+
+	// key-value pairs providing interesting information to collect
+	// site-wide about this resource
+	Info  *map[string]interface{} `json:"info,omitempty"`
+	Label string                  `json:"label"`
+	Log   *[]struct {
+		Level   string `json:"level"`
+		Message string `json:"message"`
+	} `json:"log,omitempty"`
+
+	// tells the daemon if it should trigger a monitor action when the
+	// resource is not up
+	Monitor *bool `json:"monitor,omitempty"`
+
+	// is resource status aggregated into Overall instead of Avail instance status.
+	// Errors in optional resource don't stop a state transition action
+	Optional    *bool                    `json:"optional,omitempty"`
+	Provisioned *ResourceProvisionStatus `json:"provisioned,omitempty"`
+	Restart     *int                     `json:"restart,omitempty"`
+	Rid         ResourceId               `json:"rid"`
+
+	// resource should always be up, even after a stop state transition action
+	Standby *bool  `json:"standby,omitempty"`
+	Status  Status `json:"status"`
+
+	// the name of the subset this resource is assigned to
+	Subset *string   `json:"subset,omitempty"`
+	Tags   *[]string `json:"tags,omitempty"`
+	Type   string    `json:"type"`
+}
+
+// ResourceId defines model for resourceId.
+type ResourceId = string
+
+// ResourceProvisionStatus defines model for resourceProvisionStatus.
+type ResourceProvisionStatus struct {
+	Mtime *time.Time `json:"mtime,omitempty"`
+
+	// service, instance or resource provisioned state
+	State Provisioned `json:"state"`
+}
+
 // SanPath defines model for sanPath.
 type SanPath struct {
 	// initiator is the host side san path endpoint.
@@ -131,6 +261,9 @@ type SanPathTarget struct {
 
 // Status defines model for status.
 type Status = string
+
+// object topology
+type Topology string
 
 // QueryObjectPath defines model for queryObjectPath.
 type QueryObjectPath = string

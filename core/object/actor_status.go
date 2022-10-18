@@ -115,12 +115,13 @@ func (t *actor) subsetsStatus() map[string]instance.SubsetStatus {
 }
 
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) error {
-	data.Resources = make(map[string]resource.ExposedStatus)
+	resources := make([]resource.ExposedStatus, 0)
 	var mu sync.Mutex
 	return t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
 		xd := resource.GetExposedStatus(ctx, r)
 		mu.Lock()
-		data.Resources[r.RID()] = xd
+		resources = append(resources, xd)
+		data.Resources = resources
 		data.Overall.Add(xd.Status)
 		if !xd.Optional {
 			data.Avail.Add(xd.Status)

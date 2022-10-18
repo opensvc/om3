@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 )
 
-func (p *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params GetObjectSelectorParams) {
+func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params GetObjectSelectorParams) {
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "GetObjectSelector").Logger()
 	log.Debug().Msg("starting")
 	daemonData := daemondata.FromContext(r.Context())
