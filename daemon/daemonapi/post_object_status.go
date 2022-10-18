@@ -2,7 +2,6 @@ package daemonapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/guregu/null"
@@ -22,9 +21,9 @@ import (
 
 func (d *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload = PostObjectStatus{}
-		p       path.T
 		err     error
+		p       path.T
+		payload PostObjectStatus
 	)
 	log := getLogger(r, "PostObjectStatus")
 	log.Debug().Msgf("starting")
@@ -58,70 +57,15 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
 		Avail:       status.Parse(payloadStatus.Avail),
-		Overall:     status.Parse(payloadStatus.Overall),
 		Frozen:      payloadStatus.Frozen,
 		Kind:        kind.New(payloadStatus.Kind),
-		Updated:     payloadStatus.Updated,
+		Overall:     status.Parse(payloadStatus.Overall),
 		Scale:       null.Int{},
 		StatusGroup: nil,
+		Updated:     payloadStatus.Updated,
 	}
-	if prov, err := provisioned.NewFromString(string(payload.Status.Provisioned)); err != nil {
-		fmt.Printf("aaa err: %s, '%#v'\n", err, payload.Status.Provisioned)
-		return nil, err
-	} else {
-		instanceStatus.Provisioned = prov
-	}
-	//if err := json.Unmarshal([]byte(payload.Status.Provisioned), &prov); err != nil {
-	//	fmt.Printf("err: %s, '%#v'\n", err, payload.Status.Provisioned)
-	//	return nil, err
-	//}
 	if payloadStatus.App != nil {
-		instanceStatus.App = *payload.Status.App
-	}
-	if payloadStatus.Constraints != nil {
-		instanceStatus.Constraints = *payloadStatus.Constraints
-	}
-	if payloadStatus.Drp != nil {
-		instanceStatus.DRP = *payloadStatus.Drp
-	}
-	if payloadStatus.Csum != nil {
-		instanceStatus.Csum = *payloadStatus.Csum
-	}
-	if payloadStatus.Env != nil {
-		instanceStatus.Env = *payloadStatus.Env
-	}
-	if payloadStatus.Optional != nil {
-		instanceStatus.Optional = status.Parse(*payload.Status.Optional)
-	}
-	if payloadStatus.Orchestrate != nil {
-		instanceStatus.Orchestrate = string(*payloadStatus.Orchestrate)
-	}
-	if payloadStatus.Topology != nil {
-		instanceStatus.Topology = topology.New(string(*payloadStatus.Topology))
-	}
-	if payloadStatus.Placement != nil {
-		instanceStatus.Placement = placement.New(string(*payloadStatus.Placement))
-	}
-	if payloadStatus.Preserved != nil {
-		instanceStatus.Preserved = *payloadStatus.Preserved
-	}
-	if payloadStatus.FlexTarget != nil {
-		instanceStatus.FlexTarget = *payloadStatus.FlexTarget
-	}
-	if payloadStatus.FlexMin != nil {
-		instanceStatus.FlexMin = *payloadStatus.FlexMin
-	}
-	if payloadStatus.FlexMax != nil {
-		instanceStatus.FlexMax = *payloadStatus.FlexMax
-	}
-	if payloadStatus.Priority != nil {
-		instanceStatus.Priority = priority.T(*payloadStatus.Priority)
-	}
-	if payloadStatus.Parents != nil {
-		relation := toPathRelationL(payloadStatus.Parents)
-		if len(relation) > 0 {
-			instanceStatus.Parents = relation
-		}
+		instanceStatus.App = *payloadStatus.App
 	}
 	if payloadStatus.Children != nil {
 		relation := toPathRelationL(payloadStatus.Children)
@@ -129,23 +73,52 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 			instanceStatus.Children = relation
 		}
 	}
-	if payloadStatus.Slaves != nil {
-		relation := toPathRelationL(payloadStatus.Slaves)
+	if payloadStatus.Constraints != nil {
+		instanceStatus.Constraints = *payloadStatus.Constraints
+	}
+	if payloadStatus.Csum != nil {
+		instanceStatus.Csum = *payloadStatus.Csum
+	}
+	if payloadStatus.Drp != nil {
+		instanceStatus.DRP = *payloadStatus.Drp
+	}
+	if payloadStatus.Env != nil {
+		instanceStatus.Env = *payloadStatus.Env
+	}
+	if payloadStatus.FlexMax != nil {
+		instanceStatus.FlexMax = *payloadStatus.FlexMax
+	}
+	if payloadStatus.FlexMin != nil {
+		instanceStatus.FlexMin = *payloadStatus.FlexMin
+	}
+	if payloadStatus.FlexTarget != nil {
+		instanceStatus.FlexTarget = *payloadStatus.FlexTarget
+	}
+	if payloadStatus.Optional != nil {
+		instanceStatus.Optional = status.Parse(*payloadStatus.Optional)
+	}
+	if payloadStatus.Orchestrate != nil {
+		instanceStatus.Orchestrate = string(*payloadStatus.Orchestrate)
+	}
+	if payloadStatus.Parents != nil {
+		relation := toPathRelationL(payloadStatus.Parents)
 		if len(relation) > 0 {
-			instanceStatus.Slaves = relation
+			instanceStatus.Parents = relation
 		}
 	}
-	if payloadStatus.Running != nil {
-		instanceStatus.Running = append([]string{}, *payloadStatus.Running...)
+	if payloadStatus.Placement != nil {
+		instanceStatus.Placement = placement.New(string(*payloadStatus.Placement))
 	}
-	if payloadStatus.Subsets != nil {
-		subSets := make(map[string]instance.SubsetStatus)
-		for _, s := range *payloadStatus.Subsets {
-			subSets[s.Rid] = instance.SubsetStatus{
-				Parallel: s.Parallel,
-			}
-		}
-		instanceStatus.Subsets = subSets
+	if payloadStatus.Preserved != nil {
+		instanceStatus.Preserved = *payloadStatus.Preserved
+	}
+	if payloadStatus.Priority != nil {
+		instanceStatus.Priority = priority.T(*payloadStatus.Priority)
+	}
+	if prov, err := provisioned.NewFromString(string(payloadStatus.Provisioned)); err != nil {
+		return nil, err
+	} else {
+		instanceStatus.Provisioned = prov
 	}
 	if payloadStatus.Resources != nil {
 		resources := make([]resource.ExposedStatus, 0)
@@ -156,8 +129,18 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 				Status: status.Parse(v.Status),
 				Type:   v.Type,
 			}
-			if rid, err := resourceid.Parse(v.Rid); err == nil {
-				exposed.ResourceID = rid
+			if v.Disable != nil {
+				exposed.Disable = resource.DisableFlag(*v.Disable)
+			}
+			if v.Encap != nil {
+				exposed.Encap = resource.EncapFlag(*v.Encap)
+			}
+			if v.Info != nil {
+				info := make(map[string]interface{})
+				for n, value := range *v.Info {
+					info[n] = value
+				}
+				exposed.Info = info
 			}
 			if v.Log != nil {
 				l := make([]*resource.StatusLogEntry, 0)
@@ -169,33 +152,11 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 				}
 				exposed.Log = l
 			}
-			if v.Encap != nil {
-				exposed.Encap = resource.EncapFlag(*v.Encap)
-			}
-			if v.Disable != nil {
-				exposed.Disable = resource.DisableFlag(*v.Disable)
-			}
-			if v.Info != nil {
-				info := make(map[string]interface{})
-				for n, value := range *v.Info {
-					info[n] = value
-				}
-				exposed.Info = info
-			}
 			if v.Monitor != nil {
 				exposed.Monitor = resource.MonitorFlag(*v.Monitor)
 			}
 			if v.Optional != nil {
 				exposed.Optional = resource.OptionalFlag(*v.Optional)
-			}
-			if v.Standby != nil {
-				exposed.Standby = resource.StandbyFlag(*v.Standby)
-			}
-			if v.Subset != nil {
-				exposed.Subset = *v.Subset
-			}
-			if v.Tags != nil {
-				exposed.Tags = *v.Tags
 			}
 			if v.Provisioned != nil {
 				resProv := resource.ProvisionStatus{}
@@ -213,9 +174,42 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 			if v.Restart != nil {
 				exposed.Restart = resource.RestartFlag(*v.Restart)
 			}
+			if rid, err := resourceid.Parse(v.Rid); err == nil {
+				exposed.ResourceID = rid
+			}
+			if v.Standby != nil {
+				exposed.Standby = resource.StandbyFlag(*v.Standby)
+			}
+			if v.Subset != nil {
+				exposed.Subset = *v.Subset
+			}
+			if v.Tags != nil {
+				exposed.Tags = *v.Tags
+			}
 			resources = append(resources, exposed)
 		}
 		instanceStatus.Resources = resources
+	}
+	if payloadStatus.Running != nil {
+		instanceStatus.Running = append([]string{}, *payloadStatus.Running...)
+	}
+	if payloadStatus.Slaves != nil {
+		relation := toPathRelationL(payloadStatus.Slaves)
+		if len(relation) > 0 {
+			instanceStatus.Slaves = relation
+		}
+	}
+	if payloadStatus.Topology != nil {
+		instanceStatus.Topology = topology.New(string(*payloadStatus.Topology))
+	}
+	if payloadStatus.Subsets != nil {
+		subSets := make(map[string]instance.SubsetStatus)
+		for _, s := range *payloadStatus.Subsets {
+			subSets[s.Rid] = instance.SubsetStatus{
+				Parallel: s.Parallel,
+			}
+		}
+		instanceStatus.Subsets = subSets
 	}
 	return &instanceStatus, nil
 }
