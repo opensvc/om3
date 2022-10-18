@@ -89,4 +89,7 @@ For example, a [md#1] section needs reformatting as:
 
 	A unix timestamp was previously used, but it was tedious for users to understand the json data. And go makes the time.Time type unavoidable anyway, so the performance argument for timestamps doesn't stand anymore.
 
+* **breaking change:** change instance status resources type
 
+	In 2.1 the instance status resources was a dict of rid to exposed status
+  	now it is a list of exposed status, rid is now a property of exposed status
