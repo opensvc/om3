@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	BasicAuthScopes = "basicAuth.Scopes"
+)
+
 // Defines values for Orchestrate.
 const (
 	OrchestrateFalse Orchestrate = "false"
