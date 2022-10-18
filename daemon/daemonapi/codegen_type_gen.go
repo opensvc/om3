@@ -38,7 +38,10 @@ const (
 	Flex     Topology = "flex"
 )
 
-// Error defines model for Error.
+// App defines model for app.
+type App = string
+
+// Error defines model for error.
 type Error struct {
 	// Error code
 	Code int32 `json:"code"`
@@ -46,31 +49,6 @@ type Error struct {
 	// Error message
 	Message string `json:"message"`
 }
-
-// PostObjectAbort defines model for PostObjectAbort.
-type PostObjectAbort struct {
-	Path string `json:"path"`
-}
-
-// PostObjectClear defines model for PostObjectClear.
-type PostObjectClear struct {
-	Path string `json:"path"`
-}
-
-// PostObjectMonitor defines model for PostObjectMonitor.
-type PostObjectMonitor struct {
-	GlobalExpect *string `json:"global_expect,omitempty"`
-	Path         string  `json:"path"`
-}
-
-// PostObjectStatus defines model for PostObjectStatus.
-type PostObjectStatus struct {
-	Path   string         `json:"path"`
-	Status InstanceStatus `json:"status"`
-}
-
-// App defines model for app.
-type App = string
 
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
@@ -175,6 +153,28 @@ type PathRelation = []string
 
 // object placement policy
 type Placement string
+
+// PostObjectAbort defines model for postObjectAbort.
+type PostObjectAbort struct {
+	Path string `json:"path"`
+}
+
+// PostObjectClear defines model for postObjectClear.
+type PostObjectClear struct {
+	Path string `json:"path"`
+}
+
+// PostObjectMonitor defines model for postObjectMonitor.
+type PostObjectMonitor struct {
+	GlobalExpect *string `json:"global_expect,omitempty"`
+	Path         string  `json:"path"`
+}
+
+// PostObjectStatus defines model for postObjectStatus.
+type PostObjectStatus struct {
+	Path   string         `json:"path"`
+	Status InstanceStatus `json:"status"`
+}
 
 // scheduling priority of an object instance on a its node
 type Priority = int
