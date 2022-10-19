@@ -143,7 +143,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			logger.Error().Err(err).Interface("event", ev).Msg("Marshal")
 			return
 		}
-		logger.Debug().Msgf("send fragment: %#v", ev)
+		logger.Debug().Msgf("send fragment: %s", ev)
 
 		var endMsg, msg []byte
 		if httpBody {
