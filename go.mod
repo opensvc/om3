@@ -114,6 +114,7 @@ require (
 	github.com/mdlayher/netlink v1.4.2 // indirect
 	github.com/mdlayher/socket v0.0.0-20211102153432-57e3fa563ecb // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
+	github.com/ncw/directio v1.0.5 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
