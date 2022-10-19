@@ -97,7 +97,7 @@ func (t *T) start(ctx context.Context) error {
 	started := make(chan bool)
 	s := &http2.Server{}
 	server := http.Server{
-		Handler: h2c.NewHandler(routehttp.New(ctx), s),
+		Handler: h2c.NewHandler(routehttp.New(ctx, false), s),
 	}
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {

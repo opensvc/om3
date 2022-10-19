@@ -134,7 +134,7 @@ func (t *T) MainStart(ctx context.Context) error {
 		started <- true
 		t.loop(ctx)
 	}()
-	t.httpHandler = routehttp.New(ctx)
+	t.httpHandler = routehttp.New(ctx, false)
 	for subName, sub := range mandatorySubs {
 		sub.subActions = sub.new(t)
 		if err := t.Register(sub.subActions); err != nil {

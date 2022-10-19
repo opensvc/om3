@@ -29,7 +29,7 @@ func (t *T) start(ctx context.Context) error {
 		t.log.Error().Err(err).Msg("listen failed")
 		return err
 	}
-	mux := routeraw.New(routehttp.New(ctx), t.log, 5*time.Second)
+	mux := routeraw.New(routehttp.New(ctx, false), t.log, 5*time.Second)
 	c := make(chan bool)
 	go func() {
 		c <- true

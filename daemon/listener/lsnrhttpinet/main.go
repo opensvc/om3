@@ -99,7 +99,7 @@ func (t *T) start(ctx context.Context) error {
 	started := make(chan bool)
 	t.listener = &http.Server{
 		Addr:    t.addr,
-		Handler: routehttp.New(ctx),
+		Handler: routehttp.New(ctx, true),
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.NoClientCert,
 		},
