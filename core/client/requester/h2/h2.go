@@ -115,8 +115,12 @@ func (t T) newRequest(method string, r request.T) (*http.Request, error) {
 	for k, v := range r.QueryArgs {
 		value.Add(k, v)
 	}
+	action := r.Action
+	if !strings.HasPrefix(action, "/") {
+		action = "/" + action
+	}
 	reqUrl := url.URL{
-		Path:     t.URL + "/" + r.Action,
+		Path:     t.URL + action,
 		RawQuery: value.Encode(),
 	}
 	req, err := http.NewRequest(method, reqUrl.RequestURI(), body)
