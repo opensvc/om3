@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/google/uuid"
 	"github.com/shaj13/go-guardian/v2/auth"
 
@@ -36,6 +37,17 @@ type (
 func New(ctx context.Context) *T {
 	t := &T{}
 	mux := chi.NewRouter()
+	mux.Use(cors.Handler(cors.Options{
+		// TODO update AllowedOrigins, and verify other settings
+		AllowedOrigins:     []string{"https://localhost:1215", "http://localhost:3200", "https://editor.swagger.io"},
+		AllowedMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		ExposedHeaders:     []string{"Link"},
+		AllowedHeaders:     []string{"Authorization"},
+		AllowCredentials:   false,
+		MaxAge:             300, // Maximum value not ignored by any of major browsers
+		OptionsPassthrough: false,
+		Debug:              true,
+	}))
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(listenAddrMiddleWare(ctx))
 	mux.Use(daemonauth.MiddleWare(ctx))

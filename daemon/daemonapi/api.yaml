@@ -1,13 +1,15 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.3.3
+  version: 3.6.0
 servers:
-  - url: http://localhost:1215/api
+  - url: https://localhost:1215
 paths:
   /nodes/info:
     get:
       operationId: GetNodesInfo
+      security:
+        - basicAuth: [ ]
       responses:
         '200':
           description: success
@@ -18,6 +20,8 @@ paths:
   /object/abort:
     post:
       operationId: PostObjectAbort
+      security:
+        - basicAuth: [ ]
       requestBody:
         description: Abort orchestration currently running on a selection of objects.
         required: true
@@ -37,6 +41,8 @@ paths:
   /object/clear:
     post:
       operationId: PostObjectClear
+      security:
+        - basicAuth: [ ]
       requestBody:
         description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
         required: true
@@ -56,6 +62,8 @@ paths:
   /object/config:
     get:
       operationId: GetObjectConfig
+      security:
+        - basicAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/queryObjectPath'
         - name: evaluate
@@ -78,6 +86,8 @@ paths:
   /object/file:
     get:
       operationId: GetObjectFile
+      security:
+        - basicAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/queryObjectPath'
       responses:
@@ -90,6 +100,8 @@ paths:
   /object/monitor:
     post:
       operationId: PostObjectMonitor
+      security:
+        - basicAuth: []
       requestBody:
         description: monitor
         required: true
@@ -109,6 +121,8 @@ paths:
   /object/selector:
     get:
       operationId: GetObjectSelector
+      security:
+        - basicAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/queryObjectSelector'
       responses:
@@ -121,6 +135,8 @@ paths:
   /object/status:
     post:
       operationId: PostObjectStatus
+      security:
+        - basicAuth: [ ]
       tags:
         - internal
       requestBody:
@@ -139,6 +155,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /openapi:
+    get:
+      operationId: GetSwagger
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
 components:
   schemas:
     app:
@@ -520,3 +546,7 @@ components:
       required: true
       schema:
         type: string
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
