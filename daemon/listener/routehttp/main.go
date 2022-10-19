@@ -42,10 +42,11 @@ func New(ctx context.Context) *T {
 		AllowedOrigins:     []string{"https://localhost:1215", "http://localhost:3200", "https://editor.swagger.io"},
 		AllowedMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		ExposedHeaders:     []string{"Link"},
+		AllowedHeaders:     []string{"Authorization"},
 		AllowCredentials:   false,
 		MaxAge:             300, // Maximum value not ignored by any of major browsers
 		OptionsPassthrough: false,
-		Debug:              false,
+		Debug:              true,
 	}))
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(listenAddrMiddleWare(ctx))
