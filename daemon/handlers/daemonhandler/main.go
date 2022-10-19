@@ -1,5 +1,5 @@
 /*
-	Package daemonhandler manage daemon handlers for listeners
+Package daemonhandler manage daemon handlers for listeners
 */
 package daemonhandler
 
@@ -27,22 +27,4 @@ func running(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = write(b)
-}
-
-func Stop(w http.ResponseWriter, r *http.Request) {
-	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Stop")
-	logger.Debug().Msg("starting")
-	daemon := daemonctx.Daemon(r.Context())
-	if daemon.Running() {
-		logger.Info().Msg("stopping")
-		if err := daemon.Stop(); err != nil {
-			msg := "Stop"
-			logger.Error().Err(err).Msg(msg)
-			_, _ = write([]byte(msg + " " + err.Error()))
-		}
-	} else {
-		msg := "no daemon to stop"
-		logger.Info().Msg(msg)
-		_, _ = write([]byte(msg))
-	}
 }

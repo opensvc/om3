@@ -21,7 +21,7 @@ func NewPostDaemonStop(t Getter) *PostDaemonStop {
 		Server:         "",
 	}
 	r.SetClient(t)
-	r.SetAction("daemon_stop")
+	r.SetAction("/daemon/stop")
 	r.SetMethod("POST")
 	return r
 }

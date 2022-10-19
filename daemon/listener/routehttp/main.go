@@ -40,7 +40,7 @@ func New(ctx context.Context, enableUi bool) *T {
 	// cors not required since /ui is served from swagger-ui
 	//mux.Use(cors.Handler(cors.Options{
 	//	// TODO update AllowedOrigins, and verify other settings
-	//	AllowedOrigins:     []string{"https://localhost:1215", "http://localhost:3200", "https://editor.swagger.io"},
+	//	AllowedOrigins:     []string{"https://editor.swagger.io", "https://editor-next.swagger.io"},
 	//	AllowedMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 	//	ExposedHeaders:     []string{"Link"},
 	//	AllowedHeaders:     []string{"Authorization"},
@@ -59,7 +59,6 @@ func New(ctx context.Context, enableUi bool) *T {
 	daemonapi.Register(mux, enableUi)
 	mux.Get("/auth/token", daemonauth.GetToken)
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
-	mux.Post("/daemon_stop", daemonhandler.Stop)
 	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
 	mux.Post("/node_monitor", nodehandler.PostMonitor)
@@ -81,7 +80,6 @@ func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/running", daemonhandler.Running)
 	r.Get("/status", daemonhandler.GetStatus)
-	r.Post("/stop", daemonhandler.Stop)
 	r.Get("/events", daemonhandler.Events)
 	return r
 }

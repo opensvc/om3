@@ -236,6 +236,9 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
+// ResponseText defines model for responseText.
+type ResponseText = string
+
 // SanPath defines model for sanPath.
 type SanPath struct {
 	// initiator is the host side san path endpoint.
