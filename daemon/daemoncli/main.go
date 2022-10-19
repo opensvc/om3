@@ -200,7 +200,7 @@ func (t *T) running() bool {
 		return false
 	}
 	var resp daemonapi.ResponseMuxBool
-	if err := json.Unmarshal(b, &resp); err != nil {
+	if err := json.Unmarshal(b, &resp.Data); err != nil {
 		log.Error().Err(err).Msgf("Unmarshal b: %s", b)
 		return false
 	}
