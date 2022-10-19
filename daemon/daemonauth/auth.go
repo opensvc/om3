@@ -45,8 +45,8 @@ func User(r *http.Request) auth.Info {
 func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO verify for alternate method for bypass
-			if r.URL.Path == "/openapi" {
+			// TODO verify for alternate method for /public
+			if strings.HasPrefix(r.URL.Path, "/public") {
 				grants := NewGrants()
 				user := auth.NewUserInfo("nobody", "", nil, grants.Extensions())
 				r = auth.RequestWithUser(user, r)

@@ -3,16 +3,17 @@ module opensvc.com/opensvc
 go 1.19
 
 require (
+	github.com/allenai/go-swaggerui v0.1.0
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/antchfx/xmlquery v1.3.10
 	github.com/atomicgo/cursor v0.0.1
 	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
-	github.com/coreos/go-semver v0.3.0
 	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
 	github.com/cvaroqui/ini v1.66.7-0.20220627091046-b218d4fc5c30
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
+	github.com/deepmap/oapi-codegen v1.11.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
@@ -21,7 +22,9 @@ require (
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/g8rswimmer/error-chain v1.0.0
 	github.com/gdamore/tcell/v2 v2.3.1
+	github.com/getkin/kin-openapi v0.103.0
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
@@ -48,6 +51,7 @@ require (
 	github.com/opensvc/flock v1.0.3
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pkg/errors v0.9.1
+	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695
 	github.com/rs/zerolog v1.20.0
 	github.com/shaj13/go-guardian/v2 v2.11.5
 	github.com/shaj13/libcache v1.0.5
@@ -80,11 +84,8 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
-	github.com/deepmap/oapi-codegen v1.11.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
-	github.com/getkin/kin-openapi v0.103.0 // indirect
-	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/goccy/go-json v0.9.7 // indirect
@@ -118,7 +119,6 @@ require (
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect

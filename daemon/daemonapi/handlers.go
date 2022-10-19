@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/allenai/go-swaggerui"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -17,12 +18,11 @@ import (
 type DaemonApi struct {
 }
 
-func NewDaemonApi() *DaemonApi {
-	return &DaemonApi{}
-}
-
-func Register(r chi.Router) {
+func Register(r chi.Router, enableUi bool) {
 	daemonApi := &DaemonApi{}
+	if enableUi {
+		r.Mount("/public/ui/", http.StripPrefix("/public/ui", swaggerui.Handler("/public/openapi")))
+	}
 	HandlerFromMux(daemonApi, r)
 }
 
