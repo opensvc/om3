@@ -24,6 +24,8 @@ var (
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 4 * time.Second
 	WaitRunningDelay   = 100 * time.Millisecond
+	WaitStoppedTimeout = 4 * time.Second
+	WaitStoppedDelay   = 100 * time.Millisecond
 )
 
 type (
@@ -152,12 +154,14 @@ func (t *T) stop() error {
 		!strings.Contains(err.Error(), "unexpected end of JSON input") {
 		return err
 	}
-	log.Debug().Msg("Check if still running")
-	if t.running() {
+	log.Debug().Msg("wait for stop...")
+	if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
 		log.Debug().Msg("cli-stop still running after stop")
 		return errors.New("daemon still running after stop")
 	}
-	log.Debug().Msg("Check if still running done")
+	log.Debug().Msg("stopped")
+	// one more delay before return listener not anymore responding
+	time.Sleep(WaitStoppedDelay)
 	return nil
 }
 
@@ -213,6 +217,10 @@ func (t *T) running() bool {
 	}
 	log.Debug().Msgf("daemon is not running")
 	return false
+}
+
+func (t *T) notRunning() bool {
+	return !t.running()
 }
 
 func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool) error {

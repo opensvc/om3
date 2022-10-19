@@ -5,6 +5,18 @@ info:
 servers:
   - url: https://localhost:1215
 paths:
+  /daemon/stop:
+    post:
+      operationId: PostDaemonStop
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseText'
   /nodes/info:
     get:
       operationId: GetNodesInfo
@@ -483,6 +495,8 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
+    responseText:
+      type: string
     sanPath:
       type: object
       required:
