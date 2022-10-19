@@ -70,10 +70,8 @@ func ExistsAndSymlink(path string) bool {
 	return info.Mode()&os.ModeSymlink != 0
 }
 
-//
 // Copy copies the file content from src file path to dst file path.
 // If dst does not exist, it is created.
-//
 func Copy(src string, dst string) (err error) {
 	var (
 		r *os.File
@@ -128,9 +126,7 @@ func CopyOwnership(src string, dst string) (err error) {
 	return nil
 }
 
-//
 // ModTime returns the file modification time or a zero time.
-//
 func ModTime(p string) (mtime time.Time) {
 	fi, err := os.Stat(p)
 	if err != nil {
@@ -140,10 +136,8 @@ func ModTime(p string) (mtime time.Time) {
 	return
 }
 
-//
 // Touch updates the atime and mtime of an existing file, or creates the file if it
 // does not exist yet.
-//
 func Touch(p string, tm time.Time) error {
 	if err := os.Chtimes(p, tm, tm); err == nil {
 		return nil
@@ -165,9 +159,7 @@ func Touch(p string, tm time.Time) error {
 	return nil
 }
 
-//
 // IsPerm returns true if the file current permissions are the same as the target.
-//
 func IsPerm(p string, perm os.FileMode) (bool, error) {
 	currentMode, err := Mode(p)
 	if err != nil {
@@ -176,9 +168,7 @@ func IsPerm(p string, perm os.FileMode) (bool, error) {
 	return currentMode.Perm() == perm, nil
 }
 
-//
 // IsMode returns true if the file current mode is the same as the target mode.
-//
 func IsMode(p string, mode os.FileMode) (bool, error) {
 	currentMode, err := Mode(p)
 	if err != nil {
@@ -187,9 +177,7 @@ func IsMode(p string, mode os.FileMode) (bool, error) {
 	return currentMode == mode, nil
 }
 
-//
 // Mode returns the FileMode of the file.
-//
 func Mode(p string) (os.FileMode, error) {
 	fileInfo, err := os.Lstat(p)
 	if err != nil {
@@ -199,9 +187,7 @@ func Mode(p string) (os.FileMode, error) {
 	return currentMode, nil
 }
 
-//
-// Ownership return the uid and gid owning the file
-//
+// Ownership returns the uid and gid owning the file
 func Ownership(p string) (uid, gid int, err error) {
 	fileInfo, err := os.Lstat(p)
 	if err != nil {
@@ -212,4 +198,43 @@ func Ownership(p string) (uid, gid int, err error) {
 	}
 	// unsupported
 	return -1, -1, nil
+}
+
+func IsBlockDevice(p string) (bool, error) {
+	fileInfo, err := os.Stat(p)
+	if err != nil {
+		return false, err
+	}
+	m := fileInfo.Mode()
+	if m&os.ModeDevice == 0 {
+		return false, nil
+	}
+	if m&os.ModeCharDevice != 0 {
+		return false, nil
+	}
+	return true, nil
+}
+
+func IsCharDevice(p string) (bool, error) {
+	fileInfo, err := os.Stat(p)
+	if err != nil {
+		return false, err
+	}
+	m := fileInfo.Mode()
+	if m&os.ModeCharDevice == 0 {
+		return false, nil
+	}
+	return true, nil
+}
+
+func IsDevice(p string) (bool, error) {
+	fileInfo, err := os.Stat(p)
+	if err != nil {
+		return false, err
+	}
+	m := fileInfo.Mode()
+	if m&os.ModeDevice == 0 {
+		return false, nil
+	}
+	return true, nil
 }

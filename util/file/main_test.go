@@ -8,6 +8,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestIsCharDevice(t *testing.T) {
+	v, err := IsCharDevice("/dev/null")
+	assert.NoError(t, err)
+	assert.True(t, v)
+}
+
+func TestIsBlockDevice(t *testing.T) {
+	v, err := IsBlockDevice("/dev/null")
+	assert.NoError(t, err)
+	assert.False(t, v)
+}
+
+func TestIsDevice(t *testing.T) {
+	v, err := IsDevice("/dev/null")
+	assert.NoError(t, err)
+	assert.True(t, v)
+}
+
 func TestTouch(t *testing.T) {
 	f, err := os.CreateTemp(t.TempDir(), t.Name())
 	assert.NoError(t, err)
