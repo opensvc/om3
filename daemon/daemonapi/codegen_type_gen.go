@@ -158,6 +158,12 @@ type PathRelation = []string
 // object placement policy
 type Placement string
 
+// PostNodeMonitor defines model for postNodeMonitor.
+type PostNodeMonitor struct {
+	GlobalExpect *string `json:"global_expect,omitempty"`
+	State        *string `json:"state,omitempty"`
+}
+
 // PostObjectAbort defines model for postObjectAbort.
 type PostObjectAbort struct {
 	Path string `json:"path"`
@@ -236,6 +242,12 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
+// ResponseInfoStatus defines model for responseInfoStatus.
+type ResponseInfoStatus struct {
+	Info   int    `json:"info"`
+	Status string `json:"status"`
+}
+
 // ResponseMuxBool defines model for responseMuxBool.
 type ResponseMuxBool struct {
 	Data []struct {
@@ -288,6 +300,9 @@ type QueryObjectPath = string
 // QueryObjectSelector defines model for queryObjectSelector.
 type QueryObjectSelector = string
 
+// PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
+type PostNodeMonitorJSONBody = PostNodeMonitor
+
 // PostObjectAbortJSONBody defines parameters for PostObjectAbort.
 type PostObjectAbortJSONBody = PostObjectAbort
 
@@ -323,6 +338,9 @@ type GetObjectSelectorParams struct {
 
 // PostObjectStatusJSONBody defines parameters for PostObjectStatus.
 type PostObjectStatusJSONBody = PostObjectStatus
+
+// PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
+type PostNodeMonitorJSONRequestBody = PostNodeMonitorJSONBody
 
 // PostObjectAbortJSONRequestBody defines body for PostObjectAbort for application/json ContentType.
 type PostObjectAbortJSONRequestBody = PostObjectAbortJSONBody

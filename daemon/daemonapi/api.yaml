@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.2
+  version: 3.6.3
 servers:
   - url: https://localhost:1215
 paths:
@@ -41,6 +41,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/nodesInfo'
+  /node/monitor:
+    post:
+      operationId: PostNodeMonitor
+      tags:
+        - node
+      security:
+        - basicAuth: []
+      requestBody:
+        description: monitor
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postNodeMonitor'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseInfoStatus'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /object/abort:
     post:
       operationId: PostObjectAbort
@@ -384,6 +411,13 @@ components:
         - score
         - spread
         - shift
+    postNodeMonitor:
+      type: object
+      properties:
+        global_expect:
+          type: string
+        state:
+          type: string
     postObjectAbort:
       type: object
       required:
@@ -507,6 +541,16 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
+    responseInfoStatus:
+      type: object
+      required:
+        - info
+        - status
+      properties:
+        info:
+          type: integer
+        status:
+          type: string
     responseMuxBool:
       type: object
       required:

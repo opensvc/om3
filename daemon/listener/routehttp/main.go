@@ -20,7 +20,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
-	"opensvc.com/opensvc/daemon/handlers/nodehandler"
 	"opensvc.com/opensvc/daemon/handlers/objecthandler"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -61,7 +60,6 @@ func New(ctx context.Context, enableUi bool) *T {
 	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
-	mux.Post("/node_monitor", nodehandler.PostMonitor)
 	mux.Get("/node_log", daemonhandler.GetNodeLog)
 	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
 	mux.Mount("/daemon", t.newDaemonRouter())

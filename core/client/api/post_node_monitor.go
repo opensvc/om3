@@ -18,7 +18,7 @@ func NewPostNodeMonitor(t Poster) *PostNodeMonitor {
 	r := &PostNodeMonitor{}
 	r.SetClient(t)
 	r.SetMethod("POST")
-	r.SetAction("node_monitor")
+	r.SetAction("/node/monitor")
 	return r
 }
 
