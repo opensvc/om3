@@ -74,8 +74,13 @@ func init() {
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
 	log := daemonlogctx.Logger(ctx).With().Str("type", t.Name()).Logger()
-	timeout := t.GetDuration("timeout", 5*time.Second)
-	interval := t.GetDuration("interval", 5*time.Second)
+	timeout := t.GetDuration("timeout", 9*time.Second)
+	interval := t.GetDuration("interval", 4*time.Second)
+	if timeout < 2*interval+1*time.Second {
+		oldTimeout := timeout
+		timeout = interval*2 + 1*time.Second
+		log.Warn().Msgf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+	}
 	dev := t.GetString("dev")
 	if dev == "" {
 		log.Error().Msgf("no %s.dev is not set in node.conf", t.Name())

@@ -1,35 +1,36 @@
 /*
-	Package hb provides helpers to create hb drivers from configuration
+Package hb provides helpers to create hb drivers from configuration
 
-	candidate hb drivers needs to be registered before use
+candidate hb drivers needs to be registered before use
 
-	Usage example on hb unicast driver
-		import "opensvc.com/opensvc/core/hbcfg"
-		type (
-			T struct {hbcfg.T} // Concrete object that implement Configure
-			tx struct {...}    // concrete object that implement Transmitter
-			tx struct {...}    // concrete object that implement Receiver
-		)
+Usage example on hb unicast driver
 
-		func New() hbcfg.Confer {
-			var i interface{} = &T{}
-			return i.(hbcfg.Confer)
-		}
+	import "opensvc.com/opensvc/core/hbcfg"
+	type (
+		T struct {hbcfg.T} // Concrete object that implement Configure
+		tx struct {...}    // concrete object that implement Transmitter
+		tx struct {...}    // concrete object that implement Receiver
+	)
 
-		// register unicast hb driver
-		func init() { hbcfg.Register("unicast", NewConfer) }
+	func New() hbcfg.Confer {
+		var i interface{} = &T{}
+		return i.(hbcfg.Confer)
+	}
 
-		func NewTx(..., timeout time.Duration) *tx { ... }
-		func NewRx(..., timeout time.Duration) *rx { ... }
+	// register unicast hb driver
+	func init() { hbcfg.Register("unicast", NewConfer) }
 
-		func (t *T) Configure(ctx context.Context) {
-			...
-			timeout := t.GetDuration("timeout", 5*time.Second)
-			rx := NewRx(..., timeout)
-			tx := NewTx(..., timeout)
-			t.SetTx(rx)
-			t.SetRx(tx)
-		}
+	func NewTx(..., timeout time.Duration) *tx { ... }
+	func NewRx(..., timeout time.Duration) *rx { ... }
+
+	func (t *T) Configure(ctx context.Context) {
+		...
+		timeout := t.GetDuration("timeout", 5*time.Second)
+		rx := NewRx(..., timeout)
+		tx := NewTx(..., timeout)
+		t.SetTx(rx)
+		t.SetRx(tx)
+	}
 */
 package hbcfg
 

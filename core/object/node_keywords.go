@@ -757,7 +757,6 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 		Section:   "hb",
 		Option:    "timeout",
 		Converter: converters.Duration,
-		Types:     []string{"unicast"},
 		Scopable:  true,
 		Default:   "15s",
 		Text:      "The delay since the last received heartbeat from a node before considering this node is gone.",
