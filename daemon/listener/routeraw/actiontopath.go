@@ -13,14 +13,13 @@ var actionToPath = map[string]rawToHttp{
 	"node_backlog": {"GET", "/node/backlog"},
 	"node/backlog": {"GET", "/node/backlog"},
 
-	"daemon_running": {"GET", "/daemon/running"},
-	"daemon_status":  {"GET", "/daemon/status"},
-	"daemon_stop":    {"POST", "/daemon/stop"},
-	"daemon_events":  {"GET", "/daemon/events"},
+	"daemon_status": {"GET", "/daemon/status"},
+	"daemon_stop":   {"POST", "/daemon/stop"},
+	"daemon_events": {"GET", "/daemon/events"},
 
-	"daemon/running": {"GET", "/daemon/running"},
-	"/daemon/stop":   {"POST", "/daemon/stop"},
-	"daemon/events":  {"GET", "/daemon/events"},
+	"/daemon/running": {"GET", "/daemon/running"},
+	"/daemon/stop":    {"POST", "/daemon/stop"},
+	"daemon/events":   {"GET", "/daemon/events"},
 
 	"object/config":      {"GET", "/object/config"},
 	"object/config_file": {"GET", "/object/config_file"},

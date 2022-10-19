@@ -236,6 +236,16 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
+// ResponseMuxBool defines model for responseMuxBool.
+type ResponseMuxBool struct {
+	Data []struct {
+		Data     bool   `json:"data"`
+		Endpoint string `json:"endpoint"`
+	} `json:"data"`
+	Entrypoint string `json:"entrypoint"`
+	Status     int    `json:"status"`
+}
+
 // ResponseText defines model for responseText.
 type ResponseText = string
 
