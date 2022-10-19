@@ -1,10 +1,22 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.1
+  version: 3.6.2
 servers:
   - url: https://localhost:1215
 paths:
+  /daemon/running:
+    get:
+      operationId: GetDaemonRunning
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseMuxBool'
   /daemon/stop:
     post:
       operationId: PostDaemonStop
@@ -495,6 +507,29 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
+    responseMuxBool:
+      type: object
+      required:
+        - entrypoint
+        - status
+        - data
+      properties:
+        entrypoint:
+          type: string
+        status:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - endpoint
+              - data
+            properties:
+              endpoint:
+                type: string
+              data:
+                type: boolean
     responseText:
       type: string
     sanPath:

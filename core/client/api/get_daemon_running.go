@@ -34,7 +34,7 @@ func NewGetDaemonRunning(t Getter) *GetDaemonRunning {
 		Server:         "",
 	}
 	r.SetClient(t)
-	r.SetAction("daemon/running")
+	r.SetAction("/daemon/running")
 	r.SetMethod("GET")
 	return r
 }

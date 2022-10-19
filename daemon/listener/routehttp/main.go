@@ -78,7 +78,6 @@ func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/running", daemonhandler.Running)
 	r.Get("/status", daemonhandler.GetStatus)
 	r.Get("/events", daemonhandler.Events)
 	return r

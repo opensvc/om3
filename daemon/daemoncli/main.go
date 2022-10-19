@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/client/api"
 	"opensvc.com/opensvc/daemon/daemon"
+	"opensvc.com/opensvc/daemon/daemonapi"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
@@ -199,8 +199,8 @@ func (t *T) running() bool {
 		log.Debug().Err(err).Msg("daemon is not running")
 		return false
 	}
-	var nodesData api.GetDaemonRunningData
-	if err := json.Unmarshal(b, &nodesData); err != nil {
+	var resp daemonapi.ResponseMuxBool
+	if err := json.Unmarshal(b, &resp); err != nil {
 		log.Error().Err(err).Msgf("Unmarshal b: %s", b)
 		return false
 	}
@@ -208,7 +208,7 @@ func (t *T) running() bool {
 	if nodename == "" {
 		nodename = hostname.Hostname()
 	}
-	for _, item := range nodesData {
+	for _, item := range resp.Data {
 		if item.Endpoint == nodename {
 			val := item.Data
 			log.Debug().Msgf("daemon running is %v", val)
