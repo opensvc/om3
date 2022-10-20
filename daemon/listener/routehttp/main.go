@@ -57,7 +57,6 @@ func New(ctx context.Context, enableUi bool) *T {
 	mux.Use(eventbusCmdCMiddleWare(ctx))
 	daemonapi.Register(mux, enableUi)
 	mux.Get("/auth/token", daemonauth.GetToken)
-	mux.Get("/daemon_status", daemonhandler.GetStatus)
 	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
 	mux.Get("/node_log", daemonhandler.GetNodeLog)
@@ -76,7 +75,6 @@ func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (t *T) newDaemonRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/status", daemonhandler.GetStatus)
 	r.Get("/events", daemonhandler.Events)
 	return r
 }

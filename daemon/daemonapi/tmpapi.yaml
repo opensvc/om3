@@ -1,13 +1,15 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.4
+  version: 3.6.5
 servers:
   - url: https://localhost:1215
 paths:
   /daemon/running:
     get:
       operationId: GetDaemonRunning
+      tags:
+        - daemon
       security:
         - basicAuth: []
       responses:
@@ -38,6 +40,8 @@ paths:
   /daemon/stop:
     post:
       operationId: PostDaemonStop
+      tags:
+        - daemon
       security:
         - basicAuth: []
       responses:
@@ -50,6 +54,8 @@ paths:
   /nodes/info:
     get:
       operationId: GetNodesInfo
+      tags:
+        - node
       security:
         - basicAuth: [ ]
       responses:
@@ -89,6 +95,8 @@ paths:
   /object/abort:
     post:
       operationId: PostObjectAbort
+      tags:
+        - object
       security:
         - basicAuth: [ ]
       requestBody:
@@ -110,6 +118,8 @@ paths:
   /object/clear:
     post:
       operationId: PostObjectClear
+      tags:
+        - object
       security:
         - basicAuth: [ ]
       requestBody:
@@ -131,6 +141,8 @@ paths:
   /object/config:
     get:
       operationId: GetObjectConfig
+      tags:
+        - object
       security:
         - basicAuth: [ ]
       parameters:
@@ -155,6 +167,8 @@ paths:
   /object/file:
     get:
       operationId: GetObjectFile
+      tags:
+        - object
       security:
         - basicAuth: [ ]
       parameters:
@@ -169,6 +183,8 @@ paths:
   /object/monitor:
     post:
       operationId: PostObjectMonitor
+      tags:
+        - object
       security:
         - basicAuth: []
       requestBody:
@@ -190,6 +206,8 @@ paths:
   /object/selector:
     get:
       operationId: GetObjectSelector
+      tags:
+        - object
       security:
         - basicAuth: [ ]
       parameters:
@@ -204,10 +222,10 @@ paths:
   /object/status:
     post:
       operationId: PostObjectStatus
+      tags:
+        - object
       security:
         - basicAuth: [ ]
-      tags:
-        - internal
       requestBody:
         description: post object status
         required: true

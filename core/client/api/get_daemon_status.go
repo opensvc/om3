@@ -51,7 +51,7 @@ func NewGetDaemonStatus(t Getter) *GetDaemonStatus {
 // Do fetches the daemon status structure from the agent api
 func (t GetDaemonStatus) Do() ([]byte, error) {
 	req := request.New()
-	req.Action = "daemon_status"
+	req.Action = "/daemon/status"
 	req.Options["namespace"] = t.namespace
 	req.Options["selector"] = t.selector
 	req.Options["relatives"] = t.relatives

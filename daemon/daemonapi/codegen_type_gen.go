@@ -45,6 +45,32 @@ const (
 // App defines model for app.
 type App = string
 
+// ClusterConfig defines model for clusterConfig.
+type ClusterConfig = map[string]interface{}
+
+// ClusterNode defines model for clusterNode.
+type ClusterNode = map[string]interface{}
+
+// ClusterObject defines model for clusterObject.
+type ClusterObject = map[string]interface{}
+
+// ClusterStatus defines model for clusterStatus.
+type ClusterStatus = map[string]interface{}
+
+// DaemonCluster defines model for daemonCluster.
+type DaemonCluster struct {
+	Config ClusterConfig `json:"config"`
+	Node   ClusterNode   `json:"node"`
+	Object ClusterObject `json:"object"`
+	Status ClusterStatus `json:"status"`
+}
+
+// DaemonInternal defines model for daemonInternal.
+type DaemonInternal struct {
+	Goroutines int                    `json:"goroutines"`
+	Sub        map[string]interface{} `json:"sub"`
+}
+
 // Error defines model for error.
 type Error struct {
 	// Error code
@@ -242,6 +268,12 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
+// ResponseDaemonStatus defines model for responseDaemonStatus.
+type ResponseDaemonStatus struct {
+	Cluster DaemonCluster  `json:"cluster"`
+	Daemon  DaemonInternal `json:"daemon"`
+}
+
 // ResponseInfoStatus defines model for responseInfoStatus.
 type ResponseInfoStatus struct {
 	Info   int    `json:"info"`
@@ -294,11 +326,32 @@ type Status = string
 // object topology
 type Topology string
 
+// QueryNamespaceOptional defines model for queryNamespaceOptional.
+type QueryNamespaceOptional = string
+
 // QueryObjectPath defines model for queryObjectPath.
 type QueryObjectPath = string
 
 // QueryObjectSelector defines model for queryObjectSelector.
 type QueryObjectSelector = string
+
+// QueryRelativesOptional defines model for queryRelativesOptional.
+type QueryRelativesOptional = bool
+
+// QuerySelectorOptional defines model for querySelectorOptional.
+type QuerySelectorOptional = string
+
+// GetDaemonStatusParams defines parameters for GetDaemonStatus.
+type GetDaemonStatusParams struct {
+	// namespace
+	Namespace *QueryNamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// relatives
+	Relatives *QueryRelativesOptional `form:"relatives,omitempty" json:"relatives,omitempty"`
+
+	// selector
+	Selector *QuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
 
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
 type PostNodeMonitorJSONBody = PostNodeMonitor
