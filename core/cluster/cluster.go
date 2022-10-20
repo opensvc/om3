@@ -198,12 +198,12 @@ func (s *Status) GetObjectStatus(p path.T) object.Status {
 		if !ok {
 			continue
 		}
-		if inst.Status == nil || inst.Config == nil {
-			continue
+		if inst.Status != nil {
+			instanceStates.Status = *inst.Status
 		}
-
-		instanceStates.Status = *inst.Status
-		instanceStates.Config = *inst.Config
+		if inst.Config != nil {
+			instanceStates.Config = *inst.Config
+		}
 		data.Instances[nodename] = instanceStates
 		for _, relative := range instanceStates.Status.Parents {
 			ps := relative.String()
