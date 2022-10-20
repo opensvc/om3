@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -130,17 +131,17 @@ type (
 // Do is the switch method between local, remote or async mode.
 // If Watch is set, end up starting a monitor on the selected objects.
 func Do(t Actioner) error {
-	var err error
+	var errs error
 	o := t.Options()
 	switch {
 	case o.NodeSelector != "":
 		t.DoRemote()
 	case o.Local, o.DefaultIsLocal, o.RID != "", o.Subset != "", o.Tag != "":
-		err = t.DoLocal()
+		errs = t.DoLocal()
 	case o.Target != "":
 		t.DoAsync()
 	case !clientcontext.IsSet():
-		err = t.DoLocal()
+		errs = t.DoLocal()
 	default:
 		// post action on context endpoint
 		t.DoRemote()
@@ -154,10 +155,12 @@ func Do(t Actioner) error {
 			fmt.Fprintln(os.Stderr, e)
 			return e
 		}
-		getter := cli.NewGetEvents().SetSelector(o.ObjectSelector)
-		m.DoWatch(getter, os.Stdout)
+		statusGetter := cli.NewGetDaemonStatus().SetSelector(o.ObjectSelector)
+		eventsGetter := cli.NewGetEvents().SetSelector(o.ObjectSelector)
+		err := m.DoWatchDemo(statusGetter, eventsGetter, os.Stdout)
+		errs = xerrors.Append(errs, err)
 	}
-	return err
+	return errs
 }
 
 func DefaultHumanRenderer(data interface{}) string {
