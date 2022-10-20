@@ -45,6 +45,14 @@ const (
 // App defines model for app.
 type App = string
 
+// Cluster defines model for cluster.
+type Cluster struct {
+	Config ClusterConfig `json:"config"`
+	Node   ClusterNode   `json:"node"`
+	Object ClusterObject `json:"object"`
+	Status ClusterStatus `json:"status"`
+}
+
 // ClusterConfig defines model for clusterConfig.
 type ClusterConfig = map[string]interface{}
 
@@ -56,14 +64,6 @@ type ClusterObject = map[string]interface{}
 
 // ClusterStatus defines model for clusterStatus.
 type ClusterStatus = map[string]interface{}
-
-// DaemonCluster defines model for daemonCluster.
-type DaemonCluster struct {
-	Config ClusterConfig `json:"config"`
-	Node   ClusterNode   `json:"node"`
-	Object ClusterObject `json:"object"`
-	Status ClusterStatus `json:"status"`
-}
 
 // DaemonInternal defines model for daemonInternal.
 type DaemonInternal struct {
@@ -270,7 +270,7 @@ type ResourceProvisionStatus struct {
 
 // ResponseDaemonStatus defines model for responseDaemonStatus.
 type ResponseDaemonStatus struct {
-	Cluster DaemonCluster  `json:"cluster"`
+	Cluster Cluster        `json:"cluster"`
 	Daemon  DaemonInternal `json:"daemon"`
 }
 
