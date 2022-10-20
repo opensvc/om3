@@ -40,7 +40,7 @@ func monCmdRun(_ *cobra.Command, _ []string) {
 	if monWatchFlag {
 		evGetter := cli.NewGetEvents().SetSelector(monSelectorFlag)
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(monSelectorFlag)
-		if err = m.DoWatchDemo(statusGetter, evGetter, os.Stdout); err != nil {
+		if err = m.DoWatch(statusGetter, evGetter, os.Stdout); err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 			return
 		}

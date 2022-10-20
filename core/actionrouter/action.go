@@ -157,7 +157,7 @@ func Do(t Actioner) error {
 		}
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(o.ObjectSelector)
 		eventsGetter := cli.NewGetEvents().SetSelector(o.ObjectSelector)
-		err := m.DoWatchDemo(statusGetter, eventsGetter, os.Stdout)
+		err := m.DoWatch(statusGetter, eventsGetter, os.Stdout)
 		errs = xerrors.Append(errs, err)
 	}
 	return errs

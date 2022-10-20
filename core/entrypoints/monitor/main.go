@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/inancgumus/screen"
-	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
@@ -114,70 +113,6 @@ func (m T) Do(getter Getter, out io.Writer) error {
 	return nil
 }
 
-func (m T) DoWatch(eventGetter EventBGetter, out io.Writer) error {
-	for {
-		if err := m.watch(eventGetter, out); err != nil {
-			return err
-		}
-		// unexpected: avoid fast looping
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func (m T) watch(eventGetter EventBGetter, out io.Writer) error {
-	var (
-		data   cluster.Status
-		ok     bool
-		err    error
-		evt    event.Event
-		events chan []byte
-	)
-	events, err = eventGetter.GetRaw()
-	if err != nil {
-		return err
-	}
-	b, ok := <-events
-	if !ok {
-		return errors.New("event channel unexpectedly closed")
-	}
-	evt, err = event.DecodeFromJSON(b)
-	if err != nil {
-		return err
-	}
-	b = evt.Data
-	if err := json.Unmarshal(evt.Data, &data); err != nil {
-		return err
-	}
-	m.doOneShot(data, true, out)
-	for e := range events {
-		evt, err := event.DecodeFromJSON(e)
-		if err != nil {
-			//log.Debug().Err(err).Msgf("decode event %v", e)
-			continue
-		}
-
-		switch evt.Kind {
-		case "event":
-			continue
-		case "patch", "full":
-			// pass
-		default:
-			// unexpected: avoid fast looping
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		if err := handleEvent(&b, evt); err != nil {
-			return errors.Wrap(err, "handle event")
-		}
-		if err := json.Unmarshal(b, &data); err != nil {
-			return errors.Wrap(err, "unmarshal event data")
-		}
-		m.doOneShot(data, true, out)
-	}
-	return nil
-}
-
 func handleEvent(b *[]byte, e event.Event) (err error) {
 	patch := jsondelta.NewPatch(e.Data)
 	*b, err = patch.Apply(*b)
@@ -208,9 +143,9 @@ func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
 	_, _ = fmt.Fprint(out, s)
 }
 
-func (m T) DoWatchDemo(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
+func (m T) DoWatch(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
 	for {
-		if err := m.watchdemo(statusGetter, eventGetter, out); err != nil {
+		if err := m.watch(statusGetter, eventGetter, out); err != nil {
 			return err
 		}
 		// unexpected: avoid fast looping
@@ -234,7 +169,7 @@ func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Status, error)
 	return newB, &data, nil
 }
 
-func (m T) watchdemo(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
+func (m T) watch(statusGetter Getter, eventGetter EventGetter, out io.Writer) error {
 	var (
 		b        []byte
 		data     *cluster.Status

@@ -53,7 +53,7 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	if t.Watch {
 		evGetter := cli.NewGetEvents().SetSelector(mergedSelector)
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
-		if err := m.DoWatchDemo(statusGetter, evGetter, os.Stdout); err != nil {
+		if err := m.DoWatch(statusGetter, evGetter, os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
