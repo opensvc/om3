@@ -266,7 +266,7 @@ components:
       type: object
     clusterStatus:
       type: object
-    cluster:
+    daemonCluster:
       type: object
       required:
         - config
@@ -282,7 +282,7 @@ components:
           $ref: '#/components/schemas/clusterObject'
         status:
           $ref: '#/components/schemas/clusterStatus'
-    daemon:
+    daemonInternal:
       type: object
       required:
         - goroutines
@@ -620,9 +620,9 @@ components:
         - daemon
       properties:
         cluster:
-          $ref: '#/components/schemas/cluster'
+          $ref: '#/components/schemas/daemonCluster'
         daemon:
-          $ref: '#/components/schemas/daemon'
+          $ref: '#/components/schemas/daemonInternal'
     responseInfoStatus:
       type: object
       required:
