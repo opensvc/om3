@@ -48,8 +48,6 @@ type (
 		PG           pg.Config      `json:"pg"`
 		Limit        ulimit.Config  `json:"limit"`
 	}
-
-	infoEntry [2]string
 )
 
 var (
@@ -266,7 +264,7 @@ func (t T) GetFuncOpts(s string, action string) ([]funcopt.O, error) {
 	return options, nil
 }
 
-func (t T) Info(ctx context.Context) ([]infoEntry, error) {
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	t.Log().Debug().Msg("Info()")
 
 	durationToString := func(duration *time.Duration) string {
@@ -276,17 +274,17 @@ func (t T) Info(ctx context.Context) ([]infoEntry, error) {
 		return duration.String()
 	}
 	result := append(
-		[]infoEntry{},
-		infoEntry{"script", t.ScriptPath},
-		infoEntry{"start", t.StartCmd},
-		infoEntry{"stop", t.StopCmd},
-		infoEntry{"check", t.CheckCmd},
-		infoEntry{"info", t.InfoCmd},
-		infoEntry{"timeout", durationToString(t.Timeout)},
-		infoEntry{"start_timeout", durationToString(t.StartTimeout)},
-		infoEntry{"stop_timeout", durationToString(t.StopTimeout)},
-		infoEntry{"check_timeout", durationToString(t.CheckTimeout)},
-		infoEntry{"info_timeout", durationToString(t.InfoTimeout)},
+		resource.InfoKeys{},
+		resource.InfoKey{"script", t.ScriptPath},
+		resource.InfoKey{"start", t.StartCmd},
+		resource.InfoKey{"stop", t.StopCmd},
+		resource.InfoKey{"check", t.CheckCmd},
+		resource.InfoKey{"info", t.InfoCmd},
+		resource.InfoKey{"timeout", durationToString(t.Timeout)},
+		resource.InfoKey{"start_timeout", durationToString(t.StartTimeout)},
+		resource.InfoKey{"stop_timeout", durationToString(t.StopTimeout)},
+		resource.InfoKey{"check_timeout", durationToString(t.CheckTimeout)},
+		resource.InfoKey{"info_timeout", durationToString(t.InfoTimeout)},
 	)
 	var opts []funcopt.O
 	var err error
@@ -318,16 +316,17 @@ func (t T) Info(ctx context.Context) ([]infoEntry, error) {
 		}
 		key := strings.Trim(lineSplit[0], "\n ")
 		value := strings.Trim(lineSplit[1], "\n ")
-		result = append(result, infoEntry{key, value})
+		result = append(result, resource.InfoKey{key, value})
 	}
 	return result, nil
 }
 
 // getCmdStringFromBoolRule get command string for 'action' using bool rule on 's'
 // if 's' is a
-//   true like => getScript() + " " + action
-//   false like => ""
-//   other => original value
+//
+//	true like => getScript() + " " + action
+//	false like => ""
+//	other => original value
 func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 	if scriptCommandBool, ok := boolRule(s); ok {
 		switch scriptCommandBool {
@@ -347,9 +346,9 @@ func (t T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 
 // getScript return script kw value
 // when script is a basename:
-//   <pathetc>/namespaces/<namespace>/<kind>/<svcname>.d/<script> (when namespace is not root)
-//   <pathetc>/<svcname>.d/<script> (when namespace is root)
 //
+//	<pathetc>/namespaces/<namespace>/<kind>/<svcname>.d/<script> (when namespace is not root)
+//	<pathetc>/<svcname>.d/<script> (when namespace is root)
 func (t T) getScript() string {
 	s := t.ScriptPath
 	if len(s) == 0 {

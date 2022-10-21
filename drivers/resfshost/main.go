@@ -127,12 +127,13 @@ func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	m["dev"] = t.devpath()
-	m["mnt"] = t.mountPoint()
-	m["mnt_opt"] = t.MountOptions
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{"dev", t.devpath()},
+		{"mnt", t.mountPoint()},
+		{"mnt_opt", t.MountOptions},
+	}
+	return m, nil
 }
 
 func (t T) fsDir() *resfsdir.T {

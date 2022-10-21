@@ -61,9 +61,9 @@ func (t T) Label() string {
 	return t.DiskID
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{}
+	return m, nil
 }
 
 func (t T) UnprovisionLeaded(ctx context.Context) error {

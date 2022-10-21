@@ -99,10 +99,11 @@ func (t T) Label() string {
 	return t.File
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	m["file"] = t.File
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{"file", t.File},
+	}
+	return m, nil
 }
 
 func (t T) isVolatile() bool {

@@ -28,7 +28,7 @@ type (
 	}
 
 	infoer interface {
-		Info() map[string]string
+		Info(context.Context) (InfoKeys, error)
 	}
 )
 
@@ -78,11 +78,10 @@ func GetInfo(ctx context.Context, r Driver) (Info, error) {
 	if !ok {
 		return info, nil
 	}
-	for k, v := range i.Info() {
-		info.Keys = append(info.Keys, InfoKey{
-			Key:   k,
-			Value: v,
-		})
+	if keys, err := i.Info(ctx); err != nil {
+		return info, err
+	} else {
+		info.Keys = append(info.Keys, keys...)
 	}
 	return info, nil
 }

@@ -69,14 +69,15 @@ func genPassphrase() []byte {
 	return []byte(string(inRune))
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	m["name"] = t.getName()
-	m["dev"] = t.getDev()
-	m["secret"] = t.Secret
-	m["label"] = t.FormatLabel
-	m["manage_passphrase"] = fmt.Sprint(t.ManagePassphrase)
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{"name", t.getName()},
+		{"dev", t.getDev()},
+		{"secret", t.Secret},
+		{"label", t.FormatLabel},
+		{"manage_passphrase", fmt.Sprint(t.ManagePassphrase)},
+	}
+	return m, nil
 }
 
 func (t T) secPath() (path.T, error) {

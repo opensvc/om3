@@ -172,10 +172,11 @@ func (t T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	m["name"] = t.Name
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{"name", t.Name},
+	}
+	return m, nil
 }
 
 func (t T) doHostID() error {

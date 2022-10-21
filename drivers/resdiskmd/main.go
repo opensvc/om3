@@ -77,10 +77,11 @@ func (t T) Name() string {
 	}
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	m["uuid"] = t.UUID
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{"uuid", t.UUID},
+	}
+	return m, nil
 }
 
 func (t T) Start(ctx context.Context) error {
