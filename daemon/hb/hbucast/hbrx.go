@@ -34,81 +34,6 @@ type (
 	}
 )
 
-// Id implements the Id function of the Receiver interface for rx
-func (r *rx) Id() string {
-	return r.id
-}
-
-// Stop implements the Stop function of the Receiver interface for rx
-func (r *rx) Stop() error {
-	r.cancel()
-	for _, node := range r.nodes {
-		r.cmdC <- hbctrl.CmdDelWatcher{
-			HbId:     r.id,
-			Nodename: node,
-		}
-	}
-	return nil
-}
-
-// Start implements the Start function of the Receiver interface for rx
-func (r *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
-	ctx, cancel := context.WithCancel(r.ctx)
-	r.cmdC = cmdC
-	r.msgC = msgC
-	r.cancel = cancel
-	r.log.Info().Msg("starting")
-	listener, err := net.Listen("tcp", r.addr+":"+r.port)
-	if err != nil {
-		r.log.Error().Err(err).Msg("listen failed")
-		return err
-	}
-	r.log.Info().Msgf("listen on %s", r.addr+":"+r.port)
-	started := make(chan bool)
-	go func() {
-		for _, node := range r.nodes {
-			cmdC <- hbctrl.CmdAddWatcher{
-				HbId:     r.id,
-				Nodename: node,
-				Ctx:      ctx,
-				Timeout:  r.timeout,
-			}
-		}
-		go func() {
-			select {
-			case <-ctx.Done():
-				r.log.Info().Msg("closing " + r.addr)
-				_ = listener.Close()
-				r.log.Info().Msg("closed " + r.addr)
-				r.cancel()
-				return
-			}
-		}()
-		started <- true
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				if strings.Contains(err.Error(), "use of closed network connection") {
-					break
-				} else {
-					r.log.Error().Err(err).Msg("Accept")
-					continue
-				}
-			}
-			if err := conn.SetDeadline(time.Now().Add(r.timeout)); err != nil {
-				r.log.Info().Err(err).Msg("SetReadDeadline")
-				continue
-			}
-			clearConn := encryptconn.New(conn)
-			go r.handle(clearConn)
-		}
-		r.log.Info().Msg("stopped " + r.addr)
-	}()
-	<-started
-	r.log.Info().Msg("started " + r.addr)
-	return nil
-}
-
 var (
 	msgBufferCount = 4
 	msgMaxSize     = 10000000 // max kind=full msg size
@@ -123,7 +48,82 @@ func init() {
 	}
 }
 
-func (r *rx) handle(conn encryptconn.ConnNoder) {
+// Id implements the Id function of the Receiver interface for rx
+func (t *rx) Id() string {
+	return t.id
+}
+
+// Stop implements the Stop function of the Receiver interface for rx
+func (t *rx) Stop() error {
+	t.cancel()
+	for _, node := range t.nodes {
+		t.cmdC <- hbctrl.CmdDelWatcher{
+			HbId:     t.id,
+			Nodename: node,
+		}
+	}
+	return nil
+}
+
+// Start implements the Start function of the Receiver interface for rx
+func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
+	ctx, cancel := context.WithCancel(t.ctx)
+	t.cmdC = cmdC
+	t.msgC = msgC
+	t.cancel = cancel
+	t.log.Info().Msg("starting")
+	listener, err := net.Listen("tcp", t.addr+":"+t.port)
+	if err != nil {
+		t.log.Error().Err(err).Msg("listen failed")
+		return err
+	}
+	t.log.Info().Msgf("listen on %s", t.addr+":"+t.port)
+	started := make(chan bool)
+	go func() {
+		for _, node := range t.nodes {
+			cmdC <- hbctrl.CmdAddWatcher{
+				HbId:     t.id,
+				Nodename: node,
+				Ctx:      ctx,
+				Timeout:  t.timeout,
+			}
+		}
+		go func() {
+			select {
+			case <-ctx.Done():
+				t.log.Info().Msg("closing " + t.addr)
+				_ = listener.Close()
+				t.log.Info().Msg("closed " + t.addr)
+				t.cancel()
+				return
+			}
+		}()
+		started <- true
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				if strings.Contains(err.Error(), "use of closed network connection") {
+					break
+				} else {
+					t.log.Error().Err(err).Msg("Accept")
+					continue
+				}
+			}
+			if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
+				t.log.Info().Err(err).Msg("SetReadDeadline")
+				continue
+			}
+			clearConn := encryptconn.New(conn)
+			go t.handle(clearConn)
+		}
+		t.log.Info().Msg("stopped " + t.addr)
+	}()
+	<-started
+	t.log.Info().Msg("started " + t.addr)
+	return nil
+}
+
+func (t *rx) handle(conn encryptconn.ConnNoder) {
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -131,23 +131,23 @@ func (r *rx) handle(conn encryptconn.ConnNoder) {
 	defer func() { msgBufferChan <- data }()
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
-		r.log.Error().Err(err).Msg("ReadWithNode failure")
+		t.log.Error().Err(err).Msg("ReadWithNode failure")
 		return
 	}
 	if i >= (msgMaxSize - 10000) {
-		r.log.Warn().Msgf("ReadWithNode huge message from %s: %d", nodename, i)
+		t.log.Warn().Msgf("ReadWithNode huge message from %s: %d", nodename, i)
 	}
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(data[:i], &msg); err != nil {
-		r.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
+		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
 		return
 	}
-	r.cmdC <- hbctrl.CmdSetPeerSuccess{
+	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
-		HbId:     r.id,
+		HbId:     t.id,
 		Success:  true,
 	}
-	r.msgC <- &msg
+	t.msgC <- &msg
 }
 
 func newRx(ctx context.Context, name string, nodes []string, addr, port, intf string, timeout time.Duration) *rx {
