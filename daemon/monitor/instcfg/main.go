@@ -154,6 +154,7 @@ func (o *T) worker(parent context.Context) {
 					continue
 				}
 				o.log.Info().Msg("local cluster config changed => refresh cfg")
+				o.forceRefresh = true
 				if err := o.configFileCheck(); err != nil {
 					return
 				}
