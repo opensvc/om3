@@ -22,6 +22,7 @@ type (
 		nodes    []string
 		timeout  time.Duration
 		interval time.Duration
+		last     time.Time
 
 		name   string
 		log    zerolog.Logger
@@ -94,12 +95,25 @@ func (t *rx) recv(nodename string) {
 		t.log.Debug().Err(err).Msgf("recv: failed to allocate a slot for node %s", nodename)
 		return
 	}
-	b, err := t.base.ReadDataSlot(meta.Slot) // TODO read timeout?
+	c, err := t.base.ReadDataSlot(meta.Slot) // TODO read timeout?
 	if err != nil {
 		t.log.Debug().Err(err).Msgf("recv: reading node %s data slot %d", nodename, meta.Slot)
 		return
 	}
-	encMsg := reqjsonrpc.NewMessage(b)
+	if c.Updated.IsZero() {
+		t.log.Debug().Msgf("recv: node %s data slot %d has never been updated", nodename, meta.Slot)
+		return
+	}
+	if !t.last.IsZero() && c.Updated == t.last {
+		t.log.Debug().Msgf("recv: node %s data slot %d has not change since last read", nodename, meta.Slot)
+		return
+	}
+	elapsed := time.Now().Sub(c.Updated)
+	if elapsed > t.timeout {
+		t.log.Debug().Msgf("recv: node %s data slot %d has not been updated for %s", nodename, meta.Slot, elapsed)
+		return
+	}
+	encMsg := reqjsonrpc.NewMessage(c.Msg)
 	b, msgNodename, err := encMsg.DecryptWithNode()
 	if err != nil {
 		t.log.Debug().Err(err).Msgf("recv: decrypting node %s data slot %d", nodename, meta.Slot)
@@ -123,6 +137,7 @@ func (t *rx) recv(nodename string) {
 		Success:  true,
 	}
 	t.msgC <- &msg
+	t.last = c.Updated
 }
 
 func newRx(ctx context.Context, name string, nodes []string, baba base, timeout, interval time.Duration) *rx {

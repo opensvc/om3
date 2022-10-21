@@ -7,6 +7,7 @@ package hbdisk
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,6 +32,10 @@ type (
 		hbcfg.T
 	}
 
+	capsule struct {
+		Updated time.Time `json:"updated"`
+		Msg     []byte    `json:"msg"`
+	}
 	base struct {
 		peerConfigs
 		device
@@ -203,10 +208,11 @@ func (t device) DataSlotOffset(slot int) int64 {
 	return int64(MetaSize) + int64(slot)*int64(SlotSize)
 }
 
-func (t device) ReadDataSlot(slot int) ([]byte, error) {
+func (t device) ReadDataSlot(slot int) (capsule, error) {
+	c := capsule{}
 	offset := t.DataSlotOffset(slot)
 	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
-		return nil, err
+		return c, err
 	}
 	data := make([]byte, 0)
 	totalRead := 0
@@ -215,7 +221,7 @@ func (t device) ReadDataSlot(slot int) ([]byte, error) {
 		n, err := io.ReadFull(t.file, block)
 		totalRead += n
 		if err != nil {
-			return data, err
+			return c, err
 		}
 		if n == 0 {
 			break
@@ -231,10 +237,21 @@ func (t device) ReadDataSlot(slot int) ([]byte, error) {
 			break
 		}
 	}
-	return data, nil
+	if err := json.Unmarshal(data, &c); err != nil {
+		return c, err
+	}
+	return c, nil
 }
 
 func (t device) WriteDataSlot(slot int, b []byte) error {
+	c := capsule{
+		Msg:     b,
+		Updated: time.Now(),
+	}
+	b, err := json.Marshal(c)
+	if err != nil {
+		return errors.Wrap(err, "msg encapsulation")
+	}
 	b = append(b, []byte{'\x00'}...)
 	if len(b) > SlotSize {
 		return errors.Errorf("attempt to write too long data in data slot %d", slot)
