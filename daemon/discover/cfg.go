@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -146,8 +145,8 @@ func (d *discover) cmdRemoteCfgUpdated(p path.T, node string, remoteCfg instance
 			return
 		}
 	}
-	if p.Kind != kind.Sec && !d.inScope(&remoteCfg) {
-		// skip not a sec and not in scopes
+	if !d.inScope(&remoteCfg) {
+		// skipped when we are not in scopes
 		return
 	}
 	d.log.Info().Msgf("fetch config %s from node %s", s, node)

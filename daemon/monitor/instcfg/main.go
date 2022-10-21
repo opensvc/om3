@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,6 +35,7 @@ import (
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/stringslice"
 )
@@ -120,9 +122,11 @@ func (o *T) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
 // worker watch for local instCfg config file updates until file is removed
 func (o *T) worker(parent context.Context) {
 	defer o.log.Debug().Msg("done")
+	defer o.log.Debug().Msg("starting")
 
 	// do once what we do later on msgbus.CfgFileUpdated
 	if err := o.configFileCheck(); err != nil {
+		o.log.Warn().Err(err).Msg("initial configFileCheck")
 		return
 	}
 	defer o.delete()
@@ -150,6 +154,7 @@ func (o *T) worker(parent context.Context) {
 					continue
 				}
 				o.log.Info().Msg("local cluster config changed => refresh cfg")
+				o.forceRefresh = true
 				if err := o.configFileCheck(); err != nil {
 					return
 				}
@@ -218,9 +223,13 @@ func (o *T) configFileCheck() error {
 		return configFileCheckError
 	}
 	o.forceRefresh = false
-	nodes := o.configure.Config().Referrer.Nodes()
-	if len(nodes) == 0 {
-		o.log.Info().Msg("configFile empty nodes")
+	scope, err := o.getScope()
+	if err != nil {
+		o.log.Error().Err(err).Msgf("can't get scope")
+		return configFileCheckError
+	}
+	if len(scope) == 0 {
+		o.log.Info().Msg("empty scope")
 		return configFileCheckError
 	}
 	newMtime := file.ModTime(o.filename)
@@ -232,19 +241,40 @@ func (o *T) configFileCheck() error {
 		o.log.Info().Msg("configFile changed(wait next evaluation)")
 		return nil
 	}
-	if !stringslice.Has(o.localhost, nodes) {
+	if !stringslice.Has(o.localhost, scope) {
 		o.log.Info().Msg("localhost not anymore an instance node")
 		return configFileCheckError
 	}
 	cfg := o.cfg
 	cfg.Nodename = o.localhost
-	sort.Strings(nodes)
-	cfg.Scope = nodes
+	cfg.Scope = scope
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Updated = mtime
 	o.lastMtime = mtime
 	o.updateCfg(&cfg)
 	return nil
+}
+
+// getScope return sorted scopes for object
+//
+// depending on object kind
+// Ccfg => cluster.nodes
+// else => eval DEFAULT.nodes
+func (o *T) getScope() (scope []string, err error) {
+	switch o.path.Kind {
+	case kind.Ccfg:
+		scope = strings.Split(rawconfig.ClusterSection().Nodes, " ")
+	default:
+		var evalNodes interface{}
+		evalNodes, err = o.configure.Config().Eval(key.Parse("DEFAULT.nodes"))
+		if err != nil {
+			o.log.Error().Err(err).Msg("eval DEFAULT.nodes")
+			return
+		}
+		scope = evalNodes.([]string)
+	}
+	sort.Strings(scope)
+	return
 }
 
 func (o *T) setConfigure() error {

@@ -8,16 +8,16 @@ import (
 )
 
 type (
-	// T is an integer representing the opensvc object kind.
-	T int
+	// T is opensvc object kind.
+	T uint
 
 	// Mask is the result of a binary Or on T values
-	Mask int
+	Mask uint
 )
 
 const (
 	// Invalid is for invalid kinds
-	Invalid T = iota << 1
+	Invalid T = 1 << iota
 	// Svc is the kind of objects containing app, containers, or volumes resources.
 	Svc
 	// Vol is the kind of objects containing fs, disk resources. Allocated from Pools.
