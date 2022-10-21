@@ -17,7 +17,6 @@ func init() {
 // Manifest ...
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "netns",

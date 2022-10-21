@@ -71,73 +71,12 @@ type (
 	}
 )
 
-func (t *T) AddInterfacesKeywords(r interface{}) *T {
-	if _, ok := r.(starter); ok {
-		t.AddKeyword(keywords.Keyword{
-			Option:  "start_requires",
-			Attr:    "StartRequires",
-			Example: "ip#0 fs#0(down,stdby down)",
-			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'start' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
-		})
-	}
-	if _, ok := r.(stopper); ok {
-		t.AddKeyword(keywords.Keyword{
-			Option:  "stop_requires",
-			Attr:    "StopRequires",
-			Example: "ip#0 fs#0(down,stdby down)",
-			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'stop' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
-		})
-	}
-	if _, ok := r.(provisioner); ok {
-		t.AddKeyword(keywords.Keyword{
-			Option:  "provision_requires",
-			Attr:    "ProvisionRequires",
-			Example: "ip#0 fs#0(down,stdby down)",
-			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'start' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
-		})
-	}
-	if _, ok := r.(unprovisioner); ok {
-		t.AddKeyword(keywords.Keyword{
-			Option:  "unprovision_requires",
-			Attr:    "UnprovisionRequires",
-			Example: "ip#0 fs#0(down,stdby down)",
-			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'unprovision' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
-		})
-	}
-	if _, ok := r.(syncer); ok {
-		t.AddKeyword(keywords.Keyword{
-			Option:  "sync_requires",
-			Attr:    "SyncRequires",
-			Example: "ip#0 fs#0(down,stdby down)",
-			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'sync' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
-		})
-	}
-	if _, ok := r.(runner); ok {
-		t.AddKeyword(keywords.Keyword{
-			Option:  "run_requires",
-			Attr:    "RunRequires",
-			Example: "ip#0 fs#0(down,stdby down)",
-			Text:    "A whitespace-separated list of conditions to meet to accept doing a 'run' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
-		})
-	}
-	return t
-}
-
-var genericKeywords = []keywords.Keyword{
+var starterKeywords = []keywords.Keyword{
 	{
-		Option:    "disable",
-		Attr:      "Disable",
-		Scopable:  true,
-		Converter: converters.Bool,
-		Text:      "A disabled resource will be ignored on service startup and shutdown. Its status is always reported ``n/a``.\n\nSet in DEFAULT, the whole service is disabled. A disabled service does not honor :c-action:`start` and :c-action:`stop` actions. These actions immediately return success.\n\n:cmd:`om <path> disable` only sets :kw:`DEFAULT.disable`. As resources disabled state is not changed, :cmd:`om <path> enable` does not enable disabled resources.",
-	},
-	{
-		Option:    "optional",
-		Attr:      "Optional",
-		Scopable:  true,
-		Converter: converters.Bool,
-		Inherit:   keywords.InheritHead2Leaf,
-		Text:      "Action failures on optional resources are logged but do not stop the action sequence. Also the optional resource status is not aggregated to the instance 'availstatus', but aggregated to the 'overallstatus'. Resource tagged :c-tag:`noaction` and sync resources are automatically considered optional. Useful for resources like dump filesystems for example.",
+		Option:  "start_requires",
+		Attr:    "StartRequires",
+		Example: "ip#0 fs#0(down,stdby down)",
+		Text:    "A whitespace-separated list of conditions to meet to accept doing a 'start' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
 	},
 	{
 		Option:    "restart",
@@ -156,6 +95,212 @@ var genericKeywords = []keywords.Keyword{
 			":kw:`restart_delay` defines the interval between two restarts. " +
 			"Standby resources have a particular value to ensure best effort to restart standby resources, " +
 			"default value is 2, and value lower than 2 are changed to 2.",
+	},
+	{
+		Option:    "restart_delay",
+		Attr:      "RestartDelay",
+		Scopable:  true,
+		Converter: converters.Duration,
+		Default:   "500ms",
+		Text: "Define minimum delay between two triggered restarts of a same resource (used when :kw:`restart`is defined). " +
+			"Default value is 0 (no delay).",
+	},
+	{
+		Option:   "pre_start",
+		Attr:     "PreStart",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`start` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_start",
+		Attr:     "PostStart",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`start` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "blocking_pre_start",
+		Attr:     "BlockingPreStart",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`start` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_start",
+		Attr:     "BlockingPostStart",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`start` action. Errors interrupt the action.",
+	},
+}
+
+var stopperKeywords = []keywords.Keyword{
+	{
+		Option:  "stop_requires",
+		Attr:    "StopRequires",
+		Example: "ip#0 fs#0(down,stdby down)",
+		Text:    "A whitespace-separated list of conditions to meet to accept doing a 'stop' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+	},
+	{
+		Option:   "pre_stop",
+		Attr:     "PreStop",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`stop` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_stop",
+		Attr:     "PostStop",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`stop` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "blocking_pre_stop",
+		Attr:     "BlockingPreStop",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`stop` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_stop",
+		Attr:     "BlockingPostStop",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`stop` action. Errors interrupt the action.",
+	},
+}
+
+var provisionerKeywords = []keywords.Keyword{
+	{
+		Option:  "provision_requires",
+		Attr:    "ProvisionRequires",
+		Example: "ip#0 fs#0(down,stdby down)",
+		Text:    "A whitespace-separated list of conditions to meet to accept doing a 'start' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+	},
+	{
+		Option:    "provision",
+		Attr:      "EnableProvision",
+		Converter: converters.Bool,
+		Default:   "true",
+		Text:      "Set to false to skip the resource on provision and unprovision actions. Warning: Provision implies destructive operations like formating. Unprovision destroys service data.",
+	},
+	{
+		Option:   "blocking_pre_provision",
+		Attr:     "BlockingPreProvision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`provision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_provision",
+		Attr:     "BlockingPostProvision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`provision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_provision",
+		Attr:     "PreProvision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`provision` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_provision",
+		Attr:     "PostProvision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`provision` action. Errors do not interrupt the action.",
+	},
+}
+
+var unprovisionerKeywords = []keywords.Keyword{
+	{
+		Option:  "unprovision_requires",
+		Attr:    "UnprovisionRequires",
+		Example: "ip#0 fs#0(down,stdby down)",
+		Text:    "A whitespace-separated list of conditions to meet to accept doing a 'unprovision' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+	},
+	{
+		Option:    "unprovision",
+		Attr:      "EnableUnprovision",
+		Converter: converters.Bool,
+		Default:   "true",
+		Text:      "Set to false to skip the resource on unprovision actions. Warning: Unprovision destroys service data.",
+	},
+	{
+		Option:   "blocking_pre_unprovision",
+		Attr:     "BlockingPreUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`unprovision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_unprovision",
+		Attr:     "BlockingPostUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`unprovision` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_unprovision",
+		Attr:     "PreUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`unprovision` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_unprovision",
+		Attr:     "PostUnprovision",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`unprovision` action. Errors do not interrupt the action.",
+	},
+}
+
+var syncerKeywords = []keywords.Keyword{
+	{
+		Option:  "sync_requires",
+		Attr:    "SyncRequires",
+		Example: "ip#0 fs#0(down,stdby down)",
+		Text:    "A whitespace-separated list of conditions to meet to accept doing a 'sync' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+	},
+}
+
+var runnerKeywords = []keywords.Keyword{
+	{
+		Option:  "run_requires",
+		Attr:    "RunRequires",
+		Example: "ip#0 fs#0(down,stdby down)",
+		Text:    "A whitespace-separated list of conditions to meet to accept doing a 'run' action. A condition is expressed as ``<rid>(<state>,...)``. If states are omitted, ``up,stdby up`` is used as the default expected states.",
+	},
+	{
+		Option:   "blocking_pre_run",
+		Attr:     "BlockingPreRun",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`run` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "blocking_post_run",
+		Attr:     "BlockingPostRun",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`run` action. Errors interrupt the action.",
+	},
+	{
+		Option:   "pre_run",
+		Attr:     "PreRun",
+		Scopable: true,
+		Text:     "A command or script to execute before the resource :c-action:`run` action. Errors do not interrupt the action.",
+	},
+	{
+		Option:   "post_run",
+		Attr:     "PostRun",
+		Scopable: true,
+		Text:     "A command or script to execute after the resource :c-action:`run` action. Errors do not interrupt the action.",
+	},
+}
+
+var genericKeywords = []keywords.Keyword{
+	{
+		Option:    "disable",
+		Attr:      "Disable",
+		Scopable:  true,
+		Converter: converters.Bool,
+		Text:      "A disabled resource will be ignored on service startup and shutdown. Its status is always reported ``n/a``.\n\nSet in DEFAULT, the whole service is disabled. A disabled service does not honor :c-action:`start` and :c-action:`stop` actions. These actions immediately return success.\n\n:cmd:`om <path> disable` only sets :kw:`DEFAULT.disable`. As resources disabled state is not changed, :cmd:`om <path> enable` does not enable disabled resources.",
+	},
+	{
+		Option:    "optional",
+		Attr:      "Optional",
+		Scopable:  true,
+		Converter: converters.Bool,
+		Inherit:   keywords.InheritHead2Leaf,
+		Text:      "Action failures on optional resources are logged but do not stop the action sequence. Also the optional resource status is not aggregated to the instance 'availstatus', but aggregated to the 'overallstatus'. Resource tagged :c-tag:`noaction` and sync resources are automatically considered optional. Useful for resources like dump filesystems for example.",
 	},
 	{
 		Option:    "monitor",
@@ -191,146 +336,28 @@ var genericKeywords = []keywords.Keyword{
 		Scopable: true,
 		Text:     "Assign the resource to a specific subset.",
 	},
-	{
-		Option:   "blocking_pre_start",
-		Attr:     "BlockingPreStart",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`start` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "blocking_pre_stop",
-		Attr:     "BlockingPreStop",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`stop` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "pre_start",
-		Attr:     "PreStart",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`start` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "pre_stop",
-		Attr:     "PreStop",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`stop` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "blocking_post_start",
-		Attr:     "BlockingPostStart",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`start` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "blocking_post_stop",
-		Attr:     "BlockingPostStop",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`stop` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "post_start",
-		Attr:     "PostStart",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`start` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "post_stop",
-		Attr:     "PostStop",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`stop` action. Errors do not interrupt the action.",
-	},
 }
 
-var RunTriggerKeywords = []keywords.Keyword{
-	{
-		Option:   "blocking_pre_run",
-		Attr:     "BlockingPreRun",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`run` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "blocking_post_run",
-		Attr:     "BlockingPostRun",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`run` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "pre_run",
-		Attr:     "PreRun",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`run` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "post_run",
-		Attr:     "PostRun",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`run` action. Errors do not interrupt the action.",
-	},
-}
-
-var ProvisioningKeywords = []keywords.Keyword{
-	{
-		Option:    "provision",
-		Attr:      "EnableProvision",
-		Converter: converters.Bool,
-		Default:   "true",
-		Text:      "Set to false to skip the resource on provision and unprovision actions. Warning: Provision implies destructive operations like formating. Unprovision destroys service data.",
-	},
-	{
-		Option:    "unprovision",
-		Attr:      "EnableUnprovision",
-		Converter: converters.Bool,
-		Default:   "true",
-		Text:      "Set to false to skip the resource on unprovision actions. Warning: Unprovision destroys service data.",
-	},
-	{
-		Option:   "blocking_pre_provision",
-		Attr:     "BlockingPreProvision",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`provision` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "blocking_post_provision",
-		Attr:     "BlockingPostProvision",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`provision` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "pre_provision",
-		Attr:     "PreProvision",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`provision` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "post_provision",
-		Attr:     "PostProvision",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`provision` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "blocking_pre_unprovision",
-		Attr:     "BlockingPreUnprovision",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`unprovision` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "blocking_post_unprovision",
-		Attr:     "BlockingPostUnprovision",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`unprovision` action. Errors interrupt the action.",
-	},
-	{
-		Option:   "pre_unprovision",
-		Attr:     "PreUnprovision",
-		Scopable: true,
-		Text:     "A command or script to execute before the resource :c-action:`unprovision` action. Errors do not interrupt the action.",
-	},
-	{
-		Option:   "post_unprovision",
-		Attr:     "PostUnprovision",
-		Scopable: true,
-		Text:     "A command or script to execute after the resource :c-action:`unprovision` action. Errors do not interrupt the action.",
-	},
+func (t *T) AddInterfacesKeywords(r any) *T {
+	if _, ok := r.(starter); ok {
+		t.AddKeyword(starterKeywords...)
+	}
+	if _, ok := r.(stopper); ok {
+		t.AddKeyword(stopperKeywords...)
+	}
+	if _, ok := r.(provisioner); ok {
+		t.AddKeyword(provisionerKeywords...)
+	}
+	if _, ok := r.(unprovisioner); ok {
+		t.AddKeyword(unprovisionerKeywords...)
+	}
+	if _, ok := r.(syncer); ok {
+		t.AddKeyword(syncerKeywords...)
+	}
+	if _, ok := r.(runner); ok {
+		t.AddKeyword(runnerKeywords...)
+	}
+	return t
 }
 
 func New(did driver.ID, r interface{}) *T {

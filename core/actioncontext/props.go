@@ -144,6 +144,12 @@ var (
 		Kinds: []kind.T{kind.Svc, kind.Vol},
 		PG:    true,
 	}
+	PushResInfo = Properties{
+		Name:  "push resinfo",
+		Local: true,
+		Kinds: []kind.T{kind.Svc, kind.Vol},
+		PG:    true,
+	}
 	Purge = Properties{
 		Name:            "purge",
 		Target:          "purged",

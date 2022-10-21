@@ -111,12 +111,13 @@ func (t T) Label() string {
 	return s
 }
 
-func (t T) Info() map[string]string {
-	m := make(map[string]string)
-	m["dev"] = t.Device
-	m["mnt"] = t.mountPoint()
-	m["mnt_opt"] = t.MountOptions
-	return m
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{"dev", t.Device},
+		{"mnt", t.mountPoint()},
+		{"mnt_opt", t.MountOptions},
+	}
+	return m, nil
 }
 
 func (t T) fsDir() *resfsdir.T {

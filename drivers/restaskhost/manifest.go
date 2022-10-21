@@ -20,7 +20,6 @@ func (t T) Manifest() *manifest.T {
 	var keywordL []keywords.Keyword
 	keywordL = append(keywordL, resapp.BaseKeywords...)
 	keywordL = append(keywordL, resapp.UnixKeywords...)
-	keywordL = append(keywordL, manifest.RunTriggerKeywords...)
 	keywordL = append(keywordL, Keywords...)
 	m := manifest.New(drvID, t)
 	m.AddContext([]manifest.Context{

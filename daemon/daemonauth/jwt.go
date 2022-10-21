@@ -47,6 +47,7 @@ func jsonEncode(w io.Writer, data interface{}) error {
 func initToken() auth.Strategy {
 	log.Logger.Info().Msg("init token auth strategy")
 	if err := initJWT(); err != nil {
+		log.Logger.Error().Err(err).Msg("init token auth strategy")
 		return nil
 	}
 	tokenStrategy = token.New(token.NoOpAuthenticate, cache)
@@ -111,6 +112,10 @@ func GetToken(w http.ResponseWriter, r *http.Request) {
 		"exp":        tokenExpireAt.Unix(),
 		"authorized": true,
 		"grant":      user.GetExtensions()["grant"],
+	}
+	if TokenAuth == nil {
+		http.Error(w, "token based authentication is not configured", http.StatusNotImplemented)
+		return
 	}
 	_, token, err := TokenAuth.Encode(claims)
 	if err != nil {

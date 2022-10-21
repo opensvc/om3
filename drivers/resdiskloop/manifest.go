@@ -19,7 +19,6 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "file",

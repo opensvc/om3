@@ -46,7 +46,6 @@ func (t T) Manifest() *manifest.T {
 			Ref:  "object.topology",
 		},
 	}...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		/*
 			{

@@ -22,7 +22,6 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "netns",
