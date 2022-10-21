@@ -159,7 +159,6 @@ func (t T) Manifest() *manifest.T {
 			Ref:  "object.path",
 		},
 	}...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword(KeywordsBase...)
 	m.AddKeyword(resource.SCSIPersistentReservationKeywords...)
 	return m

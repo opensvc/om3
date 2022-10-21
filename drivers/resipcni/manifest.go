@@ -34,7 +34,6 @@ func (t T) Manifest() *manifest.T {
 			Ref:  "object.id",
 		},
 	}...)
-	m.AddKeyword(manifest.ProvisioningKeywords...)
 	m.AddKeyword([]keywords.Keyword{
 		{
 			Option:   "network",

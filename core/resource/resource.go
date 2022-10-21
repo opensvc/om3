@@ -75,8 +75,10 @@ type (
 		IsStandby() bool
 		IsShared() bool
 		IsMonitored() bool
+		IsEncap() bool
 		IsStatusDisabled() bool
 		RestartCount() int
+		GetRestartDelay() time.Duration
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
@@ -98,15 +100,17 @@ type (
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
-		ResourceID              *resourceid.T `json:"rid"`
-		Subset                  string        `json:"subset"`
-		Disable                 bool          `json:"disable"`
-		Monitor                 bool          `json:"monitor"`
-		Optional                bool          `json:"optional"`
-		Standby                 bool          `json:"standby"`
-		Shared                  bool          `json:"shared"`
-		Restart                 int           `json:"restart"`
-		Tags                    *set.Set      `json:"tags"`
+		ResourceID              *resourceid.T  `json:"rid"`
+		Subset                  string         `json:"subset"`
+		Disable                 bool           `json:"disable"`
+		Monitor                 bool           `json:"monitor"`
+		Optional                bool           `json:"optional"`
+		Standby                 bool           `json:"standby"`
+		Shared                  bool           `json:"shared"`
+		Encap                   bool           `json:"shared"`
+		Restart                 int            `json:"restart"`
+		RestartDelay            *time.Duration `json:"restart_delay"`
+		Tags                    *set.Set       `json:"tags"`
 		BlockingPreStart        string
 		BlockingPreStop         string
 		BlockingPreRun          string
@@ -332,22 +336,27 @@ func (t T) IsOptional() bool {
 	return t.Optional
 }
 
-// IsDisabled returns true if the resource definition container disable=true.
+// IsEncap returns true if the resource definition contains encap=true.
+func (t T) IsEncap() bool {
+	return t.Encap
+}
+
+// IsDisabled returns true if the resource definition contains disable=true.
 func (t T) IsDisabled() bool {
 	return t.Disable
 }
 
-// IsStandby returns true if the resource definition container standby=true.
+// IsStandby returns true if the resource definition contains standby=true.
 func (t T) IsStandby() bool {
 	return t.Standby
 }
 
-// IsShared returns true if the resource definition container shared=true.
+// IsShared returns true if the resource definition contains shared=true.
 func (t T) IsShared() bool {
 	return t.Shared
 }
 
-// IsMonitored returns true if the resource definition container monitor=true.
+// IsMonitored returns true if the resource definition contains monitor=true.
 func (t T) IsMonitored() bool {
 	return t.Monitor
 }
@@ -367,6 +376,14 @@ func (t T) IsActionDisabled() bool {
 // RestartCount returns the value of the Restart field
 func (t T) RestartCount() int {
 	return t.Restart
+}
+
+// RestartDelay returns the duration between 2 restarts
+func (t T) GetRestartDelay() time.Duration {
+	if t.RestartDelay == nil {
+		return 500 * time.Millisecond
+	}
+	return *t.RestartDelay
 }
 
 // RSubset returns the resource subset name
@@ -917,7 +934,7 @@ func GetExposedStatus(ctx context.Context, r Driver) ExposedStatus {
 		Optional:    OptionalFlag(r.IsOptional()),
 		Standby:     StandbyFlag(r.IsStandby()),
 		Disable:     DisableFlag(r.IsDisabled()),
-		//Encap:       EncapFlag(r.IsEncap()),
+		Encap:       EncapFlag(r.IsEncap()),
 	}
 }
 

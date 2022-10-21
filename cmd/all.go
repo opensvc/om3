@@ -12,11 +12,20 @@ func makeHead() *cobra.Command {
 		Short:  "manage a mix of objects, tentatively exposing all commands",
 	}
 }
+
 func makeSubPrint() *cobra.Command {
 	return &cobra.Command{
 		Use:     "print",
 		Short:   "print information about the object",
 		Aliases: []string{"prin", "pri", "pr"},
+	}
+}
+
+func makeSubPush() *cobra.Command {
+	return &cobra.Command{
+		Use:     "push",
+		Short:   "push information about the object to the collector",
+		Aliases: []string{"push", "pus", "pu"},
 	}
 }
 
@@ -104,6 +113,7 @@ func init() {
 		cmdPrintSchedule    commands.CmdObjectPrintSchedule
 		cmdPrintStatus      commands.CmdObjectPrintStatus
 		cmdPurge            commands.CmdObjectPurge
+		cmdPushResInfo      commands.CmdObjectPushResInfo
 		cmdProvision        commands.CmdObjectProvision
 		cmdRestart          commands.CmdObjectRestart
 		cmdRun              commands.CmdObjectRun
@@ -158,6 +168,11 @@ func init() {
 		cmdPrintDevices.Init(kind, sub, &selectorFlag)
 		cmdPrintSchedule.Init(kind, sub, &selectorFlag)
 		cmdPrintStatus.Init(kind, sub, &selectorFlag)
+	}
+
+	if sub := makeSubPush(); sub != nil {
+		head.AddCommand(sub)
+		cmdPushResInfo.Init(kind, sub, &selectorFlag)
 	}
 
 	if sub := makeSubSync(); sub != nil {

@@ -57,6 +57,7 @@ func init() {
 		cmdPRStart                   commands.CmdObjectPRStart
 		cmdPRStop                    commands.CmdObjectPRStop
 		cmdPurge                     commands.CmdObjectPurge
+		cmdPushResInfo               commands.CmdObjectPushResInfo
 		cmdRestart                   commands.CmdObjectRestart
 		cmdRun                       commands.CmdObjectRun
 		cmdSet                       commands.CmdObjectSet
@@ -147,6 +148,11 @@ func init() {
 			cmdPrintDevices.Init(kind, sub, &selectorFlag)
 			cmdPrintStatus.Init(kind, sub, &selectorFlag)
 			cmdPrintSchedule.Init(kind, sub, &selectorFlag)
+		}
+
+		if sub := makeSubPush(); sub != nil {
+			head.AddCommand(sub)
+			cmdPushResInfo.Init(kind, sub, &selectorFlag)
 		}
 
 		if sub := makeSubSync(); sub != nil {

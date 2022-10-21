@@ -67,7 +67,9 @@ type (
 		SetUnprovisioned(context.Context) error
 		SyncResync(context.Context) error
 		Enter(context.Context, string) error
+
 		PrintSchedule() schedule.Table
+		PushResInfo(context.Context) (resource.Infos, error)
 	}
 )
 
