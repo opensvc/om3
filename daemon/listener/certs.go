@@ -98,6 +98,27 @@ func startCertFS() error {
 
 	// TODO: ca_crl
 
+	// ca_certificates for jwt
+	dst = daemonenv.CAKeyFile()
+	caPath, _ := path.Parse("system/sec/ca-" + rawconfig.ClusterSection().Name)
+	caSec, err := object.NewSec(caPath, object.WithVolatile(true))
+	if err != nil {
+		return err
+	}
+
+	if err := caSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
+		return err
+	} else {
+		log.Logger.Info().Msgf("installed %s", dst)
+	}
+
+	dst = daemonenv.CACertFile()
+	if err := caSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
+		return err
+	} else {
+		log.Logger.Info().Msgf("installed %s", dst)
+	}
+
 	return nil
 }
 
