@@ -56,7 +56,6 @@ func New(ctx context.Context, enableUi bool) *T {
 	mux.Use(daemondataMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
 	daemonapi.Register(mux, enableUi)
-	mux.Get("/auth/token", daemonauth.GetToken)
 	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
 	mux.Get("/node_log", daemonhandler.GetNodeLog)

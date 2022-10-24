@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"time"
 
@@ -36,6 +35,8 @@ var (
 	signKey          *rsa.PrivateKey
 	jwtSignKeyFile   string
 	jwtVerifyKeyFile string
+
+	NotImplementedError = errors.New("token based authentication is not configured")
 )
 
 func jsonEncode(w io.Writer, data interface{}) error {
@@ -93,39 +94,20 @@ func initJWT() error {
 	return nil
 }
 
-// GetToken     godoc
-// @Summary      Get a authentication token
-// @Description  Get a authentication token from a user's credentials submitted with basic login.
-// @Security     BasicAuth
-// @Security     BearerAuth
-// @Tags         auth
-// @Produce      json
-// @Success      200  {object}  TokenResponse
-// @Failure      403  {string}  string
-// @Failure      500  {string}  string  "Internal Server Error"
-// @Router       /auth/user/token  [get]
-func GetToken(w http.ResponseWriter, r *http.Request) {
-	exp := time.Minute * 10
-	user := auth.User(r)
-	tokenExpireAt := time.Now().Add(exp)
-	claims := map[string]interface{}{
-		"exp":        tokenExpireAt.Unix(),
-		"authorized": true,
-		"grant":      user.GetExtensions()["grant"],
-	}
+func CreateUserToken(userInfo auth.Info, duration time.Duration) (tk string, expireAt time.Time, err error) {
 	if TokenAuth == nil {
-		http.Error(w, "token based authentication is not configured", http.StatusNotImplemented)
+		err = NotImplementedError
 		return
 	}
-	_, token, err := TokenAuth.Encode(claims)
-	if err != nil {
-		http.Error(w, http.StatusText(500), 500)
+	expireAt = time.Now().Add(duration)
+	claims := map[string]interface{}{
+		"exp":        expireAt,
+		"authorized": true,
+		"grant":      userInfo.GetExtensions()["grant"],
+	}
+	if _, tk, err = TokenAuth.Encode(claims); err != nil {
 		return
 	}
-	auth.Append(tokenStrategy, token, user)
-
-	jsonEncode(w, TokenResponse{
-		TokenExpireAt: tokenExpireAt,
-		Token:         token,
-	})
+	err = auth.Append(tokenStrategy, tk, userInfo)
+	return
 }

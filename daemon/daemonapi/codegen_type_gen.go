@@ -65,8 +65,8 @@ type ClusterObject = map[string]interface{}
 // ClusterStatus defines model for clusterStatus.
 type ClusterStatus = map[string]interface{}
 
-// DaemonInternal defines model for daemonInternal.
-type DaemonInternal struct {
+// Daemon defines model for daemon.
+type Daemon struct {
 	Goroutines int                    `json:"goroutines"`
 	Sub        map[string]interface{} `json:"sub"`
 }
@@ -270,8 +270,8 @@ type ResourceProvisionStatus struct {
 
 // ResponseDaemonStatus defines model for responseDaemonStatus.
 type ResponseDaemonStatus struct {
-	Cluster Cluster        `json:"cluster"`
-	Daemon  DaemonInternal `json:"daemon"`
+	Cluster Cluster `json:"cluster"`
+	Daemon  Daemon  `json:"daemon"`
 }
 
 // ResponseInfoStatus defines model for responseInfoStatus.
@@ -288,6 +288,12 @@ type ResponseMuxBool struct {
 	} `json:"data"`
 	Entrypoint string `json:"entrypoint"`
 	Status     int    `json:"status"`
+}
+
+// ResponsePostAuthToken defines model for responsePostAuthToken.
+type ResponsePostAuthToken struct {
+	Token         string    `json:"token"`
+	TokenExpireAt time.Time `json:"token_expire_at"`
 }
 
 // ResponseText defines model for responseText.

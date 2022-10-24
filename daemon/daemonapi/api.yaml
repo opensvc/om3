@@ -1,10 +1,24 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.5
+  version: 3.6.6
 servers:
   - url: https://localhost:1215
 paths:
+  /auth/token:
+    post:
+      operationId: PostAuthToken
+      tags:
+        - auth
+      security:
+        - basicAuth: [ ]
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responsePostAuthToken'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -613,6 +627,17 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
+    responsePostAuthToken:
+      type: object
+      required:
+        - token
+        - token_expire_at
+      properties:
+        token:
+          type: string
+        token_expire_at:
+          type: string
+          format: date-time
     responseDaemonStatus:
       type: object
       required:
@@ -658,6 +683,15 @@ components:
                 type: boolean
     responseText:
       type: string
+    role:
+      type: string
+      enum:
+        - root
+        - admin
+        - guest
+        - squatter
+        - blacklistadmin
+        - heartbeat
     sanPath:
       type: object
       required:
