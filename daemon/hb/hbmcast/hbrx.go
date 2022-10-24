@@ -24,7 +24,7 @@ type (
 		id       string
 		nodes    []string
 		udpAddr  *net.UDPAddr
-		intf     string
+		intf     *net.Interface
 		timeout  time.Duration
 		assembly map[string]msgMap
 
@@ -74,7 +74,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				Timeout:  t.timeout,
 			}
 		}
-		listener, err := net.ListenMulticastUDP("udp", nil, t.udpAddr)
+		listener, err := net.ListenMulticastUDP("udp", t.intf, t.udpAddr)
 		if err != nil {
 			t.log.Error().Err(err).Msgf("listen multicast udp %s", t.udpAddr)
 			return
@@ -193,7 +193,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	t.assembly[s] = msg
 }
 
-func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf string, timeout time.Duration) *rx {
+func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf *net.Interface, timeout time.Duration) *rx {
 	id := name + ".rx"
 	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &rx{

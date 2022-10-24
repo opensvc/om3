@@ -22,8 +22,8 @@ type (
 		ctx     context.Context
 		id      string
 		nodes   []string
+		laddr   *net.UDPAddr
 		udpAddr *net.UDPAddr
-		intf    string
 		timeout time.Duration
 
 		name   string
@@ -103,7 +103,8 @@ func (t *tx) send(b []byte) {
 		t.log.Debug().Err(err).Msg("encrypt")
 		return
 	}
-	c, err := net.DialUDP("udp", nil, t.udpAddr)
+
+	c, err := net.DialUDP("udp", t.laddr, t.udpAddr)
 	if err != nil {
 		t.log.Debug().Err(err).Msgf("dial udp %s", t.udpAddr)
 		return
@@ -146,7 +147,7 @@ func (t *tx) send(b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf string, timeout time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net.UDPAddr, timeout time.Duration) *tx {
 	id := name + ".tx"
 	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
@@ -154,7 +155,7 @@ func newTx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAdd
 		id:      id,
 		nodes:   nodes,
 		udpAddr: udpAddr,
-		intf:    intf,
+		laddr:   laddr,
 		timeout: timeout,
 		log:     log,
 	}

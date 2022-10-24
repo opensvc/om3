@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/hbcfg"
@@ -49,6 +50,7 @@ func init() {
 func (t *T) Configure(ctx context.Context) {
 	log := daemonlogctx.Logger(ctx).With().Str("id", t.Name()+".tx").Logger()
 	timeout := t.GetDuration("timeout", 5*time.Second)
+	intf := t.GetString("intf")
 	port := t.GetInt("port")
 	addr := t.GetString("addr")
 	nodes := t.GetStrings("nodes")
@@ -60,7 +62,6 @@ func (t *T) Configure(ctx context.Context) {
 	log.Debug().Msgf("configure %s, timeout=%s port=%d nodes=%s onodes=%s", t.Name(), timeout, port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	intf := t.GetString("intf")
 	name := t.Name()
 
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
@@ -69,8 +70,37 @@ func (t *T) Configure(ctx context.Context) {
 		return
 	}
 
-	tx := newTx(ctx, name, oNodes, udpAddr, intf, timeout)
+	var ifi *net.Interface
+	var laddr *net.UDPAddr
+
+	if intf != "" {
+		ifi, err = net.InterfaceByName(intf)
+		if err != nil {
+			log.Error().Err(err).Msgf("configure %s", t.Name())
+			return
+		}
+		log.Debug().Msgf("configure %s: set rx interface %s", t.Name(), ifi.Name)
+
+		addrs, err := ifi.Addrs()
+		if err != nil {
+			log.Debug().Err(err).Msgf("configure %s: intf %s addrs", t.Name(), ifi.Name)
+			return
+		}
+		for _, addr := range addrs {
+			addrStr := addr.String()
+			l := strings.Split(addrStr, "/")
+			laddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", l[0], 0))
+			if err != nil {
+				log.Debug().Err(err).Msgf("configure %s: intf %s make tx laddr from addr %s", t.Name(), ifi.Name, addr)
+			} else {
+				break
+			}
+		}
+		log.Debug().Msgf("configure %s: set tx interface %s laddr %s", t.Name(), ifi.Name, laddr)
+	}
+
+	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, oNodes, udpAddr, intf, timeout)
+	rx := newRx(ctx, name, oNodes, udpAddr, ifi, timeout)
 	t.SetRx(rx)
 }
