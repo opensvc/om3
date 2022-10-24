@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.6
+  version: 3.6.10
 servers:
   - url: https://localhost:1215
 paths:
@@ -11,7 +11,8 @@ paths:
       tags:
         - auth
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       responses:
         '200':
           description: success
@@ -26,6 +27,7 @@ paths:
         - daemon
       security:
         - basicAuth: []
+        - bearerAuth: []
       responses:
         '200':
           description: success
@@ -40,6 +42,7 @@ paths:
         - daemon
       security:
         - basicAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/queryNamespaceOptional'
         - $ref: '#/components/parameters/queryRelativesOptional'
@@ -58,6 +61,7 @@ paths:
         - daemon
       security:
         - basicAuth: []
+        - bearerAuth: []
       responses:
         '200':
           description: success
@@ -71,7 +75,8 @@ paths:
       tags:
         - node
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       responses:
         '200':
           description: success
@@ -86,6 +91,7 @@ paths:
         - node
       security:
         - basicAuth: []
+        - bearerAuth: []
       requestBody:
         description: monitor
         required: true
@@ -112,7 +118,8 @@ paths:
       tags:
         - object
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         description: Abort orchestration currently running on a selection of objects.
         required: true
@@ -135,7 +142,8 @@ paths:
       tags:
         - object
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         description: Clears errors (for example, start failed) in the monitor states of a selection of objects.
         required: true
@@ -158,7 +166,8 @@ paths:
       tags:
         - object
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/queryObjectPath'
         - name: evaluate
@@ -184,7 +193,8 @@ paths:
       tags:
         - object
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/queryObjectPath'
       responses:
@@ -201,6 +211,7 @@ paths:
         - object
       security:
         - basicAuth: []
+        - bearerAuth: []
       requestBody:
         description: monitor
         required: true
@@ -223,7 +234,8 @@ paths:
       tags:
         - object
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/queryObjectSelector'
       responses:
@@ -239,7 +251,8 @@ paths:
       tags:
         - object
       security:
-        - basicAuth: [ ]
+        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         description: post object status
         required: true
@@ -778,6 +791,10 @@ components:
       schema:
         type: string
   securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
     basicAuth:
       type: http
       scheme: basic

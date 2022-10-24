@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	BasicAuthScopes = "basicAuth.Scopes"
+	BasicAuthScopes  = "basicAuth.Scopes"
+	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
 // Defines values for Orchestrate.
