@@ -107,9 +107,6 @@ func (s *Status) WithNamespace(namespace string) *Status {
 	return s
 }
 
-// MarshalJSON transforms a cluster.Status struct into a []byte
-//func (t *Status) MarshalJSON()([]byte, error) {}
-
 // UnmarshalJSON loads a byte array into a cluster.Status struct
 func (s *Status) UnmarshalJSON(b []byte) error {
 	var (
@@ -125,29 +122,32 @@ func (s *Status) UnmarshalJSON(b []byte) error {
 
 	for k, v := range m {
 		tmp, err = json.Marshal(v)
+		if err != nil {
+			return err
+		}
 		switch k {
 		case "cluster":
 			if err := json.Unmarshal(tmp, &ds.Cluster); err != nil {
 				return err
 			}
 		case "monitor":
-			if json.Unmarshal(tmp, &ds.Monitor); err != nil {
+			if err := json.Unmarshal(tmp, &ds.Monitor); err != nil {
 				return err
 			}
 		case "scheduler":
-			if json.Unmarshal(tmp, &ds.Scheduler); err != nil {
+			if err := json.Unmarshal(tmp, &ds.Scheduler); err != nil {
 				return err
 			}
 		case "collector":
-			if json.Unmarshal(tmp, &ds.Collector); err != nil {
+			if err := json.Unmarshal(tmp, &ds.Collector); err != nil {
 				return err
 			}
 		case "dns":
-			if json.Unmarshal(tmp, &ds.DNS); err != nil {
+			if err := json.Unmarshal(tmp, &ds.DNS); err != nil {
 				return err
 			}
 		case "listener":
-			if json.Unmarshal(tmp, &ds.Listener); err != nil {
+			if err := json.Unmarshal(tmp, &ds.Listener); err != nil {
 				return err
 			}
 		default:
