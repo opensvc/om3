@@ -451,6 +451,30 @@ var keywordStore = keywords.Store{
 		Example:   "8192",
 		Kind:      kind.Or(kind.Sec),
 	},
+
+	// Usr
+	{
+		Section:   "DEFAULT",
+		Option:    "grant",
+		Scopable:  true,
+		Kind:      kind.Or(kind.Usr),
+		Inherit:   keywords.InheritHead,
+		Converter: converters.ListLowercase,
+		Text: `Grant roles on namespaces to the user.
+
+A whitespace-separated list of root|squatter|prioritizer|blacklistadmin|<role selector>:<namespace selector>, 
+where role selector is a comma-separated list of role in admin,operator,guest 
+and the namespace selector is a glob pattern applied to existing namespaces.
+
+The root role is required to add resource triggers and non-containerized resources other 
+than (container.docker, container.podman task.docker, task.podman and volume). 
+The squatter role is required to create a new namespace. 
+The admin role is required to create, deploy and delete objects. 
+The guest role is required to list and read objects configurations and status.
+`,
+		Example: "admin:test* guest:*",
+	},
+
 	{
 		Section:   "DEFAULT",
 		Option:    "rollback",
