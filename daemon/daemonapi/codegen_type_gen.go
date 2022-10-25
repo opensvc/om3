@@ -68,8 +68,8 @@ type ClusterStatus = map[string]interface{}
 
 // Daemon defines model for daemon.
 type Daemon struct {
-	Goroutines int                    `json:"goroutines"`
-	Sub        map[string]interface{} `json:"sub"`
+	Goroutines int `json:"goroutines"`
+	Sub        Sub `json:"sub"`
 }
 
 // Error defines model for error.
@@ -327,8 +327,48 @@ type SanPathTarget struct {
 	Type *string `json:"type,omitempty"`
 }
 
+// Severity defines model for severity.
+type Severity = string
+
 // Status defines model for status.
 type Status = string
+
+// Sub defines model for sub.
+type Sub struct {
+	Heartbeats *[]SubHeartbeats `json:"heartbeats,omitempty"`
+}
+
+// SubAlert defines model for subAlert.
+type SubAlert struct {
+	Message  string   `json:"message"`
+	Severity Severity `json:"severity"`
+}
+
+// SubBase defines model for subBase.
+type SubBase struct {
+	Alerts     []SubAlert `json:"alerts"`
+	Configured time.Time  `json:"configured"`
+	Created    time.Time  `json:"created"`
+	Id         string     `json:"id"`
+	State      string     `json:"state"`
+}
+
+// SubHeartbeatPeerStatus defines model for subHeartbeatPeerStatus.
+type SubHeartbeatPeerStatus struct {
+	Beating bool      `json:"beating"`
+	Last    time.Time `json:"last"`
+}
+
+// SubHeartbeats defines model for subHeartbeats.
+type SubHeartbeats struct {
+	Alerts     []SubAlert `json:"alerts"`
+	Beating    bool       `json:"beating"`
+	Configured time.Time  `json:"configured"`
+	Created    time.Time  `json:"created"`
+	Id         string     `json:"id"`
+	Last       time.Time  `json:"last"`
+	State      string     `json:"state"`
+}
 
 // object topology
 type Topology string
