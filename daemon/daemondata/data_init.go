@@ -41,7 +41,9 @@ func newData(counterCmd chan<- interface{}) *data {
 		Monitor: cluster.MonitorThreadStatus{
 			ThreadStatus: cluster.ThreadStatus{},
 		},
-		Heartbeats: nil,
+		Sub: cluster.Sub{
+			Heartbeats: make([]cluster.HeartbeatThreadStatus, 0),
+		},
 	}
 	return &data{
 		previousRemoteInfo: make(map[string]remoteInfo),
