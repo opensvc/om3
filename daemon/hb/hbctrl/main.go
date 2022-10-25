@@ -50,7 +50,7 @@ import (
 type (
 	// T struct holds the hb controller data
 	T struct {
-		cmd    chan interface{}
+		cmd    chan any
 		ctx    context.Context
 		cancel context.CancelFunc
 		log    zerolog.Logger
@@ -119,7 +119,7 @@ type (
 // New return a new hb controller
 func New() *T {
 	return &T{
-		cmd: make(chan interface{}),
+		cmd: make(chan any),
 		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
 	}
 }
@@ -239,7 +239,7 @@ func (t *T) Start(ctx context.Context) {
 }
 
 // Cmd returns the T Cmd chan to submit new command to ctrl
-func (t *T) Cmd() chan<- interface{} {
+func (t *T) Cmd() chan<- any {
 	return t.cmd
 }
 
