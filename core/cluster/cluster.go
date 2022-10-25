@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"encoding/json"
-	"strings"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
@@ -13,13 +12,13 @@ import (
 type (
 	// Status describes the full Cluster state.
 	Status struct {
-		Cluster    Cluster                          `json:"cluster"`
-		Collector  CollectorThreadStatus            `json:"collector"`
-		DNS        DNSThreadStatus                  `json:"dns"`
-		Scheduler  SchedulerThreadStatus            `json:"scheduler"`
-		Listener   ListenerThreadStatus             `json:"listener"`
-		Monitor    MonitorThreadStatus              `json:"monitor"`
-		Heartbeats map[string]HeartbeatThreadStatus `json:"-"`
+		Cluster   Cluster               `json:"cluster"`
+		Collector CollectorThreadStatus `json:"collector"`
+		DNS       DNSThreadStatus       `json:"dns"`
+		Scheduler SchedulerThreadStatus `json:"scheduler"`
+		Listener  ListenerThreadStatus  `json:"listener"`
+		Monitor   MonitorThreadStatus
+		Sub       Sub `json:"sub"`
 	}
 
 	Cluster struct {
@@ -42,6 +41,10 @@ type (
 		ID    string   `json:"id"`
 		Name  string   `json:"name"`
 		Nodes []string `json:"nodes"`
+	}
+
+	Sub struct {
+		Heartbeats []HeartbeatThreadStatus `json:"heartbeats"`
 	}
 )
 
@@ -105,64 +108,6 @@ func (s *Status) WithNamespace(namespace string) *Status {
 		}
 	}
 	return s
-}
-
-// UnmarshalJSON loads a byte array into a cluster.Status struct
-func (s *Status) UnmarshalJSON(b []byte) error {
-	var (
-		m   map[string]interface{}
-		ds  Status
-		tmp []byte
-		err error
-	)
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-	ds.Heartbeats = make(map[string]HeartbeatThreadStatus)
-
-	for k, v := range m {
-		tmp, err = json.Marshal(v)
-		if err != nil {
-			return err
-		}
-		switch k {
-		case "cluster":
-			if err := json.Unmarshal(tmp, &ds.Cluster); err != nil {
-				return err
-			}
-		case "monitor":
-			if err := json.Unmarshal(tmp, &ds.Monitor); err != nil {
-				return err
-			}
-		case "scheduler":
-			if err := json.Unmarshal(tmp, &ds.Scheduler); err != nil {
-				return err
-			}
-		case "collector":
-			if err := json.Unmarshal(tmp, &ds.Collector); err != nil {
-				return err
-			}
-		case "dns":
-			if err := json.Unmarshal(tmp, &ds.DNS); err != nil {
-				return err
-			}
-		case "listener":
-			if err := json.Unmarshal(tmp, &ds.Listener); err != nil {
-				return err
-			}
-		default:
-			if strings.HasPrefix(k, "hb#") {
-				var hb HeartbeatThreadStatus
-				if err := json.Unmarshal(tmp, &hb); err != nil {
-					return err
-				}
-				ds.Heartbeats[k] = hb
-			}
-		}
-	}
-
-	*s = ds
-	return nil
 }
 
 // GetNodeData extracts from the cluster dataset all information relative
