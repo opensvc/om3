@@ -84,13 +84,14 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 func (t *tx) send(node string, b []byte) {
 	conn, err := net.DialTimeout("tcp", node+":"+t.port, t.timeout)
 	if err != nil {
+		t.log.Debug().Err(err).Msg("DialTimeout")
 		return
 	}
 	defer func() {
 		_ = conn.Close()
 	}()
 	if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
-		t.log.Info().Err(err).Msg("SetDeadline")
+		t.log.Error().Err(err).Msg("SetDeadline")
 		return
 	}
 	clearConn := encryptconn.New(conn)
