@@ -42,6 +42,7 @@ const (
 	idGetNodesInfo
 	idGetServiceNames
 	idGetNmon
+	idSetHeartbeats
 	idGetStatus
 	idSetInstanceConfig
 	idSetInstanceStatus
@@ -70,6 +71,7 @@ var (
 		idGetNodesInfo:      "get-nodes-info",
 		idGetServiceNames:   "get-service-names",
 		idGetStatus:         "get-status",
+		idSetHeartbeats:     "set-heartbeat",
 		idSetServiceAgg:     "set-service-agg",
 		idSetInstanceConfig: "set-instance-config",
 		idSetInstanceStatus: "set-instance-status",

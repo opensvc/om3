@@ -6,7 +6,9 @@ type (
 	// ThreadStatus describes a OpenSVC daemon thread: when the thread
 	// was last configured, when it was created, its current state and thread
 	// id.
+	// TODO rename ThreadStatus to component or sub ?
 	ThreadStatus struct {
+		Id         string        `json:"id"`
 		Configured time.Time     `json:"configured"`
 		Created    time.Time     `json:"created"`
 		State      string        `json:"state"`

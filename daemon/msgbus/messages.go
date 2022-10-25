@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/nodesinfo"
@@ -30,6 +31,7 @@ const (
 	NsSetNmon
 	NsSetSmon
 	NsStatus
+	NsHbStatus
 )
 
 type (
@@ -171,6 +173,11 @@ type (
 
 	MonSvcAggDone struct {
 		Path path.T
+	}
+
+	HbStatusUpdated struct {
+		Node   string
+		Status cluster.HeartbeatThreadStatus
 	}
 )
 
@@ -327,4 +334,12 @@ func PubNodeStatusPathsUpdate(bus *pubsub.Bus, v NodeStatusPathsUpdated) {
 
 func SubNodeStatusPaths(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsNodeStatusPaths, op, name, matching, fn)
+}
+
+func PubHbStatusUpdate(bus *pubsub.Bus, id string, v HbStatusUpdated) {
+	Pub(bus, NsHbStatus, pubsub.OpUpdate, id, v)
+}
+
+func SubHbStatusUpdate(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsHbStatus, op, name, matching, fn)
 }
