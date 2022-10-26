@@ -110,7 +110,7 @@ func logRequestMiddleWare(_ context.Context) func(http.Handler) http.Handler {
 				log = log.With().Str("user", user).Logger()
 				r = r.WithContext(daemonlogctx.WithLogger(r.Context(), log))
 			}
-			log.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("request")
+			log.Info().Str("method", r.Method).Str("remote", r.RemoteAddr).Str("path", r.URL.Path).Msg("request")
 			next.ServeHTTP(w, r)
 		})
 	}
