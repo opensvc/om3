@@ -55,7 +55,7 @@ func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 			}
 			_, user, err := strategies.AuthenticateRequest(r)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("auth")
+				log.Logger.Error().Err(err).Str("remote", r.RemoteAddr).Msg("auth")
 				code := http.StatusUnauthorized
 				http.Error(w, http.StatusText(code), code)
 				return
