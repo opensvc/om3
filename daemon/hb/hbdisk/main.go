@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/ncw/directio"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/hbcfg"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/file"
@@ -156,6 +158,8 @@ func (t *T) Configure(ctx context.Context) {
 	log.Debug().Msgf("configure %s, timeout=%s interval=%s dev=%s nodes=%s onodes=%s", t.Name(), timeout, interval, dev, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
+	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s intf: %s", dev, nodes, timeout)
+	t.SetSignature(signature)
 	name := t.Name()
 	baba := base{
 		log: log,

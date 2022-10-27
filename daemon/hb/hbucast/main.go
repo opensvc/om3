@@ -1,26 +1,28 @@
 /*
-	Package hbucast implement a hb unicast driver
+Package hbucast implement a hb unicast driver
 
-	Example:
-		msgC := make(chan *hbtype.Msg) // a global *hbtype.Msg chan for received Msg
-		n := clusterhb.New()
-		registeredDataC := make([]chan []byte, 0) // list send data chan where tx can send data
-		for _, h := range n.Hbs() {
-			h.Configure(ctx) // configure tx and rx
-			if err := h.Rx().Start(data.Cmd(), msgC); err != nil {
-				return err
-			}
-			localDataC := make(chan []byte) // []byte chan dedicated to this tx
-			if err := h.Tx().Start(data.Cmd(), localDataC); err != nil {
-				return err
-			}
-			registeredDataC = append(registeredDataC, localDataC)
+Example:
+
+	msgC := make(chan *hbtype.Msg) // a global *hbtype.Msg chan for received Msg
+	n := clusterhb.New()
+	registeredDataC := make([]chan []byte, 0) // list send data chan where tx can send data
+	for _, h := range n.Hbs() {
+		h.Configure(ctx) // configure tx and rx
+		if err := h.Rx().Start(data.Cmd(), msgC); err != nil {
+			return err
 		}
+		localDataC := make(chan []byte) // []byte chan dedicated to this tx
+		if err := h.Tx().Start(data.Cmd(), localDataC); err != nil {
+			return err
+		}
+		registeredDataC = append(registeredDataC, localDataC)
+	}
 */
 package hbucast
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -61,6 +63,8 @@ func (t *T) Configure(ctx context.Context) {
 	log.Debug().Msgf("Configure %s, timeout=%s port=%s nodes=%s onodes=%s", t.Name(), timeout, port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
+	signature := fmt.Sprintf("type: hb.ucast, port: %s nodes: %s timeout: %s intf: %s", port, nodes, timeout)
+	t.SetSignature(signature)
 	intf := t.GetString("intf")
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, port, intf, timeout)
