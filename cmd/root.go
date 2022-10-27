@@ -40,6 +40,8 @@ var root = &cobra.Command{
 	Use:               "opensvc",
 	Short:             "Manage the opensvc cluster infrastructure and its deployed services.",
 	PersistentPreRunE: persistentPreRunE,
+	SilenceUsage:      true,
+	SilenceErrors:     false,
 	ValidArgsFunction: validArgs,
 	BashCompletionFunction: `__opensvc_handle_word()
 {
@@ -197,12 +199,12 @@ func setExecuteArgs(args []string) {
 
 // ExecuteArgs parses args and executes the cobra command.
 // Example:
-//  ExecuteArgs([]string{"mysvc*", "ls"})
+//
+//	ExecuteArgs([]string{"mysvc*", "ls"})
 func ExecuteArgs(args []string) {
 	driverdb.Load()
 	setExecuteArgs(args)
 	if err := root.Execute(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

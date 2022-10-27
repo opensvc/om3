@@ -116,11 +116,16 @@ func (t *rx) recv(nodename string) {
 		t.log.Debug().Err(err).Msgf("recv: node %s do request", nodename)
 		return
 	}
-	var c daemonapi.RelayMessage
-	if err := json.Unmarshal(b, &c); err != nil {
+	var messages daemonapi.RelayMessages
+	if err := json.Unmarshal(b, &messages); err != nil {
 		t.log.Debug().Err(err).Msgf("recv: node %s unmarshal data", nodename)
 		return
 	}
+	if len(messages.Messages) == 0 {
+		t.log.Debug().Msgf("recv: node %s data has no stored data", nodename)
+		return
+	}
+	c := messages.Messages[0]
 	if c.Updated.IsZero() {
 		t.log.Debug().Msgf("recv: node %s data has never been updated", nodename)
 		return

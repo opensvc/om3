@@ -19,10 +19,14 @@ func NewGetRelayMessage(t Getter) *GetRelayMessage {
 }
 
 func (t GetRelayMessage) Do() ([]byte, error) {
-	t.SetQueryArgs(map[string]string{
-		"nodename":   t.Nodename,
-		"cluster_id": t.ClusterId,
-	})
+	m := make(map[string]string)
+	if t.Nodename != "" {
+		m["nodename"] = t.Nodename
+	}
+	if t.ClusterId != "" {
+		m["cluster_id"] = t.ClusterId
+	}
+	t.SetQueryArgs(m)
 	req := request.NewFor(t)
 	return Route(t.client, *req)
 }

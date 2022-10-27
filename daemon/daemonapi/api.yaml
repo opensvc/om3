@@ -298,9 +298,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/relayMessage'
-        '404':
-          description: relay slot not found
+                $ref: '#/components/schemas/relayMessages'
     post:
       operationId: PostRelayMessage
       tags:
@@ -318,12 +316,6 @@ paths:
       responses:
         '200':
           description: success
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
 components:
   schemas:
     app:
@@ -362,45 +354,6 @@ components:
           type: integer
         sub:
           $ref: '#/components/schemas/sub'
-    postRelayMessage:
-      type: object
-      required:
-        - nodename
-        - cluster_name
-        - cluster_id
-        - msg
-      properties:
-        nodename:
-          type: string
-        cluster_name:
-          type: string
-        cluster_id:
-          type: string
-        msg:
-          type: string
-    relayMessage:
-      type: object
-      required:
-        - nodename
-        - cluster_name
-        - cluster_id
-        - msg
-        - updated
-        - addr
-      properties:
-        nodename:
-          type: string
-        cluster_name:
-          type: string
-        cluster_id:
-          type: string
-        addr:
-          type: string
-        msg:
-          type: string
-        updated:
-          type: string
-          format: date-time
     error:
       required:
         - code
@@ -632,6 +585,22 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/instanceStatus'
+    postRelayMessage:
+      type: object
+      required:
+        - nodename
+        - cluster_name
+        - cluster_id
+        - msg
+      properties:
+        nodename:
+          type: string
+        cluster_name:
+          type: string
+        cluster_id:
+          type: string
+        msg:
+          type: string
     priority:
       type: integer
       description: scheduling priority of an object instance on a its node
@@ -644,6 +613,40 @@ components:
         - mixed
         - n/a
         - true
+    relayMessage:
+      type: object
+      required:
+        - nodename
+        - cluster_name
+        - cluster_id
+        - msg
+        - updated
+        - addr
+      properties:
+        nodename:
+          type: string
+        cluster_name:
+          type: string
+        cluster_id:
+          type: string
+        addr:
+          type: string
+        msg:
+          type: string
+        updated:
+          type: string
+          format: date-time
+    relayMessages:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          $ref: '#/components/schemas/relayMessageList'
+    relayMessageList:
+      type: array
+      items:
+        $ref: '#/components/schemas/relayMessage'
     resourceExposedStatus:
       type: object
       required:
@@ -890,6 +893,13 @@ components:
         - flex
       default: failover
   parameters:
+    postObjectMonitor:
+      name: selector
+      in: query
+      description: object selector
+      required: true
+      schema:
+        type: string
     queryNamespaceOptional:
       name: namespace
       in: query
@@ -916,31 +926,22 @@ components:
       description: relatives
       schema:
         type: boolean
-    queryRelayNodename:
-      name: nodename
-      in: query
-      description: the nodename component of the slot id on the relay
-      required: true
-      schema:
-        type: string
     queryRelayClusterId:
       name: cluster_id
       in: query
       description: the cluster id component of the slot id on the relay
-      required: true
+      schema:
+        type: string
+    queryRelayNodename:
+      name: nodename
+      in: query
+      description: the nodename component of the slot id on the relay
       schema:
         type: string
     querySelectorOptional:
       name: selector
       in: query
       description: selector
-      schema:
-        type: string
-    postObjectMonitor:
-      name: selector
-      in: query
-      description: object selector
-      required: true
       schema:
         type: string
   securitySchemes:

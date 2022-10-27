@@ -237,6 +237,14 @@ type RelayMessage struct {
 	Updated     time.Time `json:"updated"`
 }
 
+// RelayMessageList defines model for relayMessageList.
+type RelayMessageList = []RelayMessage
+
+// RelayMessages defines model for relayMessages.
+type RelayMessages struct {
+	Messages RelayMessageList `json:"messages"`
+}
+
 // ResourceExposedStatus defines model for resourceExposedStatus.
 type ResourceExposedStatus struct {
 	// hints the resource ignores all state transition actions
@@ -466,10 +474,10 @@ type PostObjectStatusJSONBody = PostObjectStatus
 // GetRelayMessageParams defines parameters for GetRelayMessage.
 type GetRelayMessageParams struct {
 	// the nodename component of the slot id on the relay
-	Nodename QueryRelayNodename `form:"nodename" json:"nodename"`
+	Nodename *QueryRelayNodename `form:"nodename,omitempty" json:"nodename,omitempty"`
 
 	// the cluster id component of the slot id on the relay
-	ClusterId QueryRelayClusterId `form:"cluster_id" json:"cluster_id"`
+	ClusterId *QueryRelayClusterId `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
 }
 
 // PostRelayMessageJSONBody defines parameters for PostRelayMessage.

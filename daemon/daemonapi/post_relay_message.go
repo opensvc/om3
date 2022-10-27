@@ -2,29 +2,15 @@ package daemonapi
 
 import (
 	"encoding/json"
-	"net"
+	"fmt"
 	"net/http"
-	"strings"
-	"sync"
 	"time"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/relay"
 )
-
-var (
-	relayMap = &sync.Map{}
-)
-
-func makeRelayKey(clusterID, nodename string) string {
-	return strings.Join([]string{clusterID, nodename}, "/")
-}
 
 func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
-	type (
-		remoteAddrer interface {
-			RemoteAddr() net.Addr
-		}
-	)
 	var (
 		payload PostRelayMessage
 		value   RelayMessage
@@ -44,9 +30,8 @@ func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
 	value.Updated = time.Now()
 	value.Addr = r.RemoteAddr
 
-	key := makeRelayKey(payload.ClusterId, payload.Nodename)
-	relayMap.Store(key, value)
-	log.Info().Msgf("stored %s", key)
+	relay.Map.Store(payload.ClusterId, payload.Nodename, value)
+	log.Debug().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(ResponseText(key))
+	fmt.Fprint(w, "stored")
 }

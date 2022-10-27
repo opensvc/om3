@@ -93,3 +93,8 @@ For example, a [md#1] section needs reformatting as:
 
 	In 2.1 the instance status resources was a dict of rid to exposed status
   	now it is a list of exposed status, rid is now a property of exposed status
+
+* **breaking change:** replace relay heartbeat secret keyword with username and password.
+
+	The password value is the sec object path containing the actual relay password encoded in the password key.
+
