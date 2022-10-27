@@ -318,12 +318,6 @@ paths:
       responses:
         '200':
           description: success
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
 components:
   schemas:
     app:

@@ -3,11 +3,12 @@ package daemonapi
 import (
 	"encoding/json"
 	"net/http"
+
+	"opensvc.com/opensvc/daemon/relay"
 )
 
 func (a *DaemonApi) GetRelayMessage(w http.ResponseWriter, r *http.Request, params GetRelayMessageParams) {
-	key := makeRelayKey(params.ClusterId, params.Nodename)
-	data, ok := relayMap.Load(key)
+	data, ok := relay.Map.Load(params.ClusterId, params.Nodename)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
