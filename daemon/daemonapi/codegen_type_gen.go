@@ -213,11 +213,29 @@ type PostObjectStatus struct {
 	Status InstanceStatus `json:"status"`
 }
 
+// PostRelayMessage defines model for postRelayMessage.
+type PostRelayMessage struct {
+	ClusterId   string `json:"cluster_id"`
+	ClusterName string `json:"cluster_name"`
+	Msg         string `json:"msg"`
+	Nodename    string `json:"nodename"`
+}
+
 // scheduling priority of an object instance on a its node
 type Priority = int
 
 // service, instance or resource provisioned state
 type Provisioned string
+
+// RelayMessage defines model for relayMessage.
+type RelayMessage struct {
+	Addr        string    `json:"addr"`
+	ClusterId   string    `json:"cluster_id"`
+	ClusterName string    `json:"cluster_name"`
+	Msg         string    `json:"msg"`
+	Nodename    string    `json:"nodename"`
+	Updated     time.Time `json:"updated"`
+}
 
 // ResourceExposedStatus defines model for resourceExposedStatus.
 type ResourceExposedStatus struct {
@@ -345,6 +363,12 @@ type QueryObjectSelector = string
 // QueryRelativesOptional defines model for queryRelativesOptional.
 type QueryRelativesOptional = bool
 
+// QueryRelayClusterId defines model for queryRelayClusterId.
+type QueryRelayClusterId = string
+
+// QueryRelayNodename defines model for queryRelayNodename.
+type QueryRelayNodename = string
+
 // QuerySelectorOptional defines model for querySelectorOptional.
 type QuerySelectorOptional = string
 
@@ -399,6 +423,18 @@ type GetObjectSelectorParams struct {
 // PostObjectStatusJSONBody defines parameters for PostObjectStatus.
 type PostObjectStatusJSONBody = PostObjectStatus
 
+// GetRelayMessageParams defines parameters for GetRelayMessage.
+type GetRelayMessageParams struct {
+	// the nodename component of the slot id on the relay
+	Nodename QueryRelayNodename `form:"nodename" json:"nodename"`
+
+	// the cluster id component of the slot id on the relay
+	ClusterId QueryRelayClusterId `form:"cluster_id" json:"cluster_id"`
+}
+
+// PostRelayMessageJSONBody defines parameters for PostRelayMessage.
+type PostRelayMessageJSONBody = PostRelayMessage
+
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitorJSONBody
 
@@ -413,3 +449,6 @@ type PostObjectMonitorJSONRequestBody = PostObjectMonitorJSONBody
 
 // PostObjectStatusJSONRequestBody defines body for PostObjectStatus for application/json ContentType.
 type PostObjectStatusJSONRequestBody = PostObjectStatusJSONBody
+
+// PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
+type PostRelayMessageJSONRequestBody = PostRelayMessageJSONBody
