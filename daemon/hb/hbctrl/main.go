@@ -53,14 +53,6 @@ import (
 )
 
 type (
-	// T struct holds the hb controller data
-	T struct {
-		cmd    chan any
-		ctx    context.Context
-		cancel context.CancelFunc
-		log    zerolog.Logger
-	}
-
 	// RemoteBeating holds Remote beating stats for a remote node
 	RemoteBeating struct {
 		txCount     int
@@ -98,7 +90,7 @@ type (
 	EventStats map[string]int
 
 	// GetEventStats is a getter of ctrl event counters
-	GetEventStats struct {
+	CmdGetEventStats struct {
 		result chan<- EventStats
 	}
 
@@ -137,36 +129,49 @@ type (
 	}
 )
 
-// New return a new hb controller
-func New() *T {
-	return &T{
+type (
+	// ctrl struct holds the hb controller data
+	ctrl struct {
+		cmd    chan any
+		ctx    context.Context
+		cancel context.CancelFunc
+		log    zerolog.Logger
+	}
+)
+
+// Start starts hb controller goroutine, it returns its cmd chan
+//
+// The hb controller is responsible if the heartbeat data cache from:
+// - register/unregister heartbeat tx or rx
+// - addWatcher/delWatcher of a hb peer
+// - setPeerSuccess
+//
+// # The cache is sent to daemondata on regular time interval
+//
+// The controller will die when ctx is done
+func Start(ctx context.Context) chan any {
+	t := &ctrl{
 		cmd: make(chan any),
 		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
 	}
+	go t.start(ctx)
+	return t.cmd
 }
 
-// Stop function cancel a running T controller
-func (t *T) Stop() {
-	if t.cancel != nil {
-		t.cancel()
-	}
-}
-
-// Start Watch and respond on Cmd chan, until a Stop() call
-func (t *T) Start(ctx context.Context) {
-	t.ctx, t.cancel = context.WithCancel(ctx)
-	t.log.Info().Msg("start")
+func (c *ctrl) start(ctx context.Context) {
+	c.ctx, c.cancel = context.WithCancel(ctx)
+	c.log.Info().Msg("start")
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	heartbeat := make(map[string]cluster.HeartbeatThreadStatus)
-	bus := pubsub.BusFromContext(t.ctx)
-	defer t.log.Info().Msgf("stopped: %v", events)
+	bus := pubsub.BusFromContext(c.ctx)
+	defer c.log.Info().Msgf("stopped: %v", events)
 	dataCmd := daemondata.BusFromContext(ctx)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
 	for {
 		select {
-		case <-t.ctx.Done():
+		case <-c.ctx.Done():
 			return
 		case <-updateDaemonDataHeartbeatsTicker.C:
 			heartbeats := make([]cluster.HeartbeatThreadStatus, 0)
@@ -179,9 +184,9 @@ func (t *T) Start(ctx context.Context) {
 				heartbeats = append(heartbeats, heartbeat[key])
 			}
 			if err := daemondata.SetHeartbeats(dataCmd, heartbeats); err != nil {
-				t.log.Error().Err(err).Msgf("can't SetHeartbeats")
+				c.log.Error().Err(err).Msgf("can'c SetHeartbeats")
 			}
-		case i := <-t.cmd:
+		case i := <-c.cmd:
 			switch o := i.(type) {
 			case CmdRegister:
 				now := time.Now()
@@ -223,8 +228,8 @@ func (t *T) Start(ctx context.Context) {
 					Time: time.Now(),
 					Data: data,
 				})
-				t.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
-			case GetEventStats:
+				c.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+			case CmdGetEventStats:
 				o.result <- events
 			case GetPeerStatus:
 				if foundHeartbeat, ok := heartbeat[o.HbId]; ok {
@@ -245,7 +250,7 @@ func (t *T) Start(ctx context.Context) {
 				if _, ok := heartbeat[hbId]; ok {
 					heartbeat[hbId].Peers[peerNode] = cluster.HeartbeatPeerStatus{}
 				} else {
-					t.log.Error().Msgf("CmdAddWatcher %s %s called before CmdRegister", hbId, peerNode)
+					c.log.Error().Msgf("CmdAddWatcher %s %s called before CmdRegister", hbId, peerNode)
 					panic("CmdAddWatcher")
 				}
 				remote, ok := remotes[peerNode]
@@ -255,21 +260,21 @@ func (t *T) Start(ctx context.Context) {
 					remote.cancel = make(map[string]func())
 				}
 				if _, registered := remote.cancel[hbId]; registered {
-					t.log.Error().Msgf("already registered watcher %s %s", hbId, peerNode)
+					c.log.Error().Msgf("already registered watcher %s %s", hbId, peerNode)
 					continue
 				}
 				beatingC := make(chan bool)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
 				remote.cancel[hbId] = cancel
 				remote.beatingChan[hbId] = beatingC
-				t.log.Info().Msgf("register watcher %s for %s", peerNode, hbId)
+				c.log.Info().Msgf("register watcher %s for %s", peerNode, hbId)
 				remotes[peerNode] = remote
 				if strings.HasSuffix(hbId, ".rx") {
 					remote.rxCount++
 				} else {
 					remote.txCount++
 				}
-				t.peerWatch(beatingCtx, beatingC, o.HbId, peerNode, o.Timeout)
+				c.peerWatch(beatingCtx, beatingC, o.HbId, peerNode, o.Timeout)
 			case CmdDelWatcher:
 				hbId := o.HbId
 				peerNode := o.Nodename
@@ -278,10 +283,10 @@ func (t *T) Start(ctx context.Context) {
 				if ok {
 					cancel, registered := remote.cancel[hbId]
 					if !registered {
-						t.log.Error().Msgf("already unregistered watcher %s %s", hbId, peerNode)
+						c.log.Error().Msgf("already unregistered watcher %s %s", hbId, peerNode)
 						continue
 					}
-					t.log.Info().Msgf("unregister watcher %s %s", hbId, peerNode)
+					c.log.Info().Msgf("unregister watcher %s %s", hbId, peerNode)
 					cancel()
 					if strings.HasSuffix(hbId, ".rx") {
 						remote.rxCount--
@@ -297,13 +302,8 @@ func (t *T) Start(ctx context.Context) {
 	}
 }
 
-// Cmd returns the T Cmd chan to submit new command to ctrl
-func (t *T) Cmd() chan<- any {
-	return t.cmd
-}
-
-func (t *T) GetEventStats() EventStats {
+func GetEventStats(c chan<- any) EventStats {
 	result := make(chan EventStats)
-	t.cmd <- GetEventStats{result: result}
+	c <- CmdGetEventStats{result: result}
 	return <-result
 }
