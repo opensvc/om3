@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -98,7 +99,13 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			b := make([]byte, MaxDatagramSize)
 			n, src, err := listener.ReadFromUDP(b)
 			if err != nil {
+				if strings.Contains(err.Error(), "use of closed network connection") {
+					t.log.Info().Msg("closed connection")
+					break
+				}
 				t.log.Info().Err(err).Msg("ReadFromUDP")
+				// avoid fast loop
+				time.Sleep(200 * time.Millisecond)
 			}
 			t.recv(src, n, b)
 		}
