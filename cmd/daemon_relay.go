@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
@@ -37,6 +38,10 @@ func init() {
 	daemonRelayCmd.AddCommand(newDaemonRelayStatusCmd())
 }
 
+func addFlagRelay(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "relay", "", "the name of the relay to query. if not specified, all known relays are queried.")
+}
+
 func newDaemonRelayStatusCmd() *cobra.Command {
 	var relayName string
 	cmd := &cobra.Command{
@@ -46,7 +51,8 @@ func newDaemonRelayStatusCmd() *cobra.Command {
 			return daemonRelayStatus(relayName)
 		},
 	}
-	cmd.Flags().StringVar(&relayName, "relay", "", "the name of the relay to query. if not specified, all known relays are queried.")
+	flagSet := cmd.Flags()
+	addFlagRelay(flagSet, &relayName)
 	return cmd
 }
 
