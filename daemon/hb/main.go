@@ -76,21 +76,27 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	for _, h := range n.Hbs() {
 		h.Configure(ctx)
 		rx := h.Rx()
+		if rx == nil {
+			continue
+		}
 		ctrlCmd <- hbctrl.CmdRegister{Id: rx.Id()}
 		if err := rx.Start(ctrlCmd, msgC); err != nil {
 			ctrlCmd <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
 			t.log.Error().Err(err).Msgf("starting %s", rx.Id())
-			return err
+			continue
 		}
 		t.rxs[rx.Id()] = rx
 
 		tx := h.Tx()
+		if rx == nil {
+			continue
+		}
 		ctrlCmd <- hbctrl.CmdRegister{Id: tx.Id()}
 		localDataC := make(chan []byte)
 		if err := tx.Start(ctrlCmd, localDataC); err != nil {
 			t.log.Error().Err(err).Msgf("starting %s", tx.Id())
 			ctrlCmd <- hbctrl.CmdSetState{Id: tx.Id(), State: "failed"}
-			return err
+			continue
 		}
 		t.txs[tx.Id()] = tx
 		registeredDataC = append(registeredDataC, localDataC)

@@ -142,6 +142,11 @@ func (t *T) SetConfig(c *xconfig.T) {
 	t.config = c
 }
 
+func (t *T) GetBool(s string) bool {
+	k := key.New(t.name, s)
+	return t.Config().GetBool(k)
+}
+
 func (t *T) GetString(s string) string {
 	k := key.New(t.name, s)
 	return t.Config().GetString(k)

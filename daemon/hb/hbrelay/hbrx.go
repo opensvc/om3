@@ -1,0 +1,179 @@
+package hbrelay
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/rs/zerolog"
+
+	"opensvc.com/opensvc/core/client"
+	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
+	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemonapi"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/hb/hbctrl"
+)
+
+type (
+	// rx holds an hb unicast receiver
+	rx struct {
+		ctx      context.Context
+		id       string
+		nodes    []string
+		relay    string
+		username string
+		password string
+		insecure bool
+		timeout  time.Duration
+		interval time.Duration
+		last     time.Time
+
+		name   string
+		log    zerolog.Logger
+		cmdC   chan<- any
+		msgC   chan<- *hbtype.Msg
+		cancel func()
+	}
+)
+
+// Id implements the Id function of the Receiver interface for rx
+func (t *rx) Id() string {
+	return t.id
+}
+
+// Stop implements the Stop function of the Receiver interface for rx
+func (t *rx) Stop() error {
+	t.cancel()
+	for _, node := range t.nodes {
+		t.cmdC <- hbctrl.CmdDelWatcher{
+			HbId:     t.id,
+			Nodename: node,
+		}
+	}
+	return nil
+}
+
+// Start implements the Start function of the Receiver interface for rx
+func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
+	ctx, cancel := context.WithCancel(t.ctx)
+	t.cmdC = cmdC
+	t.msgC = msgC
+	t.cancel = cancel
+	ticker := time.NewTicker(t.interval)
+
+	for _, node := range t.nodes {
+		cmdC <- hbctrl.CmdAddWatcher{
+			HbId:     t.id,
+			Nodename: node,
+			Ctx:      ctx,
+			Timeout:  t.timeout,
+		}
+	}
+
+	go func() {
+		defer ticker.Stop()
+		t.log.Info().Msg("started")
+		for {
+			select {
+			case <-ticker.C:
+				t.onTick()
+			case <-ctx.Done():
+				t.cancel()
+				break
+			}
+		}
+		t.log.Info().Msg("stopped")
+	}()
+	return nil
+}
+
+func (t *rx) onTick() {
+	for _, node := range t.nodes {
+		t.recv(node)
+	}
+}
+
+func (t *rx) recv(nodename string) {
+	cluster := rawconfig.ClusterSection()
+	cli, err := client.New(
+		client.WithURL(t.relay),
+		client.WithUsername(t.username),
+		client.WithPassword(t.password),
+		client.WithInsecureSkipVerify(t.insecure),
+	)
+	if err != nil {
+		t.log.Debug().Err(err).Msgf("recv: node %s new client", nodename)
+		return
+	}
+
+	req := cli.NewGetRelayMessage()
+	req.Nodename = nodename
+	req.ClusterId = cluster.ID
+	b, err := req.Do()
+	if err != nil {
+		t.log.Debug().Err(err).Msgf("recv: node %s do request", nodename)
+		return
+	}
+	var c daemonapi.RelayMessage
+	if err := json.Unmarshal(b, &c); err != nil {
+		t.log.Debug().Err(err).Msgf("recv: node %s unmarshal data", nodename)
+		return
+	}
+	if c.Updated.IsZero() {
+		t.log.Debug().Msgf("recv: node %s data has never been updated", nodename)
+		return
+	}
+	if !t.last.IsZero() && c.Updated == t.last {
+		t.log.Debug().Msgf("recv: node %s data has not change since last read", nodename)
+		return
+	}
+	elapsed := time.Now().Sub(c.Updated)
+	if elapsed > t.timeout {
+		t.log.Debug().Msgf("recv: node %s data has not been updated for %s", nodename, elapsed)
+		return
+	}
+	encMsg := reqjsonrpc.NewMessage([]byte(c.Msg))
+	b, msgNodename, err := encMsg.DecryptWithNode()
+	if err != nil {
+		t.log.Debug().Err(err).Msgf("recv: decrypting node %s", nodename)
+		return
+	}
+
+	if nodename != msgNodename {
+		t.log.Debug().Err(err).Msgf("recv: node %s data was written by unexpected node %s", nodename, msgNodename)
+		return
+	}
+
+	msg := hbtype.Msg{}
+	if err := json.Unmarshal(b, &msg); err != nil {
+		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
+		return
+	}
+	t.log.Debug().Msgf("recv: node %s unmarshaled %#v", nodename, msg)
+	t.cmdC <- hbctrl.CmdSetPeerSuccess{
+		Nodename: msg.Nodename,
+		HbId:     t.id,
+		Success:  true,
+	}
+	t.msgC <- &msg
+	t.last = c.Updated
+}
+
+func newRx(ctx context.Context, name string, nodes []string, relay, username, password string, insecure bool, timeout, interval time.Duration) *rx {
+	id := name + ".rx"
+	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
+	return &rx{
+		ctx:      ctx,
+		id:       id,
+		nodes:    nodes,
+		relay:    relay,
+		username: username,
+		password: password,
+		insecure: insecure,
+		timeout:  timeout,
+		interval: interval,
+		log:      log,
+	}
+}

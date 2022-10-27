@@ -74,6 +74,10 @@ func (t T) NewGetNetworks() *api.GetNetworks {
 	return api.NewGetNetworks(t)
 }
 
+func (t T) NewGetRelayMessage() *api.GetRelayMessage {
+	return api.NewGetRelayMessage(t)
+}
+
 func (t T) NewPostKey() *api.PostKey {
 	return api.NewPostKey(t)
 }
@@ -108,6 +112,10 @@ func (t T) NewPostObjectMonitor() *api.PostObjectMonitor {
 
 func (t T) NewPostObjectStatus() *api.PostObjectStatus {
 	return api.NewPostObjectStatus(t)
+}
+
+func (t T) NewPostRelayMessage() *api.PostRelayMessage {
+	return api.NewPostRelayMessage(t)
 }
 
 func (t T) NewPostRunDone() *api.PostRunDone {
