@@ -11,7 +11,7 @@ func newClient() (*client.T, error) {
 	if serverFlag == daemonenv.UrlInetHttp() {
 		clientOptions = append(
 			clientOptions,
-			client.WithInsecureSkipVerify(),
+			client.WithInsecureSkipVerify(true),
 			client.WithCertificate(daemonenv.CertFile()),
 			client.WithKey(daemonenv.KeyFile()),
 		)

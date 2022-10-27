@@ -77,10 +77,10 @@ func WithURL(url string) funcopt.O {
 }
 
 // WithInsecureSkipVerify skips certificate validity checks.
-func WithInsecureSkipVerify() funcopt.O {
+func WithInsecureSkipVerify(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.insecureSkipVerify = true
+		t.insecureSkipVerify = v
 		return nil
 	})
 }
