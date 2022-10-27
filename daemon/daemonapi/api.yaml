@@ -361,7 +361,7 @@ components:
         goroutines:
           type: integer
         sub:
-          type: object
+          $ref: '#/components/schemas/sub'
     postRelayMessage:
       type: object
       required:
@@ -787,6 +787,8 @@ components:
         - squatter
         - blacklistadmin
         - heartbeat
+    severity:
+      type: string
     sanPath:
       type: object
       required:
@@ -825,6 +827,61 @@ components:
       type: string
     status:
       type: string
+    sub:
+      type: object
+      properties:
+        heartbeats:
+          type: array
+          items:
+            $ref: '#/components/schemas/subHeartbeats'
+    subAlert:
+      type: object
+      required:
+        - message
+        - severity
+      properties:
+        message:
+          type: string
+        severity:
+          $ref: '#/components/schemas/severity'
+    subBase:
+      type: object
+      required:
+        - configured
+        - created
+        - id
+        - state
+        - alerts
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/subAlert'
+        configured:
+          type: string
+          format: date-time
+        created:
+          type: string
+          format: date-time
+        id:
+          type: string
+        state:
+          type: string
+    subHeartbeats:
+      allOf:
+        - $ref: '#/components/schemas/subBase'
+        - $ref: '#/components/schemas/subHeartbeatPeerStatus'
+    subHeartbeatPeerStatus:
+      type: object
+      required:
+        - beating
+        - last
+      properties:
+        beating:
+          type: boolean
+        last:
+          type: string
+          format: date-time
     topology:
       type: string
       description: "object topology"

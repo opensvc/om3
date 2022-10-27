@@ -93,27 +93,28 @@ func (f Frame) wThreadDNS() string {
 	return s
 }
 
-func (f Frame) wThreadHeartbeat(name string, data HeartbeatThreadStatus) string {
+func (f Frame) wThreadHeartbeat(hbStatus HeartbeatThreadStatus) string {
 	var s string
+	name := hbStatus.Id
 	s += bold(" "+name) + "\t"
-	if data.State == "running" {
-		s += green("running") + sThreadAlerts(data.Alerts) + "\t"
-	} else {
-		s += red("stopped") + sThreadAlerts(data.Alerts) + "\t"
+	switch hbStatus.State {
+	case "running":
+		s += green("running") + sThreadAlerts(hbStatus.Alerts)
+	case "stopped":
+		s += red("stopped") + sThreadAlerts(hbStatus.Alerts)
+	case "failed":
+		s += red("failed") + sThreadAlerts(hbStatus.Alerts)
+	default:
+		s += red("unknown") + sThreadAlerts(hbStatus.Alerts)
 	}
-	s += "\t"
+	s += "\t\t"
 	s += f.info.separator + "\t"
 	for _, peer := range f.Current.Cluster.Config.Nodes {
 		if peer == hostname.Hostname() {
 			s += iconNotApplicable + "\t"
 			continue
 		}
-		hb, ok := f.Current.Heartbeats[name]
-		if !ok {
-			s += iconUndef + "\t"
-			continue
-		}
-		peerData, ok := hb.Peers[peer]
+		peerData, ok := hbStatus.Peers[peer]
 		if !ok {
 			s += iconUndef + "\t"
 			continue
@@ -139,8 +140,8 @@ func (f Frame) wThreads() {
 	fmt.Fprintln(f.w, f.wThreadDaemon())
 	fmt.Fprintln(f.w, f.wThreadDNS())
 	fmt.Fprintln(f.w, f.wThreadCollector())
-	for k, v := range f.Current.Heartbeats {
-		fmt.Fprintln(f.w, f.wThreadHeartbeat(k, v))
+	for _, v := range f.Current.Sub.Heartbeats {
+		fmt.Fprintln(f.w, f.wThreadHeartbeat(v))
 	}
 	fmt.Fprintln(f.w, f.wThreadListener())
 	fmt.Fprintln(f.w, f.wThreadMonitor())

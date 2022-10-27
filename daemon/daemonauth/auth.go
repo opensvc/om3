@@ -104,11 +104,7 @@ func validateUser(_ context.Context, _ *http.Request, username, password string)
 	if string(storedPassword) != password {
 		return nil, errors.Errorf("wrong password")
 	}
-	grant, err := usr.Get(key.T{Section: "DEFAULT", Option: "grant"})
-	if err != nil {
-		return nil, errors.Wrapf(err, "get user grant for %s", username)
-	}
-	grants := NewGrants(strings.Split(grant.(string), " ")...)
+	grants := NewGrants(usr.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"})...)
 	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
 	return info, nil
 }
