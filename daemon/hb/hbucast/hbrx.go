@@ -3,8 +3,8 @@ package hbucast
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -102,7 +102,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				if strings.Contains(err.Error(), "use of closed network connection") {
+				if errors.Is(err, net.ErrClosed) {
 					break
 				} else {
 					t.log.Error().Err(err).Msg("Accept")

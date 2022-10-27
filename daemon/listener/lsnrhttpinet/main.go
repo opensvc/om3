@@ -3,8 +3,8 @@ package lsnrhttpinet
 import (
 	"context"
 	"crypto/tls"
+	"net"
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -107,7 +107,7 @@ func (t *T) start(ctx context.Context) error {
 	go func() {
 		started <- true
 		err := t.listener.ListenAndServeTLS(t.certFile, t.keyFile)
-		if err == http.ErrServerClosed || strings.Contains(err.Error(), "use of closed network connection") {
+		if err == http.ErrServerClosed || errors.Is(err, net.ErrClosed) {
 			t.log.Debug().Err(err).Msg("listener ends with expected error ")
 		} else {
 			t.log.Error().Err(err).Msg("listener ends with unexpected error ")
