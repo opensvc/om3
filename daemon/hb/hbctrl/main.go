@@ -288,6 +288,7 @@ func (c *ctrl) start(ctx context.Context) {
 					}
 					c.log.Info().Msgf("unregister watcher %s %s", hbId, peerNode)
 					cancel()
+					delete(remote.cancel, hbId)
 					if strings.HasSuffix(hbId, ".rx") {
 						remote.rxCount--
 					} else {
