@@ -31,7 +31,7 @@ func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
 	value.Addr = r.RemoteAddr
 
 	relay.Map.Store(payload.ClusterId, payload.Nodename, value)
-	log.Info().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
+	log.Debug().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "stored")
 }

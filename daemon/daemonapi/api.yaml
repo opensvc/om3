@@ -298,9 +298,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/relayMessage'
-        '404':
-          description: relay slot not found
+                $ref: '#/components/schemas/relayMessages'
     post:
       operationId: PostRelayMessage
       tags:
@@ -638,6 +636,17 @@ components:
         updated:
           type: string
           format: date-time
+    relayMessages:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          $ref: '#/components/schemas/relayMessageList'
+    relayMessageList:
+      type: array
+      items:
+        $ref: '#/components/schemas/relayMessage'
     resourceExposedStatus:
       type: object
       required:
@@ -921,14 +930,12 @@ components:
       name: cluster_id
       in: query
       description: the cluster id component of the slot id on the relay
-      required: true
       schema:
         type: string
     queryRelayNodename:
       name: nodename
       in: query
       description: the nodename component of the slot id on the relay
-      required: true
       schema:
         type: string
     querySelectorOptional:

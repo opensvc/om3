@@ -31,6 +31,16 @@ func (m *M) Stop() {
 	})
 }
 
+func (m *M) List() []any {
+	l := make([]any, 0)
+	m.Map.Range(func(key, value any) bool {
+		c := value.(capsule)
+		l = append(l, c.value)
+		return true
+	})
+	return l
+}
+
 func (m *M) Load(clusterID, nodename string) (any, bool) {
 	key := makeRelayKey(clusterID, nodename)
 	value, ok := m.Map.Load(key)
