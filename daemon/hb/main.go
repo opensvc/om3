@@ -75,17 +75,23 @@ func (t *T) start(ctx context.Context, data *hbctrl.T, msgC chan *hbtype.Msg) er
 	for _, h := range n.Hbs() {
 		h.Configure(ctx)
 		rx := h.Rx()
+		if rx == nil {
+			continue
+		}
 		if err := rx.Start(data.Cmd(), msgC); err != nil {
 			t.log.Error().Err(err).Msgf("starting %s", rx.Id())
-			return err
+			continue
 		}
 		t.rxs[rx.Id()] = rx
 
 		tx := h.Tx()
+		if rx == nil {
+			continue
+		}
 		localDataC := make(chan []byte)
 		if err := tx.Start(data.Cmd(), localDataC); err != nil {
 			t.log.Error().Err(err).Msgf("starting %s", tx.Id())
-			return err
+			continue
 		}
 		t.txs[tx.Id()] = tx
 		registeredDataC = append(registeredDataC, localDataC)
