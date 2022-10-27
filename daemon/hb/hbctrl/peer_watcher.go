@@ -11,18 +11,18 @@ import (
 // peerWatch starts a new peer watcher of nodename for hbId
 // when beating state change a hb_beating or hb_stale event is fired
 // Once beating, a hb_stale event is fired if no beating are received after timeout
-func (t *T) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename string, timeout time.Duration) {
+func (c *ctrl) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename string, timeout time.Duration) {
 	peer := cluster.HeartbeatPeerStatus{}
 	beatingCtx, cancel := context.WithCancel(ctx)
 	update := func(hbStatus cluster.HeartbeatPeerStatus) {
-		t.cmd <- CmdSetPeerStatus{
+		c.cmd <- CmdSetPeerStatus{
 			Nodename:   nodename,
 			HbId:       hbId,
 			PeerStatus: hbStatus,
 		}
 	}
 	event := func(name string) {
-		t.cmd <- CmdEvent{
+		c.cmd <- CmdEvent{
 			Name:     name,
 			Nodename: nodename,
 			HbId:     hbId,
@@ -36,7 +36,7 @@ func (t *T) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 		started <- true
 		for {
 			select {
-			case <-t.ctx.Done():
+			case <-c.ctx.Done():
 				log.Info().Msg("done watching")
 				return
 			case beating := <-beatingC:
@@ -46,7 +46,7 @@ func (t *T) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 						event("hb_beating")
 					}
 					cancel()
-					beatingCtx, cancel = context.WithTimeout(t.ctx, timeout)
+					beatingCtx, cancel = context.WithTimeout(c.ctx, timeout)
 					peer.Last = time.Now()
 					update(peer)
 				} else if peer.Beating {
@@ -57,7 +57,7 @@ func (t *T) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename st
 					peer.Beating = false
 					event("hb_stale")
 					update(peer)
-					beatingCtx, cancel = context.WithCancel(t.ctx)
+					beatingCtx, cancel = context.WithCancel(c.ctx)
 				}
 			}
 		}

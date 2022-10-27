@@ -62,6 +62,8 @@ func (t *T) Configure(ctx context.Context) {
 	log.Debug().Msgf("configure %s, timeout=%s port=%d nodes=%s onodes=%s", t.Name(), timeout, port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
+	signature := fmt.Sprintf("type: hb.mcast, port: %s nodes: %s timeout: %s intf: %s", port, nodes, timeout, intf)
+	t.SetSignature(signature)
 	name := t.Name()
 
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))

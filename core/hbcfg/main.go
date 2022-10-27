@@ -54,6 +54,9 @@ type (
 		tx      hbtype.Transmitter
 		nodes   []string
 		timeout time.Duration
+
+		// sig configured signature to detect conf changes
+		sig string
 	}
 
 	// Confer is the interface a hb driver has to implement
@@ -76,6 +79,7 @@ type (
 		Tx() hbtype.Transmitter
 		Rx() hbtype.Receiver
 		Nodes() []string
+		Signature() string
 
 		SetName(string)
 		SetDriver(string)
@@ -84,6 +88,7 @@ type (
 		SetTx(transmitter hbtype.Transmitter)
 		SetTimeout(time.Duration)
 		SetNodes([]string)
+		SetSignature(string)
 	}
 )
 
@@ -198,6 +203,16 @@ func (t *T) Nodes() []string {
 
 func (t *T) SetTimeout(timeout time.Duration) {
 	t.timeout = timeout
+}
+
+// SetSignature set a string that identify config details
+func (t *T) SetSignature(s string) {
+	t.sig = s
+}
+
+// Signature return the string identification of config details
+func (t *T) Signature() string {
+	return t.sig
 }
 
 func (t *T) Timeout() time.Duration {

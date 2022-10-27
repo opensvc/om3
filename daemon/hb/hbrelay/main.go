@@ -5,6 +5,7 @@ package hbrelay
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -75,6 +76,8 @@ func (t *T) Configure(ctx context.Context) {
 	log.Debug().Msgf("configure %s, timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", t.Name(), timeout, interval, relay, insecure, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
+	signature := fmt.Sprintf("type: hb.relay nodes: %s timeout: %s interval: %s", nodes, timeout, interval)
+	t.SetSignature(signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, relay, username, password, insecure, timeout, interval)
 	t.SetTx(tx)
