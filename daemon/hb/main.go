@@ -2,6 +2,7 @@ package hb
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"strings"
 	"time"
@@ -11,13 +12,18 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/clusterhb"
+	"opensvc.com/opensvc/core/hbcfg"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -35,6 +41,8 @@ type (
 
 		registerTxC   chan registerTxQueue
 		unregisterTxC chan string
+
+		ridSignature map[string]string
 	}
 
 	registerTxQueue struct {
@@ -65,6 +73,7 @@ func New(opts ...funcopt.O) *T {
 	t.txs = make(map[string]hbtype.Transmitter)
 	t.rxs = make(map[string]hbtype.Receiver)
 	t.readMsgQueue = make(chan *hbtype.Msg)
+	t.ridSignature = make(map[string]string)
 	return t
 }
 
@@ -115,11 +124,113 @@ func (t *T) MainStop() error {
 }
 
 func (t *T) stopHb(hb hbtype.IdStopper) error {
+	hbId := hb.Id()
 	switch hb.(type) {
 	case hbtype.Transmitter:
-		t.unregisterTxC <- hb.Id()
+		t.unregisterTxC <- hbId
 	}
+	t.ctrlC <- hbctrl.CmdUnregister{hbId}
 	return hb.Stop()
+}
+
+func (t *T) startHb(hb hbcfg.Confer) error {
+	rx := hb.Rx()
+	if rx == nil {
+		return errors.New("nil rx for " + hb.Name())
+	}
+	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id()}
+	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
+		t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
+		t.log.Error().Err(err).Msgf("starting %s", rx.Id())
+		return err
+	}
+	t.rxs[hb.Name()] = rx
+
+	tx := hb.Tx()
+	if rx == nil {
+		return errors.New("nil tx for " + hb.Name())
+	}
+	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id()}
+	localDataC := make(chan []byte)
+	if err := tx.Start(t.ctrlC, localDataC); err != nil {
+		t.log.Error().Err(err).Msgf("starting %s", tx.Id())
+		t.ctrlC <- hbctrl.CmdSetState{Id: tx.Id(), State: "failed"}
+		return err
+	}
+	t.registerTxC <- registerTxQueue{id: tx.Id(), msgToSendQueue: localDataC}
+	t.txs[hb.Name()] = tx
+	return nil
+}
+
+func (t *T) stopHbRid(rid string) error {
+	errCount := 0
+	failures := make([]string, 0)
+	if tx, ok := t.txs[rid]; ok {
+		if err := t.stopHb(tx); err != nil {
+			failures = append(failures, "tx")
+			errCount++
+		} else {
+			delete(t.txs, rid)
+		}
+	}
+	if rx, ok := t.rxs[rid]; ok {
+		if err := t.stopHb(rx); err != nil {
+			failures = append(failures, "rx")
+			errCount++
+		} else {
+			delete(t.rxs, rid)
+		}
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("stop hb rid %s error for " + strings.Join(failures, ", "))
+	}
+	return nil
+}
+
+func (t *T) rescanHb(ctx context.Context) error {
+	errs := make([]string, 0)
+	ridHb, err := t.getHbConfigured(ctx)
+	if err != nil {
+		return err
+	}
+	ridSignatureNew := make(map[string]string)
+	for rid, hb := range ridHb {
+		ridSignatureNew[rid] = hb.Signature()
+	}
+
+	for rid := range t.ridSignature {
+		if _, ok := ridSignatureNew[rid]; ok {
+			continue
+		}
+		// deleted hb
+		if err := t.stopHbRid(rid); err == nil {
+			delete(t.ridSignature, rid)
+		} else {
+			errs = append(errs, err.Error())
+		}
+	}
+	for rid, newSig := range ridSignatureNew {
+		if sig, ok := t.ridSignature[rid]; !ok {
+			// new hb
+			if err := t.startHb(ridHb[rid]); err != nil {
+				errs = append(errs, err.Error())
+				continue
+			}
+		} else if sig != newSig {
+			// reconfigured hb
+			if err := t.stopHbRid(rid); err != nil {
+				errs = append(errs, err.Error())
+				continue
+			} else if err := t.startHb(ridHb[rid]); err != nil {
+				errs = append(errs, err.Error())
+			}
+		}
+		t.ridSignature[rid] = newSig
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("rescanHb errors: %s", errs)
+	}
+	return nil
 }
 
 // msgToTx starts a msg multiplexer data messages to hb tx drivers
@@ -183,39 +294,44 @@ func (t *T) msgFromRx(ctx context.Context) {
 }
 
 func (t *T) janitorHb(ctx context.Context) error {
-	n, err := clusterhb.New()
-	if err != nil {
-		return err
+	bus := pubsub.BusFromContext(ctx)
+	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
+	janitorC := make(chan *msgbus.Msg)
+	rescanCb := func(i any) {
+		janitorC <- msgbus.NewMsg(i)
 	}
-	go func() {
-		for _, h := range n.Hbs() {
-			h.Configure(ctx)
-			rx := h.Rx()
-			if rx == nil {
-				continue
-			}
-			t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id()}
-			if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
-				t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
-				t.log.Error().Err(err).Msgf("starting %s", rx.Id())
-				continue
-			}
-			t.rxs[rx.Id()] = rx
+	msgbus.SubCfg(bus, pubsub.OpUpdate, "janitor cluster Cfg update", clusterPath.String(), rescanCb)
+	errC := make(chan error)
 
-			tx := h.Tx()
-			if rx == nil {
-				continue
+	go func(errC chan<- error) {
+		errC <- t.rescanHb(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i := <-janitorC:
+				switch (*i).(type) {
+				case msgbus.CfgUpdated:
+					if err := t.rescanHb(ctx); err != nil {
+						t.log.Error().Err(err).Msg("rescan after cluster config changed")
+					}
+				}
 			}
-			t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id()}
-			localDataC := make(chan []byte)
-			if err := tx.Start(t.ctrlC, localDataC); err != nil {
-				t.log.Error().Err(err).Msgf("starting %s", tx.Id())
-				t.ctrlC <- hbctrl.CmdSetState{Id: tx.Id(), State: "failed"}
-				continue
-			}
-			t.registerTxC <- registerTxQueue{id: tx.Id(), msgToSendQueue: localDataC}
-			t.txs[tx.Id()] = tx
 		}
-	}()
-	return nil
+	}(errC)
+	return <-errC
+}
+
+func (t *T) getHbConfigured(ctx context.Context) (ridHb map[string]hbcfg.Confer, err error) {
+	var node *clusterhb.T
+	ridHb = make(map[string]hbcfg.Confer)
+	node, err = clusterhb.New()
+	if err != nil {
+		return ridHb, err
+	}
+	for _, h := range node.Hbs() {
+		h.Configure(ctx)
+		ridHb[h.Name()] = h
+	}
+	return ridHb, nil
 }
