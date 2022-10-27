@@ -2,10 +2,10 @@ package lsnrhttpux
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -109,7 +109,7 @@ func (t *T) start(ctx context.Context) error {
 	go func() {
 		started <- true
 		err = server.Serve(listener)
-		if err != http.ErrServerClosed && !strings.Contains(err.Error(), "use of closed network connection") {
+		if err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 			t.log.Debug().Err(err).Msg("http listener ends with unexpected error")
 		}
 		t.log.Info().Msg("listener stopped")

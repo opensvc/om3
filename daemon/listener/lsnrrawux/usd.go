@@ -2,9 +2,9 @@ package lsnrrawux
 
 import (
 	"context"
+	"errors"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"opensvc.com/opensvc/daemon/listener/routehttp"
@@ -41,7 +41,7 @@ func (t *T) start(ctx context.Context) error {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				if strings.Contains(err.Error(), "use of closed network connection") {
+				if errors.Is(err, net.ErrClosed) {
 					break
 				} else {
 					t.log.Error().Err(err).Msg("Accept")
