@@ -36,8 +36,11 @@ func (c *ctrl) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename
 		started <- true
 		for {
 			select {
-			case <-c.ctx.Done():
+			case <-ctx.Done():
 				log.Info().Msg("done watching")
+				return
+			case <-c.ctx.Done():
+				log.Info().Msg("done watching (from crtl done)")
 				return
 			case beating := <-beatingC:
 				if beating {
