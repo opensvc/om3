@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"opensvc.com/opensvc/daemon/daemonapi"
@@ -27,6 +28,14 @@ import (
 type (
 	T struct {
 		mux *chi.Mux
+	}
+)
+
+var (
+	// logRequestLevelPerPath defines logRequestMiddleWare log level per path.
+	// The default value is LevelInfo
+	logRequestLevelPerPath = map[string]zerolog.Level{
+		"/relay/message": zerolog.DebugLevel,
 	}
 )
 
@@ -123,8 +132,14 @@ func logUserMiddleWare(_ context.Context) func(http.Handler) http.Handler {
 func logRequestMiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log := daemonlogctx.Logger(r.Context())
-			log.Info().Msg("request")
+			level := zerolog.InfoLevel
+			if l, ok := logRequestLevelPerPath[r.URL.Path]; ok {
+				level = l
+			}
+			if level != zerolog.NoLevel {
+				log := daemonlogctx.Logger(r.Context())
+				log.WithLevel(level).Msg("request")
+			}
 			next.ServeHTTP(w, r)
 		})
 	}
