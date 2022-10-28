@@ -3,6 +3,7 @@ package hbdisk
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -16,6 +17,7 @@ import (
 type (
 	// rx holds an hb unicast receiver
 	rx struct {
+		sync.WaitGroup
 		base     base
 		ctx      context.Context
 		id       string
@@ -39,6 +41,7 @@ func (t *rx) Id() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
+	t.log.Debug().Msg("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -46,6 +49,8 @@ func (t *rx) Stop() error {
 			Nodename: node,
 		}
 	}
+	t.Wait()
+	t.log.Debug().Msg("wait done")
 	return nil
 }
 
@@ -66,7 +71,9 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		}
 	}
 
+	t.Add(1)
 	go func() {
+		defer t.Done()
 		defer ticker.Stop()
 		t.log.Info().Msg("started")
 		for {

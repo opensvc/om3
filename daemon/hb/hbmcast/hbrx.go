@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -21,6 +22,7 @@ import (
 type (
 	// rx holds an hb unicast receiver
 	rx struct {
+		sync.WaitGroup
 		ctx      context.Context
 		id       string
 		nodes    []string
@@ -47,6 +49,7 @@ func (t *rx) Id() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
+	t.log.Debug().Msg("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -54,6 +57,8 @@ func (t *rx) Stop() error {
 			Nodename: node,
 		}
 	}
+	t.Wait()
+	t.log.Debug().Msg("wait done")
 	return nil
 }
 
@@ -66,7 +71,9 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.log.Info().Msg("starting")
 	t.assembly = make(assembly)
 	started := make(chan bool)
+	t.Add(1)
 	go func() {
+		defer t.Done()
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -84,12 +91,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		t.log.Info().Msgf("listen on %s", t.udpAddr)
 		defer listener.Close()
 
+		t.Add(1)
 		go func() {
+			defer t.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Info().Msg("closing listener")
-				listener.Close()
-				t.log.Info().Msg("closed listener")
+				t.log.Debug().Msg("closing listener")
+				_ = listener.Close()
+				t.log.Debug().Msg("closed listener")
 				t.cancel()
 				return
 			}
