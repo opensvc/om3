@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -74,12 +75,14 @@ func (d *discover) onEvCfg(i interface{}) {
 }
 
 func (d *discover) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
-	s := c.Path.String()
-	if s == "" {
-		// node config file change
-		d.setNodeLabels()
+	if c.Path.Kind == kind.Invalid {
+		if c.Filename == rawconfig.NodeConfigFile() {
+			// node config file change
+			d.setNodeLabels()
+		}
 		return
 	}
+	s := c.Path.String()
 	mtime := file.ModTime(c.Filename)
 	if mtime.IsZero() {
 		d.log.Info().Msgf("configFile no present(mtime) %s", c.Filename)

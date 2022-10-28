@@ -72,7 +72,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		cancel()
 		wg.Wait()
 	}
-	nodeConf := filepath.Join(rawconfig.Paths.Etc, "node.conf")
+	nodeConf := rawconfig.NodeConfigFile()
 
 	//
 	// Add directory watch for head and its subdirs, and for .conf files
