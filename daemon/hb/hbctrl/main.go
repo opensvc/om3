@@ -255,7 +255,6 @@ func (c *ctrl) start(ctx context.Context) {
 				}
 				remote, ok := remotes[peerNode]
 				if !ok {
-					//hbBeatings[hbId] = make(map[string]cluster.HeartbeatPeerStatus)
 					remote.beatingChan = make(map[string]chan<- bool)
 					remote.cancel = make(map[string]func())
 				}
