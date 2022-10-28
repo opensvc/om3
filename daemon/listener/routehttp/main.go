@@ -51,6 +51,7 @@ func New(ctx context.Context, enableUi bool) *T {
 	mux.Use(logMiddleWare(ctx))
 	mux.Use(listenAddrMiddleWare(ctx))
 	mux.Use(daemonauth.MiddleWare(ctx))
+	mux.Use(logUserMiddleWare(ctx))
 	mux.Use(logRequestMiddleWare(ctx))
 	mux.Use(daemonMiddleWare(ctx))
 	mux.Use(daemondataMiddleWare(ctx))
@@ -93,7 +94,12 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 			reqUuid := uuid.New()
 			addr := daemonctx.ListenAddr(parent)
 			log := daemonlogctx.Logger(parent)
-			log = log.With().Str("request-uuid", reqUuid.String()).Str("addr", addr).Logger()
+			log = log.With().
+				Str("request-uuid", reqUuid.String()).
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
+				Str("remote", r.RemoteAddr).
+				Str("addr", addr).Logger()
 			ctx := daemonlogctx.WithLogger(r.Context(), log)
 			ctx = daemonctx.WithUuid(ctx, reqUuid)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -101,16 +107,24 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 	}
 }
 
-func logRequestMiddleWare(_ context.Context) func(http.Handler) http.Handler {
+func logUserMiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user := auth.User(r).GetUserName()
-			log := daemonlogctx.Logger(r.Context())
 			if user != "" {
-				log = log.With().Str("user", user).Logger()
+				log := daemonlogctx.Logger(r.Context()).With().Str("user", user).Logger()
 				r = r.WithContext(daemonlogctx.WithLogger(r.Context(), log))
 			}
-			log.Info().Str("method", r.Method).Str("remote", r.RemoteAddr).Str("path", r.URL.Path).Msg("request")
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func logRequestMiddleWare(_ context.Context) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log := daemonlogctx.Logger(r.Context())
+			log.Info().Msg("request")
 			next.ServeHTTP(w, r)
 		})
 	}
