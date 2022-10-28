@@ -7,11 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
@@ -28,24 +25,6 @@ type (
 		Recover bool `flag:"recover"`
 	}
 )
-
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectEditConfig) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectEditConfig) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "config",
-		Short:   "edit selected object and instance configuration",
-		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
 
 func (t *CmdObjectEditConfig) do(selector string, c *client.T) error {
 	sel := objectselector.NewSelection(selector)
@@ -159,22 +138,14 @@ func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEditConfig) run(selector *string, kind string) {
+func (t *CmdObjectEditConfig) Run(selector, kind string) error {
 	var (
 		c   *client.T
 		err error
 	)
-	if t.Discard && t.Recover {
-		fmt.Fprint(os.Stderr, "discard and recover options are mutually exclusive")
-		os.Exit(1)
-	}
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
-	if err = t.do(mergedSelector, c); err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
-	}
+	return t.do(mergedSelector, c)
 }

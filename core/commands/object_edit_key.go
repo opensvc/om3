@@ -6,11 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
@@ -19,33 +16,14 @@ import (
 )
 
 type (
-	// CmdObjectEdit is the cobra flag set of the print config command.
-	CmdObjectEdit struct {
-		Command *cobra.Command
+	// CmdObjectEditKey is the cobra flag set of the print config command.
+	CmdObjectEditKey struct {
 		OptsGlobal
 		Key string `flag:"key"`
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectEdit) Init(kind string, parent *cobra.Command, selector *string) {
-	t.Command = t.cmd(kind, selector)
-	parent.AddCommand(t.Command)
-	flag.Install(t.Command, t)
-}
-
-func (t *CmdObjectEdit) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "edit",
-		Short:   "edit selected object and instance configuration",
-		Aliases: []string{"edi", "ed", "e"},
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectEdit) do(selector string, c *client.T) error {
+func (t *CmdObjectEditKey) do(selector string, c *client.T) error {
 	sel := objectselector.NewSelection(selector)
 	wc := clientcontext.IsSet()
 	paths, err := sel.Expand()
@@ -79,7 +57,7 @@ func (t *CmdObjectEdit) do(selector string, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEdit) doLocal(obj object.Keystore, c *client.T) error {
+func (t *CmdObjectEditKey) doLocal(obj object.Keystore, c *client.T) error {
 	return obj.EditKey(t.Key)
 }
 
@@ -119,7 +97,7 @@ func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
 	return nil
 }
 
-func (t *CmdObjectEdit) doRemote(p path.T, c *client.T) error {
+func (t *CmdObjectEditKey) doRemote(p path.T, c *client.T) error {
 	var (
 		err    error
 		refSum []byte
@@ -153,18 +131,17 @@ func (t *CmdObjectEdit) doRemote(p path.T, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectEdit) run(selector *string, kind string) {
+func (t *CmdObjectEditKey) Run(selector, kind string) error {
 	var (
 		c   *client.T
 		err error
 	)
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	if err = t.do(mergedSelector, c); err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
+	return nil
 }

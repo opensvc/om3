@@ -1,6 +1,8 @@
 package commands
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	// OptsGlobal contains options accepted by all actions

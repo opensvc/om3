@@ -24,7 +24,6 @@ func init() {
 		cmdCreate           commands.CmdObjectCreate
 		cmdDoc              commands.CmdObjectDoc
 		cmdDelete           commands.CmdObjectDelete
-		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdGet              commands.CmdObjectGet
 		cmdLogs             commands.CmdObjectLogs
@@ -55,10 +54,9 @@ func init() {
 	cmdStatus.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
 
-	if sub := makeSubEdit(); sub != nil {
-		head.AddCommand(sub)
-		cmdEditConfig.Init(kind, sub, &selectorFlag)
-	}
+	cmdEdit := newObjectEdit(kind)
+	cmdEdit.AddCommand(newObjectEditConfig(kind))
+	head.AddCommand(cmdEdit)
 
 	if sub := makeSubPrint(); sub != nil {
 		head.AddCommand(sub)

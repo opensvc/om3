@@ -2,8 +2,34 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"opensvc.com/opensvc/core/commands"
 )
+
+func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto")
+	flagSet.StringVar(&p.Format, "format", "auto", "Output format json|flat|auto")
+	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme raw|https")
+	flagSet.BoolVar(&p.Local, "local", false, "Inline action on local instance")
+	flagSet.StringVar(&p.NodeSelector, "node", "", "Execute on a list of nodes")
+	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects")
+}
+
+func addFlagDiscard(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVar(p, "discard", false, "Discard the stashed, invalid, configuration file leftover of a previous execution")
+}
+
+func addFlagRecover(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVar(p, "recover", false, "Recover the stashed, invalid, configuration file leftover of a previous execution")
+}
+
+func addFlagRelay(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "relay", "", "The name of the relay to query. If not specified, all known relays are queried.")
+}
+
+func addFlagKey(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "key", "", "A keystore key name")
+}
 
 func makeHead() *cobra.Command {
 	return &cobra.Command{
@@ -42,14 +68,6 @@ func makeSubSync() *cobra.Command {
 		Use:     "sync",
 		Short:   "data synchronization command group",
 		Aliases: []string{"syn", "sy"},
-	}
-}
-
-func makeSubEdit() *cobra.Command {
-	return &cobra.Command{
-		Use:     "edit",
-		Short:   "edit information about the object",
-		Aliases: []string{"edi", "ed"},
 	}
 }
 
@@ -93,13 +111,58 @@ func makeSubComplianceShow() *cobra.Command {
 	}
 }
 
+func newObjectEdit(kind string) *cobra.Command {
+	var optionsGlobal commands.OptsGlobal
+	var optionsConfig commands.CmdObjectEditConfig
+	var optionsKey commands.CmdObjectEditKey
+	cmd := &cobra.Command{
+		Use:     "edit",
+		Short:   "edit object configuration or keystore key",
+		Aliases: []string{"ed"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if optionsKey.Key != "" {
+				optionsKey.OptsGlobal = optionsGlobal
+				return optionsKey.Run(selectorFlag, kind)
+			} else {
+				optionsConfig.OptsGlobal = optionsGlobal
+				return optionsConfig.Run(selectorFlag, kind)
+			}
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &optionsGlobal)
+	addFlagDiscard(flagSet, &optionsConfig.Discard)
+	addFlagRecover(flagSet, &optionsConfig.Recover)
+	addFlagKey(flagSet, &optionsKey.Key)
+	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	cmd.MarkFlagsMutuallyExclusive("discard", "key")
+	cmd.MarkFlagsMutuallyExclusive("recover", "key")
+	return cmd
+}
+
+func newObjectEditConfig(kind string) *cobra.Command {
+	var options commands.CmdObjectEditConfig
+	cmd := &cobra.Command{
+		Use:     "config",
+		Short:   "edit selected object and instance configuration",
+		Aliases: []string{"conf", "c", "cf", "cfg"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagDiscard(flagSet, &options.Discard)
+	addFlagRecover(flagSet, &options.Recover)
+	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	return cmd
+}
+
 func init() {
 	var (
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
 		cmdDoc              commands.CmdObjectDoc
-		cmdEdit             commands.CmdObjectEdit
-		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEnter            commands.CmdObjectEnter
 		cmdEval             commands.CmdObjectEval
 		cmdFreeze           commands.CmdObjectFreeze
@@ -133,12 +196,15 @@ func init() {
 
 	kind := ""
 	head := makeHead()
+
+	cmdEdit := newObjectEdit(kind)
+	cmdEdit.AddCommand(newObjectEditConfig(kind))
+
 	root.AddCommand(head)
+	head.AddCommand(cmdEdit)
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdDoc.Init(kind, head, &selectorFlag)
-	cmdEdit.Init(kind, head, &selectorFlag)
-	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdEnter.Init(kind, head, &selectorFlag)
 	cmdFreeze.Init(kind, head, &selectorFlag)

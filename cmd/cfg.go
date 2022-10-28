@@ -32,8 +32,6 @@ func init() {
 		cmdCreate           commands.CmdObjectCreate
 		cmdDoc              commands.CmdObjectDoc
 		cmdDelete           commands.CmdObjectDelete
-		cmdEdit             commands.CmdObjectEdit
-		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdGet              commands.CmdObjectGet
 		cmdLs               commands.CmdObjectLs
@@ -57,7 +55,11 @@ func init() {
 
 	kind := "cfg"
 	head := makeSubCfg()
+	cmdEdit := newObjectEdit(kind)
+	cmdEdit.AddCommand(newObjectEditConfig(kind))
+
 	root.AddCommand(head)
+	head.AddCommand(cmdEdit)
 
 	cmdAdd.Init(kind, head, &selectorFlag)
 	cmdChange.Init(kind, head, &selectorFlag)
@@ -65,8 +67,6 @@ func init() {
 	cmdDoc.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdDecode.Init(kind, head, &selectorFlag)
-	cmdEdit.Init(kind, head, &selectorFlag)
-	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdGet.Init(kind, head, &selectorFlag)
 	cmdKeys.Init(kind, head, &selectorFlag)
