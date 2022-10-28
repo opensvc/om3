@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/testhelper"
 )
@@ -87,6 +88,13 @@ func TestNew(t *testing.T) {
 			kind:      "ccfg",
 			output:    "cluster",
 			ok:        true,
+		},
+		"zero value": {
+			name:      "",
+			namespace: "",
+			kind:      "",
+			output:    "",
+			ok:        false,
 		},
 	}
 	for testName, test := range tests {
@@ -183,15 +191,22 @@ func TestParse(t *testing.T) {
 			kind:      "ccfg",
 			ok:        true,
 		},
+		"": {
+			name:      "",
+			namespace: "",
+			kind:      "",
+			ok:        false,
+		},
 	}
 	for input, test := range tests {
-		t.Logf("%s", input)
+		t.Logf("input: '%s'", input)
 		path, err := Parse(input)
 		switch test.ok {
 		case true:
 			assert.Nil(t, err)
 		case false:
 			assert.NotNil(t, err)
+			continue
 		}
 		assert.Equal(t, test.name, path.Name)
 		assert.Equal(t, test.namespace, path.Namespace)
@@ -447,4 +462,9 @@ func TestConfigFile(t *testing.T) {
 			require.Equal(t, test.cf, p.ConfigFile())
 		})
 	}
+}
+
+func TestString(t *testing.T) {
+	p := T{}
+	assert.Equal(t, "", p.String())
 }

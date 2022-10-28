@@ -17,9 +17,9 @@ type (
 
 const (
 	// Invalid is for invalid kinds
-	Invalid T = 1 << iota
+	Invalid T = 0
 	// Svc is the kind of objects containing app, containers, or volumes resources.
-	Svc
+	Svc T = 1 << iota
 	// Vol is the kind of objects containing fs, disk resources. Allocated from Pools.
 	Vol
 	// Cfg is the kind of objects containing unencrypted key/val pairs used to abstract Svc configurations
