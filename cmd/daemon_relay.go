@@ -46,7 +46,8 @@ func newDaemonRelayStatusCmd() *cobra.Command {
 			return daemonRelayStatus(relayName)
 		},
 	}
-	cmd.Flags().StringVar(&relayName, "relay", "", "the name of the relay to query. if not specified, all known relays are queried.")
+	flagSet := cmd.Flags()
+	addFlagRelay(flagSet, &relayName)
 	return cmd
 }
 

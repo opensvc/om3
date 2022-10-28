@@ -40,7 +40,6 @@ func init() {
 		cmdComplianceEnv             commands.CmdObjectComplianceEnv
 		cmdDelete                    commands.CmdObjectDelete
 		cmdDoc                       commands.CmdObjectDoc
-		cmdEditConfig                commands.CmdObjectEditConfig
 		cmdEval                      commands.CmdObjectEval
 		cmdEnter                     commands.CmdObjectEnter
 		cmdFreeze                    commands.CmdObjectFreeze
@@ -77,6 +76,11 @@ func init() {
 	kind := "svc"
 	if head := makeSubSVC(); head != nil {
 		root.AddCommand(head)
+		cmdEdit := newObjectEdit(kind)
+		cmdEdit.AddCommand(newObjectEditConfig(kind))
+
+		head.AddCommand(cmdEdit)
+
 		cmdAbort.Init(kind, head, &selectorFlag)
 		cmdClear.Init(kind, head, &selectorFlag)
 		cmdCreate.Init(kind, head, &selectorFlag)
@@ -134,11 +138,6 @@ func init() {
 				cmdComplianceListModuleset.Init(kind, subsub, &selectorFlag)
 				cmdComplianceListRuleset.Init(kind, subsub, &selectorFlag)
 			}
-		}
-
-		if sub := makeSubEdit(); sub != nil {
-			head.AddCommand(sub)
-			cmdEditConfig.Init(kind, sub, &selectorFlag)
 		}
 
 		if sub := makeSubPrint(); sub != nil {

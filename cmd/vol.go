@@ -27,7 +27,6 @@ func init() {
 		cmdCreate           commands.CmdObjectCreate
 		cmdDelete           commands.CmdObjectDelete
 		cmdDoc              commands.CmdObjectDoc
-		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdFreeze           commands.CmdObjectFreeze
 		cmdGet              commands.CmdObjectGet
@@ -62,7 +61,11 @@ func init() {
 
 	kind := "vol"
 	head := makeSubVol()
+	cmdEdit := newObjectEdit(kind)
+	cmdEdit.AddCommand(newObjectEditConfig(kind))
+
 	root.AddCommand(head)
+	head.AddCommand(cmdEdit)
 
 	cmdAbort.Init(kind, head, &selectorFlag)
 	cmdClear.Init(kind, head, &selectorFlag)
@@ -92,10 +95,6 @@ func init() {
 	cmdUnprovision.Init(kind, head, &selectorFlag)
 	cmdUnset.Init(kind, head, &selectorFlag)
 
-	if sub := makeSubEdit(); sub != nil {
-		head.AddCommand(sub)
-		cmdEditConfig.Init(kind, sub, &selectorFlag)
-	}
 	if sub := makeSubPrint(); sub != nil {
 		head.AddCommand(sub)
 		cmdPrintConfig.Init(kind, sub, &selectorFlag)

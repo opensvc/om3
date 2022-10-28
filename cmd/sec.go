@@ -32,8 +32,6 @@ func init() {
 		cmdCreate           commands.CmdObjectCreate
 		cmdDoc              commands.CmdObjectDoc
 		cmdDelete           commands.CmdObjectDelete
-		cmdEdit             commands.CmdObjectEdit
-		cmdEditConfig       commands.CmdObjectEditConfig
 		cmdEval             commands.CmdObjectEval
 		cmdGet              commands.CmdObjectGet
 		cmdLs               commands.CmdObjectLs
@@ -60,15 +58,18 @@ func init() {
 
 	kind := "sec"
 	head := makeSubSec()
+	cmdEdit := newObjectEdit(kind)
+	cmdEdit.AddCommand(newObjectEditConfig(kind))
+
 	root.AddCommand(head)
+	head.AddCommand(cmdEdit)
+
 	cmdAdd.Init(kind, head, &selectorFlag)
 	cmdChange.Init(kind, head, &selectorFlag)
 	cmdCreate.Init(kind, head, &selectorFlag)
 	cmdDoc.Init(kind, head, &selectorFlag)
 	cmdDelete.Init(kind, head, &selectorFlag)
 	cmdDecode.Init(kind, head, &selectorFlag)
-	cmdEdit.Init(kind, head, &selectorFlag)
-	cmdEditConfig.Init(kind, cmdEdit.Command, &selectorFlag)
 	cmdEval.Init(kind, head, &selectorFlag)
 	cmdFullPEM.Init(kind, head, &selectorFlag)
 	cmdPKCS.Init(kind, head, &selectorFlag)
