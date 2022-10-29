@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ import (
 
 type (
 	tx struct {
+		sync.WaitGroup
 		ctx     context.Context
 		id      string
 		nodes   []string
@@ -41,6 +43,7 @@ func (t *tx) Id() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
+	t.log.Debug().Msg("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -48,6 +51,8 @@ func (t *tx) Stop() error {
 			Nodename: node,
 		}
 	}
+	t.Wait()
+	t.log.Debug().Msg("wait done")
 	return nil
 }
 
@@ -58,8 +63,11 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.cancel = cancel
 	t.cmdC = cmdC
 
+	t.Add(1)
 	go func() {
+		defer t.Done()
 		t.log.Info().Msg("starting")
+		defer t.log.Info().Msg("stopped")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -72,7 +80,6 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		for {
 			select {
 			case <-ctx.Done():
-				t.log.Info().Msg("stopped")
 				return
 			case b := <-msgC:
 				go t.send(b)

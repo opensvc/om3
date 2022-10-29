@@ -23,6 +23,7 @@ import (
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -187,6 +188,13 @@ func (t *T) stopHbRid(rid string) error {
 	return nil
 }
 
+// rescanHb updates the running heartbeats from existing configuration
+//
+// To avoid hold resources, the updates are done in this order:
+// 1- stop the running heartbeats that don't anymore exist in configuration
+// 2- stop the running heartbeats where configuration has been changed
+// 3- start the configuration changed stopped heartbeats
+// 4- start the new configuration heartbeats
 func (t *T) rescanHb(ctx context.Context) error {
 	errs := make([]string, 0)
 	ridHb, err := t.getHbConfigured(ctx)
@@ -202,27 +210,40 @@ func (t *T) rescanHb(ctx context.Context) error {
 		if _, ok := ridSignatureNew[rid]; ok {
 			continue
 		}
-		// deleted hb
+		t.log.Info().Msgf("heartbeat config deleted %s => stopping", rid)
 		if err := t.stopHbRid(rid); err == nil {
 			delete(t.ridSignature, rid)
 		} else {
 			errs = append(errs, err.Error())
 		}
 	}
+	// Stop first to release connexion holders
+	stoppedRids := make(map[string]string)
 	for rid, newSig := range ridSignatureNew {
-		if sig, ok := t.ridSignature[rid]; !ok {
-			// new hb
+		if sig, ok := t.ridSignature[rid]; ok {
+			if sig != newSig {
+				t.log.Info().Msgf("heartbeat config changed %s => stopping", rid)
+				if err := t.stopHbRid(rid); err != nil {
+					errs = append(errs, err.Error())
+					continue
+				}
+				stoppedRids[rid] = newSig
+			}
+		}
+	}
+	for rid, newSig := range stoppedRids {
+		t.log.Info().Msgf("heartbeat config changed %s => starting (from stoppped)", rid)
+		if err := t.startHb(ridHb[rid]); err != nil {
+			errs = append(errs, err.Error())
+		}
+		t.ridSignature[rid] = newSig
+	}
+	for rid, newSig := range ridSignatureNew {
+		if _, ok := t.ridSignature[rid]; !ok {
+			t.log.Info().Msgf("heartbeat config new %s => starting", rid)
 			if err := t.startHb(ridHb[rid]); err != nil {
 				errs = append(errs, err.Error())
 				continue
-			}
-		} else if sig != newSig {
-			// reconfigured hb
-			if err := t.stopHbRid(rid); err != nil {
-				errs = append(errs, err.Error())
-				continue
-			} else if err := t.startHb(ridHb[rid]); err != nil {
-				errs = append(errs, err.Error())
 			}
 		}
 		t.ridSignature[rid] = newSig
@@ -310,11 +331,16 @@ func (t *T) janitorHb(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case i := <-janitorC:
-				switch (*i).(type) {
+				switch msg := (*i).(type) {
 				case msgbus.CfgUpdated:
+					if msg.Node != hostname.Hostname() {
+						continue
+					}
+					t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
 					if err := t.rescanHb(ctx); err != nil {
 						t.log.Error().Err(err).Msg("rescan after cluster config changed")
 					}
+					t.log.Info().Msg("rescan heartbeat configurations done")
 				}
 			}
 		}

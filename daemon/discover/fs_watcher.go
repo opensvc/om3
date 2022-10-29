@@ -44,7 +44,6 @@ func dirRemoved(event fsnotify.Event) bool {
 		return false
 	}
 	if stat, err := os.Stat(event.Name); err != nil {
-		log.Error().Err(err).Msgf("stat %s", event.Name)
 		return false
 	} else if !stat.IsDir() {
 		return false
@@ -73,7 +72,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 		cancel()
 		wg.Wait()
 	}
-	nodeConf := filepath.Join(rawconfig.Paths.Etc, "node.conf")
+	nodeConf := rawconfig.NodeConfigFile()
 
 	//
 	// Add directory watch for head and its subdirs, and for .conf files

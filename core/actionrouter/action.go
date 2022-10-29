@@ -150,6 +150,7 @@ func Do(t Actioner) error {
 		m := monitor.New()
 		m.SetColor(o.Color)
 		m.SetFormat(o.Format)
+		m.SetSelector(o.ObjectSelector)
 		cli, e := client.New(client.WithURL(o.Server))
 		if e != nil {
 			fmt.Fprintln(os.Stderr, e)

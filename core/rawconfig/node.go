@@ -66,7 +66,9 @@ type (
 )
 
 func init() {
+	running := make(chan bool)
 	go func() {
+		running <- true
 		for {
 			select {
 			case respChan := <-clusterSectionCmd:
@@ -79,7 +81,7 @@ func init() {
 			}
 		}
 	}()
-
+	<-running
 	Load(nil)
 }
 

@@ -25,6 +25,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	m.SetColor(t.Color)
 	m.SetFormat(t.Format)
 	m.SetSections([]string{"objects"})
+	m.SetSelector(mergedSelector)
 
 	if t.Watch {
 		evGetter := cli.NewGetEvents().SetSelector(mergedSelector)
