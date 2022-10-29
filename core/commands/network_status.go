@@ -2,15 +2,11 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
@@ -18,33 +14,14 @@ import (
 )
 
 type (
-	// NetworkStatus is the cobra flag set of the command.
-	NetworkStatus struct {
+	CmdNetworkStatus struct {
 		OptsGlobal
-		Verbose bool   `flag:"networkstatusverbose"`
-		Name    string `flag:"networkstatusname"`
+		Verbose bool
+		Name    string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *NetworkStatus) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *NetworkStatus) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster networks usage",
-		Aliases: []string{"statu", "stat", "sta", "st"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *NetworkStatus) run() {
+func (t *CmdNetworkStatus) Run() error {
 	var (
 		err  error
 		data network.StatusList
@@ -55,8 +32,7 @@ func (t *NetworkStatus) run() {
 		data, err = t.extractLocal()
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		return err
 	}
 	output.Renderer{
 		Format:   t.Format,
@@ -67,9 +43,10 @@ func (t *NetworkStatus) run() {
 			return data.Render(t.Verbose)
 		},
 	}.Print()
+	return nil
 }
 
-func (t *NetworkStatus) extractLocal() (network.StatusList, error) {
+func (t *CmdNetworkStatus) extractLocal() (network.StatusList, error) {
 	n, err := object.NewNode()
 	if err != nil {
 		return nil, err
@@ -77,7 +54,7 @@ func (t *NetworkStatus) extractLocal() (network.StatusList, error) {
 	return network.ShowNetworksByName(n, t.Name), nil
 }
 
-func (t *NetworkStatus) extractDaemon() (network.StatusList, error) {
+func (t *CmdNetworkStatus) extractDaemon() (network.StatusList, error) {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return nil, err

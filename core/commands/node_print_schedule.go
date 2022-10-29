@@ -6,11 +6,9 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -18,31 +16,12 @@ import (
 )
 
 type (
-	// NodePrintSchedule is the cobra flag set of the print schedule command.
-	NodePrintSchedule struct {
+	CmdNodePrintSchedule struct {
 		OptsGlobal
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *NodePrintSchedule) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *NodePrintSchedule) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "schedule",
-		Short:   "Print selected objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *NodePrintSchedule) extract(c *client.T) schedule.Table {
+func (t *CmdNodePrintSchedule) extract(c *client.T) schedule.Table {
 	if t.Local {
 		return t.extractLocal()
 	}
@@ -56,7 +35,7 @@ func (t *NodePrintSchedule) extract(c *client.T) schedule.Table {
 	return t.extractLocal()
 }
 
-func (t *NodePrintSchedule) extractLocal() schedule.Table {
+func (t *CmdNodePrintSchedule) extractLocal() schedule.Table {
 	data := schedule.NewTable()
 	obj, err := object.NewNode()
 	if err != nil {
@@ -68,7 +47,7 @@ func (t *NodePrintSchedule) extractLocal() schedule.Table {
 	return data
 }
 
-func (t *NodePrintSchedule) extractFromDaemon(c *client.T) (schedule.Table, error) {
+func (t *CmdNodePrintSchedule) extractFromDaemon(c *client.T) (schedule.Table, error) {
 	data := schedule.NewTable()
 	req := c.NewGetSchedules()
 	b, err := req.Do()
@@ -83,11 +62,10 @@ func (t *NodePrintSchedule) extractFromDaemon(c *client.T) (schedule.Table, erro
 	return data, nil
 }
 
-func (t *NodePrintSchedule) run() {
+func (t *CmdNodePrintSchedule) Run() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	data := t.extract(c)
 
@@ -100,4 +78,5 @@ func (t *NodePrintSchedule) run() {
 			return data.Render()
 		},
 	}.Print()
+	return nil
 }

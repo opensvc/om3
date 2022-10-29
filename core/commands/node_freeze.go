@@ -5,31 +5,26 @@ import (
 	"opensvc.com/opensvc/core/object"
 )
 
-type (
-	CmdNodeDelete struct {
-		OptsGlobal
-		RID string
-	}
-)
+type CmdNodeFreeze struct {
+	OptsGlobal
+	OptsAsync
+}
 
-func (t *CmdNodeDelete) Run() error {
+func (t *CmdNodeFreeze) Run() error {
 	return nodeaction.New(
-		nodeaction.LocalFirst(),
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithRemoteAction("freeze"),
+		nodeaction.WithAsyncTarget("frozen"),
+		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Format),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("delete"),
-		nodeaction.WithRemoteOptions(map[string]interface{}{
-			"rid": t.RID,
-		}),
+		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
 			}
-			return nil, n.DeleteSection(t.RID)
+			return nil, n.Freeze()
 		}),
 	).Do()
 }

@@ -31,10 +31,8 @@ func New(opts ...funcopt.O) *T {
 	return t
 }
 
-//
 // WithRemoteNodes expands into a selection of nodes to execute the
 // action on.
-//
 func WithRemoteNodes(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -43,10 +41,8 @@ func WithRemoteNodes(s string) funcopt.O {
 	})
 }
 
-//
 // WithLocal routes the action to the CRM instead of remoting it via
 // orchestration or remote execution.
-//
 func WithLocal(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -55,10 +51,8 @@ func WithLocal(v bool) funcopt.O {
 	})
 }
 
-//
 // LocalFirst makes actions not explicitely Local nor remoted
 // via NodeSelector be treated as local (CRM level).
-//
 func LocalFirst() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -67,10 +61,8 @@ func LocalFirst() funcopt.O {
 	})
 }
 
-//
 // WithRemoteAction is the name of the action as passed to the command line
 // interface.
-//
 func WithRemoteAction(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -79,10 +71,8 @@ func WithRemoteAction(s string) funcopt.O {
 	})
 }
 
-//
 // WithRemoteOptions is the dataset submited in the POST /{object|node}_action
 // api handler to execute the action remotely.
-//
 func WithRemoteOptions(m map[string]interface{}) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -91,10 +81,8 @@ func WithRemoteOptions(m map[string]interface{}) funcopt.O {
 	})
 }
 
-//
 // WithAsyncTarget is the node or object state the daemons should orchestrate
 // to reach.
-//
 func WithAsyncTarget(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -103,11 +91,9 @@ func WithAsyncTarget(s string) funcopt.O {
 	})
 }
 
-//
 // WithAsyncWatch runs a event-driven monitor on the selected objects after
 // setting a new target. So the operator can see the orchestration
 // unfolding.
-//
 func WithAsyncWatch(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -116,13 +102,11 @@ func WithAsyncWatch(v bool) funcopt.O {
 	})
 }
 
-//
 // WithFormat controls the output data format.
 // <empty>   => human readable format
 // json      => json machine readable format
 // flat      => flattened json (<k>=<v>) machine readable format
 // flat_json => same as flat (backward compat)
-//
 func WithFormat(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -131,12 +115,10 @@ func WithFormat(s string) funcopt.O {
 	})
 }
 
-//
 // WithColor activates the colorization of outputs
 // auto => yes if os.Stdout is a tty
 // yes
 // no
-//
 func WithColor(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -145,9 +127,7 @@ func WithColor(s string) funcopt.O {
 	})
 }
 
-//
 // WithServer sets the api url.
-//
 func WithServer(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -238,28 +218,30 @@ func (t T) DoAsync() {
 
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
-func (t T) DoRemote() {
+func (t T) DoRemote() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
-		os.Exit(1)
+		return err
 	}
 	req := c.NewPostNodeAction()
 	req.NodeSelector = t.NodeSelector
 	req.Action = t.Action
 	req.Options = t.PostFlags
 	b, err := req.Do()
+	if err != nil {
+		return err
+	}
 	data := &struct {
 		Err    string `json:"err"`
 		Out    string `json:"out"`
 		Status int    `json:"status"`
 	}{}
 	if err := json.Unmarshal(b, data); err != nil {
-		log.Error().Err(err).Msg("")
-		return
+		return err
 	}
 	fmt.Fprintf(os.Stdout, data.Out)
 	fmt.Fprintf(os.Stderr, data.Err)
+	return nil
 }
 
 func (t T) Do() error {

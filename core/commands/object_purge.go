@@ -3,48 +3,28 @@ package commands
 import (
 	"context"
 
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
 )
 
 type (
-	// CmdObjectPurge is the cobra flag set of the start command.
 	CmdObjectPurge struct {
 		OptsGlobal
 		OptsAsync
 		OptsLock
 		OptsResourceSelector
-		OptDryRun
 		OptTo
-		OptForce
-		OptLeader
+		DryRun bool
+		Force  bool
+		Leader bool
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectPurge) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectPurge) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "purge",
-		Short: "unprovision and delete",
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectPurge) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	objectaction.New(
+func (t *CmdObjectPurge) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),

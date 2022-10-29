@@ -16,10 +16,9 @@ import (
 )
 
 type (
-	// CmdObjectEditKey is the cobra flag set of the print config command.
 	CmdObjectEditKey struct {
 		OptsGlobal
-		Key string `flag:"key"`
+		Key string
 	}
 )
 

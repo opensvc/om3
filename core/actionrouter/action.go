@@ -106,7 +106,7 @@ type (
 
 	// Actioner is the interface implemented by nodeaction.T and objectaction.T
 	Actioner interface {
-		DoRemote()
+		DoRemote() error
 		DoLocal() error
 		DoAsync()
 		Options() T

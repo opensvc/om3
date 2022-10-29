@@ -1,70 +1,42 @@
 package commands
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/core/object"
 )
 
 type (
-	// NetworkSetup is the cobra flag set of the command.
-	NetworkSetup struct {
+	CmdNetworkSetup struct {
 		OptsGlobal
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *NetworkSetup) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *NetworkSetup) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "setup",
-		Short:   "configure the cluster networks on the node",
-		Aliases: []string{"set"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *NetworkSetup) run() {
+func (t *CmdNetworkSetup) Run() error {
 	if t.Local || !clientcontext.IsSet() {
-		t.doLocal()
+		return t.doLocal()
 	} else {
-		t.doDaemon()
+		return t.doDaemon()
 	}
 }
 
-func (t *NetworkSetup) doLocal() {
+func (t *CmdNetworkSetup) doLocal() error {
 	n, err := object.NewNode()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
-	if err := network.Setup(n); err != nil {
-		os.Exit(1)
-	}
+	return network.Setup(n)
 }
 
-func (t *NetworkSetup) doDaemon() {
+func (t *CmdNetworkSetup) doDaemon() error {
 	var (
 		c   *client.T
 		err error
 	)
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
-	panic("TODO")
-	fmt.Println(c)
+	return errors.Errorf("TODO", c)
 }

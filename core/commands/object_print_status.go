@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
@@ -24,43 +22,12 @@ import (
 )
 
 type (
-	// CmdObjectPrintStatus is the cobra flag set of the status command.
 	CmdObjectPrintStatus struct {
 		OptsGlobal
 		OptsLock
-		Refresh bool `flag:"refresh"`
+		Refresh bool
 	}
 )
-
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectPrintStatus) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectPrintStatus) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "status",
-		Aliases: []string{"statu", "stat", "sta", "st"},
-		Short:   "Print selected service and instance status",
-		Long: `Resources Flags:
-
-(1) R   Running,           . Not Running
-(2) M   Monitored,         . Not Monitored
-(3) D   Disabled,          . Enabled
-(4) O   Optional,          . Not Optional
-(5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned
-(7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
-
-`,
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
 
 func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Status, error) {
 	if t.Refresh || t.Local {
@@ -162,16 +129,15 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	return data, nil
 }
 
-func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
+func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	var (
 		data []object.Status
 		err  error
 	)
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
 	sel := objectselector.NewSelection(
 		mergedSelector,
@@ -179,13 +145,11 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "expand selection: %s\n", err)
-		os.Exit(1)
+		return errors.Wrap(err, "expand selection")
 	}
 	data, err = t.extract(mergedSelector, c)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "extract data: %s\n", err)
-		os.Exit(1)
+		return errors.Wrap(err, "extract data")
 	}
 
 	output.Renderer{
@@ -204,4 +168,5 @@ func (t *CmdObjectPrintStatus) run(selector *string, kind string) {
 		},
 		Colorize: rawconfig.Colorize,
 	}.Print()
+	return nil
 }

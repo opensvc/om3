@@ -1,44 +1,23 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
 )
 
 type (
-	// CmdKeystoreChange is the cobra flag set of the decode command.
 	CmdKeystoreChange struct {
 		OptsGlobal
-		Key   string `flag:"key"`
-		From  string `flag:"from"`
-		Value string `flag:"value"`
+		Key   string
+		From  string
+		Value string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdKeystoreChange) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-	cmd.MarkFlagsMutuallyExclusive("from", "value")
-}
-
-func (t *CmdKeystoreChange) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "change",
-		Short: "change existing keys value",
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdKeystoreChange) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	objectaction.New(
+func (t *CmdKeystoreChange) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),

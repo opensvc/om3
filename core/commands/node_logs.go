@@ -7,10 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/spf13/cobra"
-
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/slog"
@@ -19,33 +16,14 @@ import (
 )
 
 type (
-	// NodeLogs is the cobra flag set of the logs command.
-	NodeLogs struct {
+	CmdNodeLogs struct {
 		OptsGlobal
-		Follow bool   `flag:"logs-follow"`
-		SID    string `flag:"logs-sid"`
+		Follow bool
+		SID    string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *NodeLogs) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *NodeLogs) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "logs",
-		Aliases: []string{"logs", "log", "lo"},
-		Short:   "filter and format logs",
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *NodeLogs) backlog(node string) (slog.Events, error) {
+func (t *CmdNodeLogs) backlog(node string) (slog.Events, error) {
 	c, err := client.New(
 		client.WithURL(node),
 		client.WithUsername(hostname.Hostname()),
@@ -66,7 +44,7 @@ func (t *NodeLogs) backlog(node string) (slog.Events, error) {
 	return events, nil
 }
 
-func (t *NodeLogs) stream(node string) {
+func (t *CmdNodeLogs) stream(node string) {
 	c, err := client.New(
 		client.WithURL(node),
 		client.WithUsername(hostname.Hostname()),
@@ -88,7 +66,7 @@ func (t *NodeLogs) stream(node string) {
 	}
 }
 
-func (t *NodeLogs) remote() error {
+func (t *CmdNodeLogs) remote() error {
 	sel := nodeselector.New(
 		t.NodeSelector,
 		nodeselector.WithServer(t.Server),
@@ -122,7 +100,7 @@ func (t *NodeLogs) remote() error {
 	return nil
 }
 
-func (t NodeLogs) Filters() map[string]any {
+func (t CmdNodeLogs) Filters() map[string]any {
 	filters := make(map[string]any)
 	if t.SID != "" {
 		filters["sid"] = t.SID
@@ -130,7 +108,7 @@ func (t NodeLogs) Filters() map[string]any {
 	return filters
 }
 
-func (t *NodeLogs) local() error {
+func (t *CmdNodeLogs) local() error {
 	filters := t.Filters()
 	if events, err := slog.GetEventsFromNode(filters); err == nil {
 		events.Render(t.Format)
@@ -149,7 +127,7 @@ func (t *NodeLogs) local() error {
 	return nil
 }
 
-func (t *NodeLogs) run() {
+func (t *CmdNodeLogs) Run() error {
 	var err error
 	render.SetColor(t.Color)
 	if t.NodeSelector == "" {
@@ -160,8 +138,5 @@ func (t *NodeLogs) run() {
 	} else {
 		err = t.remote()
 	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	return err
 }

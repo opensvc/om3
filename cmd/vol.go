@@ -1,121 +1,75 @@
 package cmd
 
-import (
-	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/commands"
-)
-
-func makeSubVol() *cobra.Command {
-	return &cobra.Command{
-		Use:   "vol",
-		Short: "Manage volumes",
-		Long: `A volume is a persistent data provider.
-
-A volume is made of disk, fs and sync resources. It is created by a pool,
-to satisfy a demand from a volume resource in a service.
-
-Volumes and their subdirectories can be mounted inside containers.
-
-A volume can host cfg and sec keys projections.`,
-	}
-}
-
 func init() {
-	var (
-		cmdAbort            commands.CmdObjectAbort
-		cmdClear            commands.CmdObjectClear
-		cmdCreate           commands.CmdObjectCreate
-		cmdDelete           commands.CmdObjectDelete
-		cmdDoc              commands.CmdObjectDoc
-		cmdEval             commands.CmdObjectEval
-		cmdFreeze           commands.CmdObjectFreeze
-		cmdGet              commands.CmdObjectGet
-		cmdLs               commands.CmdObjectLs
-		cmdLogs             commands.CmdObjectLogs
-		cmdMonitor          commands.CmdObjectMonitor
-		cmdPrintConfig      commands.CmdObjectPrintConfig
-		cmdPrintConfigMtime commands.CmdObjectPrintConfigMtime
-		cmdPrintDevices     commands.CmdObjectPrintDevices
-		cmdPrintStatus      commands.CmdObjectPrintStatus
-		cmdPrintSchedule    commands.CmdObjectPrintSchedule
-		cmdProvision        commands.CmdObjectProvision
-		cmdPRStart          commands.CmdObjectPRStart
-		cmdPRStop           commands.CmdObjectPRStop
-		cmdPurge            commands.CmdObjectPurge
-		cmdPushResInfo      commands.CmdObjectPushResInfo
-		cmdRestart          commands.CmdObjectRestart
-		cmdRun              commands.CmdObjectRun
-		cmdSet              commands.CmdObjectSet
-		cmdSetProvisioned   commands.CmdObjectSetProvisioned
-		cmdSetUnprovisioned commands.CmdObjectSetUnprovisioned
-		cmdStart            commands.CmdObjectStart
-		cmdStatus           commands.CmdObjectStatus
-		cmdStop             commands.CmdObjectStop
-		cmdSyncResync       commands.CmdObjectSyncResync
-		cmdThaw             commands.CmdObjectThaw
-		cmdUnfreeze         commands.CmdObjectUnfreeze
-		cmdUnprovision      commands.CmdObjectUnprovision
-		cmdUnset            commands.CmdObjectUnset
-		cmdValidateConfig   commands.CmdObjectValidateConfig
-	)
-
 	kind := "vol"
-	head := makeSubVol()
-	cmdEdit := newObjectEdit(kind)
-	cmdEdit.AddCommand(newObjectEditConfig(kind))
 
-	root.AddCommand(head)
-	head.AddCommand(cmdEdit)
+	cmdObject := newCmdVol()
+	cmdObjectEdit := newCmdObjectEdit(kind)
+	cmdObjectSet := newCmdObjectSet(kind)
+	cmdObjectPrint := newCmdObjectPrint(kind)
+	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
+	cmdObjectPush := newCmdObjectPush(kind)
+	cmdObjectSync := newCmdObjectSync(kind)
+	cmdObjectValidate := newCmdObjectValidate(kind)
 
-	cmdAbort.Init(kind, head, &selectorFlag)
-	cmdClear.Init(kind, head, &selectorFlag)
-	cmdCreate.Init(kind, head, &selectorFlag)
-	cmdDoc.Init(kind, head, &selectorFlag)
-	cmdDelete.Init(kind, head, &selectorFlag)
-	cmdEval.Init(kind, head, &selectorFlag)
-	cmdFreeze.Init(kind, head, &selectorFlag)
-	cmdGet.Init(kind, head, &selectorFlag)
-	cmdLs.Init(kind, head, &selectorFlag)
-	cmdLogs.Init(kind, head, &selectorFlag)
-	cmdMonitor.Init(kind, head, &selectorFlag)
-	cmdProvision.Init(kind, head, &selectorFlag)
-	cmdPRStart.Init(kind, head, &selectorFlag)
-	cmdPRStop.Init(kind, head, &selectorFlag)
-	cmdPurge.Init(kind, head, &selectorFlag)
-	cmdRestart.Init(kind, head, &selectorFlag)
-	cmdRun.Init(kind, head, &selectorFlag)
-	cmdSet.Init(kind, head, &selectorFlag)
-	cmdSetProvisioned.Init(kind, cmdSet.Command, &selectorFlag)
-	cmdSetUnprovisioned.Init(kind, cmdSet.Command, &selectorFlag)
-	cmdStart.Init(kind, head, &selectorFlag)
-	cmdStatus.Init(kind, head, &selectorFlag)
-	cmdStop.Init(kind, head, &selectorFlag)
-	cmdThaw.Init(kind, head, &selectorFlag)
-	cmdUnfreeze.Init(kind, head, &selectorFlag)
-	cmdUnprovision.Init(kind, head, &selectorFlag)
-	cmdUnset.Init(kind, head, &selectorFlag)
-
-	if sub := makeSubPrint(); sub != nil {
-		head.AddCommand(sub)
-		cmdPrintConfig.Init(kind, sub, &selectorFlag)
-		cmdPrintConfigMtime.Init(kind, cmdPrintConfig.Command, &selectorFlag)
-		cmdPrintDevices.Init(kind, sub, &selectorFlag)
-		cmdPrintStatus.Init(kind, sub, &selectorFlag)
-		cmdPrintSchedule.Init(kind, sub, &selectorFlag)
-	}
-
-	if sub := makeSubPush(); sub != nil {
-		head.AddCommand(sub)
-		cmdPushResInfo.Init(kind, sub, &selectorFlag)
-	}
-
-	if sub := makeSubSync(); sub != nil {
-		head.AddCommand(sub)
-		cmdSyncResync.Init(kind, sub, &selectorFlag)
-	}
-
-	if sub := makeSubValidate(); sub != nil {
-		head.AddCommand(sub)
-		cmdValidateConfig.Init(kind, sub, &selectorFlag)
-	}
+	root.AddCommand(
+		cmdObject,
+	)
+	cmdObject.AddCommand(
+		cmdObjectEdit,
+		cmdObjectPrint,
+		cmdObjectPush,
+		cmdObjectSet,
+		cmdObjectSync,
+		newCmdObjectAbort(kind),
+		newCmdObjectClear(kind),
+		newCmdObjectCreate(kind),
+		newCmdObjectDelete(kind),
+		newCmdObjectDoc(kind),
+		newCmdObjectEval(kind),
+		newCmdObjectEnter(kind),
+		newCmdObjectFreeze(kind),
+		newCmdObjectGet(kind),
+		newCmdObjectLogs(kind),
+		newCmdObjectLs(kind),
+		newCmdObjectMonitor(kind),
+		newCmdObjectPurge(kind),
+		newCmdObjectProvision(kind),
+		newCmdObjectPRStart(kind),
+		newCmdObjectPRStop(kind),
+		newCmdObjectRestart(kind),
+		newCmdObjectRun(kind),
+		newCmdObjectStart(kind),
+		newCmdObjectStatus(kind),
+		newCmdObjectStop(kind),
+		newCmdObjectThaw(kind),
+		newCmdObjectUnfreeze(kind),
+		newCmdObjectUnprovision(kind),
+		newCmdObjectUnset(kind),
+	)
+	cmdObjectEdit.AddCommand(
+		newCmdObjectEditConfig(kind),
+	)
+	cmdObjectSet.AddCommand(
+		newCmdObjectSetProvisioned(kind),
+		newCmdObjectSetUnprovisioned(kind),
+	)
+	cmdObjectPrint.AddCommand(
+		cmdObjectPrintConfig,
+		newCmdObjectPrintDevices(kind),
+		newCmdObjectPrintSchedule(kind),
+		newCmdObjectPrintStatus(kind),
+	)
+	cmdObjectPrintConfig.AddCommand(
+		newCmdObjectPrintConfigMtime(kind),
+	)
+	cmdObjectPush.AddCommand(
+		newCmdObjectPushResInfo(kind),
+	)
+	cmdObjectSync.AddCommand(
+		newCmdObjectSyncResync(kind),
+	)
+	cmdObjectValidate.AddCommand(
+		newCmdObjectValidateConfig(kind),
+	)
 }

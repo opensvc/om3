@@ -2,15 +2,11 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/pool"
@@ -18,33 +14,14 @@ import (
 )
 
 type (
-	// PoolStatus is the cobra flag set of the command.
-	PoolStatus struct {
+	CmdPoolStatus struct {
 		OptsGlobal
-		Verbose bool   `flag:"poolstatusverbose"`
-		Name    string `flag:"poolstatusname"`
+		Verbose bool
+		Name    string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *PoolStatus) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *PoolStatus) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster pools usage",
-		Aliases: []string{"statu", "stat", "sta", "st"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *PoolStatus) run() {
+func (t *CmdPoolStatus) Run() error {
 	var (
 		err  error
 		data pool.StatusList
@@ -55,8 +32,7 @@ func (t *PoolStatus) run() {
 		data, err = t.extractLocal()
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		return err
 	}
 	output.Renderer{
 		Format:   t.Format,
@@ -67,9 +43,10 @@ func (t *PoolStatus) run() {
 			return data.Render(t.Verbose)
 		},
 	}.Print()
+	return nil
 }
 
-func (t *PoolStatus) extractLocal() (pool.StatusList, error) {
+func (t *CmdPoolStatus) extractLocal() (pool.StatusList, error) {
 	n, err := object.NewNode()
 	if err != nil {
 		return nil, err
@@ -82,7 +59,7 @@ func (t *PoolStatus) extractLocal() (pool.StatusList, error) {
 	}
 }
 
-func (t *PoolStatus) extractDaemon() (pool.StatusList, error) {
+func (t *CmdPoolStatus) extractDaemon() (pool.StatusList, error) {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return nil, err

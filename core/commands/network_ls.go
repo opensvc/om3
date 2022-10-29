@@ -1,14 +1,9 @@
 package commands
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
-
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
@@ -16,35 +11,20 @@ import (
 )
 
 type (
-	// NetworkLs is the cobra flag set of the command.
-	NetworkLs struct {
+	CmdNetworkLs struct {
 		OptsGlobal
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *NetworkLs) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *NetworkLs) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "ls",
-		Short: "list the cluster networks",
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *NetworkLs) run() {
-	var data []string
+func (t *CmdNetworkLs) Run() error {
+	var (
+		data []string
+		err  error
+	)
 	if t.Local || !clientcontext.IsSet() {
-		data = t.extractLocal()
+		data, err = t.extractLocal()
 	} else {
-		data = t.extractDaemon()
+		data, err = t.extractDaemon()
 	}
 	output.Renderer{
 		Format: t.Format,
@@ -59,27 +39,24 @@ func (t *NetworkLs) run() {
 		},
 		Colorize: rawconfig.Colorize,
 	}.Print()
+	return err
 }
 
-func (t *NetworkLs) extractLocal() []string {
+func (t *CmdNetworkLs) extractLocal() ([]string, error) {
 	n, err := object.NewNode()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return []string{}, err
 	}
-	return network.List(n)
+	return network.List(n), nil
 }
 
-func (t *NetworkLs) extractDaemon() []string {
+func (t *CmdNetworkLs) extractDaemon() ([]string, error) {
 	var (
 		c   *client.T
 		err error
 	)
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return []string{}, err
 	}
-	panic("TODO")
-	fmt.Println(c)
-	return []string{}
+	return []string{}, errors.Errorf("TODO", c)
 }

@@ -1,9 +1,6 @@
 package entrypoints
 
 import (
-	"fmt"
-	"os"
-
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/output"
@@ -18,25 +15,24 @@ type Events struct {
 }
 
 // Do renders the event stream
-func (t Events) Do() {
+func (t Events) Do() error {
 	var (
 		err error
 		c   *client.T
 	)
 	c, err = client.New(client.WithURL(t.Server))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		return err
 	}
 	streamer := c.NewGetEvents().SetRelatives(false)
 	events, err := streamer.Do()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
 	for m := range events {
 		t.doOne(m)
 	}
+	return nil
 }
 
 func (t Events) doOne(e event.Event) {

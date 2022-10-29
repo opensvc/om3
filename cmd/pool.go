@@ -2,16 +2,15 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/commands"
 )
 
 var (
-	poolCmd = &cobra.Command{
+	cmdPool = &cobra.Command{
 		Use:   "pool",
 		Short: "Manage storage pools",
 		Long:  ` A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.`,
 	}
-	poolCreateCmd = &cobra.Command{
+	cmdPoolCreate = &cobra.Command{
 		Use:     "create",
 		Short:   "create a pool object",
 		Aliases: []string{"creat", "crea", "cre", "cr"},
@@ -19,13 +18,12 @@ var (
 )
 
 func init() {
-	var (
-		cmdPoolLs     commands.PoolLs
-		cmdPoolStatus commands.PoolStatus
+	root.AddCommand(
+		cmdPool,
 	)
-	root.AddCommand(poolCmd)
-	poolCmd.AddCommand(poolCreateCmd)
-
-	cmdPoolLs.Init(poolCmd)
-	cmdPoolStatus.Init(poolCmd)
+	cmdPool.AddCommand(
+		cmdPoolCreate,
+		newCmdPoolLs(),
+		newCmdPoolStatus(),
+	)
 }
