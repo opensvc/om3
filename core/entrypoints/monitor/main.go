@@ -73,6 +73,11 @@ func (m *T) SetFormat(v string) {
 	m.format = v
 }
 
+// SetSelector sets the selector option. Default is "*".
+func (m *T) SetSelector(v string) {
+	m.selector = v
+}
+
 // SetSections sets the sections option, controlling which sections to render
 // (threads, nodes, arbitrators, objects). Defaults to an empty list, interpreted
 // as all sections.

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/entrypoints/monitor"
 	"opensvc.com/opensvc/core/flag"
@@ -49,6 +50,7 @@ func (t *CmdObjectMonitor) run(selector *string, kind string) {
 	m.SetColor(t.Color)
 	m.SetFormat(t.Format)
 	m.SetSections([]string{"objects"})
+	m.SetSelector(mergedSelector)
 
 	if t.Watch {
 		evGetter := cli.NewGetEvents().SetSelector(mergedSelector)
