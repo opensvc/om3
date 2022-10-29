@@ -82,16 +82,16 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		defer t.Done()
 		defer ticker.Stop()
 		t.log.Info().Msg("started")
+		defer t.log.Info().Msg("stopped")
 		for {
 			select {
-			case <-ticker.C:
-				t.onTick()
 			case <-ctx.Done():
 				t.cancel()
-				break
+				return
+			case <-ticker.C:
+				t.onTick()
 			}
 		}
-		t.log.Info().Msg("stopped")
 	}()
 	return nil
 }

@@ -66,6 +66,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	go func() {
 		defer t.Done()
 		t.log.Info().Msg("started")
+		defer t.log.Info().Msg("stopped")
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbId:     t.id,
@@ -77,12 +78,11 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		for {
 			select {
 			case <-ctx.Done():
-				break
+				return
 			case b := <-msgC:
 				t.send(b)
 			}
 		}
-		t.log.Info().Msg("stopped")
 	}()
 	return nil
 }
