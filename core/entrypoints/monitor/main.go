@@ -131,7 +131,7 @@ func (m T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
 	s := output.Renderer{
 		Format:        m.format,
 		Color:         m.color,
-		Data:          data,
+		Data:          data.WithSelector(m.selector),
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Sprint()
