@@ -1,41 +1,20 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 
 type (
-	// CmdNodeComplianceEnv is the cobra flag set of the sysreport command.
 	CmdNodeComplianceEnv struct {
 		OptsGlobal
-		OptModuleset
-		OptModule
+		Moduleset string
+		Module    string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdNodeComplianceEnv) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdNodeComplianceEnv) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "env",
-		Short:   "Show the environment variables set during a compliance module run.",
-		Aliases: []string{"en"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *CmdNodeComplianceEnv) run() {
-	nodeaction.New(
+func (t *CmdNodeComplianceEnv) Run() error {
+	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Format),

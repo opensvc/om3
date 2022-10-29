@@ -1,43 +1,21 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
 )
 
 type (
-	// CmdObjectComplianceAttachModuleset is the cobra flag set of the sysreport command.
 	CmdObjectComplianceAttachModuleset struct {
 		OptsGlobal
-		OptModuleset
+		Moduleset string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectComplianceAttachModuleset) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectComplianceAttachModuleset) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "moduleset",
-		Short:   "attach compliance moduleset to this node.",
-		Long:    "modules of attached modulesets are checked on schedule.",
-		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectComplianceAttachModuleset) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	objectaction.New(
+func (t *CmdObjectComplianceAttachModuleset) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),

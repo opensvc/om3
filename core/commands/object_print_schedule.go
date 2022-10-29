@@ -6,11 +6,9 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
@@ -19,29 +17,10 @@ import (
 )
 
 type (
-	// CmdObjectPrintSchedule is the cobra flag set of the print schedule command.
 	CmdObjectPrintSchedule struct {
 		OptsGlobal
 	}
 )
-
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectPrintSchedule) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectPrintSchedule) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "schedule",
-		Short:   "Print selected objects scheduling table",
-		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
 
 func (t *CmdObjectPrintSchedule) extract(selector string, c *client.T) schedule.Table {
 	if t.Local {
@@ -102,12 +81,11 @@ func (t *CmdObjectPrintSchedule) extractFromDaemon(selector string, c *client.T)
 	return data, nil
 }
 
-func (t *CmdObjectPrintSchedule) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	data := t.extract(mergedSelector, c)
 
@@ -120,4 +98,5 @@ func (t *CmdObjectPrintSchedule) run(selector *string, kind string) {
 			return data.Render()
 		},
 	}.Print()
+	return nil
 }

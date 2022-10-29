@@ -1,15 +1,9 @@
 package commands
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-
+	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectdevice"
 	"opensvc.com/opensvc/core/objectselector"
@@ -18,49 +12,30 @@ import (
 )
 
 type (
-	// CmdObjectPrintDevices is the cobra flag set of the print devices command.
 	CmdObjectPrintDevices struct {
 		OptsGlobal
-		Roles string `flag:"devroles"`
+		Roles string
 	}
+
 	devicer interface {
 		PrintDevices(roles objectdevice.Role) objectdevice.L
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectPrintDevices) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectPrintDevices) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "devices",
-		Short:   "Print selected objects and resources exposed, used, base and claimed block devices",
-		Aliases: []string{"device", "devic", "devi", "dev", "devs", "de"},
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) objectdevice.L {
+func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) (objectdevice.L, error) {
 	if t.Local || (t.NodeSelector == "" && !clientcontext.IsSet()) {
 		return t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		return data
+		return data, nil
 	}
 	if clientcontext.IsSet() {
-		log.Error().Msg("can not fetch daemon data")
-		return objectdevice.NewList()
+		return objectdevice.NewList(), errors.Errorf("can not fetch daemon data")
 	}
 	return t.extractLocal(selector)
 }
 
-func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
+func (t *CmdObjectPrintDevices) extractLocal(selector string) (objectdevice.L, error) {
 	data := objectdevice.NewList()
 	sel := objectselector.NewSelection(
 		selector,
@@ -68,8 +43,7 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
 	)
 	paths, err := sel.Expand()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return data
+		return data, err
 	}
 	for _, p := range paths {
 		obj, err := object.New(p)
@@ -84,7 +58,7 @@ func (t *CmdObjectPrintDevices) extractLocal(selector string) objectdevice.L {
 		table := i.PrintDevices(roles)
 		data = data.Add(table)
 	}
-	return data
+	return data, nil
 }
 
 func (t *CmdObjectPrintDevices) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
@@ -105,14 +79,16 @@ func (t *CmdObjectPrintDevices) extractFromDaemon(selector string, c *client.T) 
 	return data, nil
 }
 
-func (t *CmdObjectPrintDevices) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectPrintDevices) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
-	data := t.extract(mergedSelector, c)
+	data, err := t.extract(mergedSelector, c)
+	if err != nil {
+		return err
+	}
 
 	output.Renderer{
 		Format:   t.Format,
@@ -123,4 +99,5 @@ func (t *CmdObjectPrintDevices) run(selector *string, kind string) {
 			return data.Render()
 		},
 	}.Print()
+	return nil
 }

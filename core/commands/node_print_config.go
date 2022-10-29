@@ -1,41 +1,20 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 
 type (
-	// NodePrintConfig is the cobra flag set of the start command.
-	NodePrintConfig struct {
+	CmdNodePrintConfig struct {
 		OptsGlobal
-		Eval        bool   `flag:"eval"`
-		Impersonate string `flag:"impersonate"`
+		Eval        bool
+		Impersonate string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *NodePrintConfig) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *NodePrintConfig) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "config",
-		Short:   "get a configuration key value",
-		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *NodePrintConfig) run() {
-	nodeaction.New(
+func (t *CmdNodePrintConfig) Run() error {
+	return nodeaction.New(
 		nodeaction.LocalFirst(),
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),

@@ -1,43 +1,22 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/nodeaction"
 	"opensvc.com/opensvc/core/object"
 )
 
 type (
-	// CmdNodeComplianceFixable is the cobra flag set of the sysreport command.
 	CmdNodeComplianceFixable struct {
 		OptsGlobal
-		OptModuleset
-		OptModule
-		OptForce
-		OptAttach
+		Moduleset string
+		Module    string
+		Force     bool
+		Attach    bool
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdNodeComplianceFixable) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdNodeComplianceFixable) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "fixable",
-		Short:   "run compliance fixable-tests",
-		Aliases: []string{"fixabl", "fixab", "fixa"},
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *CmdNodeComplianceFixable) run() {
-	nodeaction.New(
+func (t *CmdNodeComplianceFixable) Run() error {
+	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Format),

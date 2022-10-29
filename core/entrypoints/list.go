@@ -1,8 +1,6 @@
 package entrypoints
 
 import (
-	"fmt"
-	"os"
 	"sort"
 
 	"opensvc.com/opensvc/core/objectselector"
@@ -20,7 +18,7 @@ type List struct {
 }
 
 // Do prints the formatted object selection
-func (t List) Do() {
+func (t List) Do() error {
 	selection := objectselector.NewSelection(
 		t.ObjectSelector,
 		objectselector.SelectionWithLocal(t.Local),
@@ -29,7 +27,7 @@ func (t List) Do() {
 	data := make([]string, 0)
 	paths, err := selection.Expand()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		return err
 	}
 	for _, path := range paths {
 		data = append(data, path.String())
@@ -49,4 +47,5 @@ func (t List) Do() {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+	return nil
 }

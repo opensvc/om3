@@ -5,22 +5,11 @@ import (
 	"opensvc.com/opensvc/core/entrypoints"
 )
 
-var nodeEventsCmd = &cobra.Command{
-	Use:     "events",
-	Short:   "Print the node event stream",
-	Aliases: []string{"eve", "even", "event"},
-	Run:     nodeEventsCmdRun,
-}
-
-func init() {
-	nodeCmd.AddCommand(nodeEventsCmd)
-}
-
-func nodeEventsCmdRun(_ *cobra.Command, _ []string) {
+func nodeEventsCmdRun(_ *cobra.Command, _ []string) error {
 	e := entrypoints.Events{
 		Format: formatFlag,
 		Color:  colorFlag,
 		Server: serverFlag,
 	}
-	e.Do()
+	return e.Do()
 }

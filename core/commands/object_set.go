@@ -3,9 +3,7 @@ package commands
 import (
 	"context"
 
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
@@ -13,35 +11,16 @@ import (
 )
 
 type (
-	// CmdObjectSet is the cobra flag set of the set command.
 	CmdObjectSet struct {
-		Command *cobra.Command
 		OptsGlobal
 		OptsLock
-		KeywordOps []string `flag:"kwops"`
+		KeywordOps []string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectSet) Init(kind string, parent *cobra.Command, selector *string) {
-	t.Command = t.cmd(kind, selector)
-	parent.AddCommand(t.Command)
-	flag.Install(t.Command, t)
-}
-
-func (t *CmdObjectSet) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "set",
-		Short: "set a configuration key value",
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectSet) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	objectaction.New(
+func (t *CmdObjectSet) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),

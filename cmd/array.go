@@ -1,29 +1,23 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/array"
-	"opensvc.com/opensvc/core/commands"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/util/key"
 )
 
 var (
 	arrayName string
-	arrayCmd  = &cobra.Command{
+	cmdArray  = &cobra.Command{
 		Use:   "array",
 		Short: "Manage storage arrays",
 		Long:  ` A array is backend storage provider for pools.`,
-		Run: func(_ *cobra.Command, args []string) {
-			if err := runArray(args); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runArray(args)
 		},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
@@ -32,14 +26,13 @@ var (
 )
 
 func init() {
-	var (
-		cmdArrayLs commands.ArrayLs
+	root.AddCommand(
+		cmdArray,
 	)
-	root.AddCommand(arrayCmd)
-	arrayCmd.PersistentFlags().StringVar(&arrayName, "array", "", "the section name or index identifying the array")
-
-	cmdArrayLs.Init(arrayCmd)
-	//arrayfreenas.InitCommands(arrayCmd)
+	cmdArray.AddCommand(
+		newCmdArrayLs(),
+	)
+	cmdArray.PersistentFlags().StringVar(&arrayName, "array", "", "the section name or index identifying the array")
 }
 
 func runArray(args []string) error {

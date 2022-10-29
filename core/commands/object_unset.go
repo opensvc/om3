@@ -3,9 +3,7 @@ package commands
 import (
 	"context"
 
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
@@ -13,34 +11,16 @@ import (
 )
 
 type (
-	// CmdObjectUnset is the cobra flag set of the set command.
 	CmdObjectUnset struct {
 		OptsGlobal
 		OptsLock
-		Keywords []string `flag:"kws"`
+		Keywords []string
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectUnset) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectUnset) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "unset",
-		Short: "unset a configuration key",
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectUnset) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	objectaction.New(
+func (t *CmdObjectUnset) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),

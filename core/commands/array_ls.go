@@ -1,49 +1,30 @@
 package commands
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
+	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
 type (
-	// ArrayLs is the cobra flag set of the command.
-	ArrayLs struct {
+	CmdArrayLs struct {
 		OptsGlobal
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *ArrayLs) Init(parent *cobra.Command) {
-	cmd := t.cmd()
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *ArrayLs) cmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "ls",
-		Short: "list the cluster pools",
-		Run: func(_ *cobra.Command, _ []string) {
-			t.run()
-		},
-	}
-}
-
-func (t *ArrayLs) run() {
-	var data []string
+func (t *CmdArrayLs) Run() error {
+	var (
+		data []string
+		err  error
+	)
 	if t.Local || !clientcontext.IsSet() {
-		data = t.extractLocal()
+		data, err = t.extractLocal()
 	} else {
-		data = t.extractDaemon()
+		data, err = t.extractDaemon()
 	}
 	output.Renderer{
 		Format: t.Format,
@@ -58,27 +39,24 @@ func (t *ArrayLs) run() {
 		},
 		Colorize: rawconfig.Colorize,
 	}.Print()
+	return err
 }
 
-func (t *ArrayLs) extractLocal() []string {
+func (t *CmdArrayLs) extractLocal() ([]string, error) {
 	n, err := object.NewNode()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return []string{}, err
 	}
-	return n.ListArrays()
+	return n.ListArrays(), nil
 }
 
-func (t *ArrayLs) extractDaemon() []string {
+func (t *CmdArrayLs) extractDaemon() ([]string, error) {
 	var (
 		c   *client.T
 		err error
 	)
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return []string{}, err
 	}
-	panic("TODO")
-	fmt.Println(c)
-	return []string{}
+	return []string{}, errors.Errorf("TODO", c)
 }

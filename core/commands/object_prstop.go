@@ -3,47 +3,26 @@ package commands
 import (
 	"context"
 
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/flag"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectaction"
 	"opensvc.com/opensvc/core/path"
 )
 
 type (
-	// CmdObjectPRStop is the cobra flag set of the start command.
 	CmdObjectPRStop struct {
 		OptsGlobal
 		OptsLock
 		OptsResourceSelector
-		OptDryRun
 		OptTo
-		OptForce
+		DryRun bool
+		Force  bool
 	}
 )
 
-// Init configures a cobra command and adds it to the parent command.
-func (t *CmdObjectPRStop) Init(kind string, parent *cobra.Command, selector *string) {
-	cmd := t.cmd(kind, selector)
-	parent.AddCommand(cmd)
-	flag.Install(cmd, t)
-}
-
-func (t *CmdObjectPRStop) cmd(kind string, selector *string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "prstop",
-		Short:   "release devices exclusive write access reservation",
-		Aliases: []string{"prov"},
-		Run: func(cmd *cobra.Command, args []string) {
-			t.run(selector, kind)
-		},
-	}
-}
-
-func (t *CmdObjectPRStop) run(selector *string, kind string) {
-	mergedSelector := mergeSelector(*selector, t.ObjectSelector, kind, "")
-	objectaction.New(
+func (t *CmdObjectPRStop) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),

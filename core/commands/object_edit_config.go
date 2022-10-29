@@ -18,11 +18,10 @@ import (
 )
 
 type (
-	// CmdObjectEditConfig is the cobra flag set of the print config command.
 	CmdObjectEditConfig struct {
 		OptsGlobal
-		Discard bool `flag:"discard"`
-		Recover bool `flag:"recover"`
+		Discard bool
+		Recover bool
 	}
 )
 
