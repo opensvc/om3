@@ -126,6 +126,115 @@ func newCmdArrayLs() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonRelayStatus() *cobra.Command {
+	var options commands.CmdDaemonRelayStatus
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show the daemon relay clients and last data update time.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagRelay(flagSet, &options.Relays)
+	return cmd
+}
+
+func newCmdDaemonRestart() *cobra.Command {
+	var options commands.CmdDaemonRestart
+	cmd := &cobra.Command{
+		Use:     "restart",
+		Short:   "Start the daemon or a daemon thread pointed by '--thread-id'.",
+		Aliases: []string{"restart"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagForeground(flagSet, &options.Foreground)
+	addFlagDebug(flagSet, &options.Debug)
+	return cmd
+}
+
+func newCmdDaemonRunning() *cobra.Command {
+	var options commands.CmdDaemonRunning
+	cmd := &cobra.Command{
+		Use:   "running",
+		Short: "Return with code 0 if the daemon is running, else return with code 1",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdDaemonStart() *cobra.Command {
+	var options commands.CmdDaemonStart
+	cmd := &cobra.Command{
+		Use:     "start",
+		Short:   "Start the daemon or a daemon thread pointed by '--thread-id'.",
+		Aliases: []string{"star"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagDebug(flagSet, &options.Debug)
+	addFlagForeground(flagSet, &options.Foreground)
+	addFlagCpuProfile(flagSet, &options.CpuProfile)
+	return cmd
+}
+
+func newCmdDaemonStatus() *cobra.Command {
+	var options commands.CmdDaemonStatus
+	cmd := &cobra.Command{
+		Use:     "status",
+		Short:   "Print the cluster status.",
+		Long:    monitor.CmdLong,
+		Aliases: []string{"statu"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagWatch(flagSet, &options.Watch)
+	return cmd
+}
+
+func newCmdDaemonStats() *cobra.Command {
+	var options commands.CmdDaemonStats
+	cmd := &cobra.Command{
+		Use:   "stats",
+		Short: "Print the resource usage statistics.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdDaemonStop() *cobra.Command {
+	var options commands.CmdDaemonStop
+	cmd := &cobra.Command{
+		Use:   "stop",
+		Short: "Stop the daemon.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdKeystoreAdd(kind string) *cobra.Command {
 	var options commands.CmdKeystoreAdd
 	cmd := &cobra.Command{

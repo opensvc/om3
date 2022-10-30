@@ -47,6 +47,10 @@ func addFlagComplianceForce(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "force", false, "Don't check before fix.")
 }
 
+func addFlagCpuProfile(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "cpuprofile", "", "Dump a cpu pprof in this file on exit.")
+}
+
 func addFlagConfig(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "config", "", "The configuration to use as template when creating or installing a service. The value can be `-` or `/dev/stdin` to read the json-formatted configuration from stdin, or a file path, or uri pointing to a ini-formatted configuration, or a service selector expression (ATTENTION with cloning existing live services that include more than containers, volumes and backend ip addresses ... this could cause disruption on the cloned service).")
 }
@@ -100,8 +104,16 @@ func addFlagEnv(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "env", "", "Export the uppercased variable in the os environment. With the create action only, set a env section parameter in the service configuration file. Multiple `--env <key>=<val>` can be specified.")
 }
 
+func addFlagDebug(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVar(p, "debug", false, "Activate debug mode.")
+}
+
 func addFlagEval(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "eval", false, "Dereference and evaluate arythmetic expressions in value.")
+}
+
+func addFlagForeground(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVarP(p, "foreground", "f", false, "Restart the daemon in foreground mode.")
 }
 
 func addFlagForce(flagSet *pflag.FlagSet, p *bool) {

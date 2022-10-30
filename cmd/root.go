@@ -25,15 +25,16 @@ import (
 )
 
 var (
-	configFlag   string
-	colorFlag    string
-	colorLogFlag string
-	formatFlag   string
-	selectorFlag string
-	serverFlag   string
-	nodeFlag     string
-	debugFlag    bool
-	callerFlag   bool
+	configFlag     string
+	colorFlag      string
+	colorLogFlag   string
+	formatFlag     string
+	selectorFlag   string
+	serverFlag     string
+	nodeFlag       string
+	debugFlag      bool
+	foregroundFlag bool
+	callerFlag     bool
 )
 
 var root = &cobra.Command{
@@ -120,7 +121,7 @@ func initLogger() {
 	zerolog.MessageFieldName = "m"
 
 	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: debugFlag || daemonRestartForeground || daemonStartForeground,
+		ConsoleLoggingEnabled: debugFlag || foregroundFlag,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             rawconfig.Paths.Log,
@@ -136,7 +137,10 @@ func initLogger() {
 	log.Logger = l
 }
 
-func persistentPreRunE(_ *cobra.Command, _ []string) error {
+func persistentPreRunE(cmd *cobra.Command, _ []string) error {
+	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
+		foregroundFlag = true
+	}
 	logging.WithCaller = callerFlag
 	if err := hostname.Error(); err != nil {
 		return err
