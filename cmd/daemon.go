@@ -4,11 +4,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var daemonCmd = &cobra.Command{
-	Use:   "daemon",
-	Short: "Manage the opensvc daemon",
-}
+var (
+	cmdDaemon = &cobra.Command{
+		Use:   "daemon",
+		Short: "Manage the opensvc daemon",
+	}
+
+	cmdDaemonRelay = &cobra.Command{
+		Use:   "relay",
+		Short: "relay subsystem commands",
+	}
+)
 
 func init() {
-	root.AddCommand(daemonCmd)
+	root.AddCommand(
+		cmdDaemon,
+	)
+	cmdDaemon.AddCommand(
+		cmdDaemonRelay,
+		newCmdDaemonRestart(),
+		newCmdDaemonRunning(),
+		newCmdDaemonStart(),
+		newCmdDaemonStats(),
+		newCmdDaemonStatus(),
+		newCmdDaemonStop(),
+	)
+	cmdDaemonRelay.AddCommand(
+		newCmdDaemonRelayStatus(),
+	)
+
 }

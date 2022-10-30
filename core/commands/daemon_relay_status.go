@@ -1,11 +1,10 @@
-package cmd
+package commands
 
 import (
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/output"
@@ -18,6 +17,10 @@ import (
 )
 
 type (
+	CmdDaemonRelayStatus struct {
+		OptsGlobal
+		Relays string
+	}
 	relayMessage struct {
 		daemonapi.RelayMessage
 		Relay string `json:"relay"`
@@ -25,37 +28,11 @@ type (
 	relayMessages []relayMessage
 )
 
-var (
-	daemonRelayCmd = &cobra.Command{
-		Use:   "relay",
-		Short: "relay subsystem commands",
-	}
-)
-
-func init() {
-	daemonCmd.AddCommand(daemonRelayCmd)
-	daemonRelayCmd.AddCommand(newDaemonRelayStatusCmd())
-}
-
-func newDaemonRelayStatusCmd() *cobra.Command {
-	var relayName string
-	cmd := &cobra.Command{
-		Use:   "status",
-		Short: "show the daemon relay clients and last data update time.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return daemonRelayStatus(relayName)
-		},
-	}
-	flagSet := cmd.Flags()
-	addFlagRelay(flagSet, &relayName)
-	return cmd
-}
-
-func daemonRelayStatus(relays string) error {
+func (t *CmdDaemonRelayStatus) Run() error {
 	messages := make(relayMessages, 0)
 	relayMap := make(map[string]any)
-	if relays != "" {
-		for _, s := range strings.Split(relays, ",") {
+	if t.Relays != "" {
+		for _, s := range strings.Split(t.Relays, ",") {
 			relayMap[s] = nil
 		}
 	}
@@ -112,8 +89,8 @@ func daemonRelayStatus(relays string) error {
 		}
 	}
 	output.Renderer{
-		Format:   formatFlag,
-		Color:    colorFlag,
+		Format:   t.Format,
+		Color:    t.Color,
 		Data:     messages,
 		Colorize: rawconfig.Colorize,
 		HumanRenderer: func() string {
