@@ -81,14 +81,14 @@ func (f Frame) sNodeScore(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%d", val.Stats.Score)
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) sNodeLoad(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%.1f", val.Stats.Load15M)
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) sNodeMem(n string) string {
@@ -113,7 +113,7 @@ func (f Frame) sNodeMem(n string) string {
 		}
 		return s
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) sNodeSwap(n string) string {
@@ -138,7 +138,7 @@ func (f Frame) sNodeSwap(n string) string {
 		}
 		return s
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) sNodeMonState(n string) string {
@@ -172,14 +172,14 @@ func (f Frame) sNodeCompat(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%d", val.Status.Compat)
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) sNodeVersion(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		return fmt.Sprintf("%s", val.Status.Agent)
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) wNodes() {
