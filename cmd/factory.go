@@ -1469,17 +1469,14 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
-	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagsTo(flags, &options.OptTo)
-	addFlagTemplate(flags, &options.Template)
-	addFlagConfig(flags, &options.Config)
+	addFlagCreateFrom(flags, &options.From)
+	addFlagCreateForce(flags, &options.Force)
+	addFlagCreateNamespace(flags, &options.Namespace)
+	addFlagCreateRestore(flags, &options.Restore)
 	addFlagKeywords(flags, &options.Keywords)
 	addFlagEnv(flags, &options.Env)
 	addFlagInteractive(flags, &options.Interactive)
 	addFlagProvision(flags, &options.Provision)
-	addFlagCreateRestore(flags, &options.Restore)
-	addFlagCreateForce(flags, &options.Force)
-	addFlagCreateNamespace(flags, &options.Namespace)
 	return cmd
 }
 
