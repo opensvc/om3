@@ -20,6 +20,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responsePostAuthToken'
+  /daemon/logs/control:
+    post:
+      operationId: PostDaemonLogsControl
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: set daemon log level
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postDaemonLogsControl'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseText'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -545,6 +567,22 @@ components:
         - score
         - spread
         - shift
+    postDaemonLogsControl:
+      type: object
+      required:
+        - level
+      properties:
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+            - panic
+            - none
+          default: info
     postNodeMonitor:
       type: object
       properties:
