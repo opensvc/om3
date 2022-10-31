@@ -38,6 +38,7 @@ package hbctrl
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -55,12 +56,12 @@ import (
 type (
 	// RemoteBeating holds Remote beating stats for a remote node
 	RemoteBeating struct {
-		txCount     int
-		rxCount     int
+		txCount     int // tx peer watcher count for a remote
+		rxCount     int // rx peer watcher count for a remote
 		txBeating   int
 		rxBeating   int
-		cancel      map[string]func()
-		beatingChan map[string]chan<- bool
+		cancel      map[string]func()      // cancel function of hbId peer watcher for the remote
+		beatingChan map[string]chan<- bool // beating bool chan of hbId for the remote
 	}
 
 	// CmdRegister is the command to register a new heartbeat status
@@ -200,7 +201,22 @@ func (c *ctrl) start(ctx context.Context) {
 					Peers: make(map[string]cluster.HeartbeatPeerStatus),
 				}
 			case CmdUnregister:
-				delete(heartbeat, o.Id)
+				if hbStatus, ok := heartbeat[o.Id]; ok {
+					if strings.HasSuffix(o.Id, ".rx") {
+						for peerNode, peerStatus := range hbStatus.Peers {
+							if !peerStatus.Beating {
+								continue
+							}
+							if peerStatus.Beating {
+								if remote, ok := remotes[peerNode]; ok {
+									remote.rxBeating--
+									remotes[peerNode] = remote
+								}
+							}
+						}
+					}
+					delete(heartbeat, o.Id)
+				}
 			case CmdSetState:
 				if hbToChange, ok := heartbeat[o.Id]; ok {
 					hbToChange.State = o.State
@@ -228,7 +244,33 @@ func (c *ctrl) start(ctx context.Context) {
 					Time: time.Now(),
 					Data: data,
 				})
-				c.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+				if o.Name == "hb_stale" {
+					c.log.Warn().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+				} else {
+					c.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+				}
+				if remote, ok := remotes[o.Nodename]; ok {
+					if strings.HasSuffix(o.HbId, ".rx") {
+						switch o.Name {
+						case "hb_beating":
+							if remote.rxBeating == 0 {
+								// TODO publish daemon data cmd
+								c.log.Info().Msgf("beating node %s", o.Nodename)
+							}
+							remote.rxBeating++
+						case "hb_stale":
+							if remote.rxBeating == 0 {
+								panic("hb_stale on already stale node")
+							}
+							remote.rxBeating--
+						}
+						if remote.rxBeating == 0 {
+							// TODO publish daemon data cmd
+							c.log.Error().Msgf("stale node %s", o.Nodename)
+						}
+						remotes[o.Nodename] = remote
+					}
+				}
 			case CmdGetEventStats:
 				o.result <- events
 			case GetPeerStatus:
@@ -259,31 +301,34 @@ func (c *ctrl) start(ctx context.Context) {
 					remote.cancel = make(map[string]func())
 				}
 				if _, registered := remote.cancel[hbId]; registered {
-					c.log.Error().Msgf("already registered watcher %s %s", hbId, peerNode)
-					continue
+					err := fmt.Errorf("already registered watcher %s %s", hbId, peerNode)
+					c.log.Error().Err(err).Msgf("CmdAddWatcher")
+					panic(err)
 				}
 				beatingC := make(chan bool)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
 				remote.cancel[hbId] = cancel
 				remote.beatingChan[hbId] = beatingC
 				c.log.Info().Msgf("register watcher %s for %s", peerNode, hbId)
-				remotes[peerNode] = remote
 				if strings.HasSuffix(hbId, ".rx") {
 					remote.rxCount++
 				} else {
 					remote.txCount++
 				}
+				remotes[peerNode] = remote
 				c.peerWatch(beatingCtx, beatingC, o.HbId, peerNode, o.Timeout)
 			case CmdDelWatcher:
 				hbId := o.HbId
 				peerNode := o.Nodename
-				delete(heartbeat[hbId].Peers, peerNode)
-				remote, ok := remotes[peerNode]
-				if ok {
+				if _, ok := heartbeat[hbId]; ok {
+					delete(heartbeat[hbId].Peers, peerNode)
+				}
+				if remote, ok := remotes[peerNode]; ok {
 					cancel, registered := remote.cancel[hbId]
 					if !registered {
-						c.log.Error().Msgf("already unregistered watcher %s %s", hbId, peerNode)
-						continue
+						err := fmt.Errorf("already unregistered watcher %s %s", hbId, peerNode)
+						c.log.Error().Err(err).Msgf("CmdDelWatcher")
+						panic(err)
 					}
 					c.log.Info().Msgf("unregister watcher %s %s", hbId, peerNode)
 					cancel()
@@ -295,6 +340,8 @@ func (c *ctrl) start(ctx context.Context) {
 					}
 					if (remote.rxCount + remote.txCount) == 0 {
 						delete(remotes, peerNode)
+					} else {
+						remotes[peerNode] = remote
 					}
 				}
 			}
