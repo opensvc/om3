@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.11
+  version: 3.6.12
 servers:
   - url: https://localhost:1215
 paths:
@@ -20,6 +20,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responsePostAuthToken'
+  /daemon/logs/control:
+    post:
+      operationId: PostDaemonLogsControl
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: set daemon log level
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postDaemonLogsControl'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseText'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -69,21 +91,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
-  /nodes/info:
-    get:
-      operationId: GetNodesInfo
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      responses:
-        '200':
-          description: success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/nodesInfo'
   /node/monitor:
     post:
       operationId: PostNodeMonitor
@@ -112,6 +119,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /nodes/info:
+    get:
+      operationId: GetNodesInfo
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/nodesInfo'
   /object/abort:
     post:
       operationId: PostObjectAbort
@@ -320,21 +342,13 @@ components:
   schemas:
     app:
       type: string
-    clusterConfig:
-      type: object
-    clusterNode:
-      type: object
-    clusterObject:
-      type: object
-    clusterStatus:
-      type: object
     cluster:
       type: object
       required:
         - config
-        - status
-        - object
         - node
+        - object
+        - status
       properties:
         config:
           $ref: '#/components/schemas/clusterConfig'
@@ -344,6 +358,14 @@ components:
           $ref: '#/components/schemas/clusterObject'
         status:
           $ref: '#/components/schemas/clusterStatus'
+    clusterConfig:
+      type: object
+    clusterNode:
+      type: object
+    clusterObject:
+      type: object
+    clusterStatus:
+      type: object
     daemon:
       type: object
       required:
@@ -545,6 +567,22 @@ components:
         - score
         - spread
         - shift
+    postDaemonLogsControl:
+      type: object
+      required:
+        - level
+      properties:
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+            - panic
+            - none
+          default: info
     postNodeMonitor:
       type: object
       properties:
@@ -588,16 +626,16 @@ components:
     postRelayMessage:
       type: object
       required:
-        - nodename
-        - cluster_name
         - cluster_id
+        - cluster_name
         - msg
+        - nodename
       properties:
-        nodename:
+        cluster_id:
           type: string
         cluster_name:
           type: string
-        cluster_id:
+        nodename:
           type: string
         msg:
           type: string
@@ -616,26 +654,30 @@ components:
     relayMessage:
       type: object
       required:
-        - nodename
-        - cluster_name
-        - cluster_id
-        - msg
-        - updated
         - addr
+        - cluster_id
+        - cluster_name
+        - msg
+        - nodename
+        - updated
       properties:
-        nodename:
-          type: string
-        cluster_name:
+        addr:
           type: string
         cluster_id:
           type: string
-        addr:
+        cluster_name:
           type: string
         msg:
+          type: string
+        nodename:
           type: string
         updated:
           type: string
           format: date-time
+    relayMessageList:
+      type: array
+      items:
+        $ref: '#/components/schemas/relayMessage'
     relayMessages:
       type: object
       required:
@@ -643,10 +685,6 @@ components:
       properties:
         messages:
           $ref: '#/components/schemas/relayMessageList'
-    relayMessageList:
-      type: array
-      items:
-        $ref: '#/components/schemas/relayMessage'
     resourceExposedStatus:
       type: object
       required:
@@ -715,16 +753,6 @@ components:
           type: string
     resourceId:
       type: string
-    resourceProvisionStatus:
-      type: object
-      required:
-        - state
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        state:
-          $ref: '#/components/schemas/provisioned'
     responsePostAuthToken:
       type: object
       required:
@@ -736,6 +764,16 @@ components:
         token_expire_at:
           type: string
           format: date-time
+    resourceProvisionStatus:
+      type: object
+      required:
+        - state
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/provisioned'
     responseDaemonStatus:
       type: object
       required:
@@ -759,9 +797,9 @@ components:
     responseMuxBool:
       type: object
       required:
+        - data
         - entrypoint
         - status
-        - data
       properties:
         entrypoint:
           type: string
@@ -772,26 +810,24 @@ components:
           items:
             type: object
             required:
-              - endpoint
               - data
+              - endpoint
             properties:
-              endpoint:
-                type: string
               data:
                 type: boolean
+              endpoint:
+                type: string
     responseText:
       type: string
     role:
       type: string
       enum:
-        - root
         - admin
-        - guest
-        - squatter
         - blacklistadmin
+        - guest
         - heartbeat
-    severity:
-      type: string
+        - root
+        - squatter
     sanPath:
       type: object
       required:
@@ -828,6 +864,8 @@ components:
           example: iscsi
     selector:
       type: string
+    severity:
+      type: string
     status:
       type: string
     sub:
@@ -850,11 +888,11 @@ components:
     subBase:
       type: object
       required:
+        - alerts
         - configured
         - created
         - id
         - state
-        - alerts
       properties:
         alerts:
           type: array
@@ -870,10 +908,6 @@ components:
           type: string
         state:
           type: string
-    subHeartbeats:
-      allOf:
-        - $ref: '#/components/schemas/subBase'
-        - $ref: '#/components/schemas/subHeartbeatPeerStatus'
     subHeartbeatPeerStatus:
       type: object
       required:
@@ -885,6 +919,10 @@ components:
         last:
           type: string
           format: date-time
+    subHeartbeats:
+      allOf:
+        - $ref: '#/components/schemas/subBase'
+        - $ref: '#/components/schemas/subHeartbeatPeerStatus'
     topology:
       type: string
       description: "object topology"
@@ -945,10 +983,10 @@ components:
       schema:
         type: string
   securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    basicAuth:
-      type: http
-      scheme: basic

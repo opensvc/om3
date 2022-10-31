@@ -21,12 +21,23 @@ const (
 
 // Defines values for Placement.
 const (
-	LoadAvg    Placement = "load avg"
-	NodesOrder Placement = "nodes order"
-	None       Placement = "none"
-	Score      Placement = "score"
-	Shift      Placement = "shift"
-	Spread     Placement = "spread"
+	PlacementLoadAvg    Placement = "load avg"
+	PlacementNodesOrder Placement = "nodes order"
+	PlacementNone       Placement = "none"
+	PlacementScore      Placement = "score"
+	PlacementShift      Placement = "shift"
+	PlacementSpread     Placement = "spread"
+)
+
+// Defines values for PostDaemonLogsControlLevel.
+const (
+	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
+	PostDaemonLogsControlLevelError PostDaemonLogsControlLevel = "error"
+	PostDaemonLogsControlLevelFatal PostDaemonLogsControlLevel = "fatal"
+	PostDaemonLogsControlLevelInfo  PostDaemonLogsControlLevel = "info"
+	PostDaemonLogsControlLevelNone  PostDaemonLogsControlLevel = "none"
+	PostDaemonLogsControlLevelPanic PostDaemonLogsControlLevel = "panic"
+	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
 )
 
 // Defines values for Provisioned.
@@ -184,6 +195,14 @@ type PathRelation = []string
 
 // object placement policy
 type Placement string
+
+// PostDaemonLogsControl defines model for postDaemonLogsControl.
+type PostDaemonLogsControl struct {
+	Level PostDaemonLogsControlLevel `json:"level"`
+}
+
+// PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
+type PostDaemonLogsControlLevel string
 
 // PostNodeMonitor defines model for postNodeMonitor.
 type PostNodeMonitor struct {
@@ -420,6 +439,9 @@ type QueryRelayNodename = string
 // QuerySelectorOptional defines model for querySelectorOptional.
 type QuerySelectorOptional = string
 
+// PostDaemonLogsControlJSONBody defines parameters for PostDaemonLogsControl.
+type PostDaemonLogsControlJSONBody = PostDaemonLogsControl
+
 // GetDaemonStatusParams defines parameters for GetDaemonStatus.
 type GetDaemonStatusParams struct {
 	// namespace
@@ -482,6 +504,9 @@ type GetRelayMessageParams struct {
 
 // PostRelayMessageJSONBody defines parameters for PostRelayMessage.
 type PostRelayMessageJSONBody = PostRelayMessage
+
+// PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
+type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControlJSONBody
 
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitorJSONBody
