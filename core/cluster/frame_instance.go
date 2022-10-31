@@ -32,6 +32,8 @@ func (f Frame) sObjectInstance(path string, node string) string {
 		} else if stringslice.Has(node, localInst.Config.Scope) {
 			s += iconUndef
 		}
+	} else {
+		s += iconUndef
 	}
 	return s + "\t"
 }
