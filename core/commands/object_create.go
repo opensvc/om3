@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"opensvc.com/opensvc/core/client"
@@ -35,9 +36,8 @@ type (
 		Force       bool
 		Namespace   string
 
-		client   *client.T
-		path     path.T
-		template string
+		client *client.T
+		path   path.T
 	}
 	Pivot map[string]rawconfig.T
 )
@@ -94,15 +94,27 @@ func (t *CmdObjectCreate) getTemplate() string {
 	return ""
 }
 
+func (t *CmdObjectCreate) getSourcePaths() path.L {
+	paths, _ := objectselector.NewSelection(
+		t.From,
+		objectselector.SelectionWithLocal(t.Local),
+		objectselector.SelectionWithServer(t.Server),
+	).Expand()
+	return paths
+}
+
 func (t *CmdObjectCreate) Do() error {
 	template := t.getTemplate()
+	paths := t.getSourcePaths()
 	switch {
 	case t.From == "":
 		return t.fromScratch()
 	case t.From == "-" || t.From == "/dev/stdin" || t.From == "stdin":
 		return t.fromStdin()
 	case template != "":
-		return t.fromTemplate()
+		return t.fromTemplate(template)
+	case len(paths) > 0:
+		return t.fromPaths(paths)
 	default:
 		return t.fromConfig()
 	}
@@ -123,8 +135,36 @@ func (t *CmdObjectCreate) submit(pivot Pivot) error {
 	return nil
 }
 
-func (t CmdObjectCreate) fromTemplate() error {
-	if pivot, err := t.rawFromTemplate(); err != nil {
+func (t CmdObjectCreate) fromPaths(paths path.L) error {
+	pivot := make(Pivot)
+	multi := len(paths) > 1
+	for _, p := range paths {
+		obj, err := object.NewConfigurer(p, object.WithVolatile(true))
+		if err != nil {
+			return err
+		}
+		if multi {
+			if t.Namespace != "" {
+				p.Namespace = t.Namespace
+			} else {
+				return errors.Errorf("Can not create multiple objects without a target namespace.")
+			}
+		} else {
+			if t.path.IsZero() {
+				return errors.Errorf("Need a target object path.")
+			}
+			p = t.path
+			if t.Namespace != "" {
+				p.Namespace = t.Namespace
+			}
+		}
+		pivot[p.String()] = obj.Config().Raw()
+	}
+	return t.fromData(pivot)
+}
+
+func (t CmdObjectCreate) fromTemplate(template string) error {
+	if pivot, err := t.rawFromTemplate(template); err != nil {
 		return err
 	} else {
 		return t.fromData(pivot)
@@ -171,7 +211,7 @@ func (t CmdObjectCreate) fromData(pivot Pivot) error {
 	return t.localFromData(pivot)
 }
 
-func (t CmdObjectCreate) rawFromTemplate() (Pivot, error) {
+func (t CmdObjectCreate) rawFromTemplate(template string) (Pivot, error) {
 	return nil, fmt.Errorf("TODO: collector requester")
 }
 
@@ -307,6 +347,15 @@ func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
 	}
 	if err := oc.Config().SetKeys(keyop.ParseOps(t.Keywords)...); err != nil {
 		return err
+	}
+	if !t.Restore {
+		op := keyop.Parse("id=" + uuid.New().String())
+		if op == nil {
+			return errors.New("invalid id reset op")
+		}
+		if err := oc.Config().Set(*op); err != nil {
+			return err
+		}
 	}
 	return oc.Config().Commit()
 }
