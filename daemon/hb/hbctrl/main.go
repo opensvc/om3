@@ -254,8 +254,8 @@ func (c *ctrl) start(ctx context.Context) {
 						switch o.Name {
 						case "hb_beating":
 							if remote.rxBeating == 0 {
-								// TODO publish daemon data cmd
 								c.log.Info().Msgf("beating node %s", o.Nodename)
+								daemondata.SetHeartbeatPing(dataCmd, o.Nodename, true)
 							}
 							remote.rxBeating++
 						case "hb_stale":
@@ -265,8 +265,8 @@ func (c *ctrl) start(ctx context.Context) {
 							remote.rxBeating--
 						}
 						if remote.rxBeating == 0 {
-							// TODO publish daemon data cmd
 							c.log.Error().Msgf("stale node %s", o.Nodename)
+							daemondata.SetHeartbeatPing(dataCmd, o.Nodename, false)
 						}
 						remotes[o.Nodename] = remote
 					}
