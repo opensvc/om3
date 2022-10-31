@@ -756,12 +756,17 @@ func newCmdNodeEval() *cobra.Command {
 }
 
 func newCmdNodeEvents() *cobra.Command {
+	var options commands.CmdNodeEvents
 	cmd := &cobra.Command{
 		Use:     "events",
 		Short:   "Print the node event stream.",
 		Aliases: []string{"eve", "even", "event"},
-		RunE:    nodeEventsCmdRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
 	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
