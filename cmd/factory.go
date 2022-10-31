@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/commands"
-	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/monitor"
 )
 
 func newCmdAll() *cobra.Command {
