@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/monitor"
 )
 
 var (

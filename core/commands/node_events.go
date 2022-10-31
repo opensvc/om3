@@ -1,4 +1,4 @@
-package entrypoints
+package commands
 
 import (
 	"opensvc.com/opensvc/core/client"
@@ -7,15 +7,13 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 )
 
-// Events hosts the options of the events fetcher/renderer entrypoint.
-type Events struct {
-	Color  string
-	Format string
-	Server string
-}
+type (
+	CmdNodeEvents struct {
+		OptsGlobal
+	}
+)
 
-// Do renders the event stream
-func (t Events) Do() error {
+func (t *CmdNodeEvents) Run() error {
 	var (
 		err error
 		c   *client.T
@@ -35,7 +33,7 @@ func (t Events) Do() error {
 	return nil
 }
 
-func (t Events) doOne(e event.Event) {
+func (t *CmdNodeEvents) doOne(e event.Event) {
 	human := func() string {
 		return event.Render(e)
 	}

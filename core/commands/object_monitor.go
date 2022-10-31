@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/monitor"
 )
 
 type (

@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"opensvc.com/opensvc/core/commands"
-	"opensvc.com/opensvc/core/entrypoints/monitor"
+	"opensvc.com/opensvc/core/monitor"
 )
 
 func newCmdAll() *cobra.Command {
@@ -756,12 +756,17 @@ func newCmdNodeEval() *cobra.Command {
 }
 
 func newCmdNodeEvents() *cobra.Command {
+	var options commands.CmdNodeEvents
 	cmd := &cobra.Command{
 		Use:     "events",
 		Short:   "Print the node event stream.",
 		Aliases: []string{"eve", "even", "event"},
-		RunE:    nodeEventsCmdRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
 	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -1464,17 +1469,14 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
-	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagsTo(flags, &options.OptTo)
-	addFlagTemplate(flags, &options.Template)
-	addFlagConfig(flags, &options.Config)
+	addFlagCreateFrom(flags, &options.From)
+	addFlagCreateForce(flags, &options.Force)
+	addFlagCreateNamespace(flags, &options.Namespace)
+	addFlagCreateRestore(flags, &options.Restore)
 	addFlagKeywords(flags, &options.Keywords)
 	addFlagEnv(flags, &options.Env)
 	addFlagInteractive(flags, &options.Interactive)
 	addFlagProvision(flags, &options.Provision)
-	addFlagCreateRestore(flags, &options.Restore)
-	addFlagCreateForce(flags, &options.Force)
-	addFlagCreateNamespace(flags, &options.Namespace)
 	return cmd
 }
 

@@ -53,6 +53,14 @@ For example, a [md#1] section needs reformatting as:
 	constraints violation => constraints-violation
 	daemon down => daemon-down
 
+* **breaking change:** Rename the create --config flag to --from, and merge --template into --from.
+
+	Support the following template selector syntaxes:
+
+		--from 111
+		--from template://111
+		--from "template://my tmpl 111"
+
 ### driver fs
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.

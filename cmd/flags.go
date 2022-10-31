@@ -51,8 +51,8 @@ func addFlagCpuProfile(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "cpuprofile", "", "Dump a cpu pprof in this file on exit.")
 }
 
-func addFlagConfig(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "config", "", "The configuration to use as template when creating or installing a service. The value can be `-` or `/dev/stdin` to read the json-formatted configuration from stdin, or a file path, or uri pointing to a ini-formatted configuration, or a service selector expression (ATTENTION with cloning existing live services that include more than containers, volumes and backend ip addresses ... this could cause disruption on the cloned service).")
+func addFlagCreateFrom(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "from", "", "The configuration to use as template when creating or installing a service. The value can be `-` or `/dev/stdin` to read the json-formatted configuration from stdin, or a file path, or uri pointing to a ini-formatted configuration, or a service selector expression (ATTENTION with cloning existing live services that include more than containers, volumes and backend ip addresses ... this could cause disruption on the cloned service), or a template numeric id, or template://<name>.")
 }
 
 func addFlagConfirm(flagSet *pflag.FlagSet, p *bool) {
@@ -246,10 +246,6 @@ func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {
 
 func addFlagSubset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "subset", "", "A subset selector expression (g1,g2).")
-}
-
-func addFlagTemplate(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "template", "", "The configuration file template name or id, served by the collector.")
 }
 
 func addFlagTo(flagSet *pflag.FlagSet, p *string) {
