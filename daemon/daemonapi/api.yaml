@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.12
+  version: 3.6.13
 servers:
   - url: https://localhost:1215
 paths:
@@ -84,6 +84,28 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseText'
+  /daemon/sub/action:
+    post:
+      operationId: PostDaemonSubAction
+      tags:
+        - daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      requestBody:
+        description: action on daemon sub components
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postDaemonSubAction'
       responses:
         '200':
           description: success
@@ -583,6 +605,23 @@ components:
             - panic
             - none
           default: info
+    postDaemonSubAction:
+      type: object
+      required:
+        - action
+        - subs
+      properties:
+        action:
+          type: string
+          enum:
+            - start
+            - stop
+        subs:
+          type: array
+          description: daemon component list
+          items:
+            type: string
+            example: hb#1.rx
     postNodeMonitor:
       type: object
       properties:

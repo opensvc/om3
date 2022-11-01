@@ -40,12 +40,18 @@ const (
 	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
 )
 
+// Defines values for PostDaemonSubActionAction.
+const (
+	PostDaemonSubActionActionStart PostDaemonSubActionAction = "start"
+	PostDaemonSubActionActionStop  PostDaemonSubActionAction = "stop"
+)
+
 // Defines values for Provisioned.
 const (
-	ProvisionedFalse Provisioned = "false"
-	ProvisionedMixed Provisioned = "mixed"
-	ProvisionedNa    Provisioned = "n/a"
-	ProvisionedTrue  Provisioned = "true"
+	False Provisioned = "false"
+	Mixed Provisioned = "mixed"
+	Na    Provisioned = "n/a"
+	True  Provisioned = "true"
 )
 
 // Defines values for Topology.
@@ -203,6 +209,17 @@ type PostDaemonLogsControl struct {
 
 // PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
 type PostDaemonLogsControlLevel string
+
+// PostDaemonSubAction defines model for postDaemonSubAction.
+type PostDaemonSubAction struct {
+	Action PostDaemonSubActionAction `json:"action"`
+
+	// daemon component list
+	Subs []string `json:"subs"`
+}
+
+// PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
+type PostDaemonSubActionAction string
 
 // PostNodeMonitor defines model for postNodeMonitor.
 type PostNodeMonitor struct {
@@ -454,6 +471,9 @@ type GetDaemonStatusParams struct {
 	Selector *QuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
+// PostDaemonSubActionJSONBody defines parameters for PostDaemonSubAction.
+type PostDaemonSubActionJSONBody = PostDaemonSubAction
+
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
 type PostNodeMonitorJSONBody = PostNodeMonitor
 
@@ -507,6 +527,9 @@ type PostRelayMessageJSONBody = PostRelayMessage
 
 // PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
 type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControlJSONBody
+
+// PostDaemonSubActionJSONRequestBody defines body for PostDaemonSubAction for application/json ContentType.
+type PostDaemonSubActionJSONRequestBody = PostDaemonSubActionJSONBody
 
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitorJSONBody
