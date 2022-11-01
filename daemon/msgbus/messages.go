@@ -32,6 +32,7 @@ const (
 	NsSetSmon
 	NsStatus
 	NsHbStatus
+	NsHbPing
 )
 
 type (
@@ -178,6 +179,11 @@ type (
 	HbStatusUpdated struct {
 		Node   string
 		Status cluster.HeartbeatThreadStatus
+	}
+
+	HbNodePing struct {
+		Node   string
+		Status bool
 	}
 )
 
@@ -342,4 +348,12 @@ func PubHbStatusUpdate(bus *pubsub.Bus, id string, v HbStatusUpdated) {
 
 func SubHbStatusUpdate(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsHbStatus, op, name, matching, fn)
+}
+
+func PubHbNodePing(bus *pubsub.Bus, id string, v HbNodePing) {
+	Pub(bus, NsHbPing, pubsub.OpUpdate, id, v)
+}
+
+func SubHbNodePing(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsHbPing, op, name, matching, fn)
 }
