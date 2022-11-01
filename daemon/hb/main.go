@@ -130,25 +130,24 @@ func (t *T) stopHb(hb hbtype.IdStopper) error {
 	case hbtype.Transmitter:
 		t.unregisterTxC <- hbId
 	}
-	t.ctrlC <- hbctrl.CmdUnregister{hbId}
+	t.ctrlC <- hbctrl.CmdUnregister{Id: hbId}
 	return hb.Stop()
 }
 
 func (t *T) startHb(hb hbcfg.Confer) error {
-	rx := hb.Rx()
-	if rx == nil {
-		return errors.New("nil rx for " + hb.Name())
-	}
-	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id()}
-	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
-		t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
-		t.log.Error().Err(err).Msgf("starting %s", rx.Id())
+	if err := t.startHbRx(hb); err != nil {
 		return err
 	}
-	t.rxs[hb.Name()] = rx
 
+	if err := t.startHbTx(hb); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startHbTx(hb hbcfg.Confer) error {
 	tx := hb.Tx()
-	if rx == nil {
+	if tx == nil {
 		return errors.New("nil tx for " + hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id()}
@@ -160,6 +159,21 @@ func (t *T) startHb(hb hbcfg.Confer) error {
 	}
 	t.registerTxC <- registerTxQueue{id: tx.Id(), msgToSendQueue: localDataC}
 	t.txs[hb.Name()] = tx
+	return nil
+}
+
+func (t *T) startHbRx(hb hbcfg.Confer) error {
+	rx := hb.Rx()
+	if rx == nil {
+		return errors.New("nil rx for " + hb.Name())
+	}
+	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id()}
+	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
+		t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
+		t.log.Error().Err(err).Msgf("starting %s", rx.Id())
+		return err
+	}
+	t.rxs[hb.Name()] = rx
 	return nil
 }
 
@@ -318,10 +332,11 @@ func (t *T) janitorHb(ctx context.Context) error {
 	bus := pubsub.BusFromContext(ctx)
 	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
 	janitorC := make(chan *msgbus.Msg)
-	rescanCb := func(i any) {
+	janitorCb := func(i any) {
 		janitorC <- msgbus.NewMsg(i)
 	}
-	msgbus.SubCfg(bus, pubsub.OpUpdate, "janitor cluster Cfg update", clusterPath.String(), rescanCb)
+	msgbus.SubCfg(bus, pubsub.OpUpdate, "janitor cluster Cfg update", clusterPath.String(), janitorCb)
+	msgbus.SubDaemonCtl(bus, pubsub.OpUpdate, "janitor component component", "", janitorCb)
 	errC := make(chan error)
 
 	go func(errC chan<- error) {
@@ -341,11 +356,82 @@ func (t *T) janitorHb(ctx context.Context) error {
 						t.log.Error().Err(err).Msg("rescan after cluster config changed")
 					}
 					t.log.Info().Msg("rescan heartbeat configurations done")
+				case msgbus.DaemonCtl:
+					hbId := msg.Component
+					action := msg.Action
+					if !strings.HasPrefix(hbId, "hb#") {
+						continue
+					}
+					switch msg.Action {
+					case "stop":
+						t.daemonCtlStop(hbId, action)
+					case "start":
+						t.daemonCtlStart(ctx, hbId, action)
+					}
 				}
 			}
 		}
 	}(errC)
 	return <-errC
+}
+
+func (t *T) daemonCtlStart(ctx context.Context, hbId string, action string) {
+	var rid string
+	if strings.HasSuffix(hbId, ".rx") {
+		rid = strings.TrimSuffix(hbId, ".rx")
+	} else if strings.HasSuffix(hbId, ".tx") {
+		rid = strings.TrimSuffix(hbId, ".tx")
+	} else {
+		t.log.Info().Msgf("daemonctl %s %s found no component for %s", action, hbId)
+		return
+	}
+	h, err := t.getHbConfiguredComponent(ctx, rid)
+	if err != nil {
+		t.log.Info().Msgf("daemonctl %s %s found no component for %s (rid: %s)", action, hbId, rid)
+		return
+	}
+	if strings.HasSuffix(hbId, ".rx") {
+		if err := t.startHbRx(h); err != nil {
+			t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)
+			return
+		}
+	} else {
+		if err := t.startHbTx(h); err != nil {
+			t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)
+			return
+		}
+	}
+}
+
+func (t *T) daemonCtlStop(hbId string, action string) {
+	var hbI interface{}
+	var found bool
+	if strings.HasSuffix(hbId, ".rx") {
+		rid := strings.TrimSuffix(hbId, ".rx")
+		if hbI, found = t.rxs[rid]; !found {
+			t.log.Info().Msgf("daemonctl %s %s found no %s.rx component", action, hbId, rid)
+			return
+		}
+	} else if strings.HasSuffix(hbId, ".tx") {
+		rid := strings.TrimSuffix(hbId, ".tx")
+		if hbI, found = t.txs[rid]; !found {
+			t.log.Info().Msgf("daemonctl %s %s found no %s.tx component", action, hbId, rid)
+			return
+		}
+	} else {
+		t.log.Info().Msgf("daemonctl %s %s found no component", action, hbId)
+		return
+	}
+	t.log.Info().Msgf("ask to %s %s", action, hbId)
+	switch hbI.(type) {
+	case hbtype.Transmitter:
+		t.unregisterTxC <- hbId
+	}
+	if err := hbI.(hbtype.IdStopper).Stop(); err != nil {
+		t.log.Error().Err(err).Msgf("daemonctl %s %s failure", action, hbId)
+	} else {
+		t.ctrlC <- hbctrl.CmdSetState{Id: hbI.(hbtype.IdStopper).Id(), State: "stopped"}
+	}
 }
 
 func (t *T) getHbConfigured(ctx context.Context) (ridHb map[string]hbcfg.Confer, err error) {
@@ -360,4 +446,22 @@ func (t *T) getHbConfigured(ctx context.Context) (ridHb map[string]hbcfg.Confer,
 		ridHb[h.Name()] = h
 	}
 	return ridHb, nil
+}
+
+func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.Confer, err error) {
+	var node *clusterhb.T
+	node, err = clusterhb.New()
+	if err != nil {
+		t.log.Error().Err(err).Msgf("clusterhb.New")
+		return
+	}
+	for _, h := range node.Hbs() {
+		h.Configure(ctx)
+		if h.Name() == rid {
+			c = h
+			return
+		}
+	}
+	err = errors.New("not found rid")
+	return
 }
