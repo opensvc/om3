@@ -38,7 +38,6 @@ package hbctrl
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -289,21 +288,20 @@ func (c *ctrl) start(ctx context.Context) {
 			case CmdAddWatcher:
 				hbId := o.HbId
 				peerNode := o.Nodename
-				if _, ok := heartbeat[hbId]; ok {
-					heartbeat[hbId].Peers[peerNode] = cluster.HeartbeatPeerStatus{}
-				} else {
-					c.log.Error().Msgf("CmdAddWatcher %s %s called before CmdRegister", hbId, peerNode)
-					panic("CmdAddWatcher")
-				}
 				remote, ok := remotes[peerNode]
 				if !ok {
 					remote.beatingChan = make(map[string]chan<- bool)
 					remote.cancel = make(map[string]func())
 				}
 				if _, registered := remote.cancel[hbId]; registered {
-					err := fmt.Errorf("already registered watcher %s %s", hbId, peerNode)
-					c.log.Error().Err(err).Msgf("CmdAddWatcher")
-					panic(err)
+					c.log.Error().Msgf("CmdAddWatcher already registered watcher %s %s", hbId, peerNode)
+					continue
+				}
+				if _, ok := heartbeat[hbId]; ok {
+					heartbeat[hbId].Peers[peerNode] = cluster.HeartbeatPeerStatus{}
+				} else {
+					c.log.Warn().Msgf("CmdAddWatcher %s %s called before CmdRegister", hbId, peerNode)
+					continue
 				}
 				beatingC := make(chan bool)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
@@ -326,9 +324,8 @@ func (c *ctrl) start(ctx context.Context) {
 				if remote, ok := remotes[peerNode]; ok {
 					cancel, registered := remote.cancel[hbId]
 					if !registered {
-						err := fmt.Errorf("already unregistered watcher %s %s", hbId, peerNode)
-						c.log.Error().Err(err).Msgf("CmdDelWatcher")
-						panic(err)
+						c.log.Error().Msgf("CmdDelWatcher already unregistered watcher %s %s", hbId, peerNode)
+						continue
 					}
 					c.log.Info().Msgf("unregister watcher %s %s", hbId, peerNode)
 					cancel()
