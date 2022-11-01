@@ -17,6 +17,7 @@ import (
 
 const (
 	NsAll = pubsub.NsAll + iota
+	NsDaemonCtl
 	NsEvent
 	NsFrozen
 	NsFrozenFile
@@ -184,6 +185,11 @@ type (
 	HbNodePing struct {
 		Node   string
 		Status bool
+	}
+
+	DaemonCtl struct {
+		Component string
+		Action    string
 	}
 )
 
@@ -356,4 +362,12 @@ func PubHbNodePing(bus *pubsub.Bus, id string, v HbNodePing) {
 
 func SubHbNodePing(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
 	return Sub(bus, NsHbPing, op, name, matching, fn)
+}
+
+func PubDaemonCtl(bus *pubsub.Bus, id string, v DaemonCtl) {
+	Pub(bus, NsDaemonCtl, pubsub.OpUpdate, id, v)
+}
+
+func SubDaemonCtl(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsDaemonCtl, op, name, matching, fn)
 }
