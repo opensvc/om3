@@ -107,7 +107,7 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 		}
 	}
 	if payloadStatus.Placement != nil {
-		instanceStatus.Placement = placement.New(string(*payloadStatus.Placement))
+		instanceStatus.Placement = placement.NewPolicy(string(*payloadStatus.Placement))
 	}
 	if payloadStatus.Preserved != nil {
 		instanceStatus.Preserved = *payloadStatus.Preserved

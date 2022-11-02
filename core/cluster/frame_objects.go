@@ -8,6 +8,7 @@ import (
 
 	"opensvc.com/opensvc/core/colorstatus"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
@@ -23,9 +24,7 @@ func (f Frame) wObjects() {
 func sObjectPlacement(d object.AggregatedStatus) string {
 	var s string
 	switch d.Placement {
-	case "":
-	case "n/a":
-	case "optimal":
+	case placement.NotApplicable, placement.Optimal:
 		s = ""
 	default:
 		s = iconPlacementAlert

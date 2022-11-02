@@ -121,7 +121,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		GlobalExpect: globalExpectUnset,
 		LocalExpect:  localExpectUnset,
 		Status:       statusIdle,
-		Placement:    "",
+		Leader:       false,
 		Restart:      make(map[string]instance.MonitorRestart),
 	}
 	state := previousState
