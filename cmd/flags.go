@@ -248,6 +248,10 @@ func addFlagSubset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "subset", "", "A subset selector expression (g1,g2).")
 }
 
+func addFlagSwitchTo(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "to", "", "The remote node to start or migrate the service to. Or the target number of instance to scale to.")
+}
+
 func addFlagTo(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "to", "", "start or stop the service until the specified rid or driver group included.")
 }

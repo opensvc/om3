@@ -1575,6 +1575,22 @@ func newCmdObjectGet(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectGiveback(kind string) *cobra.Command {
+	var options commands.CmdObjectGiveback
+	cmd := &cobra.Command{
+		Use:   "giveback",
+		Short: "Stop the misplaced service instances and start on the preferred nodeset.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagsLock(flags, &options.OptsLock)
+	return cmd
+}
+
 func newCmdObjectLogs(kind string) *cobra.Command {
 	var options commands.CmdObjectLogs
 	cmd := &cobra.Command{
@@ -1836,6 +1852,25 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectSyncResync(kind string) *cobra.Command {
+	var options commands.CmdObjectSyncResync
+	cmd := &cobra.Command{
+		Use:   "resync",
+		Short: "Restore optimal synchronization.",
+		Long:  "Only a subset of drivers support this interface. For example, the disk.md driver re-adds removed disks.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagDryRun(flags, &options.DryRun)
+	addFlagForce(flags, &options.Force)
+	return cmd
+}
+
 func newCmdObjectRun(kind string) *cobra.Command {
 	var options commands.CmdObjectRun
 	cmd := &cobra.Command{
@@ -1980,22 +2015,20 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectSyncResync(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncResync
+func newCmdObjectSwitch(kind string) *cobra.Command {
+	var options commands.CmdObjectSwitch
 	cmd := &cobra.Command{
-		Use:   "resync",
-		Short: "Restore optimal synchronization.",
-		Long:  "Only a subset of drivers support this interface. For example, the disk.md driver re-adds removed disks.",
+		Use:   "switch",
+		Short: "Stop the running service instances and start on the next preferred nodeset.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
 	addFlagsLock(flags, &options.OptsLock)
-	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
-	addFlagDryRun(flags, &options.DryRun)
-	addFlagForce(flags, &options.Force)
+	addFlagSwitchTo(flags, &options.To)
 	return cmd
 }
 
