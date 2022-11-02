@@ -101,6 +101,8 @@ var (
 
 	globalExpectAborted       = "aborted"
 	globalExpectFrozen        = "frozen"
+	globalExpectPlaced        = "placed"
+	globalExpectPlacedAt      = "placed@"
 	globalExpectProvisioned   = "provisioned"
 	globalExpectPurged        = "purged"
 	globalExpectStarted       = "started"

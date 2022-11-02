@@ -1,6 +1,7 @@
 package smon
 
 import (
+	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
@@ -99,6 +100,8 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 		case globalExpectAborted:
 		case globalExpectFrozen:
 		case globalExpectProvisioned:
+		case globalExpectPlaced:
+		case globalExpectPlacedAt:
 		case globalExpectPurged:
 		case globalExpectStopped:
 		case globalExpectThawed:
@@ -109,8 +112,10 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 				return
 			}
 		default:
-			o.log.Warn().Msgf("invalid set smon global expect: %s", c.GlobalExpect)
-			return
+			if !strings.HasPrefix(c.GlobalExpect, globalExpectPlacedAt) {
+				o.log.Warn().Msgf("invalid set smon global expect: %s", c.GlobalExpect)
+				return
+			}
 		}
 		from, to := o.logFromTo(o.state.GlobalExpect, c.GlobalExpect)
 		for node, instSmon := range o.instSmon {
