@@ -1,17 +1,24 @@
 package smon
 
 import (
+	"bytes"
+	"crypto/md5"
+	"sort"
 	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 // cmdSvcAggUpdated updateIfChange state global expect from aggregated status
 func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 	if c.SrcEv != nil {
+		o.updateIsLeader()
 		switch srcCmd := (*c.SrcEv).(type) {
 		case msgbus.InstStatusUpdated:
 			srcNode := srcCmd.Node
@@ -204,4 +211,96 @@ func (o *smon) needOrchestrate(c cmdOrchestrate) {
 		o.updateIfChange()
 	}
 	o.orchestrate()
+}
+
+func (o *smon) sortCandidates(policy placement.Policy, candidates []string) []string {
+	switch policy {
+	case placement.NodesOrder:
+		return o.sortWithNodesOrderPolicy(candidates)
+	case placement.Spread:
+		return o.sortWithSpreadPolicy(candidates)
+	case placement.Score:
+		return o.sortWithScorePolicy(candidates)
+	case placement.Shift:
+		return o.sortWithShiftPolicy(candidates)
+	default:
+		return []string{}
+	}
+}
+
+func (o *smon) sortWithSpreadPolicy(candidates []string) []string {
+	l := append([]string{}, candidates...)
+	sum := func(s string) []byte {
+		b := append([]byte(o.path.String()), []byte(s)...)
+		return md5.New().Sum(b)
+	}
+	sort.SliceStable(l, func(i, j int) bool {
+		return bytes.Compare(sum(l[i]), sum(l[j])) < 0
+	})
+	return l
+}
+
+func (o *smon) sortWithScorePolicy(candidates []string) []string {
+	o.log.Warn().Msg("TODO: sortWithScorePolicy")
+	return candidates
+}
+
+func (o *smon) sortWithLoadAvgPolicy(candidates []string) []string {
+	o.log.Warn().Msg("TODO: sortWithLoadAvgPolicy")
+	return candidates
+}
+
+func (o *smon) sortWithShiftPolicy(candidates []string) []string {
+	var i int
+	l := o.sortWithNodesOrderPolicy(candidates)
+	l = append(l, l...)
+	n := len(candidates)
+	scalerSliceIndex := o.path.ScalerSliceIndex()
+	if n > 0 && scalerSliceIndex > n {
+		i = o.path.ScalerSliceIndex() % n
+	}
+	return candidates[i : i+n]
+}
+
+func (o *smon) sortWithNodesOrderPolicy(candidates []string) []string {
+	var l []string
+	for _, node := range o.scopeNodes {
+		if stringslice.Has(node, candidates) {
+			l = append(l, node)
+		}
+	}
+	return l
+}
+
+func (o *smon) newIsLeader(instStatus instance.Status) bool {
+	var candidates []string
+	candidates = append(candidates, o.scopeNodes...)
+	candidates = o.sortCandidates(instStatus.Placement, candidates)
+
+	maxLeaders := 1
+	if instStatus.Topology == topology.Flex {
+		maxLeaders = instStatus.FlexTarget
+	}
+
+	for i, candidate := range candidates {
+		if candidate != o.localhost {
+			continue
+		}
+		return i <= maxLeaders
+	}
+	return false
+}
+
+func (o *smon) updateIsLeader() {
+	instStatus, ok := o.instStatus[o.localhost]
+	if !ok {
+		return
+	}
+	isLeader := o.newIsLeader(instStatus)
+	if isLeader != o.state.IsLeader {
+		o.change = true
+	}
+	o.state.IsLeader = isLeader
+	o.updateIfChange()
+	return
 }

@@ -48,14 +48,12 @@ func (o *smon) UnProvisionedFromWaitNonLeader() {
 }
 
 func (o *smon) hasNonLeaderProvisioned() bool {
-	for _, node := range o.scopeNodes {
-		if node == o.localhost {
+	for node, otherInstStatus := range o.instStatus {
+		if instSmon, ok := o.instSmon[node]; ok && instSmon.IsLeader {
 			continue
 		}
-		if otherInstStatus, ok := o.instStatus[node]; ok {
-			if otherInstStatus.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {
-				return true
-			}
+		if otherInstStatus.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {
+			return true
 		}
 	}
 	return false

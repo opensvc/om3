@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
@@ -108,6 +109,20 @@ func New(name string, namespace string, kd string) (T, error) {
 	path.Name = name
 	path.Kind = k
 	return path, nil
+}
+
+// ScalerSliceIndex returns the <i> int from a scaler slice name like <i>.<scalerName>
+// Return -1 if not a scaler slice.
+func (t T) ScalerSliceIndex() int {
+	l := strings.SplitN(t.Name, ".", 2)
+	if len(l) != 2 {
+		return -1
+	}
+	if i, err := strconv.Atoi(l[0]); err != nil {
+		return -1
+	} else {
+		return i
+	}
 }
 
 func (t T) FQN() string {

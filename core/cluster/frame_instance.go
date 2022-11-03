@@ -82,7 +82,7 @@ func sObjectInstanceDRP(instance instance.Status) string {
 }
 
 func sObjectInstanceLeader(smon instance.Monitor) string {
-	if smon.Leader {
+	if smon.IsLeader {
 		return iconLeader
 	}
 	return ""
