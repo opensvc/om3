@@ -40,8 +40,8 @@ func TestNamespacesAreDeclared(t *testing.T) {
 	_ = NsAll
 	_ = NsCfg
 	_ = NsCfgFile
-	_ = NsStatus
-	_ = NsSmon
-	_ = NsSetSmon
-	_ = NsAgg
+	_ = NsInstanceStatus
+	_ = NsInstanceMonitor
+	_ = NsSetInstanceMonitor
+	_ = NsObjectAgg
 }

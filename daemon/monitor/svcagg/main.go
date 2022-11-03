@@ -80,8 +80,8 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 func (o *svcAggStatus) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
 	subDesc := o.id + " svcagg"
 	uuids = append(uuids,
-		msgbus.SubSmon(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
-		msgbus.SubInstStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv),
+		msgbus.SubInstanceMonitor(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
+		msgbus.SubInstanceStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv),
 		msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cfg.update", o.id, o.onEv),
 		msgbus.SubCfg(bus, pubsub.OpDelete, subDesc+" cfg.delete", o.id, o.onEv),
 	)
@@ -125,7 +125,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 				}
 				o.srcEvent = ev
 				o.updateStatus()
-			case msgbus.InstStatusUpdated:
+			case msgbus.InstanceStatusUpdated:
 				if _, ok := o.instStatus[c.Node]; !ok {
 					o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
 					continue
@@ -133,7 +133,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 				o.srcEvent = ev
 				o.instStatus[c.Node] = c.Status
 				o.updateStatus()
-			case msgbus.SmonUpdated:
+			case msgbus.InstanceMonitorUpdated:
 				if _, ok := o.instMonitor[c.Node]; !ok {
 					o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
 					continue
@@ -242,7 +242,7 @@ func (o *svcAggStatus) delete() {
 	if err := daemondata.DelServiceAgg(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelServiceAgg")
 	}
-	o.discoverCmdC <- msgbus.NewMsg(msgbus.MonSvcAggDone{Path: o.path})
+	o.discoverCmdC <- msgbus.NewMsg(msgbus.ObjectAggDone{Path: o.path})
 }
 
 func (o *svcAggStatus) update() {

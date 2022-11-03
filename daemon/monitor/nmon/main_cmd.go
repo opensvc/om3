@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-func (o *nmon) onSetNmonCmd(c msgbus.SetNmon) {
+func (o *nmon) onSetNmonCmd(c msgbus.SetNodeMonitor) {
 	strVal := c.Monitor.GlobalExpect
 	if strVal == statusIdle {
 		strVal = "unset"
@@ -56,7 +56,7 @@ func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
 	daemondata.SetNodeFrozen(o.dataCmdC, tm)
 }
 
-func (o *nmon) onNmonDeleted(c msgbus.NmonDeleted) {
+func (o *nmon) onNmonDeleted(c msgbus.NodeMonitorDeleted) {
 	o.log.Debug().Msgf("deleted nmon for node %s", c.Node)
 	delete(o.nmons, c.Node)
 	o.convergeGlobalExpectFromRemote()
@@ -65,7 +65,7 @@ func (o *nmon) onNmonDeleted(c msgbus.NmonDeleted) {
 	o.updateIfChange()
 }
 
-func (o *nmon) onNmonUpdated(c msgbus.NmonUpdated) {
+func (o *nmon) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Monitor.GlobalExpect)
 	o.nmons[c.Node] = c.Monitor
 	o.convergeGlobalExpectFromRemote()

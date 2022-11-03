@@ -23,15 +23,15 @@ const (
 	NsFrozenFile
 	NsCfgFile
 	NsCfg
-	NsAgg
-	NsNmon
+	NsInstanceMonitor
+	NsInstanceStatus
+	NsNodeMonitor
 	NsNodeStatus
 	NsNodeStatusLabels
 	NsNodeStatusPaths
-	NsSmon
-	NsSetNmon
-	NsSetSmon
-	NsStatus
+	NsObjectAgg
+	NsSetNodeMonitor
+	NsSetInstanceMonitor
 	NsHbStatus
 	NsHbPing
 )
@@ -104,18 +104,33 @@ type (
 		Value time.Time
 	}
 
-	InstStatusDeleted struct {
+	InstanceMonitorDeleted struct {
 		Path path.T
 		Node string
 	}
 
-	InstStatusUpdated struct {
+	InstanceMonitorUpdated struct {
+		Path   path.T
+		Node   string
+		Status instance.Monitor
+	}
+
+	InstanceStatusDeleted struct {
+		Path path.T
+		Node string
+	}
+
+	InstanceStatusUpdated struct {
 		Path   path.T
 		Node   string
 		Status instance.Status
 	}
 
-	SetNmon struct {
+	NodeMonitorDeleted struct {
+		Node string
+	}
+
+	NodeMonitorUpdated struct {
 		Node    string
 		Monitor cluster.NodeMonitor
 	}
@@ -135,45 +150,30 @@ type (
 		Value san.Paths
 	}
 
-	NmonDeleted struct {
-		Node string
-	}
-
-	NmonUpdated struct {
+	SetNodeMonitor struct {
 		Node    string
 		Monitor cluster.NodeMonitor
 	}
 
-	SetSmon struct {
+	SetInstanceMonitor struct {
 		Path    path.T
 		Node    string
 		Monitor instance.Monitor
 	}
 
-	SmonDeleted struct {
+	ObjectAggDeleted struct {
 		Path path.T
 		Node string
 	}
 
-	SmonUpdated struct {
-		Path   path.T
-		Node   string
-		Status instance.Monitor
+	ObjectAggUpdated struct {
+		Path             path.T
+		Node             string
+		AggregatedStatus object.AggregatedStatus
+		SrcEv            *Msg
 	}
 
-	MonSvcAggDeleted struct {
-		Path path.T
-		Node string
-	}
-
-	MonSvcAggUpdated struct {
-		Path   path.T
-		Node   string
-		SvcAgg object.AggregatedStatus
-		SrcEv  *Msg
-	}
-
-	MonSvcAggDone struct {
+	ObjectAggDone struct {
 		Path path.T
 	}
 
@@ -260,68 +260,68 @@ func PubFrozen(bus *pubsub.Bus, id string, v Frozen) {
 	Pub(bus, NsFrozen, pubsub.OpUpdate, id, v)
 }
 
-func PubInstStatusDelete(bus *pubsub.Bus, id string, v InstStatusDeleted) {
-	Pub(bus, NsStatus, pubsub.OpDelete, id, v)
+func PubInstanceStatusDelete(bus *pubsub.Bus, id string, v InstanceStatusDeleted) {
+	Pub(bus, NsInstanceStatus, pubsub.OpDelete, id, v)
 }
 
-func PubInstStatusUpdated(bus *pubsub.Bus, id string, v InstStatusUpdated) {
-	Pub(bus, NsStatus, pubsub.OpUpdate, id, v)
+func PubInstanceStatusUpdated(bus *pubsub.Bus, id string, v InstanceStatusUpdated) {
+	Pub(bus, NsInstanceStatus, pubsub.OpUpdate, id, v)
 }
 
-func SubInstStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
-	return Sub(bus, NsStatus, op, name, matching, fn)
+func SubInstanceStatus(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsInstanceStatus, op, name, matching, fn)
 }
 
-func PubNmonDelete(bus *pubsub.Bus, v NmonDeleted) {
-	Pub(bus, NsNmon, pubsub.OpDelete, "", v)
+func PubNodeMonitorDeleted(bus *pubsub.Bus, v NodeMonitorDeleted) {
+	Pub(bus, NsNodeMonitor, pubsub.OpDelete, "", v)
 }
 
-func PubNmonUpdated(bus *pubsub.Bus, v NmonUpdated) {
-	Pub(bus, NsNmon, pubsub.OpUpdate, "", v)
+func PubNodeMonitorUpdated(bus *pubsub.Bus, v NodeMonitorUpdated) {
+	Pub(bus, NsNodeMonitor, pubsub.OpUpdate, "", v)
 }
 
-func SubNmon(bus *pubsub.Bus, op uint, name string, fn func(i any)) uuid.UUID {
-	return Sub(bus, NsNmon, op, name, "", fn)
+func SubNodeMonitor(bus *pubsub.Bus, op uint, name string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsNodeMonitor, op, name, "", fn)
 }
 
-func PubSetNmon(bus *pubsub.Bus, v SetNmon) {
-	Pub(bus, NsSetNmon, pubsub.OpUpdate, "", v)
+func PubSetNodeMonitor(bus *pubsub.Bus, v SetNodeMonitor) {
+	Pub(bus, NsSetNodeMonitor, pubsub.OpUpdate, "", v)
 }
 
-func SubSetNmon(bus *pubsub.Bus, name string, fn func(i any)) uuid.UUID {
-	return Sub(bus, NsSetNmon, pubsub.OpUpdate, name, "", fn)
+func SubSetNodeMonitor(bus *pubsub.Bus, name string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsSetNodeMonitor, pubsub.OpUpdate, name, "", fn)
 }
 
-func PubSmonDelete(bus *pubsub.Bus, id string, v SmonDeleted) {
-	Pub(bus, NsSmon, pubsub.OpDelete, id, v)
+func PubInstanceMonitorDeleted(bus *pubsub.Bus, id string, v InstanceMonitorDeleted) {
+	Pub(bus, NsInstanceMonitor, pubsub.OpDelete, id, v)
 }
 
-func PubSmonUpdated(bus *pubsub.Bus, id string, v SmonUpdated) {
-	Pub(bus, NsSmon, pubsub.OpUpdate, id, v)
+func PubInstanceMonitorUpdated(bus *pubsub.Bus, id string, v InstanceMonitorUpdated) {
+	Pub(bus, NsInstanceMonitor, pubsub.OpUpdate, id, v)
 }
 
-func SubSmon(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
-	return Sub(bus, NsSmon, op, name, matching, fn)
+func SubInstanceMonitor(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsInstanceMonitor, op, name, matching, fn)
 }
 
-func PubSetSmonUpdated(bus *pubsub.Bus, id string, v SetSmon) {
-	Pub(bus, NsSetSmon, pubsub.OpUpdate, id, v)
+func PubSetInstanceMonitorUpdated(bus *pubsub.Bus, id string, v SetInstanceMonitor) {
+	Pub(bus, NsSetInstanceMonitor, pubsub.OpUpdate, id, v)
 }
 
-func SubSetSmon(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
-	return Sub(bus, NsSetSmon, op, name, matching, fn)
+func SubSetInstanceMonitor(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsSetInstanceMonitor, op, name, matching, fn)
 }
 
-func PubSvcAggDelete(bus *pubsub.Bus, id string, v MonSvcAggDeleted) {
-	Pub(bus, NsAgg, pubsub.OpDelete, id, v)
+func PubObjectAggDelete(bus *pubsub.Bus, id string, v ObjectAggDeleted) {
+	Pub(bus, NsObjectAgg, pubsub.OpDelete, id, v)
 }
 
-func PubSvcAggUpdate(bus *pubsub.Bus, id string, v MonSvcAggUpdated) {
-	Pub(bus, NsAgg, pubsub.OpUpdate, id, v)
+func PubObjectAggUpdate(bus *pubsub.Bus, id string, v ObjectAggUpdated) {
+	Pub(bus, NsObjectAgg, pubsub.OpUpdate, id, v)
 }
 
-func SubSvcAgg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
-	return Sub(bus, NsAgg, op, name, matching, fn)
+func SubObjectAgg(bus *pubsub.Bus, op uint, name string, matching string, fn func(i any)) uuid.UUID {
+	return Sub(bus, NsObjectAgg, op, name, matching, fn)
 }
 
 func PubNodeStatusUpdate(bus *pubsub.Bus, v NodeStatusUpdated) {

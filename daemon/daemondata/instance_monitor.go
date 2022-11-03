@@ -65,7 +65,7 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	msgbus.PubSmonDelete(d.bus, s, msgbus.SmonDeleted{
+	msgbus.PubInstanceMonitorDeleted(d.bus, s, msgbus.InstanceMonitorDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -99,7 +99,7 @@ func (o opSetSmon) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubSmonUpdated(d.bus, s, msgbus.SmonUpdated{
+	msgbus.PubInstanceMonitorUpdated(d.bus, s, msgbus.InstanceMonitorUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,

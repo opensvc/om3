@@ -16,11 +16,11 @@ import (
 )
 
 // cmdSvcAggUpdated updateIfChange state global expect from aggregated status
-func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
+func (o *smon) cmdSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
 		o.updateIsLeader()
 		switch srcCmd := (*c.SrcEv).(type) {
-		case msgbus.InstStatusUpdated:
+		case msgbus.InstanceStatusUpdated:
 			srcNode := srcCmd.Node
 			if _, ok := o.instStatus[srcNode]; ok {
 				instStatus := srcCmd.Status
@@ -54,7 +54,7 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 			}
 		}
 	}
-	o.svcAgg = c.SvcAgg
+	o.svcAgg = c.AggregatedStatus
 	o.orchestrate()
 }
 
@@ -177,7 +177,7 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 
 }
 
-func (o *smon) cmdSmonUpdated(c msgbus.SmonUpdated) {
+func (o *smon) cmdSmonUpdated(c msgbus.InstanceMonitorUpdated) {
 	node := c.Node
 	if node == o.localhost {
 		return
@@ -191,7 +191,7 @@ func (o *smon) cmdSmonUpdated(c msgbus.SmonUpdated) {
 	o.updateIfChange()
 }
 
-func (o *smon) cmdSmonDeleted(c msgbus.SmonDeleted) {
+func (o *smon) cmdSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 	node := c.Node
 	if node == o.localhost {
 		return

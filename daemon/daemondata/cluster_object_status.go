@@ -83,7 +83,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	msgbus.PubSvcAggDelete(d.bus, s, msgbus.MonSvcAggDeleted{
+	msgbus.PubObjectAggDelete(d.bus, s, msgbus.ObjectAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -114,11 +114,11 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 			Data: eventB,
 		})
 	}
-	msgbus.PubSvcAggUpdate(d.bus, s, msgbus.MonSvcAggUpdated{
-		Path:   o.path,
-		Node:   d.localNode,
-		SvcAgg: o.value,
-		SrcEv:  o.srcEv,
+	msgbus.PubObjectAggUpdate(d.bus, s, msgbus.ObjectAggUpdated{
+		Path:             o.path,
+		Node:             d.localNode,
+		AggregatedStatus: o.value,
+		SrcEv:            o.srcEv,
 	})
 	select {
 	case <-ctx.Done():

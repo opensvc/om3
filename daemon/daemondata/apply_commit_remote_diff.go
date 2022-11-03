@@ -94,7 +94,7 @@ func (d *data) pubMsgFromNodeMonitorDiffForNode(node string, current *remoteInfo
 	prevTimes, hasPrev := d.previousRemoteInfo[node]
 	if !hasPrev || current.nmonUpdated.After(prevTimes.nmonUpdated) {
 		localMonitor := d.pending.Cluster.Node[node].Monitor
-		msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
+		msgbus.PubNodeMonitorUpdated(d.bus, msgbus.NodeMonitorUpdated{
 			Node:    node,
 			Monitor: *localMonitor.DeepCopy(),
 		})
@@ -206,14 +206,14 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 
 	updates, removes = getUpdatedRemoved(toPath, previous.instStatusUpdated, current.instStatusUpdated)
 	for _, s := range updates {
-		msgbus.PubInstStatusUpdated(d.bus, s, msgbus.InstStatusUpdated{
+		msgbus.PubInstanceStatusUpdated(d.bus, s, msgbus.InstanceStatusUpdated{
 			Path:   toPath[s],
 			Node:   node,
 			Status: *d.pending.Cluster.Node[node].Instance[s].Status.DeepCopy(),
 		})
 	}
 	for _, s := range removes {
-		msgbus.PubInstStatusDelete(d.bus, s, msgbus.InstStatusDeleted{
+		msgbus.PubInstanceStatusDelete(d.bus, s, msgbus.InstanceStatusDeleted{
 			Path: toPath[s],
 			Node: node,
 		})
@@ -221,14 +221,14 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 
 	updates, removes = getUpdatedRemoved(toPath, previous.smonUpdated, current.smonUpdated)
 	for _, s := range updates {
-		msgbus.PubSmonUpdated(d.bus, s, msgbus.SmonUpdated{
+		msgbus.PubInstanceMonitorUpdated(d.bus, s, msgbus.InstanceMonitorUpdated{
 			Path:   toPath[s],
 			Node:   node,
 			Status: *d.pending.Cluster.Node[node].Instance[s].Monitor.DeepCopy(),
 		})
 	}
 	for _, s := range removes {
-		msgbus.PubSmonDelete(d.bus, s, msgbus.SmonDeleted{
+		msgbus.PubInstanceMonitorDeleted(d.bus, s, msgbus.InstanceMonitorDeleted{
 			Path: toPath[s],
 			Node: node,
 		})

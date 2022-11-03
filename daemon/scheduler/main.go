@@ -226,9 +226,9 @@ func (t *T) loop() {
 	}
 	t.databus = daemondata.FromContext(t.ctx)
 	bus := pubsub.BusFromContext(t.ctx)
-	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
-	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, "scheduler-on-svcagg-update", "", relayEvent))
-	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubInstanceStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubObjectAgg(bus, pubsub.OpUpdate, "scheduler-on-svcagg-update", "", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubNodeMonitor(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
 
 	for {
 		select {
@@ -239,11 +239,11 @@ func (t *T) loop() {
 				c.schedule.Last = c.begin
 				// reschedule
 				t.createJob(c.schedule)
-			case msgbus.InstStatusDeleted:
+			case msgbus.InstanceStatusDeleted:
 				t.onInstStatusDeleted(c)
-			case msgbus.NmonUpdated:
+			case msgbus.NodeMonitorUpdated:
 				t.onNmonUpdated(c)
-			case msgbus.MonSvcAggUpdated:
+			case msgbus.ObjectAggUpdated:
 				t.onMonSvcAggUpdated(c)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
@@ -254,7 +254,7 @@ func (t *T) loop() {
 	}
 }
 
-func (t *T) onInstStatusDeleted(c msgbus.InstStatusDeleted) {
+func (t *T) onInstStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -263,8 +263,8 @@ func (t *T) onInstStatusDeleted(c msgbus.InstStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
-func (t *T) onMonSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
-	provisioned := c.SvcAgg.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+func (t *T) onMonSvcAggUpdated(c msgbus.ObjectAggUpdated) {
+	provisioned := c.AggregatedStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	t.provisioned[c.Path] = provisioned
 	hasAnyJob := t.hasAnyJob(c.Path)
 	switch {
@@ -276,7 +276,7 @@ func (t *T) onMonSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
 	}
 }
 
-func (t *T) onNmonUpdated(c msgbus.NmonUpdated) {
+func (t *T) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return

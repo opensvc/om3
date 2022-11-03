@@ -31,11 +31,11 @@ func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 		GlobalExpect: "aborted",
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	msg := msgbus.SetSmon{
+	msg := msgbus.SetInstanceMonitor{
 		Path:    p,
 		Node:    hostname.Hostname(),
 		Monitor: smon,
 	}
-	msgbus.PubSetSmonUpdated(bus, p.String(), msg)
+	msgbus.PubSetInstanceMonitorUpdated(bus, p.String(), msg)
 	w.WriteHeader(http.StatusOK)
 }
