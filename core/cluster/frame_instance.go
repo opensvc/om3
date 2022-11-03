@@ -13,21 +13,21 @@ func (f Frame) sObjectInstance(path string, node string) string {
 	avail := f.Current.Cluster.Object[path].Avail
 	if inst, ok := f.Current.Cluster.Node[node].Instance[path]; ok {
 		if inst.Status != nil {
-			var smon instance.Monitor
+			var instanceMonitor instance.Monitor
 			if inst.Monitor != nil {
-				smon = *inst.Monitor
+				instanceMonitor = *inst.Monitor
 			} else {
-				smon = instance.Monitor{}
+				instanceMonitor = instance.Monitor{}
 			}
-			instStatus := *inst.Status
-			s += sObjectInstanceAvail(avail, instStatus)
-			s += sObjectInstanceOverall(instStatus)
-			s += sObjectInstanceDRP(instStatus)
-			s += sObjectInstanceLeader(smon)
-			s += sObjectInstanceFrozen(instStatus)
-			s += sObjectInstanceUnprovisioned(instStatus)
-			s += sObjectInstanceMonitorStatus(smon)
-			s += sObjectInstanceMonitorGlobalExpect(smon)
+			instanceStatus := *inst.Status
+			s += sObjectInstanceAvail(avail, instanceStatus)
+			s += sObjectInstanceOverall(instanceStatus)
+			s += sObjectInstanceDRP(instanceStatus)
+			s += sObjectInstanceLeader(instanceMonitor)
+			s += sObjectInstanceFrozen(instanceStatus)
+			s += sObjectInstanceUnprovisioned(instanceStatus)
+			s += sObjectInstanceMonitorStatus(instanceMonitor)
+			s += sObjectInstanceMonitorGlobalExpect(instanceMonitor)
 		} else if localInst, ok := f.Current.Cluster.Node[hostname.Hostname()].Instance[path]; !ok || localInst.Config == nil {
 		} else if stringslice.Has(node, localInst.Config.Scope) {
 			s += iconUndef
@@ -81,8 +81,8 @@ func sObjectInstanceDRP(instance instance.Status) string {
 	return ""
 }
 
-func sObjectInstanceLeader(smon instance.Monitor) string {
-	if smon.IsLeader {
+func sObjectInstanceLeader(instanceMonitor instance.Monitor) string {
+	if instanceMonitor.IsLeader {
 		return iconLeader
 	}
 	return ""
@@ -106,16 +106,16 @@ func sObjectInstanceUnprovisioned(instance instance.Status) string {
 	}
 }
 
-func sObjectInstanceMonitorStatus(smon instance.Monitor) string {
-	if smon.Status != "idle" {
-		return " " + smon.Status
+func sObjectInstanceMonitorStatus(instanceMonitor instance.Monitor) string {
+	if instanceMonitor.Status != "idle" {
+		return " " + instanceMonitor.Status
 	}
 	return ""
 }
 
-func sObjectInstanceMonitorGlobalExpect(smon instance.Monitor) string {
-	if smon.GlobalExpect != "" {
-		return hiblack(" >" + smon.GlobalExpect)
+func sObjectInstanceMonitorGlobalExpect(instanceMonitor instance.Monitor) string {
+	if instanceMonitor.GlobalExpect != "" {
+		return hiblack(" >" + instanceMonitor.GlobalExpect)
 	}
 	return ""
 }
