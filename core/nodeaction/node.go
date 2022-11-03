@@ -189,7 +189,7 @@ func (t T) DoLocal() error {
 	if r.Error != nil {
 		return errors.New("")
 	}
-	return nil
+	return r.Error
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an

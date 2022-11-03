@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/collector"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
@@ -31,9 +32,10 @@ type (
 		routineTrace routineTracer
 		databus      *daemondata.T
 
-		events  chan any
-		jobs    Jobs
-		enabled bool
+		events      chan any
+		jobs        Jobs
+		enabled     bool
+		provisioned map[path.T]bool
 	}
 	Jobs map[string]Job
 	Job  struct {
@@ -55,12 +57,6 @@ type (
 )
 
 var (
-	skipActionIfUnprovisionned = map[string]bool{
-		"sync_all":         true,
-		"compliance_auto":  true,
-		"resource_monitor": true,
-		"run":              true,
-	}
 	incompatibleNodeMonitorStatus = map[string]bool{
 		"init":        true,
 		"upgrade":     true,
@@ -71,9 +67,10 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		log:    log.Logger.With().Str("name", "scheduler").Logger(),
-		events: make(chan any),
-		jobs:   make(Jobs),
+		log:         log.Logger.With().Str("name", "scheduler").Logger(),
+		events:      make(chan any),
+		jobs:        make(Jobs),
+		provisioned: make(map[path.T]bool),
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -157,7 +154,11 @@ func (t *T) createJob(e schedule.Entry) {
 			// prevent drift if the gap is small
 			begin = next
 		}
-		err := t.action(e)
+		if e.RequireCollector && !collector.Alive.Load() {
+			log.Debug().Msg("collector is not alive")
+		} else if err := t.action(e); err != nil {
+			log.Error().Err(err).Msg("action")
+		}
 
 		// remember last run, to not run the job too soon after a daemon restart
 		if err := e.SetLastRun(begin); err != nil {
@@ -192,6 +193,12 @@ func (t *T) createJob(e schedule.Entry) {
 }
 
 func (t *T) MainStart(ctx context.Context) error {
+	if stopFeederPinger, err := t.startFeederPinger(); err != nil {
+		t.log.Error().Err(err).Msg("start collector pinger")
+		return err
+	} else {
+		defer stopFeederPinger()
+	}
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	started := make(chan error)
 	t.Add(1)
@@ -219,8 +226,8 @@ func (t *T) loop() {
 	}
 	t.databus = daemondata.FromContext(t.ctx)
 	bus := pubsub.BusFromContext(t.ctx)
-	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpUpdate, "scheduler-on-inst-status-update", "", relayEvent))
 	defer msgbus.UnSub(bus, msgbus.SubInstStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
+	defer msgbus.UnSub(bus, msgbus.SubSvcAgg(bus, pubsub.OpUpdate, "scheduler-on-svcagg-update", "", relayEvent))
 	defer msgbus.UnSub(bus, msgbus.SubNmon(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
 
 	for {
@@ -234,10 +241,10 @@ func (t *T) loop() {
 				t.createJob(c.schedule)
 			case msgbus.InstStatusDeleted:
 				t.onInstStatusDeleted(c)
-			case msgbus.InstStatusUpdated:
-				t.onInstStatusUpdated(c)
 			case msgbus.NmonUpdated:
 				t.onNmonUpdated(c)
+			case msgbus.MonSvcAggUpdated:
+				t.onMonSvcAggUpdated(c)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
 			}
@@ -256,15 +263,12 @@ func (t *T) onInstStatusDeleted(c msgbus.InstStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
-func (t *T) onInstStatusUpdated(c msgbus.InstStatusUpdated) {
-	if c.Node != hostname.Hostname() {
-		// discard peer node events
-		return
-	}
-	provisioned := c.Status.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+func (t *T) onMonSvcAggUpdated(c msgbus.MonSvcAggUpdated) {
+	provisioned := c.SvcAgg.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+	t.provisioned[c.Path] = provisioned
 	hasAnyJob := t.hasAnyJob(c.Path)
 	switch {
-	case provisioned:
+	case provisioned && !hasAnyJob:
 		t.schedule(c.Path)
 	case !provisioned && hasAnyJob:
 		t.log.Info().Stringer("path", c.Path).Msgf("unschedule (instance no longer provisionned)")
@@ -329,6 +333,13 @@ func (t *T) scheduleNode() {
 }
 
 func (t *T) scheduleObject(p path.T) {
+	if provisioned, ok := t.provisioned[p]; !ok {
+		t.log.Error().Msgf("schedule object %s: unknown provisioned state", p)
+		return
+	} else if !provisioned {
+		t.log.Error().Msgf("schedule object %s: not provisioned", p)
+		return
+	}
 	i, err := object.New(p, object.WithVolatile(true))
 	if err != nil {
 		t.log.Error().Err(err).Msgf("schedule object %s", p)
@@ -347,4 +358,17 @@ func (t *T) scheduleObject(p path.T) {
 
 func (t *T) unschedule(p path.T) {
 	t.jobs.DelPath(p)
+}
+
+func (t *T) startFeederPinger() (func(), error) {
+	o, err := object.NewNode()
+	if err != nil {
+		return func() {}, err
+	}
+	client, err := o.CollectorFeedClient()
+	if err != nil {
+		return func() {}, err
+	}
+	client.Ping()
+	return client.NewPinger(5 * time.Second), nil
 }

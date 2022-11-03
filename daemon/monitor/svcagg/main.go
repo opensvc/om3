@@ -18,6 +18,8 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -33,12 +35,12 @@ type (
 
 		cmdC         chan *msgbus.Msg
 		discoverCmdC chan<- *msgbus.Msg
-		dataCmdC     chan<- interface{}
+		dataCmdC     chan<- any
 
-		// instance status map for nodes used to compute AggregatedStatus
-		instStatus map[string]instance.Status
+		instStatus  map[string]instance.Status
+		instMonitor map[string]instance.Monitor
 
-		// srcEvent is the source event that create svcAggStatus update
+		// srcEvent is the source event that triggered the svcAggStatus update
 		srcEvent *msgbus.Msg
 
 		ctx context.Context
@@ -57,6 +59,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		discoverCmdC: svcAggDiscoverCmd,
 		dataCmdC:     daemondata.BusFromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
+		instMonitor:  make(map[string]instance.Monitor),
 		ctx:          ctx,
 		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),
 	}
@@ -77,6 +80,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 func (o *svcAggStatus) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
 	subDesc := o.id + " svcagg"
 	uuids = append(uuids,
+		msgbus.SubSmon(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
 		msgbus.SubInstStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv),
 		msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cfg.update", o.id, o.onEv),
 		msgbus.SubCfg(bus, pubsub.OpDelete, subDesc+" cfg.delete", o.id, o.onEv),
@@ -90,6 +94,7 @@ func (o *svcAggStatus) worker(nodes []string) {
 
 	for _, node := range nodes {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
+		o.instMonitor[node] = instance.Monitor{}
 	}
 	o.update()
 	defer o.delete()
@@ -112,19 +117,29 @@ func (o *svcAggStatus) worker(nodes []string) {
 				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
 				o.updateStatus()
 			case msgbus.CfgDeleted:
-				if _, ok := o.instStatus[c.Node]; !ok {
-					continue
+				if _, ok := o.instStatus[c.Node]; ok {
+					delete(o.instStatus, c.Node)
 				}
-				delete(o.instStatus, c.Node)
+				if _, ok := o.instMonitor[c.Node]; ok {
+					delete(o.instMonitor, c.Node)
+				}
 				o.srcEvent = ev
 				o.updateStatus()
 			case msgbus.InstStatusUpdated:
 				if _, ok := o.instStatus[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance change from unknown node: %s", c.Node)
+					o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
 					continue
 				}
 				o.srcEvent = ev
 				o.instStatus[c.Node] = c.Status
+				o.updateStatus()
+			case msgbus.SmonUpdated:
+				if _, ok := o.instMonitor[c.Node]; !ok {
+					o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
+					continue
+				}
+				o.srcEvent = ev
+				o.instMonitor[c.Node] = c.Status
 				o.updateStatus()
 			default:
 				o.log.Error().Interface("cmd", *ev).Msg("unexpected cmd")
@@ -133,29 +148,93 @@ func (o *svcAggStatus) worker(nodes []string) {
 	}
 }
 
-func (o *svcAggStatus) onEv(i interface{}) {
+func (o *svcAggStatus) onEv(i any) {
 	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *svcAggStatus) updateStatus() {
 	// TODO update this simple aggregate status compute, perhaps already implemented
-	statusCount := make([]uint, 128, 128)
-	var newAvail status.T
-	for _, instStatus := range o.instStatus {
-		statusCount[instStatus.Avail]++
+	updateAvail := func() {
+		statusCount := make([]uint, 128, 128)
+		var newAvail status.T
+		for _, instStatus := range o.instStatus {
+			statusCount[instStatus.Avail]++
+		}
+		if statusCount[status.Warn] > 0 {
+			newAvail = status.Warn
+		} else if statusCount[status.Up] > 0 {
+			newAvail = status.Up
+		} else if statusCount[status.Down] > 0 {
+			newAvail = status.Down
+		} else {
+			newAvail = status.Undef
+		}
+		if o.status.Avail != newAvail {
+			o.status.Avail = newAvail
+		}
 	}
-	if statusCount[status.Warn] > 0 {
-		newAvail = status.Warn
-	} else if statusCount[status.Up] > 0 {
-		newAvail = status.Up
-	} else if statusCount[status.Down] > 0 {
-		newAvail = status.Down
-	} else {
-		newAvail = status.Undef
+	updateOverall := func() {
+		if o.status.Avail == status.Warn {
+			o.status.Overall = status.Warn
+			return
+		} else {
+			o.status.Overall = status.Undef
+		}
+		for _, instStatus := range o.instStatus {
+			o.status.Overall.Add(instStatus.Overall)
+		}
 	}
-	if o.status.Avail != newAvail {
-		o.status.Avail = newAvail
+	updateProvisioned := func() {
+		o.status.Provisioned = provisioned.Undef
+		for _, instStatus := range o.instStatus {
+			o.status.Provisioned = o.status.Provisioned.And(instStatus.Provisioned)
+		}
 	}
+	updateFrozen := func() {
+		m := map[bool]int{
+			true:  0,
+			false: 0,
+		}
+		for _, instStatus := range o.instStatus {
+			m[instStatus.Frozen.IsZero()] += 1
+		}
+		n := len(o.instStatus)
+		switch {
+		case n == 0:
+			o.status.Frozen = "n/a"
+		case n == m[false]:
+			o.status.Frozen = "frozen"
+		case n == m[true]:
+			o.status.Frozen = "thawed"
+		default:
+			o.status.Frozen = "mixed"
+		}
+	}
+	updatePlacement := func() {
+		o.status.Placement = placement.NotApplicable
+		for node, instMonitor := range o.instMonitor {
+			instStatus, ok := o.instStatus[node]
+			if !ok {
+				o.status.Placement = placement.NotApplicable
+				break
+			}
+			if instMonitor.IsLeader && !instStatus.Avail.Is(status.Up, status.NotApplicable) {
+				o.status.Placement = placement.NonOptimal
+				break
+			}
+			if !instMonitor.IsLeader && !instStatus.Avail.Is(status.Down, status.NotApplicable) {
+				o.status.Placement = placement.NonOptimal
+				break
+			}
+			o.status.Placement = placement.Optimal
+		}
+	}
+
+	updateAvail()
+	updateOverall()
+	updateProvisioned()
+	updateFrozen()
+	updatePlacement()
 	o.update()
 }
 

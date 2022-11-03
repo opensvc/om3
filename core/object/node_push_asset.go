@@ -70,13 +70,11 @@ func (t Node) assetValueClusterID() (data asset.Value) {
 	return
 }
 
-//
 // PushAsset assembles the asset inventory data.
 // Each entry value comes from:
 // * overrides (in config)
 // * probes
 // * default (code)
-//
 func (t Node) PushAsset() (asset.Data, error) {
 	data, err := t.getAsset()
 	if err != nil {
@@ -249,7 +247,7 @@ func (t Node) pushAsset(data asset.Data) error {
 		}
 		return []interface{}{vars, vals}
 	}
-	client, err := t.collectorFeedClient()
+	client, err := t.CollectorFeedClient()
 	if err != nil {
 		return err
 	}

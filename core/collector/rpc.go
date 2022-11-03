@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -16,11 +18,49 @@ import (
 	"opensvc.com/opensvc/util/xsession"
 )
 
+var (
+	Alive atomic.Bool
+)
+
 // Client exposes the jsonrpc2 Call function wrapped to add the auth arg
 type Client struct {
 	client jsonrpc.RPCClient
 	secret string
 	log    zerolog.Logger
+}
+
+func (c Client) NewPinger(d time.Duration) func() {
+	stop := make(chan bool)
+	go func() {
+		ticker := time.NewTicker(d)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				break
+			case <-ticker.C:
+				c.Ping()
+			}
+		}
+	}()
+	stopFunc := func() {
+		stop <- true
+	}
+	return stopFunc
+}
+
+func (c *Client) Ping() {
+	alive := Alive.Load()
+	_, err := c.Call("daemon_ping")
+	c.log.Debug().Bool("alive", alive).Msgf("ping collector: %s", err)
+	switch {
+	case (err != nil) && alive:
+		c.log.Info().Msgf("disable collector clients: %s", err)
+		Alive.Store(false)
+	case (err == nil) && !alive:
+		c.log.Info().Msgf("enable collector clients")
+		Alive.Store(true)
+	}
 }
 
 func ComplianceURL(s string) (*url.URL, error) {
