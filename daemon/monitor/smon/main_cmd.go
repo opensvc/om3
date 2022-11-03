@@ -286,7 +286,7 @@ func (o *smon) newIsLeader(instStatus instance.Status) bool {
 		if candidate != o.localhost {
 			continue
 		}
-		return i <= maxLeaders
+		return i < maxLeaders
 	}
 	return false
 }
