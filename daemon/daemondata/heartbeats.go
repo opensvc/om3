@@ -54,30 +54,31 @@ func SetHeartbeats(c chan<- interface{}, heartbeats []cluster.HeartbeatThreadSta
 func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetHeartbeatPing
 	peerNode := o.peerNode
-	if _, ok := d.pending.Cluster.Node[peerNode]; ok {
-		if !o.ping {
+	if !o.ping {
+		delete(d.pending.Cluster.Node[d.localNode].Status.Gen, peerNode)
+		delete(d.mergedOnPeer, peerNode)
+		delete(d.mergedFromPeer, peerNode)
+		delete(d.remotesNeedFull, peerNode)
+		if _, ok := d.pending.Cluster.Node[peerNode]; ok {
 			d.log.Info().Msgf("evict from cluster node stale peer %s", peerNode)
 			delete(d.pending.Cluster.Node, peerNode)
-			d.pending.Cluster.Node[d.localNode].Status.Gen[peerNode] = 0
-			delete(d.mergedOnPeer, peerNode)
-			delete(d.mergedFromPeer, peerNode)
-			patch := make(jsondelta.Patch, 0)
-			op := jsondelta.Operation{
-				OpPath: jsondelta.OperationPath{"cluster", "node", peerNode},
-				OpKind: "remove",
-			}
-			patch = append(patch, op)
-			eventId++
-			if eventB, err := json.Marshal(patch); err != nil {
-				d.log.Error().Err(err).Msg("opSetHeartbeatPing Marshal")
-			} else {
-				msgbus.PubEvent(d.bus, event.Event{
-					Kind: "patch",
-					ID:   eventId,
-					Time: time.Now(),
-					Data: eventB,
-				})
-			}
+		}
+		patch := make(jsondelta.Patch, 0)
+		op := jsondelta.Operation{
+			OpPath: jsondelta.OperationPath{"cluster", "node", peerNode},
+			OpKind: "remove",
+		}
+		patch = append(patch, op)
+		eventId++
+		if eventB, err := json.Marshal(patch); err != nil {
+			d.log.Error().Err(err).Msg("opSetHeartbeatPing Marshal")
+		} else {
+			msgbus.PubEvent(d.bus, event.Event{
+				Kind: "patch",
+				ID:   eventId,
+				Time: time.Now(),
+				Data: eventB,
+			})
 		}
 	}
 	msgbus.PubHbNodePing(d.bus, peerNode, msgbus.HbNodePing{

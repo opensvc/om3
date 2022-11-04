@@ -89,7 +89,7 @@ type (
 	// EventStats is a map that holds event counters
 	EventStats map[string]int
 
-	// GetEventStats is a getter of ctrl event counters
+	// CmdGetEventStats is a getter of ctrl event counters
 	CmdGetEventStats struct {
 		result chan<- EventStats
 	}
@@ -139,6 +139,11 @@ type (
 	}
 )
 
+var (
+	evStale   = "hb_stale"
+	evBeating = "hb_beating"
+)
+
 // Start starts hb controller goroutine, it returns its cmd chan
 //
 // The hb controller is responsible if the heartbeat data cache from:
@@ -150,15 +155,24 @@ type (
 //
 // The controller will die when ctx is done
 func Start(ctx context.Context) chan any {
-	t := &ctrl{
+	c := &ctrl{
 		cmd: make(chan any),
 		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
 	}
-	go t.start(ctx)
-	return t.cmd
+	go c.start(ctx)
+	return c.cmd
 }
 
 func (c *ctrl) start(ctx context.Context) {
+	started := make(chan bool)
+	go func() {
+		started <- true
+		c.run(ctx)
+	}()
+	<-started
+}
+
+func (c *ctrl) run(ctx context.Context) {
 	c.ctx, c.cancel = context.WithCancel(ctx)
 	c.log.Info().Msg("start")
 	events := make(EventStats)
@@ -184,7 +198,7 @@ func (c *ctrl) start(ctx context.Context) {
 				heartbeats = append(heartbeats, heartbeat[key])
 			}
 			if err := daemondata.SetHeartbeats(dataCmd, heartbeats); err != nil {
-				c.log.Error().Err(err).Msgf("can'c SetHeartbeats")
+				c.log.Error().Err(err).Msgf("can't SetHeartbeats")
 			}
 		case i := <-c.cmd:
 			switch o := i.(type) {
@@ -243,29 +257,33 @@ func (c *ctrl) start(ctx context.Context) {
 					Time: time.Now(),
 					Data: data,
 				})
-				if o.Name == "hb_stale" {
-					c.log.Warn().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+				if o.Name == evStale {
+					c.log.Warn().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 				} else {
-					c.log.Info().Msgf("Received event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+					c.log.Info().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbId, ".rx") {
 						switch o.Name {
-						case "hb_beating":
+						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Info().Msgf("beating node %s", o.Nodename)
-								daemondata.SetHeartbeatPing(dataCmd, o.Nodename, true)
+								if err := daemondata.SetHeartbeatPing(dataCmd, o.Nodename, true); err != nil {
+									c.log.Error().Err(err).Msg("set heartbeat ping on alive node")
+								}
 							}
 							remote.rxBeating++
-						case "hb_stale":
+						case evStale:
 							if remote.rxBeating == 0 {
-								panic("hb_stale on already stale node")
+								panic("stale on already staled node")
 							}
 							remote.rxBeating--
 						}
 						if remote.rxBeating == 0 {
-							c.log.Error().Msgf("stale node %s", o.Nodename)
-							daemondata.SetHeartbeatPing(dataCmd, o.Nodename, false)
+							c.log.Info().Msgf("stale node %s", o.Nodename)
+							if err := daemondata.SetHeartbeatPing(dataCmd, o.Nodename, false); err != nil {
+								c.log.Error().Err(err).Msg("set heartbeat ping on dead node")
+							}
 						}
 						remotes[o.Nodename] = remote
 					}

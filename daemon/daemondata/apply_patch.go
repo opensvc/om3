@@ -37,7 +37,12 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	)
 	pendingNode, ok := d.pending.Cluster.Node[o.nodename]
 	if !ok {
-		d.log.Debug().Msgf("apply remote patch skip unknown remote %s", o.nodename)
+		if d.remotesNeedFull[o.nodename] {
+			d.log.Debug().Msgf("apply remote patch skipped for remote %s (waiting full)", o.nodename)
+		} else {
+			d.log.Info().Msgf("apply remote patch skipped for remote %s (need full)", o.nodename)
+			d.remotesNeedFull[o.nodename] = true
+		}
 		o.err <- nil
 		return
 	}

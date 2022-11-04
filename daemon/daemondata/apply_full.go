@@ -19,25 +19,48 @@ type opApplyRemoteFull struct {
 
 func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	d.counterCmd <- idApplyFull
-	d.log.Debug().Msgf("opApplyRemoteFull %s", o.nodename)
-	d.pending.Cluster.Node[o.nodename] = *o.full
-	d.mergedFromPeer[o.nodename] = o.full.Status.Gen[o.nodename]
-	d.remotesNeedFull[o.nodename] = false
-	if gen, ok := d.pending.Cluster.Node[o.nodename].Status.Gen[d.localNode]; ok {
+	remote := o.nodename
+	local := d.localNode
+	d.log.Debug().Msgf("opApplyRemoteFull %s", remote)
+	defer func() {
+		d.log.Debug().
+			Interface("remotesNeedFull", d.remotesNeedFull).
+			Interface("mergedOnPeer", d.mergedOnPeer).
+			Interface("pending gen", d.pending.Cluster.Node[remote].Status.Gen).
+			Interface("full.gen", o.full.Status.Gen).
+			Msgf("opApplyRemoteFull %s", remote)
+		select {
+		case <-ctx.Done():
+		case o.done <- true:
+		}
+	}()
+
+	if d.mergedFromPeer[remote] == o.full.Status.Gen[remote] && d.mergedOnPeer[remote] == o.full.Status.Gen[local] {
+		d.log.Debug().Msgf("apply full drop already applied %s", remote)
+		return
+	}
+	if gen, ok := o.full.Status.Gen[local]; ok {
 		d.mergedOnPeer[o.nodename] = gen
 	}
+	d.mergedFromPeer[remote] = o.full.Status.Gen[remote]
+	d.pending.Cluster.Node[remote] = *o.full
+	d.pending.Cluster.Node[local].Status.Gen[remote] = o.full.Status.Gen[remote]
 
-	d.pending.Cluster.Node[d.localNode].Status.Gen[o.nodename] = o.full.Status.Gen[o.nodename]
+	if d.remotesNeedFull[remote] {
+		d.log.Info().Msgf("apply full for remote %s (reset need full)", remote)
+		d.remotesNeedFull[remote] = false
+	}
+
 	absolutePatch := jsondelta.Patch{
 		jsondelta.Operation{
-			OpPath:  jsondelta.OperationPath{"cluster", "node", o.nodename},
+			OpPath:  jsondelta.OperationPath{"cluster", "node", remote},
 			OpValue: jsondelta.NewOptValue(o.full),
 			OpKind:  "replace",
 		},
 	}
 
 	if eventB, err := json.Marshal(absolutePatch); err != nil {
-		d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", o.nodename)
+		d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", remote)
 	} else {
 		eventId++
 		msgbus.PubEvent(d.bus, event.Event{
@@ -46,17 +69,6 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 			Time: time.Now(),
 			Data: eventB,
 		})
-	}
-
-	d.log.Debug().
-		Interface("remotesNeedFull", d.remotesNeedFull).
-		Interface("mergedOnPeer", d.mergedOnPeer).
-		Interface("pending gen", d.pending.Cluster.Node[o.nodename].Status.Gen).
-		Interface("full.gen", o.full.Status.Gen).
-		Msgf("opApplyRemoteFull %s", o.nodename)
-	select {
-	case <-ctx.Done():
-	case o.done <- true:
 	}
 }
 
