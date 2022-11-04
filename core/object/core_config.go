@@ -107,10 +107,10 @@ func (t core) Topology() topology.T {
 	return topology.New(s)
 }
 
-func (t core) Placement() placement.T {
+func (t core) Placement() placement.Policy {
 	k := key.Parse("placement")
 	s := t.config.GetString(k)
-	return placement.New(s)
+	return placement.NewPolicy(s)
 }
 
 func (t core) Priority() priority.T {

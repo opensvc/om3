@@ -145,7 +145,7 @@ func (t Node) registerAsUser(user, password, app string) error {
 }
 
 func (t Node) registerAsNode() error {
-	client, err := t.collectorFeedClient()
+	client, err := t.CollectorFeedClient()
 	if err != nil {
 		return err
 	}

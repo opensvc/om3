@@ -252,7 +252,7 @@ var keywordStore = keywords.Store{
 		Scopable:   true,
 		Inherit:    keywords.InheritHead,
 		Default:    "nodes order",
-		Candidates: placement.Names(),
+		Candidates: placement.PolicyNames(),
 		Text: `Set a service instances placement policy:
 
 * none        no placement policy. a policy for dummy, observe-only, services.

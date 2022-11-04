@@ -90,7 +90,7 @@ func (t *actor) collectorPushResInfo(infos resource.Infos) error {
 	if err != nil {
 		return err
 	}
-	client, err := node.collectorFeedClient()
+	client, err := node.CollectorFeedClient()
 	if err != nil {
 		return err
 	}

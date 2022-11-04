@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/core/colorstatus"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
@@ -29,11 +30,11 @@ type (
 	// AggregatedStatus contains the object states obtained via
 	// aggregation of all instances states.
 	AggregatedStatus struct {
-		Avail       status.T      `json:"avail"`
-		Overall     status.T      `json:"overall,omitempty"`
-		Frozen      string        `json:"frozen,omitempty"`
-		Placement   string        `json:"placement,omitempty"`
-		Provisioned provisioned.T `json:"provisioned,omitempty"`
+		Avail       status.T        `json:"avail"`
+		Overall     status.T        `json:"overall,omitempty"`
+		Frozen      string          `json:"frozen,omitempty"`
+		Placement   placement.State `json:"placement,omitempty"`
+		Provisioned provisioned.T   `json:"provisioned,omitempty"`
 	}
 )
 
@@ -109,10 +110,8 @@ func (t Status) loadTreeNodeSlaves(head *tree.Node) {
 	}
 }
 
-//
 // descString returns a string presenting notable information at the object,
 // instances-aggregated, level.
-//
 func (t Status) descString() string {
 	l := make([]string, 0)
 
@@ -123,7 +122,7 @@ func (t Status) descString() string {
 
 	// Placement
 	switch t.Object.Placement {
-	case "optimal", "n/a", "":
+	case placement.Optimal, placement.NotApplicable:
 	default:
 		l = append(l, rawconfig.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.Placement)))
 	}

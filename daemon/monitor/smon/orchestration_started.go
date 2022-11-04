@@ -161,14 +161,13 @@ func (o *smon) startedClearIfReached() bool {
 }
 
 func (o *smon) hasBetterCandidateForStarted() bool {
-	// TODO change rule (scope from cfg is not for this)
 	for node, otherSmon := range o.instSmon {
 		if node == o.localhost {
 			continue
 		}
 		switch otherSmon.Status {
 		case statusReady:
-			if node == o.scopeNodes[0] {
+			if otherSmon.IsLeader {
 				return true
 			}
 		case statusStarting:

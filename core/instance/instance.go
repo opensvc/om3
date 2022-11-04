@@ -35,7 +35,7 @@ type (
 		StatusUpdated       time.Time                 `json:"status_updated"`
 		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
 		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
-		Placement           string                    `json:"placement"`
+		IsLeader            bool                      `json:"leader"`
 		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
 	}
 
@@ -70,7 +70,7 @@ type (
 		Optional    status.T                 `json:"optional,omitempty"`
 		Orchestrate string                   `json:"orchestrate,omitempty"` // TODO enum
 		Topology    topology.T               `json:"topology,omitempty"`
-		Placement   placement.T              `json:"placement,omitempty"`
+		Placement   placement.Policy         `json:"placement,omitempty"`
 		Priority    priority.T               `json:"priority,omitempty"`
 		Provisioned provisioned.T            `json:"provisioned"`
 		Preserved   bool                     `json:"preserved,omitempty"`

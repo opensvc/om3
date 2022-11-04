@@ -69,7 +69,7 @@ func newNodeData(localNode string) cluster.NodeData {
 			Agent:           "3.0-0",
 			API:             8,
 			Arbitrators:     map[string]cluster.ArbitratorStatus{},
-			Compat:          11,
+			Compat:          12,
 			Env:             "",
 			Frozen:          frozen,
 			Gen:             map[string]uint64{localNode: 1},

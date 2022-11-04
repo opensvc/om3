@@ -25,7 +25,7 @@ func (t Node) ForceSysreport() error {
 }
 
 func (t Node) newSysreport() (*sysreport.T, error) {
-	client, err := t.collectorFeedClient()
+	client, err := t.CollectorFeedClient()
 	if err != nil {
 		return nil, err
 	}

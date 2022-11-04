@@ -75,7 +75,7 @@ func (o opDelNmon) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	msgbus.PubNmonDelete(d.bus, msgbus.NmonDeleted{
+	msgbus.PubNodeMonitorDeleted(d.bus, msgbus.NodeMonitorDeleted{
 		Node: d.localNode,
 	})
 	select {
@@ -107,7 +107,7 @@ func (o opSetNmon) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubNmonUpdated(d.bus, msgbus.NmonUpdated{
+	msgbus.PubNodeMonitorUpdated(d.bus, msgbus.NodeMonitorUpdated{
 		Node:    d.localNode,
 		Monitor: o.value,
 	})

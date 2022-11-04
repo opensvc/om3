@@ -241,9 +241,11 @@ type (
 	// ScheduleOptions contains the information needed by the object to create a
 	// schedule.Entry to append to the object's schedule.Table.
 	ScheduleOptions struct {
-		Action string
-		Option string
-		Base   string
+		Action             string
+		Option             string
+		Base               string
+		RequireCollector   bool
+		RequireProvisioned bool
 	}
 )
 

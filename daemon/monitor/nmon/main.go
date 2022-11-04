@@ -131,11 +131,11 @@ func Start(parent context.Context) error {
 
 func (o *nmon) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
 	uuids = append(uuids,
-		msgbus.SubNmon(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv),
-		msgbus.SubNmon(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv),
+		msgbus.SubNodeMonitor(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv),
+		msgbus.SubNodeMonitor(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv),
 		msgbus.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv),
 		msgbus.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv),
-		msgbus.SubSetNmon(bus, "nmon setnmon", o.onEv),
+		msgbus.SubSetNodeMonitor(bus, "nmon setnmon", o.onEv),
 		msgbus.SubNodeStatusLabels(bus, pubsub.OpUpdate, "nmon labels.update", "", o.onEv),
 		msgbus.SubNodeStatusPaths(bus, pubsub.OpUpdate, "nmon paths.update", "", o.onEv),
 	)
@@ -161,11 +161,11 @@ func (o *nmon) worker() {
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
-			case msgbus.SetNmon:
+			case msgbus.SetNodeMonitor:
 				o.onSetNmonCmd(c)
-			case msgbus.NmonUpdated:
+			case msgbus.NodeMonitorUpdated:
 				o.onNmonUpdated(c)
-			case msgbus.NmonDeleted:
+			case msgbus.NodeMonitorDeleted:
 				o.onNmonDeleted(c)
 			case msgbus.FrozenFileRemoved:
 				o.onFrozenFileRemoved(c)

@@ -1,6 +1,10 @@
 package smon
 
-import "opensvc.com/opensvc/core/provisioned"
+import (
+	"sort"
+
+	"opensvc.com/opensvc/core/provisioned"
+)
 
 func (o *smon) orchestrateProvisioned() {
 	if !o.isConvergedGlobalExpect() {
@@ -52,16 +56,40 @@ func (o *smon) provisionedClearIfReached() bool {
 	return false
 }
 
+func (o *smon) leaders() []string {
+	l := make([]string, 0)
+	for node, instSmon := range o.instSmon {
+		if instSmon.IsLeader {
+			l = append(l, node)
+		}
+	}
+	return l
+}
+
+// provisioningLeader returns one of all leaders.
+// Select the first in alphalexical order.
+func (o *smon) provisioningLeader() string {
+	leaders := o.leaders()
+	switch len(leaders) {
+	case 0:
+		return ""
+	case 1:
+		return leaders[0]
+	default:
+		sort.StringSlice(leaders).Sort()
+		return leaders[0]
+	}
+}
+
 func (o *smon) isProvisioningLeader() bool {
-	if o.scopeNodes[0] == o.localhost {
+	if o.provisioningLeader() == o.localhost {
 		return true
 	}
 	return false
 }
 
 func (o *smon) hasLeaderProvisioned() bool {
-	// TODO change rule (scope from cfg is not for this)
-	leader := o.scopeNodes[0]
+	leader := o.provisioningLeader()
 	if leaderInstanceStatus, ok := o.instStatus[leader]; !ok {
 		return false
 	} else if leaderInstanceStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {

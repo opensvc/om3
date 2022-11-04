@@ -3,9 +3,9 @@ package discover
 import (
 	"time"
 
+	"opensvc.com/opensvc/daemon/monitor/svcagg"
 	"opensvc.com/opensvc/daemon/msgbus"
 	ps "opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/daemon/monitor/svcagg"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -34,7 +34,7 @@ func (d *discover) agg() {
 			return
 		case i := <-d.svcaggCmdC:
 			switch c := (*i).(type) {
-			case msgbus.MonSvcAggDone:
+			case msgbus.ObjectAggDone:
 				delete(d.svcAgg, c.Path.String())
 			case msgbus.CfgUpdated:
 				s := c.Path.String()

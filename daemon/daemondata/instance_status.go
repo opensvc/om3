@@ -88,7 +88,7 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	msgbus.PubInstStatusDelete(d.bus, s, msgbus.InstStatusDeleted{
+	msgbus.PubInstanceStatusDelete(d.bus, s, msgbus.InstanceStatusDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	})
@@ -136,7 +136,7 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubInstStatusUpdated(d.bus, s, msgbus.InstStatusUpdated{
+	msgbus.PubInstanceStatusUpdated(d.bus, s, msgbus.InstanceStatusUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,

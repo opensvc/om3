@@ -101,7 +101,7 @@ func pushDiskInfo(client *collector.Client, data disks.Disks) error {
 }
 
 func (t Node) pushDisks(data disks.Disks) error {
-	client, err := t.collectorFeedClient()
+	client, err := t.CollectorFeedClient()
 	if err != nil {
 		return err
 	}

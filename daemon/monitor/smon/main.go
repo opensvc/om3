@@ -121,7 +121,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		GlobalExpect: globalExpectUnset,
 		LocalExpect:  localExpectUnset,
 		Status:       statusIdle,
-		Placement:    "",
+		IsLeader:     false,
 		Restart:      make(map[string]instance.MonitorRestart),
 	}
 	state := previousState
@@ -160,10 +160,10 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 func (o *smon) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
 	subDesc := o.id + " smon "
 	uuids = append(uuids,
-		msgbus.SubSvcAgg(bus, pubsub.OpUpdate, subDesc+" agg.update", o.id, o.onEv),
-		msgbus.SubSetSmon(bus, pubsub.OpUpdate, subDesc+" setSmon.update", o.id, o.onEv),
-		msgbus.SubSmon(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
-		msgbus.SubSmon(bus, pubsub.OpDelete, subDesc+" smon.delete", o.id, o.onEv),
+		msgbus.SubObjectAgg(bus, pubsub.OpUpdate, subDesc+" agg.update", o.id, o.onEv),
+		msgbus.SubSetInstanceMonitor(bus, pubsub.OpUpdate, subDesc+" setSmon.update", o.id, o.onEv),
+		msgbus.SubInstanceMonitor(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
+		msgbus.SubInstanceMonitor(bus, pubsub.OpDelete, subDesc+" smon.delete", o.id, o.onEv),
 	)
 	return
 }
@@ -188,13 +188,13 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.cmdC:
 			switch c := (*i).(type) {
-			case msgbus.MonSvcAggUpdated:
+			case msgbus.ObjectAggUpdated:
 				o.cmdSvcAggUpdated(c)
-			case msgbus.SetSmon:
+			case msgbus.SetInstanceMonitor:
 				o.cmdSetSmonClient(c.Monitor)
-			case msgbus.SmonUpdated:
+			case msgbus.InstanceMonitorUpdated:
 				o.cmdSmonUpdated(c)
-			case msgbus.SmonDeleted:
+			case msgbus.InstanceMonitorDeleted:
 				o.cmdSmonDeleted(c)
 			case cmdOrchestrate:
 				o.needOrchestrate(c)

@@ -32,11 +32,11 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 		smon.GlobalExpect = *payload.GlobalExpect
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	msg := msgbus.SetSmon{
+	msg := msgbus.SetInstanceMonitor{
 		Path:    p,
 		Node:    hostname.Hostname(),
 		Monitor: smon,
 	}
-	msgbus.PubSetSmonUpdated(bus, p.String(), msg)
+	msgbus.PubSetInstanceMonitorUpdated(bus, p.String(), msg)
 	w.WriteHeader(http.StatusOK)
 }
