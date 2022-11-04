@@ -16,7 +16,6 @@ package instcfg
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -273,7 +272,6 @@ func (o *T) getScope() (scope []string, err error) {
 		}
 		scope = evalNodes.([]string)
 	}
-	sort.Strings(scope)
 	return
 }
 
