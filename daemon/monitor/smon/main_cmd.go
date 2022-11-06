@@ -19,7 +19,7 @@ import (
 func (o *smon) cmdSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
 		o.updateIsLeader()
-		switch srcCmd := (*c.SrcEv).(type) {
+		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
 			srcNode := srcCmd.Node
 			if _, ok := o.instStatus[srcNode]; ok {

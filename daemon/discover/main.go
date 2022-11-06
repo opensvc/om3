@@ -20,14 +20,14 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
 	discover struct {
-		cfgCmdC    chan *msgbus.Msg
-		svcaggCmdC chan *msgbus.Msg
+		cfgCmdC    chan any
+		svcaggCmdC chan any
 		ctx        context.Context
 		log        zerolog.Logger
 
@@ -57,6 +57,10 @@ type (
 
 		localhost string
 		fsWatcher *fsnotify.Watcher
+
+		subCfgUpdated     pubsub.Subscription
+		subCfgDeleted     pubsub.Subscription
+		subCfgFileUpdated pubsub.Subscription
 	}
 )
 
@@ -70,8 +74,8 @@ func Start(ctx context.Context) (func(), error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
-		cfgCmdC:    make(chan *msgbus.Msg),
-		svcaggCmdC: make(chan *msgbus.Msg),
+		cfgCmdC:    make(chan any),
+		svcaggCmdC: make(chan any),
 		cfgMTime:   make(map[string]time.Time),
 		ctx:        ctx,
 		log:        daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),

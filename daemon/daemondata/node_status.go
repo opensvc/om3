@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/san"
 )
 
@@ -79,11 +80,11 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubFrozen(d.bus, hostname.Hostname(), msgbus.Frozen{
+	msgbus.Pub(d.bus, msgbus.Frozen{
 		Node:  hostname.Hostname(),
 		Path:  path.T{},
 		Value: o.value,
-	})
+	}, pubsub.Label{"node", hostname.Hostname()})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -112,7 +113,7 @@ func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubNodeStatusLabelsUpdate(d.bus, msgbus.NodeStatusLabelsUpdated{
+	msgbus.Pub(d.bus, msgbus.NodeStatusLabelsUpdated{
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})
@@ -144,7 +145,7 @@ func (o opSetNodeStatusPaths) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubNodeStatusPathsUpdate(d.bus, msgbus.NodeStatusPathsUpdated{
+	msgbus.Pub(d.bus, msgbus.NodeStatusPathsUpdated{
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})

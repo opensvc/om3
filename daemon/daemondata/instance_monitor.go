@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -65,10 +66,10 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	msgbus.PubInstanceMonitorDeleted(d.bus, s, msgbus.InstanceMonitorDeleted{
+	msgbus.Pub(d.bus, msgbus.InstanceMonitorDeleted{
 		Path: o.path,
 		Node: d.localNode,
-	})
+	}, pubsub.Label{"path", s})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -99,11 +100,11 @@ func (o opSetSmon) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.PubInstanceMonitorUpdated(d.bus, s, msgbus.InstanceMonitorUpdated{
+	msgbus.Pub(d.bus, msgbus.InstanceMonitorUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Status: o.value,
-	})
+	}, pubsub.Label{"path", s})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

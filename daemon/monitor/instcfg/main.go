@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -43,18 +42,20 @@ type (
 	T struct {
 		cfg instance.Config
 
-		path         path.T
-		id           string
-		configure    object.Configurer
-		filename     string
-		log          zerolog.Logger
-		lastMtime    time.Time
-		localhost    string
-		forceRefresh bool
-		published    bool
-
-		cmdC     chan *msgbus.Msg
-		dataCmdC chan<- interface{}
+		path                 path.T
+		id                   string
+		configure            object.Configurer
+		filename             string
+		log                  zerolog.Logger
+		lastMtime            time.Time
+		localhost            string
+		forceRefresh         bool
+		published            bool
+		cmdC                 chan any
+		dataCmdC             chan<- any
+		subCfgFileUpdated    pubsub.Subscription
+		subCfgFileRemoved    pubsub.Subscription
+		subClusterCfgUpdated pubsub.Subscription
 	}
 )
 
@@ -67,7 +68,7 @@ var (
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *msgbus.Msg) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -78,7 +79,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
-		cmdC:         make(chan *msgbus.Msg),
+		cmdC:         make(chan any),
 		dataCmdC:     daemondata.BusFromContext(parent),
 		filename:     filename,
 	}
@@ -87,35 +88,37 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		return err
 	}
 
-	bus := pubsub.BusFromContext(parent)
-	uuids := o.initSubscribers(bus)
+	o.startSubscriptions(parent)
+
 	go func() {
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
-			for _, id := range uuids {
-				msgbus.UnSub(bus, id)
-			}
+			o.stopSubscriptions()
 			o.done(parent, svcDiscoverCmd)
 		}()
 		o.worker(parent)
 	}()
+
 	return nil
 }
 
-func (o *T) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
-	subDesc := o.path.String() + " instcfg "
-	uuids = append(uuids,
-		msgbus.SubCfgFile(bus, pubsub.OpUpdate, subDesc+" own CfgFile update", o.path.String(), o.onEv),
-		msgbus.SubCfgFile(bus, pubsub.OpDelete, subDesc+" own CfgFile remove", o.path.String(), o.onEv),
-	)
+func (o *T) stopSubscriptions() {
+	o.subCfgFileUpdated.Stop()
+	o.subCfgFileRemoved.Stop()
+	o.subClusterCfgUpdated.Stop()
+}
+
+func (o *T) startSubscriptions(ctx context.Context) {
+	bus := pubsub.BusFromContext(ctx)
+	label := pubsub.Label{"path", o.path.String()}
+	name := o.path.String() + " instcfg"
+	o.subCfgFileUpdated = msgbus.Sub(bus, name, msgbus.CfgFileUpdated{}, label)
+	o.subCfgFileRemoved = msgbus.Sub(bus, name, msgbus.CfgFileRemoved{}, label)
 	clusterId := clusterPath.String()
 	if o.path.String() != clusterId {
-		uuids = append(uuids,
-			msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cluster Cfg update", clusterId, o.onEv),
-		)
+		o.subClusterCfgUpdated = msgbus.Sub(bus, name, msgbus.CfgUpdated{}, pubsub.Label{"path", clusterId})
 	}
-	return
 }
 
 // worker watch for local instCfg config file updates until file is removed
@@ -141,41 +144,38 @@ func (o *T) worker(parent context.Context) {
 		select {
 		case <-parent.Done():
 			return
+		case i := <-o.subCfgFileUpdated.C:
+			c := i.(msgbus.CfgFileUpdated)
+			o.log.Debug().Msgf("recv %#v", c)
+			if err := o.configFileCheck(); err != nil {
+				o.log.Error().Err(err).Msg("configFileCheck error")
+				return
+			}
+		case i := <-o.subCfgFileRemoved.C:
+			c := i.(msgbus.CfgFileRemoved)
+			o.log.Debug().Msgf("recv %#v", c)
+			return
+		case i := <-o.subClusterCfgUpdated.C:
+			c := i.(msgbus.CfgUpdated)
+			o.log.Debug().Msgf("recv %#v", c)
+			if c.Node != o.localhost {
+				// only watch local cluster config updates
+				continue
+			}
+			o.log.Info().Msg("local cluster config changed => refresh cfg")
+			o.forceRefresh = true
+			if err := o.configFileCheck(); err != nil {
+				return
+			}
 		case i := <-o.cmdC:
-			switch c := (*i).(type) {
+			switch i.(type) {
 			case msgbus.Exit:
 				log.Debug().Msg("eat poison pill")
-				return
-			case msgbus.CfgUpdated:
-				o.log.Debug().Msgf("recv %#v", c)
-				if c.Node != o.localhost {
-					// only watch local cluster config updates
-					continue
-				}
-				o.log.Info().Msg("local cluster config changed => refresh cfg")
-				o.forceRefresh = true
-				if err := o.configFileCheck(); err != nil {
-					return
-				}
-			case msgbus.CfgFileUpdated:
-				o.log.Debug().Msgf("recv %#v", c)
-				if err := o.configFileCheck(); err != nil {
-					o.log.Error().Err(err).Msg("configFileCheck error")
-					return
-				}
-			case msgbus.CfgFileRemoved:
-				o.log.Debug().Msgf("recv %#v", c)
 				return
 			default:
 				o.log.Error().Interface("cmd", i).Msg("unexpected cmd")
 			}
 		}
-	}
-}
-
-func (o *T) onEv(i interface{}) {
-	select {
-	case o.cmdC <- msgbus.NewMsg(i):
 	}
 }
 
@@ -296,11 +296,11 @@ func (o *T) delete() {
 	}
 }
 
-func (o *T) done(parent context.Context, doneChan chan<- *msgbus.Msg) {
-	op := msgbus.NewMsg(msgbus.MonCfgDone{
+func (o *T) done(parent context.Context, doneChan chan<- any) {
+	op := msgbus.MonCfgDone{
 		Path:     o.path,
 		Filename: o.filename,
-	})
+	}
 	select {
 	case <-parent.Done():
 		return

@@ -36,6 +36,6 @@ func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 		Node:    hostname.Hostname(),
 		Monitor: smon,
 	}
-	msgbus.PubSetInstanceMonitorUpdated(bus, p.String(), msg)
+	msgbus.Pub(bus, msg, pubsub.Label{"path", p.String()})
 	w.WriteHeader(http.StatusOK)
 }

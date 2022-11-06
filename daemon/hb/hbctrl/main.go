@@ -251,7 +251,7 @@ func (c *ctrl) run(ctx context.Context) {
 					events[o.Name] = 1
 				}
 				data := json.RawMessage("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
-				msgbus.PubEvent(bus, event.Event{
+				msgbus.Pub(bus, event.Event{
 					Kind: o.Name,
 					ID:   0,
 					Time: time.Now(),

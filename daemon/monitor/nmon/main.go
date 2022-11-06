@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -41,7 +40,7 @@ type (
 
 		ctx      context.Context
 		cancel   context.CancelFunc
-		cmdC     chan *msgbus.Msg
+		cmdC     chan any
 		dataCmdC chan<- any
 		log      zerolog.Logger
 
@@ -54,6 +53,14 @@ type (
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
+
+		subNodeMonitorUpdated         pubsub.Subscription
+		subNodeMonitorDeleted         pubsub.Subscription
+		subFrozenFileRemoved          pubsub.Subscription
+		subFrozenFileUpdated          pubsub.Subscription
+		subSetNodeMonitor             pubsub.Subscription
+		subSetNodeStatusLabelsUpdated pubsub.Subscription
+		subSetNodeStatusPathsUpdated  pubsub.Subscription
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -107,7 +114,7 @@ func Start(parent context.Context) error {
 		previousState: previousState,
 		ctx:           ctx,
 		cancel:        cancel,
-		cmdC:          make(chan *msgbus.Msg),
+		cmdC:          make(chan any),
 		dataCmdC:      daemondata.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
@@ -115,31 +122,37 @@ func Start(parent context.Context) error {
 		nmons:         make(map[string]cluster.NodeMonitor),
 	}
 
-	bus := pubsub.BusFromContext(o.ctx)
-	uuids := o.initSubscribers(bus)
+	o.startSubscriptions()
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			for _, id := range uuids {
-				msgbus.UnSub(bus, id)
-			}
+			o.stopSubscriptions()
 		}()
 		o.worker()
 	}()
 	return nil
 }
 
-func (o *nmon) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
-	uuids = append(uuids,
-		msgbus.SubNodeMonitor(bus, pubsub.OpUpdate, "nmon nmon.update", o.onEv),
-		msgbus.SubNodeMonitor(bus, pubsub.OpDelete, "nmon nmon.delete", o.onEv),
-		msgbus.SubFrozenFile(bus, pubsub.OpUpdate, "nmon frozenFile.update", "", o.onEv),
-		msgbus.SubFrozenFile(bus, pubsub.OpDelete, "nmon frozenFile.delete", "", o.onEv),
-		msgbus.SubSetNodeMonitor(bus, "nmon setnmon", o.onEv),
-		msgbus.SubNodeStatusLabels(bus, pubsub.OpUpdate, "nmon labels.update", "", o.onEv),
-		msgbus.SubNodeStatusPaths(bus, pubsub.OpUpdate, "nmon paths.update", "", o.onEv),
-	)
-	return
+func (o *nmon) stopSubscriptions() {
+	o.subNodeMonitorUpdated.Stop()
+	o.subNodeMonitorDeleted.Stop()
+	o.subFrozenFileRemoved.Stop()
+	o.subFrozenFileUpdated.Stop()
+	o.subSetNodeMonitor.Stop()
+	o.subSetNodeStatusLabelsUpdated.Stop()
+	o.subSetNodeStatusPathsUpdated.Stop()
+}
+
+func (o *nmon) startSubscriptions() {
+	bus := pubsub.BusFromContext(o.ctx)
+	name := "nmon"
+	o.subNodeMonitorUpdated = msgbus.Sub(bus, name, msgbus.NodeMonitorUpdated{})
+	o.subNodeMonitorDeleted = msgbus.Sub(bus, name, msgbus.NodeMonitorDeleted{})
+	o.subFrozenFileRemoved = msgbus.Sub(bus, name, msgbus.FrozenFileRemoved{}, pubsub.Label{"path", ""})
+	o.subFrozenFileUpdated = msgbus.Sub(bus, name, msgbus.FrozenFileUpdated{}, pubsub.Label{"path", ""})
+	o.subSetNodeMonitor = msgbus.Sub(bus, name, msgbus.SetNodeMonitor{})
+	o.subSetNodeStatusLabelsUpdated = msgbus.Sub(bus, name, msgbus.NodeStatusLabelsUpdated{})
+	o.subSetNodeStatusPathsUpdated = msgbus.Sub(bus, name, msgbus.NodeStatusPathsUpdated{})
 }
 
 // worker watch for local nmon updates
@@ -159,31 +172,34 @@ func (o *nmon) worker() {
 		select {
 		case <-o.ctx.Done():
 			return
+		case i := <-o.subNodeMonitorUpdated.C:
+			c := i.(msgbus.NodeMonitorUpdated)
+			o.onNmonUpdated(c)
+		case i := <-o.subNodeMonitorDeleted.C:
+			c := i.(msgbus.NodeMonitorDeleted)
+			o.onNmonDeleted(c)
+		case i := <-o.subFrozenFileRemoved.C:
+			c := i.(msgbus.FrozenFileRemoved)
+			o.onFrozenFileRemoved(c)
+		case i := <-o.subFrozenFileUpdated.C:
+			c := i.(msgbus.FrozenFileUpdated)
+			o.onFrozenFileUpdated(c)
+		case i := <-o.subSetNodeMonitor.C:
+			c := i.(msgbus.SetNodeMonitor)
+			o.onSetNmonCmd(c)
+		case i := <-o.subSetNodeStatusLabelsUpdated.C:
+			c := i.(msgbus.NodeStatusLabelsUpdated)
+			o.onNodeStatusLabelsUpdated(c)
+		case i := <-o.subSetNodeStatusPathsUpdated.C:
+			c := i.(msgbus.NodeStatusPathsUpdated)
+			o.onNodeStatusPathsUpdated(c)
 		case i := <-o.cmdC:
-			switch c := (*i).(type) {
-			case msgbus.SetNodeMonitor:
-				o.onSetNmonCmd(c)
-			case msgbus.NodeMonitorUpdated:
-				o.onNmonUpdated(c)
-			case msgbus.NodeMonitorDeleted:
-				o.onNmonDeleted(c)
-			case msgbus.FrozenFileRemoved:
-				o.onFrozenFileRemoved(c)
-			case msgbus.FrozenFileUpdated:
-				o.onFrozenFileUpdated(c)
-			case msgbus.NodeStatusPathsUpdated:
-				o.onNodeStatusPathsUpdated(c)
-			case msgbus.NodeStatusLabelsUpdated:
-				o.onNodeStatusLabelsUpdated(c)
+			switch c := i.(type) {
 			case cmdOrchestrate:
 				o.onOrchestrate(c)
 			}
 		}
 	}
-}
-
-func (o *nmon) onEv(i interface{}) {
-	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *nmon) delete() {

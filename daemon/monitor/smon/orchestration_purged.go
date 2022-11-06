@@ -3,7 +3,6 @@ package smon
 import (
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 func (o *smon) orchestratePurged() {
@@ -32,7 +31,7 @@ func (o *smon) purgedFromIdle() {
 		return
 	}
 	go func() {
-		o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusIdle, newState: statusUnProvisioned})
+		o.cmdC <- cmdOrchestrate{state: statusIdle, newState: statusUnProvisioned}
 	}()
 	return
 }

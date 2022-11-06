@@ -63,7 +63,7 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", remote)
 	} else {
 		eventId++
-		msgbus.PubEvent(d.bus, event.Event{
+		msgbus.Pub(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

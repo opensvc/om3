@@ -1,49 +1,52 @@
 package msgbus
 
 import (
+	"encoding/json"
 	"time"
-
-	"github.com/google/uuid"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func Pub(bus *pubsub.Bus, ns, op uint, id string, i any) {
-	publication := pubsub.Publication{
-		Ns:    ns,
-		Op:    op,
-		Id:    id,
-		Value: i,
-	}
-	bus.Pub(publication)
+func Pub(bus *pubsub.Bus, v any, labels ...pubsub.Label) {
+	bus.Pub(v, labels...)
 }
 
-func Sub(bus *pubsub.Bus, ns, op uint, name string, matching string, fn func(i any)) uuid.UUID {
-	subscription := pubsub.Subscription{
-		Ns:       ns,
-		Op:       op,
-		Matching: matching,
-		Name:     name,
+func Sub(bus *pubsub.Bus, name string, v any, labels ...pubsub.Label) pubsub.Subscription {
+	announceSub(bus, name)
+	return bus.Sub(name, v, labels...)
+}
+
+func SubWithTimeout(bus *pubsub.Bus, name string, v any, timeout time.Duration, labels ...pubsub.Label) pubsub.Subscription {
+	announceSub(bus, name)
+	return bus.SubWithTimeout(name, v, timeout, labels...)
+}
+
+func Unsub(bus *pubsub.Bus, sub pubsub.Subscription) {
+	name := sub.Stop()
+	if name != "" {
+		announceUnsub(bus, name)
 	}
-	go PubEvent(bus, event.Event{
+}
+
+func announceSub(bus *pubsub.Bus, name string) {
+	go bus.Pub(event.Event{
 		Kind: "event_subscribe",
 		ID:   0,
 		Time: time.Now(),
 		Data: jsonMsg("subscribe name: " + name),
 	})
-
-	return bus.Sub(subscription, fn)
 }
 
-func UnSub(bus *pubsub.Bus, id uuid.UUID) {
-	name := bus.Unsub(id)
-	if name != "" {
-		go PubEvent(bus, event.Event{
-			Kind: "event_unsubscribe",
-			ID:   0,
-			Time: time.Now(),
-			Data: jsonMsg("unsubscribe name: " + name),
-		})
-	}
+func announceUnsub(bus *pubsub.Bus, name string) {
+	go bus.Pub(event.Event{
+		Kind: "event_unsubscribe",
+		ID:   0,
+		Time: time.Now(),
+		Data: jsonMsg("unsubscribe name: " + name),
+	})
+}
+
+func jsonMsg(msg string) json.RawMessage {
+	return json.RawMessage("\"" + msg + "\"")
 }

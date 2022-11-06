@@ -36,7 +36,12 @@ type (
 		jobs        Jobs
 		enabled     bool
 		provisioned map[path.T]bool
+
+		subInstanceStatusDeleted pubsub.Subscription
+		subObjectAggUpdated      pubsub.Subscription
+		subNodeMonitorUpdated    pubsub.Subscription
 	}
+
 	Jobs map[string]Job
 	Job  struct {
 		Queued   time.Time
@@ -218,20 +223,34 @@ func (t *T) MainStop() error {
 	return nil
 }
 
+func (t *T) stopSubscriptions() {
+	t.subInstanceStatusDeleted.Stop()
+	t.subObjectAggUpdated.Stop()
+	t.subNodeMonitorUpdated.Stop()
+}
+
+func (t *T) startSubscriptions() {
+	bus := pubsub.BusFromContext(t.ctx)
+	name := "scheduler"
+	t.subInstanceStatusDeleted = msgbus.Sub(bus, name, msgbus.InstanceStatusDeleted{})
+	t.subObjectAggUpdated = msgbus.Sub(bus, name, msgbus.ObjectAggDeleted{})
+	t.subNodeMonitorUpdated = msgbus.Sub(bus, name, msgbus.NodeMonitorUpdated{})
+}
+
 func (t *T) loop() {
 	t.log.Info().Msg("loop started")
-
-	relayEvent := func(ev any) {
-		t.events <- ev
-	}
 	t.databus = daemondata.FromContext(t.ctx)
-	bus := pubsub.BusFromContext(t.ctx)
-	defer msgbus.UnSub(bus, msgbus.SubInstanceStatus(bus, pubsub.OpDelete, "scheduler-on-inst-status-delete", "", relayEvent))
-	defer msgbus.UnSub(bus, msgbus.SubObjectAgg(bus, pubsub.OpUpdate, "scheduler-on-svcagg-update", "", relayEvent))
-	defer msgbus.UnSub(bus, msgbus.SubNodeMonitor(bus, pubsub.OpUpdate, "scheduler-on-nmon-update", relayEvent))
+	t.startSubscriptions()
+	defer t.stopSubscriptions()
 
 	for {
 		select {
+		case i := <-t.subInstanceStatusDeleted.C:
+			t.events <- i
+		case i := <-t.subObjectAggUpdated.C:
+			t.events <- i
+		case i := <-t.subNodeMonitorUpdated.C:
+			t.events <- i
 		case ev := <-t.events:
 			switch c := ev.(type) {
 			case eventJobDone:

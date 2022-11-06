@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -22,7 +23,7 @@ type (
 		err   chan<- error
 		path  path.T
 		value object.AggregatedStatus
-		srcEv *msgbus.Msg
+		srcEv any
 	}
 )
 
@@ -42,7 +43,7 @@ func DelServiceAgg(c chan<- interface{}, p path.T) error {
 // SetServiceAgg
 //
 // cluster.object.*
-func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus, ev *msgbus.Msg) error {
+func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus, ev any) error {
 	err := make(chan error)
 	op := opSetServiceAgg{
 		err:   err,
@@ -75,7 +76,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 		} else {
 			eventId++
-			msgbus.PubEvent(d.bus, event.Event{
+			msgbus.Pub(d.bus, event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
@@ -83,10 +84,10 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	msgbus.PubObjectAggDelete(d.bus, s, msgbus.ObjectAggDeleted{
+	msgbus.Pub(d.bus, msgbus.ObjectAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
-	})
+	}, pubsub.Label{"path", s})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -107,19 +108,19 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		msgbus.PubEvent(d.bus, event.Event{
+		msgbus.Pub(d.bus, event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),
 			Data: eventB,
 		})
 	}
-	msgbus.PubObjectAggUpdate(d.bus, s, msgbus.ObjectAggUpdated{
+	msgbus.Pub(d.bus, msgbus.ObjectAggUpdated{
 		Path:             o.path,
 		Node:             d.localNode,
 		AggregatedStatus: o.value,
 		SrcEv:            o.srcEv,
-	})
+	}, pubsub.Label{"path", s})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

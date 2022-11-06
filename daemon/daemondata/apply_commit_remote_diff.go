@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/xmap"
 )
 
@@ -55,25 +56,25 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 	onUpdate := func() {
 		var changed bool
 		if !reflect.DeepEqual(prev.Labels, next.Labels) {
-			msgbus.PubNodeStatusLabelsUpdate(d.bus, msgbus.NodeStatusLabelsUpdated{
+			msgbus.Pub(d.bus, msgbus.NodeStatusLabelsUpdated{
 				Node:  node,
 				Value: next.Labels.DeepCopy(),
 			})
 			changed = true
 		}
 		if changed || !reflect.DeepEqual(prev, next) {
-			msgbus.PubNodeStatusUpdate(d.bus, msgbus.NodeStatusUpdated{
+			msgbus.Pub(d.bus, msgbus.NodeStatusUpdated{
 				Node:  node,
 				Value: *next.DeepCopy(),
 			})
 		}
 	}
 	onCreate := func() {
-		msgbus.PubNodeStatusLabelsUpdate(d.bus, msgbus.NodeStatusLabelsUpdated{
+		msgbus.Pub(d.bus, msgbus.NodeStatusLabelsUpdated{
 			Node:  node,
 			Value: next.Labels.DeepCopy(),
 		})
-		msgbus.PubNodeStatusUpdate(d.bus, msgbus.NodeStatusUpdated{
+		msgbus.Pub(d.bus, msgbus.NodeStatusUpdated{
 			Node:  node,
 			Value: *next.DeepCopy(),
 		})
@@ -94,7 +95,7 @@ func (d *data) pubMsgFromNodeMonitorDiffForNode(node string, current *remoteInfo
 	prevTimes, hasPrev := d.previousRemoteInfo[node]
 	if !hasPrev || current.nmonUpdated.After(prevTimes.nmonUpdated) {
 		localMonitor := d.pending.Cluster.Node[node].Monitor
-		msgbus.PubNodeMonitorUpdated(d.bus, msgbus.NodeMonitorUpdated{
+		msgbus.Pub(d.bus, msgbus.NodeMonitorUpdated{
 			Node:    node,
 			Monitor: *localMonitor.DeepCopy(),
 		})
@@ -191,47 +192,47 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 	}
 	updates, removes = getUpdatedRemoved(toPath, previous.instCfgUpdated, current.instCfgUpdated)
 	for _, s := range updates {
-		msgbus.PubCfgUpdate(d.bus, s, msgbus.CfgUpdated{
+		msgbus.Pub(d.bus, msgbus.CfgUpdated{
 			Path:   toPath[s],
 			Node:   node,
 			Config: *d.pending.Cluster.Node[node].Instance[s].Config.DeepCopy(),
-		})
+		}, pubsub.Label{"path", s})
 	}
 	for _, s := range removes {
-		msgbus.PubCfgDelete(d.bus, s, msgbus.CfgDeleted{
+		msgbus.Pub(d.bus, msgbus.CfgDeleted{
 			Path: toPath[s],
 			Node: node,
-		})
+		}, pubsub.Label{"path", s})
 	}
 
 	updates, removes = getUpdatedRemoved(toPath, previous.instStatusUpdated, current.instStatusUpdated)
 	for _, s := range updates {
-		msgbus.PubInstanceStatusUpdated(d.bus, s, msgbus.InstanceStatusUpdated{
+		msgbus.Pub(d.bus, msgbus.InstanceStatusUpdated{
 			Path:   toPath[s],
 			Node:   node,
 			Status: *d.pending.Cluster.Node[node].Instance[s].Status.DeepCopy(),
-		})
+		}, pubsub.Label{"path", s})
 	}
 	for _, s := range removes {
-		msgbus.PubInstanceStatusDelete(d.bus, s, msgbus.InstanceStatusDeleted{
+		msgbus.Pub(d.bus, msgbus.InstanceStatusDeleted{
 			Path: toPath[s],
 			Node: node,
-		})
+		}, pubsub.Label{"path", s})
 	}
 
 	updates, removes = getUpdatedRemoved(toPath, previous.smonUpdated, current.smonUpdated)
 	for _, s := range updates {
-		msgbus.PubInstanceMonitorUpdated(d.bus, s, msgbus.InstanceMonitorUpdated{
+		msgbus.Pub(d.bus, msgbus.InstanceMonitorUpdated{
 			Path:   toPath[s],
 			Node:   node,
 			Status: *d.pending.Cluster.Node[node].Instance[s].Monitor.DeepCopy(),
-		})
+		}, pubsub.Label{"path", s})
 	}
 	for _, s := range removes {
-		msgbus.PubInstanceMonitorDeleted(d.bus, s, msgbus.InstanceMonitorDeleted{
+		msgbus.Pub(d.bus, msgbus.InstanceMonitorDeleted{
 			Path: toPath[s],
 			Node: node,
-		})
+		}, pubsub.Label{"path", s})
 	}
 
 	for s, updated := range current.instCfgUpdated {

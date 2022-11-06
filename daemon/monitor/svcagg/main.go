@@ -9,9 +9,7 @@ package svcagg
 
 import (
 	"context"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -33,29 +31,32 @@ type (
 		id     string
 		nodes  map[string]struct{}
 
-		cmdC         chan *msgbus.Msg
-		discoverCmdC chan<- *msgbus.Msg
+		discoverCmdC chan<- any
 		dataCmdC     chan<- any
 
 		instStatus  map[string]instance.Status
 		instMonitor map[string]instance.Monitor
 
 		// srcEvent is the source event that triggered the svcAggStatus update
-		srcEvent *msgbus.Msg
+		srcEvent any
 
 		ctx context.Context
 		log zerolog.Logger
+
+		subInstanceMonitorUpdated pubsub.Subscription
+		subInstanceStatusUpdated  pubsub.Subscription
+		subCfgUpdated             pubsub.Subscription
+		subCfgDeleted             pubsub.Subscription
 	}
 )
 
 // Start launch goroutine svcAggStatus worker for a service
-func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd chan<- *msgbus.Msg) error {
+func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd chan<- any) error {
 	id := p.String()
 	o := &svcAggStatus{
 		status:       object.AggregatedStatus{},
 		path:         p,
 		id:           id,
-		cmdC:         make(chan *msgbus.Msg),
 		discoverCmdC: svcAggDiscoverCmd,
 		dataCmdC:     daemondata.BusFromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
@@ -63,29 +64,30 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		ctx:          ctx,
 		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),
 	}
-	bus := pubsub.BusFromContext(o.ctx)
-	uuids := o.initSubscribers(bus)
+	o.startSubscriptions()
+
 	go func() {
-		defer func() {
-			defer msgbus.DropPendingMsg(o.cmdC, time.Second)
-			for _, id := range uuids {
-				msgbus.UnSub(bus, id)
-			}
-		}()
+		defer o.stopSubscriptions()
 		o.worker(cfg.Scope)
 	}()
 	return nil
 }
 
-func (o *svcAggStatus) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
-	subDesc := o.id + " svcagg"
-	uuids = append(uuids,
-		msgbus.SubInstanceMonitor(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
-		msgbus.SubInstanceStatus(bus, pubsub.OpUpdate, subDesc+" status.update", o.id, o.onEv),
-		msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cfg.update", o.id, o.onEv),
-		msgbus.SubCfg(bus, pubsub.OpDelete, subDesc+" cfg.delete", o.id, o.onEv),
-	)
-	return
+func (o *svcAggStatus) stopSubscriptions() {
+	o.subInstanceMonitorUpdated.Stop()
+	o.subInstanceStatusUpdated.Stop()
+	o.subCfgUpdated.Stop()
+	o.subCfgDeleted.Stop()
+}
+
+func (o *svcAggStatus) startSubscriptions() {
+	bus := pubsub.BusFromContext(o.ctx)
+	label := pubsub.Label{"path", o.id}
+	name := o.id + " svcagg"
+	o.subInstanceMonitorUpdated = msgbus.Sub(bus, name, msgbus.InstanceMonitorUpdated{}, label)
+	o.subInstanceStatusUpdated = msgbus.Sub(bus, name, msgbus.InstanceStatusUpdated{}, label)
+	o.subCfgUpdated = msgbus.Sub(bus, name, msgbus.CfgUpdated{}, label)
+	o.subCfgDeleted = msgbus.Sub(bus, name, msgbus.CfgDeleted{}, label)
 }
 
 func (o *svcAggStatus) worker(nodes []string) {
@@ -106,50 +108,44 @@ func (o *svcAggStatus) worker(nodes []string) {
 		select {
 		case <-o.ctx.Done():
 			return
-		case ev := <-o.cmdC:
-			o.srcEvent = nil
-			switch c := (*ev).(type) {
-			case msgbus.CfgUpdated:
-				if _, ok := o.instStatus[c.Node]; ok {
-					continue
-				}
-				o.srcEvent = ev
-				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
-				o.updateStatus()
-			case msgbus.CfgDeleted:
-				if _, ok := o.instStatus[c.Node]; ok {
-					delete(o.instStatus, c.Node)
-				}
-				if _, ok := o.instMonitor[c.Node]; ok {
-					delete(o.instMonitor, c.Node)
-				}
-				o.srcEvent = ev
-				o.updateStatus()
-			case msgbus.InstanceStatusUpdated:
-				if _, ok := o.instStatus[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
-					continue
-				}
-				o.srcEvent = ev
-				o.instStatus[c.Node] = c.Status
-				o.updateStatus()
-			case msgbus.InstanceMonitorUpdated:
-				if _, ok := o.instMonitor[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
-					continue
-				}
-				o.srcEvent = ev
-				o.instMonitor[c.Node] = c.Status
-				o.updateStatus()
-			default:
-				o.log.Error().Interface("cmd", *ev).Msg("unexpected cmd")
+		case i := <-o.subInstanceMonitorUpdated.C:
+			c := i.(msgbus.InstanceMonitorUpdated)
+			if _, ok := o.instMonitor[c.Node]; !ok {
+				o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
+				continue
 			}
+			o.srcEvent = i
+			o.instMonitor[c.Node] = c.Status
+			o.updateStatus()
+		case i := <-o.subInstanceStatusUpdated.C:
+			c := i.(msgbus.InstanceStatusUpdated)
+			if _, ok := o.instStatus[c.Node]; !ok {
+				o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
+				continue
+			}
+			o.srcEvent = i
+			o.instStatus[c.Node] = c.Status
+			o.updateStatus()
+		case i := <-o.subCfgUpdated.C:
+			c := i.(msgbus.CfgUpdated)
+			if _, ok := o.instStatus[c.Node]; ok {
+				continue
+			}
+			o.srcEvent = i
+			o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
+			o.updateStatus()
+		case i := <-o.subCfgDeleted.C:
+			c := i.(msgbus.CfgDeleted)
+			if _, ok := o.instStatus[c.Node]; ok {
+				delete(o.instStatus, c.Node)
+			}
+			if _, ok := o.instMonitor[c.Node]; ok {
+				delete(o.instMonitor, c.Node)
+			}
+			o.srcEvent = i
+			o.updateStatus()
 		}
 	}
-}
-
-func (o *svcAggStatus) onEv(i any) {
-	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *svcAggStatus) updateStatus() {
@@ -242,7 +238,7 @@ func (o *svcAggStatus) delete() {
 	if err := daemondata.DelServiceAgg(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelServiceAgg")
 	}
-	o.discoverCmdC <- msgbus.NewMsg(msgbus.ObjectAggDone{Path: o.path})
+	o.discoverCmdC <- msgbus.ObjectAggDone{Path: o.path}
 }
 
 func (o *svcAggStatus) update() {
