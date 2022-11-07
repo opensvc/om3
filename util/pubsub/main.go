@@ -88,9 +88,7 @@ type (
 		// cancel defines the subscription canceler
 		cancel context.CancelFunc
 	}
-)
 
-type (
 	cmdPub struct {
 		labels   Labels
 		dataType string
@@ -107,8 +105,8 @@ type (
 	}
 
 	cmdUnsub struct {
-		subId uuid.UUID
-		resp  chan<- string
+		key  string
+		resp chan<- string
 	}
 
 	Bus struct {
@@ -118,7 +116,7 @@ type (
 		cancel func()
 		log    zerolog.Logger
 		ctx    context.Context
-		subs   map[uuid.UUID]Subscription
+		subs   map[string]Subscription
 	}
 
 	stringer interface {
@@ -186,15 +184,15 @@ func (t *Bus) Start(ctx context.Context) {
 			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "msg")
 		}()
 
-		var beginNotify = make(chan uuid.UUID)
-		var endNotify = make(chan uuid.UUID)
+		var beginNotify = make(chan string)
+		var endNotify = make(chan string)
 		t.Add(1)
 		go func() {
 			defer t.Done()
 			t.warnExceededNotification(watchDurationCtx, beginNotify, endNotify, notifyDurationWarn)
 		}()
 
-		t.subs = make(map[uuid.UUID]Subscription)
+		t.subs = make(map[string]Subscription)
 		started <- true
 		for {
 			select {
@@ -232,7 +230,8 @@ func (t *Bus) Start(ctx context.Context) {
 						cancel:   subCtxCancel,
 						bus:      t,
 					}
-					t.subs[id] = sub
+					key := sub.Key()
+					t.subs[key] = sub
 					started := make(chan bool)
 					t.Add(1)
 					go func(id uuid.UUID) {
@@ -256,7 +255,7 @@ func (t *Bus) Start(ctx context.Context) {
 							case <-subCtx.Done():
 								return
 							case i := <-sub.q:
-								beginNotify <- id
+								beginNotify <- key
 								startTime := time.Now()
 								if sub.push(i) != nil {
 									// the subscription is too slow, kill it
@@ -265,10 +264,10 @@ func (t *Bus) Start(ctx context.Context) {
 									t.log.Warn().Msgf("waited %.02fs for %s => stop subscription", duration, sub)
 									sub.cancel()
 									go sub.Stop()
-									endNotify <- id
+									endNotify <- key
 									return
 								}
-								endNotify <- id
+								endNotify <- key
 							case <-t.ctx.Done():
 								return
 							}
@@ -278,12 +277,12 @@ func (t *Bus) Start(ctx context.Context) {
 					c.resp <- sub
 					t.log.Debug().Msgf("subscribe %s", sub.name)
 				case cmdUnsub:
-					sub, ok := t.subs[c.subId]
+					sub, ok := t.subs[c.key]
 					if !ok {
 						break
 					}
 					sub.cancel()
-					delete(t.subs, c.subId)
+					delete(t.subs, c.key)
 					select {
 					case <-t.ctx.Done():
 					case c.resp <- sub.name:
@@ -389,11 +388,11 @@ func (t Bus) SubWithTimeout(name string, v any, timeout time.Duration, labels ..
 }
 
 // Unsub function remove a subscription
-func (t Bus) Unsub(id uuid.UUID) string {
+func (t Bus) unsub(sub Subscription) string {
 	respC := make(chan string)
 	op := cmdUnsub{
-		subId: id,
-		resp:  respC,
+		key:  sub.Key(),
+		resp: respC,
 	}
 	select {
 	case t.cmdC <- op:
@@ -409,24 +408,24 @@ func (t Bus) Unsub(id uuid.UUID) string {
 }
 
 // warnExceededNotification log when notify duration between <-begin and <-end exceeds maxDuration.
-func (t Bus) warnExceededNotification(ctx context.Context, begin <-chan uuid.UUID, end <-chan uuid.UUID, maxDuration time.Duration) {
+func (t Bus) warnExceededNotification(ctx context.Context, begin <-chan string, end <-chan string, maxDuration time.Duration) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
-	pending := make(map[uuid.UUID]time.Time)
+	pending := make(map[string]time.Time)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case id := <-begin:
-			pending[id] = time.Now()
-		case id := <-end:
-			delete(pending, id)
+		case key := <-begin:
+			pending[key] = time.Now()
+		case key := <-end:
+			delete(pending, key)
 		case <-ticker.C:
 			now := time.Now()
-			for id, begin := range pending {
+			for key, begin := range pending {
 				if now.Sub(begin) > maxDuration {
 					duration := time.Now().Sub(begin).Seconds()
-					sub := t.subs[id]
+					sub := t.subs[key]
 					t.log.Warn().Msgf("waited %.02fs over %s for %s", duration, maxDuration, sub)
 				}
 			}
@@ -477,7 +476,7 @@ func (t cmdSub) String() string {
 }
 
 func (t cmdUnsub) String() string {
-	return fmt.Sprintf("unsubscribe id %s", t.subId)
+	return fmt.Sprintf("unsubscribe key %s", t.key)
 }
 
 func (t Labels) String() string {
@@ -491,6 +490,10 @@ func (t Labels) String() string {
 	return s
 }
 
+func (t Subscription) Key() string {
+	return t.dataType + ":" + t.id.String()
+}
+
 func (t Subscription) String() string {
 	s := fmt.Sprintf("subscription '%s' on msg type %s", t.name, t.dataType)
 	if len(t.labels) > 0 {
@@ -500,7 +503,7 @@ func (t Subscription) String() string {
 }
 
 func (t Subscription) Stop() string {
-	return t.bus.Unsub(t.id)
+	return t.bus.unsub(t)
 }
 
 func (t Subscription) push(i any) error {
