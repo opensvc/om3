@@ -80,7 +80,7 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.Pub(d.bus, msgbus.Frozen{
+	d.bus.Pub(msgbus.Frozen{
 		Node:  hostname.Hostname(),
 		Path:  path.T{},
 		Value: o.value,
@@ -113,7 +113,7 @@ func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.Pub(d.bus, msgbus.NodeStatusLabelsUpdated{
+	d.bus.Pub(msgbus.NodeStatusLabelsUpdated{
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})
@@ -145,7 +145,7 @@ func (o opSetNodeStatusPaths) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	msgbus.Pub(d.bus, msgbus.NodeStatusPathsUpdated{
+	d.bus.Pub(msgbus.NodeStatusPathsUpdated{
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})

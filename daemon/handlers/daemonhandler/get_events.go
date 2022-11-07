@@ -17,7 +17,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -166,7 +165,9 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	name := "lsnr-handler-event from " + r.RemoteAddr + " " + daemonctx.Uuid(r.Context()).String()
-	sub := msgbus.SubWithTimeout(bus, name, event.Event{}, time.Second)
+	sub := bus.SubWithTimeout(name, time.Second)
+	sub.AddFilter(event.Event{})
+	sub.Start()
 	defer sub.Stop()
 	go func() {
 		for {

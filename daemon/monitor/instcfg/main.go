@@ -42,20 +42,18 @@ type (
 	T struct {
 		cfg instance.Config
 
-		path                 path.T
-		id                   string
-		configure            object.Configurer
-		filename             string
-		log                  zerolog.Logger
-		lastMtime            time.Time
-		localhost            string
-		forceRefresh         bool
-		published            bool
-		cmdC                 chan any
-		dataCmdC             chan<- any
-		subCfgFileUpdated    pubsub.Subscription
-		subCfgFileRemoved    pubsub.Subscription
-		subClusterCfgUpdated pubsub.Subscription
+		path         path.T
+		id           string
+		configure    object.Configurer
+		filename     string
+		log          zerolog.Logger
+		lastMtime    time.Time
+		localhost    string
+		forceRefresh bool
+		published    bool
+		cmdC         chan any
+		dataCmdC     chan<- any
+		sub          *pubsub.Subscription
 	}
 )
 
@@ -94,7 +92,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
-			o.stopSubscriptions()
+			o.sub.Stop()
 			o.done(parent, svcDiscoverCmd)
 		}()
 		o.worker(parent)
@@ -103,22 +101,17 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 	return nil
 }
 
-func (o *T) stopSubscriptions() {
-	o.subCfgFileUpdated.Stop()
-	o.subCfgFileRemoved.Stop()
-	o.subClusterCfgUpdated.Stop()
-}
-
 func (o *T) startSubscriptions(ctx context.Context) {
+	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
-	name := o.path.String() + " instcfg"
-	o.subCfgFileUpdated = msgbus.Sub(bus, name, msgbus.CfgFileUpdated{}, label)
-	o.subCfgFileRemoved = msgbus.Sub(bus, name, msgbus.CfgFileRemoved{}, label)
-	clusterId := clusterPath.String()
+	o.sub = bus.Sub(o.path.String() + " instcfg")
+	o.sub.AddFilter(msgbus.CfgFileUpdated{}, label)
+	o.sub.AddFilter(msgbus.CfgFileRemoved{}, label)
 	if o.path.String() != clusterId {
-		o.subClusterCfgUpdated = msgbus.Sub(bus, name, msgbus.CfgUpdated{}, pubsub.Label{"path", clusterId})
+		o.sub.AddFilter(msgbus.CfgUpdated{}, pubsub.Label{"path", clusterId})
 	}
+	o.sub.Start()
 }
 
 // worker watch for local instCfg config file updates until file is removed
@@ -144,28 +137,28 @@ func (o *T) worker(parent context.Context) {
 		select {
 		case <-parent.Done():
 			return
-		case i := <-o.subCfgFileUpdated.C:
-			c := i.(msgbus.CfgFileUpdated)
-			o.log.Debug().Msgf("recv %#v", c)
-			if err := o.configFileCheck(); err != nil {
-				o.log.Error().Err(err).Msg("configFileCheck error")
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.CfgFileUpdated:
+				o.log.Debug().Msgf("recv %#v", c)
+				if err := o.configFileCheck(); err != nil {
+					o.log.Error().Err(err).Msg("configFileCheck error")
+					return
+				}
+			case msgbus.CfgFileRemoved:
+				o.log.Debug().Msgf("recv %#v", c)
 				return
-			}
-		case i := <-o.subCfgFileRemoved.C:
-			c := i.(msgbus.CfgFileRemoved)
-			o.log.Debug().Msgf("recv %#v", c)
-			return
-		case i := <-o.subClusterCfgUpdated.C:
-			c := i.(msgbus.CfgUpdated)
-			o.log.Debug().Msgf("recv %#v", c)
-			if c.Node != o.localhost {
-				// only watch local cluster config updates
-				continue
-			}
-			o.log.Info().Msg("local cluster config changed => refresh cfg")
-			o.forceRefresh = true
-			if err := o.configFileCheck(); err != nil {
-				return
+			case msgbus.CfgUpdated:
+				o.log.Debug().Msgf("recv %#v", c)
+				if c.Node != o.localhost {
+					// only watch local cluster config updates
+					continue
+				}
+				o.log.Info().Msg("local cluster config changed => refresh cfg")
+				o.forceRefresh = true
+				if err := o.configFileCheck(); err != nil {
+					return
+				}
 			}
 		case i := <-o.cmdC:
 			switch i.(type) {

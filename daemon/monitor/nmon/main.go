@@ -54,13 +54,7 @@ type (
 		localhost   string
 		change      bool
 
-		subNodeMonitorUpdated         pubsub.Subscription
-		subNodeMonitorDeleted         pubsub.Subscription
-		subFrozenFileRemoved          pubsub.Subscription
-		subFrozenFileUpdated          pubsub.Subscription
-		subSetNodeMonitor             pubsub.Subscription
-		subSetNodeStatusLabelsUpdated pubsub.Subscription
-		subSetNodeStatusPathsUpdated  pubsub.Subscription
+		sub *pubsub.Subscription
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -126,33 +120,25 @@ func Start(parent context.Context) error {
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			o.stopSubscriptions()
+			o.sub.Stop()
 		}()
 		o.worker()
 	}()
 	return nil
 }
 
-func (o *nmon) stopSubscriptions() {
-	o.subNodeMonitorUpdated.Stop()
-	o.subNodeMonitorDeleted.Stop()
-	o.subFrozenFileRemoved.Stop()
-	o.subFrozenFileUpdated.Stop()
-	o.subSetNodeMonitor.Stop()
-	o.subSetNodeStatusLabelsUpdated.Stop()
-	o.subSetNodeStatusPathsUpdated.Stop()
-}
-
 func (o *nmon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
-	name := "nmon"
-	o.subNodeMonitorUpdated = msgbus.Sub(bus, name, msgbus.NodeMonitorUpdated{})
-	o.subNodeMonitorDeleted = msgbus.Sub(bus, name, msgbus.NodeMonitorDeleted{})
-	o.subFrozenFileRemoved = msgbus.Sub(bus, name, msgbus.FrozenFileRemoved{}, pubsub.Label{"path", ""})
-	o.subFrozenFileUpdated = msgbus.Sub(bus, name, msgbus.FrozenFileUpdated{}, pubsub.Label{"path", ""})
-	o.subSetNodeMonitor = msgbus.Sub(bus, name, msgbus.SetNodeMonitor{})
-	o.subSetNodeStatusLabelsUpdated = msgbus.Sub(bus, name, msgbus.NodeStatusLabelsUpdated{})
-	o.subSetNodeStatusPathsUpdated = msgbus.Sub(bus, name, msgbus.NodeStatusPathsUpdated{})
+	sub := bus.Sub("nmon")
+	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(msgbus.FrozenFileRemoved{})
+	sub.AddFilter(msgbus.FrozenFileUpdated{})
+	sub.AddFilter(msgbus.SetNodeMonitor{})
+	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
+	sub.AddFilter(msgbus.NodeStatusPathsUpdated{})
+	sub.Start()
+	o.sub = sub
 }
 
 // worker watch for local nmon updates
@@ -172,27 +158,23 @@ func (o *nmon) worker() {
 		select {
 		case <-o.ctx.Done():
 			return
-		case i := <-o.subNodeMonitorUpdated.C:
-			c := i.(msgbus.NodeMonitorUpdated)
-			o.onNmonUpdated(c)
-		case i := <-o.subNodeMonitorDeleted.C:
-			c := i.(msgbus.NodeMonitorDeleted)
-			o.onNmonDeleted(c)
-		case i := <-o.subFrozenFileRemoved.C:
-			c := i.(msgbus.FrozenFileRemoved)
-			o.onFrozenFileRemoved(c)
-		case i := <-o.subFrozenFileUpdated.C:
-			c := i.(msgbus.FrozenFileUpdated)
-			o.onFrozenFileUpdated(c)
-		case i := <-o.subSetNodeMonitor.C:
-			c := i.(msgbus.SetNodeMonitor)
-			o.onSetNmonCmd(c)
-		case i := <-o.subSetNodeStatusLabelsUpdated.C:
-			c := i.(msgbus.NodeStatusLabelsUpdated)
-			o.onNodeStatusLabelsUpdated(c)
-		case i := <-o.subSetNodeStatusPathsUpdated.C:
-			c := i.(msgbus.NodeStatusPathsUpdated)
-			o.onNodeStatusPathsUpdated(c)
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.NodeMonitorUpdated:
+				o.onNmonUpdated(c)
+			case msgbus.NodeMonitorDeleted:
+				o.onNmonDeleted(c)
+			case msgbus.FrozenFileRemoved:
+				o.onFrozenFileRemoved(c)
+			case msgbus.FrozenFileUpdated:
+				o.onFrozenFileUpdated(c)
+			case msgbus.SetNodeMonitor:
+				o.onSetNmonCmd(c)
+			case msgbus.NodeStatusLabelsUpdated:
+				o.onNodeStatusLabelsUpdated(c)
+			case msgbus.NodeStatusPathsUpdated:
+				o.onNodeStatusPathsUpdated(c)
+			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {
 			case cmdOrchestrate:

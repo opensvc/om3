@@ -76,7 +76,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 		} else {
 			eventId++
-			msgbus.Pub(d.bus, event.Event{
+			d.bus.Pub(event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
@@ -84,7 +84,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	msgbus.Pub(d.bus, msgbus.ObjectAggDeleted{
+	d.bus.Pub(msgbus.ObjectAggDeleted{
 		Path: o.path,
 		Node: d.localNode,
 	}, pubsub.Label{"path", s})
@@ -108,14 +108,14 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		msgbus.Pub(d.bus, event.Event{
+		d.bus.Pub(event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),
 			Data: eventB,
 		})
 	}
-	msgbus.Pub(d.bus, msgbus.ObjectAggUpdated{
+	d.bus.Pub(msgbus.ObjectAggUpdated{
 		Path:             o.path,
 		Node:             d.localNode,
 		AggregatedStatus: o.value,

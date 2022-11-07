@@ -36,10 +36,6 @@ type (
 		jobs        Jobs
 		enabled     bool
 		provisioned map[path.T]bool
-
-		subInstanceStatusDeleted pubsub.Subscription
-		subObjectAggUpdated      pubsub.Subscription
-		subNodeMonitorUpdated    pubsub.Subscription
 	}
 
 	Jobs map[string]Job
@@ -223,34 +219,33 @@ func (t *T) MainStop() error {
 	return nil
 }
 
-func (t *T) stopSubscriptions() {
-	t.subInstanceStatusDeleted.Stop()
-	t.subObjectAggUpdated.Stop()
-	t.subNodeMonitorUpdated.Stop()
-}
-
-func (t *T) startSubscriptions() {
+func (t *T) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
-	name := "scheduler"
-	t.subInstanceStatusDeleted = msgbus.Sub(bus, name, msgbus.InstanceStatusDeleted{})
-	t.subObjectAggUpdated = msgbus.Sub(bus, name, msgbus.ObjectAggDeleted{})
-	t.subNodeMonitorUpdated = msgbus.Sub(bus, name, msgbus.NodeMonitorUpdated{})
+	sub := bus.Sub("scheduler")
+	sub.AddFilter(msgbus.InstanceStatusDeleted{})
+	sub.AddFilter(msgbus.ObjectAggDeleted{})
+	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.Start()
+	return sub
 }
 
 func (t *T) loop() {
 	t.log.Info().Msg("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
-	t.startSubscriptions()
-	defer t.stopSubscriptions()
+	sub := t.startSubscriptions()
+	defer sub.Stop()
 
 	for {
 		select {
-		case i := <-t.subInstanceStatusDeleted.C:
-			t.events <- i
-		case i := <-t.subObjectAggUpdated.C:
-			t.events <- i
-		case i := <-t.subNodeMonitorUpdated.C:
-			t.events <- i
+		case ev := <-sub.C:
+			switch c := ev.(type) {
+			case msgbus.InstanceStatusDeleted:
+				t.onInstStatusDeleted(c)
+			case msgbus.NodeMonitorUpdated:
+				t.onNmonUpdated(c)
+			case msgbus.ObjectAggUpdated:
+				t.onMonSvcAggUpdated(c)
+			}
 		case ev := <-t.events:
 			switch c := ev.(type) {
 			case eventJobDone:
@@ -258,12 +253,6 @@ func (t *T) loop() {
 				c.schedule.Last = c.begin
 				// reschedule
 				t.createJob(c.schedule)
-			case msgbus.InstanceStatusDeleted:
-				t.onInstStatusDeleted(c)
-			case msgbus.NodeMonitorUpdated:
-				t.onNmonUpdated(c)
-			case msgbus.ObjectAggUpdated:
-				t.onMonSvcAggUpdated(c)
 			default:
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
 			}

@@ -74,7 +74,7 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 		if eventB, err := json.Marshal(patch); err != nil {
 			d.log.Error().Err(err).Msg("opSetHeartbeatPing Marshal")
 		} else {
-			msgbus.Pub(d.bus, event.Event{
+			d.bus.Pub(event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
@@ -82,7 +82,7 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	msgbus.Pub(d.bus, msgbus.HbNodePing{
+	d.bus.Pub(msgbus.HbNodePing{
 		Node:   peerNode,
 		Status: o.ping,
 	}, pubsub.Label{"node", peerNode})
@@ -107,7 +107,7 @@ func (o opSetHeartbeats) call(ctx context.Context, d *data) {
 	if eventB, err := json.Marshal(patch); err != nil {
 		d.log.Error().Err(err).Msg("opSetHeartbeats Marshal")
 	} else {
-		msgbus.Pub(d.bus, event.Event{
+		d.bus.Pub(event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

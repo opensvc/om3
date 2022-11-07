@@ -61,10 +61,7 @@ type (
 		localhost   string
 		change      bool
 
-		subObjectAggUpdated       pubsub.Subscription
-		subSetInstanceMonitor     pubsub.Subscription
-		subInstanceMonitorUpdated pubsub.Subscription
-		subInstanceMonitorDeleted pubsub.Subscription
+		sub *pubsub.Subscription
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -152,7 +149,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			o.stopSubscriptions()
+			o.sub.Stop()
 		}()
 		o.worker(nodes)
 	}()
@@ -160,21 +157,16 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 	return nil
 }
 
-func (o *smon) stopSubscriptions() {
-	o.subObjectAggUpdated.Stop()
-	o.subSetInstanceMonitor.Stop()
-	o.subInstanceMonitorUpdated.Stop()
-	o.subInstanceMonitorDeleted.Stop()
-}
-
 func (o *smon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
-	name := o.id + "smon"
+	sub := bus.Sub(o.id + "smon")
 	label := pubsub.Label{"path", o.id}
-	o.subObjectAggUpdated = msgbus.Sub(bus, name, msgbus.ObjectAggUpdated{}, label)
-	o.subSetInstanceMonitor = msgbus.Sub(bus, name, msgbus.SetInstanceMonitor{}, label)
-	o.subInstanceMonitorUpdated = msgbus.Sub(bus, name, msgbus.InstanceMonitorUpdated{}, label)
-	o.subInstanceMonitorDeleted = msgbus.Sub(bus, name, msgbus.InstanceMonitorDeleted{}, label)
+	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
+	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
+	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
+	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
+	sub.Start()
+	o.sub = sub
 }
 
 // worker watch for local smon updates
@@ -195,18 +187,17 @@ func (o *smon) worker(initialNodes []string) {
 		select {
 		case <-o.ctx.Done():
 			return
-		case i := <-o.subObjectAggUpdated.C:
-			c := i.(msgbus.ObjectAggUpdated)
-			o.cmdSvcAggUpdated(c)
-		case i := <-o.subSetInstanceMonitor.C:
-			c := i.(msgbus.SetInstanceMonitor)
-			o.cmdSetSmonClient(c.Monitor)
-		case i := <-o.subInstanceMonitorUpdated.C:
-			c := i.(msgbus.InstanceMonitorUpdated)
-			o.cmdSmonUpdated(c)
-		case i := <-o.subInstanceMonitorDeleted.C:
-			c := i.(msgbus.InstanceMonitorDeleted)
-			o.cmdSmonDeleted(c)
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.ObjectAggUpdated:
+				o.cmdSvcAggUpdated(c)
+			case msgbus.SetInstanceMonitor:
+				o.cmdSetSmonClient(c.Monitor)
+			case msgbus.InstanceMonitorUpdated:
+				o.cmdSmonUpdated(c)
+			case msgbus.InstanceMonitorDeleted:
+				o.cmdSmonDeleted(c)
+			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {
 			case cmdOrchestrate:

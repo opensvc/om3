@@ -37,6 +37,6 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 		Node:    hostname.Hostname(),
 		Monitor: smon,
 	}
-	msgbus.Pub(bus, msg, pubsub.Label{"path", p.String()})
+	bus.Pub(msg, pubsub.Label{"path", p.String()})
 	w.WriteHeader(http.StatusOK)
 }

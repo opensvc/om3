@@ -43,10 +43,7 @@ type (
 		ctx context.Context
 		log zerolog.Logger
 
-		subInstanceMonitorUpdated pubsub.Subscription
-		subInstanceStatusUpdated  pubsub.Subscription
-		subCfgUpdated             pubsub.Subscription
-		subCfgDeleted             pubsub.Subscription
+		sub *pubsub.Subscription
 	}
 )
 
@@ -67,27 +64,22 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 	o.startSubscriptions()
 
 	go func() {
-		defer o.stopSubscriptions()
+		defer o.sub.Stop()
 		o.worker(cfg.Scope)
 	}()
 	return nil
 }
 
-func (o *svcAggStatus) stopSubscriptions() {
-	o.subInstanceMonitorUpdated.Stop()
-	o.subInstanceStatusUpdated.Stop()
-	o.subCfgUpdated.Stop()
-	o.subCfgDeleted.Stop()
-}
-
 func (o *svcAggStatus) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	label := pubsub.Label{"path", o.id}
-	name := o.id + " svcagg"
-	o.subInstanceMonitorUpdated = msgbus.Sub(bus, name, msgbus.InstanceMonitorUpdated{}, label)
-	o.subInstanceStatusUpdated = msgbus.Sub(bus, name, msgbus.InstanceStatusUpdated{}, label)
-	o.subCfgUpdated = msgbus.Sub(bus, name, msgbus.CfgUpdated{}, label)
-	o.subCfgDeleted = msgbus.Sub(bus, name, msgbus.CfgDeleted{}, label)
+	sub := bus.Sub(o.id + " svcagg")
+	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
+	sub.AddFilter(msgbus.InstanceStatusUpdated{}, label)
+	sub.AddFilter(msgbus.CfgUpdated{}, label)
+	sub.AddFilter(msgbus.CfgDeleted{}, label)
+	sub.Start()
+	o.sub = sub
 }
 
 func (o *svcAggStatus) worker(nodes []string) {
@@ -108,42 +100,41 @@ func (o *svcAggStatus) worker(nodes []string) {
 		select {
 		case <-o.ctx.Done():
 			return
-		case i := <-o.subInstanceMonitorUpdated.C:
-			c := i.(msgbus.InstanceMonitorUpdated)
-			if _, ok := o.instMonitor[c.Node]; !ok {
-				o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
-				continue
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.InstanceMonitorUpdated:
+				if _, ok := o.instMonitor[c.Node]; !ok {
+					o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
+					continue
+				}
+				o.srcEvent = i
+				o.instMonitor[c.Node] = c.Status
+				o.updateStatus()
+			case msgbus.InstanceStatusUpdated:
+				if _, ok := o.instStatus[c.Node]; !ok {
+					o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
+					continue
+				}
+				o.srcEvent = i
+				o.instStatus[c.Node] = c.Status
+				o.updateStatus()
+			case msgbus.CfgUpdated:
+				if _, ok := o.instStatus[c.Node]; ok {
+					continue
+				}
+				o.srcEvent = i
+				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
+				o.updateStatus()
+			case msgbus.CfgDeleted:
+				if _, ok := o.instStatus[c.Node]; ok {
+					delete(o.instStatus, c.Node)
+				}
+				if _, ok := o.instMonitor[c.Node]; ok {
+					delete(o.instMonitor, c.Node)
+				}
+				o.srcEvent = i
+				o.updateStatus()
 			}
-			o.srcEvent = i
-			o.instMonitor[c.Node] = c.Status
-			o.updateStatus()
-		case i := <-o.subInstanceStatusUpdated.C:
-			c := i.(msgbus.InstanceStatusUpdated)
-			if _, ok := o.instStatus[c.Node]; !ok {
-				o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
-				continue
-			}
-			o.srcEvent = i
-			o.instStatus[c.Node] = c.Status
-			o.updateStatus()
-		case i := <-o.subCfgUpdated.C:
-			c := i.(msgbus.CfgUpdated)
-			if _, ok := o.instStatus[c.Node]; ok {
-				continue
-			}
-			o.srcEvent = i
-			o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
-			o.updateStatus()
-		case i := <-o.subCfgDeleted.C:
-			c := i.(msgbus.CfgDeleted)
-			if _, ok := o.instStatus[c.Node]; ok {
-				delete(o.instStatus, c.Node)
-			}
-			if _, ok := o.instMonitor[c.Node]; ok {
-				delete(o.instMonitor, c.Node)
-			}
-			o.srcEvent = i
-			o.updateStatus()
 		}
 	}
 }

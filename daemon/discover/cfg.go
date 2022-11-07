@@ -19,18 +19,14 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func (d *discover) stopSubscriptions() {
-	d.subCfgUpdated.Stop()
-	d.subCfgDeleted.Stop()
-	d.subCfgFileUpdated.Stop()
-}
-
-func (d *discover) startSubscriptions() {
+func (d *discover) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(d.ctx)
-	name := "discover.cfg"
-	d.subCfgUpdated = msgbus.Sub(bus, name, msgbus.CfgUpdated{})
-	d.subCfgDeleted = msgbus.Sub(bus, name, msgbus.CfgDeleted{})
-	d.subCfgFileUpdated = msgbus.Sub(bus, name, msgbus.CfgFileUpdated{})
+	sub := bus.Sub("discover.cfg")
+	sub.AddFilter(msgbus.CfgUpdated{})
+	sub.AddFilter(msgbus.CfgDeleted{})
+	sub.AddFilter(msgbus.CfgFileUpdated{})
+	sub.Start()
+	return sub
 }
 
 func (d *discover) cfg() {
@@ -48,19 +44,22 @@ func (d *discover) cfg() {
 			}
 		}
 	}()
-	d.startSubscriptions()
-	defer d.stopSubscriptions()
+	sub := d.startSubscriptions()
+	defer sub.Stop()
 	for {
 		select {
 		case <-d.ctx.Done():
 			d.log.Info().Msg("cfg stopped")
 			return
-		case i := <-d.subCfgUpdated.C:
-			d.onCfgUpdated(i.(msgbus.CfgUpdated))
-		case i := <-d.subCfgDeleted.C:
-			d.onCfgDeleted(i.(msgbus.CfgDeleted))
-		case i := <-d.subCfgFileUpdated.C:
-			d.onCfgFileUpdated(i.(msgbus.CfgFileUpdated))
+		case i := <-sub.C:
+			switch c := i.(type) {
+			case msgbus.CfgUpdated:
+				d.onCfgUpdated(c)
+			case msgbus.CfgDeleted:
+				d.onCfgDeleted(c)
+			case msgbus.CfgFileUpdated:
+				d.onCfgFileUpdated(c)
+			}
 		case i := <-d.cfgCmdC:
 			switch c := i.(type) {
 			case msgbus.MonCfgDone:

@@ -45,8 +45,7 @@ type (
 
 		ridSignature map[string]string
 
-		subCfgUpdated pubsub.Subscription
-		subDaemonCtl  pubsub.Subscription
+		sub *pubsub.Subscription
 	}
 
 	registerTxQueue struct {
@@ -331,16 +330,13 @@ func (t *T) msgFromRx(ctx context.Context) {
 	}
 }
 
-func (t *T) stopSubscriptions() {
-	t.subCfgUpdated.Stop()
-	t.subDaemonCtl.Stop()
-}
-
 func (t *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
 	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
-	t.subCfgUpdated = msgbus.Sub(bus, "hb", msgbus.CfgUpdated{}, pubsub.Label{"path", clusterPath.String()})
-	t.subDaemonCtl = msgbus.Sub(bus, "hb", msgbus.DaemonCtl{})
+	t.sub = bus.Sub("hb")
+	t.sub.AddFilter(msgbus.CfgUpdated{}, pubsub.Label{"path", clusterPath.String()})
+	t.sub.AddFilter(msgbus.DaemonCtl{})
+	t.sub.Start()
 }
 
 func (t *T) janitorHb(ctx context.Context) error {
@@ -348,34 +344,35 @@ func (t *T) janitorHb(ctx context.Context) error {
 	errC := make(chan error)
 
 	go func(errC chan<- error) {
-		defer t.stopSubscriptions()
+		defer t.sub.Stop()
 		errC <- t.rescanHb(ctx)
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case i := <-t.subCfgUpdated.C:
-				msg := i.(msgbus.CfgUpdated)
-				if msg.Node != hostname.Hostname() {
-					continue
-				}
-				t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
-				if err := t.rescanHb(ctx); err != nil {
-					t.log.Error().Err(err).Msg("rescan after cluster config changed")
-				}
-				t.log.Info().Msg("rescan heartbeat configurations done")
-			case i := <-t.subDaemonCtl.C:
-				msg := i.(msgbus.DaemonCtl)
-				hbId := msg.Component
-				action := msg.Action
-				if !strings.HasPrefix(hbId, "hb#") {
-					continue
-				}
-				switch msg.Action {
-				case "stop":
-					t.daemonCtlStop(hbId, action)
-				case "start":
-					t.daemonCtlStart(ctx, hbId, action)
+			case i := <-t.sub.C:
+				switch msg := i.(type) {
+				case msgbus.CfgUpdated:
+					if msg.Node != hostname.Hostname() {
+						continue
+					}
+					t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
+					if err := t.rescanHb(ctx); err != nil {
+						t.log.Error().Err(err).Msg("rescan after cluster config changed")
+					}
+					t.log.Info().Msg("rescan heartbeat configurations done")
+				case msgbus.DaemonCtl:
+					hbId := msg.Component
+					action := msg.Action
+					if !strings.HasPrefix(hbId, "hb#") {
+						continue
+					}
+					switch msg.Action {
+					case "stop":
+						t.daemonCtlStop(hbId, action)
+					case "start":
+						t.daemonCtlStart(ctx, hbId, action)
+					}
 				}
 			}
 		}

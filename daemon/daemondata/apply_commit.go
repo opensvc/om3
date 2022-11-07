@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -125,7 +124,7 @@ func (d *data) eventCommitPendingOps() {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		msgbus.Pub(d.bus, event.Event{
+		d.bus.Pub(event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

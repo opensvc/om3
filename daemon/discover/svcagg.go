@@ -25,7 +25,9 @@ func (d *discover) agg() {
 		}
 	}()
 	bus := pubsub.BusFromContext(d.ctx)
-	sub := msgbus.Sub(bus, "agg-from-cfg-create", msgbus.CfgUpdated{})
+	sub := bus.Sub("agg-from-cfg-create")
+	sub.AddFilter(msgbus.CfgUpdated{})
+	sub.Start()
 	defer sub.Stop()
 	for {
 		select {
@@ -33,15 +35,17 @@ func (d *discover) agg() {
 			log.Info().Msg("stopped")
 			return
 		case i := <-sub.C:
-			c := i.(msgbus.CfgUpdated)
-			s := c.Path.String()
-			if _, ok := d.svcAgg[s]; !ok {
-				log.Info().Msgf("discover new object %s", s)
-				if err := svcagg.Start(d.ctx, c.Path, c.Config, d.svcaggCmdC); err != nil {
-					log.Error().Err(err).Msgf("svcAgg.Start %s", s)
-					return
+			switch c := i.(type) {
+			case msgbus.CfgUpdated:
+				s := c.Path.String()
+				if _, ok := d.svcAgg[s]; !ok {
+					log.Info().Msgf("discover new object %s", s)
+					if err := svcagg.Start(d.ctx, c.Path, c.Config, d.svcaggCmdC); err != nil {
+						log.Error().Err(err).Msgf("svcAgg.Start %s", s)
+						return
+					}
+					d.svcAgg[s] = make(map[string]struct{})
 				}
-				d.svcAgg[s] = make(map[string]struct{})
 			}
 		case i := <-d.svcaggCmdC:
 			switch c := i.(type) {
