@@ -22,18 +22,11 @@ func (o opCommitPending) setDone(b bool) {
 func (o opCommitPending) call(ctx context.Context, d *data) {
 	d.counterCmd <- idCommitPending
 	d.log.Debug().Msg("opCommitPending")
-	requireFull := d.updateGens()
-	if requireFull {
-		genChanged := d.updateFromPendingOps()
-		if genChanged {
-			d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
-		}
-		d.resetPatchQueue()
+	d.movePendingOpsToPatchQueue()
+	if d.clearMergedGenFromRemotesNeedFull() {
+		// one remote needs full, we can reset the patch queue because next msg type will be 'full'
+		d.patchQueue = make(patchQueue)
 	} else {
-		genChanged := d.updateFromPendingOps()
-		if genChanged {
-			d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
-		}
 		d.purgeAppliedPatchQueue()
 	}
 
@@ -51,10 +44,18 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	}
 }
 
-// updateGens updates local NodeStatus gens from remotesNeedFull and mergedFromPeer
-//
-// It returns true when some remote needs full
-func (d *data) updateGens() (requireFull bool) {
+// updateLocalNodeMergedGens updates cluster.nodes.<localhost>.gen.<remoteX>.<genX>
+// from and mergedFromPeer
+func (d *data) updateLocalNodeMergedGens() {
+	for n, gen := range d.mergedFromPeer {
+		d.pending.Cluster.Node[d.localNode].Status.Gen[n] = gen
+	}
+	return
+}
+
+// clearMergedGenFromRemotesNeedFull clears the merged state information from
+// remotesNeedFull information. It returns true when a remote needs full
+func (d *data) clearMergedGenFromRemotesNeedFull() (requireFull bool) {
 	for n, needFull := range d.remotesNeedFull {
 		if needFull {
 			d.mergedOnPeer[n] = 0
@@ -63,20 +64,11 @@ func (d *data) updateGens() (requireFull bool) {
 			requireFull = true
 		}
 	}
-	for n, gen := range d.mergedFromPeer {
-		d.pending.Cluster.Node[d.localNode].Status.Gen[n] = gen
-	}
-	return
+	return requireFull
 }
 
-func (d *data) resetPendingOps() {
-	d.pendingOps = []jsondelta.Operation{}
-}
-
-func (d *data) resetPatchQueue() {
-	d.patchQueue = make(patchQueue)
-}
-
+// purgeAppliedPatchQueue delete from patch queue entries that have been
+// merged on all peers
 func (d *data) purgeAppliedPatchQueue() {
 	remoteMinGen := d.gen
 	for _, gen := range d.mergedOnPeer {
@@ -96,19 +88,21 @@ func (d *data) purgeAppliedPatchQueue() {
 	}
 }
 
-// updateFromPendingOps move pendingOps to patchQueue
+// movePendingOpsToPatchQueue moves pendingOps to patchQueue.
 //
-// increase d.gen when pendingOps exists and resets pendingOps
-// returns true when d.gen is increased
-func (d *data) updateFromPendingOps() bool {
+// If pendingOps exists:
+//
+//	increase local gen by 1.
+//	new entry for new gen is created in patch queue with pending operations.
+//	pending operations are cleared.
+func (d *data) movePendingOpsToPatchQueue() {
 	if len(d.pendingOps) > 0 {
 		d.gen++
 		d.patchQueue[strconv.FormatUint(d.gen, 10)] = d.pendingOps
 		d.eventCommitPendingOps()
-		d.resetPendingOps()
-		return true
+		d.pendingOps = []jsondelta.Operation{}
+		d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
 	}
-	return false
 }
 
 func (d *data) eventCommitPendingOps() {
