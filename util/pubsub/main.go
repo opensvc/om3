@@ -40,6 +40,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -49,6 +50,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/util/durationlog"
+	"opensvc.com/opensvc/util/stringslice"
+	"opensvc.com/opensvc/util/xmap"
 )
 
 type (
@@ -68,6 +71,9 @@ type (
 
 	// Label is a {key, val} array
 	Label [2]string
+
+	// subscriptions is a hash of subscription indexed by multiple lookup critera
+	subscriptionMap map[string]map[uuid.UUID]any
 
 	Subscription struct {
 		labels   Labels
@@ -105,7 +111,7 @@ type (
 	}
 
 	cmdUnsub struct {
-		key  string
+		id   uuid.UUID
 		resp chan<- string
 	}
 
@@ -116,7 +122,8 @@ type (
 		cancel func()
 		log    zerolog.Logger
 		ctx    context.Context
-		subs   map[string]Subscription
+		subs   map[uuid.UUID]Subscription
+		subMap subscriptionMap
 	}
 
 	stringer interface {
@@ -129,23 +136,49 @@ var (
 	notifyDurationWarn = 5 * time.Second
 )
 
-func (t Labels) Has(k, v string) bool {
-	if s, ok := t[k]; !ok {
-		return false
-	} else if s != v {
-		return false
-	} else {
-		return true
+func (t Labels) Key() string {
+	s := ""
+	for _, key := range xmap.Keys(t) {
+		s += "{" + key + "=" + t[key] + "}"
 	}
+	return s
 }
 
-func (t Labels) HasAll(others Labels) bool {
-	for k, v := range others {
-		if !t.Has(k, v) {
-			return false
+// Keys returns all the permutations of all lengths of the labels
+// ex:
+//
+//	keys of l1=foo l2=foo l3=foo:
+//	 {l1=foo}
+//	 {l2=foo}
+//	 {l3=foo}
+//	 {l1=foo}{l2=foo}
+//	 {l1=foo}{l3=foo}
+//	 {l2=foo}{l3=foo}
+//	 {l2=foo}{l1=foo}
+//	 {l3=foo}{l1=foo}
+//	 {l3=foo}{l2=foo}
+//	 {l1=foo}{l2=foo}{l3=foo}
+//	 {l1=foo}{l3=foo}{l2=foo}
+//	 {l2=foo}{l1=foo}{l3=foo}
+//	 {l2=foo}{l3=foo}{l1=foo}
+//	 {l3=foo}{l1=foo}{l2=foo}
+//	 {l3=foo}{l2=foo}{l1=foo}
+func (t Labels) Keys() []string {
+	m := map[string]any{"": nil}
+	keys := xmap.Keys(t)
+	total := len(keys)
+	for _, keys := range stringslice.Permute(keys) {
+		for i := 0; i < total; i++ {
+			for _, perm := range stringslice.Permute(keys[:i+1]) {
+				s := ""
+				for _, key := range perm {
+					s += "{" + key + "=" + t[key] + "}"
+				}
+				m[s] = nil
+			}
 		}
 	}
-	return true
+	return xmap.Keys(m)
 }
 
 func newLabels(labels ...Label) Labels {
@@ -184,15 +217,17 @@ func (t *Bus) Start(ctx context.Context) {
 			watchDuration.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "msg")
 		}()
 
-		var beginNotify = make(chan string)
-		var endNotify = make(chan string)
+		var beginNotify = make(chan uuid.UUID)
+		var endNotify = make(chan uuid.UUID)
 		t.Add(1)
 		go func() {
 			defer t.Done()
 			t.warnExceededNotification(watchDurationCtx, beginNotify, endNotify, notifyDurationWarn)
 		}()
 
-		t.subs = make(map[string]Subscription)
+		t.subs = make(map[uuid.UUID]Subscription)
+		t.subMap = make(subscriptionMap)
+
 		started <- true
 		for {
 			select {
@@ -202,15 +237,14 @@ func (t *Bus) Start(ctx context.Context) {
 				beginCmd <- cmd
 				switch c := cmd.(type) {
 				case cmdPub:
-					for _, sub := range t.subs {
-						if sub.dataType != "" && c.dataType != sub.dataType {
-							continue
+					for _, key := range c.Keys() {
+						if ids, ok := t.subMap[key]; ok {
+							for id, _ := range ids {
+								sub := t.subs[id]
+								t.log.Debug().Msgf("route %s to %s", c, sub)
+								sub.q <- c.data
+							}
 						}
-						if !c.MatchLabels(sub.labels) {
-							continue
-						}
-						t.log.Debug().Msgf("route %s to %s", c, sub)
-						sub.q <- c.data
 					}
 					select {
 					case <-t.ctx.Done():
@@ -231,10 +265,11 @@ func (t *Bus) Start(ctx context.Context) {
 						bus:      t,
 					}
 					key := sub.Key()
-					t.subs[key] = sub
+					t.subs[id] = sub
+					t.subMap.Add(id, key)
 					started := make(chan bool)
 					t.Add(1)
-					go func(id uuid.UUID) {
+					go func() {
 						t.Done()
 						defer sub.cancel()
 						defer func() {
@@ -255,7 +290,7 @@ func (t *Bus) Start(ctx context.Context) {
 							case <-subCtx.Done():
 								return
 							case i := <-sub.q:
-								beginNotify <- key
+								beginNotify <- id
 								startTime := time.Now()
 								if sub.push(i) != nil {
 									// the subscription is too slow, kill it
@@ -264,25 +299,26 @@ func (t *Bus) Start(ctx context.Context) {
 									t.log.Warn().Msgf("waited %.02fs for %s => stop subscription", duration, sub)
 									sub.cancel()
 									go sub.Stop()
-									endNotify <- key
+									endNotify <- id
 									return
 								}
-								endNotify <- key
+								endNotify <- id
 							case <-t.ctx.Done():
 								return
 							}
 						}
-					}(id)
+					}()
 					<-started
 					c.resp <- sub
 					t.log.Debug().Msgf("subscribe %s", sub.name)
 				case cmdUnsub:
-					sub, ok := t.subs[c.key]
+					sub, ok := t.subs[c.id]
 					if !ok {
 						break
 					}
 					sub.cancel()
-					delete(t.subs, c.key)
+					delete(t.subs, c.id)
+					t.subMap.Del(c.id, sub.Key())
 					select {
 					case <-t.ctx.Done():
 					case c.resp <- sub.name:
@@ -391,7 +427,7 @@ func (t Bus) SubWithTimeout(name string, v any, timeout time.Duration, labels ..
 func (t Bus) unsub(sub Subscription) string {
 	respC := make(chan string)
 	op := cmdUnsub{
-		key:  sub.Key(),
+		id:   sub.id,
 		resp: respC,
 	}
 	select {
@@ -408,24 +444,24 @@ func (t Bus) unsub(sub Subscription) string {
 }
 
 // warnExceededNotification log when notify duration between <-begin and <-end exceeds maxDuration.
-func (t Bus) warnExceededNotification(ctx context.Context, begin <-chan string, end <-chan string, maxDuration time.Duration) {
+func (t Bus) warnExceededNotification(ctx context.Context, begin <-chan uuid.UUID, end <-chan uuid.UUID, maxDuration time.Duration) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
-	pending := make(map[string]time.Time)
+	pending := make(map[uuid.UUID]time.Time)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case key := <-begin:
-			pending[key] = time.Now()
-		case key := <-end:
-			delete(pending, key)
+		case id := <-begin:
+			pending[id] = time.Now()
+		case id := <-end:
+			delete(pending, id)
 		case <-ticker.C:
 			now := time.Now()
-			for key, begin := range pending {
+			for id, begin := range pending {
 				if now.Sub(begin) > maxDuration {
 					duration := time.Now().Sub(begin).Seconds()
-					sub := t.subs[key]
+					sub := t.subs[id]
 					t.log.Warn().Msgf("waited %.02fs over %s for %s", duration, maxDuration, sub)
 				}
 			}
@@ -445,11 +481,11 @@ func BusFromContext(ctx context.Context) *Bus {
 	panic("unable to retrieve pubsub bus from context")
 }
 
-func (t cmdPub) MatchLabels(m Labels) bool {
-	if len(m) == 0 {
-		return true
-	}
-	return t.labels.HasAll(m)
+func (t cmdPub) Keys() []string {
+	return append(
+		keys(t.dataType, t.labels),
+		keys("", t.labels)...,
+	)
 }
 
 func (t cmdPub) String() string {
@@ -476,7 +512,7 @@ func (t cmdSub) String() string {
 }
 
 func (t cmdUnsub) String() string {
-	return fmt.Sprintf("unsubscribe key %s", t.key)
+	return fmt.Sprintf("unsubscribe key %s", t.id)
 }
 
 func (t Labels) String() string {
@@ -491,11 +527,16 @@ func (t Labels) String() string {
 }
 
 func (t Subscription) Key() string {
-	return t.dataType + ":" + t.id.String()
+	return t.dataType + ":" + t.labels.Key()
 }
 
 func (t Subscription) String() string {
-	s := fmt.Sprintf("subscription '%s' on msg type %s", t.name, t.dataType)
+	s := fmt.Sprintf("subscription '%s'", t.name)
+	if t.dataType != "" {
+		s += " on msg type " + t.dataType
+	} else {
+		s += " on msg type *"
+	}
 	if len(t.labels) > 0 {
 		s += " with " + t.labels.String()
 	}
@@ -521,4 +562,45 @@ func (t Subscription) push(i any) error {
 		}
 	}
 	return nil
+}
+
+func keys(dataType string, labels Labels) []string {
+	var l []string
+	if len(labels) == 0 {
+		return []string{dataType + ":"}
+	}
+	for _, key := range labels.Keys() {
+		l = append(l, dataType+":"+key)
+	}
+	return l
+}
+
+func (t subscriptionMap) Del(id uuid.UUID, key string) {
+	if m, ok := t[key]; ok {
+		delete(m, id)
+		t[key] = m
+	}
+}
+
+func (t subscriptionMap) Add(id uuid.UUID, key string) {
+	if m, ok := t[key]; ok {
+		m[id] = nil
+		t[key] = m
+	} else {
+		m = map[uuid.UUID]any{id: nil}
+		t[key] = m
+	}
+}
+
+func (t subscriptionMap) String() string {
+	s := "subscriptionMap{"
+	for key, m := range t {
+		s += "\"" + key + "\": ["
+		for u, _ := range m {
+			s += u.String() + " "
+		}
+		s = strings.TrimSuffix(s, " ") + "], "
+	}
+	s = strings.TrimSuffix(s, ", ") + "}"
+	return s
 }
