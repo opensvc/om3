@@ -94,10 +94,10 @@ func TestSubNsThenPub(t *testing.T) {
 		publishedSvcAggDelete []string
 	)
 
-	subCfgId1 := bus.Sub("onCfg for Id 1", 0, Label{"ns", "cfg"}, Label{"id", "1"})
+	subCfgId1 := bus.Sub("onCfg for Id 1", uint32(0), Label{"ns", "cfg"}, Label{"id", "1"})
 	defer subCfgId1.Stop()
 
-	subCfg := bus.Sub("onCfg", 0, Label{"ns", "cfg"})
+	subCfg := bus.Sub("onCfg", uint32(0), Label{"ns", "cfg"})
 	defer subCfg.Stop()
 
 	subSvcAgg := bus.Sub("onSvcAgg", "", Label{"ns", "svcagg"})
@@ -135,7 +135,8 @@ func TestSubNsThenPub(t *testing.T) {
 			Label{"op", "delete"},
 		)
 	}
-	tr := time.NewTimer(2 * time.Millisecond)
+	tr := time.NewTicker(2 * time.Millisecond)
+	defer tr.Stop()
 	done := make(chan bool)
 	recv := 0
 	go func() {
@@ -158,15 +159,12 @@ func TestSubNsThenPub(t *testing.T) {
 				publishedSvcAggDelete = append(publishedSvcAggDelete, i.(string))
 			}
 			recv += 1
-			if recv >= expectedTotal {
+			if recv > expectedTotal {
 				done <- true
 			}
 		}
 	}()
 	<-done
-	if !tr.Stop() {
-		<-tr.C
-	}
 
 	require.ElementsMatch(t, expectedCfg, publishedCfg, "cfg")
 	require.ElementsMatch(t, expectedCfgId1, publishedCfgId1, "cfg id1")
@@ -193,8 +191,11 @@ func TestSubPubWithoutFilter(t *testing.T) {
 		bus.Pub(s, Label{"ns", "svcagg"})
 		published = append(published, s)
 	}
-	tr1 := time.NewTimer(time.Microsecond)
+	tr1 := time.NewTicker(time.Microsecond)
+	defer tr1.Stop()
 	tr2 := time.NewTimer(2 * time.Millisecond)
+	defer tr2.Stop()
+
 	done := make(chan bool)
 	go func() {
 		for {
@@ -202,19 +203,11 @@ func TestSubPubWithoutFilter(t *testing.T) {
 			case i := <-sub.C:
 				onSub(i)
 			case <-tr1.C:
-				if len(published) != len(toPublish) {
-					tr1.Reset(time.Microsecond)
-				} else {
-					if !tr2.Stop() {
-						<-tr2.C
-					}
+				if len(published) == len(toPublish) {
 					done <- true
 					return
 				}
 			case <-tr2.C:
-				if !tr1.Stop() {
-					<-tr1.C
-				}
 				done <- true
 				return
 			}

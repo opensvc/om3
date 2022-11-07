@@ -127,24 +127,9 @@ type (
 )
 
 var (
-	bus *Bus
-
 	cmdDurationWarn    = time.Second
 	notifyDurationWarn = 5 * time.Second
 )
-
-// Stop stops the default bus
-func Stop() {
-	bus.Stop()
-}
-
-// Start starts the default bus
-func Start(ctx context.Context) {
-	if bus == nil {
-		bus = NewBus("default")
-	}
-	bus.Start(ctx)
-}
 
 func (t Labels) Has(k, v string) bool {
 	if s, ok := t[k]; !ok {
@@ -310,16 +295,22 @@ func (t *Bus) Start(ctx context.Context) {
 		}
 	}()
 	<-started
-	t.log.Info().Msg("started")
+	t.log.Info().Msg("bus started")
 }
 
 func (t *Bus) Empty() {
-	defer t.log.Info().Msg("empty channel")
+	i := 0
+	defer func() {
+		if i > 0 {
+			t.log.Info().Msg("dropped %d pending messages from the bus on stop")
+		}
+	}()
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-t.cmdC:
+			i += 1
 		case <-ticker.C:
 			return
 		}
@@ -478,7 +469,7 @@ func (t cmdPub) String() string {
 }
 
 func (t cmdSub) String() string {
-	s := fmt.Sprintf("subscribe '%s' on type %s %s", t.name, t.dataType)
+	s := fmt.Sprintf("subscribe '%s' on type %s", t.name, t.dataType)
 	if len(t.labels) > 0 {
 		s += " with " + t.labels.String()
 	}
