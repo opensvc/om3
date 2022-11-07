@@ -49,8 +49,12 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 		}
 	}
 	if nextMessageType == "" {
-		if len(d.mergedFromPeer) > 0 && lastMessageType != "ping" {
-			nextMessageType = "patch"
+		if len(d.mergedFromPeer) > 0 {
+			if lastMessageType == "ping" {
+				nextMessageType = "full"
+			} else {
+				nextMessageType = "patch"
+			}
 		} else {
 			nextMessageType = "ping"
 		}
