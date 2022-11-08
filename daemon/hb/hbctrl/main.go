@@ -48,6 +48,7 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/heartbeatdata"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -197,9 +198,7 @@ func (c *ctrl) run(ctx context.Context) {
 			for _, key := range hbIds {
 				heartbeats = append(heartbeats, heartbeat[key])
 			}
-			if err := daemondata.SetHeartbeats(dataCmd, heartbeats); err != nil {
-				c.log.Error().Err(err).Msgf("can't SetHeartbeats")
-			}
+			heartbeatdata.SetHeartbeats(heartbeats)
 		case i := <-c.cmd:
 			switch o := i.(type) {
 			case CmdRegister:
