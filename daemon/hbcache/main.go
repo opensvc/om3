@@ -29,6 +29,10 @@ var (
 )
 
 func Start(ctx context.Context) {
+	go run(ctx)
+}
+
+func run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
 	hbModes := make(map[string]string)
 	heartbeats := make([]cluster.HeartbeatThreadStatus, 0)
@@ -80,9 +84,10 @@ func Start(ctx context.Context) {
 				}
 				if messageType != previousMessageType {
 					if messageType == "full" {
-						log.Info().Msgf("hb message full needed for remotes %s local gens: %v", strings.Join(remoteNeedFull, ", "), gens)
+						log.Info().Msgf("hb message type change %s -> %s local gens: %v (peers want full: %v)", previousMessageType, messageType, gens, strings.Join(remoteNeedFull, ", "))
+					} else {
+						log.Info().Msgf("hb message type change %s -> %s local gens: %v", previousMessageType, messageType, gens)
 					}
-					log.Info().Msgf("hb message type change %s -> %s local gens: %v", previousMessageType, messageType, gens)
 				}
 				previousMessageType = messageType
 				cmd.response <- messageType
