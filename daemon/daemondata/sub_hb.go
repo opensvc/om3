@@ -7,7 +7,6 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -44,7 +43,7 @@ func (o opSetSubHb) call(ctx context.Context, d *data) {
 	if eventB, err := json.Marshal(patch); err != nil {
 		d.log.Error().Err(err).Msg("opSetSubHb Marshal")
 	} else {
-		msgbus.PubEvent(d.bus, event.Event{
+		d.bus.Pub(event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

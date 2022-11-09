@@ -49,7 +49,6 @@ import (
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/hbcache"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
