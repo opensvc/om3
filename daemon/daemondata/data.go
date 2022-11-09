@@ -29,17 +29,14 @@ type (
 		// pending is the live current data (after apply patch, commit local pendingOps)
 		pending *cluster.Status
 
-		pendingOps      []jsondelta.Operation // local data pending operations not yet in patchQueue
-		patchQueue      patchQueue            // local data patch queue for remotes
-		gen             uint64                // gen of local TNodeData
-		mergedFromPeer  gens                  // remote dateset gen merged locally
-		mergedOnPeer    gens                  // local dataset gen merged remotely
-		remotesNeedFull map[string]bool
-		hbMsgType       string // latest created hb message type
-		localNode       string
-		counterCmd      chan<- interface{}
-		log             zerolog.Logger
-		bus             *pubsub.Bus
+		pendingOps []jsondelta.Operation // local data pending operations not yet in patchQueue
+		patchQueue patchQueue            // local data patch queue for remotes
+		gen        uint64                // gen of local TNodeData
+		hbMsgType  string                // latest created hb message type
+		localNode  string
+		counterCmd chan<- interface{}
+		log        zerolog.Logger
+		bus        *pubsub.Bus
 	}
 
 	gens       map[string]uint64
