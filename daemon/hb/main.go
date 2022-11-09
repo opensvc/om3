@@ -324,10 +324,8 @@ func (t *T) msgFromRx(ctx context.Context) {
 			case "full":
 				hbcache.SetFromPeerMsg(msg.Nodename, msg.Kind, msg.Gen)
 				daemonData.ApplyFull(msg.Nodename, &msg.Full)
-				daemonData.ApplyFull(msg.Nodename, &msg.Full)
 			case "ping":
 				hbcache.SetFromPeerMsg(msg.Nodename, msg.Kind, msg.Gen)
-				daemonData.ApplyPing(msg.Nodename)
 			}
 			count++
 		}

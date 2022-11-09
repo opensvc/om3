@@ -28,7 +28,6 @@ const (
 	idUndef = iota
 	idApplyFull
 	idApplyPatch
-	idApplyPing
 	idCommitPending
 	idDelInstanceConfig
 	idDelInstanceStatus
@@ -58,7 +57,6 @@ var (
 		idUndef:             "undef",
 		idApplyFull:         "apply-full",
 		idApplyPatch:        "apply-patch",
-		idApplyPing:         "apply-ping",
 		idCommitPending:     "commit-pending",
 		idDelInstanceConfig: "del-instance-config",
 		idDelInstanceStatus: "del-instance-status",
