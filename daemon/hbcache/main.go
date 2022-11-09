@@ -1,4 +1,4 @@
-// Package heartbeatdata manage heartbeat cache data for cluster
+// Package hbcache manage heartbeat cache data for cluster
 //
 // This cache will be populated from:
 //   - received messages from peer heratbeats
@@ -12,7 +12,7 @@
 // It serves data for sub.hb
 //
 // The cache must be started with Start(ctx). It is stopped when ctx is done
-package heartbeatdata
+package hbcache
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func Start(ctx context.Context) {
 	heartbeats := make([]cluster.HeartbeatThreadStatus, 0)
 	previousMessageType := "undef"
 	localhost := hostname.Hostname()
-	log := daemonlogctx.Logger(ctx).With().Str("name", "heartbeatdata").Logger()
+	log := daemonlogctx.Logger(ctx).With().Str("name", "hbcache").Logger()
 	log.Debug().Msg("started")
 	defer log.Debug().Msg("done")
 
