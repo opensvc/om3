@@ -41,7 +41,7 @@ func (o *smon) orchestrateStarted() {
 // else   => try startedFromThawed
 func (o *smon) startedFromIdle() {
 	if !o.instStatus[o.localhost].Frozen.IsZero() {
-		o.startedFromFrozen()
+		o.doUnfreeze()
 		return
 	} else {
 		o.startedFromThawed()
@@ -82,8 +82,8 @@ func (o *smon) startedFromThawed() {
 	}(o.pendingCtx)
 }
 
-// startedFromFrozen idle -> thawing -> thawed or thawed failed
-func (o *smon) startedFromFrozen() {
+// doUnfreeze idle -> thawing -> thawed or thawed failed
+func (o *smon) doUnfreeze() {
 	o.doAction(o.crmUnfreeze, statusThawing, statusThawed, statusThawedFailed)
 }
 

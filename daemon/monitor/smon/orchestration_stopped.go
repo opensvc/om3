@@ -15,11 +15,15 @@ func (o *smon) orchestrateStopped() {
 		o.log.Warn().Msg("no solution for orchestrate stopped")
 		return
 	}
+	o.freezeStop()
+}
+
+func (o *smon) freezeStop() {
 	switch o.state.Status {
 	case statusIdle:
-		o.stoppedFromIdle()
+		o.doFreezeStop()
 	case statusFrozen:
-		o.stoppedFromFrozen()
+		o.doStop()
 	case statusFreezing:
 	case statusReady:
 		o.stoppedFromReady()
@@ -29,7 +33,7 @@ func (o *smon) orchestrateStopped() {
 	case statusStartFailed:
 		o.stoppedFromFailed()
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate stopped from %s", o.state.Status)
+		o.log.Error().Msgf("don't know how to freeze and stop from %s", o.state.Status)
 	}
 }
 
@@ -37,20 +41,27 @@ func (o *smon) stoppedFromThawed() {
 	o.doAction(o.crmFreeze, statusFreezing, statusIdle, statusFreezeFailed)
 }
 
-// stoppedFromIdle handle global expect stopped orchestration from idle
+// doFreeze handle global expect stopped orchestration from idle
 //
 // local thawed => freezing to reach frozen
 // else         => stopping
-func (o *smon) stoppedFromIdle() {
+func (o *smon) doFreezeStop() {
 	if o.instStatus[o.localhost].Frozen.IsZero() {
 		o.doAction(o.crmFreeze, statusFreezing, statusFrozen, statusFreezeFailed)
 		return
 	} else {
-		o.stoppedFromFrozen()
+		o.doStop()
 	}
 }
 
-func (o *smon) stoppedFromFrozen() {
+func (o *smon) doFreeze() {
+	if o.instStatus[o.localhost].Frozen.IsZero() {
+		o.doAction(o.crmFreeze, statusFreezing, statusFrozen, statusFreezeFailed)
+		return
+	}
+}
+
+func (o *smon) doStop() {
 	if o.stoppedClearIfReached() {
 		return
 	}

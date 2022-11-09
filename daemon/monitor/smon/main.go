@@ -87,6 +87,7 @@ var (
 	statusStartFailed       = "start failed"
 	statusStarting          = "starting"
 	statusStopFailed        = "stop failed"
+	statusStopped           = "stopped"
 	statusStopping          = "stopping"
 	statusThawed            = "thawed"
 	statusThawedFailed      = "unfreeze failed"
