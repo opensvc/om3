@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
@@ -22,21 +23,18 @@ func (o opCommitPending) setDone(b bool) {
 func (o opCommitPending) call(ctx context.Context, d *data) {
 	d.counterCmd <- idCommitPending
 	d.log.Debug().Msg("opCommitPending")
+	// TODO no need to increase gen when message type is not patch
 	d.movePendingOpsToPatchQueue()
-	if d.clearMergedGenFromRemotesNeedFull() {
-		// one remote needs full, we can reset the patch queue because next msg type will be 'full'
-		d.patchQueue = make(patchQueue)
-	} else {
+	if d.hbMsgType == "patch" {
 		d.purgeAppliedPatchQueue()
+	} else {
+		d.patchQueue = make(patchQueue)
 	}
-
+	hbcache.SetLocalGens(d.deepCopyLocalGens())
 	d.pubMsgFromNodeDataDiff()
 
 	d.log.Debug().
-		Interface("mergedFromPeer", d.mergedFromPeer).
-		Interface("mergedOnPeer", d.mergedOnPeer).
-		Interface("remotesNeedFull", d.remotesNeedFull).
-		Interface("gens", d.pending.Cluster.Node[d.localNode].Status.Gen).
+		Interface("local gens", d.pending.Cluster.Node[d.localNode].Status.Gen).
 		Msg("opCommitPending")
 	select {
 	case <-ctx.Done():
@@ -44,47 +42,40 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 	}
 }
 
-// updateLocalNodeMergedGens updates cluster.nodes.<localhost>.gen.<remoteX>.<genX>
-// from and mergedFromPeer
-func (d *data) updateLocalNodeMergedGens() {
-	for n, gen := range d.mergedFromPeer {
-		d.pending.Cluster.Node[d.localNode].Status.Gen[n] = gen
-	}
-	return
-}
-
-// clearMergedGenFromRemotesNeedFull clears the merged state information from
-// remotesNeedFull information. It returns true when a remote needs full
-func (d *data) clearMergedGenFromRemotesNeedFull() (requireFull bool) {
-	for n, needFull := range d.remotesNeedFull {
-		if needFull {
-			d.mergedOnPeer[n] = 0
-			d.mergedFromPeer[n] = 0
-			d.remotesNeedFull[n] = false
-			requireFull = true
-		}
-	}
-	return requireFull
-}
-
-// purgeAppliedPatchQueue delete from patch queue entries that have been
-// merged on all peers
+// purgeAppliedPatchQueue purge entries from patch queue that have been merged
+// on all peers
 func (d *data) purgeAppliedPatchQueue() {
+	local := d.localNode
 	remoteMinGen := d.gen
-	for _, gen := range d.mergedOnPeer {
-		if gen < remoteMinGen {
-			remoteMinGen = gen
+	localGens := make(map[string]uint64)
+	for _, clusterNode := range d.pending.Cluster.Node {
+		if gen, ok := clusterNode.Status.Gen[local]; ok {
+			if gen < remoteMinGen {
+				remoteMinGen = gen
+			}
 		}
 	}
+	purged := make([]string, 0)
+	queueGens := make([]string, 0)
+	queueGen := make([]uint64, 0)
 	for genS := range d.patchQueue {
+		queueGens = append(queueGens, genS)
 		gen, err := strconv.ParseUint(genS, 10, 64)
 		if err != nil {
 			delete(d.patchQueue, genS)
+			purged = append(purged, genS)
 			continue
 		}
+		queueGen = append(queueGen, gen)
 		if gen <= remoteMinGen {
 			delete(d.patchQueue, genS)
+			purged = append(purged, genS)
 		}
+	}
+	if len(purged) > 0 {
+		d.log.Error().Msgf("purged len: %d %v queueGens:%v queueGen:%v %v", len(purged), purged, queueGens, queueGen, localGens)
+	} else {
+		d.log.Error().Msgf("purged len: %d %v queueGens:%v queueGen:%v %v", len(purged), purged, queueGens, queueGen, localGens)
 	}
 }
 
@@ -130,17 +121,15 @@ func (d *data) eventCommitPendingOps() {
 
 // CommitPending handle a commit of pending changes to T
 //
-// It maintains local NodeStatus Gens
+// when pending ops exists
+// => increase localhost gen
+// => move pending ops to patch queue (to populate next hb message)
+// => evict already applied gens from patchQueue
 //
-//	from patch/full/ping operations
-//	reset gen values for nodes that needs full hb message
-//	increase local gen when pendingOps exists
+// if message mode is not patch
+// => patch queue is purged
 //
-// # It moves pendingOps to patchQueue, evict already applied gens from patchQueue
-//
-// # When a remote node requires a full hb message pendingOps and patchQueue are purged
-//
-// It creates new version of previous Status
+// detected changes from peer data are published for client side event getters
 func (t T) CommitPending(ctx context.Context) {
 	done := make(chan bool)
 	t.cmdC <- opCommitPending{
