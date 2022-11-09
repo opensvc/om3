@@ -159,7 +159,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 		HumanRenderer: func() string {
 			s := ""
 			for _, d := range data {
-				if !paths.Has(d.Path) {
+				if !paths.Contains(d.Path) {
 					continue
 				}
 				s += d.Render()
