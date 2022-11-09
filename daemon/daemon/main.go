@@ -216,8 +216,8 @@ func (t *T) aLoop(bus chan<- any) {
 		Heartbeats: hbcache.Heartbeats(),
 		Modes:      hbcache.Modes(),
 	}
-	if err := daemondata.SetHeartbeats(bus, subHb); err != nil {
-		t.log.Error().Err(err).Msgf("loop can't SetHeartbeats")
+	if err := daemondata.SetSubHb(bus, subHb); err != nil {
+		t.log.Error().Err(err).Msgf("loop can't SetSubHb")
 	}
 }
 
