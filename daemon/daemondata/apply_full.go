@@ -7,7 +7,6 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -63,7 +62,7 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", remote)
 	} else {
 		eventId++
-		msgbus.PubEvent(d.bus, event.Event{
+		d.bus.Pub(event.Event{
 			Kind: "patch",
 			ID:   eventId,
 			Time: time.Now(),

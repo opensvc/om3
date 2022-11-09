@@ -16,11 +16,9 @@ package instcfg
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -53,9 +51,9 @@ type (
 		localhost    string
 		forceRefresh bool
 		published    bool
-
-		cmdC     chan *msgbus.Msg
-		dataCmdC chan<- interface{}
+		cmdC         chan any
+		dataCmdC     chan<- any
+		sub          *pubsub.Subscription
 	}
 )
 
@@ -68,7 +66,7 @@ var (
 )
 
 // Start launch goroutine instCfg worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- *msgbus.Msg) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -79,7 +77,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
-		cmdC:         make(chan *msgbus.Msg),
+		cmdC:         make(chan any),
 		dataCmdC:     daemondata.BusFromContext(parent),
 		filename:     filename,
 	}
@@ -88,35 +86,32 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		return err
 	}
 
-	bus := pubsub.BusFromContext(parent)
-	uuids := o.initSubscribers(bus)
+	o.startSubscriptions(parent)
+
 	go func() {
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
-			for _, id := range uuids {
-				msgbus.UnSub(bus, id)
-			}
+			o.sub.Stop()
 			o.done(parent, svcDiscoverCmd)
 		}()
 		o.worker(parent)
 	}()
+
 	return nil
 }
 
-func (o *T) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
-	subDesc := o.path.String() + " instcfg "
-	uuids = append(uuids,
-		msgbus.SubCfgFile(bus, pubsub.OpUpdate, subDesc+" own CfgFile update", o.path.String(), o.onEv),
-		msgbus.SubCfgFile(bus, pubsub.OpDelete, subDesc+" own CfgFile remove", o.path.String(), o.onEv),
-	)
+func (o *T) startSubscriptions(ctx context.Context) {
 	clusterId := clusterPath.String()
+	bus := pubsub.BusFromContext(ctx)
+	label := pubsub.Label{"path", o.path.String()}
+	o.sub = bus.Sub(o.path.String() + " instcfg")
+	o.sub.AddFilter(msgbus.CfgFileUpdated{}, label)
+	o.sub.AddFilter(msgbus.CfgFileRemoved{}, label)
 	if o.path.String() != clusterId {
-		uuids = append(uuids,
-			msgbus.SubCfg(bus, pubsub.OpUpdate, subDesc+" cluster Cfg update", clusterId, o.onEv),
-		)
+		o.sub.AddFilter(msgbus.CfgUpdated{}, pubsub.Label{"path", clusterId})
 	}
-	return
+	o.sub.Start()
 }
 
 // worker watch for local instCfg config file updates until file is removed
@@ -142,10 +137,16 @@ func (o *T) worker(parent context.Context) {
 		select {
 		case <-parent.Done():
 			return
-		case i := <-o.cmdC:
-			switch c := (*i).(type) {
-			case msgbus.Exit:
-				log.Debug().Msg("eat poison pill")
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.CfgFileUpdated:
+				o.log.Debug().Msgf("recv %#v", c)
+				if err := o.configFileCheck(); err != nil {
+					o.log.Error().Err(err).Msg("configFileCheck error")
+					return
+				}
+			case msgbus.CfgFileRemoved:
+				o.log.Debug().Msgf("recv %#v", c)
 				return
 			case msgbus.CfgUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
@@ -158,25 +159,16 @@ func (o *T) worker(parent context.Context) {
 				if err := o.configFileCheck(); err != nil {
 					return
 				}
-			case msgbus.CfgFileUpdated:
-				o.log.Debug().Msgf("recv %#v", c)
-				if err := o.configFileCheck(); err != nil {
-					o.log.Error().Err(err).Msg("configFileCheck error")
-					return
-				}
-			case msgbus.CfgFileRemoved:
-				o.log.Debug().Msgf("recv %#v", c)
+			}
+		case i := <-o.cmdC:
+			switch i.(type) {
+			case msgbus.Exit:
+				log.Debug().Msg("eat poison pill")
 				return
 			default:
 				o.log.Error().Interface("cmd", i).Msg("unexpected cmd")
 			}
 		}
-	}
-}
-
-func (o *T) onEv(i interface{}) {
-	select {
-	case o.cmdC <- msgbus.NewMsg(i):
 	}
 }
 
@@ -273,7 +265,6 @@ func (o *T) getScope() (scope []string, err error) {
 		}
 		scope = evalNodes.([]string)
 	}
-	sort.Strings(scope)
 	return
 }
 
@@ -298,11 +289,11 @@ func (o *T) delete() {
 	}
 }
 
-func (o *T) done(parent context.Context, doneChan chan<- *msgbus.Msg) {
-	op := msgbus.NewMsg(msgbus.MonCfgDone{
+func (o *T) done(parent context.Context, doneChan chan<- any) {
+	op := msgbus.MonCfgDone{
 		Path:     o.path,
 		Filename: o.filename,
-	})
+	}
 	select {
 	case <-parent.Done():
 		return

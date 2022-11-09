@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -45,8 +44,8 @@ type (
 		id       string
 		ctx      context.Context
 		cancel   context.CancelFunc
-		cmdC     chan *msgbus.Msg
-		dataCmdC chan<- interface{}
+		cmdC     chan any
+		dataCmdC chan<- any
 		log      zerolog.Logger
 
 		pendingCtx    context.Context
@@ -61,6 +60,8 @@ type (
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
+
+		sub *pubsub.Subscription
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -133,7 +134,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		id:            id,
 		ctx:           ctx,
 		cancel:        cancel,
-		cmdC:          make(chan *msgbus.Msg),
+		cmdC:          make(chan any),
 		dataCmdC:      daemondata.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
@@ -143,29 +144,30 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		change:        true,
 	}
 
-	bus := pubsub.BusFromContext(o.ctx)
-	uuids := o.initSubscribers(bus)
+	o.startSubscriptions()
+
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			for _, id := range uuids {
-				msgbus.UnSub(bus, id)
-			}
+			o.sub.Stop()
 		}()
 		o.worker(nodes)
 	}()
+
 	return nil
 }
 
-func (o *smon) initSubscribers(bus *pubsub.Bus) (uuids []uuid.UUID) {
-	subDesc := o.id + " smon "
-	uuids = append(uuids,
-		msgbus.SubObjectAgg(bus, pubsub.OpUpdate, subDesc+" agg.update", o.id, o.onEv),
-		msgbus.SubSetInstanceMonitor(bus, pubsub.OpUpdate, subDesc+" setSmon.update", o.id, o.onEv),
-		msgbus.SubInstanceMonitor(bus, pubsub.OpUpdate, subDesc+" smon.update", o.id, o.onEv),
-		msgbus.SubInstanceMonitor(bus, pubsub.OpDelete, subDesc+" smon.delete", o.id, o.onEv),
-	)
-	return
+func (o *smon) startSubscriptions() {
+	bus := pubsub.BusFromContext(o.ctx)
+	sub := bus.Sub(o.id + "smon")
+	label := pubsub.Label{"path", o.id}
+	sub.AddFilter(msgbus.CfgUpdated{}, label)
+	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
+	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
+	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
+	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
+	sub.Start()
+	o.sub = sub
 }
 
 // worker watch for local smon updates
@@ -186,25 +188,26 @@ func (o *smon) worker(initialNodes []string) {
 		select {
 		case <-o.ctx.Done():
 			return
-		case i := <-o.cmdC:
-			switch c := (*i).(type) {
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.CfgUpdated:
+				o.onCfgUpdated(c)
 			case msgbus.ObjectAggUpdated:
-				o.cmdSvcAggUpdated(c)
+				o.onSvcAggUpdated(c)
 			case msgbus.SetInstanceMonitor:
-				o.cmdSetSmonClient(c.Monitor)
+				o.onSetSmonClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
-				o.cmdSmonUpdated(c)
+				o.onSmonUpdated(c)
 			case msgbus.InstanceMonitorDeleted:
-				o.cmdSmonDeleted(c)
+				o.onSmonDeleted(c)
+			}
+		case i := <-o.cmdC:
+			switch c := i.(type) {
 			case cmdOrchestrate:
 				o.needOrchestrate(c)
 			}
 		}
 	}
-}
-
-func (o *smon) onEv(i interface{}) {
-	o.cmdC <- msgbus.NewMsg(i)
 }
 
 func (o *smon) delete() {
@@ -250,6 +253,9 @@ func (o *smon) updateIfChange() {
 	if newVal.Status != previousVal.Status {
 		o.state.StatusUpdated = now
 		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
+	}
+	if newVal.IsLeader != previousVal.IsLeader {
+		o.loggerWithState().Info().Msgf("change leader state %s -> %s", previousVal.IsLeader, newVal.IsLeader)
 	}
 	o.previousState = o.state
 	o.update()

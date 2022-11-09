@@ -7,6 +7,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -73,10 +74,10 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	msgbus.PubCfgDelete(d.bus, s, msgbus.CfgDeleted{
+	d.bus.Pub(msgbus.CfgDeleted{
 		Path: o.path,
 		Node: d.localNode,
-	})
+	}, pubsub.Label{"path", s})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -107,11 +108,11 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 	}
 	d.pendingOps = append(d.pendingOps, op)
 
-	msgbus.PubCfgUpdate(d.bus, s, msgbus.CfgUpdated{
+	d.bus.Pub(msgbus.CfgUpdated{
 		Path:   o.path,
 		Node:   d.localNode,
 		Config: o.value,
-	})
+	}, pubsub.Label{"path", s})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

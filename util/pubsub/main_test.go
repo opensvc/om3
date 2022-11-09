@@ -9,12 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	NsCfg = NsAll + 1 + iota
-	NsSvcAgg
-	NsStatus
-)
-
 func newRun(name string) *Bus {
 	bus := NewBus(name)
 	bus.Start(context.Background())
@@ -24,19 +18,20 @@ func newRun(name string) *Bus {
 func TestPub(t *testing.T) {
 	bus := newRun(t.Name())
 	defer bus.Stop()
-	bus.Pub(Publication{Value: "foo", Op: OpCreate})
-	bus.Pub(Publication{Value: "foo", Op: OpUpdate})
-	bus.Pub(Publication{Value: "foo", Op: OpRead})
-	bus.Pub(Publication{Value: "foo", Op: OpDelete})
-	bus.Pub(Publication{Value: "bar"})
-	bus.Pub(Publication{Value: "foobar"})
+	bus.Pub("foo", Label{"op", "create"})
+	bus.Pub("foo", Label{"op", "update"})
+	bus.Pub("foo", Label{"op", "read"})
+	bus.Pub("foo", Label{"op", "delete"})
+	bus.Pub("bar")
+	bus.Pub("foobar")
 }
 
-func TestSubUnSub(t *testing.T) {
+func TestSubUnsub(t *testing.T) {
 	bus := newRun(t.Name())
 	defer bus.Stop()
-	sub := bus.Sub(Subscription{Name: t.Name()}, func(_ interface{}) {})
-	bus.Unsub(sub)
+	sub := bus.Sub(t.Name())
+	sub.Start()
+	sub.Stop()
 }
 
 func TestSubThenPub(t *testing.T) {
@@ -44,32 +39,28 @@ func TestSubThenPub(t *testing.T) {
 	defer bus.Stop()
 	published := make([]string, 0)
 	toPublish := []string{"foo", "foo1", "foo2"}
-	bus.Sub(Subscription{Name: t.Name()}, func(s interface{}) {
-		published = append(published, s.(string))
-	})
+	sub := bus.Sub(t.Name())
+	sub.Start()
+	defer sub.Stop()
 	for _, s := range toPublish {
-		bus.Pub(Publication{Value: s})
+		bus.Pub(s)
 	}
-	tr1 := time.NewTimer(time.Microsecond)
-	tr2 := time.NewTimer(2 * time.Millisecond)
+	tr1 := time.NewTicker(time.Microsecond)
+	defer tr1.Stop()
+	tr2 := time.NewTicker(2 * time.Millisecond)
+	defer tr2.Stop()
 	done := make(chan bool)
 	go func() {
 		for {
 			select {
+			case i := <-sub.C:
+				published = append(published, i.(string))
 			case <-tr1.C:
-				if len(published) != len(toPublish) {
-					tr1.Reset(time.Microsecond)
-				} else {
-					if !tr2.Stop() {
-						<-tr2.C
-					}
+				if len(published) == len(toPublish) {
 					done <- true
 					return
 				}
 			case <-tr2.C:
-				if !tr1.Stop() {
-					<-tr1.C
-				}
 				done <- true
 				return
 			}
@@ -82,122 +73,128 @@ func TestSubThenPub(t *testing.T) {
 func TestSubNsThenPub(t *testing.T) {
 	bus := newRun(t.Name())
 	defer bus.Stop()
-	expectedCfg := []uint32{1, 20, 30}
-	expectedCfgId1 := []uint32{20}
-	expectedSvcAgg := []string{"foo", "foo1", "foo2", "foo1", "foo2"}
-	expectedSvcAggDelete := []string{"foo1", "foo2"}
+	expected := []any{"del1", "del2", 1}
 
 	toPublishSvcAgg := []string{"foo", "foo1", "foo2"}
-	toPublishSvcAggDelete := []string{"foo1", "foo2"}
-	toPublishCfg := []uint32{1, 20, 30}
+	toPublishSvcAggDelete := []string{"del1", "del2"}
+	toPublishCfg := []uint32{0, 1, 2}
+	expectedTotal := len(expected)
 
 	var (
-		publishedCfg          []uint32
-		publishedCfgId1       []uint32
-		publishedSvcAgg       []string
-		publishedSvcAggDelete []string
+		published []any
 	)
 
-	bus.Sub(Subscription{Ns: NsCfg, Matching: "1", Name: "onCfg for Id 1"}, func(s interface{}) {
-		t.Logf("-> NsCfg Id 1 sub receive: %v", s)
-		publishedCfgId1 = append(publishedCfgId1, s.(uint32))
-	})
-
-	bus.Sub(Subscription{Ns: NsCfg, Name: "onCfg"}, func(s interface{}) {
-		t.Logf("-> NsCfg sub receive: %v", s)
-		publishedCfg = append(publishedCfg, s.(uint32))
-	})
-	bus.Sub(Subscription{Ns: NsSvcAgg, Name: "onSvcAgg"}, func(s interface{}) {
-		t.Logf("-> NsSvcAgg sub receive: %v", s)
-		publishedSvcAgg = append(publishedSvcAgg, s.(string))
-	})
-
-	bus.Sub(Subscription{Ns: NsSvcAgg, Op: OpDelete, Name: "onSvcAggDelete"}, func(s interface{}) {
-		t.Logf("-> NsSvcAgg Op delete sub receive: %v", s)
-		publishedSvcAggDelete = append(publishedSvcAggDelete, s.(string))
-	})
+	sub := bus.Sub(t.Name())
+	sub.AddFilter(uint32(0), Label{"ns", "cfg"}, Label{"id", "1"})
+	sub.AddFilter("", Label{"ns", "svcagg"}, Label{"op", "delete"})
+	sub.Start()
+	defer sub.Stop()
 
 	t.Log("NsSvcAgg")
 	for i, s := range toPublishSvcAgg {
 		time.Sleep(1 * time.Nanosecond)
-		bus.Pub(Publication{
-			Id:    strconv.Itoa(i),
-			Value: s,
-			Ns:    NsSvcAgg,
-		})
+		id := strconv.Itoa(i)
+		bus.Pub(
+			s,
+			Label{"id", id},
+			Label{"ns", "svcagg"},
+		)
 	}
 	t.Log("NsCfg")
 	for i, s := range toPublishCfg {
 		time.Sleep(1 * time.Nanosecond)
-		bus.Pub(Publication{
-			Id:    strconv.Itoa(i),
-			Value: s,
-			Ns:    NsCfg,
-		})
+		bus.Pub(
+			s,
+			Label{"id", strconv.Itoa(i)},
+			Label{"ns", "cfg"},
+		)
 	}
 	t.Log("nsCfgDelete")
 	for i, s := range toPublishSvcAggDelete {
 		time.Sleep(1 * time.Nanosecond)
-		bus.Pub(Publication{
-			Id:    strconv.Itoa(i),
-			Value: s,
-			Op:    OpDelete,
-			Ns:    NsSvcAgg,
-		})
+		bus.Pub(
+			s,
+			Label{"id", strconv.Itoa(i)},
+			Label{"ns", "svcagg"},
+			Label{"op", "delete"},
+		)
 	}
-	time.Sleep(1 * time.Millisecond)
+	tr := time.NewTicker(2 * time.Millisecond)
+	defer tr.Stop()
+	done := make(chan bool)
+	recv := 0
+	go func() {
+		for {
+			select {
+			case <-tr.C:
+				done <- true
+				return
+			case i := <-sub.C:
+				switch c := i.(type) {
+				case uint32:
+					t.Logf("-> receive uint32: %v", c)
+					published = append(published, c)
+				case string:
+					t.Logf("-> receive string: %v", c)
+					published = append(published, c)
+				}
+			}
+			recv += 1
+			if recv > expectedTotal {
+				done <- true
+			}
+		}
+	}()
+	<-done
 
-	require.ElementsMatch(t, expectedCfg, publishedCfg, "cfg")
-	require.ElementsMatch(t, expectedCfgId1, publishedCfgId1, "cfg id1")
-	require.ElementsMatch(t, expectedSvcAgg, publishedSvcAgg, "svcAgg")
-	require.ElementsMatch(t, expectedSvcAggDelete, publishedSvcAggDelete, "svcAgg delete")
+	require.Contains(t, published, "del1", "")
+	require.Contains(t, published, "del2", "")
+	require.Contains(t, published, uint32(1), "")
+	require.Len(t, published, 3)
 }
 
-func TestSubPubUnSubPubWithoutFilter(t *testing.T) {
+func TestSubPubWithoutFilter(t *testing.T) {
 	bus := newRun(t.Name())
 	defer bus.Stop()
 	toPublish := []string{"foo", "foo1", "foo2"}
 
-	var published []string
-	id := bus.Sub(Subscription{Name: t.Name()}, func(s interface{}) {
-		published = append(published, s.(string))
-	})
+	var published, received []string
+	sub := bus.Sub(t.Name())
+	sub.Start()
+	defer sub.Stop()
 	for _, s := range toPublish {
-		bus.Pub(Publication{Value: s})
+		bus.Pub(s)
+		published = append(published, s)
 	}
-	bus.Unsub(id)
-	t.Logf("NsAll: %d", NsAll)
-	t.Logf("NsCfg: %d", NsCfg)
-	t.Logf("NsSvcAgg: %d", NsSvcAgg)
-	t.Logf("NsStatus: %d", NsStatus)
 	for _, s := range toPublish {
-		bus.Pub(Publication{Ns: NsSvcAgg, Value: s})
+		bus.Pub(s, Label{"ns", "svcagg"})
+		published = append(published, s)
 	}
-	tr1 := time.NewTimer(time.Microsecond)
+	tr1 := time.NewTicker(time.Microsecond)
+	defer tr1.Stop()
 	tr2 := time.NewTimer(2 * time.Millisecond)
+	defer tr2.Stop()
+
 	done := make(chan bool)
 	go func() {
 		for {
 			select {
+			case i := <-sub.C:
+				switch c := i.(type) {
+				case string:
+					received = append(received, c)
+				}
 			case <-tr1.C:
-				if len(published) != len(toPublish) {
-					tr1.Reset(time.Microsecond)
-				} else {
-					if !tr2.Stop() {
-						<-tr2.C
-					}
+				if len(published) == len(received) {
 					done <- true
 					return
 				}
 			case <-tr2.C:
-				if !tr1.Stop() {
-					<-tr1.C
-				}
 				done <- true
 				return
 			}
 		}
 	}()
 	<-done
-	require.Equal(t, toPublish, published)
+	require.Equal(t, received, published)
 }

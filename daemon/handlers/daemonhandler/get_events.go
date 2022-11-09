@@ -17,7 +17,6 @@ import (
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -129,10 +128,6 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	// start go routines to write events as they come
-	evChan := make(chan event.Event)
-	getEvent := func(ev event.Event) {
-		evChan <- ev
-	}
 	writeEvent := func(ev event.Event) {
 		if !allowEvent(r, ev, payload) {
 			logger.Debug().Interface("event", ev).Msg("hide denied event")
@@ -169,16 +164,19 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	subId := msgbus.SubEventWithTimeout(bus, "lsnr-handler-event from "+r.RemoteAddr+" "+daemonctx.Uuid(r.Context()).String(), getEvent, time.Second)
-	defer msgbus.UnSubEvent(bus, subId)
+	name := "lsnr-handler-event from " + r.RemoteAddr + " " + daemonctx.Uuid(r.Context()).String()
+	sub := bus.SubWithTimeout(name, time.Second)
+	sub.AddFilter(event.Event{})
+	sub.Start()
+	defer sub.Stop()
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				done <- true
 				return
-			case ev := <-evChan:
-				writeEvent(ev)
+			case i := <-sub.C:
+				writeEvent(i.(event.Event))
 			}
 		}
 	}()

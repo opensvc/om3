@@ -1,5 +1,10 @@
 package stringslice
 
+import (
+	"fmt"
+	"sort"
+)
+
 // Has returns true if any string in l is s
 func Has(s string, l []string) bool {
 	for _, e := range l {
@@ -40,4 +45,68 @@ func Map(a []string, fn func(string) string) []string {
 		b = append(b, fn(e))
 	}
 	return b
+}
+
+func first(data sort.Interface) {
+	sort.Sort(data)
+}
+
+// next returns false when it cannot permute any more
+// http://en.wikipedia.org/wiki/Permutation#Generation_in_lexicographic_order
+func next(data sort.Interface) bool {
+	var k, l int
+	for k = data.Len() - 2; ; k-- {
+		if k < 0 {
+			return false
+		}
+		if data.Less(k, k+1) {
+			break
+		}
+	}
+	for l = data.Len() - 1; !data.Less(k, l); l-- {
+	}
+	data.Swap(k, l)
+	for i, j := k+1, data.Len()-1; i < j; i++ {
+		data.Swap(i, j)
+		j--
+	}
+	return true
+}
+
+// Permute returns all possible permutations of string slice.
+func Permute(slice []string) [][]string {
+	first(sort.StringSlice(slice))
+
+	copied1 := make([]string, len(slice)) // we need to make a copy!
+	copy(copied1, slice)
+	result := [][]string{copied1}
+
+	for {
+		isDone := next(sort.StringSlice(slice))
+		if !isDone {
+			break
+		}
+
+		// https://groups.google.com/d/msg/golang-nuts/ApXxTALc4vk/z1-2g1AH9jQJ
+		// Lesson from Dave Cheney:
+		// A slice is just a pointer to the underlying back array, your storing multiple
+		// copies of the slice header, but they all point to the same backing array.
+
+		// NOT
+		// result = append(result, slice)
+
+		copied2 := make([]string, len(slice))
+		copy(copied2, slice)
+		result = append(result, copied2)
+	}
+
+	combNum := 1
+	for i := 0; i < len(slice); i++ {
+		combNum *= i + 1
+	}
+	if len(result) != combNum {
+		fmt.Printf("Expected %d combinations but %+v because of duplicate elements", combNum, result)
+	}
+
+	return result
 }

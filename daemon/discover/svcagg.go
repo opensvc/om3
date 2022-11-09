@@ -5,7 +5,6 @@ import (
 
 	"opensvc.com/opensvc/daemon/monitor/svcagg"
 	"opensvc.com/opensvc/daemon/msgbus"
-	ps "opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -26,16 +25,17 @@ func (d *discover) agg() {
 		}
 	}()
 	bus := pubsub.BusFromContext(d.ctx)
-	defer ps.UnSub(bus, ps.SubCfg(bus, pubsub.OpUpdate, "agg-from-cfg-create", "", d.onEvAgg))
+	sub := bus.Sub("agg-from-cfg-create")
+	sub.AddFilter(msgbus.CfgUpdated{})
+	sub.Start()
+	defer sub.Stop()
 	for {
 		select {
 		case <-d.ctx.Done():
 			log.Info().Msg("stopped")
 			return
-		case i := <-d.svcaggCmdC:
-			switch c := (*i).(type) {
-			case msgbus.ObjectAggDone:
-				delete(d.svcAgg, c.Path.String())
+		case i := <-sub.C:
+			switch c := i.(type) {
 			case msgbus.CfgUpdated:
 				s := c.Path.String()
 				if _, ok := d.svcAgg[s]; !ok {
@@ -46,16 +46,14 @@ func (d *discover) agg() {
 					}
 					d.svcAgg[s] = make(map[string]struct{})
 				}
+			}
+		case i := <-d.svcaggCmdC:
+			switch c := i.(type) {
+			case msgbus.ObjectAggDone:
+				delete(d.svcAgg, c.Path.String())
 			default:
 				log.Error().Interface("cmd", i).Msg("unexpected cmd")
 			}
 		}
-	}
-}
-
-func (d *discover) onEvAgg(i interface{}) {
-	select {
-	case <-d.ctx.Done():
-	case d.svcaggCmdC <- msgbus.NewMsg(i):
 	}
 }
