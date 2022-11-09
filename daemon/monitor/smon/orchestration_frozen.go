@@ -1,9 +1,6 @@
 package smon
 
 func (o *smon) orchestrateFrozen() {
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.Status {
 	case statusIdle:
 		o.frozenFromIdle()

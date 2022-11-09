@@ -6,16 +6,13 @@ import (
 )
 
 func (o *smon) orchestratePurged() {
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.Status {
 	case statusDeleted:
 		o.purgedFromDeleted()
 	case statusIdle:
 		o.purgedFromIdle()
-	case statusUnProvisioned:
-		o.purgedFromUnProvisioned()
+	case statusUnprovisioned:
+		o.purgedFromUnprovisioned()
 	case statusWaitNonLeader:
 		o.purgedFromWaitNonLeader()
 	}
@@ -31,7 +28,7 @@ func (o *smon) purgedFromIdle() {
 		return
 	}
 	go func() {
-		o.cmdC <- cmdOrchestrate{state: statusIdle, newState: statusUnProvisioned}
+		o.cmdC <- cmdOrchestrate{state: statusIdle, newState: statusUnprovisioned}
 	}()
 	return
 }
@@ -43,7 +40,7 @@ func (o *smon) purgedFromDeleted() {
 	o.updateIfChange()
 }
 
-func (o *smon) purgedFromUnProvisioned() {
+func (o *smon) purgedFromUnprovisioned() {
 	o.doAction(o.crmDelete, statusDeleting, statusDeleted, statusPurgeFailed)
 }
 
@@ -57,7 +54,7 @@ func (o *smon) purgedFromIdleProvisioned() {
 		o.purgedFromWaitNonLeader()
 		return
 	}
-	o.doAction(o.crmUnprovisionNonLeader, statusUnProvisioning, statusUnProvisioned, statusPurgeFailed)
+	o.doAction(o.crmUnprovisionNonLeader, statusUnprovisioning, statusUnprovisioned, statusPurgeFailed)
 }
 
 func (o *smon) purgedFromWaitNonLeader() {
@@ -68,5 +65,5 @@ func (o *smon) purgedFromWaitNonLeader() {
 	if o.hasNonLeaderProvisioned() {
 		return
 	}
-	o.doAction(o.crmUnprovisionLeader, statusUnProvisioning, statusUnProvisioned, statusPurgeFailed)
+	o.doAction(o.crmUnprovisionLeader, statusUnprovisioning, statusUnprovisioned, statusPurgeFailed)
 }

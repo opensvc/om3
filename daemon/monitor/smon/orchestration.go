@@ -8,6 +8,9 @@ func (o *smon) orchestrate() {
 		// no expected status to reach
 		return
 	}
+	if !o.isConvergedGlobalExpect() {
+		return
+	}
 
 	switch o.state.GlobalExpect {
 	case globalExpectFrozen:
@@ -26,8 +29,8 @@ func (o *smon) orchestrate() {
 		o.orchestrateStopped()
 	case globalExpectThawed:
 		o.orchestrateThawed()
-	case globalExpectUnProvisioned:
-		o.orchestrateUnProvisioned()
+	case globalExpectUnprovisioned:
+		o.orchestrateUnprovisioned()
 	case globalExpectAborted:
 		o.orchestrateAborted()
 	default:

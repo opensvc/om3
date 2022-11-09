@@ -88,9 +88,9 @@ func (o *smon) onSetSmonClient(c instance.Monitor) {
 		case statusThawed:
 		case statusThawedFailed:
 		case statusThawing:
-		case statusUnProvisioned:
-		case statusUnProvisionFailed:
-		case statusUnProvisioning:
+		case statusUnprovisioned:
+		case statusUnprovisionFailed:
+		case statusUnprovisioning:
 		case statusWaitLeader:
 		case statusWaitNonLeader:
 		default:
@@ -118,7 +118,7 @@ func (o *smon) onSetSmonClient(c instance.Monitor) {
 		case globalExpectPurged:
 		case globalExpectStopped:
 		case globalExpectThawed:
-		case globalExpectUnProvisioned:
+		case globalExpectUnprovisioned:
 		case globalExpectStarted:
 			if o.svcAgg.Avail == status.Up {
 				o.log.Info().Msg("preserve global expect: object is already started")

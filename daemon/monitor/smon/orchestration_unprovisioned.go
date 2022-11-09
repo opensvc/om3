@@ -4,36 +4,33 @@ import (
 	"opensvc.com/opensvc/core/provisioned"
 )
 
-func (o *smon) orchestrateUnProvisioned() {
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
+func (o *smon) orchestrateUnprovisioned() {
 	switch o.state.Status {
 	case statusIdle:
-		o.UnProvisionedFromIdle()
+		o.UnprovisionedFromIdle()
 	case statusWaitNonLeader:
-		o.UnProvisionedFromWaitNonLeader()
+		o.UnprovisionedFromWaitNonLeader()
 	}
 }
 
-func (o *smon) UnProvisionedFromIdle() {
-	if o.UnProvisionedClearIfReached() {
+func (o *smon) UnprovisionedFromIdle() {
+	if o.UnprovisionedClearIfReached() {
 		return
 	}
 	if o.isUnprovisionLeader() {
 		if o.hasNonLeaderProvisioned() {
 			o.transitionTo(statusWaitNonLeader)
 		} else {
-			o.doAction(o.crmUnprovisionLeader, statusUnProvisioning, statusIdle, statusUnProvisionFailed)
+			o.doAction(o.crmUnprovisionLeader, statusUnprovisioning, statusIdle, statusUnprovisionFailed)
 		}
 	} else {
 		// immediate action on non-leaders
-		o.doAction(o.crmUnprovisionNonLeader, statusUnProvisioning, statusIdle, statusUnProvisionFailed)
+		o.doAction(o.crmUnprovisionNonLeader, statusUnprovisioning, statusIdle, statusUnprovisionFailed)
 	}
 }
 
-func (o *smon) UnProvisionedFromWaitNonLeader() {
-	if o.UnProvisionedClearIfReached() {
+func (o *smon) UnprovisionedFromWaitNonLeader() {
+	if o.UnprovisionedClearIfReached() {
 		o.transitionTo(statusIdle)
 		return
 	}
@@ -44,7 +41,7 @@ func (o *smon) UnProvisionedFromWaitNonLeader() {
 	if o.hasNonLeaderProvisioned() {
 		return
 	}
-	o.doAction(o.crmUnprovisionLeader, statusUnProvisioning, statusIdle, statusUnProvisionFailed)
+	o.doAction(o.crmUnprovisionLeader, statusUnprovisioning, statusIdle, statusUnprovisionFailed)
 }
 
 func (o *smon) hasNonLeaderProvisioned() bool {
@@ -65,7 +62,7 @@ func (o *smon) hasNonLeaderProvisioned() bool {
 	return false
 }
 
-func (o *smon) UnProvisionedClearIfReached() bool {
+func (o *smon) UnprovisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
 		o.loggerWithState().Info().Msg("local status is not provisioned, unset global expect")
 		o.change = true
