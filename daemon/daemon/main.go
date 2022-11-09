@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -141,7 +142,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
-	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan []byte))
+	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan hbtype.Msg))
 
 	hbcache.Start(t.ctx)
 

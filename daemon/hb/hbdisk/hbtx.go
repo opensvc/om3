@@ -7,9 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/util/hostname"
@@ -83,29 +81,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	return nil
 }
 
-func (t *tx) slotData(b []byte) ([]byte, error) {
-	cluster := rawconfig.ClusterSection()
-	msg := &reqjsonrpc.Message{
-		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Name,
-		Key:         cluster.Secret,
-		Data:        b,
-	}
-	return msg.Encrypt()
-}
-
 func (t *tx) send(b []byte) {
-	slotData, err := t.slotData(b)
-	if err != nil {
-		t.log.Debug().Err(err).Msg("write")
-		return
-	}
 	meta, err := t.base.GetPeer(hostname.Hostname())
 	if err != nil {
 		t.log.Debug().Err(err).Msg("write")
 		return
 	}
-	if t.base.WriteDataSlot(meta.Slot, slotData); err != nil { // TODO write timeout?
+	if t.base.WriteDataSlot(meta.Slot, b); err != nil { // TODO write timeout?
 		t.log.Debug().Err(err).Msg("write")
 		return
 	} else {

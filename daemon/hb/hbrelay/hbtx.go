@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/client"
-	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
@@ -87,23 +86,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	return nil
 }
 
-func (t *tx) slotData(b []byte) ([]byte, error) {
-	cluster := rawconfig.ClusterSection()
-	msg := &reqjsonrpc.Message{
-		NodeName:    hostname.Hostname(),
-		ClusterName: cluster.Name,
-		Key:         cluster.Secret,
-		Data:        b,
-	}
-	return msg.Encrypt()
-}
-
 func (t *tx) send(b []byte) {
-	slotData, err := t.slotData(b)
-	if err != nil {
-		t.log.Debug().Err(err).Msg("send: prepare encrypted message")
-		return
-	}
 	cli, err := client.New(
 		client.WithURL(t.relay),
 		client.WithUsername(t.username),
@@ -120,7 +103,7 @@ func (t *tx) send(b []byte) {
 	req.Nodename = hostname.Hostname()
 	req.ClusterId = cluster.ID
 	req.ClusterName = cluster.Name
-	req.Msg = string(slotData)
+	req.Msg = string(b)
 	b, err = req.Do()
 	if err != nil {
 		t.log.Debug().Err(err).Msg("send: do request")

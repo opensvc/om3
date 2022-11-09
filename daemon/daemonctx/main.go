@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/subdaemon"
 )
 
@@ -24,9 +25,9 @@ func (c contextKey) String() string {
 }
 
 // HBSendQ function returns HBSendQ from context
-func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
+func HBSendQ(ctx context.Context) (hbSendQ chan hbtype.Msg) {
 	var ok bool
-	hbSendQ, ok = ctx.Value(contextHBSendQueue).(chan []byte)
+	hbSendQ, ok = ctx.Value(contextHBSendQueue).(chan hbtype.Msg)
 	if ok {
 		return
 	}
@@ -34,7 +35,7 @@ func HBSendQ(ctx context.Context) (hbSendQ chan []byte) {
 }
 
 // WithHBSendQ function returns copy of parent with HBSendQ.
-func WithHBSendQ(parent context.Context, HBSendQ chan []byte) context.Context {
+func WithHBSendQ(parent context.Context, HBSendQ chan hbtype.Msg) context.Context {
 	return context.WithValue(parent, contextHBSendQueue, HBSendQ)
 }
 
