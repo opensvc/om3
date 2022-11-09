@@ -91,9 +91,9 @@ var (
 	statusThawed            = "thawed"
 	statusThawedFailed      = "unfreeze failed"
 	statusThawing           = "thawing"
-	statusUnProvisioned     = "unprovisioned"
-	statusUnProvisionFailed = "unprovision failed"
-	statusUnProvisioning    = "unprovisioning"
+	statusUnprovisioned     = "unprovisioned"
+	statusUnprovisionFailed = "unprovision failed"
+	statusUnprovisioning    = "unprovisioning"
 	statusWaitLeader        = "wait leader"
 	statusWaitNonLeader     = "wait non-leader"
 
@@ -109,7 +109,7 @@ var (
 	globalExpectStarted       = "started"
 	globalExpectStopped       = "stopped"
 	globalExpectThawed        = "thawed"
-	globalExpectUnProvisioned = "unprovisioned"
+	globalExpectUnprovisioned = "unprovisioned"
 	globalExpectUnset         = ""
 )
 

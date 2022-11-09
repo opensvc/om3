@@ -29,8 +29,8 @@ func (o *smon) orchestrate() {
 		o.orchestrateStopped()
 	case globalExpectThawed:
 		o.orchestrateThawed()
-	case globalExpectUnProvisioned:
-		o.orchestrateUnProvisioned()
+	case globalExpectUnprovisioned:
+		o.orchestrateUnprovisioned()
 	case globalExpectAborted:
 		o.orchestrateAborted()
 	default:
