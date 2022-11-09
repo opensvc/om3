@@ -16,9 +16,6 @@ func (o *smon) orchestrateStarted() {
 		o.log.Warn().Msg("no solution for orchestrate started")
 		return
 	}
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.Status {
 	case statusIdle:
 		o.startedFromIdle()

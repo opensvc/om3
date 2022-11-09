@@ -6,9 +6,6 @@ import (
 )
 
 func (o *smon) orchestratePurged() {
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.Status {
 	case statusDeleted:
 		o.purgedFromDeleted()

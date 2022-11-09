@@ -7,9 +7,6 @@ func (o *smon) orchestratePlaced() {
 		o.log.Warn().Msg("no solution for orchestrate placed")
 		return
 	}
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.Status {
 	default:
 		o.log.Error().Msgf("don't know how to orchestrate placed from %s", o.state.Status)

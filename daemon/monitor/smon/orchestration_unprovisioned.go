@@ -5,9 +5,6 @@ import (
 )
 
 func (o *smon) orchestrateUnProvisioned() {
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.Status {
 	case statusIdle:
 		o.UnProvisionedFromIdle()
