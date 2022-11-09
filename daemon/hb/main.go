@@ -303,18 +303,31 @@ func (t *T) msgToTx(ctx context.Context) error {
 
 func (t *T) msgFromRx(ctx context.Context) {
 	count := 0.0
-	statTicker := time.NewTicker(10 * time.Second)
+	statTicker := time.NewTicker(60 * time.Second)
 	defer statTicker.Stop()
 	daemonData := daemondata.FromContext(ctx)
+	msgTimes := make(map[string]time.Time)
+	msgTimeDuration := 10 * time.Minute
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-statTicker.C:
+		case now := <-statTicker.C:
 			t.log.Debug().Msgf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 			count = 0
+			for peer, updated := range msgTimes {
+				if now.Sub(updated) > msgTimeDuration {
+					delete(msgTimes, peer)
+				}
+			}
 		case msg := <-t.readMsgQueue:
-			t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+			peer := msg.Nodename
+			if msgTimes[peer].Equal(msg.Updated) {
+				t.log.Debug().Msgf("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				continue
+			}
+			t.log.Debug().Msgf("process msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+			msgTimes[peer] = msg.Updated
 			switch msg.Kind {
 			case "patch":
 				mode := fmt.Sprintf("%d", len(msg.Deltas))
