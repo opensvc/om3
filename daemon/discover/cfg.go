@@ -62,6 +62,8 @@ func (d *discover) cfg() {
 			}
 		case i := <-d.cfgCmdC:
 			switch c := i.(type) {
+			case msgbus.RemoteFileConfig:
+				d.onRemoteCfgFetched(c)
 			case msgbus.MonCfgDone:
 				d.onMonCfgDone(c)
 			default:
