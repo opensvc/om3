@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
@@ -35,9 +36,7 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 	peerNode := o.peerNode
 	if !o.ping {
 		delete(d.pending.Cluster.Node[d.localNode].Status.Gen, peerNode)
-		delete(d.mergedOnPeer, peerNode)
-		delete(d.mergedFromPeer, peerNode)
-		delete(d.remotesNeedFull, peerNode)
+		hbcache.DropPeer(peerNode)
 		if _, ok := d.pending.Cluster.Node[peerNode]; ok {
 			d.log.Info().Msgf("evict from cluster node stale peer %s", peerNode)
 			delete(d.pending.Cluster.Node, peerNode)
