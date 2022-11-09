@@ -161,6 +161,7 @@ func (o *smon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub(o.id + "smon")
 	label := pubsub.Label{"path", o.id}
+	sub.AddFilter(msgbus.CfgUpdated{}, label)
 	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
@@ -189,14 +190,16 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
+			case msgbus.CfgUpdated:
+				o.onCfgUpdated(c)
 			case msgbus.ObjectAggUpdated:
-				o.cmdSvcAggUpdated(c)
+				o.onSvcAggUpdated(c)
 			case msgbus.SetInstanceMonitor:
-				o.cmdSetSmonClient(c.Monitor)
+				o.onSetSmonClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
-				o.cmdSmonUpdated(c)
+				o.onSmonUpdated(c)
 			case msgbus.InstanceMonitorDeleted:
-				o.cmdSmonDeleted(c)
+				o.onSmonDeleted(c)
 			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {
@@ -250,6 +253,9 @@ func (o *smon) updateIfChange() {
 	if newVal.Status != previousVal.Status {
 		o.state.StatusUpdated = now
 		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
+	}
+	if newVal.IsLeader != previousVal.IsLeader {
+		o.loggerWithState().Info().Msgf("change leader state %s -> %s", previousVal.IsLeader, newVal.IsLeader)
 	}
 	o.previousState = o.state
 	o.update()
