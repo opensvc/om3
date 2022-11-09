@@ -35,6 +35,7 @@ type (
 		mergedFromPeer  gens                  // remote dateset gen merged locally
 		mergedOnPeer    gens                  // local dataset gen merged remotely
 		remotesNeedFull map[string]bool
+		hbMsgType       string // latest created hb message type
 		localNode       string
 		counterCmd      chan<- interface{}
 		log             zerolog.Logger
