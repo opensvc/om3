@@ -39,11 +39,14 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx         context.Context
-		cancel      context.CancelFunc
-		log         zerolog.Logger
-		loopC       chan action
-		loopDelay   time.Duration
+		ctx    context.Context
+		cancel context.CancelFunc
+		log    zerolog.Logger
+		loopC  chan action
+
+		// loopDelay is the interval of sub... updates
+		loopDelay time.Duration
+
 		loopEnabled *enable.T
 		cancelFuncs []context.CancelFunc
 	}
@@ -83,7 +86,7 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay:   10 * time.Second,
+		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
 		log:         log.Logger,
 	}
