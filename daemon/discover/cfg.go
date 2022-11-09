@@ -2,7 +2,6 @@ package discover
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -74,7 +73,6 @@ func (d *discover) cfg() {
 }
 
 func (d *discover) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
-	fmt.Printf("discover.cfg onCfgFileUpdated %#v\n", c)
 	if c.Path.Kind == kind.Invalid {
 		if c.Filename == rawconfig.NodeConfigFile() {
 			// node config file change
