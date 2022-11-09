@@ -12,7 +12,7 @@ func (o *smon) orchestratePurged() {
 	case statusIdle:
 		o.purgedFromIdle()
 	case statusUnprovisioned:
-		o.purgedFromUnProvisioned()
+		o.purgedFromUnprovisioned()
 	case statusWaitNonLeader:
 		o.purgedFromWaitNonLeader()
 	}
@@ -40,7 +40,7 @@ func (o *smon) purgedFromDeleted() {
 	o.updateIfChange()
 }
 
-func (o *smon) purgedFromUnProvisioned() {
+func (o *smon) purgedFromUnprovisioned() {
 	o.doAction(o.crmDelete, statusDeleting, statusDeleted, statusPurgeFailed)
 }
 
