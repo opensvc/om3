@@ -11,7 +11,6 @@ import (
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
-	"opensvc.com/opensvc/daemon/listener/encryptconn"
 )
 
 type (
@@ -101,8 +100,7 @@ func (t *tx) send(node string, b []byte) {
 		t.log.Error().Err(err).Msg("SetDeadline")
 		return
 	}
-	clearConn := encryptconn.New(conn)
-	if _, err := clearConn.Write(b); err != nil {
+	if _, err := conn.Write(b); err != nil {
 		t.log.Debug().Err(err).Msg("write")
 		return
 	}

@@ -31,7 +31,7 @@ func (o opGetHbMessage) setDataByte(err error) {
 // on success it updates hbcache with latest HbMsgInfo:
 //
 //	"full", "ping" or len <msg.delta> (patch)
-func (t T) GetHbMessage(ctx context.Context) (b []byte, err error) {
+func (t T) GetHbMessage(ctx context.Context) (msg hbtype.Msg, err error) {
 	msgType := hbcache.MsgType()
 	responseC := make(chan opGetHbMessageResponse)
 	t.cmdC <- opGetHbMessage{
@@ -46,14 +46,11 @@ func (t T) GetHbMessage(ctx context.Context) (b []byte, err error) {
 		if err != nil {
 			return
 		}
+		msg = response.msg
 		if msgType == "patch" {
-			hbcache.SetLocalHbMsgInfo(fmt.Sprintf("%d", len(response.msg.Deltas)))
+			hbcache.SetLocalHbMsgInfo(fmt.Sprintf("%d", len(msg.Deltas)))
 		} else {
-			hbcache.SetLocalHbMsgInfo(response.msg.Kind)
-		}
-		if b, err = json.Marshal(response.msg); err != nil {
-			err = fmt.Errorf("GetHbMessage marshal failure %s for msg %s", err, response.msg)
-			return
+			hbcache.SetLocalHbMsgInfo(msg.Kind)
 		}
 		return
 	}

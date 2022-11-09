@@ -105,11 +105,6 @@ func (t *tx) encryptMessage(b []byte) ([]byte, error) {
 func (t *tx) send(b []byte) {
 	//fmt.Println("xx >>>\n", hex.Dump(b))
 	t.log.Debug().Msgf("send to udp %s", t.udpAddr)
-	encMsg, err := t.encryptMessage(b)
-	if err != nil {
-		t.log.Debug().Err(err).Msg("encrypt")
-		return
-	}
 
 	c, err := net.DialUDP("udp", t.laddr, t.udpAddr)
 	if err != nil {
@@ -118,7 +113,7 @@ func (t *tx) send(b []byte) {
 	}
 	defer c.Close()
 	msgID := uuid.New().String()
-	msgLength := len(encMsg)
+	msgLength := len(b)
 	total := msgLength / MaxDatagramSize
 	if (msgLength % MaxDatagramSize) != 0 {
 		total += 1
@@ -130,10 +125,10 @@ func (t *tx) send(b []byte) {
 			Total: total,
 		}
 		if i == total {
-			f.Chunk = encMsg
+			f.Chunk = b
 		} else {
-			f.Chunk = encMsg[:MaxDatagramSize]
-			encMsg = encMsg[MaxDatagramSize:]
+			f.Chunk = b[:MaxDatagramSize]
+			b = b[MaxDatagramSize:]
 		}
 		dgram, err := json.Marshal(f)
 		if err != nil {

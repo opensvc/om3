@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbcfg"
 	"opensvc.com/opensvc/core/hbtype"
@@ -273,8 +275,8 @@ func (t *T) rescanHb(ctx context.Context) error {
 
 // msgToTx starts a msg multiplexer data messages to hb tx drivers
 func (t *T) msgToTx(ctx context.Context) error {
-	dataC := daemonctx.HBSendQ(ctx)
-	if dataC == nil {
+	msgC := daemonctx.HBSendQ(ctx)
+	if msgC == nil {
 		return errors.New("msgToTx unable to retrieve HBSendQ")
 	}
 	t.registerTxC = make(chan registerTxQueue)
@@ -291,9 +293,20 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case txId := <-t.unregisterTxC:
 				t.log.Debug().Msgf("remove %s from hb transmitters", txId)
 				delete(registeredTxMsgQueue, txId)
-			case d := <-dataC:
+			case msg := <-msgC:
+				var rMsg *reqjsonrpc.Message
+				if b, err := json.Marshal(msg); err != nil {
+					err = fmt.Errorf("marshal failure %s for msg %s", err, msg)
+					continue
+				} else {
+					rMsg = reqjsonrpc.NewMessage(b)
+				}
+				b, err := rMsg.Encrypt()
+				if err != nil {
+					continue
+				}
 				for _, txQueue := range registeredTxMsgQueue {
-					txQueue <- d
+					txQueue <- b
 				}
 			}
 		}
