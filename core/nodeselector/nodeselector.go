@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
-	"github.com/golang-collections/collections/set"
+	"github.com/goombaio/orderedset"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/errgo.v2/fmt/errors"
@@ -29,7 +29,7 @@ type (
 		nodes              []string
 		server             string
 		knownNodes         []string
-		knownNodesSet      *set.Set
+		knownNodesSet      *orderedset.OrderedSet
 		info               nodesinfo.NodesInfo
 		log                zerolog.Logger
 	}
@@ -130,16 +130,6 @@ func (t *T) Expand() []string {
 	return t.nodes
 }
 
-// ExpandSet returns a set of the paths returned by Expand. Usually to
-// benefit from the .Has() function.
-func (t *T) ExpandSet() *set.Set {
-	s := set.New()
-	for _, p := range t.Expand() {
-		s.Insert(p)
-	}
-	return s
-}
-
 func (t *T) add(node string) {
 	node = strings.ToLower(node)
 	for _, e := range t.nodes {
@@ -181,18 +171,18 @@ func (t *T) expand() error {
 		if err != nil {
 			return err
 		}
-		pset.Do(func(i any) {
+		for _, i := range pset.Values() {
 			if node, ok := i.(string); !ok {
-				return
+				break
 			} else {
 				t.add(node)
 			}
-		})
+		}
 	}
 	return nil
 }
 
-func (t *T) expandOne(s string) (*set.Set, error) {
+func (t *T) expandOne(s string) (*orderedset.OrderedSet, error) {
 	switch {
 	case strings.Contains(s, "="):
 		return t.labelExpand(s)
@@ -215,7 +205,7 @@ func (t *T) getKnownNodes() ([]string, error) {
 	return t.knownNodes, nil
 }
 
-func (t *T) getKnownNodesSet() (*set.Set, error) {
+func (t *T) getKnownNodesSet() (*orderedset.OrderedSet, error) {
 	if t.knownNodesSet != nil {
 		return t.knownNodesSet, nil
 	}
@@ -224,16 +214,16 @@ func (t *T) getKnownNodesSet() (*set.Set, error) {
 	if err != nil {
 		return t.knownNodesSet, err
 	}
-	t.knownNodesSet = set.New()
+	t.knownNodesSet = orderedset.NewOrderedSet()
 	for _, p := range t.knownNodes {
-		t.knownNodesSet.Insert(p)
+		t.knownNodesSet.Add(p)
 	}
 	return t.knownNodesSet, nil
 }
 
-func (t *T) exactExpand(s string) (*set.Set, error) {
+func (t *T) exactExpand(s string) (*orderedset.OrderedSet, error) {
 	s = strings.ToLower(s)
-	matching := set.New()
+	matching := orderedset.NewOrderedSet()
 	if !hostname.IsValid(s) {
 		return matching, errors.Newf("invalid hostname %s", s)
 	}
@@ -241,15 +231,15 @@ func (t *T) exactExpand(s string) (*set.Set, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !known.Has(s) {
+	if !known.Contains(s) {
 		return matching, nil
 	}
-	matching.Insert(s)
+	matching.Add(s)
 	return matching, nil
 }
 
-func (t *T) fnmatchExpand(s string) (*set.Set, error) {
-	matching := set.New()
+func (t *T) fnmatchExpand(s string) (*orderedset.OrderedSet, error) {
+	matching := orderedset.NewOrderedSet()
 	nodes, err := t.getKnownNodes()
 	if err != nil {
 		return matching, err
@@ -257,14 +247,14 @@ func (t *T) fnmatchExpand(s string) (*set.Set, error) {
 	f := fnmatch.FNM_IGNORECASE | fnmatch.FNM_PATHNAME
 	for _, node := range nodes {
 		if fnmatch.Match(s, node, f) {
-			matching.Insert(node)
+			matching.Add(node)
 		}
 	}
 	return matching, nil
 }
 
-func (t *T) labelExpand(s string) (*set.Set, error) {
-	matching := set.New()
+func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
+	matching := orderedset.NewOrderedSet()
 	l := strings.SplitN(s, "=", 2)
 	nodesInfo, err := t.getNodesInfo()
 	if err != nil {
@@ -276,7 +266,7 @@ func (t *T) labelExpand(s string) (*set.Set, error) {
 			continue
 		}
 		if v == l[1] {
-			matching.Insert(node)
+			matching.Add(node)
 			continue
 		}
 	}
