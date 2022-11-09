@@ -93,6 +93,8 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/goombaio/orderedmap v0.0.0-20180924084748-ba921b7e2419 // indirect
+	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
