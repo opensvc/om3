@@ -37,7 +37,7 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	msgbus.PubSetNodeMonitor(bus, cmd)
+	bus.Pub(cmd)
 	response := ResponseInfoStatus{
 		Info:   0,
 		Status: "instance monitor pushed pending ops",

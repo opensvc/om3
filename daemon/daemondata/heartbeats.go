@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -51,7 +52,7 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 		if eventB, err := json.Marshal(patch); err != nil {
 			d.log.Error().Err(err).Msg("opSetHeartbeatPing Marshal")
 		} else {
-			msgbus.PubEvent(d.bus, event.Event{
+			d.bus.Pub(event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),
@@ -59,10 +60,10 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	msgbus.PubHbNodePing(d.bus, peerNode, msgbus.HbNodePing{
+	d.bus.Pub(msgbus.HbNodePing{
 		Node:   peerNode,
 		Status: o.ping,
-	})
+	}, pubsub.Label{"node", peerNode})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

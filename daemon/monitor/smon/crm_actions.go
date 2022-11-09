@@ -3,7 +3,6 @@ package smon
 import (
 	"os"
 
-	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/command"
 )
 
@@ -40,7 +39,7 @@ func (o *smon) doAction(action func() error, newState, successState, errorState 
 		} else {
 			nextState = errorState
 		}
-		o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: newState, newState: nextState})
+		o.cmdC <- cmdOrchestrate{state: newState, newState: nextState}
 	}()
 }
 

@@ -15,11 +15,16 @@ import (
 	"opensvc.com/opensvc/util/stringslice"
 )
 
-// cmdSvcAggUpdated updateIfChange state global expect from aggregated status
-func (o *smon) cmdSvcAggUpdated(c msgbus.ObjectAggUpdated) {
+func (o *smon) onCfgUpdated(c msgbus.CfgUpdated) {
+	copy(o.scopeNodes, c.Config.Scope)
+	o.updateIsLeader()
+	o.orchestrate()
+}
+
+// onSvcAggUpdated updateIfChange state global expect from aggregated status
+func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
-		o.updateIsLeader()
-		switch srcCmd := (*c.SrcEv).(type) {
+		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
 			srcNode := srcCmd.Node
 			if _, ok := o.instStatus[srcNode]; ok {
@@ -31,9 +36,9 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 			}
 		case msgbus.CfgUpdated:
 			if srcCmd.Node == o.localhost {
-				cfgNodes := make(map[string]struct{})
+				cfgNodes := make(map[string]any)
 				for _, node := range srcCmd.Config.Scope {
-					cfgNodes[node] = struct{}{}
+					cfgNodes[node] = nil
 					if _, ok := o.instStatus[node]; !ok {
 						o.instStatus[node] = instance.Status{Avail: status.Undef}
 					}
@@ -44,7 +49,7 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 						delete(o.instStatus, node)
 					}
 				}
-				o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+				copy(o.scopeNodes, srcCmd.Config.Scope)
 			}
 		case msgbus.CfgDeleted:
 			node := srcCmd.Node
@@ -55,10 +60,11 @@ func (o *smon) cmdSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 		}
 	}
 	o.svcAgg = c.AggregatedStatus
+	o.updateIsLeader()
 	o.orchestrate()
 }
 
-func (o *smon) cmdSetSmonClient(c instance.Monitor) {
+func (o *smon) onSetSmonClient(c instance.Monitor) {
 	doStatus := func() {
 		switch c.Status {
 		case "":
@@ -177,7 +183,7 @@ func (o *smon) cmdSetSmonClient(c instance.Monitor) {
 
 }
 
-func (o *smon) cmdSmonUpdated(c msgbus.InstanceMonitorUpdated) {
+func (o *smon) onSmonUpdated(c msgbus.InstanceMonitorUpdated) {
 	node := c.Node
 	if node == o.localhost {
 		return
@@ -191,7 +197,7 @@ func (o *smon) cmdSmonUpdated(c msgbus.InstanceMonitorUpdated) {
 	o.updateIfChange()
 }
 
-func (o *smon) cmdSmonDeleted(c msgbus.InstanceMonitorDeleted) {
+func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 	node := c.Node
 	if node == o.localhost {
 		return

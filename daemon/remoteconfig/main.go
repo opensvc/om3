@@ -19,7 +19,7 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 )
 
-func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) {
+func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- any) {
 	id := daemondata.InstanceId(p, node)
 	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "remoteconfig").Str("id", id).Logger()
 	b, updated, err := fetchFromApi(p, node)
@@ -82,14 +82,14 @@ func Fetch(ctx context.Context, p path.T, node string, cmdC chan<- *msgbus.Msg) 
 		return
 	default:
 		err := make(chan error)
-		cmdC <- msgbus.NewMsg(msgbus.RemoteFileConfig{
+		cmdC <- msgbus.RemoteFileConfig{
 			Path:     p,
 			Node:     node,
 			Filename: tmpFilename,
 			Updated:  updated,
 			Ctx:      ctx,
 			Err:      err,
-		})
+		}
 		<-err
 	}
 }

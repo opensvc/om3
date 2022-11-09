@@ -45,6 +45,8 @@ type (
 		unregisterTxC chan string
 
 		ridSignature map[string]string
+
+		sub *pubsub.Subscription
 	}
 
 	registerTxQueue struct {
@@ -332,25 +334,28 @@ func (t *T) msgFromRx(ctx context.Context) {
 	}
 }
 
-func (t *T) janitorHb(ctx context.Context) error {
+func (t *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
 	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
-	janitorC := make(chan *msgbus.Msg)
-	janitorCb := func(i any) {
-		janitorC <- msgbus.NewMsg(i)
-	}
-	msgbus.SubCfg(bus, pubsub.OpUpdate, "janitor cluster Cfg update", clusterPath.String(), janitorCb)
-	msgbus.SubDaemonCtl(bus, pubsub.OpUpdate, "janitor component component", "", janitorCb)
+	t.sub = bus.Sub("hb")
+	t.sub.AddFilter(msgbus.CfgUpdated{}, pubsub.Label{"path", clusterPath.String()})
+	t.sub.AddFilter(msgbus.DaemonCtl{})
+	t.sub.Start()
+}
+
+func (t *T) janitorHb(ctx context.Context) error {
+	t.startSubscriptions(ctx)
 	errC := make(chan error)
 
 	go func(errC chan<- error) {
+		defer t.sub.Stop()
 		errC <- t.rescanHb(ctx)
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case i := <-janitorC:
-				switch msg := (*i).(type) {
+			case i := <-t.sub.C:
+				switch msg := i.(type) {
 				case msgbus.CfgUpdated:
 					if msg.Node != hostname.Hostname() {
 						continue

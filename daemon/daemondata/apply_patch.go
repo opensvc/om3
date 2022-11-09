@@ -127,7 +127,7 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			return
 		} else {
 			eventId++
-			msgbus.PubEvent(d.bus, event.Event{
+			d.bus.Pub(event.Event{
 				Kind: "patch",
 				ID:   eventId,
 				Time: time.Now(),

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/msgbus"
 )
 
 var (
@@ -79,7 +78,7 @@ func (o *smon) startedFromThawed() {
 				return
 			}
 			go func() {
-				o.cmdC <- msgbus.NewMsg(cmdOrchestrate{})
+				o.cmdC <- cmdOrchestrate{}
 			}()
 			return
 		}

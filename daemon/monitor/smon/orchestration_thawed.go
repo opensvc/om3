@@ -1,7 +1,5 @@
 package smon
 
-import "opensvc.com/opensvc/daemon/msgbus"
-
 func (o *smon) orchestrateThawed() {
 	if !o.isConvergedGlobalExpect() {
 		return
@@ -21,9 +19,9 @@ func (o *smon) ThawedFromIdle() {
 	go func() {
 		o.log.Info().Msg("run action unfreeze")
 		if err := o.crmUnfreeze(); err != nil {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusThawedFailed})
+			o.cmdC <- cmdOrchestrate{state: statusThawing, newState: statusThawedFailed}
 		} else {
-			o.cmdC <- msgbus.NewMsg(cmdOrchestrate{state: statusThawing, newState: statusIdle})
+			o.cmdC <- cmdOrchestrate{state: statusThawing, newState: statusIdle}
 		}
 	}()
 	return

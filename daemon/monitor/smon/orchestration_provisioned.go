@@ -63,6 +63,9 @@ func (o *smon) leaders() []string {
 			l = append(l, node)
 		}
 	}
+	if o.state.IsLeader {
+		l = append(l, o.localhost)
+	}
 	return l
 }
 
