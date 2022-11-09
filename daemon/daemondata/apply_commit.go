@@ -23,9 +23,8 @@ func (o opCommitPending) setDone(b bool) {
 func (o opCommitPending) call(ctx context.Context, d *data) {
 	d.counterCmd <- idCommitPending
 	d.log.Debug().Msg("opCommitPending")
-	// TODO no need to increase gen when message type is not patch
-	d.movePendingOpsToPatchQueue()
 	if d.hbMsgType == "patch" {
+		d.movePendingOpsToPatchQueue()
 		d.purgeAppliedPatchQueue()
 	} else {
 		d.patchQueue = make(patchQueue)
@@ -47,7 +46,6 @@ func (o opCommitPending) call(ctx context.Context, d *data) {
 func (d *data) purgeAppliedPatchQueue() {
 	local := d.localNode
 	remoteMinGen := d.gen
-	localGens := make(map[string]uint64)
 	for _, clusterNode := range d.pending.Cluster.Node {
 		if gen, ok := clusterNode.Status.Gen[local]; ok {
 			if gen < remoteMinGen {
@@ -71,11 +69,6 @@ func (d *data) purgeAppliedPatchQueue() {
 			delete(d.patchQueue, genS)
 			purged = append(purged, genS)
 		}
-	}
-	if len(purged) > 0 {
-		d.log.Error().Msgf("purged len: %d %v queueGens:%v queueGen:%v %v", len(purged), purged, queueGens, queueGen, localGens)
-	} else {
-		d.log.Error().Msgf("purged len: %d %v queueGens:%v queueGen:%v %v", len(purged), purged, queueGens, queueGen, localGens)
 	}
 }
 
