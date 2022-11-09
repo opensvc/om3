@@ -7,6 +7,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -22,9 +23,8 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 	local := d.localNode
 	d.log.Debug().Msgf("opApplyRemoteFull %s", remote)
 	defer func() {
+		hbcache.SetLocalGens(d.deepCopyLocalGens())
 		d.log.Debug().
-			Interface("remotesNeedFull", d.remotesNeedFull).
-			Interface("mergedOnPeer", d.mergedOnPeer).
 			Interface("pending gen", d.pending.Cluster.Node[remote].Status.Gen).
 			Interface("full.gen", o.full.Status.Gen).
 			Msgf("opApplyRemoteFull %s", remote)
@@ -34,21 +34,8 @@ func (o opApplyRemoteFull) call(ctx context.Context, d *data) {
 		}
 	}()
 
-	if d.mergedFromPeer[remote] == o.full.Status.Gen[remote] && d.mergedOnPeer[remote] == o.full.Status.Gen[local] {
-		d.log.Debug().Msgf("apply full drop already applied %s", remote)
-		return
-	}
-	if gen, ok := o.full.Status.Gen[local]; ok {
-		d.mergedOnPeer[o.nodename] = gen
-	}
-	d.mergedFromPeer[remote] = o.full.Status.Gen[remote]
 	d.pending.Cluster.Node[remote] = *o.full
 	d.pending.Cluster.Node[local].Status.Gen[remote] = o.full.Status.Gen[remote]
-
-	if d.remotesNeedFull[remote] {
-		d.log.Info().Msgf("apply full for remote %s (reset need full)", remote)
-		d.remotesNeedFull[remote] = false
-	}
 
 	absolutePatch := jsondelta.Patch{
 		jsondelta.Operation{

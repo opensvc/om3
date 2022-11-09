@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/san"
@@ -42,7 +43,10 @@ func newData(counterCmd chan<- interface{}) *data {
 			ThreadStatus: cluster.ThreadStatus{},
 		},
 		Sub: cluster.Sub{
-			Heartbeats: make([]cluster.HeartbeatThreadStatus, 0),
+			Hb: cluster.SubHb{
+				Heartbeats: hbcache.Heartbeats(),
+				Modes:      hbcache.Modes(),
+			},
 		},
 	}
 	return &data{
@@ -50,10 +54,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		pending:            status.DeepCopy(),
 		localNode:          localNode,
 		counterCmd:         counterCmd,
-		mergedFromPeer:     make(gens),
-		mergedOnPeer:       make(gens),
 		gen:                nodeData.Status.Gen[localNode],
-		remotesNeedFull:    make(map[string]bool),
 		patchQueue:         make(patchQueue),
 	}
 }

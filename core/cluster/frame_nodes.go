@@ -41,7 +41,7 @@ func (f Frame) sNodeSwapLine() string {
 }
 
 func (f Frame) sNodeWarningsLine() string {
-	s := fmt.Sprintf("%s\t\t\t%s\t", bold("state"), f.info.separator)
+	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("state"), f.info.separator)
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		s += f.sNodeMonState(n)
 		s += f.sNodeFrozen(n)

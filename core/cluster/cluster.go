@@ -44,7 +44,17 @@ type (
 	}
 
 	Sub struct {
+		Hb SubHb `json:"hb"`
+	}
+
+	SubHb struct {
 		Heartbeats []HeartbeatThreadStatus `json:"heartbeats"`
+		Modes      []HbMode                `json:"modes"`
+	}
+
+	HbMode struct {
+		Node string
+		Mode string
 	}
 )
 

@@ -28,7 +28,6 @@ const (
 	idUndef = iota
 	idApplyFull
 	idApplyPatch
-	idApplyPing
 	idCommitPending
 	idDelInstanceConfig
 	idDelInstanceStatus
@@ -43,7 +42,7 @@ const (
 	idGetServiceNames
 	idGetNmon
 	idSetHeartbeatPing
-	idSetHeartbeats
+	idSetSubHb
 	idGetStatus
 	idSetInstanceConfig
 	idSetInstanceStatus
@@ -58,7 +57,6 @@ var (
 		idUndef:             "undef",
 		idApplyFull:         "apply-full",
 		idApplyPatch:        "apply-patch",
-		idApplyPing:         "apply-ping",
 		idCommitPending:     "commit-pending",
 		idDelInstanceConfig: "del-instance-config",
 		idDelInstanceStatus: "del-instance-status",
@@ -73,7 +71,7 @@ var (
 		idGetServiceNames:   "get-service-names",
 		idGetStatus:         "get-status",
 		idSetHeartbeatPing:  "set-heartbeat-ping",
-		idSetHeartbeats:     "set-heartbeat",
+		idSetSubHb:          "set-sub-hb",
 		idSetServiceAgg:     "set-service-agg",
 		idSetInstanceConfig: "set-instance-config",
 		idSetInstanceStatus: "set-instance-status",

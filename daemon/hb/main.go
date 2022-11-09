@@ -19,6 +19,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -316,14 +317,17 @@ func (t *T) msgFromRx(ctx context.Context) {
 			t.log.Debug().Msgf("received msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 			switch msg.Kind {
 			case "patch":
+				mode := fmt.Sprintf("%d", len(msg.Deltas))
+				hbcache.SetFromPeerMsg(msg.Nodename, mode, msg.Gen)
 				err := daemonData.ApplyPatch(msg.Nodename, msg)
 				if err != nil {
 					t.log.Error().Err(err).Msgf("ApplyPatch %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				}
 			case "full":
+				hbcache.SetFromPeerMsg(msg.Nodename, msg.Kind, msg.Gen)
 				daemonData.ApplyFull(msg.Nodename, &msg.Full)
 			case "ping":
-				daemonData.ApplyPing(msg.Nodename)
+				hbcache.SetFromPeerMsg(msg.Nodename, msg.Kind, msg.Gen)
 			}
 			count++
 		}

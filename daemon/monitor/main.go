@@ -95,15 +95,10 @@ func (t *T) loop() {
 func (t *T) aLoop() {
 	daemonData := daemondata.FromContext(t.ctx)
 	daemonData.CommitPending(t.ctx)
-	msg := daemonData.GetHbMessage(t.ctx)
-	if msg == nil {
-		t.log.Debug().Msg("don't queue a <nil> hb message")
-		return
+	if msg, err := daemonData.GetHbMessage(t.ctx); err != nil {
+		t.log.Error().Err(err).Msg("can't queue hb message")
+	} else {
+		t.log.Debug().Msg("queue a new hb message")
+		daemonctx.HBSendQ(t.ctx) <- msg
 	}
-	if len(msg) == 0 {
-		t.log.Debug().Msg("don't queue a empty hb message")
-		return
-	}
-	t.log.Debug().Msg("queue a new hb message")
-	daemonctx.HBSendQ(t.ctx) <- msg
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -22,6 +23,7 @@ import (
 	"opensvc.com/opensvc/daemon/discover"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/listener"
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/monitor/nmon"
@@ -37,11 +39,14 @@ type (
 	T struct {
 		*subdaemon.T
 		routinehelper.TT
-		ctx         context.Context
-		cancel      context.CancelFunc
-		log         zerolog.Logger
-		loopC       chan action
-		loopDelay   time.Duration
+		ctx    context.Context
+		cancel context.CancelFunc
+		log    zerolog.Logger
+		loopC  chan action
+
+		// loopDelay is the interval of sub... updates
+		loopDelay time.Duration
+
 		loopEnabled *enable.T
 		cancelFuncs []context.CancelFunc
 	}
@@ -81,7 +86,7 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay:   10 * time.Second,
+		loopDelay:   1 * time.Second,
 		loopEnabled: enable.New(),
 		log:         log.Logger,
 	}
@@ -138,6 +143,8 @@ func (t *T) MainStart(ctx context.Context) error {
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
 	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan []byte))
 
+	hbcache.Start(t.ctx)
+
 	dataCmd, dataCmdCancel := daemondata.Start(t.ctx)
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 
@@ -193,20 +200,28 @@ func (t *T) MainStop() error {
 func (t *T) loop() {
 	t.log.Info().Msg("loop started")
 	t.loopEnabled.Enable()
-	t.aLoop()
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
+	bus := daemondata.BusFromContext(t.ctx)
+	t.aLoop(bus)
 	for {
 		select {
 		case <-ticker.C:
-			t.aLoop()
+			t.aLoop(bus)
 		case <-t.ctx.Done():
 			return
 		}
 	}
 }
 
-func (t *T) aLoop() {
+func (t *T) aLoop(bus chan<- any) {
+	subHb := cluster.SubHb{
+		Heartbeats: hbcache.Heartbeats(),
+		Modes:      hbcache.Modes(),
+	}
+	if err := daemondata.SetSubHb(bus, subHb); err != nil {
+		t.log.Error().Err(err).Msgf("loop can't SetSubHb")
+	}
 }
 
 func startProfiling() {
