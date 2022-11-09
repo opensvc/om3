@@ -255,7 +255,7 @@ func (o *smon) updateIfChange() {
 		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
 	}
 	if newVal.IsLeader != previousVal.IsLeader {
-		o.loggerWithState().Info().Msgf("change leader state %s -> %s", previousVal.IsLeader, newVal.IsLeader)
+		o.loggerWithState().Info().Msgf("change leader state %t -> %t", previousVal.IsLeader, newVal.IsLeader)
 	}
 	o.previousState = o.state
 	o.update()

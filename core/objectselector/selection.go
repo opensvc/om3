@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang-collections/collections/set"
+	"github.com/goombaio/orderedset"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
@@ -30,7 +30,7 @@ type (
 		local              bool
 		paths              path.L
 		installed          path.L
-		installedSet       *set.Set
+		installedSet       *orderedset.OrderedSet
 		server             string
 	}
 )
@@ -115,14 +115,14 @@ func (t *Selection) Expand() (path.L, error) {
 
 // ExpandSet returns a set of the paths returned by Expand. Usually to
 // benefit from the .Has() function.
-func (t *Selection) ExpandSet() (*set.Set, error) {
-	s := set.New()
+func (t *Selection) ExpandSet() (*orderedset.OrderedSet, error) {
+	s := orderedset.NewOrderedSet()
 	paths, err := t.Expand()
 	if err != nil {
 		return nil, err
 	}
 	for _, p := range paths {
-		s.Insert(p)
+		s.Add(p)
 	}
 	return s, nil
 }
@@ -170,57 +170,70 @@ func (t *Selection) localExpand() error {
 		if err != nil {
 			return err
 		}
-		pset.Do(func(i interface{}) {
+		for _, i := range pset.Values() {
 			p, _ := path.Parse(i.(string))
 			t.add(p)
-		})
+		}
 	}
 	return nil
 }
 
-func (t *Selection) localExpandIntersector(s string) (*set.Set, error) {
-	pset := set.New()
+func (t *Selection) localExpandIntersector(s string) (*orderedset.OrderedSet, error) {
+	pset := orderedset.NewOrderedSet()
 	for i, selector := range strings.Split(s, "+") {
 		ps, err := t.localExpandOne(selector)
 		if err != nil {
 			return pset, err
 		}
 		if i == 0 {
-			pset = pset.Union(ps)
+			for _, i := range ps.Values() {
+				pset.Add(i)
+			}
 		} else {
-			pset = pset.Intersection(ps)
+			inter := orderedset.NewOrderedSet()
+			for _, i := range ps.Values() {
+				if pset.Contains(i) {
+					inter.Add(i)
+				}
+			}
+			pset = inter
 		}
 	}
 	return pset, nil
 }
 
-func (t *Selection) localExpandOne(s string) (*set.Set, error) {
+func (t *Selection) localExpandOne(s string) (*orderedset.OrderedSet, error) {
 	if strings.HasPrefix(s, expressionNegationPrefix) {
 		return t.localExpandOneNegative(s)
 	}
 	return t.localExpandOnePositive(s)
 }
 
-func (t *Selection) localExpandOneNegative(s string) (*set.Set, error) {
+func (t *Selection) localExpandOneNegative(s string) (*orderedset.OrderedSet, error) {
 	var (
-		positiveMatchSet *set.Set
-		installedSet     *set.Set
+		positiveMatchSet *orderedset.OrderedSet
+		installedSet     *orderedset.OrderedSet
 		err              error
 	)
 	positiveExpression := strings.TrimLeft(s, expressionNegationPrefix)
 	positiveMatchSet, err = t.localExpandOnePositive(positiveExpression)
 	if err != nil {
-		return set.New(), err
+		return orderedset.NewOrderedSet(), err
 	}
 	installedSet, err = t.getInstalledSet()
 	if err != nil {
-		return set.New(), err
+		return orderedset.NewOrderedSet(), err
 	}
-	negativeMatchSet := installedSet.Difference(positiveMatchSet)
+	negativeMatchSet := orderedset.NewOrderedSet()
+	for _, i := range installedSet.Values() {
+		if !positiveMatchSet.Contains(i) {
+			negativeMatchSet.Add(i)
+		}
+	}
 	return negativeMatchSet, nil
 }
 
-func (t *Selection) localExpandOnePositive(s string) (*set.Set, error) {
+func (t *Selection) localExpandOnePositive(s string) (*orderedset.OrderedSet, error) {
 	switch {
 	case fnmatchExpressionRegex.MatchString(s):
 		return t.localFnmatchExpand(s)
@@ -245,7 +258,7 @@ func (t *Selection) getInstalled() (path.L, error) {
 	return t.installed, nil
 }
 
-func (t *Selection) getInstalledSet() (*set.Set, error) {
+func (t *Selection) getInstalledSet() (*orderedset.OrderedSet, error) {
 	if t.installedSet != nil {
 		return t.installedSet, nil
 	}
@@ -253,15 +266,15 @@ func (t *Selection) getInstalledSet() (*set.Set, error) {
 	if err != nil {
 		return t.installedSet, err
 	}
-	t.installedSet = set.New()
+	t.installedSet = orderedset.NewOrderedSet()
 	for _, p := range installed {
-		t.installedSet.Insert(p.String())
+		t.installedSet.Add(p.String())
 	}
 	return t.installedSet, nil
 }
 
-func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
-	matching := set.New()
+func (t *Selection) localConfigExpand(s string) (*orderedset.OrderedSet, error) {
+	matching := orderedset.NewOrderedSet()
 	kop := keyop.Parse(s)
 	paths, err := t.getInstalled()
 	if err != nil {
@@ -273,15 +286,15 @@ func (t *Selection) localConfigExpand(s string) (*set.Set, error) {
 			return nil, err
 		}
 		if o.Config().HasKeyMatchingOp(*kop) {
-			matching.Insert(p.String())
+			matching.Add(p.String())
 			continue
 		}
 	}
 	return matching, nil
 }
 
-func (t *Selection) localExactExpand(s string) (*set.Set, error) {
-	matching := set.New()
+func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
+	matching := orderedset.NewOrderedSet()
 	p, err := path.Parse(s)
 	if err != nil {
 		return matching, err
@@ -289,19 +302,19 @@ func (t *Selection) localExactExpand(s string) (*set.Set, error) {
 	if !p.Exists() {
 		return matching, nil
 	}
-	matching.Insert(p.String())
+	matching.Add(p.String())
 	return matching, nil
 }
 
-func (t *Selection) localFnmatchExpand(s string) (*set.Set, error) {
-	matching := set.New()
+func (t *Selection) localFnmatchExpand(s string) (*orderedset.OrderedSet, error) {
+	matching := orderedset.NewOrderedSet()
 	paths, err := t.getInstalled()
 	if err != nil {
 		return matching, err
 	}
 	for _, p := range paths {
 		if p.Match(s) {
-			matching.Insert(p.String())
+			matching.Add(p.String())
 		}
 	}
 	return matching, nil

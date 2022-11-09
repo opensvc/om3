@@ -254,32 +254,9 @@ func (t *Bus) Start(ctx context.Context) {
 				case cmdSubAddFilter:
 					t.onSubAddFilter(c)
 				case cmdSub:
-					id := uuid.New()
-					sub := &Subscription{
-						name:    c.name,
-						C:       make(chan any, notifyQueueSizePerSubscriber),
-						q:       make(chan any, notifyQueueSizePerSubscriber),
-						id:      id,
-						timeout: c.timeout,
-						bus:     t,
-					}
-					t.subs[id] = sub
-					t.subMap.Add(id, ":") // listen all until AddFilter is called
-					c.resp <- sub
-					t.log.Debug().Msgf("subscribe %s", sub.name)
+					t.onSubCmd(c)
 				case cmdUnsub:
-					sub, ok := t.subs[c.id]
-					if !ok {
-						break
-					}
-					sub.cancel()
-					delete(t.subs, c.id)
-					t.subMap.Del(c.id, sub.keys()...)
-					select {
-					case <-t.ctx.Done():
-					case c.resp <- sub.name:
-					}
-					t.log.Debug().Msgf("unsubscribe %s", sub.name)
+					t.onUnsubCmd(c)
 				}
 				endCmd <- true
 			}
@@ -287,6 +264,36 @@ func (t *Bus) Start(ctx context.Context) {
 	}()
 	<-started
 	t.log.Info().Msg("bus started")
+}
+
+func (t *Bus) onSubCmd(c cmdSub) {
+	id := uuid.New()
+	sub := &Subscription{
+		name:    c.name,
+		C:       make(chan any, notifyQueueSizePerSubscriber),
+		q:       make(chan any, notifyQueueSizePerSubscriber),
+		id:      id,
+		timeout: c.timeout,
+		bus:     t,
+	}
+	t.subs[id] = sub
+	c.resp <- sub
+	t.log.Debug().Msgf("subscribe %s", sub.name)
+}
+
+func (t *Bus) onUnsubCmd(c cmdUnsub) {
+	sub, ok := t.subs[c.id]
+	if !ok {
+		return
+	}
+	sub.cancel()
+	delete(t.subs, c.id)
+	t.subMap.Del(c.id, sub.keys()...)
+	select {
+	case <-t.ctx.Done():
+	case c.resp <- sub.name:
+	}
+	t.log.Debug().Msgf("unsubscribe %s", sub.name)
 }
 
 func (t *Bus) onPubCmd(c cmdPub) {
@@ -582,6 +589,10 @@ func (t Subscription) AddFilter(v any, labels ...Label) {
 }
 
 func (t *Subscription) Start() {
+	if len(t.filters) == 0 {
+		// listen all until AddFilter is called
+		t.AddFilter(nil)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.cancel = cancel
 	started := make(chan bool)
