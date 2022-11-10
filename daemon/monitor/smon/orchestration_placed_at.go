@@ -17,7 +17,7 @@ func (o *smon) parseDestination(s string) *orderedset.OrderedSet {
 	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
 		l = l[:1]
 	}
-	for _, node := range strings.Split(s, ",") {
+	for _, node := range l {
 		set.Add(node)
 	}
 	return set
@@ -33,6 +33,14 @@ func (o *smon) orchestratePlacedAt(dst string) {
 }
 
 func (o *smon) doPlacedStart() {
+	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
+		// failover objects need to wait for the agg status to reach "down"
+		switch o.svcAgg.Avail {
+		case status.Down:
+		default:
+			return
+		}
+	}
 	o.doAction(o.crmStart, statusStarting, statusStarted, statusStartFailed)
 }
 
@@ -62,10 +70,7 @@ func (o *smon) orchestratePlacedStart() {
 	case statusStarted:
 		o.startedClearIfReached()
 	case statusStopped, statusIdle:
-		switch o.svcAgg.Avail {
-		case status.Down:
-			o.doPlacedStart()
-		}
+		o.doPlacedStart()
 	}
 }
 
