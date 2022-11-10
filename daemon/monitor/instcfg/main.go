@@ -114,8 +114,25 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	o.sub.Start()
 }
 
+func (o *T) startSmon(ctx context.Context) (bool, error) {
+	if len(o.cfg.Scope) == 0 {
+		o.log.Info().Msgf("wait scopes to create associated smon")
+		return false, nil
+	}
+	o.log.Info().Msgf("starting smon worker...")
+	if err := smon.Start(ctx, o.path, o.cfg.Scope); err != nil {
+		o.log.Error().Err(err).Msg("failure during start smon worker")
+		return false, err
+	}
+	return true, nil
+}
+
 // worker watch for local instCfg config file updates until file is removed
 func (o *T) worker(parent context.Context) {
+	var (
+		hasSmon bool
+		err     error
+	)
 	defer o.log.Debug().Msg("done")
 	defer o.log.Debug().Msg("starting")
 
@@ -126,9 +143,9 @@ func (o *T) worker(parent context.Context) {
 	}
 	defer o.delete()
 
-	ctx, cancel := context.WithCancel(parent)
-	defer cancel()
-	if err := smon.Start(ctx, o.path, o.cfg.Scope); err != nil {
+	smonCtx, cancelSmon := context.WithCancel(parent)
+	defer cancelSmon()
+	if hasSmon, err = o.startSmon(smonCtx); err != nil {
 		o.log.Error().Err(err).Msg("fail to start smon worker")
 		return
 	}
@@ -141,10 +158,18 @@ func (o *T) worker(parent context.Context) {
 			switch c := i.(type) {
 			case msgbus.CfgFileUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
-				if err := o.configFileCheck(); err != nil {
+				if err = o.configFileCheck(); err != nil {
 					o.log.Error().Err(err).Msg("configFileCheck error")
 					return
 				}
+				if !hasSmon {
+					o.log.Info().Msgf("smon not yet started, try start")
+					if hasSmon, err = o.startSmon(smonCtx); err != nil {
+						o.log.Error().Err(err).Msgf("smon start error")
+						return
+					}
+				}
+
 			case msgbus.CfgFileRemoved:
 				o.log.Debug().Msgf("recv %#v", c)
 				return
@@ -156,7 +181,7 @@ func (o *T) worker(parent context.Context) {
 				}
 				o.log.Info().Msg("local cluster config changed => refresh cfg")
 				o.forceRefresh = true
-				if err := o.configFileCheck(); err != nil {
+				if err = o.configFileCheck(); err != nil {
 					return
 				}
 			}
