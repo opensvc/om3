@@ -11,10 +11,12 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"opensvc.com/opensvc/core/actionrollback"
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/sshnode"
@@ -23,8 +25,9 @@ import (
 // T is the driver structure.
 type T struct {
 	resource.T
-	Path     path.T   `json:"path"`
-	Nodes    []string `json:"nodes"`
+	Path     path.T     `json:"path"`
+	Nodes    []string   `json:"nodes"`
+	Topology topology.T `json:"topology"`
 	lazyFile string
 	lazyDir  string
 }
@@ -34,7 +37,17 @@ func New() resource.Driver {
 }
 
 func (t T) Abort(ctx context.Context) bool {
+	if t.Topology == topology.Flex {
+		return false
+	}
 	if len(t.Nodes) <= 1 {
+		return false
+	}
+	if t.Standby {
+		return false
+	}
+	if t.Path.Kind == kind.Vol {
+		// volumes are enslaved to their consumer services
 		return false
 	}
 	test := func(n string) bool {
