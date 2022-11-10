@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goombaio/orderedset"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/status"
@@ -64,7 +65,7 @@ func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	o.orchestrate()
 }
 
-func (o *smon) onSetSmonClient(c instance.Monitor) {
+func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 	doStatus := func() {
 		switch c.Status {
 		case "":
@@ -115,6 +116,14 @@ func (o *smon) onSetSmonClient(c instance.Monitor) {
 		case globalExpectProvisioned:
 		case globalExpectPlaced:
 		case globalExpectPlacedAt:
+			// Switch cmd without explicit target nodes.
+			// Select some nodes automatically.
+			dst := o.nextPlacedAtCandidate()
+			if dst == "" {
+				o.log.Info().Msg("no destination node could be selected from candidates")
+				return
+			}
+			c.GlobalExpect += dst
 		case globalExpectPurged:
 		case globalExpectStopped:
 		case globalExpectThawed:
@@ -278,6 +287,29 @@ func (o *smon) sortWithNodesOrderPolicy(candidates []string) []string {
 	return l
 }
 
+func (o *smon) nextPlacedAtCandidate() string {
+	instStatus, ok := o.instStatus[o.localhost]
+	if !ok {
+		return ""
+	}
+	if instStatus.Topology == topology.Flex {
+		return ""
+	}
+	var candidates []string
+	candidates = append(candidates, o.scopeNodes...)
+	candidates = o.sortCandidates(instStatus.Placement, candidates)
+
+	for _, candidate := range candidates {
+		if instStatus, ok := o.instStatus[candidate]; ok {
+			switch instStatus.Avail {
+			case status.Down, status.StandbyDown, status.StandbyUp:
+				return candidate
+			}
+		}
+	}
+	return ""
+}
+
 func (o *smon) newIsLeader(instStatus instance.Status) bool {
 	var candidates []string
 	candidates = append(candidates, o.scopeNodes...)
@@ -309,4 +341,19 @@ func (o *smon) updateIsLeader() {
 	o.state.IsLeader = isLeader
 	o.updateIfChange()
 	return
+}
+
+func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
+	set := orderedset.NewOrderedSet()
+	l := strings.Split(s, ",")
+	if len(l) == 0 {
+		return set
+	}
+	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
+		l = l[:1]
+	}
+	for _, node := range l {
+		set.Add(node)
+	}
+	return set
 }

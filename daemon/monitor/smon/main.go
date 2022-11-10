@@ -196,7 +196,7 @@ func (o *smon) worker(initialNodes []string) {
 			case msgbus.ObjectAggUpdated:
 				o.onSvcAggUpdated(c)
 			case msgbus.SetInstanceMonitor:
-				o.onSetSmonClient(c.Monitor)
+				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
 				o.onSmonUpdated(c)
 			case msgbus.InstanceMonitorDeleted:

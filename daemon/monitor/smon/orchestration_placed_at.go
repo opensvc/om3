@@ -1,30 +1,12 @@
 package smon
 
 import (
-	"strings"
-
-	"github.com/goombaio/orderedset"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 )
 
-func (o *smon) parseDestination(s string) *orderedset.OrderedSet {
-	set := orderedset.NewOrderedSet()
-	l := strings.Split(s, ",")
-	if len(l) == 0 {
-		return set
-	}
-	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
-		l = l[:1]
-	}
-	for _, node := range l {
-		set.Add(node)
-	}
-	return set
-}
-
 func (o *smon) orchestratePlacedAt(dst string) {
-	dstNodes := o.parseDestination(dst)
+	dstNodes := o.parsePlacedAtDestination(dst)
 	if dstNodes.Contains(o.localhost) {
 		o.orchestratePlacedStart()
 	} else {
