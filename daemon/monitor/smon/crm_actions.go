@@ -3,6 +3,7 @@ package smon
 import (
 	"os"
 
+	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/util/command"
 )
 
@@ -92,6 +93,7 @@ func (o *smon) crmAction(title string, cmdArgs ...string) error {
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(&o.log),
+		command.WithVarEnv(env.DaemonOriginSetenvArg()),
 	)
 	if title != "" {
 		o.loggerWithState().Info().Msgf(

@@ -371,6 +371,10 @@ func (t *actor) mayFreeze(ctx context.Context) error {
 		t.log.Debug().Msg("skip freeze: orchestrate value")
 		return nil
 	}
+	if env.HasDaemonOrigin() {
+		t.log.Debug().Msg("skip freeze: action has daemon origin")
+		return nil
+	}
 	return t.Freeze(ctx)
 }
 

@@ -54,7 +54,8 @@ func WithTimeout(timeout time.Duration) funcopt.O {
 }
 
 // WithCommandLogLevel show command name and args during Start
-//   default zerolog.DebugLevel
+//
+//	default zerolog.DebugLevel
 func WithCommandLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -64,10 +65,11 @@ func WithCommandLogLevel(l zerolog.Level) funcopt.O {
 }
 
 // WithIgnoredExitCodes set alternate list of successful exit codes.
-//   exit codes are checked during Wait().
-//   - default successful exit code is 0 when WithIgnoredExitCodes is not used
-//   - Ignore all exit codes: WithIgnoredExitCodes()
-//   - Accept 0, 1 or 6 exit code: WithIgnoredExitCodes(0, 1, 6)
+//
+//	exit codes are checked during Wait().
+//	- default successful exit code is 0 when WithIgnoredExitCodes is not used
+//	- Ignore all exit codes: WithIgnoredExitCodes()
+//	- Accept 0, 1 or 6 exit code: WithIgnoredExitCodes(0, 1, 6)
 func WithIgnoredExitCodes(codes ...int) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -138,10 +140,18 @@ func WithCWD(cwd string) funcopt.O {
 	})
 }
 
+func WithVarEnv(env ...string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.env = append(t.env, env...)
+		return nil
+	})
+}
+
 func WithEnv(env []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
-		t.env = env
+		t.env = append(t.env, env...)
 		return nil
 	})
 }
