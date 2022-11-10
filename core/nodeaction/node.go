@@ -2,11 +2,11 @@ package nodeaction
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/actionrouter"
@@ -15,13 +15,14 @@ import (
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
 	// T has is an actionrouter.T with a node func
 	T struct {
 		actionrouter.T
-		Func func() (interface{}, error)
+		Func func() (any, error)
 	}
 )
 
@@ -34,7 +35,7 @@ func New(opts ...funcopt.O) *T {
 // WithRemoteNodes expands into a selection of nodes to execute the
 // action on.
 func WithRemoteNodes(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.NodeSelector = s
 		return nil
@@ -44,7 +45,7 @@ func WithRemoteNodes(s string) funcopt.O {
 // WithLocal routes the action to the CRM instead of remoting it via
 // orchestration or remote execution.
 func WithLocal(v bool) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Local = v
 		return nil
@@ -54,7 +55,7 @@ func WithLocal(v bool) funcopt.O {
 // LocalFirst makes actions not explicitely Local nor remoted
 // via NodeSelector be treated as local (CRM level).
 func LocalFirst() funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultIsLocal = true
 		return nil
@@ -64,7 +65,7 @@ func LocalFirst() funcopt.O {
 // WithRemoteAction is the name of the action as passed to the command line
 // interface.
 func WithRemoteAction(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Action = s
 		return nil
@@ -73,8 +74,8 @@ func WithRemoteAction(s string) funcopt.O {
 
 // WithRemoteOptions is the dataset submited in the POST /{object|node}_action
 // api handler to execute the action remotely.
-func WithRemoteOptions(m map[string]interface{}) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+func WithRemoteOptions(m map[string]any) funcopt.O {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.PostFlags = m
 		return nil
@@ -84,7 +85,7 @@ func WithRemoteOptions(m map[string]interface{}) funcopt.O {
 // WithAsyncTarget is the node or object state the daemons should orchestrate
 // to reach.
 func WithAsyncTarget(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Target = s
 		return nil
@@ -95,7 +96,7 @@ func WithAsyncTarget(s string) funcopt.O {
 // setting a new target. So the operator can see the orchestration
 // unfolding.
 func WithAsyncWatch(v bool) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Watch = v
 		return nil
@@ -108,7 +109,7 @@ func WithAsyncWatch(v bool) funcopt.O {
 // flat      => flattened json (<k>=<v>) machine readable format
 // flat_json => same as flat (backward compat)
 func WithFormat(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Format = s
 		return nil
@@ -120,7 +121,7 @@ func WithFormat(s string) funcopt.O {
 // yes
 // no
 func WithColor(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Color = s
 		return nil
@@ -129,7 +130,7 @@ func WithColor(s string) funcopt.O {
 
 // WithServer sets the api url.
 func WithServer(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Server = s
 		return nil
@@ -137,8 +138,8 @@ func WithServer(s string) funcopt.O {
 }
 
 // WithLocalRun sets a function to run if the the action is local
-func WithLocalRun(f func() (interface{}, error)) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+func WithLocalRun(f func() (any, error)) funcopt.O {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Func = f
 		return nil
@@ -183,22 +184,22 @@ func (t T) DoLocal() error {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+	var errs error
 	if r.Panic != nil {
-		return errors.New("")
+		errs = xerrors.Append(errs, errors.New(fmt.Sprint(r.Panic)))
 	}
 	if r.Error != nil {
-		return errors.New("")
+		errs = xerrors.Append(errs, r.Error)
 	}
-	return r.Error
+	return errs
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
-func (t T) DoAsync() {
+func (t T) DoAsync() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
-		os.Exit(1)
+		return err
 	}
 	req := c.NewPostNodeMonitor()
 	req.GlobalExpect = t.Target
@@ -214,6 +215,7 @@ func (t T) DoAsync() {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+	return nil
 }
 
 // DoRemote posts the action to a peer node agent API, for synchronous
@@ -248,7 +250,7 @@ func (t T) Do() error {
 	return actionrouter.Do(t)
 }
 
-func nodeDo(fn func() (interface{}, error)) actionrouter.Result {
+func nodeDo(fn func() (any, error)) actionrouter.Result {
 	data, err := fn()
 	result := actionrouter.Result{
 		Nodename:      hostname.Hostname(),

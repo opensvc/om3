@@ -332,11 +332,10 @@ func (t T) DoLocal() error {
 
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
-func (t T) DoAsync() {
+func (t T) DoAsync() error {
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		return err
 	}
 	sel := objectselector.NewSelection(
 		t.ObjectSelector,
@@ -344,18 +343,16 @@ func (t T) DoAsync() {
 	)
 	paths, err := sel.Expand()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		return err
 	}
+	var errs error
 	for _, path := range paths {
 		req := c.NewPostObjectMonitor()
 		req.ObjectSelector = path.String()
 		req.GlobalExpect = t.Target
 		req.SetNode(t.NodeSelector)
 		b, err := req.Do()
-		if err != nil {
-			log.Error().Err(err).Msg("")
-		}
+		errs = xerrors.Append(errs, err)
 		human := func() string {
 			s := fmt.Sprintln(string(b))
 			return s
@@ -368,6 +365,7 @@ func (t T) DoAsync() {
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}
+	return errs
 }
 
 // DoRemote posts the action to a peer node agent API, for synchronous
