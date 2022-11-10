@@ -17,6 +17,7 @@ import (
 
 func (o *smon) onCfgUpdated(c msgbus.CfgUpdated) {
 	o.scopeNodes = append([]string{}, c.Config.Scope...)
+	o.log.Debug().Msgf("updating from CfgUpdated on %s scopeNodes=%s", c.Node, o.scopeNodes)
 	o.updateIsLeader()
 	o.orchestrate()
 }
@@ -32,7 +33,12 @@ func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 				if o.instStatus[srcNode].Updated.Before(instStatus.Updated) {
 					// only update if more recent
 					o.instStatus[srcNode] = instStatus
+				} else {
+					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update o.instStatus (has more recent)", c.Node, srcNode)
 				}
+			} else {
+				o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s updates o.instStatus", c.Node, srcNode)
+				o.instStatus[srcNode] = srcCmd.Status
 			}
 		case msgbus.CfgUpdated:
 			if srcCmd.Node == o.localhost {
@@ -50,6 +56,7 @@ func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 					}
 				}
 				o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+				o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", c.Node, srcCmd.Node, o.scopeNodes)
 			}
 		case msgbus.CfgDeleted:
 			node := srcCmd.Node
@@ -300,6 +307,7 @@ func (o *smon) newIsLeader(instStatus instance.Status) bool {
 func (o *smon) updateIsLeader() {
 	instStatus, ok := o.instStatus[o.localhost]
 	if !ok {
+		o.log.Debug().Msgf("skip updateIsLeader while no instStatus for %s", o.localhost)
 		return
 	}
 	isLeader := o.newIsLeader(instStatus)
