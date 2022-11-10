@@ -9,6 +9,7 @@ import (
 
 	"github.com/goombaio/orderedset"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
@@ -134,7 +135,17 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 				return
 			}
 		default:
-			if !strings.HasPrefix(c.GlobalExpect, globalExpectPlacedAt) {
+			if strings.HasPrefix(c.GlobalExpect, globalExpectPlacedAt) {
+				want := strings.SplitN(c.GlobalExpect, "@", 2)[1]
+				can := o.nextPlacedAtCandidates(want)
+				if can == "" {
+					o.log.Info().Msgf("no destination node could be selected from %s", want)
+					return
+				} else if can != want {
+					o.log.Info().Msgf("change destination nodes from %s to %s", want, can)
+				}
+				c.GlobalExpect = globalExpectPlacedAt + can
+			} else {
 				o.log.Warn().Msgf("invalid set smon global expect: %s", c.GlobalExpect)
 				return
 			}
@@ -285,6 +296,18 @@ func (o *smon) sortWithNodesOrderPolicy(candidates []string) []string {
 		}
 	}
 	return l
+}
+
+func (o *smon) nextPlacedAtCandidates(want string) string {
+	want = strings.ReplaceAll(want, ",", " ")
+	var wantNodes []string
+	for _, node := range nodeselector.LocalExpand(want) {
+		if _, ok := o.instStatus[node]; !ok {
+			continue
+		}
+		wantNodes = append(wantNodes, node)
+	}
+	return strings.Join(wantNodes, ",")
 }
 
 func (o *smon) nextPlacedAtCandidate() string {
