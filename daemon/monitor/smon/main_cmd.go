@@ -16,7 +16,7 @@ import (
 )
 
 func (o *smon) onCfgUpdated(c msgbus.CfgUpdated) {
-	copy(o.scopeNodes, c.Config.Scope)
+	o.scopeNodes = append([]string{}, c.Config.Scope...)
 	o.updateIsLeader()
 	o.orchestrate()
 }
@@ -49,7 +49,7 @@ func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 						delete(o.instStatus, node)
 					}
 				}
-				copy(o.scopeNodes, srcCmd.Config.Scope)
+				o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
 			}
 		case msgbus.CfgDeleted:
 			node := srcCmd.Node
