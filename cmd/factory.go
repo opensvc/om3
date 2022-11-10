@@ -720,6 +720,24 @@ func newCmdNodeDrivers() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeEdit() *cobra.Command {
+	var options commands.CmdNodeEditConfig
+	cmd := &cobra.Command{
+		Use:     "edit",
+		Short:   "Edit the node configuration.",
+		Aliases: []string{"ed", "edi"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagDiscard(flags, &options.Discard)
+	addFlagRecover(flags, &options.Recover)
+	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	return cmd
+}
+
 func newCmdNodeEditConfig() *cobra.Command {
 	var options commands.CmdNodeEditConfig
 	cmd := &cobra.Command{

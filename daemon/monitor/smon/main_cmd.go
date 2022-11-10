@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goombaio/orderedset"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
@@ -64,7 +66,7 @@ func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	o.orchestrate()
 }
 
-func (o *smon) onSetSmonClient(c instance.Monitor) {
+func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 	doStatus := func() {
 		switch c.Status {
 		case "":
@@ -115,6 +117,14 @@ func (o *smon) onSetSmonClient(c instance.Monitor) {
 		case globalExpectProvisioned:
 		case globalExpectPlaced:
 		case globalExpectPlacedAt:
+			// Switch cmd without explicit target nodes.
+			// Select some nodes automatically.
+			dst := o.nextPlacedAtCandidate()
+			if dst == "" {
+				o.log.Info().Msg("no destination node could be selected from candidates")
+				return
+			}
+			c.GlobalExpect += dst
 		case globalExpectPurged:
 		case globalExpectStopped:
 		case globalExpectThawed:
@@ -125,7 +135,17 @@ func (o *smon) onSetSmonClient(c instance.Monitor) {
 				return
 			}
 		default:
-			if !strings.HasPrefix(c.GlobalExpect, globalExpectPlacedAt) {
+			if strings.HasPrefix(c.GlobalExpect, globalExpectPlacedAt) {
+				want := strings.SplitN(c.GlobalExpect, "@", 2)[1]
+				can := o.nextPlacedAtCandidates(want)
+				if can == "" {
+					o.log.Info().Msgf("no destination node could be selected from %s", want)
+					return
+				} else if can != want {
+					o.log.Info().Msgf("change destination nodes from %s to %s", want, can)
+				}
+				c.GlobalExpect = globalExpectPlacedAt + can
+			} else {
 				o.log.Warn().Msgf("invalid set smon global expect: %s", c.GlobalExpect)
 				return
 			}
@@ -278,6 +298,41 @@ func (o *smon) sortWithNodesOrderPolicy(candidates []string) []string {
 	return l
 }
 
+func (o *smon) nextPlacedAtCandidates(want string) string {
+	want = strings.ReplaceAll(want, ",", " ")
+	var wantNodes []string
+	for _, node := range nodeselector.LocalExpand(want) {
+		if _, ok := o.instStatus[node]; !ok {
+			continue
+		}
+		wantNodes = append(wantNodes, node)
+	}
+	return strings.Join(wantNodes, ",")
+}
+
+func (o *smon) nextPlacedAtCandidate() string {
+	instStatus, ok := o.instStatus[o.localhost]
+	if !ok {
+		return ""
+	}
+	if instStatus.Topology == topology.Flex {
+		return ""
+	}
+	var candidates []string
+	candidates = append(candidates, o.scopeNodes...)
+	candidates = o.sortCandidates(instStatus.Placement, candidates)
+
+	for _, candidate := range candidates {
+		if instStatus, ok := o.instStatus[candidate]; ok {
+			switch instStatus.Avail {
+			case status.Down, status.StandbyDown, status.StandbyUp:
+				return candidate
+			}
+		}
+	}
+	return ""
+}
+
 func (o *smon) newIsLeader(instStatus instance.Status) bool {
 	var candidates []string
 	candidates = append(candidates, o.scopeNodes...)
@@ -309,4 +364,19 @@ func (o *smon) updateIsLeader() {
 	o.state.IsLeader = isLeader
 	o.updateIfChange()
 	return
+}
+
+func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
+	set := orderedset.NewOrderedSet()
+	l := strings.Split(s, ",")
+	if len(l) == 0 {
+		return set
+	}
+	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
+		l = l[:1]
+	}
+	for _, node := range l {
+		set.Add(node)
+	}
+	return set
 }

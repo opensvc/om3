@@ -27,6 +27,11 @@ func (t T) Manifest() *manifest.T {
 			Attr: "Nodes",
 			Ref:  "object.nodes",
 		},
+		{
+			Key:  "topology",
+			Attr: "Topology",
+			Ref:  "object.topology",
+		},
 	}...)
 	return m
 }

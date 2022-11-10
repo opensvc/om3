@@ -108,7 +108,7 @@ type (
 	Actioner interface {
 		DoRemote() error
 		DoLocal() error
-		DoAsync()
+		DoAsync() error
 		Options() T
 	}
 
@@ -135,16 +135,16 @@ func Do(t Actioner) error {
 	o := t.Options()
 	switch {
 	case o.NodeSelector != "":
-		t.DoRemote()
+		errs = t.DoRemote()
 	case o.Local, o.DefaultIsLocal, o.RID != "", o.Subset != "", o.Tag != "":
 		errs = t.DoLocal()
 	case o.Target != "":
-		t.DoAsync()
+		errs = t.DoAsync()
 	case !clientcontext.IsSet():
 		errs = t.DoLocal()
 	default:
 		// post action on context endpoint
-		t.DoRemote()
+		errs = t.DoRemote()
 	}
 	if o.Watch {
 		m := monitor.New()

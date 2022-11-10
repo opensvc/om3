@@ -529,9 +529,6 @@ func (t T) send() error {
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 	if response.Error != nil {
 		errStr := response.Error.Error()
 		return errors.Errorf(errStr)

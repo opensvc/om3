@@ -30,9 +30,11 @@ func (t *CmdNodeSysreport) Run() error {
 				return nil, err
 			}
 			if t.Force {
-				return nil, n.ForceSysreport()
+				err := n.ForceSysreport()
+				return nil, err
 			} else {
-				return nil, n.Sysreport()
+				err := n.Sysreport()
+				return nil, err
 			}
 		}),
 	).Do()

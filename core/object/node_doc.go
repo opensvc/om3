@@ -15,7 +15,7 @@ func nodeDrvDoc(group, name string) (string, error) {
 		if kw.Section != group {
 			continue
 		}
-		if !stringslice.Has(name, kw.Types) {
+		if len(kw.Types) > 0 && !stringslice.Has(name, kw.Types) {
 			continue
 		}
 		buff += kw.Doc()
@@ -53,5 +53,9 @@ func (t *Node) KeywordDoc(s string) (string, error) {
 // DriverDoc returns the documentation of all keywords of the specified driver.
 func (t *Node) DriverDoc(s string) (string, error) {
 	l := strings.SplitN(s, ".", 2)
-	return nodeDrvDoc(l[0], l[1])
+	if len(l) == 2 {
+		return nodeDrvDoc(l[0], l[1])
+	} else {
+		return nodeDrvDoc(s, "")
+	}
 }

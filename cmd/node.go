@@ -48,16 +48,13 @@ var (
 		Use:   "scan",
 		Short: "scan node",
 	}
-	cmdNodeEdit = &cobra.Command{
-		Use:     "edit",
-		Short:   "edition command group",
-		Aliases: []string{"edi", "ed"},
-	}
 	cmdNodeValidate = &cobra.Command{
 		Use:     "validate",
 		Short:   "validation command group",
 		Aliases: []string{"validat", "valida", "valid", "val"},
 	}
+
+	cmdNodeEdit = newCmdNodeEdit()
 )
 
 func init() {
@@ -91,6 +88,9 @@ func init() {
 		newCmdNodeComplianceListModuleset(),
 		newCmdNodeComplianceListRuleset(),
 	)
+	cmdNodeEdit.AddCommand(
+		newCmdNodeEditConfig(),
+	)
 	cmdNode.AddCommand(
 		cmdNodeEdit,
 		cmdNodePrint,
@@ -101,7 +101,6 @@ func init() {
 		newCmdNodeDoc(),
 		newCmdNodeDelete(),
 		newCmdNodeDrivers(),
-		newCmdNodeEditConfig(),
 		newCmdNodeLogs(),
 		newCmdNodeLs(),
 		newCmdNodeFreeze(),
