@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/keyop"
@@ -345,19 +346,15 @@ func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
 	if err := oc.Config().LoadRaw(c); err != nil {
 		return err
 	}
-	if err := oc.Config().SetKeys(keyop.ParseOps(t.Keywords)...); err != nil {
-		return err
-	}
+	ops := keyop.ParseOps(t.Keywords)
 	if !t.Restore {
 		op := keyop.Parse("id=" + uuid.New().String())
 		if op == nil {
 			return errors.New("invalid id reset op")
 		}
-		if err := oc.Config().Set(*op); err != nil {
-			return err
-		}
+		ops = append(ops, *op)
 	}
-	return oc.Config().Commit()
+	return oc.Config().SetKeys(ops...)
 }
 
 func (t CmdObjectCreate) localEmpty(p path.T) error {
