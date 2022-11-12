@@ -113,6 +113,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /node/clear:
+    post:
+      operationId: PostNodeClear
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Clears errors (for example, failed) in the node monitor state.
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /node/monitor:
     post:
       operationId: PostNodeMonitor

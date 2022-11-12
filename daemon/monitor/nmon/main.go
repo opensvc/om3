@@ -65,6 +65,8 @@ type (
 )
 
 var (
+	statusDraining     = "draining"
+	statusDrainFailed  = "drain failed"
 	statusIdle         = "idle"
 	statusThawedFailed = "unfreeze failed"
 	statusFreezeFailed = "freeze failed"
@@ -78,10 +80,10 @@ var (
 
 	localExpectUnset = ""
 
-	globalExpectAbort  = "abort"
-	globalExpectFrozen = "frozen"
-	globalExpectThawed = "thawed"
-	globalExpectUnset  = ""
+	globalExpectAborted = "aborted"
+	globalExpectFrozen  = "frozen"
+	globalExpectThawed  = "thawed"
+	globalExpectUnset   = ""
 
 	// the node monitor states evicting a node from ranking algorithms
 	statusUnrankable = map[string]bool{

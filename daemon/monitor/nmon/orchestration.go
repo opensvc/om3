@@ -7,6 +7,8 @@ func (o *nmon) orchestrate() {
 		return
 	}
 	switch o.state.GlobalExpect {
+	case globalExpectAborted:
+		o.orchestrateAborted()
 	case globalExpectFrozen:
 		o.orchestrateFrozen()
 	case globalExpectThawed:

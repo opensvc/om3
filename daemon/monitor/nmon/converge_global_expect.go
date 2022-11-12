@@ -9,6 +9,10 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
 	for node, data := range o.nmons {
+		if data.GlobalExpect == "" {
+			// converge "aborted" to unset via orchestration
+			continue
+		}
 		nodeTime := data.GlobalExpectUpdated
 		if mostRecentUpdated.Before(nodeTime) {
 			mostRecentNode = node

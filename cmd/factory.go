@@ -421,12 +421,40 @@ func newCmdNetworkStatus() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeAbort() *cobra.Command {
+	var options commands.CmdNodeAbort
+	cmd := &cobra.Command{
+		Use:   "abort",
+		Short: "Abort the running orchestration.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdNodeChecks() *cobra.Command {
 	var options commands.CmdNodeChecks
 	cmd := &cobra.Command{
 		Use:     "checks",
 		Short:   "Run the check drivers, push and print the instances.",
 		Aliases: []string{"check", "chec", "che", "ch"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdNodeClear() *cobra.Command {
+	var options commands.CmdNodeClear
+	cmd := &cobra.Command{
+		Use:   "clear",
+		Short: "Clear errors in the monitor state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
