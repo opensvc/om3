@@ -100,6 +100,7 @@ func init() {
 		newCmdNodeChecks(),
 		newCmdNodeDoc(),
 		newCmdNodeDelete(),
+		newCmdNodeDrain(),
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
 		newCmdNodeLs(),

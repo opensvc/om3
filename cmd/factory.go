@@ -705,6 +705,21 @@ func newCmdNodeDoc() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeDrain() *cobra.Command {
+	var options commands.CmdNodeDrain
+	cmd := &cobra.Command{
+		Use:   "drain",
+		Short: "Freeze the selected nodes and shutdown all object instances they run. If not specified with --node, the local node is selected for drain.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	return cmd
+}
+
 func newCmdNodeDrivers() *cobra.Command {
 	var options commands.CmdNodeDrivers
 	cmd := &cobra.Command{
