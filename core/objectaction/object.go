@@ -352,8 +352,13 @@ func (t T) DoAsync() error {
 		req.GlobalExpect = t.Target
 		req.SetNode(t.NodeSelector)
 		b, err := req.Do()
-		errs = xerrors.Append(errs, err)
+		if err != nil {
+			errs = xerrors.Append(errs, err)
+		}
 		human := func() string {
+			if len(b) == 0 {
+				return ""
+			}
 			s := fmt.Sprintln(string(b))
 			return s
 		}

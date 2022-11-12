@@ -205,6 +205,9 @@ func (t T) DoAsync() error {
 	req.GlobalExpect = t.Target
 	b, err := req.Do()
 	human := func() string {
+		if len(b) == 0 {
+			return ""
+		}
 		s := fmt.Sprintln(string(b))
 		return s
 	}
