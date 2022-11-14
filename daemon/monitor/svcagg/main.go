@@ -102,18 +102,10 @@ func (o *svcAggStatus) worker() {
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.InstanceMonitorUpdated:
-				if _, ok := o.instMonitor[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
-					continue
-				}
 				o.srcEvent = i
 				o.instMonitor[c.Node] = c.Status
 				o.updateStatus()
 			case msgbus.InstanceStatusUpdated:
-				if _, ok := o.instStatus[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
-					continue
-				}
 				o.srcEvent = i
 				o.instStatus[c.Node] = c.Status
 				o.updateStatus()
