@@ -205,14 +205,11 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 
 }
 
-func (o *smon) onSmonUpdated(c msgbus.InstanceMonitorUpdated) {
-	node := c.Node
-	if node == o.localhost {
-		return
-	}
+func (o *smon) onRemoteSmonUpdated(c msgbus.InstanceMonitorUpdated) {
+	remote := c.Node
 	instSmon := c.Status
-	o.log.Debug().Msgf("updated instance smon from node %s  -> %s", node, instSmon.GlobalExpect)
-	o.instSmon[node] = instSmon
+	o.log.Debug().Msgf("updated instance smon from node %s  -> %s", remote, instSmon.GlobalExpect)
+	o.instSmon[remote] = instSmon
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()

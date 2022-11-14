@@ -195,7 +195,9 @@ func (o *smon) worker(initialNodes []string) {
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
-				o.onSmonUpdated(c)
+				if c.Node != o.localhost {
+					o.onRemoteSmonUpdated(c)
+				}
 			case msgbus.InstanceMonitorDeleted:
 				o.onSmonDeleted(c)
 			}
