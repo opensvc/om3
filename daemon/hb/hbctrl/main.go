@@ -195,7 +195,14 @@ func (c *ctrl) run(ctx context.Context) {
 			}
 			sort.Strings(hbIds)
 			for _, key := range hbIds {
-				heartbeats = append(heartbeats, heartbeat[key])
+				peers := make(map[string]cluster.HeartbeatPeerStatus)
+				for k, v := range heartbeat[key].Peers {
+					peers[k] = v
+				}
+				heartbeats = append(heartbeats, cluster.HeartbeatThreadStatus{
+					ThreadStatus: heartbeat[key].ThreadStatus,
+					Peers:        peers,
+				})
 			}
 			hbcache.SetHeartbeats(heartbeats)
 		case i := <-c.cmd:
