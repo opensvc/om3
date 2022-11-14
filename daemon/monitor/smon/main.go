@@ -162,7 +162,6 @@ func (o *smon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub(o.id + "smon")
 	label := pubsub.Label{"path", o.id}
-	sub.AddFilter(msgbus.CfgUpdated{}, label)
 	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
@@ -191,8 +190,6 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.CfgUpdated:
-				o.onCfgUpdated(c)
 			case msgbus.ObjectAggUpdated:
 				o.onSvcAggUpdated(c)
 			case msgbus.SetInstanceMonitor:
@@ -308,6 +305,6 @@ func (o *smon) loggerWithState() *zerolog.Logger {
 	if o.state.LocalExpect != statusIdle && o.state.LocalExpect != localExpectUnset {
 		ctx.Str("local_expect", o.state.LocalExpect)
 	}
-	log := ctx.Logger()
-	return &log
+	stateLogger := ctx.Logger()
+	return &stateLogger
 }

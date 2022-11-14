@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/goombaio/orderedset"
+
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/placement"
@@ -17,30 +18,24 @@ import (
 	"opensvc.com/opensvc/util/stringslice"
 )
 
-func (o *smon) onCfgUpdated(c msgbus.CfgUpdated) {
-	o.scopeNodes = append([]string{}, c.Config.Scope...)
-	o.log.Debug().Msgf("updating from CfgUpdated on %s scopeNodes=%s", c.Node, o.scopeNodes)
-	o.updateIsLeader()
-	o.orchestrate()
-}
-
 // onSvcAggUpdated updateIfChange state global expect from aggregated status
 func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
 			srcNode := srcCmd.Node
+			srcInstStatus := srcCmd.Status
 			if _, ok := o.instStatus[srcNode]; ok {
-				instStatus := srcCmd.Status
-				if o.instStatus[srcNode].Updated.Before(instStatus.Updated) {
+				if o.instStatus[srcNode].Updated.Before(srcInstStatus.Updated) {
 					// only update if more recent
-					o.instStatus[srcNode] = instStatus
+					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s update instance status", c.Node, srcNode)
+					o.instStatus[srcNode] = srcInstStatus
 				} else {
-					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update o.instStatus (has more recent)", c.Node, srcNode)
+					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", c.Node, srcNode)
 				}
 			} else {
-				o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s updates o.instStatus", c.Node, srcNode)
-				o.instStatus[srcNode] = srcCmd.Status
+				o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s create instance status", c.Node, srcNode)
+				o.instStatus[srcNode] = srcInstStatus
 			}
 		case msgbus.CfgUpdated:
 			if srcCmd.Node == o.localhost {
@@ -57,9 +52,9 @@ func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 						delete(o.instStatus, node)
 					}
 				}
-				o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
-				o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", c.Node, srcCmd.Node, o.scopeNodes)
 			}
+			o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+			o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", c.Node, srcCmd.Node, o.scopeNodes)
 		case msgbus.CfgDeleted:
 			node := srcCmd.Node
 			if _, ok := o.instStatus[node]; ok {
