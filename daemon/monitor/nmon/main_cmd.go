@@ -32,9 +32,13 @@ func (o *nmon) onSetNmonCmd(c msgbus.SetNodeMonitor) {
 		}
 	}
 	switch c.Monitor.GlobalExpect {
-	case globalExpectAbort:
-		c.Monitor.GlobalExpect = globalExpectUnset
 	case globalExpectUnset:
+		return
+	case globalExpectAborted:
+	case globalExpectFrozen:
+	case globalExpectThawed:
+	default:
+		o.log.Warn().Msgf("invalid set node monitor global expect: %s", c.Monitor.GlobalExpect)
 		return
 	}
 	o.log.Info().Msgf("set nmon: client request global expect to %s %+v", strVal, c.Monitor)

@@ -86,6 +86,10 @@ func (t T) NewPostNodeAction() *api.PostNodeAction {
 	return api.NewPostNodeAction(t)
 }
 
+func (t T) NewPostNodeClear() *api.PostNodeClear {
+	return api.NewPostNodeClear(t)
+}
+
 func (t T) NewPostNodeMonitor() *api.PostNodeMonitor {
 	return api.NewPostNodeMonitor(t)
 }
