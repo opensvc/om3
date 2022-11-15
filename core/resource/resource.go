@@ -815,9 +815,22 @@ func Resync(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// Shutdown deactivates a resource interfacer even if standby is true
+func Shutdown(ctx context.Context, r Driver) error {
+	defer Status(ctx, r)
+	return stop(ctx, r)
+}
+
 // Stop deactivates a resource interfacer
 func Stop(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
+	if r.IsStandby() {
+		return nil
+	}
+	return stop(ctx, r)
+}
+
+func stop(ctx context.Context, r Driver) error {
 	if r.IsDisabled() {
 		return nil
 	}

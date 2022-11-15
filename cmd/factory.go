@@ -2006,6 +2006,25 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectShutdown(kind string) *cobra.Command {
+	var options commands.CmdObjectShutdown
+	cmd := &cobra.Command{
+		Use:   "shutdown",
+		Short: "Shutdown the selected objects.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagsTo(flags, &options.OptTo)
+	addFlagDryRun(flags, &options.DryRun)
+	addFlagForce(flags, &options.Force)
+	return cmd
+}
+
 func newCmdObjectStart(kind string) *cobra.Command {
 	var options commands.CmdObjectStart
 	cmd := &cobra.Command{
