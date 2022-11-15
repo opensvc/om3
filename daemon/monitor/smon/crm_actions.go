@@ -30,18 +30,17 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
+func (o *smon) orchestrateAfterAction(state, newState string) {
+	o.cmdC <- cmdOrchestrate{state: state, newState: newState}
+}
+
 func (o *smon) doAction(action func() error, newState, successState, errorState string) {
 	o.transitionTo(newState)
-	go func() {
-		//o.log.Info().Msgf("in progress '%s' to reach target global expect '%s'", newState, o.state.GlobalExpect)
-		var nextState string
-		if action() == nil {
-			nextState = successState
-		} else {
-			nextState = errorState
-		}
-		o.cmdC <- cmdOrchestrate{state: newState, newState: nextState}
-	}()
+	nextState := successState
+	if action() != nil {
+		nextState = errorState
+	}
+	go o.orchestrateAfterAction(newState, nextState)
 }
 
 func (o *smon) crmDelete() error {
