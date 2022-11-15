@@ -24,6 +24,10 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 		Node:    hostname.Hostname(),
 		Monitor: cluster.NodeMonitor{},
 	}
+	if payload.LocalExpect != nil {
+		validRequest = true
+		cmd.Monitor.LocalExpect = *payload.LocalExpect
+	}
 	if payload.GlobalExpect != nil {
 		validRequest = true
 		cmd.Monitor.GlobalExpect = *payload.GlobalExpect
@@ -33,7 +37,7 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 		cmd.Monitor.Status = *payload.State
 	}
 	if !validRequest {
-		sendError(w, http.StatusBadRequest, "need at least state or global_expect")
+		sendError(w, http.StatusBadRequest, "need at least state, local_expect or global_expect")
 		return
 	}
 	bus := pubsub.BusFromContext(r.Context())

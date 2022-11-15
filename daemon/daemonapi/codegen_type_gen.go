@@ -224,6 +224,7 @@ type PostDaemonSubActionAction string
 // PostNodeMonitor defines model for postNodeMonitor.
 type PostNodeMonitor struct {
 	GlobalExpect *string `json:"global_expect,omitempty"`
+	LocalExpect  *string `json:"local_expect,omitempty"`
 	State        *string `json:"state,omitempty"`
 }
 

@@ -644,6 +644,8 @@ components:
     postNodeMonitor:
       type: object
       properties:
+        local_expect:
+          type: string
         global_expect:
           type: string
         state:

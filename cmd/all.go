@@ -44,6 +44,7 @@ func init() {
 		newCmdObjectPRStop(kind),
 		newCmdObjectRestart(kind),
 		newCmdObjectRun(kind),
+		newCmdObjectShutdown(kind),
 		newCmdObjectStart(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectStop(kind),
