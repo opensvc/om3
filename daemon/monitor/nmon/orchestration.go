@@ -2,11 +2,14 @@ package nmon
 
 // orchestrate from svcagg vs global expect
 func (o *nmon) orchestrate() {
-	if o.state.GlobalExpect == globalExpectUnset {
-		// no expected status to reach
-		return
+	switch o.state.LocalExpect {
+	case localExpectUnset:
+	case localExpectDrained:
+		o.orchestrateDrained()
 	}
+
 	switch o.state.GlobalExpect {
+	case globalExpectUnset:
 	case globalExpectAborted:
 		o.orchestrateAborted()
 	case globalExpectFrozen:

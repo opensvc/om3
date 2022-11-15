@@ -71,6 +71,7 @@ var (
 	statusThawedFailed = "unfreeze failed"
 	statusFreezeFailed = "freeze failed"
 	statusFreezing     = "freezing"
+	statusFrozen       = "frozen"
 	statusThawing      = "thawing"
 	statusShutting     = "shutting"
 	statusMaintenance  = "maintenance"
@@ -78,7 +79,8 @@ var (
 	statusUpgrade      = "upgrade"
 	statusRejoin       = "rejoin"
 
-	localExpectUnset = ""
+	localExpectUnset   = ""
+	localExpectDrained = "drained"
 
 	globalExpectAborted = "aborted"
 	globalExpectFrozen  = "frozen"
@@ -100,8 +102,7 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	previousState := cluster.NodeMonitor{
-		GlobalExpect: globalExpectUnset,
-		Status:       statusIdle,
+		Status: statusIdle,
 	}
 	state := previousState
 
@@ -214,6 +215,10 @@ func (o *nmon) updateIfChange() {
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
 		from, to := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
 		o.log.Info().Msgf("change monitor global expect %s -> %s", from, to)
+	}
+	if newVal.LocalExpect != previousVal.LocalExpect {
+		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
+		o.log.Info().Msgf("change monitor local expect %s -> %s", from, to)
 	}
 	o.previousState = o.state
 	o.update()

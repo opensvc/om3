@@ -8,6 +8,7 @@ import (
 // resolver options.
 type PostNodeMonitor struct {
 	Base
+	LocalExpect  string `json:"local_expect"`
 	GlobalExpect string `json:"global_expect"`
 	Status       string `json:"status"`
 }

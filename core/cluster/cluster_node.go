@@ -19,10 +19,12 @@ type (
 
 	// NodeMonitor describes the in-daemon states of a node
 	NodeMonitor struct {
-		GlobalExpect        string    `json:"global_expect"`
 		Status              string    `json:"status"`
+		LocalExpect         string    `json:"local_expect"`
+		GlobalExpect        string    `json:"global_expect"`
 		StatusUpdated       time.Time `json:"status_updated"`
 		GlobalExpectUpdated time.Time `json:"global_expect_updated"`
+		LocalExpectUpdated  time.Time `json:"local_expect_updated"`
 	}
 
 	// NodeStats describes systems (cpu, mem, swap) resource usage of a node

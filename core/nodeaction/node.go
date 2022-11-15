@@ -202,7 +202,11 @@ func (t T) DoAsync() error {
 		return err
 	}
 	req := c.NewPostNodeMonitor()
-	req.GlobalExpect = t.Target
+	if t.Target == "drained" {
+		req.LocalExpect = t.Target
+	} else {
+		req.GlobalExpect = t.Target
+	}
 	b, err := req.Do()
 	human := func() string {
 		if len(b) == 0 {

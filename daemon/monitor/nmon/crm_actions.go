@@ -25,6 +25,10 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
+func (o *nmon) crmDrain() error {
+	return o.crmAction("*/svc/*", "shutdown", "--local")
+}
+
 func (o *nmon) crmFreeze() error {
 	return o.crmAction("node", "freeze", "--local")
 }
