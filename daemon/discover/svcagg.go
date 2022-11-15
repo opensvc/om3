@@ -8,7 +8,7 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func (d *discover) agg() {
+func (d *discover) agg(started chan<- bool) {
 	log := d.log.With().Str("func", "agg").Logger()
 	log.Info().Msg("started")
 	defer func() {
@@ -29,6 +29,7 @@ func (d *discover) agg() {
 	sub.AddFilter(msgbus.CfgUpdated{})
 	sub.Start()
 	defer sub.Stop()
+	started <- true
 	for {
 		select {
 		case <-d.ctx.Done():

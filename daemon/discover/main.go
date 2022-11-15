@@ -89,14 +89,19 @@ func Start(ctx context.Context) (func(), error) {
 		localhost:         hostname.Hostname(),
 	}
 	wg.Add(2)
-	go func() {
+	cfgStarted := make(chan bool)
+	go func(c chan<- bool) {
 		defer wg.Done()
-		d.cfg()
-	}()
-	go func() {
+		d.cfg(c)
+	}(cfgStarted)
+	<-cfgStarted
+
+	aggStarted := make(chan bool)
+	go func(c chan<- bool) {
 		defer wg.Done()
-		d.agg()
-	}()
+		d.agg(c)
+	}(aggStarted)
+	<-aggStarted
 
 	stopFSWatcher, err := d.fsWatcherStart()
 	if err != nil {
