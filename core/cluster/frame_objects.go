@@ -119,7 +119,7 @@ func (f Frame) sObject(path string) string {
 	s += fmt.Sprintf("%s\t", f.sObjectRunning(path))
 	s += fmt.Sprintf("%s\t", f.info.separator)
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		s += f.sObjectInstance(path, node)
+		s += f.sObjectInstance(path, node, d.Scope)
 	}
 	return s
 }

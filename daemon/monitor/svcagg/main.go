@@ -29,7 +29,6 @@ type (
 		status object.AggregatedStatus
 		path   path.T
 		id     string
-		nodes  map[string]struct{}
 
 		discoverCmdC chan<- any
 		dataCmdC     chan<- any
@@ -51,7 +50,7 @@ type (
 func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd chan<- any) error {
 	id := p.String()
 	o := &svcAggStatus{
-		status:       object.AggregatedStatus{},
+		status:       object.AggregatedStatus{Scope: cfg.Scope},
 		path:         p,
 		id:           id,
 		discoverCmdC: svcAggDiscoverCmd,
@@ -65,7 +64,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 
 	go func() {
 		defer o.sub.Stop()
-		o.worker(cfg.Scope)
+		o.worker()
 	}()
 	return nil
 }
@@ -82,11 +81,11 @@ func (o *svcAggStatus) startSubscriptions() {
 	o.sub = sub
 }
 
-func (o *svcAggStatus) worker(nodes []string) {
+func (o *svcAggStatus) worker() {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
 
-	for _, node := range nodes {
+	for _, node := range o.status.Scope {
 		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
 		o.instMonitor[node] = instance.Monitor{}
 	}
@@ -103,27 +102,26 @@ func (o *svcAggStatus) worker(nodes []string) {
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.InstanceMonitorUpdated:
-				if _, ok := o.instMonitor[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance monitor change from unknown node: %s", c.Node)
-					continue
-				}
 				o.srcEvent = i
 				o.instMonitor[c.Node] = c.Status
 				o.updateStatus()
 			case msgbus.InstanceStatusUpdated:
-				if _, ok := o.instStatus[c.Node]; !ok {
-					o.log.Debug().Msgf("skip instance status change from unknown node: %s", c.Node)
-					continue
-				}
 				o.srcEvent = i
 				o.instStatus[c.Node] = c.Status
 				o.updateStatus()
 			case msgbus.CfgUpdated:
-				if _, ok := o.instStatus[c.Node]; ok {
-					continue
-				}
+				o.status.Scope = c.Config.Scope
 				o.srcEvent = i
-				o.instStatus[c.Node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, c.Node)
+
+				// update local cache for instance status & monitor from cfg node
+				// It will be updated on InstanceStatusUpdated, or InstanceMonitorUpdated
+				if _, ok := o.instStatus[c.Node]; !ok {
+					o.instStatus[c.Node] = instance.Status{Avail: status.Undef}
+				}
+				if _, ok := o.instMonitor[c.Node]; !ok {
+					o.instMonitor[c.Node] = instance.Monitor{}
+				}
+
 				o.updateStatus()
 			case msgbus.CfgDeleted:
 				if _, ok := o.instStatus[c.Node]; ok {

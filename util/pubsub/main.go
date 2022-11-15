@@ -217,6 +217,9 @@ func (t *Bus) Start(ctx context.Context) {
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	started := make(chan bool)
 	t.drain() // flush cmds queued while we were stopped ?
+	t.subs = make(map[uuid.UUID]*Subscription)
+	t.subMap = make(subscriptionMap)
+
 	t.Add(1)
 	go func() {
 		defer t.Done()
@@ -237,9 +240,6 @@ func (t *Bus) Start(ctx context.Context) {
 			defer t.Done()
 			t.warnExceededNotification(watchDurationCtx, notifyDurationWarn)
 		}()
-
-		t.subs = make(map[uuid.UUID]*Subscription)
-		t.subMap = make(subscriptionMap)
 
 		started <- true
 		for {

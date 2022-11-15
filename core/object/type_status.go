@@ -28,13 +28,16 @@ type (
 	}
 
 	// AggregatedStatus contains the object states obtained via
-	// aggregation of all instances states.
+	// aggregation of all instances states. It exists when a instance config exists somewhere
 	AggregatedStatus struct {
 		Avail       status.T        `json:"avail"`
 		Overall     status.T        `json:"overall,omitempty"`
 		Frozen      string          `json:"frozen,omitempty"`
 		Placement   placement.State `json:"placement,omitempty"`
 		Provisioned provisioned.T   `json:"provisioned,omitempty"`
+
+		// Scope track the config scope from one object instance
+		Scope []string `json:"scope"`
 	}
 )
 

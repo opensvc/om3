@@ -26,12 +26,12 @@ var (
 	nodeViper *viper.Viper
 	fromViper = conf{}
 
-	clusterSectionCmd = make(chan chan<- *clusterSection)
-	nodeSectionCmd    = make(chan chan<- *nodeSection)
+	clusterSectionCmd = make(chan chan<- clusterSection)
+	nodeSectionCmd    = make(chan chan<- nodeSection)
 	loadConfigCmd     = make(chan loadCmd)
 
-	sectionCluster *clusterSection
-	sectionNode    *nodeSection
+	sectionCluster clusterSection
+	sectionNode    nodeSection
 )
 
 type (
@@ -85,14 +85,14 @@ func init() {
 	Load(nil)
 }
 
-func ClusterSection() *clusterSection {
-	c := make(chan *clusterSection)
+func ClusterSection() clusterSection {
+	c := make(chan clusterSection)
 	clusterSectionCmd <- c
 	return <-c
 }
 
-func NodeSection() *nodeSection {
-	c := make(chan *nodeSection)
+func NodeSection() nodeSection {
+	c := make(chan nodeSection)
 	nodeSectionCmd <- c
 	return <-c
 }
@@ -199,6 +199,6 @@ func loadSections() {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)
 		return
 	}
-	sectionCluster = &fromViper.Cluster
-	sectionNode = &fromViper.Node
+	sectionCluster = fromViper.Cluster
+	sectionNode = fromViper.Node
 }

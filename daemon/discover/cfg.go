@@ -131,6 +131,17 @@ func (d *discover) onCfgUpdated(c msgbus.CfgUpdated) {
 
 func (d *discover) onRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {
 	s := p.String()
+	if !d.inScope(&remoteCfg) {
+		d.cancelFetcher(s)
+		cfgFile := p.ConfigFile()
+		if file.Exists(cfgFile) {
+			d.log.Info().Msgf("remove local config %s (localnode not in node %s config scope)", s, node)
+			if err := os.Remove(cfgFile); err != nil {
+				d.log.Debug().Err(err).Msgf("remove %s", cfgFile)
+			}
+		}
+		return
+	}
 	if mtime, ok := d.cfgMTime[s]; ok {
 		if !remoteCfg.Updated.After(mtime) {
 			// our version is more recent than remote one
@@ -152,10 +163,6 @@ func (d *discover) onRemoteCfgUpdated(p path.T, node string, remoteCfg instance.
 			// let running fetcher does its job
 			return
 		}
-	}
-	if !d.inScope(&remoteCfg) {
-		// skipped when we are not in scopes
-		return
 	}
 	d.log.Info().Msgf("fetch config %s from node %s", s, node)
 	d.fetchCfgFromRemote(p, node, remoteCfg.Updated)
@@ -208,13 +215,15 @@ func (d *discover) inScope(cfg *instance.Config) bool {
 }
 
 func (d *discover) cancelFetcher(s string) {
-	d.log.Debug().Msgf("cancelFetcher %s", s)
-	node := d.fetcherFrom[s]
-	d.fetcherCancel[s]()
-	delete(d.fetcherCancel, s)
-	delete(d.fetcherNodeCancel[node], s)
-	delete(d.fetcherUpdated, s)
-	delete(d.fetcherFrom, s)
+	if cancel, ok := d.fetcherCancel[s]; ok {
+		d.log.Debug().Msgf("cancelFetcher %s", s)
+		cancel()
+		node := d.fetcherFrom[s]
+		delete(d.fetcherCancel, s)
+		delete(d.fetcherNodeCancel[node], s)
+		delete(d.fetcherUpdated, s)
+		delete(d.fetcherFrom, s)
+	}
 }
 
 func (d *discover) fetchCfgFromRemote(p path.T, node string, updated time.Time) {
