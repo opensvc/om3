@@ -27,9 +27,7 @@ func (o *smon) purgedFromIdle() {
 		o.purgedFromIdleProvisioned()
 		return
 	}
-	go func() {
-		o.cmdC <- cmdOrchestrate{state: statusIdle, newState: statusUnprovisioned}
-	}()
+	go o.orchestrateAfterAction(statusIdle, statusUnprovisioned)
 	return
 }
 

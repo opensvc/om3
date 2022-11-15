@@ -13,15 +13,12 @@ func (o *smon) ThawedFromIdle() {
 	}
 	o.state.Status = statusThawing
 	o.updateIfChange()
-	go func() {
-		o.log.Info().Msg("run action unfreeze")
-		if err := o.crmUnfreeze(); err != nil {
-			o.cmdC <- cmdOrchestrate{state: statusThawing, newState: statusThawedFailed}
-		} else {
-			o.cmdC <- cmdOrchestrate{state: statusThawing, newState: statusIdle}
-		}
-	}()
-	return
+	o.log.Info().Msg("run action unfreeze")
+	nextState := statusIdle
+	if err := o.crmUnfreeze(); err != nil {
+		nextState = statusThawedFailed
+	}
+	go o.orchestrateAfterAction(statusThawing, nextState)
 }
 
 func (o *smon) thawedClearIfReached() bool {

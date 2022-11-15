@@ -20,14 +20,12 @@ func (o *nmon) frozenFromIdle() {
 	}
 	o.state.Status = statusFreezing
 	o.updateIfChange()
-	go func() {
-		o.log.Info().Msg("run action freeze")
-		if err := o.crmFreeze(); err != nil {
-			o.cmdC <- cmdOrchestrate{state: statusFreezing, newState: statusFreezeFailed}
-		} else {
-			o.cmdC <- cmdOrchestrate{state: statusFreezing, newState: statusIdle}
-		}
-	}()
+	o.log.Info().Msg("run action freeze")
+	nextState := statusIdle
+	if err := o.crmFreeze(); err != nil {
+		nextState = statusFreezeFailed
+	}
+	go o.orchestrateAfterAction(statusFreezing, nextState)
 	return
 }
 

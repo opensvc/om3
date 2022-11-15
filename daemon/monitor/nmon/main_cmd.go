@@ -130,3 +130,7 @@ func (o *nmon) onOrchestrate(c cmdOrchestrate) {
 	// avoid fast loop on bug
 	time.Sleep(50 * time.Millisecond)
 }
+
+func (o *nmon) orchestrateAfterAction(state, nextState string) {
+	o.cmdC <- cmdOrchestrate{state: state, newState: nextState}
+}

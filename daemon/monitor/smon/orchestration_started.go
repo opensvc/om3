@@ -74,9 +74,7 @@ func (o *smon) startedFromThawed() {
 			if ctx.Err() == context.Canceled {
 				return
 			}
-			go func() {
-				o.cmdC <- cmdOrchestrate{}
-			}()
+			o.orchestrateAfterAction("", "")
 			return
 		}
 	}(o.pendingCtx)

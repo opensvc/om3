@@ -28,7 +28,7 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 	return sub
 }
 
-func (d *discover) cfg() {
+func (d *discover) cfg(started chan<- bool) {
 	d.log.Info().Msg("cfg started")
 	defer func() {
 		t := time.NewTicker(dropCmdTimeout)
@@ -45,6 +45,7 @@ func (d *discover) cfg() {
 	}()
 	sub := d.startSubscriptions()
 	defer sub.Stop()
+	started <- true
 	for {
 		select {
 		case <-d.ctx.Done():
