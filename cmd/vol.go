@@ -45,6 +45,7 @@ func init() {
 		newCmdObjectStatus(kind),
 		newCmdObjectStop(kind),
 		newCmdObjectSwitch(kind),
+		newCmdObjectTakeover(kind),
 		newCmdObjectThaw(kind),
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
