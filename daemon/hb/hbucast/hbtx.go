@@ -80,11 +80,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				t.log.Info().Msg("stopped")
 				return
 			case b = <-msgC:
+				t.log.Debug().Msg("send new msg")
 				for _, node := range t.nodes {
 					go t.send(node, b)
 				}
 				ticker.Reset(t.interval)
 			case <-ticker.C:
+				t.log.Debug().Msg("re-send msg")
 				for _, node := range t.nodes {
 					go t.send(node, b)
 				}
