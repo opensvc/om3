@@ -30,9 +30,13 @@ var (
 // myvol/path   myvol   /srv/myvol/path  vol head relative path
 //
 func HostPath(s string, namespace string) (string, error) {
+	var volRelativeSourcePath string
 	l := strings.SplitN(s, "/", 2)
 	if len(l[0]) == 0 {
 		return s, nil
+	}
+	if len(l) == 2 {
+		volRelativeSourcePath = l[1]
 	}
 	volPath := path.T{
 		Name:      l[0],
@@ -43,6 +47,9 @@ func HostPath(s string, namespace string) (string, error) {
 	if err != nil {
 		return s, err
 	}
+	if !vol.Path().Exists() {
+		return s, errors.Errorf("%s does not exist", vol.Path())
+	}
 	st, err := vol.Status(context.Background())
 	if err != nil {
 		return s, err
@@ -52,7 +59,7 @@ func HostPath(s string, namespace string) (string, error) {
 	default:
 		return s, errors.Wrapf(ErrAccess, "%s(%s)", volPath, st.Avail)
 	}
-	return vol.Head() + "/" + l[1], nil
+	return vol.Head() + "/" + volRelativeSourcePath, nil
 }
 
 // HostPaths applies the HostPath function to each path of the input list

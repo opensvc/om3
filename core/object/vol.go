@@ -50,7 +50,7 @@ func (t vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 // Volume resources in the consumer services use this function return
 // value as the prefix of their own mount_point property.
 //
-// The candidates are sort from shallowest to deepest mountpoint, so
+// The candidates are sorted from shallowest to deepest mountpoint, so
 // the shallowest candidate is returned.
 //
 // Callers must check the returned value is not empty.

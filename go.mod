@@ -24,13 +24,14 @@ require (
 	github.com/gdamore/tcell/v2 v2.3.1
 	github.com/getkin/kin-openapi v0.103.0
 	github.com/go-chi/chi/v5 v5.0.7
-	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
+	github.com/goccy/go-json v0.9.7
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/mock v1.5.0
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
 	github.com/google/uuid v1.3.0
+	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
 	github.com/guregu/null v4.0.0+incompatible
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/go-version v1.4.0
@@ -45,6 +46,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/msoap/byline v1.1.1
+	github.com/ncw/directio v1.0.5
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/opensvc/fcache v1.0.3
 	github.com/opensvc/fcntllock v1.0.3
@@ -88,13 +90,11 @@ require (
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
-	github.com/goccy/go-json v0.9.7 // indirect
 	github.com/godbus/dbus/v5 v5.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/goombaio/orderedmap v0.0.0-20180924084748-ba921b7e2419 // indirect
-	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -117,7 +117,6 @@ require (
 	github.com/mdlayher/netlink v1.4.2 // indirect
 	github.com/mdlayher/socket v0.0.0-20211102153432-57e3fa563ecb // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
-	github.com/ncw/directio v1.0.5 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

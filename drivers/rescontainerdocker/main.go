@@ -227,6 +227,8 @@ func (t T) mounts() ([]mount.Mount, error) {
 		}
 		if srcRealpath, err := vpath.HostPath(m.Source, t.Path.Namespace); err != nil {
 			return mounts, err
+		} else if file.IsProtected(srcRealpath) {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
 		} else {
 			m.Source = srcRealpath
 		}
