@@ -3,7 +3,7 @@ package monitor
 import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/core/entrypoints/mock_monitor"
+	"opensvc.com/opensvc/core/mock_monitor"
 	"testing"
 )
 
