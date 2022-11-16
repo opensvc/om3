@@ -51,7 +51,13 @@ func init() {
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
 	log := daemonlogctx.Logger(ctx).With().Str("id", t.Name()+".tx").Logger()
-	timeout := t.GetDuration("timeout", 5*time.Second)
+	interval := t.GetDuration("interval", 5*time.Second)
+	timeout := t.GetDuration("timeout", 15*time.Second)
+	if timeout < 2*interval+1*time.Second {
+		oldTimeout := timeout
+		timeout = interval*2 + 1*time.Second
+		log.Warn().Msgf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+	}
 	portI := t.GetInt("port")
 	port := strconv.Itoa(portI)
 	nodes := t.GetStrings("nodes")
@@ -60,14 +66,17 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debug().Msgf("Configure %s, timeout=%s port=%s nodes=%s onodes=%s", t.Name(), timeout, port, nodes, oNodes)
+	log.Debug().Msgf("Configure %s, timeout=%s interval=%s port=%s nodes=%s onodes=%s", t.Name(), timeout, interval,
+		port, nodes, oNodes)
 	t.SetNodes(oNodes)
+	t.SetInterval(interval)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.ucast, port: %s nodes: %s timeout: %s intf: %s", port, nodes, timeout)
+	signature := fmt.Sprintf("type: hb.ucast, port: %s nodes: %s timeout: %s interval: %s intf: %s",
+		port, nodes, timeout, interval)
 	t.SetSignature(signature)
 	intf := t.GetString("intf")
 	name := t.Name()
-	tx := newTx(ctx, name, oNodes, port, intf, timeout)
+	tx := newTx(ctx, name, oNodes, port, intf, timeout, interval)
 	t.SetTx(tx)
 	rx := newRx(ctx, name, oNodes, "", port, intf, timeout)
 	t.SetRx(rx)

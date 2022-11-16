@@ -13,6 +13,7 @@ import (
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
@@ -80,25 +81,34 @@ func (t *T) loop() {
 	t.log.Info().Msg("loop started")
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
-	t.aLoop()
+	var sentGen uint64
+	localhost := hostname.Hostname()
+	daemonData := daemondata.FromContext(t.ctx)
+
+	loopTask := func() {
+		daemonData.CommitPending(t.ctx)
+		if msg, err := daemonData.GetHbMessage(t.ctx); err != nil {
+			t.log.Error().Err(err).Msg("can't queue hb message")
+		} else {
+			msgGen := msg.Gen[localhost]
+			if msgGen != sentGen || msg.Kind != "patch" {
+				t.log.Debug().Msgf("queue a new hb message %s gen %d", msg.Kind, sentGen)
+				daemonctx.HBSendQ(t.ctx) <- msg
+				sentGen = msgGen
+			} else {
+				t.log.Debug().Msgf("already queued message %s %d", msg.Kind, msgGen)
+			}
+		}
+	}
+
+	loopTask()
 	for {
 		select {
 		case <-t.ctx.Done():
 			t.log.Info().Msg("loop stopped")
 			return
 		case <-ticker.C:
-			t.aLoop()
+			loopTask()
 		}
-	}
-}
-
-func (t *T) aLoop() {
-	daemonData := daemondata.FromContext(t.ctx)
-	daemonData.CommitPending(t.ctx)
-	if msg, err := daemonData.GetHbMessage(t.ctx); err != nil {
-		t.log.Error().Err(err).Msg("can't queue hb message")
-	} else {
-		t.log.Debug().Msg("queue a new hb message")
-		daemonctx.HBSendQ(t.ctx) <- msg
 	}
 }

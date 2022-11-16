@@ -16,12 +16,13 @@ import (
 type (
 	tx struct {
 		sync.WaitGroup
-		ctx     context.Context
-		id      string
-		nodes   []string
-		port    string
-		intf    string
-		timeout time.Duration
+		ctx      context.Context
+		id       string
+		nodes    []string
+		port     string
+		intf     string
+		interval time.Duration
+		timeout  time.Duration
 
 		name   string
 		log    zerolog.Logger
@@ -70,15 +71,24 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			}
 		}
 		started <- true
+		var b []byte
+		ticker := time.NewTimer(t.interval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				t.log.Info().Msg("stopped")
 				return
-			case b := <-msgC:
+			case b = <-msgC:
 				for _, node := range t.nodes {
 					go t.send(node, b)
 				}
+				ticker.Reset(t.interval)
+			case <-ticker.C:
+				for _, node := range t.nodes {
+					go t.send(node, b)
+				}
+				ticker.Reset(t.interval)
 			}
 		}
 	}()
@@ -100,8 +110,11 @@ func (t *tx) send(node string, b []byte) {
 		t.log.Error().Err(err).Msg("SetDeadline")
 		return
 	}
-	if _, err := conn.Write(b); err != nil {
+	if n, err := conn.Write(b); err != nil {
 		t.log.Debug().Err(err).Msg("write")
+		return
+	} else if n != len(b) {
+		t.log.Debug().Msgf("write %d instead of %d", n, len(b))
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -111,16 +124,17 @@ func (t *tx) send(node string, b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, port, intf string, timeout time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes []string, port, intf string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
 	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
-		ctx:     ctx,
-		id:      id,
-		nodes:   nodes,
-		port:    port,
-		intf:    intf,
-		timeout: timeout,
-		log:     log,
+		ctx:      ctx,
+		id:       id,
+		nodes:    nodes,
+		port:     port,
+		intf:     intf,
+		interval: interval,
+		timeout:  timeout,
+		log:      log,
 	}
 }
