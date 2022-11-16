@@ -2127,6 +2127,22 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectTakeover(kind string) *cobra.Command {
+	var options commands.CmdObjectTakeover
+	cmd := &cobra.Command{
+		Use:   "takeover",
+		Short: "Stop a svc instance and start one on the local node.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	addFlagsLock(flags, &options.OptsLock)
+	return cmd
+}
+
 func newCmdObjectThaw(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
