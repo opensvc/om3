@@ -48,6 +48,12 @@ func run(ctx context.Context) {
 			return
 		case i := <-cmdI:
 			switch cmd := i.(type) {
+			case getLocalGen:
+				result := make(map[string]uint64)
+				for node, value := range gens[localhost] {
+					result[node] = value
+				}
+				cmd.response <- result
 			case getMode:
 				result := make([]cluster.HbMode, 0)
 				nodes := make([]string, 0)
@@ -127,6 +133,14 @@ func run(ctx context.Context) {
 
 // Getters
 
+// LocalGens returns the localhost gens
+func LocalGens() map[string]uint64 {
+	response := make(chan map[string]uint64)
+	var i interface{} = getLocalGen{response: response}
+	cmdI <- i
+	return <-response
+}
+
 // MsgType returns the message type localhost can send to peers
 //
 // the returned message type value depends on cache
@@ -200,6 +214,9 @@ func SetHeartbeats(hbs []cluster.HeartbeatThreadStatus) {
 type (
 	// getters
 
+	getLocalGen struct {
+		response chan<- map[string]uint64
+	}
 	getMsgType struct {
 		response chan<- string
 	}
