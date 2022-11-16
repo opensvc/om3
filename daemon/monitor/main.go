@@ -40,7 +40,7 @@ type (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay:   1000 * time.Millisecond,
+		loopDelay:   250 * time.Millisecond,
 		loopEnabled: enable.New(),
 		log:         log.Logger.With().Str("name", "monitor").Logger(),
 	}
