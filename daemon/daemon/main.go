@@ -15,7 +15,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
@@ -203,26 +202,18 @@ func (t *T) loop() {
 	t.loopEnabled.Enable()
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
-	bus := daemondata.BusFromContext(t.ctx)
-	t.aLoop(bus)
+	t.aLoop()
 	for {
 		select {
 		case <-ticker.C:
-			t.aLoop(bus)
+			t.aLoop()
 		case <-t.ctx.Done():
 			return
 		}
 	}
 }
 
-func (t *T) aLoop(bus chan<- any) {
-	subHb := cluster.SubHb{
-		Heartbeats: hbcache.Heartbeats(),
-		Modes:      hbcache.Modes(),
-	}
-	if err := daemondata.SetSubHb(bus, subHb); err != nil {
-		t.log.Error().Err(err).Msgf("loop can't SetSubHb")
-	}
+func (t *T) aLoop() {
 }
 
 func startProfiling() {

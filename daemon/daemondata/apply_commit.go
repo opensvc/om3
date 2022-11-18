@@ -1,7 +1,6 @@
 package daemondata
 
 import (
-	"context"
 	"encoding/json"
 	"strconv"
 	"time"
@@ -11,33 +10,37 @@ import (
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
-type opCommitPending struct {
-	done chan<- bool
-}
-
-func (o opCommitPending) setDone(b bool) {
-	o.done <- b
-}
-
-func (o opCommitPending) call(ctx context.Context, d *data) {
+// commitPendingOps manage patch queue from current pending ops
+//
+//	 when hb mode is patch
+//	  if pending ops exists
+//	 	  publish patch events from pending ops
+//	 	  increase gen and create new patch queue entry from pending ops
+//	 	  drop pending ops
+//	   drop patch queue entries that have been applied on all peers
+//
+//	  when hb mode is not patch
+//		   drop pending ops
+//		   drop patch queue
+func (d *data) commitPendingOps() (changes bool) {
 	d.counterCmd <- idCommitPending
-	d.log.Debug().Msg("opCommitPending")
+	d.log.Debug().Msg("commitPendingOps")
+	if len(d.pendingOps) > 0 {
+		changes = true
+	}
 	if d.hbMsgType == "patch" {
 		d.movePendingOpsToPatchQueue()
 		d.purgeAppliedPatchQueue()
 	} else {
+		d.pendingOps = []jsondelta.Operation{}
 		d.patchQueue = make(patchQueue)
 	}
 	hbcache.SetLocalGens(d.deepCopyLocalGens())
-	d.pubMsgFromNodeDataDiff()
 
 	d.log.Debug().
 		Interface("local gens", d.pending.Cluster.Node[d.localNode].Status.Gen).
-		Msg("opCommitPending")
-	select {
-	case <-ctx.Done():
-	case o.done <- true:
-	}
+		Msg("commitPendingOps")
+	return
 }
 
 // purgeAppliedPatchQueue purge entries from patch queue that have been merged
@@ -108,29 +111,5 @@ func (d *data) eventCommitPendingOps() {
 			Time: time.Now(),
 			Data: eventB,
 		})
-	}
-}
-
-// CommitPending handle a commit of pending changes to T
-//
-// when pending ops exists
-// => increase localhost gen
-// => move pending ops to patch queue (to populate next hb message)
-// => evict already applied gens from patchQueue
-//
-// if message mode is not patch
-// => patch queue is purged
-//
-// detected changes from peer data are published for client side event getters
-func (t T) CommitPending(ctx context.Context) {
-	done := make(chan bool)
-	t.cmdC <- opCommitPending{
-		done: done,
-	}
-	select {
-	case <-ctx.Done():
-		return
-	case <-done:
-		return
 	}
 }

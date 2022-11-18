@@ -133,14 +133,6 @@ func run(ctx context.Context) {
 
 // Getters
 
-// LocalGens returns the localhost gens
-func LocalGens() map[string]uint64 {
-	response := make(chan map[string]uint64)
-	var i interface{} = getLocalGen{response: response}
-	cmdI <- i
-	return <-response
-}
-
 // MsgType returns the message type localhost can send to peers
 //
 // the returned message type value depends on cache
