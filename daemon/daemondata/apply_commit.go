@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -35,7 +34,7 @@ func (d *data) commitPendingOps() (changes bool) {
 		d.pendingOps = []jsondelta.Operation{}
 		d.patchQueue = make(patchQueue)
 	}
-	hbcache.SetLocalGens(d.deepCopyLocalGens())
+	d.hbGens[d.localNode] = d.deepCopyLocalGens()
 
 	d.log.Debug().
 		Interface("local gens", d.pending.Cluster.Node[d.localNode].Status.Gen).

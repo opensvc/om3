@@ -45,7 +45,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		Sub: cluster.Sub{
 			Hb: cluster.SubHb{
 				Heartbeats: hbcache.Heartbeats(),
-				Modes:      hbcache.Modes(),
+				Modes:      make([]cluster.HbMode, 0),
 			},
 		},
 	}
@@ -56,6 +56,9 @@ func newData(counterCmd chan<- interface{}) *data {
 		counterCmd:         counterCmd,
 		gen:                nodeData.Status.Gen[localNode],
 		patchQueue:         make(patchQueue),
+		subHbMode:          map[string]string{localNode: "undef"},
+		hbMsgType:          "undef",
+		hbGens:             map[string]map[string]uint64{localNode: map[string]uint64{localNode: 0}},
 	}
 }
 

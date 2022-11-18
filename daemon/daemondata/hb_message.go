@@ -3,10 +3,10 @@ package daemondata
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/hbcache"
 )
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
@@ -35,7 +35,7 @@ func (d *data) queueNewHbMsg() error {
 func (d *data) getHbMessage() (hbtype.Msg, error) {
 	d.counterCmd <- idGetHbMessage
 	d.log.Debug().Msg("getHbMessage")
-	d.hbMsgType = hbcache.MsgType()
+	d.setNextMsgType()
 	var err error
 	msg := hbtype.Msg{
 		Compat:   d.pending.Cluster.Node[d.localNode].Status.Compat,
@@ -51,16 +51,16 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 			d.log.Error().Err(err).Msg("can't create delta for hb patch message")
 			return msg, err
 		}
+		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
 		msg.Deltas = delta
-		hbcache.SetLocalHbMsgInfo(fmt.Sprintf("%d", len(msg.Deltas)))
 		return msg, nil
 	case "full":
 		nodeData := d.pending.Cluster.Node[d.localNode]
 		msg.Full = *nodeData.DeepCopy()
-		hbcache.SetLocalHbMsgInfo(msg.Kind)
+		d.subHbMode[d.localNode] = msg.Kind
 		return msg, nil
 	case "ping":
-		hbcache.SetLocalHbMsgInfo(msg.Kind)
+		d.subHbMode[d.localNode] = msg.Kind
 		return msg, nil
 	default:
 		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMsgType)
@@ -86,4 +86,40 @@ func (d *data) deepCopyLocalGens() gens {
 		localGens[n] = gen
 	}
 	return localGens
+}
+
+func (d *data) setNextMsgType() {
+	var messageType string
+	var remoteNeedFull []string
+	if d.hbMsgType == "undef" {
+		// init
+		messageType = "ping"
+	} else if len(d.hbGens) <= 1 || d.hbMsgType == "undef" {
+		// no hb msg received yet
+		messageType = "ping"
+	} else {
+		for node, gen := range d.hbGens {
+			if node == d.localNode {
+				continue
+			}
+			if gen[d.localNode] == 0 {
+				remoteNeedFull = append(remoteNeedFull, node)
+			}
+		}
+		if len(remoteNeedFull) > 0 || d.hbMsgType == "ping" {
+			messageType = "full"
+		} else {
+			messageType = "patch"
+		}
+	}
+	if messageType != d.hbMsgType {
+		if messageType == "full" && len(remoteNeedFull) > 0 {
+			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v (peers want full: %v)",
+				d.hbMsgType, messageType, d.hbGens, strings.Join(remoteNeedFull, ", "))
+		} else {
+			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v", d.hbMsgType, messageType, d.hbGens)
+		}
+		d.hbMsgType = messageType
+	}
+	return
 }

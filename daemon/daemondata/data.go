@@ -43,6 +43,24 @@ type (
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
 		hbSendQ     chan<- hbtype.Msg
+
+		// subHbMode holds the hb mode of cluster nodes:
+		//
+		// for local node: value is set during func (d *data) getHbMessage()
+		// for peer:  value it set during func (d *data) onReceiveHbMsg
+		subHbMode map[string]string
+
+		// hbGens holds the cluster nodes gens
+		//
+		// values are used for the choice of next message type choice
+		// - map[peer]map[string]uint64 it set from the received gens of peer
+		// - map[localnode]map[string]uint64 it from local gen after successfull
+		//   apply full, apply patch, or during commitPendingOps
+		hbGens map[string]map[string]uint64
+
+		// needMsg is set to true when a peer node doesn't know localnode current data gen
+		// set to false after a hb message is created
+		needMsg bool
 	}
 
 	gens       map[string]uint64
@@ -69,12 +87,28 @@ var (
 	propagationInterval = 250 * time.Millisecond
 
 	// subHbRefreshInterval is the minimum interval for update of: sub.hb
-	subHbRefreshInterval = 10 * time.Second
+	subHbRefreshInterval = 100 * propagationInterval
 
 	countRoutineInterval = 1 * time.Second
 )
 
-func run(ctx context.Context, cmdC <-chan interface{}) {
+// run the daemondata loop
+//
+// the loop does following action in order
+//
+//	 1- on propagate ticker:
+//	   commitPendingOps
+//	   pubPeerDataChanges
+//	   update sub hb stat on adaptive ticker (from 250ms to 25s)
+//	   queueNewHbMsg when hb message is needed
+//
+//	 2- read hbrx message from queue -> onReceiveHbMsg
+//	    apply ping
+//	    or apply full
+//	    or apply patch
+//
+//	3- process daemondata cmd
+func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Msg) {
 	counterCmd, cancel := callcount.Start(ctx, idToName)
 	defer cancel()
 	d := newData(counterCmd)
@@ -95,7 +129,9 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	propagationTicker := time.NewTicker(propagationInterval)
 	defer propagationTicker.Stop()
 
-	subHbRefreshTicker := time.NewTicker(subHbRefreshInterval)
+	subHbRefreshAdaptiveInterval := propagationInterval
+	subHbRefreshTicker := time.NewTicker(subHbRefreshAdaptiveInterval)
+
 	defer subHbRefreshTicker.Stop()
 	d.msgLocalGen = make(map[string]uint64)
 
@@ -124,25 +160,45 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 
 			return
 		case <-propagationTicker.C:
-			changes := d.commitPendingOps()
-			if !changes && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
-				changes = true
+			needMessage := d.commitPendingOps()
+			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
+				needMessage = true
 			}
 			d.pubPeerDataChanges()
 			select {
 			case <-subHbRefreshTicker.C:
 				d.setSubHb()
-				changes = true
+				d.log.Debug().Msgf("current hb msg mode %s", d.subHbMode[d.localNode])
+				needMessage = true
+				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
+					subHbRefreshAdaptiveInterval = 2 * subHbRefreshAdaptiveInterval
+					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
+					d.log.Debug().Msgf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+				}
+			default:
+			}
+			select {
 			case <-countRoutineTicker.C:
 				d.pending.Monitor.Routines = runtime.NumGoroutine()
 			default:
 			}
-			if changes {
+			if needMessage || d.needMsg {
+				hbMsgType := d.hbMsgType
 				if err := d.queueNewHbMsg(); err != nil {
 					d.log.Error().Err(err).Msg("queue hb message")
+				} else {
+					d.needMsg = false
+					if hbMsgType != d.hbMsgType {
+						subHbRefreshAdaptiveInterval = propagationInterval
+						d.log.Debug().Msgf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+						subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
+						hbMsgType = d.hbMsgType
+					}
 				}
 			}
 			propagationTicker.Reset(propagationInterval)
+		case msg := <-hbRecvQ:
+			d.onReceiveHbMsg(msg)
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
 				beginCmd <- cmd

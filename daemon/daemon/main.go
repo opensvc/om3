@@ -145,8 +145,9 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	hbcache.Start(t.ctx)
 
-	dataCmd, dataCmdCancel := daemondata.Start(t.ctx)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx)
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
+	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
 	defer func() {
 		t.cancelFuncs = append(t.cancelFuncs, func() {

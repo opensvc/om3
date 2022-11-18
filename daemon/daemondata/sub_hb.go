@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"encoding/json"
+	"sort"
 	"time"
 
 	"opensvc.com/opensvc/core/cluster"
@@ -12,9 +13,22 @@ import (
 
 func (d *data) setSubHb() {
 	d.counterCmd <- idSetSubHb
+	hbModes := make([]cluster.HbMode, 0)
+	nodes := make([]string, 0)
+	for node := range d.subHbMode {
+		nodes = append(nodes, node)
+	}
+	sort.Strings(nodes)
+	for _, node := range nodes {
+		hbModes = append(hbModes, cluster.HbMode{
+			Node: node,
+			Mode: d.subHbMode[node],
+		})
+	}
+
 	subHb := cluster.SubHb{
 		Heartbeats: hbcache.Heartbeats(),
-		Modes:      hbcache.Modes(),
+		Modes:      hbModes,
 	}
 	d.pending.Sub.Hb = subHb
 	// TODO Use a dedicated msg for heartbeats updates
