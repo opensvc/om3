@@ -10,6 +10,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/enable"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -39,7 +40,7 @@ type (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		loopDelay:   1000 * time.Millisecond,
+		loopDelay:   250 * time.Millisecond,
 		loopEnabled: enable.New(),
 		log:         log.Logger.With().Str("name", "monitor").Logger(),
 	}
@@ -80,25 +81,47 @@ func (t *T) loop() {
 	t.log.Info().Msg("loop started")
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
-	t.aLoop()
+	sentGens := make(map[string]uint64)
+	daemonData := daemondata.FromContext(t.ctx)
+
+	loopTask := func() {
+		daemonData.CommitPending(t.ctx)
+		if msg, err := daemonData.GetHbMessage(t.ctx); err != nil {
+			t.log.Error().Err(err).Msg("can't queue hb message")
+		} else {
+			var needSend bool
+			newGens := hbcache.LocalGens()
+			if msg.Kind != "patch" {
+				needSend = true
+			} else if len(newGens) != len(sentGens) {
+				needSend = true
+			} else {
+				for n, v := range hbcache.LocalGens() {
+					if sentGens[n] != v {
+						needSend = true
+						break
+					}
+				}
+			}
+
+			if needSend {
+				t.log.Debug().Msgf("queue a new hb message %s gen %v", msg.Kind, newGens)
+				daemonctx.HBSendQ(t.ctx) <- msg
+				sentGens = newGens
+			} else {
+				t.log.Debug().Msgf("already queued message %s %v", msg.Kind, sentGens)
+			}
+		}
+	}
+
+	loopTask()
 	for {
 		select {
 		case <-t.ctx.Done():
 			t.log.Info().Msg("loop stopped")
 			return
 		case <-ticker.C:
-			t.aLoop()
+			loopTask()
 		}
-	}
-}
-
-func (t *T) aLoop() {
-	daemonData := daemondata.FromContext(t.ctx)
-	daemonData.CommitPending(t.ctx)
-	if msg, err := daemonData.GetHbMessage(t.ctx); err != nil {
-		t.log.Error().Err(err).Msg("can't queue hb message")
-	} else {
-		t.log.Debug().Msg("queue a new hb message")
-		daemonctx.HBSendQ(t.ctx) <- msg
 	}
 }

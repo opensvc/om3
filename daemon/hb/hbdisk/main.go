@@ -158,7 +158,7 @@ func (t *T) Configure(ctx context.Context) {
 	log.Debug().Msgf("configure %s, timeout=%s interval=%s dev=%s nodes=%s onodes=%s", t.Name(), timeout, interval, dev, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s intf: %s", dev, nodes, timeout)
+	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s intf: %s interval: %s", dev, nodes, timeout, interval)
 	t.SetSignature(signature)
 	name := t.Name()
 	baba := base{

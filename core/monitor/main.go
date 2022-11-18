@@ -244,7 +244,7 @@ func (m T) watch(statusGetter Getter, eventGetter EventGetter, out io.Writer) er
 					if id > nextId {
 						_, _ = fmt.Fprintf(os.Stderr, "break %d != %s, sortIds:%v\n",
 							id, nextId, sortIds)
-						break
+						return nil
 					} else if id < nextId && (nextId-id) > 20 {
 						_, _ = fmt.Fprintf(os.Stderr, "reset break %d != %s, sortIds:%v\n",
 							id, nextId, sortIds)

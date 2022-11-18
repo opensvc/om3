@@ -47,13 +47,14 @@ import (
 type (
 	// T struct implement TConfer
 	T struct {
-		driver  string
-		name    string
-		config  *xconfig.T
-		rx      hbtype.Receiver
-		tx      hbtype.Transmitter
-		nodes   []string
-		timeout time.Duration
+		driver   string
+		name     string
+		config   *xconfig.T
+		rx       hbtype.Receiver
+		tx       hbtype.Transmitter
+		nodes    []string
+		timeout  time.Duration
+		interval time.Duration
 
 		// sig configured signature to detect conf changes
 		sig string
@@ -75,6 +76,7 @@ type (
 		Name() string
 		Type() string
 		Config() *xconfig.T
+		Interval() time.Duration
 		Timeout() time.Duration
 		Tx() hbtype.Transmitter
 		Rx() hbtype.Receiver
@@ -86,6 +88,7 @@ type (
 		SetConfig(*xconfig.T)
 		SetRx(receiver hbtype.Receiver)
 		SetTx(transmitter hbtype.Transmitter)
+		SetInterval(time.Duration)
 		SetTimeout(time.Duration)
 		SetNodes([]string)
 		SetSignature(string)
@@ -201,6 +204,10 @@ func (t *T) Nodes() []string {
 	return t.nodes
 }
 
+func (t *T) SetInterval(interval time.Duration) {
+	t.interval = interval
+}
+
 func (t *T) SetTimeout(timeout time.Duration) {
 	t.timeout = timeout
 }
@@ -213,6 +220,10 @@ func (t *T) SetSignature(s string) {
 // Signature return the string identification of config details
 func (t *T) Signature() string {
 	return t.sig
+}
+
+func (t *T) Interval() time.Duration {
+	return t.interval
 }
 
 func (t *T) Timeout() time.Duration {

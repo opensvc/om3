@@ -69,12 +69,21 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				Timeout:  t.timeout,
 			}
 		}
+		var b []byte
+		ticker := time.NewTimer(t.interval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case b := <-msgC:
+			case b = <-msgC:
+				t.log.Debug().Msg("send new msg")
 				t.send(b)
+				ticker.Reset(t.interval)
+			case <-ticker.C:
+				t.log.Debug().Msg("re-send msg")
+				t.send(b)
+				ticker.Reset(t.interval)
 			}
 		}
 	}()
