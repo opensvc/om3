@@ -95,7 +95,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Info().Msg(reason)
+				t.log.Debug().Msg(reason)
 				go t.send(b)
 			}
 		}
