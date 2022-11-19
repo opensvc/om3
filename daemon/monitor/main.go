@@ -7,10 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/enable"
-	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/funcopt"
@@ -81,38 +78,8 @@ func (t *T) loop() {
 	t.log.Info().Msg("loop started")
 	ticker := time.NewTicker(t.loopDelay)
 	defer ticker.Stop()
-	sentGens := make(map[string]uint64)
-	daemonData := daemondata.FromContext(t.ctx)
 
-	loopTask := func() {
-		daemonData.CommitPending(t.ctx)
-		if msg, err := daemonData.GetHbMessage(t.ctx); err != nil {
-			t.log.Error().Err(err).Msg("can't queue hb message")
-		} else {
-			var needSend bool
-			newGens := hbcache.LocalGens()
-			if msg.Kind != "patch" {
-				needSend = true
-			} else if len(newGens) != len(sentGens) {
-				needSend = true
-			} else {
-				for n, v := range hbcache.LocalGens() {
-					if sentGens[n] != v {
-						needSend = true
-						break
-					}
-				}
-			}
-
-			if needSend {
-				t.log.Debug().Msgf("queue a new hb message %s gen %v", msg.Kind, newGens)
-				daemonctx.HBSendQ(t.ctx) <- msg
-				sentGens = newGens
-			} else {
-				t.log.Debug().Msgf("already queued message %s %v", msg.Kind, sentGens)
-			}
-		}
-	}
+	loopTask := func() {}
 
 	loopTask()
 	for {

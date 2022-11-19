@@ -1,23 +1,25 @@
 /*
-	Package daemondata implements daemon journaled data
+Package daemondata implements daemon journaled data
 
-	import "opensvc.com/opensvc/daemon/daemondata"
-	cmdC, cancel := daemondata.Start(context.Background())
-	defer cancel()
-	dataBus := daemondata.New(cmdC)
+import "opensvc.com/opensvc/daemon/daemondata"
+cmdC, cancel := daemondata.Start(context.Background())
+defer cancel()
+dataBus := daemondata.New(cmdC)
 
-	status := dataBus.GetStatus() // retrieve daemon data
-	bus.ApplyFull("remote-1", remoteNodeStatus)
-	bus.ApplyPatch("remote-1", patchMsg)
-	bus.CommitPending(context.Background())
-	status = bus.GetStatus()
-	localNodeStatus := bus.GetLocalNodeStatus()
+status := dataBus.GetStatus() // retrieve daemon data
+bus.ApplyFull("remote-1", remoteNodeStatus)
+bus.ApplyPatch("remote-1", patchMsg)
+bus.CommitPending(context.Background())
+status = bus.GetStatus()
+localNodeStatus := bus.GetLocalNodeStatus()
 */
 package daemondata
 
 import (
 	"context"
 	"sync"
+
+	"opensvc.com/opensvc/core/hbtype"
 )
 
 type (
@@ -31,16 +33,17 @@ type (
 // Start runs the daemon journaled data manager
 //
 // It returns a cmdC chan to submit actions on cluster data
-func Start(parent context.Context) (chan<- interface{}, context.CancelFunc) {
+func Start(parent context.Context) (chan<- interface{}, chan<- *hbtype.Msg, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
 	cmdC := make(chan interface{})
+	hbRecvMsgQ := make(chan *hbtype.Msg)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		run(ctx, cmdC)
+		run(ctx, cmdC, hbRecvMsgQ)
 	}()
-	return cmdC, func() {
+	return cmdC, hbRecvMsgQ, func() {
 		cancel()
 		wg.Wait()
 	}

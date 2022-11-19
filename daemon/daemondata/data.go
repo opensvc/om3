@@ -9,6 +9,8 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/callcount"
 	"opensvc.com/opensvc/util/durationlog"
@@ -37,6 +39,28 @@ type (
 		counterCmd chan<- interface{}
 		log        zerolog.Logger
 		bus        *pubsub.Bus
+
+		// msgLocalGen hold the latest published msg gen for localhost
+		msgLocalGen map[string]uint64
+		hbSendQ     chan<- hbtype.Msg
+
+		// subHbMode holds the hb mode of cluster nodes:
+		//
+		// for local node: value is set during func (d *data) getHbMessage()
+		// for peer:  value it set during func (d *data) onReceiveHbMsg
+		subHbMode map[string]string
+
+		// hbGens holds the cluster nodes gens
+		//
+		// values are used for the choice of next message type choice
+		// - map[peer]map[string]uint64 it set from the received gens of peer
+		// - map[localnode]map[string]uint64 it from local gen after successfull
+		//   apply full, apply patch, or during commitPendingOps
+		hbGens map[string]map[string]uint64
+
+		// needMsg is set to true when a peer node doesn't know localnode current data gen
+		// set to false after a hb message is created
+		needMsg bool
 	}
 
 	gens       map[string]uint64
@@ -55,19 +79,43 @@ type (
 
 var (
 	cmdDurationWarn = time.Second
+
+	// propagationInterval is the minimum interval of:
+	// - commit pending ops (update patch queue, send local events to event.Event subscribers)
+	// - pub applied changes from peers
+	// - queueNewHbMsg (hb message type change, push msg to hb send queue)
+	propagationInterval = 250 * time.Millisecond
+
+	// subHbRefreshInterval is the minimum interval for update of: sub.hb
+	subHbRefreshInterval = 100 * propagationInterval
+
+	countRoutineInterval = 1 * time.Second
 )
 
-func run(ctx context.Context, cmdC <-chan interface{}) {
+// run the daemondata loop
+//
+// the loop does following action in order
+//
+//	 1- on propagate ticker:
+//	   commitPendingOps
+//	   pubPeerDataChanges
+//	   update sub hb stat on adaptive ticker (from 250ms to 25s)
+//	   queueNewHbMsg when hb message is needed
+//
+//	 2- read hbrx message from queue -> onReceiveHbMsg
+//	    apply ping
+//	    or apply full
+//	    or apply patch
+//
+//	3- process daemondata cmd
+func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Msg) {
 	counterCmd, cancel := callcount.Start(ctx, idToName)
 	defer cancel()
 	d := newData(counterCmd)
 	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
 	d.log.Info().Msg("starting")
-	d.bus = pubsub.BusFromContext(ctx)
-
 	defer d.log.Info().Msg("stopped")
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	d.bus = pubsub.BusFromContext(ctx)
 
 	watchCmd := &durationlog.T{Log: d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
@@ -77,6 +125,20 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 	go func() {
 		watchCmd.WarnExceeded(watchDurationCtx, beginCmd, endCmd, cmdDurationWarn, "data")
 	}()
+
+	propagationTicker := time.NewTicker(propagationInterval)
+	defer propagationTicker.Stop()
+
+	subHbRefreshAdaptiveInterval := propagationInterval
+	subHbRefreshTicker := time.NewTicker(subHbRefreshAdaptiveInterval)
+
+	defer subHbRefreshTicker.Stop()
+	d.msgLocalGen = make(map[string]uint64)
+
+	countRoutineTicker := time.NewTicker(countRoutineInterval)
+	defer countRoutineTicker.Stop()
+
+	d.hbSendQ = daemonctx.HBSendQ(ctx)
 
 	for {
 		select {
@@ -97,8 +159,46 @@ func run(ctx context.Context, cmdC <-chan interface{}) {
 			}()
 
 			return
-		case <-ticker.C:
-			d.pending.Monitor.Routines = runtime.NumGoroutine()
+		case <-propagationTicker.C:
+			needMessage := d.commitPendingOps()
+			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
+				needMessage = true
+			}
+			d.pubPeerDataChanges()
+			select {
+			case <-subHbRefreshTicker.C:
+				d.setSubHb()
+				d.log.Debug().Msgf("current hb msg mode %s", d.subHbMode[d.localNode])
+				needMessage = true
+				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
+					subHbRefreshAdaptiveInterval = 2 * subHbRefreshAdaptiveInterval
+					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
+					d.log.Debug().Msgf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+				}
+			default:
+			}
+			select {
+			case <-countRoutineTicker.C:
+				d.pending.Monitor.Routines = runtime.NumGoroutine()
+			default:
+			}
+			if needMessage || d.needMsg {
+				hbMsgType := d.hbMsgType
+				if err := d.queueNewHbMsg(); err != nil {
+					d.log.Error().Err(err).Msg("queue hb message")
+				} else {
+					d.needMsg = false
+					if hbMsgType != d.hbMsgType {
+						subHbRefreshAdaptiveInterval = propagationInterval
+						d.log.Debug().Msgf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+						subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
+						hbMsgType = d.hbMsgType
+					}
+				}
+			}
+			propagationTicker.Reset(propagationInterval)
+		case msg := <-hbRecvQ:
+			d.onReceiveHbMsg(msg)
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
 				beginCmd <- cmd
@@ -120,10 +220,6 @@ type (
 	doneSetter interface {
 		setDone(context.Context, bool)
 	}
-
-	dataByter interface {
-		setDataByte(context.Context, []byte)
-	}
 )
 
 // dropCmd drops commands with side effects
@@ -134,7 +230,18 @@ func dropCmd(ctx context.Context, c interface{}) {
 		cmd.setError(ctx, nil)
 	case doneSetter:
 		cmd.setDone(ctx, true)
-	case dataByter:
-		cmd.setDataByte(ctx, []byte{})
 	}
+}
+
+func gensEqual(a, b gens) bool {
+	if len(a) != len(b) {
+		return false
+	} else {
+		for n, v := range a {
+			if b[n] != v {
+				return false
+			}
+		}
+	}
+	return true
 }

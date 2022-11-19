@@ -28,7 +28,9 @@ func (d *data) getPeersFromPrevAndPending() []string {
 	return xmap.Keys(nodes)
 }
 
-func (d *data) pubMsgFromNodeDataDiff() {
+// pubPeerDataChanges propagate peers data changes (node status, node monitor,
+// node instances) since last call has new publications.
+func (d *data) pubPeerDataChanges() {
 	for _, node := range d.getPeersFromPrevAndPending() {
 		current := d.refreshPreviousUpdated(node)
 		if current == nil {

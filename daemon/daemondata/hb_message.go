@@ -1,65 +1,41 @@
 package daemondata
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/hbcache"
 )
 
-type opGetHbMessageResponse struct {
-	msg hbtype.Msg
-	err error
+// queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
+func (d *data) queueNewHbMsg() error {
+	if msg, err := d.getHbMessage(); err != nil {
+		return err
+	} else {
+		msgLocalGen := make(gens)
+		for n, gen := range msg.Gen {
+			msgLocalGen[n] = gen
+		}
+		d.msgLocalGen = msgLocalGen
+		if d.hbSendQ != nil {
+			d.log.Debug().Msgf("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
+			d.hbSendQ <- msg
+		}
+	}
+	return nil
 }
 
-type opGetHbMessage struct {
-	msgType  string
-	response chan<- opGetHbMessageResponse
-}
-
-func (o opGetHbMessage) setDataByte(err error) {
-	o.response <- opGetHbMessageResponse{}
-}
-
-// GetHbMessage provides the hb message to send on remotes
-//
-// retrieve next hb message to send.
+// getHbMessage retrieves next hb message to send.
 // the message type is result of hbcache.MsgType()
 // on success it updates hbcache with latest HbMsgInfo:
 //
 //	"full", "ping" or len <msg.delta> (patch)
-func (t T) GetHbMessage(ctx context.Context) (msg hbtype.Msg, err error) {
-	msgType := hbcache.MsgType()
-	responseC := make(chan opGetHbMessageResponse)
-	t.cmdC <- opGetHbMessage{
-		msgType:  msgType,
-		response: responseC,
-	}
-	select {
-	case <-ctx.Done():
-		return
-	case response := <-responseC:
-		err = response.err
-		if err != nil {
-			return
-		}
-		msg = response.msg
-		if msgType == "patch" {
-			hbcache.SetLocalHbMsgInfo(fmt.Sprintf("%d", len(msg.Deltas)))
-		} else {
-			hbcache.SetLocalHbMsgInfo(msg.Kind)
-		}
-		return
-	}
-}
-
-func (o opGetHbMessage) call(ctx context.Context, d *data) {
+func (d *data) getHbMessage() (hbtype.Msg, error) {
 	d.counterCmd <- idGetHbMessage
-	d.log.Debug().Msg("opGetHbMessage")
-	d.hbMsgType = hbcache.MsgType()
+	d.log.Debug().Msg("getHbMessage")
+	d.setNextMsgType()
 	var err error
 	msg := hbtype.Msg{
 		Compat:   d.pending.Cluster.Node[d.localNode].Status.Compat,
@@ -68,34 +44,28 @@ func (o opGetHbMessage) call(ctx context.Context, d *data) {
 		Gen:      d.deepCopyLocalGens(),
 		Updated:  time.Now(),
 	}
-	defer func() {
-		// release cmd bus
-		go func() {
-			o.response <- opGetHbMessageResponse{
-				msg: msg,
-				err: err,
-			}
-		}()
-	}()
 	switch d.hbMsgType {
 	case "patch":
 		delta, err := d.patchQueue.deepCopy()
 		if err != nil {
 			d.log.Error().Err(err).Msg("can't create delta for hb patch message")
-			return
+			return msg, err
 		}
+		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
 		msg.Deltas = delta
-		return
+		return msg, nil
 	case "full":
 		nodeData := d.pending.Cluster.Node[d.localNode]
 		msg.Full = *nodeData.DeepCopy()
-		return
+		d.subHbMode[d.localNode] = msg.Kind
+		return msg, nil
 	case "ping":
-		return
+		d.subHbMode[d.localNode] = msg.Kind
+		return msg, nil
 	default:
 		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMsgType)
 		d.log.Error().Err(err).Msg("opGetHbMessage")
-		return
+		return msg, err
 	}
 }
 
@@ -116,4 +86,40 @@ func (d *data) deepCopyLocalGens() gens {
 		localGens[n] = gen
 	}
 	return localGens
+}
+
+func (d *data) setNextMsgType() {
+	var messageType string
+	var remoteNeedFull []string
+	if d.hbMsgType == "undef" {
+		// init
+		messageType = "ping"
+	} else if len(d.hbGens) <= 1 || d.hbMsgType == "undef" {
+		// no hb msg received yet
+		messageType = "ping"
+	} else {
+		for node, gen := range d.hbGens {
+			if node == d.localNode {
+				continue
+			}
+			if gen[d.localNode] == 0 {
+				remoteNeedFull = append(remoteNeedFull, node)
+			}
+		}
+		if len(remoteNeedFull) > 0 || d.hbMsgType == "ping" {
+			messageType = "full"
+		} else {
+			messageType = "patch"
+		}
+	}
+	if messageType != d.hbMsgType {
+		if messageType == "full" && len(remoteNeedFull) > 0 {
+			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v (peers want full: %v)",
+				d.hbMsgType, messageType, d.hbGens, strings.Join(remoteNeedFull, ", "))
+		} else {
+			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v", d.hbMsgType, messageType, d.hbGens)
+		}
+		d.hbMsgType = messageType
+	}
+	return
 }

@@ -163,7 +163,8 @@ func (t *rx) recv(nodename string) {
 		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", nodename)
 		return
 	}
-	t.log.Debug().Msgf("recv: node %s unmarshaled %#v", nodename, msg)
+	t.log.Debug().Msgf("recv: node %s", nodename)
+	//t.log.Debug().Msgf("recv: node %s unmarshaled %#v", nodename, msg)
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbId:     t.id,

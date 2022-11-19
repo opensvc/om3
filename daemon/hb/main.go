@@ -19,9 +19,7 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
-	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -314,11 +312,16 @@ func (t *T) msgToTx(ctx context.Context) error {
 	return nil
 }
 
+// msgFromRx get hbrx decoded messages from readMsgQueue, and
+// forward the decoded hb message to daemondata HBRecvMsgQ.
+//
+// When multiple hb rx are running, we can get multiple times the same hb message,
+// but only one hb decoded message is forwarded to daemondata HBRecvMsgQ
 func (t *T) msgFromRx(ctx context.Context) {
 	count := 0.0
 	statTicker := time.NewTicker(60 * time.Second)
 	defer statTicker.Stop()
-	daemonData := daemondata.FromContext(ctx)
+	dataMsgRecvQ := daemonctx.HBRecvMsgQ(ctx)
 	msgTimes := make(map[string]time.Time)
 	msgTimeDuration := 10 * time.Minute
 	for {
@@ -341,20 +344,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 			}
 			t.log.Debug().Msgf("process msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 			msgTimes[peer] = msg.Updated
-			switch msg.Kind {
-			case "patch":
-				mode := fmt.Sprintf("%d", len(msg.Deltas))
-				hbcache.SetFromPeerMsg(msg.Nodename, mode, msg.Gen)
-				err := daemonData.ApplyPatch(msg.Nodename, msg)
-				if err != nil {
-					t.log.Error().Err(err).Msgf("ApplyPatch %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
-				}
-			case "full":
-				hbcache.SetFromPeerMsg(msg.Nodename, msg.Kind, msg.Gen)
-				daemonData.ApplyFull(msg.Nodename, &msg.Full)
-			case "ping":
-				hbcache.SetFromPeerMsg(msg.Nodename, msg.Kind, msg.Gen)
-			}
+			dataMsgRecvQ <- msg
 			count++
 		}
 	}

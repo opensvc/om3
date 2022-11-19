@@ -1,77 +1,58 @@
 package daemondata
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"time"
 
-	"gopkg.in/errgo.v2/fmt/errors"
-
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/util/jsondelta"
 )
-
-type opApplyRemotePatch struct {
-	nodename string
-	msg      *hbtype.Msg
-	err      chan<- error
-}
 
 var (
 	eventId uint64
 )
 
-func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
+func (d *data) applyPatch(msg *hbtype.Msg) error {
 	d.counterCmd <- idApplyPatch
-	d.log.Debug().Msgf("apply patch %s", o.nodename)
+	local := d.localNode
+	remote := msg.Nodename
+	d.log.Debug().Msgf("apply patch %s", remote)
 	var (
 		pendingB []byte
 		err      error
 		changes  bool
 		sortGen  []uint64
-		needFull bool
 	)
-	local := d.localNode
-	remote := o.nodename
-	defer func() {
-		if needFull {
-			d.pending.Cluster.Node[local].Status.Gen[remote] = 0
-		}
-		d.log.Debug().
-			Interface("msg gens", o.msg.Gen).
-			Interface("patch_sequence", sortGen).
-			Msgf("apply patch %s gen %v", remote, o.msg.Gen[remote])
 
-		hbcache.SetLocalGens(d.pending.Cluster.Node[local].Status.Gen)
-		o.err <- err
-		return
-	}()
+	setNeedFull := func() {
+		d.pending.Cluster.Node[local].Status.Gen[remote] = 0
+	}
+
 	if d.pending.Cluster.Node[local].Status.Gen[remote] == 0 {
-		d.log.Debug().Msgf("apply patch skipped %s gen %v (wait full)", remote, o.msg.Gen[remote])
-		return
+		d.log.Debug().Msgf("apply patch skipped %s gen %v (wait full)", remote, msg.Gen[remote])
+		return nil
 	}
 	pendingRemote, ok := d.pending.Cluster.Node[remote]
 	if !ok {
 		panic("apply patch on nil cluster node data for " + remote)
 	}
 	pendingNodeGen := pendingRemote.Status.Gen[remote]
-	if o.msg.Gen[remote] < pendingNodeGen {
-		d.log.Info().Msgf("apply patch skipped %s gen %v (ask full from restarted remote)", remote, o.msg.Gen[remote])
-		needFull = true
-		return
+	if msg.Gen[remote] < pendingNodeGen {
+		d.log.Info().Msgf("apply patch skipped %s gen %v (ask full from restarted remote)", remote, msg.Gen[remote])
+		setNeedFull()
+		return nil
 	}
-	if len(o.msg.Deltas) == 0 && o.msg.Gen[remote] > pendingRemote.Status.Gen[remote] {
-		d.log.Info().Msgf("apply patch skipped %s gen %v (ask full from empty patch)", remote, o.msg.Gen[remote])
-		needFull = true
-		return
+	if len(msg.Deltas) == 0 && msg.Gen[remote] > pendingRemote.Status.Gen[remote] {
+		d.log.Info().Msgf("apply patch skipped %s gen %v (ask full from empty patch)", remote, msg.Gen[remote])
+		setNeedFull()
+		return nil
 	}
-	deltas := o.msg.Deltas
+	deltas := msg.Deltas
 	for k := range deltas {
 		gen, err1 := strconv.ParseUint(k, 10, 64)
 		if err1 != nil {
@@ -88,18 +69,17 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 			continue
 		}
 		if gen > pendingNodeGen+1 {
-			msg := fmt.Sprintf("apply patch %s found broken sequence on gen %d from sequence %v, current known gen %d", remote, gen, sortGen, pendingNodeGen)
-			err = errors.New(msg)
+			err := fmt.Errorf("apply patch %s found broken sequence on gen %d from sequence %v, current known gen %d", remote, gen, sortGen, pendingNodeGen)
 			d.log.Info().Err(err).Msgf("apply patch need full %s", remote)
-			needFull = true
-			return
+			setNeedFull()
+			return err
 		}
 		if !changes {
 			// initiate pendingB
 			pendingB, err = json.Marshal(pendingRemote)
 			if err != nil {
 				d.log.Error().Err(err).Msgf("Marshal pendingRemote %s", remote)
-				return
+				return err
 			}
 			changes = true
 		}
@@ -108,8 +88,8 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 		pendingB, err = patch.Apply(pendingB)
 		if err != nil {
 			d.log.Info().Err(err).Msgf("apply patch %s delta %s (ask full)", remote, genS)
-			needFull = true
-			return
+			setNeedFull()
+			return err
 		}
 
 		absolutePatch := make(jsondelta.Patch, 0)
@@ -120,10 +100,9 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 				OpKind:  op.OpKind,
 			})
 		}
-		var b []byte
-		if b, err = json.Marshal(absolutePatch); err != nil {
+		if b, err := json.Marshal(absolutePatch); err != nil {
 			d.log.Error().Err(err).Msgf("Marshal absolutePatch %s", remote)
-			return
+			return err
 		} else {
 			eventId++
 			d.bus.Pub(event.Event{
@@ -138,22 +117,13 @@ func (o opApplyRemotePatch) call(ctx context.Context, d *data) {
 	if changes {
 		// patches has been applied get update pendingRemote
 		pendingRemote = cluster.NodeData{}
-		if err = json.Unmarshal(pendingB, &pendingRemote); err != nil {
+		if err := json.Unmarshal(pendingB, &pendingRemote); err != nil {
 			d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", remote)
-			return
+			return err
 		}
 	}
-	pendingRemote.Status.Gen = o.msg.Gen
+	pendingRemote.Status.Gen = msg.Gen
 	d.pending.Cluster.Node[remote] = pendingRemote
-	d.pending.Cluster.Node[local].Status.Gen[remote] = o.msg.Gen[remote]
-}
-
-func (t T) ApplyPatch(nodename string, msg *hbtype.Msg) error {
-	err := make(chan error)
-	t.cmdC <- opApplyRemotePatch{
-		nodename: nodename,
-		msg:      msg,
-		err:      err,
-	}
-	return <-err
+	d.pending.Cluster.Node[local].Status.Gen[remote] = msg.Gen[remote]
+	return nil
 }

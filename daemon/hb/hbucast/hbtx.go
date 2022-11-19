@@ -72,25 +72,27 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		}
 		started <- true
 		var b []byte
-		ticker := time.NewTimer(t.interval)
+		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
+		var reason string
 		for {
 			select {
 			case <-ctx.Done():
 				t.log.Info().Msg("stopped")
 				return
 			case b = <-msgC:
-				t.log.Debug().Msg("send new msg")
-				for _, node := range t.nodes {
-					go t.send(node, b)
-				}
+				reason = "send msg"
 				ticker.Reset(t.interval)
 			case <-ticker.C:
-				t.log.Debug().Msg("re-send msg")
+				reason = "send msg (interval)"
+			}
+			if len(b) == 0 {
+				continue
+			} else {
+				t.log.Debug().Msg(reason)
 				for _, node := range t.nodes {
 					go t.send(node, b)
 				}
-				ticker.Reset(t.interval)
 			}
 		}
 	}()
