@@ -224,21 +224,20 @@ func (t *T) notRunning() bool {
 }
 
 func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool) error {
-	t := time.NewTimer(timeout)
-	defer func() {
-		if !t.Stop() {
-			<-t.C
-		}
-	}()
+	retryTicker := time.NewTicker(retryDelay)
+	defer retryTicker.Stop()
+
+	timeoutTicker := time.NewTicker(timeout)
+	defer timeoutTicker.Stop()
+
 	for {
 		select {
-		case <-t.C:
+		case <-timeoutTicker.C:
 			return errors.New("timeout reached")
-		default:
+		case <-retryTicker.C:
 			if f() == expected {
 				return nil
 			}
-			time.Sleep(retryDelay)
 		}
 	}
 }
