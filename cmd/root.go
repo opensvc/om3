@@ -108,6 +108,9 @@ func initLogger() {
 }
 
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
+	if flag := cmd.Flags().Lookup("debug"); flag != nil && flag.Value.String() == "true" {
+		debugFlag = true
+	}
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
 		foregroundFlag = true
 	}
