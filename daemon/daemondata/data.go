@@ -143,20 +143,19 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 	for {
 		select {
 		case <-ctx.Done():
-			bg, cleanupCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-			go func() {
-				d.log.Debug().Msg("drop pending cmds")
-				defer cleanupCancel()
-				for {
-					select {
-					case c := <-cmdC:
-						dropCmd(ctx, c)
-					case <-bg.Done():
-						d.log.Debug().Msg("drop pending cmds done")
-						return
-					}
+			d.log.Debug().Msg("drop pending cmds")
+			tC := time.After(100 * time.Millisecond)
+			for {
+				select {
+				case <-hbRecvQ:
+					// don't hang hbRecvQ writers
+				case c := <-cmdC:
+					dropCmd(ctx, c)
+				case <-tC:
+					d.log.Debug().Msg("drop pending cmds done")
+					return
 				}
-			}()
+			}
 
 			return
 		case <-propagationTicker.C:
