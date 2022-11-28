@@ -328,16 +328,17 @@ func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
 }
 
 func (b *Bus) drain() {
-	b.log.Debug().Msg("draining")
-	defer b.log.Debug().Msg("drained")
+	b.log.Info().Msg("draining")
+	defer b.log.Info().Msg("drained")
 	i := 0
 	tC := time.After(100 * time.Millisecond)
 	for {
 		select {
-		case <-tC:
-			b.log.Debug().Msgf("drained dropped %d pending messages from the bus on stop", i)
 		case <-b.cmdC:
 			i += 1
+		case <-tC:
+			b.log.Info().Msgf("drained dropped %d pending messages from the bus on stop", i)
+			return
 		}
 	}
 }
