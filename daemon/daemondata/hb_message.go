@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,7 +11,14 @@ import (
 )
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
-func (d *data) queueNewHbMsg() error {
+//
+// It aborts on done context
+func (d *data) queueNewHbMsg(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		d.log.Debug().Msg("abort queue new hb message (context is done)")
+	default:
+	}
 	if msg, err := d.getHbMessage(); err != nil {
 		return err
 	} else {
@@ -21,7 +29,11 @@ func (d *data) queueNewHbMsg() error {
 		d.msgLocalGen = msgLocalGen
 		if d.hbSendQ != nil {
 			d.log.Debug().Msgf("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
-			d.hbSendQ <- msg
+			select {
+			case <-ctx.Done():
+				d.log.Debug().Msgf("abort queue a new hb message %s gen %v (context is done)", msg.Kind, msgLocalGen)
+			case d.hbSendQ <- msg:
+			}
 		}
 	}
 	return nil

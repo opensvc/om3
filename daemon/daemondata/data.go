@@ -183,7 +183,7 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			}
 			if needMessage || d.needMsg {
 				hbMsgType := d.hbMsgType
-				if err := d.queueNewHbMsg(); err != nil {
+				if err := d.queueNewHbMsg(ctx); err != nil {
 					d.log.Error().Err(err).Msg("queue hb message")
 				} else {
 					d.needMsg = false
