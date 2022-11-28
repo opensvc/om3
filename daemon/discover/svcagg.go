@@ -11,29 +11,26 @@ import (
 func (d *discover) agg(started chan<- bool) {
 	log := d.log.With().Str("func", "agg").Logger()
 	log.Info().Msg("started")
-	defer func() {
-		t := time.NewTicker(dropCmdTimeout)
-		defer t.Stop()
-		for {
-			select {
-			case <-d.ctx.Done():
-				return
-			case <-t.C:
-				return
-			case <-d.svcaggCmdC:
-			}
-		}
-	}()
 	bus := pubsub.BusFromContext(d.ctx)
 	sub := bus.Sub("agg-from-cfg-create")
 	sub.AddFilter(msgbus.CfgUpdated{})
 	sub.Start()
 	defer sub.Stop()
 	started <- true
+	defer func() {
+		defer log.Info().Msg("stopped")
+		tC := time.After(dropCmdTimeout)
+		for {
+			select {
+			case <-tC:
+				return
+			case <-d.svcaggCmdC:
+			}
+		}
+	}()
 	for {
 		select {
 		case <-d.ctx.Done():
-			log.Info().Msg("stopped")
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
