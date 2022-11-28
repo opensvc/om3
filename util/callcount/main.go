@@ -1,29 +1,30 @@
 /*
-	Package callcount provides call count watcher
+Package callcount provides call count watcher
 
-	Example:
-		import "callcount"
-		mapping := map[int]string{
-			1: "operation 1",
-			2: "operation 2",
-			3: "operation 3",
-		}
-		c, cancel := callcount.Start(context.Background(), mapping)
-		defer cancel() stop the counter
-		c <- 1 // register func with id 1 as been called
-		c <- 2 // register func with id 2 as been called
-		c <- 1 // register func with id 1 as been called
-		c <- 8 // register func with id 8 has been called (undefined in mapping)
+Example:
 
-		Get(c) // return Counts{1: 2, 2:1, 8:1}
-		GetStats(c) // return Stats{"operation 1": 1, "operation 2":1, "unknown":1}
-		Reset(c) // resets current counters
+	import "callcount"
+	mapping := map[int]string{
+		1: "operation 1",
+		2: "operation 2",
+		3: "operation 3",
+	}
+	c, cancel := callcount.Start(context.Background(), mapping)
+	defer cancel() stop the counter
+	c <- 1 // register func with id 1 as been called
+	c <- 2 // register func with id 2 as been called
+	c <- 1 // register func with id 1 as been called
+	c <- 8 // register func with id 8 has been called (undefined in mapping)
+
+	Get(c) // return Counts{1: 2, 2:1, 8:1}
+	GetStats(c) // return Stats{"operation 1": 1, "operation 2":1, "unknown":1}
+	Reset(c) // resets current counters
 */
 package callcount
 
 import (
 	"context"
-	"sync"
+	"time"
 )
 
 type (
@@ -36,9 +37,9 @@ type (
 )
 
 /*
-	Start launch new go routine that watch call counts
+Start launch new go routine that watch call counts
 
-	It returns command control channel, and stop function to stop the counter
+It returns command control channel, and stop function to stop the counter
 */
 func Start(parent context.Context, mapping map[int]string) (chan<- interface{}, context.CancelFunc) {
 	if parent == nil {
@@ -46,17 +47,21 @@ func Start(parent context.Context, mapping map[int]string) (chan<- interface{}, 
 	}
 	ctx, cancel := context.WithCancel(parent)
 	c := make(chan interface{})
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		run(ctx, c, mapping)
+		tC := time.After(100 * time.Millisecond)
+		for {
+			select {
+			case <-tC:
+				// drop pending timeout reached
+				return
+			case <-c:
+				// drop pending
+			}
+		}
 	}()
 	var cmdC chan<- interface{} = c
-	return cmdC, func() {
-		cancel()
-		wg.Wait()
-	}
+	return cmdC, cancel
 }
 
 // Get return current Counts
