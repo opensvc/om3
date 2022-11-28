@@ -281,6 +281,19 @@ func (t *T) msgToTx(ctx context.Context) error {
 	t.unregisterTxC = make(chan string)
 	go func() {
 		registeredTxMsgQueue := make(map[string]chan []byte)
+		defer func() {
+			tC := time.After(100 * time.Millisecond)
+			for {
+				select {
+				case <-tC:
+					return
+				case <-msgC:
+					t.log.Debug().Msgf("msgToTx drop msg (done context)")
+				case <-t.registerTxC:
+				case <-t.unregisterTxC:
+				}
+			}
+		}()
 		for {
 			select {
 			case <-ctx.Done():
@@ -324,6 +337,17 @@ func (t *T) msgFromRx(ctx context.Context) {
 	dataMsgRecvQ := daemonctx.HBRecvMsgQ(ctx)
 	msgTimes := make(map[string]time.Time)
 	msgTimeDuration := 10 * time.Minute
+	defer func() {
+		tC := time.After(100 * time.Millisecond)
+		for {
+			select {
+			case <-tC:
+				return
+			case <-t.readMsgQueue:
+				t.log.Debug().Msgf("msgFromRx drop msg (done context)")
+			}
+		}
+	}()
 	for {
 		select {
 		case <-ctx.Done():
