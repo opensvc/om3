@@ -64,8 +64,8 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 			d.log.Error().Err(err).Msg("can't create delta for hb patch message")
 			return msg, err
 		}
-		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
 		msg.Deltas = delta
+		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
 		return msg, nil
 	case "full":
 		nodeData := d.pending.Cluster.Node[d.localNode]
