@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -116,7 +117,11 @@ func (d *data) setNextMsgType() {
 			}
 			if gen[d.localNode] == 0 {
 				remoteNeedFull = append(remoteNeedFull, node)
+			} else if d.hbMsgType == "full" && gen[d.localNode] < d.gen {
+				// stay in full, peers not ready for patch
+				remoteNeedFull = append(remoteNeedFull, node)
 			}
+
 		}
 		if len(remoteNeedFull) > 0 || d.hbMsgType == "ping" {
 			messageType = "full"
@@ -126,10 +131,12 @@ func (d *data) setNextMsgType() {
 	}
 	if messageType != d.hbMsgType {
 		if messageType == "full" && len(remoteNeedFull) > 0 {
-			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v (peers want full: %v)",
-				d.hbMsgType, messageType, d.hbGens, strings.Join(remoteNeedFull, ", "))
+			sort.Strings(remoteNeedFull)
+			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, need full:[%v], gens:%v)",
+				d.hbMsgType, messageType, d.gen, strings.Join(remoteNeedFull, ", "), d.hbGens)
 		} else {
-			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v", d.hbMsgType, messageType, d.hbGens)
+			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, gens:%v)",
+				d.hbMsgType, messageType, d.gen, d.hbGens)
 		}
 		d.hbMsgType = messageType
 	}
