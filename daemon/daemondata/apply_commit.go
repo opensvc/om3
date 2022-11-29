@@ -19,6 +19,7 @@ import (
 //	   drop patch queue entries that have been applied on all peers
 //
 //	  when hb mode is not patch
+//		   increase gen when pending ops exists
 //		   drop pending ops
 //		   drop patch queue
 func (d *data) commitPendingOps() (changes bool) {
@@ -31,6 +32,11 @@ func (d *data) commitPendingOps() (changes bool) {
 		d.movePendingOpsToPatchQueue()
 		d.purgeAppliedPatchQueue()
 	} else {
+		if changes {
+			// increase gen (we have changes that need to be sent before switching to patch mode)
+			d.gen++
+			d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
+		}
 		d.pendingOps = []jsondelta.Operation{}
 		d.patchQueue = make(patchQueue)
 	}
