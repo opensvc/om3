@@ -380,3 +380,27 @@ func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
 	}
 	return set
 }
+
+// doTransitionAction execute action and update transition states
+func (o *smon) doTransitionAction(action func() error, newState, successState, errorState string) {
+	o.transitionTo(newState)
+	if action() != nil {
+		o.transitionTo(errorState)
+	} else {
+		o.transitionTo(successState)
+	}
+}
+
+// doAction runs action + background orchestration from action state result
+//
+// 1- set transient state to newState
+// 2- run action
+// 3- go orchestrateAfterAction(newState, successState or errorState)
+func (o *smon) doAction(action func() error, newState, successState, errorState string) {
+	o.transitionTo(newState)
+	nextState := successState
+	if action() != nil {
+		nextState = errorState
+	}
+	go o.orchestrateAfterAction(newState, nextState)
+}
