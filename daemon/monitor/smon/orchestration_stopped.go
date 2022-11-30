@@ -38,7 +38,7 @@ func (o *smon) freezeStop() {
 }
 
 func (o *smon) stoppedFromThawed() {
-	o.doAction(o.crmFreeze, statusFreezing, statusIdle, statusFreezeFailed)
+	o.doTransitionAction(o.freeze, statusFreezing, statusIdle, statusFreezeFailed)
 }
 
 // doFreeze handle global expect stopped orchestration from idle
@@ -47,7 +47,7 @@ func (o *smon) stoppedFromThawed() {
 // else         => stopping
 func (o *smon) doFreezeStop() {
 	if o.instStatus[o.localhost].Frozen.IsZero() {
-		o.doAction(o.crmFreeze, statusFreezing, statusFrozen, statusFreezeFailed)
+		o.doTransitionAction(o.freeze, statusFreezing, statusFrozen, statusFreezeFailed)
 		return
 	} else {
 		o.doStop()
@@ -56,7 +56,7 @@ func (o *smon) doFreezeStop() {
 
 func (o *smon) doFreeze() {
 	if o.instStatus[o.localhost].Frozen.IsZero() {
-		o.doAction(o.crmFreeze, statusFreezing, statusFrozen, statusFreezeFailed)
+		o.doTransitionAction(o.freeze, statusFreezing, statusFrozen, statusFreezeFailed)
 		return
 	}
 }
