@@ -34,15 +34,6 @@ func (o *smon) orchestrateAfterAction(state, newState string) {
 	o.cmdC <- cmdOrchestrate{state: state, newState: newState}
 }
 
-func (o *smon) doAction(action func() error, newState, successState, errorState string) {
-	o.transitionTo(newState)
-	nextState := successState
-	if action() != nil {
-		nextState = errorState
-	}
-	go o.orchestrateAfterAction(newState, nextState)
-}
-
 func (o *smon) crmDelete() error {
 	return o.crmAction("delete", o.path.String(), "delete")
 }
