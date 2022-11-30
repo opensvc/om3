@@ -194,11 +194,24 @@ func (f Frame) sNodeHbMode() string {
 	for _, m := range modes {
 		mode[m.Node] = m.Mode
 	}
+	nodeCount := len(f.Current.Cluster.Config.Nodes)
 	for _, peer := range f.Current.Cluster.Config.Nodes {
 		if v, ok := mode[peer]; ok {
+			switch v {
+			case "full":
+				v = yellow("full")
+			case "ping":
+				if nodeCount > 1 {
+					v = yellow(v)
+				}
+			}
 			s += "\t" + v
 		} else {
-			s += "\t?"
+			v = "?"
+			if nodeCount > 1 {
+				v = red(v)
+			}
+			s += "\t" + v
 		}
 	}
 	return s
