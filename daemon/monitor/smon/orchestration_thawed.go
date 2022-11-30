@@ -11,14 +11,7 @@ func (o *smon) ThawedFromIdle() {
 	if o.thawedClearIfReached() {
 		return
 	}
-	o.state.Status = statusThawing
-	o.updateIfChange()
-	o.log.Info().Msg("run action unfreeze")
-	nextState := statusIdle
-	if err := o.crmUnfreeze(); err != nil {
-		nextState = statusThawedFailed
-	}
-	go o.orchestrateAfterAction(statusThawing, nextState)
+	o.doTransitionAction(o.unfreeze, statusThawing, statusIdle, statusThawedFailed)
 }
 
 func (o *smon) thawedClearIfReached() bool {
