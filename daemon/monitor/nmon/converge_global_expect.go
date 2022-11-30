@@ -30,7 +30,7 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 		if strVal == "" {
 			strVal = "unset"
 		}
-		o.log.Info().Msgf("apply global expect change from remote %s -> %s %s",
+		o.log.Info().Msgf("# apply global expect change from remote %s -> %s %s",
 			mostRecentNode, strVal, mostRecentUpdated)
 	}
 }

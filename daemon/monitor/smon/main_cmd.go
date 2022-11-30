@@ -160,7 +160,7 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 			}
 		}
 
-		o.log.Info().Msgf("prepare to set global expect %s -> %s", from, to)
+		o.log.Info().Msgf("# prepare to set global expect %s -> %s", from, to)
 		if c.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
 			o.state.GlobalExpect = c.GlobalExpect
