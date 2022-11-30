@@ -58,6 +58,10 @@ type (
 		//   apply full, apply patch, or during commitPendingOps
 		hbGens map[string]map[string]uint64
 
+		// hbPatchMsgUpdated track last applied kind patch hb message
+		// It is used to drop outdated patch messages
+		hbPatchMsgUpdated map[string]time.Time
+
 		// needMsg is set to true when a peer node doesn't know localnode current data gen
 		// set to false after a hb message is created
 		needMsg bool
