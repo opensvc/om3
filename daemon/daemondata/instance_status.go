@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"context"
+	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
@@ -26,6 +27,12 @@ type (
 		err   chan<- error
 		path  path.T
 		value instance.Status
+	}
+
+	opSetInstanceFrozen struct {
+		err    chan<- error
+		path   path.T
+		frozen time.Time
 	}
 )
 
@@ -54,6 +61,20 @@ func GetInstanceStatus(c chan<- interface{}, p path.T, node string) instance.Sta
 	}
 	c <- op
 	return <-status
+}
+
+// SetInstanceFrozen
+//
+// Monitor.Node.<localhost>.instance.<p>.status.Frozen
+func SetInstanceFrozen(c chan<- interface{}, p path.T, frozen time.Time) error {
+	err := make(chan error)
+	op := opSetInstanceFrozen{
+		err:    err,
+		path:   p,
+		frozen: frozen,
+	}
+	c <- op
+	return <-err
 }
 
 // SetInstanceStatus
@@ -111,6 +132,45 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
 	case <-ctx.Done():
 	case o.status <- s:
 	}
+}
+
+func (o opSetInstanceFrozen) call(ctx context.Context, d *data) {
+	d.counterCmd <- idSetInstanceFrozen
+	var (
+		op   jsondelta.Operation
+		ok   bool
+		inst instance.Instance
+	)
+	s := o.path.String()
+	value := o.frozen
+	if inst, ok = d.pending.Cluster.Node[d.localNode].Instance[s]; !ok {
+		o.err <- nil
+		return
+	}
+	newStatus := inst.Status.DeepCopy()
+	newStatus.Frozen = value
+	// TODO don't update newStatus.Updated if more recent
+	if value.IsZero() {
+		newStatus.Updated = time.Now()
+	} else {
+		newStatus.Updated = value
+	}
+	newStatus.Frozen = value
+	inst.Status = newStatus
+	d.pending.Cluster.Node[d.localNode].Instance[s] = inst
+
+	op = jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"instance", s, "status"},
+		OpValue: jsondelta.NewOptValue(inst.Status.DeepCopy()),
+		OpKind:  "replace",
+	}
+	d.pendingOps = append(d.pendingOps, op)
+	d.bus.Pub(msgbus.InstanceStatusUpdated{
+		Path:   o.path,
+		Node:   d.localNode,
+		Status: *newStatus,
+	}, pubsub.Label{"path", s})
+	o.err <- nil
 }
 
 func (o opSetInstanceStatus) call(ctx context.Context, d *data) {

@@ -45,6 +45,7 @@ const (
 	idSetSubHb
 	idGetStatus
 	idSetInstanceConfig
+	idSetInstanceFrozen
 	idSetInstanceStatus
 	idSetServiceAgg
 	idSetNmon
@@ -74,6 +75,7 @@ var (
 		idSetSubHb:          "set-sub-hb",
 		idSetServiceAgg:     "set-service-agg",
 		idSetInstanceConfig: "set-instance-config",
+		idSetInstanceFrozen: "set-instance-frozen",
 		idSetInstanceStatus: "set-instance-status",
 		idSetNmon:           "set-nmon",
 		idSetSmon:           "set-smon",
