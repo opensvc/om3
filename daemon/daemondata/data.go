@@ -58,6 +58,10 @@ type (
 		//   apply full, apply patch, or during commitPendingOps
 		hbGens map[string]map[string]uint64
 
+		// hbPatchMsgUpdated track last applied kind patch hb message
+		// It is used to drop outdated patch messages
+		hbPatchMsgUpdated map[string]time.Time
+
 		// needMsg is set to true when a peer node doesn't know localnode current data gen
 		// set to false after a hb message is created
 		needMsg bool
@@ -143,20 +147,19 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 	for {
 		select {
 		case <-ctx.Done():
-			bg, cleanupCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-			go func() {
-				d.log.Debug().Msg("drop pending cmds")
-				defer cleanupCancel()
-				for {
-					select {
-					case c := <-cmdC:
-						dropCmd(ctx, c)
-					case <-bg.Done():
-						d.log.Debug().Msg("drop pending cmds done")
-						return
-					}
+			d.log.Debug().Msg("drop pending cmds")
+			tC := time.After(100 * time.Millisecond)
+			for {
+				select {
+				case <-hbRecvQ:
+					// don't hang hbRecvQ writers
+				case c := <-cmdC:
+					dropCmd(ctx, c)
+				case <-tC:
+					d.log.Debug().Msg("drop pending cmds done")
+					return
 				}
-			}()
+			}
 
 			return
 		case <-propagationTicker.C:
@@ -184,7 +187,7 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			}
 			if needMessage || d.needMsg {
 				hbMsgType := d.hbMsgType
-				if err := d.queueNewHbMsg(); err != nil {
+				if err := d.queueNewHbMsg(ctx); err != nil {
 					d.log.Error().Err(err).Msg("queue hb message")
 				} else {
 					d.needMsg = false

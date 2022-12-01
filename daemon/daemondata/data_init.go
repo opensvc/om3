@@ -3,6 +3,7 @@ package daemondata
 import (
 	"path/filepath"
 	"strings"
+	"time"
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
@@ -59,6 +60,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		subHbMode:          map[string]string{localNode: "undef"},
 		hbMsgType:          "undef",
 		hbGens:             map[string]map[string]uint64{localNode: map[string]uint64{localNode: 0}},
+		hbPatchMsgUpdated:  make(map[string]time.Time),
 	}
 }
 

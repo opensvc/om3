@@ -1,8 +1,10 @@
 package daemondata
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,7 +12,14 @@ import (
 )
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
-func (d *data) queueNewHbMsg() error {
+//
+// It aborts on done context
+func (d *data) queueNewHbMsg(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		d.log.Debug().Msg("abort queue new hb message (context is done)")
+	default:
+	}
 	if msg, err := d.getHbMessage(); err != nil {
 		return err
 	} else {
@@ -21,7 +30,11 @@ func (d *data) queueNewHbMsg() error {
 		d.msgLocalGen = msgLocalGen
 		if d.hbSendQ != nil {
 			d.log.Debug().Msgf("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
-			d.hbSendQ <- msg
+			select {
+			case <-ctx.Done():
+				d.log.Debug().Msgf("abort queue a new hb message %s gen %v (context is done)", msg.Kind, msgLocalGen)
+			case d.hbSendQ <- msg:
+			}
 		}
 	}
 	return nil
@@ -51,8 +64,8 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 			d.log.Error().Err(err).Msg("can't create delta for hb patch message")
 			return msg, err
 		}
-		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
 		msg.Deltas = delta
+		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
 		return msg, nil
 	case "full":
 		nodeData := d.pending.Cluster.Node[d.localNode]
@@ -104,7 +117,11 @@ func (d *data) setNextMsgType() {
 			}
 			if gen[d.localNode] == 0 {
 				remoteNeedFull = append(remoteNeedFull, node)
+			} else if d.hbMsgType == "full" && gen[d.localNode] < d.gen {
+				// stay in full, peers not ready for patch
+				remoteNeedFull = append(remoteNeedFull, node)
 			}
+
 		}
 		if len(remoteNeedFull) > 0 || d.hbMsgType == "ping" {
 			messageType = "full"
@@ -114,10 +131,12 @@ func (d *data) setNextMsgType() {
 	}
 	if messageType != d.hbMsgType {
 		if messageType == "full" && len(remoteNeedFull) > 0 {
-			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v (peers want full: %v)",
-				d.hbMsgType, messageType, d.hbGens, strings.Join(remoteNeedFull, ", "))
+			sort.Strings(remoteNeedFull)
+			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, need full:[%v], gens:%v)",
+				d.hbMsgType, messageType, d.gen, strings.Join(remoteNeedFull, ", "), d.hbGens)
 		} else {
-			d.log.Info().Msgf("hb message type change %s -> %s local gens: %v", d.hbMsgType, messageType, d.hbGens)
+			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, gens:%v)",
+				d.hbMsgType, messageType, d.gen, d.hbGens)
 		}
 		d.hbMsgType = messageType
 	}

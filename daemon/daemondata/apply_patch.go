@@ -37,18 +37,48 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 		d.log.Debug().Msgf("apply patch skipped %s gen %v (wait full)", remote, msg.Gen[remote])
 		return nil
 	}
+	if msg.Updated.Before(d.hbPatchMsgUpdated[remote]) {
+		d.log.Debug().Msgf(
+			"apply patch skipped %s outdated msg "+
+				"(msg [gen:%d updated:%s], "+
+				"latest applied msg:[gen:%d updated:%s])",
+			remote,
+			msg.Gen[remote], msg.Updated,
+			d.pending.Cluster.Node[remote].Status.Gen[remote], d.hbPatchMsgUpdated[remote],
+		)
+		return nil
+	}
 	pendingRemote, ok := d.pending.Cluster.Node[remote]
 	if !ok {
 		panic("apply patch on nil cluster node data for " + remote)
 	}
 	pendingNodeGen := pendingRemote.Status.Gen[remote]
 	if msg.Gen[remote] < pendingNodeGen {
-		d.log.Info().Msgf("apply patch skipped %s gen %v (ask full from restarted remote)", remote, msg.Gen[remote])
+		deltaIds := []string{}
+		for k := range msg.Deltas {
+			deltaIds = append(deltaIds, k)
+		}
+		d.log.Info().Msgf(
+			"apply patch skipped %s gen %v (ask full from restarted remote) len delta:%d hbGens:%+v "+
+				"deltaIds: %+v "+
+				"cluster.node.%s.status.gen.%s:%d "+
+				"cluster.node.%s.status.gen:%+v ",
+			remote, msg.Gen[remote], len(msg.Deltas), d.hbGens,
+			deltaIds,
+			remote, remote, pendingNodeGen,
+			remote, pendingRemote.Status.Gen,
+		)
 		setNeedFull()
 		return nil
 	}
 	if len(msg.Deltas) == 0 && msg.Gen[remote] > pendingRemote.Status.Gen[remote] {
-		d.log.Info().Msgf("apply patch skipped %s gen %v (ask full from empty patch)", remote, msg.Gen[remote])
+		deltaIds := []string{}
+		for k := range msg.Deltas {
+			deltaIds = append(deltaIds, k)
+		}
+		d.log.Info().Msgf(
+			"apply patch skipped %s gen %v (ask full from empty patch) len deltas: %d gens:%+v deltaIds: %+v",
+			remote, msg.Gen[remote], len(msg.Deltas), d.hbGens, deltaIds)
 		setNeedFull()
 		return nil
 	}
@@ -91,7 +121,7 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 			setNeedFull()
 			return err
 		}
-
+		d.hbPatchMsgUpdated[remote] = msg.Updated
 		absolutePatch := make(jsondelta.Patch, 0)
 		for _, op := range deltas[genS] {
 			absolutePatch = append(absolutePatch, jsondelta.Operation{

@@ -41,6 +41,9 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 		if _, ok := d.pending.Cluster.Node[peerNode]; ok {
 			d.log.Info().Msgf("evict from cluster node stale peer %s", peerNode)
 			delete(d.pending.Cluster.Node, peerNode)
+			delete(d.hbGens, peerNode)
+			delete(d.subHbMode, peerNode)
+			delete(d.hbPatchMsgUpdated, peerNode)
 		}
 		patch := make(jsondelta.Patch, 0)
 		op := jsondelta.Operation{
