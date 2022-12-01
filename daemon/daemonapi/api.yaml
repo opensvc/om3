@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.13
+  version: 3.6.14
 servers:
   - url: https://localhost:1215
 paths:
@@ -42,6 +42,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /daemon/events:
+    get:
+      operationId: GetDaemonEvents
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+                $ref: '#/components/schemas/responseEventList'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -844,6 +860,10 @@ components:
           $ref: '#/components/schemas/cluster'
         daemon:
           $ref: '#/components/schemas/daemon'
+    responseEventList:
+      description: responseEventList is a list of sse
+      type: string
+      format: binary
     responseInfoStatus:
       type: object
       required:
@@ -998,6 +1018,14 @@ components:
       required: true
       schema:
         type: string
+    queryLimit:
+      name: limit
+      in: query
+      description: limit items count
+      schema:
+        type: integer
+        format: int64
+        default: 1
     queryNamespaceOptional:
       name: namespace
       in: query

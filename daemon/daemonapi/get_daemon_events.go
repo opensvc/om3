@@ -1,14 +1,13 @@
-package daemonhandler
+package daemonapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/objectselector"
@@ -16,9 +15,105 @@ import (
 	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
 	"opensvc.com/opensvc/util/pubsub"
 )
+
+// GetDaemonEvents feeds Patch or Events in rss format.
+// TODO: Honor namespace and selection parameters.
+func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, params GetDaemonEventsParams) {
+	log := getLogger(r, "GetDaemonEvents")
+
+	log.Debug().Msg("starting")
+	var limit int64
+	var eventCount int64
+	if params.Limit != nil {
+		limit = *params.Limit
+	}
+	// parse request body for parameters
+	payload, err := getEventsPayload(w, r)
+	if err != nil {
+		log.Error().Err(err).Msg("parse request body")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	// prepare the SSE response
+	ctx := r.Context()
+	bus := pubsub.BusFromContext(ctx)
+	done := make(chan bool)
+	var httpBody bool
+	if r.Header.Get("accept") == "text/event-stream" {
+		httpBody = true
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-control", "no-store")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Transfer-Encoding", "chunked")
+	}
+	w.WriteHeader(http.StatusOK)
+
+	// start go routines to write events as they come
+	writeEvent := func(ev event.Event) {
+		if !allowEvent(r, ev, payload) {
+			log.Debug().Interface("event", ev).Msg("hide denied event")
+			return
+		}
+		eventCount++
+		if limit > 0 && eventCount > limit {
+			log.Info().Msg("reached event count limit")
+			done <- true
+			return
+		}
+		b, err := json.Marshal(ev)
+		if err != nil {
+			log.Error().Err(err).Interface("event", ev).Msg("Marshal")
+			return
+		}
+		log.Debug().Msgf("send fragment: %s", ev)
+
+		var endMsg, msg []byte
+		if httpBody {
+			endMsg = []byte("\n\n")
+			msg = append([]byte("data: "), b...)
+		} else {
+			endMsg = []byte("\n\n\x00")
+			msg = append([]byte(""), b...)
+		}
+
+		msg = append(msg, endMsg...)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if _, err := w.Write(msg); err != nil {
+			log.Error().Err(err).Msg("write failure")
+			done <- true
+			return
+		}
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+
+	}
+	name := "lsnr-handler-event from " + r.RemoteAddr + " " + daemonctx.Uuid(r.Context()).String()
+	sub := bus.SubWithTimeout(name, time.Second)
+	sub.AddFilter(event.Event{})
+	sub.Start()
+	defer sub.Stop()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				done <- true
+				return
+			case i := <-sub.C:
+				writeEvent(i.(event.Event))
+			}
+		}
+	}()
+
+	<-done
+	log.Debug().Msg("done")
+}
 
 type eventsPayload struct {
 	Namespace string
@@ -98,89 +193,4 @@ func getEventsPayload(w http.ResponseWriter, r *http.Request) (eventsPayload, er
 		payload.Selector += fmt.Sprintf("+*/%s/*", payload.Namespace)
 	}
 	return payload, nil
-}
-
-// Events feeds Patch or Events in rss format.
-// TODO: Honor namespace and selection parameters.
-func Events(w http.ResponseWriter, r *http.Request) {
-	write, logger := handlerhelper.GetWriteAndLog(w, r, "daemonhandler.Events")
-	logger.Debug().Msg("starting")
-
-	// parse request body for parameters
-	payload, err := getEventsPayload(w, r)
-	if err != nil {
-		log.Error().Err(err).Msg("parse request body")
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	// prepare the SSE response
-	ctx := r.Context()
-	bus := pubsub.BusFromContext(ctx)
-	done := make(chan bool)
-	var httpBody bool
-	if r.Header.Get("accept") == "text/event-stream" {
-		httpBody = true
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-control", "no-store")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Transfer-Encoding", "chunked")
-	}
-	w.WriteHeader(http.StatusOK)
-
-	// start go routines to write events as they come
-	writeEvent := func(ev event.Event) {
-		if !allowEvent(r, ev, payload) {
-			logger.Debug().Interface("event", ev).Msg("hide denied event")
-			return
-		}
-		b, err := json.Marshal(ev)
-		if err != nil {
-			logger.Error().Err(err).Interface("event", ev).Msg("Marshal")
-			return
-		}
-		logger.Debug().Msgf("send fragment: %s", ev)
-
-		var endMsg, msg []byte
-		if httpBody {
-			endMsg = []byte("\n\n")
-			msg = append([]byte("data: "), b...)
-		} else {
-			endMsg = []byte("\n\n\x00")
-			msg = append([]byte(""), b...)
-		}
-
-		msg = append(msg, endMsg...)
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-		if _, err := write(msg); err != nil {
-			logger.Error().Err(err).Msg("write failure")
-			done <- true
-			return
-		}
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-	}
-	name := "lsnr-handler-event from " + r.RemoteAddr + " " + daemonctx.Uuid(r.Context()).String()
-	sub := bus.SubWithTimeout(name, time.Second)
-	sub.AddFilter(event.Event{})
-	sub.Start()
-	defer sub.Stop()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				done <- true
-				return
-			case i := <-sub.C:
-				writeEvent(i.(event.Event))
-			}
-		}
-	}()
-
-	<-done
-	logger.Debug().Msg("done")
 }

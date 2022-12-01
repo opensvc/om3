@@ -436,6 +436,9 @@ type SubHeartbeats struct {
 // object topology
 type Topology string
 
+// QueryLimit defines model for queryLimit.
+type QueryLimit = int64
+
 // QueryNamespaceOptional defines model for queryNamespaceOptional.
 type QueryNamespaceOptional = string
 
@@ -456,6 +459,12 @@ type QueryRelayNodename = string
 
 // QuerySelectorOptional defines model for querySelectorOptional.
 type QuerySelectorOptional = string
+
+// GetDaemonEventsParams defines parameters for GetDaemonEvents.
+type GetDaemonEventsParams struct {
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // PostDaemonLogsControlJSONBody defines parameters for PostDaemonLogsControl.
 type PostDaemonLogsControlJSONBody = PostDaemonLogsControl
