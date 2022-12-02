@@ -82,7 +82,7 @@ func (o *smon) startedFromThawed() {
 
 // doUnfreeze idle -> thawing -> thawed or thawed failed
 func (o *smon) doUnfreeze() {
-	o.doAction(o.crmUnfreeze, statusThawing, statusThawed, statusThawedFailed)
+	o.doTransitionAction(o.unfreeze, statusThawing, statusThawed, statusThawedFailed)
 }
 
 func (o *smon) startedFromReady() {

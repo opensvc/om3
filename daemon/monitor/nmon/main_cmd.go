@@ -75,7 +75,7 @@ func (o *nmon) onSetNmonCmd(c msgbus.SetNodeMonitor) {
 			}
 		}
 
-		o.log.Info().Msgf("set nmon: client request global expect to %s %+v", strVal, c.Monitor)
+		o.log.Info().Msgf("# set nmon: client request global expect to %s %+v", strVal, c.Monitor)
 		if c.Monitor.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
 			o.state.GlobalExpect = c.Monitor.GlobalExpect

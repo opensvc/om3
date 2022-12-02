@@ -160,7 +160,7 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 			}
 		}
 
-		o.log.Info().Msgf("prepare to set global expect %s -> %s", from, to)
+		o.log.Info().Msgf("# prepare to set global expect %s -> %s", from, to)
 		if c.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
 			o.state.GlobalExpect = c.GlobalExpect
@@ -379,4 +379,28 @@ func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
 		set.Add(node)
 	}
 	return set
+}
+
+// doTransitionAction execute action and update transition states
+func (o *smon) doTransitionAction(action func() error, newState, successState, errorState string) {
+	o.transitionTo(newState)
+	if action() != nil {
+		o.transitionTo(errorState)
+	} else {
+		o.transitionTo(successState)
+	}
+}
+
+// doAction runs action + background orchestration from action state result
+//
+// 1- set transient state to newState
+// 2- run action
+// 3- go orchestrateAfterAction(newState, successState or errorState)
+func (o *smon) doAction(action func() error, newState, successState, errorState string) {
+	o.transitionTo(newState)
+	nextState := successState
+	if action() != nil {
+		nextState = errorState
+	}
+	go o.orchestrateAfterAction(newState, nextState)
 }
