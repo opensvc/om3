@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.19
+  version: 3.6.20
 servers:
   - url: https://localhost:1215
 paths:
@@ -130,6 +130,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /instance/monitor/subscription:
+    post:
+      operationId: PostInstanceMonitorSubscription
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
   /instance/status/subscription:
     post:
       operationId: PostInstanceStatusSubscription

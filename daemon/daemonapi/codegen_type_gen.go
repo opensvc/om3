@@ -490,6 +490,15 @@ type GetDaemonStatusParams struct {
 // PostDaemonSubActionJSONBody defines parameters for PostDaemonSubAction.
 type PostDaemonSubActionJSONBody = PostDaemonSubAction
 
+// PostInstanceMonitorSubscriptionParams defines parameters for PostInstanceMonitorSubscription.
+type PostInstanceMonitorSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // PostInstanceStatusSubscriptionParams defines parameters for PostInstanceStatusSubscription.
 type PostInstanceStatusSubscriptionParams struct {
 	// max duration
