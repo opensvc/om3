@@ -85,6 +85,11 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
 		Path:  path.T{},
 		Value: o.value,
 	}, pubsub.Label{"node", hostname.Hostname()})
+
+	d.bus.Pub(msgbus.NodeStatusUpdated{
+		Node:  hostname.Hostname(),
+		Value: *v.Status.DeepCopy(),
+	}, pubsub.Label{"node", hostname.Hostname()})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -117,6 +122,10 @@ func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})
+	d.bus.Pub(msgbus.NodeStatusUpdated{
+		Node:  hostname.Hostname(),
+		Value: *v.Status.DeepCopy(),
+	}, pubsub.Label{"node", hostname.Hostname()})
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -149,6 +158,7 @@ func (o opSetNodeStatusPaths) call(ctx context.Context, d *data) {
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})
+	// TODO: publish msgbus.NodeStatusUpdated for this ?
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
