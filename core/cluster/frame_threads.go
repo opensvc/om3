@@ -93,54 +93,41 @@ func (f Frame) wThreadDNS() string {
 	return s
 }
 
-func (f Frame) wHbModes(modes []HbMode) string {
+func (f Frame) wThreadHeartbeats() string {
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb"), f.info.separator)
-	mode := make(map[string]string)
-	for _, m := range modes {
-		mode[m.Node] = m.Mode
-	}
-	for _, peer := range f.Current.Cluster.Config.Nodes {
-		if v, ok := mode[peer]; ok {
-			s += "\t" + v
-		} else {
-			s += "\t?"
+	for _, hbStatus := range f.Current.Sub.Hb.Heartbeats {
+		name := hbStatus.Id
+		s += bold("\n  "+name) + "\t"
+		switch hbStatus.State {
+		case "running":
+			s += green("running") + sThreadAlerts(hbStatus.Alerts)
+		case "stopped":
+			s += red("stopped") + sThreadAlerts(hbStatus.Alerts)
+		case "failed":
+			s += red("failed") + sThreadAlerts(hbStatus.Alerts)
+		default:
+			s += red("unknown") + sThreadAlerts(hbStatus.Alerts)
+		}
+		s += "\t\t"
+		s += f.info.separator + "\t"
+		for _, peer := range f.Current.Cluster.Config.Nodes {
+			if peer == hostname.Hostname() {
+				s += iconNotApplicable + "\t"
+				continue
+			}
+			peerData, ok := hbStatus.Peers[peer]
+			if !ok {
+				s += iconUndef + "\t"
+				continue
+			}
+			if peerData.Beating {
+				s += iconUp + "\t"
+			} else {
+				s += iconDownIssue + "\t"
+			}
 		}
 	}
-	return s
-}
 
-func (f Frame) wThreadHeartbeat(hbStatus HeartbeatThreadStatus) string {
-	var s string
-	name := hbStatus.Id
-	s += bold("  "+name) + "\t"
-	switch hbStatus.State {
-	case "running":
-		s += green("running") + sThreadAlerts(hbStatus.Alerts)
-	case "stopped":
-		s += red("stopped") + sThreadAlerts(hbStatus.Alerts)
-	case "failed":
-		s += red("failed") + sThreadAlerts(hbStatus.Alerts)
-	default:
-		s += red("unknown") + sThreadAlerts(hbStatus.Alerts)
-	}
-	s += "\t\t"
-	s += f.info.separator + "\t"
-	for _, peer := range f.Current.Cluster.Config.Nodes {
-		if peer == hostname.Hostname() {
-			s += iconNotApplicable + "\t"
-			continue
-		}
-		peerData, ok := hbStatus.Peers[peer]
-		if !ok {
-			s += iconUndef + "\t"
-			continue
-		}
-		if peerData.Beating {
-			s += iconUp + "\t"
-		} else {
-			s += iconDownIssue + "\t"
-		}
-	}
 	return s
 }
 
@@ -156,10 +143,7 @@ func (f Frame) wThreads() {
 	fmt.Fprintln(f.w, f.wThreadDaemon())
 	fmt.Fprintln(f.w, f.wThreadDNS())
 	fmt.Fprintln(f.w, f.wThreadCollector())
-	fmt.Fprintln(f.w, f.wHbModes(f.Current.Sub.Hb.Modes))
-	for _, v := range f.Current.Sub.Hb.Heartbeats {
-		fmt.Fprintln(f.w, f.wThreadHeartbeat(v))
-	}
+	fmt.Fprintln(f.w, f.wThreadHeartbeats())
 	fmt.Fprintln(f.w, f.wThreadListener())
 	fmt.Fprintln(f.w, f.wThreadMonitor())
 	fmt.Fprintln(f.w, f.wThreadScheduler())

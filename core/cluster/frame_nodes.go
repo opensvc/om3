@@ -187,6 +187,36 @@ func (f Frame) sNodeVersion(n string) string {
 	return iconUndef
 }
 
+func (f Frame) sNodeHbMode() string {
+	modes := f.Current.Sub.Hb.Modes
+	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-mode"), f.info.separator)
+	mode := make(map[string]string)
+	for _, m := range modes {
+		mode[m.Node] = m.Mode
+	}
+	nodeCount := len(f.Current.Cluster.Config.Nodes)
+	for _, peer := range f.Current.Cluster.Config.Nodes {
+		if v, ok := mode[peer]; ok {
+			switch v {
+			case "full":
+				v = yellow("full")
+			case "ping":
+				if nodeCount > 1 {
+					v = yellow(v)
+				}
+			}
+			s += "\t" + v
+		} else {
+			v = "?"
+			if nodeCount > 1 {
+				v = red(v)
+			}
+			s += "\t" + v
+		}
+	}
+	return s
+}
+
 func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.title("Nodes"))
 	fmt.Fprintln(f.w, f.sNodeScoreLine())
@@ -195,6 +225,7 @@ func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
+	fmt.Fprintln(f.w, f.sNodeHbMode())
 	fmt.Fprintln(f.w, f.sNodeWarningsLine())
 	fmt.Fprintln(f.w, f.info.empty)
 }
