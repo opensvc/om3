@@ -14,6 +14,7 @@ type (
 		Monitor  NodeMonitor                  `json:"monitor"`
 		Stats    NodeStats                    `json:"stats"`
 		Status   NodeStatus                   `json:"status"`
+		Os       NodeOs                       `json:"os"`
 		//Locks map[string]Lock `json:"locks"`
 	}
 

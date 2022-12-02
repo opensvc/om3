@@ -152,7 +152,7 @@ func (o *nmon) worker() {
 	for _, node := range initialNodes {
 		o.nmons[node] = daemondata.GetNmon(o.dataCmdC, node)
 	}
-	o.setNodeStatusPaths()
+	o.setNodeOsPaths()
 	o.updateIfChange()
 	defer o.delete()
 	o.log.Debug().Msg("started")
@@ -262,10 +262,10 @@ func (o *nmon) logFromTo(from, to string) (string, string) {
 	return from, to
 }
 
-func (o *nmon) setNodeStatusPaths() {
+func (o *nmon) setNodeOsPaths() {
 	if paths, err := san.GetPaths(); err != nil {
 		o.log.Error().Err(err).Msg("get san paths")
-	} else if err := daemondata.SetNodeStatusPaths(o.dataCmdC, paths); err != nil {
+	} else if err := daemondata.SetNodeOsPaths(o.dataCmdC, paths); err != nil {
 		o.log.Error().Err(err).Msg("set san paths")
 	}
 }

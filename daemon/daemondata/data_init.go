@@ -80,10 +80,12 @@ func newNodeData(localNode string) cluster.NodeData {
 			Frozen:          frozen,
 			Gen:             map[string]uint64{localNode: 1},
 			Labels:          nodesinfo.Labels{},
-			Paths:           san.Paths{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
 			Speaker:         false,
+		},
+		Os: cluster.NodeOs{
+			Paths: san.Paths{},
 		},
 	}
 	return nodeStatus

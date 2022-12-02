@@ -11,7 +11,6 @@ import (
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/san"
 )
 
 type (
@@ -26,10 +25,6 @@ type (
 	opSetNodeStatusLabels struct {
 		err   chan<- error
 		value nodesinfo.Labels
-	}
-	opSetNodeStatusPaths struct {
-		err   chan<- error
-		value san.Paths
 	}
 )
 
@@ -126,39 +121,6 @@ func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
 		Node:  hostname.Hostname(),
 		Value: *v.Status.DeepCopy(),
 	}, pubsub.Label{"node", hostname.Hostname()})
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
-}
-
-// SetNodeStatusPaths sets Monitor.Node.<localhost>.Status.Paths
-func SetNodeStatusPaths(c chan<- interface{}, paths san.Paths) error {
-	err := make(chan error)
-	op := opSetNodeStatusPaths{
-		err:   err,
-		value: paths,
-	}
-	c <- op
-	return <-err
-}
-
-func (o opSetNodeStatusPaths) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetNmon
-	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Paths = o.value
-	d.pending.Cluster.Node[d.localNode] = v
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "paths"},
-		OpValue: jsondelta.NewOptValue(o.value),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatusPathsUpdated{
-		Node:  hostname.Hostname(),
-		Value: o.value,
-	})
-	// TODO: publish msgbus.NodeStatusUpdated for this ?
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

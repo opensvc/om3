@@ -6,7 +6,6 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/san"
 )
 
 type (
@@ -22,7 +21,6 @@ type (
 		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
 		Speaker         bool                        `json:"speaker"`
 		Labels          nodesinfo.Labels            `json:"labels"`
-		Paths           san.Paths                   `json:"paths"`
 	}
 
 	// NodeInstances groups instances configuration digest and status
@@ -54,7 +52,6 @@ func (nodeStatus *NodeStatus) DeepCopy() *NodeStatus {
 	}
 	result.Gen = newGen
 	result.Labels = nodeStatus.Labels.DeepCopy()
-	result.Paths = nodeStatus.Paths.DeepCopy()
 
 	return &result
 }

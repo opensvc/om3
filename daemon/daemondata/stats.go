@@ -49,6 +49,7 @@ const (
 	idSetInstanceStatus
 	idSetServiceAgg
 	idSetNmon
+	idSetNodeOsPaths
 	idSetSmon
 	idStats
 )
@@ -78,6 +79,7 @@ var (
 		idSetInstanceFrozen: "set-instance-frozen",
 		idSetInstanceStatus: "set-instance-status",
 		idSetNmon:           "set-nmon",
+		idSetNodeOsPaths:    "set-node-os-paths",
 		idSetSmon:           "set-smon",
 		idStats:             "stats",
 	}
