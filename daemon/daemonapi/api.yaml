@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.21
+  version: 3.6.22
 servers:
   - url: https://localhost:1215
 paths:
@@ -403,6 +403,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /object/subscription:
+    post:
+      operationId: PostObjectSubscription
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
   /public/openapi:
     get:
       operationId: GetSwagger
