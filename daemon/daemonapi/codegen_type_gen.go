@@ -529,6 +529,15 @@ type PostNodeMonitorSubscriptionParams struct {
 	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// PostNodeStatusSubscriptionParams defines parameters for PostNodeStatusSubscription.
+type PostNodeStatusSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // PostObjectAbortJSONBody defines parameters for PostObjectAbort.
 type PostObjectAbortJSONBody = PostObjectAbort
 

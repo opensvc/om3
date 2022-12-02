@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc api
-  version: 3.6.23
+  version: 3.6.24
 servers:
   - url: https://localhost:1215
 paths:
@@ -234,6 +234,24 @@ paths:
   /node/monitor/subscription:
     post:
       operationId: PostNodeMonitorSubscription
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
+  /node/status/subscription:
+    post:
+      operationId: PostNodeStatusSubscription
       tags:
         - node
       security:
