@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: opensvc api
-  version: 3.6.24
+  title: opensvc agent api
+  version: 3.6.25
 servers:
   - url: https://localhost:1215
 paths:
@@ -192,8 +192,7 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Clears errors (for example, failed) in the node monitor state.
+      description: Clears errors (for example, failed) in the node monitor state.
       responses:
         '200':
           description: success
