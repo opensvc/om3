@@ -338,6 +338,9 @@ type ResponseDaemonStatus struct {
 	Daemon  Daemon  `json:"daemon"`
 }
 
+// responseEventList is a list of sse
+type ResponseEventList = string
+
 // ResponseInfoStatus defines model for responseInfoStatus.
 type ResponseInfoStatus struct {
 	Info   int    `json:"info"`
@@ -436,6 +439,9 @@ type SubHeartbeats struct {
 // object topology
 type Topology string
 
+// QueryDuration defines model for queryDuration.
+type QueryDuration = string
+
 // QueryLimit defines model for queryLimit.
 type QueryLimit = int64
 
@@ -483,6 +489,15 @@ type GetDaemonStatusParams struct {
 
 // PostDaemonSubActionJSONBody defines parameters for PostDaemonSubAction.
 type PostDaemonSubActionJSONBody = PostDaemonSubAction
+
+// PostInstanceStatusSubscriptionParams defines parameters for PostInstanceStatusSubscription.
+type PostInstanceStatusSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
 type PostNodeMonitorJSONBody = PostNodeMonitor

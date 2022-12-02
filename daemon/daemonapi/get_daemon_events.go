@@ -175,6 +175,7 @@ func allowEvent(r *http.Request, ev event.Event, payload eventsPayload) bool {
 }
 
 func getEventsPayload(w http.ResponseWriter, r *http.Request) (eventsPayload, error) {
+	// TODO move to query params
 	var payload eventsPayload
 
 	if reqBody, err := io.ReadAll(r.Body); err != nil {
