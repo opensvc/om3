@@ -11,6 +11,14 @@ var (
 	readyDuration = 5 * time.Second
 )
 
+func (o *smon) orchestrateAutoStarted() {
+	instStatus := o.instStatus[o.localhost]
+	if instStatus.Orchestrate != "ha" {
+		return
+	}
+	o.orchestrateStarted()
+}
+
 func (o *smon) orchestrateStarted() {
 	if !o.acceptStartedOrchestration() {
 		o.log.Warn().Msg("no solution for orchestrate started")
@@ -41,6 +49,9 @@ func (o *smon) orchestrateStarted() {
 // else   => try startedFromThawed
 func (o *smon) startedFromIdle() {
 	if !o.instStatus[o.localhost].Frozen.IsZero() {
+		if o.state.GlobalExpect == globalExpectUnset {
+			return
+		}
 		o.doUnfreeze()
 		return
 	} else {
@@ -133,21 +144,35 @@ func (o *smon) startedFromStartFailed() {
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		o.loggerWithState().Info().Msg("local status is started, unset global expect")
-		o.change = true
-		o.state.Status = statusIdle
-		o.state.GlobalExpect = globalExpectUnset
+		if o.state.Status != statusIdle {
+			o.loggerWithState().Info().Msg("local status is started, unset status")
+			o.change = true
+			o.state.Status = statusIdle
+		}
+		if o.state.GlobalExpect != globalExpectUnset {
+			o.loggerWithState().Info().Msg("local status is started, unset global expect")
+			o.change = true
+			o.state.GlobalExpect = globalExpectUnset
+		}
 		if o.state.LocalExpect != statusStarted {
+			o.loggerWithState().Info().Msg("local status is started, unset local expect")
+			o.change = true
 			o.state.LocalExpect = statusStarted
 		}
 		o.clearPending()
 		return true
 	}
 	if o.svcAgg.Avail == status.Up {
-		o.loggerWithState().Info().Msg("aggregated status is up, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
-		o.state.Status = statusIdle
+		if o.state.Status != statusIdle {
+			o.loggerWithState().Info().Msg("aggregated status is up, unset status")
+			o.change = true
+			o.state.Status = statusIdle
+		}
+		if o.state.GlobalExpect != globalExpectUnset {
+			o.loggerWithState().Info().Msg("aggregated status is up, unset global expect")
+			o.change = true
+			o.state.GlobalExpect = globalExpectUnset
+		}
 		o.clearPending()
 		return true
 	}
