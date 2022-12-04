@@ -4,15 +4,13 @@ import "strings"
 
 // orchestrate from svcagg vs global expect
 func (o *smon) orchestrate() {
-	if o.state.GlobalExpect == globalExpectUnset {
-		// no expected status to reach
-		return
-	}
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
 
 	switch o.state.GlobalExpect {
+	case globalExpectUnset:
+		o.orchestrateAutoStarted()
 	case globalExpectFrozen:
 		o.orchestrateFrozen()
 	case globalExpectProvisioned:
