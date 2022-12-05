@@ -26,6 +26,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -52,9 +53,11 @@ type (
 		pendingCancel context.CancelFunc
 
 		// updated data from aggregated status update srcEvent
-		instStatus map[string]instance.Status
-		instSmon   map[string]instance.Monitor
-		scopeNodes []string
+		instStatus  map[string]instance.Status
+		instSmon    map[string]instance.Monitor
+		scopeNodes  []string
+		nodeMonitor cluster.NodeMonitor
+		nodeStatus  cluster.NodeStatus
 
 		svcAgg      object.AggregatedStatus
 		cancelReady context.CancelFunc
@@ -162,10 +165,13 @@ func (o *smon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub(o.id + "smon")
 	label := pubsub.Label{"path", o.id}
+	nodeLabel := pubsub.Label{"node", o.localhost}
 	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
+	sub.AddFilter(msgbus.NodeMonitorUpdated{}, nodeLabel)
+	sub.AddFilter(msgbus.NodeStatusUpdated{}, nodeLabel)
 	sub.Start()
 	o.sub = sub
 }
@@ -200,6 +206,10 @@ func (o *smon) worker(initialNodes []string) {
 				}
 			case msgbus.InstanceMonitorDeleted:
 				o.onSmonDeleted(c)
+			case msgbus.NodeMonitorUpdated:
+				o.onNodeMonitorUpdated(c)
+			case msgbus.NodeStatusUpdated:
+				o.onNodeStatusUpdated(c)
 			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {

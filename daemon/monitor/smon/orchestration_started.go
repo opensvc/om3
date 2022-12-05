@@ -12,6 +12,9 @@ var (
 )
 
 func (o *smon) orchestrateAutoStarted() {
+	if !o.nodeStatus.Frozen.IsZero() {
+		return
+	}
 	instStatus := o.instStatus[o.localhost]
 	if instStatus.Orchestrate != "ha" {
 		return

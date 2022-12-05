@@ -205,6 +205,18 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 
 }
 
+func (o *smon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
+	o.nodeMonitor = c.Monitor
+	o.orchestrate()
+	o.updateIfChange()
+}
+
+func (o *smon) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
+	o.nodeStatus = c.Value
+	o.orchestrate()
+	o.updateIfChange()
+}
+
 func (o *smon) onRemoteSmonUpdated(c msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
 	instSmon := c.Status
