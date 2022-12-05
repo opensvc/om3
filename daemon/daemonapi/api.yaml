@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: opensvc api
-  version: 3.6.13
+  title: opensvc agent api
+  version: 3.6.25
 servers:
   - url: https://localhost:1215
 paths:
@@ -42,6 +42,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /daemon/events:
+    get:
+      operationId: GetDaemonEvents
+      tags:
+        - daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -113,6 +130,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /instance/config/subscription:
+    post:
+      operationId: PostInstanceConfigSubscription
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
+  /instance/monitor/subscription:
+    post:
+      operationId: PostInstanceMonitorSubscription
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
+  /instance/status/subscription:
+    post:
+      operationId: PostInstanceStatusSubscription
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
   /node/clear:
     post:
       operationId: PostNodeClear
@@ -121,8 +192,7 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: Clears errors (for example, failed) in the node monitor state.
+      description: Clears errors (for example, failed) in the node monitor state.
       responses:
         '200':
           description: success
@@ -160,6 +230,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /node/monitor/subscription:
+    post:
+      operationId: PostNodeMonitorSubscription
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
+  /node/status/subscription:
+    post:
+      operationId: PostNodeStatusSubscription
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
   /nodes/info:
     get:
       operationId: GetNodesInfo
@@ -332,6 +438,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /object/subscription:
+    post:
+      operationId: PostObjectSubscription
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryDuration'
+        - $ref: '#/components/parameters/queryLimit'
+      responses:
+        '200':
+          description: success
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/responseEventList'
   /public/openapi:
     get:
       operationId: GetSwagger
@@ -844,6 +968,10 @@ components:
           $ref: '#/components/schemas/cluster'
         daemon:
           $ref: '#/components/schemas/daemon'
+    responseEventList:
+      description: responseEventList is a list of sse
+      type: string
+      format: binary
     responseInfoStatus:
       type: object
       required:
@@ -998,6 +1126,21 @@ components:
       required: true
       schema:
         type: string
+    queryDuration:
+      name: duration
+      in: query
+      description: max duration
+      schema:
+        type: string
+        default: 5s
+    queryLimit:
+      name: limit
+      in: query
+      description: limit items count
+      schema:
+        type: integer
+        format: int64
+        default: 1
     queryNamespaceOptional:
       name: namespace
       in: query

@@ -338,6 +338,9 @@ type ResponseDaemonStatus struct {
 	Daemon  Daemon  `json:"daemon"`
 }
 
+// responseEventList is a list of sse
+type ResponseEventList = string
+
 // ResponseInfoStatus defines model for responseInfoStatus.
 type ResponseInfoStatus struct {
 	Info   int    `json:"info"`
@@ -436,6 +439,12 @@ type SubHeartbeats struct {
 // object topology
 type Topology string
 
+// QueryDuration defines model for queryDuration.
+type QueryDuration = string
+
+// QueryLimit defines model for queryLimit.
+type QueryLimit = int64
+
 // QueryNamespaceOptional defines model for queryNamespaceOptional.
 type QueryNamespaceOptional = string
 
@@ -457,6 +466,12 @@ type QueryRelayNodename = string
 // QuerySelectorOptional defines model for querySelectorOptional.
 type QuerySelectorOptional = string
 
+// GetDaemonEventsParams defines parameters for GetDaemonEvents.
+type GetDaemonEventsParams struct {
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // PostDaemonLogsControlJSONBody defines parameters for PostDaemonLogsControl.
 type PostDaemonLogsControlJSONBody = PostDaemonLogsControl
 
@@ -475,8 +490,53 @@ type GetDaemonStatusParams struct {
 // PostDaemonSubActionJSONBody defines parameters for PostDaemonSubAction.
 type PostDaemonSubActionJSONBody = PostDaemonSubAction
 
+// PostInstanceConfigSubscriptionParams defines parameters for PostInstanceConfigSubscription.
+type PostInstanceConfigSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PostInstanceMonitorSubscriptionParams defines parameters for PostInstanceMonitorSubscription.
+type PostInstanceMonitorSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PostInstanceStatusSubscriptionParams defines parameters for PostInstanceStatusSubscription.
+type PostInstanceStatusSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
 type PostNodeMonitorJSONBody = PostNodeMonitor
+
+// PostNodeMonitorSubscriptionParams defines parameters for PostNodeMonitorSubscription.
+type PostNodeMonitorSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PostNodeStatusSubscriptionParams defines parameters for PostNodeStatusSubscription.
+type PostNodeStatusSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // PostObjectAbortJSONBody defines parameters for PostObjectAbort.
 type PostObjectAbortJSONBody = PostObjectAbort
@@ -513,6 +573,15 @@ type GetObjectSelectorParams struct {
 
 // PostObjectStatusJSONBody defines parameters for PostObjectStatus.
 type PostObjectStatusJSONBody = PostObjectStatus
+
+// PostObjectSubscriptionParams defines parameters for PostObjectSubscription.
+type PostObjectSubscriptionParams struct {
+	// max duration
+	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+
+	// limit items count
+	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // GetRelayMessageParams defines parameters for GetRelayMessage.
 type GetRelayMessageParams struct {

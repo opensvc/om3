@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/callcount"
 	"opensvc.com/opensvc/util/durationlog"
 	"opensvc.com/opensvc/util/jsondelta"
@@ -166,6 +167,11 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			needMessage := d.commitPendingOps()
 			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
 				needMessage = true
+				s := d.pending.Cluster.Node[d.localNode].Status
+				d.bus.Pub(msgbus.NodeStatusUpdated{
+					Node:  d.localNode,
+					Value: *s.DeepCopy(),
+				})
 			}
 			d.pubPeerDataChanges()
 			select {

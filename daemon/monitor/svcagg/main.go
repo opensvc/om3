@@ -139,42 +139,38 @@ func (o *svcAggStatus) worker() {
 
 func (o *svcAggStatus) updateStatus() {
 	// TODO update this simple aggregate status compute, perhaps already implemented
-	updateAvail := func() {
-		statusCount := make([]uint, 128, 128)
-		var newAvail status.T
+
+	updateAvailOverall := func() {
+		statusAvailCount := make([]uint, 128, 128)
+		statusOverallCount := make([]uint, 128, 128)
+
+		agregateStatus := func(states []uint) status.T {
+			if states[status.Warn] > 0 {
+				return status.Warn
+			} else if states[status.Up] > 0 {
+				return status.Up
+			} else if states[status.Down] > 0 {
+				return status.Down
+			} else {
+				return status.Undef
+			}
+		}
+
 		for _, instStatus := range o.instStatus {
-			statusCount[instStatus.Avail]++
+			statusAvailCount[instStatus.Avail]++
+			statusOverallCount[instStatus.Overall]++
 		}
-		if statusCount[status.Warn] > 0 {
-			newAvail = status.Warn
-		} else if statusCount[status.Up] > 0 {
-			newAvail = status.Up
-		} else if statusCount[status.Down] > 0 {
-			newAvail = status.Down
-		} else {
-			newAvail = status.Undef
-		}
-		if o.status.Avail != newAvail {
-			o.status.Avail = newAvail
-		}
+		o.status.Avail = agregateStatus(statusAvailCount)
+		o.status.Overall = agregateStatus(statusOverallCount)
 	}
-	updateOverall := func() {
-		if o.status.Avail == status.Warn {
-			o.status.Overall = status.Warn
-			return
-		} else {
-			o.status.Overall = status.Undef
-		}
-		for _, instStatus := range o.instStatus {
-			o.status.Overall.Add(instStatus.Overall)
-		}
-	}
+
 	updateProvisioned := func() {
 		o.status.Provisioned = provisioned.Undef
 		for _, instStatus := range o.instStatus {
 			o.status.Provisioned = o.status.Provisioned.And(instStatus.Provisioned)
 		}
 	}
+
 	updateFrozen := func() {
 		m := map[bool]int{
 			true:  0,
@@ -195,6 +191,7 @@ func (o *svcAggStatus) updateStatus() {
 			o.status.Frozen = "mixed"
 		}
 	}
+
 	updatePlacement := func() {
 		o.status.Placement = placement.NotApplicable
 		for node, instMonitor := range o.instMonitor {
@@ -215,8 +212,7 @@ func (o *svcAggStatus) updateStatus() {
 		}
 	}
 
-	updateAvail()
-	updateOverall()
+	updateAvailOverall()
 	updateProvisioned()
 	updateFrozen()
 	updatePlacement()

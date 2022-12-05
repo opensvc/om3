@@ -25,6 +25,9 @@ type ServerInterface interface {
 	// (POST /auth/token)
 	PostAuthToken(w http.ResponseWriter, r *http.Request)
 
+	// (GET /daemon/events)
+	GetDaemonEvents(w http.ResponseWriter, r *http.Request, params GetDaemonEventsParams)
+
 	// (POST /daemon/logs/control)
 	PostDaemonLogsControl(w http.ResponseWriter, r *http.Request)
 
@@ -40,11 +43,26 @@ type ServerInterface interface {
 	// (POST /daemon/sub/action)
 	PostDaemonSubAction(w http.ResponseWriter, r *http.Request)
 
+	// (POST /instance/config/subscription)
+	PostInstanceConfigSubscription(w http.ResponseWriter, r *http.Request, params PostInstanceConfigSubscriptionParams)
+
+	// (POST /instance/monitor/subscription)
+	PostInstanceMonitorSubscription(w http.ResponseWriter, r *http.Request, params PostInstanceMonitorSubscriptionParams)
+
+	// (POST /instance/status/subscription)
+	PostInstanceStatusSubscription(w http.ResponseWriter, r *http.Request, params PostInstanceStatusSubscriptionParams)
+
 	// (POST /node/clear)
 	PostNodeClear(w http.ResponseWriter, r *http.Request)
 
 	// (POST /node/monitor)
 	PostNodeMonitor(w http.ResponseWriter, r *http.Request)
+
+	// (POST /node/monitor/subscription)
+	PostNodeMonitorSubscription(w http.ResponseWriter, r *http.Request, params PostNodeMonitorSubscriptionParams)
+
+	// (POST /node/status/subscription)
+	PostNodeStatusSubscription(w http.ResponseWriter, r *http.Request, params PostNodeStatusSubscriptionParams)
 
 	// (GET /nodes/info)
 	GetNodesInfo(w http.ResponseWriter, r *http.Request)
@@ -69,6 +87,9 @@ type ServerInterface interface {
 
 	// (POST /object/status)
 	PostObjectStatus(w http.ResponseWriter, r *http.Request)
+
+	// (POST /object/subscription)
+	PostObjectSubscription(w http.ResponseWriter, r *http.Request, params PostObjectSubscriptionParams)
 
 	// (GET /public/openapi)
 	GetSwagger(w http.ResponseWriter, r *http.Request)
@@ -99,6 +120,41 @@ func (siw *ServerInterfaceWrapper) PostAuthToken(w http.ResponseWriter, r *http.
 
 	var handler = func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostAuthToken(w, r)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
+// GetDaemonEvents operation middleware
+func (siw *ServerInterfaceWrapper) GetDaemonEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetDaemonEventsParams
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDaemonEvents(w, r, params)
 	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -241,6 +297,144 @@ func (siw *ServerInterfaceWrapper) PostDaemonSubAction(w http.ResponseWriter, r 
 	handler(w, r.WithContext(ctx))
 }
 
+// PostInstanceConfigSubscription operation middleware
+func (siw *ServerInterfaceWrapper) PostInstanceConfigSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceConfigSubscriptionParams
+
+	// ------------- Optional query parameter "duration" -------------
+	if paramValue := r.URL.Query().Get("duration"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostInstanceConfigSubscription(w, r, params)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
+// PostInstanceMonitorSubscription operation middleware
+func (siw *ServerInterfaceWrapper) PostInstanceMonitorSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceMonitorSubscriptionParams
+
+	// ------------- Optional query parameter "duration" -------------
+	if paramValue := r.URL.Query().Get("duration"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostInstanceMonitorSubscription(w, r, params)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
+// PostInstanceStatusSubscription operation middleware
+func (siw *ServerInterfaceWrapper) PostInstanceStatusSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostInstanceStatusSubscriptionParams
+
+	// ------------- Optional query parameter "duration" -------------
+	if paramValue := r.URL.Query().Get("duration"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostInstanceStatusSubscription(w, r, params)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
 // PostNodeClear operation middleware
 func (siw *ServerInterfaceWrapper) PostNodeClear(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -270,6 +464,98 @@ func (siw *ServerInterfaceWrapper) PostNodeMonitor(w http.ResponseWriter, r *htt
 
 	var handler = func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostNodeMonitor(w, r)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
+// PostNodeMonitorSubscription operation middleware
+func (siw *ServerInterfaceWrapper) PostNodeMonitorSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostNodeMonitorSubscriptionParams
+
+	// ------------- Optional query parameter "duration" -------------
+	if paramValue := r.URL.Query().Get("duration"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostNodeMonitorSubscription(w, r, params)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
+// PostNodeStatusSubscription operation middleware
+func (siw *ServerInterfaceWrapper) PostNodeStatusSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostNodeStatusSubscriptionParams
+
+	// ------------- Optional query parameter "duration" -------------
+	if paramValue := r.URL.Query().Get("duration"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostNodeStatusSubscription(w, r, params)
 	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -510,6 +796,52 @@ func (siw *ServerInterfaceWrapper) PostObjectStatus(w http.ResponseWriter, r *ht
 	handler(w, r.WithContext(ctx))
 }
 
+// PostObjectSubscription operation middleware
+func (siw *ServerInterfaceWrapper) PostObjectSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostObjectSubscriptionParams
+
+	// ------------- Optional query parameter "duration" -------------
+	if paramValue := r.URL.Query().Get("duration"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+	if paramValue := r.URL.Query().Get("limit"); paramValue != "" {
+
+	}
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostObjectSubscription(w, r, params)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
 // GetSwagger operation middleware
 func (siw *ServerInterfaceWrapper) GetSwagger(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -707,6 +1039,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/auth/token", wrapper.PostAuthToken)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/daemon/events", wrapper.GetDaemonEvents)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/daemon/logs/control", wrapper.PostDaemonLogsControl)
 	})
 	r.Group(func(r chi.Router) {
@@ -722,10 +1057,25 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/daemon/sub/action", wrapper.PostDaemonSubAction)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instance/config/subscription", wrapper.PostInstanceConfigSubscription)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instance/monitor/subscription", wrapper.PostInstanceMonitorSubscription)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instance/status/subscription", wrapper.PostInstanceStatusSubscription)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/node/clear", wrapper.PostNodeClear)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/node/monitor", wrapper.PostNodeMonitor)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/node/monitor/subscription", wrapper.PostNodeMonitorSubscription)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/node/status/subscription", wrapper.PostNodeStatusSubscription)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/nodes/info", wrapper.GetNodesInfo)
@@ -752,6 +1102,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/object/status", wrapper.PostObjectStatus)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/object/subscription", wrapper.PostObjectSubscription)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/public/openapi", wrapper.GetSwagger)
 	})
 	r.Group(func(r chi.Router) {
@@ -767,63 +1120,67 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

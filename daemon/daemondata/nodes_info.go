@@ -32,7 +32,7 @@ func (o opGetNodesInfo) call(ctx context.Context, d *data) {
 	for node, nodeData := range d.pending.Cluster.Node {
 		result[node] = nodesinfo.NodeInfo{
 			Labels: nodeData.Status.Labels.DeepCopy(),
-			Paths:  nodeData.Status.Paths.DeepCopy(),
+			Paths:  nodeData.Os.Paths.DeepCopy(),
 		}
 	}
 	o.result <- &result

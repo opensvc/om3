@@ -70,7 +70,6 @@ func New(ctx context.Context, enableUi bool) *T {
 	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
 	mux.Get("/node_log", daemonhandler.GetNodeLog)
 	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
-	mux.Mount("/daemon", t.newDaemonRouter())
 	mux.Mount("/debug", middleware.Profiler())
 
 	t.mux = mux
@@ -80,12 +79,6 @@ func New(ctx context.Context, enableUi bool) *T {
 // ServerHTTP implement http.Handler interface for T
 func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.mux.ServeHTTP(w, r)
-}
-
-func (t *T) newDaemonRouter() *chi.Mux {
-	r := chi.NewRouter()
-	r.Get("/events", daemonhandler.Events)
-	return r
 }
 
 func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
