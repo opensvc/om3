@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -42,7 +43,7 @@ func (a *DaemonApi) PostObjectSubscription(w http.ResponseWriter, r *http.Reques
 	}
 	w.WriteHeader(http.StatusOK)
 
-	name := handlerName + " from " + r.RemoteAddr + " " + daemonctx.Uuid(r.Context()).String()
+	name := fmt.Sprintf("lsnr-handler-event %s from %s %s", handlerName, r.RemoteAddr, daemonctx.Uuid(r.Context()))
 	sub := bus.SubWithTimeout(name, time.Second)
 	sub.AddFilter(msgbus.ObjectAggUpdated{})
 	sub.Start()
