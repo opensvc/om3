@@ -31,6 +31,7 @@ func (a *DaemonApi) PostInstanceMonitorSubscription(w http.ResponseWriter, r *ht
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
 			sendError(w, http.StatusBadRequest, "invalid duration")
+			return
 		} else {
 			maxDuration = *v.(*time.Duration)
 		}
