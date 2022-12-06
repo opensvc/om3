@@ -3,6 +3,7 @@ package smon
 import (
 	"bytes"
 	"crypto/md5"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -252,18 +253,47 @@ func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 	o.updateIfChange()
 }
 
-func (o smon) isStartable() (bool, string) {
+func (o smon) isExtraInstance() (bool, string) {
+	if o.state.IsLeader {
+		return false, "not leader"
+	}
+	if v, reason := o.isHAOrchestrateable(); !v {
+		return false, reason
+	}
+
+	instStatus := o.instStatus[o.localhost]
+
+	if o.svcAgg.Avail != status.Up {
+		return false, "not agg up"
+	}
+	if instStatus.Topology != topology.Flex {
+		return false, "not flex"
+	}
+	if n := o.upInstCount(); n <= instStatus.FlexTarget {
+		return false, fmt.Sprintf("%d/%d up instances", n, instStatus.FlexTarget)
+	}
+	return true, ""
+}
+
+func (o smon) isHAOrchestrateable() (bool, string) {
 	if o.svcAgg.Avail == status.Warn {
-		return false, "object is not startable: warn agg state"
+		return false, "warn agg state"
 	}
 	switch o.svcAgg.Provisioned {
 	case provisioned.Mixed:
-		return false, "object is not startable: mixed agg provisioned state"
+		return false, "mixed agg provisioned state"
 	case provisioned.False:
-		return false, "object is not startable: false agg provisioned state"
+		return false, "false agg provisioned state"
+	}
+	return true, ""
+}
+
+func (o smon) isStartable() (bool, string) {
+	if v, reason := o.isHAOrchestrateable(); !v {
+		return false, reason
 	}
 	if o.isStarted() {
-		return false, "object is not startable: already started"
+		return false, "already started"
 	}
 	return true, "object is startable"
 }
@@ -277,7 +307,7 @@ func (o smon) isStarted() bool {
 	if instStatus.Topology != topology.Flex {
 		return true
 	}
-	if o.upInstCount() != instStatus.FlexTarget {
+	if o.upInstCount() < instStatus.FlexTarget {
 		return false
 	}
 	return false
@@ -400,6 +430,9 @@ func (o *smon) newIsLeader(instStatus instance.Status) bool {
 	var candidates []string
 	for node, nodeStatus := range o.nodeStatus {
 		if !nodeStatus.Frozen.IsZero() {
+			continue
+		}
+		if instStatus, ok := o.instStatus[node]; !ok || !instStatus.Frozen.IsZero() {
 			continue
 		}
 		candidates = append(candidates, node)

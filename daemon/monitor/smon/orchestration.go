@@ -16,7 +16,7 @@ func (o *smon) orchestrate() {
 
 	switch o.state.GlobalExpect {
 	case globalExpectUnset:
-		o.orchestrateAutoStarted()
+		o.orchestrateHA()
 	case globalExpectFrozen:
 		o.orchestrateFrozen()
 	case globalExpectProvisioned:

@@ -37,6 +37,24 @@ func (o *smon) freezeStop() {
 	}
 }
 
+func (o *smon) stop() {
+	switch o.state.Status {
+	case statusIdle:
+		o.doStop()
+	case statusFrozen:
+	case statusFreezing:
+	case statusReady:
+		o.stoppedFromReady()
+	case statusStopping:
+	case statusStopFailed:
+		o.stoppedFromFailed()
+	case statusStartFailed:
+		o.stoppedFromFailed()
+	default:
+		o.log.Error().Msgf("don't know how to stop from %s", o.state.Status)
+	}
+}
+
 func (o *smon) stoppedFromThawed() {
 	o.doTransitionAction(o.freeze, statusFreezing, statusIdle, statusFreezeFailed)
 }

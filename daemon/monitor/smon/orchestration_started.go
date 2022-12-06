@@ -11,21 +11,6 @@ var (
 	readyDuration = 5 * time.Second
 )
 
-func (o *smon) orchestrateAutoStarted() {
-	nodeStatus := o.nodeStatus[o.localhost]
-	if !nodeStatus.Frozen.IsZero() {
-		return
-	}
-	instStatus := o.instStatus[o.localhost]
-	if instStatus.Orchestrate != "ha" {
-		return
-	}
-	if v, _ := o.isStartable(); !v {
-		return
-	}
-	o.orchestrateStarted()
-}
-
 func (o *smon) orchestrateStarted() {
 	if o.isStarted() {
 		return
