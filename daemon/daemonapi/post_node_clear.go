@@ -21,6 +21,6 @@ func (a *DaemonApi) PostNodeClear(w http.ResponseWriter, r *http.Request) {
 		Node:    hostname.Hostname(),
 		Monitor: nmon,
 	}
-	bus.Pub(msg)
+	bus.Pub(msg, labelApi)
 	w.WriteHeader(http.StatusOK)
 }

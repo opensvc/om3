@@ -43,7 +43,7 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 	bus := pubsub.BusFromContext(r.Context())
 	for _, sub := range payload.Subs {
 		log.Info().Msgf("ask to %s sub component: %s", action, sub)
-		bus.Pub(msgbus.DaemonCtl{Component: sub, Action: action}, pubsub.Label{"id", sub})
+		bus.Pub(msgbus.DaemonCtl{Component: sub, Action: action}, pubsub.Label{"id", sub}, labelApi)
 	}
 	w.WriteHeader(http.StatusOK)
 	msg := fmt.Sprintf("ask to %s sub components: %s", action, subs)
