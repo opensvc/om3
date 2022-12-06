@@ -10,6 +10,12 @@ import (
 	"strconv"
 )
 
+type (
+	eventSourcer interface {
+		EventSource() string
+	}
+)
+
 func setStreamHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-control", "no-store")
@@ -17,7 +23,7 @@ func setStreamHeaders(w http.ResponseWriter) {
 	w.Header().Set("Transfer-Encoding", "chunked")
 }
 
-func writeEvents(ctx context.Context, w io.Writer, c <-chan any, limit int64, eventSource string) <-chan error {
+func writeEvents(ctx context.Context, w io.Writer, c <-chan any, limit int64) <-chan error {
 	errC := make(chan error)
 	// TODO: write comment periodically ': prevent timeout'
 	go func() {
@@ -29,7 +35,14 @@ func writeEvents(ctx context.Context, w io.Writer, c <-chan any, limit int64, ev
 				return
 			case i := <-c:
 				eventCount++
-				b := []byte("id: " + eventSource + "\nid: " + strconv.FormatInt(eventCount, 10) + "\n")
+				var eventSource string
+				switch o := i.(type) {
+				case eventSourcer:
+					eventSource = o.EventSource()
+				default:
+					eventSource = "generic event"
+				}
+				b := []byte("event: " + eventSource + "\nid: " + strconv.FormatInt(eventCount, 10) + "\n")
 				if _, err := w.Write(b); err != nil {
 					errC <- err
 					return
