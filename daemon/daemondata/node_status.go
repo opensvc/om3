@@ -10,7 +10,6 @@ import (
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -75,16 +74,22 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.Frozen{
-		Node:  hostname.Hostname(),
-		Path:  path.T{},
-		Value: o.value,
-	}, pubsub.Label{"node", hostname.Hostname()})
+	d.bus.Pub(
+		msgbus.Frozen{
+			Node:  hostname.Hostname(),
+			Path:  path.T{},
+			Value: o.value,
+		},
+		labelLocalNode,
+	)
 
-	d.bus.Pub(msgbus.NodeStatusUpdated{
-		Node:  hostname.Hostname(),
-		Value: *v.Status.DeepCopy(),
-	}, pubsub.Label{"node", hostname.Hostname()})
+	d.bus.Pub(
+		msgbus.NodeStatusUpdated{
+			Node:  d.localNode,
+			Value: *v.Status.DeepCopy(),
+		},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -113,14 +118,20 @@ func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatusLabelsUpdated{
-		Node:  hostname.Hostname(),
-		Value: o.value,
-	})
-	d.bus.Pub(msgbus.NodeStatusUpdated{
-		Node:  hostname.Hostname(),
-		Value: *v.Status.DeepCopy(),
-	}, pubsub.Label{"node", hostname.Hostname()})
+	d.bus.Pub(
+		msgbus.NodeStatusLabelsUpdated{
+			Node:  hostname.Hostname(),
+			Value: o.value,
+		},
+		labelLocalNode,
+	)
+	d.bus.Pub(
+		msgbus.NodeStatusUpdated{
+			Node:  d.localNode,
+			Value: *v.Status.DeepCopy(),
+		},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

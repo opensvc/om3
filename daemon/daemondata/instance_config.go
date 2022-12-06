@@ -74,10 +74,14 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(msgbus.CfgDeleted{
-		Path: o.path,
-		Node: d.localNode,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.CfgDeleted{
+			Path: o.path,
+			Node: d.localNode,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -108,11 +112,15 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 	}
 	d.pendingOps = append(d.pendingOps, op)
 
-	d.bus.Pub(msgbus.CfgUpdated{
-		Path:   o.path,
-		Node:   d.localNode,
-		Config: o.value,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.CfgUpdated{
+			Path:   o.path,
+			Node:   d.localNode,
+			Config: o.value,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

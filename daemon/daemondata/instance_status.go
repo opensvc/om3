@@ -110,10 +110,14 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(msgbus.InstanceStatusDeleted{
-		Path: o.path,
-		Node: d.localNode,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.InstanceStatusDeleted{
+			Path: o.path,
+			Node: d.localNode,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -165,11 +169,15 @@ func (o opSetInstanceFrozen) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.InstanceStatusUpdated{
-		Path:   o.path,
-		Node:   d.localNode,
-		Status: *newStatus,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.InstanceStatusUpdated{
+			Path:   o.path,
+			Node:   d.localNode,
+			Status: *newStatus,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	o.err <- nil
 }
 
@@ -197,11 +205,15 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.InstanceStatusUpdated{
-		Path:   o.path,
-		Node:   d.localNode,
-		Status: o.value,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.InstanceStatusUpdated{
+			Path:   o.path,
+			Node:   d.localNode,
+			Status: o.value,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
