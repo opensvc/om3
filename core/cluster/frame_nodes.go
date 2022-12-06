@@ -189,7 +189,7 @@ func (f Frame) sNodeVersion(n string) string {
 
 func (f Frame) sNodeHbMode() string {
 	modes := f.Current.Sub.Hb.Modes
-	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-mode"), f.info.separator)
+	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-q"), f.info.separator)
 	mode := make(map[string]string)
 	for _, m := range modes {
 		mode[m.Node] = m.Mode
