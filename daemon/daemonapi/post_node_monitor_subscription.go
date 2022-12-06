@@ -46,7 +46,7 @@ func (a *DaemonApi) PostNodeMonitorSubscription(w http.ResponseWriter, r *http.R
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.Start()
 	defer sub.Stop()
-	err := <-writeEvents(ctx, w, sub.C, limit, "instance status update")
+	err := <-writeEvents(ctx, w, sub.C, limit)
 	if err != nil {
 		log.Error().Err(err).Msgf("write events")
 	}

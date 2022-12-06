@@ -47,7 +47,7 @@ func (a *DaemonApi) PostObjectSubscription(w http.ResponseWriter, r *http.Reques
 	sub.AddFilter(msgbus.ObjectAggUpdated{})
 	sub.Start()
 	defer sub.Stop()
-	err := <-writeEvents(ctx, w, sub.C, limit, "object aggregation update")
+	err := <-writeEvents(ctx, w, sub.C, limit)
 	if err != nil {
 		log.Error().Err(err).Msgf("write events")
 	}

@@ -47,7 +47,7 @@ func (a *DaemonApi) PostInstanceConfigSubscription(w http.ResponseWriter, r *htt
 	sub.AddFilter(msgbus.CfgUpdated{})
 	sub.Start()
 	defer sub.Stop()
-	err := <-writeEvents(ctx, w, sub.C, limit, "instance Config update")
+	err := <-writeEvents(ctx, w, sub.C, limit)
 	if err != nil {
 		log.Error().Err(err).Msgf("write events")
 	}
