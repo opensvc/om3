@@ -62,8 +62,8 @@ func (o *smon) onCfgDeleted(srcNode string, srcCmd msgbus.CfgDeleted) {
 	}
 }
 
-// onSvcAggUpdated updateIfChange state global expect from aggregated status
-func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
+// onObjectAggUpdated updateIfChange state global expect from aggregated status
+func (o *smon) onObjectAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:

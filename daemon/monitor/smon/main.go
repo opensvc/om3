@@ -198,7 +198,7 @@ func (o *smon) worker(initialNodes []string) {
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.ObjectAggUpdated:
-				o.onSvcAggUpdated(c)
+				o.onObjectAggUpdated(c)
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
