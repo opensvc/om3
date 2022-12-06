@@ -84,10 +84,14 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	d.bus.Pub(msgbus.ObjectAggDeleted{
-		Path: o.path,
-		Node: d.localNode,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.ObjectAggDeleted{
+			Path: o.path,
+			Node: d.localNode,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -115,12 +119,16 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 			Data: eventB,
 		})
 	}
-	d.bus.Pub(msgbus.ObjectAggUpdated{
-		Path:             o.path,
-		Node:             d.localNode,
-		AggregatedStatus: o.value,
-		SrcEv:            o.srcEv,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.ObjectAggUpdated{
+			Path:             o.path,
+			Node:             d.localNode,
+			AggregatedStatus: o.value,
+			SrcEv:            o.srcEv,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

@@ -63,10 +63,13 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 			})
 		}
 	}
-	d.bus.Pub(msgbus.HbNodePing{
-		Node:   peerNode,
-		Status: o.ping,
-	}, pubsub.Label{"node", peerNode})
+	d.bus.Pub(
+		msgbus.HbNodePing{
+			Node:   peerNode,
+			Status: o.ping,
+		},
+		pubsub.Label{"node", peerNode},
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
