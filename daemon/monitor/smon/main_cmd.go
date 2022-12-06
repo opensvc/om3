@@ -12,55 +12,65 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/stringslice"
 )
 
+func (o *smon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceStatusUpdated) {
+	if _, ok := o.instStatus[srcCmd.Node]; ok {
+		if o.instStatus[srcCmd.Node].Updated.Before(srcCmd.Status.Updated) {
+			// only update if more recent
+			o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
+			o.instStatus[srcCmd.Node] = srcCmd.Status
+		} else {
+			o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
+		}
+	} else {
+		o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
+		o.instStatus[srcCmd.Node] = srcCmd.Status
+	}
+}
+
+func (o *smon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
+	if srcCmd.Node == o.localhost {
+		cfgNodes := make(map[string]any)
+		for _, node := range srcCmd.Config.Scope {
+			cfgNodes[node] = nil
+			if _, ok := o.instStatus[node]; !ok {
+				o.instStatus[node] = instance.Status{Avail: status.Undef}
+			}
+		}
+		for node := range o.instStatus {
+			if _, ok := cfgNodes[node]; !ok {
+				o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
+				delete(o.instStatus, node)
+			}
+		}
+	}
+	o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+	o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
+}
+
+func (o *smon) onCfgDeleted(srcNode string, srcCmd msgbus.CfgDeleted) {
+	if _, ok := o.instStatus[srcCmd.Node]; ok {
+		o.log.Info().Msgf("drop deleted instance status from node %s", srcCmd.Node)
+		delete(o.instStatus, srcCmd.Node)
+	}
+}
+
 // onSvcAggUpdated updateIfChange state global expect from aggregated status
 func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
-			srcNode := srcCmd.Node
-			srcInstStatus := srcCmd.Status
-			if _, ok := o.instStatus[srcNode]; ok {
-				if o.instStatus[srcNode].Updated.Before(srcInstStatus.Updated) {
-					// only update if more recent
-					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s update instance status", c.Node, srcNode)
-					o.instStatus[srcNode] = srcInstStatus
-				} else {
-					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", c.Node, srcNode)
-				}
-			} else {
-				o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s create instance status", c.Node, srcNode)
-				o.instStatus[srcNode] = srcInstStatus
-			}
+			o.onInstanceStatusUpdated(c.Node, srcCmd)
 		case msgbus.CfgUpdated:
-			if srcCmd.Node == o.localhost {
-				cfgNodes := make(map[string]any)
-				for _, node := range srcCmd.Config.Scope {
-					cfgNodes[node] = nil
-					if _, ok := o.instStatus[node]; !ok {
-						o.instStatus[node] = instance.Status{Avail: status.Undef}
-					}
-				}
-				for node := range o.instStatus {
-					if _, ok := cfgNodes[node]; !ok {
-						o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
-						delete(o.instStatus, node)
-					}
-				}
-			}
-			o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
-			o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", c.Node, srcCmd.Node, o.scopeNodes)
+			o.onCfgUpdated(c.Node, srcCmd)
 		case msgbus.CfgDeleted:
-			node := srcCmd.Node
-			if _, ok := o.instStatus[node]; ok {
-				o.log.Info().Msgf("drop deleted instance status from node %s", node)
-				delete(o.instStatus, node)
-			}
+			o.onCfgDeleted(c.Node, srcCmd)
 		}
 	}
 	o.svcAgg = c.AggregatedStatus
@@ -132,8 +142,8 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 		case globalExpectThawed:
 		case globalExpectUnprovisioned:
 		case globalExpectStarted:
-			if o.svcAgg.Avail == status.Up {
-				o.log.Info().Msg("preserve global expect: object is already started")
+			if v, reason := o.isStartable(); !v {
+				o.log.Info().Msg(reason)
 				return
 			}
 		default:
@@ -239,6 +249,47 @@ func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 	o.updateIfChange()
 	o.orchestrate()
 	o.updateIfChange()
+}
+
+func (o smon) isStartable() (bool, string) {
+	if o.svcAgg.Avail == status.Warn {
+		return false, "object is not startable: warn agg state"
+	}
+	switch o.svcAgg.Provisioned {
+	case provisioned.Mixed:
+		return false, "object is not startable: mixed agg provisioned state"
+	case provisioned.False:
+		return false, "object is not startable: false agg provisioned state"
+	}
+	if o.isStarted() {
+		return false, "object is not startable: already started"
+	}
+	return true, "object is startable"
+}
+
+func (o smon) isStarted() bool {
+	instStatus := o.instStatus[o.localhost]
+
+	if o.svcAgg.Avail != status.Up {
+		return false
+	}
+	if instStatus.Topology != topology.Flex {
+		return true
+	}
+	if o.upInstCount() != instStatus.FlexTarget {
+		return false
+	}
+	return false
+}
+
+func (o smon) upInstCount() int {
+	n := 0
+	for _, instStatus := range o.instStatus {
+		if instStatus.Avail == status.Up {
+			n += 1
+		}
+	}
+	return n
 }
 
 func (o *smon) needOrchestrate(c cmdOrchestrate) {
