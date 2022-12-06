@@ -66,10 +66,14 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(msgbus.InstanceMonitorDeleted{
-		Path: o.path,
-		Node: d.localNode,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.InstanceMonitorDeleted{
+			Path: o.path,
+			Node: d.localNode,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -100,11 +104,15 @@ func (o opSetSmon) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.InstanceMonitorUpdated{
-		Path:   o.path,
-		Node:   d.localNode,
-		Status: o.value,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.InstanceMonitorUpdated{
+			Path:   o.path,
+			Node:   d.localNode,
+			Status: o.value,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
