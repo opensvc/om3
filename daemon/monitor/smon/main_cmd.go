@@ -307,8 +307,8 @@ func (o smon) isStarted() bool {
 	if instStatus.Topology != topology.Flex {
 		return true
 	}
-	if o.upInstCount() < instStatus.FlexTarget {
-		return false
+	if o.upInstCount() >= instStatus.FlexTarget {
+		return true
 	}
 	return false
 }
