@@ -13,10 +13,15 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type DaemonApi struct {
 }
+
+var (
+	labelApi = pubsub.Label{"origin", "api"}
+)
 
 func Register(r chi.Router, enableUi bool) {
 	daemonApi := &DaemonApi{}
