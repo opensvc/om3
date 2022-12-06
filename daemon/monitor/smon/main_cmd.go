@@ -216,13 +216,14 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 }
 
 func (o *smon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
-	o.nodeMonitor = c.Monitor
+	o.nodeMonitor[c.Node] = c.Monitor
 	o.orchestrate()
 	o.updateIfChange()
 }
 
 func (o *smon) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
-	o.nodeStatus = c.Value
+	o.nodeStatus[c.Node] = c.Value
+	o.updateIsLeader()
 	o.orchestrate()
 	o.updateIfChange()
 }
@@ -397,7 +398,12 @@ func (o *smon) nextPlacedAtCandidate() string {
 
 func (o *smon) newIsLeader(instStatus instance.Status) bool {
 	var candidates []string
-	candidates = append(candidates, o.scopeNodes...)
+	for node, nodeStatus := range o.nodeStatus {
+		if !nodeStatus.Frozen.IsZero() {
+			continue
+		}
+		candidates = append(candidates, node)
+	}
 	candidates = o.sortCandidates(instStatus.Placement, candidates)
 
 	maxLeaders := 1

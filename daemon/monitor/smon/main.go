@@ -55,9 +55,9 @@ type (
 		// updated data from aggregated status update srcEvent
 		instStatus  map[string]instance.Status
 		instSmon    map[string]instance.Monitor
+		nodeMonitor map[string]cluster.NodeMonitor
+		nodeStatus  map[string]cluster.NodeStatus
 		scopeNodes  []string
-		nodeMonitor cluster.NodeMonitor
-		nodeStatus  cluster.NodeStatus
 
 		svcAgg      object.AggregatedStatus
 		cancelReady context.CancelFunc
@@ -143,6 +143,8 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instSmon:      make(map[string]instance.Monitor),
+		nodeStatus:    make(map[string]cluster.NodeStatus),
+		nodeMonitor:   make(map[string]cluster.NodeMonitor),
 		localhost:     hostname.Hostname(),
 		scopeNodes:    nodes,
 		change:        true,
@@ -165,13 +167,12 @@ func (o *smon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub(o.id + "smon")
 	label := pubsub.Label{"path", o.id}
-	nodeLabel := pubsub.Label{"node", o.localhost}
 	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
-	sub.AddFilter(msgbus.NodeMonitorUpdated{}, nodeLabel)
-	sub.AddFilter(msgbus.NodeStatusUpdated{}, nodeLabel)
+	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub
 }

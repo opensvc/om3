@@ -12,7 +12,8 @@ var (
 )
 
 func (o *smon) orchestrateAutoStarted() {
-	if !o.nodeStatus.Frozen.IsZero() {
+	nodeStatus := o.nodeStatus[o.localhost]
+	if !nodeStatus.Frozen.IsZero() {
 		return
 	}
 	instStatus := o.instStatus[o.localhost]

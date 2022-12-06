@@ -7,6 +7,9 @@ func (o *smon) orchestrate() {
 	if _, ok := o.instStatus[o.localhost]; !ok {
 		return
 	}
+	if _, ok := o.nodeStatus[o.localhost]; !ok {
+		return
+	}
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
