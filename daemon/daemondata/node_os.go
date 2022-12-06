@@ -38,7 +38,7 @@ func (o opSetNodeOsPaths) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatusPathsUpdated{
+	d.bus.Pub(msgbus.NodeOsPathsUpdated{
 		Node:  hostname.Hostname(),
 		Value: o.value,
 	})
