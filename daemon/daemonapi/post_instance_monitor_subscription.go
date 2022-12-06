@@ -22,7 +22,7 @@ func (a *DaemonApi) PostInstanceMonitorSubscription(w http.ResponseWriter, r *ht
 	)
 	log := getLogger(r, handlerName)
 	log.Debug().Msg("starting")
-	log.Debug().Msg("done")
+	defer log.Debug().Msg("done")
 	if params.Limit != nil {
 		limit = *params.Limit
 	}
