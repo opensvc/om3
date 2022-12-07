@@ -8,9 +8,11 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/render/tree"
 )
 
@@ -30,11 +32,19 @@ type (
 	// AggregatedStatus contains the object states obtained via
 	// aggregation of all instances states. It exists when a instance config exists somewhere
 	AggregatedStatus struct {
-		Avail       status.T        `json:"avail"`
-		Overall     status.T        `json:"overall,omitempty"`
-		Frozen      string          `json:"frozen,omitempty"`
-		Placement   placement.State `json:"placement,omitempty"`
-		Provisioned provisioned.T   `json:"provisioned,omitempty"`
+		Avail            status.T         `json:"avail"`
+		Overall          status.T         `json:"overall,omitempty"`
+		Frozen           string           `json:"frozen,omitempty"`
+		PlacementPolicy  placement.Policy `json:"placement_policy,omitempty"`
+		PlacementState   placement.State  `json:"placement_state,omitempty"`
+		Topology         topology.T       `json:"topology"`
+		Provisioned      provisioned.T    `json:"provisioned,omitempty"`
+		FlexTarget       int              `json:"flex_target,omitempty"`
+		FlexMin          int              `json:"flex_min,omitempty"`
+		FlexMax          int              `json:"flex_max,omitempty"`
+		UpInstancesCount int              `json:"up_instances_count,omitempty"`
+		Orchestrate      string           `json:"orchestrate"`
+		Priority         priority.T       `json:"priority"`
 
 		// Scope track the config scope from one object instance
 		Scope []string `json:"scope"`
@@ -124,10 +134,10 @@ func (t Status) descString() string {
 	}
 
 	// Placement
-	switch t.Object.Placement {
+	switch t.Object.PlacementState {
 	case placement.Optimal, placement.NotApplicable:
 	default:
-		l = append(l, rawconfig.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.Placement)))
+		l = append(l, rawconfig.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.PlacementState)))
 	}
 
 	// Agent compatibility
@@ -150,10 +160,19 @@ func NewStatus() *Status {
 
 func (s *AggregatedStatus) DeepCopy() *AggregatedStatus {
 	return &AggregatedStatus{
-		Avail:       s.Avail,
-		Overall:     s.Overall,
-		Frozen:      s.Frozen,
-		Placement:   s.Placement,
-		Provisioned: s.Provisioned,
+		Avail:            s.Avail,
+		Overall:          s.Overall,
+		Frozen:           s.Frozen,
+		Orchestrate:      s.Orchestrate,
+		PlacementState:   s.PlacementState,
+		PlacementPolicy:  s.PlacementPolicy,
+		Provisioned:      s.Provisioned,
+		Priority:         s.Priority,
+		Topology:         s.Topology,
+		FlexTarget:       s.FlexTarget,
+		FlexMin:          s.FlexMin,
+		FlexMax:          s.FlexMax,
+		UpInstancesCount: s.UpInstancesCount,
+		Scope:            append([]string{}, s.Scope...),
 	}
 }

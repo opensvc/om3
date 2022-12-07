@@ -1,14 +1,11 @@
 package smon
 
-import "opensvc.com/opensvc/core/topology"
+import (
+	"opensvc.com/opensvc/core/topology"
+)
 
 func (o *smon) orchestrateHA() {
-	nodeStatus := o.nodeStatus[o.localhost]
-	if !nodeStatus.Frozen.IsZero() {
-		return
-	}
-	instStatus := o.instStatus[o.localhost]
-	if instStatus.Orchestrate != "ha" {
+	if o.svcAgg.Orchestrate != "ha" {
 		return
 	}
 	o.orchestrateHAStart()
@@ -16,8 +13,7 @@ func (o *smon) orchestrateHA() {
 }
 
 func (o *smon) orchestrateHAStop() {
-	instStatus := o.instStatus[o.localhost]
-	if instStatus.Topology != topology.Flex {
+	if o.svcAgg.Topology != topology.Flex {
 		return
 	}
 	if v, _ := o.isExtraInstance(); !v {

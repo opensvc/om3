@@ -218,6 +218,7 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 
 func (o *smon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.nodeMonitor[c.Node] = c.Monitor
+	o.updateIsLeader()
 	o.orchestrate()
 	o.updateIfChange()
 }
@@ -254,23 +255,20 @@ func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 }
 
 func (o smon) isExtraInstance() (bool, string) {
-	if o.state.IsLeader {
+	if o.state.IsHALeader {
 		return false, "not leader"
 	}
 	if v, reason := o.isHAOrchestrateable(); !v {
 		return false, reason
 	}
-
-	instStatus := o.instStatus[o.localhost]
-
 	if o.svcAgg.Avail != status.Up {
 		return false, "not agg up"
 	}
-	if instStatus.Topology != topology.Flex {
+	if o.svcAgg.Topology != topology.Flex {
 		return false, "not flex"
 	}
-	if n := o.upInstCount(); n <= instStatus.FlexTarget {
-		return false, fmt.Sprintf("%d/%d up instances", n, instStatus.FlexTarget)
+	if o.svcAgg.UpInstancesCount <= o.svcAgg.FlexTarget {
+		return false, fmt.Sprintf("%d/%d up instances", o.svcAgg.UpInstancesCount, o.svcAgg.FlexTarget)
 	}
 	return true, ""
 }
@@ -299,28 +297,14 @@ func (o smon) isStartable() (bool, string) {
 }
 
 func (o smon) isStarted() bool {
-	instStatus := o.instStatus[o.localhost]
-
-	if o.svcAgg.Avail != status.Up {
+	switch o.svcAgg.Topology {
+	case topology.Flex:
+		return o.svcAgg.UpInstancesCount >= o.svcAgg.FlexTarget
+	case topology.Failover:
+		return o.svcAgg.Avail == status.Up
+	default:
 		return false
 	}
-	if instStatus.Topology != topology.Flex {
-		return true
-	}
-	if o.upInstCount() >= instStatus.FlexTarget {
-		return true
-	}
-	return false
-}
-
-func (o smon) upInstCount() int {
-	n := 0
-	for _, instStatus := range o.instStatus {
-		if instStatus.Avail == status.Up {
-			n += 1
-		}
-	}
-	return n
 }
 
 func (o *smon) needOrchestrate(c cmdOrchestrate) {
@@ -332,8 +316,8 @@ func (o *smon) needOrchestrate(c cmdOrchestrate) {
 	o.orchestrate()
 }
 
-func (o *smon) sortCandidates(policy placement.Policy, candidates []string) []string {
-	switch policy {
+func (o *smon) sortCandidates(candidates []string) []string {
+	switch o.svcAgg.PlacementPolicy {
 	case placement.NodesOrder:
 		return o.sortWithNodesOrderPolicy(candidates)
 	case placement.Spread:
@@ -404,16 +388,12 @@ func (o *smon) nextPlacedAtCandidates(want string) string {
 }
 
 func (o *smon) nextPlacedAtCandidate() string {
-	instStatus, ok := o.instStatus[o.localhost]
-	if !ok {
-		return ""
-	}
-	if instStatus.Topology == topology.Flex {
+	if o.svcAgg.Topology == topology.Flex {
 		return ""
 	}
 	var candidates []string
 	candidates = append(candidates, o.scopeNodes...)
-	candidates = o.sortCandidates(instStatus.Placement, candidates)
+	candidates = o.sortCandidates(candidates)
 
 	for _, candidate := range candidates {
 		if instStatus, ok := o.instStatus[candidate]; ok {
@@ -426,7 +406,7 @@ func (o *smon) nextPlacedAtCandidate() string {
 	return ""
 }
 
-func (o *smon) newIsLeader(instStatus instance.Status) bool {
+func (o *smon) newIsHALeader() bool {
 	var candidates []string
 	for node, nodeStatus := range o.nodeStatus {
 		if !nodeStatus.Frozen.IsZero() {
@@ -437,11 +417,35 @@ func (o *smon) newIsLeader(instStatus instance.Status) bool {
 		}
 		candidates = append(candidates, node)
 	}
-	candidates = o.sortCandidates(instStatus.Placement, candidates)
+	candidates = o.sortCandidates(candidates)
 
-	maxLeaders := 1
-	if instStatus.Topology == topology.Flex {
-		maxLeaders = instStatus.FlexTarget
+	var maxLeaders int = 1
+	if o.svcAgg.Topology == topology.Flex {
+		maxLeaders = o.svcAgg.FlexTarget
+	}
+
+	for i, candidate := range candidates {
+		if candidate != o.localhost {
+			continue
+		}
+		return i < maxLeaders
+	}
+	return false
+}
+
+func (o *smon) newIsLeader() bool {
+	var candidates []string
+	for node, _ := range o.nodeStatus {
+		if _, ok := o.instStatus[node]; !ok {
+			continue
+		}
+		candidates = append(candidates, node)
+	}
+	candidates = o.sortCandidates(candidates)
+
+	var maxLeaders int = 1
+	if o.svcAgg.Topology == topology.Flex {
+		maxLeaders = o.svcAgg.FlexTarget
 	}
 
 	for i, candidate := range candidates {
@@ -454,16 +458,19 @@ func (o *smon) newIsLeader(instStatus instance.Status) bool {
 }
 
 func (o *smon) updateIsLeader() {
-	instStatus, ok := o.instStatus[o.localhost]
-	if !ok {
-		o.log.Debug().Msgf("skip updateIsLeader while no instStatus for %s", o.localhost)
+	if instStatus, ok := o.instStatus[o.localhost]; !ok || instStatus.Avail == status.NotApplicable {
 		return
 	}
-	isLeader := o.newIsLeader(instStatus)
+	isLeader := o.newIsLeader()
 	if isLeader != o.state.IsLeader {
 		o.change = true
+		o.state.IsLeader = isLeader
 	}
-	o.state.IsLeader = isLeader
+	isHALeader := o.newIsHALeader()
+	if isHALeader != o.state.IsHALeader {
+		o.change = true
+		o.state.IsHALeader = isHALeader
+	}
 	o.updateIfChange()
 	return
 }
@@ -474,7 +481,7 @@ func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
 	if len(l) == 0 {
 		return set
 	}
-	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
+	if o.svcAgg.Topology == topology.Failover {
 		l = l[:1]
 	}
 	for _, node := range l {

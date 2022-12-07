@@ -5,9 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/guregu/null"
-	"github.com/rs/zerolog/log"
-
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
@@ -35,7 +32,8 @@ type (
 		StatusUpdated       time.Time                 `json:"status_updated"`
 		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
 		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
-		IsLeader            bool                      `json:"leader"`
+		IsLeader            bool                      `json:"is_leader"`
+		IsHALeader          bool                      `json:"is_ha_leader"`
 		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
 	}
 
@@ -49,11 +47,18 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Nodename string    `json:"-"`
-		Path     path.T    `json:"-"`
-		Checksum string    `json:"csum"`
-		Scope    []string  `json:"scope"`
-		Updated  time.Time `json:"updated"`
+		Nodename        string           `json:"-"`
+		Path            path.T           `json:"-"`
+		Checksum        string           `json:"csum"`
+		Scope           []string         `json:"scope"`
+		FlexTarget      int              `json:"flex_target,omitempty"`
+		FlexMin         int              `json:"flex_min,omitempty"`
+		FlexMax         int              `json:"flex_max,omitempty"`
+		Topology        topology.T       `json:"topology,omitempty"`
+		PlacementPolicy placement.Policy `json:"placement_policy,omitempty"`
+		Orchestrate     string           `json:"orchestrate,omitempty"`
+		Priority        priority.T       `json:"priority,omitempty"`
+		Updated         time.Time        `json:"updated"`
 	}
 
 	// Status describes the instance status.
@@ -68,23 +73,15 @@ type (
 		Frozen      time.Time                `json:"frozen,omitempty"`
 		Kind        kind.T                   `json:"kind"`
 		Optional    status.T                 `json:"optional,omitempty"`
-		Orchestrate string                   `json:"orchestrate,omitempty"` // TODO enum
-		Topology    topology.T               `json:"topology,omitempty"`
-		Placement   placement.Policy         `json:"placement,omitempty"`
-		Priority    priority.T               `json:"priority,omitempty"`
 		Provisioned provisioned.T            `json:"provisioned"`
 		Preserved   bool                     `json:"preserved,omitempty"`
 		Updated     time.Time                `json:"updated"`
-		FlexTarget  int                      `json:"flex_target,omitempty"`
-		FlexMin     int                      `json:"flex_min,omitempty"`
-		FlexMax     int                      `json:"flex_max,omitempty"`
 		Subsets     map[string]SubsetStatus  `json:"subsets,omitempty"`
 		Resources   []resource.ExposedStatus `json:"resources,omitempty"`
 		Running     ResourceRunningSet       `json:"running,omitempty"`
 		Parents     []path.Relation          `json:"parents,omitempty"`
 		Children    []path.Relation          `json:"children,omitempty"`
 		Slaves      []path.Relation          `json:"slaves,omitempty"`
-		Scale       null.Int                 `json:"scale,omitempty"`
 		StatusGroup map[string]string        `json:"status_group,omitempty"`
 	}
 
@@ -109,20 +106,6 @@ func (t ResourceRunningSet) Has(rid string) bool {
 		}
 	}
 	return false
-}
-
-// UnmarshalJSON serializes the type instance as JSON.
-func (t *Status) UnmarshalJSON(b []byte) error {
-	type tempT Status
-	temp := tempT(Status{
-		Priority: priority.Default,
-	})
-	if err := json.Unmarshal(b, &temp); err != nil {
-		log.Error().Err(err).Str("b", string(b)).Msg("unmarshal instance status")
-		return err
-	}
-	*t = Status(temp)
-	return nil
 }
 
 // UnmarshalJSON serializes the type instance as JSON.

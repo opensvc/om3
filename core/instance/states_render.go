@@ -23,10 +23,8 @@ func (t States) Tree() *tree.Tree {
 	return newTree
 }
 
-//
 // LoadTreeNode add the tree nodes representing the type instance into another
 // tree, at the specified node.
-//
 func (t States) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
@@ -106,7 +104,7 @@ func (t States) descString() string {
 	}
 
 	// Priority
-	if s := t.Status.Priority.StatusString(); s != "" {
+	if s := t.Config.Priority.StatusString(); s != "" {
 		l = append(l, rawconfig.Colorize.Secondary(s))
 	}
 

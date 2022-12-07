@@ -12,6 +12,14 @@ func (o *smon) orchestrateProvisioned() {
 		o.provisionedFromIdle()
 	case statusWaitLeader:
 		o.provisionedFromWaitLeader()
+	case statusProvisionFailed:
+		o.provisionedFromProvisionFailed()
+	}
+}
+
+func (o *smon) provisionedFromProvisionFailed() {
+	if o.provisionedClearIfReached() {
+		return
 	}
 }
 

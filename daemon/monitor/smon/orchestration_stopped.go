@@ -24,12 +24,14 @@ func (o *smon) freezeStop() {
 		o.doFreezeStop()
 	case statusFrozen:
 		o.doStop()
-	case statusFreezing:
 	case statusReady:
 		o.stoppedFromReady()
+	case statusFreezing:
+		// wait for the freeze exec to end
 	case statusStopping:
+		// avoid multiple concurrent stop execs
 	case statusStopFailed:
-		o.stoppedFromFailed()
+		// avoid a retry-loop
 	case statusStartFailed:
 		o.stoppedFromFailed()
 	default:
@@ -37,17 +39,23 @@ func (o *smon) freezeStop() {
 	}
 }
 
+// stop stops the object but does not freeze.
+// This func must be called by orchestrations that know the ha auto-start will
+// not starts it back (ex: auto-stop), or that want the restart (ex: restart).
 func (o *smon) stop() {
 	switch o.state.Status {
 	case statusIdle:
 		o.doStop()
-	case statusFrozen:
-	case statusFreezing:
 	case statusReady:
 		o.stoppedFromReady()
+	case statusFrozen:
+		// honor the frozen state
+	case statusFreezing:
+		// wait for the freeze exec to end
 	case statusStopping:
+		// avoid multiple concurrent stop execs
 	case statusStopFailed:
-		o.stoppedFromFailed()
+		// avoid a retry-loop
 	case statusStartFailed:
 		o.stoppedFromFailed()
 	default:
@@ -129,6 +137,8 @@ func (o *smon) stoppedClearIfReached() bool {
 func (o *smon) isLocalStopped() bool {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
+	case status.NotApplicable:
+		return true
 	case status.Down:
 		return true
 	case status.StandbyDown:

@@ -13,6 +13,7 @@ var (
 
 func (o *smon) orchestrateStarted() {
 	if o.isStarted() {
+		o.startedClearIfReached()
 		return
 	}
 	switch o.state.Status {
@@ -60,7 +61,7 @@ func (o *smon) startedFromThawed() {
 	if o.startedClearIfReached() {
 		return
 	}
-	if !o.state.IsLeader {
+	if !o.state.IsHALeader {
 		return
 	}
 	if o.hasOtherNodeActing() {
@@ -95,7 +96,7 @@ func (o *smon) startedFromReady() {
 	if o.startedClearIfReached() {
 		return
 	}
-	if !o.state.IsLeader {
+	if !o.state.IsHALeader {
 		o.loggerWithState().Info().Msg("leadership lost, leave ready state")
 		o.transitionTo(statusIdle)
 		o.clearPending()

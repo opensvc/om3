@@ -10,7 +10,6 @@ import (
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/statusbus"
-	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -58,10 +57,6 @@ func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
 func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
-	data.Orchestrate = t.Orchestrate()
-	data.Topology = t.Topology()
-	data.Placement = t.Placement()
-	data.Priority = t.Priority()
 	data.Kind = t.path.Kind
 	data.Updated = time.Now()
 	data.Parents = t.Parents()
@@ -77,11 +72,6 @@ func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err
 		data.Avail = status.NotApplicable
 		data.Overall = status.NotApplicable
 		data.Optional = status.NotApplicable
-	}
-	if data.Topology == topology.Flex {
-		data.FlexTarget = t.FlexTarget()
-		data.FlexMin = t.FlexMin()
-		data.FlexMax = t.FlexMax()
 	}
 	data.Csum = csumStatusData(data)
 	t.statusDump(data)

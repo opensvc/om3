@@ -27,7 +27,11 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/topology"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/monitor/smon"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -240,7 +244,8 @@ func (o *T) configFileCheck() error {
 		return configFileCheckError
 	}
 	o.forceRefresh = false
-	scope, err := o.getScope()
+	cf := o.configure.Config()
+	scope, err := o.getScope(cf)
 	if err != nil {
 		o.log.Error().Err(err).Msgf("can't get scope")
 		return configFileCheckError
@@ -264,9 +269,20 @@ func (o *T) configFileCheck() error {
 	}
 	cfg := o.cfg
 	cfg.Nodename = o.localhost
+	cfg.Topology = o.getTopology(cf)
+	cfg.Orchestrate = o.getOrchestrate(cf)
+	cfg.Priority = o.getPriority(cf)
+	cfg.PlacementPolicy = o.getPlacementPolicy(cf)
 	cfg.Scope = scope
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Updated = mtime
+
+	if cfg.Topology == topology.Flex {
+		cfg.FlexTarget = o.getFlexTarget(cf)
+		cfg.FlexMin = o.getFlexMin(cf)
+		cfg.FlexMax = o.getFlexMax(cf)
+	}
+
 	o.lastMtime = mtime
 	o.updateCfg(&cfg)
 	return nil
@@ -277,13 +293,13 @@ func (o *T) configFileCheck() error {
 // depending on object kind
 // Ccfg => cluster.nodes
 // else => eval DEFAULT.nodes
-func (o *T) getScope() (scope []string, err error) {
+func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	switch o.path.Kind {
 	case kind.Ccfg:
 		scope = strings.Split(rawconfig.ClusterSection().Nodes, " ")
 	default:
 		var evalNodes interface{}
-		evalNodes, err = o.configure.Config().Eval(key.Parse("DEFAULT.nodes"))
+		evalNodes, err = cf.Eval(key.Parse("DEFAULT.nodes"))
 		if err != nil {
 			o.log.Error().Err(err).Msg("eval DEFAULT.nodes")
 			return
@@ -291,6 +307,50 @@ func (o *T) getScope() (scope []string, err error) {
 		scope = evalNodes.([]string)
 	}
 	return
+}
+
+func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {
+	s := cf.GetString(key.Parse("DEFAULT.placement"))
+	return placement.NewPolicy(s)
+}
+
+func (o *T) getTopology(cf *xconfig.T) topology.T {
+	s := cf.GetString(key.Parse("DEFAULT.topology"))
+	return topology.New(s)
+}
+
+func (o *T) getOrchestrate(cf *xconfig.T) string {
+	s := cf.GetString(key.Parse("DEFAULT.orchestrate"))
+	return s
+}
+
+func (o *T) getPriority(cf *xconfig.T) priority.T {
+	s := cf.GetInt(key.Parse("DEFAULT.priority"))
+	return priority.T(s)
+}
+
+func (o *T) getFlexTarget(cf *xconfig.T) int {
+	switch o.path.Kind {
+	case kind.Svc, kind.Vol:
+		return cf.GetInt(key.Parse("DEFAULT.flex_target"))
+	}
+	return 0
+}
+
+func (o *T) getFlexMin(cf *xconfig.T) int {
+	switch o.path.Kind {
+	case kind.Svc, kind.Vol:
+		return cf.GetInt(key.Parse("DEFAULT.flex_min"))
+	}
+	return 0
+}
+
+func (o *T) getFlexMax(cf *xconfig.T) int {
+	switch o.path.Kind {
+	case kind.Svc, kind.Vol:
+		return cf.GetInt(key.Parse("DEFAULT.flex_max"))
+	}
+	return 0
 }
 
 func (o *T) setConfigure() error {

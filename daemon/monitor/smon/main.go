@@ -126,7 +126,6 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		GlobalExpect: globalExpectUnset,
 		LocalExpect:  localExpectUnset,
 		Status:       statusIdle,
-		IsLeader:     false,
 		Restart:      make(map[string]instance.MonitorRestart),
 	}
 	state := previousState
@@ -267,6 +266,9 @@ func (o *smon) updateIfChange() {
 	}
 	if newVal.IsLeader != previousVal.IsLeader {
 		o.loggerWithState().Info().Msgf("change leader state %t -> %t", previousVal.IsLeader, newVal.IsLeader)
+	}
+	if newVal.IsHALeader != previousVal.IsHALeader {
+		o.loggerWithState().Info().Msgf("change ha leader state %t -> %t", previousVal.IsHALeader, newVal.IsHALeader)
 	}
 	o.previousState = o.state
 	o.update()

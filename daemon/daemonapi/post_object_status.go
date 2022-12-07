@@ -4,18 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/guregu/null"
-
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/priority"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/daemon/daemondata"
 )
 
@@ -60,7 +55,6 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 		Frozen:      payloadStatus.Frozen,
 		Kind:        kind.New(payloadStatus.Kind),
 		Overall:     status.Parse(payloadStatus.Overall),
-		Scale:       null.Int{},
 		StatusGroup: nil,
 		Updated:     payloadStatus.Updated,
 	}
@@ -85,20 +79,8 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 	if payloadStatus.Env != nil {
 		instanceStatus.Env = *payloadStatus.Env
 	}
-	if payloadStatus.FlexMax != nil {
-		instanceStatus.FlexMax = *payloadStatus.FlexMax
-	}
-	if payloadStatus.FlexMin != nil {
-		instanceStatus.FlexMin = *payloadStatus.FlexMin
-	}
-	if payloadStatus.FlexTarget != nil {
-		instanceStatus.FlexTarget = *payloadStatus.FlexTarget
-	}
 	if payloadStatus.Optional != nil {
 		instanceStatus.Optional = status.Parse(*payloadStatus.Optional)
-	}
-	if payloadStatus.Orchestrate != nil {
-		instanceStatus.Orchestrate = string(*payloadStatus.Orchestrate)
 	}
 	if payloadStatus.Parents != nil {
 		relation := toPathRelationL(payloadStatus.Parents)
@@ -106,14 +88,8 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 			instanceStatus.Parents = relation
 		}
 	}
-	if payloadStatus.Placement != nil {
-		instanceStatus.Placement = placement.NewPolicy(string(*payloadStatus.Placement))
-	}
 	if payloadStatus.Preserved != nil {
 		instanceStatus.Preserved = *payloadStatus.Preserved
-	}
-	if payloadStatus.Priority != nil {
-		instanceStatus.Priority = priority.T(*payloadStatus.Priority)
 	}
 	if prov, err := provisioned.NewFromString(string(payloadStatus.Provisioned)); err != nil {
 		return nil, err
@@ -198,9 +174,6 @@ func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Statu
 		if len(relation) > 0 {
 			instanceStatus.Slaves = relation
 		}
-	}
-	if payloadStatus.Topology != nil {
-		instanceStatus.Topology = topology.New(string(*payloadStatus.Topology))
 	}
 	if payloadStatus.Subsets != nil {
 		subSets := make(map[string]instance.SubsetStatus)
