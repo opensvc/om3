@@ -15,7 +15,7 @@ func (o *smon) orchestratePlacedAt(dst string) {
 }
 
 func (o *smon) doPlacedStart() {
-	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
+	if o.svcAgg.Topology == topology.Failover {
 		// failover objects need to wait for the agg status to reach "down"
 		switch o.svcAgg.Avail {
 		case status.Down:
@@ -26,9 +26,39 @@ func (o *smon) doPlacedStart() {
 	o.doAction(o.crmStart, statusStarting, statusStarted, statusStartFailed)
 }
 
+func (o *smon) placedStop() {
+	instStatus := o.instStatus[o.localhost]
+	switch instStatus.Avail {
+	case status.Down, status.StandbyDown, status.StandbyUp:
+		o.placedStopFromDown()
+	case status.Up, status.Warn:
+		o.doPlacedStop()
+	default:
+		return
+	}
+}
+
 func (o *smon) doPlacedStop() {
 	o.createPendingWithDuration(stopDuration)
 	o.doAction(o.crmStop, statusStopping, statusStopped, statusStopFailed)
+}
+
+func (o *smon) placedStopFromDown() {
+	o.loggerWithState().Info().Msg("instance is already down")
+	o.change = true
+	o.state.Status = statusStopped
+	o.clearPending()
+}
+
+func (o *smon) clearStopFailedIfDown() {
+	instStatus := o.instStatus[o.localhost]
+	switch instStatus.Avail {
+	case status.Down, status.StandbyDown:
+		o.loggerWithState().Info().Msg("instance is down, clear stop failed")
+		o.change = true
+		o.state.Status = statusStopped
+		o.clearPending()
+	}
 }
 
 func (o *smon) clearStoppedIfAggUp() {
@@ -58,7 +88,7 @@ func (o *smon) orchestratePlacedStart() {
 
 func (o *smon) orchestratePlacedStop() {
 	if !o.acceptStoppedOrchestration() {
-		o.log.Warn().Msg("no solution for orchestrate stopped")
+		o.log.Warn().Msg("no solution for orchestrate placed stopped")
 		return
 	}
 	switch o.state.Status {
@@ -67,15 +97,15 @@ func (o *smon) orchestratePlacedStop() {
 	case statusFreezing:
 	case statusReady:
 		o.stoppedFromReady()
+	case statusStopFailed:
+		o.clearStopFailedIfDown()
 	case statusStopping:
 	case statusStopped:
 		o.clearStoppedIfAggUp()
-	case statusStopFailed:
-		o.transitionTo(statusIdle)
 	case statusStartFailed:
 		o.transitionTo(statusIdle)
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate stopped from %s", o.state.Status)
+		o.log.Error().Msgf("don't know how to orchestrate placed stopped from %s", o.state.Status)
 	}
 }
 

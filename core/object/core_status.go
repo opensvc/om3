@@ -57,10 +57,6 @@ func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
 func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
-	data.Orchestrate = t.Orchestrate()
-	data.Topology = t.Topology()
-	data.Placement = t.Placement()
-	data.Priority = t.Priority()
 	data.Kind = t.path.Kind
 	data.Updated = time.Now()
 	data.Parents = t.Parents()
@@ -123,11 +119,9 @@ func csumStatusDataRecurse(w io.Writer, d interface{}) error {
 	return nil
 }
 
-//
 // csumStatusData returns the string representation of the checksum of the
 // status.json content, adding recursively all data keys except
 // time and checksum fields.
-//
 func csumStatusData(data instance.Status) string {
 	w := md5.New()
 	if err := csumStatusDataRecurse(w, data); err != nil {
@@ -150,10 +144,8 @@ func (t *core) statusDumpModTime() time.Time {
 	return file.ModTime(p)
 }
 
-//
 // statusFilePair returns a pair of file path suitable for a tmp-to-final move
 // after change.
-//
 func (t core) statusFilePair() (final string, tmp string) {
 	final = t.statusFile()
 	tmp = filepath.Join(filepath.Dir(final), "."+filepath.Base(final)+".swp")

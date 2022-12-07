@@ -111,6 +111,13 @@ func (o *svcAggStatus) worker() {
 				o.updateStatus()
 			case msgbus.CfgUpdated:
 				o.status.Scope = c.Config.Scope
+				o.status.FlexTarget = c.Config.FlexTarget
+				o.status.FlexMin = c.Config.FlexMin
+				o.status.FlexMax = c.Config.FlexMax
+				o.status.Orchestrate = c.Config.Orchestrate
+				o.status.PlacementPolicy = c.Config.PlacementPolicy
+				o.status.Priority = c.Config.Priority
+				o.status.Topology = c.Config.Topology
 				o.srcEvent = i
 
 				// update local cache for instance status & monitor from cfg node
@@ -141,10 +148,10 @@ func (o *svcAggStatus) updateStatus() {
 	// TODO update this simple aggregate status compute, perhaps already implemented
 
 	updateAvailOverall := func() {
-		statusAvailCount := make([]uint, 128, 128)
-		statusOverallCount := make([]uint, 128, 128)
+		statusAvailCount := make([]int, 128, 128)
+		statusOverallCount := make([]int, 128, 128)
 
-		agregateStatus := func(states []uint) status.T {
+		agregateStatus := func(states []int) status.T {
 			if states[status.Warn] > 0 {
 				return status.Warn
 			} else if states[status.Up] > 0 {
@@ -160,6 +167,7 @@ func (o *svcAggStatus) updateStatus() {
 			statusAvailCount[instStatus.Avail]++
 			statusOverallCount[instStatus.Overall]++
 		}
+		o.status.UpInstancesCount = statusAvailCount[status.Up]
 		o.status.Avail = agregateStatus(statusAvailCount)
 		o.status.Overall = agregateStatus(statusOverallCount)
 	}
@@ -192,30 +200,30 @@ func (o *svcAggStatus) updateStatus() {
 		}
 	}
 
-	updatePlacement := func() {
-		o.status.Placement = placement.NotApplicable
+	updatePlacementState := func() {
+		o.status.PlacementState = placement.NotApplicable
 		for node, instMonitor := range o.instMonitor {
 			instStatus, ok := o.instStatus[node]
 			if !ok {
-				o.status.Placement = placement.NotApplicable
+				o.status.PlacementState = placement.NotApplicable
 				break
 			}
 			if instMonitor.IsLeader && !instStatus.Avail.Is(status.Up, status.NotApplicable) {
-				o.status.Placement = placement.NonOptimal
+				o.status.PlacementState = placement.NonOptimal
 				break
 			}
 			if !instMonitor.IsLeader && !instStatus.Avail.Is(status.Down, status.NotApplicable) {
-				o.status.Placement = placement.NonOptimal
+				o.status.PlacementState = placement.NonOptimal
 				break
 			}
-			o.status.Placement = placement.Optimal
+			o.status.PlacementState = placement.Optimal
 		}
 	}
 
 	updateAvailOverall()
 	updateProvisioned()
 	updateFrozen()
-	updatePlacement()
+	updatePlacementState()
 	o.update()
 }
 

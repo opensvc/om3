@@ -12,8 +12,8 @@ var (
 )
 
 func (o *smon) orchestrateStarted() {
-	if !o.acceptStartedOrchestration() {
-		o.log.Warn().Msg("no solution for orchestrate started")
+	if o.isStarted() {
+		o.startedClearIfReached()
 		return
 	}
 	switch o.state.Status {
@@ -41,6 +41,9 @@ func (o *smon) orchestrateStarted() {
 // else   => try startedFromThawed
 func (o *smon) startedFromIdle() {
 	if !o.instStatus[o.localhost].Frozen.IsZero() {
+		if o.state.GlobalExpect == globalExpectUnset {
+			return
+		}
 		o.doUnfreeze()
 		return
 	} else {
@@ -58,8 +61,7 @@ func (o *smon) startedFromThawed() {
 	if o.startedClearIfReached() {
 		return
 	}
-	if o.hasBetterCandidateForStarted() {
-		o.log.Debug().Msg("better candidate found for started")
+	if !o.state.IsHALeader {
 		return
 	}
 	if o.hasOtherNodeActing() {
@@ -94,8 +96,8 @@ func (o *smon) startedFromReady() {
 	if o.startedClearIfReached() {
 		return
 	}
-	if o.hasBetterCandidateForStarted() {
-		o.loggerWithState().Info().Msg("another better candidate exists, leave ready state")
+	if !o.state.IsHALeader {
+		o.loggerWithState().Info().Msg("leadership lost, leave ready state")
 		o.transitionTo(statusIdle)
 		o.clearPending()
 		return
@@ -122,7 +124,7 @@ func (o *smon) startedFromAny() {
 }
 
 func (o *smon) startedFromStartFailed() {
-	if o.svcAgg.Avail == status.Up {
+	if o.isStarted() {
 		o.loggerWithState().Info().Msg("clear start failed (aggregated status is up)")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
@@ -133,42 +135,37 @@ func (o *smon) startedFromStartFailed() {
 
 func (o *smon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		o.loggerWithState().Info().Msg("local status is started, unset global expect")
-		o.change = true
-		o.state.Status = statusIdle
-		o.state.GlobalExpect = globalExpectUnset
+		if o.state.Status != statusIdle {
+			o.loggerWithState().Info().Msg("local status is started, unset status")
+			o.change = true
+			o.state.Status = statusIdle
+		}
+		if o.state.GlobalExpect != globalExpectUnset {
+			o.loggerWithState().Info().Msg("local status is started, unset global expect")
+			o.change = true
+			o.state.GlobalExpect = globalExpectUnset
+		}
 		if o.state.LocalExpect != statusStarted {
+			o.loggerWithState().Info().Msg("local status is started, unset local expect")
+			o.change = true
 			o.state.LocalExpect = statusStarted
 		}
 		o.clearPending()
 		return true
 	}
-	if o.svcAgg.Avail == status.Up {
-		o.loggerWithState().Info().Msg("aggregated status is up, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
-		o.state.Status = statusIdle
+	if o.isStarted() {
+		if o.state.Status != statusIdle {
+			o.loggerWithState().Info().Msg("object is started, unset status")
+			o.change = true
+			o.state.Status = statusIdle
+		}
+		if o.state.GlobalExpect != globalExpectUnset {
+			o.loggerWithState().Info().Msg("object is started, unset global expect")
+			o.change = true
+			o.state.GlobalExpect = globalExpectUnset
+		}
 		o.clearPending()
 		return true
-	}
-	return false
-}
-
-func (o *smon) hasBetterCandidateForStarted() bool {
-	for node, otherSmon := range o.instSmon {
-		if node == o.localhost {
-			continue
-		}
-		switch otherSmon.Status {
-		case statusReady:
-			if otherSmon.IsLeader {
-				return true
-			}
-		case statusStarting:
-			return true
-		case statusStarted:
-			return true
-		}
 	}
 	return false
 }
@@ -183,14 +180,4 @@ func (o *smon) isLocalStarted() bool {
 	default:
 		return false
 	}
-}
-
-func (o *smon) acceptStartedOrchestration() bool {
-	switch o.svcAgg.Avail {
-	case status.Down:
-		return true
-	case status.Up:
-		return true
-	}
-	return false
 }

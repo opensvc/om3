@@ -3,6 +3,7 @@ package smon
 import (
 	"bytes"
 	"crypto/md5"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -12,55 +13,65 @@ import (
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/nodeselector"
 	"opensvc.com/opensvc/core/placement"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/stringslice"
 )
 
-// onSvcAggUpdated updateIfChange state global expect from aggregated status
-func (o *smon) onSvcAggUpdated(c msgbus.ObjectAggUpdated) {
+func (o *smon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceStatusUpdated) {
+	if _, ok := o.instStatus[srcCmd.Node]; ok {
+		if o.instStatus[srcCmd.Node].Updated.Before(srcCmd.Status.Updated) {
+			// only update if more recent
+			o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
+			o.instStatus[srcCmd.Node] = srcCmd.Status
+		} else {
+			o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
+		}
+	} else {
+		o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
+		o.instStatus[srcCmd.Node] = srcCmd.Status
+	}
+}
+
+func (o *smon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
+	if srcCmd.Node == o.localhost {
+		cfgNodes := make(map[string]any)
+		for _, node := range srcCmd.Config.Scope {
+			cfgNodes[node] = nil
+			if _, ok := o.instStatus[node]; !ok {
+				o.instStatus[node] = instance.Status{Avail: status.Undef}
+			}
+		}
+		for node := range o.instStatus {
+			if _, ok := cfgNodes[node]; !ok {
+				o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
+				delete(o.instStatus, node)
+			}
+		}
+	}
+	o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+	o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
+}
+
+func (o *smon) onCfgDeleted(srcNode string, srcCmd msgbus.CfgDeleted) {
+	if _, ok := o.instStatus[srcCmd.Node]; ok {
+		o.log.Info().Msgf("drop deleted instance status from node %s", srcCmd.Node)
+		delete(o.instStatus, srcCmd.Node)
+	}
+}
+
+// onObjectAggUpdated updateIfChange state global expect from aggregated status
+func (o *smon) onObjectAggUpdated(c msgbus.ObjectAggUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
-			srcNode := srcCmd.Node
-			srcInstStatus := srcCmd.Status
-			if _, ok := o.instStatus[srcNode]; ok {
-				if o.instStatus[srcNode].Updated.Before(srcInstStatus.Updated) {
-					// only update if more recent
-					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s update instance status", c.Node, srcNode)
-					o.instStatus[srcNode] = srcInstStatus
-				} else {
-					o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", c.Node, srcNode)
-				}
-			} else {
-				o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s create instance status", c.Node, srcNode)
-				o.instStatus[srcNode] = srcInstStatus
-			}
+			o.onInstanceStatusUpdated(c.Node, srcCmd)
 		case msgbus.CfgUpdated:
-			if srcCmd.Node == o.localhost {
-				cfgNodes := make(map[string]any)
-				for _, node := range srcCmd.Config.Scope {
-					cfgNodes[node] = nil
-					if _, ok := o.instStatus[node]; !ok {
-						o.instStatus[node] = instance.Status{Avail: status.Undef}
-					}
-				}
-				for node := range o.instStatus {
-					if _, ok := cfgNodes[node]; !ok {
-						o.log.Info().Msgf("drop not anymore in local config status from node %s", node)
-						delete(o.instStatus, node)
-					}
-				}
-			}
-			o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
-			o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", c.Node, srcCmd.Node, o.scopeNodes)
+			o.onCfgUpdated(c.Node, srcCmd)
 		case msgbus.CfgDeleted:
-			node := srcCmd.Node
-			if _, ok := o.instStatus[node]; ok {
-				o.log.Info().Msgf("drop deleted instance status from node %s", node)
-				delete(o.instStatus, node)
-			}
+			o.onCfgDeleted(c.Node, srcCmd)
 		}
 	}
 	o.svcAgg = c.AggregatedStatus
@@ -132,8 +143,8 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 		case globalExpectThawed:
 		case globalExpectUnprovisioned:
 		case globalExpectStarted:
-			if o.svcAgg.Avail == status.Up {
-				o.log.Info().Msg("preserve global expect: object is already started")
+			if v, reason := o.isStartable(); !v {
+				o.log.Info().Msg(reason)
 				return
 			}
 		default:
@@ -205,6 +216,20 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 
 }
 
+func (o *smon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
+	o.nodeMonitor[c.Node] = c.Monitor
+	o.updateIsLeader()
+	o.orchestrate()
+	o.updateIfChange()
+}
+
+func (o *smon) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
+	o.nodeStatus[c.Node] = c.Value
+	o.updateIsLeader()
+	o.orchestrate()
+	o.updateIfChange()
+}
+
 func (o *smon) onRemoteSmonUpdated(c msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
 	instSmon := c.Status
@@ -229,6 +254,59 @@ func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 	o.updateIfChange()
 }
 
+func (o smon) isExtraInstance() (bool, string) {
+	if o.state.IsHALeader {
+		return false, "not leader"
+	}
+	if v, reason := o.isHAOrchestrateable(); !v {
+		return false, reason
+	}
+	if o.svcAgg.Avail != status.Up {
+		return false, "not agg up"
+	}
+	if o.svcAgg.Topology != topology.Flex {
+		return false, "not flex"
+	}
+	if o.svcAgg.UpInstancesCount <= o.svcAgg.FlexTarget {
+		return false, fmt.Sprintf("%d/%d up instances", o.svcAgg.UpInstancesCount, o.svcAgg.FlexTarget)
+	}
+	return true, ""
+}
+
+func (o smon) isHAOrchestrateable() (bool, string) {
+	if o.svcAgg.Avail == status.Warn {
+		return false, "warn agg state"
+	}
+	switch o.svcAgg.Provisioned {
+	case provisioned.Mixed:
+		return false, "mixed agg provisioned state"
+	case provisioned.False:
+		return false, "false agg provisioned state"
+	}
+	return true, ""
+}
+
+func (o smon) isStartable() (bool, string) {
+	if v, reason := o.isHAOrchestrateable(); !v {
+		return false, reason
+	}
+	if o.isStarted() {
+		return false, "already started"
+	}
+	return true, "object is startable"
+}
+
+func (o smon) isStarted() bool {
+	switch o.svcAgg.Topology {
+	case topology.Flex:
+		return o.svcAgg.UpInstancesCount >= o.svcAgg.FlexTarget
+	case topology.Failover:
+		return o.svcAgg.Avail == status.Up
+	default:
+		return false
+	}
+}
+
 func (o *smon) needOrchestrate(c cmdOrchestrate) {
 	if o.state.Status == c.state {
 		o.change = true
@@ -238,8 +316,8 @@ func (o *smon) needOrchestrate(c cmdOrchestrate) {
 	o.orchestrate()
 }
 
-func (o *smon) sortCandidates(policy placement.Policy, candidates []string) []string {
-	switch policy {
+func (o *smon) sortCandidates(candidates []string) []string {
+	switch o.svcAgg.PlacementPolicy {
 	case placement.NodesOrder:
 		return o.sortWithNodesOrderPolicy(candidates)
 	case placement.Spread:
@@ -310,16 +388,12 @@ func (o *smon) nextPlacedAtCandidates(want string) string {
 }
 
 func (o *smon) nextPlacedAtCandidate() string {
-	instStatus, ok := o.instStatus[o.localhost]
-	if !ok {
-		return ""
-	}
-	if instStatus.Topology == topology.Flex {
+	if o.svcAgg.Topology == topology.Flex {
 		return ""
 	}
 	var candidates []string
 	candidates = append(candidates, o.scopeNodes...)
-	candidates = o.sortCandidates(instStatus.Placement, candidates)
+	candidates = o.sortCandidates(candidates)
 
 	for _, candidate := range candidates {
 		if instStatus, ok := o.instStatus[candidate]; ok {
@@ -332,14 +406,46 @@ func (o *smon) nextPlacedAtCandidate() string {
 	return ""
 }
 
-func (o *smon) newIsLeader(instStatus instance.Status) bool {
+func (o *smon) newIsHALeader() bool {
 	var candidates []string
-	candidates = append(candidates, o.scopeNodes...)
-	candidates = o.sortCandidates(instStatus.Placement, candidates)
+	for node, nodeStatus := range o.nodeStatus {
+		if !nodeStatus.Frozen.IsZero() {
+			continue
+		}
+		if instStatus, ok := o.instStatus[node]; !ok || !instStatus.Frozen.IsZero() {
+			continue
+		}
+		candidates = append(candidates, node)
+	}
+	candidates = o.sortCandidates(candidates)
 
-	maxLeaders := 1
-	if instStatus.Topology == topology.Flex {
-		maxLeaders = instStatus.FlexTarget
+	var maxLeaders int = 1
+	if o.svcAgg.Topology == topology.Flex {
+		maxLeaders = o.svcAgg.FlexTarget
+	}
+
+	for i, candidate := range candidates {
+		if candidate != o.localhost {
+			continue
+		}
+		return i < maxLeaders
+	}
+	return false
+}
+
+func (o *smon) newIsLeader() bool {
+	var candidates []string
+	for node, _ := range o.nodeStatus {
+		if _, ok := o.instStatus[node]; !ok {
+			continue
+		}
+		candidates = append(candidates, node)
+	}
+	candidates = o.sortCandidates(candidates)
+
+	var maxLeaders int = 1
+	if o.svcAgg.Topology == topology.Flex {
+		maxLeaders = o.svcAgg.FlexTarget
 	}
 
 	for i, candidate := range candidates {
@@ -352,16 +458,19 @@ func (o *smon) newIsLeader(instStatus instance.Status) bool {
 }
 
 func (o *smon) updateIsLeader() {
-	instStatus, ok := o.instStatus[o.localhost]
-	if !ok {
-		o.log.Debug().Msgf("skip updateIsLeader while no instStatus for %s", o.localhost)
+	if instStatus, ok := o.instStatus[o.localhost]; !ok || instStatus.Avail == status.NotApplicable {
 		return
 	}
-	isLeader := o.newIsLeader(instStatus)
+	isLeader := o.newIsLeader()
 	if isLeader != o.state.IsLeader {
 		o.change = true
+		o.state.IsLeader = isLeader
 	}
-	o.state.IsLeader = isLeader
+	isHALeader := o.newIsHALeader()
+	if isHALeader != o.state.IsHALeader {
+		o.change = true
+		o.state.IsHALeader = isHALeader
+	}
 	o.updateIfChange()
 	return
 }
@@ -372,7 +481,7 @@ func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
 	if len(l) == 0 {
 		return set
 	}
-	if instStatus, ok := o.instStatus[o.localhost]; ok && instStatus.Topology == topology.Failover {
+	if o.svcAgg.Topology == topology.Failover {
 		l = l[:1]
 	}
 	for _, node := range l {

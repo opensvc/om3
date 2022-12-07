@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/guregu/null"
-
 	"opensvc.com/opensvc/core/colorstatus"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/placement"
@@ -23,7 +21,7 @@ func (f Frame) wObjects() {
 
 func sObjectPlacement(d object.AggregatedStatus) string {
 	var s string
-	switch d.Placement {
+	switch d.PlacementState {
 	case placement.NotApplicable, placement.Optimal:
 		s = ""
 	default:
@@ -41,7 +39,7 @@ func sObjectWarning(d object.AggregatedStatus) string {
 }
 
 func (f Frame) scalerInstancesUp(path string) int {
-	actual := 0
+	var actual int
 	for _, node := range f.Current.Cluster.Node {
 		for p, inst := range node.Instance {
 			if inst.Status == nil {
@@ -57,12 +55,16 @@ func (f Frame) scalerInstancesUp(path string) int {
 }
 
 func (f Frame) sObjectRunning(path string) string {
-	actual := 0
-	expected := 0
-	orchestrate := ""
+	var (
+		actual, expected int
+	)
 	avail := status.NotApplicable
 
-	var scale null.Int
+	s, ok := f.Current.Cluster.Object[path]
+	if ok {
+		avail = s.Avail
+	}
+
 	for _, node := range f.Current.Cluster.Node {
 		if inst, ok := node.Instance[path]; ok {
 			if inst.Status == nil {
@@ -74,35 +76,26 @@ func (f Frame) sObjectRunning(path string) string {
 			}
 			if expected == 0 {
 				switch {
-				case !instanceStatus.Scale.IsZero():
-					expected = int(instanceStatus.Scale.ValueOrZero())
-				case instanceStatus.Topology == topology.Flex:
-					expected = instanceStatus.FlexTarget
-				case instanceStatus.Topology == topology.Failover:
+				//case !instanceStatus.Scale.IsZero():
+				//	expected = int(instanceStatus.Scale.ValueOrZero())
+				case s.Topology == topology.Flex:
+					expected = s.FlexTarget
+				case s.Topology == topology.Failover:
 					expected = 1
 				}
 			}
-			orchestrate = instanceStatus.Orchestrate
-			scale = instanceStatus.Scale
 		}
-	}
-
-	if s, ok := f.Current.Cluster.Object[path]; ok {
-		avail = s.Avail
 	}
 
 	switch {
 	case actual == 0 && expected == 0:
 		return ""
 	case expected == 0:
-		return fmt.Sprintf("%-5s %d", orchestrate, actual)
-	case !scale.IsZero():
-		actual = f.scalerInstancesUp(path)
-		return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
+		return fmt.Sprintf("%-5s %d", s.Orchestrate, actual)
 	case avail == status.NotApplicable:
-		return fmt.Sprintf("%-5s", orchestrate)
+		return fmt.Sprintf("%-5s", s.Orchestrate)
 	default:
-		return fmt.Sprintf("%-5s %d/%d", orchestrate, actual, expected)
+		return fmt.Sprintf("%-5s %d/%d", s.Orchestrate, actual, expected)
 	}
 }
 

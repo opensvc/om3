@@ -15,7 +15,7 @@ func (o *smon) orchestratePlaced() {
 //}
 
 func (o *smon) acceptPlacedOrchestration() bool {
-	switch o.svcAgg.Placement {
+	switch o.svcAgg.PlacementState {
 	case placement.Optimal:
 		return false
 	case placement.NotApplicable:

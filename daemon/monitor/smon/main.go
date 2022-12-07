@@ -26,6 +26,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -52,9 +53,11 @@ type (
 		pendingCancel context.CancelFunc
 
 		// updated data from aggregated status update srcEvent
-		instStatus map[string]instance.Status
-		instSmon   map[string]instance.Monitor
-		scopeNodes []string
+		instStatus  map[string]instance.Status
+		instSmon    map[string]instance.Monitor
+		nodeMonitor map[string]cluster.NodeMonitor
+		nodeStatus  map[string]cluster.NodeStatus
+		scopeNodes  []string
 
 		svcAgg      object.AggregatedStatus
 		cancelReady context.CancelFunc
@@ -123,7 +126,6 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		GlobalExpect: globalExpectUnset,
 		LocalExpect:  localExpectUnset,
 		Status:       statusIdle,
-		IsLeader:     false,
 		Restart:      make(map[string]instance.MonitorRestart),
 	}
 	state := previousState
@@ -140,6 +142,8 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instSmon:      make(map[string]instance.Monitor),
+		nodeStatus:    make(map[string]cluster.NodeStatus),
+		nodeMonitor:   make(map[string]cluster.NodeMonitor),
 		localhost:     hostname.Hostname(),
 		scopeNodes:    nodes,
 		change:        true,
@@ -166,6 +170,8 @@ func (o *smon) startSubscriptions() {
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
+	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub
 }
@@ -191,7 +197,7 @@ func (o *smon) worker(initialNodes []string) {
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.ObjectAggUpdated:
-				o.onSvcAggUpdated(c)
+				o.onObjectAggUpdated(c)
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
@@ -200,6 +206,10 @@ func (o *smon) worker(initialNodes []string) {
 				}
 			case msgbus.InstanceMonitorDeleted:
 				o.onSmonDeleted(c)
+			case msgbus.NodeMonitorUpdated:
+				o.onNodeMonitorUpdated(c)
+			case msgbus.NodeStatusUpdated:
+				o.onNodeStatusUpdated(c)
 			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {
@@ -256,6 +266,9 @@ func (o *smon) updateIfChange() {
 	}
 	if newVal.IsLeader != previousVal.IsLeader {
 		o.loggerWithState().Info().Msgf("change leader state %t -> %t", previousVal.IsLeader, newVal.IsLeader)
+	}
+	if newVal.IsHALeader != previousVal.IsHALeader {
+		o.loggerWithState().Info().Msgf("change ha leader state %t -> %t", previousVal.IsHALeader, newVal.IsHALeader)
 	}
 	o.previousState = o.state
 	o.update()
