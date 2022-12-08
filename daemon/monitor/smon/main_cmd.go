@@ -163,7 +163,7 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 				return
 			}
 		}
-		from, to := o.logFromTo(o.state.GlobalExpect, c.GlobalExpect)
+		_, to := o.logFromTo(o.state.GlobalExpect, c.GlobalExpect)
 		for node, instSmon := range o.instSmon {
 			if instSmon.GlobalExpect != c.GlobalExpect && instSmon.GlobalExpect != "" && instSmon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
 				o.log.Info().Msgf("global expect is already %s on node %s", to, node)
@@ -171,7 +171,6 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 			}
 		}
 
-		o.log.Info().Msgf("# prepare to set global expect %s -> %s", from, to)
 		if c.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
 			o.state.GlobalExpect = c.GlobalExpect
