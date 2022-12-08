@@ -22,7 +22,7 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 		s += sObjectInstanceAvail(avail, instanceStatus)
 		s += sObjectInstanceOverall(instanceStatus)
 		s += sObjectInstanceDRP(instanceStatus)
-		s += sObjectInstanceLeader(instanceMonitor)
+		s += sObjectInstanceHALeader(instanceMonitor)
 		s += sObjectInstanceFrozen(instanceStatus)
 		s += sObjectInstanceUnprovisioned(instanceStatus)
 		s += sObjectInstanceMonitorStatus(instanceMonitor)
@@ -76,8 +76,8 @@ func sObjectInstanceDRP(instance instance.Status) string {
 	return ""
 }
 
-func sObjectInstanceLeader(instanceMonitor instance.Monitor) string {
-	if instanceMonitor.IsLeader {
+func sObjectInstanceHALeader(instanceMonitor instance.Monitor) string {
+	if instanceMonitor.IsHALeader {
 		return iconLeader
 	}
 	return ""

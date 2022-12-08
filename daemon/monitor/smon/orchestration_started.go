@@ -173,6 +173,8 @@ func (o *smon) startedClearIfReached() bool {
 func (o *smon) isLocalStarted() bool {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
+	case status.NotApplicable, status.Undef:
+		return true
 	case status.Up:
 		return true
 	case status.StandbyUp:
