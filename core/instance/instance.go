@@ -48,9 +48,9 @@ type (
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
 		Checksum        string           `json:"csum"`
-		FlexTarget      int              `json:"flex_target,omitempty"`
-		FlexMin         int              `json:"flex_min,omitempty"`
 		FlexMax         int              `json:"flex_max,omitempty"`
+		FlexMin         int              `json:"flex_min,omitempty"`
+		FlexTarget      int              `json:"flex_target,omitempty"`
 		Nodename        string           `json:"-"`
 		Orchestrate     string           `json:"orchestrate"`
 		Path            path.T           `json:"-"`
