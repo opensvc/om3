@@ -87,10 +87,6 @@ func (o *smon) orchestratePlacedStart() {
 }
 
 func (o *smon) orchestratePlacedStop() {
-	if !o.acceptStoppedOrchestration() {
-		o.log.Warn().Msg("no solution for orchestrate placed stopped")
-		return
-	}
 	switch o.state.Status {
 	case statusIdle:
 		o.doPlacedStop()

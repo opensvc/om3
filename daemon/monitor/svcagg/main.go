@@ -19,6 +19,7 @@ import (
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
+	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
@@ -145,20 +146,48 @@ func (o *svcAggStatus) worker() {
 }
 
 func (o *svcAggStatus) updateStatus() {
-	// TODO update this simple aggregate status compute, perhaps already implemented
-
 	updateAvailOverall := func() {
 		statusAvailCount := make([]int, 128, 128)
 		statusOverallCount := make([]int, 128, 128)
 
+		agregateStatusFailover := func(states []int) status.T {
+			switch states[status.Up] {
+			case 0:
+				return status.Down
+			case 1:
+				return status.Up
+			default:
+				return status.Warn
+			}
+		}
+		agregateStatusFlex := func(states []int) status.T {
+			switch {
+			case states[status.Up] == 0:
+				return status.Down
+			case states[status.Up] < o.status.FlexMin:
+				return status.Warn
+			case states[status.Up] > o.status.FlexMax:
+				return status.Warn
+			default:
+				return status.Up
+			}
+		}
 		agregateStatus := func(states []int) status.T {
+			if len(o.instStatus) == 0 {
+				return status.NotApplicable
+			}
+			if len(o.instStatus) == statusAvailCount[status.NotApplicable] {
+				return status.NotApplicable
+			}
 			if states[status.Warn] > 0 {
 				return status.Warn
-			} else if states[status.Up] > 0 {
-				return status.Up
-			} else if states[status.Down] > 0 {
-				return status.Down
-			} else {
+			}
+			switch o.status.Topology {
+			case topology.Failover:
+				return agregateStatusFailover(states)
+			case topology.Flex:
+				return agregateStatusFlex(states)
+			default:
 				return status.Undef
 			}
 		}
@@ -167,6 +196,7 @@ func (o *svcAggStatus) updateStatus() {
 			statusAvailCount[instStatus.Avail]++
 			statusOverallCount[instStatus.Overall]++
 		}
+
 		o.status.UpInstancesCount = statusAvailCount[status.Up]
 		o.status.Avail = agregateStatus(statusAvailCount)
 		o.status.Overall = agregateStatus(statusOverallCount)

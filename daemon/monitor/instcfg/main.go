@@ -348,9 +348,16 @@ func (o *T) getFlexMin(cf *xconfig.T) int {
 func (o *T) getFlexMax(cf *xconfig.T) int {
 	switch o.path.Kind {
 	case kind.Svc, kind.Vol:
-		return cf.GetInt(key.Parse("DEFAULT.flex_max"))
+		if i, err := cf.GetIntStrict(key.Parse("flex_max")); err == nil {
+			return i
+		} else if scope, err := o.getScope(cf); err == nil {
+			return len(scope)
+		} else {
+			return 0
+		}
+	default:
+		return 0
 	}
-	return 0
 }
 
 func (o *T) setConfigure() error {

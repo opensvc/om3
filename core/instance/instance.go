@@ -47,17 +47,17 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Nodename        string           `json:"-"`
-		Path            path.T           `json:"-"`
 		Checksum        string           `json:"csum"`
-		Scope           []string         `json:"scope"`
-		FlexTarget      int              `json:"flex_target,omitempty"`
-		FlexMin         int              `json:"flex_min,omitempty"`
 		FlexMax         int              `json:"flex_max,omitempty"`
-		Topology        topology.T       `json:"topology,omitempty"`
-		PlacementPolicy placement.Policy `json:"placement_policy,omitempty"`
-		Orchestrate     string           `json:"orchestrate,omitempty"`
+		FlexMin         int              `json:"flex_min,omitempty"`
+		FlexTarget      int              `json:"flex_target,omitempty"`
+		Nodename        string           `json:"-"`
+		Orchestrate     string           `json:"orchestrate"`
+		Path            path.T           `json:"-"`
+		PlacementPolicy placement.Policy `json:"placement_policy"`
 		Priority        priority.T       `json:"priority,omitempty"`
+		Scope           []string         `json:"scope"`
+		Topology        topology.T       `json:"topology"`
 		Updated         time.Time        `json:"updated"`
 	}
 

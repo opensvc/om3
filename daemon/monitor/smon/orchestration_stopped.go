@@ -11,10 +11,6 @@ var (
 )
 
 func (o *smon) orchestrateStopped() {
-	if !o.acceptStoppedOrchestration() {
-		o.log.Warn().Msg("no solution for orchestrate stopped")
-		return
-	}
 	o.freezeStop()
 }
 
@@ -137,7 +133,7 @@ func (o *smon) stoppedClearIfReached() bool {
 func (o *smon) isLocalStopped() bool {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
-	case status.NotApplicable:
+	case status.NotApplicable, status.Undef:
 		return true
 	case status.Down:
 		return true
@@ -146,14 +142,4 @@ func (o *smon) isLocalStopped() bool {
 	default:
 		return false
 	}
-}
-
-func (o *smon) acceptStoppedOrchestration() bool {
-	switch o.svcAgg.Avail {
-	case status.Down:
-		return true
-	case status.Up:
-		return true
-	}
-	return false
 }

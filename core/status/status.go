@@ -103,15 +103,21 @@ func (t *T) UnmarshalJSON(b []byte) error {
 // Add merges two states and returns the aggregate state.
 func (t *T) Add(o T) {
 	// handle invariants
-	switch *t {
-	case Undef, NotApplicable:
+	if o == Undef {
+		return
+	}
+	if *t == Undef {
 		*t = o
 		return
 	}
-	switch o {
-	case Undef, NotApplicable:
+	if o == NotApplicable {
 		return
 	}
+	if *t == NotApplicable {
+		*t = o
+		return
+	}
+
 	// other merges
 	switch *t | o {
 	case Up | Up:
