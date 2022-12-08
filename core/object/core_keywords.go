@@ -249,7 +249,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:    "DEFAULT",
 		Option:     "placement",
-		Scopable:   true,
+		Scopable:   false,
 		Inherit:    keywords.InheritHead,
 		Default:    "nodes order",
 		Candidates: placement.PolicyNames(),
@@ -266,7 +266,7 @@ var keywordStore = keywords.Store{
 	{
 		Section:    "DEFAULT",
 		Option:     "topology",
-		Scopable:   true,
+		Scopable:   false,
 		Default:    "failover",
 		Inherit:    keywords.InheritHead,
 		Aliases:    []string{"cluster_type"},
@@ -363,6 +363,7 @@ var keywordStore = keywords.Store{
 		Section:   "DEFAULT",
 		Option:    "priority",
 		Default:   "50",
+		Scopable:  false,
 		Inherit:   keywords.InheritHead,
 		Converter: converters.Int,
 		Text:      "A scheduling priority (the smaller the more priority) used by the monitor thread to trigger actions for the top priority services, so that the :kw:`node.max_parallel` constraint doesn't prevent prior services to start first. The priority setting is dropped from a service configuration injected via the api by a user not granted the prioritizer role.",
