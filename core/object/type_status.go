@@ -20,12 +20,12 @@ type (
 	// Status is a composite extract of different parts of
 	// the cluster status.
 	Status struct {
-		Path      path.T                      `json:"path"`
-		Compat    bool                        `json:"compat"`
-		Object    AggregatedStatus            `json:"service"`
-		Instances map[string]instance.States  `json:"instances"`
-		Parents   map[string]AggregatedStatus `json:"parents,omitempty"`
 		Children  map[string]AggregatedStatus `json:"children,omitempty"`
+		Compat    bool                        `json:"compat"`
+		Instances map[string]instance.States  `json:"instances"`
+		Object    AggregatedStatus            `json:"service"`
+		Path      path.T                      `json:"path"`
+		Parents   map[string]AggregatedStatus `json:"parents,omitempty"`
 		Slaves    map[string]AggregatedStatus `json:"slaves,omitempty"`
 	}
 
@@ -33,21 +33,19 @@ type (
 	// aggregation of all instances states. It exists when a instance config exists somewhere
 	AggregatedStatus struct {
 		Avail            status.T         `json:"avail"`
-		Overall          status.T         `json:"overall,omitempty"`
-		Frozen           string           `json:"frozen,omitempty"`
-		PlacementPolicy  placement.Policy `json:"placement_policy,omitempty"`
-		PlacementState   placement.State  `json:"placement_state,omitempty"`
-		Topology         topology.T       `json:"topology"`
-		Provisioned      provisioned.T    `json:"provisioned,omitempty"`
 		FlexTarget       int              `json:"flex_target,omitempty"`
 		FlexMin          int              `json:"flex_min,omitempty"`
 		FlexMax          int              `json:"flex_max,omitempty"`
-		UpInstancesCount int              `json:"up_instances_count,omitempty"`
+		Frozen           string           `json:"frozen"`
 		Orchestrate      string           `json:"orchestrate"`
+		Overall          status.T         `json:"overall"`
+		PlacementPolicy  placement.Policy `json:"placement_policy"`
+		PlacementState   placement.State  `json:"placement_state"`
 		Priority         priority.T       `json:"priority"`
-
-		// Scope track the config scope from one object instance
-		Scope []string `json:"scope"`
+		Provisioned      provisioned.T    `json:"provisioned"`
+		Scope            []string         `json:"scope"`
+		Topology         topology.T       `json:"topology"`
+		UpInstancesCount int              `json:"up_instances_count"`
 	}
 )
 
