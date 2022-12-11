@@ -1,19 +1,25 @@
 package daemonapi
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+
+	"opensvc.com/opensvc/core/event"
 )
 
 type (
-	eventSourcer interface {
-		EventSource() string
+	eventer interface {
+		Event() string
 	}
+
+	byter interface {
+		Bytes() []byte
+	}
+
+	Event event.Event
 )
 
 func setStreamHeaders(w http.ResponseWriter) {
@@ -23,37 +29,39 @@ func setStreamHeaders(w http.ResponseWriter) {
 	w.Header().Set("Transfer-Encoding", "chunked")
 }
 
-func writeEvents(ctx context.Context, w io.Writer, c <-chan any, limit int64) <-chan error {
+// writeEvents dequeue c and write sse to w when deueued c is an eventer
+func writeEvents(ctx context.Context, w io.Writer, c <-chan any, limit uint64) <-chan error {
 	errC := make(chan error)
 	// TODO: write comment periodically ': prevent timeout'
 	go func() {
-		var eventCount int64 = 0
+		var eventCount uint64 = 0
 		for {
 			select {
 			case <-ctx.Done():
 				errC <- nil
 				return
 			case i := <-c:
-				eventCount++
-				var eventSource string
 				switch o := i.(type) {
-				case eventSourcer:
-					eventSource = o.EventSource()
+				case eventer:
+					eventCount++
+					ev := Event{
+						Kind: o.Event(),
+						ID:   eventCount,
+					}
+					switch d := i.(type) {
+					case byter:
+						ev.Data = d.Bytes()
+					}
+					if _, err := ev.write(ctx, w); err != nil {
+						errC <- err
+						return
+					}
+					if limit > 0 && eventCount >= limit {
+						errC <- nil
+						return
+					}
 				default:
-					eventSource = "generic event"
-				}
-				b := []byte("event: " + eventSource + "\nid: " + strconv.FormatInt(eventCount, 10) + "\n")
-				if _, err := w.Write(b); err != nil {
-					errC <- err
-					return
-				}
-				if err := writeEvent(ctx, w, i); err != nil {
-					errC <- err
-					return
-				}
-				if limit > 0 && eventCount >= limit {
-					errC <- nil
-					return
+					// drop non eventer
 				}
 			}
 		}
@@ -61,37 +69,52 @@ func writeEvents(ctx context.Context, w io.Writer, c <-chan any, limit int64) <-
 	return errC
 }
 
-func writeEvent(ctx context.Context, w io.Writer, ev any) error {
+// write then event to w
+//
+// when w is http.ResponseWriter the event is written with
+// html Server-sent events format
+func (e *Event) write(ctx context.Context, w io.Writer) (int, error) {
 	var httpBody bool
+	var b []byte
+	written := 0
+
 	if _, ok := w.(http.ResponseWriter); ok {
 		httpBody = true
 	}
-
-	b, err := json.Marshal(ev)
-	if err != nil {
-		return fmt.Errorf("marshal %v", ev)
-	}
-
-	var endMsg, msg []byte
 	if httpBody {
-		endMsg = []byte("\n\n")
-		msg = append([]byte("data: "), b...)
+		b = append(b, []byte("event: "+e.Kind+"\nid: "+strconv.FormatUint(e.ID, 10))...)
+		if len(e.Data) > 0 {
+			b = append(b, []byte("\ndata: ")...)
+			b = append(b, bytes.Replace(e.Data, []byte{'\n'}, []byte("\ndata: "), -1)...)
+		}
+		b = append(b, []byte("\n\n")...)
 	} else {
-		endMsg = []byte("\n\n\x00")
-		msg = append([]byte(""), b...)
+		b = append(b, e.Data...)
+		b = append(b, []byte("\n\n\x00")...)
 	}
 
-	msg = append(msg, endMsg...)
 	select {
 	case <-ctx.Done():
-		return nil
+		return written, ctx.Err()
 	default:
 	}
-	if _, err := w.Write(msg); err != nil {
-		return errors.New("write failure")
+	bLen := len(b)
+	for {
+		n, err := w.Write(b[written:bLen])
+		if err != nil {
+			written += n
+			return written, err
+		}
+		if written == bLen {
+			break
+		}
+	}
+	i, err := w.Write(b)
+	if err != nil {
+		return i, err
 	}
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
-	return nil
+	return written, nil
 }
