@@ -2,6 +2,8 @@ package msgbus
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"opensvc.com/opensvc/core/cluster"
@@ -13,42 +15,28 @@ import (
 )
 
 type (
-	Exit struct {
-		Path     path.T
-		Filename string
+	ApiClient struct {
+		Time time.Time
+		Name string
 	}
 
-	// CfgFileUpdated is emited by a fs watcher when a .conf file is updated or created in etc.
-	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
-	CfgFileUpdated struct {
-		Path     path.T
-		Filename string
+	CfgDeleted struct {
+		Path path.T
+		Node string
 	}
 
-	// CfgFileRemoved is emited by a fs watcher when a .conf file is removed in etc.
+	// CfgFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
 	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgDeleted{} event.
 	CfgFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
-	// FrozenFileUpdated is emited by a fs watcher when a frozen file is updated or created in var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
-	FrozenFileUpdated struct {
+	// CfgFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
+	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
+	CfgFileUpdated struct {
 		Path     path.T
 		Filename string
-	}
-
-	// FrozenFileRemoved is emited by a fs watcher when a frozen file is removed from var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
-	FrozenFileRemoved struct {
-		Path     path.T
-		Filename string
-	}
-
-	CfgDeleted struct {
-		Path path.T
-		Node string
 	}
 
 	CfgUpdated struct {
@@ -57,24 +45,69 @@ type (
 		Config instance.Config
 	}
 
-	MonCfgDone struct {
-		Path     path.T
-		Filename string
+	ClientSub struct {
+		ApiClient
 	}
 
-	RemoteFileConfig struct {
+	ClientUnSub struct {
+		ApiClient
+	}
+
+	// DataUpdated is a patch of changed data
+	DataUpdated struct {
+		json.RawMessage
+	}
+
+	DaemonCtl struct {
+		Component string
+		Action    string
+	}
+
+	Exit struct {
 		Path     path.T
-		Node     string
 		Filename string
-		Updated  time.Time
-		Ctx      context.Context
-		Err      chan error
 	}
 
 	Frozen struct {
 		Path  path.T
 		Node  string
 		Value time.Time
+	}
+
+	// FrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
+	FrozenFileRemoved struct {
+		Path     path.T
+		Filename string
+	}
+
+	// FrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
+	FrozenFileUpdated struct {
+		Path     path.T
+		Filename string
+	}
+
+	HbNodePing struct {
+		Node   string
+		Status bool
+	}
+
+	HbPing struct {
+		Nodename string
+		HbId     string
+		Time     time.Time
+	}
+
+	HbStale struct {
+		Nodename string
+		HbId     string
+		Time     time.Time
+	}
+
+	HbStatusUpdated struct {
+		Node   string
+		Status cluster.HeartbeatThreadStatus
 	}
 
 	InstanceMonitorDeleted struct {
@@ -99,6 +132,11 @@ type (
 		Status instance.Status
 	}
 
+	MonCfgDone struct {
+		Path     path.T
+		Filename string
+	}
+
 	NodeMonitorDeleted struct {
 		Node string
 	}
@@ -108,9 +146,9 @@ type (
 		Monitor cluster.NodeMonitor
 	}
 
-	NodeStatusUpdated struct {
+	NodeOsPathsUpdated struct {
 		Node  string
-		Value cluster.NodeStatus
+		Value san.Paths
 	}
 
 	NodeStatusLabelsUpdated struct {
@@ -118,25 +156,18 @@ type (
 		Value nodesinfo.Labels
 	}
 
-	NodeOsPathsUpdated struct {
+	NodeStatusUpdated struct {
 		Node  string
-		Value san.Paths
-	}
-
-	SetNodeMonitor struct {
-		Node    string
-		Monitor cluster.NodeMonitor
-	}
-
-	SetInstanceMonitor struct {
-		Path    path.T
-		Node    string
-		Monitor instance.Monitor
+		Value cluster.NodeStatus
 	}
 
 	ObjectAggDeleted struct {
 		Path path.T
 		Node string
+	}
+
+	ObjectAggDone struct {
+		Path path.T
 	}
 
 	ObjectAggUpdated struct {
@@ -146,53 +177,60 @@ type (
 		SrcEv            any
 	}
 
-	ObjectAggDone struct {
-		Path path.T
+	RemoteFileConfig struct {
+		Path     path.T
+		Node     string
+		Filename string
+		Updated  time.Time
+		Ctx      context.Context
+		Err      chan error
 	}
 
-	HbStatusUpdated struct {
-		Node   string
-		Status cluster.HeartbeatThreadStatus
+	SetInstanceMonitor struct {
+		Path    path.T
+		Node    string
+		Monitor instance.Monitor
 	}
 
-	HbNodePing struct {
-		Node   string
-		Status bool
-	}
-
-	DaemonCtl struct {
-		Component string
-		Action    string
+	SetNodeMonitor struct {
+		Node    string
+		Monitor cluster.NodeMonitor
 	}
 )
 
 const (
-	ExitAsEventSource                    = "ExitAsEvent"
-	CfgFileUpdatedAsEventSource          = "updated object config file"
-	CfgFileRemovedAsEventSource          = "deleted object config file"
-	FrozenFileUpdatedAsEventSource       = "updated frozen file"
-	FrozenFileRemovedAsEventSource       = "deleted frozen file"
-	CfgDeletedAsEventSource              = "deleted object config"
-	CfgUpdatedAsEventSource              = "updated object config"
-	MonCfgDoneAsEventSource              = "done monitor config"
-	RemoteFileConfigAsEventSource        = "updated remote config file"
-	FrozenAsEventSource                  = "updated frozen"
-	InstanceMonitorDeletedAsEventSource  = "deleted instance monitor"
-	InstanceMonitorUpdatedAsEventSource  = "updated instance monitor"
-	InstanceStatusDeletedAsEventSource   = "deleted instance status"
-	InstanceStatusUpdatedAsEventSource   = "updated instance status"
-	NodeMonitorDeletedAsEventSource      = "deleted node monitor"
-	NodeMonitorUpdatedAsEventSource      = "updated node monitor"
-	NodeStatusUpdatedAsEventSource       = "updated node status"
-	NodeStatusLabelsUpdatedAsEventSource = "updated node label"
-	NodeOsPathsUpdatedAsEventSource      = "updated node os paths"
-	SetNodeMonitorAsEventSource          = "set node monitor"
-	SetInstanceMonitorAsEventSource      = "set instance monitor"
-	ObjectAggDeletedAsEventSource        = "deleted object aggregated status"
-	ObjectAggUpdatedAsEventSource        = "updated object aggregated status"
-	ObjectAggDoneAsEventSource           = "done object aggregated status"
-	HbStatusUpdatedAsEventSource         = "updated hb status"
-	HbNodePingAsEventSource              = "updated node ping"
+	CfgDeletedAsName              = "deleted object config"
+	CfgFileRemovedAsName          = "deleted object config file"
+	CfgFileUpdatedAsName          = "updated object config file"
+	CfgUpdatedAsName              = "updated object config"
+	ClientSubAsName               = "subscribe"
+	ClientUnSubAsName             = "unsubscribe"
+	DataUpdatedAsName             = "data updated"
+	DaemonCtlAsName               = "daemon component action"
+	ExitAsName                    = "ExitAsEvent"
+	FrozenAsName                  = "updated frozen"
+	FrozenFileRemovedAsName       = "deleted frozen file"
+	FrozenFileUpdatedAsName       = "updated frozen file"
+	HbNodePingAsName              = "updated node ping"
+	HbPingAsName                  = "hb node ping"
+	HbStaleAsName                 = "hb node stale"
+	HbStatusUpdatedAsName         = "updated hb status"
+	InstanceMonitorDeletedAsName  = "deleted instance monitor"
+	InstanceMonitorUpdatedAsName  = "updated instance monitor"
+	InstanceStatusDeletedAsName   = "deleted instance status"
+	InstanceStatusUpdatedAsName   = "updated instance status"
+	MonCfgDoneAsName              = "done monitor config"
+	NodeMonitorDeletedAsName      = "deleted node monitor"
+	NodeMonitorUpdatedAsName      = "updated node monitor"
+	NodeOsPathsUpdatedAsName      = "updated node os paths"
+	NodeStatusLabelsUpdatedAsName = "updated node label"
+	NodeStatusUpdatedAsName       = "updated node status"
+	ObjectAggDeletedAsName        = "deleted object aggregated status"
+	ObjectAggDoneAsName           = "done object aggregated status"
+	ObjectAggUpdatedAsName        = "updated object aggregated status"
+	RemoteFileConfigAsName        = "updated remote config file"
+	SetInstanceMonitorAsName      = "set instance monitor"
+	SetNodeMonitorAsName          = "set node monitor"
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -212,106 +250,162 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 	<-dropping
 }
 
-func (e Exit) EventSource() string {
-	return ExitAsEventSource
+func (e ApiClient) Bytes() []byte {
+	return []byte(fmt.Sprintf("%s %s", e.Name, e.Time))
 }
 
-func (e CfgFileUpdated) EventSource() string {
-	return CfgFileUpdatedAsEventSource
+func (e CfgDeleted) Event() string {
+	return CfgDeletedAsName
 }
 
-func (e CfgFileRemoved) EventSource() string {
-	return CfgFileRemovedAsEventSource
+func (e CfgFileRemoved) Event() string {
+	return CfgFileRemovedAsName
 }
 
-func (e FrozenFileUpdated) EventSource() string {
-	return FrozenFileUpdatedAsEventSource
+func (e CfgFileUpdated) Event() string {
+	return CfgFileUpdatedAsName
 }
 
-func (e FrozenFileRemoved) EventSource() string {
-	return FrozenFileRemovedAsEventSource
+func (e CfgUpdated) Event() string {
+	return CfgUpdatedAsName
 }
 
-func (e CfgDeleted) EventSource() string {
-	return CfgDeletedAsEventSource
+func (e ClientSub) Event() string {
+	return ClientSubAsName
 }
 
-func (e CfgUpdated) EventSource() string {
-	return CfgUpdatedAsEventSource
+func (e ClientUnSub) Event() string {
+	return ClientUnSubAsName
 }
 
-func (e MonCfgDone) EventSource() string {
-	return MonCfgDoneAsEventSource
+func (e DataUpdated) Bytes() []byte {
+	return e.RawMessage
 }
 
-func (e RemoteFileConfig) EventSource() string {
-	return RemoteFileConfigAsEventSource
+func (e DataUpdated) Event() string {
+	return DataUpdatedAsName
 }
 
-func (e Frozen) EventSource() string {
-	return FrozenAsEventSource
+func (e DaemonCtl) Event() string {
+	return DaemonCtlAsName
 }
 
-func (e InstanceMonitorDeleted) EventSource() string {
-	return InstanceMonitorDeletedAsEventSource
+func (e Exit) Event() string {
+	return ExitAsName
 }
 
-func (e InstanceMonitorUpdated) EventSource() string {
-	return InstanceMonitorUpdatedAsEventSource
+func (e Frozen) Event() string {
+	return FrozenAsName
 }
 
-func (e InstanceStatusDeleted) EventSource() string {
-	return InstanceStatusDeletedAsEventSource
+func (e FrozenFileRemoved) Event() string {
+	return FrozenFileRemovedAsName
 }
 
-func (e InstanceStatusUpdated) EventSource() string {
-	return InstanceStatusUpdatedAsEventSource
+func (e FrozenFileUpdated) Event() string {
+	return FrozenFileUpdatedAsName
 }
 
-func (e NodeMonitorDeleted) EventSource() string {
-	return NodeMonitorDeletedAsEventSource
+func (e HbNodePing) Bytes() []byte {
+	if e.Status {
+		return []byte(e.Node + " ok")
+	} else {
+		return []byte(e.Node + " stale")
+	}
 }
 
-func (e NodeMonitorUpdated) EventSource() string {
-	return NodeMonitorUpdatedAsEventSource
+func (e HbNodePing) Event() string {
+	return HbNodePingAsName
 }
 
-func (e NodeStatusUpdated) EventSource() string {
-	return NodeStatusUpdatedAsEventSource
+func (e HbPing) Bytes() []byte {
+	s := fmt.Sprintf("node %s ping detected from %s %s", e.Nodename, e.HbId, e.Time)
+	return []byte(s)
 }
 
-func (e NodeStatusLabelsUpdated) EventSource() string {
-	return NodeStatusLabelsUpdatedAsEventSource
+func (e HbPing) Event() string {
+	return HbPingAsName
 }
 
-func (e NodeOsPathsUpdated) EventSource() string {
-	return NodeOsPathsUpdatedAsEventSource
+func (e HbStale) Bytes() []byte {
+	s := fmt.Sprintf("node %s stale detected from %s %s", e.Nodename, e.HbId, e.Time)
+	return []byte(s)
 }
 
-func (e SetNodeMonitor) EventSource() string {
-	return SetNodeMonitorAsEventSource
+func (e HbStale) Event() string {
+	return HbStaleAsName
 }
 
-func (e SetInstanceMonitor) EventSource() string {
-	return SetInstanceMonitorAsEventSource
+func (e HbStatusUpdated) Event() string {
+	return HbStatusUpdatedAsName
 }
 
-func (e ObjectAggDeleted) EventSource() string {
-	return ObjectAggDeletedAsEventSource
+func (e InstanceMonitorDeleted) Event() string {
+	return InstanceMonitorDeletedAsName
 }
 
-func (e ObjectAggUpdated) EventSource() string {
-	return ObjectAggUpdatedAsEventSource
+func (e InstanceMonitorUpdated) Event() string {
+	return InstanceMonitorUpdatedAsName
 }
 
-func (e ObjectAggDone) EventSource() string {
-	return ObjectAggDoneAsEventSource
+func (e InstanceStatusDeleted) Event() string {
+	return InstanceStatusDeletedAsName
 }
 
-func (e HbStatusUpdated) EventSource() string {
-	return HbStatusUpdatedAsEventSource
+func (e InstanceStatusUpdated) Event() string {
+	return InstanceStatusUpdatedAsName
 }
 
-func (e HbNodePing) EventSource() string {
-	return HbNodePingAsEventSource
+func (e MonCfgDone) Event() string {
+	return MonCfgDoneAsName
+}
+
+func (e NodeMonitorDeleted) Event() string {
+	return NodeMonitorDeletedAsName
+}
+
+func (e NodeMonitorUpdated) Event() string {
+	return NodeMonitorUpdatedAsName
+}
+
+func (e NodeOsPathsUpdated) Event() string {
+	return NodeOsPathsUpdatedAsName
+}
+
+func (e NodeStatusLabelsUpdated) Event() string {
+	return NodeStatusLabelsUpdatedAsName
+}
+
+func (e NodeStatusUpdated) Event() string {
+	return NodeStatusUpdatedAsName
+}
+
+func (e ObjectAggDeleted) Event() string {
+	return ObjectAggDeletedAsName
+}
+
+func (e ObjectAggDone) Event() string {
+	return ObjectAggDoneAsName
+}
+
+func (e ObjectAggUpdated) Bytes() []byte {
+	d := e.AggregatedStatus
+	s := fmt.Sprintf("%s@%s %s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Placement, d.Scope)
+	return []byte(s)
+}
+
+func (e ObjectAggUpdated) Event() string {
+	return ObjectAggUpdatedAsName
+}
+
+func (e RemoteFileConfig) Event() string {
+	return RemoteFileConfigAsName
+}
+
+func (e SetInstanceMonitor) Event() string {
+	return SetInstanceMonitorAsName
+}
+
+func (e SetNodeMonitor) Event() string {
+	return SetNodeMonitorAsName
 }
