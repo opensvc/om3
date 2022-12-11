@@ -3,9 +3,7 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
-	"time"
 
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
@@ -55,12 +53,10 @@ func (o opSetHeartbeatPing) call(ctx context.Context, d *data) {
 		if eventB, err := json.Marshal(patch); err != nil {
 			d.log.Error().Err(err).Msg("opSetHeartbeatPing Marshal")
 		} else {
-			d.bus.Pub(event.Event{
-				Kind: "patch",
-				ID:   eventId,
-				Time: time.Now(),
-				Data: eventB,
-			})
+			d.bus.Pub(
+				msgbus.DataUpdated{RawMessage: eventB},
+				labelLocalNode,
+			)
 		}
 	}
 	d.bus.Pub(

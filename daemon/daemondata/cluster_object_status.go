@@ -3,9 +3,7 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
-	"time"
 
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -76,12 +74,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 		} else {
 			eventId++
-			d.bus.Pub(event.Event{
-				Kind: "patch",
-				ID:   eventId,
-				Time: time.Now(),
-				Data: eventB,
-			})
+			d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 		}
 	}
 	d.bus.Pub(
@@ -112,12 +105,7 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		d.bus.Pub(event.Event{
-			Kind: "patch",
-			ID:   eventId,
-			Time: time.Now(),
-			Data: eventB,
-		})
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 	}
 	d.bus.Pub(
 		msgbus.ObjectAggUpdated{
