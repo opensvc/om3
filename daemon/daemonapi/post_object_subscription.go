@@ -18,14 +18,14 @@ import (
 func (a *DaemonApi) PostObjectSubscription(w http.ResponseWriter, r *http.Request, params PostObjectSubscriptionParams) {
 	var (
 		handlerName = "PostObjectSubscription"
-		limit       int64
+		limit       uint64
 		maxDuration = 5 * time.Second
 	)
 	log := getLogger(r, handlerName)
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
 	if params.Limit != nil {
-		limit = *params.Limit
+		limit = uint64(*params.Limit)
 	}
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
