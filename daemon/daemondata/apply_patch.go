@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"time"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -54,7 +53,7 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 	}
 	pendingNodeGen := pendingRemote.Status.Gen[remote]
 	if msg.Gen[remote] < pendingNodeGen {
-		deltaIds := []string{}
+		var deltaIds []string
 		for k := range msg.Deltas {
 			deltaIds = append(deltaIds, k)
 		}
@@ -72,7 +71,7 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 		return nil
 	}
 	if len(msg.Deltas) == 0 && msg.Gen[remote] > pendingRemote.Status.Gen[remote] {
-		deltaIds := []string{}
+		var deltaIds []string
 		for k := range msg.Deltas {
 			deltaIds = append(deltaIds, k)
 		}
@@ -135,12 +134,7 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 			return err
 		} else {
 			eventId++
-			d.bus.Pub(event.Event{
-				Kind: "patch",
-				ID:   eventId,
-				Time: time.Now(),
-				Data: b,
-			})
+			d.bus.Pub(msgbus.DataUpdated{RawMessage: b}, labelLocalNode)
 		}
 		pendingNodeGen = gen
 	}

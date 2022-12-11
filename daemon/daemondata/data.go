@@ -164,8 +164,6 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 					return
 				}
 			}
-
-			return
 		case <-propagationTicker.C:
 			needMessage := d.commitPendingOps()
 			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {

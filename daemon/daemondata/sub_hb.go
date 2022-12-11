@@ -3,11 +3,10 @@ package daemondata
 import (
 	"encoding/json"
 	"sort"
-	"time"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/hbcache"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -43,11 +42,9 @@ func (d *data) setSubHb() {
 	if eventB, err := json.Marshal(patch); err != nil {
 		d.log.Error().Err(err).Msg("setSubHb Marshal")
 	} else {
-		d.bus.Pub(event.Event{
-			Kind: "patch",
-			ID:   eventId,
-			Time: time.Now(),
-			Data: eventB,
-		})
+		d.bus.Pub(
+			msgbus.DataUpdated{RawMessage: eventB},
+			labelLocalNode,
+		)
 	}
 }
