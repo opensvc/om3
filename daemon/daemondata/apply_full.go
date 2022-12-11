@@ -2,10 +2,9 @@ package daemondata
 
 import (
 	"encoding/json"
-	"time"
 
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
@@ -32,12 +31,7 @@ func (d *data) applyFull(msg *hbtype.Msg) error {
 		return err
 	} else {
 		eventId++
-		d.bus.Pub(event.Event{
-			Kind: "patch",
-			ID:   eventId,
-			Time: time.Now(),
-			Data: eventB,
-		})
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 	}
 	return nil
 }
