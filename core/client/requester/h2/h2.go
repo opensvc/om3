@@ -182,6 +182,28 @@ func (t T) Delete(r request.T) ([]byte, error) {
 	return t.doReqReadResponse("DELETE", r)
 }
 
+// GetReader returns a response io.ReadCloser
+func (t T) GetReader(r request.T) (reader io.ReadCloser, err error) {
+	// TODO add a stopper to allow GetStream clients to stop sse retries
+	var req *http.Request
+	var resp *http.Response
+	req, err = t.newRequest("GET", r)
+	if err != nil {
+		return
+	}
+
+	// override default Timeout for server side calm events
+	client := t.Client
+	client.Timeout = 0
+	req.Header.Set("Accept", "text/event-stream")
+	resp, err = client.Do(req)
+	if err != nil {
+		return
+	}
+	reader = resp.Body
+	return
+}
+
 // GetStream returns a chan of raw json messages
 func (t T) GetStream(r request.T) (chan []byte, error) {
 	// TODO add a stopper to allow GetStream clients to stop sse retries
