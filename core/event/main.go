@@ -3,8 +3,6 @@ package event
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type (
@@ -27,22 +25,9 @@ type (
 		// Data is the free-format dataset of the event
 		Data json.RawMessage `json:"data"`
 	}
-)
 
-var (
-	// ErrInvalidKind signals the event message as the "kind" key set
-	// to an invalid value (not event nor patch)
-	ErrInvalidKind = errors.New("unexpected event kind")
+	ReadCloser interface {
+		Read() (*Event, error)
+		Close() error
+	}
 )
-
-// DecodeFromJSON parses a json message and returns a configured Event
-func DecodeFromJSON(b json.RawMessage) (Event, error) {
-	e := Event{}
-	if err := json.Unmarshal(b, &e); err != nil {
-		return e, err
-	}
-	if e.Kind == "" {
-		return e, errors.Wrapf(ErrInvalidKind, "%s", string(b))
-	}
-	return e, nil
-}
