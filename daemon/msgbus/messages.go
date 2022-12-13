@@ -198,41 +198,6 @@ type (
 	}
 )
 
-const (
-	CfgDeletedAsName              = "deleted object config"
-	CfgFileRemovedAsName          = "deleted object config file"
-	CfgFileUpdatedAsName          = "updated object config file"
-	CfgUpdatedAsName              = "updated object config"
-	ClientSubAsName               = "subscribe"
-	ClientUnSubAsName             = "unsubscribe"
-	DataUpdatedAsName             = "data updated"
-	DaemonCtlAsName               = "daemon component action"
-	ExitAsName                    = "ExitAsEvent"
-	FrozenAsName                  = "updated frozen"
-	FrozenFileRemovedAsName       = "deleted frozen file"
-	FrozenFileUpdatedAsName       = "updated frozen file"
-	HbNodePingAsName              = "updated node ping"
-	HbPingAsName                  = "hb node ping"
-	HbStaleAsName                 = "hb node stale"
-	HbStatusUpdatedAsName         = "updated hb status"
-	InstanceMonitorDeletedAsName  = "deleted instance monitor"
-	InstanceMonitorUpdatedAsName  = "updated instance monitor"
-	InstanceStatusDeletedAsName   = "deleted instance status"
-	InstanceStatusUpdatedAsName   = "updated instance status"
-	MonCfgDoneAsName              = "done monitor config"
-	NodeMonitorDeletedAsName      = "deleted node monitor"
-	NodeMonitorUpdatedAsName      = "updated node monitor"
-	NodeOsPathsUpdatedAsName      = "updated node os paths"
-	NodeStatusLabelsUpdatedAsName = "updated node label"
-	NodeStatusUpdatedAsName       = "updated node status"
-	ObjectAggDeletedAsName        = "deleted object aggregated status"
-	ObjectAggDoneAsName           = "done object aggregated status"
-	ObjectAggUpdatedAsName        = "updated object aggregated status"
-	RemoteFileConfigAsName        = "updated remote config file"
-	SetInstanceMonitorAsName      = "set instance monitor"
-	SetNodeMonitorAsName          = "set node monitor"
-)
-
 func DropPendingMsg(c <-chan any, duration time.Duration) {
 	dropping := make(chan bool)
 	go func() {
@@ -254,56 +219,56 @@ func (e ApiClient) Bytes() []byte {
 	return []byte(fmt.Sprintf("%s %s", e.Name, e.Time))
 }
 
-func (e CfgDeleted) Event() string {
-	return CfgDeletedAsName
+func (e CfgDeleted) Kind() string {
+	return "CfgDeleted"
 }
 
-func (e CfgFileRemoved) Event() string {
-	return CfgFileRemovedAsName
+func (e CfgFileRemoved) Kind() string {
+	return "CfgFileRemoved"
 }
 
-func (e CfgFileUpdated) Event() string {
-	return CfgFileUpdatedAsName
+func (e CfgFileUpdated) Kind() string {
+	return "CfgFileUpdated"
 }
 
-func (e CfgUpdated) Event() string {
-	return CfgUpdatedAsName
+func (e CfgUpdated) Kind() string {
+	return "CfgUpdated"
 }
 
-func (e ClientSub) Event() string {
-	return ClientSubAsName
+func (e ClientSub) Kind() string {
+	return "ClientSub"
 }
 
-func (e ClientUnSub) Event() string {
-	return ClientUnSubAsName
+func (e ClientUnSub) Kind() string {
+	return "ClientUnSub"
 }
 
 func (e DataUpdated) Bytes() []byte {
 	return e.RawMessage
 }
 
-func (e DataUpdated) Event() string {
-	return DataUpdatedAsName
+func (e DataUpdated) Kind() string {
+	return "DataUpdated"
 }
 
-func (e DaemonCtl) Event() string {
-	return DaemonCtlAsName
+func (e DaemonCtl) Kind() string {
+	return "DaemonCtl"
 }
 
-func (e Exit) Event() string {
-	return ExitAsName
+func (e Exit) Kind() string {
+	return "Exit"
 }
 
-func (e Frozen) Event() string {
-	return FrozenAsName
+func (e Frozen) Kind() string {
+	return "Frozen"
 }
 
-func (e FrozenFileRemoved) Event() string {
-	return FrozenFileRemovedAsName
+func (e FrozenFileRemoved) Kind() string {
+	return "FrozenFileRemoved"
 }
 
-func (e FrozenFileUpdated) Event() string {
-	return FrozenFileUpdatedAsName
+func (e FrozenFileUpdated) Kind() string {
+	return "FrozenFileUpdated"
 }
 
 func (e HbNodePing) Bytes() []byte {
@@ -314,8 +279,8 @@ func (e HbNodePing) Bytes() []byte {
 	}
 }
 
-func (e HbNodePing) Event() string {
-	return HbNodePingAsName
+func (e HbNodePing) Kind() string {
+	return "HbNodePing"
 }
 
 func (e HbPing) Bytes() []byte {
@@ -323,8 +288,8 @@ func (e HbPing) Bytes() []byte {
 	return []byte(s)
 }
 
-func (e HbPing) Event() string {
-	return HbPingAsName
+func (e HbPing) Kind() string {
+	return "HbPing"
 }
 
 func (e HbStale) Bytes() []byte {
@@ -332,60 +297,66 @@ func (e HbStale) Bytes() []byte {
 	return []byte(s)
 }
 
-func (e HbStale) Event() string {
-	return HbStaleAsName
+func (e HbStale) Kind() string {
+	return "HbStale"
 }
 
-func (e HbStatusUpdated) Event() string {
-	return HbStatusUpdatedAsName
+func (e HbStatusUpdated) Kind() string {
+	return "HbStatusUpdated"
 }
 
-func (e InstanceMonitorDeleted) Event() string {
-	return InstanceMonitorDeletedAsName
+func (e InstanceMonitorDeleted) Kind() string {
+	return "InstanceMonitorDeleted"
 }
 
-func (e InstanceMonitorUpdated) Event() string {
-	return InstanceMonitorUpdatedAsName
+func (e InstanceMonitorUpdated) Kind() string {
+	return "InstanceMonitorUpdated"
 }
 
-func (e InstanceStatusDeleted) Event() string {
-	return InstanceStatusDeletedAsName
+func (e InstanceStatusDeleted) Kind() string {
+	return "InstanceStatusDeleted"
 }
 
-func (e InstanceStatusUpdated) Event() string {
-	return InstanceStatusUpdatedAsName
+func (e InstanceStatusUpdated) Kind() string {
+	return "InstanceStatusUpdated"
 }
 
-func (e MonCfgDone) Event() string {
-	return MonCfgDoneAsName
+func (e InstanceStatusUpdated) Bytes() []byte {
+	d := e.Status
+	s := fmt.Sprintf("%s@%s %s %s %s %s %s", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Placement)
+	return []byte(s)
 }
 
-func (e NodeMonitorDeleted) Event() string {
-	return NodeMonitorDeletedAsName
+func (e MonCfgDone) Kind() string {
+	return "MonCfgDoneAsName"
 }
 
-func (e NodeMonitorUpdated) Event() string {
-	return NodeMonitorUpdatedAsName
+func (e NodeMonitorDeleted) Kind() string {
+	return "NodeMonitorDeleted"
 }
 
-func (e NodeOsPathsUpdated) Event() string {
-	return NodeOsPathsUpdatedAsName
+func (e NodeMonitorUpdated) Kind() string {
+	return "NodeMonitorUpdated"
 }
 
-func (e NodeStatusLabelsUpdated) Event() string {
-	return NodeStatusLabelsUpdatedAsName
+func (e NodeOsPathsUpdated) Kind() string {
+	return "NodeOsPathsUpdated"
 }
 
-func (e NodeStatusUpdated) Event() string {
-	return NodeStatusUpdatedAsName
+func (e NodeStatusLabelsUpdated) Kind() string {
+	return "NodeStatusLabelsUpdated"
 }
 
-func (e ObjectAggDeleted) Event() string {
-	return ObjectAggDeletedAsName
+func (e NodeStatusUpdated) Kind() string {
+	return "NodeStatusUpdated"
 }
 
-func (e ObjectAggDone) Event() string {
-	return ObjectAggDoneAsName
+func (e ObjectAggDeleted) Kind() string {
+	return "ObjectAggDeleted"
+}
+
+func (e ObjectAggDone) Kind() string {
+	return "ObjectAggDone"
 }
 
 func (e ObjectAggUpdated) Bytes() []byte {
@@ -394,18 +365,18 @@ func (e ObjectAggUpdated) Bytes() []byte {
 	return []byte(s)
 }
 
-func (e ObjectAggUpdated) Event() string {
-	return ObjectAggUpdatedAsName
+func (e ObjectAggUpdated) Kind() string {
+	return "ObjectAggUpdated"
 }
 
-func (e RemoteFileConfig) Event() string {
-	return RemoteFileConfigAsName
+func (e RemoteFileConfig) Kind() string {
+	return "RemoteFileConfig"
 }
 
-func (e SetInstanceMonitor) Event() string {
-	return SetInstanceMonitorAsName
+func (e SetInstanceMonitor) Kind() string {
+	return "SetInstanceMonitor"
 }
 
-func (e SetNodeMonitor) Event() string {
-	return SetNodeMonitorAsName
+func (e SetNodeMonitor) Kind() string {
+	return "SetNodeMonitor"
 }
