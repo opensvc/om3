@@ -37,7 +37,6 @@ package hbctrl
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -46,9 +45,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/hbcache"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -255,17 +254,13 @@ func (c *ctrl) run(ctx context.Context) {
 				} else {
 					events[o.Name] = 1
 				}
-				data := json.RawMessage("\"" + o.Name + " " + o.Nodename + " detected by " + o.HbId + "\"")
-				bus.Pub(event.Event{
-					Kind: o.Name,
-					ID:   0,
-					Time: time.Now(),
-					Data: data,
-				})
+				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
 					c.log.Warn().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+					bus.Pub(msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
 				} else {
 					c.log.Info().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
+					bus.Pub(msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbId, ".rx") {

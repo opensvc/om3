@@ -3,6 +3,7 @@ package reqjsonrpc
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -123,6 +124,18 @@ func (t T) Delete(req request.T) ([]byte, error) {
 	return t.doReqReadResponse("DELETE", req)
 }
 
+// GetReader returns a response io.ReadCloser
+func (t T) GetReader(req request.T) (reader io.ReadCloser, err error) {
+	reader, err = t.doReq("GET", req)
+	if err != nil {
+		return reader, err
+	}
+	if t.Inet {
+		reader = NewReader(context.Background(), reader)
+	}
+	return
+}
+
 // GetStream returns a chan of raw json messages
 func (t T) GetStream(req request.T) (chan []byte, error) {
 	q := make(chan []byte, 1000)
@@ -201,7 +214,7 @@ func init() {
 	}
 }
 
-func GetMessages(q chan []byte, rc io.ReadCloser) {
+func GetMessages(q chan []byte, rc io.ReadCloser) error {
 	scanner := bufio.NewScanner(rc)
 	b := <-msgBufferChan
 	defer func() { msgBufferChan <- b }()
@@ -217,9 +230,11 @@ func GetMessages(q chan []byte, rc io.ReadCloser) {
 		}
 		q <- append([]byte{}, b...)
 	}
+	return scanner.Err()
 }
 
-func decryptChan(encC <-chan []byte, clearC chan<- []byte) {
+// decryptChan decrypt from encC to clearC
+func decryptChan(encC <-chan []byte, clearC chan<- []byte) error {
 	for {
 		select {
 		case enc := <-encC:
@@ -227,7 +242,7 @@ func decryptChan(encC <-chan []byte, clearC chan<- []byte) {
 			clear, err := m.Decrypt()
 			if err != nil {
 				close(clearC)
-				return
+				return err
 			}
 			clear = bytes.TrimRight(clear, "\x00")
 			clearC <- clear

@@ -9,12 +9,17 @@ import (
 
 // Render formats a opensvc agent event
 func Render(e Event) string {
-	s := fmt.Sprintf("%s %s\n", e.Time, e.Kind)
+	s := fmt.Sprintf("%s [%d] %s", e.Time, e.ID, e.Kind)
 	if e.Kind == "event" {
 		s += output.SprintFlat(e.Data)
-	} else if e.Data != nil {
-		patch := jsondelta.NewPatch(e.Data)
-		s += patch.Render()
+	} else if e.Kind == "DataUpdated" {
+		if patch, err := jsondelta.NewPatch(e.Data); err != nil {
+			s += "render error " + err.Error()
+		} else {
+			s += "\n" + patch.Render()
+		}
+	} else if len(e.Data) > 0 {
+		s += "\n  " + string(e.Data)
 	}
 	return s
 }

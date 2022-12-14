@@ -3,9 +3,7 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
-	"time"
 
-	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -76,18 +74,17 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 			d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 		} else {
 			eventId++
-			d.bus.Pub(event.Event{
-				Kind: "patch",
-				ID:   eventId,
-				Time: time.Now(),
-				Data: eventB,
-			})
+			d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 		}
 	}
-	d.bus.Pub(msgbus.ObjectAggDeleted{
-		Path: o.path,
-		Node: d.localNode,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.ObjectAggDeleted{
+			Path: o.path,
+			Node: d.localNode,
+		},
+		pubsub.Label{"path", s},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
@@ -97,8 +94,10 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetServiceAgg
 	s := o.path.String()
+	labelPath := pubsub.Label{"path", s}
 	d.pending.Cluster.Object[s] = o.value
 
+	// TODO choose between DataUpdated<->pendingOps (pendingOps publish DataUpdated but no easy label)
 	patch := jsondelta.Patch{jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"cluster", "object", s},
 		OpValue: jsondelta.NewOptValue(o.value),
@@ -108,19 +107,18 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		d.bus.Pub(event.Event{
-			Kind: "patch",
-			ID:   eventId,
-			Time: time.Now(),
-			Data: eventB,
-		})
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode, labelPath)
 	}
-	d.bus.Pub(msgbus.ObjectAggUpdated{
-		Path:             o.path,
-		Node:             d.localNode,
-		AggregatedStatus: o.value,
-		SrcEv:            o.srcEv,
-	}, pubsub.Label{"path", s})
+	d.bus.Pub(
+		msgbus.ObjectAggUpdated{
+			Path:             o.path,
+			Node:             d.localNode,
+			AggregatedStatus: o.value,
+			SrcEv:            o.srcEv,
+		},
+		labelLocalNode,
+		labelPath,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:

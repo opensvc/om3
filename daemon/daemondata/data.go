@@ -15,6 +15,7 @@ import (
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/callcount"
 	"opensvc.com/opensvc/util/durationlog"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -95,6 +96,8 @@ var (
 	subHbRefreshInterval = 100 * propagationInterval
 
 	countRoutineInterval = 1 * time.Second
+
+	labelLocalNode = pubsub.Label{"node", hostname.Hostname()}
 )
 
 // run the daemondata loop
@@ -161,17 +164,18 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 					return
 				}
 			}
-
-			return
 		case <-propagationTicker.C:
 			needMessage := d.commitPendingOps()
 			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
 				needMessage = true
 				s := d.pending.Cluster.Node[d.localNode].Status
-				d.bus.Pub(msgbus.NodeStatusUpdated{
-					Node:  d.localNode,
-					Value: *s.DeepCopy(),
-				})
+				d.bus.Pub(
+					msgbus.NodeStatusUpdated{
+						Node:  d.localNode,
+						Value: *s.DeepCopy(),
+					},
+					labelLocalNode,
+				)
 			}
 			d.pubPeerDataChanges()
 			select {

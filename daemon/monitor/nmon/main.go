@@ -139,7 +139,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.FrozenFileUpdated{})
 	sub.AddFilter(msgbus.SetNodeMonitor{})
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
-	sub.AddFilter(msgbus.NodeStatusPathsUpdated{})
+	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
 	sub.Start()
 	o.sub = sub
 }
@@ -175,8 +175,8 @@ func (o *nmon) worker() {
 				o.onSetNmonCmd(c)
 			case msgbus.NodeStatusLabelsUpdated:
 				o.onNodeStatusLabelsUpdated(c)
-			case msgbus.NodeStatusPathsUpdated:
-				o.onNodeStatusPathsUpdated(c)
+			case msgbus.NodeOsPathsUpdated:
+				o.onNodeOsPathsUpdated(c)
 			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {
@@ -270,7 +270,7 @@ func (o *nmon) setNodeOsPaths() {
 	}
 }
 
-func (o *nmon) onNodeStatusPathsUpdated(c msgbus.NodeStatusPathsUpdated) {
+func (o *nmon) onNodeOsPathsUpdated(c msgbus.NodeOsPathsUpdated) {
 	o.saveNodesInfo()
 }
 

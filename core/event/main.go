@@ -1,10 +1,9 @@
 package event
 
 import (
+	"context"
 	"encoding/json"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type (
@@ -27,22 +26,54 @@ type (
 		// Data is the free-format dataset of the event
 		Data json.RawMessage `json:"data"`
 	}
+
+	ReadCloser interface {
+		Read() (*Event, error)
+		Close() error
+	}
+
+	Kinder interface {
+		Kind() string
+	}
+
+	Byter interface {
+		Bytes() []byte
+	}
+
+	Timer interface {
+		Time() time.Time
+	}
 )
 
-var (
-	// ErrInvalidKind signals the event message as the "kind" key set
-	// to an invalid value (not event nor patch)
-	ErrInvalidKind = errors.New("unexpected event kind")
-)
+// ChanFromAny returns event chan from dequeued any chan
+func ChanFromAny(ctx context.Context, anyC <-chan any) <-chan *Event {
+	eventC := make(chan *Event)
+	go func() {
+		eventCount := uint64(0)
+		for {
+			select {
+			case <-ctx.Done():
+				close(eventC)
+				return
+			case i := <-anyC:
+				switch o := i.(type) {
+				case Kinder:
+					eventCount++
+					ev := &Event{
+						Kind: o.Kind(),
+						ID:   eventCount,
+					}
+					if o, ok := i.(Timer); ok {
+						ev.Time = o.Time()
+					}
+					if o, ok := i.(Byter); ok {
+						ev.Data = o.Bytes()
+					}
+					eventC <- ev
+				}
+			}
+		}
+	}()
 
-// DecodeFromJSON parses a json message and returns a configured Event
-func DecodeFromJSON(b json.RawMessage) (Event, error) {
-	e := Event{}
-	if err := json.Unmarshal(b, &e); err != nil {
-		return e, err
-	}
-	if e.Kind == "" {
-		return e, errors.Wrapf(ErrInvalidKind, "%s", string(b))
-	}
-	return e, nil
+	return eventC
 }

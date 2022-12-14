@@ -406,7 +406,7 @@ func (t T) Do() error {
 	return actionrouter.Do(t)
 }
 
-// Do executes in parallel the action on all selected objects supporting
+// selectionDo executes in parallel the action on all selected objects supporting
 // the action.
 func selectionDo(selection *objectselector.Selection, fn func(path.T) (interface{}, error)) ([]actionrouter.Result, error) {
 	results := make([]actionrouter.Result, 0)

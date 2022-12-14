@@ -13,10 +13,15 @@ import (
 	"github.com/rs/zerolog"
 
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type DaemonApi struct {
 }
+
+var (
+	labelApi = pubsub.Label{"origin", "api"}
+)
 
 func Register(r chi.Router, enableUi bool) {
 	daemonApi := &DaemonApi{}
@@ -47,4 +52,11 @@ func sendErrorf(w http.ResponseWriter, code int, format string, a ...any) {
 
 func getLogger(r *http.Request, name string) zerolog.Logger {
 	return daemonlogctx.Logger(r.Context()).With().Str("func", name).Logger()
+}
+
+func setStreamHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-control", "no-store")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
 }

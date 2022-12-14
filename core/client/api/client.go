@@ -2,14 +2,25 @@ package api
 
 import (
 	"fmt"
+	"io"
 
 	"opensvc.com/opensvc/core/client/request"
 )
 
 type (
+	GetReader interface {
+		GetReader(r request.T) (reader io.ReadCloser, err error)
+	}
+
 	GetStreamer interface {
 		GetStream(r request.T) (chan []byte, error)
 	}
+
+	GetStreamReader interface {
+		GetReader
+		GetStreamer
+	}
+
 	Getter interface {
 		Get(r request.T) ([]byte, error)
 	}
@@ -30,6 +41,7 @@ type (
 		Putter
 		Deleter
 		GetStreamer
+		GetReader
 	}
 )
 

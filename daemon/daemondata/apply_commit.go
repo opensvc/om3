@@ -3,40 +3,43 @@ package daemondata
 import (
 	"encoding/json"
 	"strconv"
-	"time"
 
-	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
 // commitPendingOps manage patch queue from current pending ops
 //
-//	 when hb mode is patch
-//	  if pending ops exists
-//	 	  publish patch events from pending ops
-//	 	  increase gen and create new patch queue entry from pending ops
-//	 	  drop pending ops
-//	   drop patch queue entries that have been applied on all peers
+//	  if pending ops exists (changes)
+//	     increase gen
+//	     publish patch events from pending ops as msgbus.DataUpdated
+//	     refresh local node gen
 //
-//	  when hb mode is not patch
-//		   increase gen when pending ops exists
-//		   drop pending ops
-//		   drop patch queue
+//		 when hb mode is patch
+//		  if changes
+//		 	  create new patch queue entry from pending ops
+//		 	  drop pending ops
+//		   drop patch queue entries that have been applied on all peers
+//
+//		  when hb mode is not patch
+//			   drop pending ops
+//			   drop patch queue
 func (d *data) commitPendingOps() (changes bool) {
 	d.counterCmd <- idCommitPending
 	d.log.Debug().Msg("commitPendingOps")
 	if len(d.pendingOps) > 0 {
 		changes = true
+		d.eventCommitPendingOps()
+		d.gen++
+		d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
+
 	}
 	if d.hbMsgType == "patch" {
-		d.movePendingOpsToPatchQueue()
+		if changes {
+			d.movePendingOpsToPatchQueue()
+		}
 		d.purgeAppliedPatchQueue()
 	} else {
-		if changes {
-			// increase gen (we have changes that need to be sent before switching to patch mode)
-			d.gen++
-			d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
-		}
 		d.pendingOps = []jsondelta.Operation{}
 		d.patchQueue = make(patchQueue)
 	}
@@ -81,19 +84,11 @@ func (d *data) purgeAppliedPatchQueue() {
 
 // movePendingOpsToPatchQueue moves pendingOps to patchQueue.
 //
-// If pendingOps exists:
-//
-//	increase local gen by 1.
-//	new entry for new gen is created in patch queue with pending operations.
+//	new entry created for gen in patch queue with pending operations.
 //	pending operations are cleared.
 func (d *data) movePendingOpsToPatchQueue() {
-	if len(d.pendingOps) > 0 {
-		d.gen++
-		d.patchQueue[strconv.FormatUint(d.gen, 10)] = d.pendingOps
-		d.eventCommitPendingOps()
-		d.pendingOps = []jsondelta.Operation{}
-		d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
-	}
+	d.patchQueue[strconv.FormatUint(d.gen, 10)] = d.pendingOps
+	d.pendingOps = []jsondelta.Operation{}
 }
 
 func (d *data) eventCommitPendingOps() {
@@ -110,11 +105,6 @@ func (d *data) eventCommitPendingOps() {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		d.bus.Pub(event.Event{
-			Kind: "patch",
-			ID:   eventId,
-			Time: time.Now(),
-			Data: eventB,
-		})
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 	}
 }

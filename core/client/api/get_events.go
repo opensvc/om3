@@ -2,16 +2,18 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/core/event/sseevent"
 )
 
 // GetEvents describes the events request options.
 type GetEvents struct {
-	client    GetStreamer
+	client    GetStreamReader
 	namespace string
 	selector  string
 	relatives bool
@@ -46,7 +48,7 @@ func (t GetEvents) Relatives() bool {
 
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewGetEvents(t GetStreamer) *GetEvents {
+func NewGetEvents(t GetStreamReader) *GetEvents {
 	options := &GetEvents{
 		client:    t,
 		namespace: "*",
@@ -63,7 +65,7 @@ func (t GetEvents) GetRaw() (chan []byte, error) {
 
 // Do fetchs an Event stream from the agent api
 func (t GetEvents) Do() (chan event.Event, error) {
-	// TODO add a stopper to allow Do clients to stop fetching event streams retries
+	// TODO add a stopper to allow GetReader clients to stop fetching event streams retries
 
 	out := make(chan event.Event, 1000)
 	errChan := make(chan error)
@@ -90,6 +92,18 @@ func (t GetEvents) Do() (chan event.Event, error) {
 	}()
 	err := <-errChan
 	return out, err
+}
+
+// GetReader returns event.ReadCloser for GetEventReader
+func (t *GetEvents) GetReader() (evReader event.ReadCloser, err error) {
+	var r io.ReadCloser
+	req := t.newRequest()
+	r, err = t.client.GetReader(*req)
+	if err != nil {
+		return
+	}
+	evReader = sseevent.NewReadCloser(r)
+	return
 }
 
 func marshalMessages(q chan []byte, out chan event.Event) {

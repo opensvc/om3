@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/san"
 )
@@ -38,10 +37,13 @@ func (o opSetNodeOsPaths) call(ctx context.Context, d *data) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatusPathsUpdated{
-		Node:  hostname.Hostname(),
-		Value: o.value,
-	})
+	d.bus.Pub(
+		msgbus.NodeOsPathsUpdated{
+			Node:  d.localNode,
+			Value: o.value,
+		},
+		labelLocalNode,
+	)
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
