@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 )
@@ -30,4 +31,49 @@ type (
 		Read() (*Event, error)
 		Close() error
 	}
+
+	Kinder interface {
+		Kind() string
+	}
+
+	Byter interface {
+		Bytes() []byte
+	}
+
+	Timer interface {
+		Time() time.Time
+	}
 )
+
+// ChanFromAny returns event chan from dequeued any chan
+func ChanFromAny(ctx context.Context, anyC <-chan any) <-chan *Event {
+	eventC := make(chan *Event)
+	go func() {
+		eventCount := uint64(0)
+		for {
+			select {
+			case <-ctx.Done():
+				close(eventC)
+				return
+			case i := <-anyC:
+				switch o := i.(type) {
+				case Kinder:
+					eventCount++
+					ev := &Event{
+						Kind: o.Kind(),
+						ID:   eventCount,
+					}
+					if o, ok := i.(Timer); ok {
+						ev.Time = o.Time()
+					}
+					if o, ok := i.(Byter); ok {
+						ev.Data = o.Bytes()
+					}
+					eventC <- ev
+				}
+			}
+		}
+	}()
+
+	return eventC
+}
