@@ -153,12 +153,13 @@ func Do(t Actioner) error {
 		m.SetSelector(o.ObjectSelector)
 		cli, e := client.New(client.WithURL(o.Server))
 		if e != nil {
-			fmt.Fprintln(os.Stderr, e)
+			_, _ = fmt.Fprintln(os.Stderr, e)
 			return e
 		}
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(o.ObjectSelector)
-		eventsGetter := cli.NewGetEvents().SetSelector(o.ObjectSelector)
-		err := m.DoWatch(statusGetter, eventsGetter, os.Stdout)
+		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).GetReader()
+		errs = xerrors.Append(errs, err)
+		err = m.DoWatch(statusGetter, evReader, os.Stdout)
 		errs = xerrors.Append(errs, err)
 	}
 	return errs

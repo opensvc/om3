@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"fmt"
 	"os"
+	"time"
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/monitor"
@@ -28,10 +30,37 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	m.SetSelector(mergedSelector)
 
 	if t.Watch {
-		evGetter := cli.NewGetEvents().SetSelector(mergedSelector)
-		statusGetter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
-		if err := m.DoWatch(statusGetter, evGetter, os.Stdout); err != nil {
+		maxRetries := 5
+		retries := 0
+		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).GetReader()
+		if err != nil {
 			return err
+		}
+		for {
+			statusGetter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
+			err := m.DoWatch(statusGetter, evReader, os.Stdout)
+			if err1 := evReader.Close(); err1 != nil {
+				return fmt.Errorf("object monitor watch error '%s' + close event reader error '%s'", err, err1)
+			}
+			if err == nil {
+				return err
+			}
+			for {
+				retries++
+				if retries > maxRetries {
+					return err
+				} else if retries == 1 {
+					_, _ = fmt.Fprintf(os.Stderr, "object monitor watch error '%s'\n", err)
+					_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
+				}
+				time.Sleep(time.Second)
+				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).GetReader()
+				if err == nil {
+					retries = 0
+					break
+				}
+				_, _ = fmt.Fprintf(os.Stderr, "retry %d/%d %s...\n", retries, maxRetries, err)
+			}
 		}
 	} else {
 		getter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
