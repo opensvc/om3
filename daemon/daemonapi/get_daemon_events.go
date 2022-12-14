@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/goccy/go-json"
-	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/event/sseevent"
@@ -16,6 +16,13 @@ import (
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/converters"
 	"opensvc.com/opensvc/util/pubsub"
+)
+
+type (
+	Filter struct {
+		Kind   any
+		Labels []pubsub.Label
+	}
 )
 
 // GetDaemonEvents feeds publications in rss format.
@@ -71,7 +78,7 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 	if len(filterArgs) == 0 {
-		filterArgs = []AddFilterArgs{
+		filterArgs = []Filter{
 			{Kind: msgbus.DataUpdated{}},
 		}
 	}
@@ -83,6 +90,12 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	sub := bus.SubWithTimeout(name, time.Second)
 
 	for _, filter := range filterArgs {
+		if kind, ok := filter.Kind.(event.Kinder); ok {
+			log.Debug().Msgf("filtering %s %v", kind.Kind(), filter.Labels)
+		} else {
+			log.Warn().Msgf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
+			continue
+		}
 		sub.AddFilter(filter.Kind, filter.Labels...)
 	}
 	//sub.AddFilter(msgbus.DataUpdated{})
@@ -112,6 +125,33 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 			return
 		}
 	}
+}
+
+func (b *GetDaemonEventsJSONBody) filterArgs() (filters []Filter, err error) {
+	if b.Filter == nil {
+		return
+	}
+	for _, filter := range *b.Filter {
+		filterEntry := Filter{}
+		if filter.Kind == nil {
+			continue
+		}
+		filterEntry.Kind, err = msgbus.KindToT(*filter.Kind)
+		if err != nil {
+			continue
+		}
+
+		if filter.Labels != nil {
+			for _, l := range *filter.Labels {
+				if l.Name != nil && l.Value != nil {
+					filterEntry.Labels = append(filterEntry.Labels, pubsub.Label{*l.Name, *l.Value})
+				}
+			}
+		}
+
+		filters = append(filters, filterEntry)
+	}
+	return
 }
 
 //func allowPatchEvent(r *http.Request, ev event.Event, selected path.M) bool {
@@ -166,54 +206,3 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 //		return false
 //	}
 //}
-
-type (
-	AddFilterArgs struct {
-		Kind   any
-		Labels []pubsub.Label
-	}
-)
-
-var (
-	invalidKind = errors.New("invalid kind")
-)
-
-func (b *GetDaemonEventsJSONBody) filterArgs() (filters []AddFilterArgs, err error) {
-	if b.Filter == nil {
-		return
-	}
-	for _, filter := range *b.Filter {
-		filterEntry := AddFilterArgs{}
-		if filter.Kind == nil {
-			continue
-		}
-		filterEntry.Kind, err = b.kindToT(*filter.Kind)
-		if err != nil {
-			continue
-		}
-
-		if filter.Labels != nil {
-			for _, l := range *filter.Labels {
-				if l.Name != nil && l.Value != nil {
-					filterEntry.Labels = append(filterEntry.Labels, pubsub.Label{*l.Name, *l.Value})
-				}
-			}
-		}
-	}
-	return
-}
-
-func (b *GetDaemonEventsJSONBody) kindToT(kind string) (any, error) {
-	var i interface{}
-	switch kind {
-	case "DataUpdated":
-		i = msgbus.DataUpdated{}
-	case "HbPing":
-		i = msgbus.HbPing{}
-	case "HbStale":
-		i = msgbus.HbStale{}
-	default:
-		return nil, invalidKind
-	}
-	return i, nil
-}
