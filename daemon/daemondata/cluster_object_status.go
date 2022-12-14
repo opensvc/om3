@@ -94,8 +94,10 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetServiceAgg
 	s := o.path.String()
+	labelPath := pubsub.Label{"path", s}
 	d.pending.Cluster.Object[s] = o.value
 
+	// TODO choose between DataUpdated<->pendingOps (pendingOps publish DataUpdated but no easy label)
 	patch := jsondelta.Patch{jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"cluster", "object", s},
 		OpValue: jsondelta.NewOptValue(o.value),
@@ -105,7 +107,7 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode, labelPath)
 	}
 	d.bus.Pub(
 		msgbus.ObjectAggUpdated{
@@ -114,8 +116,8 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 			AggregatedStatus: o.value,
 			SrcEv:            o.srcEv,
 		},
-		pubsub.Label{"path", s},
 		labelLocalNode,
+		labelPath,
 	)
 	select {
 	case <-ctx.Done():
