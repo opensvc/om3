@@ -177,7 +177,11 @@ func (r *ReadCloser) parse() {
 			ev = &event.Event{}
 		}
 	}
-	r.errC <- scanner.Err()
+	err := scanner.Err()
+	if err == nil {
+		err = io.EOF
+	}
+	r.errC <- err
 }
 
 func NewWriter(w io.Writer) *Writer {
