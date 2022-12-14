@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.25
+  version: 3.6.28
 servers:
   - url: https://localhost:1215
 paths:
@@ -51,7 +51,26 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
+        - $ref: '#/components/parameters/queryDuration'
         - $ref: '#/components/parameters/queryLimit'
+      requestBody:
+          description: post object status
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filter:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/eventFilter'
+                  namespace:
+                    $ref: '#/components/schemas/namespace'
+                  selector:
+                    $ref: '#/components/schemas/selector'
+                  relative:
+                    type: boolean
       responses:
         '200':
           description: success
@@ -130,60 +149,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
-  /instance/config/subscription:
-    post:
-      operationId: PostInstanceConfigSubscription
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-      responses:
-        '200':
-          description: success
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/responseEventList'
-  /instance/monitor/subscription:
-    post:
-      operationId: PostInstanceMonitorSubscription
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-      responses:
-        '200':
-          description: success
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/responseEventList'
-  /instance/status/subscription:
-    post:
-      operationId: PostInstanceStatusSubscription
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-      responses:
-        '200':
-          description: success
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/responseEventList'
   /node/clear:
     post:
       operationId: PostNodeClear
@@ -230,42 +195,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
-  /node/monitor/subscription:
-    post:
-      operationId: PostNodeMonitorSubscription
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-      responses:
-        '200':
-          description: success
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/responseEventList'
-  /node/status/subscription:
-    post:
-      operationId: PostNodeStatusSubscription
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-      responses:
-        '200':
-          description: success
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/responseEventList'
   /nodes/info:
     get:
       operationId: GetNodesInfo
@@ -438,24 +367,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
-  /object/subscription:
-    post:
-      operationId: PostObjectSubscription
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-      responses:
-        '200':
-          description: success
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/responseEventList'
   /public/openapi:
     get:
       operationId: GetSwagger
@@ -553,6 +464,22 @@ components:
         message:
           type: string
           description: Error message
+    eventFilter:
+      type: object
+      properties:
+        kind:
+          type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/eventFilterLabel'
+    eventFilterLabel:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
     instanceStatus:
       type: object
       required:
