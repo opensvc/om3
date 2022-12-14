@@ -24,8 +24,11 @@ func (t *CmdDaemonStatus) Run() error {
 	}
 	if t.Watch {
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(t.ObjectSelector)
-		eventsGetter := cli.NewGetEvents().SetSelector(t.ObjectSelector)
-		return m.DoWatch(statusGetter, eventsGetter, os.Stdout)
+		evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).GetReader()
+		if err != nil {
+			return err
+		}
+		return m.DoWatch(statusGetter, evReader, os.Stdout)
 	} else {
 		getter := cli.NewGetDaemonStatus().SetSelector(t.ObjectSelector)
 		return m.Do(getter, os.Stdout)
