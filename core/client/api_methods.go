@@ -1,13 +1,22 @@
 package client
 
 import (
+	"io"
+
 	"github.com/rs/zerolog/log"
+
 	"opensvc.com/opensvc/core/client/request"
 )
 
 // HasRequester returns true if the client has a requester defined.
 func (t T) HasRequester() bool {
 	return t.requester != nil
+}
+
+// GetReader wraps the requester's GetReader method
+func (t T) GetReader(req request.T) (io.ReadCloser, error) {
+	log.Debug().Msgf("GETSTREAM %s via %s", req, t.requester)
+	return t.requester.GetReader(req)
 }
 
 // GetStream wraps the requester's GetStream method
