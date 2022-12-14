@@ -16,6 +16,11 @@ type (
 		GetStream(r request.T) (chan []byte, error)
 	}
 
+	GetStreamReader interface {
+		GetReader
+		GetStreamer
+	}
+
 	Getter interface {
 		Get(r request.T) ([]byte, error)
 	}
