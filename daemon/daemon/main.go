@@ -27,11 +27,13 @@ import (
 	"opensvc.com/opensvc/daemon/listener"
 	"opensvc.com/opensvc/daemon/monitor"
 	"opensvc.com/opensvc/daemon/monitor/nmon"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/scheduler"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -139,6 +141,24 @@ func (t *T) MainStart(ctx context.Context) error {
 	bus := pubsub.NewBus("daemon")
 	bus.Start(t.ctx)
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
+
+	go func() {
+		labels := []pubsub.Label{
+			{"os", hostname.Hostname()},
+			{"sub", "pubsub"},
+		}
+		msg := msgbus.WatchDog{Name: "pubsub"}
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-t.ctx.Done():
+				return
+			case <-ticker.C:
+				bus.Pub(msg, labels...)
+			}
+		}
+	}()
 
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
 	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan hbtype.Msg))
