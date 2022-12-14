@@ -1,21 +1,29 @@
 package smon
 
-import "opensvc.com/opensvc/core/placement"
+import "opensvc.com/opensvc/core/topology"
 
 func (o *smon) orchestratePlaced() {
-	if o.state.IsHALeader {
+	if o.state.IsLeader {
 		o.orchestratePlacedStart()
 	} else {
 		o.orchestratePlacedStop()
 	}
 }
 
-func (o *smon) acceptPlacedOrchestration() bool {
-	switch o.svcAgg.PlacementState {
-	case placement.Optimal:
-		return false
-	case placement.NotApplicable:
-		return false
+func (o *smon) orchestratePlacedStart() {
+	switch o.svcAgg.Topology {
+	case topology.Failover:
+		o.orchestrateFailoverPlacedStart()
+	case topology.Flex:
+		o.orchestrateFlexPlacedStart()
 	}
-	return true
+}
+
+func (o *smon) orchestratePlacedStop() {
+	switch o.svcAgg.Topology {
+	case topology.Failover:
+		o.orchestrateFailoverPlacedStop()
+	case topology.Flex:
+		o.orchestrateFlexPlacedStop()
+	}
 }

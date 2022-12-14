@@ -40,7 +40,7 @@ func (o *smon) orchestrateStarted() {
 // frozen => try startedFromFrozen
 // else   => try startedFromThawed
 func (o *smon) startedFromIdle() {
-	if !o.instStatus[o.localhost].Frozen.IsZero() {
+	if o.instStatus[o.localhost].IsFrozen() {
 		if o.state.GlobalExpect == globalExpectUnset {
 			return
 		}

@@ -408,10 +408,10 @@ func (o *smon) nextPlacedAtCandidate() string {
 func (o *smon) newIsHALeader() bool {
 	var candidates []string
 	for node, nodeStatus := range o.nodeStatus {
-		if !nodeStatus.Frozen.IsZero() {
+		if nodeStatus.IsFrozen() {
 			continue
 		}
-		if instStatus, ok := o.instStatus[node]; !ok || !instStatus.Frozen.IsZero() {
+		if instStatus, ok := o.instStatus[node]; !ok || instStatus.IsFrozen() {
 			continue
 		}
 		candidates = append(candidates, node)

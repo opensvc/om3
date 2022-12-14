@@ -68,7 +68,7 @@ func (o *smon) stoppedFromThawed() {
 // local thawed => freezing to reach frozen
 // else         => stopping
 func (o *smon) doFreezeStop() {
-	if o.instStatus[o.localhost].Frozen.IsZero() {
+	if o.instStatus[o.localhost].IsThawed() {
 		o.doTransitionAction(o.freeze, statusFreezing, statusFrozen, statusFreezeFailed)
 		return
 	} else {
@@ -77,7 +77,7 @@ func (o *smon) doFreezeStop() {
 }
 
 func (o *smon) doFreeze() {
-	if o.instStatus[o.localhost].Frozen.IsZero() {
+	if o.instStatus[o.localhost].IsThawed() {
 		o.doTransitionAction(o.freeze, statusFreezing, statusFrozen, statusFreezeFailed)
 		return
 	}
