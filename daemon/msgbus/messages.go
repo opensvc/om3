@@ -3,6 +3,7 @@ package msgbus
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,6 +14,54 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/util/san"
 )
+
+var (
+	ErrKindUnknown = errors.New("unknown event kind")
+
+	kindToT = map[string]any{
+		"ApiClient":               ApiClient{},
+		"CfgDeleted":              CfgDeleted{},
+		"CfgFileRemoved":          CfgFileRemoved{},
+		"CfgFileUpdated":          CfgFileUpdated{},
+		"CfgUpdated":              CfgUpdated{},
+		"ClientSub":               ClientSub{},
+		"ClientUnSub":             ClientUnSub{},
+		"DaemonCtl":               DaemonCtl{},
+		"DataUpdated":             DataUpdated{},
+		"Exit":                    Exit{},
+		"FrozenFileRemoved":       FrozenFileRemoved{},
+		"FrozenFileUpdated":       FrozenFileUpdated{},
+		"Frozen":                  Frozen{},
+		"HbNodePing":              HbNodePing{},
+		"HbPing":                  HbPing{},
+		"HbStale":                 HbStale{},
+		"HbStatusUpdated":         HbStatusUpdated{},
+		"InstanceMonitorDeleted":  InstanceMonitorDeleted{},
+		"InstanceMonitorUpdated":  InstanceMonitorUpdated{},
+		"InstanceStatusDeleted":   InstanceStatusDeleted{},
+		"InstanceStatusUpdated":   InstanceStatusUpdated{},
+		"MonCfgDone":              MonCfgDone{},
+		"NodeMonitorDeleted":      NodeMonitorDeleted{},
+		"NodeMonitorUpdated":      NodeMonitorUpdated{},
+		"NodeOsPathsUpdated":      NodeOsPathsUpdated{},
+		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
+		"NodeStatusUpdated":       NodeStatusUpdated{},
+		"ObjectAggDeleted":        ObjectAggDeleted{},
+		"ObjectAggDone":           ObjectAggDone{},
+		"ObjectAggUpdated":        ObjectAggUpdated{},
+		"RemoteFileConfig":        RemoteFileConfig{},
+		"SetInstanceMonitor":      SetInstanceMonitor{},
+		"SetNodeMonitor":          SetNodeMonitor{},
+		"WatchDog":                WatchDog{},
+	}
+)
+
+func KindToT(kind string) (any, error) {
+	if v, ok := kindToT[kind]; ok {
+		return v, nil
+	}
+	return nil, ErrKindUnknown
+}
 
 type (
 	ApiClient struct {
@@ -195,6 +244,10 @@ type (
 	SetNodeMonitor struct {
 		Node    string
 		Monitor cluster.NodeMonitor
+	}
+
+	WatchDog struct {
+		Name string
 	}
 )
 
@@ -379,4 +432,12 @@ func (e SetInstanceMonitor) Kind() string {
 
 func (e SetNodeMonitor) Kind() string {
 	return "SetNodeMonitor"
+}
+
+func (e WatchDog) Bytes() []byte {
+	return []byte(e.Name)
+}
+
+func (e WatchDog) Kind() string {
+	return "WatchDog"
 }
