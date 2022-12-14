@@ -376,7 +376,7 @@ func (e InstanceStatusUpdated) Kind() string {
 
 func (e InstanceStatusUpdated) Bytes() []byte {
 	d := e.Status
-	s := fmt.Sprintf("%s@%s %s %s %s %s %s", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Placement)
+	s := fmt.Sprintf("%s@%s %s %s %s %s", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned)
 	return []byte(s)
 }
 
@@ -414,7 +414,7 @@ func (e ObjectAggDone) Kind() string {
 
 func (e ObjectAggUpdated) Bytes() []byte {
 	d := e.AggregatedStatus
-	s := fmt.Sprintf("%s@%s %s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Placement, d.Scope)
+	s := fmt.Sprintf("%s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
 	return []byte(s)
 }
 
