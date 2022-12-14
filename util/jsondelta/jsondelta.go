@@ -23,14 +23,16 @@ type (
 )
 
 // NewPatch allocates and initializes a patchset.
-func NewPatch(b []byte) Patch {
+func NewPatch(b []byte) (Patch, error) {
 	ps := make(Patch, 0)
 	var data []*json.RawMessage
-	json.Unmarshal(b, &data)
+	if err := json.Unmarshal(b, &data); err != nil {
+		return ps, err
+	}
 	for _, v := range data {
 		ps = append(ps, NewOperation(v))
 	}
-	return ps
+	return ps, nil
 }
 
 func NewPatchFromOperations(ops []Operation) *Patch {
