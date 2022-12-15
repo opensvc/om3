@@ -44,6 +44,7 @@ var (
 		"NodeMonitorDeleted":      NodeMonitorDeleted{},
 		"NodeMonitorUpdated":      NodeMonitorUpdated{},
 		"NodeOsPathsUpdated":      NodeOsPathsUpdated{},
+		"NodeStatsUpdated":        NodeStatsUpdated{},
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 		"NodeStatusUpdated":       NodeStatusUpdated{},
 		"ObjectAggDeleted":        ObjectAggDeleted{},
@@ -198,6 +199,11 @@ type (
 	NodeOsPathsUpdated struct {
 		Node  string
 		Value san.Paths
+	}
+
+	NodeStatsUpdated struct {
+		Node  string
+		Value cluster.NodeStats
 	}
 
 	NodeStatusLabelsUpdated struct {
@@ -394,6 +400,10 @@ func (e NodeMonitorUpdated) Kind() string {
 
 func (e NodeOsPathsUpdated) Kind() string {
 	return "NodeOsPathsUpdated"
+}
+
+func (e NodeStatsUpdated) Kind() string {
+	return "NodeStatsUpdated"
 }
 
 func (e NodeStatusLabelsUpdated) Kind() string {

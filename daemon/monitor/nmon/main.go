@@ -17,9 +17,11 @@ package nmon
 
 import (
 	"context"
+	"math"
 	"strings"
 	"time"
 
+	"github.com/prometheus/procfs"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -152,10 +154,14 @@ func (o *nmon) worker() {
 	for _, node := range initialNodes {
 		o.nmons[node] = daemondata.GetNmon(o.dataCmdC, node)
 	}
+	o.updateStats()
 	o.setNodeOsPaths()
 	o.updateIfChange()
 	defer o.delete()
 	o.log.Debug().Msg("started")
+
+	statsTicker := time.NewTicker(10 * time.Second)
+	defer statsTicker.Stop()
 
 	for {
 		select {
@@ -183,6 +189,8 @@ func (o *nmon) worker() {
 			case cmdOrchestrate:
 				o.onOrchestrate(c)
 			}
+		case <-statsTicker.C:
+			o.updateStats()
 		}
 	}
 }
@@ -260,6 +268,41 @@ func (o *nmon) logFromTo(from, to string) (string, string) {
 		to = "unset"
 	}
 	return from, to
+}
+
+func (o *nmon) getStats() (cluster.NodeStats, error) {
+	stats := cluster.NodeStats{}
+	fs, err := procfs.NewDefaultFS()
+	if err != nil {
+		return stats, err
+	}
+	if load, err := fs.LoadAvg(); err != nil {
+		return stats, err
+	} else {
+		stats.Load15M = load.Load15
+		stats.Score += uint64(100 / math.Max(load.Load15, 1))
+	}
+	if mem, err := fs.Meminfo(); err != nil {
+		return stats, err
+	} else {
+		stats.MemTotalMB = *mem.MemTotal / 1024
+		stats.MemAvailPct = 100 * *mem.MemAvailable / *mem.MemTotal
+		stats.SwapTotalMB = *mem.SwapTotal / 1024
+		stats.SwapAvailPct = 100 * *mem.SwapFree / *mem.SwapTotal
+		stats.Score += 100 + stats.MemAvailPct
+		stats.Score += 2 * (100 + stats.SwapAvailPct)
+	}
+	stats.Score = stats.Score / 7
+
+	return stats, nil
+}
+
+func (o *nmon) updateStats() {
+	if stats, err := o.getStats(); err != nil {
+		o.log.Error().Err(err).Msg("get stats")
+	} else if err := daemondata.SetNodeStats(o.dataCmdC, stats); err != nil {
+		o.log.Error().Err(err).Msg("set stats")
+	}
 }
 
 func (o *nmon) setNodeOsPaths() {
