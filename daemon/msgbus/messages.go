@@ -16,8 +16,6 @@ import (
 )
 
 var (
-	ErrKindUnknown = errors.New("unknown event kind")
-
 	kindToT = map[string]any{
 		"ApiClient":               ApiClient{},
 		"CfgDeleted":              CfgDeleted{},
@@ -60,7 +58,7 @@ func KindToT(kind string) (any, error) {
 	if v, ok := kindToT[kind]; ok {
 		return v, nil
 	}
-	return nil, ErrKindUnknown
+	return nil, errors.New("can't find type for kind: " + kind)
 }
 
 type (

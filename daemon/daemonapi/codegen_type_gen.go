@@ -98,18 +98,6 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-// EventFilter defines model for eventFilter.
-type EventFilter struct {
-	Kind   *string             `json:"kind,omitempty"`
-	Labels *[]EventFilterLabel `json:"labels,omitempty"`
-}
-
-// EventFilterLabel defines model for eventFilterLabel.
-type EventFilterLabel struct {
-	Name  *string `json:"name,omitempty"`
-	Value *string `json:"value,omitempty"`
-}
-
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
 	App         *App          `json:"app,omitempty"`
@@ -162,9 +150,6 @@ type InstanceStatus struct {
 
 // Kind defines model for kind.
 type Kind = string
-
-// Namespace defines model for namespace.
-type Namespace = string
 
 // NodeInfo defines model for nodeInfo.
 type NodeInfo struct {
@@ -408,9 +393,6 @@ type SanPathTarget struct {
 	Type *string `json:"type,omitempty"`
 }
 
-// Selector defines model for selector.
-type Selector = string
-
 // Severity defines model for severity.
 type Severity = string
 
@@ -460,6 +442,9 @@ type Topology string
 // QueryDuration defines model for queryDuration.
 type QueryDuration = string
 
+// QueryEventFilter defines model for queryEventFilter.
+type QueryEventFilter = []string
+
 // QueryLimit defines model for queryLimit.
 type QueryLimit = int64
 
@@ -484,14 +469,6 @@ type QueryRelayNodename = string
 // QuerySelectorOptional defines model for querySelectorOptional.
 type QuerySelectorOptional = string
 
-// GetDaemonEventsJSONBody defines parameters for GetDaemonEvents.
-type GetDaemonEventsJSONBody struct {
-	Filter    *[]EventFilter `json:"filter,omitempty"`
-	Namespace *Namespace     `json:"namespace,omitempty"`
-	Relative  *bool          `json:"relative,omitempty"`
-	Selector  *Selector      `json:"selector,omitempty"`
-}
-
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {
 	// max duration
@@ -499,6 +476,9 @@ type GetDaemonEventsParams struct {
 
 	// limit items count
 	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// list of event filter
+	Filter *QueryEventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
 // PostDaemonLogsControlJSONBody defines parameters for PostDaemonLogsControl.
@@ -569,9 +549,6 @@ type GetRelayMessageParams struct {
 
 // PostRelayMessageJSONBody defines parameters for PostRelayMessage.
 type PostRelayMessageJSONBody = PostRelayMessage
-
-// GetDaemonEventsJSONRequestBody defines body for GetDaemonEvents for application/json ContentType.
-type GetDaemonEventsJSONRequestBody GetDaemonEventsJSONBody
 
 // PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
 type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControlJSONBody

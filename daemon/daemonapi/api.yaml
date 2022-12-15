@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.28
+  version: 3.6.30
 servers:
   - url: https://localhost:1215
 paths:
@@ -50,27 +50,12 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Listen daemon events
       parameters:
         - $ref: '#/components/parameters/queryDuration'
         - $ref: '#/components/parameters/queryLimit'
-      requestBody:
-          description: post object status
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  filter:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/eventFilter'
-                  namespace:
-                    $ref: '#/components/schemas/namespace'
-                  selector:
-                    $ref: '#/components/schemas/selector'
-                  relative:
-                    type: boolean
+        - $ref: '#/components/parameters/queryEventFilter'
       responses:
         '200':
           description: success
@@ -464,22 +449,6 @@ components:
         message:
           type: string
           description: Error message
-    eventFilter:
-      type: object
-      properties:
-        kind:
-          type: string
-        labels:
-          type: array
-          items:
-            $ref: '#/components/schemas/eventFilterLabel'
-    eventFilterLabel:
-      type: object
-      properties:
-        name:
-          type: string
-        value:
-          type: string
     instanceStatus:
       type: object
       required:
@@ -1059,7 +1028,18 @@ components:
       description: max duration
       schema:
         type: string
-        default: 5s
+        example: 5s
+    queryEventFilter:
+      name: filter
+      in: query
+      description: list of event filter
+      schema:
+        type: array
+        items:
+          type: string
+          description: |
+            filter expression: [kind][,label=value]*
+          example: ObjectAggUpdated,path=foo
     queryLimit:
       name: limit
       in: query
@@ -1067,7 +1047,7 @@ components:
       schema:
         type: integer
         format: int64
-        default: 1
+        example: 1
     queryNamespaceOptional:
       name: namespace
       in: query
