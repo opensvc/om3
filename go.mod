@@ -32,7 +32,6 @@ require (
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
 	github.com/google/uuid v1.3.0
 	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
-	github.com/guregu/null v4.0.0+incompatible
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/go-version v1.4.0
 	github.com/hexops/gotextdiff v1.0.3
@@ -53,6 +52,7 @@ require (
 	github.com/opensvc/flock v1.0.3
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/procfs v0.7.3
 	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695
 	github.com/rs/zerolog v1.20.0
 	github.com/shaj13/go-guardian/v2 v2.11.5
