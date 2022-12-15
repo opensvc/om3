@@ -15,7 +15,7 @@ func (o *smon) ThawedFromIdle() {
 }
 
 func (o *smon) thawedClearIfReached() bool {
-	if o.instStatus[o.localhost].Frozen.IsZero() {
+	if o.instStatus[o.localhost].IsThawed() {
 		o.log.Info().Msg("local status is thawed, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset

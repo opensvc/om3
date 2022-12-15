@@ -260,7 +260,6 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
-	defer t.postActionStatusEval(ctx)
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
 	action := actioncontext.Props(ctx)
@@ -314,6 +313,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return nil
 	})
 	if err := t.abortStart(ctx, l); err != nil {
+		_, _ = t.statusEval(ctx)
 		return err
 	}
 	if err := t.ResourceSets().Do(ctx, l, b, action.Name, linkWrap(fn)); err != nil {
@@ -326,6 +326,33 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 	if action.Order.IsDesc() {
 		t.CleanPG(ctx)
+	}
+	return t.postStartStopStatusEval(ctx)
+}
+
+func (t *actor) postStartStopStatusEval(ctx context.Context) error {
+	action := actioncontext.Props(ctx)
+	instStatus, err := t.statusEval(ctx)
+	if err != nil {
+		return err
+	}
+	if !resourceselector.FromContext(ctx, nil).IsZero() {
+		// don't verify instance avail if a resource selection was requested
+		return nil
+	}
+	switch action.Name {
+	case "stop":
+		switch instStatus.Avail {
+		case status.Down, status.StandbyUp, status.NotApplicable:
+		default:
+			return errors.Errorf("the stop action returned no error but end avail status is %s", instStatus.Avail)
+		}
+	case "start":
+		switch instStatus.Avail {
+		case status.Up, status.NotApplicable:
+		default:
+			return errors.Errorf("the start action returned no error but end avail status is %s", instStatus.Avail)
+		}
 	}
 	return nil
 }

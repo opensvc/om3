@@ -38,6 +38,14 @@ type (
 	}
 )
 
+func (t NodeStatus) IsFrozen() bool {
+	return !t.Frozen.IsZero()
+}
+
+func (t NodeStatus) IsThawed() bool {
+	return t.Frozen.IsZero()
+}
+
 func (nodeStatus *NodeStatus) DeepCopy() *NodeStatus {
 	result := *nodeStatus
 	newArbitrator := make(map[string]ArbitratorStatus)

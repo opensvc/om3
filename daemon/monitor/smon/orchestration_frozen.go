@@ -15,7 +15,7 @@ func (o *smon) frozenFromIdle() {
 }
 
 func (o *smon) frozenClearIfReached() bool {
-	if !o.instStatus[o.localhost].Frozen.IsZero() {
+	if o.instStatus[o.localhost].IsFrozen() {
 		o.log.Info().Msg("local status is frozen, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset

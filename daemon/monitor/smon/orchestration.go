@@ -1,6 +1,8 @@
 package smon
 
-import "strings"
+import (
+	"strings"
+)
 
 // orchestrate from svcagg vs global expect
 func (o *smon) orchestrate() {

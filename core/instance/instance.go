@@ -141,6 +141,14 @@ func (t *Status) SortedResources() []resource.ExposedStatus {
 	return l
 }
 
+func (t Status) IsFrozen() bool {
+	return !t.Frozen.IsZero()
+}
+
+func (t Status) IsThawed() bool {
+	return t.Frozen.IsZero()
+}
+
 func (t Status) DeepCopy() *Status {
 	t.Running = append(ResourceRunningSet{}, t.Running...)
 	t.Parents = append([]path.Relation{}, t.Parents...)

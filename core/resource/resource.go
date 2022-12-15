@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang-collections/collections/set"
@@ -537,7 +538,12 @@ func (t T) TagSet() TagSet {
 }
 
 func formatResourceLabel(r Driver) string {
-	return fmt.Sprintf("%s %s", r.Manifest().DriverID.Name, r.Label())
+	name := r.Manifest().DriverID.Name
+	if name == "" {
+		return r.Label()
+	} else {
+		return strings.Join([]string{name, r.Label()}, " ")
+	}
 }
 
 func (t T) trigger(s string) error {

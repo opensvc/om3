@@ -253,6 +253,32 @@ func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
 	o.updateIfChange()
 }
 
+func (o smon) GetInstanceMonitor(node string) (instance.Monitor, bool) {
+	if o.localhost == node {
+		return o.state, true
+	}
+	m, ok := o.instSmon[node]
+	return m, ok
+}
+
+func (o *smon) AllInstanceMonitorStatus(s string) bool {
+	for _, instMon := range o.AllInstanceMonitors() {
+		if instMon.Status != s {
+			return false
+		}
+	}
+	return true
+}
+
+func (o smon) AllInstanceMonitors() map[string]instance.Monitor {
+	m := make(map[string]instance.Monitor)
+	m[o.localhost] = o.state
+	for node, instMon := range o.instSmon {
+		m[node] = instMon
+	}
+	return m
+}
+
 func (o smon) isExtraInstance() (bool, string) {
 	if o.state.IsHALeader {
 		return false, "not leader"
@@ -405,13 +431,30 @@ func (o *smon) nextPlacedAtCandidate() string {
 	return ""
 }
 
+func (o smon) IsInstanceStartFailed(node string) (bool, bool) {
+	instSmon, ok := o.GetInstanceMonitor(node)
+	if !ok {
+		return false, false
+	}
+	switch instSmon.Status {
+	case statusStartFailed:
+		return true, true
+	default:
+		return false, true
+	}
+}
+
 func (o *smon) newIsHALeader() bool {
 	var candidates []string
-	for node, nodeStatus := range o.nodeStatus {
-		if !nodeStatus.Frozen.IsZero() {
+
+	for _, node := range o.scopeNodes {
+		if nodeStatus, ok := o.nodeStatus[node]; !ok || nodeStatus.IsFrozen() {
 			continue
 		}
-		if instStatus, ok := o.instStatus[node]; !ok || !instStatus.Frozen.IsZero() {
+		if instStatus, ok := o.instStatus[node]; !ok || instStatus.IsFrozen() {
+			continue
+		}
+		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {
 			continue
 		}
 		candidates = append(candidates, node)
@@ -423,19 +466,18 @@ func (o *smon) newIsHALeader() bool {
 		maxLeaders = o.svcAgg.FlexTarget
 	}
 
-	for i, candidate := range candidates {
-		if candidate != o.localhost {
-			continue
-		}
-		return i < maxLeaders
+	i := stringslice.Index(o.localhost, candidates)
+	if i < 0 {
+		return false
 	}
+	return i < maxLeaders
 	return false
 }
 
 func (o *smon) newIsLeader() bool {
 	var candidates []string
-	for node, _ := range o.nodeStatus {
-		if _, ok := o.instStatus[node]; !ok {
+	for _, node := range o.scopeNodes {
+		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {
 			continue
 		}
 		candidates = append(candidates, node)
@@ -447,13 +489,11 @@ func (o *smon) newIsLeader() bool {
 		maxLeaders = o.svcAgg.FlexTarget
 	}
 
-	for i, candidate := range candidates {
-		if candidate != o.localhost {
-			continue
-		}
-		return i < maxLeaders
+	i := stringslice.Index(o.localhost, candidates)
+	if i < 0 {
+		return false
 	}
-	return false
+	return i < maxLeaders
 }
 
 func (o *smon) updateIsLeader() {

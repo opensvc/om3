@@ -2,8 +2,95 @@ package smon
 
 import (
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
 )
+
+func (o *smon) orchestrateFailoverPlacedStart() {
+	switch o.state.Status {
+	case statusIdle:
+		o.placedUnfreeze()
+	case statusThawed:
+		o.orchestrateFailoverPlacedStartFromThawed()
+	case statusStarted:
+		o.orchestrateFailoverPlacedStartFromStarted()
+	case statusStopped:
+		o.orchestrateFailoverPlacedStartFromStopped()
+	case statusStartFailed:
+		o.orchestratePlacedFromStartFailed()
+	case statusThawing:
+	case statusFreezing:
+	case statusStopping:
+	case statusStarting:
+	default:
+		o.log.Error().Msgf("don't know how to orchestrate placed start from %s", o.state.Status)
+	}
+}
+
+func (o *smon) orchestrateFlexPlacedStart() {
+	switch o.state.Status {
+	case statusIdle:
+		o.placedUnfreeze()
+	case statusThawed:
+		o.orchestrateFlexPlacedStartFromThawed()
+	case statusStarted:
+		o.orchestrateFlexPlacedStartFromStarted()
+	case statusStopped:
+		o.transitionTo(statusIdle)
+	case statusStartFailed:
+		o.orchestratePlacedFromStartFailed()
+	case statusThawing:
+	case statusFreezing:
+	case statusStopping:
+	case statusStarting:
+	default:
+		o.log.Error().Msgf("don't know how to orchestrate placed start from %s", o.state.Status)
+	}
+}
+
+func (o *smon) orchestrateFailoverPlacedStop() {
+	switch o.state.Status {
+	case statusIdle:
+		o.placedUnfreeze()
+	case statusThawed:
+		o.placedStop()
+	case statusStopFailed:
+		o.clearStopFailedIfDown()
+	case statusStopped:
+		o.clearStoppedIfAggUp()
+	case statusReady:
+		o.transitionTo(statusIdle)
+	case statusStartFailed:
+		o.orchestratePlacedFromStartFailed()
+	case statusThawing:
+	case statusFreezing:
+	case statusStopping:
+	case statusStarting:
+	default:
+		o.log.Error().Msgf("don't know how to orchestrate placed stop from %s", o.state.Status)
+	}
+}
+
+func (o *smon) orchestrateFlexPlacedStop() {
+	switch o.state.Status {
+	case statusIdle:
+		o.placedUnfreeze()
+	case statusThawed:
+		o.placedStop()
+	case statusStopFailed:
+		o.clearStopFailedIfDown()
+	case statusStopped:
+		o.clearStoppedIfAggUp()
+	case statusReady:
+		o.transitionTo(statusIdle)
+	case statusStartFailed:
+		o.orchestratePlacedFromStartFailed()
+	case statusThawing:
+	case statusFreezing:
+	case statusStopping:
+	case statusStarting:
+	default:
+		o.log.Error().Msgf("don't know how to orchestrate placed stop from %s", o.state.Status)
+	}
+}
 
 func (o *smon) orchestratePlacedAt(dst string) {
 	dstNodes := o.parsePlacedAtDestination(dst)
@@ -14,23 +101,36 @@ func (o *smon) orchestratePlacedAt(dst string) {
 	}
 }
 
-func (o *smon) doPlacedStart() {
-	if o.svcAgg.Topology == topology.Failover {
-		// failover objects need to wait for the agg status to reach "down"
-		switch o.svcAgg.Avail {
-		case status.Down:
-		default:
-			return
-		}
+func (o *smon) placedUnfreeze() {
+	if o.instStatus[o.localhost].IsThawed() {
+		o.transitionTo(statusThawed)
+	} else {
+		o.doUnfreeze()
 	}
+
+}
+
+func (o *smon) doPlacedStart() {
 	o.doAction(o.crmStart, statusStarting, statusStarted, statusStartFailed)
+}
+
+func (o *smon) placedStart() {
+	instStatus := o.instStatus[o.localhost]
+	switch instStatus.Avail {
+	case status.Down, status.StandbyDown, status.StandbyUp:
+		o.doPlacedStart()
+	case status.Up, status.Warn:
+		o.skipPlacedStart()
+	default:
+		return
+	}
 }
 
 func (o *smon) placedStop() {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown, status.StandbyUp:
-		o.placedStopFromDown()
+		o.skipPlacedStop()
 	case status.Up, status.Warn:
 		o.doPlacedStop()
 	default:
@@ -43,10 +143,17 @@ func (o *smon) doPlacedStop() {
 	o.doAction(o.crmStop, statusStopping, statusStopped, statusStopFailed)
 }
 
-func (o *smon) placedStopFromDown() {
+func (o *smon) skipPlacedStop() {
 	o.loggerWithState().Info().Msg("instance is already down")
 	o.change = true
 	o.state.Status = statusStopped
+	o.clearPending()
+}
+
+func (o *smon) skipPlacedStart() {
+	o.loggerWithState().Info().Msg("instance is already up")
+	o.change = true
+	o.state.Status = statusStarted
 	o.clearPending()
 }
 
@@ -64,49 +171,62 @@ func (o *smon) clearStopFailedIfDown() {
 func (o *smon) clearStoppedIfAggUp() {
 	switch o.svcAgg.Avail {
 	case status.Up:
-		o.loggerWithState().Info().Msg("agg status is up, unset global expect")
+		o.clearStopped()
+	}
+}
+
+func (o *smon) clearStopped() {
+	o.loggerWithState().Info().Msg("agg status is up, unset global expect")
+	o.change = true
+	o.state.GlobalExpect = globalExpectUnset
+	if o.state.LocalExpect != statusIdle {
+		o.state.LocalExpect = statusIdle
+	}
+	if o.state.Status != statusIdle {
+		o.state.Status = statusIdle
+	}
+	o.clearPending()
+}
+
+func (o *smon) orchestrateFailoverPlacedStartFromThawed() {
+	instStatus := o.instStatus[o.localhost]
+	switch instStatus.Avail {
+	case status.Up:
+		o.transitionTo(statusStarted)
+	default:
+		o.transitionTo(statusStopped)
+	}
+}
+
+func (o *smon) orchestrateFailoverPlacedStartFromStopped() {
+	switch o.svcAgg.Avail {
+	case status.Down:
+	default:
+		return
+	}
+	o.placedStart()
+}
+
+func (o *smon) orchestrateFailoverPlacedStartFromStarted() {
+	o.startedClearIfReached()
+}
+
+func (o *smon) orchestrateFlexPlacedStartFromThawed() {
+	o.placedStart()
+}
+
+func (o *smon) orchestrateFlexPlacedStartFromStarted() {
+	o.startedClearIfReached()
+}
+
+func (o *smon) orchestratePlacedFromStartFailed() {
+	switch {
+	case o.AllInstanceMonitorStatus(statusStartFailed):
+		o.loggerWithState().Info().Msg("all instances are start failed, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
-		if o.state.LocalExpect != statusIdle {
-			o.state.LocalExpect = statusIdle
-		}
-		if o.state.Status != statusIdle {
-			o.state.Status = statusIdle
-		}
 		o.clearPending()
-	}
-}
-
-func (o *smon) orchestratePlacedStart() {
-	switch o.state.Status {
-	case statusStarted:
+	case o.svcAgg.Avail == status.Up:
 		o.startedClearIfReached()
-	case statusStopped, statusIdle:
-		o.doPlacedStart()
 	}
-}
-
-func (o *smon) orchestratePlacedStop() {
-	switch o.state.Status {
-	case statusIdle:
-		o.doPlacedStop()
-	case statusFreezing:
-	case statusReady:
-		o.stoppedFromReady()
-	case statusStopFailed:
-		o.clearStopFailedIfDown()
-	case statusStopping:
-	case statusStopped:
-		o.clearStoppedIfAggUp()
-	case statusStartFailed:
-		o.transitionTo(statusIdle)
-	default:
-		o.log.Error().Msgf("don't know how to orchestrate placed stopped from %s", o.state.Status)
-	}
-}
-
-func (o *smon) placedStopFromReady() {
-	o.log.Info().Msg("reset ready state global expect is placed")
-	o.clearPending()
-	o.transitionTo(statusStopped)
 }
