@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.29
+  version: 3.6.30
 servers:
   - url: https://localhost:1215
 paths:
@@ -50,6 +50,8 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Listen daemon events
       parameters:
         - $ref: '#/components/parameters/queryDuration'
         - $ref: '#/components/parameters/queryLimit'
@@ -1026,7 +1028,7 @@ components:
       description: max duration
       schema:
         type: string
-        default: 5s
+        example: 5s
     queryEventFilter:
       name: filter
       in: query
@@ -1045,7 +1047,7 @@ components:
       schema:
         type: integer
         format: int64
-        default: 1
+        example: 1
     queryNamespaceOptional:
       name: namespace
       in: query

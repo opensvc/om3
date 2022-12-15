@@ -32,8 +32,10 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	var (
 		handlerName = "GetDaemonEvents"
 		limit       uint64
-		maxDuration = 5 * time.Second
 		eventCount  uint64
+
+		ctx    context.Context = r.Context()
+		cancel context.CancelFunc
 	)
 	log := getLogger(r, handlerName)
 	log.Debug().Msg("starting")
@@ -47,7 +49,8 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
 			sendError(w, http.StatusBadRequest, "invalid duration")
 		} else {
-			maxDuration = *v.(*time.Duration)
+			ctx, cancel = context.WithTimeout(ctx, *v.(*time.Duration))
+			defer cancel()
 		}
 	}
 
@@ -58,9 +61,7 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), maxDuration)
-	defer cancel()
-	bus := pubsub.BusFromContext(ctx)
+	bus := pubsub.BusFromContext(r.Context())
 	if r.Header.Get("accept") == "text/event-stream" {
 		setStreamHeaders(w)
 	}
