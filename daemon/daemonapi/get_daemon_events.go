@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/pkg/errors"
 
 	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/event/sseevent"
@@ -33,7 +34,6 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		limit       uint64
 		maxDuration = 5 * time.Second
 		eventCount  uint64
-		payload     GetDaemonEventsJSONBody
 	)
 	log := getLogger(r, handlerName)
 	log.Debug().Msg("starting")
@@ -51,12 +51,6 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		}
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		log.Warn().Err(err).Msgf("decode body")
-		sendError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
 	grants := daemonauth.UserGrants(r)
 	if !grants.HasRoot() {
 		log.Info().Msg("not allowed, need grant root")
@@ -71,25 +65,23 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		setStreamHeaders(w)
 	}
 
-	filterArgs, err := payload.filterArgs()
+	filters, err := params.parseFilters()
 	if err != nil {
 		log.Warn().Err(err).Msgf("invalid filter")
 		sendError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if len(filterArgs) == 0 {
-		filterArgs = []Filter{
-			{Kind: msgbus.DataUpdated{}},
-		}
-	}
 
 	name := fmt.Sprintf("lsnr-handler-event %s from %s %s", handlerName, r.RemoteAddr, daemonctx.Uuid(r.Context()))
+	if params.Filter != nil && len(*params.Filter) > 0 {
+		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
+	}
 	AnnounceSub(bus, name)
 	defer AnnounceUnSub(bus, name)
 
 	sub := bus.SubWithTimeout(name, time.Second)
 
-	for _, filter := range filterArgs {
+	for _, filter := range filters {
 		if kind, ok := filter.Kind.(event.Kinder); ok {
 			log.Debug().Msgf("filtering %s %v", kind.Kind(), filter.Labels)
 		} else {
@@ -98,8 +90,7 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		}
 		sub.AddFilter(filter.Kind, filter.Labels...)
 	}
-	//sub.AddFilter(msgbus.DataUpdated{})
-	//sub.AddFilter(nil, labels...)
+
 	sub.Start()
 	defer sub.Stop()
 
@@ -127,29 +118,44 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	}
 }
 
-func (b *GetDaemonEventsJSONBody) filterArgs() (filters []Filter, err error) {
+// parseFilters return filters from *b.Filter
+func (b *GetDaemonEventsParams) parseFilters() (filters []Filter, err error) {
+	var filter Filter
+
 	if b.Filter == nil {
 		return
 	}
-	for _, filter := range *b.Filter {
-		filterEntry := Filter{}
-		if filter.Kind == nil {
-			continue
-		}
-		filterEntry.Kind, err = msgbus.KindToT(*filter.Kind)
+	for _, s := range *b.Filter {
+		filter, err = b.parseFilter(s)
 		if err != nil {
+			return
+		}
+		filters = append(filters, filter)
+	}
+	return
+}
+
+// parseFilter return filter from s
+//
+// filter syntax is: [kind][,label=value]*
+func (b *GetDaemonEventsParams) parseFilter(s string) (filter Filter, err error) {
+	for _, elem := range strings.Split(s, ",") {
+		if strings.HasPrefix(elem, ".") {
+			// TODO filter data ?
 			continue
 		}
-
-		if filter.Labels != nil {
-			for _, l := range *filter.Labels {
-				if l.Name != nil && l.Value != nil {
-					filterEntry.Labels = append(filterEntry.Labels, pubsub.Label{*l.Name, *l.Value})
-				}
+		splitted := strings.Split(elem, "=")
+		if len(splitted) == 1 {
+			filter.Kind, err = msgbus.KindToT(splitted[0])
+			if err != nil {
+				return
 			}
+		} else if len(splitted) == 2 {
+			filter.Labels = append(filter.Labels, pubsub.Label{splitted[0], splitted[1]})
+		} else {
+			err = errors.New("invalid filter expression: " + s)
+			return
 		}
-
-		filters = append(filters, filterEntry)
 	}
 	return
 }
