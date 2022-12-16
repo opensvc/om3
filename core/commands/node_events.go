@@ -14,6 +14,7 @@ import (
 type (
 	CmdNodeEvents struct {
 		OptsGlobal
+		Filters []string
 	}
 )
 
@@ -30,7 +31,10 @@ func (t *CmdNodeEvents) Run() error {
 		return err
 	}
 
-	evReader, err := c.NewGetEvents().SetRelatives(false).GetReader()
+	evReader, err := c.NewGetEvents().
+		SetRelatives(false).
+		SetFilters(t.Filters).
+		GetReader()
 	if err != nil {
 		return err
 	}

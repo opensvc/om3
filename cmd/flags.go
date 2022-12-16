@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
 	"opensvc.com/opensvc/core/commands"
 )
 
@@ -110,6 +111,10 @@ func addFlagDebug(flagSet *pflag.FlagSet, p *bool) {
 
 func addFlagEval(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "eval", false, "Dereference and evaluate arythmetic expressions in value.")
+}
+
+func addFlagEventFilters(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "filter", []string{}, "request only events matching kind (InstanceStatusUpdated) or labels (path=svc1) or both (InstanceStatusUpdated,path=svc1,node=n1).")
 }
 
 func addFlagForeground(flagSet *pflag.FlagSet, p *bool) {

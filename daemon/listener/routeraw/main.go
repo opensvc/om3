@@ -115,13 +115,9 @@ func (t *T) newRequestFrom(w io.ReadWriteCloser) (*request, error) {
 		matched.method = srcRequest.Method
 		matched.path = srcRequest.Action
 	}
-	value := url.Values{}
-	for k, v := range srcRequest.QueryArgs {
-		value.Add(k, v)
-	}
 	reqUrl := url.URL{
 		Path:     matched.path,
-		RawQuery: value.Encode(),
+		RawQuery: srcRequest.Values.Encode(),
 	}
 	httpHeader := http.Header{}
 	if srcRequest.Node != "" {

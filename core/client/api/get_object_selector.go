@@ -25,7 +25,7 @@ func NewGetObjectSelector(t Getter) *GetObjectSelector {
 
 // Do fetchs the daemon statistics structure from the agent api
 func (t GetObjectSelector) Do() ([]byte, error) {
-	t.SetQueryArgs(map[string]string{"selector": t.ObjectSelector})
 	req := request.NewFor(t)
+	req.Values.Set("selector", t.ObjectSelector)
 	return Route(t.client, *req)
 }

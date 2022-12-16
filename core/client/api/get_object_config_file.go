@@ -23,7 +23,7 @@ func NewGetObjectConfigFile(t Getter) *GetObjectConfigFile {
 
 // Do submits the request.
 func (t GetObjectConfigFile) Do() ([]byte, error) {
-	t.SetQueryArgs(map[string]string{"path": t.ObjectSelector})
 	req := request.NewFor(t)
+	req.Values.Set("path", t.ObjectSelector)
 	return Route(t.client, *req)
 }

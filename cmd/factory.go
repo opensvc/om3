@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/commands"
 	"opensvc.com/opensvc/core/monitor"
 )
@@ -828,6 +829,7 @@ func newCmdNodeEvents() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagEventFilters(flags, &options.Filters)
 	return cmd
 }
 

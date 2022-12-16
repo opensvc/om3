@@ -17,6 +17,12 @@ type GetEvents struct {
 	namespace string
 	selector  string
 	relatives bool
+	Filters   []string
+}
+
+func (t *GetEvents) SetFilters(filters []string) *GetEvents {
+	t.Filters = filters
+	return t
 }
 
 func (t *GetEvents) SetNamespace(s string) *GetEvents {
@@ -136,5 +142,8 @@ func (t GetEvents) newRequest() *request.T {
 	req.Options["selector"] = t.selector
 	req.Options["namespace"] = t.namespace
 	req.Options["full"] = t.relatives
+	for _, filter := range t.Filters {
+		req.Values.Add("filter", filter)
+	}
 	return req
 }
