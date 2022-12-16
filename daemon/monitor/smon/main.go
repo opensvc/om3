@@ -54,7 +54,7 @@ type (
 
 		// updated data from aggregated status update srcEvent
 		instStatus  map[string]instance.Status
-		instSmon    map[string]instance.Monitor
+		instMonitor map[string]instance.Monitor
 		nodeMonitor map[string]cluster.NodeMonitor
 		nodeStats   map[string]cluster.NodeStats
 		nodeStatus  map[string]cluster.NodeStatus
@@ -142,7 +142,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		dataCmdC:      daemondata.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
-		instSmon:      make(map[string]instance.Monitor),
+		instMonitor:   make(map[string]instance.Monitor),
 		nodeStatus:    make(map[string]cluster.NodeStatus),
 		nodeStats:     make(map[string]cluster.NodeStats),
 		nodeMonitor:   make(map[string]cluster.NodeMonitor),
@@ -204,11 +204,9 @@ func (o *smon) worker(initialNodes []string) {
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
-				if c.Node != o.localhost {
-					o.onRemoteSmonUpdated(c)
-				}
+				o.onInstanceMonitorUpdated(c)
 			case msgbus.InstanceMonitorDeleted:
-				o.onSmonDeleted(c)
+				o.onInstanceMonitorDeleted(c)
 			case msgbus.NodeMonitorUpdated:
 				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeStatusUpdated:
@@ -226,15 +224,15 @@ func (o *smon) worker(initialNodes []string) {
 }
 
 func (o *smon) delete() {
-	if err := daemondata.DelSmon(o.dataCmdC, o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelSmon")
+	if err := daemondata.DelInstanceMonitor(o.dataCmdC, o.path); err != nil {
+		o.log.Error().Err(err).Msg("DelInstanceMonitor")
 	}
 }
 
 func (o *smon) update() {
 	newValue := o.state
-	if err := daemondata.SetSmon(o.dataCmdC, o.path, newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetSmon")
+	if err := daemondata.SetInstanceMonitor(o.dataCmdC, o.path, newValue); err != nil {
+		o.log.Error().Err(err).Msg("SetInstanceMonitor")
 	}
 }
 
@@ -256,7 +254,7 @@ func (o *smon) updateIfChange() {
 	fromGeS, toGeS := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
 		// Don't update GlobalExpectUpdated here
-		// GlobalExpectUpdated is updated only during cmdSetSmonClient and
+		// GlobalExpectUpdated is updated only during cmdSetInstanceMonitorClient and
 		// its value is used for convergeGlobalExpectFromRemote
 		o.loggerWithState().Info().Msgf("change monitor global expect %s -> %s", fromGeS, toGeS)
 	}
@@ -280,11 +278,11 @@ func (o *smon) updateIfChange() {
 }
 
 func (o *smon) hasOtherNodeActing() bool {
-	for remoteNode, remoteSmon := range o.instSmon {
+	for remoteNode, remoteInstMonitor := range o.instMonitor {
 		if remoteNode == o.localhost {
 			continue
 		}
-		if strings.HasSuffix(remoteSmon.Status, "ing") {
+		if strings.HasSuffix(remoteInstMonitor.Status, "ing") {
 			return true
 		}
 	}

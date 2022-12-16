@@ -11,24 +11,24 @@ import (
 )
 
 type (
-	opDelSmon struct {
+	opDelInstanceMonitor struct {
 		err  chan<- error
 		path path.T
 	}
 
-	opSetSmon struct {
+	opSetInstanceMonitor struct {
 		err   chan<- error
 		path  path.T
 		value instance.Monitor
 	}
 )
 
-// DelSmon
+// DelInstanceMonitor
 //
 // cluster.node.<localhost>.instance.<path>.monitor
-func DelSmon(c chan<- interface{}, p path.T) error {
+func DelInstanceMonitor(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
-	op := opDelSmon{
+	op := opDelInstanceMonitor{
 		err:  err,
 		path: p,
 	}
@@ -36,12 +36,12 @@ func DelSmon(c chan<- interface{}, p path.T) error {
 	return <-err
 }
 
-// SetSmon
+// SetInstanceMonitor
 //
 // cluster.node.<localhost>.instance.<path>.monitor
-func SetSmon(c chan<- interface{}, p path.T, v instance.Monitor) error {
+func SetInstanceMonitor(c chan<- interface{}, p path.T, v instance.Monitor) error {
 	err := make(chan error)
-	op := opSetSmon{
+	op := opSetInstanceMonitor{
 		err:   err,
 		path:  p,
 		value: v,
@@ -50,11 +50,11 @@ func SetSmon(c chan<- interface{}, p path.T, v instance.Monitor) error {
 	return <-err
 }
 
-func (o opDelSmon) setError(err error) {
+func (o opDelInstanceMonitor) setError(err error) {
 	o.err <- err
 }
 
-func (o opDelSmon) call(ctx context.Context, d *data) {
+func (o opDelInstanceMonitor) call(ctx context.Context, d *data) {
 	d.counterCmd <- idDelInstanceMonitor
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Monitor != nil {
@@ -80,7 +80,7 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 	}
 }
 
-func (o opSetSmon) call(ctx context.Context, d *data) {
+func (o opSetInstanceMonitor) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetInstanceMonitor
 	var op jsondelta.Operation
 	s := o.path.String()

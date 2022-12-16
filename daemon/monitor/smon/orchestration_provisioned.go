@@ -63,8 +63,8 @@ func (o *smon) provisionedClearIfReached() bool {
 
 func (o *smon) leaders() []string {
 	l := make([]string, 0)
-	for node, instSmon := range o.instSmon {
-		if instSmon.IsLeader {
+	for node, instMon := range o.instMonitor {
+		if instMon.IsLeader {
 			l = append(l, node)
 		}
 	}

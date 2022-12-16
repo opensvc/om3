@@ -49,8 +49,8 @@ func (o *smon) hasNonLeaderProvisioned() bool {
 		var isLeader bool
 		if node == o.localhost {
 			isLeader = o.state.IsLeader
-		} else if instSmon, ok := o.instSmon[node]; ok {
-			isLeader = instSmon.IsLeader
+		} else if instMon, ok := o.instMonitor[node]; ok {
+			isLeader = instMon.IsLeader
 		}
 		if isLeader {
 			continue
