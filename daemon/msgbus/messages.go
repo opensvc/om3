@@ -272,8 +272,8 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 	<-dropping
 }
 
-func (e ApiClient) Bytes() []byte {
-	return []byte(fmt.Sprintf("%s %s", e.Name, e.Time))
+func (e ApiClient) String() string {
+	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
 func (e CfgDeleted) Kind() string {
@@ -328,11 +328,11 @@ func (e FrozenFileUpdated) Kind() string {
 	return "FrozenFileUpdated"
 }
 
-func (e HbNodePing) Bytes() []byte {
+func (e HbNodePing) String() string {
 	if e.Status {
-		return []byte(e.Node + " ok")
+		return e.Node + " ok"
 	} else {
-		return []byte(e.Node + " stale")
+		return e.Node + " stale"
 	}
 }
 
@@ -340,18 +340,18 @@ func (e HbNodePing) Kind() string {
 	return "HbNodePing"
 }
 
-func (e HbPing) Bytes() []byte {
+func (e HbPing) String() string {
 	s := fmt.Sprintf("node %s ping detected from %s %s", e.Nodename, e.HbId, e.Time)
-	return []byte(s)
+	return s
 }
 
 func (e HbPing) Kind() string {
 	return "HbPing"
 }
 
-func (e HbStale) Bytes() []byte {
+func (e HbStale) String() string {
 	s := fmt.Sprintf("node %s stale detected from %s %s", e.Nodename, e.HbId, e.Time)
-	return []byte(s)
+	return s
 }
 
 func (e HbStale) Kind() string {
@@ -378,10 +378,10 @@ func (e InstanceStatusUpdated) Kind() string {
 	return "InstanceStatusUpdated"
 }
 
-func (e InstanceStatusUpdated) Bytes() []byte {
+func (e InstanceStatusUpdated) String() string {
 	d := e.Status
 	s := fmt.Sprintf("%s@%s %s %s %s %s", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned)
-	return []byte(s)
+	return s
 }
 
 func (e MonCfgDone) Kind() string {
@@ -420,10 +420,10 @@ func (e ObjectAggDone) Kind() string {
 	return "ObjectAggDone"
 }
 
-func (e ObjectAggUpdated) Bytes() []byte {
+func (e ObjectAggUpdated) String() string {
 	d := e.AggregatedStatus
 	s := fmt.Sprintf("%s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
-	return []byte(s)
+	return s
 }
 
 func (e ObjectAggUpdated) Kind() string {
@@ -442,8 +442,8 @@ func (e SetNodeMonitor) Kind() string {
 	return "SetNodeMonitor"
 }
 
-func (e WatchDog) Bytes() []byte {
-	return []byte(e.Name)
+func (e WatchDog) String() string {
+	return e.Name
 }
 
 func (e WatchDog) Kind() string {

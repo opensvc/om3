@@ -101,7 +101,7 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		// don't wait first event to flush response
 		f.Flush()
 	}
-	eventC := event.ChanFromAny(ctx, sub.C)
+	eventC := event.ChanFromAny(ctx, true, sub.C)
 	sseWriter := sseevent.NewWriter(w)
 	for ev := range eventC {
 		log.Debug().Msgf("write event %s", ev.Kind)
