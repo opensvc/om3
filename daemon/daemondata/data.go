@@ -75,6 +75,7 @@ type (
 	// remoteInfo struct holds information about remote node used to publish diff
 	remoteInfo struct {
 		nmonUpdated       time.Time
+		nodeStats         cluster.NodeStats
 		nodeStatus        cluster.NodeStatus
 		smonUpdated       map[string]time.Time
 		instCfgUpdated    map[string]time.Time
