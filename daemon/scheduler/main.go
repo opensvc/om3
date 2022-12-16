@@ -243,7 +243,7 @@ func (t *T) loop() {
 			case msgbus.InstanceStatusDeleted:
 				t.onInstStatusDeleted(c)
 			case msgbus.NodeMonitorUpdated:
-				t.onNmonUpdated(c)
+				t.onNodeMonitorUpdated(c)
 			case msgbus.ObjectAggUpdated:
 				t.onMonSvcAggUpdated(c)
 			}
@@ -285,7 +285,7 @@ func (t *T) onMonSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	}
 }
 
-func (t *T) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
+func (t *T) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return

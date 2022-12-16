@@ -64,7 +64,7 @@ func SetNodeFrozen(c chan<- interface{}, tm time.Time) error {
 }
 
 func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetNmon
+	d.counterCmd <- idSetNodeMonitor
 	v := d.pending.Cluster.Node[d.localNode]
 	v.Status.Frozen = o.value
 	d.pending.Cluster.Node[d.localNode] = v
@@ -108,7 +108,7 @@ func SetNodeStatusLabels(c chan<- interface{}, labels nodesinfo.Labels) error {
 }
 
 func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetNmon
+	d.counterCmd <- idSetNodeMonitor
 	v := d.pending.Cluster.Node[d.localNode]
 	v.Status.Labels = o.value
 	d.pending.Cluster.Node[d.localNode] = v

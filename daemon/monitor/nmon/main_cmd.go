@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-func (o *nmon) onSetNmonCmd(c msgbus.SetNodeMonitor) {
+func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 	doStatus := func() {
 		// TODO?
 	}
@@ -37,7 +37,7 @@ func (o *nmon) onSetNmonCmd(c msgbus.SetNodeMonitor) {
 			return
 		}
 
-		for node, data := range o.nmons {
+		for node, data := range o.nodeMonitor {
 			if data.GlobalExpect == c.Monitor.GlobalExpect {
 				o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", c.Monitor.GlobalExpect, node)
 				return
@@ -79,18 +79,18 @@ func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
 	daemondata.SetNodeFrozen(o.dataCmdC, tm)
 }
 
-func (o *nmon) onNmonDeleted(c msgbus.NodeMonitorDeleted) {
+func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {
 	o.log.Debug().Msgf("deleted nmon for node %s", c.Node)
-	delete(o.nmons, c.Node)
+	delete(o.nodeMonitor, c.Node)
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()
 	o.updateIfChange()
 }
 
-func (o *nmon) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
+func (o *nmon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Monitor.GlobalExpect)
-	o.nmons[c.Node] = c.Monitor
+	o.nodeMonitor[c.Node] = c.Monitor
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()

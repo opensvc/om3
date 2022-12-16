@@ -55,7 +55,7 @@ func (o opDelSmon) setError(err error) {
 }
 
 func (o opDelSmon) call(ctx context.Context, d *data) {
-	d.counterCmd <- idDelSmon
+	d.counterCmd <- idDelInstanceMonitor
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Monitor != nil {
 		inst.Monitor = nil
@@ -81,7 +81,7 @@ func (o opDelSmon) call(ctx context.Context, d *data) {
 }
 
 func (o opSetSmon) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetSmon
+	d.counterCmd <- idSetInstanceMonitor
 	var op jsondelta.Operation
 	s := o.path.String()
 	value := o.value.DeepCopy()

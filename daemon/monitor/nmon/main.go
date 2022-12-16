@@ -49,8 +49,8 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
-		scopeNodes []string
-		nmons      map[string]cluster.NodeMonitor
+		scopeNodes  []string
+		nodeMonitor map[string]cluster.NodeMonitor
 
 		cancelReady context.CancelFunc
 		localhost   string
@@ -85,7 +85,7 @@ func Start(parent context.Context) error {
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
 		change:        true,
-		nmons:         make(map[string]cluster.NodeMonitor),
+		nodeMonitor:   make(map[string]cluster.NodeMonitor),
 	}
 
 	o.startSubscriptions()
@@ -119,7 +119,7 @@ func (o *nmon) worker() {
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for _, node := range initialNodes {
-		o.nmons[node] = daemondata.GetNmon(o.dataCmdC, node)
+		o.nodeMonitor[node] = daemondata.GetNodeMonitor(o.dataCmdC, node)
 	}
 	o.updateStats()
 	o.setNodeOsPaths()
@@ -137,15 +137,15 @@ func (o *nmon) worker() {
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.NodeMonitorUpdated:
-				o.onNmonUpdated(c)
+				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:
-				o.onNmonDeleted(c)
+				o.onNodeMonitorDeleted(c)
 			case msgbus.FrozenFileRemoved:
 				o.onFrozenFileRemoved(c)
 			case msgbus.FrozenFileUpdated:
 				o.onFrozenFileUpdated(c)
 			case msgbus.SetNodeMonitor:
-				o.onSetNmonCmd(c)
+				o.onSetNodeMonitor(c)
 			case msgbus.NodeStatusLabelsUpdated:
 				o.onNodeStatusLabelsUpdated(c)
 			case msgbus.NodeOsPathsUpdated:
@@ -163,15 +163,15 @@ func (o *nmon) worker() {
 }
 
 func (o *nmon) delete() {
-	if err := daemondata.DelNmon(o.dataCmdC); err != nil {
-		o.log.Error().Err(err).Msg("DelNmon")
+	if err := daemondata.DelNodeMonitor(o.dataCmdC); err != nil {
+		o.log.Error().Err(err).Msg("DelNodeMonitor")
 	}
 }
 
 func (o *nmon) update() {
 	newValue := o.state
-	if err := daemondata.SetNmon(o.dataCmdC, newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetNmon")
+	if err := daemondata.SetNodeMonitor(o.dataCmdC, newValue); err != nil {
+		o.log.Error().Err(err).Msg("SetNodeMonitor")
 	}
 }
 
@@ -198,11 +198,11 @@ func (o *nmon) updateIfChange() {
 }
 
 func (o *nmon) hasOtherNodeActing() bool {
-	for remoteNode, remoteNmon := range o.nmons {
+	for remoteNode, remoteNodeMonitor := range o.nodeMonitor {
 		if remoteNode == o.localhost {
 			continue
 		}
-		if remoteNmon.State.IsDoing() {
+		if remoteNodeMonitor.State.IsDoing() {
 			return true
 		}
 	}
