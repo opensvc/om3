@@ -81,7 +81,7 @@ func monCmdRun(_ *cobra.Command, _ []string) error {
 // monCmdWatchArgs returns evReader and statusGetter for monitor DoWatch
 func monCmdWatchArgs(cli *client.T) (evReader event.ReadCloser, statusGetter monitor.Getter, err error) {
 	//var reqCli api.GetEventReader
-	evReader, err = cli.NewGetEvents().SetSelector(monSelectorFlag).GetReader()
+	evReader, err = cli.NewGetEvents().SetSelector(monSelectorFlag).SetFilters([]string{"DataUpdated"}).GetReader()
 	if err != nil {
 		return
 	}
