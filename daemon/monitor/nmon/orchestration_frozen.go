@@ -1,6 +1,7 @@
 package nmon
 
 import (
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemondata"
 )
 
@@ -9,7 +10,7 @@ func (o *nmon) orchestrateFrozen() {
 		return
 	}
 	switch o.state.Status {
-	case statusIdle:
+	case cluster.NodeMonitorStatusIdle:
 		o.frozenFromIdle()
 	}
 }
@@ -18,14 +19,14 @@ func (o *nmon) frozenFromIdle() {
 	if o.frozenClearIfReached() {
 		return
 	}
-	o.state.Status = statusFreezing
+	o.state.Status = cluster.NodeMonitorStatusFreezing
 	o.updateIfChange()
 	o.log.Info().Msg("run action freeze")
-	nextState := statusIdle
+	nextState := cluster.NodeMonitorStatusIdle
 	if err := o.crmFreeze(); err != nil {
-		nextState = statusFreezeFailed
+		nextState = cluster.NodeMonitorStatusFreezeFailed
 	}
-	go o.orchestrateAfterAction(statusFreezing, nextState)
+	go o.orchestrateAfterAction(cluster.NodeMonitorStatusFreezing, nextState)
 	return
 }
 
@@ -33,7 +34,7 @@ func (o *nmon) frozenClearIfReached() bool {
 	if d := daemondata.GetNodeStatus(o.dataCmdC, o.localhost); (d != nil) && !d.Frozen.IsZero() {
 		o.log.Info().Msg("local status is frozen, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
+		o.state.GlobalExpect = cluster.NodeMonitorGlobalExpectUnset
 		o.clearPending()
 		return true
 	}

@@ -1,20 +1,22 @@
 package nmon
 
+import "opensvc.com/opensvc/core/cluster"
+
 // orchestrate from svcagg vs global expect
 func (o *nmon) orchestrate() {
 	switch o.state.LocalExpect {
-	case localExpectUnset:
-	case localExpectDrained:
+	case cluster.NodeMonitorLocalExpectUnset:
+	case cluster.NodeMonitorLocalExpectDrained:
 		o.orchestrateDrained()
 	}
 
 	switch o.state.GlobalExpect {
-	case globalExpectUnset:
-	case globalExpectAborted:
+	case cluster.NodeMonitorGlobalExpectUnset:
+	case cluster.NodeMonitorGlobalExpectAborted:
 		o.orchestrateAborted()
-	case globalExpectFrozen:
+	case cluster.NodeMonitorGlobalExpectFrozen:
 		o.orchestrateFrozen()
-	case globalExpectThawed:
+	case cluster.NodeMonitorGlobalExpectThawed:
 		o.orchestrateThawed()
 	}
 	o.updateIfChange()

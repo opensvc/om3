@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/collector"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -58,11 +59,11 @@ type (
 )
 
 var (
-	incompatibleNodeMonitorStatus = map[string]bool{
-		"init":        true,
-		"upgrade":     true,
-		"shutting":    true,
-		"maintenance": true,
+	incompatibleNodeMonitorStatus = map[cluster.NodeMonitorStatus]any{
+		cluster.NodeMonitorStatusInit:        nil,
+		cluster.NodeMonitorStatusUpgrade:     nil,
+		cluster.NodeMonitorStatusShutting:    nil,
+		cluster.NodeMonitorStatusMaintenance: nil,
 	}
 )
 

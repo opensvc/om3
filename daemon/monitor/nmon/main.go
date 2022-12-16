@@ -61,41 +61,8 @@ type (
 
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
-		state    string
-		newState string
-	}
-)
-
-var (
-	statusDraining     = "draining"
-	statusDrainFailed  = "drain failed"
-	statusIdle         = "idle"
-	statusThawedFailed = "unfreeze failed"
-	statusFreezeFailed = "freeze failed"
-	statusFreezing     = "freezing"
-	statusFrozen       = "frozen"
-	statusThawing      = "thawing"
-	statusShutting     = "shutting"
-	statusMaintenance  = "maintenance"
-	statusInit         = "init"
-	statusUpgrade      = "upgrade"
-	statusRejoin       = "rejoin"
-
-	localExpectUnset   = ""
-	localExpectDrained = "drained"
-
-	globalExpectAborted = "aborted"
-	globalExpectFrozen  = "frozen"
-	globalExpectThawed  = "thawed"
-	globalExpectUnset   = ""
-
-	// the node monitor states evicting a node from ranking algorithms
-	statusUnrankable = map[string]bool{
-		statusMaintenance: true,
-		statusUpgrade:     true,
-		statusInit:        true,
-		statusShutting:    true,
-		statusRejoin:      true,
+		state    cluster.NodeMonitorStatus
+		newState cluster.NodeMonitorStatus
 	}
 )
 
@@ -104,7 +71,7 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	previousState := cluster.NodeMonitor{
-		Status: statusIdle,
+		Status: cluster.NodeMonitorStatusIdle,
 	}
 	state := previousState
 
@@ -221,12 +188,10 @@ func (o *nmon) updateIfChange() {
 		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		from, to := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
-		o.log.Info().Msgf("change monitor global expect %s -> %s", from, to)
+		o.log.Info().Msgf("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
-		o.log.Info().Msgf("change monitor local expect %s -> %s", from, to)
+		o.log.Info().Msgf("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	o.previousState = o.state
 	o.update()
@@ -237,7 +202,7 @@ func (o *nmon) hasOtherNodeActing() bool {
 		if remoteNode == o.localhost {
 			continue
 		}
-		if strings.HasSuffix(remoteNmon.Status, "ing") {
+		if remoteNmon.Status.IsDoing() {
 			return true
 		}
 	}
@@ -258,16 +223,6 @@ func (o *nmon) clearPending() {
 		o.pendingCancel = nil
 		o.pendingCtx = nil
 	}
-}
-
-func (o *nmon) logFromTo(from, to string) (string, string) {
-	if from == "" {
-		from = "unset"
-	}
-	if to == "" {
-		to = "unset"
-	}
-	return from, to
 }
 
 func (o *nmon) getStats() (cluster.NodeStats, error) {

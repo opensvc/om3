@@ -14,7 +14,7 @@ func (a *DaemonApi) PostNodeClear(w http.ResponseWriter, r *http.Request) {
 		nmon = cluster.NodeMonitor{}
 	)
 	nmon = cluster.NodeMonitor{
-		Status: "idle",
+		Status: cluster.NodeMonitorStatusIdle,
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetNodeMonitor{

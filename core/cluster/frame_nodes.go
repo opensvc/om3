@@ -143,8 +143,8 @@ func (f Frame) sNodeSwap(n string) string {
 
 func (f Frame) sNodeMonState(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		if val.Monitor.Status != "idle" {
-			return val.Monitor.Status
+		if val.Monitor.Status != NodeMonitorStatusIdle {
+			return val.Monitor.Status.String()
 		}
 	}
 	return ""
@@ -162,11 +162,11 @@ func (f Frame) sNodeFrozen(n string) string {
 func (f Frame) sNodeMonTarget(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		s := ""
-		if val.Monitor.GlobalExpect != "" {
-			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect)
+		if val.Monitor.GlobalExpect != NodeMonitorGlobalExpectUnset {
+			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect.String())
 		}
-		if val.Monitor.LocalExpect != "" {
-			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.LocalExpect)
+		if val.Monitor.LocalExpect != NodeMonitorLocalExpectUnset {
+			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.LocalExpect.String())
 		}
 		return s
 	}

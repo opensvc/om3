@@ -464,6 +464,14 @@ func (o smon) IsInstanceStartFailed(node string) (bool, bool) {
 	}
 }
 
+func (o smon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
+	nodeMonitor, ok := o.nodeMonitor[node]
+	if !ok {
+		return false, false
+	}
+	return nodeMonitor.Status.IsRankable(), true
+}
+
 func (o *smon) newIsHALeader() bool {
 	var candidates []string
 
@@ -475,6 +483,9 @@ func (o *smon) newIsHALeader() bool {
 			continue
 		}
 		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {
+			continue
+		}
+		if v, ok := o.IsNodeMonitorStatusRankable(node); !ok || !v {
 			continue
 		}
 		candidates = append(candidates, node)
