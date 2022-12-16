@@ -378,12 +378,6 @@ func (e InstanceStatusUpdated) Kind() string {
 	return "InstanceStatusUpdated"
 }
 
-func (e InstanceStatusUpdated) String() string {
-	d := e.Status
-	s := fmt.Sprintf("%s@%s %s %s %s %s", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned)
-	return s
-}
-
 func (e MonCfgDone) Kind() string {
 	return "MonCfgDoneAsName"
 }

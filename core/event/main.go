@@ -49,16 +49,8 @@ type (
 	}
 )
 
-func toBytes(i any) []byte {
-	if o, ok := i.(Byter); ok {
-		return o.Bytes()
-	}
-	b, _ := json.Marshal(i)
-	return b
-}
-
 // ChanFromAny returns event chan from dequeued any chan
-func ChanFromAny(ctx context.Context, isHumanReadable bool, anyC <-chan any) <-chan *Event {
+func ChanFromAny(ctx context.Context, anyC <-chan any) <-chan *Event {
 	eventC := make(chan *Event)
 	go func() {
 		eventCount := uint64(0)
@@ -80,16 +72,11 @@ func ChanFromAny(ctx context.Context, isHumanReadable bool, anyC <-chan any) <-c
 						ev.Time = o.Time()
 					}
 
-					if isHumanReadable {
-						if o, ok := i.(Stringer); ok {
-							ev.Data = []byte(o.String())
-						} else {
-							ev.Data = toBytes(i)
-						}
+					if o, ok := i.(Byter); ok {
+						ev.Data = o.Bytes()
 					} else {
-						ev.Data = toBytes(i)
+						ev.Data, _ = json.Marshal(i)
 					}
-
 					eventC <- ev
 				}
 			}
