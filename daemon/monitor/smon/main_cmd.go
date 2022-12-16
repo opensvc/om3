@@ -229,6 +229,15 @@ func (o *smon) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
 	o.updateIfChange()
 }
 
+func (o *smon) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
+	o.nodeStats[c.Node] = c.Value
+	if o.svcAgg.PlacementPolicy == placement.Score {
+		o.updateIsLeader()
+		o.orchestrate()
+		o.updateIfChange()
+	}
+}
+
 func (o *smon) onRemoteSmonUpdated(c msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
 	instSmon := c.Status
@@ -368,9 +377,20 @@ func (o *smon) sortWithSpreadPolicy(candidates []string) []string {
 	return l
 }
 
+// sortWithScorePolicy sorts candidates by descending cluster.NodeStats.Score
 func (o *smon) sortWithScorePolicy(candidates []string) []string {
-	o.log.Warn().Msg("TODO: sortWithScorePolicy")
-	return candidates
+	l := append([]string{}, candidates...)
+	sort.SliceStable(l, func(i, j int) bool {
+		var si, sj uint64
+		if stats, ok := o.nodeStats[l[i]]; ok {
+			si = stats.Score
+		}
+		if stats, ok := o.nodeStats[l[j]]; ok {
+			sj = stats.Score
+		}
+		return si > sj
+	})
+	return l
 }
 
 func (o *smon) sortWithLoadAvgPolicy(candidates []string) []string {

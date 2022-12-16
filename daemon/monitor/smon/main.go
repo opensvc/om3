@@ -56,6 +56,7 @@ type (
 		instStatus  map[string]instance.Status
 		instSmon    map[string]instance.Monitor
 		nodeMonitor map[string]cluster.NodeMonitor
+		nodeStats   map[string]cluster.NodeStats
 		nodeStatus  map[string]cluster.NodeStatus
 		scopeNodes  []string
 
@@ -143,6 +144,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		instStatus:    make(map[string]instance.Status),
 		instSmon:      make(map[string]instance.Monitor),
 		nodeStatus:    make(map[string]cluster.NodeStatus),
+		nodeStats:     make(map[string]cluster.NodeStats),
 		nodeMonitor:   make(map[string]cluster.NodeMonitor),
 		localhost:     hostname.Hostname(),
 		scopeNodes:    nodes,
@@ -172,6 +174,7 @@ func (o *smon) startSubscriptions() {
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeStatusUpdated{})
+	sub.AddFilter(msgbus.NodeStatsUpdated{})
 	sub.Start()
 	o.sub = sub
 }
@@ -210,6 +213,8 @@ func (o *smon) worker(initialNodes []string) {
 				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeStatusUpdated:
 				o.onNodeStatusUpdated(c)
+			case msgbus.NodeStatsUpdated:
+				o.onNodeStatsUpdated(c)
 			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {

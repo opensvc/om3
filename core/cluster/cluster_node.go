@@ -40,6 +40,11 @@ type (
 	}
 )
 
+func (n *NodeStats) DeepCopy() *NodeStats {
+	var data NodeStats = *n
+	return &data
+}
+
 func (n *NodeData) DeepCopy() *NodeData {
 	b, err := json.Marshal(n)
 	if err != nil {
