@@ -1,11 +1,10 @@
 package api
 
 type Base struct {
-	action    string
-	method    string
-	node      string
-	client    Requester
-	queryArgs map[string]string
+	action string
+	method string
+	node   string
+	client Requester
 }
 
 func (t Base) GetAction() string {
@@ -22,12 +21,6 @@ func (t *Base) SetAction(s string) {
 }
 func (t *Base) SetMethod(s string) {
 	t.method = s
-}
-func (t Base) GetQueryArgs() map[string]string {
-	return t.queryArgs
-}
-func (t *Base) SetQueryArgs(q map[string]string) {
-	t.queryArgs = q
 }
 
 // UnsetNode zeroes the node field, which usually contains a sane default.

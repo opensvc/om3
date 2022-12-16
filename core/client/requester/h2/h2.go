@@ -111,17 +111,13 @@ func (t T) newRequest(method string, r request.T) (*http.Request, error) {
 	jsonStr, _ := json.Marshal(r.Options)
 	body := bytes.NewBuffer(jsonStr)
 
-	value := url.Values{}
-	for k, v := range r.QueryArgs {
-		value.Add(k, v)
-	}
 	action := r.Action
 	if !strings.HasPrefix(action, "/") {
 		action = "/" + action
 	}
 	reqUrl := url.URL{
 		Path:     t.URL + action,
-		RawQuery: value.Encode(),
+		RawQuery: r.Values.Encode(),
 	}
 	req, err := http.NewRequest(method, reqUrl.RequestURI(), body)
 	if err != nil {
