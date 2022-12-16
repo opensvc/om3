@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/collector"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -58,11 +59,11 @@ type (
 )
 
 var (
-	incompatibleNodeMonitorStatus = map[string]bool{
-		"init":        true,
-		"upgrade":     true,
-		"shutting":    true,
-		"maintenance": true,
+	incompatibleNodeMonitorStatus = map[cluster.NodeMonitorState]any{
+		cluster.NodeMonitorStateInit:        nil,
+		cluster.NodeMonitorStateUpgrade:     nil,
+		cluster.NodeMonitorStateShutting:    nil,
+		cluster.NodeMonitorStateMaintenance: nil,
 	}
 )
 
@@ -242,7 +243,7 @@ func (t *T) loop() {
 			case msgbus.InstanceStatusDeleted:
 				t.onInstStatusDeleted(c)
 			case msgbus.NodeMonitorUpdated:
-				t.onNmonUpdated(c)
+				t.onNodeMonitorUpdated(c)
 			case msgbus.ObjectAggUpdated:
 				t.onMonSvcAggUpdated(c)
 			}
@@ -284,19 +285,19 @@ func (t *T) onMonSvcAggUpdated(c msgbus.ObjectAggUpdated) {
 	}
 }
 
-func (t *T) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
+func (t *T) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
 	}
-	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.Status]
+	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.State]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Monitor.Status)
+		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Monitor.State)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.Status)
+		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.State)
 		t.enabled = true
 		t.scheduleAll()
 	}

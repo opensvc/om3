@@ -9,35 +9,35 @@ import (
 )
 
 type (
-	opDelNmon struct {
+	opDelNodeMonitor struct {
 		err chan<- error
 	}
 
-	opGetNmon struct {
+	opGetNodeMonitor struct {
 		node  string
 		value chan<- cluster.NodeMonitor
 	}
 
-	opSetNmon struct {
+	opSetNodeMonitor struct {
 		err   chan<- error
 		value cluster.NodeMonitor
 	}
 )
 
-// DelNmon deletes Monitor.Node.<localhost>.monitor
-func DelNmon(c chan<- interface{}) error {
+// DelNodeMonitor deletes Monitor.Node.<localhost>.monitor
+func DelNodeMonitor(c chan<- interface{}) error {
 	err := make(chan error)
-	op := opDelNmon{
+	op := opDelNodeMonitor{
 		err: err,
 	}
 	c <- op
 	return <-err
 }
 
-// GetNmon returns Monitor.Node.<node>.monitor
-func GetNmon(c chan<- interface{}, node string) cluster.NodeMonitor {
+// GetNodeMonitor returns Monitor.Node.<node>.monitor
+func GetNodeMonitor(c chan<- interface{}, node string) cluster.NodeMonitor {
 	value := make(chan cluster.NodeMonitor)
-	op := opGetNmon{
+	op := opGetNodeMonitor{
 		value: value,
 		node:  node,
 	}
@@ -45,15 +45,15 @@ func GetNmon(c chan<- interface{}, node string) cluster.NodeMonitor {
 	return <-value
 }
 
-// GetNmon returns Monitor.Node.<node>.monitor
-func (t T) GetNmon(node string) cluster.NodeMonitor {
-	return GetNmon(t.cmdC, node)
+// GetNodeMonitor returns Monitor.Node.<node>.monitor
+func (t T) GetNodeMonitor(node string) cluster.NodeMonitor {
+	return GetNodeMonitor(t.cmdC, node)
 }
 
-// SetNmon sets Monitor.Node.<localhost>.monitor
-func SetNmon(c chan<- interface{}, v cluster.NodeMonitor) error {
+// SetNodeMonitor sets Monitor.Node.<localhost>.monitor
+func SetNodeMonitor(c chan<- interface{}, v cluster.NodeMonitor) error {
 	err := make(chan error)
-	op := opSetNmon{
+	op := opSetNodeMonitor{
 		err:   err,
 		value: v,
 	}
@@ -61,12 +61,12 @@ func SetNmon(c chan<- interface{}, v cluster.NodeMonitor) error {
 	return <-err
 }
 
-func (o opDelNmon) setError(err error) {
+func (o opDelNodeMonitor) setError(err error) {
 	o.err <- err
 }
 
-func (o opDelNmon) call(ctx context.Context, d *data) {
-	d.counterCmd <- idDelNmon
+func (o opDelNodeMonitor) call(ctx context.Context, d *data) {
+	d.counterCmd <- idDelNodeMonitor
 	if _, ok := d.pending.Cluster.Node[d.localNode]; ok {
 		delete(d.pending.Cluster.Node, d.localNode)
 		op := jsondelta.Operation{
@@ -87,8 +87,8 @@ func (o opDelNmon) call(ctx context.Context, d *data) {
 	}
 }
 
-func (o opGetNmon) call(ctx context.Context, d *data) {
-	d.counterCmd <- idGetNmon
+func (o opGetNodeMonitor) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetNodeMonitor
 	s := cluster.NodeMonitor{}
 	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		s = nodeStatus.Monitor
@@ -99,8 +99,8 @@ func (o opGetNmon) call(ctx context.Context, d *data) {
 	}
 }
 
-func (o opSetNmon) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetNmon
+func (o opSetNodeMonitor) call(ctx context.Context, d *data) {
+	d.counterCmd <- idSetNodeMonitor
 	newValue := d.pending.Cluster.Node[d.localNode]
 	newValue.Monitor = o.value
 	d.pending.Cluster.Node[d.localNode] = newValue

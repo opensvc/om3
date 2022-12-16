@@ -2,14 +2,16 @@ package nmon
 
 import (
 	"time"
+
+	"opensvc.com/opensvc/core/cluster"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
 func (o *nmon) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
-	for node, data := range o.nmons {
-		if data.GlobalExpect == "" {
+	for node, data := range o.nodeMonitor {
+		if data.GlobalExpect == cluster.NodeMonitorGlobalExpectUnset {
 			// converge "aborted" to unset via orchestration
 			continue
 		}
@@ -24,9 +26,9 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 	}
 	if mostRecentUpdated.After(o.state.GlobalExpectUpdated) {
 		o.change = true
-		o.state.GlobalExpect = o.nmons[mostRecentNode].GlobalExpect
-		o.state.GlobalExpectUpdated = o.nmons[mostRecentNode].GlobalExpectUpdated
-		strVal := o.nmons[mostRecentNode].GlobalExpect
+		o.state.GlobalExpect = o.nodeMonitor[mostRecentNode].GlobalExpect
+		o.state.GlobalExpectUpdated = o.nodeMonitor[mostRecentNode].GlobalExpectUpdated
+		strVal := o.nodeMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
 		}
@@ -37,7 +39,7 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 
 func (o *nmon) isConvergedGlobalExpect() bool {
 	localUpdated := o.state.GlobalExpectUpdated
-	for s, data := range o.nmons {
+	for s, data := range o.nodeMonitor {
 		if s == o.localhost {
 			continue
 		}

@@ -32,15 +32,15 @@ const (
 	idDelInstanceConfig
 	idDelInstanceStatus
 	idDelServiceAgg
-	idDelNmon
-	idDelSmon
+	idDelNodeMonitor
+	idDelInstanceMonitor
 	idGetHbMessage
 	idGetInstanceStatus
 	idGetNodeData
 	idGetNodeStatus
 	idGetNodesInfo
 	idGetServiceNames
-	idGetNmon
+	idGetNodeMonitor
 	idSetHeartbeatPing
 	idSetSubHb
 	idGetStatus
@@ -48,41 +48,41 @@ const (
 	idSetInstanceFrozen
 	idSetInstanceStatus
 	idSetServiceAgg
-	idSetNmon
+	idSetNodeMonitor
 	idSetNodeOsPaths
 	idSetNodeStats
-	idSetSmon
+	idSetInstanceMonitor
 	idStats
 )
 
 var (
 	idToName = map[int]string{
-		idUndef:             "undef",
-		idApplyFull:         "apply-full",
-		idApplyPatch:        "apply-patch",
-		idCommitPending:     "commit-pending",
-		idDelInstanceConfig: "del-instance-config",
-		idDelInstanceStatus: "del-instance-status",
-		idDelServiceAgg:     "del-service-agg",
-		idDelNmon:           "del-nmon",
-		idDelSmon:           "del-smon",
-		idGetHbMessage:      "get-hb-message",
-		idGetInstanceStatus: "get-instance-status",
-		idGetNodeData:       "get-node-data",
-		idGetNodeStatus:     "get-node-status",
-		idGetNodesInfo:      "get-nodes-info",
-		idGetServiceNames:   "get-service-names",
-		idGetStatus:         "get-status",
-		idSetHeartbeatPing:  "set-heartbeat-ping",
-		idSetSubHb:          "set-sub-hb",
-		idSetServiceAgg:     "set-service-agg",
-		idSetInstanceConfig: "set-instance-config",
-		idSetInstanceFrozen: "set-instance-frozen",
-		idSetInstanceStatus: "set-instance-status",
-		idSetNmon:           "set-nmon",
-		idSetNodeOsPaths:    "set-node-os-paths",
-		idSetNodeStats:      "set-node-stats",
-		idSetSmon:           "set-smon",
-		idStats:             "stats",
+		idUndef:              "undef",
+		idApplyFull:          "apply-full",
+		idApplyPatch:         "apply-patch",
+		idCommitPending:      "commit-pending",
+		idDelInstanceConfig:  "del-instance-config",
+		idDelInstanceStatus:  "del-instance-status",
+		idDelServiceAgg:      "del-service-agg",
+		idDelNodeMonitor:     "del-nmon",
+		idDelInstanceMonitor: "del-smon",
+		idGetHbMessage:       "get-hb-message",
+		idGetInstanceStatus:  "get-instance-status",
+		idGetNodeData:        "get-node-data",
+		idGetNodeStatus:      "get-node-status",
+		idGetNodesInfo:       "get-nodes-info",
+		idGetServiceNames:    "get-service-names",
+		idGetStatus:          "get-status",
+		idSetHeartbeatPing:   "set-heartbeat-ping",
+		idSetSubHb:           "set-sub-hb",
+		idSetServiceAgg:      "set-service-agg",
+		idSetInstanceConfig:  "set-instance-config",
+		idSetInstanceFrozen:  "set-instance-frozen",
+		idSetInstanceStatus:  "set-instance-status",
+		idSetNodeMonitor:     "set-nmon",
+		idSetNodeOsPaths:     "set-node-os-paths",
+		idSetNodeStats:       "set-node-stats",
+		idSetInstanceMonitor: "set-smon",
+		idStats:              "stats",
 	}
 )

@@ -8,7 +8,7 @@ import (
 func (o *smon) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
-	for node, instMon := range o.instSmon {
+	for node, instMon := range o.instMonitor {
 		if instMon.GlobalExpect == "" {
 			// converge "aborted" to unset via orchestration
 			continue
@@ -24,9 +24,9 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 	}
 	if mostRecentUpdated.After(o.state.GlobalExpectUpdated) {
 		o.change = true
-		o.state.GlobalExpect = o.instSmon[mostRecentNode].GlobalExpect
-		o.state.GlobalExpectUpdated = o.instSmon[mostRecentNode].GlobalExpectUpdated
-		strVal := o.instSmon[mostRecentNode].GlobalExpect
+		o.state.GlobalExpect = o.instMonitor[mostRecentNode].GlobalExpect
+		o.state.GlobalExpectUpdated = o.instMonitor[mostRecentNode].GlobalExpectUpdated
+		strVal := o.instMonitor[mostRecentNode].GlobalExpect
 		if strVal == "" {
 			strVal = "unset"
 		}
@@ -37,7 +37,7 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 
 func (o *smon) isConvergedGlobalExpect() bool {
 	localUpdated := o.state.GlobalExpectUpdated
-	for s, v := range o.instSmon {
+	for s, v := range o.instMonitor {
 		if s == o.localhost {
 			continue
 		}

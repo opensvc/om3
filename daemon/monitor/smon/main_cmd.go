@@ -164,8 +164,8 @@ func (o *smon) onSetInstanceMonitorClient(c instance.Monitor) {
 			}
 		}
 		_, to := o.logFromTo(o.state.GlobalExpect, c.GlobalExpect)
-		for node, instSmon := range o.instSmon {
-			if instSmon.GlobalExpect != c.GlobalExpect && instSmon.GlobalExpect != "" && instSmon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
+		for node, instMon := range o.instMonitor {
+			if instMon.GlobalExpect != c.GlobalExpect && instMon.GlobalExpect != "" && instMon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
 				o.log.Info().Msgf("global expect is already %s on node %s", to, node)
 				return
 			}
@@ -238,24 +238,30 @@ func (o *smon) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
 	}
 }
 
-func (o *smon) onRemoteSmonUpdated(c msgbus.InstanceMonitorUpdated) {
+func (o *smon) onInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
+	if c.Node != o.localhost {
+		o.onRemoteInstanceMonitorUpdated(c)
+	}
+}
+
+func (o *smon) onRemoteInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
-	instSmon := c.Status
-	o.log.Debug().Msgf("updated instance smon from node %s  -> %s", remote, instSmon.GlobalExpect)
-	o.instSmon[remote] = instSmon
+	instMon := c.Status
+	o.log.Debug().Msgf("updated instance smon from node %s  -> %s", remote, instMon.GlobalExpect)
+	o.instMonitor[remote] = instMon
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()
 	o.updateIfChange()
 }
 
-func (o *smon) onSmonDeleted(c msgbus.InstanceMonitorDeleted) {
+func (o *smon) onInstanceMonitorDeleted(c msgbus.InstanceMonitorDeleted) {
 	node := c.Node
 	if node == o.localhost {
 		return
 	}
 	o.log.Debug().Msgf("delete remote instance smon from node %s", node)
-	delete(o.instSmon, c.Node)
+	delete(o.instMonitor, c.Node)
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()
@@ -266,7 +272,7 @@ func (o smon) GetInstanceMonitor(node string) (instance.Monitor, bool) {
 	if o.localhost == node {
 		return o.state, true
 	}
-	m, ok := o.instSmon[node]
+	m, ok := o.instMonitor[node]
 	return m, ok
 }
 
@@ -282,7 +288,7 @@ func (o *smon) AllInstanceMonitorStatus(s string) bool {
 func (o smon) AllInstanceMonitors() map[string]instance.Monitor {
 	m := make(map[string]instance.Monitor)
 	m[o.localhost] = o.state
-	for node, instMon := range o.instSmon {
+	for node, instMon := range o.instMonitor {
 		m[node] = instMon
 	}
 	return m
@@ -452,16 +458,24 @@ func (o *smon) nextPlacedAtCandidate() string {
 }
 
 func (o smon) IsInstanceStartFailed(node string) (bool, bool) {
-	instSmon, ok := o.GetInstanceMonitor(node)
+	instMon, ok := o.GetInstanceMonitor(node)
 	if !ok {
 		return false, false
 	}
-	switch instSmon.Status {
+	switch instMon.Status {
 	case statusStartFailed:
 		return true, true
 	default:
 		return false, true
 	}
+}
+
+func (o smon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
+	nodeMonitor, ok := o.nodeMonitor[node]
+	if !ok {
+		return false, false
+	}
+	return nodeMonitor.State.IsRankable(), true
 }
 
 func (o *smon) newIsHALeader() bool {
@@ -475,6 +489,9 @@ func (o *smon) newIsHALeader() bool {
 			continue
 		}
 		if failed, ok := o.IsInstanceStartFailed(node); !ok || failed {
+			continue
+		}
+		if v, ok := o.IsNodeMonitorStatusRankable(node); !ok || !v {
 			continue
 		}
 		candidates = append(candidates, node)

@@ -49,8 +49,8 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
-		scopeNodes []string
-		nmons      map[string]cluster.NodeMonitor
+		scopeNodes  []string
+		nodeMonitor map[string]cluster.NodeMonitor
 
 		cancelReady context.CancelFunc
 		localhost   string
@@ -61,41 +61,8 @@ type (
 
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
-		state    string
-		newState string
-	}
-)
-
-var (
-	statusDraining     = "draining"
-	statusDrainFailed  = "drain failed"
-	statusIdle         = "idle"
-	statusThawedFailed = "unfreeze failed"
-	statusFreezeFailed = "freeze failed"
-	statusFreezing     = "freezing"
-	statusFrozen       = "frozen"
-	statusThawing      = "thawing"
-	statusShutting     = "shutting"
-	statusMaintenance  = "maintenance"
-	statusInit         = "init"
-	statusUpgrade      = "upgrade"
-	statusRejoin       = "rejoin"
-
-	localExpectUnset   = ""
-	localExpectDrained = "drained"
-
-	globalExpectAborted = "aborted"
-	globalExpectFrozen  = "frozen"
-	globalExpectThawed  = "thawed"
-	globalExpectUnset   = ""
-
-	// the node monitor states evicting a node from ranking algorithms
-	statusUnrankable = map[string]bool{
-		statusMaintenance: true,
-		statusUpgrade:     true,
-		statusInit:        true,
-		statusShutting:    true,
-		statusRejoin:      true,
+		state    cluster.NodeMonitorState
+		newState cluster.NodeMonitorState
 	}
 )
 
@@ -104,7 +71,7 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	previousState := cluster.NodeMonitor{
-		Status: statusIdle,
+		State: cluster.NodeMonitorStateIdle,
 	}
 	state := previousState
 
@@ -118,7 +85,7 @@ func Start(parent context.Context) error {
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
 		change:        true,
-		nmons:         make(map[string]cluster.NodeMonitor),
+		nodeMonitor:   make(map[string]cluster.NodeMonitor),
 	}
 
 	o.startSubscriptions()
@@ -152,7 +119,7 @@ func (o *nmon) worker() {
 
 	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
 	for _, node := range initialNodes {
-		o.nmons[node] = daemondata.GetNmon(o.dataCmdC, node)
+		o.nodeMonitor[node] = daemondata.GetNodeMonitor(o.dataCmdC, node)
 	}
 	o.updateStats()
 	o.setNodeOsPaths()
@@ -170,15 +137,15 @@ func (o *nmon) worker() {
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.NodeMonitorUpdated:
-				o.onNmonUpdated(c)
+				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:
-				o.onNmonDeleted(c)
+				o.onNodeMonitorDeleted(c)
 			case msgbus.FrozenFileRemoved:
 				o.onFrozenFileRemoved(c)
 			case msgbus.FrozenFileUpdated:
 				o.onFrozenFileUpdated(c)
 			case msgbus.SetNodeMonitor:
-				o.onSetNmonCmd(c)
+				o.onSetNodeMonitor(c)
 			case msgbus.NodeStatusLabelsUpdated:
 				o.onNodeStatusLabelsUpdated(c)
 			case msgbus.NodeOsPathsUpdated:
@@ -196,15 +163,15 @@ func (o *nmon) worker() {
 }
 
 func (o *nmon) delete() {
-	if err := daemondata.DelNmon(o.dataCmdC); err != nil {
-		o.log.Error().Err(err).Msg("DelNmon")
+	if err := daemondata.DelNodeMonitor(o.dataCmdC); err != nil {
+		o.log.Error().Err(err).Msg("DelNodeMonitor")
 	}
 }
 
 func (o *nmon) update() {
 	newValue := o.state
-	if err := daemondata.SetNmon(o.dataCmdC, newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetNmon")
+	if err := daemondata.SetNodeMonitor(o.dataCmdC, newValue); err != nil {
+		o.log.Error().Err(err).Msg("SetNodeMonitor")
 	}
 }
 
@@ -214,30 +181,28 @@ func (o *nmon) updateIfChange() {
 		return
 	}
 	o.change = false
-	o.state.StatusUpdated = time.Now()
+	o.state.StateUpdated = time.Now()
 	previousVal := o.previousState
 	newVal := o.state
-	if newVal.Status != previousVal.Status {
-		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
+	if newVal.State != previousVal.State {
+		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
-		from, to := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
-		o.log.Info().Msgf("change monitor global expect %s -> %s", from, to)
+		o.log.Info().Msgf("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
-		o.log.Info().Msgf("change monitor local expect %s -> %s", from, to)
+		o.log.Info().Msgf("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	o.previousState = o.state
 	o.update()
 }
 
 func (o *nmon) hasOtherNodeActing() bool {
-	for remoteNode, remoteNmon := range o.nmons {
+	for remoteNode, remoteNodeMonitor := range o.nodeMonitor {
 		if remoteNode == o.localhost {
 			continue
 		}
-		if strings.HasSuffix(remoteNmon.Status, "ing") {
+		if remoteNodeMonitor.State.IsDoing() {
 			return true
 		}
 	}
@@ -258,16 +223,6 @@ func (o *nmon) clearPending() {
 		o.pendingCancel = nil
 		o.pendingCtx = nil
 	}
-}
-
-func (o *nmon) logFromTo(from, to string) (string, string) {
-	if from == "" {
-		from = "unset"
-	}
-	if to == "" {
-		to = "unset"
-	}
-	return from, to
 }
 
 func (o *nmon) getStats() (cluster.NodeStats, error) {
