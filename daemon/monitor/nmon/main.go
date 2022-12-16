@@ -61,8 +61,8 @@ type (
 
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
-		state    cluster.NodeMonitorStatus
-		newState cluster.NodeMonitorStatus
+		state    cluster.NodeMonitorState
+		newState cluster.NodeMonitorState
 	}
 )
 
@@ -71,7 +71,7 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	previousState := cluster.NodeMonitor{
-		Status: cluster.NodeMonitorStatusIdle,
+		State: cluster.NodeMonitorStateIdle,
 	}
 	state := previousState
 
@@ -181,11 +181,11 @@ func (o *nmon) updateIfChange() {
 		return
 	}
 	o.change = false
-	o.state.StatusUpdated = time.Now()
+	o.state.StateUpdated = time.Now()
 	previousVal := o.previousState
 	newVal := o.state
-	if newVal.Status != previousVal.Status {
-		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
+	if newVal.State != previousVal.State {
+		o.log.Info().Msgf("change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
 		o.log.Info().Msgf("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
@@ -202,7 +202,7 @@ func (o *nmon) hasOtherNodeActing() bool {
 		if remoteNode == o.localhost {
 			continue
 		}
-		if remoteNmon.Status.IsDoing() {
+		if remoteNmon.State.IsDoing() {
 			return true
 		}
 	}

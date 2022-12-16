@@ -9,8 +9,8 @@ func (o *nmon) orchestrateFrozen() {
 	if !o.isConvergedGlobalExpect() {
 		return
 	}
-	switch o.state.Status {
-	case cluster.NodeMonitorStatusIdle:
+	switch o.state.State {
+	case cluster.NodeMonitorStateIdle:
 		o.frozenFromIdle()
 	}
 }
@@ -19,14 +19,14 @@ func (o *nmon) frozenFromIdle() {
 	if o.frozenClearIfReached() {
 		return
 	}
-	o.state.Status = cluster.NodeMonitorStatusFreezing
+	o.state.State = cluster.NodeMonitorStateFreezing
 	o.updateIfChange()
 	o.log.Info().Msg("run action freeze")
-	nextState := cluster.NodeMonitorStatusIdle
+	nextState := cluster.NodeMonitorStateIdle
 	if err := o.crmFreeze(); err != nil {
-		nextState = cluster.NodeMonitorStatusFreezeFailed
+		nextState = cluster.NodeMonitorStateFreezeFailed
 	}
-	go o.orchestrateAfterAction(cluster.NodeMonitorStatusFreezing, nextState)
+	go o.orchestrateAfterAction(cluster.NodeMonitorStateFreezing, nextState)
 	return
 }
 

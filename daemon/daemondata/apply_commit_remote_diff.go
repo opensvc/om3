@@ -176,7 +176,7 @@ func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
 		instStatusUpdated: make(map[string]time.Time),
 	}
 
-	nmonUpdated := c.Monitor.StatusUpdated
+	nmonUpdated := c.Monitor.StateUpdated
 	if c.Monitor.GlobalExpectUpdated.After(nmonUpdated) {
 		nmonUpdated = c.Monitor.GlobalExpectUpdated
 	}

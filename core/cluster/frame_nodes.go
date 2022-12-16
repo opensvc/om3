@@ -143,8 +143,8 @@ func (f Frame) sNodeSwap(n string) string {
 
 func (f Frame) sNodeMonState(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		if val.Monitor.Status != NodeMonitorStatusIdle {
-			return val.Monitor.Status.String()
+		if val.Monitor.State != NodeMonitorStateIdle {
+			return val.Monitor.State.String()
 		}
 	}
 	return ""

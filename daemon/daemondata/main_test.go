@@ -84,7 +84,7 @@ func TestDaemonData(t *testing.T) {
 
 		t.Run("GetNodeData return node data with local data initialized", func(t *testing.T) {
 			localNodeData := bus.GetNodeData(localNode)
-			require.Equalf(t, "", localNodeData.Monitor.Status,
+			require.Equalf(t, "", localNodeData.Monitor.State,
 				"got %+v", localNodeData)
 		})
 		require.False(t, t.Failed()) // fail on first error
@@ -93,27 +93,27 @@ func TestDaemonData(t *testing.T) {
 
 	t.Run("Ensure GetNodeData result is a deep copy", func(t *testing.T) {
 		localNodeData := bus.GetNodeData(localNode)
-		localNodeData.Monitor.Status = "foo"
+		localNodeData.Monitor.State = "foo"
 		localNodeData.Status.Gen[localNode] = 30
 		localNodeData = bus.GetNodeData(localNode)
 		require.NotNil(t, localNodeData)
 		require.Equal(t, uint64(1), localNodeData.Status.Gen[localNode])
-		require.Equal(t, "", localNodeData.Monitor.Status)
+		require.Equal(t, "", localNodeData.Monitor.State)
 	})
 	require.False(t, t.Failed()) // fail on first error
 
 	t.Run("Ensure GetNmon result is a deep copy", func(t *testing.T) {
 		localNodeMonitor := bus.GetNmon(localNode)
-		initialStatusUpdated := localNodeMonitor.StatusUpdated
+		initialStatusUpdated := localNodeMonitor.StateUpdated
 		initialGlobalExpectUpdated := localNodeMonitor.GlobalExpectUpdated
-		localNodeMonitor.Status = "foo"
-		localNodeMonitor.StatusUpdated = time.Now()
+		localNodeMonitor.State = "foo"
+		localNodeMonitor.StateUpdated = time.Now()
 		localNodeMonitor.GlobalExpect = "newGe"
 		localNodeMonitor.GlobalExpectUpdated = time.Now()
 
 		localNodeMonitor = bus.GetNmon(localNode)
-		require.Equal(t, "", localNodeMonitor.Status)
-		require.Equal(t, initialStatusUpdated, localNodeMonitor.StatusUpdated)
+		require.Equal(t, "", localNodeMonitor.State)
+		require.Equal(t, initialStatusUpdated, localNodeMonitor.StateUpdated)
 		require.Equal(t, "", localNodeMonitor.GlobalExpect)
 		require.Equal(t, initialGlobalExpectUpdated, localNodeMonitor.GlobalExpectUpdated)
 	})
@@ -122,13 +122,13 @@ func TestDaemonData(t *testing.T) {
 	t.Run("ApplyFull", func(t *testing.T) {
 		t.Run("localnode CommitPending-1", func(t *testing.T) {
 			localNodeData := bus.GetNodeData(localNode)
-			localNodeData.Monitor.Status = "CommitPending-1"
+			localNodeData.Monitor.State = "CommitPending-1"
 			localNodeData.Status.Gen[localNode] = 5
 			t.Logf("ApplyFull from local node data copy updates")
 			bus.ApplyFull(localNode, localNodeData)
 			t.Logf("Verify ApplyFull changes applied CommitPending-1")
 			localNodeStatus := bus.GetNodeStatus(localNode)
-			require.Equal(t, "CommitPending-1", localNodeData.Monitor.Status)
+			require.Equal(t, "CommitPending-1", localNodeData.Monitor.State)
 			require.Equal(t, localNodeData.Status.Gen[localNode], localNodeStatus.Gen[localNode])
 		})
 		require.False(t, t.Failed()) // fail on first error

@@ -42,12 +42,12 @@ func (o *nmon) onSetNmonCmd(c msgbus.SetNodeMonitor) {
 				o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", c.Monitor.GlobalExpect, node)
 				return
 			}
-			if !data.Status.IsRankable() {
-				o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.Status)
+			if !data.State.IsRankable() {
+				o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.State)
 				return
 			}
-			if data.Status.IsDoing() {
-				o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.Status)
+			if data.State.IsDoing() {
+				o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.State)
 				return
 			}
 		}
@@ -98,9 +98,9 @@ func (o *nmon) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
 }
 
 func (o *nmon) onOrchestrate(c cmdOrchestrate) {
-	if o.state.Status == c.state {
+	if o.state.State == c.state {
 		o.change = true
-		o.state.Status = c.newState
+		o.state.State = c.newState
 		o.updateIfChange()
 	}
 	o.orchestrate()
@@ -108,6 +108,6 @@ func (o *nmon) onOrchestrate(c cmdOrchestrate) {
 	time.Sleep(50 * time.Millisecond)
 }
 
-func (o *nmon) orchestrateAfterAction(state, nextState cluster.NodeMonitorStatus) {
+func (o *nmon) orchestrateAfterAction(state, nextState cluster.NodeMonitorState) {
 	o.cmdC <- cmdOrchestrate{state: state, newState: nextState}
 }

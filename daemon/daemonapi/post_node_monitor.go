@@ -34,7 +34,7 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	if payload.State != nil {
 		validRequest = true
-		cmd.Monitor.Status = cluster.NodeMonitorStatusValues[*payload.State]
+		cmd.Monitor.State = cluster.NodeMonitorStateValues[*payload.State]
 	}
 	if !validRequest {
 		sendError(w, http.StatusBadRequest, "need at least state, local_expect or global_expect")

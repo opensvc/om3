@@ -469,7 +469,7 @@ func (o smon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
 	if !ok {
 		return false, false
 	}
-	return nodeMonitor.Status.IsRankable(), true
+	return nodeMonitor.State.IsRankable(), true
 }
 
 func (o *smon) newIsHALeader() bool {

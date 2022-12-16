@@ -59,11 +59,11 @@ type (
 )
 
 var (
-	incompatibleNodeMonitorStatus = map[cluster.NodeMonitorStatus]any{
-		cluster.NodeMonitorStatusInit:        nil,
-		cluster.NodeMonitorStatusUpgrade:     nil,
-		cluster.NodeMonitorStatusShutting:    nil,
-		cluster.NodeMonitorStatusMaintenance: nil,
+	incompatibleNodeMonitorStatus = map[cluster.NodeMonitorState]any{
+		cluster.NodeMonitorStateInit:        nil,
+		cluster.NodeMonitorStateUpgrade:     nil,
+		cluster.NodeMonitorStateShutting:    nil,
+		cluster.NodeMonitorStateMaintenance: nil,
 	}
 )
 
@@ -290,14 +290,14 @@ func (t *T) onNmonUpdated(c msgbus.NodeMonitorUpdated) {
 		// discard peer node events
 		return
 	}
-	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.Status]
+	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.State]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Monitor.Status)
+		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Monitor.State)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.Status)
+		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.State)
 		t.enabled = true
 		t.scheduleAll()
 	}

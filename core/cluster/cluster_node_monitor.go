@@ -10,33 +10,33 @@ import (
 type (
 	// NodeMonitor describes the in-daemon states of a node
 	NodeMonitor struct {
-		Status              NodeMonitorStatus       `json:"status"`
+		State               NodeMonitorState        `json:"state"`
 		LocalExpect         NodeMonitorLocalExpect  `json:"local_expect"`
 		GlobalExpect        NodeMonitorGlobalExpect `json:"global_expect"`
-		StatusUpdated       time.Time               `json:"status_updated"`
+		StateUpdated        time.Time               `json:"state_updated"`
 		GlobalExpectUpdated time.Time               `json:"global_expect_updated"`
 		LocalExpectUpdated  time.Time               `json:"local_expect_updated"`
 	}
 
-	NodeMonitorStatus       int
+	NodeMonitorState        int
 	NodeMonitorLocalExpect  int
 	NodeMonitorGlobalExpect int
 )
 
 const (
-	NodeMonitorStatusInit NodeMonitorStatus = iota
-	NodeMonitorStatusIdle
-	NodeMonitorStatusDraining
-	NodeMonitorStatusDrainFailed
-	NodeMonitorStatusThawedFailed
-	NodeMonitorStatusFreezeFailed
-	NodeMonitorStatusFreezing
-	NodeMonitorStatusFrozen
-	NodeMonitorStatusThawing
-	NodeMonitorStatusShutting
-	NodeMonitorStatusMaintenance
-	NodeMonitorStatusUpgrade
-	NodeMonitorStatusRejoin
+	NodeMonitorStateInit NodeMonitorState = iota
+	NodeMonitorStateIdle
+	NodeMonitorStateDraining
+	NodeMonitorStateDrainFailed
+	NodeMonitorStateThawedFailed
+	NodeMonitorStateFreezeFailed
+	NodeMonitorStateFreezing
+	NodeMonitorStateFrozen
+	NodeMonitorStateThawing
+	NodeMonitorStateShutting
+	NodeMonitorStateMaintenance
+	NodeMonitorStateUpgrade
+	NodeMonitorStateRejoin
 )
 
 const (
@@ -52,36 +52,36 @@ const (
 )
 
 var (
-	NodeMonitorStatusStrings = map[NodeMonitorStatus]string{
-		NodeMonitorStatusDraining:     "draining",
-		NodeMonitorStatusDrainFailed:  "drain failed",
-		NodeMonitorStatusIdle:         "idle",
-		NodeMonitorStatusThawedFailed: "unfreeze failed",
-		NodeMonitorStatusFreezeFailed: "freeze failed",
-		NodeMonitorStatusFreezing:     "freezing",
-		NodeMonitorStatusFrozen:       "frozen",
-		NodeMonitorStatusThawing:      "thawing",
-		NodeMonitorStatusShutting:     "shutting",
-		NodeMonitorStatusMaintenance:  "maintenance",
-		NodeMonitorStatusInit:         "init",
-		NodeMonitorStatusUpgrade:      "upgrade",
-		NodeMonitorStatusRejoin:       "rejoin",
+	NodeMonitorStateStrings = map[NodeMonitorState]string{
+		NodeMonitorStateDraining:     "draining",
+		NodeMonitorStateDrainFailed:  "drain failed",
+		NodeMonitorStateIdle:         "idle",
+		NodeMonitorStateThawedFailed: "unfreeze failed",
+		NodeMonitorStateFreezeFailed: "freeze failed",
+		NodeMonitorStateFreezing:     "freezing",
+		NodeMonitorStateFrozen:       "frozen",
+		NodeMonitorStateThawing:      "thawing",
+		NodeMonitorStateShutting:     "shutting",
+		NodeMonitorStateMaintenance:  "maintenance",
+		NodeMonitorStateInit:         "init",
+		NodeMonitorStateUpgrade:      "upgrade",
+		NodeMonitorStateRejoin:       "rejoin",
 	}
 
-	NodeMonitorStatusValues = map[string]NodeMonitorStatus{
-		"draining":        NodeMonitorStatusDraining,
-		"drain failed":    NodeMonitorStatusDrainFailed,
-		"idle":            NodeMonitorStatusIdle,
-		"unfreeze failed": NodeMonitorStatusThawedFailed,
-		"freeze failed":   NodeMonitorStatusFreezeFailed,
-		"freezing":        NodeMonitorStatusFreezing,
-		"frozen":          NodeMonitorStatusFrozen,
-		"thawing":         NodeMonitorStatusThawing,
-		"shutting":        NodeMonitorStatusShutting,
-		"maintenance":     NodeMonitorStatusMaintenance,
-		"init":            NodeMonitorStatusInit,
-		"upgrade":         NodeMonitorStatusUpgrade,
-		"rejoin":          NodeMonitorStatusRejoin,
+	NodeMonitorStateValues = map[string]NodeMonitorState{
+		"draining":        NodeMonitorStateDraining,
+		"drain failed":    NodeMonitorStateDrainFailed,
+		"idle":            NodeMonitorStateIdle,
+		"unfreeze failed": NodeMonitorStateThawedFailed,
+		"freeze failed":   NodeMonitorStateFreezeFailed,
+		"freezing":        NodeMonitorStateFreezing,
+		"frozen":          NodeMonitorStateFrozen,
+		"thawing":         NodeMonitorStateThawing,
+		"shutting":        NodeMonitorStateShutting,
+		"maintenance":     NodeMonitorStateMaintenance,
+		"init":            NodeMonitorStateInit,
+		"upgrade":         NodeMonitorStateUpgrade,
+		"rejoin":          NodeMonitorStateRejoin,
 	}
 
 	NodeMonitorLocalExpectStrings = map[NodeMonitorLocalExpect]string{
@@ -109,21 +109,21 @@ var (
 	}
 
 	// the node monitor states evicting a node from ranking algorithms
-	NodeMonitorStatusUnrankable = map[NodeMonitorStatus]any{
-		NodeMonitorStatusMaintenance: nil,
-		NodeMonitorStatusUpgrade:     nil,
-		NodeMonitorStatusInit:        nil,
-		NodeMonitorStatusShutting:    nil,
-		NodeMonitorStatusRejoin:      nil,
+	NodeMonitorStateUnrankable = map[NodeMonitorState]any{
+		NodeMonitorStateMaintenance: nil,
+		NodeMonitorStateUpgrade:     nil,
+		NodeMonitorStateInit:        nil,
+		NodeMonitorStateShutting:    nil,
+		NodeMonitorStateRejoin:      nil,
 	}
 )
 
-func (t NodeMonitorStatus) IsDoing() bool {
+func (t NodeMonitorState) IsDoing() bool {
 	return strings.HasSuffix(t.String(), "ing")
 }
 
-func (t NodeMonitorStatus) IsRankable() bool {
-	_, ok := NodeMonitorStatusUnrankable[t]
+func (t NodeMonitorState) IsRankable() bool {
+	_, ok := NodeMonitorStateUnrankable[t]
 	return !ok
 }
 
@@ -133,27 +133,27 @@ func (n *NodeMonitor) DeepCopy() *NodeMonitor {
 	return &d
 }
 
-func (t NodeMonitorStatus) String() string {
-	return NodeMonitorStatusStrings[t]
+func (t NodeMonitorState) String() string {
+	return NodeMonitorStateStrings[t]
 }
 
-func (t NodeMonitorStatus) MarshalJSON() ([]byte, error) {
-	if s, ok := NodeMonitorStatusStrings[t]; !ok {
-		fmt.Printf("unexpected NodeMonitorStatus value: %d\n", t)
-		return []byte{}, fmt.Errorf("unexpected NodeMonitorStatus value: %d", t)
+func (t NodeMonitorState) MarshalJSON() ([]byte, error) {
+	if s, ok := NodeMonitorStateStrings[t]; !ok {
+		fmt.Printf("unexpected NodeMonitorState value: %d\n", t)
+		return []byte{}, fmt.Errorf("unexpected NodeMonitorState value: %d", t)
 	} else {
 		return json.Marshal(s)
 	}
 }
 
-func (t *NodeMonitorStatus) UnmarshalJSON(b []byte) error {
+func (t *NodeMonitorState) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	v, ok := NodeMonitorStatusValues[s]
+	v, ok := NodeMonitorStateValues[s]
 	if !ok {
-		return fmt.Errorf("unexpected NodeMonitorStatus value: %s", b)
+		return fmt.Errorf("unexpected NodeMonitorState value: %s", b)
 	}
 	*t = v
 	return nil
