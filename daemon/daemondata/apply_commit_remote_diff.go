@@ -37,9 +37,51 @@ func (d *data) pubPeerDataChanges() {
 			continue
 		}
 		d.pubMsgFromNodeStatusDiffForNode(node)
+		d.pubMsgFromNodeStatsDiffForNode(node)
 		d.pubMsgFromNodeMonitorDiffForNode(node, current)
 		d.pubMsgFromNodeInstanceDiffForNode(node, current)
 		d.previousRemoteInfo[node] = *current
+	}
+}
+
+func (d *data) pubMsgFromNodeStatsDiffForNode(node string) {
+	var (
+		prevTime         remoteInfo
+		nextNode         cluster.NodeData
+		next, prev       cluster.NodeStats
+		hasNext, hasPrev bool
+	)
+	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
+		next = nextNode.Stats
+	}
+	prevTime, hasPrev = d.previousRemoteInfo[node]
+	prev = prevTime.nodeStats
+	onUpdate := func() {
+		if !reflect.DeepEqual(prev, next) {
+			d.bus.Pub(
+				msgbus.NodeStatsUpdated{
+					Node:  node,
+					Value: *next.DeepCopy(),
+				},
+				pubsub.Label{"node", node},
+			)
+		}
+	}
+	onCreate := func() {
+		d.bus.Pub(
+			msgbus.NodeStatsUpdated{
+				Node:  node,
+				Value: *next.DeepCopy(),
+			},
+			pubsub.Label{"node", node},
+		)
+	}
+
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
 	}
 }
 
