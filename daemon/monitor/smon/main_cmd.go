@@ -24,13 +24,13 @@ func (o *smon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 	if _, ok := o.instStatus[srcCmd.Node]; ok {
 		if o.instStatus[srcCmd.Node].Updated.Before(srcCmd.Status.Updated) {
 			// only update if more recent
-			o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
+			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
 			o.instStatus[srcCmd.Node] = srcCmd.Status
 		} else {
-			o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
+			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
 		}
 	} else {
-		o.log.Debug().Msgf("ObjectAggUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
+		o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
 		o.instStatus[srcCmd.Node] = srcCmd.Status
 	}
 }
@@ -52,7 +52,7 @@ func (o *smon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
 		}
 	}
 	o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
-	o.log.Debug().Msgf("updated from %s ObjectAggUpdated CfgUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
+	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated CfgUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
 func (o *smon) onCfgDeleted(srcNode string, srcCmd msgbus.CfgDeleted) {
@@ -62,8 +62,8 @@ func (o *smon) onCfgDeleted(srcNode string, srcCmd msgbus.CfgDeleted) {
 	}
 }
 
-// onObjectAggUpdated updateIfChange state global expect from aggregated status
-func (o *smon) onObjectAggUpdated(c msgbus.ObjectAggUpdated) {
+// onObjectStatusUpdated updateIfChange state global expect from object status
+func (o *smon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
@@ -74,7 +74,7 @@ func (o *smon) onObjectAggUpdated(c msgbus.ObjectAggUpdated) {
 			o.onCfgDeleted(c.Node, srcCmd)
 		}
 	}
-	o.svcAgg = c.AggregatedStatus
+	o.objStatus = c.Status
 	o.updateIsLeader()
 	o.orchestrate()
 }
@@ -231,7 +231,7 @@ func (o *smon) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
 
 func (o *smon) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
 	o.nodeStats[c.Node] = c.Value
-	if o.svcAgg.PlacementPolicy == placement.Score {
+	if o.objStatus.PlacementPolicy == placement.Score {
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()
@@ -296,32 +296,32 @@ func (o smon) AllInstanceMonitors() map[string]instance.Monitor {
 
 func (o smon) isExtraInstance() (bool, string) {
 	if o.state.IsHALeader {
-		return false, "not leader"
+		return false, "object is not leader"
 	}
 	if v, reason := o.isHAOrchestrateable(); !v {
 		return false, reason
 	}
-	if o.svcAgg.Avail != status.Up {
-		return false, "not agg up"
+	if o.objStatus.Avail != status.Up {
+		return false, "object is not up"
 	}
-	if o.svcAgg.Topology != topology.Flex {
-		return false, "not flex"
+	if o.objStatus.Topology != topology.Flex {
+		return false, "object is not flex"
 	}
-	if o.svcAgg.UpInstancesCount <= o.svcAgg.FlexTarget {
-		return false, fmt.Sprintf("%d/%d up instances", o.svcAgg.UpInstancesCount, o.svcAgg.FlexTarget)
+	if o.objStatus.UpInstancesCount <= o.objStatus.FlexTarget {
+		return false, fmt.Sprintf("%d/%d up instances", o.objStatus.UpInstancesCount, o.objStatus.FlexTarget)
 	}
 	return true, ""
 }
 
 func (o smon) isHAOrchestrateable() (bool, string) {
-	if o.svcAgg.Avail == status.Warn {
-		return false, "warn agg state"
+	if o.objStatus.Avail == status.Warn {
+		return false, "object is warn state"
 	}
-	switch o.svcAgg.Provisioned {
+	switch o.objStatus.Provisioned {
 	case provisioned.Mixed:
-		return false, "mixed agg provisioned state"
+		return false, "mixed object provisioned state"
 	case provisioned.False:
-		return false, "false agg provisioned state"
+		return false, "false object provisioned state"
 	}
 	return true, ""
 }
@@ -337,11 +337,11 @@ func (o smon) isStartable() (bool, string) {
 }
 
 func (o smon) isStarted() bool {
-	switch o.svcAgg.Topology {
+	switch o.objStatus.Topology {
 	case topology.Flex:
-		return o.svcAgg.UpInstancesCount >= o.svcAgg.FlexTarget
+		return o.objStatus.UpInstancesCount >= o.objStatus.FlexTarget
 	case topology.Failover:
-		return o.svcAgg.Avail == status.Up
+		return o.objStatus.Avail == status.Up
 	default:
 		return false
 	}
@@ -357,7 +357,7 @@ func (o *smon) needOrchestrate(c cmdOrchestrate) {
 }
 
 func (o *smon) sortCandidates(candidates []string) []string {
-	switch o.svcAgg.PlacementPolicy {
+	switch o.objStatus.PlacementPolicy {
 	case placement.NodesOrder:
 		return o.sortWithNodesOrderPolicy(candidates)
 	case placement.Spread:
@@ -439,7 +439,7 @@ func (o *smon) nextPlacedAtCandidates(want string) string {
 }
 
 func (o *smon) nextPlacedAtCandidate() string {
-	if o.svcAgg.Topology == topology.Flex {
+	if o.objStatus.Topology == topology.Flex {
 		return ""
 	}
 	var candidates []string
@@ -499,8 +499,8 @@ func (o *smon) newIsHALeader() bool {
 	candidates = o.sortCandidates(candidates)
 
 	var maxLeaders int = 1
-	if o.svcAgg.Topology == topology.Flex {
-		maxLeaders = o.svcAgg.FlexTarget
+	if o.objStatus.Topology == topology.Flex {
+		maxLeaders = o.objStatus.FlexTarget
 	}
 
 	i := stringslice.Index(o.localhost, candidates)
@@ -522,8 +522,8 @@ func (o *smon) newIsLeader() bool {
 	candidates = o.sortCandidates(candidates)
 
 	var maxLeaders int = 1
-	if o.svcAgg.Topology == topology.Flex {
-		maxLeaders = o.svcAgg.FlexTarget
+	if o.objStatus.Topology == topology.Flex {
+		maxLeaders = o.objStatus.FlexTarget
 	}
 
 	i := stringslice.Index(o.localhost, candidates)
@@ -557,7 +557,7 @@ func (o *smon) parsePlacedAtDestination(s string) *orderedset.OrderedSet {
 	if len(l) == 0 {
 		return set
 	}
-	if o.svcAgg.Topology == topology.Failover {
+	if o.objStatus.Topology == topology.Failover {
 		l = l[:1]
 	}
 	for _, node := range l {

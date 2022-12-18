@@ -52,7 +52,7 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
-		// updated data from aggregated status update srcEvent
+		// updated data from object status update srcEvent
 		instStatus  map[string]instance.Status
 		instMonitor map[string]instance.Monitor
 		nodeMonitor map[string]cluster.NodeMonitor
@@ -60,7 +60,7 @@ type (
 		nodeStatus  map[string]cluster.NodeStatus
 		scopeNodes  []string
 
-		svcAgg      object.AggregatedStatus
+		objStatus   object.Status
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
@@ -168,7 +168,7 @@ func (o *smon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub(o.id + "smon")
 	label := pubsub.Label{"path", o.id}
-	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
+	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
@@ -199,8 +199,8 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.ObjectAggUpdated:
-				o.onObjectAggUpdated(c)
+			case msgbus.ObjectStatusUpdated:
+				o.onObjectStatusUpdated(c)
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:

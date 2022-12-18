@@ -22,9 +22,9 @@ type (
 	}
 
 	Cluster struct {
-		Config ClusterConfig                      `json:"config"`
-		Status ClusterStatus                      `json:"status"`
-		Object map[string]object.AggregatedStatus `json:"object"`
+		Config ClusterConfig            `json:"config"`
+		Status ClusterStatus            `json:"status"`
+		Object map[string]object.Status `json:"object"`
 
 		Node map[string]NodeData `json:"node"`
 	}
@@ -140,7 +140,7 @@ func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
 
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
-func (s *Status) GetObjectStatus(p path.T) object.Status {
+func (s *Status) GetObjectStatus(p path.T) object.Digest {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p

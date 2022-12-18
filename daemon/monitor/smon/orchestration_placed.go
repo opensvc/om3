@@ -11,7 +11,7 @@ func (o *smon) orchestratePlaced() {
 }
 
 func (o *smon) orchestratePlacedStart() {
-	switch o.svcAgg.Topology {
+	switch o.objStatus.Topology {
 	case topology.Failover:
 		o.orchestrateFailoverPlacedStart()
 	case topology.Flex:
@@ -20,7 +20,7 @@ func (o *smon) orchestratePlacedStart() {
 }
 
 func (o *smon) orchestratePlacedStop() {
-	switch o.svcAgg.Topology {
+	switch o.objStatus.Topology {
 	case topology.Failover:
 		o.orchestrateFailoverPlacedStop()
 	case topology.Flex:

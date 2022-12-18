@@ -5,7 +5,7 @@ import (
 )
 
 func (o *smon) orchestrateHA() {
-	if o.svcAgg.Orchestrate != "ha" {
+	if o.objStatus.Orchestrate != "ha" {
 		return
 	}
 	o.orchestrateHAStart()
@@ -13,7 +13,7 @@ func (o *smon) orchestrateHA() {
 }
 
 func (o *smon) orchestrateHAStop() {
-	if o.svcAgg.Topology != topology.Flex {
+	if o.objStatus.Topology != topology.Flex {
 		return
 	}
 	if v, _ := o.isExtraInstance(); !v {

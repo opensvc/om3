@@ -19,7 +19,7 @@ func (f Frame) wObjects() {
 	}
 }
 
-func sObjectPlacement(d object.AggregatedStatus) string {
+func sObjectPlacement(d object.Status) string {
 	var s string
 	switch d.PlacementState {
 	case placement.NotApplicable, placement.Optimal:
@@ -30,7 +30,7 @@ func sObjectPlacement(d object.AggregatedStatus) string {
 	return s
 }
 
-func sObjectWarning(d object.AggregatedStatus) string {
+func sObjectWarning(d object.Status) string {
 	var s string
 	if d.Overall == status.Warn {
 		s = iconWarning
@@ -99,7 +99,7 @@ func (f Frame) sObjectRunning(path string) string {
 	}
 }
 
-func sObjectAvail(d object.AggregatedStatus) string {
+func sObjectAvail(d object.Status) string {
 	s := d.Avail
 	return colorstatus.Sprint(s, rawconfig.Colorize)
 }

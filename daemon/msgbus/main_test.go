@@ -35,13 +35,3 @@ func TestDaemonPubSub(t *testing.T) {
 	time.Sleep(1 * time.Millisecond)
 	require.ElementsMatch(t, expectedKinds, detectedKinds)
 }
-
-func TestNamespacesAreDeclared(t *testing.T) {
-	_ = NsAll
-	_ = NsCfg
-	_ = NsCfgFile
-	_ = NsInstanceStatus
-	_ = NsInstanceMonitor
-	_ = NsSetInstanceMonitor
-	_ = NsObjectAgg
-}

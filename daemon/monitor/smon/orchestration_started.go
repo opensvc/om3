@@ -54,7 +54,7 @@ func (o *smon) startedFromIdle() {
 // startedFromThawed
 //
 // local started => unset global expect, set local expect started
-// svcagg.Avail Up => unset global expect, unset local expect
+// objectStatus.Avail Up => unset global expect, unset local expect
 // better candidate => no actions
 // else => state -> ready, start ready routine
 func (o *smon) startedFromThawed() {
@@ -125,7 +125,7 @@ func (o *smon) startedFromAny() {
 
 func (o *smon) startedFromStartFailed() {
 	if o.isStarted() {
-		o.loggerWithState().Info().Msg("clear start failed (aggregated status is up)")
+		o.loggerWithState().Info().Msg("clear start failed (object status is up)")
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		o.state.Status = statusIdle

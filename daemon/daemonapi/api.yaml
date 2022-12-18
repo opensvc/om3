@@ -1039,7 +1039,7 @@ components:
           type: string
           description: |
             filter expression: [kind][,label=value]*
-          example: ObjectAggUpdated,path=foo
+          example: ObjectStatusUpdated,path=foo
     queryLimit:
       name: limit
       in: query

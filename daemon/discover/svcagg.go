@@ -8,11 +8,11 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func (d *discover) agg(started chan<- bool) {
-	log := d.log.With().Str("func", "agg").Logger()
+func (d *discover) omon(started chan<- bool) {
+	log := d.log.With().Str("func", "omon").Logger()
 	log.Info().Msg("started")
 	bus := pubsub.BusFromContext(d.ctx)
-	sub := bus.Sub("agg-from-cfg-create")
+	sub := bus.Sub("omon-from-cfg-create")
 	sub.AddFilter(msgbus.CfgUpdated{})
 	sub.Start()
 	defer sub.Stop()
@@ -39,7 +39,7 @@ func (d *discover) agg(started chan<- bool) {
 				if _, ok := d.objectMonitor[s]; !ok {
 					log.Info().Msgf("discover new object %s", s)
 					if err := omon.Start(d.ctx, c.Path, c.Config, d.objectMonitorCmdC); err != nil {
-						log.Error().Err(err).Msgf("svcAgg.Start %s", s)
+						log.Error().Err(err).Msgf("omon.Start %s", s)
 						return
 					}
 					d.objectMonitor[s] = make(map[string]struct{})
@@ -47,7 +47,7 @@ func (d *discover) agg(started chan<- bool) {
 			}
 		case i := <-d.objectMonitorCmdC:
 			switch c := i.(type) {
-			case msgbus.ObjectAggDone:
+			case msgbus.ObjectStatusDone:
 				delete(d.objectMonitor, c.Path.String())
 			default:
 				log.Error().Interface("cmd", i).Msg("unexpected cmd")

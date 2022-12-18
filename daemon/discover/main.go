@@ -8,7 +8,7 @@
 // config worker is running, it fetches remote instance config to local config
 // directory.
 //
-// It is responsible for initial aggregated worker creation.
+// It is responsible for initial object status worker creation.
 package discover
 
 import (
@@ -96,12 +96,12 @@ func Start(ctx context.Context) (func(), error) {
 	}(cfgStarted)
 	<-cfgStarted
 
-	aggStarted := make(chan bool)
+	omonStarted := make(chan bool)
 	go func(c chan<- bool) {
 		defer wg.Done()
-		d.agg(c)
-	}(aggStarted)
-	<-aggStarted
+		d.omon(c)
+	}(omonStarted)
+	<-omonStarted
 
 	stopFSWatcher, err := d.fsWatcherStart()
 	if err != nil {
@@ -111,7 +111,7 @@ func Start(ctx context.Context) (func(), error) {
 
 	cancelAndWait := func() {
 		stopFSWatcher()
-		cancel() // stop cfg and agg via context cancel
+		cancel() // stop cfg and omon via context cancel
 		wg.Wait()
 	}
 	return cancelAndWait, nil

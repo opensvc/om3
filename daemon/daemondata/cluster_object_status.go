@@ -12,25 +12,25 @@ import (
 )
 
 type (
-	opDelServiceAgg struct {
+	opDelObjectStatus struct {
 		err  chan<- error
 		path path.T
 	}
 
-	opSetServiceAgg struct {
+	opSetObjectStatus struct {
 		err   chan<- error
 		path  path.T
-		value object.AggregatedStatus
+		value object.Status
 		srcEv any
 	}
 )
 
-// DelServiceAgg
+// DelObjectStatus
 //
 // cluster.object.*
-func DelServiceAgg(c chan<- interface{}, p path.T) error {
+func DelObjectStatus(c chan<- interface{}, p path.T) error {
 	err := make(chan error)
-	op := opDelServiceAgg{
+	op := opDelObjectStatus{
 		err:  err,
 		path: p,
 	}
@@ -38,12 +38,12 @@ func DelServiceAgg(c chan<- interface{}, p path.T) error {
 	return <-err
 }
 
-// SetServiceAgg
+// SetObjectStatus
 //
 // cluster.object.*
-func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus, ev any) error {
+func SetObjectStatus(c chan<- interface{}, p path.T, v object.Status, ev any) error {
 	err := make(chan error)
-	op := opSetServiceAgg{
+	op := opSetObjectStatus{
 		err:   err,
 		path:  p,
 		value: v,
@@ -53,16 +53,16 @@ func SetServiceAgg(c chan<- interface{}, p path.T, v object.AggregatedStatus, ev
 	return <-err
 }
 
-func (o opDelServiceAgg) setError(err error) {
+func (o opDelObjectStatus) setError(err error) {
 	o.err <- err
 }
 
-func (o opSetServiceAgg) setError(err error) {
+func (o opSetObjectStatus) setError(err error) {
 	o.err <- err
 }
 
-func (o opDelServiceAgg) call(ctx context.Context, d *data) {
-	d.counterCmd <- idDelServiceAgg
+func (o opDelObjectStatus) call(ctx context.Context, d *data) {
+	d.counterCmd <- idDelObjectStatus
 	s := o.path.String()
 	if _, ok := d.pending.Cluster.Object[s]; ok {
 		delete(d.pending.Cluster.Object, s)
@@ -78,7 +78,7 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 		}
 	}
 	d.bus.Pub(
-		msgbus.ObjectAggDeleted{
+		msgbus.ObjectStatusDeleted{
 			Path: o.path,
 			Node: d.localNode,
 		},
@@ -91,8 +91,8 @@ func (o opDelServiceAgg) call(ctx context.Context, d *data) {
 	}
 }
 
-func (o opSetServiceAgg) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetServiceAgg
+func (o opSetObjectStatus) call(ctx context.Context, d *data) {
+	d.counterCmd <- idSetObjectStatus
 	s := o.path.String()
 	labelPath := pubsub.Label{"path", s}
 	d.pending.Cluster.Object[s] = o.value
@@ -110,11 +110,11 @@ func (o opSetServiceAgg) call(ctx context.Context, d *data) {
 		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode, labelPath)
 	}
 	d.bus.Pub(
-		msgbus.ObjectAggUpdated{
-			Path:             o.path,
-			Node:             d.localNode,
-			AggregatedStatus: o.value,
-			SrcEv:            o.srcEv,
+		msgbus.ObjectStatusUpdated{
+			Path:   o.path,
+			Node:   d.localNode,
+			Status: o.value,
+			SrcEv:  o.srcEv,
 		},
 		labelLocalNode,
 		labelPath,

@@ -55,7 +55,7 @@ func (o *smon) orchestrateFailoverPlacedStop() {
 	case statusStopFailed:
 		o.clearStopFailedIfDown()
 	case statusStopped:
-		o.clearStoppedIfAggUp()
+		o.clearStoppedIfObjectStatusAvailUp()
 	case statusReady:
 		o.transitionTo(statusIdle)
 	case statusStartFailed:
@@ -78,7 +78,7 @@ func (o *smon) orchestrateFlexPlacedStop() {
 	case statusStopFailed:
 		o.clearStopFailedIfDown()
 	case statusStopped:
-		o.clearStoppedIfAggUp()
+		o.clearStoppedIfObjectStatusAvailUp()
 	case statusReady:
 		o.transitionTo(statusIdle)
 	case statusStartFailed:
@@ -168,15 +168,15 @@ func (o *smon) clearStopFailedIfDown() {
 	}
 }
 
-func (o *smon) clearStoppedIfAggUp() {
-	switch o.svcAgg.Avail {
+func (o *smon) clearStoppedIfObjectStatusAvailUp() {
+	switch o.objStatus.Avail {
 	case status.Up:
 		o.clearStopped()
 	}
 }
 
 func (o *smon) clearStopped() {
-	o.loggerWithState().Info().Msg("agg status is up, unset global expect")
+	o.loggerWithState().Info().Msg("object status is up, unset global expect")
 	o.change = true
 	o.state.GlobalExpect = globalExpectUnset
 	if o.state.LocalExpect != statusIdle {
@@ -199,7 +199,7 @@ func (o *smon) orchestrateFailoverPlacedStartFromThawed() {
 }
 
 func (o *smon) orchestrateFailoverPlacedStartFromStopped() {
-	switch o.svcAgg.Avail {
+	switch o.objStatus.Avail {
 	case status.Down:
 	default:
 		return
@@ -226,7 +226,7 @@ func (o *smon) orchestratePlacedFromStartFailed() {
 		o.change = true
 		o.state.GlobalExpect = globalExpectUnset
 		o.clearPending()
-	case o.svcAgg.Avail == status.Up:
+	case o.objStatus.Avail == status.Up:
 		o.startedClearIfReached()
 	}
 }

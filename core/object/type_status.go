@@ -17,21 +17,21 @@ import (
 )
 
 type (
-	// Status is a composite extract of different parts of
+	// Digest is a composite extract of different parts of
 	// the cluster status.
-	Status struct {
-		Children  map[string]AggregatedStatus `json:"children,omitempty"`
-		Compat    bool                        `json:"compat"`
-		Instances map[string]instance.States  `json:"instances"`
-		Object    AggregatedStatus            `json:"service"`
-		Path      path.T                      `json:"path"`
-		Parents   map[string]AggregatedStatus `json:"parents,omitempty"`
-		Slaves    map[string]AggregatedStatus `json:"slaves,omitempty"`
+	Digest struct {
+		Children  map[string]Status          `json:"children,omitempty"`
+		Compat    bool                       `json:"compat"`
+		Instances map[string]instance.States `json:"instances"`
+		Object    Status                     `json:"service"`
+		Path      path.T                     `json:"path"`
+		Parents   map[string]Status          `json:"parents,omitempty"`
+		Slaves    map[string]Status          `json:"slaves,omitempty"`
 	}
 
-	// AggregatedStatus contains the object states obtained via
+	// Status contains the object states obtained via
 	// aggregation of all instances states. It exists when a instance config exists somewhere
-	AggregatedStatus struct {
+	Status struct {
 		Avail            status.T         `json:"avail"`
 		FlexTarget       int              `json:"flex_target,omitempty"`
 		FlexMin          int              `json:"flex_min,omitempty"`
@@ -50,20 +50,20 @@ type (
 )
 
 // Render returns a human friendy string representation of the type instance.
-func (t Status) Render() string {
+func (t Digest) Render() string {
 	tree := t.Tree()
 	return tree.Render()
 }
 
 // Tree returns a tree loaded with the type instance.
-func (t Status) Tree() *tree.Tree {
+func (t Digest) Tree() *tree.Tree {
 	tree := tree.New()
 	t.LoadTreeNode(tree.Head())
 	return tree
 }
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
-func (t Status) LoadTreeNode(head *tree.Node) {
+func (t Digest) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Path.String()).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Colorize))
@@ -79,7 +79,7 @@ func (t Status) LoadTreeNode(head *tree.Node) {
 	t.loadTreeNodeSlaves(head)
 }
 
-func (t Status) loadTreeNodeParents(head *tree.Node) {
+func (t Digest) loadTreeNodeParents(head *tree.Node) {
 	if len(t.Parents) == 0 {
 		return
 	}
@@ -93,7 +93,7 @@ func (t Status) loadTreeNodeParents(head *tree.Node) {
 	}
 }
 
-func (t Status) loadTreeNodeChildren(head *tree.Node) {
+func (t Digest) loadTreeNodeChildren(head *tree.Node) {
 	if len(t.Children) == 0 {
 		return
 	}
@@ -107,7 +107,7 @@ func (t Status) loadTreeNodeChildren(head *tree.Node) {
 	}
 }
 
-func (t Status) loadTreeNodeSlaves(head *tree.Node) {
+func (t Digest) loadTreeNodeSlaves(head *tree.Node) {
 	if len(t.Slaves) == 0 {
 		return
 	}
@@ -123,7 +123,7 @@ func (t Status) loadTreeNodeSlaves(head *tree.Node) {
 
 // descString returns a string presenting notable information at the object,
 // instances-aggregated, level.
-func (t Status) descString() string {
+func (t Digest) descString() string {
 	l := make([]string, 0)
 
 	// Overall if warn. Else no need to repeat an info we can guess from Avail.
@@ -147,17 +147,17 @@ func (t Status) descString() string {
 }
 
 // NewStatus allocates and return a struct to host an objet full state dataset.
-func NewStatus() *Status {
-	t := &Status{}
+func NewStatus() *Digest {
+	t := &Digest{}
 	t.Instances = make(map[string]instance.States)
-	t.Parents = make(map[string]AggregatedStatus)
-	t.Children = make(map[string]AggregatedStatus)
-	t.Slaves = make(map[string]AggregatedStatus)
+	t.Parents = make(map[string]Status)
+	t.Children = make(map[string]Status)
+	t.Slaves = make(map[string]Status)
 	return t
 }
 
-func (s *AggregatedStatus) DeepCopy() *AggregatedStatus {
-	return &AggregatedStatus{
+func (s *Status) DeepCopy() *Status {
+	return &Status{
 		Avail:            s.Avail,
 		Overall:          s.Overall,
 		Frozen:           s.Frozen,
