@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// orchestrate from svcagg vs global expect
+// orchestrate from omon vs global expect
 func (o *smon) orchestrate() {
 	if _, ok := o.instStatus[o.localhost]; !ok {
 		return

@@ -1,11 +1,11 @@
-// Package svcagg is responsible for of object.AggregatedStatus
+// Package omon is responsible for of object.AggregatedStatus
 //
 // It provides the cluster data ["monitor", "services," <svcname>]
 //
 // worker ends when context is done or when no more service instance config exist
 //
 // worker watch on instance status updates to refresh object.AggregatedStatus
-package svcagg
+package omon
 
 import (
 	"context"
@@ -59,7 +59,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 		instStatus:   make(map[string]instance.Status),
 		instMonitor:  make(map[string]instance.Monitor),
 		ctx:          ctx,
-		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),
+		log:          log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
 	}
 	o.startSubscriptions()
 
@@ -73,7 +73,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 func (o *svcAggStatus) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	label := pubsub.Label{"path", o.id}
-	sub := bus.Sub(o.id + " svcagg")
+	sub := bus.Sub(o.id + " omon")
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceStatusUpdated{}, label)
 	sub.AddFilter(msgbus.CfgUpdated{}, label)
