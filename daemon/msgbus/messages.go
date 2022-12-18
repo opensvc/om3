@@ -74,14 +74,14 @@ type (
 	}
 
 	// CfgFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
-	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgDeleted{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a CfgDeleted{} event.
 	CfgFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
 	// CfgFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
-	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
 	CfgFileUpdated struct {
 		Path     path.T
 		Filename string

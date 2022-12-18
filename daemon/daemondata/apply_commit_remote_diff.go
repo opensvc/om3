@@ -171,7 +171,7 @@ func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
 	c := d.pending.Cluster.Node[node]
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
-		smonUpdated:       make(map[string]time.Time),
+		imonUpdated:       make(map[string]time.Time),
 		instCfgUpdated:    make(map[string]time.Time),
 		instStatusUpdated: make(map[string]time.Time),
 	}
@@ -194,11 +194,11 @@ func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
 			result.instCfgUpdated[p] = inst.Config.Updated
 		}
 		if inst.Monitor != nil {
-			smonUpdated := inst.Monitor.StatusUpdated
-			if inst.Monitor.GlobalExpectUpdated.After(smonUpdated) {
-				smonUpdated = inst.Monitor.GlobalExpectUpdated
+			imonUpdated := inst.Monitor.StatusUpdated
+			if inst.Monitor.GlobalExpectUpdated.After(imonUpdated) {
+				imonUpdated = inst.Monitor.GlobalExpectUpdated
 			}
-			result.smonUpdated[p] = smonUpdated
+			result.imonUpdated[p] = imonUpdated
 		}
 	}
 	result.gen = c.Status.Gen[node]
@@ -244,7 +244,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 	previous, ok := d.previousRemoteInfo[node]
 	if !ok {
 		previous = remoteInfo{
-			smonUpdated:       make(map[string]time.Time),
+			imonUpdated:       make(map[string]time.Time),
 			instCfgUpdated:    make(map[string]time.Time),
 			instStatusUpdated: make(map[string]time.Time),
 		}
@@ -295,7 +295,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 		)
 	}
 
-	updates, removes = getUpdatedRemoved(toPath, previous.smonUpdated, current.smonUpdated)
+	updates, removes = getUpdatedRemoved(toPath, previous.imonUpdated, current.imonUpdated)
 	for _, s := range updates {
 		d.bus.Pub(
 			msgbus.InstanceMonitorUpdated{

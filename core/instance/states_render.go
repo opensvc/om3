@@ -53,7 +53,7 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			}
 			lastSubset = r.Subset
 		}
-		flags := t.Status.ResourceFlagsString(*r.ResourceID, r) + t.Smon.ResourceFlagRestartString(*r.ResourceID, r)
+		flags := t.Status.ResourceFlagsString(*r.ResourceID, r) + t.Monitor.ResourceFlagRestartString(*r.ResourceID, r)
 		n := subsetNode.AddNode()
 		n.AddColumn().AddText(r.ResourceID.Name)
 		n.AddColumn().AddText(flags)
@@ -109,27 +109,27 @@ func (t States) descString() string {
 	}
 
 	// Monitor status
-	switch t.Smon.Status {
+	switch t.Monitor.Status {
 	case "":
 		l = append(l, rawconfig.Colorize.Secondary("idle"))
 	case "idle":
-		l = append(l, rawconfig.Colorize.Secondary(t.Smon.Status))
+		l = append(l, rawconfig.Colorize.Secondary(t.Monitor.Status))
 	default:
-		l = append(l, rawconfig.Colorize.Primary(t.Smon.Status))
+		l = append(l, rawconfig.Colorize.Primary(t.Monitor.Status))
 	}
 
 	// Monitor global expect
-	if s := t.Smon.GlobalExpect; s != "" {
+	if s := t.Monitor.GlobalExpect; s != "" {
 		l = append(l, s)
 	}
 
 	// Monitor local expect
-	if s := t.Smon.LocalExpect; s != "" {
+	if s := t.Monitor.LocalExpect; s != "" {
 		l = append(l, s)
 	}
 
 	// Daemon down
-	if t.Smon.StatusUpdated.IsZero() {
+	if t.Monitor.StatusUpdated.IsZero() {
 		l = append(l, rawconfig.Colorize.Warning("daemon-down"))
 	}
 

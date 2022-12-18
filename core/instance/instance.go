@@ -224,10 +224,10 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 	return flags
 }
 
-func (smon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
+func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
 	// Restart and retries
 	retries := 0
-	if restart, ok := smon.Restart[rid.Name]; ok {
+	if restart, ok := mon.Restart[rid.Name]; ok {
 		retries = restart.Retries
 	}
 	return r.Restart.FlagString(retries)
@@ -239,8 +239,8 @@ func (cfg Config) DeepCopy() *Config {
 	return &newCfg
 }
 
-func (smon Monitor) DeepCopy() *Monitor {
-	v := smon
+func (mon Monitor) DeepCopy() *Monitor {
+	v := mon
 	restart := make(map[string]MonitorRestart)
 	for s, val := range v.Restart {
 		restart[s] = val

@@ -79,10 +79,10 @@ var (
 		idSetInstanceConfig:  "set-instance-config",
 		idSetInstanceFrozen:  "set-instance-frozen",
 		idSetInstanceStatus:  "set-instance-status",
-		idSetNodeMonitor:     "set-nmon",
+		idSetNodeMonitor:     "set-node-monitor",
 		idSetNodeOsPaths:     "set-node-os-paths",
 		idSetNodeStats:       "set-node-stats",
-		idSetInstanceMonitor: "set-smon",
+		idSetInstanceMonitor: "set-instance-monitor",
 		idStats:              "stats",
 	}
 )
