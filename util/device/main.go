@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/xerrors"
 )
@@ -57,7 +58,7 @@ func RemoveHolders(head T) error {
 		return err
 	}
 	for _, dev := range holders {
-		if err := RemoveHolders(dev); err != nil {
+		if err := RemoveHolders(*dev); err != nil {
 			return err
 		}
 		if err := dev.Remove(); err != nil {
