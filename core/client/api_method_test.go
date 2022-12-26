@@ -1,15 +1,23 @@
 package client
 
 import (
-	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/core/client/request"
+	"bytes"
+	"io"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"opensvc.com/opensvc/core/client/request"
 )
 
 type (
 	mockRequest struct {
 		result []byte
 		err    error
+	}
+
+	mockReadCloser struct {
+		io.Reader
 	}
 )
 
@@ -35,6 +43,15 @@ func (_ mockRequest) GetStream(request.T) (chan []byte, error) {
 
 func (m mockRequest) doRequest() ([]byte, error) {
 	return m.result, m.err
+}
+
+func (m mockRequest) GetReader(r request.T) (reader io.ReadCloser, err error) {
+	reader = mockReadCloser{Reader: bytes.NewReader(m.result)}
+	return
+}
+
+func (rc mockReadCloser) Close() error {
+	return nil
 }
 
 func TestApiMethods(t *testing.T) {
