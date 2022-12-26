@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/device"
 )
 
@@ -42,9 +42,8 @@ type (
 )
 
 var (
-	DefaultPersistentReservationType   = "5" // Write-Exclusive Registrants-Only
-	DefaultPersistentReservationDriver = MpathPersistDriver{}
-	ErrNotSupported                    = errors.New("SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
+	DefaultPersistentReservationType = "5" // Write-Exclusive Registrants-Only
+	ErrNotSupported                  = errors.New("SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
 )
 
 func MakePRKey() []byte {
@@ -193,24 +192,6 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 		}
 	}
 	return s
-}
-
-func (t *PersistentReservationHandle) setup() error {
-	if t.persistentReservationDriver != nil {
-		return nil
-	}
-	if capabilities.Has(MpathPersistCapability) {
-		t.persistentReservationDriver = MpathPersistDriver{
-			Log: t.Log,
-		}
-	} else if capabilities.Has(SGPersistCapability) {
-		t.persistentReservationDriver = SGPersistDriver{
-			Log: t.Log,
-		}
-	} else {
-		return ErrNotSupported
-	}
-	return nil
 }
 
 func (t *PersistentReservationHandle) Start() error {

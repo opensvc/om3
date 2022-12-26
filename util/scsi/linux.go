@@ -12,10 +12,29 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
+
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/xerrors"
 	"opensvc.com/opensvc/util/xsession"
 )
+
+func (t *PersistentReservationHandle) setup() error {
+	if t.persistentReservationDriver != nil {
+		return nil
+	}
+	if capabilities.Has(MpathPersistCapability) {
+		t.persistentReservationDriver = MpathPersistDriver{
+			Log: t.Log,
+		}
+	} else if capabilities.Has(SGPersistCapability) {
+		t.persistentReservationDriver = SGPersistDriver{
+			Log: t.Log,
+		}
+	} else {
+		return ErrNotSupported
+	}
+	return nil
+}
 
 func doWithLock(timeout time.Duration, name, intent string, f func() error) error {
 	p := filepath.Join(rawconfig.Paths.Lock, strings.Join([]string{"scsi", name}, "."))
