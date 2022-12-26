@@ -25,7 +25,7 @@ func (f Frame) sObjectInstance(path string, node string, scope []string) string 
 		s += sObjectInstanceHALeader(instanceMonitor)
 		s += sObjectInstanceFrozen(instanceStatus)
 		s += sObjectInstanceUnprovisioned(instanceStatus)
-		s += sObjectInstanceMonitorStatus(instanceMonitor)
+		s += sObjectInstanceMonitorState(instanceMonitor)
 		s += sObjectInstanceMonitorGlobalExpect(instanceMonitor)
 	} else if inst.Config != nil || stringslice.Has(node, scope) {
 		s += iconUndef
@@ -101,16 +101,16 @@ func sObjectInstanceUnprovisioned(instance instance.Status) string {
 	}
 }
 
-func sObjectInstanceMonitorStatus(instanceMonitor instance.Monitor) string {
-	if instanceMonitor.Status != "idle" {
-		return " " + instanceMonitor.Status
+func sObjectInstanceMonitorState(instanceMonitor instance.Monitor) string {
+	if instanceMonitor.State != instance.MonitorStateIdle {
+		return " " + instanceMonitor.State.String()
 	}
 	return ""
 }
 
 func sObjectInstanceMonitorGlobalExpect(instanceMonitor instance.Monitor) string {
-	if instanceMonitor.GlobalExpect != "" {
-		return hiblack(" >" + instanceMonitor.GlobalExpect)
+	if instanceMonitor.GlobalExpect != instance.MonitorGlobalExpectUnset {
+		return hiblack(" >" + instanceMonitor.GlobalExpect.String())
 	}
 	return ""
 }

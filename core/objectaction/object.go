@@ -13,6 +13,7 @@ import (
 
 	"opensvc.com/opensvc/core/actionrouter"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/output"
@@ -142,6 +143,15 @@ func WithAsyncTarget(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.Target = s
+		return nil
+	})
+}
+
+// WithAsyncTargetOptions is the options of the target defined by WithAsyncTarget.
+func WithAsyncTargetOptions(o any) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.TargetOptions = o
 		return nil
 	})
 }
@@ -347,11 +357,25 @@ func (t T) DoAsync() error {
 	}
 	var errs error
 	for _, path := range paths {
-		req := c.NewPostObjectMonitor()
-		req.ObjectSelector = path.String()
-		req.GlobalExpect = t.Target
-		req.SetNode(t.NodeSelector)
-		b, err := req.Do()
+		var (
+			b   []byte
+			err error
+		)
+		switch t.Target {
+		case instance.MonitorGlobalExpectPlacedAt.String():
+			req := c.NewPostObjectSwitchTo()
+			req.ObjectSelector = path.String()
+			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
+			req.Destination = options.Destination
+			req.SetNode(t.NodeSelector)
+			b, err = req.Do()
+		default:
+			req := c.NewPostObjectMonitor()
+			req.ObjectSelector = path.String()
+			req.GlobalExpect = t.Target
+			req.SetNode(t.NodeSelector)
+			b, err = req.Do()
+		}
 		if err != nil {
 			errs = xerrors.Append(errs, err)
 		}

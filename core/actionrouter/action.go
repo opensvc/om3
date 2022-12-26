@@ -70,6 +70,12 @@ type (
 		Target string
 
 		//
+		// TargetOptions is the options of the orchestration needed to reach
+		// the Target.
+		//
+		TargetOptions any
+
+		//
 		// Watch runs a event-driven monitor on the selected objects after
 		// setting a new target. So the operator can see the orchestration
 		// unfolding.

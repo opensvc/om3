@@ -28,7 +28,7 @@ func (a *DaemonApi) PostObjectClear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	instMonitor = instance.Monitor{
-		Status: "idle",
+		State: instance.MonitorStateIdle,
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetInstanceMonitor{

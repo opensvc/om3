@@ -28,7 +28,7 @@ func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	instMonitor = instance.Monitor{
-		GlobalExpect: "aborted",
+		GlobalExpect: instance.MonitorGlobalExpectAborted,
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetInstanceMonitor{

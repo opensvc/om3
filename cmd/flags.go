@@ -254,7 +254,7 @@ func addFlagSubset(flagSet *pflag.FlagSet, p *string) {
 }
 
 func addFlagSwitchTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "The remote node to start or migrate the service to. Or the target number of instance to scale to.")
+	flagSet.StringVar(p, "to", "", "The remote node to start or migrate the service to.")
 }
 
 func addFlagTo(flagSet *pflag.FlagSet, p *string) {

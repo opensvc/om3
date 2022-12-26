@@ -108,28 +108,26 @@ func (t States) descString() string {
 		l = append(l, rawconfig.Colorize.Secondary(s))
 	}
 
-	// Monitor status
-	switch t.Monitor.Status {
-	case "":
-		l = append(l, rawconfig.Colorize.Secondary("idle"))
-	case "idle":
-		l = append(l, rawconfig.Colorize.Secondary(t.Monitor.Status))
+	// Monitor state
+	switch t.Monitor.State {
+	case MonitorStateIdle:
+		l = append(l, rawconfig.Colorize.Secondary(t.Monitor.State.String()))
 	default:
-		l = append(l, rawconfig.Colorize.Primary(t.Monitor.Status))
+		l = append(l, rawconfig.Colorize.Primary(t.Monitor.State.String()))
 	}
 
 	// Monitor global expect
-	if s := t.Monitor.GlobalExpect; s != "" {
+	if s := t.Monitor.GlobalExpect.String(); s != "" {
 		l = append(l, s)
 	}
 
 	// Monitor local expect
-	if s := t.Monitor.LocalExpect; s != "" {
+	if s := t.Monitor.LocalExpect.String(); s != "" {
 		l = append(l, s)
 	}
 
 	// Daemon down
-	if t.Monitor.StatusUpdated.IsZero() {
+	if t.Monitor.StateUpdated.IsZero() {
 		l = append(l, rawconfig.Colorize.Warning("daemon-down"))
 	}
 

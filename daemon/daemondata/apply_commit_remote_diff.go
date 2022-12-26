@@ -194,7 +194,7 @@ func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
 			result.instCfgUpdated[p] = inst.Config.Updated
 		}
 		if inst.Monitor != nil {
-			imonUpdated := inst.Monitor.StatusUpdated
+			imonUpdated := inst.Monitor.StateUpdated
 			if inst.Monitor.GlobalExpectUpdated.After(imonUpdated) {
 				imonUpdated = inst.Monitor.GlobalExpectUpdated
 			}

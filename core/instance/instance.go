@@ -24,26 +24,6 @@ type (
 		Status  *Status  `json:"status"`
 	}
 
-	// Monitor describes the in-daemon states of an instance
-	Monitor struct {
-		GlobalExpect        string                    `json:"global_expect"`
-		LocalExpect         string                    `json:"local_expect"`
-		Status              string                    `json:"status"`
-		StatusUpdated       time.Time                 `json:"status_updated"`
-		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
-		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
-		IsLeader            bool                      `json:"is_leader"`
-		IsHALeader          bool                      `json:"is_ha_leader"`
-		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
-	}
-
-	// MonitorRestart describes the restart states maintained by the daemon
-	// for an object instance.
-	MonitorRestart struct {
-		Retries int       `json:"retries"`
-		Updated time.Time `json:"updated"`
-	}
-
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
@@ -246,6 +226,10 @@ func (mon Monitor) DeepCopy() *Monitor {
 		restart[s] = val
 	}
 	v.Restart = restart
+	if mon.GlobalExpectOptions != nil {
+		b, _ := json.Marshal(mon.GlobalExpectOptions)
+		_ = json.Unmarshal(b, &v.GlobalExpectOptions)
+	}
 	return &v
 }
 
