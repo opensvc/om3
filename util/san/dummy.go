@@ -6,6 +6,6 @@ func GetPaths() ([]Path, error) {
 	return []Path{}, nil
 }
 
-func GetHostBusAdapters() ([]HostBusAdapter, error) {
-	return []HostBusAdapter{}, nil
+func GetInitiators() ([]Initiator, error) {
+	return []Initiator{}, nil
 }
