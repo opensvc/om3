@@ -175,7 +175,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	for i := 1; i <= f.Total; i += 1 {
 		chunk, ok := chunks[i]
 		if !ok {
-			t.log.Warn().Msgf("missing fragment %d in msg %s from src. purge", i, f.MsgID, s)
+			t.log.Warn().Msgf("missing fragment %d in msg %s from src %s. purge", i, f.MsgID, s)
 			delete(msg, f.MsgID)
 			t.assembly[s] = msg
 			return
