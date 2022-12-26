@@ -10,6 +10,7 @@ import (
 
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/subdaemon"
 	"opensvc.com/opensvc/util/pubsub"
@@ -24,9 +25,13 @@ func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
 	var daemon subdaemon.RootManager
 	ctx = daemonctx.WithDaemon(ctx, daemon)
 
-	t.Logf("start daemondata")
-	dataCmd, _ := daemondata.Start(ctx)
-	return daemondata.ContextWithBus(ctx, dataCmd)
+	t.Logf("start daemon")
+	hbcache.Start(ctx)
+	dataCmd, dataMsgRecvQ, _ := daemondata.Start(ctx)
+	ctx = daemondata.ContextWithBus(ctx, dataCmd)
+	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
+
+	return ctx
 }
 
 func setupCtrl(ctx context.Context) *ctrl {
@@ -36,22 +41,6 @@ func setupCtrl(ctx context.Context) *ctrl {
 	}
 	c.start(ctx)
 	return c
-}
-
-func readPingEvents(t *testing.T, c chan msgbus.HbNodePing, maxDuration time.Duration) []msgbus.HbNodePing {
-	t.Logf("read HbNodePing notification for %s", maxDuration)
-	max := time.After(maxDuration)
-	pingMsgs := make([]msgbus.HbNodePing, 0)
-	for {
-		select {
-		case msg := <-c:
-			t.Logf("receive notification: ---- %+v", msg)
-			pingMsgs = append(pingMsgs, msg)
-		case <-max:
-			t.Logf("readed HbNodePing notification for %s: %+v", maxDuration, pingMsgs)
-			return pingMsgs
-		}
-	}
 }
 
 func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
@@ -84,9 +73,9 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			hbs:  []string{"hb#0.rx"},
 			node: "node5",
 			events: []event{
-				{ping: true, hb: "hb#0.rx", node: "node5", delay: time.Microsecond},
-				{ping: false, hb: "hb#0.rx", node: "node5", delay: time.Microsecond},
-				{ping: true, hb: "hb#0.rx", node: "node5", delay: time.Microsecond},
+				{ping: true, hb: "hb#0.rx", node: "node5", delay: 50 * time.Microsecond},
+				{ping: false, hb: "hb#0.rx", node: "node5", delay: 50 * time.Microsecond},
+				{ping: true, hb: "hb#0.rx", node: "node5", delay: 50 * time.Microsecond},
 			},
 			readPingDuration: 10 * time.Millisecond,
 			expected:         []msgbus.HbNodePing{{Node: "node5", Status: true}},
@@ -193,11 +182,35 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			node := tc.node
-			pingEventC := make(chan msgbus.HbNodePing, 10)
-			onNodePing := func(i any) { pingEventC <- i.(msgbus.HbNodePing) }
-			defer msgbus.UnSub(bus, msgbus.SubHbNodePing(bus, pubsub.OpUpdate, t.Name(), node, onNodePing))
+
+			sub := bus.SubWithTimeout(name, time.Second)
+			sub.AddFilter(msgbus.HbNodePing{}, pubsub.Label{"node", node})
+			sub.Start()
+			defer sub.Stop()
+
+			pingMsgC := make(chan []msgbus.HbNodePing)
+			go func() {
+				pingMsgs := make([]msgbus.HbNodePing, 0)
+				t.Log("read HbNodePing messages ...")
+				timeout := time.After(tc.readPingDuration)
+				for {
+					select {
+					case i := <-sub.C:
+						msg := i.(msgbus.HbNodePing)
+						t.Logf("receive msgbus.HbNodePing notification: ---- %+v", msg)
+						pingMsgs = append(pingMsgs, msg)
+					case <-timeout:
+						t.Logf("timeout reached, HbNodePing messages are: %+v", pingMsgs)
+						pingMsgC <- pingMsgs
+						return
+					}
+				}
+			}()
+
 			for _, id := range tc.hbs {
+				t.Logf("register id %s", id)
 				testCtrl.cmd <- CmdRegister{Id: id}
+				t.Logf("add watcher id %s nodename %s", id, node)
 				testCtrl.cmd <- CmdAddWatcher{
 					HbId:     id,
 					Nodename: node,
@@ -205,6 +218,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 					Timeout:  time.Second,
 				}
 			}
+			t.Logf("creating events...")
 			for _, ev := range tc.events {
 				t.Logf("create event %s %s %v", ev.hb, ev.node, ev.ping)
 				testCtrl.cmd <- CmdSetPeerSuccess{
@@ -214,7 +228,8 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				}
 				time.Sleep(ev.delay)
 			}
-			found := readPingEvents(t, pingEventC, tc.readPingDuration)
+
+			found := <-pingMsgC
 			require.Equalf(t, tc.expected, found,
 				"unexpect published HbNodePing from %+v",
 				tc.events)
