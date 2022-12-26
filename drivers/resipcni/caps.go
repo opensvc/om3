@@ -1,3 +1,5 @@
+//go:build linux
+
 package resipcni
 
 import "opensvc.com/opensvc/util/capabilities"
