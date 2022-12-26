@@ -1,5 +1,3 @@
-//go:build linux
-
 package resdiskzpool
 
 import (
@@ -16,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/core/actionrollback"
 	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/rawconfig"
