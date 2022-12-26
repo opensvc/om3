@@ -65,7 +65,7 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.mcast, port: %s nodes: %s timeout: %s intf: %s interval: %s", port, nodes,
+	signature := fmt.Sprintf("type: hb.mcast, port: %d nodes: %s timeout: %s intf: %s interval: %s", port, nodes,
 		timeout, intf, interval)
 	t.SetSignature(signature)
 	name := t.Name()
