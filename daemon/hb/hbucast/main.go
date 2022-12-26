@@ -71,10 +71,10 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.ucast, port: %s nodes: %s timeout: %s interval: %s intf: %s",
-		port, nodes, timeout, interval)
-	t.SetSignature(signature)
 	intf := t.GetString("intf")
+	signature := fmt.Sprintf("type: hb.ucast, port: %s nodes: %s timeout: %s interval: %s intf: %s",
+		port, nodes, timeout, interval, intf)
+	t.SetSignature(signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, port, intf, timeout, interval)
 	t.SetTx(tx)
