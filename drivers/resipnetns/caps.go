@@ -1,3 +1,5 @@
+//go:build linux
+
 package resipnetns
 
 import "opensvc.com/opensvc/util/capabilities"
