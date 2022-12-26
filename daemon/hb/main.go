@@ -301,7 +301,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case msg := <-msgC:
 				var rMsg *reqjsonrpc.Message
 				if b, err := json.Marshal(msg); err != nil {
-					err = fmt.Errorf("marshal failure %s for msg %s", err, msg)
+					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
 					continue
 				} else {
 					rMsg = reqjsonrpc.NewMessage(b)
