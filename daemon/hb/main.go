@@ -427,12 +427,12 @@ func (t *T) daemonCtlStart(ctx context.Context, hbId string, action string) {
 	} else if strings.HasSuffix(hbId, ".tx") {
 		rid = strings.TrimSuffix(hbId, ".tx")
 	} else {
-		t.log.Info().Msgf("daemonctl %s %s found no component for %s", action, hbId)
+		t.log.Info().Msgf("daemonctl %s found no component for %s", action, hbId)
 		return
 	}
 	h, err := t.getHbConfiguredComponent(ctx, rid)
 	if err != nil {
-		t.log.Info().Msgf("daemonctl %s %s found no component for %s (rid: %s)", action, hbId, rid)
+		t.log.Info().Msgf("daemonctl %s found no component for %s (rid: %s)", action, hbId, rid)
 		return
 	}
 	if strings.HasSuffix(hbId, ".rx") {
