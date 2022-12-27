@@ -18,6 +18,7 @@ import (
 
 	"opensvc.com/opensvc/core/client/request"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/httpclientcache"
 
 	"golang.org/x/net/http2"
@@ -97,6 +98,9 @@ func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, 
 	})
 	if err != nil {
 		return nil, err
+	}
+	if !strings.Contains(url[8:], ":") {
+		url += fmt.Sprintf(":%d", daemonenv.HttpPort)
 	}
 	r := &T{
 		Username: username,
