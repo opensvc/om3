@@ -3,6 +3,7 @@ package listener
 import (
 	"io/fs"
 	"os"
+	"os/exec"
 	"os/user"
 	"strings"
 
@@ -12,12 +13,26 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
 )
 
 func mountCertFS() error {
 	if v, err := findmnt.Has("none", rawconfig.Paths.Certs); err != nil {
+		if err1, ok := err.(*exec.Error); ok {
+			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
+				// fallback when findmnt is not present
+				if !file.Exists(rawconfig.Paths.Certs) {
+					err := os.MkdirAll(rawconfig.Paths.Certs, 0700)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			return nil
+		}
 		return err
 	} else if v {
 		return nil
