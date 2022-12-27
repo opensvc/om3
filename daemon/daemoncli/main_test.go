@@ -2,11 +2,13 @@ package daemoncli_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemoncli"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/testhelper"
@@ -15,11 +17,11 @@ import (
 )
 
 var (
-	cases = []string{
-		daemonenv.UrlInetHttp(),
-		daemonenv.UrlUxHttp(),
-		daemonenv.UrlInetRaw(),
-		daemonenv.UrlUxRaw(),
+	cases = map[string]func() string{
+		"UrlUxHttp":   daemonenv.UrlUxHttp,
+		"UrlUxRaw":    daemonenv.UrlUxRaw,
+		"UrlInetHttp": daemonenv.UrlInetHttp,
+		"UrlInetRaw":  daemonenv.UrlInetRaw,
 	}
 )
 
@@ -39,13 +41,12 @@ func newClient(serverUrl string) (*client.T, error) {
 	clientOptions := []funcopt.O{client.WithURL(serverUrl)}
 	if serverUrl == daemonenv.UrlInetHttp() {
 		clientOptions = append(clientOptions,
-			client.WithInsecureSkipVerify())
+			client.WithInsecureSkipVerify(true))
 
 		clientOptions = append(clientOptions,
 			client.WithCertificate(daemonenv.CertFile()))
 
 		clientOptions = append(clientOptions,
-
 			client.WithKey(daemonenv.KeyFile()),
 		)
 	}
@@ -54,45 +55,92 @@ func newClient(serverUrl string) (*client.T, error) {
 
 func setup(t *testing.T) {
 	env := testhelper.Setup(t)
-	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
+	env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	rawconfig.LoadSections()
 }
 
 func TestDaemonStartThenStop(t *testing.T) {
-	for _, url := range cases {
+	for name, getUrl := range cases {
 		//if !privileged() {
 		//	t.Skip("need root")
 		//}
-		t.Run(url, func(t *testing.T) {
+		t.Run(name, func(t *testing.T) {
 			setup(t)
+			url := getUrl()
+			t.Logf("using url=%s", url)
+			needRawClient := false
 			cli, err := newClient(url)
-			require.NoError(t, err)
+			if err != nil {
+				t.Logf("fallback client urlUxRaw to start daemon & certs")
+				needRawClient = true
+				cli, err = newClient(daemonenv.UrlUxRaw())
+				require.NoError(t, err)
+			}
 			daemonCli := daemoncli.New(cli)
+			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
+			goStart := make(chan bool)
 			go func() {
+				t.Logf("daemonCli.Start...")
+				goStart <- true
 				require.NoError(t, daemonCli.Start())
 			}()
+			<-goStart
+			if needRawClient {
+				t.Logf("reverting fallback client urlUxRaw")
+				maxDurationForCerts := 100 * time.Millisecond
+				t.Logf("wait %s for certs created", maxDurationForCerts)
+				time.Sleep(maxDurationForCerts)
+				t.Logf("recreate client %s", url)
+				cli, err = newClient(url)
+				require.NoError(t, err)
+			}
+			t.Logf("daemonCli.WaitRunning")
 			require.NoError(t, daemonCli.WaitRunning())
+			t.Logf("daemonCli.Running")
 			require.True(t, daemonCli.Running())
+			t.Logf("daemonCli.Stop...")
 			require.NoError(t, daemonCli.Stop())
+			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 		})
 	}
 }
 
 func TestDaemonReStartThenStop(t *testing.T) {
-	for _, url := range cases {
-		t.Run(url, func(t *testing.T) {
+	for name, getUrl := range cases {
+		//if !privileged() {
+		//	t.Skip("need root")
+		//}
+		t.Run(name, func(t *testing.T) {
 			setup(t)
+
+			url := getUrl()
+			t.Logf("using url=%s", url)
+			needRawClient := false
 			cli, err := newClient(url)
-			require.NoError(t, err)
+			if err != nil {
+				t.Logf("fallback client urlUxRaw to start daemon & certs")
+				needRawClient = true
+				cli, err = newClient(daemonenv.UrlUxRaw())
+				require.NoError(t, err)
+			}
 			daemonCli := daemoncli.New(cli)
-			//if !privileged() {
-			//	t.Skip("need root")
-			//}
 			require.False(t, daemonCli.Running())
 			go func() {
 				require.NoError(t, daemonCli.ReStart())
 			}()
+			if needRawClient {
+				t.Logf("reverting fallback client urlUxRaw")
+				maxDurationForCerts := 100 * time.Millisecond
+				t.Logf("wait %s for certs created", maxDurationForCerts)
+				time.Sleep(maxDurationForCerts)
+				t.Logf("recreate client %s", url)
+				cli, err = newClient(url)
+				require.NoError(t, err)
+			}
 			require.NoError(t, daemonCli.WaitRunning())
 			require.True(t, daemonCli.Running())
 			require.NoError(t, daemonCli.Stop())
@@ -102,14 +150,20 @@ func TestDaemonReStartThenStop(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	for _, url := range cases {
-		t.Run(url, func(t *testing.T) {
+	for name, getUrl := range cases {
+		//if !privileged() {
+		//	t.Skip("need root")
+		//}
+		t.Run(name, func(t *testing.T) {
+			setup(t)
+			url := getUrl()
+			t.Logf("using url=%s", url)
 			cli, err := newClient(url)
+			if err != nil {
+				t.Skipf("skipped, can't create client for %s", url)
+			}
 			require.NoError(t, err)
 			daemonCli := daemoncli.New(cli)
-			//if !privileged() {
-			//	t.Skip("need root")
-			//}
 			require.False(t, daemonCli.Running())
 			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
