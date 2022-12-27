@@ -29,7 +29,7 @@ type (
 	}
 )
 
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Status, error) {
+func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Digest, error) {
 	if t.Refresh || t.Local {
 		// explicitely local
 		return t.extractLocal(selector)
@@ -39,14 +39,14 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.S
 		return data, nil
 	} else if clientcontext.IsSet() {
 		// no fallback for remote cluster
-		return []object.Status{}, err
+		return []object.Digest{}, err
 	}
 	// fallback to local
 	return t.extractLocal(selector)
 }
 
-func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, error) {
-	data := make([]object.Status, 0)
+func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, error) {
+	data := make([]object.Digest, 0)
 	sel := objectselector.NewSelection(
 		selector,
 		objectselector.SelectionWithLocal(true),
@@ -81,10 +81,10 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 			errs = xerrors.Append(errs, err)
 			continue
 		}
-		o := object.Status{
+		o := object.Digest{
 			Path:   p,
 			Compat: true,
-			Object: object.AggregatedStatus{},
+			Object: object.Status{},
 			Instances: map[string]instance.States{
 				h: {
 					Node: instance.Node{
@@ -100,7 +100,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Status, e
 	return data, errs
 }
 
-func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) ([]object.Status, error) {
+func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) ([]object.Digest, error) {
 	var (
 		err           error
 		b             []byte
@@ -111,13 +111,13 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 		SetRelatives(true).
 		Do()
 	if err != nil {
-		return []object.Status{}, err
+		return []object.Digest{}, err
 	}
 	err = json.Unmarshal(b, &clusterStatus)
 	if err != nil {
-		return []object.Status{}, err
+		return []object.Digest{}, err
 	}
-	data := make([]object.Status, 0)
+	data := make([]object.Digest, 0)
 	for ps := range clusterStatus.Cluster.Object {
 		p, err := path.Parse(ps)
 		if err != nil {
@@ -131,7 +131,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 
 func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	var (
-		data []object.Status
+		data []object.Digest
 		err  error
 	)
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")

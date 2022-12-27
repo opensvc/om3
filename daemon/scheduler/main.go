@@ -224,7 +224,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("scheduler")
 	sub.AddFilter(msgbus.InstanceStatusDeleted{})
-	sub.AddFilter(msgbus.ObjectAggDeleted{})
+	sub.AddFilter(msgbus.ObjectStatusDeleted{})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.Start()
 	return sub
@@ -244,8 +244,8 @@ func (t *T) loop() {
 				t.onInstStatusDeleted(c)
 			case msgbus.NodeMonitorUpdated:
 				t.onNodeMonitorUpdated(c)
-			case msgbus.ObjectAggUpdated:
-				t.onMonSvcAggUpdated(c)
+			case msgbus.ObjectStatusUpdated:
+				t.onMonObjectStatusUpdated(c)
 			}
 		case ev := <-t.events:
 			switch c := ev.(type) {
@@ -272,8 +272,8 @@ func (t *T) onInstStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
-func (t *T) onMonSvcAggUpdated(c msgbus.ObjectAggUpdated) {
-	provisioned := c.AggregatedStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+func (t *T) onMonObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
+	provisioned := c.Status.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	t.provisioned[c.Path] = provisioned
 	hasAnyJob := t.hasAnyJob(c.Path)
 	switch {

@@ -1,26 +1,25 @@
-// Package smon is responsible for of local instance state
+// Package imon is responsible for of local instance state
 //
 //	It provides the cluster data:
 //		["cluster", "node", <localhost>, "services", "status", <instance>, "monitor"]
-//		["cluster", "node", <localhost>, "services", "smon", <instance>]
+//		["cluster", "node", <localhost>, "services", "imon", <instance>]
 //
-//	smon are created by the local instcfg, with parent context instcfg context.
-//	instcfg done => smon done
+//	imon are created by the local instcfg, with parent context instcfg context.
+//	instcfg done => imon done
 //
 //	worker watches on local instance status updates to clear reached status
 //		=> unsetStatusWhenReached
 //		=> orchestrate
 //		=> pub new state if change
 //
-//	worker watches on remote instance smon updates converge global expects
+//	worker watches on remote instance imon updates converge global expects
 //		=> convergeGlobalExpectFromRemote
 //		=> orchestrate
 //		=> pub new state if change
-package smon
+package imon
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -37,7 +36,7 @@ import (
 )
 
 type (
-	smon struct {
+	imon struct {
 		state         instance.Monitor
 		previousState instance.Monitor
 
@@ -52,7 +51,7 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
-		// updated data from aggregated status update srcEvent
+		// updated data from object status update srcEvent
 		instStatus  map[string]instance.Status
 		instMonitor map[string]instance.Monitor
 		nodeMonitor map[string]cluster.NodeMonitor
@@ -60,7 +59,7 @@ type (
 		nodeStatus  map[string]cluster.NodeStatus
 		scopeNodes  []string
 
-		svcAgg      object.AggregatedStatus
+		objStatus   object.Status
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
@@ -70,68 +69,25 @@ type (
 
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
-		state    string
-		newState string
+		state    instance.MonitorState
+		newState instance.MonitorState
 	}
 )
 
-var (
-	statusDeleted           = "deleted"
-	statusDeleting          = "deleting"
-	statusFreezeFailed      = "freeze failed"
-	statusFreezing          = "freezing"
-	statusFrozen            = "frozen"
-	statusIdle              = "idle"
-	statusProvisioned       = "provisioned"
-	statusProvisioning      = "provisioning"
-	statusProvisionFailed   = "provision failed"
-	statusPurgeFailed       = "purge failed"
-	statusReady             = "ready"
-	statusStarted           = "started"
-	statusStartFailed       = "start failed"
-	statusStarting          = "starting"
-	statusStopFailed        = "stop failed"
-	statusStopped           = "stopped"
-	statusStopping          = "stopping"
-	statusThawed            = "thawed"
-	statusThawedFailed      = "unfreeze failed"
-	statusThawing           = "thawing"
-	statusUnprovisioned     = "unprovisioned"
-	statusUnprovisionFailed = "unprovision failed"
-	statusUnprovisioning    = "unprovisioning"
-	statusWaitLeader        = "wait leader"
-	statusWaitNonLeader     = "wait non-leader"
-
-	localExpectStarted = "started"
-	localExpectUnset   = ""
-
-	globalExpectAborted       = "aborted"
-	globalExpectFrozen        = "frozen"
-	globalExpectPlaced        = "placed"
-	globalExpectPlacedAt      = "placed@"
-	globalExpectProvisioned   = "provisioned"
-	globalExpectPurged        = "purged"
-	globalExpectStarted       = "started"
-	globalExpectStopped       = "stopped"
-	globalExpectThawed        = "thawed"
-	globalExpectUnprovisioned = "unprovisioned"
-	globalExpectUnset         = ""
-)
-
-// Start launch goroutine smon worker for a local instance state
+// Start launch goroutine imon worker for a local instance state
 func Start(parent context.Context, p path.T, nodes []string) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
 	previousState := instance.Monitor{
-		GlobalExpect: globalExpectUnset,
-		LocalExpect:  localExpectUnset,
-		Status:       statusIdle,
+		LocalExpect:  instance.MonitorLocalExpectUnset,
+		GlobalExpect: instance.MonitorGlobalExpectUnset,
+		State:        instance.MonitorStateIdle,
 		Restart:      make(map[string]instance.MonitorRestart),
 	}
 	state := previousState
 
-	o := &smon{
+	o := &imon{
 		state:         state,
 		previousState: previousState,
 		path:          p,
@@ -140,7 +96,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		cancel:        cancel,
 		cmdC:          make(chan any),
 		dataCmdC:      daemondata.BusFromContext(ctx),
-		log:           log.Logger.With().Str("func", "smon").Stringer("object", p).Logger(),
+		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
 		nodeStatus:    make(map[string]cluster.NodeStatus),
@@ -164,11 +120,11 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 	return nil
 }
 
-func (o *smon) startSubscriptions() {
+func (o *imon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
-	sub := bus.Sub(o.id + "smon")
+	sub := bus.Sub(o.id + "imon")
 	label := pubsub.Label{"path", o.id}
-	sub.AddFilter(msgbus.ObjectAggUpdated{}, label)
+	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
@@ -179,8 +135,8 @@ func (o *smon) startSubscriptions() {
 	o.sub = sub
 }
 
-// worker watch for local smon updates
-func (o *smon) worker(initialNodes []string) {
+// worker watch for local imon updates
+func (o *imon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
 	for _, node := range initialNodes {
@@ -199,8 +155,8 @@ func (o *smon) worker(initialNodes []string) {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.ObjectAggUpdated:
-				o.onObjectAggUpdated(c)
+			case msgbus.ObjectStatusUpdated:
+				o.onObjectStatusUpdated(c)
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitorClient(c.Monitor)
 			case msgbus.InstanceMonitorUpdated:
@@ -223,27 +179,27 @@ func (o *smon) worker(initialNodes []string) {
 	}
 }
 
-func (o *smon) delete() {
+func (o *imon) delete() {
 	if err := daemondata.DelInstanceMonitor(o.dataCmdC, o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceMonitor")
 	}
 }
 
-func (o *smon) update() {
+func (o *imon) update() {
 	newValue := o.state
 	if err := daemondata.SetInstanceMonitor(o.dataCmdC, o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceMonitor")
 	}
 }
 
-func (o *smon) transitionTo(newState string) {
+func (o *imon) transitionTo(newState instance.MonitorState) {
 	o.change = true
-	o.state.Status = newState
+	o.state.State = newState
 	o.updateIfChange()
 }
 
 // updateIfChange log updates and publish new state value when changed
-func (o *smon) updateIfChange() {
+func (o *imon) updateIfChange() {
 	if !o.change {
 		return
 	}
@@ -251,21 +207,19 @@ func (o *smon) updateIfChange() {
 	now := time.Now()
 	previousVal := o.previousState
 	newVal := o.state
-	fromGeS, toGeS := o.logFromTo(previousVal.GlobalExpect, newVal.GlobalExpect)
 	if newVal.GlobalExpect != previousVal.GlobalExpect {
 		// Don't update GlobalExpectUpdated here
 		// GlobalExpectUpdated is updated only during cmdSetInstanceMonitorClient and
 		// its value is used for convergeGlobalExpectFromRemote
-		o.loggerWithState().Info().Msgf("change monitor global expect %s -> %s", fromGeS, toGeS)
+		o.loggerWithState().Info().Msgf("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
 		o.state.LocalExpectUpdated = now
-		from, to := o.logFromTo(previousVal.LocalExpect, newVal.LocalExpect)
-		o.loggerWithState().Info().Msgf("change monitor local expect %s -> %s", from, to)
+		o.loggerWithState().Info().Msgf("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
-	if newVal.Status != previousVal.Status {
-		o.state.StatusUpdated = now
-		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.Status, newVal.Status)
+	if newVal.State != previousVal.State {
+		o.state.StateUpdated = now
+		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.IsLeader != previousVal.IsLeader {
 		o.loggerWithState().Info().Msgf("change leader state %t -> %t", previousVal.IsLeader, newVal.IsLeader)
@@ -277,27 +231,27 @@ func (o *smon) updateIfChange() {
 	o.update()
 }
 
-func (o *smon) hasOtherNodeActing() bool {
+func (o *imon) hasOtherNodeActing() bool {
 	for remoteNode, remoteInstMonitor := range o.instMonitor {
 		if remoteNode == o.localhost {
 			continue
 		}
-		if strings.HasSuffix(remoteInstMonitor.Status, "ing") {
+		if remoteInstMonitor.State.IsDoing() {
 			return true
 		}
 	}
 	return false
 }
 
-func (o *smon) createPendingWithCancel() {
+func (o *imon) createPendingWithCancel() {
 	o.pendingCtx, o.pendingCancel = context.WithCancel(o.ctx)
 }
 
-func (o *smon) createPendingWithDuration(duration time.Duration) {
+func (o *imon) createPendingWithDuration(duration time.Duration) {
 	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
 }
 
-func (o *smon) clearPending() {
+func (o *imon) clearPending() {
 	if o.pendingCancel != nil {
 		o.pendingCancel()
 		o.pendingCancel = nil
@@ -305,23 +259,13 @@ func (o *smon) clearPending() {
 	}
 }
 
-func (o *smon) logFromTo(from, to string) (string, string) {
-	if from == "" {
-		from = "unset"
-	}
-	if to == "" {
-		to = "unset"
-	}
-	return from, to
-}
-
-func (o *smon) loggerWithState() *zerolog.Logger {
+func (o *imon) loggerWithState() *zerolog.Logger {
 	ctx := o.log.With()
-	if o.state.GlobalExpect != globalExpectUnset {
-		ctx.Str("global_expect", o.state.GlobalExpect)
+	if o.state.GlobalExpect != instance.MonitorGlobalExpectEmpty {
+		ctx.Str("global_expect", o.state.GlobalExpect.String())
 	}
-	if o.state.LocalExpect != statusIdle && o.state.LocalExpect != localExpectUnset {
-		ctx.Str("local_expect", o.state.LocalExpect)
+	if o.state.LocalExpect != instance.MonitorLocalExpectEmpty {
+		ctx.Str("local_expect", o.state.LocalExpect.String())
 	}
 	stateLogger := ctx.Logger()
 	return &stateLogger

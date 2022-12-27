@@ -8,7 +8,7 @@
 // config worker is running, it fetches remote instance config to local config
 // directory.
 //
-// It is responsible for initial aggregated worker creation.
+// It is responsible for initial object status worker creation.
 package discover
 
 import (
@@ -26,18 +26,18 @@ import (
 
 type (
 	discover struct {
-		cfgCmdC    chan any
-		svcaggCmdC chan any
-		ctx        context.Context
-		log        zerolog.Logger
+		cfgCmdC           chan any
+		objectMonitorCmdC chan any
+		ctx               context.Context
+		log               zerolog.Logger
 
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
 		// More recent remote config files are fetched.
 		cfgMTime map[string]time.Time
 
-		svcAggCancel map[string]context.CancelFunc
-		svcAgg       map[string]map[string]struct{}
+		objectMonitorCancel map[string]context.CancelFunc
+		objectMonitor       map[string]map[string]struct{}
 
 		remoteNodeCtx        map[string]context.Context
 		remoteNodeCancel     map[string]context.CancelFunc
@@ -74,13 +74,13 @@ func Start(ctx context.Context) (func(), error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
-		cfgCmdC:    make(chan any),
-		svcaggCmdC: make(chan any),
-		cfgMTime:   make(map[string]time.Time),
-		ctx:        ctx,
-		log:        daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
+		cfgCmdC:           make(chan any),
+		objectMonitorCmdC: make(chan any),
+		cfgMTime:          make(map[string]time.Time),
+		ctx:               ctx,
+		log:               daemonlogctx.Logger(ctx).With().Str("name", "daemon.discover").Logger(),
 
-		svcAgg: make(map[string]map[string]struct{}),
+		objectMonitor: make(map[string]map[string]struct{}),
 
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
@@ -96,12 +96,12 @@ func Start(ctx context.Context) (func(), error) {
 	}(cfgStarted)
 	<-cfgStarted
 
-	aggStarted := make(chan bool)
+	omonStarted := make(chan bool)
 	go func(c chan<- bool) {
 		defer wg.Done()
-		d.agg(c)
-	}(aggStarted)
-	<-aggStarted
+		d.omon(c)
+	}(omonStarted)
+	<-omonStarted
 
 	stopFSWatcher, err := d.fsWatcherStart()
 	if err != nil {
@@ -111,7 +111,7 @@ func Start(ctx context.Context) (func(), error) {
 
 	cancelAndWait := func() {
 		stopFSWatcher()
-		cancel() // stop cfg and agg via context cancel
+		cancel() // stop cfg and omon via context cancel
 		wg.Wait()
 	}
 	return cancelAndWait, nil

@@ -1,9 +1,10 @@
-package smon
+package imon
 
 import (
 	"os"
 
 	"opensvc.com/opensvc/core/env"
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/util/command"
 )
 
@@ -30,51 +31,51 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
-func (o *smon) orchestrateAfterAction(state, newState string) {
+func (o *imon) orchestrateAfterAction(state, newState instance.MonitorState) {
 	o.cmdC <- cmdOrchestrate{state: state, newState: newState}
 }
 
-func (o *smon) crmDelete() error {
+func (o *imon) crmDelete() error {
 	return o.crmAction("delete", o.path.String(), "delete")
 }
 
-func (o *smon) crmFreeze() error {
+func (o *imon) crmFreeze() error {
 	return o.crmAction("freeze", o.path.String(), "freeze", "--local")
 }
 
-func (o *smon) crmProvisionNonLeader() error {
+func (o *imon) crmProvisionNonLeader() error {
 	return o.crmAction("provision non leader", o.path.String(), "provision", "--local")
 }
 
-func (o *smon) crmProvisionLeader() error {
+func (o *imon) crmProvisionLeader() error {
 	return o.crmAction("provision leader", o.path.String(), "provision", "--local", "--leader", "--disable-rollback")
 }
 
-func (o *smon) crmStart() error {
+func (o *imon) crmStart() error {
 	return o.crmAction("start", o.path.String(), "start", "--local")
 }
 
-func (o *smon) crmStatus() error {
+func (o *imon) crmStatus() error {
 	return o.crmAction("", o.path.String(), "status", "-r")
 }
 
-func (o *smon) crmStop() error {
+func (o *imon) crmStop() error {
 	return o.crmAction("stop", o.path.String(), "stop", "--local")
 }
 
-func (o *smon) crmUnfreeze() error {
+func (o *imon) crmUnfreeze() error {
 	return o.crmAction("unfreeze", o.path.String(), "unfreeze", "--local")
 }
 
-func (o *smon) crmUnprovisionNonLeader() error {
+func (o *imon) crmUnprovisionNonLeader() error {
 	return o.crmAction("unprovision non leader", o.path.String(), "unprovision", "--local")
 }
 
-func (o *smon) crmUnprovisionLeader() error {
+func (o *imon) crmUnprovisionLeader() error {
 	return o.crmAction("unprovision leader", o.path.String(), "unprovision", "--local", "--leader")
 }
 
-func (o *smon) crmAction(title string, cmdArgs ...string) error {
+func (o *imon) crmAction(title string, cmdArgs ...string) error {
 	runners <- struct{}{}
 	defer func() {
 		<-runners
@@ -88,7 +89,7 @@ func (o *smon) crmAction(title string, cmdArgs ...string) error {
 	if title != "" {
 		o.loggerWithState().Info().Msgf(
 			"crm action %s (local status:'%s') -> exec %s %s",
-			title, o.state.Status, cmdPath, cmdArgs,
+			title, o.state.State, cmdPath, cmdArgs,
 		)
 	} else {
 		o.loggerWithState().Debug().Msgf("-> exec %s %s", cmdPath, cmdArgs)
@@ -100,7 +101,7 @@ func (o *smon) crmAction(title string, cmdArgs ...string) error {
 	if title != "" {
 		o.loggerWithState().Info().Msgf(
 			"crm action %s (local status:'%s') <- exec %s %s",
-			title, o.state.Status, cmdPath, cmdArgs,
+			title, o.state.State, cmdPath, cmdArgs,
 		)
 	} else {
 		o.loggerWithState().Debug().Msgf("<- exec %s %s", cmdPath, cmdArgs)

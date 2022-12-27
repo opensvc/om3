@@ -1,67 +1,66 @@
-package smon
+package imon
 
 import (
 	"sort"
 
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/provisioned"
 )
 
-func (o *smon) orchestrateProvisioned() {
-	switch o.state.Status {
-	case statusIdle:
+func (o *imon) orchestrateProvisioned() {
+	switch o.state.State {
+	case instance.MonitorStateIdle:
 		o.provisionedFromIdle()
-	case statusWaitLeader:
+	case instance.MonitorStateWaitLeader:
 		o.provisionedFromWaitLeader()
-	case statusProvisionFailed:
+	case instance.MonitorStateProvisionFailed:
 		o.provisionedFromProvisionFailed()
 	}
 }
 
-func (o *smon) provisionedFromProvisionFailed() {
+func (o *imon) provisionedFromProvisionFailed() {
 	if o.provisionedClearIfReached() {
 		return
 	}
 }
 
-func (o *smon) provisionedFromIdle() {
+func (o *imon) provisionedFromIdle() {
 	if o.provisionedClearIfReached() {
 		return
 	}
 	if o.isProvisioningLeader() {
-		o.doAction(o.crmProvisionLeader, statusProvisioning, statusIdle, statusProvisionFailed)
+		o.doAction(o.crmProvisionLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
 		return
 	} else {
-		o.transitionTo(statusWaitLeader)
+		o.transitionTo(instance.MonitorStateWaitLeader)
 	}
 }
 
-func (o *smon) provisionedFromWaitLeader() {
+func (o *imon) provisionedFromWaitLeader() {
 	if o.provisionedClearIfReached() {
-		o.transitionTo(statusIdle)
+		o.transitionTo(instance.MonitorStateIdle)
 		return
 	}
 	if !o.hasLeaderProvisioned() {
 		return
 	}
-	o.doAction(o.crmProvisionNonLeader, statusProvisioning, statusIdle, statusProvisionFailed)
+	o.doAction(o.crmProvisionNonLeader, instance.MonitorStateProvisioning, instance.MonitorStateIdle, instance.MonitorStateProvisionFailed)
 	return
 }
 
-func (o *smon) provisionedClearIfReached() bool {
+func (o *imon) provisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		o.log.Info().Msg("provisioned orchestration: local status provisioned, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
-		if o.state.LocalExpect != statusIdle {
-			o.state.LocalExpect = statusIdle
-		}
+		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+		o.state.LocalExpect = instance.MonitorLocalExpectUnset
 		o.updateIfChange()
 		return true
 	}
 	return false
 }
 
-func (o *smon) leaders() []string {
+func (o *imon) leaders() []string {
 	l := make([]string, 0)
 	for node, instMon := range o.instMonitor {
 		if instMon.IsLeader {
@@ -76,7 +75,7 @@ func (o *smon) leaders() []string {
 
 // provisioningLeader returns one of all leaders.
 // Select the first in alphalexical order.
-func (o *smon) provisioningLeader() string {
+func (o *imon) provisioningLeader() string {
 	leaders := o.leaders()
 	switch len(leaders) {
 	case 0:
@@ -89,14 +88,14 @@ func (o *smon) provisioningLeader() string {
 	}
 }
 
-func (o *smon) isProvisioningLeader() bool {
+func (o *imon) isProvisioningLeader() bool {
 	if o.provisioningLeader() == o.localhost {
 		return true
 	}
 	return false
 }
 
-func (o *smon) hasLeaderProvisioned() bool {
+func (o *imon) hasLeaderProvisioned() bool {
 	leader := o.provisioningLeader()
 	if leaderInstanceStatus, ok := o.instStatus[leader]; !ok {
 		return false

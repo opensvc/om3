@@ -77,7 +77,7 @@ type (
 		nmonUpdated       time.Time
 		nodeStats         cluster.NodeStats
 		nodeStatus        cluster.NodeStatus
-		smonUpdated       map[string]time.Time
+		imonUpdated       map[string]time.Time
 		instCfgUpdated    map[string]time.Time
 		instStatusUpdated map[string]time.Time
 		gen               uint64

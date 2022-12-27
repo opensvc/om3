@@ -352,6 +352,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /object/switchTo:
+    post:
+      operationId: PostObjectSwitchTo
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: monitor
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postObjectSwitchTo'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /public/openapi:
     get:
       operationId: GetSwagger
@@ -703,6 +727,19 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/instanceStatus'
+    postObjectSwitchTo:
+      type: object
+      required:
+        - path
+        - destination
+      properties:
+        destination:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        path:
+          type: string
     postRelayMessage:
       type: object
       required:
@@ -1039,7 +1076,7 @@ components:
           type: string
           description: |
             filter expression: [kind][,label=value]*
-          example: ObjectAggUpdated,path=foo
+          example: ObjectStatusUpdated,path=foo
     queryLimit:
       name: limit
       in: query

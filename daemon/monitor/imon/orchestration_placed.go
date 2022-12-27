@@ -1,8 +1,8 @@
-package smon
+package imon
 
 import "opensvc.com/opensvc/core/topology"
 
-func (o *smon) orchestratePlaced() {
+func (o *imon) orchestratePlaced() {
 	if o.state.IsLeader {
 		o.orchestratePlacedStart()
 	} else {
@@ -10,8 +10,8 @@ func (o *smon) orchestratePlaced() {
 	}
 }
 
-func (o *smon) orchestratePlacedStart() {
-	switch o.svcAgg.Topology {
+func (o *imon) orchestratePlacedStart() {
+	switch o.objStatus.Topology {
 	case topology.Failover:
 		o.orchestrateFailoverPlacedStart()
 	case topology.Flex:
@@ -19,8 +19,8 @@ func (o *smon) orchestratePlacedStart() {
 	}
 }
 
-func (o *smon) orchestratePlacedStop() {
-	switch o.svcAgg.Topology {
+func (o *imon) orchestratePlacedStop() {
+	switch o.objStatus.Topology {
 	case topology.Failover:
 		o.orchestrateFailoverPlacedStop()
 	case topology.Flex:

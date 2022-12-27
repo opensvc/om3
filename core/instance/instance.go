@@ -24,26 +24,6 @@ type (
 		Status  *Status  `json:"status"`
 	}
 
-	// Monitor describes the in-daemon states of an instance
-	Monitor struct {
-		GlobalExpect        string                    `json:"global_expect"`
-		LocalExpect         string                    `json:"local_expect"`
-		Status              string                    `json:"status"`
-		StatusUpdated       time.Time                 `json:"status_updated"`
-		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
-		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
-		IsLeader            bool                      `json:"is_leader"`
-		IsHALeader          bool                      `json:"is_ha_leader"`
-		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
-	}
-
-	// MonitorRestart describes the restart states maintained by the daemon
-	// for an object instance.
-	MonitorRestart struct {
-		Retries int       `json:"retries"`
-		Updated time.Time `json:"updated"`
-	}
-
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
@@ -224,10 +204,10 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 	return flags
 }
 
-func (smon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
+func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
 	// Restart and retries
 	retries := 0
-	if restart, ok := smon.Restart[rid.Name]; ok {
+	if restart, ok := mon.Restart[rid.Name]; ok {
 		retries = restart.Retries
 	}
 	return r.Restart.FlagString(retries)
@@ -239,13 +219,28 @@ func (cfg Config) DeepCopy() *Config {
 	return &newCfg
 }
 
-func (smon Monitor) DeepCopy() *Monitor {
-	v := smon
+func (mon Monitor) DeepCopy() *Monitor {
+	v := mon
 	restart := make(map[string]MonitorRestart)
 	for s, val := range v.Restart {
 		restart[s] = val
 	}
 	v.Restart = restart
+	if mon.GlobalExpectOptions != nil {
+		switch mon.GlobalExpect {
+		case MonitorGlobalExpectPlacedAt:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			var placedAt MonitorGlobalExpectOptionsPlacedAt
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &placedAt)
+			v.GlobalExpectOptions = placedAt
+		// TODO add other cases for globalExpect values that requires GlobalExpectOptions
+		default:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &v.GlobalExpectOptions)
+		}
+	}
 	return &v
 }
 

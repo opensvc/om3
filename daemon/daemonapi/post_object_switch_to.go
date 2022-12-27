@@ -11,9 +11,9 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload     = PostObjectMonitor{}
+		payload     = PostObjectSwitchTo{}
 		instMonitor = instance.Monitor{}
 		p           path.T
 		err         error
@@ -27,9 +27,11 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, "invalid path: "+payload.Path)
 		return
 	}
-	instMonitor = instance.Monitor{}
-	if payload.GlobalExpect != nil {
-		instMonitor.GlobalExpect = instance.MonitorGlobalExpectValues[*payload.GlobalExpect]
+	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
+	options.Destination = append(options.Destination, payload.Destination...)
+	instMonitor = instance.Monitor{
+		GlobalExpect:        instance.MonitorGlobalExpectPlacedAt,
+		GlobalExpectOptions: options,
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetInstanceMonitor{

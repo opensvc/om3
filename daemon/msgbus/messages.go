@@ -45,9 +45,9 @@ var (
 		"NodeStatsUpdated":        NodeStatsUpdated{},
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 		"NodeStatusUpdated":       NodeStatusUpdated{},
-		"ObjectAggDeleted":        ObjectAggDeleted{},
-		"ObjectAggDone":           ObjectAggDone{},
-		"ObjectAggUpdated":        ObjectAggUpdated{},
+		"ObjectStatusDeleted":     ObjectStatusDeleted{},
+		"ObjectStatusDone":        ObjectStatusDone{},
+		"ObjectStatusUpdated":     ObjectStatusUpdated{},
 		"RemoteFileConfig":        RemoteFileConfig{},
 		"SetInstanceMonitor":      SetInstanceMonitor{},
 		"SetNodeMonitor":          SetNodeMonitor{},
@@ -74,14 +74,14 @@ type (
 	}
 
 	// CfgFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
-	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgDeleted{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a CfgDeleted{} event.
 	CfgFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
 	// CfgFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
-	// The smon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
 	CfgFileUpdated struct {
 		Path     path.T
 		Filename string
@@ -214,20 +214,20 @@ type (
 		Value cluster.NodeStatus
 	}
 
-	ObjectAggDeleted struct {
+	ObjectStatusDeleted struct {
 		Path path.T
 		Node string
 	}
 
-	ObjectAggDone struct {
+	ObjectStatusDone struct {
 		Path path.T
 	}
 
-	ObjectAggUpdated struct {
-		Path             path.T
-		Node             string
-		AggregatedStatus object.AggregatedStatus
-		SrcEv            any
+	ObjectStatusUpdated struct {
+		Path   path.T
+		Node   string
+		Status object.Status
+		SrcEv  any
 	}
 
 	RemoteFileConfig struct {
@@ -406,22 +406,22 @@ func (e NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
 }
 
-func (e ObjectAggDeleted) Kind() string {
-	return "ObjectAggDeleted"
+func (e ObjectStatusDeleted) Kind() string {
+	return "ObjectStatusDeleted"
 }
 
-func (e ObjectAggDone) Kind() string {
-	return "ObjectAggDone"
+func (e ObjectStatusDone) Kind() string {
+	return "ObjectStatusDone"
 }
 
-func (e ObjectAggUpdated) String() string {
-	d := e.AggregatedStatus
+func (e ObjectStatusUpdated) String() string {
+	d := e.Status
 	s := fmt.Sprintf("%s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
 	return s
 }
 
-func (e ObjectAggUpdated) Kind() string {
-	return "ObjectAggUpdated"
+func (e ObjectStatusUpdated) Kind() string {
+	return "ObjectStatusUpdated"
 }
 
 func (e RemoteFileConfig) Kind() string {

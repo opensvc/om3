@@ -6,8 +6,8 @@
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
 //
-// The instcfg also starts smon object (with instcfg context)
-// => this will end smon object
+// The instcfg also starts imon object (with instcfg context)
+// => this will end imon object
 //
 // The worker routine is terminated when config file is not any more present, or
 // when daemon discover context is done.
@@ -33,7 +33,7 @@ import (
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/monitor/smon"
+	"opensvc.com/opensvc/daemon/monitor/imon"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -120,12 +120,12 @@ func (o *T) startSubscriptions(ctx context.Context) {
 
 func (o *T) startSmon(ctx context.Context) (bool, error) {
 	if len(o.cfg.Scope) == 0 {
-		o.log.Info().Msgf("wait scopes to create associated smon")
+		o.log.Info().Msgf("wait scopes to create associated imon")
 		return false, nil
 	}
-	o.log.Info().Msgf("starting smon worker...")
-	if err := smon.Start(ctx, o.path, o.cfg.Scope); err != nil {
-		o.log.Error().Err(err).Msg("failure during start smon worker")
+	o.log.Info().Msgf("starting imon worker...")
+	if err := imon.Start(ctx, o.path, o.cfg.Scope); err != nil {
+		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
 	}
 	return true, nil
@@ -147,10 +147,10 @@ func (o *T) worker(parent context.Context) {
 	}
 	defer o.delete()
 
-	smonCtx, cancelSmon := context.WithCancel(parent)
+	imonCtx, cancelSmon := context.WithCancel(parent)
 	defer cancelSmon()
-	if hasSmon, err = o.startSmon(smonCtx); err != nil {
-		o.log.Error().Err(err).Msg("fail to start smon worker")
+	if hasSmon, err = o.startSmon(imonCtx); err != nil {
+		o.log.Error().Err(err).Msg("fail to start imon worker")
 		return
 	}
 	o.log.Debug().Msg("started")
@@ -167,9 +167,9 @@ func (o *T) worker(parent context.Context) {
 					return
 				}
 				if !hasSmon {
-					o.log.Info().Msgf("smon not yet started, try start")
-					if hasSmon, err = o.startSmon(smonCtx); err != nil {
-						o.log.Error().Err(err).Msgf("smon start error")
+					o.log.Info().Msgf("imon not yet started, try start")
+					if hasSmon, err = o.startSmon(imonCtx); err != nil {
+						o.log.Error().Err(err).Msgf("imon start error")
 						return
 					}
 				}

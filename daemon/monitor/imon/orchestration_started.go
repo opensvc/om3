@@ -1,9 +1,10 @@
-package smon
+package imon
 
 import (
 	"context"
 	"time"
 
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -11,27 +12,27 @@ var (
 	readyDuration = 5 * time.Second
 )
 
-func (o *smon) orchestrateStarted() {
+func (o *imon) orchestrateStarted() {
 	if o.isStarted() {
 		o.startedClearIfReached()
 		return
 	}
-	switch o.state.Status {
-	case statusIdle:
+	switch o.state.State {
+	case instance.MonitorStateIdle:
 		o.startedFromIdle()
-	case statusThawed:
+	case instance.MonitorStateThawed:
 		o.startedFromThawed()
-	case statusReady:
+	case instance.MonitorStateReady:
 		o.startedFromReady()
-	case statusStartFailed:
+	case instance.MonitorStateStartFailed:
 		o.startedFromStartFailed()
-	case statusStarting:
+	case instance.MonitorStateStarting:
 		o.startedFromAny()
-	case statusStopping:
+	case instance.MonitorStateStopping:
 		o.startedFromAny()
-	case statusThawing:
+	case instance.MonitorStateThawing:
 	default:
-		o.log.Error().Msgf("don't know how to orchestrate started from %s", o.state.Status)
+		o.log.Error().Msgf("don't know how to orchestrate started from %s", o.state.State)
 	}
 }
 
@@ -39,9 +40,9 @@ func (o *smon) orchestrateStarted() {
 //
 // frozen => try startedFromFrozen
 // else   => try startedFromThawed
-func (o *smon) startedFromIdle() {
+func (o *imon) startedFromIdle() {
 	if o.instStatus[o.localhost].IsFrozen() {
-		if o.state.GlobalExpect == globalExpectUnset {
+		if o.state.GlobalExpect == instance.MonitorGlobalExpectUnset {
 			return
 		}
 		o.doUnfreeze()
@@ -54,10 +55,10 @@ func (o *smon) startedFromIdle() {
 // startedFromThawed
 //
 // local started => unset global expect, set local expect started
-// svcagg.Avail Up => unset global expect, unset local expect
+// objectStatus.Avail Up => unset global expect, unset local expect
 // better candidate => no actions
 // else => state -> ready, start ready routine
-func (o *smon) startedFromThawed() {
+func (o *imon) startedFromThawed() {
 	if o.startedClearIfReached() {
 		return
 	}
@@ -68,7 +69,7 @@ func (o *smon) startedFromThawed() {
 		o.log.Debug().Msg("another node acting")
 		return
 	}
-	o.transitionTo(statusReady)
+	o.transitionTo(instance.MonitorStateReady)
 	o.createPendingWithDuration(readyDuration)
 	go func(ctx context.Context) {
 		select {
@@ -76,21 +77,21 @@ func (o *smon) startedFromThawed() {
 			if ctx.Err() == context.Canceled {
 				return
 			}
-			o.orchestrateAfterAction("", "")
+			o.orchestrateAfterAction(instance.MonitorStateReady, instance.MonitorStateReady)
 			return
 		}
 	}(o.pendingCtx)
 }
 
 // doUnfreeze idle -> thawing -> thawed or thawed failed
-func (o *smon) doUnfreeze() {
-	o.doTransitionAction(o.unfreeze, statusThawing, statusThawed, statusThawedFailed)
+func (o *imon) doUnfreeze() {
+	o.doTransitionAction(o.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
 }
 
-func (o *smon) startedFromReady() {
+func (o *imon) startedFromReady() {
 	if o.pendingCancel == nil {
 		o.loggerWithState().Error().Msg("startedFromReady without pending")
-		o.transitionTo(statusIdle)
+		o.transitionTo(instance.MonitorStateIdle)
 		return
 	}
 	if o.startedClearIfReached() {
@@ -98,7 +99,7 @@ func (o *smon) startedFromReady() {
 	}
 	if !o.state.IsHALeader {
 		o.loggerWithState().Info().Msg("leadership lost, leave ready state")
-		o.transitionTo(statusIdle)
+		o.transitionTo(instance.MonitorStateIdle)
 		o.clearPending()
 		return
 	}
@@ -106,63 +107,63 @@ func (o *smon) startedFromReady() {
 	case <-o.pendingCtx.Done():
 		defer o.clearPending()
 		if o.pendingCtx.Err() == context.Canceled {
-			o.transitionTo(statusIdle)
+			o.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		o.doAction(o.crmStart, statusStarting, statusIdle, statusStartFailed)
+		o.doAction(o.crmStart, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
 		return
 	default:
 		return
 	}
 }
 
-func (o *smon) startedFromAny() {
+func (o *imon) startedFromAny() {
 	if o.pendingCancel == nil {
 		o.startedClearIfReached()
 		return
 	}
 }
 
-func (o *smon) startedFromStartFailed() {
+func (o *imon) startedFromStartFailed() {
 	if o.isStarted() {
-		o.loggerWithState().Info().Msg("clear start failed (aggregated status is up)")
+		o.loggerWithState().Info().Msg("clear start failed (object is up)")
 		o.change = true
-		o.state.GlobalExpect = globalExpectUnset
-		o.state.Status = statusIdle
+		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+		o.state.State = instance.MonitorStateIdle
 		return
 	}
 }
 
-func (o *smon) startedClearIfReached() bool {
+func (o *imon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		if o.state.Status != statusIdle {
-			o.loggerWithState().Info().Msg("local status is started, unset status")
+		if o.state.State != instance.MonitorStateIdle {
+			o.loggerWithState().Info().Msg("instance is started, unset state")
 			o.change = true
-			o.state.Status = statusIdle
+			o.state.State = instance.MonitorStateIdle
 		}
-		if o.state.GlobalExpect != globalExpectUnset {
-			o.loggerWithState().Info().Msg("local status is started, unset global expect")
+		if o.state.GlobalExpect != instance.MonitorGlobalExpectUnset {
+			o.loggerWithState().Info().Msg("instance is started, unset global expect")
 			o.change = true
-			o.state.GlobalExpect = globalExpectUnset
+			o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
 		}
-		if o.state.LocalExpect != statusStarted {
-			o.loggerWithState().Info().Msg("local status is started, unset local expect")
+		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
+			o.loggerWithState().Info().Msg("instance is started, unset local expect")
 			o.change = true
-			o.state.LocalExpect = statusStarted
+			o.state.LocalExpect = instance.MonitorLocalExpectStarted
 		}
 		o.clearPending()
 		return true
 	}
 	if o.isStarted() {
-		if o.state.Status != statusIdle {
+		if o.state.State != instance.MonitorStateIdle {
 			o.loggerWithState().Info().Msg("object is started, unset status")
 			o.change = true
-			o.state.Status = statusIdle
+			o.state.State = instance.MonitorStateIdle
 		}
-		if o.state.GlobalExpect != globalExpectUnset {
+		if o.state.GlobalExpect != instance.MonitorGlobalExpectUnset {
 			o.loggerWithState().Info().Msg("object is started, unset global expect")
 			o.change = true
-			o.state.GlobalExpect = globalExpectUnset
+			o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
 		}
 		o.clearPending()
 		return true
@@ -170,7 +171,7 @@ func (o *smon) startedClearIfReached() bool {
 	return false
 }
 
-func (o *smon) isLocalStarted() bool {
+func (o *imon) isLocalStarted() bool {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
 	case status.NotApplicable, status.Undef:

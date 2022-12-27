@@ -1,19 +1,19 @@
-package smon
+package imon
 
 import (
 	"opensvc.com/opensvc/core/topology"
 )
 
-func (o *smon) orchestrateHA() {
-	if o.svcAgg.Orchestrate != "ha" {
+func (o *imon) orchestrateHA() {
+	if o.objStatus.Orchestrate != "ha" {
 		return
 	}
 	o.orchestrateHAStart()
 	o.orchestrateHAStop()
 }
 
-func (o *smon) orchestrateHAStop() {
-	if o.svcAgg.Topology != topology.Flex {
+func (o *imon) orchestrateHAStop() {
+	if o.objStatus.Topology != topology.Flex {
 		return
 	}
 	if v, _ := o.isExtraInstance(); !v {
@@ -22,7 +22,7 @@ func (o *smon) orchestrateHAStop() {
 	o.stop()
 }
 
-func (o *smon) orchestrateHAStart() {
+func (o *imon) orchestrateHAStart() {
 	if v, _ := o.isStartable(); !v {
 		return
 	}

@@ -114,7 +114,7 @@ func addFlagEval(flagSet *pflag.FlagSet, p *bool) {
 }
 
 func addFlagEventFilters(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "filter", []string{}, "request only events matching kind (InstanceStatusUpdated) or labels (path=svc1) or both (InstanceStatusUpdated,path=svc1,node=n1).")
+	flagSet.StringArrayVar(p, "filter", []string{}, "request only events matching kind (InstanceStatusUpdated) or labels (path=svc1) or both (InstanceStatusUpdated,path=svc1,node=n1).")
 }
 
 func addFlagForeground(flagSet *pflag.FlagSet, p *bool) {
@@ -254,7 +254,7 @@ func addFlagSubset(flagSet *pflag.FlagSet, p *string) {
 }
 
 func addFlagSwitchTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "The remote node to start or migrate the service to. Or the target number of instance to scale to.")
+	flagSet.StringVar(p, "to", "", "The remote node to start or migrate the service to.")
 }
 
 func addFlagTo(flagSet *pflag.FlagSet, p *string) {

@@ -1,15 +1,17 @@
-package smon
+package imon
 
 import (
 	"time"
+
+	"opensvc.com/opensvc/core/instance"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
-func (o *smon) convergeGlobalExpectFromRemote() {
+func (o *imon) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
 	for node, instMon := range o.instMonitor {
-		if instMon.GlobalExpect == "" {
+		if instMon.GlobalExpect == instance.MonitorGlobalExpectEmpty {
 			// converge "aborted" to unset via orchestration
 			continue
 		}
@@ -26,7 +28,8 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 		o.change = true
 		o.state.GlobalExpect = o.instMonitor[mostRecentNode].GlobalExpect
 		o.state.GlobalExpectUpdated = o.instMonitor[mostRecentNode].GlobalExpectUpdated
-		strVal := o.instMonitor[mostRecentNode].GlobalExpect
+		o.state.GlobalExpectOptions = o.instMonitor[mostRecentNode].GlobalExpectOptions
+		strVal := o.instMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
 		}
@@ -35,7 +38,7 @@ func (o *smon) convergeGlobalExpectFromRemote() {
 	}
 }
 
-func (o *smon) isConvergedGlobalExpect() bool {
+func (o *imon) isConvergedGlobalExpect() bool {
 	localUpdated := o.state.GlobalExpectUpdated
 	for s, v := range o.instMonitor {
 		if s == o.localhost {

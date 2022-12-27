@@ -1,4 +1,4 @@
-package smon
+package imon
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 )
 
-func (o *smon) freeze() error {
+func (o *imon) freeze() error {
 	p := filepath.Join(o.path.VarDir(), "frozen")
 	if file.Exists(p) {
 		return nil
@@ -38,7 +38,7 @@ func (o *smon) freeze() error {
 	return nil
 }
 
-func (o *smon) unfreeze() error {
+func (o *imon) unfreeze() error {
 	p := filepath.Join(o.path.VarDir(), "frozen")
 	if !file.Exists(p) {
 		return nil

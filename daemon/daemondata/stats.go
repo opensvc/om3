@@ -31,27 +31,27 @@ const (
 	idCommitPending
 	idDelInstanceConfig
 	idDelInstanceStatus
-	idDelServiceAgg
+	idDelObjectStatus
 	idDelNodeMonitor
 	idDelInstanceMonitor
 	idGetHbMessage
 	idGetInstanceStatus
 	idGetNodeData
+	idGetNodeMonitor
 	idGetNodeStatus
 	idGetNodesInfo
 	idGetServiceNames
-	idGetNodeMonitor
+	idGetStatus
 	idSetHeartbeatPing
 	idSetSubHb
-	idGetStatus
 	idSetInstanceConfig
 	idSetInstanceFrozen
+	idSetInstanceMonitor
 	idSetInstanceStatus
-	idSetServiceAgg
 	idSetNodeMonitor
 	idSetNodeOsPaths
 	idSetNodeStats
-	idSetInstanceMonitor
+	idSetObjectStatus
 	idStats
 )
 
@@ -63,9 +63,9 @@ var (
 		idCommitPending:      "commit-pending",
 		idDelInstanceConfig:  "del-instance-config",
 		idDelInstanceStatus:  "del-instance-status",
-		idDelServiceAgg:      "del-service-agg",
-		idDelNodeMonitor:     "del-nmon",
-		idDelInstanceMonitor: "del-smon",
+		idDelObjectStatus:    "del-object-status",
+		idDelNodeMonitor:     "del-node-monitor",
+		idDelInstanceMonitor: "del-intance-monitor",
 		idGetHbMessage:       "get-hb-message",
 		idGetInstanceStatus:  "get-instance-status",
 		idGetNodeData:        "get-node-data",
@@ -75,14 +75,14 @@ var (
 		idGetStatus:          "get-status",
 		idSetHeartbeatPing:   "set-heartbeat-ping",
 		idSetSubHb:           "set-sub-hb",
-		idSetServiceAgg:      "set-service-agg",
+		idSetObjectStatus:    "set-object-status",
 		idSetInstanceConfig:  "set-instance-config",
 		idSetInstanceFrozen:  "set-instance-frozen",
 		idSetInstanceStatus:  "set-instance-status",
-		idSetNodeMonitor:     "set-nmon",
+		idSetNodeMonitor:     "set-node-monitor",
 		idSetNodeOsPaths:     "set-node-os-paths",
 		idSetNodeStats:       "set-node-stats",
-		idSetInstanceMonitor: "set-smon",
+		idSetInstanceMonitor: "set-instance-monitor",
 		idStats:              "stats",
 	}
 )

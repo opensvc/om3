@@ -240,14 +240,21 @@ type PostObjectClear struct {
 
 // PostObjectMonitor defines model for postObjectMonitor.
 type PostObjectMonitor struct {
-	GlobalExpect *string `json:"global_expect,omitempty"`
-	Path         string  `json:"path"`
+	GlobalExpect        *string `json:"global_expect,omitempty"`
+	GlobalExpectOptions *string `json:"global_expect_options,omitempty"`
+	Path                string  `json:"path"`
 }
 
 // PostObjectStatus defines model for postObjectStatus.
 type PostObjectStatus struct {
 	Path   string         `json:"path"`
 	Status InstanceStatus `json:"status"`
+}
+
+// PostObjectSwitchTo defines model for postObjectSwitchTo.
+type PostObjectSwitchTo struct {
+	Destination []string `json:"destination"`
+	Path        string   `json:"path"`
 }
 
 // PostRelayMessage defines model for postRelayMessage.
@@ -538,6 +545,9 @@ type GetObjectSelectorParams struct {
 // PostObjectStatusJSONBody defines parameters for PostObjectStatus.
 type PostObjectStatusJSONBody = PostObjectStatus
 
+// PostObjectSwitchToJSONBody defines parameters for PostObjectSwitchTo.
+type PostObjectSwitchToJSONBody = PostObjectSwitchTo
+
 // GetRelayMessageParams defines parameters for GetRelayMessage.
 type GetRelayMessageParams struct {
 	// the nodename component of the slot id on the relay
@@ -570,6 +580,9 @@ type PostObjectMonitorJSONRequestBody = PostObjectMonitorJSONBody
 
 // PostObjectStatusJSONRequestBody defines body for PostObjectStatus for application/json ContentType.
 type PostObjectStatusJSONRequestBody = PostObjectStatusJSONBody
+
+// PostObjectSwitchToJSONRequestBody defines body for PostObjectSwitchTo for application/json ContentType.
+type PostObjectSwitchToJSONRequestBody = PostObjectSwitchToJSONBody
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessageJSONBody

@@ -118,6 +118,10 @@ func (t T) NewPostObjectStatus() *api.PostObjectStatus {
 	return api.NewPostObjectStatus(t)
 }
 
+func (t T) NewPostObjectSwitchTo() *api.PostObjectSwitchTo {
+	return api.NewPostObjectSwitchTo(t)
+}
+
 func (t T) NewPostRelayMessage() *api.PostRelayMessage {
 	return api.NewPostRelayMessage(t)
 }

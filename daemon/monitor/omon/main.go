@@ -1,11 +1,11 @@
-// Package svcagg is responsible for of object.AggregatedStatus
+// Package omon is responsible for of object.Status
 //
 // It provides the cluster data ["monitor", "services," <svcname>]
 //
 // worker ends when context is done or when no more service instance config exist
 //
-// worker watch on instance status updates to refresh object.AggregatedStatus
-package svcagg
+// worker watch on instance status updates to refresh object.Status
+package omon
 
 import (
 	"context"
@@ -26,8 +26,8 @@ import (
 )
 
 type (
-	svcAggStatus struct {
-		status object.AggregatedStatus
+	T struct {
+		status object.Status
 		path   path.T
 		id     string
 
@@ -37,7 +37,7 @@ type (
 		instStatus  map[string]instance.Status
 		instMonitor map[string]instance.Monitor
 
-		// srcEvent is the source event that triggered the svcAggStatus update
+		// srcEvent is the source event that triggered the object status update
 		srcEvent any
 
 		ctx context.Context
@@ -47,19 +47,19 @@ type (
 	}
 )
 
-// Start launch goroutine svcAggStatus worker for a service
-func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd chan<- any) error {
+// Start a goroutine responsible for the status of an object
+func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan<- any) error {
 	id := p.String()
-	o := &svcAggStatus{
-		status:       object.AggregatedStatus{Scope: cfg.Scope},
+	o := &T{
+		status:       object.Status{Scope: cfg.Scope},
 		path:         p,
 		id:           id,
-		discoverCmdC: svcAggDiscoverCmd,
+		discoverCmdC: discoverCmdC,
 		dataCmdC:     daemondata.BusFromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
 		instMonitor:  make(map[string]instance.Monitor),
 		ctx:          ctx,
-		log:          log.Logger.With().Str("func", "svcagg").Stringer("object", p).Logger(),
+		log:          log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
 	}
 	o.startSubscriptions()
 
@@ -70,10 +70,10 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, svcAggDiscoverCmd
 	return nil
 }
 
-func (o *svcAggStatus) startSubscriptions() {
+func (o *T) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	label := pubsub.Label{"path", o.id}
-	sub := bus.Sub(o.id + " svcagg")
+	sub := bus.Sub(o.id + " omon")
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceStatusUpdated{}, label)
 	sub.AddFilter(msgbus.CfgUpdated{}, label)
@@ -82,7 +82,7 @@ func (o *svcAggStatus) startSubscriptions() {
 	o.sub = sub
 }
 
-func (o *svcAggStatus) worker() {
+func (o *T) worker() {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
 
@@ -145,7 +145,7 @@ func (o *svcAggStatus) worker() {
 	}
 }
 
-func (o *svcAggStatus) updateStatus() {
+func (o *T) updateStatus() {
 	updateAvailOverall := func() {
 		statusAvailCount := make([]int, 128, 128)
 		statusOverallCount := make([]int, 128, 128)
@@ -257,17 +257,17 @@ func (o *svcAggStatus) updateStatus() {
 	o.update()
 }
 
-func (o *svcAggStatus) delete() {
-	if err := daemondata.DelServiceAgg(o.dataCmdC, o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelServiceAgg")
+func (o *T) delete() {
+	if err := daemondata.DelObjectStatus(o.dataCmdC, o.path); err != nil {
+		o.log.Error().Err(err).Msg("DelObjectStatus")
 	}
-	o.discoverCmdC <- msgbus.ObjectAggDone{Path: o.path}
+	o.discoverCmdC <- msgbus.ObjectStatusDone{Path: o.path}
 }
 
-func (o *svcAggStatus) update() {
+func (o *T) update() {
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
-	if err := daemondata.SetServiceAgg(o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
-		o.log.Error().Err(err).Msg("SetServiceAgg")
+	if err := daemondata.SetObjectStatus(o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
+		o.log.Error().Err(err).Msg("SetObjectStatus")
 	}
 }

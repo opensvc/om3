@@ -30,7 +30,7 @@ func newData(counterCmd chan<- interface{}) *data {
 				Compat: false,
 				Frozen: true,
 			},
-			Object: map[string]object.AggregatedStatus{},
+			Object: map[string]object.Status{},
 
 			Node: map[string]cluster.NodeData{
 				localNode: nodeData,
