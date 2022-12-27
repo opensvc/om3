@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/flock"
 
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/util/capabilities"
 	"opensvc.com/opensvc/util/xerrors"
 	"opensvc.com/opensvc/util/xsession"
 )
