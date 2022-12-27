@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -53,6 +54,7 @@ func SetupEnv(env Env) Env {
 	os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm)
 	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm)
 	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm)
+	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "node"), os.ModePerm)
 
 	return env
 }
