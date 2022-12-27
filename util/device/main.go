@@ -58,7 +58,7 @@ func RemoveHolders(head T) error {
 		return err
 	}
 	for _, dev := range holders {
-		if err := RemoveHolders(*dev); err != nil {
+		if err := RemoveHolders(dev); err != nil {
 			return err
 		}
 		if err := dev.Remove(); err != nil {
