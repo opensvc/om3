@@ -51,8 +51,8 @@ type (
 	}
 )
 
-var (
-	mandatorySubs = map[string]sub{
+func getMandatorySub() map[string]sub {
+	return map[string]sub{
 		"listenerRaw": {
 			new: func(t *T) subdaemon.Manager {
 				return lsnrrawux.New(
@@ -90,7 +90,7 @@ var (
 			},
 		},
 	}
-)
+}
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
@@ -135,7 +135,7 @@ func (t *T) MainStart(ctx context.Context) error {
 		t.loop(ctx)
 	}()
 	t.httpHandler = routehttp.New(ctx, false)
-	for subName, sub := range mandatorySubs {
+	for subName, sub := range getMandatorySub() {
 		sub.subActions = sub.new(t)
 		if err := t.Register(sub.subActions); err != nil {
 			t.log.Err(err).Msgf("%s register", subName)
