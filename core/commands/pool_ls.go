@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/clientcontext"
 	"opensvc.com/opensvc/core/object"
@@ -57,5 +58,5 @@ func (t *CmdPoolLs) extractDaemon() ([]string, error) {
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		return []string{}, err
 	}
-	return []string{}, errors.Errorf("TODO", c)
+	return []string{}, errors.Errorf("TODO %s", c)
 }
