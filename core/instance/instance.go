@@ -227,8 +227,19 @@ func (mon Monitor) DeepCopy() *Monitor {
 	}
 	v.Restart = restart
 	if mon.GlobalExpectOptions != nil {
-		b, _ := json.Marshal(mon.GlobalExpectOptions)
-		_ = json.Unmarshal(b, &v.GlobalExpectOptions)
+		switch mon.GlobalExpect {
+		case MonitorGlobalExpectPlacedAt:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			var placedAt MonitorGlobalExpectOptionsPlacedAt
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &placedAt)
+			v.GlobalExpectOptions = placedAt
+		// TODO add other cases for globalExpect values that requires GlobalExpectOptions
+		default:
+			b, _ := json.Marshal(mon.GlobalExpectOptions)
+			// TODO Don't ignore following error
+			_ = json.Unmarshal(b, &v.GlobalExpectOptions)
+		}
 	}
 	return &v
 }
