@@ -102,7 +102,7 @@ func (t T) configure(force forceMode) error {
 		return errors.Wrap(err, "system configuration")
 	}
 	if len(slaves) < 1 {
-		return errors.Errorf("system configuration: no paths appeared for disk %s")
+		return errors.Errorf("system configuration: no slaves appeared for disk %s", exposedDevice.Path())
 	}
 	return nil
 }
