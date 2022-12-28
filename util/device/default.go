@@ -6,7 +6,7 @@ import "errors"
 
 var ErrNotApplicable = errors.New("not applicable")
 
-func (t T) Holders() ([]*T, error) {
+func (t T) Holders() (L, error) {
 	return nil, ErrNotApplicable
 }
 
