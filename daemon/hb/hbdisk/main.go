@@ -48,6 +48,8 @@ type (
 		Slot int
 	}
 	device struct {
+		mode string
+		path string
 		file *os.File
 	}
 )
@@ -78,6 +80,57 @@ func init() {
 	hbcfg.Register("disk", New)
 }
 
+func (d *device) open() error {
+	if d.path == "" {
+		return errors.Errorf("the 'dev' keyword is not set")
+	}
+	newDev, err := filepath.EvalSymlinks(d.path)
+	if err != nil {
+		return errors.Wrapf(err, "%s eval symlink", d.path)
+	}
+
+	isBlockDevice, err := file.IsBlockDevice(newDev)
+	if os.IsNotExist(err) {
+		return errors.Errorf("%s does not exist", d.path)
+	} else if err != nil {
+		return err
+	}
+
+	isCharDevice, err := file.IsCharDevice(newDev)
+	if os.IsNotExist(err) {
+		return errors.Errorf("%s does not exist", d.path)
+	} else if err != nil {
+		return err
+	}
+
+	if runtime.GOOS == "linux" {
+		if !isBlockDevice {
+			return errors.Errorf("%s must be a block device", d.path)
+		}
+		if strings.HasPrefix("/dev/dm-", d.path) {
+			return errors.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", d.path)
+		}
+		if strings.HasPrefix("/dev/sd", d.path) {
+			return errors.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", d.path)
+		}
+		d.mode = "directio"
+		if d.file, err = directio.OpenFile(d.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
+			return errors.Errorf("%s must be a block device", d.path)
+		}
+	} else {
+		if isCharDevice {
+			return errors.Errorf("using char device %s", d.path)
+		} else {
+			return errors.Errorf("%s must be a block device", d.path)
+		}
+		d.mode = "raw"
+		if d.file, err = os.OpenFile(d.path, os.O_RDWR, 0755); err != nil {
+			return errors.Errorf("%s must be a block device", d.path)
+		}
+	}
+	return nil
+}
+
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
 	log := daemonlogctx.Logger(ctx).With().Str("type", t.Name()).Logger()
@@ -88,72 +141,13 @@ func (t *T) Configure(ctx context.Context) {
 		timeout = interval*2 + 1*time.Second
 		log.Warn().Msgf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
-	dev := t.GetString("dev")
-	if dev == "" {
-		log.Error().Msgf("no %s.dev is not set in node.conf", t.Name())
-		return
-	}
-	newDev, err := filepath.EvalSymlinks(dev)
-	if err != nil {
-		log.Error().Err(err).Msgf("%s eval symlink", dev)
-		return
-	}
-
-	isBlockDevice, err := file.IsBlockDevice(newDev)
-	if os.IsNotExist(err) {
-		log.Error().Msgf("%s does not exist", dev)
-		return
-	} else if err != nil {
-		log.Error().Err(err).Msgf("configure")
-	}
-
-	isCharDevice, err := file.IsCharDevice(newDev)
-	if os.IsNotExist(err) {
-		log.Error().Msgf("%s does not exist", dev)
-		return
-	} else if err != nil {
-		log.Error().Err(err).Msgf("configure")
-	}
-
-	var devFile *os.File
-	if runtime.GOOS == "linux" {
-		if !isBlockDevice {
-			log.Error().Msgf("%s must be a block device", dev)
-			return
-		}
-		if strings.HasPrefix("/dev/dm-", dev) {
-			log.Error().Msgf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", dev)
-			return
-		}
-		if strings.HasPrefix("/dev/sd", dev) {
-			log.Error().Msgf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", dev)
-			return
-		}
-		log.Info().Msgf("using directio on block device %s", dev)
-		if devFile, err = directio.OpenFile(dev, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
-			log.Error().Msgf("%s must be a block device", dev)
-			return
-		}
-	} else {
-		if isCharDevice {
-			log.Info().Msgf("using char device %s", dev)
-			return
-		} else {
-			log.Error().Msgf("%s must be a block device", dev)
-			return
-		}
-		log.Info().Msgf("using char device %s", dev)
-		if devFile, err = os.OpenFile(dev, os.O_RDWR, 0755); err != nil {
-			log.Error().Msgf("%s must be a block device", dev)
-			return
-		}
-	}
 
 	nodes := t.GetStrings("nodes")
 	if len(nodes) == 0 {
 		k := key.T{Section: "cluster", Option: "nodes"}
 		nodes = t.Config().GetStrings(k)
 	}
+	dev := t.GetString("dev")
 	oNodes := hostname.OtherNodes(nodes)
 	log.Debug().Msgf("configure %s, timeout=%s interval=%s dev=%s nodes=%s onodes=%s", t.Name(), timeout, interval, dev, nodes, oNodes)
 	t.SetNodes(oNodes)
@@ -161,19 +155,9 @@ func (t *T) Configure(ctx context.Context) {
 	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s intf: %s interval: %s", dev, nodes, timeout, interval)
 	t.SetSignature(signature)
 	name := t.Name()
-	baba := base{
-		log: log,
-		device: device{
-			file: devFile,
-		},
-	}
-	if err := baba.LoadPeerConfig(t.Nodes()); err != nil {
-		log.Error().Err(err).Msgf("configure: load peer configs")
-		return
-	}
-	tx := newTx(ctx, name, oNodes, baba, timeout, interval)
+	tx := newTx(ctx, name, oNodes, dev, timeout, interval)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, oNodes, baba, timeout, interval)
+	rx := newRx(ctx, name, oNodes, dev, timeout, interval)
 	t.SetRx(rx)
 }
 

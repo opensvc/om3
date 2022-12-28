@@ -56,6 +56,12 @@ func (t *rx) Stop() error {
 
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
+	if err := t.base.device.open(); err != nil {
+		return err
+	}
+	if err := t.base.LoadPeerConfig(t.nodes); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
 	t.msgC = msgC
@@ -148,7 +154,7 @@ func (t *rx) recv(nodename string) {
 	t.last = c.Updated
 }
 
-func newRx(ctx context.Context, name string, nodes []string, baba base, timeout, interval time.Duration) *rx {
+func newRx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration) *rx {
 	id := name + ".rx"
 	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &rx{
@@ -158,6 +164,11 @@ func newRx(ctx context.Context, name string, nodes []string, baba base, timeout,
 		timeout:  timeout,
 		interval: interval,
 		log:      log,
-		base:     baba,
+		base: base{
+			log: log,
+			device: device{
+				path: dev,
+			},
+		},
 	}
 }
