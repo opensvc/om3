@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"opensvc.com/opensvc/core/resource"
 	"opensvc.com/opensvc/util/pg"
 )
 
@@ -37,7 +38,7 @@ func TestT_Info(t *testing.T) {
 
 		info, err := app.Info(ctx)
 		assert.Nil(t, err)
-		expected := []infoEntry{
+		expected := []resource.InfoKey{
 			{"script", "scriptPath"},
 			{"start", "startCmd"},
 			{"stop", "stopCmd"},
@@ -50,13 +51,13 @@ func TestT_Info(t *testing.T) {
 			{"info_timeout", "2.001s"},
 		}
 		for _, entry := range expected {
-			t.Run(entry[0]+" "+entry[1], func(t *testing.T) {
+			t.Run(entry.Key+" "+entry.String(), func(t *testing.T) {
 				assert.Contains(t, info, entry)
 			})
 		}
 		t.Run("has info from info output", func(t *testing.T) {
-			assert.Contains(t, info, infoEntry{"foo", "Foo"})
-			assert.Contains(t, info, infoEntry{"fooBar", "FOOBAR"})
+			assert.Contains(t, info, resource.InfoKey{"foo", "Foo"})
+			assert.Contains(t, info, resource.InfoKey{"fooBar", "FOOBAR"})
 		})
 	})
 
@@ -66,7 +67,7 @@ func TestT_Info(t *testing.T) {
 		app.SetPG(&pg.Config{})
 		info, err := app.Info(ctx)
 		assert.Nil(t, err)
-		expected := []infoEntry{
+		expected := []resource.InfoKey{
 			{"script", ""},
 			{"start", ""},
 			{"stop", ""},
@@ -79,7 +80,7 @@ func TestT_Info(t *testing.T) {
 			{"info_timeout", ""},
 		}
 		for _, entry := range expected {
-			t.Run("default value empty "+entry[0], func(t *testing.T) {
+			t.Run("default value empty "+entry.Key, func(t *testing.T) {
 				assert.Contains(t, info, entry)
 			})
 		}

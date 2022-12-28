@@ -41,7 +41,7 @@ func sendError(w http.ResponseWriter, code int, message string) {
 }
 
 func sendErrorf(w http.ResponseWriter, code int, format string, a ...any) {
-	msg := fmt.Sprintf(format, a)
+	msg := fmt.Sprintf(format, a...)
 	err := Error{
 		Code:    int32(code),
 		Message: msg,

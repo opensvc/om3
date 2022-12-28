@@ -1,3 +1,5 @@
+//go:build linux
+
 package networkroutedbridge
 
 import "opensvc.com/opensvc/util/capabilities"

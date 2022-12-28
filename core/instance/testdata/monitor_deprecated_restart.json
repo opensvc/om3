@@ -1,0 +1,12 @@
+{
+  "global_expect": null,
+  "global_expect_updated": "2020-03-04T16:33:23.16700383+01:00",
+  "local_expect": "started",
+  "local_expect_updated": "2020-03-04T16:33:23.16700383+01:00",
+  "placement": "",
+  "restart": {
+    "fs#2": 1
+  },
+  "status": "idle",
+  "status_updated": 1619529551.5369837
+}

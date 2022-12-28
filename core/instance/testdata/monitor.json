@@ -1,0 +1,17 @@
+{
+  "global_expect": "placed@",
+  "global_expect_updated": "0001-01-01T00:00:00Z",
+  "global_expect_options": {"destination":  ["node1", "node2"]},
+  "is_leader": true,
+  "is_ha_leader": false,
+  "local_expect": "unset",
+  "local_expect_updated": "0001-01-01T00:00:00Z",
+  "state": "idle",
+  "state_updated": "0001-01-01T00:00:00Z",
+  "restart": {
+    "fs#2": {
+      "retries": 1,
+      "updated": "2020-03-04T16:33:23.16700383+01:00"
+    }
+  }
+}

@@ -12,6 +12,7 @@ import (
 	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
 	"opensvc.com/opensvc/core/array"
 	"opensvc.com/opensvc/core/driver"
 	"opensvc.com/opensvc/core/object"
@@ -1090,7 +1091,7 @@ func (t Array) DiskPaths(disk Disk) (san.Paths, error) {
 	for _, targetextent := range disk.ISCSI.TargetExtents {
 		target, ok := targets.GetByID(targetextent.TargetId)
 		if !ok {
-			return paths, errors.Errorf("target id %s not found", targetextent.TargetId)
+			return paths, errors.Errorf("target id %d not found", targetextent.TargetId)
 		}
 		pathTarget := san.Target{
 			Name: target.Name,
@@ -1099,7 +1100,7 @@ func (t Array) DiskPaths(disk Disk) (san.Paths, error) {
 		for _, group := range target.Groups {
 			initiator, ok := initiators.GetByID(group.InitiatorId)
 			if !ok {
-				return paths, errors.Errorf("initiator id %s not found", group.InitiatorId)
+				return paths, errors.Errorf("initiator id %d not found", group.InitiatorId)
 			}
 			for _, iqn := range initiator.Initiators {
 				pathInitiator := san.Initiator{

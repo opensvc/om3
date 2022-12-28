@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
+
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/devicedriver"
 	"opensvc.com/opensvc/util/xerrors"
@@ -126,7 +127,7 @@ func (t T) Host() (string, error) {
 	}
 	hbtl := strings.Split(filepath.Base(devicePath), ":")
 	if len(hbtl) == 4 {
-		return "", errors.Errorf("dev %s host device path unexpected format: %s", devicePath)
+		return "", errors.Errorf("dev %s host device path unexpected format: %v", devicePath, hbtl)
 	}
 	return "host" + hbtl[0], nil
 }

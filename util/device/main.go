@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog"
+
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/xerrors"
 )

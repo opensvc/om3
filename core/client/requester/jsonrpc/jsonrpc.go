@@ -157,12 +157,13 @@ func New(url string) (*T, error) {
 	var inet bool
 	if url == "" {
 		url = defaultUDSPath()
-		inet = false
 	} else {
-		inet = strings.Contains(url, ":")
 		url = strings.Replace(url, UDSPrefix, "/", 1)
 		url = strings.Replace(url, InetPrefix, "", 1)
-		if !strings.Contains(url, ":") {
+		if !strings.HasPrefix(url, "/") {
+			inet = true
+		}
+		if inet && !strings.Contains(url, ":") {
 			url += fmt.Sprintf(":%d", daemonenv.RawPort)
 		}
 	}

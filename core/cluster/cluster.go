@@ -159,6 +159,9 @@ func (s *Status) GetObjectStatus(p path.T) object.Digest {
 		if inst.Config != nil {
 			instanceStates.Config = *inst.Config
 		}
+		if inst.Monitor != nil {
+			instanceStates.Monitor = *inst.Monitor
+		}
 		data.Instances[nodename] = instanceStates
 		for _, relative := range instanceStates.Status.Parents {
 			ps := relative.String()
