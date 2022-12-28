@@ -58,5 +58,5 @@ func (t *CmdPoolLs) extractDaemon() ([]string, error) {
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		return []string{}, err
 	}
-	return []string{}, errors.Errorf("TODO %s", c)
+	return []string{}, errors.Errorf("TODO %v", c)
 }
