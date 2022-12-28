@@ -51,7 +51,16 @@ type (
 func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan<- any) error {
 	id := p.String()
 	o := &T{
-		status:       object.Status{Scope: cfg.Scope},
+		status: object.Status{
+			Scope:           cfg.Scope,
+			FlexTarget:      cfg.FlexTarget,
+			FlexMin:         cfg.FlexMin,
+			FlexMax:         cfg.FlexMax,
+			Orchestrate:     cfg.Orchestrate,
+			PlacementPolicy: cfg.PlacementPolicy,
+			Priority:        cfg.Priority,
+			Topology:        cfg.Topology,
+		},
 		path:         p,
 		id:           id,
 		discoverCmdC: discoverCmdC,
