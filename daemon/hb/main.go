@@ -98,11 +98,7 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	go t.msgFromRx(ctx)
 
-	err = t.janitorHb(ctx)
-	if err != nil {
-		return err
-	}
-
+	t.startJanitorHb(ctx)
 	return nil
 }
 
@@ -383,13 +379,17 @@ func (t *T) startSubscriptions(ctx context.Context) {
 	t.sub.Start()
 }
 
-func (t *T) janitorHb(ctx context.Context) error {
+func (t *T) startJanitorHb(ctx context.Context) {
 	t.startSubscriptions(ctx)
-	errC := make(chan error)
+	started := make(chan bool)
 
-	go func(errC chan<- error) {
+	if err := t.rescanHb(ctx); err != nil {
+		t.log.Error().Err(err).Msg("initial rescan on janitor hb start")
+	}
+
+	go func() {
+		started <- true
 		defer t.sub.Stop()
-		errC <- t.rescanHb(ctx)
 		for {
 			select {
 			case <-ctx.Done():
@@ -420,8 +420,8 @@ func (t *T) janitorHb(ctx context.Context) error {
 				}
 			}
 		}
-	}(errC)
-	return <-errC
+	}()
+	<-started
 }
 
 func (t *T) daemonCtlStart(ctx context.Context, hbId string, action string) {
