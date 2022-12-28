@@ -8,55 +8,79 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/provisioned"
+	"opensvc.com/opensvc/core/resource"
+	"opensvc.com/opensvc/core/resourceid"
+	"opensvc.com/opensvc/core/status"
 )
 
-func TestInstanceStatusUnmarshalJSON(t *testing.T) {
-	var instanceStatus Status
-	path := filepath.Join("test-fixtures", "instanceStatus.json")
+func Test_Status_Unmarshal(t *testing.T) {
+	var IStatus Status
+	path := filepath.Join("testdata", "status.json")
 	b, err := os.ReadFile(path)
 	require.Nil(t, err)
-	err = json.Unmarshal(b, &instanceStatus)
-	require.Nil(t, err)
-}
 
-func TestInstanceStatusDeprecatedMonitorRestartUnmarshalJSON(t *testing.T) {
-	var instanceStatus Status
-	path := filepath.Join("test-fixtures", "instanceStatusDeprecatedMonitorRestart.json")
-	b, err := os.ReadFile(path)
+	err = json.Unmarshal(b, &IStatus)
 	require.Nil(t, err)
-	err = json.Unmarshal(b, &instanceStatus)
-	require.Nil(t, err)
-}
 
-func TestMonitor(t *testing.T) {
-	t.Run("DeepCopy", func(t *testing.T) {
-		mon1 := Monitor{
-			StatusUpdated:       time.Now(),
-			GlobalExpectUpdated: time.Now(),
-			Restart: map[string]MonitorRestart{
-				"a": {1, time.Now()},
-				"b": {8, time.Now()},
+	expected := Status{
+		App:         "default",
+		Avail:       status.Down,
+		Overall:     status.Down,
+		Csum:        "01e51d8e37b378e2281ccf72d09e5e1b",
+		Kind:        kind.Svc,
+		Provisioned: provisioned.Mixed,
+		Updated:     time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.Local),
+		Resources: []resource.ExposedStatus{
+			{
+				ResourceID: (*resourceid.T)(nil),
+				Rid:        "volume#1",
+				Label:      "data2",
+				Log: []*resource.StatusLogEntry{
+					{
+						Level:   "info",
+						Message: "vol/data2 avail down",
+					},
+				},
+				Status: status.Down,
+				Type:   "volume",
+				Provisioned: resource.ProvisionStatus{
+					Mtime: time.Date(2022, time.November, 29, 18, 10, 46, 524120074, time.Local),
+					State: provisioned.True,
+				},
 			},
-		}
-		mon2 := *mon1.DeepCopy()
-
-		mon2.StatusUpdated = time.Now()
-		require.True(t, mon2.StatusUpdated.After(mon1.StatusUpdated))
-
-		mon2.GlobalExpectUpdated = time.Now()
-		require.True(t, mon2.GlobalExpectUpdated.After(mon1.GlobalExpectUpdated))
-
-		if e, ok := mon2.Restart["a"]; ok {
-			e.Updated = time.Now()
-			e.Retries++
-			mon2.Restart["a"] = e
-		}
-		require.Equal(t, 1, mon1.Restart["a"].Retries, "initial value changed!")
-		require.Equal(t, 8, mon1.Restart["b"].Retries, "initial value changed!")
-
-		require.Equal(t, 2, mon2.Restart["a"].Retries)
-		require.Equal(t, 8, mon2.Restart["b"].Retries)
-
-		require.True(t, mon2.Restart["a"].Updated.After(mon1.Restart["a"].Updated))
-	})
+			{
+				ResourceID: (*resourceid.T)(nil),
+				Rid:        "fs#1",
+				Label:      "flag /dev/shm/opensvc/svc/svc2/fs#1.flag",
+				Status:     status.Down,
+				Type:       "fs.flag",
+				Provisioned: resource.ProvisionStatus{
+					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 853702101, time.Local),
+					State: provisioned.False,
+				},
+			},
+			{
+				ResourceID: (*resourceid.T)(nil),
+				Rid:        "app#1",
+				Label:      "forking app.forking",
+				Log: []*resource.StatusLogEntry{
+					{
+						Level:   "info",
+						Message: "not evaluated (fs#1 is down)",
+					},
+				},
+				Status: 1,
+				Type:   "app.forking",
+				Provisioned: resource.ProvisionStatus{
+					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 849702075, time.Local),
+					State: provisioned.False,
+				},
+				Restart: 2,
+			},
+		},
+	}
+	require.Equal(t, expected, IStatus)
 }

@@ -1,0 +1,55 @@
+{
+  "app": "default",
+  "avail": "down",
+  "overall": "down",
+  "csum": "01e51d8e37b378e2281ccf72d09e5e1b",
+  "frozen": "0001-01-01T00:00:00Z",
+  "kind": "svc",
+  "provisioned": "mixed",
+  "updated": "2022-12-28T11:21:45.800780633+01:00",
+  "resources": [
+    {
+      "rid": "volume#1",
+      "label": "data2",
+      "log": [
+        {
+          "level": "info",
+          "message": "vol/data2 avail down"
+        }
+      ],
+      "status": "down",
+      "type": "volume",
+      "provisioned": {
+        "mtime": "2022-11-29T18:10:46.524120074+01:00",
+        "state": "true"
+      }
+    },
+    {
+      "rid": "fs#1",
+      "label": "flag /dev/shm/opensvc/svc/svc2/fs#1.flag",
+      "status": "down",
+      "type": "fs.flag",
+      "provisioned": {
+        "mtime": "2022-11-28T21:46:25.853702101+01:00",
+        "state": "false"
+      }
+    },
+    {
+      "rid": "app#1",
+      "label": "forking app.forking",
+      "log": [
+        {
+          "level": "info",
+          "message": "not evaluated (fs#1 is down)"
+        }
+      ],
+      "status": "n/a",
+      "type": "app.forking",
+      "provisioned": {
+        "mtime": "2022-11-28T21:46:25.849702075+01:00",
+        "state": "false"
+      },
+      "restart": 2
+    }
+  ]
+}
