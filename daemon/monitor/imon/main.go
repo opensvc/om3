@@ -84,6 +84,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		GlobalExpect: instance.MonitorGlobalExpectUnset,
 		State:        instance.MonitorStateIdle,
 		Restart:      make(map[string]instance.MonitorRestart),
+		StateUpdated: time.Now(),
 	}
 	state := previousState
 
