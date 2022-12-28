@@ -13,13 +13,13 @@ import (
 	"opensvc.com/opensvc/testhelper"
 )
 
-func TestInstanceStates_Render(t *testing.T) {
+func Test_Instance_States_Render(t *testing.T) {
 	testhelper.Setup(t)
 	cases := []string{"instanceStatus"}
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
 
-			b, err := os.ReadFile(filepath.Join("test-fixtures", name+".json"))
+			b, err := os.ReadFile(filepath.Join("testdata", name+".json"))
 			require.Nil(t, err)
 
 			var instanceStatus instance.Status
@@ -27,10 +27,12 @@ func TestInstanceStates_Render(t *testing.T) {
 			require.Nil(t, err)
 			var timeZero time.Time
 			instanceState := instance.States{
-				Node:   instance.Node{Name: "node1", Frozen: timeZero},
-				Status: instanceStatus,
+				Node:    instance.Node{Name: "node1", Frozen: timeZero},
+				Status:  instanceStatus,
+				Monitor: instance.Monitor{State: instance.MonitorStateIdle},
+				Config:  instance.Config{Priority: 50},
 			}
-			goldenFile := filepath.Join("test-fixtures", name+".render")
+			goldenFile := filepath.Join("testdata", name+".render")
 			s := instanceState.Render()
 
 			if *update {
@@ -42,7 +44,7 @@ func TestInstanceStates_Render(t *testing.T) {
 			expected, err := os.ReadFile(goldenFile)
 			require.Nil(t, err)
 
-			require.Equal(t, string(expected), s)
+			require.Equalf(t, string(expected), s, "found: \n%s", s)
 		})
 	}
 }

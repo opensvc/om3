@@ -20,18 +20,18 @@
   "optional": "warn",
   "overall": "warn",
   "placement": "nodes order",
-  "provisioned": true,
-  "resources": {
-    "fs#1": {
+  "provisioned": "true",
+  "resources": [
+    {"rid": "fs#1",
       "label": "fs.flag",
       "provisioned": {
         "mtime": "2020-03-04T16:33:23.16700383+01:00",
-        "state": true
+        "state": "true"
       },
       "status": "up",
       "type": "fs.flag"
     },
-    "fs#2": {
+    { "rid": "fs#2",
       "label": "fs.flag",
       "log": [
         "info: info msg",
@@ -40,12 +40,13 @@
       ],
       "provisioned": {
         "mtime": "2020-03-04T16:33:23.16700383+01:00",
-        "state": true
+        "state": "true"
       },
       "status": "up",
       "type": "fs.flag"
     },
-    "sync#i0": {
+    {
+    "rid": "sync#i0",
       "label": "rsync svc config to nodes",
       "log": [
         "warn: need update"
@@ -54,7 +55,7 @@
       "status": "down",
       "type": "sync.rsync"
     }
-  },
+  ],
   "status_group": {
     "DEFAULT": "n/a",
     "app": "n/a",
