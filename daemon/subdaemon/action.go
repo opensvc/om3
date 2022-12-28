@@ -153,7 +153,6 @@ func (t *T) do(what string) error {
 	resChan := make(chan error)
 	t.controlChan <- controlAction{what, resChan}
 	if err := <-resChan; err != nil {
-		t.log.Error().Err(err).Msgf("%s", what)
 		return err
 	}
 	return nil
