@@ -53,6 +53,12 @@ func (t *tx) Stop() error {
 
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
+	if err := t.base.device.open(); err != nil {
+		return err
+	}
+	if err := t.base.LoadPeerConfig(t.nodes); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cancel = cancel
 	t.cmdC = cmdC
@@ -115,7 +121,7 @@ func (t *tx) send(b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, baba base, timeout, interval time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes []string, dev string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
 	log := daemonlogctx.Logger(ctx).With().Str("id", id).Logger()
 	return &tx{
@@ -125,6 +131,11 @@ func newTx(ctx context.Context, name string, nodes []string, baba base, timeout,
 		timeout:  timeout,
 		interval: interval,
 		log:      log,
-		base:     baba,
+		base: base{
+			log: log,
+			device: device{
+				path: dev,
+			},
+		},
 	}
 }

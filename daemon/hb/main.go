@@ -26,6 +26,7 @@ import (
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/xerrors"
 )
 
 type (
@@ -134,14 +135,14 @@ func (t *T) stopHb(hb hbtype.IdStopper) error {
 }
 
 func (t *T) startHb(hb hbcfg.Confer) error {
+	var errs error
 	if err := t.startHbRx(hb); err != nil {
-		return err
+		errs = xerrors.Append(errs, err)
 	}
-
 	if err := t.startHbTx(hb); err != nil {
-		return err
+		errs = xerrors.Append(errs, err)
 	}
-	return nil
+	return errs
 }
 
 func (t *T) startHbTx(hb hbcfg.Confer) error {
@@ -209,7 +210,7 @@ func (t *T) stopHbRid(rid string) error {
 // 3- start the configuration changed stopped heartbeats
 // 4- start the new configuration heartbeats
 func (t *T) rescanHb(ctx context.Context) error {
-	errs := make([]string, 0)
+	var errs error
 	ridHb, err := t.getHbConfigured(ctx)
 	if err != nil {
 		return err
@@ -227,7 +228,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 		if err := t.stopHbRid(rid); err == nil {
 			delete(t.ridSignature, rid)
 		} else {
-			errs = append(errs, err.Error())
+			errs = xerrors.Append(errs, err)
 		}
 	}
 	// Stop first to release connexion holders
@@ -237,7 +238,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 			if sig != newSig {
 				t.log.Info().Msgf("heartbeat config changed %s => stopping", rid)
 				if err := t.stopHbRid(rid); err != nil {
-					errs = append(errs, err.Error())
+					errs = xerrors.Append(errs, err)
 					continue
 				}
 				stoppedRids[rid] = newSig
@@ -247,7 +248,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 	for rid, newSig := range stoppedRids {
 		t.log.Info().Msgf("heartbeat config changed %s => starting (from stoppped)", rid)
 		if err := t.startHb(ridHb[rid]); err != nil {
-			errs = append(errs, err.Error())
+			errs = xerrors.Append(errs, err)
 		}
 		t.ridSignature[rid] = newSig
 	}
@@ -255,16 +256,13 @@ func (t *T) rescanHb(ctx context.Context) error {
 		if _, ok := t.ridSignature[rid]; !ok {
 			t.log.Info().Msgf("heartbeat config new %s => starting", rid)
 			if err := t.startHb(ridHb[rid]); err != nil {
-				errs = append(errs, err.Error())
+				errs = xerrors.Append(errs, err)
 				continue
 			}
 		}
 		t.ridSignature[rid] = newSig
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf("rescanHb errors: %s", errs)
-	}
-	return nil
+	return errs
 }
 
 // msgToTx starts a msg multiplexer data messages to hb tx drivers
@@ -401,9 +399,7 @@ func (t *T) startJanitorHb(ctx context.Context) {
 						continue
 					}
 					t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
-					if err := t.rescanHb(ctx); err != nil {
-						t.log.Error().Err(err).Msg("rescan after cluster config changed")
-					}
+					_ = t.rescanHb(ctx)
 					t.log.Info().Msg("rescan heartbeat configurations done")
 				case msgbus.DaemonCtl:
 					hbId := msg.Component
