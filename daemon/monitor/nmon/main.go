@@ -1,24 +1,29 @@
-// Package nmon is responsible for of the local node monitor state
+// nmon is responsible of the local node states
 //
-//	It provides the cluster data:
-//		["cluster", "node", <localhost>, "services", "status", <instance>, "monitor"]
-//		["cluster", "node", <localhost>, "services", "nmon", <instance>]
+// It provides the cluster data:
 //
-//	worker watches on local status updates to clear reached status
-//		=> unsetStatusWhenReached
-//		=> orchestrate
-//		=> pub new state if change
+//	.cluster.node.<localhost>.monitor
+//	.cluster.node.<localhost>.stats
+//	.cluster.node.<localhost>.status
 //
-//	worker watches on remote nmon updates converge global expects
-//		=> convergeGlobalExpectFromRemote
-//		=> orchestrate
-//		=> pub new state if change
+// The worker watches local status updates and clear reached status
+//
+//	=> unsetStatusWhenReached
+//	=> orchestrate
+//	=> pub new state if change
+//
+// The worker watches remote nmon updates and converge global expects
+//
+//	=> convergeGlobalExpectFromRemote
+//	=> orchestrate
+//	=> pub new state if change
 package nmon
 
 import (
 	"context"
 	"math"
-	"strings"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/prometheus/procfs"
@@ -27,24 +32,30 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/nodesinfo"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/san"
 )
 
 type (
 	nmon struct {
+		config        *xconfig.T
 		state         cluster.NodeMonitor
 		previousState cluster.NodeMonitor
 
-		ctx      context.Context
-		cancel   context.CancelFunc
-		cmdC     chan any
-		dataCmdC chan<- any
-		log      zerolog.Logger
+		ctx          context.Context
+		cancel       context.CancelFunc
+		cmdC         chan any
+		dataCmdC     chan<- any
+		log          zerolog.Logger
+		rejoinTicker *time.Ticker
 
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
@@ -70,14 +81,9 @@ type (
 func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
-	previousState := cluster.NodeMonitor{
-		State: cluster.NodeMonitorStateIdle,
-	}
-	state := previousState
-
 	o := &nmon{
-		state:         state,
-		previousState: previousState,
+		state:         cluster.NodeMonitor{},
+		previousState: cluster.NodeMonitor{},
 		ctx:           ctx,
 		cancel:        cancel,
 		cmdC:          make(chan any),
@@ -86,6 +92,12 @@ func Start(parent context.Context) error {
 		localhost:     hostname.Hostname(),
 		change:        true,
 		nodeMonitor:   make(map[string]cluster.NodeMonitor),
+	}
+
+	if n, err := object.NewNode(object.WithVolatile(true)); err != nil {
+		return err
+	} else {
+		o.config = n.Config()
 	}
 
 	o.startSubscriptions()
@@ -109,15 +121,36 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.SetNodeMonitor{})
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
+	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
 	sub.Start()
 	o.sub = sub
+}
+
+func (o *nmon) setStateFromInit() {
+	hbMessageType := daemondata.GetHbMessageType(o.dataCmdC)
+	l := missingNodes(hbMessageType.Nodes, hbMessageType.JoinedNodes)
+	if (hbMessageType.Type == "patch") && len(l) == 0 {
+		// Skip the rejoin state phase.
+		o.rejoinTicker = time.NewTicker(time.Second)
+		o.rejoinTicker.Stop()
+		o.transitionTo(cluster.NodeMonitorStateIdle)
+	} else {
+		// Begin the rejoin state phase.
+		// Arm the rejoin grace period ticker.
+		// The onHbMessageTypeUpdated() event handler can stop it.
+		rejoinGracePeriod := o.config.GetDuration(key.New("node", "rejoin_grace_period"))
+		o.rejoinTicker = time.NewTicker(*rejoinGracePeriod)
+		o.log.Info().Msgf("rejoin grace period timer set to %s", rejoinGracePeriod)
+		o.transitionTo(cluster.NodeMonitorStateRejoin)
+	}
 }
 
 // worker watch for local nmon updates
 func (o *nmon) worker() {
 	defer o.log.Debug().Msg("done")
 
-	initialNodes := strings.Fields(rawconfig.ClusterSection().Nodes)
+	// cluster nodes at the time the worker starts
+	initialNodes := o.config.GetStrings(key.New("cluster", "nodes"))
 	for _, node := range initialNodes {
 		o.nodeMonitor[node] = daemondata.GetNodeMonitor(o.dataCmdC, node)
 	}
@@ -125,7 +158,8 @@ func (o *nmon) worker() {
 	o.setNodeOsPaths()
 	o.updateIfChange()
 	defer o.delete()
-	o.log.Debug().Msg("started")
+
+	o.setStateFromInit()
 
 	statsTicker := time.NewTicker(10 * time.Second)
 	defer statsTicker.Stop()
@@ -144,6 +178,8 @@ func (o *nmon) worker() {
 				o.onFrozenFileRemoved(c)
 			case msgbus.FrozenFileUpdated:
 				o.onFrozenFileUpdated(c)
+			case msgbus.HbMessageTypeUpdated:
+				o.onHbMessageTypeUpdated(c)
 			case msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			case msgbus.NodeStatusLabelsUpdated:
@@ -158,8 +194,34 @@ func (o *nmon) worker() {
 			}
 		case <-statsTicker.C:
 			o.updateStats()
+		case <-o.rejoinTicker.C:
+			o.onRejoinGracePeriodExpire()
 		}
 	}
+}
+
+func (o *nmon) onRejoinGracePeriodExpire() {
+	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
+	frozen := file.ModTime(nodeFrozenFile)
+	if frozen.Equal(time.Time{}) {
+		f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
+		if err != nil {
+			o.log.Error().Err(err).Msgf("rejoin grace period expired: freeze node")
+			o.rejoinTicker.Reset(2 * time.Second)
+			return
+		}
+		o.log.Info().Msgf("rejoin grace period expired: freeze node")
+		if err := f.Close(); err != nil {
+			o.log.Error().Err(err).Msgf("rejoin grace period expired: freeze node")
+			o.rejoinTicker.Reset(2 * time.Second)
+			return
+		}
+		o.transitionTo(cluster.NodeMonitorStateIdle)
+	} else {
+		o.log.Info().Msgf("rejoin grace period expired: the node is already frozen")
+		o.transitionTo(cluster.NodeMonitorStateIdle)
+	}
+	o.rejoinTicker.Stop()
 }
 
 func (o *nmon) delete() {

@@ -34,7 +34,7 @@ func (d *data) commitPendingOps() (changes bool) {
 		d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
 
 	}
-	if d.hbMsgType == "patch" {
+	if d.hbMessageType == "patch" {
 		if changes {
 			d.movePendingOpsToPatchQueue()
 		}

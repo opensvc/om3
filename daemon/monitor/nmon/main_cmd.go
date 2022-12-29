@@ -36,19 +36,20 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 			o.log.Warn().Msgf("invalid set node monitor local expect: %s", c.Monitor.GlobalExpect)
 			return
 		}
-
-		for node, data := range o.nodeMonitor {
-			if data.GlobalExpect == c.Monitor.GlobalExpect {
-				o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", c.Monitor.GlobalExpect, node)
-				return
-			}
-			if !data.State.IsRankable() {
-				o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.State)
-				return
-			}
-			if data.State.IsDoing() {
-				o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.State)
-				return
+		if c.Monitor.GlobalExpect != cluster.NodeMonitorGlobalExpectAborted {
+			for node, data := range o.nodeMonitor {
+				if data.GlobalExpect == c.Monitor.GlobalExpect {
+					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", c.Monitor.GlobalExpect, node)
+					return
+				}
+				if !data.State.IsRankable() {
+					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.State)
+					return
+				}
+				if data.State.IsDoing() {
+					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", c.Monitor.GlobalExpect, node, data.State)
+					return
+				}
 			}
 		}
 
@@ -97,11 +98,38 @@ func (o *nmon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.updateIfChange()
 }
 
+func missingNodes(nodes, joinedNodes []string) []string {
+	m := make(map[string]any)
+	for _, node := range joinedNodes {
+		m[node] = nil
+	}
+	l := make([]string, 0)
+	for _, node := range nodes {
+		if _, ok := m[node]; !ok {
+			l = append(l, node)
+		}
+	}
+	return l
+}
+
+func (o *nmon) onHbMessageTypeUpdated(c msgbus.HbMessageTypeUpdated) {
+	if o.state.State != cluster.NodeMonitorStateRejoin {
+		return
+	}
+	if c.To != "patch" {
+		return
+	}
+	if l := missingNodes(c.Nodes, c.JoinedNodes); len(l) > 0 {
+		o.log.Info().Msgf("preserve rejoin state, missing nodes %s", l)
+		return
+	}
+	o.rejoinTicker.Stop()
+	o.transitionTo(cluster.NodeMonitorStateIdle)
+}
+
 func (o *nmon) onOrchestrate(c cmdOrchestrate) {
 	if o.state.State == c.state {
-		o.change = true
-		o.state.State = c.newState
-		o.updateIfChange()
+		o.transitionTo(c.newState)
 	}
 	o.orchestrate()
 	// avoid fast loop on bug
@@ -110,4 +138,10 @@ func (o *nmon) onOrchestrate(c cmdOrchestrate) {
 
 func (o *nmon) orchestrateAfterAction(state, nextState cluster.NodeMonitorState) {
 	o.cmdC <- cmdOrchestrate{state: state, newState: nextState}
+}
+
+func (o *nmon) transitionTo(newState cluster.NodeMonitorState) {
+	o.change = true
+	o.state.State = newState
+	o.updateIfChange()
 }

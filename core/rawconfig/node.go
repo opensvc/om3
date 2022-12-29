@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -53,10 +54,11 @@ type (
 	}
 
 	nodeSection struct {
-		Env       string `mapstructure:"env"`
-		Collector string `mapstructure:"dbopensvc"`
-		UUID      string `mapstructure:"uuid"`
-		PRKey     string `mapstructure:"prkey"`
+		Env               string         `mapstructure:"env"`
+		Collector         string         `mapstructure:"dbopensvc"`
+		UUID              string         `mapstructure:"uuid"`
+		PRKey             string         `mapstructure:"prkey"`
+		RejoinGracePeriod *time.Duration `mapstructure:"rejoin_grace_period"`
 	}
 
 	loadCmd struct {

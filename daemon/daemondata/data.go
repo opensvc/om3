@@ -33,14 +33,14 @@ type (
 		// pending is the live current data (after apply patch, commit local pendingOps)
 		pending *cluster.Status
 
-		pendingOps []jsondelta.Operation // local data pending operations not yet in patchQueue
-		patchQueue patchQueue            // local data patch queue for remotes
-		gen        uint64                // gen of local TNodeData
-		hbMsgType  string                // latest created hb message type
-		localNode  string
-		counterCmd chan<- interface{}
-		log        zerolog.Logger
-		bus        *pubsub.Bus
+		pendingOps    []jsondelta.Operation // local data pending operations not yet in patchQueue
+		patchQueue    patchQueue            // local data patch queue for remotes
+		gen           uint64                // gen of local TNodeData
+		hbMessageType string                // latest created hb message type
+		localNode     string
+		counterCmd    chan<- interface{}
+		log           zerolog.Logger
+		bus           *pubsub.Bus
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -197,16 +197,16 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			default:
 			}
 			if needMessage || d.needMsg {
-				hbMsgType := d.hbMsgType
+				hbMsgType := d.hbMessageType
 				if err := d.queueNewHbMsg(ctx); err != nil {
 					d.log.Error().Err(err).Msg("queue hb message")
 				} else {
 					d.needMsg = false
-					if hbMsgType != d.hbMsgType {
+					if hbMsgType != d.hbMessageType {
 						subHbRefreshAdaptiveInterval = propagationInterval
 						d.log.Debug().Msgf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 						subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
-						hbMsgType = d.hbMsgType
+						hbMsgType = d.hbMessageType
 					}
 				}
 			}

@@ -6,9 +6,6 @@ import (
 )
 
 func (o *nmon) orchestrateFrozen() {
-	if !o.isConvergedGlobalExpect() {
-		return
-	}
 	switch o.state.State {
 	case cluster.NodeMonitorStateIdle:
 		o.frozenFromIdle()

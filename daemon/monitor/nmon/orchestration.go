@@ -3,6 +3,17 @@ package nmon
 import "opensvc.com/opensvc/core/cluster"
 
 func (o *nmon) orchestrate() {
+	switch o.state.State {
+	case cluster.NodeMonitorStateInit:
+		return
+	case cluster.NodeMonitorStateRejoin:
+		return
+	}
+
+	if !o.isConvergedGlobalExpect() {
+		return
+	}
+
 	switch o.state.LocalExpect {
 	case cluster.NodeMonitorLocalExpectUnset:
 	case cluster.NodeMonitorLocalExpectDrained:
