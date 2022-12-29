@@ -17,7 +17,7 @@ func TestJournal(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("b: %s", b)
-	fooMon := &instance.Monitor{GlobalExpect: "ge"}
+	fooMon := &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectFrozen}
 	fooCfg := &instance.Config{Checksum: "foo-cfg-sum"}
 	barCfg := &instance.Config{Checksum: "bar-cfg-sum"}
 	barStatus := &instance.Status{Avail: status.Up}
@@ -67,7 +67,7 @@ func TestJournal(t *testing.T) {
 
 	require.NoError(t, json.Unmarshal(b, &data))
 
-	require.Equal(t, "ge", data.Cluster.Node["node1"].Instance["foo"].Monitor.GlobalExpect)
+	require.Equal(t, instance.MonitorGlobalExpectFrozen, data.Cluster.Node["node1"].Instance["foo"].Monitor.GlobalExpect)
 	require.Equal(t, "foo-cfg-sum", data.Cluster.Node["node1"].Instance["foo"].Config.Checksum)
 	require.Equal(t, "bar-cfg-sum", data.Cluster.Node["node1"].Instance["bar"].Config.Checksum)
 	require.Equal(t, status.Up, data.Cluster.Node["node1"].Instance["bar"].Status.Avail)
