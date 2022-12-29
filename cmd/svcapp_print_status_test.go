@@ -18,17 +18,18 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 		Level   string
 		Message string
 	}
-	cases := map[string][]logT{
-		"withStatusLog": {
+	cases := [][]logT{
+		{
 			{"info", "FOO"},
 		},
-		"withoutStatusLog": {},
-		"withStatusLogStderr": {
+		{},
+
+		{
+			{"warn", "DeadlineExceeded"},
+		},
+		{
 			{"warn", "line1"},
 			{"warn", "line2"},
-		},
-		"withStatusLogAndTimeout": {
-			{"warn", "DeadlineExceeded"},
 		},
 	}
 	env := testhelper.Setup(t)
@@ -40,15 +41,18 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 	out, err := cmd.CombinedOutput()
 	require.Nil(t, err, "got: \n%v", string(out))
 
-	for name := range cases {
-		t.Run(name, func(t *testing.T) {
-			for i, log := range cases[name] {
-				prefix := fmt.Sprintf("status.resources.'app#%s'.log[[]%d].", name, i)
-				assert.Regexpf(t, prefix+"level = \""+log.Level+"\"", string(out), "got:\n%v", string(out))
-				assert.Regexpf(t, prefix+"message = \""+log.Message, string(out), "got:\n%v", string(out))
-			}
-			line := fmt.Sprintf("status.resources.'app#%s'.log[%d].", name, len(cases[name]))
-			assert.NotContainsf(t, string(out), line, "got:\n%v", string(out))
-		})
+	outS := string(out)
+	for rid, c := range cases {
+		t.Logf("check rid %d, expected %v", rid, c)
+		for i, log := range c {
+			prefix := fmt.Sprintf("instances.node1.status.resources[%d].log[%d]", rid, i)
+			searched := fmt.Sprintf("%s.message = %s%s%s", prefix, string('"'), log.Message, string('"'))
+			assert.Containsf(t, outS, searched, "%s not found in \n%s", searched, string(outS))
+
+			searched = fmt.Sprintf("%s.level = %s%s%s", prefix, string('"'), log.Level, string('"'))
+			assert.Containsf(t, outS, searched, "%s not found in \n%s", searched, string(outS))
+		}
+		mustNotExist := fmt.Sprintf("instances.node1.status.resources[%d].log[%d]", rid, len(c)+1)
+		assert.NotContainsf(t, outS, mustNotExist, "extra log has been found: '%s' in \n'%s'", mustNotExist, outS)
 	}
 }

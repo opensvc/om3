@@ -10,7 +10,6 @@ import (
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/san"
@@ -45,7 +44,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		},
 		Sub: cluster.Sub{
 			Hb: cluster.SubHb{
-				Heartbeats: hbcache.Heartbeats(),
+				Heartbeats: make([]cluster.HeartbeatThreadStatus, 0),
 				Modes:      make([]cluster.HbMode, 0),
 			},
 		},

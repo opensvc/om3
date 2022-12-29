@@ -80,6 +80,8 @@ func getInitialMonitor(s []string) *MonitorThreadStatus {
 }
 
 func TestJournal(t *testing.T) {
+	// TODO remove this file
+	t.Skip("not anymore used")
 	t.Run("checkVsPseudoClusterData", func(t *testing.T) {
 		// TODO remove when moved to daemondata
 		tJournal := &journal{patch: make([]Operation, 0)}

@@ -1,122 +1,141 @@
 {
-  "config": {
-    "id": "",
-    "name": "",
-    "nodes": [
-      "node1",
-      "node2"
-    ]
-  },
-  "status": {
-    "compat": 10,
-    "api": 7,
-    "agent": "2.1-1371",
-    "env": "PRD",
-    "labels": {
-      "group": "1"
-    },
-    "frozen": "2022-09-17T12:53:41.928853995+02:00",
-    "min_avail_mem": 2,
-    "min_avail_swap": 10,
-    "speaker": false,
-    "gen": {
-      "node1": 17,
-      "node2": 19
-    }
-  },
-  "monitor": {
-    "status": "idle-t1",
-    "status_updated": "2022-09-17T12:53:41.928853995+02:00"
-  },
-  "targets": [],
   "instance": {
-    "cluster": {
-      "status": {
-        "updated": "2022-09-17T12:53:41.928853995+02:00",
-        "kind": "ccfg",
-        "csum": "a7a79239cadee30e6d0135a7c72334e5"
-      },
-      "monitor": {
-        "status": "idle",
-        "placement": ""
-      },
+    "foo": {
       "config": {
-        "updated": "2022-09-17T12:53:41.928853995+02:00",
-        "csum": "e5b4d315313005b87ca54ee64dcb25d1",
+        "csum": "0b0712c7c5507bcbc23d1994c82e1cc4",
+        "orchestrate": "no",
+        "placement_policy": "nodes order",
+        "priority": 50,
         "scope": [
           "node1",
           "node2"
-        ]
-      }
-    },
-    "flagspeed1": {
-      "status": {
-        "updated": "2022-09-17T12:53:41.928853995+02:00",
-        "kind": "svc",
-        "app": "default",
-        "env": "PRD",
-        "placement": "nodes order",
+        ],
         "topology": "failover",
-        "frozen": "2022-09-17T12:53:41.928853995+02:00",
-        "subsets": {},
-        "resources": {
-          "fs#1": {
-            "status": "down",
-            "type": "fs.flag",
-            "label": "fs.flag",
-            "provisioned": {
-              "state": true,
-              "mtime": "2022-09-17T12:53:41.928853995+02:00"
-            }
-          }
-        },
-        "status_group": {
-          "ip": "n/a",
-          "volume": "n/a",
-          "share": "n/a",
-          "fs": "down",
-          "app": "n/a",
-          "hashpolicy": "n/a",
-          "expose": "n/a",
-          "subset": "n/a",
-          "vhost": "n/a",
-          "route": "n/a",
-          "certificate": "n/a",
-          "disk": "n/a",
-          "task": "n/a",
-          "DEFAULT": "n/a",
-          "container": "n/a",
-          "sync": "n/a"
-        },
-        "overall": "down",
-        "avail": "down",
-        "optional": "n/a",
-        "provisioned": true,
-        "csum": "96b20b237e78d7e663f80d4bf6a997b0",
-        "monitor": {
-          "status": "starting",
-          "placement": ""
-        }
+        "updated": "2022-12-05T14:57:20.726323705+01:00"
       },
       "monitor": {
-        "status": "starting",
-        "placement": ""
+        "global_expect": "started",
+        "global_expect_updated": "2022-12-29T13:45:06.540989804+01:00",
+        "global_expect_options": null,
+        "is_leader": false,
+        "is_ha_leader": false,
+        "local_expect": "unset",
+        "local_expect_updated": "0001-01-01T00:00:00Z",
+        "state": "starting",
+        "state_updated": "2022-12-29T13:45:06.984597202+01:00"
       },
-      "config": {
-        "updated": "2022-09-17T12:53:41.928853995+02:00",
-        "csum": "ed9806c3df631c153cd091402e4612dd",
-        "scope": [
-          "node1"
+      "status": {
+        "app": "default",
+        "avail": "down",
+        "overall": "down",
+        "csum": "474bac9aa2be320dd2bb3f24f5871a99",
+        "frozen": "2022-12-29T13:45:06.978675685+01:00",
+        "kind": "svc",
+        "provisioned": "true",
+        "updated": "2022-12-29T13:45:06.978675685+01:00",
+        "resources": [
+          {
+            "rid": "fs#1",
+            "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
+            "status": "down",
+            "type": "fs.flag",
+            "provisioned": {
+              "mtime": "2022-12-29T13:43:12.249701697+01:00",
+              "state": "true"
+            }
+          },
+          {
+            "rid": "fs#2",
+            "label": "flag /dev/shm/opensvc/svc/foo/fs#2.flag",
+            "status": "down",
+            "type": "fs.flag",
+            "provisioned": {
+              "mtime": "2022-12-29T13:43:12.249701697+01:00",
+              "state": "true"
+            },
+            "optional": true
+          },
+          {
+            "rid": "fs#3",
+            "label": "flag /dev/shm/opensvc/svc/foo/fs#3.flag",
+            "status": "down",
+            "type": "fs.flag",
+            "provisioned": {
+              "mtime": "2022-12-29T13:43:12.249701697+01:00",
+              "state": "true"
+            }
+          },
+          {
+            "rid": "fs#4",
+            "label": "flag /dev/shm/opensvc/svc/foo/fs#4.flag",
+            "status": "down",
+            "type": "fs.flag",
+            "provisioned": {
+              "mtime": "2022-12-29T13:43:12.249701697+01:00",
+              "state": "true"
+            }
+          }
         ]
       }
     }
   },
+  "monitor": {
+    "state": "idle",
+    "local_expect": "unset",
+    "global_expect": "unset",
+    "state_updated": "2022-12-29T13:43:03.563020909+01:00",
+    "global_expect_updated": "2022-12-29T13:43:02.719851626+01:00",
+    "local_expect_updated": "0001-01-01T00:00:00Z"
+  },
   "stats": {
     "load_15m": 0.4,
-    "mem_total": 16012,
     "mem_avail": 96,
-    "swap_total": 979,
-    "swap_avail": 100,
-    "score": 99
+    "mem_total": 16012,
+    "score": 95,
+    "swap_avail": 99,
+    "swap_total": 979
+  },
+  "status": {
+    "agent": "3.0-0",
+    "api": 8,
+    "arbitrators": {},
+    "compat": 12,
+    "env": "",
+    "frozen": "0001-01-01T00:00:00Z",
+    "gen": {
+      "node1": 17,
+      "node2": 19
+    },
+    "min_avail_mem": 0,
+    "min_avail_swap": 0,
+    "speaker": false,
+    "labels": {
+      "az": "az2",
+      "foo": "BAR"
+    }
+  },
+  "os": {
+    "paths": [
+      {
+        "initiator": {
+          "name": "iqn.2009-11.com.opensvc.srv:node2.storage.initiator",
+          "type": "iscsi"
+        },
+        "target": {
+          "name": "iqn.2009-11.com.opensvc.srv:node2.storage.target.1",
+          "type": "iscsi"
+        }
+      },
+      {
+        "initiator": {
+          "name": "iqn.2009-11.com.opensvc.srv:node2.storage.initiator",
+          "type": "iscsi"
+        },
+        "target": {
+          "name": "iqn.2009-11.com.opensvc.srv:node2.storage.target.2",
+          "type": "iscsi"
+        }
+      }
+    ]
   }
 }
