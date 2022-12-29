@@ -1,18 +1,22 @@
-// Package nmon is responsible for of the local node monitor state
+// nmon is responsible of the local node states
 //
-//	It provides the cluster data:
-//		["cluster", "node", <localhost>, "services", "status", <instance>, "monitor"]
-//		["cluster", "node", <localhost>, "services", "nmon", <instance>]
+// It provides the cluster data:
 //
-//	worker watches on local status updates to clear reached status
-//		=> unsetStatusWhenReached
-//		=> orchestrate
-//		=> pub new state if change
+//	.cluster.node.<localhost>.monitor
+//	.cluster.node.<localhost>.stats
+//	.cluster.node.<localhost>.status
 //
-//	worker watches on remote nmon updates converge global expects
-//		=> convergeGlobalExpectFromRemote
-//		=> orchestrate
-//		=> pub new state if change
+// The worker watches local status updates and clear reached status
+//
+//	=> unsetStatusWhenReached
+//	=> orchestrate
+//	=> pub new state if change
+//
+// The worker watches remote nmon updates and converge global expects
+//
+//	=> convergeGlobalExpectFromRemote
+//	=> orchestrate
+//	=> pub new state if change
 package nmon
 
 import (
