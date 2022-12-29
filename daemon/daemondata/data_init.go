@@ -58,7 +58,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		gen:                nodeData.Status.Gen[localNode],
 		patchQueue:         make(patchQueue),
 		subHbMode:          map[string]string{localNode: "undef"},
-		hbMsgType:          "undef",
+		hbMessageType:      "undef",
 		hbGens:             map[string]map[string]uint64{localNode: map[string]uint64{localNode: 0}},
 		hbPatchMsgUpdated:  make(map[string]time.Time),
 	}

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/xmap"
 )
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
@@ -52,12 +54,12 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 	var err error
 	msg := hbtype.Msg{
 		Compat:   d.pending.Cluster.Node[d.localNode].Status.Compat,
-		Kind:     d.hbMsgType,
+		Kind:     d.hbMessageType,
 		Nodename: d.localNode,
 		Gen:      d.deepCopyLocalGens(),
 		Updated:  time.Now(),
 	}
-	switch d.hbMsgType {
+	switch d.hbMessageType {
 	case "patch":
 		delta, err := d.patchQueue.deepCopy()
 		if err != nil {
@@ -76,7 +78,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 		d.subHbMode[d.localNode] = msg.Kind
 		return msg, nil
 	default:
-		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMsgType)
+		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMessageType)
 		d.log.Error().Err(err).Msg("opGetHbMessage")
 		return msg, err
 	}
@@ -104,10 +106,10 @@ func (d *data) deepCopyLocalGens() gens {
 func (d *data) setNextMsgType() {
 	var messageType string
 	var remoteNeedFull []string
-	if d.hbMsgType == "undef" {
+	if d.hbMessageType == "undef" {
 		// init
 		messageType = "ping"
-	} else if len(d.hbGens) <= 1 || d.hbMsgType == "undef" {
+	} else if len(d.hbGens) <= 1 || d.hbMessageType == "undef" {
 		// no hb msg received yet
 		messageType = "ping"
 	} else {
@@ -117,28 +119,34 @@ func (d *data) setNextMsgType() {
 			}
 			if gen[d.localNode] == 0 {
 				remoteNeedFull = append(remoteNeedFull, node)
-			} else if d.hbMsgType == "full" && gen[d.localNode] < d.gen {
+			} else if d.hbMessageType == "full" && gen[d.localNode] < d.gen {
 				// stay in full, peers not ready for patch
 				remoteNeedFull = append(remoteNeedFull, node)
 			}
 
 		}
-		if len(remoteNeedFull) > 0 || d.hbMsgType == "ping" {
+		if len(remoteNeedFull) > 0 || d.hbMessageType == "ping" {
 			messageType = "full"
 		} else {
 			messageType = "patch"
 		}
 	}
-	if messageType != d.hbMsgType {
+	if messageType != d.hbMessageType {
 		if messageType == "full" && len(remoteNeedFull) > 0 {
 			sort.Strings(remoteNeedFull)
 			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, need full:[%v], gens:%v)",
-				d.hbMsgType, messageType, d.gen, strings.Join(remoteNeedFull, ", "), d.hbGens)
+				d.hbMessageType, messageType, d.gen, strings.Join(remoteNeedFull, ", "), d.hbGens)
 		} else {
 			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, gens:%v)",
-				d.hbMsgType, messageType, d.gen, d.hbGens)
+				d.hbMessageType, messageType, d.gen, d.hbGens)
 		}
-		d.hbMsgType = messageType
+		d.bus.Pub(msgbus.HbMessageTypeUpdated{
+			From:        d.hbMessageType,
+			To:          messageType,
+			Nodes:       append([]string{}, d.pending.Cluster.Config.Nodes...),
+			JoinedNodes: xmap.Keys(d.hbGens[d.localNode]),
+		})
+		d.hbMessageType = messageType
 	}
 	return
 }

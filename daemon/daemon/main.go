@@ -7,8 +7,6 @@ package daemon
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/retailnext/cannula"
@@ -16,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
@@ -31,7 +28,6 @@ import (
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/scheduler"
 	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
@@ -132,11 +128,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		started <- true
 		t.loop()
 	}()
-
-	if err := t.warmFreezeNode(); err != nil {
-		t.log.Error().Err(err).Msg("daemon warm up freeze node")
-		return err
-	}
 
 	bus := pubsub.NewBus("daemon")
 	bus.Start(t.ctx)
@@ -249,19 +240,4 @@ func startProfiling() {
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
 	cannula.Start(daemonenv.PathUxProfile())
-}
-
-func (t *T) warmFreezeNode() error {
-	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
-	frozen := file.ModTime(nodeFrozenFile)
-	if frozen.Equal(time.Time{}) {
-		f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
-		if err != nil {
-			return err
-		}
-		t.log.Info().Msgf("daemon warm up local node is now frozen")
-		return f.Close()
-	}
-	t.log.Info().Msgf("daemon warm up local node is frozen")
-	return nil
 }

@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 )
 
@@ -13,6 +14,17 @@ func (o *imon) orchestrate() {
 		return
 	}
 	if !o.isConvergedGlobalExpect() {
+		return
+	}
+
+	switch o.state.GlobalExpect {
+	case instance.MonitorGlobalExpectAborted:
+		o.orchestrateAborted()
+	}
+
+	if nodeMonitor, ok := o.nodeMonitor[o.localhost]; !ok {
+		return
+	} else if nodeMonitor.State != cluster.NodeMonitorStateIdle {
 		return
 	}
 
@@ -37,8 +49,6 @@ func (o *imon) orchestrate() {
 		o.orchestrateThawed()
 	case instance.MonitorGlobalExpectUnprovisioned:
 		o.orchestrateUnprovisioned()
-	case instance.MonitorGlobalExpectAborted:
-		o.orchestrateAborted()
 	}
 	o.updateIfChange()
 }

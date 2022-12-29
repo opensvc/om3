@@ -147,6 +147,13 @@ type (
 		Time     time.Time
 	}
 
+	HbMessageTypeUpdated struct {
+		From        string
+		To          string
+		Nodes       []string
+		JoinedNodes []string
+	}
+
 	HbStale struct {
 		Nodename string
 		HbId     string

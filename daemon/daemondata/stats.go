@@ -35,6 +35,7 @@ const (
 	idDelNodeMonitor
 	idDelInstanceMonitor
 	idGetHbMessage
+	idGetHbMessageType
 	idGetInstanceStatus
 	idGetNodeData
 	idGetNodeMonitor
@@ -67,6 +68,7 @@ var (
 		idDelNodeMonitor:     "del-node-monitor",
 		idDelInstanceMonitor: "del-intance-monitor",
 		idGetHbMessage:       "get-hb-message",
+		idGetHbMessageType:   "get-hb-message-type",
 		idGetInstanceStatus:  "get-instance-status",
 		idGetNodeData:        "get-node-data",
 		idGetNodeStatus:      "get-node-status",
