@@ -92,7 +92,7 @@ func TestSubNsThenPub(t *testing.T) {
 
 	t.Log("NsSvcAgg")
 	for i, s := range toPublishSvcAgg {
-		time.Sleep(1 * time.Nanosecond)
+		time.Sleep(5 * time.Millisecond)
 		id := strconv.Itoa(i)
 		bus.Pub(
 			s,
@@ -102,7 +102,7 @@ func TestSubNsThenPub(t *testing.T) {
 	}
 	t.Log("NsCfg")
 	for i, s := range toPublishCfg {
-		time.Sleep(1 * time.Nanosecond)
+		time.Sleep(5 * time.Millisecond)
 		bus.Pub(
 			s,
 			Label{"id", strconv.Itoa(i)},
@@ -111,7 +111,7 @@ func TestSubNsThenPub(t *testing.T) {
 	}
 	t.Log("nsCfgDelete")
 	for i, s := range toPublishSvcAggDelete {
-		time.Sleep(1 * time.Nanosecond)
+		time.Sleep(5 * time.Millisecond)
 		bus.Pub(
 			s,
 			Label{"id", strconv.Itoa(i)},

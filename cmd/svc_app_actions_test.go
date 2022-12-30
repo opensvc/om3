@@ -725,11 +725,8 @@ func TestAppStartRollback(t *testing.T) {
 				t.Run("expected exit code 0", func(t *testing.T) {
 					t.Logf("from 'om %v'", strings.Join(args, " "))
 					require.NoErrorf(t, err, "unexpected exit code: %v", err)
-					if //goland:noinspection GoBoolExpressions
-					runtime.GOOS == "darwin" {
-						// Add delay for file system cache updated
-						time.Sleep(10 * time.Millisecond)
-					}
+					// Add delay for file system cache updated
+					time.Sleep(50 * time.Millisecond)
 				})
 			} else {
 				t.Run("expected exit code non 0", func(t *testing.T) {
@@ -742,6 +739,8 @@ func TestAppStartRollback(t *testing.T) {
 						"unexpected exit code.\nout: '%v'",
 						string(out))
 				})
+				// Add delay for file system cache updated
+				time.Sleep(50 * time.Millisecond)
 			}
 
 			t.Run("expected start", func(t *testing.T) {
