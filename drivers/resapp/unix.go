@@ -48,6 +48,10 @@ type (
 		PG           pg.Config      `json:"pg"`
 		Limit        ulimit.Config  `json:"limit"`
 	}
+
+	statuser interface {
+		Status(context.Context) status.T
+	}
 )
 
 var (
@@ -77,7 +81,7 @@ func (t T) Abort(ctx context.Context) bool {
 }
 
 // Stop the Resource
-func (t *T) CommonStop(ctx context.Context, r resource.Driver) (err error) {
+func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	t.Log().Debug().Msg("CommonStop()")
 	var opts []funcopt.O
 	if opts, err = t.GetFuncOpts(t.StopCmd, "stop"); err != nil {
