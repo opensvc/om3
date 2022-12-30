@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/topology"
 )
 
@@ -23,6 +24,10 @@ func (o *imon) orchestrateHAStop() {
 }
 
 func (o *imon) orchestrateHAStart() {
+	switch o.state.State {
+	case instance.MonitorStateReady:
+		o.cancelReadyState()
+	}
 	if v, _ := o.isStartable(); !v {
 		return
 	}
