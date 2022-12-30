@@ -56,6 +56,7 @@ type (
 		dataCmdC     chan<- any
 		log          zerolog.Logger
 		rejoinTicker *time.Ticker
+		startedAt    time.Time
 
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
@@ -114,6 +115,7 @@ func Start(parent context.Context) error {
 func (o *nmon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub("nmon")
+	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", "cluster"}, pubsub.Label{"path", ""})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
@@ -126,7 +128,7 @@ func (o *nmon) startSubscriptions() {
 	o.sub = sub
 }
 
-func (o *nmon) setStateFromInit() {
+func (o *nmon) startRejoin() {
 	hbMessageType := daemondata.GetHbMessageType(o.dataCmdC)
 	l := missingNodes(hbMessageType.Nodes, hbMessageType.JoinedNodes)
 	if (hbMessageType.Type == "patch") && len(l) == 0 {
@@ -149,6 +151,8 @@ func (o *nmon) setStateFromInit() {
 func (o *nmon) worker() {
 	defer o.log.Debug().Msg("done")
 
+	o.startedAt = time.Now()
+
 	// cluster nodes at the time the worker starts
 	initialNodes := o.config.GetStrings(key.New("cluster", "nodes"))
 	for _, node := range initialNodes {
@@ -159,7 +163,7 @@ func (o *nmon) worker() {
 	o.updateIfChange()
 	defer o.delete()
 
-	o.setStateFromInit()
+	o.startRejoin()
 
 	statsTicker := time.NewTicker(10 * time.Second)
 	defer statsTicker.Stop()
@@ -170,6 +174,8 @@ func (o *nmon) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
+			case msgbus.CfgFileUpdated:
+				o.onCfgFileUpdated(c)
 			case msgbus.NodeMonitorUpdated:
 				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:

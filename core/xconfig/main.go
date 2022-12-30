@@ -83,6 +83,10 @@ func NewErrPostponedRef(ref string, rid string) ErrPostponedRef {
 	}
 }
 
+func (t T) Reload() error {
+	return t.file.Reload()
+}
+
 func (t T) Changed() bool {
 	return t.changed
 }
