@@ -1,6 +1,7 @@
 package daemoncli_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -62,10 +63,10 @@ func setup(t *testing.T) {
 }
 
 func TestDaemonStartThenStop(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	for name, getUrl := range cases {
-		//if !privileged() {
-		//	t.Skip("need root")
-		//}
 		t.Run(name, func(t *testing.T) {
 			setup(t)
 			url := getUrl()
@@ -110,10 +111,13 @@ func TestDaemonStartThenStop(t *testing.T) {
 }
 
 func TestDaemonReStartThenStop(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	for name, getUrl := range cases {
-		//if !privileged() {
-		//	t.Skip("need root")
-		//}
+		if os.Getpid() != 0 {
+			t.Skip("skipped for non root user")
+		}
 		t.Run(name, func(t *testing.T) {
 			setup(t)
 
@@ -150,10 +154,10 @@ func TestDaemonReStartThenStop(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	for name, getUrl := range cases {
-		//if !privileged() {
-		//	t.Skip("need root")
-		//}
 		t.Run(name, func(t *testing.T) {
 			setup(t)
 			url := getUrl()
