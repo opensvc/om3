@@ -36,11 +36,11 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 			StateUpdated:       t0,
 			Restart: map[string]MonitorRestart{
 				"fs#2": {
-					Retries: 1, Updated: time.Date(2020, time.March, 4, 16, 33, 23, 167003830, time.Local),
+					Retries: 1, Updated: time.Date(2020, time.March, 4, 16, 33, 23, 167003830, time.UTC),
 				},
 			},
 		}
-		require.Equal(t, expected, monitor)
+		require.Equalf(t, expected, monitor, "got %+v\nexpected %+v", monitor, expected)
 	})
 
 	t.Run("DeprecatedRestart", func(t *testing.T) {
