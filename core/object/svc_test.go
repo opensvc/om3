@@ -8,6 +8,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/actioncontext"
 	"opensvc.com/opensvc/core/object"
@@ -37,8 +38,8 @@ check = /usr/bin/test -f {env.flag1}
 
 var sectionEnv = []byte(`
 [env]
-flag0 = /tmp/{fqdn}.0
-flag1 = /tmp/{fqdn}.1
+flag0 = /tmp/TestAppStart.{fqdn}.0
+flag1 = /tmp/TestAppStart.{fqdn}.1
 `)
 
 func TestMain(m *testing.M) {
@@ -61,6 +62,8 @@ func TestAppStart(t *testing.T) {
 
 		fpath := s.Config().GetString(key.T{"env", "flag0"})
 		assert.NotEqual(t, fpath, "")
+
+		defer os.RemoveAll(fpath)
 
 		require.NoErrorf(t, os.RemoveAll(fpath), "%s should not exist before start", fpath)
 

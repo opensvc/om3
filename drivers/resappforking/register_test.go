@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resource"
@@ -101,5 +102,9 @@ func TestKeywords(t *testing.T) {
 		assert.Equal(t, int64(3*1024*1024*1024*1024*1024), *(app.Limit.RSS))
 		assert.Equal(t, int64(9*1000*1000*1000*1000*1000*1000), *(app.Limit.Stack))
 		assert.Equal(t, int64(7.5*1024*1024*1024*1024*1024*1024), *(app.Limit.VMem))
+		assert.Equal(t, "blocking post start", app.BlockingPostStart)
+		assert.Equal(t, "blocking post stop", app.BlockingPostStop)
+		assert.Equal(t, "post stop", app.PostStop)
+		assert.Equal(t, "blocking post provision", app.BlockingPostProvision)
 	})
 }

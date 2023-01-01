@@ -32,7 +32,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 		Csum:        "01e51d8e37b378e2281ccf72d09e5e1b",
 		Kind:        kind.Svc,
 		Provisioned: provisioned.Mixed,
-		Updated:     time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.Local),
+		Updated:     time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
 		Resources: []resource.ExposedStatus{
 			{
 				ResourceID: (*resourceid.T)(nil),
@@ -47,7 +47,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 				Status: status.Down,
 				Type:   "volume",
 				Provisioned: resource.ProvisionStatus{
-					Mtime: time.Date(2022, time.November, 29, 18, 10, 46, 524120074, time.Local),
+					Mtime: time.Date(2022, time.November, 29, 18, 10, 46, 524120074, time.UTC),
 					State: provisioned.True,
 				},
 			},
@@ -58,7 +58,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 				Status:     status.Down,
 				Type:       "fs.flag",
 				Provisioned: resource.ProvisionStatus{
-					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 853702101, time.Local),
+					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 853702101, time.UTC),
 					State: provisioned.False,
 				},
 			},
@@ -75,12 +75,12 @@ func Test_Status_Unmarshal(t *testing.T) {
 				Status: 1,
 				Type:   "app.forking",
 				Provisioned: resource.ProvisionStatus{
-					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 849702075, time.Local),
+					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 849702075, time.UTC),
 					State: provisioned.False,
 				},
 				Restart: 2,
 			},
 		},
 	}
-	require.Equal(t, expected, IStatus)
+	require.Equalf(t, expected, IStatus, "expected %+v\ngot %+v", expected, IStatus)
 }

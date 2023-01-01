@@ -49,7 +49,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 	ctx = bootstrapDaemon(t, ctx)
 	bus := pubsub.BusFromContext(ctx)
 
-	changeDelay = 1 * time.Millisecond
+	changeDelay = 10 * time.Millisecond
 	testCtrl := setupCtrl(ctx)
 
 	type (
@@ -73,11 +73,11 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			hbs:  []string{"hb#0.rx"},
 			node: "node5",
 			events: []event{
-				{ping: true, hb: "hb#0.rx", node: "node5", delay: 50 * time.Microsecond},
-				{ping: false, hb: "hb#0.rx", node: "node5", delay: 50 * time.Microsecond},
-				{ping: true, hb: "hb#0.rx", node: "node5", delay: 50 * time.Microsecond},
+				{ping: true, hb: "hb#0.rx", node: "node5", delay: 1 * time.Millisecond},
+				{ping: false, hb: "hb#0.rx", node: "node5", delay: 1 * time.Millisecond},
+				{ping: true, hb: "hb#0.rx", node: "node5", delay: 1 * time.Millisecond},
 			},
-			readPingDuration: 10 * time.Millisecond,
+			readPingDuration: 200 * time.Millisecond,
 			expected:         []msgbus.HbNodePing{{Node: "node5", Status: true}},
 		},
 
@@ -85,13 +85,13 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			hbs:  []string{"hb#1.rx"},
 			node: "node6",
 			events: []event{
-				{ping: true, hb: "hb#1.rx", node: "node6", delay: 3 * time.Millisecond},
-				{ping: true, hb: "hb#1.rx", node: "node6", delay: 3 * time.Millisecond},
-				{ping: false, hb: "hb#1.rx", node: "node6", delay: 3 * time.Millisecond},
-				{ping: false, hb: "hb#1.rx", node: "node6", delay: 3 * time.Millisecond},
-				{ping: true, hb: "hb#1.rx", node: "node6", delay: 3 * time.Millisecond},
+				{ping: true, hb: "hb#1.rx", node: "node6", delay: 13 * time.Millisecond},
+				{ping: true, hb: "hb#1.rx", node: "node6", delay: 13 * time.Millisecond},
+				{ping: false, hb: "hb#1.rx", node: "node6", delay: 13 * time.Millisecond},
+				{ping: false, hb: "hb#1.rx", node: "node6", delay: 13 * time.Millisecond},
+				{ping: true, hb: "hb#1.rx", node: "node6", delay: 13 * time.Millisecond},
 			},
-			readPingDuration: 20 * time.Millisecond,
+			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
 				{Node: "node6", Status: true},
 				{Node: "node6", Status: false},
@@ -128,7 +128,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{delay: 3 * time.Millisecond, node: "node7", hb: "hb#2.rx", ping: false},
 				{delay: 3 * time.Millisecond, node: "node7", hb: "hb#2.rx", ping: true},
 			},
-			readPingDuration: 40 * time.Millisecond,
+			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
 				{Node: "node7", Status: true},
 			},
@@ -138,13 +138,13 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			hbs:  []string{"hb#4.rx", "hb#5.rx"},
 			node: "node8",
 			events: []event{
-				{delay: 3 * time.Millisecond, node: "node8", hb: "hb#4.rx", ping: true},
-				{delay: 3 * time.Millisecond, node: "node8", hb: "hb#5.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node8", hb: "hb#4.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node8", hb: "hb#5.rx", ping: true},
 
-				{delay: 3 * time.Millisecond, node: "node8", hb: "hb#4.rx", ping: false},
-				{delay: 3 * time.Millisecond, node: "node8", hb: "hb#5.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node8", hb: "hb#4.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node8", hb: "hb#5.rx", ping: false},
 			},
-			readPingDuration: 40 * time.Millisecond,
+			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
 				{Node: "node8", Status: true},
 				{Node: "node8", Status: false},
@@ -155,18 +155,18 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			hbs:  []string{"hb#6.rx", "hb#7.rx"},
 			node: "node9",
 			events: []event{
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: true},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: false},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: true},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: false},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
-				{delay: 3 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#7.rx", ping: false},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
+				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
 			},
-			readPingDuration: 40 * time.Millisecond,
+			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
 				{Node: "node9", Status: true},
 				{Node: "node9", Status: false},
@@ -231,8 +231,8 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 
 			found := <-pingMsgC
 			require.Equalf(t, tc.expected, found,
-				"unexpect published HbNodePing from %+v",
-				tc.events)
+				"unexpect published HbNodePing from %s\n%+v",
+				name, tc.events)
 		})
 	}
 }

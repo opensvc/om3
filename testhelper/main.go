@@ -24,6 +24,7 @@ type (
 
 func InstallFile(t *testing.T, srcFile, dstFile string) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(dstFile), os.ModePerm))
+	t.Logf("install %s to %s", srcFile, dstFile)
 	require.NoError(t, file.Copy(srcFile, dstFile))
 }
 

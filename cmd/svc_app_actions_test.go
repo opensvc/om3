@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,8 @@ import (
 
 func TestAppStop(t *testing.T) {
 	operationNotPermittedMsg := "operation not permitted"
-	if runtime.GOOS == "solaris" {
+	if //goland:noinspection GoBoolExpressions
+	runtime.GOOS == "solaris" {
 		operationNotPermittedMsg = " not owner"
 	}
 	cases := map[string]struct {
@@ -723,6 +725,8 @@ func TestAppStartRollback(t *testing.T) {
 				t.Run("expected exit code 0", func(t *testing.T) {
 					t.Logf("from 'om %v'", strings.Join(args, " "))
 					require.NoErrorf(t, err, "unexpected exit code: %v", err)
+					// Add delay for file system cache updated
+					time.Sleep(50 * time.Millisecond)
 				})
 			} else {
 				t.Run("expected exit code non 0", func(t *testing.T) {
@@ -735,6 +739,8 @@ func TestAppStartRollback(t *testing.T) {
 						"unexpected exit code.\nout: '%v'",
 						string(out))
 				})
+				// Add delay for file system cache updated
+				time.Sleep(50 * time.Millisecond)
 			}
 
 			t.Run("expected start", func(t *testing.T) {

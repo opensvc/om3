@@ -6,7 +6,7 @@
   "frozen": "0001-01-01T00:00:00Z",
   "kind": "svc",
   "provisioned": "mixed",
-  "updated": "2022-12-28T11:21:45.800780633+01:00",
+  "updated": "2022-12-28T11:21:45.800780633Z",
   "resources": [
     {
       "rid": "volume#1",
@@ -20,7 +20,7 @@
       "status": "down",
       "type": "volume",
       "provisioned": {
-        "mtime": "2022-11-29T18:10:46.524120074+01:00",
+        "mtime": "2022-11-29T18:10:46.524120074Z",
         "state": "true"
       }
     },
@@ -30,7 +30,7 @@
       "status": "down",
       "type": "fs.flag",
       "provisioned": {
-        "mtime": "2022-11-28T21:46:25.853702101+01:00",
+        "mtime": "2022-11-28T21:46:25.853702101Z",
         "state": "false"
       }
     },
@@ -46,7 +46,7 @@
       "status": "n/a",
       "type": "app.forking",
       "provisioned": {
-        "mtime": "2022-11-28T21:46:25.849702075+01:00",
+        "mtime": "2022-11-28T21:46:25.849702075Z",
         "state": "false"
       },
       "restart": 2

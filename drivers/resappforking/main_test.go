@@ -212,3 +212,22 @@ func TestStatus(t *testing.T) {
 		}
 	})
 }
+
+func TestKeywordOptions(t *testing.T) {
+	m := T{}.Manifest()
+	keywords := []string{}
+	for _, s := range m.Keywords {
+		keywords = append(keywords, s.Option)
+	}
+	expected := []string{
+		"blocking_pre_start",
+		"blocking_post_start",
+		"pre_stop",
+		"blocking_post_stop",
+	}
+	for _, kw := range expected {
+		t.Run("has keyword "+kw, func(t *testing.T) {
+			assert.Contains(t, keywords, kw)
+		})
+	}
+}

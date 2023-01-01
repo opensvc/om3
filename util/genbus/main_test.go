@@ -134,7 +134,7 @@ func TestClusterStatusBus(t *testing.T) {
 	exBus.Post("data#1", data2, false)
 	exBus.Post("data#1", data1, false)
 
-	duration := 2 * time.Millisecond
+	duration := 10 * time.Millisecond
 
 	go func() {
 		time.Sleep(3 * duration)

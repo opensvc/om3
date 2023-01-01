@@ -338,6 +338,9 @@ var genericKeywords = []keywords.Keyword{
 	},
 }
 
+// AddInterfacesKeywords adds keywords from interfaces and returns t
+//
+// When interfaces contains both value and pointer receiver r should be a pointer
 func (t *T) AddInterfacesKeywords(r any) *T {
 	if _, ok := r.(starter); ok {
 		t.AddKeyword(starterKeywords...)
@@ -360,9 +363,15 @@ func (t *T) AddInterfacesKeywords(r any) *T {
 	return t
 }
 
+// New returns *T with keywords defined
+//
+// It adds generic keywords + keywords from interface keywords.
 func New(did driver.ID, r interface{}) *T {
 	t := &T{
 		DriverID: did,
+	}
+	type addresser interface {
+		Addr()
 	}
 	t.AddKeyword(genericKeywords...)
 	t.AddInterfacesKeywords(r)

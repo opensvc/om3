@@ -2,11 +2,13 @@ package daemon_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/testhelper"
@@ -19,12 +21,16 @@ func TestMain(m *testing.M) {
 func setup(t *testing.T) testhelper.Env {
 	env := testhelper.Setup(t)
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
-	env.InstallFile("../../testdata/private_key", "var/certs/private_key")
-	env.InstallFile("../../testdata/certificate_chain", "var/certs/certificate_chain")
+	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
+	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	rawconfig.LoadSections()
 	return env
 }
 
 func TestDaemon(t *testing.T) {
+	if os.Getpid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	var main *daemon.T
 	setup(t)
 

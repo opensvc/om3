@@ -21,7 +21,7 @@ func (t T) Manifest() *manifest.T {
 	keywordL = append(keywordL, resapp.BaseKeywords...)
 	keywordL = append(keywordL, resapp.UnixKeywords...)
 	keywordL = append(keywordL, Keywords...)
-	m := manifest.New(drvID, t)
+	m := manifest.New(drvID, &t)
 	m.AddContext([]manifest.Context{
 		{
 			Key:  "path",
