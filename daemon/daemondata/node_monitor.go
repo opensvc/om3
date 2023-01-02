@@ -12,12 +12,13 @@ type (
 	opDelNodeMonitor struct {
 		err chan<- error
 	}
-
 	opGetNodeMonitor struct {
 		node  string
 		value chan<- cluster.NodeMonitor
 	}
-
+	opGetNodeMonitorMap struct {
+		result chan<- map[string]cluster.NodeMonitor
+	}
 	opSetNodeMonitor struct {
 		err   chan<- error
 		value cluster.NodeMonitor
@@ -25,39 +26,44 @@ type (
 )
 
 // DelNodeMonitor deletes Monitor.Node.<localhost>.monitor
-func DelNodeMonitor(c chan<- interface{}) error {
+func (t T) DelNodeMonitor() error {
 	err := make(chan error)
 	op := opDelNodeMonitor{
 		err: err,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
 // GetNodeMonitor returns Monitor.Node.<node>.monitor
-func GetNodeMonitor(c chan<- interface{}, node string) cluster.NodeMonitor {
+func (t T) GetNodeMonitor(node string) cluster.NodeMonitor {
 	value := make(chan cluster.NodeMonitor)
 	op := opGetNodeMonitor{
 		value: value,
 		node:  node,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-value
 }
 
-// GetNodeMonitor returns Monitor.Node.<node>.monitor
-func (t T) GetNodeMonitor(node string) cluster.NodeMonitor {
-	return GetNodeMonitor(t.cmdC, node)
+// GetNodeMonitorMap returns a map of NodeMonitor indexed by nodename
+func (t T) GetNodeMonitorMap() map[string]cluster.NodeMonitor {
+	result := make(chan map[string]cluster.NodeMonitor)
+	op := opGetNodeMonitorMap{
+		result: result,
+	}
+	t.cmdC <- op
+	return <-result
 }
 
 // SetNodeMonitor sets Monitor.Node.<localhost>.monitor
-func SetNodeMonitor(c chan<- interface{}, v cluster.NodeMonitor) error {
+func (t T) SetNodeMonitor(v cluster.NodeMonitor) error {
 	err := make(chan error)
 	op := opSetNodeMonitor{
 		err:   err,
 		value: v,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
@@ -97,6 +103,15 @@ func (o opGetNodeMonitor) call(ctx context.Context, d *data) {
 	case <-ctx.Done():
 	case o.value <- s:
 	}
+}
+
+func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetNodeMonitorMap
+	m := make(map[string]cluster.NodeMonitor)
+	for node, nodeData := range d.pending.Cluster.Node {
+		m[node] = *nodeData.Monitor.DeepCopy()
+	}
+	o.result <- m
 }
 
 func (o opSetNodeMonitor) call(ctx context.Context, d *data) {

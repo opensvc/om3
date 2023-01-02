@@ -19,6 +19,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
@@ -30,6 +31,7 @@ type (
 		objectMonitorCmdC chan any
 		ctx               context.Context
 		log               zerolog.Logger
+		databus           *daemondata.T
 
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
@@ -74,6 +76,7 @@ func Start(ctx context.Context) (func(), error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
+		databus:           daemondata.FromContext(ctx),
 		cfgCmdC:           make(chan any),
 		objectMonitorCmdC: make(chan any),
 		cfgMTime:          make(map[string]time.Time),

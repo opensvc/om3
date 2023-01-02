@@ -53,7 +53,7 @@ type (
 		ctx          context.Context
 		cancel       context.CancelFunc
 		cmdC         chan any
-		dataCmdC     chan<- any
+		databus      *daemondata.T
 		log          zerolog.Logger
 		rejoinTicker *time.Ticker
 		startedAt    time.Time
@@ -88,7 +88,7 @@ func Start(parent context.Context) error {
 		ctx:           ctx,
 		cancel:        cancel,
 		cmdC:          make(chan any),
-		dataCmdC:      daemondata.BusFromContext(ctx),
+		databus:       daemondata.FromContext(ctx),
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
 		change:        true,
@@ -129,7 +129,7 @@ func (o *nmon) startSubscriptions() {
 }
 
 func (o *nmon) startRejoin() {
-	hbMessageType := daemondata.GetHbMessageType(o.dataCmdC)
+	hbMessageType := o.databus.GetHbMessageType()
 	l := missingNodes(hbMessageType.Nodes, hbMessageType.JoinedNodes)
 	if (hbMessageType.Type == "patch") && len(l) == 0 {
 		// Skip the rejoin state phase.
@@ -156,7 +156,7 @@ func (o *nmon) worker() {
 	// cluster nodes at the time the worker starts
 	initialNodes := o.config.GetStrings(key.New("cluster", "nodes"))
 	for _, node := range initialNodes {
-		o.nodeMonitor[node] = daemondata.GetNodeMonitor(o.dataCmdC, node)
+		o.nodeMonitor[node] = o.databus.GetNodeMonitor(node)
 	}
 	o.updateStats()
 	o.setNodeOsPaths()
@@ -231,14 +231,14 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 }
 
 func (o *nmon) delete() {
-	if err := daemondata.DelNodeMonitor(o.dataCmdC); err != nil {
+	if err := o.databus.DelNodeMonitor(); err != nil {
 		o.log.Error().Err(err).Msg("DelNodeMonitor")
 	}
 }
 
 func (o *nmon) update() {
 	newValue := o.state
-	if err := daemondata.SetNodeMonitor(o.dataCmdC, newValue); err != nil {
+	if err := o.databus.SetNodeMonitor(newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetNodeMonitor")
 	}
 }
@@ -323,7 +323,7 @@ func (o *nmon) getStats() (cluster.NodeStats, error) {
 func (o *nmon) updateStats() {
 	if stats, err := o.getStats(); err != nil {
 		o.log.Error().Err(err).Msg("get stats")
-	} else if err := daemondata.SetNodeStats(o.dataCmdC, stats); err != nil {
+	} else if err := o.databus.SetNodeStats(stats); err != nil {
 		o.log.Error().Err(err).Msg("set stats")
 	}
 }
@@ -331,7 +331,7 @@ func (o *nmon) updateStats() {
 func (o *nmon) setNodeOsPaths() {
 	if paths, err := san.GetPaths(); err != nil {
 		o.log.Error().Err(err).Msg("get san paths")
-	} else if err := daemondata.SetNodeOsPaths(o.dataCmdC, paths); err != nil {
+	} else if err := o.databus.SetNodeOsPaths(paths); err != nil {
 		o.log.Error().Err(err).Msg("set san paths")
 	}
 }
@@ -345,7 +345,7 @@ func (o *nmon) onNodeStatusLabelsUpdated(c msgbus.NodeStatusLabelsUpdated) {
 }
 
 func (o *nmon) saveNodesInfo() {
-	data := *daemondata.GetNodesInfo(o.dataCmdC)
+	data := *o.databus.GetNodesInfo()
 	if err := nodesinfo.Save(data); err != nil {
 		o.log.Error().Err(err).Msg("save nodes info")
 	} else {

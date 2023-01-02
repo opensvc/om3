@@ -9,6 +9,9 @@ import (
 )
 
 type (
+	opGetNodeStatsMap struct {
+		result chan<- map[string]cluster.NodeStats
+	}
 	opSetNodeStats struct {
 		err   chan<- error
 		value cluster.NodeStats
@@ -16,14 +19,33 @@ type (
 )
 
 // SetNodeStats sets Monitor.Node.<localhost>.Stats
-func SetNodeStats(c chan<- interface{}, value cluster.NodeStats) error {
+func (t T) SetNodeStats(value cluster.NodeStats) error {
 	err := make(chan error)
 	op := opSetNodeStats{
 		err:   err,
 		value: value,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
+}
+
+// GetNodeStatsMap returns a map of NodeStats indexed by nodename
+func (t T) GetNodeStatsMap() map[string]cluster.NodeStats {
+	result := make(chan map[string]cluster.NodeStats)
+	op := opGetNodeStatsMap{
+		result: result,
+	}
+	t.cmdC <- op
+	return <-result
+}
+
+func (o opGetNodeStatsMap) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetNodeStatsMap
+	m := make(map[string]cluster.NodeStats)
+	for node, nodeData := range d.pending.Cluster.Node {
+		m[node] = *nodeData.Stats.DeepCopy()
+	}
+	o.result <- m
 }
 
 func (o opSetNodeStats) call(ctx context.Context, d *data) {

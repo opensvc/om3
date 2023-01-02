@@ -2,7 +2,6 @@ package nmon
 
 import (
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemondata"
 )
 
 func (o *nmon) orchestrateDrained() {
@@ -15,7 +14,7 @@ func (o *nmon) orchestrateDrained() {
 }
 
 func (o *nmon) drainFreezeFromIdle() {
-	if d := daemondata.GetNodeStatus(o.dataCmdC, o.localhost); (d != nil) && !d.Frozen.IsZero() {
+	if d := o.databus.GetNodeStatus(o.localhost); (d != nil) && !d.Frozen.IsZero() {
 		// already frozen... advance to "frozen" state
 		o.state.State = cluster.NodeMonitorStateFrozen
 		o.updateIfChange()

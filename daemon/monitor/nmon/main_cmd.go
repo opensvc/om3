@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/key"
@@ -90,12 +89,12 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 }
 
 func (o *nmon) onFrozenFileRemoved(c msgbus.FrozenFileRemoved) {
-	daemondata.SetNodeFrozen(o.dataCmdC, time.Time{})
+	o.databus.SetNodeFrozen(time.Time{})
 }
 
 func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
 	tm := file.ModTime(c.Filename)
-	daemondata.SetNodeFrozen(o.dataCmdC, tm)
+	o.databus.SetNodeFrozen(tm)
 }
 
 func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {

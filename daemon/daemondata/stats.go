@@ -39,7 +39,10 @@ const (
 	idGetInstanceStatus
 	idGetNodeData
 	idGetNodeMonitor
+	idGetNodeMonitorMap
 	idGetNodeStatus
+	idGetNodeStatusMap
+	idGetNodeStatsMap
 	idGetNodesInfo
 	idGetServiceNames
 	idGetStatus
@@ -50,6 +53,7 @@ const (
 	idSetInstanceMonitor
 	idSetInstanceStatus
 	idSetNodeMonitor
+	idSetNodeMonitorMap
 	idSetNodeOsPaths
 	idSetNodeStats
 	idSetObjectStatus
@@ -72,6 +76,7 @@ var (
 		idGetInstanceStatus:  "get-instance-status",
 		idGetNodeData:        "get-node-data",
 		idGetNodeStatus:      "get-node-status",
+		idGetNodeStatusMap:   "get-node-status-map",
 		idGetNodesInfo:       "get-nodes-info",
 		idGetServiceNames:    "get-service-names",
 		idGetStatus:          "get-status",

@@ -75,6 +75,7 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 	o.objStatus = c.Status
 	o.updateIsLeader()
 	o.orchestrate()
+	o.updateIfChange()
 }
 
 func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
@@ -180,8 +181,9 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 	doLocalExpect()
 
 	if o.change {
-		o.updateIfChange()
+		o.updateIsLeader()
 		o.orchestrate()
+		o.updateIfChange()
 	}
 
 }
@@ -482,7 +484,6 @@ func (o *imon) newIsHALeader() bool {
 		return false
 	}
 	return i < maxLeaders
-	return false
 }
 
 func (o *imon) newIsLeader() bool {

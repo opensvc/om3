@@ -56,7 +56,7 @@ type (
 		forceRefresh bool
 		published    bool
 		cmdC         chan any
-		dataCmdC     chan<- any
+		databus      *daemondata.T
 		sub          *pubsub.Subscription
 	}
 )
@@ -82,7 +82,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		localhost:    localhost,
 		forceRefresh: false,
 		cmdC:         make(chan any),
-		dataCmdC:     daemondata.BusFromContext(parent),
+		databus:      daemondata.FromContext(parent),
 		filename:     filename,
 	}
 
@@ -208,7 +208,7 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 		return
 	}
 	o.cfg = *newCfg
-	if err := daemondata.SetInstanceConfig(o.dataCmdC, o.path, *newCfg.DeepCopy()); err != nil {
+	if err := o.databus.SetInstanceConfig(o.path, *newCfg.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
 	o.published = true
@@ -372,11 +372,11 @@ func (o *T) setConfigure() error {
 
 func (o *T) delete() {
 	if o.published {
-		if err := daemondata.DelInstanceConfig(o.dataCmdC, o.path); err != nil {
+		if err := o.databus.DelInstanceConfig(o.path); err != nil {
 			o.log.Error().Err(err).Msg("DelInstanceConfig")
 		}
 	}
-	if err := daemondata.DelInstanceStatus(o.dataCmdC, o.path); err != nil {
+	if err := o.databus.DelInstanceStatus(o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceStatus")
 	}
 }
