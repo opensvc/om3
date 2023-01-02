@@ -1,6 +1,8 @@
 package imon
 
-import "opensvc.com/opensvc/core/instance"
+import (
+	"opensvc.com/opensvc/core/instance"
+)
 
 func (o *imon) orchestrateThawed() {
 	switch o.state.State {

@@ -30,7 +30,7 @@ func (o *imon) orchestrate() {
 
 	switch o.state.GlobalExpect {
 	case instance.MonitorGlobalExpectUnset:
-		o.orchestrateHA()
+		o.orchestrateUnset()
 	case instance.MonitorGlobalExpectFrozen:
 		o.orchestrateFrozen()
 	case instance.MonitorGlobalExpectProvisioned:

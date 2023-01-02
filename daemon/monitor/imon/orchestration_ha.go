@@ -2,15 +2,16 @@ package imon
 
 import (
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 )
 
-func (o *imon) orchestrateHA() {
-	if o.objStatus.Orchestrate != "ha" {
-		return
+func (o *imon) orchestrateUnset() {
+	o.clearStartFailed()
+	if o.objStatus.Orchestrate == "ha" {
+		o.orchestrateHAStart()
+		o.orchestrateHAStop()
 	}
-	o.orchestrateHAStart()
-	o.orchestrateHAStop()
 }
 
 func (o *imon) orchestrateHAStop() {
@@ -32,4 +33,23 @@ func (o *imon) orchestrateHAStart() {
 		return
 	}
 	o.orchestrateStarted()
+}
+
+func (o *imon) clearStartFailed() {
+	if o.state.State != instance.MonitorStateStartFailed {
+		return
+	}
+	if o.objStatus.Avail != status.Up {
+		return
+	}
+	for _, instanceMonitor := range o.instMonitor {
+		switch instanceMonitor.GlobalExpect {
+		case instance.MonitorGlobalExpectEmpty:
+		case instance.MonitorGlobalExpectUnset:
+		default:
+			return
+		}
+	}
+	o.log.Info().Msgf("clear instance start failed: the object is up")
+	o.transitionTo(instance.MonitorStateIdle)
 }
