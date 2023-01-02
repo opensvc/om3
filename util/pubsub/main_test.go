@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -26,175 +25,100 @@ func TestPub(t *testing.T) {
 	bus.Pub("foobar")
 }
 
-func TestSubUnsub(t *testing.T) {
-	bus := newRun(t.Name())
-	defer bus.Stop()
-	sub := bus.Sub(t.Name())
-	sub.Start()
-	sub.Stop()
-}
-
-func TestSubThenPub(t *testing.T) {
-	bus := newRun(t.Name())
-	defer bus.Stop()
-	published := make([]string, 0)
-	toPublish := []string{"foo", "foo1", "foo2"}
-	sub := bus.Sub(t.Name())
-	sub.Start()
-	defer sub.Stop()
-	for _, s := range toPublish {
-		bus.Pub(s)
-	}
-	tr1 := time.NewTicker(time.Microsecond)
-	defer tr1.Stop()
-	tr2 := time.NewTicker(2 * time.Millisecond)
-	defer tr2.Stop()
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case i := <-sub.C:
-				published = append(published, i.(string))
-			case <-tr1.C:
-				if len(published) == len(toPublish) {
-					done <- true
-					return
-				}
-			case <-tr2.C:
-				done <- true
-				return
-			}
+func TestSub(t *testing.T) {
+	type (
+		testPub struct {
+			v      interface{}
+			labels []Label
 		}
-	}()
-	<-done
-	require.Equal(t, toPublish, published)
-}
-
-func TestSubNsThenPub(t *testing.T) {
-	bus := newRun(t.Name())
-	defer bus.Stop()
-	expected := []any{"del1", "del2", 1}
-
-	toPublishSvcAgg := []string{"foo", "foo1", "foo2"}
-	toPublishSvcAggDelete := []string{"del1", "del2"}
-	toPublishCfg := []uint32{0, 1, 2}
-	expectedTotal := len(expected)
-
-	var (
-		published []any
+		testFilter struct {
+			filterType interface{}
+			labels     []Label
+		}
 	)
+	cases := map[string]struct {
+		filters  []testFilter
+		pubs     []testPub
+		expected []interface{}
+	}{
+		"publish with or without label, subscribe without label must receive all publications": {
+			pubs: []testPub{
+				{v: "foo"},
+				{v: "pub with label", labels: []Label{{"xx", "XXX"}}},
+				{v: "foo2"},
+				{v: 1},
+			},
+			expected: []interface{}{"foo", "pub with label", "foo2", 1},
+		},
 
-	sub := bus.Sub(t.Name())
-	sub.AddFilter(uint32(0), Label{"ns", "cfg"}, Label{"id", "1"})
-	sub.AddFilter("", Label{"ns", "svcagg"}, Label{"op", "delete"})
-	sub.Start()
-	defer sub.Stop()
+		"publish without label, subscribe label must receive nothing": {
+			filters: []testFilter{
+				{labels: []Label{{"path", "path1"}}},
+			},
+			pubs: []testPub{
+				{v: "foo"},
+				{v: 1},
+				{v: []string{"foo2"}},
+			},
+			expected: []interface{}{},
+		},
 
-	t.Log("NsSvcAgg")
-	for i, s := range toPublishSvcAgg {
-		time.Sleep(5 * time.Millisecond)
-		id := strconv.Itoa(i)
-		bus.Pub(
-			s,
-			Label{"id", id},
-			Label{"ns", "svcagg"},
-		)
+		"subscribe with (type), (type, label), (type, &&label)": {
+			filters: []testFilter{
+				{filterType: uint64(9)},
+				{labels: []Label{{"xx", "XXX"}}},
+				{filterType: "", labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+			},
+			pubs: []testPub{
+				{v: uint64(9)},
+				{v: []string{"matching label but not type"}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+				{v: "foo", labels: []Label{{"xx", "XXX"}}},
+				{v: 1, labels: []Label{{"xx", "XXX"}}},
+				{v: "two-label-match", labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+				{v: "only-one-label-is-no-enough", labels: []Label{{"f1", "f1"}}},
+				{v: []string{"with-other-label1", "with-other-label2"}, labels: []Label{{"xx", "other-label"}}},
+				{v: []string{"foo1", "foo2"}, labels: []Label{{"xx", "XXX"}}},
+			},
+			expected: []interface{}{
+				uint64(9),
+				"foo",
+				1,
+				"two-label-match",
+				[]string{"foo1", "foo2"},
+			},
+		},
 	}
-	t.Log("NsCfg")
-	for i, s := range toPublishCfg {
-		time.Sleep(5 * time.Millisecond)
-		bus.Pub(
-			s,
-			Label{"id", strconv.Itoa(i)},
-			Label{"ns", "cfg"},
-		)
-	}
-	t.Log("nsCfgDelete")
-	for i, s := range toPublishSvcAggDelete {
-		time.Sleep(5 * time.Millisecond)
-		bus.Pub(
-			s,
-			Label{"id", strconv.Itoa(i)},
-			Label{"ns", "svcagg"},
-			Label{"op", "delete"},
-		)
-	}
-	tr := time.NewTicker(2 * time.Millisecond)
-	defer tr.Stop()
-	done := make(chan bool)
-	recv := 0
-	go func() {
-		for {
-			select {
-			case <-tr.C:
-				done <- true
-				return
-			case i := <-sub.C:
-				switch c := i.(type) {
-				case uint32:
-					t.Logf("-> receive uint32: %v", c)
-					published = append(published, c)
-				case string:
-					t.Logf("-> receive string: %v", c)
-					published = append(published, c)
-				}
+	for s, c := range cases {
+		t.Run(s, func(t *testing.T) {
+			bus := newRun(t.Name())
+			sub := bus.Sub(t.Name())
+			for _, f := range c.filters {
+				sub.AddFilter(f.filterType, f.labels...)
 			}
-			recv += 1
-			if recv > expectedTotal {
-				done <- true
+			sub.Start()
+			defer sub.Stop()
+
+			for _, p := range c.pubs {
+				bus.Pub(p.v, p.labels...)
 			}
-		}
-	}()
-	<-done
-
-	require.Contains(t, published, "del1", "")
-	require.Contains(t, published, "del2", "")
-	require.Contains(t, published, uint32(1), "")
-	require.Len(t, published, 3)
-}
-
-func TestSubPubWithoutFilter(t *testing.T) {
-	bus := newRun(t.Name())
-	defer bus.Stop()
-	toPublish := []string{"foo", "foo1", "foo2"}
-
-	var published, received []string
-	sub := bus.Sub(t.Name())
-	sub.Start()
-	defer sub.Stop()
-	for _, s := range toPublish {
-		bus.Pub(s)
-		published = append(published, s)
-	}
-	for _, s := range toPublish {
-		bus.Pub(s, Label{"ns", "svcagg"})
-		published = append(published, s)
-	}
-	tr1 := time.NewTicker(time.Microsecond)
-	defer tr1.Stop()
-	tr2 := time.NewTimer(2 * time.Millisecond)
-	defer tr2.Stop()
-
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case i := <-sub.C:
-				switch c := i.(type) {
-				case string:
-					received = append(received, c)
+			maxDurationTimer := time.NewTimer(5 * time.Millisecond)
+			defer maxDurationTimer.Stop()
+			received := make([]interface{}, 0)
+			go func() {
+				for {
+					select {
+					case i := <-sub.C:
+						switch v := i.(type) {
+						default:
+							received = append(received, v)
+						}
+					case <-maxDurationTimer.C:
+						return
+					}
 				}
-			case <-tr1.C:
-				if len(published) == len(received) {
-					done <- true
-					return
-				}
-			case <-tr2.C:
-				done <- true
-				return
-			}
-		}
-	}()
-	<-done
-	require.Equal(t, received, published)
+			}()
+			<-maxDurationTimer.C
+			require.Equal(t, c.expected, received)
+		})
+	}
 }
