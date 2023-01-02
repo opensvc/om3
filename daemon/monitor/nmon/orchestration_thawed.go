@@ -2,7 +2,6 @@ package nmon
 
 import (
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemondata"
 )
 
 func (o *nmon) orchestrateThawed() {
@@ -29,7 +28,7 @@ func (o *nmon) ThawedFromIdle() {
 }
 
 func (o *nmon) thawedClearIfReached() bool {
-	if d := daemondata.GetNodeStatus(o.dataCmdC, o.localhost); (d != nil) && d.Frozen.IsZero() {
+	if d := o.databus.GetNodeStatus(o.localhost); (d != nil) && d.Frozen.IsZero() {
 		o.log.Info().Msg("local status is thawed, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = cluster.NodeMonitorGlobalExpectUnset

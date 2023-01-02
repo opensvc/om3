@@ -32,7 +32,7 @@ type (
 		id     string
 
 		discoverCmdC chan<- any
-		dataCmdC     chan<- any
+		databus      *daemondata.T
 
 		instStatus  map[string]instance.Status
 		instMonitor map[string]instance.Monitor
@@ -64,7 +64,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 		path:         p,
 		id:           id,
 		discoverCmdC: discoverCmdC,
-		dataCmdC:     daemondata.BusFromContext(ctx),
+		databus:      daemondata.FromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
 		instMonitor:  make(map[string]instance.Monitor),
 		ctx:          ctx,
@@ -96,7 +96,7 @@ func (o *T) worker() {
 	defer o.log.Debug().Msg("done")
 
 	for _, node := range o.status.Scope {
-		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
+		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
 		o.instMonitor[node] = instance.Monitor{}
 	}
 	o.update()
@@ -267,7 +267,7 @@ func (o *T) updateStatus() {
 }
 
 func (o *T) delete() {
-	if err := daemondata.DelObjectStatus(o.dataCmdC, o.path); err != nil {
+	if err := o.databus.DelObjectStatus(o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelObjectStatus")
 	}
 	o.discoverCmdC <- msgbus.ObjectStatusDone{Path: o.path}
@@ -276,7 +276,7 @@ func (o *T) delete() {
 func (o *T) update() {
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
-	if err := daemondata.SetObjectStatus(o.dataCmdC, o.path, *value, o.srcEvent); err != nil {
+	if err := o.databus.SetObjectStatus(o.path, *value, o.srcEvent); err != nil {
 		o.log.Error().Err(err).Msg("SetObjectStatus")
 	}
 }

@@ -28,20 +28,20 @@ type (
 // DelObjectStatus
 //
 // cluster.object.*
-func DelObjectStatus(c chan<- interface{}, p path.T) error {
+func (t T) DelObjectStatus(p path.T) error {
 	err := make(chan error)
 	op := opDelObjectStatus{
 		err:  err,
 		path: p,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
 // SetObjectStatus
 //
 // cluster.object.*
-func SetObjectStatus(c chan<- interface{}, p path.T, v object.Status, ev any) error {
+func (t T) SetObjectStatus(p path.T, v object.Status, ev any) error {
 	err := make(chan error)
 	op := opSetObjectStatus{
 		err:   err,
@@ -49,7 +49,7 @@ func SetObjectStatus(c chan<- interface{}, p path.T, v object.Status, ev any) er
 		value: v,
 		srcEv: ev,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 

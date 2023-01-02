@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/util/file"
 )
 
@@ -31,7 +30,7 @@ func (o *imon) freeze() error {
 	status := o.instStatus[o.localhost]
 	now := time.Now()
 	status.Frozen = now
-	if err := daemondata.SetInstanceFrozen(o.dataCmdC, o.path, now); err != nil {
+	if err := o.databus.SetInstanceFrozen(o.path, now); err != nil {
 		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
 		return err
 	}
@@ -51,7 +50,7 @@ func (o *imon) unfreeze() error {
 	}
 	status := o.instStatus[o.localhost]
 	status.Frozen = time.Time{}
-	if err := daemondata.SetInstanceFrozen(o.dataCmdC, o.path, time.Time{}); err != nil {
+	if err := o.databus.SetInstanceFrozen(o.path, time.Time{}); err != nil {
 		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
 		return err
 	}

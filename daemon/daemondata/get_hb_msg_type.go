@@ -20,15 +20,11 @@ type (
 // GetHbMessageType returns either "undef", "ping", "full" or "patch"
 // Used by nmon start up to determine if rejoin can be skipped.
 func (t T) GetHbMessageType() HbMessageType {
-	return GetHbMessageType(t.cmdC)
-}
-
-func GetHbMessageType(c chan<- any) HbMessageType {
 	result := make(chan HbMessageType)
 	op := opGetHbMessageType{
 		result: result,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-result
 }
 

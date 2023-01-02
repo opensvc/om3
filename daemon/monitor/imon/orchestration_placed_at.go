@@ -115,7 +115,6 @@ func (o *imon) placedUnfreeze() {
 	} else {
 		o.doUnfreeze()
 	}
-
 }
 
 func (o *imon) doPlacedStart() {
@@ -204,11 +203,13 @@ func (o *imon) orchestrateFailoverPlacedStartFromThawed() {
 
 func (o *imon) orchestrateFailoverPlacedStartFromStopped() {
 	switch o.objStatus.Avail {
+	case status.NotApplicable, status.Undef:
+		o.startedClearIfReached()
 	case status.Down:
+		o.placedStart()
 	default:
 		return
 	}
-	o.placedStart()
 }
 
 func (o *imon) orchestrateFailoverPlacedStartFromStarted() {

@@ -39,8 +39,8 @@ func (a *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, "can't parse instance status")
 		return
 	}
-	dataCmd := daemondata.BusFromContext(r.Context())
-	if err := daemondata.SetInstanceStatus(dataCmd, p, *instanceStatus); err != nil {
+	databus := daemondata.FromContext(r.Context())
+	if err := databus.SetInstanceStatus(p, *instanceStatus); err != nil {
 		log.Warn().Err(err).Msgf("can't set instance status for %s", p)
 		sendError(w, http.StatusInternalServerError, err.Error())
 		return

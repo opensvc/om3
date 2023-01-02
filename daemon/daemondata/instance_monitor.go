@@ -26,27 +26,27 @@ type (
 // DelInstanceMonitor
 //
 // cluster.node.<localhost>.instance.<path>.monitor
-func DelInstanceMonitor(c chan<- interface{}, p path.T) error {
+func (t T) DelInstanceMonitor(p path.T) error {
 	err := make(chan error)
 	op := opDelInstanceMonitor{
 		err:  err,
 		path: p,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
 // SetInstanceMonitor
 //
 // cluster.node.<localhost>.instance.<path>.monitor
-func SetInstanceMonitor(c chan<- interface{}, p path.T, v instance.Monitor) error {
+func (t T) SetInstanceMonitor(p path.T, v instance.Monitor) error {
 	err := make(chan error)
 	op := opSetInstanceMonitor{
 		err:   err,
 		path:  p,
 		value: v,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 

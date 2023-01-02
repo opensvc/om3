@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+	"opensvc.com/opensvc/util/file"
 )
 
 var (
@@ -47,7 +48,16 @@ func NewClient(n string) (*ssh.Client, error) {
 
 func AddingKnownHostCallback(host string, remote net.Addr, key ssh.PublicKey) error {
 	var keyErr *knownhosts.KeyError
+
 	callback, err := knownhosts.New(knownHostFile)
+
+	if os.IsNotExist(err) {
+		if err := file.Touch(knownHostFile, time.Now()); err != nil {
+			return err
+		}
+		callback, err = knownhosts.New(knownHostFile)
+	}
+
 	if err != nil {
 		return err
 	}

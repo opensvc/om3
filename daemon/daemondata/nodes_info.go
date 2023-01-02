@@ -6,24 +6,20 @@ import (
 	"opensvc.com/opensvc/core/nodesinfo"
 )
 
+type opGetNodesInfo struct {
+	result chan<- *nodesinfo.NodesInfo
+}
+
 // GetNodesInfo returns a NodesInfo struct, ie a map of
 // a subset of information from cluster.Node.<node>.Status
 // indexed by nodename
 func (t T) GetNodesInfo() *nodesinfo.NodesInfo {
-	return GetNodesInfo(t.cmdC)
-}
-
-func GetNodesInfo(c chan<- any) *nodesinfo.NodesInfo {
 	result := make(chan *nodesinfo.NodesInfo)
 	op := opGetNodesInfo{
 		result: result,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-result
-}
-
-type opGetNodesInfo struct {
-	result chan<- *nodesinfo.NodesInfo
 }
 
 func (o opGetNodesInfo) call(ctx context.Context, d *data) {

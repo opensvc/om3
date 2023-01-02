@@ -26,27 +26,27 @@ type (
 // DelInstanceConfig
 //
 // Monitor.Node.*.services.config.*
-func DelInstanceConfig(c chan<- interface{}, p path.T) error {
+func (t T) DelInstanceConfig(p path.T) error {
 	err := make(chan error)
 	op := opDelInstanceConfig{
 		err:  err,
 		path: p,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
 // SetInstanceConfig
 //
 // Monitor.Node.*.services.config.*
-func SetInstanceConfig(dataCmdC chan<- interface{}, p path.T, v instance.Config) error {
+func (t T) SetInstanceConfig(p path.T, v instance.Config) error {
 	err := make(chan error)
 	op := opSetInstanceConfig{
 		err:   err,
 		path:  p,
 		value: v,
 	}
-	dataCmdC <- op
+	t.cmdC <- op
 	return <-err
 }
 

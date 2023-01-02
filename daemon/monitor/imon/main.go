@@ -40,13 +40,13 @@ type (
 		state         instance.Monitor
 		previousState instance.Monitor
 
-		path     path.T
-		id       string
-		ctx      context.Context
-		cancel   context.CancelFunc
-		cmdC     chan any
-		dataCmdC chan<- any
-		log      zerolog.Logger
+		path    path.T
+		id      string
+		ctx     context.Context
+		cancel  context.CancelFunc
+		cmdC    chan any
+		databus *daemondata.T
+		log     zerolog.Logger
 
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
@@ -87,6 +87,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		StateUpdated: time.Now(),
 	}
 	state := previousState
+	databus := daemondata.FromContext(ctx)
 
 	o := &imon{
 		state:         state,
@@ -96,19 +97,19 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		ctx:           ctx,
 		cancel:        cancel,
 		cmdC:          make(chan any),
-		dataCmdC:      daemondata.BusFromContext(ctx),
+		databus:       databus,
 		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
-		nodeStatus:    make(map[string]cluster.NodeStatus),
-		nodeStats:     make(map[string]cluster.NodeStats),
-		nodeMonitor:   make(map[string]cluster.NodeMonitor),
 		localhost:     hostname.Hostname(),
 		scopeNodes:    nodes,
 		change:        true,
 	}
 
 	o.startSubscriptions()
+	o.nodeStatus = databus.GetNodeStatusMap()
+	o.nodeStats = databus.GetNodeStatsMap()
+	o.nodeMonitor = databus.GetNodeMonitorMap()
 
 	go func() {
 		defer func() {
@@ -141,7 +142,7 @@ func (o *imon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
 	for _, node := range initialNodes {
-		o.instStatus[node] = daemondata.GetInstanceStatus(o.dataCmdC, o.path, node)
+		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
 	}
 	o.updateIfChange()
 	defer o.delete()
@@ -181,14 +182,14 @@ func (o *imon) worker(initialNodes []string) {
 }
 
 func (o *imon) delete() {
-	if err := daemondata.DelInstanceMonitor(o.dataCmdC, o.path); err != nil {
+	if err := o.databus.DelInstanceMonitor(o.path); err != nil {
 		o.log.Error().Err(err).Msg("DelInstanceMonitor")
 	}
 }
 
 func (o *imon) update() {
 	newValue := o.state
-	if err := daemondata.SetInstanceMonitor(o.dataCmdC, o.path, newValue); err != nil {
+	if err := o.databus.SetInstanceMonitor(o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceMonitor")
 	}
 }

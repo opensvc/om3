@@ -88,19 +88,26 @@ func (o *imon) doUnfreeze() {
 	o.doTransitionAction(o.unfreeze, instance.MonitorStateThawing, instance.MonitorStateThawed, instance.MonitorStateThawedFailed)
 }
 
-func (o *imon) startedFromReady() {
+func (o *imon) cancelReadyState() bool {
 	if o.pendingCancel == nil {
 		o.loggerWithState().Error().Msg("startedFromReady without pending")
 		o.transitionTo(instance.MonitorStateIdle)
-		return
+		return true
 	}
 	if o.startedClearIfReached() {
-		return
+		return true
 	}
 	if !o.state.IsHALeader {
 		o.loggerWithState().Info().Msg("leadership lost, leave ready state")
 		o.transitionTo(instance.MonitorStateIdle)
 		o.clearPending()
+		return true
+	}
+	return false
+}
+
+func (o *imon) startedFromReady() {
+	if isCanceled := o.cancelReadyState(); isCanceled {
 		return
 	}
 	select {

@@ -17,6 +17,9 @@ type (
 		node   string
 		result chan<- *cluster.NodeStatus
 	}
+	opGetNodeStatusMap struct {
+		result chan<- map[string]cluster.NodeStatus
+	}
 	opSetNodeStatusFrozen struct {
 		err   chan<- error
 		value time.Time
@@ -29,17 +32,12 @@ type (
 
 // GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
 func (t T) GetNodeStatus(node string) *cluster.NodeStatus {
-	return GetNodeStatus(t.cmdC, node)
-}
-
-// GetNodeStatus returns deep copy of cluster.Node.<node>.Status
-func GetNodeStatus(c chan<- any, node string) *cluster.NodeStatus {
 	result := make(chan *cluster.NodeStatus)
 	op := opGetNodeStatus{
 		result: result,
 		node:   node,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-result
 }
 
@@ -52,14 +50,33 @@ func (o opGetNodeStatus) call(ctx context.Context, d *data) {
 	}
 }
 
+// GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
+func (t T) GetNodeStatusMap() map[string]cluster.NodeStatus {
+	result := make(chan map[string]cluster.NodeStatus)
+	op := opGetNodeStatusMap{
+		result: result,
+	}
+	t.cmdC <- op
+	return <-result
+}
+
+func (o opGetNodeStatusMap) call(ctx context.Context, d *data) {
+	m := make(map[string]cluster.NodeStatus)
+	d.counterCmd <- idGetNodeStatusMap
+	for node, nodeData := range d.pending.Cluster.Node {
+		m[node] = *nodeData.Status.DeepCopy()
+	}
+	o.result <- m
+}
+
 // SetNodeFrozen sets Monitor.Node.<localhost>.Status.Frozen
-func SetNodeFrozen(c chan<- interface{}, tm time.Time) error {
+func (t T) SetNodeFrozen(tm time.Time) error {
 	err := make(chan error)
 	op := opSetNodeStatusFrozen{
 		err:   err,
 		value: tm,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
@@ -97,13 +114,13 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) {
 }
 
 // SetNodeStatusLabels sets Monitor.Node.<localhost>.frozen
-func SetNodeStatusLabels(c chan<- interface{}, labels nodesinfo.Labels) error {
+func (t T) SetNodeStatusLabels(labels nodesinfo.Labels) error {
 	err := make(chan error)
 	op := opSetNodeStatusLabels{
 		err:   err,
 		value: labels,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 

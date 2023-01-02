@@ -6,25 +6,20 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 )
 
-// GetNodeData returns daemondata deep copy of cluster.Node.<node>
-func (t T) GetNodeData(node string) *cluster.NodeData {
-	return GetNodeData(t.cmdC, node)
+type opGetNodeData struct {
+	node   string
+	result chan<- *cluster.NodeData
 }
 
-// GetNodeData returns deep copy of cluster.Node.<node>
-func GetNodeData(c chan<- any, node string) *cluster.NodeData {
+// GetNodeData returns a deep copy of cluster.Node.<node>
+func (t T) GetNodeData(node string) *cluster.NodeData {
 	result := make(chan *cluster.NodeData)
 	op := opGetNodeData{
 		result: result,
 		node:   node,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-result
-}
-
-type opGetNodeData struct {
-	node   string
-	result chan<- *cluster.NodeData
 }
 
 func (o opGetNodeData) call(ctx context.Context, d *data) {

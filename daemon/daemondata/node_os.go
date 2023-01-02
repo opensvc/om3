@@ -16,13 +16,13 @@ type (
 )
 
 // SetNodeOsPaths sets Monitor.Node.<localhost>.Status.Paths
-func SetNodeOsPaths(c chan<- interface{}, paths san.Paths) error {
+func (t T) SetNodeOsPaths(paths san.Paths) error {
 	err := make(chan error)
 	op := opSetNodeOsPaths{
 		err:   err,
 		value: paths,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 

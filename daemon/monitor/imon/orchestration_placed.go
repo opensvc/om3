@@ -1,6 +1,8 @@
 package imon
 
-import "opensvc.com/opensvc/core/topology"
+import (
+	"opensvc.com/opensvc/core/topology"
+)
 
 func (o *imon) orchestratePlaced() {
 	if o.state.IsLeader {

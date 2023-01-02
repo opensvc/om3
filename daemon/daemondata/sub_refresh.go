@@ -10,13 +10,14 @@ type (
 	}
 )
 
-// SubRefresh update sub...
-func SubRefresh(c chan<- any) error {
+// SubRefresh updates the private dataset of a daemon subsystem
+// (scheduler, dns, ...)
+func (t T) SubRefresh() error {
 	err := make(chan error)
 	op := opSubRefresh{
 		err: err,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 
