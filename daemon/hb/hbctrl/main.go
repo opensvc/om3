@@ -179,7 +179,7 @@ func (c *ctrl) run(ctx context.Context) {
 	heartbeat := make(map[string]cluster.HeartbeatThreadStatus)
 	bus := pubsub.BusFromContext(c.ctx)
 	defer c.log.Info().Msgf("stopped: %v", events)
-	dataCmd := daemondata.BusFromContext(ctx)
+	databus := daemondata.FromContext(ctx)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
 	for {
@@ -268,7 +268,7 @@ func (c *ctrl) run(ctx context.Context) {
 						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Info().Msgf("beating node %s", o.Nodename)
-								if err := daemondata.SetHeartbeatPing(dataCmd, o.Nodename, true); err != nil {
+								if err := databus.SetHeartbeatPing(o.Nodename, true); err != nil {
 									c.log.Error().Err(err).Msg("set heartbeat ping on alive node")
 								}
 							}
@@ -281,7 +281,7 @@ func (c *ctrl) run(ctx context.Context) {
 						}
 						if remote.rxBeating == 0 {
 							c.log.Info().Msgf("stale node %s", o.Nodename)
-							if err := daemondata.SetHeartbeatPing(dataCmd, o.Nodename, false); err != nil {
+							if err := databus.SetHeartbeatPing(o.Nodename, false); err != nil {
 								c.log.Error().Err(err).Msg("set heartbeat ping on dead node")
 							}
 						}

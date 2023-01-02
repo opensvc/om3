@@ -18,15 +18,15 @@ type (
 	}
 )
 
-// SetHeartbeatPing update cluster.node.
-func SetHeartbeatPing(c chan<- interface{}, peerNode string, ping bool) error {
+// SetHeartbeatPing updates cluster.node.<peer>
+func (t T) SetHeartbeatPing(peerNode string, ping bool) error {
 	err := make(chan error)
 	op := opSetHeartbeatPing{
 		err:      err,
 		peerNode: peerNode,
 		ping:     ping,
 	}
-	c <- op
+	t.cmdC <- op
 	return <-err
 }
 

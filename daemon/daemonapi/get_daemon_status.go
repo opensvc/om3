@@ -31,16 +31,15 @@ var (
 func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, params GetDaemonStatusParams) {
 	now := time.Now()
 	subRefreshed.Lock()
+	databus := daemondata.FromContext(r.Context())
 	if now.After(subRefreshed.updated.Add(subRefreshInterval)) {
-		bus := daemondata.BusFromContext(r.Context())
-		if err := daemondata.SubRefresh(bus); err != nil {
+		if err := databus.SubRefresh(); err != nil {
 
 		}
 		subRefreshed.updated = now
 	}
 	subRefreshed.Unlock()
 
-	databus := daemondata.FromContext(r.Context())
 	status := databus.GetStatus()
 	if params.Selector != nil {
 		status = status.WithSelector(*params.Selector)
