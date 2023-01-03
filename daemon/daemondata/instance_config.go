@@ -114,9 +114,9 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 
 	d.bus.Pub(
 		msgbus.CfgUpdated{
-			Path:   o.path,
-			Node:   d.localNode,
-			Config: o.value,
+			Path:  o.path,
+			Node:  d.localNode,
+			Value: o.value,
 		},
 		pubsub.Label{"path", s},
 		labelLocalNode,

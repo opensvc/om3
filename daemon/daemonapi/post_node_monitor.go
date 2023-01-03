@@ -21,23 +21,23 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cmd := msgbus.SetNodeMonitor{
-		Node:    hostname.Hostname(),
-		Monitor: cluster.NodeMonitorUpdate{},
+		Node:  hostname.Hostname(),
+		Value: cluster.NodeMonitorUpdate{},
 	}
 	if payload.LocalExpect != nil {
 		validRequest = true
 		i := cluster.NodeMonitorLocalExpectValues[*payload.LocalExpect]
-		cmd.Monitor.LocalExpect = &i
+		cmd.Value.LocalExpect = &i
 	}
 	if payload.GlobalExpect != nil {
 		validRequest = true
 		i := cluster.NodeMonitorGlobalExpectValues[*payload.GlobalExpect]
-		cmd.Monitor.GlobalExpect = &i
+		cmd.Value.GlobalExpect = &i
 	}
 	if payload.State != nil {
 		validRequest = true
 		i := cluster.NodeMonitorStateValues[*payload.State]
-		cmd.Monitor.State = &i
+		cmd.Value.State = &i
 	}
 	if !validRequest {
 		sendError(w, http.StatusBadRequest, "need at least state, local_expect or global_expect")

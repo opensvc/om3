@@ -111,10 +111,10 @@ func (o opSetObjectStatus) call(ctx context.Context, d *data) {
 	}
 	d.bus.Pub(
 		msgbus.ObjectStatusUpdated{
-			Path:   o.path,
-			Node:   d.localNode,
-			Status: o.value,
-			SrcEv:  o.srcEv,
+			Path:  o.path,
+			Node:  d.localNode,
+			Value: o.value,
+			SrcEv: o.srcEv,
 		},
 		labelLocalNode,
 		labelPath,

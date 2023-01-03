@@ -27,7 +27,7 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 		state := cluster.NodeMonitorStateMaintenance
 		bus.Pub(msgbus.SetNodeMonitor{
 			Node: hostname.Hostname(),
-			Monitor: cluster.NodeMonitorUpdate{
+			Value: cluster.NodeMonitorUpdate{
 				State: &state,
 			},
 		}, labelApi)

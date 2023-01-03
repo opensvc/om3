@@ -20,23 +20,23 @@ import (
 
 func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceStatusUpdated) {
 	if _, ok := o.instStatus[srcCmd.Node]; ok {
-		if o.instStatus[srcCmd.Node].Updated.Before(srcCmd.Status.Updated) {
+		if o.instStatus[srcCmd.Node].Updated.Before(srcCmd.Value.Updated) {
 			// only update if more recent
 			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
-			o.instStatus[srcCmd.Node] = srcCmd.Status
+			o.instStatus[srcCmd.Node] = srcCmd.Value
 		} else {
 			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
 		}
 	} else {
 		o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
-		o.instStatus[srcCmd.Node] = srcCmd.Status
+		o.instStatus[srcCmd.Node] = srcCmd.Value
 	}
 }
 
 func (o *imon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
 	if srcCmd.Node == o.localhost {
 		cfgNodes := make(map[string]any)
-		for _, node := range srcCmd.Config.Scope {
+		for _, node := range srcCmd.Value.Scope {
 			cfgNodes[node] = nil
 			if _, ok := o.instStatus[node]; !ok {
 				o.instStatus[node] = instance.Status{Avail: status.Undef}
@@ -49,7 +49,7 @@ func (o *imon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
 			}
 		}
 	}
-	o.scopeNodes = append([]string{}, srcCmd.Config.Scope...)
+	o.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
 	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated CfgUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
@@ -72,40 +72,46 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 			o.onCfgDeleted(c.Node, srcCmd)
 		}
 	}
-	o.objStatus = c.Status
+	o.objStatus = c.Value
 	o.updateIsLeader()
 	o.orchestrate()
 	o.updateIfChange()
 }
 
-func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
-	doStatus := func() {
-		if _, ok := instance.MonitorStateStrings[c.State]; !ok {
-			o.log.Warn().Msgf("invalid set instance monitor state: %s", c.State)
+func (o *imon) onSetInstanceMonitorClient(c msgbus.SetInstanceMonitor) {
+	doState := func() {
+		if c.Value.State == nil {
 			return
 		}
-		if c.State == instance.MonitorStateEmpty {
+		if _, ok := instance.MonitorStateStrings[*c.Value.State]; !ok {
+			o.log.Warn().Msgf("invalid set instance monitor state: %s", *c.Value.State)
 			return
 		}
-		if o.state.State == c.State {
-			o.log.Info().Msgf("instance monitor state is already %s", c.State)
+		if *c.Value.State == instance.MonitorStateEmpty {
 			return
 		}
-		o.log.Info().Msgf("set instance monitor state %s -> %s", o.state.State, c.State)
+		if o.state.State == *c.Value.State {
+			o.log.Info().Msgf("instance monitor state is already %s", *c.Value.State)
+			return
+		}
+		o.log.Info().Msgf("set instance monitor state %s -> %s", o.state.State, *c.Value.State)
 		o.change = true
-		o.state.State = c.State
+		o.state.State = *c.Value.State
 	}
 
 	doGlobalExpect := func() {
-		if _, ok := instance.MonitorGlobalExpectStrings[c.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("invalid set instance monitor global expect: %s", c.GlobalExpect)
+		if c.Value.GlobalExpect == nil {
 			return
 		}
-		switch c.GlobalExpect {
+		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
+			o.log.Warn().Msgf("invalid set instance monitor global expect: %s", *c.Value.GlobalExpect)
+			return
+		}
+		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectEmpty:
 			return
 		case instance.MonitorGlobalExpectPlacedAt:
-			options, ok := c.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
+			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			if !ok || len(options.Destination) == 0 {
 				// Switch cmd without explicit target nodes.
 				// Select some nodes automatically.
@@ -115,7 +121,7 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 					return
 				}
 				options.Destination = []string{dst}
-				c.GlobalExpectOptions = options
+				c.Value.GlobalExpectOptions = options
 			} else {
 				want := options.Destination
 				can := o.nextPlacedAtCandidates(want)
@@ -126,7 +132,7 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 					o.log.Info().Msgf("change destination nodes from %s to %s", want, can)
 				}
 				options.Destination = []string{can}
-				c.GlobalExpectOptions = options
+				c.Value.GlobalExpectOptions = options
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := o.isStartable(); !v {
@@ -135,22 +141,22 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 			}
 		}
 		for node, instMon := range o.instMonitor {
-			if instMon.GlobalExpect == c.GlobalExpect {
+			if instMon.GlobalExpect == *c.Value.GlobalExpect {
 				continue
 			}
 			if instMon.GlobalExpect == instance.MonitorGlobalExpectEmpty {
 				continue
 			}
 			if instMon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
-				o.log.Info().Msgf("global expect is already %s on node %s", c.GlobalExpect, node)
+				o.log.Info().Msgf("global expect is already %s on node %s", *c.Value.GlobalExpect, node)
 				return
 			}
 		}
 
-		if c.GlobalExpect != o.state.GlobalExpect {
+		if *c.Value.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
-			o.state.GlobalExpect = c.GlobalExpect
-			o.state.GlobalExpectOptions = c.GlobalExpectOptions
+			o.state.GlobalExpect = *c.Value.GlobalExpect
+			o.state.GlobalExpectOptions = c.Value.GlobalExpectOptions
 			// update GlobalExpectUpdated now
 			// This will allow remote nodes to pickup most recent value
 			o.state.GlobalExpectUpdated = time.Now()
@@ -158,17 +164,20 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 	}
 
 	doLocalExpect := func() {
-		switch c.LocalExpect {
+		if c.Value.LocalExpect == nil {
+			return
+		}
+		switch *c.Value.LocalExpect {
 		case instance.MonitorLocalExpectEmpty:
 			return
 		case instance.MonitorLocalExpectStarted:
 		default:
-			o.log.Warn().Msgf("invalid set instance monitor local expect: %s", c.LocalExpect)
+			o.log.Warn().Msgf("invalid set instance monitor local expect: %s", *c.Value.LocalExpect)
 			return
 		}
-		target := c.LocalExpect
+		target := *c.Value.LocalExpect
 		if o.state.LocalExpect == target {
-			o.log.Info().Msgf("local expect is already %s", c.LocalExpect)
+			o.log.Info().Msgf("local expect is already %s", *c.Value.LocalExpect)
 			return
 		}
 		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, target)
@@ -176,7 +185,7 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 		o.state.LocalExpect = target
 	}
 
-	doStatus()
+	doState()
 	doGlobalExpect()
 	doLocalExpect()
 
@@ -189,7 +198,7 @@ func (o *imon) onSetInstanceMonitorClient(c instance.Monitor) {
 }
 
 func (o *imon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
-	o.nodeMonitor[c.Node] = c.Monitor
+	o.nodeMonitor[c.Node] = c.Value
 	o.updateIsLeader()
 	o.orchestrate()
 	o.updateIfChange()
@@ -219,7 +228,7 @@ func (o *imon) onInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
 
 func (o *imon) onRemoteInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
-	instMon := c.Status
+	instMon := c.Value
 	o.log.Debug().Msgf("updated instance imon from node %s  -> %s", remote, instMon.GlobalExpect)
 	o.instMonitor[remote] = instMon
 	o.convergeGlobalExpectFromRemote()

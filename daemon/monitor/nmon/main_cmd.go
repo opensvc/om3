@@ -28,74 +28,74 @@ func (o *nmon) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
 
 func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 	doState := func() {
-		if c.Monitor.State == nil {
+		if c.Value.State == nil {
 			return
 		}
 		// sanity check the state value
-		if _, ok := cluster.NodeMonitorStateStrings[*c.Monitor.State]; !ok {
-			o.log.Warn().Msgf("invalid set node monitor state: %s", c.Monitor.State)
+		if _, ok := cluster.NodeMonitorStateStrings[*c.Value.State]; !ok {
+			o.log.Warn().Msgf("invalid set node monitor state: %s", c.Value.State)
 			return
 		}
 
-		if o.state.State == *c.Monitor.State {
-			o.log.Info().Msgf("state is already %s", *c.Monitor.State)
+		if o.state.State == *c.Value.State {
+			o.log.Info().Msgf("state is already %s", *c.Value.State)
 			return
 		}
 
-		o.log.Info().Msgf("set state %s -> %s", o.state.State, *c.Monitor.State)
+		o.log.Info().Msgf("set state %s -> %s", o.state.State, *c.Value.State)
 		o.change = true
-		o.state.State = *c.Monitor.State
+		o.state.State = *c.Value.State
 	}
 
 	doLocalExpect := func() {
-		if c.Monitor.LocalExpect == nil {
+		if c.Value.LocalExpect == nil {
 			return
 		}
 		// sanity check the local expect value
-		if _, ok := cluster.NodeMonitorLocalExpectStrings[*c.Monitor.LocalExpect]; !ok {
-			o.log.Warn().Msgf("invalid set node monitor local expect: %s", c.Monitor.LocalExpect)
+		if _, ok := cluster.NodeMonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
+			o.log.Warn().Msgf("invalid set node monitor local expect: %s", c.Value.LocalExpect)
 			return
 		}
 
-		if o.state.LocalExpect == *c.Monitor.LocalExpect {
-			o.log.Info().Msgf("local expect is already %s", *c.Monitor.LocalExpect)
+		if o.state.LocalExpect == *c.Value.LocalExpect {
+			o.log.Info().Msgf("local expect is already %s", *c.Value.LocalExpect)
 			return
 		}
 
-		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, *c.Monitor.LocalExpect)
+		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, *c.Value.LocalExpect)
 		o.change = true
-		o.state.LocalExpect = *c.Monitor.LocalExpect
+		o.state.LocalExpect = *c.Value.LocalExpect
 	}
 
 	doGlobalExpect := func() {
-		if c.Monitor.GlobalExpect == nil {
+		if c.Value.GlobalExpect == nil {
 			return
 		}
-		if _, ok := cluster.NodeMonitorGlobalExpectStrings[*c.Monitor.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("invalid set node monitor local expect: %s", *c.Monitor.GlobalExpect)
+		if _, ok := cluster.NodeMonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
+			o.log.Warn().Msgf("invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
 			return
 		}
-		if *c.Monitor.GlobalExpect != cluster.NodeMonitorGlobalExpectAborted {
+		if *c.Value.GlobalExpect != cluster.NodeMonitorGlobalExpectAborted {
 			for node, data := range o.nodeMonitor {
-				if data.GlobalExpect == *c.Monitor.GlobalExpect {
-					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", *c.Monitor.GlobalExpect, node)
+				if data.GlobalExpect == *c.Value.GlobalExpect {
+					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", *c.Value.GlobalExpect, node)
 					return
 				}
 				if !data.State.IsRankable() {
-					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Monitor.GlobalExpect, node, data.State)
+					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, node, data.State)
 					return
 				}
 				if data.State.IsDoing() {
-					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Monitor.GlobalExpect, node, data.State)
+					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, node, data.State)
 					return
 				}
 			}
 		}
 
-		o.log.Info().Msgf("# set nmon: client request global expect to %s %+v", *c.Monitor.GlobalExpect, c.Monitor)
-		if *c.Monitor.GlobalExpect != o.state.GlobalExpect {
+		o.log.Info().Msgf("# set nmon: client request global expect to %s %+v", *c.Value.GlobalExpect, c.Value)
+		if *c.Value.GlobalExpect != o.state.GlobalExpect {
 			o.change = true
-			o.state.GlobalExpect = *c.Monitor.GlobalExpect
+			o.state.GlobalExpect = *c.Value.GlobalExpect
 			o.state.GlobalExpectUpdated = time.Now()
 		}
 	}
@@ -129,8 +129,8 @@ func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {
 }
 
 func (o *nmon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
-	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Monitor.GlobalExpect)
-	o.nodeMonitor[c.Node] = c.Monitor
+	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
+	o.nodeMonitor[c.Node] = c.Value
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()

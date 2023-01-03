@@ -125,7 +125,7 @@ func (d *discover) onCfgUpdated(c msgbus.CfgUpdated) {
 	if c.Node == d.localhost {
 		return
 	}
-	d.onRemoteCfgUpdated(c.Path, c.Node, c.Config)
+	d.onRemoteCfgUpdated(c.Path, c.Node, c.Value)
 }
 
 func (d *discover) onRemoteCfgUpdated(p path.T, node string, remoteCfg instance.Config) {

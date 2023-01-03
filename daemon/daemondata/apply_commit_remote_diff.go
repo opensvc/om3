@@ -153,8 +153,8 @@ func (d *data) pubMsgFromNodeMonitorDiffForNode(node string, current *remoteInfo
 		localMonitor := d.pending.Cluster.Node[node].Monitor
 		d.bus.Pub(
 			msgbus.NodeMonitorUpdated{
-				Node:    node,
-				Monitor: *localMonitor.DeepCopy(),
+				Node:  node,
+				Value: *localMonitor.DeepCopy(),
 			},
 			pubsub.Label{"node", node},
 		)
@@ -253,9 +253,9 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 	for _, s := range updates {
 		d.bus.Pub(
 			msgbus.CfgUpdated{
-				Path:   toPath[s],
-				Node:   node,
-				Config: *d.pending.Cluster.Node[node].Instance[s].Config.DeepCopy(),
+				Path:  toPath[s],
+				Node:  node,
+				Value: *d.pending.Cluster.Node[node].Instance[s].Config.DeepCopy(),
 			},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", node},
@@ -276,9 +276,9 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 	for _, s := range updates {
 		d.bus.Pub(
 			msgbus.InstanceStatusUpdated{
-				Path:   toPath[s],
-				Node:   node,
-				Status: *d.pending.Cluster.Node[node].Instance[s].Status.DeepCopy(),
+				Path:  toPath[s],
+				Node:  node,
+				Value: *d.pending.Cluster.Node[node].Instance[s].Status.DeepCopy(),
 			},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", node},
@@ -299,9 +299,9 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 	for _, s := range updates {
 		d.bus.Pub(
 			msgbus.InstanceMonitorUpdated{
-				Path:   toPath[s],
-				Node:   node,
-				Status: *d.pending.Cluster.Node[node].Instance[s].Monitor.DeepCopy(),
+				Path:  toPath[s],
+				Node:  node,
+				Value: *d.pending.Cluster.Node[node].Instance[s].Monitor.DeepCopy(),
 			},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", node},

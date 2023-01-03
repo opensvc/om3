@@ -273,7 +273,7 @@ func (t *T) onInstStatusDeleted(c msgbus.InstanceStatusDeleted) {
 }
 
 func (t *T) onMonObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
-	provisioned := c.Status.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+	provisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	t.provisioned[c.Path] = provisioned
 	hasAnyJob := t.hasAnyJob(c.Path)
 	switch {
@@ -290,14 +290,14 @@ func (t *T) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 		// discard peer node events
 		return
 	}
-	_, incompatible := incompatibleNodeMonitorStatus[c.Monitor.State]
+	_, incompatible := incompatibleNodeMonitorStatus[c.Value.State]
 	switch {
 	case incompatible && t.enabled:
-		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Monitor.State)
+		t.log.Info().Msgf("disable scheduling (node monitor status is now %s)", c.Value.State)
 		t.jobs.Purge()
 		t.enabled = false
 	case !incompatible && !t.enabled:
-		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Monitor.State)
+		t.log.Info().Msgf("enable scheduling (node monitor status is now %s)", c.Value.State)
 		t.enabled = true
 		t.scheduleAll()
 	}

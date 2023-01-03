@@ -127,8 +127,8 @@ func (o opSetNodeMonitor) call(ctx context.Context, d *data) {
 	d.pendingOps = append(d.pendingOps, op)
 	d.bus.Pub(
 		msgbus.NodeMonitorUpdated{
-			Node:    d.localNode,
-			Monitor: o.value,
+			Node:  d.localNode,
+			Value: o.value,
 		},
 		labelLocalNode,
 	)

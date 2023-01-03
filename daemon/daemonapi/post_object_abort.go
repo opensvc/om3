@@ -13,10 +13,9 @@ import (
 
 func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload     = PostObjectAbort{}
-		instMonitor = instance.Monitor{}
-		p           path.T
-		err         error
+		payload = PostObjectAbort{}
+		p       path.T
+		err     error
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		sendError(w, http.StatusBadRequest, err.Error())
@@ -27,14 +26,15 @@ func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, "invalid path: "+payload.Path)
 		return
 	}
-	instMonitor = instance.Monitor{
-		GlobalExpect: instance.MonitorGlobalExpectAborted,
+	globalExpect := instance.MonitorGlobalExpectAborted
+	instMonitor := instance.MonitorUpdate{
+		GlobalExpect: &globalExpect,
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetInstanceMonitor{
-		Path:    p,
-		Node:    hostname.Hostname(),
-		Monitor: instMonitor,
+		Path:  p,
+		Node:  hostname.Hostname(),
+		Value: instMonitor,
 	}
 	bus.Pub(msg, pubsub.Label{"path", p.String()}, labelApi)
 	w.WriteHeader(http.StatusOK)
