@@ -9,6 +9,7 @@ import (
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 type (
@@ -73,6 +74,7 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) {
 			labelLocalNode,
 		)
 	}
+	d.bus.Pub(msgbus.ForgetPeer{Node: peerNode}, pubsub.Label{"node", peerNode})
 	o.err <- nil
 }
 
