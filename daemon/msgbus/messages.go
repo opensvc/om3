@@ -89,9 +89,9 @@ type (
 	}
 
 	CfgUpdated struct {
-		Path   path.T
-		Node   string
-		Config instance.Config
+		Path  path.T
+		Node  string
+		Value instance.Config
 	}
 
 	ClientSub struct {
@@ -166,8 +166,8 @@ type (
 	}
 
 	HbStatusUpdated struct {
-		Node   string
-		Status cluster.HeartbeatThreadStatus
+		Node  string
+		Value cluster.HeartbeatThreadStatus
 	}
 
 	InstanceMonitorDeleted struct {
@@ -176,9 +176,9 @@ type (
 	}
 
 	InstanceMonitorUpdated struct {
-		Path   path.T
-		Node   string
-		Status instance.Monitor
+		Path  path.T
+		Node  string
+		Value instance.Monitor
 	}
 
 	InstanceStatusDeleted struct {
@@ -187,9 +187,9 @@ type (
 	}
 
 	InstanceStatusUpdated struct {
-		Path   path.T
-		Node   string
-		Status instance.Status
+		Path  path.T
+		Node  string
+		Value instance.Status
 	}
 
 	MonCfgDone struct {
@@ -202,8 +202,8 @@ type (
 	}
 
 	NodeMonitorUpdated struct {
-		Node    string
-		Monitor cluster.NodeMonitor
+		Node  string
+		Value cluster.NodeMonitor
 	}
 
 	NodeOsPathsUpdated struct {
@@ -236,10 +236,10 @@ type (
 	}
 
 	ObjectStatusUpdated struct {
-		Path   path.T
-		Node   string
-		Status object.Status
-		SrcEv  any
+		Path  path.T
+		Node  string
+		Value object.Status
+		SrcEv any
 	}
 
 	RemoteFileConfig struct {
@@ -252,14 +252,14 @@ type (
 	}
 
 	SetInstanceMonitor struct {
-		Path    path.T
-		Node    string
-		Monitor instance.Monitor
+		Path  path.T
+		Node  string
+		Value instance.MonitorUpdate
 	}
 
 	SetNodeMonitor struct {
-		Node    string
-		Monitor cluster.NodeMonitorUpdate
+		Node  string
+		Value cluster.NodeMonitorUpdate
 	}
 
 	WatchDog struct {
@@ -431,7 +431,7 @@ func (e ObjectStatusDone) Kind() string {
 }
 
 func (e ObjectStatusUpdated) String() string {
-	d := e.Status
+	d := e.Value
 	s := fmt.Sprintf("%s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
 	return s
 }
