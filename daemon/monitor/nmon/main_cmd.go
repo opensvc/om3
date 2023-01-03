@@ -10,7 +10,7 @@ import (
 )
 
 func (o *nmon) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
-	if !c.Path.IsZero() {
+	if !c.Path.IsZero() && c.Path.String() != "cluster" {
 		return
 	}
 	if o.state.State != cluster.NodeMonitorStateRejoin {
