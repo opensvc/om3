@@ -42,10 +42,9 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
@@ -156,7 +155,7 @@ var (
 func Start(ctx context.Context) chan any {
 	c := &ctrl{
 		cmd: make(chan any),
-		log: log.Logger.With().Str("Name", "hbctrl").Logger(),
+		log: daemonlogctx.Logger(ctx).With().Str("Name", "hbctrl").Logger(),
 	}
 	go c.start(ctx)
 	return c.cmd
@@ -179,9 +178,11 @@ func (c *ctrl) run(ctx context.Context) {
 	heartbeat := make(map[string]cluster.HeartbeatThreadStatus)
 	bus := pubsub.BusFromContext(c.ctx)
 	defer c.log.Info().Msgf("stopped: %v", events)
-	databus := daemondata.FromContext(ctx)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
+
+	go peerDropWorker(c.ctx)
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -268,9 +269,7 @@ func (c *ctrl) run(ctx context.Context) {
 						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Info().Msgf("beating node %s", o.Nodename)
-								if err := databus.SetHeartbeatPing(o.Nodename, true); err != nil {
-									c.log.Error().Err(err).Msg("set heartbeat ping on alive node")
-								}
+								bus.Pub(msgbus.HbNodePing{Node: o.Nodename, Status: true}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
 						case evStale:
@@ -281,9 +280,7 @@ func (c *ctrl) run(ctx context.Context) {
 						}
 						if remote.rxBeating == 0 {
 							c.log.Info().Msgf("stale node %s", o.Nodename)
-							if err := databus.SetHeartbeatPing(o.Nodename, false); err != nil {
-								c.log.Error().Err(err).Msg("set heartbeat ping on dead node")
-							}
+							bus.Pub(msgbus.HbNodePing{Node: o.Nodename, Status: false}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
 					}
