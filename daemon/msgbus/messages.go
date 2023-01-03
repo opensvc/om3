@@ -254,7 +254,7 @@ type (
 
 	SetNodeMonitor struct {
 		Node    string
-		Monitor cluster.NodeMonitor
+		Monitor cluster.NodeMonitorUpdate
 	}
 
 	WatchDog struct {

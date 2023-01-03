@@ -3,17 +3,40 @@ package daemonapi
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemonctx"
+	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "PostDaemonStop").Logger()
 	log.Debug().Msg("starting")
 
-	daemon := daemonctx.Daemon(r.Context())
+	ctx := r.Context()
+	daemon := daemonctx.Daemon(ctx)
+
+	maintenance := func() {
+		log.Info().Msg("announce maintenance state")
+		bus := pubsub.BusFromContext(ctx)
+		state := cluster.NodeMonitorStateMaintenance
+		bus.Pub(msgbus.SetNodeMonitor{
+			Node: hostname.Hostname(),
+			Monitor: cluster.NodeMonitorUpdate{
+				State: &state,
+			},
+		}, labelApi)
+		time.Sleep(2 * daemondata.PropagationInterval())
+	}
+
 	if daemon.Running() {
+		maintenance()
+
 		log.Info().Msg("daemon stopping")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(ResponseText("daemon stopping"))
