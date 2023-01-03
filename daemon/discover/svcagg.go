@@ -38,7 +38,7 @@ func (d *discover) omon(started chan<- bool) {
 				s := c.Path.String()
 				if _, ok := d.objectMonitor[s]; !ok {
 					log.Info().Msgf("discover new object %s", s)
-					if err := omon.Start(d.ctx, c.Path, c.Config, d.objectMonitorCmdC); err != nil {
+					if err := omon.Start(d.ctx, c.Path, c.Value, d.objectMonitorCmdC); err != nil {
 						log.Error().Err(err).Msgf("omon.Start %s", s)
 						return
 					}

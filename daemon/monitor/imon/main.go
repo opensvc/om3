@@ -160,7 +160,7 @@ func (o *imon) worker(initialNodes []string) {
 			case msgbus.ObjectStatusUpdated:
 				o.onObjectStatusUpdated(c)
 			case msgbus.SetInstanceMonitor:
-				o.onSetInstanceMonitorClient(c.Monitor)
+				o.onSetInstanceMonitorClient(c)
 			case msgbus.InstanceMonitorUpdated:
 				o.onInstanceMonitorUpdated(c)
 			case msgbus.InstanceMonitorDeleted:

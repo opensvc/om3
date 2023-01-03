@@ -34,6 +34,7 @@ const (
 	idDelObjectStatus
 	idDelNodeMonitor
 	idDelInstanceMonitor
+	idDropPeerNode
 	idGetHbMessage
 	idGetHbMessageType
 	idGetInstanceStatus
@@ -53,7 +54,6 @@ const (
 	idSetInstanceMonitor
 	idSetInstanceStatus
 	idSetNodeMonitor
-	idSetNodeMonitorMap
 	idSetNodeOsPaths
 	idSetNodeStats
 	idSetObjectStatus
@@ -71,6 +71,7 @@ var (
 		idDelObjectStatus:    "del-object-status",
 		idDelNodeMonitor:     "del-node-monitor",
 		idDelInstanceMonitor: "del-intance-monitor",
+		idDropPeerNode:       "drop-peer-node",
 		idGetHbMessage:       "get-hb-message",
 		idGetHbMessageType:   "get-hb-message-type",
 		idGetInstanceStatus:  "get-instance-status",
@@ -80,7 +81,6 @@ var (
 		idGetNodesInfo:       "get-nodes-info",
 		idGetServiceNames:    "get-service-names",
 		idGetStatus:          "get-status",
-		idSetHeartbeatPing:   "set-heartbeat-ping",
 		idSetSubHb:           "set-sub-hb",
 		idSetObjectStatus:    "set-object-status",
 		idSetInstanceConfig:  "set-instance-config",

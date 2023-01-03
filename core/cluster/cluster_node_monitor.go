@@ -18,6 +18,15 @@ type (
 		LocalExpectUpdated  time.Time               `json:"local_expect_updated"`
 	}
 
+	// NodeMonitorUpdate is embedded in the SetNodeMonitor message to
+	// change some NodeMonitor values. A nil value does not change the
+	// current value.
+	NodeMonitorUpdate struct {
+		State        *NodeMonitorState        `json:"state"`
+		LocalExpect  *NodeMonitorLocalExpect  `json:"local_expect"`
+		GlobalExpect *NodeMonitorGlobalExpect `json:"global_expect"`
+	}
+
 	NodeMonitorState        int
 	NodeMonitorLocalExpect  int
 	NodeMonitorGlobalExpect int

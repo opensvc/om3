@@ -113,21 +113,21 @@ func (o *T) worker() {
 			switch c := i.(type) {
 			case msgbus.InstanceMonitorUpdated:
 				o.srcEvent = i
-				o.instMonitor[c.Node] = c.Status
+				o.instMonitor[c.Node] = c.Value
 				o.updateStatus()
 			case msgbus.InstanceStatusUpdated:
 				o.srcEvent = i
-				o.instStatus[c.Node] = c.Status
+				o.instStatus[c.Node] = c.Value
 				o.updateStatus()
 			case msgbus.CfgUpdated:
-				o.status.Scope = c.Config.Scope
-				o.status.FlexTarget = c.Config.FlexTarget
-				o.status.FlexMin = c.Config.FlexMin
-				o.status.FlexMax = c.Config.FlexMax
-				o.status.Orchestrate = c.Config.Orchestrate
-				o.status.PlacementPolicy = c.Config.PlacementPolicy
-				o.status.Priority = c.Config.Priority
-				o.status.Topology = c.Config.Topology
+				o.status.Scope = c.Value.Scope
+				o.status.FlexTarget = c.Value.FlexTarget
+				o.status.FlexMin = c.Value.FlexMin
+				o.status.FlexMax = c.Value.FlexMax
+				o.status.Orchestrate = c.Value.Orchestrate
+				o.status.PlacementPolicy = c.Value.PlacementPolicy
+				o.status.Priority = c.Value.Priority
+				o.status.Topology = c.Value.Topology
 				o.srcEvent = i
 
 				// update local cache for instance status & monitor from cfg node

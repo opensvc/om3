@@ -10,16 +10,13 @@ import (
 )
 
 func (a *DaemonApi) PostNodeClear(w http.ResponseWriter, r *http.Request) {
-	var (
-		nmon = cluster.NodeMonitor{}
-	)
-	nmon = cluster.NodeMonitor{
-		State: cluster.NodeMonitorStateIdle,
-	}
 	bus := pubsub.BusFromContext(r.Context())
+	state := cluster.NodeMonitorStateIdle
 	msg := msgbus.SetNodeMonitor{
-		Node:    hostname.Hostname(),
-		Monitor: nmon,
+		Node: hostname.Hostname(),
+		Value: cluster.NodeMonitorUpdate{
+			State: &state,
+		},
 	}
 	bus.Pub(msg, labelApi)
 	w.WriteHeader(http.StatusOK)

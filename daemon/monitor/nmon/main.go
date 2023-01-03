@@ -98,7 +98,7 @@ func Start(parent context.Context) error {
 	if n, err := object.NewNode(object.WithVolatile(true)); err != nil {
 		return err
 	} else {
-		o.config = n.Config()
+		o.config = n.MergedConfig()
 	}
 
 	o.startSubscriptions()
@@ -115,7 +115,8 @@ func Start(parent context.Context) error {
 func (o *nmon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub("nmon")
-	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", "cluster"}, pubsub.Label{"path", ""})
+	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", "cluster"})
+	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})

@@ -22,6 +22,16 @@ type (
 		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
 	}
 
+	// MonitorUpdate is embedded in the SetInstanceMonitor message to
+	// change some Monitor values. A nil value does not change the
+	// current value.
+	MonitorUpdate struct {
+		GlobalExpect        *MonitorGlobalExpect `json:"global_expect"`
+		GlobalExpectOptions any                  `json:"global_expect_options"`
+		LocalExpect         *MonitorLocalExpect  `json:"local_expect"`
+		State               *MonitorState        `json:"state"`
+	}
+
 	// MonitorRestart describes the restart states maintained by the daemon
 	// for an object instance.
 	MonitorRestart struct {

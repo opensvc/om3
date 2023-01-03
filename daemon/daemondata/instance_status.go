@@ -171,9 +171,9 @@ func (o opSetInstanceFrozen) call(ctx context.Context, d *data) {
 	d.pendingOps = append(d.pendingOps, op)
 	d.bus.Pub(
 		msgbus.InstanceStatusUpdated{
-			Path:   o.path,
-			Node:   d.localNode,
-			Status: *newStatus,
+			Path:  o.path,
+			Node:  d.localNode,
+			Value: *newStatus,
 		},
 		pubsub.Label{"path", s},
 		labelLocalNode,
@@ -207,9 +207,9 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 	d.pendingOps = append(d.pendingOps, op)
 	d.bus.Pub(
 		msgbus.InstanceStatusUpdated{
-			Path:   o.path,
-			Node:   d.localNode,
-			Status: o.value,
+			Path:  o.path,
+			Node:  d.localNode,
+			Value: o.value,
 		},
 		pubsub.Label{"path", s},
 		labelLocalNode,

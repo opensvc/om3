@@ -101,6 +101,10 @@ var (
 	labelLocalNode = pubsub.Label{"node", hostname.Hostname()}
 )
 
+func PropagationInterval() time.Duration {
+	return propagationInterval
+}
+
 // run the daemondata loop
 //
 // the loop does following action in order
