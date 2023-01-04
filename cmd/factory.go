@@ -896,6 +896,21 @@ func newCmdNodeLs() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePRKey() *cobra.Command {
+	var options commands.CmdNodePRKey
+	cmd := &cobra.Command{
+		Use:     "prkey",
+		Short:   "Show the scsi3 persistent reservation key of this node",
+		Aliases: []string{"prk", "prke"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdNodePrintCapabilities() *cobra.Command {
 	var options commands.CmdNodePrintCapabilities
 	cmd := &cobra.Command{
