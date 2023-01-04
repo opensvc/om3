@@ -80,7 +80,7 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	AnnounceSub(bus, name)
 	defer AnnounceUnSub(bus, name)
 
-	sub := bus.SubWithTimeout(name, time.Second)
+	sub := bus.Sub(name, pubsub.Timeout(time.Second))
 
 	for _, filter := range filters {
 		if kind, ok := filter.Kind.(event.Kinder); ok {

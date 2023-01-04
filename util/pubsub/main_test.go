@@ -2,9 +2,12 @@ package pubsub
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,7 +99,9 @@ func TestSub(t *testing.T) {
 				sub.AddFilter(f.filterType, f.labels...)
 			}
 			sub.Start()
-			defer sub.Stop()
+			defer func() {
+				assert.NoError(t, sub.Stop())
+			}()
 
 			for _, p := range c.pubs {
 				bus.Pub(p.v, p.labels...)
@@ -119,6 +124,53 @@ func TestSub(t *testing.T) {
 			}()
 			<-maxDurationTimer.C
 			require.Equal(t, c.expected, received)
+		})
+	}
+}
+
+func TestDropSlowSubscription(t *testing.T) {
+	timeout := 10 * time.Millisecond
+	for x := 2; x < 5; x++ {
+		t.Run(fmt.Sprintf("wait alert is %d x slow duration timeout:%s", x, timeout), func(t *testing.T) {
+			waitAlertDuration := timeout * time.Duration(x)
+			bus := newRun(t.Name())
+			defer bus.Stop()
+
+			t.Log("subscribe on SubscriptionError")
+			subAlert := bus.Sub("listen SubscriptionError")
+			subAlert.AddFilter(SubscriptionError{})
+			subAlert.Start()
+			defer func() {
+				assert.NoError(t, subAlert.Stop(), "%s stop error", subAlert)
+			}()
+
+			queueSize := QueueSize(2)
+			t.Log("subscribe with a short timeout, and small queue size")
+			slowSub := bus.Sub("listen with short timeout", Timeout(timeout), queueSize)
+			slowSub.Start()
+			defer func() {
+				// ensure stop subscription as been automatically called
+				time.Sleep(time.Millisecond)
+				assert.ErrorIs(t, slowSub.Stop(), ErrSubscriptionIDNotFound{id: slowSub.id},
+					"%s should not exist (it is expected already stopped because dropped)", slowSub)
+			}()
+
+			t.Logf("push 'queue size + 2' messages, then read one message => expect one blocking message")
+			for i := 0; i < int(queueSize)+2; i++ {
+				bus.Pub(i)
+			}
+			assert.IsType(t, 0, <-slowSub.C, "expected at least one message on %s", slowSub)
+
+			ctx, cancel := context.WithTimeout(context.Background(), waitAlertDuration)
+			defer cancel()
+
+			select {
+			case i := <-subAlert.C:
+				assert.IsTypef(t, SubscriptionError{}, i, "missing message SubscriptionError")
+				t.Logf("alert is %s %v", reflect.TypeOf(i), i)
+			case <-ctx.Done():
+				assert.Nilf(t, ctx.Err(), "SubscriptionError not yet received")
+			}
 		})
 	}
 }

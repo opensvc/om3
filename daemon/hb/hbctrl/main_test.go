@@ -183,7 +183,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			node := tc.node
 
-			sub := bus.SubWithTimeout(name, time.Second)
+			sub := bus.Sub(name, pubsub.Timeout(time.Second))
 			sub.AddFilter(msgbus.HbNodePing{}, pubsub.Label{"node", node})
 			sub.Start()
 			defer sub.Stop()
