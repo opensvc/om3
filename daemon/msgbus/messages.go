@@ -12,6 +12,7 @@ import (
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/util/pubsub"
 	"opensvc.com/opensvc/util/san"
 )
 
@@ -52,6 +53,7 @@ var (
 		"RemoteFileConfig":        RemoteFileConfig{},
 		"SetInstanceMonitor":      SetInstanceMonitor{},
 		"SetNodeMonitor":          SetNodeMonitor{},
+		"SubscriptionError":       pubsub.SubscriptionError{},
 		"WatchDog":                WatchDog{},
 	}
 )

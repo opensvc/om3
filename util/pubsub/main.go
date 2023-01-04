@@ -60,9 +60,6 @@ type (
 
 const (
 	busContextKey contextKey = 0
-
-	// notifyQueueSizePerSubscriber defines notify max queue size for a subscriber
-	notifyQueueSizePerSubscriber = 2000
 )
 
 type (
@@ -116,14 +113,15 @@ type (
 	}
 
 	cmdSub struct {
-		name    string
-		resp    chan<- *Subscription
-		timeout time.Duration
+		name      string
+		resp      chan<- *Subscription
+		timeout   time.Duration
+		queueSize uint64
 	}
 
 	cmdUnsub struct {
-		id   uuid.UUID
-		resp chan<- string
+		id  uuid.UUID
+		err chan<- error
 	}
 
 	Bus struct {
@@ -269,20 +267,21 @@ func (b *Bus) onSubCmd(c cmdSub) {
 	id := uuid.New()
 	sub := &Subscription{
 		name:    c.name,
-		C:       make(chan any, notifyQueueSizePerSubscriber),
-		q:       make(chan any, notifyQueueSizePerSubscriber),
+		C:       make(chan any, c.queueSize),
+		q:       make(chan any, c.queueSize),
 		id:      id,
 		timeout: c.timeout,
 		bus:     b,
 	}
 	b.subs[id] = sub
 	c.resp <- sub
-	b.log.Debug().Msgf("subscribe %s", sub.name)
+	b.log.Debug().Msgf("subscribe %s timeout %s queueSize %d", sub.name, c.timeout, c.queueSize)
 }
 
 func (b *Bus) onUnsubCmd(c cmdUnsub) {
 	sub, ok := b.subs[c.id]
 	if !ok {
+		c.err <- ErrSubscriptionIDNotFound{id: c.id}
 		return
 	}
 	sub.cancel()
@@ -290,7 +289,8 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 	b.subMap.Del(c.id, sub.keys()...)
 	select {
 	case <-b.ctx.Done():
-	case c.resp <- sub.name:
+		c.err <- b.ctx.Err()
+	case c.err <- nil:
 	}
 	b.log.Debug().Msgf("unsubscribe %s", sub.name)
 }
@@ -382,19 +382,59 @@ func (b *Bus) Pub(v any, labels ...Label) {
 	}
 }
 
-// Sub function requires a new Subscription on the bus.
-func (b *Bus) Sub(name string) *Subscription {
-	return b.SubWithTimeout(name, 0*time.Second)
+type (
+	Timeouter interface {
+		timout() time.Duration
+	}
+
+	QueueSizer interface {
+		queueSize() uint64
+	}
+)
+
+type (
+	QueueSize uint64
+	Timeout   time.Duration
+)
+
+// queueSize implements QueueSizer for QueueSize
+func (t QueueSize) queueSize() uint64 {
+	return uint64(t)
 }
 
-// SubWithTimeout function requires a new Subscription on the bus.
-// Enforce a timeout for the subscriber to pull each message.
-func (b *Bus) SubWithTimeout(name string, timeout time.Duration) *Subscription {
+// timout implements Timeouter for Timeout
+func (t Timeout) timout() time.Duration {
+	return time.Duration(t)
+}
+
+// Sub function requires a new Subscription on the bus.
+//
+// Used options: Timeouter, QueueSizer
+//
+// when Timeouter, it sets the subscriber timeout to pull each message,
+// subscriber with exceeded timeout notification are automatically dropped, and SubscriptionError
+// message is sent on bus.
+// defaults is no timeout
+//
+// when QueueSizer, it sets the subscriber queue size.
+// default is 2000
+func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	respC := make(chan *Subscription)
 	op := cmdSub{
-		name:    name,
-		resp:    respC,
-		timeout: timeout,
+		name:      name,
+		resp:      respC,
+		queueSize: 2000,
+	}
+
+	for _, opt := range options {
+		switch v := opt.(type) {
+		case Timeouter:
+			op.timeout = v.timout()
+		case QueueSizer:
+			op.queueSize = v.queueSize()
+		default:
+			panic("invalid option type: " + reflect.TypeOf(opt).String())
+		}
 	}
 	select {
 	case b.cmdC <- op:
@@ -410,22 +450,22 @@ func (b *Bus) SubWithTimeout(name string, timeout time.Duration) *Subscription {
 }
 
 // Unsub function remove a subscription
-func (b *Bus) unsub(sub *Subscription) string {
-	respC := make(chan string)
+func (b *Bus) unsub(sub *Subscription) error {
+	errC := make(chan error)
 	op := cmdUnsub{
-		id:   sub.id,
-		resp: respC,
+		id:  sub.id,
+		err: errC,
 	}
 	select {
 	case b.cmdC <- op:
 	case <-b.ctx.Done():
-		return ""
+		return b.ctx.Err()
 	}
 	select {
-	case s := <-respC:
-		return s
+	case err := <-errC:
+		return err
 	case <-b.ctx.Done():
-		return ""
+		return b.ctx.Err()
 	}
 }
 
@@ -606,14 +646,19 @@ func (sub *Subscription) Start() {
 				return
 			case i := <-sub.q:
 				sub.bus.beginNotify <- sub.id
-				startTime := time.Now()
-				if sub.push(i) != nil {
-					// the subscription is too slow, kill it
-					// then ask for unsubscribe
-					duration := time.Now().Sub(startTime).Seconds()
-					sub.bus.log.Warn().Msgf("waited %.02fs for %s => stop subscription", duration, sub)
+				if err := sub.push(i); err != nil {
+					// the subscription got push error, cancel it and ask for unsubscribe
+					sub.bus.log.Warn().Msgf("%s error: %s. stop subscription", sub, err)
+					go sub.bus.Pub(SubscriptionError{Name: sub.name, Id: sub.id, Error: err})
 					sub.cancel()
-					go sub.Stop()
+					go func() {
+						if err := sub.Stop(); err != nil {
+							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
+						}
+						if err := sub.Stop(); err != nil {
+							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
+						}
+					}()
 					sub.bus.endNotify <- sub.id
 					return
 				}
@@ -624,7 +669,7 @@ func (sub *Subscription) Start() {
 	<-started
 }
 
-func (sub *Subscription) Stop() string {
+func (sub *Subscription) Stop() error {
 	return sub.bus.unsub(sub)
 }
 
@@ -639,7 +684,7 @@ func (sub *Subscription) push(i any) error {
 				<-timer.C
 			}
 		case <-timer.C:
-			return errors.New("timeout")
+			return errors.New("push exceed timeout " + sub.timeout.String())
 		}
 	}
 	return nil
