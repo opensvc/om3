@@ -32,6 +32,7 @@ var (
 		"FrozenFileRemoved":       FrozenFileRemoved{},
 		"FrozenFileUpdated":       FrozenFileUpdated{},
 		"Frozen":                  Frozen{},
+		"HbMessageTypeUpdated":    HbMessageTypeUpdated{},
 		"HbNodePing":              HbNodePing{},
 		"HbPing":                  HbPing{},
 		"HbStale":                 HbStale{},
@@ -344,6 +345,10 @@ func (e FrozenFileRemoved) Kind() string {
 
 func (e FrozenFileUpdated) Kind() string {
 	return "FrozenFileUpdated"
+}
+
+func (e HbMessageTypeUpdated) Kind() string {
+	return "HbMessageTypeUpdated"
 }
 
 func (e HbNodePing) String() string {
