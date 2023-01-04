@@ -59,7 +59,7 @@ func (t *CmdNodeEvents) Run() error {
 				_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 			}
 			time.Sleep(1 * time.Second)
-			evReader, err = c.NewGetEvents().SetRelatives(false).GetReader()
+			evReader, err = c.NewGetEvents().SetRelatives(false).SetFilters(t.Filters).GetReader()
 			if err == nil {
 				_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d ok\n", retries, maxRetries)
 				retries = 0
