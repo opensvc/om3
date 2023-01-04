@@ -54,7 +54,12 @@ type (
 
 	HbMode struct {
 		Node string
+
+		// Mode is the type of hb message except when Type is patch where it is the patch queue length
 		Mode string
+
+		// Type is the hb message type (unset/ping/full/patch)
+		Type string
 	}
 )
 

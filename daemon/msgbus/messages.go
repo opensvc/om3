@@ -156,9 +156,11 @@ type (
 	}
 
 	HbMessageTypeUpdated struct {
-		From        string
-		To          string
-		Nodes       []string
+		Node  string
+		From  string
+		To    string
+		Nodes []string
+		// JoinedNodes are nodes with hb message type patch
 		JoinedNodes []string
 	}
 

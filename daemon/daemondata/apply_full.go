@@ -14,7 +14,6 @@ func (d *data) applyFull(msg *hbtype.Msg) error {
 	local := d.localNode
 	d.log.Debug().Msgf("applyFull %s", remote)
 
-	d.subHbMode[remote] = msg.Kind
 	d.pending.Cluster.Node[remote] = msg.Full
 	d.pending.Cluster.Node[local].Status.Gen[remote] = msg.Full.Status.Gen[remote]
 

@@ -50,7 +50,13 @@ type (
 		//
 		// for local node: value is set during func (d *data) getHbMessage()
 		// for peer:  value it set during func (d *data) onReceiveHbMsg
+		// It has same value as subHbMsgType, except when type is patch where it represents size of patch queue
 		subHbMode map[string]string
+
+		// subHbMsgType track the hb message type of cluster nodes
+		// - localhost associated value is changed during setNextMsgType
+		// - other nodes associated value is changed during onReceiveHbMsg
+		subHbMsgType map[string]string
 
 		// hbGens holds the cluster nodes gens
 		//
