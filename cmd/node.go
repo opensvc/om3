@@ -12,17 +12,17 @@ var (
 
 	cmdNodeCompliance = &cobra.Command{
 		Use:     "compliance",
-		Short:   "node configuration expectations analysis and application",
+		Short:   "node configuration manager commands",
 		Aliases: []string{"compli", "comp", "com", "co"},
 	}
 	cmdNodeComplianceAttach = &cobra.Command{
 		Use:     "attach",
-		Short:   "attach modulesets and rulesets to the node.",
+		Short:   "attach modulesets and rulesets to the node",
 		Aliases: []string{"attac", "atta", "att", "at"},
 	}
 	cmdNodeComplianceDetach = &cobra.Command{
 		Use:     "detach",
-		Short:   "detach modulesets and rulesets from the node.",
+		Short:   "detach modulesets and rulesets from the node",
 		Aliases: []string{"detac", "deta", "det", "de"},
 	}
 	cmdNodeComplianceList = &cobra.Command{
@@ -32,25 +32,25 @@ var (
 	}
 	cmdNodeComplianceShow = &cobra.Command{
 		Use:     "show",
-		Short:   "show states: current moduleset and ruleset attachments, modules last check",
+		Short:   "show modules, modulesets, rulesets, modules, attachments",
 		Aliases: []string{"sho", "sh", "s"},
 	}
 	cmdNodePrint = &cobra.Command{
 		Use:     "print",
-		Short:   "print node",
+		Short:   "print node discover information",
 		Aliases: []string{"prin", "pri", "pr"},
 	}
 	cmdNodePush = &cobra.Command{
 		Use:   "push",
-		Short: "data pushing commands",
+		Short: "push node discover information to the collector",
 	}
 	cmdNodeScan = &cobra.Command{
 		Use:   "scan",
-		Short: "scan node",
+		Short: "node discover",
 	}
 	cmdNodeValidate = &cobra.Command{
 		Use:     "validate",
-		Short:   "validation command group",
+		Short:   "validate the node config syntax",
 		Aliases: []string{"validat", "valida", "valid", "val"},
 	}
 

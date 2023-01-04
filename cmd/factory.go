@@ -11,15 +11,15 @@ func newCmdAll() *cobra.Command {
 	return &cobra.Command{
 		Hidden: false,
 		Use:    "all",
-		Short:  "Manage a mix of objects, tentatively exposing all commands.",
+		Short:  "manage a mix of objects, tentatively exposing all commands",
 	}
 }
 
 func newCmdCcfg() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ccfg",
-		Short: "Manage the cluster shared configuration.",
-		Long: ` The cluster nodes merge their private configuration
+		Short: "manage the cluster shared configuration",
+		Long: `The cluster nodes merge their private configuration
 over the cluster shared configuration.
 
 The shared configuration is hosted in a ccfg-kind object, and is
@@ -32,8 +32,8 @@ eventually replicated).
 func newCmdCfg() *cobra.Command {
 	return &cobra.Command{
 		Use:   "cfg",
-		Short: "Manage configmaps.",
-		Long: ` A configmap is an unencrypted key-value store.
+		Short: "manage configmaps",
+		Long: `A configmap is an unencrypted key-value store.
 
 Values can be binary or text.
 
@@ -54,8 +54,8 @@ when installing the key in a volume.`,
 func newCmdSec() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sec",
-		Short: "Manage secrets.",
-		Long: `	A secret is an encrypted key-value store.
+		Short: "manage secrets",
+		Long: `A secret is an encrypted key-value store.
 
 Values can be binary or text.
 
@@ -76,7 +76,7 @@ when installing the key in a volume.`,
 func newCmdSVC() *cobra.Command {
 	return &cobra.Command{
 		Use:   "svc",
-		Short: "Manage services.",
+		Short: "manage services",
 		Long: `Service objects subsystem.
 	
 A service is typically made of ip, app, container and task resources.
@@ -90,7 +90,7 @@ isolate lifecycles or to abstract cluster-specific knowledge.
 func newCmdVol() *cobra.Command {
 	return &cobra.Command{
 		Use:   "vol",
-		Short: "Manage volumes.",
+		Short: "manage volumes",
 		Long: `A volume is a persistent data provider.
 
 A volume is made of disk, fs and sync resources. It is created by a pool,
@@ -105,8 +105,8 @@ A volume can host cfg and sec keys projections.`,
 func newCmdUsr() *cobra.Command {
 	return &cobra.Command{
 		Use:   "usr",
-		Short: "Manage users.",
-		Long: ` A user stores the grants and credentials of user of the agent API.
+		Short: "manage users",
+		Long: `A user stores the grants and credentials of user of the agent API.
 
 User objects are not necessary with OpenID authentication, as the
 grants are embedded in the trusted bearer tokens.`,
@@ -117,7 +117,7 @@ func newCmdArrayLs() *cobra.Command {
 	var options commands.CmdArrayLs
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List the cluster-managed storage arrays.",
+		Short: "list the cluster-managed storage arrays",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -131,7 +131,7 @@ func newCmdDaemonRelayStatus() *cobra.Command {
 	var options commands.CmdDaemonRelayStatus
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Show the daemon relay clients and last data update time.",
+		Short: "show the daemon relay clients and last data update time",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -146,7 +146,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	var options commands.CmdDaemonRestart
 	cmd := &cobra.Command{
 		Use:     "restart",
-		Short:   "Start the daemon or a daemon thread pointed by '--thread-id'.",
+		Short:   "restart the daemon or a daemon subsystem",
 		Aliases: []string{"restart"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -163,7 +163,8 @@ func newCmdDaemonRunning() *cobra.Command {
 	var options commands.CmdDaemonRunning
 	cmd := &cobra.Command{
 		Use:   "running",
-		Short: "Return with code 0 if the daemon is running, else return with code 1",
+		Short: "test if the daemon is running",
+		Long:  "Exit with code 0 if the daemon is running, else exit with code 1",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -177,7 +178,7 @@ func newCmdDaemonStart() *cobra.Command {
 	var options commands.CmdDaemonStart
 	cmd := &cobra.Command{
 		Use:     "start",
-		Short:   "Start the daemon or a daemon thread pointed by '--thread-id'.",
+		Short:   "start the daemon or a daemon subsystem",
 		Aliases: []string{"star"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -195,7 +196,7 @@ func newCmdDaemonStatus() *cobra.Command {
 	var options commands.CmdDaemonStatus
 	cmd := &cobra.Command{
 		Use:     "status",
-		Short:   "Print the cluster status.",
+		Short:   "print the cluster status",
 		Long:    monitor.CmdLong,
 		Aliases: []string{"statu"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -212,7 +213,7 @@ func newCmdDaemonStats() *cobra.Command {
 	var options commands.CmdDaemonStats
 	cmd := &cobra.Command{
 		Use:   "stats",
-		Short: "Print the resource usage statistics.",
+		Short: "print the resource usage statistics",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -226,7 +227,7 @@ func newCmdDaemonStop() *cobra.Command {
 	var options commands.CmdDaemonStop
 	cmd := &cobra.Command{
 		Use:   "stop",
-		Short: "Stop the daemon.",
+		Short: "stop the daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -240,7 +241,7 @@ func newCmdKeystoreAdd(kind string) *cobra.Command {
 	var options commands.CmdKeystoreAdd
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add new keys.",
+		Short: "add new keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -259,7 +260,7 @@ func newCmdKeystoreChange(kind string) *cobra.Command {
 	var options commands.CmdKeystoreChange
 	cmd := &cobra.Command{
 		Use:   "change",
-		Short: "Change existing keys value.",
+		Short: "change existing keys value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -277,7 +278,7 @@ func newCmdKeystoreDecode(kind string) *cobra.Command {
 	var options commands.CmdKeystoreDecode
 	cmd := &cobra.Command{
 		Use:   "decode",
-		Short: "Decode a keystore object key value.",
+		Short: "decode a key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -292,7 +293,7 @@ func newCmdKeystoreInstall(kind string) *cobra.Command {
 	var options commands.CmdKeystoreInstall
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Install keys as files in their projected volume locations.",
+		Short: "install keys as files in volumes",
 		Long:  "Keys of sec and cfg can be projected to volumes via the configs and secrets keywords of volume resources. When a key value change all projections are automatically refreshed. This command triggers manually the same operations.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -308,7 +309,7 @@ func newCmdKeystoreKeys(kind string) *cobra.Command {
 	var options commands.CmdKeystoreKeys
 	cmd := &cobra.Command{
 		Use:   "keys",
-		Short: "List the object key names.",
+		Short: "list the keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -323,7 +324,7 @@ func newCmdKeystoreRemove(kind string) *cobra.Command {
 	var options commands.CmdKeystoreRemove
 	cmd := &cobra.Command{
 		Use:   "remove",
-		Short: "Remove a object key.",
+		Short: "remove a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -338,7 +339,8 @@ func newCmdSecFullPEM(kind string) *cobra.Command {
 	var options commands.CmdFullPEM
 	cmd := &cobra.Command{
 		Use:   "fullpem",
-		Short: "Dump the private_key and certificate_chain in PEM format.",
+		Short: "dump the x509 private key and certificate chain in PEM format",
+		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The fullpem command decodes the private_key and certificate_chain keys, concatenate and print the results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -352,7 +354,8 @@ func newCmdSecGenCert(kind string) *cobra.Command {
 	var options commands.CmdSecGenCert
 	cmd := &cobra.Command{
 		Use:   "gencert",
-		Short: "Create or replace a x509 certificate stored as a keyset.",
+		Short: "create or replace a x509 certificate stored as a keyset",
+		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -366,7 +369,8 @@ func newCmdSecPKCS(kind string) *cobra.Command {
 	var options commands.CmdPKCS
 	cmd := &cobra.Command{
 		Use:   "pkcs",
-		Short: "Dump the private_key and certificate_chain in PKCS#12 format (bytes).",
+		Short: "dump the x509 private key and certificate chain in PKCS#12 format",
+		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -380,7 +384,7 @@ func newCmdNetworkLs() *cobra.Command {
 	var options commands.CmdNetworkLs
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List the cluster networks.",
+		Short: "list the cluster networks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -394,7 +398,8 @@ func newCmdNetworkSetup() *cobra.Command {
 	var options commands.CmdNetworkSetup
 	cmd := &cobra.Command{
 		Use:     "setup",
-		Short:   "Configure the cluster networks on the node.",
+		Short:   "configure the cluster networks on the node",
+		Long:    "Most cluster network drivers need ip routes, ip rules, tunnels and firewall rules. This command sets them up, the same as done on daemon startup and daemon reconfiguration via configuration change.",
 		Aliases: []string{"set"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -409,7 +414,7 @@ func newCmdNetworkStatus() *cobra.Command {
 	var options commands.CmdNetworkStatus
 	cmd := &cobra.Command{
 		Use:     "status",
-		Short:   "Show the cluster networks usage.",
+		Short:   "show the cluster networks usage",
 		Aliases: []string{"statu", "stat", "sta", "st"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -426,7 +431,7 @@ func newCmdNodeAbort() *cobra.Command {
 	var options commands.CmdNodeAbort
 	cmd := &cobra.Command{
 		Use:   "abort",
-		Short: "Abort the running orchestration.",
+		Short: "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -440,7 +445,7 @@ func newCmdNodeChecks() *cobra.Command {
 	var options commands.CmdNodeChecks
 	cmd := &cobra.Command{
 		Use:     "checks",
-		Short:   "Run the check drivers, push and print the instances.",
+		Short:   "run the checks, push and print the result",
 		Aliases: []string{"check", "chec", "che", "ch"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -455,7 +460,7 @@ func newCmdNodeClear() *cobra.Command {
 	var options commands.CmdNodeClear
 	cmd := &cobra.Command{
 		Use:   "clear",
-		Short: "Clear errors in the monitor state.",
+		Short: "reset the monitor state to idle",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -469,8 +474,8 @@ func newCmdNodeComplianceAttachModuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceAttachModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "Attach compliance moduleset to this node.",
-		Long:    "Modules of attached modulesets are checked on schedule.",
+		Short:   "attach modulesets to this node",
+		Long:    "Modules of all attached modulesets are checked on schedule.",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -486,8 +491,8 @@ func newCmdNodeComplianceAttachRuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceAttachRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "Attach compliance ruleset to this node.",
-		Long:    "Rules of attached rulesets are made available to their module.",
+		Short:   "attach rulesets to this node",
+		Long:    "Rules of attached rulesets are exposed to modules.",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -503,7 +508,8 @@ func newCmdNodeComplianceAuto() *cobra.Command {
 	var options commands.CmdNodeComplianceAuto
 	cmd := &cobra.Command{
 		Use:   "auto",
-		Short: "Run compliance fixes on autofix modules, checks on other modules",
+		Short: "run modules fixes or checks",
+		Long:  "If the module is has the 'autofix' property set, do a fix, else do a check.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -521,7 +527,7 @@ func newCmdNodeComplianceCheck() *cobra.Command {
 	var options commands.CmdNodeComplianceCheck
 	cmd := &cobra.Command{
 		Use:     "check",
-		Short:   "Run compliance checks.",
+		Short:   "run modules checks",
 		Aliases: []string{"chec", "che", "ch"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -540,7 +546,7 @@ func newCmdNodeComplianceFix() *cobra.Command {
 	var options commands.CmdNodeComplianceFix
 	cmd := &cobra.Command{
 		Use:   "fix",
-		Short: "Run compliance fixes.",
+		Short: "run modules fixes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -558,7 +564,7 @@ func newCmdNodeComplianceFixable() *cobra.Command {
 	var options commands.CmdNodeComplianceFixable
 	cmd := &cobra.Command{
 		Use:     "fixable",
-		Short:   "Run compliance fixable-tests.",
+		Short:   "run modules fixable-tests",
 		Aliases: []string{"fixabl", "fixab", "fixa"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -577,7 +583,7 @@ func newCmdNodeComplianceDetachModuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceDetachModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "Detach compliance moduleset to this node.",
+		Short:   "detach modulesets from this node",
 		Long:    "Modules of attached modulesets are checked on schedule.",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -594,7 +600,7 @@ func newCmdNodeComplianceDetachRuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceDetachRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "Detach compliance ruleset from this node.",
+		Short:   "detach rulesets from this node",
 		Long:    "Rules of attached rulesets are made available to their module.",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -611,7 +617,7 @@ func newCmdNodeComplianceEnv() *cobra.Command {
 	var options commands.CmdNodeComplianceEnv
 	cmd := &cobra.Command{
 		Use:     "env",
-		Short:   "Show the environment variables set during a compliance module run.",
+		Short:   "show the env variables set for modules run",
 		Aliases: []string{"en"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -628,7 +634,7 @@ func newCmdNodeComplianceListModules() *cobra.Command {
 	var options commands.CmdNodeComplianceListModules
 	cmd := &cobra.Command{
 		Use:     "modules",
-		Short:   "List modules available on this node.",
+		Short:   "list modules available on this node",
 		Aliases: []string{"module", "modul", "modu", "mod"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -643,7 +649,7 @@ func newCmdNodeComplianceListModuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceListModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "List compliance moduleset available to this node.",
+		Short:   "list modulesets available to this node",
 		Aliases: []string{"modulesets"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -659,7 +665,7 @@ func newCmdNodeComplianceListRuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceListRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "List compliance ruleset available to this node.",
+		Short:   "list rulesets available to this node",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -675,7 +681,7 @@ func newCmdNodeComplianceShowModuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceShowModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "Show compliance moduleset and modules attached to this node.",
+		Short:   "show modulesets and modules attached to this node",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -691,7 +697,7 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceShowRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "Show compliance rules applying to this node.",
+		Short:   "show rules contextualized for this node",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -706,7 +712,7 @@ func newCmdNodeDelete() *cobra.Command {
 	var options commands.CmdNodeDelete
 	cmd := &cobra.Command{
 		Use:   "delete",
-		Short: "Delete a configuration section.",
+		Short: "delete a configuration section",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -721,7 +727,7 @@ func newCmdNodeDoc() *cobra.Command {
 	var options commands.CmdNodeDoc
 	cmd := &cobra.Command{
 		Use:   "doc",
-		Short: "Print the documentation of the selected keywords.",
+		Short: "print the documentation of the selected keywords",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -738,7 +744,8 @@ func newCmdNodeDrain() *cobra.Command {
 	var options commands.CmdNodeDrain
 	cmd := &cobra.Command{
 		Use:   "drain",
-		Short: "Freeze the selected nodes and shutdown all object instances they run. If not specified with --node, the local node is selected for drain.",
+		Short: "freeze node and shutdown all its object instances",
+		Long:  "If not specified with --node, the local node is selected for drain.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -753,7 +760,7 @@ func newCmdNodeDrivers() *cobra.Command {
 	var options commands.CmdNodeDrivers
 	cmd := &cobra.Command{
 		Use:     "drivers",
-		Short:   "List builtin drivers.",
+		Short:   "list builtin drivers",
 		Aliases: []string{"driver", "drive", "driv", "drv", "dr"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -768,7 +775,7 @@ func newCmdNodeEdit() *cobra.Command {
 	var options commands.CmdNodeEditConfig
 	cmd := &cobra.Command{
 		Use:     "edit",
-		Short:   "Edit the node configuration.",
+		Short:   "edit the node configuration",
 		Aliases: []string{"ed", "edi"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -786,7 +793,7 @@ func newCmdNodeEditConfig() *cobra.Command {
 	var options commands.CmdNodeEditConfig
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Edit the node configuration.",
+		Short:   "edit the node configuration",
 		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -804,7 +811,7 @@ func newCmdNodeEval() *cobra.Command {
 	var options commands.CmdNodeEval
 	cmd := &cobra.Command{
 		Use:   "eval",
-		Short: "Evaluate a configuration key value.",
+		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -821,7 +828,7 @@ func newCmdNodeEvents() *cobra.Command {
 	var options commands.CmdNodeEvents
 	cmd := &cobra.Command{
 		Use:     "events",
-		Short:   "Print the node event stream.",
+		Short:   "print the node event stream",
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -837,7 +844,7 @@ func newCmdNodeFreeze() *cobra.Command {
 	var options commands.CmdNodeFreeze
 	cmd := &cobra.Command{
 		Use:   "freeze",
-		Short: "Freeze the node.",
+		Short: "block ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -852,7 +859,7 @@ func newCmdNodeGet() *cobra.Command {
 	var options commands.CmdNodeGet
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Get a configuration key value.",
+		Short: "get a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -869,7 +876,7 @@ func newCmdNodeLogs() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
-		Short:   "Filter and format logs.",
+		Short:   "Filter and format logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -885,7 +892,7 @@ func newCmdNodeLs() *cobra.Command {
 	var options commands.CmdNodeLs
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List the cluster nodes.",
+		Short: "list the cluster nodes",
 		Long:  "The list can be filtered using the --node selector. This command can be used to validate node selector expressions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -900,7 +907,7 @@ func newCmdNodePrintCapabilities() *cobra.Command {
 	var options commands.CmdNodePrintCapabilities
 	cmd := &cobra.Command{
 		Use:     "capabilities",
-		Short:   "Print the node capabilities.",
+		Short:   "print the node capabilities",
 		Aliases: []string{"capa", "cap", "ca", "caps"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -915,7 +922,7 @@ func newCmdNodePrintConfig() *cobra.Command {
 	var options commands.CmdNodePrintConfig
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Print the node configuration.",
+		Short:   "print the node configuration",
 		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -932,7 +939,7 @@ func newCmdNodePrintSchedule() *cobra.Command {
 	var options commands.CmdNodePrintSchedule
 	cmd := &cobra.Command{
 		Use:     "schedule",
-		Short:   "Print selected objects scheduling table.",
+		Short:   "print selected objects scheduling table",
 		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -947,7 +954,7 @@ func newCmdNodePushAsset() *cobra.Command {
 	var options commands.CmdNodePushAsset
 	cmd := &cobra.Command{
 		Use:     "asset",
-		Short:   "Run the node discovery, push and print the result.",
+		Short:   "run the node discovery, push and print the result",
 		Aliases: []string{"asse", "ass", "as"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -962,7 +969,7 @@ func newCmdNodePushDisks() *cobra.Command {
 	var options commands.CmdNodePushDisks
 	cmd := &cobra.Command{
 		Use:     "disks",
-		Short:   "Run the disk discovery, push and print the result.",
+		Short:   "run the disk discovery, push and print the result",
 		Aliases: []string{"disk", "dis", "di"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -977,7 +984,7 @@ func newCmdNodePushPatch() *cobra.Command {
 	var options commands.CmdNodePushPatch
 	cmd := &cobra.Command{
 		Use:     "patch",
-		Short:   "Run the node installed patches discovery, push and print the result.",
+		Short:   "run the node installed patches discovery, push and print the result",
 		Aliases: []string{"patc", "pat", "pa"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -992,7 +999,7 @@ func newCmdNodePushPkg() *cobra.Command {
 	var options commands.CmdNodePushPkg
 	cmd := &cobra.Command{
 		Use:     "pkg",
-		Short:   "Run the node installed packages discovery, push and print the result.",
+		Short:   "run the node installed packages discovery, push and print the result",
 		Aliases: []string{"pk"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1007,7 +1014,8 @@ func newCmdNodeRegister() *cobra.Command {
 	var options commands.CmdNodeRegister
 	cmd := &cobra.Command{
 		Use:     "register",
-		Short:   "Obtain a registration id from the collector. This is is then used to authenticate the node in collector communications.",
+		Short:   "initial login on the collector",
+		Long:    "Obtain a registration id from the collector, store it in the node configuration node.uuid keyword. This uuid is then used to authenticate the node in collector communications.",
 		Aliases: []string{"registe", "regist", "regis", "regi", "reg", "re"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1026,7 +1034,7 @@ func newCmdNodeScanCapabilities() *cobra.Command {
 	var options commands.CmdNodeScanCapabilities
 	cmd := &cobra.Command{
 		Use:     "capabilities",
-		Short:   "Scan the node for capabilities.",
+		Short:   "scan the node capabilities",
 		Aliases: []string{"capa", "caps", "cap", "ca", "c"},
 		Long: `Scan the node for capabilities.
 
@@ -1044,7 +1052,7 @@ func newCmdNodeSet() *cobra.Command {
 	var options commands.CmdNodeSet
 	cmd := &cobra.Command{
 		Use:   "set",
-		Short: "Set a configuration key value.",
+		Short: "set a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1060,7 +1068,8 @@ func newCmdNodeSysreport() *cobra.Command {
 	var options commands.CmdNodeSysreport
 	cmd := &cobra.Command{
 		Use:     "sysreport",
-		Short:   "Push system report to the collector for archiving and diff analysis. The --force option resend all monitored files and outputs to the collector instead of only those that changed since the last sysreport.",
+		Short:   "collect system data and push it to the collector",
+		Long:    "Push system report to the collector for archiving and diff analysis. The --force option resend all monitored files and outputs to the collector instead of only those that changed since the last sysreport.",
 		Aliases: []string{"sysrepor", "sysrepo", "sysrep", "sysre", "sysr", "sys", "sy"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1076,7 +1085,7 @@ func newCmdNodeThaw() *cobra.Command {
 	var options commands.CmdNodeUnfreeze
 	cmd := &cobra.Command{
 		Use:     "thaw",
-		Short:   "Unfreeze the node.",
+		Short:   "unblock ha automatic start",
 		Hidden:  true,
 		Aliases: []string{"thaw"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1093,7 +1102,7 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	var options commands.CmdNodeUnfreeze
 	cmd := &cobra.Command{
 		Use:     "unfreeze",
-		Short:   "Unfreeze the node.",
+		Short:   "unblock ha automatic start",
 		Aliases: []string{"thaw"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1109,7 +1118,7 @@ func newCmdNodeUnset() *cobra.Command {
 	var options commands.CmdNodeUnset
 	cmd := &cobra.Command{
 		Use:   "unset",
-		Short: "Unset a configuration key.",
+		Short: "unset a configuration key",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1125,7 +1134,7 @@ func newCmdNodeValidateConfig() *cobra.Command {
 	var options commands.CmdNodeValidateConfig
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Verify the node configuration syntax is valid.",
+		Short:   "verify the node configuration syntax",
 		Aliases: []string{"confi", "conf", "con", "co", "c"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1140,7 +1149,7 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 	var options commands.CmdObjectAbort
 	cmd := &cobra.Command{
 		Use:   "abort",
-		Short: "Abort the running orchestration.",
+		Short: "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1154,7 +1163,7 @@ func newCmdObjectClear(kind string) *cobra.Command {
 	var options commands.CmdObjectClear
 	cmd := &cobra.Command{
 		Use:   "clear",
-		Short: "Clear errors in the monitor state.",
+		Short: "clear errors in the monitor state",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1167,7 +1176,7 @@ func newCmdObjectClear(kind string) *cobra.Command {
 func newCmdObjectPrint(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "print",
-		Short:   "Print information about the object.",
+		Short:   "print information about the object",
 		Aliases: []string{"prin", "pri", "pr"},
 	}
 }
@@ -1175,7 +1184,7 @@ func newCmdObjectPrint(kind string) *cobra.Command {
 func newCmdObjectPush(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "push",
-		Short:   "Push information about the object to the collector.",
+		Short:   "push information about the object to the collector",
 		Aliases: []string{"push", "pus", "pu"},
 	}
 }
@@ -1183,7 +1192,7 @@ func newCmdObjectPush(kind string) *cobra.Command {
 func newCmdObjectValidate(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "validate",
-		Short:   "Validation command group.",
+		Short:   "Validation command group",
 		Aliases: []string{"validat", "valida", "valid", "vali", "val"},
 	}
 }
@@ -1191,7 +1200,7 @@ func newCmdObjectValidate(kind string) *cobra.Command {
 func newCmdObjectSync(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "sync",
-		Short:   "Data synchronization command group.",
+		Short:   "data synchronization command group",
 		Aliases: []string{"syn", "sy"},
 	}
 }
@@ -1199,7 +1208,7 @@ func newCmdObjectSync(kind string) *cobra.Command {
 func newCmdObjectCompliance(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "compliance",
-		Short:   "Node configuration expectations analysis and application.",
+		Short:   "node configuration expectations analysis and application",
 		Aliases: []string{"compli", "comp", "com", "co"},
 	}
 }
@@ -1207,7 +1216,7 @@ func newCmdObjectCompliance(kind string) *cobra.Command {
 func newCmdObjectComplianceAttach(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "attach",
-		Short:   "Attach modulesets and rulesets to the node.",
+		Short:   "attach modulesets and rulesets to the node",
 		Aliases: []string{"attac", "atta", "att", "at"},
 	}
 }
@@ -1215,7 +1224,7 @@ func newCmdObjectComplianceAttach(kind string) *cobra.Command {
 func newCmdObjectComplianceDetach(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "detach",
-		Short:   "Detach modulesets and rulesets from the node.",
+		Short:   "detach modulesets and rulesets from the node",
 		Aliases: []string{"detac", "deta", "det", "de"},
 	}
 }
@@ -1223,7 +1232,7 @@ func newCmdObjectComplianceDetach(kind string) *cobra.Command {
 func newCmdObjectComplianceList(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "list",
-		Short:   "List modules, modulesets and rulesets available.",
+		Short:   "list modules, modulesets and rulesets available",
 		Aliases: []string{"lis", "li", "ls", "l"},
 	}
 }
@@ -1231,7 +1240,7 @@ func newCmdObjectComplianceList(kind string) *cobra.Command {
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "show",
-		Short:   "Show states: current moduleset and ruleset attachments, modules last check.",
+		Short:   "show current modulesets and rulesets attachments, modules last check",
 		Aliases: []string{"sho", "sh", "s"},
 	}
 }
@@ -1242,7 +1251,7 @@ func newCmdObjectEdit(kind string) *cobra.Command {
 	var optionsKey commands.CmdObjectEditKey
 	cmd := &cobra.Command{
 		Use:     "edit",
-		Short:   "Edit object configuration or keystore key.",
+		Short:   "edit object configuration or keystore key",
 		Aliases: []string{"ed"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if optionsKey.Key != "" {
@@ -1269,7 +1278,7 @@ func newCmdObjectEditConfig(kind string) *cobra.Command {
 	var options commands.CmdObjectEditConfig
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Edit selected object and instance configuration.",
+		Short:   "edit selected object and instance configuration",
 		Aliases: []string{"conf", "c", "cf", "cfg"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1287,7 +1296,7 @@ func newCmdObjectComplianceAttachModuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceAttachModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "Attach compliance moduleset to this object.",
+		Short:   "attach modulesets to this object",
 		Long:    "Modules of attached modulesets are checked on schedule.",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1304,8 +1313,8 @@ func newCmdObjectComplianceAttachRuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceAttachRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "Attach compliance ruleset to this object.",
-		Long:    "Rules of attached rulesets are made available to their module.",
+		Short:   "attach rulesets to this object",
+		Long:    "Rules of attached rulesets are exposed to modules.",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1321,7 +1330,8 @@ func newCmdObjectComplianceAuto(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceAuto
 	cmd := &cobra.Command{
 		Use:   "auto",
-		Short: "Run compliance fixes on autofix modules, checks on other modules.",
+		Short: "run modules fixes or checks",
+		Long:  "If the module is has the 'autofix' property set, do a fix, else do a check.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1339,7 +1349,7 @@ func newCmdObjectComplianceCheck(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceCheck
 	cmd := &cobra.Command{
 		Use:     "check",
-		Short:   "Run compliance checks.",
+		Short:   "run modules checks",
 		Aliases: []string{"chec", "che", "ch"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1358,7 +1368,7 @@ func newCmdObjectComplianceFix(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceFix
 	cmd := &cobra.Command{
 		Use:   "fix",
-		Short: "Run compliance fixes.",
+		Short: "run modules fixes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1376,7 +1386,7 @@ func newCmdObjectComplianceFixable(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceFixable
 	cmd := &cobra.Command{
 		Use:     "fixable",
-		Short:   "Run compliance fixable-tests.",
+		Short:   "run modules fixable-tests",
 		Aliases: []string{"fixabl", "fixab", "fixa"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1395,7 +1405,7 @@ func newCmdObjectComplianceDetachModuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceDetachModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "Detach compliance moduleset to this object.",
+		Short:   "detach modulesets from this object",
 		Long:    "Modules of attached modulesets are checked on schedule.",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1412,7 +1422,7 @@ func newCmdObjectComplianceDetachRuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceDetachRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "Detach compliance ruleset from this object.",
+		Short:   "detach rulesets from this object",
 		Long:    "Rules of attached rulesets are made available to their module.",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1429,7 +1439,7 @@ func newCmdObjectComplianceEnv(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceEnv
 	cmd := &cobra.Command{
 		Use:     "env",
-		Short:   "Show the environment variables set during a compliance module run.",
+		Short:   "show the env variables set for a module run",
 		Aliases: []string{"en"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1446,7 +1456,7 @@ func newCmdObjectComplianceListModules(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceListModules
 	cmd := &cobra.Command{
 		Use:     "modules",
-		Short:   "List modules available on this object.",
+		Short:   "list modules available on this object",
 		Aliases: []string{"module", "modul", "modu", "mod"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1461,7 +1471,7 @@ func newCmdObjectComplianceListModuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceListModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "List compliance moduleset available to this object.",
+		Short:   "list modulesets available to this object",
 		Aliases: []string{"modulesets"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1477,7 +1487,7 @@ func newCmdObjectComplianceListRuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceListRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "List compliance ruleset available to this object.",
+		Short:   "list rulesets available to this object",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1493,7 +1503,7 @@ func newCmdObjectComplianceShowModuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceShowModuleset
 	cmd := &cobra.Command{
 		Use:     "moduleset",
-		Short:   "Show compliance moduleset and modules attached to this object.",
+		Short:   "show modulesets and modules attached to this object",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1509,7 +1519,7 @@ func newCmdObjectComplianceShowRuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceShowRuleset
 	cmd := &cobra.Command{
 		Use:     "ruleset",
-		Short:   "Show compliance rules applying to this object.",
+		Short:   "show rules contextualized for to this object",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1524,7 +1534,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	var options commands.CmdObjectCreate
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create new objects.",
+		Short: "create a new object",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1547,7 +1557,8 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	var options commands.CmdObjectDelete
 	cmd := &cobra.Command{
 		Use:   "delete",
-		Short: "Delete the object, an instance or a configuration section.",
+		Short: "delete objects, instances or configuration sections",
+		Long:  "Beware: not setting --local nor --rid deletes all object instances via orchestration, which leaves no local backup of the configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1564,7 +1575,7 @@ func newCmdObjectDoc(kind string) *cobra.Command {
 	var options commands.CmdObjectDoc
 	cmd := &cobra.Command{
 		Use:   "doc",
-		Short: "Print the documentation of the selected keywords.",
+		Short: "print the documentation of the selected keywords",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1580,7 +1591,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectEnter
 	cmd := &cobra.Command{
 		Use:   "enter",
-		Short: "Open a shell in a container resource.",
+		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource if --rid is not set.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1596,7 +1607,7 @@ func newCmdObjectEval(kind string) *cobra.Command {
 	var options commands.CmdObjectEval
 	cmd := &cobra.Command{
 		Use:   "eval",
-		Short: "Evaluate a configuration key value.",
+		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1612,7 +1623,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectFreeze
 	cmd := &cobra.Command{
 		Use:   "freeze",
-		Short: "Freeze the selected objects.",
+		Short: "block ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1627,7 +1638,7 @@ func newCmdObjectGet(kind string) *cobra.Command {
 	var options commands.CmdObjectGet
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Get a configuration key value.",
+		Short: "get a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1642,7 +1653,8 @@ func newCmdObjectGiveback(kind string) *cobra.Command {
 	var options commands.CmdObjectGiveback
 	cmd := &cobra.Command{
 		Use:   "giveback",
-		Short: "Stop the misplaced service instances and start on the preferred nodeset.",
+		Short: "orchestrate to reach optimal placement",
+		Long:  "Stop the misplaced service instances and start on the preferred nodes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1659,7 +1671,7 @@ func newCmdObjectLogs(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
-		Short:   "Filter and format logs.",
+		Short:   "filter and format logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1675,7 +1687,7 @@ func newCmdObjectLs(kind string) *cobra.Command {
 	var options commands.CmdObjectLs
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "Print the selected objects path.",
+		Short: "print the selected objects path",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1690,7 +1702,7 @@ func newCmdObjectMonitor(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "monitor",
 		Aliases: []string{"mon", "moni", "monit", "monito"},
-		Short:   "Print selected service and instance status summary.",
+		Short:   "print the selected objects and instances status summary",
 		Long:    monitor.CmdLong,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1706,7 +1718,7 @@ func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintConfig
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Print selected object and instance configuration.",
+		Short:   "print the object configuration",
 		Aliases: []string{"confi", "conf", "con", "co", "c", "cf", "cfg"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1723,7 +1735,7 @@ func newCmdObjectPrintConfigMtime(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintConfigMtime
 	cmd := &cobra.Command{
 		Use:     "mtime",
-		Short:   "Print selected object and instance configuration file modification time.",
+		Short:   "print the object configuration file modification time",
 		Aliases: []string{"mtim", "mti", "mt", "m"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1738,7 +1750,7 @@ func newCmdObjectPrintDevices(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintDevices
 	cmd := &cobra.Command{
 		Use:     "devices",
-		Short:   "Print selected objects and resources exposed, used, base and claimed block devices.",
+		Short:   "print the object's exposed, used, base and claimed block devices",
 		Aliases: []string{"device", "devic", "devi", "dev", "devs", "de"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1754,7 +1766,7 @@ func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	var options commands.CmdObjectPrintSchedule
 	cmd := &cobra.Command{
 		Use:     "schedule",
-		Short:   "Print selected objects scheduling table.",
+		Short:   "print the objects scheduling table",
 		Aliases: []string{"schedul", "schedu", "sched", "sche", "sch", "sc"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1770,7 +1782,7 @@ func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "status",
 		Aliases: []string{"statu", "stat", "sta", "st"},
-		Short:   "Print selected service and instance status.",
+		Short:   "print the object instances status",
 		Long: `Resources Flags:
 
 (1) R   Running,           . Not Running
@@ -1798,7 +1810,8 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectProvision
 	cmd := &cobra.Command{
 		Use:     "provision",
-		Short:   "Allocate new resources.",
+		Short:   "allocate system resources for object resources",
+		Long:    "For example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.",
 		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1821,7 +1834,7 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStart
 	cmd := &cobra.Command{
 		Use:   "prstart",
-		Short: "Preempt devices exclusive write access reservation.",
+		Short: "preempt devices exclusive write access reservation",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1840,7 +1853,7 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStop
 	cmd := &cobra.Command{
 		Use:   "prstop",
-		Short: "Release devices exclusive write access reservation.",
+		Short: "release devices exclusive write access reservation",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1859,7 +1872,7 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	var options commands.CmdObjectPurge
 	cmd := &cobra.Command{
 		Use:   "purge",
-		Short: "Unprovision and delete.",
+		Short: "unprovision and delete",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1880,7 +1893,7 @@ func newCmdObjectPushResInfo(kind string) *cobra.Command {
 	var options commands.CmdObjectPushResInfo
 	cmd := &cobra.Command{
 		Use:     "resinfo",
-		Short:   "Push resource info key/val pairs.",
+		Short:   "push resource info key/val pairs",
 		Aliases: []string{"res"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1898,7 +1911,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{
 		Use:   "restart",
-		Short: "Restart the selected objects or resources.",
+		Short: "restart the selected objects, instances or resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1919,7 +1932,7 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncResync
 	cmd := &cobra.Command{
 		Use:   "resync",
-		Short: "Restore optimal synchronization.",
+		Short: "restore optimal synchronization",
 		Long:  "Only a subset of drivers support this interface. For example, the disk.md driver re-adds removed disks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1938,7 +1951,7 @@ func newCmdObjectRun(kind string) *cobra.Command {
 	var options commands.CmdObjectRun
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run tasks now.",
+		Short: "run tasks now",
 		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -1958,7 +1971,7 @@ func newCmdObjectSet(kind string) *cobra.Command {
 	var options commands.CmdObjectSet
 	cmd := &cobra.Command{
 		Use:   "set",
-		Short: "Set a configuration key value.",
+		Short: "set a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -1974,7 +1987,7 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 	var options commands.CmdObjectSetProvisioned
 	cmd := &cobra.Command{
 		Use:     "provisioned",
-		Short:   "Set the resources as provisioned.",
+		Short:   "set the resources provisioned property",
 		Long:    "This action does not provision the resources (fs are not formatted, disk not allocated, ...). This is just a resources provisioned flag create. Necessary to allow the unprovision action, which is bypassed if the provisioned flag is not set.",
 		Aliases: []string{"provision", "prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1993,7 +2006,7 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	var options commands.CmdObjectSetUnprovisioned
 	cmd := &cobra.Command{
 		Use:     "unprovisioned",
-		Short:   "Set the resources as unprovisioned.",
+		Short:   "unset the resources provisioned property",
 		Long:    "This action does not unprovision the resources (fs are not wiped, disk not removed, ...). This is just a resources provisioned flag remove. Necessary to allow the provision action, which is bypassed if the provisioned flag is set.",
 		Aliases: []string{"unprovision", "unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -2012,7 +2025,7 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectShutdown
 	cmd := &cobra.Command{
 		Use:   "shutdown",
-		Short: "Shutdown the selected objects.",
+		Short: "shutdown the object or instance",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2031,7 +2044,7 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	var options commands.CmdObjectStart
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "Start the selected objects.",
+		Short: "start objects or instances",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2053,19 +2066,8 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "status",
 		Aliases: []string{"statu", "stat", "sta", "st"},
-		Short:   "Print selected service and instance status.",
-		Long: `Resources Flags:
-
-(1) R   Running,           . Not Running
-(2) M   Monitored,         . Not Monitored
-(3) D   Disabled,          . Enabled
-(4) O   Optional,          . Not Optional
-(5) E   Encap,             . Not Encap
-(6) P   Not Provisioned,   . Provisioned,       p Provisioned Mixed,  / Provisioned undef or n/a
-(7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
-
-`,
+		Short:   "set the exitcode to the instance status",
+		Long:    "This command is silent. Only the exitcode holds information.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2081,7 +2083,7 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{
 		Use:   "stop",
-		Short: "Stop the selected objects.",
+		Short: "stop objects or instances",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2101,7 +2103,8 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 	var options commands.CmdObjectSwitch
 	cmd := &cobra.Command{
 		Use:   "switch",
-		Short: "Stop the running service instances and start on the next preferred nodeset.",
+		Short: "orchestrate a running instance move-out",
+		Long:  "Stop the running object instance and start on the next preferred node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2118,7 +2121,7 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
 		Use:   "unfreeze",
-		Short: "Unfreeze the selected objects.",
+		Short: "unblock ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2133,7 +2136,8 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 	var options commands.CmdObjectTakeover
 	cmd := &cobra.Command{
 		Use:   "takeover",
-		Short: "Stop a svc instance and start one on the local node.",
+		Short: "orchestrate a running instance bring-in",
+		Long:  "Stop a object instance and start one on the local node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2150,7 +2154,7 @@ func newCmdObjectThaw(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "thaw",
 		Hidden: true,
-		Short:  "Unfreeze the selected objects.",
+		Short:  "unblock ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2165,7 +2169,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectUnprovision
 	cmd := &cobra.Command{
 		Use:     "unprovision",
-		Short:   "Free resources (danger).",
+		Short:   "free system resources (data-loss danger).",
 		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -2187,7 +2191,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	var options commands.CmdObjectUnset
 	cmd := &cobra.Command{
 		Use:   "unset",
-		Short: "Unset a configuration key.",
+		Short: "unset a configuration key",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
 		},
@@ -2203,7 +2207,7 @@ func newCmdObjectValidateConfig(kind string) *cobra.Command {
 	var options commands.CmdObjectValidateConfig
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Verify the object configuration syntax is correct.",
+		Short:   "verify the object configuration syntax",
 		Aliases: []string{"confi", "conf", "con", "co", "c"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(selectorFlag, kind)
@@ -2219,7 +2223,7 @@ func newCmdPoolLs() *cobra.Command {
 	var options commands.CmdPoolLs
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List the cluster pools.",
+		Short: "list the cluster pools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -2233,7 +2237,7 @@ func newCmdPoolStatus() *cobra.Command {
 	var options commands.CmdPoolStatus
 	cmd := &cobra.Command{
 		Use:     "status",
-		Short:   "Show the cluster pools usage.",
+		Short:   "show the cluster pools usage",
 		Aliases: []string{"statu", "stat", "sta", "st"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
