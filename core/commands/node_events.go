@@ -23,7 +23,7 @@ func (t *CmdNodeEvents) Run() error {
 		err        error
 		c          *client.T
 		ev         *event.Event
-		maxRetries = 5
+		maxRetries = 600
 		retries    = 0
 	)
 	c, err = client.New(client.WithURL(t.Server))
