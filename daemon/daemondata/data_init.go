@@ -49,17 +49,19 @@ func newData(counterCmd chan<- interface{}) *data {
 			},
 		},
 	}
+	initialMsgType := "undef"
 	return &data{
-		previousRemoteInfo: make(map[string]remoteInfo),
-		pending:            status.DeepCopy(),
-		localNode:          localNode,
 		counterCmd:         counterCmd,
 		gen:                nodeData.Status.Gen[localNode],
-		patchQueue:         make(patchQueue),
-		subHbMode:          map[string]string{localNode: "undef"},
-		hbMessageType:      "undef",
 		hbGens:             map[string]map[string]uint64{localNode: map[string]uint64{localNode: 0}},
+		hbMessageType:      initialMsgType,
 		hbPatchMsgUpdated:  make(map[string]time.Time),
+		localNode:          localNode,
+		pending:            status.DeepCopy(),
+		patchQueue:         make(patchQueue),
+		previousRemoteInfo: make(map[string]remoteInfo),
+		subHbMode:          map[string]string{localNode: initialMsgType},
+		subHbMsgType:       map[string]string{localNode: initialMsgType},
 	}
 }
 

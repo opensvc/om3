@@ -22,6 +22,7 @@ func (d *data) setSubHb() {
 		hbModes = append(hbModes, cluster.HbMode{
 			Node: node,
 			Mode: d.subHbMode[node],
+			Type: d.subHbMsgType[node],
 		})
 	}
 
@@ -46,5 +47,31 @@ func (d *data) setSubHb() {
 			msgbus.DataUpdated{RawMessage: eventB},
 			labelLocalNode,
 		)
+	}
+}
+
+func (d *data) setMsgMode(node string, mode string) {
+	d.subHbMode[node] = mode
+}
+
+// setMsgType update the sub.hb.mode.x.Type for node,
+// if value is changed publish msgbus.HbMessageTypeUpdated
+func (d *data) setMsgType(node string, msgType string) {
+	previous := d.subHbMsgType[node]
+	if msgType != previous {
+		d.subHbMsgType[node] = msgType
+		joinedNodes := make([]string, 0)
+		for n, v := range d.subHbMsgType {
+			if v == "patch" {
+				joinedNodes = append(joinedNodes, n)
+			}
+		}
+		d.bus.Pub(msgbus.HbMessageTypeUpdated{
+			Node:        node,
+			From:        previous,
+			To:          msgType,
+			Nodes:       append([]string{}, d.pending.Cluster.Config.Nodes...),
+			JoinedNodes: joinedNodes,
+		})
 	}
 }

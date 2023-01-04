@@ -32,6 +32,7 @@ var (
 		"FrozenFileRemoved":       FrozenFileRemoved{},
 		"FrozenFileUpdated":       FrozenFileUpdated{},
 		"Frozen":                  Frozen{},
+		"HbMessageTypeUpdated":    HbMessageTypeUpdated{},
 		"HbNodePing":              HbNodePing{},
 		"HbPing":                  HbPing{},
 		"HbStale":                 HbStale{},
@@ -155,9 +156,11 @@ type (
 	}
 
 	HbMessageTypeUpdated struct {
-		From        string
-		To          string
-		Nodes       []string
+		Node  string
+		From  string
+		To    string
+		Nodes []string
+		// JoinedNodes are nodes with hb message type patch
 		JoinedNodes []string
 	}
 
@@ -344,6 +347,10 @@ func (e FrozenFileRemoved) Kind() string {
 
 func (e FrozenFileUpdated) Kind() string {
 	return "FrozenFileUpdated"
+}
+
+func (e HbMessageTypeUpdated) Kind() string {
+	return "HbMessageTypeUpdated"
 }
 
 func (e HbNodePing) String() string {

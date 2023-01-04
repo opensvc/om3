@@ -41,7 +41,7 @@ func monCmdRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if monWatchFlag {
-		maxRetries := 5
+		maxRetries := 600
 		retries := 0
 		evReader, statusGetter, err := monCmdWatchArgs(cli)
 		if err != nil {

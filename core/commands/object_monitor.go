@@ -30,7 +30,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	m.SetSelector(mergedSelector)
 
 	if t.Watch {
-		maxRetries := 5
+		maxRetries := 600
 		retries := 0
 		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).GetReader()
 		if err != nil {

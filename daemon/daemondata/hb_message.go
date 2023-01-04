@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/xmap"
 )
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
@@ -67,15 +65,15 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 			return msg, err
 		}
 		msg.Deltas = delta
-		d.subHbMode[d.localNode] = fmt.Sprintf("%d", len(msg.Deltas))
+		d.setMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Deltas)))
 		return msg, nil
 	case "full":
 		nodeData := d.pending.Cluster.Node[d.localNode]
 		msg.Full = *nodeData.DeepCopy()
-		d.subHbMode[d.localNode] = msg.Kind
+		d.setMsgMode(d.localNode, msg.Kind)
 		return msg, nil
 	case "ping":
-		d.subHbMode[d.localNode] = msg.Kind
+		d.setMsgMode(d.localNode, msg.Kind)
 		return msg, nil
 	default:
 		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMessageType)
@@ -140,13 +138,8 @@ func (d *data) setNextMsgType() {
 			d.log.Info().Msgf("hb message type change %s -> %s (gen:%d, gens:%v)",
 				d.hbMessageType, messageType, d.gen, d.hbGens)
 		}
-		d.bus.Pub(msgbus.HbMessageTypeUpdated{
-			From:        d.hbMessageType,
-			To:          messageType,
-			Nodes:       append([]string{}, d.pending.Cluster.Config.Nodes...),
-			JoinedNodes: xmap.Keys(d.hbGens[d.localNode]),
-		})
 		d.hbMessageType = messageType
+		d.setMsgType(d.localNode, messageType)
 	}
 	return
 }
