@@ -19,18 +19,36 @@ import (
 )
 
 func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceStatusUpdated) {
-	if _, ok := o.instStatus[srcCmd.Node]; ok {
-		if o.instStatus[srcCmd.Node].Updated.Before(srcCmd.Value.Updated) {
+	updateInstStatusMap := func() {
+		instStatus, ok := o.instStatus[srcCmd.Node]
+		switch {
+		case !ok:
+			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
+			o.instStatus[srcCmd.Node] = srcCmd.Value
+		case instStatus.Updated.Before(srcCmd.Value.Updated):
 			// only update if more recent
 			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
 			o.instStatus[srcCmd.Node] = srcCmd.Value
-		} else {
+		default:
 			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
 		}
-	} else {
-		o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
-		o.instStatus[srcCmd.Node] = srcCmd.Value
 	}
+	setLocalExpectStarted := func() {
+		if srcCmd.Node != o.localhost {
+			return
+		}
+		if !srcCmd.Value.Avail.Is(status.Up) {
+			return
+		}
+		if o.state.LocalExpect == instance.MonitorLocalExpectStarted {
+			return
+		}
+		o.state.LocalExpect = instance.MonitorLocalExpectStarted
+		o.change = true
+
+	}
+	updateInstStatusMap()
+	setLocalExpectStarted()
 }
 
 func (o *imon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
