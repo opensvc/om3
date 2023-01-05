@@ -29,7 +29,7 @@ func (t MpathPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
 	}
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "    0x") {
-			l = append(l, line[6:])
+			l = append(l, line[4:])
 		}
 	}
 	return l, nil
@@ -71,7 +71,7 @@ func (t MpathPersistDriver) ReadReservation(dev device.T) (string, error) {
 	}
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "   Key = 0x") {
-			return line[11:], nil
+			return line[9:], nil
 		}
 	}
 	return "", nil

@@ -46,7 +46,7 @@ func (t SGPersistDriver) readRegistrations(dev device.T) ([]string, error) {
 	}
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "    0x") {
-			l = append(l, line[6:])
+			l = append(l, line[4:])
 		}
 	}
 	return l, nil
@@ -114,7 +114,7 @@ func (t SGPersistDriver) readReservation(dev device.T) (string, error) {
 	}
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "    Key=0x") {
-			return line[10:], nil
+			return line[8:], nil
 		}
 	}
 	return "", nil
