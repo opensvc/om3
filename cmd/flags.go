@@ -101,6 +101,10 @@ func addFlagDryRun(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "dry-run", false, "Show the action execution plan.")
 }
 
+func addFlagDuration(flagSet *pflag.FlagSet, p *time.Duration) {
+	flagSet.DurationVar(p, "duration", 0*time.Second, "duration.")
+}
+
 func addFlagEnv(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "env", "", "Export the uppercased variable in the os environment. With the create action only, set a env section parameter in the service configuration file. Multiple `--env <key>=<val>` can be specified.")
 }

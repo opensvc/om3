@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"io"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -18,6 +19,12 @@ type GetEvents struct {
 	selector  string
 	relatives bool
 	Filters   []string
+	Duration   time.Duration
+}
+
+func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
+	t.Duration = duration
+	return t
 }
 
 func (t *GetEvents) SetFilters(filters []string) *GetEvents {
@@ -144,6 +151,9 @@ func (t GetEvents) newRequest() *request.T {
 	req.Options["full"] = t.relatives
 	for _, filter := range t.Filters {
 		req.Values.Add("filter", filter)
+	}
+	if t.Duration > 0 {
+		req.Values.Add("duration", t.Duration.String())
 	}
 	return req
 }

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -15,6 +16,7 @@ type (
 	CmdNodeEvents struct {
 		OptsGlobal
 		Filters []string
+		Duration time.Duration
 	}
 )
 
@@ -34,12 +36,25 @@ func (t *CmdNodeEvents) Run() error {
 	evReader, err := c.NewGetEvents().
 		SetRelatives(false).
 		SetFilters(t.Filters).
+		SetDuration(t.Duration).
 		GetReader()
+	ctx := context.Background()
+	if t.Duration > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, t.Duration)
+		defer cancel()
+	}
+
 	if err != nil {
 		return err
 	}
 	for {
 		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
 			ev, err = evReader.Read()
 			if err != nil {
 				break
@@ -50,6 +65,11 @@ func (t *CmdNodeEvents) Run() error {
 			_, _ = fmt.Fprintf(os.Stderr, "close event reader error '%s'\n", err1)
 			return err
 		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 		for {
 			retries++
 			if retries > maxRetries {
@@ -59,7 +79,16 @@ func (t *CmdNodeEvents) Run() error {
 				_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 			}
 			time.Sleep(1 * time.Second)
-			evReader, err = c.NewGetEvents().SetRelatives(false).SetFilters(t.Filters).GetReader()
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+			evReader, err = c.NewGetEvents().
+				SetRelatives(false).
+				SetFilters(t.Filters).
+				SetDuration(t.Duration).
+				GetReader()
 			if err == nil {
 				_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d ok\n", retries, maxRetries)
 				retries = 0
