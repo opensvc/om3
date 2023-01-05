@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"opensvc.com/opensvc/core/colorstatus"
@@ -14,6 +15,7 @@ import (
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/util/render/tree"
+	"opensvc.com/opensvc/util/xmap"
 )
 
 type (
@@ -70,7 +72,11 @@ func (t Digest) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.descString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
-	for _, data := range t.Instances {
+	nodenames := xmap.Keys(t.Instances)
+	sort.Sort(sort.StringSlice(nodenames))
+
+	for _, nodename := range nodenames {
+		data := t.Instances[nodename]
 		n := instances.AddNode()
 		data.LoadTreeNode(n)
 	}
