@@ -837,6 +837,7 @@ func newCmdNodeEvents() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagEventFilters(flags, &options.Filters)
+	addFlagDuration(flags, &options.Duration)
 	return cmd
 }
 
