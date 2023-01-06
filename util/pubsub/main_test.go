@@ -174,3 +174,13 @@ func TestDropSlowSubscription(t *testing.T) {
 		})
 	}
 }
+
+func Test_labelMap_Key(t *testing.T) {
+	l := labelMap{"a": "a", "b": "b", "c": "c"}
+	initialResult := l.Key()
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
+			assert.Equal(t, initialResult, l.Key(), "result must be consistent to avoid subscription leak")
+		})
+	}
+}
