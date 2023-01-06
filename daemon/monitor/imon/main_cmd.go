@@ -96,7 +96,66 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 	o.updateIfChange()
 }
 
-func (o *imon) onSetInstanceMonitorClient(c msgbus.SetInstanceMonitor) {
+// onProgressInstanceMonitor updates the fields of instance.Monitor applying policies:
+// if state goes from stopping/shutting to idle and local expect is started, reset the
+// the local expect, so the resource restart is disabled.
+func (o *imon) onProgressInstanceMonitor(c msgbus.ProgressInstanceMonitor) {
+	prevState := o.state.State
+	doLocalExpect := func() {
+		if !o.change {
+			return
+		}
+		if c.IsPartial {
+			return
+		}
+		if c.State != instance.MonitorStateIdle {
+			return
+		}
+		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
+			return
+		}
+		switch prevState {
+		case instance.MonitorStateStopping, instance.MonitorStateShutting:
+			// pass
+		default:
+			return
+		}
+		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, instance.MonitorLocalExpectUnset)
+		o.change = true
+		o.state.LocalExpect = instance.MonitorLocalExpectUnset
+	}
+	doState := func() {
+		if prevState == c.State {
+			return
+		}
+		switch o.state.SessionId {
+		case "":
+		case c.SessionId:
+			// pass
+		default:
+			o.log.Warn().Msgf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", o.state.State, o.state.SessionId, c.State, c.SessionId)
+		}
+		o.log.Info().Msgf("set instance monitor state %s -> %s", o.state.State, c.State)
+		o.change = true
+		o.state.State = c.State
+		if c.State == instance.MonitorStateIdle {
+			o.state.SessionId = ""
+		} else {
+			o.state.SessionId = c.SessionId
+		}
+	}
+
+	doState()
+	doLocalExpect()
+
+	if o.change {
+		o.updateIsLeader()
+		o.orchestrate()
+		o.updateIfChange()
+	}
+}
+
+func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 	doState := func() {
 		if c.Value.State == nil {
 			return
@@ -186,8 +245,7 @@ func (o *imon) onSetInstanceMonitorClient(c msgbus.SetInstanceMonitor) {
 			return
 		}
 		switch *c.Value.LocalExpect {
-		case instance.MonitorLocalExpectEmpty:
-			return
+		case instance.MonitorLocalExpectUnset:
 		case instance.MonitorLocalExpectStarted:
 		default:
 			o.log.Warn().Msgf("invalid set instance monitor local expect: %s", *c.Value.LocalExpect)

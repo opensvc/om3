@@ -240,9 +240,18 @@ type PostObjectClear struct {
 
 // PostObjectMonitor defines model for postObjectMonitor.
 type PostObjectMonitor struct {
-	GlobalExpect        *string `json:"global_expect,omitempty"`
-	GlobalExpectOptions *string `json:"global_expect_options,omitempty"`
-	Path                string  `json:"path"`
+	GlobalExpect *string `json:"global_expect,omitempty"`
+	LocalExpect  *string `json:"local_expect,omitempty"`
+	Path         string  `json:"path"`
+	State        *string `json:"state,omitempty"`
+}
+
+// PostObjectProgress defines model for postObjectProgress.
+type PostObjectProgress struct {
+	IsPartial *bool  `json:"is_partial,omitempty"`
+	Path      string `json:"path"`
+	SessionId string `json:"session_id"`
+	State     string `json:"state"`
 }
 
 // PostObjectStatus defines model for postObjectStatus.
@@ -536,6 +545,9 @@ type GetObjectFileParams struct {
 // PostObjectMonitorJSONBody defines parameters for PostObjectMonitor.
 type PostObjectMonitorJSONBody = PostObjectMonitor
 
+// PostObjectProgressJSONBody defines parameters for PostObjectProgress.
+type PostObjectProgressJSONBody = PostObjectProgress
+
 // GetObjectSelectorParams defines parameters for GetObjectSelector.
 type GetObjectSelectorParams struct {
 	// object selector
@@ -577,6 +589,9 @@ type PostObjectClearJSONRequestBody = PostObjectClearJSONBody
 
 // PostObjectMonitorJSONRequestBody defines body for PostObjectMonitor for application/json ContentType.
 type PostObjectMonitorJSONRequestBody = PostObjectMonitorJSONBody
+
+// PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
+type PostObjectProgressJSONRequestBody = PostObjectProgressJSONBody
 
 // PostObjectStatusJSONRequestBody defines body for PostObjectStatus for application/json ContentType.
 type PostObjectStatusJSONRequestBody = PostObjectStatusJSONBody

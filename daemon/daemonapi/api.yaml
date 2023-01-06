@@ -311,6 +311,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+  /object/progress:
+    post:
+      operationId: PostObjectProgress
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: Change the instance monitor state to reflect the progress of actions the daemon did not started.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/postObjectProgress'
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /object/selector:
     get:
       operationId: GetObjectSelector
@@ -713,10 +737,29 @@ components:
       required:
         - path
       properties:
+        local_expect:
+          type: string
         global_expect:
           type: string
         path:
           type: string
+        state:
+          type: string
+    postObjectProgress:
+      type: object
+      required:
+        - path
+        - session_id
+        - state
+      properties:
+        path:
+          type: string
+        session_id:
+          type: string
+        state:
+          type: string
+        is_partial:
+          type: boolean
     postObjectStatus:
       type: object
       required:

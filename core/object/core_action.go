@@ -24,6 +24,7 @@ import (
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/pg"
 	"opensvc.com/opensvc/util/stringslice"
+	"opensvc.com/opensvc/util/xsession"
 )
 
 // Resources implementing setters
@@ -69,10 +70,6 @@ func (t *actor) setenv(action string, leader bool) {
 }
 
 func (t *actor) preAction(ctx context.Context) error {
-	if err := t.notifyAction(ctx); err != nil {
-		action := actioncontext.Props(ctx)
-		t.Log().Debug().Err(err).Msgf("unable to notify %v preAction", action.Name)
-	}
 	if err := t.mayFreeze(ctx); err != nil {
 		return err
 	}
@@ -140,6 +137,36 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 		return
 	}
 	q <- false
+}
+
+// announceProgress signals the daemon that an action is in progress, using the
+// POST /object/progress. This handler manages local expect:
+// * set to "started" via InstanceMonitorUpdated event handler
+// * set to "" if progress is idle
+func (t *actor) announceProgress(ctx context.Context, progress string) error {
+	if env.HasDaemonOrigin() {
+		// no need to announce if the daemon started this action
+		return nil
+	}
+	if actioncontext.IsDryRun(ctx) {
+		return nil
+	}
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	req := c.NewPostObjectProgress()
+	req.Path = t.path.String()
+	req.State = progress
+	req.SessionId = xsession.ID
+	req.IsPartial = !resourceselector.FromContext(ctx, nil).IsZero()
+	_, err = req.Do()
+	if err != nil {
+		t.log.Error().Err(err).Msgf("announce %s state", progress)
+		return err
+	}
+	t.log.Info().Msgf("announce %s state", progress)
+	return nil
 }
 
 func (t *actor) abortStart(ctx context.Context, l resourceLister) (err error) {
@@ -250,6 +277,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			Dur("duration", time.Now().Sub(beginTime)).
 			Msg("done")
 	}()
+
+	// daemon instance monitor updates
+	progress := actioncontext.Props(ctx).Progress
+	t.announceProgress(ctx, progress)
+	defer t.announceProgress(ctx, "idle") // TODO: failed cases ?
+
 	if mgr := pg.FromContext(ctx); mgr != nil {
 		mgr.Register(t.pg)
 	}
@@ -355,30 +388,6 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-// notifyAction signals the daemon that an action is in progress, setting the
-// instance local expect via POST /object_monitor
-func (t *actor) notifyAction(ctx context.Context) error {
-	if env.HasDaemonOrigin() {
-		return nil
-	}
-	if actioncontext.IsDryRun(ctx) {
-		return nil
-	}
-	c, err := client.New()
-	if err != nil {
-		return err
-	}
-	action := actioncontext.Props(ctx)
-	req := c.NewPostObjectMonitor()
-	req.ObjectSelector = t.path.String()
-	req.State = action.Progress
-	if resourceselector.FromContext(ctx, nil).IsZero() {
-		req.LocalExpect = action.LocalExpect
-	}
-	_, err = req.Do()
-	return err
 }
 
 func (t *actor) mayFreeze(ctx context.Context) error {

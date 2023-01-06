@@ -17,6 +17,7 @@ type (
 		IsHALeader          bool                      `json:"is_ha_leader"`
 		LocalExpect         MonitorLocalExpect        `json:"local_expect"`
 		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
+		SessionId           string                    `json:"session_id"`
 		State               MonitorState              `json:"state"`
 		StateUpdated        time.Time                 `json:"state_updated"`
 		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
@@ -61,6 +62,7 @@ const (
 	MonitorStateProvisionFailed
 	MonitorStatePurgeFailed
 	MonitorStateReady
+	MonitorStateShutting
 	MonitorStateStarted
 	MonitorStateStartFailed
 	MonitorStateStarting
@@ -78,9 +80,8 @@ const (
 )
 
 const (
-	MonitorLocalExpectEmpty MonitorLocalExpect = iota
+	MonitorLocalExpectUnset MonitorLocalExpect = iota
 	MonitorLocalExpectStarted
-	MonitorLocalExpectUnset
 )
 
 const (
@@ -112,6 +113,7 @@ var (
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
 		MonitorStateReady:             "ready",
+		MonitorStateShutting:          "shutting",
 		MonitorStateStarted:           "started",
 		MonitorStateStartFailed:       "start failed",
 		MonitorStateStarting:          "starting",
@@ -141,6 +143,7 @@ var (
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
 		"ready":              MonitorStateReady,
+		"shutting":           MonitorStateShutting,
 		"started":            MonitorStateStarted,
 		"start failed":       MonitorStateStartFailed,
 		"starting":           MonitorStateStarting,
@@ -158,13 +161,11 @@ var (
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
-		MonitorLocalExpectEmpty:   "",
 		MonitorLocalExpectStarted: "started",
 		MonitorLocalExpectUnset:   "unset",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
-		"":        MonitorLocalExpectEmpty,
 		"started": MonitorLocalExpectStarted,
 		"unset":   MonitorLocalExpectUnset,
 	}
