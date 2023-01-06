@@ -31,6 +31,14 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 		i := instance.MonitorGlobalExpectValues[*payload.GlobalExpect]
 		instMonitor.GlobalExpect = &i
 	}
+	if payload.LocalExpect != nil {
+		i := instance.MonitorLocalExpectValues[*payload.LocalExpect]
+		instMonitor.LocalExpect = &i
+	}
+	if payload.State != nil {
+		i := instance.MonitorStateValues[*payload.State]
+		instMonitor.State = &i
+	}
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetInstanceMonitor{
 		Path:  p,

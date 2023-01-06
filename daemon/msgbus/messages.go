@@ -51,6 +51,7 @@ var (
 		"ObjectStatusDeleted":     ObjectStatusDeleted{},
 		"ObjectStatusDone":        ObjectStatusDone{},
 		"ObjectStatusUpdated":     ObjectStatusUpdated{},
+		"ProgressInstanceMonitor": ProgressInstanceMonitor{},
 		"RemoteFileConfig":        RemoteFileConfig{},
 		"SetInstanceMonitor":      SetInstanceMonitor{},
 		"SetNodeMonitor":          SetNodeMonitor{},
@@ -245,6 +246,14 @@ type (
 		Node  string
 		Value object.Status
 		SrcEv any
+	}
+
+	ProgressInstanceMonitor struct {
+		Path      path.T
+		Node      string
+		State     instance.MonitorState
+		SessionId string
+		IsPartial bool
 	}
 
 	RemoteFileConfig struct {
@@ -447,6 +456,10 @@ func (e ObjectStatusUpdated) String() string {
 
 func (e ObjectStatusUpdated) Kind() string {
 	return "ObjectStatusUpdated"
+}
+
+func (e ProgressInstanceMonitor) Kind() string {
+	return "ProgressInstanceMonitor"
 }
 
 func (e RemoteFileConfig) Kind() string {

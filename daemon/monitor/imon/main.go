@@ -127,6 +127,7 @@ func (o *imon) startSubscriptions() {
 	sub := bus.Sub(o.id + "imon")
 	label := pubsub.Label{"path", o.id}
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
+	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
@@ -159,8 +160,10 @@ func (o *imon) worker(initialNodes []string) {
 			switch c := i.(type) {
 			case msgbus.ObjectStatusUpdated:
 				o.onObjectStatusUpdated(c)
+			case msgbus.ProgressInstanceMonitor:
+				o.onProgressInstanceMonitor(c)
 			case msgbus.SetInstanceMonitor:
-				o.onSetInstanceMonitorClient(c)
+				o.onSetInstanceMonitor(c)
 			case msgbus.InstanceMonitorUpdated:
 				o.onInstanceMonitorUpdated(c)
 			case msgbus.InstanceMonitorDeleted:
@@ -266,7 +269,7 @@ func (o *imon) loggerWithState() *zerolog.Logger {
 	if o.state.GlobalExpect != instance.MonitorGlobalExpectEmpty {
 		ctx.Str("global_expect", o.state.GlobalExpect.String())
 	}
-	if o.state.LocalExpect != instance.MonitorLocalExpectEmpty {
+	if o.state.LocalExpect != instance.MonitorLocalExpectUnset {
 		ctx.Str("local_expect", o.state.LocalExpect.String())
 	}
 	stateLogger := ctx.Logger()

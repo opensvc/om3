@@ -117,13 +117,13 @@ func (t States) descString() string {
 	}
 
 	// Monitor global expect
-	if s := t.Monitor.GlobalExpect.String(); s != "" {
-		l = append(l, s)
+	if t.Monitor.GlobalExpect != MonitorGlobalExpectUnset {
+		l = append(l, t.Monitor.GlobalExpect.String())
 	}
 
 	// Monitor local expect
-	if s := t.Monitor.LocalExpect.String(); s != "" {
-		l = append(l, s)
+	if t.Monitor.LocalExpect != MonitorLocalExpectUnset {
+		l = append(l, t.Monitor.LocalExpect.String())
 	}
 
 	// Daemon down
