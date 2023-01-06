@@ -40,6 +40,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -147,9 +148,16 @@ var (
 	notifyDurationWarn = 5 * time.Second
 )
 
+// Key returns labelMap key as a string
+// with ordered label names
 func (t labelMap) Key() string {
 	s := ""
-	for _, key := range xmap.Keys(t) {
+	var sortKeys []string
+	for key := range t {
+		sortKeys = append(sortKeys, key)
+	}
+	sort.Strings(sortKeys)
+	for _, key := range sortKeys {
 		s += "{" + key + "=" + t[key] + "}"
 	}
 	return s
@@ -296,24 +304,28 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 }
 
 func (b *Bus) onPubCmd(c cmdPub) {
-	for _, key := range c.keys() {
-		if ids, ok := b.subMap[key]; ok {
-			for id := range ids {
-				sub := b.subs[id]
+	for _, toFilterKey := range c.keys() {
+		// search publication that listen on one of cmdPub.keys
+		if subIdM, ok := b.subMap[toFilterKey]; ok {
+			for subId := range subIdM {
+				sub, ok := b.subs[subId]
+				if !ok {
+					// This should not happen
+					b.log.Warn().Msgf("filter key %s has a dead subscription %s", toFilterKey, subId)
+					continue
+				}
 				b.log.Debug().Msgf("route %s to %s", c, sub)
 				sub.q <- c.data
 			}
 		}
 	}
-	select {
-	case <-b.ctx.Done():
-	case c.resp <- true:
-	}
+	c.resp <- true
 }
 
 func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
 	sub, ok := b.subs[c.id]
 	if !ok {
+		// TODO c.resp should be error here
 		c.resp <- nil
 		return
 	}
@@ -570,6 +582,12 @@ func (sub *Subscription) drain() {
 	}
 }
 
+// keys return [] of sub filterkeys
+//
+//	[]string{
+//	        "<Type>:",  // a filter of <Type> without labels
+//	        "<Type>:{<name>:<value>}{<name>:<value>}....
+//	}
 func (sub *Subscription) keys() []string {
 	if len(sub.filters) == 0 {
 		return []string{":"}
@@ -652,9 +670,6 @@ func (sub *Subscription) Start() {
 					go sub.bus.Pub(SubscriptionError{Name: sub.name, Id: sub.id, Error: err})
 					sub.cancel()
 					go func() {
-						if err := sub.Stop(); err != nil {
-							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
-						}
 						if err := sub.Stop(); err != nil {
 							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
 						}
