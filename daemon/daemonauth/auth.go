@@ -47,8 +47,9 @@ func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO verify for alternate method for /public
 			if strings.HasPrefix(r.URL.Path, "/public") {
-				grants := NewGrants()
-				user := auth.NewUserInfo("nobody", "", nil, grants.Extensions())
+				extensions := NewGrants().Extensions()
+				extensions.Add("strategy", "public")
+				user := auth.NewUserInfo("nobody", "", nil, extensions)
 				r = auth.RequestWithUser(user, r)
 				next.ServeHTTP(w, r)
 				return
@@ -82,8 +83,9 @@ func validateNode(_ context.Context, _ *http.Request, username, password string)
 	if storedPassword != password {
 		return nil, errors.Errorf("wrong cluster.secret")
 	}
-	grants := NewGrants("root")
-	info := auth.NewUserInfo("node-"+username, "", nil, grants.Extensions())
+	extensions := NewGrants("root").Extensions()
+	extensions.Add("strategy", "node")
+	info := auth.NewUserInfo("node-"+username, "", nil, extensions)
 	return info, nil
 }
 
@@ -105,7 +107,9 @@ func validateUser(_ context.Context, _ *http.Request, username, password string)
 		return nil, errors.Errorf("wrong password")
 	}
 	grants := NewGrants(usr.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"})...)
-	info := auth.NewUserInfo(username, "", nil, grants.Extensions())
+	extensions := grants.Extensions()
+	extensions.Add("strategy", "user")
+	info := auth.NewUserInfo(username, "", nil, extensions)
 	return info, nil
 }
 
@@ -114,8 +118,9 @@ func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Inf
 	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return nil, errors.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
 	}
-	grants := NewGrants("root")
-	info := auth.NewUserInfo("root", "", nil, grants.Extensions())
+	extensions := NewGrants("root").Extensions()
+	extensions.Add("strategy", "ux")
+	info := auth.NewUserInfo("root", "", nil, extensions)
 	return info, nil
 }
 
