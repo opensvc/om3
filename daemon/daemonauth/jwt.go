@@ -1,8 +1,10 @@
 package daemonauth
 
 import (
+	"context"
 	"crypto/rsa"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -25,6 +27,12 @@ type (
 	}
 
 	Claims map[string]interface{}
+
+	// ApiClaims defines api claims
+	ApiClaims struct {
+		Grant Grants `json:"grant"`
+		*jwt.StandardClaims
+	}
 )
 
 var (
@@ -45,8 +53,28 @@ func initToken() auth.Strategy {
 		log.Logger.Error().Err(err).Msg("init token auth strategy")
 		return nil
 	}
-	tokenStrategy = token.New(token.NoOpAuthenticate, cache)
+	tokenStrategy = token.New(validateToken, cache)
 	return tokenStrategy
+}
+
+func validateToken(ctx context.Context, r *http.Request, s string) (info auth.Info, exp time.Time, err error) {
+	var (
+		tk *jwt.Token
+	)
+
+	tk, err = jwt.ParseWithClaims(s, &ApiClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return verifyKey, nil
+	})
+	if err != nil {
+		return
+	}
+	claims := tk.Claims.(*ApiClaims)
+	exp = time.Unix(claims.ExpiresAt, 0)
+
+	extensions := claims.Grant.Extensions()
+	extensions.Add("strategy", "jwt")
+	info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, extensions)
+	return
 }
 
 func initJWT() error {
@@ -95,8 +123,8 @@ func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims)
 	}
 	expireAt = time.Now().Add(duration)
 	claims := Claims{
-		"sub":  userInfo.GetUserName(),
-		"exp":   expireAt,
+		"sub":   userInfo.GetUserName(),
+		"exp":   expireAt.Unix(),
 		"grant": userInfo.GetExtensions()["grant"],
 	}
 	for c, v := range xClaims {
@@ -105,6 +133,5 @@ func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims)
 	if _, tk, err = TokenAuth.Encode(claims); err != nil {
 		return
 	}
-	err = auth.Append(tokenStrategy, tk, userInfo)
 	return
 }
