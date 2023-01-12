@@ -14,6 +14,10 @@ func (t T) NewGetDaemonRunning() *api.GetDaemonRunning {
 	return api.NewGetDaemonRunning(t)
 }
 
+func (t T) NewPostDaemonAuth() *api.PostDaemonAuth {
+	return api.NewPostDaemonAuth(t)
+}
+
 func (t T) NewPostDaemonStop() *api.PostDaemonStop {
 	return api.NewPostDaemonStop(t)
 }
