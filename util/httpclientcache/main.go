@@ -3,7 +3,10 @@ package httpclientcache
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"net/http"
+	"os"
 	"time"
 
 	"golang.org/x/net/http2"
@@ -17,6 +20,8 @@ type (
 		Timeout  time.Duration
 
 		InsecureSkipVerify bool
+
+		RootCA string
 	}
 
 	getClient struct {
@@ -36,7 +41,7 @@ var (
 )
 
 func (o Options) String() string {
-	s := o.CertFile + " " + o.KeyFile + o.Timeout.String()
+	s := o.CertFile + " " + o.KeyFile + o.Timeout.String() + " " + o.RootCA
 	if o.InsecureSkipVerify {
 		return s + " insecure"
 	}
@@ -85,7 +90,10 @@ func server() {
 			} else {
 				client, err := newClient(c.option)
 				if err == nil {
-					dbClient[s] = client
+					// don't cache client when RootCA is defined (RootCA is temp file)
+					if c.option.RootCA == "" {
+						dbClient[s] = client
+					}
 				}
 				c.response.client <- client
 				c.response.err <- err
@@ -94,24 +102,43 @@ func server() {
 	}
 }
 
-func newClient(o Options) (*http.Client, error) {
+func newClient(o Options) (cli *http.Client, err error) {
 	tp := &http2.Transport{
 		TLSClientConfig: &tls.Config{},
 	}
 	if o.CertFile != "" && o.KeyFile != "" {
-		cer, err := tls.LoadX509KeyPair(o.CertFile, o.KeyFile)
-		if err != nil {
-			return nil, err
+		var (
+			cert tls.Certificate
+		)
+		if cert, err = tls.LoadX509KeyPair(o.CertFile, o.KeyFile); err != nil {
+			return
 		}
-		tp.TLSClientConfig.Certificates = []tls.Certificate{cer}
+		tp.TLSClientConfig.Certificates = []tls.Certificate{cert}
 		tp.TLSClientConfig.InsecureSkipVerify = o.InsecureSkipVerify
-
 	} else {
 		tp.TLSClientConfig.InsecureSkipVerify = true
 	}
-	client := &http.Client{Transport: tp}
-	if o.Timeout > 0 {
-		client.Timeout = o.Timeout
+	if o.RootCA != "" {
+		var (
+			certPool *x509.CertPool
+			b        []byte
+		)
+		if certPool, err = x509.SystemCertPool(); err != nil {
+			return
+		}
+		if b, err = os.ReadFile(o.RootCA); err != nil {
+			return
+		}
+		if !certPool.AppendCertsFromPEM(b) {
+			err = errors.New("can't append RootCAs from RootCA " + o.RootCA)
+			return
+		}
+		tp.TLSClientConfig.RootCAs = certPool
+		tp.TLSClientConfig.InsecureSkipVerify = false
 	}
-	return client, nil
+	cli = &http.Client{Transport: tp}
+	if o.Timeout > 0 {
+		cli.Timeout = o.Timeout
+	}
+	return
 }

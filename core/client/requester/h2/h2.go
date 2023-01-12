@@ -32,6 +32,7 @@ type (
 		Password    string      `json:"-"`
 		Client      http.Client `json:"-"`
 		URL         string      `json:"url"`
+		Bearer      string      `json:"-"`
 	}
 )
 
@@ -89,12 +90,13 @@ func NewUDS(url string) (*T, error) {
 	return r, nil
 }
 
-func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, username, password string) (*T, error) {
+func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, username, password string, bearer string, rootCa string) (*T, error) {
 	client, err := httpclientcache.Client(httpclientcache.Options{
 		CertFile:           clientCertificate,
 		KeyFile:            clientKey,
 		Timeout:            clientTimeout,
 		InsecureSkipVerify: insecureSkipVerify,
+		RootCA:             rootCa,
 	})
 	if err != nil {
 		return nil, err
@@ -107,6 +109,7 @@ func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, 
 		Password: password,
 		URL:      url,
 		Client:   *client,
+		Bearer:   bearer,
 	}
 	return r, nil
 }
@@ -130,6 +133,8 @@ func (t T) newRequest(method string, r request.T) (*http.Request, error) {
 	req.Header.Set("o-node", r.Node)
 	if t.Password != "" {
 		req.SetBasicAuth(t.Username, t.Password)
+	} else if t.Bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+t.Bearer)
 	}
 	return req, nil
 }
@@ -151,7 +156,9 @@ func (t T) doReqReadResponse(method string, r request.T) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("%s: %s: %s", t, r, resp.Status)
 	}
@@ -246,7 +253,9 @@ func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
 	}
 	br := bufio.NewReader(resp.Body)
 	delim := []byte{':', ' '}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	for {
 		bs, err := br.ReadBytes('\n')
 
