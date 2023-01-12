@@ -44,3 +44,8 @@ func NewCcfg(p any, opts ...funcopt.O) (*ccfg, error) {
 func (t ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 	return keywordLookup(ccfgKeywordStore, k, t.path.Kind, sectionType)
 }
+
+func (t ccfg) Name() string {
+	k := key.Parse("cluster.name")
+	return t.config.GetString(k)
+}

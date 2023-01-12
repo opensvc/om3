@@ -21,6 +21,7 @@ func init() {
 		cmdDaemon,
 	)
 	cmdDaemon.AddCommand(
+		newCmdDaemonJoin(),
 		cmdDaemonRelay,
 		newCmdDaemonRestart(),
 		newCmdDaemonRunning(),
