@@ -127,6 +127,22 @@ func newCmdArrayLs() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonAuth() *cobra.Command {
+	var options commands.CmdDaemonAuth
+	cmd := &cobra.Command{
+		Use:   "auth",
+		Short: "Create new token",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagRoles(flagSet, &options.Roles)
+	addFlagDuration(flagSet, &options.Duration)
+	return cmd
+}
+
 func newCmdDaemonJoin() *cobra.Command {
 	var options commands.CmdDaemonJoin
 	cmd := &cobra.Command{

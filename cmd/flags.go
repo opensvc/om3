@@ -249,6 +249,10 @@ func addFlagModuleset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "moduleset", "", "The modulesets to limit the action to. The special value `all` can be used in conjonction with detach.")
 }
 
+func addFlagRoles(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringArrayVar(p, "role", []string{}, "Api role. Example 'root'")
+}
+
 func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "ruleset", "", "the rulesets to limit the action to. the special value `all` can be used in conjonction with detach.")
 }
