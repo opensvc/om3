@@ -54,6 +54,16 @@ const (
 	True  Provisioned = "true"
 )
 
+// Defines values for Role.
+const (
+	Admin          Role = "admin"
+	Blacklistadmin Role = "blacklistadmin"
+	Guest          Role = "guest"
+	Heartbeat      Role = "heartbeat"
+	Root           Role = "root"
+	Squatter       Role = "squatter"
+)
+
 // Defines values for Topology.
 const (
 	Failover Topology = "failover"
@@ -382,6 +392,9 @@ type ResponsePostAuthToken struct {
 // ResponseText defines model for responseText.
 type ResponseText = string
 
+// Role defines model for role.
+type Role string
+
 // SanPath defines model for sanPath.
 type SanPath struct {
 	// initiator is the host side san path endpoint.
@@ -482,8 +495,20 @@ type QueryRelayClusterId = string
 // QueryRelayNodename defines model for queryRelayNodename.
 type QueryRelayNodename = string
 
+// QueryRoles defines model for queryRoles.
+type QueryRoles = []Role
+
 // QuerySelectorOptional defines model for querySelectorOptional.
 type QuerySelectorOptional = string
+
+// PostAuthTokenParams defines parameters for PostAuthToken.
+type PostAuthTokenParams struct {
+	// list of api role
+	Role *QueryRoles `form:"role,omitempty" json:"role,omitempty"`
+
+	// max token duration, maximum value 24h
+	Duration *string `form:"duration,omitempty" json:"duration,omitempty"`
+}
 
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {

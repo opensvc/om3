@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/shaj13/go-guardian/v2/auth"
+
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemondata"
 )
@@ -24,11 +25,12 @@ const (
 	RoleSquatter       Role = "squatter"
 	RoleBlacklistAdmin Role = "blacklistadmin"
 	RoleHeartbeat      Role = "heartbeat"
+	RoleJoin           Role = "join"
 )
 
 func roleHasNamespace(role Role) bool {
 	switch role {
-	case RoleRoot, RoleBlacklistAdmin, RoleHeartbeat:
+	case RoleRoot, RoleBlacklistAdmin, RoleHeartbeat, RoleJoin:
 		return false
 	default:
 		return true
