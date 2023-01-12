@@ -2,6 +2,7 @@ package daemoncli_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +24,10 @@ var (
 		"UrlUxRaw":    daemonenv.UrlUxRaw,
 		"UrlInetHttp": daemonenv.UrlInetHttp,
 		"UrlInetRaw":  daemonenv.UrlInetRaw,
+
+		"NoSecCa":          daemonenv.UrlInetHttp,
+		"NoSecCert":        daemonenv.UrlInetHttp,
+		"NoSecCaNoSecCert": daemonenv.UrlInetHttp,
 	}
 )
 
@@ -45,7 +50,7 @@ func newClient(serverUrl string) (*client.T, error) {
 			client.WithInsecureSkipVerify(true))
 
 		clientOptions = append(clientOptions,
-			client.WithCertificate(daemonenv.CertFile()))
+			client.WithCertificate(daemonenv.CertChainFile()))
 
 		clientOptions = append(clientOptions,
 			client.WithKey(daemonenv.KeyFile()),
@@ -57,8 +62,12 @@ func newClient(serverUrl string) (*client.T, error) {
 func setup(t *testing.T) {
 	env := testhelper.Setup(t)
 	env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
-	env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
-	env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	if !strings.Contains(t.Name(), "NoSecCa") {
+		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
+	}
+	if !strings.Contains(t.Name(), "NoSecCert") {
+		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	}
 	rawconfig.LoadSections()
 }
 

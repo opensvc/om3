@@ -70,7 +70,7 @@ func startCertFS() error {
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
-	dst = daemonenv.CertFile()
+	dst = daemonenv.CertChainFile()
 	if err := certSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
 		return err
 	} else {
@@ -127,7 +127,7 @@ func startCertFS() error {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
 
-	dst = daemonenv.CACertFile()
+	dst = daemonenv.CACertChainFile()
 	if err := caSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
 		return err
 	} else {

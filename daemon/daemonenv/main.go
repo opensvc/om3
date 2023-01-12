@@ -20,7 +20,7 @@ func CAKeyFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "ca_private_key")
 }
 
-func CACertFile() string {
+func CACertChainFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "ca_certificate_chain")
 }
 
@@ -28,8 +28,12 @@ func CAsCertFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "ca_certificates")
 }
 
-func CertFile() string {
+func CertChainFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "certificate_chain")
+}
+
+func CertFile() string {
+	return filepath.Join(rawconfig.Paths.Certs, "certificate")
 }
 
 func KeyFile() string {

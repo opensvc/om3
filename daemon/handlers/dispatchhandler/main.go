@@ -156,7 +156,7 @@ func (d *dispatch) httpRequest(node string) *http.Request {
 
 func (d *dispatch) prepareResponses() error {
 	client, err := httpclientcache.Client(httpclientcache.Options{
-		CertFile:           daemonenv.CertFile(),
+		CertFile:           daemonenv.CertChainFile(),
 		KeyFile:            daemonenv.KeyFile(),
 		Timeout:            httpClientTimeout,
 		InsecureSkipVerify: true,
