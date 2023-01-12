@@ -14,7 +14,7 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request) {
 	duration := time.Minute * 10
 	user := auth.User(r)
 	// TODO verify if user is allowed to create token => 403 Forbidden
-	tk, expireAt, err := daemonauth.CreateUserToken(user, duration)
+	tk, expireAt, err := daemonauth.CreateUserToken(user, duration, nil)
 	if err != nil {
 		log := getLogger(r, "PostAuthToken")
 		switch err {

@@ -2,9 +2,7 @@ package daemonauth
 
 import (
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"time"
 
@@ -25,6 +23,8 @@ type (
 		Token         string    `json:"token"`
 		TokenExpireAt time.Time `json:"token_expire_at"`
 	}
+
+	Claims map[string]interface{}
 )
 
 var (
@@ -39,12 +39,6 @@ var (
 	NotImplementedError = errors.New("token based authentication is not configured")
 )
 
-func jsonEncode(w io.Writer, data interface{}) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "    ")
-	return enc.Encode(data)
-}
-
 func initToken() auth.Strategy {
 	log.Logger.Info().Msg("init token auth strategy")
 	if err := initJWT(); err != nil {
@@ -57,7 +51,7 @@ func initToken() auth.Strategy {
 
 func initJWT() error {
 	jwtSignKeyFile = daemonenv.CAKeyFile()
-	jwtVerifyKeyFile = daemonenv.CACertFile()
+	jwtVerifyKeyFile = daemonenv.CACertChainFile()
 
 	if jwtSignKeyFile == "" && jwtVerifyKeyFile == "" {
 		return fmt.Errorf("the system/sec/cert-{clustername} listener private_key and certificate must exist.")
@@ -94,16 +88,19 @@ func initJWT() error {
 	return nil
 }
 
-func CreateUserToken(userInfo auth.Info, duration time.Duration) (tk string, expireAt time.Time, err error) {
+func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims) (tk string, expireAt time.Time, err error) {
 	if TokenAuth == nil {
 		err = NotImplementedError
 		return
 	}
 	expireAt = time.Now().Add(duration)
-	claims := map[string]interface{}{
-		"exp":        expireAt,
-		"authorized": true,
-		"grant":      userInfo.GetExtensions()["grant"],
+	claims := Claims{
+		"sub":  userInfo.GetUserName(),
+		"exp":   expireAt,
+		"grant": userInfo.GetExtensions()["grant"],
+	}
+	for c, v := range xClaims {
+		claims[c] = v
 	}
 	if _, tk, err = TokenAuth.Encode(claims); err != nil {
 		return
