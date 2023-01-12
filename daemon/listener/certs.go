@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -17,6 +18,27 @@ import (
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
 )
+
+func startCertFS() error {
+	if err := mountCertFS(); err != nil {
+		return err
+	}
+
+	if err := installCaFiles(); err != nil {
+		return err
+	}
+
+	if err := installCertFiles(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func stopCertFS() error {
+	tmpfs := filesystems.FromType("tmpfs")
+	return tmpfs.Umount(rawconfig.Paths.Certs)
+}
 
 func mountCertFS() error {
 	if v, err := findmnt.Has("none", rawconfig.Paths.Certs); err != nil {
@@ -44,43 +66,50 @@ func mountCertFS() error {
 	return nil
 }
 
-func startCertFS() error {
-	if err := mountCertFS(); err != nil {
+func installCaFiles() error {
+	var (
+		caPath path.T
+	)
+	caPath, err := getSecCaPath()
+	if err != nil {
 		return err
 	}
-	certPath, _ := path.Parse("system/sec/cert-" + rawconfig.ClusterSection().Name)
-	certSec, err := object.NewSec(certPath, object.WithVolatile(true))
+	if !caPath.Exists() {
+		log.Logger.Info().Msgf("bootstrap initial %s", caPath)
+		if err := bootStrapCaPath(caPath); err != nil {
+			return err
+		}
+	}
+	caSec, err := object.NewSec(caPath, object.WithVolatile(true))
 	if err != nil {
 		return err
 	}
 
-	usr, err := user.Lookup("root")
+	err, usr, grp, fmode, dmode := getCertFilesModes()
 	if err != nil {
 		return err
 	}
-	grp, err := user.LookupGroupId(usr.Gid)
-	if err != nil {
-		return err
-	}
-	var fmode fs.FileMode = 0600
-	var dmode fs.FileMode = 0700
-	dst := daemonenv.KeyFile()
-	if err := certSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
+
+	// ca_certificates for jwt
+	dst := daemonenv.CAKeyFile()
+
+	if err := caSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
-	dst = daemonenv.CertChainFile()
-	if err := certSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
+
+	dst = daemonenv.CACertChainFile()
+	if err := caSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
 
 	// ca_certificates
-	b := []byte{}
+	var b []byte
 	validCA := make([]string, 0)
-	caList := []string{"system/sec/ca-" + rawconfig.ClusterSection().Name}
+	caList := []string{caPath.String()}
 	caList = append(caList, strings.Fields(rawconfig.ClusterSection().CASecPaths)...)
 	for _, p := range caList {
 		caPath, err := path.Parse(p)
@@ -112,32 +141,92 @@ func startCertFS() error {
 	}
 
 	// TODO: ca_crl
-
-	// ca_certificates for jwt
-	dst = daemonenv.CAKeyFile()
-	caPath, _ := path.Parse("system/sec/ca-" + rawconfig.ClusterSection().Name)
-	caSec, err := object.NewSec(caPath, object.WithVolatile(true))
-	if err != nil {
-		return err
-	}
-
-	if err := caSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
-		return err
-	} else {
-		log.Logger.Info().Msgf("installed %s", dst)
-	}
-
-	dst = daemonenv.CACertChainFile()
-	if err := caSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
-		return err
-	} else {
-		log.Logger.Info().Msgf("installed %s", dst)
-	}
-
 	return nil
 }
 
-func stopCertFS() error {
-	tmpfs := filesystems.FromType("tmpfs")
-	return tmpfs.Umount(rawconfig.Paths.Certs)
+func installCertFiles() error {
+	certPath, err := getSecCertPath()
+	if err != nil {
+		return err
+	}
+	caPath, err := getSecCaPath()
+	if err != nil {
+		return err
+	}
+	if !certPath.Exists() {
+		log.Logger.Info().Msgf("bootstrap initial %s", certPath)
+		if err := bootStrapCertPath(certPath, caPath); err != nil {
+			return err
+		}
+	}
+	certSec, err := object.NewSec(certPath, object.WithVolatile(true))
+	if err != nil {
+		return err
+	}
+	err, usr, grp, fmode, dmode := getCertFilesModes()
+	if err != nil {
+		return err
+	}
+	dst := daemonenv.KeyFile()
+	if err := certSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
+		return err
+	} else {
+		log.Logger.Info().Msgf("installed %s", dst)
+	}
+	dst = daemonenv.CertChainFile()
+	if err := certSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
+		return err
+	} else {
+		log.Logger.Info().Msgf("installed %s", dst)
+	}
+
+	dst = daemonenv.CertFile()
+	if err := certSec.InstallKeyTo("certificate", dst, &fmode, &dmode, usr, grp); err != nil {
+		return err
+	} else {
+		log.Logger.Info().Msgf("installed %s", dst)
+	}
+	return nil
+}
+
+func getCertFilesModes() (err error, usr *user.User, grp *user.Group, fmode, dmode fs.FileMode) {
+	usr, err = user.Lookup("root")
+	if err != nil {
+		return
+	}
+	grp, err = user.LookupGroupId(usr.Gid)
+	if err != nil {
+		return
+	}
+	fmode = 0600
+	dmode = 0700
+	return
+}
+
+func bootStrapCaPath(p path.T) error {
+	caSec, err := object.NewSec(p, object.WithVolatile(false))
+	if err != nil {
+		return err
+	}
+	return caSec.GenCert()
+}
+
+func bootStrapCertPath(p path.T, caPath path.T) error {
+	certSec, err := object.NewSec(p, object.WithVolatile(false))
+	if err != nil {
+		return err
+	}
+	op := keyop.Parse("ca=" + caPath.String())
+	if err := certSec.Config().Set(*op); err != nil {
+		return err
+	}
+	return certSec.GenCert()
+}
+
+func getSecCaPath() (path.T, error) {
+	return path.Parse("system/sec/ca-" + rawconfig.ClusterSection().Name)
+}
+
+func getSecCertPath() (path.T, error) {
+	return path.Parse("system/sec/cert-" + rawconfig.ClusterSection().Name)
 }
