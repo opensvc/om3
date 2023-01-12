@@ -13,7 +13,6 @@ import (
 	"opensvc.com/opensvc/util/converters"
 )
 
-
 // PostAuthToken create a new token for a user
 //
 // When role parameter exists a new user is created with grants from role and
@@ -35,7 +34,7 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 			sendError(w, http.StatusBadRequest, "invalid duration")
 			return
 		} else {
-			duration = v.(time.Duration)
+			duration = *v.(*time.Duration)
 			if duration > durationMax {
 				duration = durationMax
 			}
