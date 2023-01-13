@@ -11,6 +11,7 @@ import (
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/toc"
 )
 
 type (
@@ -52,10 +53,16 @@ func (o *imon) orchestrateResourceRestart() {
 		}
 		switch o.instConfig.MonitorAction {
 		case instance.MonitorActionCrash:
+			if err := toc.Crash(); err != nil {
+				o.log.Error().Err(err).Msg("monitor action")
+			}
 		case instance.MonitorActionFreezeStop:
 			o.doFreezeStop()
 			o.doStop()
 		case instance.MonitorActionReboot:
+			if err := toc.Reboot(); err != nil {
+				o.log.Error().Err(err).Msg("monitor action")
+			}
 		case instance.MonitorActionSwitch:
 		}
 	}
