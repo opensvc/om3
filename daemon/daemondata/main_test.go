@@ -81,7 +81,7 @@ func TestDaemonData(t *testing.T) {
 	remoteHost := "node2"
 
 	t.Run("from initialized", func(t *testing.T) {
-		t.Run("GetStatus return status with local status initialized", func(t *testing.T) {
+		t.Run("GetStatus return status with instance state initialized", func(t *testing.T) {
 			localNodeStatus := bus.GetNodeStatus(localNode)
 			require.NotNil(t, localNodeStatus)
 			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],

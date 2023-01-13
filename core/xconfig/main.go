@@ -380,8 +380,10 @@ func (t *T) GetBool(k key.T) bool {
 func (t *T) GetBoolStrict(k key.T) (bool, error) {
 	if v, err := t.Eval(k); err != nil {
 		return false, err
+	} else if i, ok := v.(bool); !ok {
+		return false, errors.Errorf("type error: expected int, got %v", v)
 	} else {
-		return v.(bool), nil
+		return i, nil
 	}
 }
 
@@ -393,8 +395,10 @@ func (t *T) GetDuration(k key.T) *time.Duration {
 func (t *T) GetDurationStrict(k key.T) (*time.Duration, error) {
 	if v, err := t.Eval(k); err != nil {
 		return nil, err
+	} else if i, ok := v.(*time.Duration); !ok {
+		return nil, errors.Errorf("type error: expected *time.Duration, got %v", v)
 	} else {
-		return v.(*time.Duration), nil
+		return i, nil
 	}
 }
 
@@ -406,8 +410,10 @@ func (t *T) GetInt(k key.T) int {
 func (t *T) GetIntStrict(k key.T) (int, error) {
 	if v, err := t.Eval(k); err != nil {
 		return 0, err
+	} else if i, ok := v.(int); !ok {
+		return 0, errors.Errorf("type error: expected int, got %v", v)
 	} else {
-		return v.(int), nil
+		return i, nil
 	}
 }
 

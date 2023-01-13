@@ -10,18 +10,21 @@ import (
 type (
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
-		GlobalExpect        MonitorGlobalExpect       `json:"global_expect"`
-		GlobalExpectUpdated time.Time                 `json:"global_expect_updated"`
-		GlobalExpectOptions any                       `json:"global_expect_options"`
-		IsLeader            bool                      `json:"is_leader"`
-		IsHALeader          bool                      `json:"is_ha_leader"`
-		LocalExpect         MonitorLocalExpect        `json:"local_expect"`
-		LocalExpectUpdated  time.Time                 `json:"local_expect_updated"`
-		SessionId           string                    `json:"session_id"`
-		State               MonitorState              `json:"state"`
-		StateUpdated        time.Time                 `json:"state_updated"`
-		Restart             map[string]MonitorRestart `json:"restart,omitempty"`
+		GlobalExpect            MonitorGlobalExpect `json:"global_expect"`
+		GlobalExpectUpdated     time.Time           `json:"global_expect_updated"`
+		GlobalExpectOptions     any                 `json:"global_expect_options"`
+		IsLeader                bool                `json:"is_leader"`
+		IsHALeader              bool                `json:"is_ha_leader"`
+		LocalExpect             MonitorLocalExpect  `json:"local_expect"`
+		LocalExpectUpdated      time.Time           `json:"local_expect_updated"`
+		SessionId               string              `json:"session_id"`
+		State                   MonitorState        `json:"state"`
+		StateUpdated            time.Time           `json:"state_updated"`
+		MonitorActionExecutedAt time.Time           `json:"monitor_action_executed_at"`
+		Resources               ResourceMonitorMap  `json:"resources,omitempty"`
 	}
+
+	ResourceMonitorMap map[string]ResourceMonitor
 
 	// MonitorUpdate is embedded in the SetInstanceMonitor message to
 	// change some Monitor values. A nil value does not change the
@@ -33,11 +36,15 @@ type (
 		State               *MonitorState        `json:"state"`
 	}
 
-	// MonitorRestart describes the restart states maintained by the daemon
+	// ResourceMonitor describes the restart states maintained by the daemon
 	// for an object instance.
-	MonitorRestart struct {
-		Retries int       `json:"retries"`
-		Updated time.Time `json:"updated"`
+	ResourceMonitor struct {
+		Restart ResourceMonitorRestart `json:"restart"`
+	}
+	ResourceMonitorRestart struct {
+		Remaining int         `json:"remaining"`
+		LastAt    time.Time   `json:"last_at"`
+		Timer     *time.Timer `json:"-"`
 	}
 
 	MonitorState        int
@@ -281,4 +288,56 @@ func (t *MonitorGlobalExpect) UnmarshalJSON(b []byte) error {
 	}
 	*t = v
 	return nil
+}
+
+func (m ResourceMonitorMap) DecRestartRemaining(rid string) {
+	if rmon, ok := m[rid]; ok && rmon.Restart.Remaining > 0 {
+		rmon.Restart.Remaining -= 1
+		m[rid] = rmon
+	}
+}
+
+func (m ResourceMonitorMap) GetRestartRemaining(rid string) (int, bool) {
+	if rmon, ok := m[rid]; ok {
+		return rmon.Restart.Remaining, true
+	} else {
+		return 0, false
+	}
+}
+
+func (m ResourceMonitorMap) GetRestartTimer(rid string) (*time.Timer, bool) {
+	if rmon, ok := m[rid]; ok {
+		return rmon.Restart.Timer, true
+	} else {
+		return nil, false
+	}
+}
+
+func (m ResourceMonitorMap) HasRestartTimer(rid string) bool {
+	if rmon, ok := m[rid]; ok {
+		return rmon.Restart.Timer != nil
+	} else {
+		return false
+	}
+}
+
+func (m ResourceMonitorMap) SetRestartLastAt(rid string, v time.Time) {
+	if rmon, ok := m[rid]; ok {
+		rmon.Restart.LastAt = v
+		m[rid] = rmon
+	}
+}
+
+func (m ResourceMonitorMap) SetRestartRemaining(rid string, v int) {
+	if rmon, ok := m[rid]; ok {
+		rmon.Restart.Remaining = v
+		m[rid] = rmon
+	}
+}
+
+func (m ResourceMonitorMap) SetRestartTimer(rid string, v *time.Timer) {
+	if rmon, ok := m[rid]; ok {
+		rmon.Restart.Timer = v
+		m[rid] = rmon
+	}
 }

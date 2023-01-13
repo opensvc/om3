@@ -37,6 +37,7 @@ const (
 	idDropPeerNode
 	idGetHbMessage
 	idGetHbMessageType
+	idGetInstanceConfig
 	idGetInstanceStatus
 	idGetNodeData
 	idGetNodeMonitor

@@ -19,7 +19,7 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 
 		err = json.Unmarshal(b, &monitor)
 		require.Nil(t, err)
-		require.Equal(t, 1, monitor.Restart["fs#2"].Retries)
+		require.Equal(t, 1, monitor.Resources["fs#2"].RemainingRestarts)
 
 		t0 := time.Time{}
 		expected := Monitor{
@@ -34,9 +34,9 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 			LocalExpectUpdated: t0,
 			State:              MonitorStateIdle,
 			StateUpdated:       t0,
-			Restart: map[string]MonitorRestart{
+			Resources: map[string]ResourceMonitor{
 				"fs#2": {
-					Retries: 1, Updated: time.Date(2020, time.March, 4, 16, 33, 23, 167003830, time.UTC),
+					RemainingRestarts: 1, LastRestartAt: time.Date(2020, time.March, 4, 16, 33, 23, 167003830, time.UTC),
 				},
 			},
 		}
@@ -50,7 +50,7 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 		require.Nil(t, err)
 		err = json.Unmarshal(b, &monitor)
 		require.Nil(t, err)
-		require.Equal(t, 1, monitor.Restart["fs#2"].Retries)
+		require.Equal(t, 1, monitor.Resources["fs#2"].RemainingRestarts)
 	})
 }
 
@@ -58,7 +58,7 @@ func Test_Monitor_DeepCopy(t *testing.T) {
 	mon1 := Monitor{
 		LocalExpectUpdated:  time.Now(),
 		GlobalExpectUpdated: time.Now(),
-		Restart: map[string]MonitorRestart{
+		Resources: map[string]ResourceMonitor{
 			"a": {1, time.Now()},
 			"b": {8, time.Now()},
 		},
@@ -71,16 +71,16 @@ func Test_Monitor_DeepCopy(t *testing.T) {
 	mon2.GlobalExpectUpdated = time.Now()
 	require.True(t, mon2.GlobalExpectUpdated.After(mon1.GlobalExpectUpdated))
 
-	if e, ok := mon2.Restart["a"]; ok {
-		e.Updated = time.Now()
-		e.Retries++
-		mon2.Restart["a"] = e
+	if e, ok := mon2.Resources["a"]; ok {
+		e.LastRestartAt = time.Now()
+		e.RemainingRestarts++
+		mon2.Resources["a"] = e
 	}
-	require.Equal(t, 1, mon1.Restart["a"].Retries, "initial value changed!")
-	require.Equal(t, 8, mon1.Restart["b"].Retries, "initial value changed!")
+	require.Equal(t, 1, mon1.Resources["a"].RemainingRestarts, "initial value changed!")
+	require.Equal(t, 8, mon1.Resources["b"].RemainingRestarts, "initial value changed!")
 
-	require.Equal(t, 2, mon2.Restart["a"].Retries)
-	require.Equal(t, 8, mon2.Restart["b"].Retries)
+	require.Equal(t, 2, mon2.Resources["a"].RemainingRestarts)
+	require.Equal(t, 8, mon2.Resources["b"].RemainingRestarts)
 
-	require.True(t, mon2.Restart["a"].Updated.After(mon1.Restart["a"].Updated))
+	require.True(t, mon2.Resources["a"].LastRestartAt.After(mon1.Resources["a"].LastRestartAt))
 }

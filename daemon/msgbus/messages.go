@@ -37,6 +37,7 @@ var (
 		"HbPing":                  HbPing{},
 		"HbStale":                 HbStale{},
 		"HbStatusUpdated":         HbStatusUpdated{},
+		"InstanceMonitorAction":   InstanceMonitorAction{},
 		"InstanceMonitorDeleted":  InstanceMonitorDeleted{},
 		"InstanceMonitorUpdated":  InstanceMonitorUpdated{},
 		"InstanceStatusDeleted":   InstanceStatusDeleted{},
@@ -174,6 +175,13 @@ type (
 	HbStatusUpdated struct {
 		Node  string
 		Value cluster.HeartbeatThreadStatus
+	}
+
+	InstanceMonitorAction struct {
+		Path   path.T
+		Node   string
+		Action instance.MonitorAction
+		RID    string
 	}
 
 	InstanceMonitorDeleted struct {
@@ -394,6 +402,10 @@ func (e HbStale) Kind() string {
 
 func (e HbStatusUpdated) Kind() string {
 	return "HbStatusUpdated"
+}
+
+func (e InstanceMonitorAction) Kind() string {
+	return "InstanceMonitorAction"
 }
 
 func (e InstanceMonitorDeleted) Kind() string {

@@ -47,12 +47,15 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 		o.change = true
 
 	}
+
 	updateInstStatusMap()
 	setLocalExpectStarted()
 }
 
 func (o *imon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
 	if srcCmd.Node == o.localhost {
+		o.instConfig = srcCmd.Value
+		o.initResourceMonitor()
 		cfgNodes := make(map[string]any)
 		for _, node := range srcCmd.Value.Scope {
 			cfgNodes[node] = nil
@@ -633,4 +636,17 @@ func (o *imon) doAction(action func() error, newState, successState, errorState 
 		nextState = errorState
 	}
 	go o.orchestrateAfterAction(newState, nextState)
+}
+
+func (o *imon) initResourceMonitor() {
+	m := make(map[string]instance.ResourceMonitor)
+	for rid, res := range o.instConfig.Resources {
+		m[rid] = instance.ResourceMonitor{
+			Restart: instance.ResourceMonitorRestart{
+				Remaining: res.Restart,
+			},
+		}
+	}
+	o.state.Resources = m
+	o.change = true
 }
