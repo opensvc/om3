@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.30
+  version: 3.6.31
 servers:
   - url: https://localhost:1215
 paths:
@@ -13,6 +13,14 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryRoles'
+        - in: query
+          name: duration
+          description: max token duration, maximum value 24h
+          schema:
+            type: string
+            example: 10m
       responses:
         '200':
           description: success
@@ -1120,6 +1128,14 @@ components:
           description: |
             filter expression: [kind][,label=value]*
           example: ObjectStatusUpdated,path=foo
+    queryRoles:
+      name: role
+      in: query
+      description: list of api role
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/role'
     queryLimit:
       name: limit
       in: query

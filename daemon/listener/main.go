@@ -74,7 +74,7 @@ func getMandatorySub() map[string]sub {
 				return lsnrhttpinet.New(
 					lsnrhttpinet.WithRoutineTracer(&t.TT),
 					lsnrhttpinet.WithAddr(fmt.Sprintf(":%d", daemonenv.HttpPort)),
-					lsnrhttpinet.WithCertFile(daemonenv.CertFile()),
+					lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
 					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
 				)
 			},
@@ -84,7 +84,7 @@ func getMandatorySub() map[string]sub {
 				return lsnrhttpux.New(
 					lsnrhttpux.WithRoutineTracer(&t.TT),
 					lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
-					lsnrhttpux.WithCertFile(daemonenv.CertFile()),
+					lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
 					lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
 				)
 			},
@@ -129,7 +129,9 @@ func (t *T) MainStart(ctx context.Context) error {
 	started := make(chan bool)
 	go func() {
 		defer t.Trace(t.Name() + "-loop")()
-		defer stopCertFS()
+		defer func() {
+			_ = stopCertFS()
+		}()
 		//defer t.cancel()
 		started <- true
 		t.loop(ctx)

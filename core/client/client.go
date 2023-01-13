@@ -26,6 +26,8 @@ type (
 		username           string
 		password           string
 		requester          api.Requester
+		bearer             string
+		rootCA             string
 	}
 )
 
@@ -94,11 +96,31 @@ func WithCertificate(s string) funcopt.O {
 	})
 }
 
+// WithRootCa sets the client RootCA filename, httpclient cache don't cache
+// clients with RootCa because of possible tmp filename conflict signature.
+// The cert from s file is appended to x509.SystemCertPool
+func WithRootCa(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.rootCA = s
+		return nil
+	})
+}
+
 // WithKey sets the x509 client private key..
 func WithKey(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.clientKey = s
+		return nil
+	})
+}
+
+// WithBearer sets the client bearer token to use for newRequests
+func WithBearer(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.bearer = s
 		return nil
 	})
 }
@@ -128,7 +150,7 @@ func (t *T) configure() error {
 		if err := t.loadContext(); err != nil {
 			return err
 		}
-	} else if t.username == "" {
+	} else if t.bearer == "" && t.username == "" {
 		t.username = hostname.Hostname()
 		t.password = rawconfig.ClusterSection().Secret
 	}
@@ -165,13 +187,13 @@ func (t *T) newRequester() (err error) {
 	case strings.HasSuffix(t.url, "h2.sock"):
 		t.requester, err = reqh2.NewUDS(t.url)
 	case strings.HasPrefix(t.url, reqh2.InetPrefix):
-		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password)
+		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
 	default:
 		if !strings.Contains(t.url, ":") {
 			t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
 		}
 		t.url = reqh2.InetPrefix + t.url
-		t.requester, err = reqh2.NewInet(t.url, "", "", t.insecureSkipVerify, t.username, t.password)
+		t.requester, err = reqh2.NewInet(t.url, "", "", t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
 	}
 	return err
 }

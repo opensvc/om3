@@ -5,15 +5,20 @@ import (
 	"os"
 	"time"
 
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/daemondata"
+	"opensvc.com/opensvc/daemon/daemonenv"
+	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/monitor/instcfg"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
@@ -241,5 +246,68 @@ func (d *discover) fetchCfgFromRemote(p path.T, node string, updated time.Time) 
 		d.fetcherNodeCancel[node] = make(map[string]context.CancelFunc)
 	}
 
-	go remoteconfig.Fetch(ctx, p, node, d.cfgCmdC)
+	cli, err := newDaemonClient(node)
+	if err != nil {
+		d.log.Error().Msgf("can't create newDaemonClient to fetch %s from %s", p, node)
+		return
+	}
+	go fetch(ctx, cli, p, node, d.cfgCmdC)
+}
+
+func newDaemonClient(node string) (*client.T, error) {
+	// TODO add WithRootCa to avoid send password to wrong url ?
+	return client.New(
+		client.WithURL(daemonenv.UrlHttpNode(node)),
+		client.WithUsername(hostname.Hostname()),
+		client.WithPassword(rawconfig.ClusterSection().Secret),
+		client.WithCertificate(daemonenv.CertChainFile()),
+	)
+}
+
+func fetch(ctx context.Context, cli *client.T, p path.T, node string, cmdC chan<- any) {
+	id := daemondata.InstanceId(p, node)
+	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "cfg.fetch").Str("id", id).Logger()
+
+	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)
+	if err != nil {
+		log.Info().Err(err).Msgf("FetchObjectFile %s", id)
+		return
+	}
+	defer func() {
+		log.Debug().Msgf("done fetcher routine for %s@%s", p, node)
+		_ = os.Remove(tmpFilename)
+	}()
+	configure, err := object.NewConfigurer(p, object.WithConfigFile(tmpFilename), object.WithVolatile(true))
+	if err != nil {
+		log.Error().Err(err).Msgf("configure error for %s", p)
+		return
+	}
+	nodes := configure.Config().Referrer.Nodes()
+	validScope := false
+	for _, n := range nodes {
+		if n == hostname.Hostname() {
+			validScope = true
+			break
+		}
+	}
+	if !validScope {
+		log.Info().Msgf("invalid scope %s", nodes)
+		return
+	}
+	select {
+	case <-ctx.Done():
+		log.Info().Msgf("abort fetch config %s", id)
+		return
+	default:
+		err := make(chan error)
+		cmdC <- msgbus.RemoteFileConfig{
+			Path:     p,
+			Node:     node,
+			Filename: tmpFilename,
+			Updated:  updated,
+			Ctx:      ctx,
+			Err:      err,
+		}
+		<-err
+	}
 }

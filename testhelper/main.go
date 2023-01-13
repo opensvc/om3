@@ -52,10 +52,24 @@ func SetupEnv(env Env) Env {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
 
-	os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm)
-	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "lsnr"), os.ModePerm)
-	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "certs"), os.ModePerm)
-	os.MkdirAll(filepath.Join(rawconfig.Paths.Var, "node"), os.ModePerm)
+	// Create mandatory dirs
+	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll(filepath.Join(rawconfig.Paths.Etc, "namespaces"), os.ModePerm); err != nil {
+		panic(err)
+	}
+
+	return env
+}
+
+func SetupEnvWithoutCreateMandatoryDirectories(env Env) Env {
+	rawconfig.Load(map[string]string{
+		"osvc_root_path":    env.Root,
+		"osvc_cluster_name": env.ClusterName,
+	})
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
 
 	return env
 }

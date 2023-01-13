@@ -112,11 +112,14 @@ func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
 func logUserMiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := auth.User(r).GetUserName()
-			if user != "" {
-				log := daemonlogctx.Logger(r.Context()).With().Str("user", user).Logger()
-				r = r.WithContext(daemonlogctx.WithLogger(r.Context(), log))
-			}
+			authUser := auth.User(r)
+			extensions := authUser.GetExtensions()
+			log := daemonlogctx.Logger(r.Context()).With().
+				Str("auth-user", authUser.GetUserName()).
+				Strs("auth-grant", extensions.Values("grant")).
+				Str("auth-strategy", extensions.Get("strategy")).
+				Logger()
+			r = r.WithContext(daemonlogctx.WithLogger(r.Context(), log))
 			next.ServeHTTP(w, r)
 		})
 	}

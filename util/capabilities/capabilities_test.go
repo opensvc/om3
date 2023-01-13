@@ -13,9 +13,7 @@ import (
 func setup(t *testing.T) (string, func()) {
 	td := t.TempDir()
 	rawconfig.Load(map[string]string{"osvc_root_path": td})
-	if err := os.MkdirAll(td+"/var", 0700); err != nil {
-		t.Fail()
-	}
+	assert.NoError(t, rawconfig.CreateMandatoryDirectories())
 	scanners = nil
 	caps = nil
 	return td + "/var/capabilities.json", func() {

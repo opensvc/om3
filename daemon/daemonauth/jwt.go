@@ -1,10 +1,10 @@
 package daemonauth
 
 import (
+	"context"
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
-	"io"
+	"net/http"
 	"os"
 	"time"
 
@@ -25,6 +25,14 @@ type (
 		Token         string    `json:"token"`
 		TokenExpireAt time.Time `json:"token_expire_at"`
 	}
+
+	Claims map[string]interface{}
+
+	// ApiClaims defines api claims
+	ApiClaims struct {
+		Grant Grants `json:"grant"`
+		*jwt.StandardClaims
+	}
 )
 
 var (
@@ -39,25 +47,39 @@ var (
 	NotImplementedError = errors.New("token based authentication is not configured")
 )
 
-func jsonEncode(w io.Writer, data interface{}) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "    ")
-	return enc.Encode(data)
-}
-
 func initToken() auth.Strategy {
 	log.Logger.Info().Msg("init token auth strategy")
 	if err := initJWT(); err != nil {
 		log.Logger.Error().Err(err).Msg("init token auth strategy")
 		return nil
 	}
-	tokenStrategy = token.New(token.NoOpAuthenticate, cache)
+	tokenStrategy = token.New(validateToken, cache)
 	return tokenStrategy
+}
+
+func validateToken(ctx context.Context, r *http.Request, s string) (info auth.Info, exp time.Time, err error) {
+	var (
+		tk *jwt.Token
+	)
+
+	tk, err = jwt.ParseWithClaims(s, &ApiClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return verifyKey, nil
+	})
+	if err != nil {
+		return
+	}
+	claims := tk.Claims.(*ApiClaims)
+	exp = time.Unix(claims.ExpiresAt, 0)
+
+	extensions := claims.Grant.Extensions()
+	extensions.Add("strategy", "jwt")
+	info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, extensions)
+	return
 }
 
 func initJWT() error {
 	jwtSignKeyFile = daemonenv.CAKeyFile()
-	jwtVerifyKeyFile = daemonenv.CACertFile()
+	jwtVerifyKeyFile = daemonenv.CACertChainFile()
 
 	if jwtSignKeyFile == "" && jwtVerifyKeyFile == "" {
 		return fmt.Errorf("the system/sec/cert-{clustername} listener private_key and certificate must exist.")
@@ -94,20 +116,22 @@ func initJWT() error {
 	return nil
 }
 
-func CreateUserToken(userInfo auth.Info, duration time.Duration) (tk string, expireAt time.Time, err error) {
+func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims) (tk string, expireAt time.Time, err error) {
 	if TokenAuth == nil {
 		err = NotImplementedError
 		return
 	}
 	expireAt = time.Now().Add(duration)
-	claims := map[string]interface{}{
-		"exp":        expireAt,
-		"authorized": true,
-		"grant":      userInfo.GetExtensions()["grant"],
+	claims := Claims{
+		"sub":   userInfo.GetUserName(),
+		"exp":   expireAt.Unix(),
+		"grant": userInfo.GetExtensions()["grant"],
+	}
+	for c, v := range xClaims {
+		claims[c] = v
 	}
 	if _, tk, err = TokenAuth.Encode(claims); err != nil {
 		return
 	}
-	err = auth.Append(tokenStrategy, tk, userInfo)
 	return
 }

@@ -12,7 +12,7 @@ func newClient() (*client.T, error) {
 		clientOptions = append(
 			clientOptions,
 			client.WithInsecureSkipVerify(true),
-			client.WithCertificate(daemonenv.CertFile()),
+			client.WithCertificate(daemonenv.CertChainFile()),
 			client.WithKey(daemonenv.KeyFile()),
 		)
 	}

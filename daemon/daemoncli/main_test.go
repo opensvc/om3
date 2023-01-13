@@ -2,6 +2,7 @@ package daemoncli_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +24,10 @@ var (
 		"UrlUxRaw":    daemonenv.UrlUxRaw,
 		"UrlInetHttp": daemonenv.UrlInetHttp,
 		"UrlInetRaw":  daemonenv.UrlInetRaw,
+
+		"NoSecCa":          daemonenv.UrlInetHttp,
+		"NoSecCert":        daemonenv.UrlInetHttp,
+		"NoSecCaNoSecCert": daemonenv.UrlInetHttp,
 	}
 )
 
@@ -45,7 +50,7 @@ func newClient(serverUrl string) (*client.T, error) {
 			client.WithInsecureSkipVerify(true))
 
 		clientOptions = append(clientOptions,
-			client.WithCertificate(daemonenv.CertFile()))
+			client.WithCertificate(daemonenv.CertChainFile()))
 
 		clientOptions = append(clientOptions,
 			client.WithKey(daemonenv.KeyFile()),
@@ -57,8 +62,12 @@ func newClient(serverUrl string) (*client.T, error) {
 func setup(t *testing.T) {
 	env := testhelper.Setup(t)
 	env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
-	env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
-	env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	if !strings.Contains(t.Name(), "NoSecCa") {
+		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
+	}
+	if !strings.Contains(t.Name(), "NoSecCert") {
+		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	}
 	rawconfig.LoadSections()
 }
 
@@ -91,7 +100,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 			<-goStart
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
-				maxDurationForCerts := 100 * time.Millisecond
+				maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
 				t.Logf("wait %s for certs created", maxDurationForCerts)
 				time.Sleep(maxDurationForCerts)
 				t.Logf("recreate client %s", url)
@@ -138,8 +147,8 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			}()
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
-				maxDurationForCerts := 100 * time.Millisecond
-				t.Logf("wait %s for certs created", maxDurationForCerts)
+				maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
+				t.Logf("wait %s for certs created %s", maxDurationForCerts, t.Name())
 				time.Sleep(maxDurationForCerts)
 				t.Logf("recreate client %s", url)
 				cli, err = newClient(url)
@@ -173,4 +182,17 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 		})
 	}
+}
+
+func getMaxDurationForCertCreated(name string) time.Duration {
+	// give more time to gen cert
+	maxDurationForCerts := 100 * time.Millisecond
+	if strings.Contains(name, "NoSecCa") {
+		maxDurationForCerts = maxDurationForCerts * 10
+	}
+	if strings.Contains(name, "NoSecCert") {
+		// give more time to gen cert
+		maxDurationForCerts = maxDurationForCerts * 10
+	}
+	return maxDurationForCerts
 }
