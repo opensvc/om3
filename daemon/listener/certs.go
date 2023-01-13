@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/keyop"
@@ -17,6 +18,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
+	"opensvc.com/opensvc/util/key"
 )
 
 func startCertFS() error {
@@ -45,11 +47,8 @@ func mountCertFS() error {
 		if err1, ok := err.(*exec.Error); ok {
 			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
 				// fallback when findmnt is not present
-				if !file.Exists(rawconfig.Paths.Certs) {
-					err := os.MkdirAll(rawconfig.Paths.Certs, 0700)
-					if err != nil {
-						return err
-					}
+				if !file.ExistsAndDir(rawconfig.Paths.Certs) {
+					return errors.New("missing mandatory dir " + rawconfig.Paths.Certs)
 				}
 				return nil
 			}
@@ -77,11 +76,13 @@ func installCaFiles() error {
 	if !caPath.Exists() {
 		log.Logger.Info().Msgf("bootstrap initial %s", caPath)
 		if err := bootStrapCaPath(caPath); err != nil {
+			log.Logger.Error().Err(err).Msgf("bootStrapCaPath %s", caPath)
 			return err
 		}
 	}
 	caSec, err := object.NewSec(caPath, object.WithVolatile(true))
 	if err != nil {
+		log.Logger.Error().Err(err).Msgf("create %s", caPath)
 		return err
 	}
 
@@ -161,6 +162,7 @@ func installCertFiles() error {
 	}
 	certSec, err := object.NewSec(certPath, object.WithVolatile(true))
 	if err != nil {
+		log.Logger.Error().Err(err).Msgf("create %s", certPath)
 		return err
 	}
 	err, usr, grp, fmode, dmode := getCertFilesModes()
@@ -204,22 +206,26 @@ func getCertFilesModes() (err error, usr *user.User, grp *user.Group, fmode, dmo
 }
 
 func bootStrapCaPath(p path.T) error {
+	log.Logger.Info().Msgf("create %s", p)
 	caSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
+	log.Logger.Info().Msgf("gencert %s", p)
 	return caSec.GenCert()
 }
 
 func bootStrapCertPath(p path.T, caPath path.T) error {
+	log.Logger.Info().Msgf("create %s", p)
 	certSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
-	op := keyop.Parse("ca=" + caPath.String())
+	op := keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0)
 	if err := certSec.Config().Set(*op); err != nil {
 		return err
 	}
+	log.Logger.Info().Msgf("gencert %s", p)
 	return certSec.GenCert()
 }
 
