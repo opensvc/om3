@@ -100,7 +100,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 			<-goStart
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
-				maxDurationForCerts := 100 * time.Millisecond
+				maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
 				t.Logf("wait %s for certs created", maxDurationForCerts)
 				time.Sleep(maxDurationForCerts)
 				t.Logf("recreate client %s", url)
@@ -147,8 +147,8 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			}()
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
-				maxDurationForCerts := 100 * time.Millisecond
-				t.Logf("wait %s for certs created", maxDurationForCerts)
+				maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
+				t.Logf("wait %s for certs created %s", maxDurationForCerts, t.Name())
 				time.Sleep(maxDurationForCerts)
 				t.Logf("recreate client %s", url)
 				cli, err = newClient(url)
@@ -182,4 +182,17 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 		})
 	}
+}
+
+func getMaxDurationForCertCreated(name string) time.Duration {
+	// give more time to gen cert
+	maxDurationForCerts := 100 * time.Millisecond
+	if strings.Contains(name, "NoSecCa") {
+		maxDurationForCerts = maxDurationForCerts * 10
+	}
+	if strings.Contains(name, "NoSecCert") {
+		// give more time to gen cert
+		maxDurationForCerts = maxDurationForCerts * 10
+	}
+	return maxDurationForCerts
 }
