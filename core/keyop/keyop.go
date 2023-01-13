@@ -99,6 +99,15 @@ func (t Op) String() string {
 	return toString[t]
 }
 
+func New(key key.T, op Op, value string, idx int) *T {
+	return &T{
+		Key:   key,
+		Op:    op,
+		Value: value,
+		Index: idx,
+	}
+}
+
 func ParseOps(kws []string) L {
 	l := make(L, len(kws))
 	for i, kw := range kws {
