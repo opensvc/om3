@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -22,15 +23,19 @@ import (
 )
 
 func startCertFS() error {
+	clusterName, err := getClusterName()
+	if err != nil {
+		return err
+	}
 	if err := mountCertFS(); err != nil {
 		return err
 	}
 
-	if err := installCaFiles(); err != nil {
+	if err := installCaFiles(clusterName); err != nil {
 		return err
 	}
 
-	if err := installCertFiles(); err != nil {
+	if err := installCertFiles(clusterName); err != nil {
 		return err
 	}
 
@@ -65,11 +70,11 @@ func mountCertFS() error {
 	return nil
 }
 
-func installCaFiles() error {
+func installCaFiles(clusterName string) error {
 	var (
 		caPath path.T
 	)
-	caPath, err := getSecCaPath()
+	caPath, err := getSecCaPath(clusterName)
 	if err != nil {
 		return err
 	}
@@ -145,12 +150,12 @@ func installCaFiles() error {
 	return nil
 }
 
-func installCertFiles() error {
-	certPath, err := getSecCertPath()
+func installCertFiles(clusterName string) error {
+	certPath, err := getSecCertPath(clusterName)
 	if err != nil {
 		return err
 	}
-	caPath, err := getSecCaPath()
+	caPath, err := getSecCaPath(clusterName)
 	if err != nil {
 		return err
 	}
@@ -229,10 +234,19 @@ func bootStrapCertPath(p path.T, caPath path.T) error {
 	return certSec.GenCert()
 }
 
-func getSecCaPath() (path.T, error) {
-	return path.Parse("system/sec/ca-" + rawconfig.ClusterSection().Name)
+func getClusterName() (string, error) {
+	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
+	clusterCfg, err := object.NewCcfg(clusterPath, object.WithVolatile(true))
+	if err != nil {
+		return "", err
+	}
+	return clusterCfg.Name(), nil
 }
 
-func getSecCertPath() (path.T, error) {
-	return path.Parse("system/sec/cert-" + rawconfig.ClusterSection().Name)
+func getSecCaPath(clusterName string) (path.T, error) {
+	return path.Parse("system/sec/ca-" + clusterName)
+}
+
+func getSecCertPath(clusterName string) (path.T, error) {
+	return path.Parse("system/sec/cert-" + clusterName)
 }
