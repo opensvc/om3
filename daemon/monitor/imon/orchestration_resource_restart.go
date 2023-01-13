@@ -64,6 +64,8 @@ func (o *imon) orchestrateResourceRestart() {
 				o.log.Error().Err(err).Msg("monitor action")
 			}
 		case instance.MonitorActionSwitch:
+			o.createPendingWithDuration(stopDuration)
+			o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
 		}
 	}
 	resetTimer := func(rid string) {
@@ -113,10 +115,12 @@ func (o *imon) orchestrateResourceRestart() {
 			resetRemainingAndTimer(rid)
 		case o.state.Resources.HasRestartTimer(rid):
 			o.log.Debug().Msgf("resource %s restart skip: already has a delay timer", rid)
+		case !o.state.MonitorActionExecutedAt.IsZero():
+			o.log.Debug().Msgf("resource %s restart skip: already ran the monitor action", rid)
 		default:
 			rmon := o.state.Resources[rid]
 			o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-			if rmon.Restart.Remaining == 0 && o.state.MonitorActionExecutedAt.IsZero() {
+			if rmon.Restart.Remaining == 0 {
 				o.state.MonitorActionExecutedAt = time.Now()
 				o.change = true
 				doMonitorAction(rid)
