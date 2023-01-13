@@ -7,14 +7,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/keyop"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/daemon/daemonapi"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/lock"
 )
 
@@ -26,6 +33,8 @@ var (
 	WaitRunningDelay   = 100 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
 	WaitStoppedDelay   = 100 * time.Millisecond
+
+	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
 )
 
 type (
@@ -37,6 +46,27 @@ type (
 		Wait()
 	}
 )
+
+func bootStrapCcfg() error {
+	ccfg, err := object.NewCcfg(clusterPath, object.WithVolatile(false))
+	if err != nil {
+		return err
+	}
+	for _, op := range []keyop.T{
+		*keyop.New(key.New("cluster", "id"), keyop.Set, uuid.New().String(), 0),
+		*keyop.New(key.New("cluster", "nodes"), keyop.Set, hostname.Hostname(), 0),
+		*keyop.New(key.New("cluster", "secret"), keyop.Set, strings.ReplaceAll(uuid.New().String(), "-", ""), 0),
+	} {
+		if err := ccfg.Config().Set(op); err != nil {
+			return err
+		}
+	}
+	if err := ccfg.Config().Commit(); err != nil {
+		return err
+	}
+	rawconfig.LoadSections()
+	return nil
+}
 
 func New(c *client.T) *T {
 	return &T{client: c}
@@ -166,6 +196,16 @@ func (t *T) stop() error {
 }
 
 func (t *T) start() (waiter, error) {
+	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
+		log.Error().Err(err).Msgf("cli-start can't create mandatory directories")
+		return nil, err
+	}
+	if !clusterPath.Exists() {
+		log.Warn().Msgf("cli-start no %s config, bootstrap new one", clusterPath)
+		if err := bootStrapCcfg(); err != nil {
+			return nil, err
+		}
+	}
 	log.Debug().Msg("cli-start check if not already running")
 	if t.running() {
 		log.Debug().Msg("Already started")
