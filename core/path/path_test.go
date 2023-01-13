@@ -454,7 +454,7 @@ func TestConfigFile(t *testing.T) {
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			_ = testhelper.SetupEnv(testhelper.Env{
+			_ = testhelper.SetupEnvWithoutCreateMandatoryDirectories(testhelper.Env{
 				TestingT: t,
 				Root:     test.root,
 			})

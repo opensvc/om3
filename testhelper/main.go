@@ -63,6 +63,17 @@ func SetupEnv(env Env) Env {
 	return env
 }
 
+func SetupEnvWithoutCreateMandatoryDirectories(env Env) Env {
+	rawconfig.Load(map[string]string{
+		"osvc_root_path":    env.Root,
+		"osvc_cluster_name": env.ClusterName,
+	})
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+
+	return env
+}
+
 func Main(m *testing.M, execute func([]string)) {
 	defer hostname.Impersonate("node1")()
 	switch os.Getenv("GO_TEST_MODE") {
