@@ -27,19 +27,29 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Checksum        string           `json:"csum"`
-		FlexMax         int              `json:"flex_max,omitempty"`
-		FlexMin         int              `json:"flex_min,omitempty"`
-		FlexTarget      int              `json:"flex_target,omitempty"`
-		Nodename        string           `json:"-"`
-		Orchestrate     string           `json:"orchestrate"`
-		Path            path.T           `json:"-"`
-		PlacementPolicy placement.Policy `json:"placement_policy"`
-		Priority        priority.T       `json:"priority,omitempty"`
-		Scope           []string         `json:"scope"`
-		Topology        topology.T       `json:"topology"`
-		Updated         time.Time        `json:"updated"`
+		Checksum        string                    `json:"csum"`
+		FlexMax         int                       `json:"flex_max,omitempty"`
+		FlexMin         int                       `json:"flex_min,omitempty"`
+		FlexTarget      int                       `json:"flex_target,omitempty"`
+		MonitorAction   MonitorAction             `json:"monitor_action,omitempty"`
+		Nodename        string                    `json:"-"`
+		Orchestrate     string                    `json:"orchestrate"`
+		Path            path.T                    `json:"-"`
+		PlacementPolicy placement.Policy          `json:"placement_policy"`
+		Priority        priority.T                `json:"priority,omitempty"`
+		Resources       map[string]ResourceConfig `json:"resources"`
+		Scope           []string                  `json:"scope"`
+		Topology        topology.T                `json:"topology"`
+		Updated         time.Time                 `json:"updated"`
 	}
+	ResourceConfig struct {
+		Restart      int
+		RestartDelay *time.Duration
+		IsMonitored  bool
+		IsDisabled   bool
+	}
+
+	MonitorAction string
 
 	// Status describes the instance status.
 	Status struct {
@@ -78,6 +88,13 @@ type (
 	}
 )
 
+var (
+	MonitorActionCrash      MonitorAction = "crash"
+	MonitorActionFreezeStop MonitorAction = "freeze_stop"
+	MonitorActionReboot     MonitorAction = "reboot"
+	MonitorActionSwitch     MonitorAction = "switch"
+)
+
 // Has is true if the rid is found running in the Instance Monitor data sent by the daemon.
 func (t ResourceRunningSet) Has(rid string) bool {
 	for _, r := range t {
@@ -86,21 +103,6 @@ func (t ResourceRunningSet) Has(rid string) bool {
 		}
 	}
 	return false
-}
-
-// UnmarshalJSON serializes the type instance as JSON.
-func (t *MonitorRestart) UnmarshalJSON(b []byte) error {
-	type tempT MonitorRestart
-	temp := tempT(MonitorRestart{})
-	if err := json.Unmarshal(b, &temp); err != nil {
-		var retries int
-		if err := json.Unmarshal(b, &retries); err != nil {
-			return err
-		}
-		temp.Retries = retries
-	}
-	*t = MonitorRestart(temp)
-	return nil
 }
 
 // SortedResources returns a list of resource identifiers sorted by:
@@ -207,8 +209,8 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.ExposedStatus) 
 func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.ExposedStatus) string {
 	// Restart and retries
 	retries := 0
-	if restart, ok := mon.Restart[rid.Name]; ok {
-		retries = restart.Retries
+	if rmon, ok := mon.Resources[rid.Name]; ok {
+		retries = rmon.Restart.Remaining
 	}
 	return r.Restart.FlagString(retries)
 }
@@ -221,11 +223,11 @@ func (cfg Config) DeepCopy() *Config {
 
 func (mon Monitor) DeepCopy() *Monitor {
 	v := mon
-	restart := make(map[string]MonitorRestart)
-	for s, val := range v.Restart {
+	restart := make(map[string]ResourceMonitor)
+	for s, val := range v.Resources {
 		restart[s] = val
 	}
-	v.Restart = restart
+	v.Resources = restart
 	if mon.GlobalExpectOptions != nil {
 		switch mon.GlobalExpect {
 		case MonitorGlobalExpectPlacedAt:

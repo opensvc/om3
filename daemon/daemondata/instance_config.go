@@ -16,6 +16,12 @@ type (
 		path path.T
 	}
 
+	opGetInstanceConfig struct {
+		config chan<- instance.Config
+		path   path.T
+		node   string
+	}
+
 	opSetInstanceConfig struct {
 		err   chan<- error
 		path  path.T
@@ -34,6 +40,20 @@ func (t T) DelInstanceConfig(p path.T) error {
 	}
 	t.cmdC <- op
 	return <-err
+}
+
+// GetInstanceConfig
+//
+// Monitor.Node.<localhost>.services.status.*
+func (t T) GetInstanceConfig(p path.T, node string) instance.Config {
+	config := make(chan instance.Config)
+	op := opGetInstanceConfig{
+		config: config,
+		path:   p,
+		node:   node,
+	}
+	t.cmdC <- op
+	return <-config
 }
 
 // SetInstanceConfig
@@ -85,6 +105,20 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 	select {
 	case <-ctx.Done():
 	case o.err <- nil:
+	}
+}
+
+func (o opGetInstanceConfig) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetInstanceConfig
+	s := instance.Config{}
+	if nodeConfig, ok := d.pending.Cluster.Node[o.node]; ok {
+		if inst, ok := nodeConfig.Instance[o.path.String()]; ok && inst.Config != nil {
+			s = *inst.Config
+		}
+	}
+	select {
+	case <-ctx.Done():
+	case o.config <- s:
 	}
 }
 

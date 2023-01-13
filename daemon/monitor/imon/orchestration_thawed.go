@@ -6,7 +6,13 @@ import (
 
 func (o *imon) orchestrateThawed() {
 	switch o.state.State {
-	case instance.MonitorStateIdle:
+	case instance.MonitorStateIdle,
+		instance.MonitorStateStartFailed,
+		instance.MonitorStateStopFailed,
+		instance.MonitorStatePurgeFailed,
+		instance.MonitorStateProvisionFailed,
+		instance.MonitorStateUnprovisionFailed,
+		instance.MonitorStateReady:
 		o.ThawedFromIdle()
 	}
 }
@@ -20,7 +26,7 @@ func (o *imon) ThawedFromIdle() {
 
 func (o *imon) thawedClearIfReached() bool {
 	if o.instStatus[o.localhost].IsThawed() {
-		o.log.Info().Msg("local status is thawed, unset global expect")
+		o.log.Info().Msg("instance state is thawed, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
 		o.state.LocalExpect = instance.MonitorLocalExpectUnset

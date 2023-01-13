@@ -343,7 +343,7 @@ func (t *T) scheduleNode() {
 
 func (t *T) scheduleObject(p path.T) {
 	if provisioned, ok := t.provisioned[p]; !ok {
-		t.log.Error().Msgf("schedule object %s: unknown provisioned state", p)
+		t.log.Debug().Msgf("schedule object %s: provisioned state has not been discovered yet", p)
 		return
 	} else if !provisioned {
 		t.log.Error().Msgf("schedule object %s: not provisioned", p)

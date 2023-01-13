@@ -43,16 +43,23 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 		if o.state.LocalExpect == instance.MonitorLocalExpectStarted {
 			return
 		}
+		o.log.Info().Msgf("this instance is now considered started, resource restart and monitoring are enabled")
 		o.state.LocalExpect = instance.MonitorLocalExpectStarted
+
+		// reset the last monitor action execution time, to rearm the next monitor action
+		o.state.MonitorActionExecutedAt = time.Time{}
 		o.change = true
 
 	}
+
 	updateInstStatusMap()
 	setLocalExpectStarted()
 }
 
 func (o *imon) onCfgUpdated(srcNode string, srcCmd msgbus.CfgUpdated) {
 	if srcCmd.Node == o.localhost {
+		o.instConfig = srcCmd.Value
+		o.initResourceMonitor()
 		cfgNodes := make(map[string]any)
 		for _, node := range srcCmd.Value.Scope {
 			cfgNodes[node] = nil
@@ -120,7 +127,7 @@ func (o *imon) onProgressInstanceMonitor(c msgbus.ProgressInstanceMonitor) {
 		default:
 			return
 		}
-		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, instance.MonitorLocalExpectUnset)
+		o.log.Info().Msgf("this instance is no longer considered started, resource restart and monitoring are disabled")
 		o.change = true
 		o.state.LocalExpect = instance.MonitorLocalExpectUnset
 	}
@@ -633,4 +640,17 @@ func (o *imon) doAction(action func() error, newState, successState, errorState 
 		nextState = errorState
 	}
 	go o.orchestrateAfterAction(newState, nextState)
+}
+
+func (o *imon) initResourceMonitor() {
+	m := make(map[string]instance.ResourceMonitor)
+	for rid, res := range o.instConfig.Resources {
+		m[rid] = instance.ResourceMonitor{
+			Restart: instance.ResourceMonitorRestart{
+				Remaining: res.Restart,
+			},
+		}
+	}
+	o.state.Resources = m
+	o.change = true
 }

@@ -278,11 +278,11 @@ func (t DisableFlag) FlagString() string {
 // FlagString returns a one character representation of the type instance.
 func (t RestartFlag) FlagString(retries int) string {
 	restart := int(t)
-	remaining := restart - retries
+	remaining := retries
 	switch {
 	case restart <= 0:
 		return "."
-	case remaining < 0:
+	case remaining <= 0:
 		return "0"
 	case remaining < 10:
 		return fmt.Sprintf("%d", remaining)

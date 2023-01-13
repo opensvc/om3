@@ -52,6 +52,7 @@ type (
 		pendingCancel context.CancelFunc
 
 		// updated data from object status update srcEvent
+		instConfig  instance.Config
 		instStatus  map[string]instance.Status
 		instMonitor map[string]instance.Monitor
 		nodeMonitor map[string]cluster.NodeMonitor
@@ -83,7 +84,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		LocalExpect:  instance.MonitorLocalExpectUnset,
 		GlobalExpect: instance.MonitorGlobalExpectUnset,
 		State:        instance.MonitorStateIdle,
-		Restart:      make(map[string]instance.MonitorRestart),
+		Resources:    make(map[string]instance.ResourceMonitor),
 		StateUpdated: time.Now(),
 	}
 	state := previousState
@@ -110,6 +111,8 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 	o.nodeStatus = databus.GetNodeStatusMap()
 	o.nodeStats = databus.GetNodeStatsMap()
 	o.nodeMonitor = databus.GetNodeMonitorMap()
+	o.instConfig = databus.GetInstanceConfig(o.path, o.localhost)
+	o.initResourceMonitor()
 
 	go func() {
 		defer func() {

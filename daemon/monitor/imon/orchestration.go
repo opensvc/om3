@@ -28,6 +28,8 @@ func (o *imon) orchestrate() {
 		return
 	}
 
+	o.orchestrateResourceRestart()
+
 	switch o.state.GlobalExpect {
 	case instance.MonitorGlobalExpectUnset:
 		o.orchestrateUnset()

@@ -2,6 +2,7 @@ package imon
 
 import (
 	"os"
+	"strings"
 
 	"opensvc.com/opensvc/core/env"
 	"opensvc.com/opensvc/core/instance"
@@ -51,6 +52,11 @@ func (o *imon) crmProvisionLeader() error {
 	return o.crmAction("provision leader", o.path.String(), "provision", "--local", "--leader", "--disable-rollback")
 }
 
+func (o *imon) crmResourceStart(rids []string) error {
+	s := strings.Join(rids, ",")
+	return o.crmAction("start", o.path.String(), "start", "--local", "--rid", s)
+}
+
 func (o *imon) crmStart() error {
 	return o.crmAction("start", o.path.String(), "start", "--local")
 }
@@ -88,7 +94,7 @@ func (o *imon) crmAction(title string, cmdArgs ...string) error {
 	)
 	if title != "" {
 		o.loggerWithState().Info().Msgf(
-			"crm action %s (local status:'%s') -> exec %s %s",
+			"crm action %s (instance state: %s) -> exec %s %s",
 			title, o.state.State, cmdPath, cmdArgs,
 		)
 	} else {
@@ -100,7 +106,7 @@ func (o *imon) crmAction(title string, cmdArgs ...string) error {
 	}
 	if title != "" {
 		o.loggerWithState().Info().Msgf(
-			"crm action %s (local status:'%s') <- exec %s %s",
+			"crm action %s (instance state: %s) <- exec %s %s",
 			title, o.state.State, cmdPath, cmdArgs,
 		)
 	} else {

@@ -67,6 +67,16 @@ var (
 	dropMsgTimeout = 100 * time.Millisecond
 
 	configFileCheckError = errors.New("config file check")
+
+	keyFlexMax       = key.New("DEFAULT", "flex_max")
+	keyFlexMin       = key.New("DEFAULT", "flex_min")
+	keyFlexTarget    = key.New("DEFAULT", "flex_target")
+	keyMonitorAction = key.New("DEFAULT", "monitor_action")
+	keyNodes         = key.New("DEFAULT", "nodes")
+	keyPlacement     = key.New("DEFAULT", "placement")
+	keyPriority      = key.New("DEFAULT", "priority")
+	keyTopology      = key.New("DEFAULT", "topology")
+	keyOrchestrate   = key.New("DEFAULT", "orchestrate")
 )
 
 // Start launch goroutine instCfg worker for a local instance config
@@ -272,6 +282,8 @@ func (o *T) configFileCheck() error {
 	cfg.Topology = o.getTopology(cf)
 	cfg.Orchestrate = o.getOrchestrate(cf)
 	cfg.Priority = o.getPriority(cf)
+	cfg.Resources = o.getResources(cf)
+	cfg.MonitorAction = o.getMonitorAction(cf)
 	cfg.PlacementPolicy = o.getPlacementPolicy(cf)
 	cfg.Scope = scope
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
@@ -299,7 +311,7 @@ func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 		scope = strings.Split(rawconfig.ClusterSection().Nodes, " ")
 	default:
 		var evalNodes interface{}
-		evalNodes, err = cf.Eval(key.Parse("DEFAULT.nodes"))
+		evalNodes, err = cf.Eval(keyNodes)
 		if err != nil {
 			o.log.Error().Err(err).Msg("eval DEFAULT.nodes")
 			return
@@ -309,30 +321,52 @@ func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	return
 }
 
+func (o *T) getMonitorAction(cf *xconfig.T) instance.MonitorAction {
+	s := cf.GetString(keyMonitorAction)
+	return instance.MonitorAction(s)
+}
+
 func (o *T) getPlacementPolicy(cf *xconfig.T) placement.Policy {
-	s := cf.GetString(key.Parse("DEFAULT.placement"))
+	s := cf.GetString(keyPlacement)
 	return placement.NewPolicy(s)
 }
 
 func (o *T) getTopology(cf *xconfig.T) topology.T {
-	s := cf.GetString(key.Parse("DEFAULT.topology"))
+	s := cf.GetString(keyTopology)
 	return topology.New(s)
 }
 
 func (o *T) getOrchestrate(cf *xconfig.T) string {
-	s := cf.GetString(key.Parse("DEFAULT.orchestrate"))
+	s := cf.GetString(keyOrchestrate)
 	return s
 }
 
+func (o *T) getResources(cf *xconfig.T) map[string]instance.ResourceConfig {
+	m := make(map[string]instance.ResourceConfig)
+	for _, section := range cf.SectionStrings() {
+		switch section {
+		case "env", "DEFAULT":
+			continue
+		}
+		m[section] = instance.ResourceConfig{
+			RestartDelay: cf.GetDuration(key.New(section, "restart_delay")),
+			Restart:      cf.GetInt(key.New(section, "restart")),
+			IsDisabled:   cf.GetBool(key.New(section, "disable")),
+			IsMonitored:  cf.GetBool(key.New(section, "monitor")),
+		}
+	}
+	return m
+}
+
 func (o *T) getPriority(cf *xconfig.T) priority.T {
-	s := cf.GetInt(key.Parse("DEFAULT.priority"))
+	s := cf.GetInt(keyPriority)
 	return priority.T(s)
 }
 
 func (o *T) getFlexTarget(cf *xconfig.T) int {
 	switch o.path.Kind {
 	case kind.Svc, kind.Vol:
-		return cf.GetInt(key.Parse("DEFAULT.flex_target"))
+		return cf.GetInt(keyFlexTarget)
 	}
 	return 0
 }
@@ -340,7 +374,7 @@ func (o *T) getFlexTarget(cf *xconfig.T) int {
 func (o *T) getFlexMin(cf *xconfig.T) int {
 	switch o.path.Kind {
 	case kind.Svc, kind.Vol:
-		return cf.GetInt(key.Parse("DEFAULT.flex_min"))
+		return cf.GetInt(keyFlexMin)
 	}
 	return 0
 }
@@ -348,7 +382,7 @@ func (o *T) getFlexMin(cf *xconfig.T) int {
 func (o *T) getFlexMax(cf *xconfig.T) int {
 	switch o.path.Kind {
 	case kind.Svc, kind.Vol:
-		if i, err := cf.GetIntStrict(key.Parse("flex_max")); err == nil {
+		if i, err := cf.GetIntStrict(keyFlexMax); err == nil {
 			return i
 		} else if scope, err := o.getScope(cf); err == nil {
 			return len(scope)
