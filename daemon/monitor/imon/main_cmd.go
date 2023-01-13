@@ -44,6 +44,9 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 			return
 		}
 		o.state.LocalExpect = instance.MonitorLocalExpectStarted
+
+		// reset the last monitor action execution time, to rearm the next monitor action
+		o.state.MonitorActionExecutedAt = time.Time{}
 		o.change = true
 
 	}
