@@ -225,6 +225,27 @@ func (t MonitorState) MarshalJSON() ([]byte, error) {
 	}
 }
 
+func (t *Monitor) UnmarshalJSON(b []byte) error {
+	type tempMonitor Monitor
+	var mon tempMonitor
+	if err := json.Unmarshal(b, &mon); err != nil {
+		return err
+	}
+	switch mon.GlobalExpect {
+	case MonitorGlobalExpectPlacedAt:
+		var options MonitorGlobalExpectOptionsPlacedAt
+		if b, err := json.Marshal(mon.GlobalExpectOptions); err != nil {
+			return err
+		} else if err := json.Unmarshal(b, &options); err != nil {
+			return err
+		} else {
+			mon.GlobalExpectOptions = options
+		}
+	}
+	*t = Monitor(mon)
+	return nil
+}
+
 func (t *MonitorState) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
