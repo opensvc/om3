@@ -46,6 +46,6 @@ func (t ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 }
 
 func (t ccfg) Name() string {
-	k := key.Parse("cluster.name")
+	k := key.New("cluster", "name")
 	return t.config.GetString(k)
 }
