@@ -43,6 +43,7 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 		if o.state.LocalExpect == instance.MonitorLocalExpectStarted {
 			return
 		}
+		o.log.Info().Msgf("this instance is now considered started, resource restart and monitoring are enabled")
 		o.state.LocalExpect = instance.MonitorLocalExpectStarted
 
 		// reset the last monitor action execution time, to rearm the next monitor action
@@ -126,7 +127,7 @@ func (o *imon) onProgressInstanceMonitor(c msgbus.ProgressInstanceMonitor) {
 		default:
 			return
 		}
-		o.log.Info().Msgf("set local expect %s -> %s", o.state.LocalExpect, instance.MonitorLocalExpectUnset)
+		o.log.Info().Msgf("this instance is no longer considered started, resource restart and monitoring are disabled")
 		o.change = true
 		o.state.LocalExpect = instance.MonitorLocalExpectUnset
 	}
