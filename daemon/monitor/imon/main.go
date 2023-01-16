@@ -131,11 +131,13 @@ func (o *imon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub(o.id + "imon")
 	label := pubsub.Label{"path", o.id}
+	nodeLabel := pubsub.Label{"node", o.localhost}
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
 	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
+	sub.AddFilter(msgbus.NodeConfigUpdated{}, nodeLabel)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeStatusUpdated{})
 	sub.AddFilter(msgbus.NodeStatsUpdated{})
@@ -173,6 +175,8 @@ func (o *imon) worker(initialNodes []string) {
 				o.onInstanceMonitorUpdated(c)
 			case msgbus.InstanceMonitorDeleted:
 				o.onInstanceMonitorDeleted(c)
+			case msgbus.NodeConfigUpdated:
+				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:
 				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeStatusUpdated:
