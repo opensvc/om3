@@ -1,4 +1,4 @@
-package cluster
+package node
 
 import (
 	"time"
@@ -9,7 +9,7 @@ import (
 )
 
 type (
-	NodeStatus struct {
+	Status struct {
 		Agent           string                      `json:"agent"`
 		API             uint64                      `json:"api"`
 		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
@@ -23,8 +23,8 @@ type (
 		Labels          nodesinfo.Labels            `json:"labels"`
 	}
 
-	// NodeInstances groups instances configuration digest and status
-	NodeInstances struct {
+	// Instances groups instances configuration digest and status
+	Instances struct {
 		Config  map[string]instance.Config  `json:"config"`
 		Status  map[string]instance.Status  `json:"status"`
 		Monitor map[string]instance.Monitor `json:"monitor"`
@@ -38,28 +38,28 @@ type (
 	}
 )
 
-func (t NodeStatus) IsFrozen() bool {
+func (t Status) IsFrozen() bool {
 	return !t.Frozen.IsZero()
 }
 
-func (t NodeStatus) IsThawed() bool {
+func (t Status) IsThawed() bool {
 	return t.Frozen.IsZero()
 }
 
-func (nodeStatus *NodeStatus) DeepCopy() *NodeStatus {
-	result := *nodeStatus
+func (t *Status) DeepCopy() *Status {
+	result := *t
 	newArbitrator := make(map[string]ArbitratorStatus)
-	for n, v := range nodeStatus.Arbitrators {
+	for n, v := range t.Arbitrators {
 		newArbitrator[n] = v
 	}
 	result.Arbitrators = newArbitrator
 
 	newGen := make(map[string]uint64)
-	for n, v := range nodeStatus.Gen {
+	for n, v := range t.Gen {
 		newGen[n] = v
 	}
 	result.Gen = newGen
-	result.Labels = nodeStatus.Labels.DeepCopy()
+	result.Labels = t.Labels.DeepCopy()
 
 	return &result
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/pubsub"
@@ -22,21 +22,21 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	cmd := msgbus.SetNodeMonitor{
 		Node:  hostname.Hostname(),
-		Value: cluster.NodeMonitorUpdate{},
+		Value: node.MonitorUpdate{},
 	}
 	if payload.LocalExpect != nil {
 		validRequest = true
-		i := cluster.NodeMonitorLocalExpectValues[*payload.LocalExpect]
+		i := node.MonitorLocalExpectValues[*payload.LocalExpect]
 		cmd.Value.LocalExpect = &i
 	}
 	if payload.GlobalExpect != nil {
 		validRequest = true
-		i := cluster.NodeMonitorGlobalExpectValues[*payload.GlobalExpect]
+		i := node.MonitorGlobalExpectValues[*payload.GlobalExpect]
 		cmd.Value.GlobalExpect = &i
 	}
 	if payload.State != nil {
 		validRequest = true
-		i := cluster.NodeMonitorStateValues[*payload.State]
+		i := node.MonitorStateValues[*payload.State]
 		cmd.Value.State = &i
 	}
 	if !validRequest {

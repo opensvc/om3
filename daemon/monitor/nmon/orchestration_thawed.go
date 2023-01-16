@@ -1,12 +1,10 @@
 package nmon
 
-import (
-	"opensvc.com/opensvc/core/cluster"
-)
+import "opensvc.com/opensvc/core/node"
 
 func (o *nmon) orchestrateThawed() {
 	switch o.state.State {
-	case cluster.NodeMonitorStateIdle:
+	case node.MonitorStateIdle:
 		o.ThawedFromIdle()
 	default:
 		o.log.Warn().Msgf("don't know how to orchestrate %s from %s", o.state.GlobalExpect, o.state.State)
@@ -17,13 +15,13 @@ func (o *nmon) ThawedFromIdle() {
 	if o.thawedClearIfReached() {
 		return
 	}
-	o.transitionTo(cluster.NodeMonitorStateThawing)
+	o.transitionTo(node.MonitorStateThawing)
 	o.log.Info().Msg("run action unfreeze")
-	nextState := cluster.NodeMonitorStateIdle
+	nextState := node.MonitorStateIdle
 	if err := o.crmUnfreeze(); err != nil {
-		nextState = cluster.NodeMonitorStateThawedFailed
+		nextState = node.MonitorStateThawedFailed
 	}
-	go o.orchestrateAfterAction(cluster.NodeMonitorStateThawing, nextState)
+	go o.orchestrateAfterAction(node.MonitorStateThawing, nextState)
 	return
 }
 
@@ -31,7 +29,7 @@ func (o *nmon) thawedClearIfReached() bool {
 	if d := o.databus.GetNodeStatus(o.localhost); (d != nil) && d.Frozen.IsZero() {
 		o.log.Info().Msg("instance state is thawed, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = cluster.NodeMonitorGlobalExpectUnset
+		o.state.GlobalExpect = node.MonitorGlobalExpectUnset
 		o.clearPending()
 		return true
 	}

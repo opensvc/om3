@@ -5,7 +5,7 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
@@ -18,9 +18,9 @@ type (
 		node string
 	}
 
-	opGetNodeData struct {
+	opGetNode struct {
 		node   string
-		result chan<- *cluster.NodeData
+		result chan<- *node.Node
 	}
 )
 
@@ -35,12 +35,12 @@ func (t T) DropPeerNode(peerNode string) error {
 	return <-err
 }
 
-// GetNodeData returns a deep copy of cluster.Node.<node>
-func (t T) GetNodeData(node string) *cluster.NodeData {
-	result := make(chan *cluster.NodeData)
-	op := opGetNodeData{
+// GetNode returns a deep copy of cluster.Node.<node>
+func (t T) GetNode(nodename string) *node.Node {
+	result := make(chan *node.Node)
+	op := opGetNode{
 		result: result,
-		node:   node,
+		node:   nodename,
 	}
 	t.cmdC <- op
 	return <-result
@@ -79,8 +79,8 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) {
 	o.err <- nil
 }
 
-func (o opGetNodeData) call(ctx context.Context, d *data) {
-	d.counterCmd <- idGetNodeData
+func (o opGetNode) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetNode
 	if nodeData, ok := d.pending.Cluster.Node[o.node]; ok {
 		o.result <- nodeData.DeepCopy()
 	} else {

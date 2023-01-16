@@ -25,8 +25,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -52,13 +52,14 @@ type (
 		pendingCancel context.CancelFunc
 
 		// updated data from object status update srcEvent
-		instConfig  instance.Config
-		instStatus  map[string]instance.Status
-		instMonitor map[string]instance.Monitor
-		nodeMonitor map[string]cluster.NodeMonitor
-		nodeStats   map[string]cluster.NodeStats
-		nodeStatus  map[string]cluster.NodeStatus
-		scopeNodes  []string
+		instConfig    instance.Config
+		instStatus    map[string]instance.Status
+		instMonitor   map[string]instance.Monitor
+		nodeMonitor   map[string]node.Monitor
+		nodeStats     map[string]node.Stats
+		nodeStatus    map[string]node.Status
+		scopeNodes    []string
+		readyDuration time.Duration
 
 		objStatus   object.Status
 		cancelReady context.CancelFunc
@@ -105,6 +106,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		localhost:     hostname.Hostname(),
 		scopeNodes:    nodes,
 		change:        true,
+		readyDuration: 5 * time.Second,
 	}
 
 	o.startSubscriptions()

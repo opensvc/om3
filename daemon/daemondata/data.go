@@ -10,6 +10,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -81,8 +82,9 @@ type (
 	// remoteInfo struct holds information about remote node used to publish diff
 	remoteInfo struct {
 		nmonUpdated       time.Time
-		nodeStats         cluster.NodeStats
-		nodeStatus        cluster.NodeStatus
+		nodeStats         node.Stats
+		nodeStatus        node.Status
+		nodeConfig        node.Config
 		imonUpdated       map[string]time.Time
 		instCfgUpdated    map[string]time.Time
 		instStatusUpdated map[string]time.Time

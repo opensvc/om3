@@ -2,14 +2,9 @@ package imon
 
 import (
 	"context"
-	"time"
 
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/status"
-)
-
-var (
-	readyDuration = 5 * time.Second
 )
 
 func (o *imon) orchestrateStarted() {
@@ -70,7 +65,7 @@ func (o *imon) startedFromThawed() {
 		return
 	}
 	o.transitionTo(instance.MonitorStateReady)
-	o.createPendingWithDuration(readyDuration)
+	o.createPendingWithDuration(o.readyDuration)
 	go func(ctx context.Context) {
 		select {
 		case <-ctx.Done():

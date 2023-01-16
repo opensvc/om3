@@ -1,8 +1,8 @@
 package imon
 
 import (
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/node"
 )
 
 // orchestrate from omon vs global expect
@@ -24,7 +24,7 @@ func (o *imon) orchestrate() {
 
 	if nodeMonitor, ok := o.nodeMonitor[o.localhost]; !ok {
 		return
-	} else if nodeMonitor.State != cluster.NodeMonitorStateIdle {
+	} else if nodeMonitor.State != node.MonitorStateIdle {
 		return
 	}
 

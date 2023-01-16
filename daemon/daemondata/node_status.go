@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
@@ -15,10 +15,10 @@ import (
 type (
 	opGetNodeStatus struct {
 		node   string
-		result chan<- *cluster.NodeStatus
+		result chan<- *node.Status
 	}
 	opGetNodeStatusMap struct {
-		result chan<- map[string]cluster.NodeStatus
+		result chan<- map[string]node.Status
 	}
 	opSetNodeStatusFrozen struct {
 		err   chan<- error
@@ -31,11 +31,11 @@ type (
 )
 
 // GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
-func (t T) GetNodeStatus(node string) *cluster.NodeStatus {
-	result := make(chan *cluster.NodeStatus)
+func (t T) GetNodeStatus(nodename string) *node.Status {
+	result := make(chan *node.Status)
 	op := opGetNodeStatus{
 		result: result,
-		node:   node,
+		node:   nodename,
 	}
 	t.cmdC <- op
 	return <-result
@@ -51,8 +51,8 @@ func (o opGetNodeStatus) call(ctx context.Context, d *data) {
 }
 
 // GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
-func (t T) GetNodeStatusMap() map[string]cluster.NodeStatus {
-	result := make(chan map[string]cluster.NodeStatus)
+func (t T) GetNodeStatusMap() map[string]node.Status {
+	result := make(chan map[string]node.Status)
 	op := opGetNodeStatusMap{
 		result: result,
 	}
@@ -61,10 +61,10 @@ func (t T) GetNodeStatusMap() map[string]cluster.NodeStatus {
 }
 
 func (o opGetNodeStatusMap) call(ctx context.Context, d *data) {
-	m := make(map[string]cluster.NodeStatus)
+	m := make(map[string]node.Status)
 	d.counterCmd <- idGetNodeStatusMap
-	for node, nodeData := range d.pending.Cluster.Node {
-		m[node] = *nodeData.Status.DeepCopy()
+	for nodename, nodeData := range d.pending.Cluster.Node {
+		m[nodename] = *nodeData.Status.DeepCopy()
 	}
 	o.result <- m
 }

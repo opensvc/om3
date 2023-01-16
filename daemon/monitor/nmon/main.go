@@ -30,7 +30,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -47,8 +47,8 @@ import (
 type (
 	nmon struct {
 		config        *xconfig.T
-		state         cluster.NodeMonitor
-		previousState cluster.NodeMonitor
+		state         node.Monitor
+		previousState node.Monitor
 
 		ctx          context.Context
 		cancel       context.CancelFunc
@@ -62,7 +62,7 @@ type (
 		pendingCancel context.CancelFunc
 
 		scopeNodes  []string
-		nodeMonitor map[string]cluster.NodeMonitor
+		nodeMonitor map[string]node.Monitor
 
 		cancelReady context.CancelFunc
 		localhost   string
@@ -73,8 +73,8 @@ type (
 
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
-		state    cluster.NodeMonitorState
-		newState cluster.NodeMonitorState
+		state    node.MonitorState
+		newState node.MonitorState
 	}
 )
 
@@ -83,8 +83,8 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	o := &nmon{
-		state:         cluster.NodeMonitor{},
-		previousState: cluster.NodeMonitor{},
+		state:         node.Monitor{},
+		previousState: node.Monitor{},
 		ctx:           ctx,
 		cancel:        cancel,
 		cmdC:          make(chan any),
@@ -92,7 +92,7 @@ func Start(parent context.Context) error {
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
 		change:        true,
-		nodeMonitor:   make(map[string]cluster.NodeMonitor),
+		nodeMonitor:   make(map[string]node.Monitor),
 	}
 
 	if n, err := object.NewNode(object.WithVolatile(true)); err != nil {
@@ -136,7 +136,7 @@ func (o *nmon) startRejoin() {
 		// Skip the rejoin state phase.
 		o.rejoinTicker = time.NewTicker(time.Second)
 		o.rejoinTicker.Stop()
-		o.transitionTo(cluster.NodeMonitorStateIdle)
+		o.transitionTo(node.MonitorStateIdle)
 	} else {
 		// Begin the rejoin state phase.
 		// Arm the rejoin grace period ticker.
@@ -144,7 +144,7 @@ func (o *nmon) startRejoin() {
 		rejoinGracePeriod := o.config.GetDuration(key.New("node", "rejoin_grace_period"))
 		o.rejoinTicker = time.NewTicker(*rejoinGracePeriod)
 		o.log.Info().Msgf("rejoin grace period timer set to %s", rejoinGracePeriod)
-		o.transitionTo(cluster.NodeMonitorStateRejoin)
+		o.transitionTo(node.MonitorStateRejoin)
 	}
 }
 
@@ -223,10 +223,10 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 			o.rejoinTicker.Reset(2 * time.Second)
 			return
 		}
-		o.transitionTo(cluster.NodeMonitorStateIdle)
+		o.transitionTo(node.MonitorStateIdle)
 	} else {
 		o.log.Info().Msgf("rejoin grace period expired: the node is already frozen")
-		o.transitionTo(cluster.NodeMonitorStateIdle)
+		o.transitionTo(node.MonitorStateIdle)
 	}
 	o.rejoinTicker.Stop()
 }
@@ -294,8 +294,8 @@ func (o *nmon) clearPending() {
 	}
 }
 
-func (o *nmon) getStats() (cluster.NodeStats, error) {
-	stats := cluster.NodeStats{}
+func (o *nmon) getStats() (node.Stats, error) {
+	stats := node.Stats{}
 	fs, err := procfs.NewDefaultFS()
 	if err != nil {
 		return stats, err

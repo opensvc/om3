@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
@@ -24,10 +24,10 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 	maintenance := func() {
 		log.Info().Msg("announce maintenance state")
 		bus := pubsub.BusFromContext(ctx)
-		state := cluster.NodeMonitorStateMaintenance
+		state := node.MonitorStateMaintenance
 		bus.Pub(msgbus.SetNodeMonitor{
 			Node: hostname.Hostname(),
-			Value: cluster.NodeMonitorUpdate{
+			Value: node.MonitorUpdate{
 				State: &state,
 			},
 		}, labelApi)

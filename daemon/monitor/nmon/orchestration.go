@@ -1,12 +1,12 @@
 package nmon
 
-import "opensvc.com/opensvc/core/cluster"
+import "opensvc.com/opensvc/core/node"
 
 func (o *nmon) orchestrate() {
 	switch o.state.State {
-	case cluster.NodeMonitorStateInit:
+	case node.MonitorStateInit:
 		return
-	case cluster.NodeMonitorStateRejoin:
+	case node.MonitorStateRejoin:
 		return
 	}
 
@@ -15,18 +15,18 @@ func (o *nmon) orchestrate() {
 	}
 
 	switch o.state.LocalExpect {
-	case cluster.NodeMonitorLocalExpectUnset:
-	case cluster.NodeMonitorLocalExpectDrained:
+	case node.MonitorLocalExpectUnset:
+	case node.MonitorLocalExpectDrained:
 		o.orchestrateDrained()
 	}
 
 	switch o.state.GlobalExpect {
-	case cluster.NodeMonitorGlobalExpectUnset:
-	case cluster.NodeMonitorGlobalExpectAborted:
+	case node.MonitorGlobalExpectUnset:
+	case node.MonitorGlobalExpectAborted:
 		o.orchestrateAborted()
-	case cluster.NodeMonitorGlobalExpectFrozen:
+	case node.MonitorGlobalExpectFrozen:
 		o.orchestrateFrozen()
-	case cluster.NodeMonitorGlobalExpectThawed:
+	case node.MonitorGlobalExpectThawed:
 		o.orchestrateThawed()
 	}
 	o.updateIfChange()
