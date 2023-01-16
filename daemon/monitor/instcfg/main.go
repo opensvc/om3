@@ -23,6 +23,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
@@ -57,6 +58,7 @@ type (
 		published    bool
 		cmdC         chan any
 		databus      *daemondata.T
+		bus          *pubsub.Bus
 		sub          *pubsub.Subscription
 	}
 )
@@ -117,9 +119,9 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 
 func (o *T) startSubscriptions(ctx context.Context) {
 	clusterId := clusterPath.String()
-	bus := pubsub.BusFromContext(ctx)
+	o.bus = pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
-	o.sub = bus.Sub(o.path.String() + " instcfg")
+	o.sub = o.bus.Sub(o.path.String() + " instcfg")
 	o.sub.AddFilter(msgbus.CfgFileUpdated{}, label)
 	o.sub.AddFilter(msgbus.CfgFileRemoved{}, label)
 	if o.path.String() != clusterId {
@@ -217,9 +219,37 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 		o.log.Debug().Msg("no update required")
 		return
 	}
+	prevousNodes := o.cfg.Scope
 	o.cfg = *newCfg
 	if err := o.databus.SetInstanceConfig(o.path, *newCfg.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
+	}
+	hasScopeChanged := false
+	for _, node := range newCfg.Scope {
+		if !stringslice.Has(node, prevousNodes) {
+			hasScopeChanged = true
+			labels := []pubsub.Label{
+				{"node", hostname.Hostname()},
+				{"path", o.path.String()},
+				{"newnode", node},
+			}
+			o.bus.Pub(
+				msgbus.NodeAdded{Node: node, Nodes: append([]string{}, newCfg.Scope...), Path: o.path},
+				labels...,
+			)
+		}
+	}
+	for _, node := range prevousNodes {
+		if !stringslice.Has(node, newCfg.Scope) {
+			hasScopeChanged = true
+		}
+	}
+	if o.path.Name == "cluster" && hasScopeChanged {
+		if err := o.databus.SetClusterConfig(cluster.ClusterConfig{
+			Nodes: append([]string{}, newCfg.Scope...),
+		}); err != nil {
+			o.log.Error().Err(err).Msg("SetClusterConfig")
+		}
 	}
 	o.published = true
 }

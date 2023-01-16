@@ -125,6 +125,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
+	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", hostname.Hostname()})
 	sub.Start()
 	o.sub = sub
 }
@@ -187,6 +188,8 @@ func (o *nmon) worker() {
 				o.onFrozenFileUpdated(c)
 			case msgbus.HbMessageTypeUpdated:
 				o.onHbMessageTypeUpdated(c)
+			case msgbus.JoinRequest:
+				o.onJoinRequest(c)
 			case msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			case msgbus.NodeStatusLabelsUpdated:

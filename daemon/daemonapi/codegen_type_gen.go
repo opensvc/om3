@@ -522,6 +522,12 @@ type GetDaemonEventsParams struct {
 	Filter *QueryEventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
+// PostDaemonJoinParams defines parameters for PostDaemonJoin.
+type PostDaemonJoinParams struct {
+	// The new node
+	Node *string `form:"node,omitempty" json:"node,omitempty"`
+}
+
 // PostDaemonLogsControlJSONBody defines parameters for PostDaemonLogsControl.
 type PostDaemonLogsControlJSONBody = PostDaemonLogsControl
 

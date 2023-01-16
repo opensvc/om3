@@ -26,6 +26,10 @@ var (
 		"ClientSub":               ClientSub{},
 		"ClientUnSub":             ClientUnSub{},
 		"DaemonCtl":               DaemonCtl{},
+		"JoinRequest":             JoinRequest{},
+		"JoinDenied":              JoinDenied{},
+		"JoinIgnored":             JoinIgnored{},
+		"NodeAdded":               NodeAdded{},
 		"DataUpdated":             DataUpdated{},
 		"Exit":                    Exit{},
 		"ForgetPeer":              ForgetPeer{},
@@ -115,6 +119,28 @@ type (
 	DaemonCtl struct {
 		Component string
 		Action    string
+	}
+
+	JoinDenied struct {
+		// Node is nodename whose join request has been denied
+		Node   string
+		Reason string
+	}
+	JoinIgnored struct {
+		// Node is nodename whose join request has been ignored
+		Node   string
+		Reason string
+	}
+	JoinRequest struct {
+		// Node is a new node on cluster
+		Node string
+	}
+	NodeAdded struct {
+		// Node is the added nodename in cluster config nodes
+		Node string
+		Path path.T
+		// Nodes is the cluster config nodes
+		Nodes []string
 	}
 
 	Exit struct {
@@ -344,6 +370,19 @@ func (e DataUpdated) Kind() string {
 
 func (e DaemonCtl) Kind() string {
 	return "DaemonCtl"
+}
+
+func (e JoinRequest) Kind() string {
+	return "JoinRequest"
+}
+func (e JoinDenied) Kind() string {
+	return "JoinDenied"
+}
+func (e JoinIgnored) Kind() string {
+	return "JoinIgnored"
+}
+func (e NodeAdded) Kind() string {
+	return "NodeAdded"
 }
 
 func (e Exit) Kind() string {

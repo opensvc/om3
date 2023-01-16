@@ -71,6 +71,30 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/responseEventList'
+  /daemon/join:
+    post:
+      operationId: PostDaemonJoin
+      tags:
+        - auth
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - in: query
+          name: node
+          description: The new node
+          schema:
+            type: string
+            example: newnode
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /daemon/running:
     get:
       operationId: GetDaemonRunning

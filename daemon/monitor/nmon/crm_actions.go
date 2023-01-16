@@ -25,6 +25,10 @@ func SetCmdPathForTest(s string) {
 	cmdPath = s
 }
 
+func (o *nmon) crmAddNode(node string) error {
+	return o.crmAction("cluster", "set", "--kw", "cluster.nodes+="+node)
+}
+
 func (o *nmon) crmDrain() error {
 	return o.crmAction("*/svc/*", "shutdown", "--local")
 }
