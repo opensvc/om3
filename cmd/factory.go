@@ -163,6 +163,19 @@ func newCmdDaemonJoin() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonLeave() *cobra.Command {
+	var options commands.CmdDaemonLeave
+	cmd := &cobra.Command{
+		Use:   "leave",
+		Short: "remove this node from a cluster",
+		Long:  "Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	return cmd
+}
+
 func newCmdDaemonRelayStatus() *cobra.Command {
 	var options commands.CmdDaemonRelayStatus
 	cmd := &cobra.Command{
