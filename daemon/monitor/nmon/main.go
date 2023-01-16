@@ -117,6 +117,7 @@ func (o *nmon) startSubscriptions() {
 	sub := bus.Sub("nmon")
 	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", ""})
+	sub.AddFilter(msgbus.NodeConfigUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
@@ -177,6 +178,8 @@ func (o *nmon) worker() {
 			switch c := i.(type) {
 			case msgbus.CfgFileUpdated:
 				o.onCfgFileUpdated(c)
+			case msgbus.NodeConfigUpdated:
+				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:
 				o.onNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:

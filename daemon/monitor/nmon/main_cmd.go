@@ -6,24 +6,68 @@ import (
 	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
+// onCfgFileUpdated reloads the config parser and emits the updated
+// node.Config data in a NodeConfigUpdated event, so other go routine
+// can just subscribe to this event to maintain the cache of keywords
+// they care about.
 func (o *nmon) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
 	if !c.Path.IsZero() && c.Path.String() != "cluster" {
-		return
-	}
-	if o.state.State != node.MonitorStateRejoin {
 		return
 	}
 	if err := o.config.Reload(); err != nil {
 		o.log.Error().Err(err).Msg("readjust rejoin timer")
 		return
 	}
-	rejoinGracePeriod := o.config.GetDuration(key.New("node", "rejoin_grace_period"))
-	left := o.startedAt.Add(*rejoinGracePeriod).Sub(time.Now())
-	o.rejoinTicker.Reset(left)
-	o.log.Info().Msgf("rejoin grace period timer reset to %s", left)
+	o.pubNodeConfig()
+}
+
+func (o *nmon) pubNodeConfig() {
+	cfg := o.getNodeConfig()
+	msg := msgbus.NodeConfigUpdated{
+		Node:  hostname.Hostname(),
+		Value: cfg,
+	}
+	bus := pubsub.BusFromContext(o.ctx)
+	bus.Pub(msg, pubsub.Label{"node", hostname.Hostname()})
+}
+
+func (o *nmon) getNodeConfig() node.Config {
+	var (
+		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
+		keyReadyPeriod            = key.New("node", "ready_period")
+		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
+	)
+	cfg := node.Config{}
+	if d := o.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
+		cfg.MaintenanceGracePeriod = *d
+	}
+	if d := o.config.GetDuration(keyReadyPeriod); d != nil {
+		cfg.ReadyPeriod = *d
+	}
+	if d := o.config.GetDuration(keyRejoinGracePeriod); d != nil {
+		cfg.RejoinGracePeriod = *d
+	}
+	return cfg
+}
+
+func (o *nmon) onNodeConfigUpdated(c msgbus.NodeConfigUpdated) {
+	if c.Node != o.localhost {
+		return
+	}
+	if o.state.State != node.MonitorStateRejoin {
+		return
+	}
+	if left := o.startedAt.Add(c.Value.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
+		return
+	} else {
+		o.rejoinTicker.Reset(left)
+		o.log.Info().Msgf("rejoin grace period timer reset to %s", left)
+	}
 }
 
 func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
