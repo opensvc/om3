@@ -19,9 +19,8 @@ import (
 
 type (
 	CmdDaemonJoin struct {
-		OptsGlobal
-		Node string
-		Tk   string
+		Node  string
+		Token string
 	}
 )
 
@@ -30,7 +29,6 @@ func (t *CmdDaemonJoin) Run() error {
 		certFile string
 		cli      *client.T
 	)
-	_, _ = fmt.Fprintf(os.Stderr, "Joining...\n")
 	if err := t.checkParams(); err != nil {
 		return err
 	}
@@ -49,14 +47,14 @@ func (t *CmdDaemonJoin) Run() error {
 	cli, err = client.New(
 		client.WithURL(daemonenv.UrlHttpNode(t.Node)),
 		client.WithRootCa(certFile),
-		client.WithBearer(t.Tk),
+		client.WithBearer(t.Token),
 	)
 	if err != nil {
 		return err
 	}
 
 	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
-	_, _ = fmt.Fprintf(os.Stderr, "Fetching initial %s from %s\n", clusterPath, t.Node)
+	_, _ = fmt.Fprintf(os.Stderr, "Fetch %s from %s\n", clusterPath, t.Node)
 	file, _, err := remoteconfig.FetchObjectFile(cli, clusterPath)
 	if err != nil {
 		return err
@@ -71,7 +69,7 @@ func (t *CmdDaemonJoin) Run() error {
 	filePaths := make(map[string]path.T)
 	clusterName := clusterCfg.Name()
 
-	_, _ = fmt.Fprintf(os.Stderr, "Adding localhost to remote cluster %s\n", t.Node)
+	_, _ = fmt.Fprintf(os.Stderr, "Add node %s to the remote cluster configuration\n", t.Node)
 	// TODO POST daemon join
 
 	toFetch := []path.T{
@@ -81,7 +79,7 @@ func (t *CmdDaemonJoin) Run() error {
 	}
 	for _, p := range toFetch {
 		var file string
-		_, _ = fmt.Fprintf(os.Stderr, "Fetching %s from %s\n", p, t.Node)
+		_, _ = fmt.Fprintf(os.Stderr, "Fetch %s from %s\n", p, t.Node)
 		file, _, err = remoteconfig.FetchObjectFile(cli, p)
 		if err != nil {
 			return err
@@ -97,7 +95,7 @@ func (t *CmdDaemonJoin) Run() error {
 		command.WithName(os.Args[0]),
 		command.WithArgs(args),
 	)
-	_, _ = fmt.Fprintf(os.Stderr, "Stopping daemon...\n")
+	_, _ = fmt.Fprintf(os.Stderr, "Stop daemon\n")
 	err = cmd.Run()
 	if err != nil {
 		return err
@@ -106,7 +104,7 @@ func (t *CmdDaemonJoin) Run() error {
 	// TODO backup conf files before install files from remote
 
 	for fileName, p := range filePaths {
-		_, _ = fmt.Fprintf(os.Stderr, "Installing fetched config %s\n", p)
+		_, _ = fmt.Fprintf(os.Stderr, "Install fetched config %s\n", p)
 		err := os.Rename(fileName, p.ConfigFile())
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "can't install fetched config %s from file %s\n", p, fileName)
@@ -118,7 +116,7 @@ func (t *CmdDaemonJoin) Run() error {
 		command.WithName(os.Args[0]),
 		command.WithArgs(args),
 	)
-	_, _ = fmt.Fprintf(os.Stderr, "Starting daemon...\n")
+	_, _ = fmt.Fprintf(os.Stderr, "Start daemon\n")
 	err = cmd.Run()
 	if err != nil {
 		return err
@@ -131,7 +129,7 @@ func (t *CmdDaemonJoin) checkParams() error {
 	if t.Node == "" {
 		return errors.New("need a cluster node to join cluster")
 	}
-	if t.Tk == "" {
+	if t.Token == "" {
 		return errors.New("need a token to join cluster")
 	}
 	return nil
@@ -149,7 +147,7 @@ func (t *CmdDaemonJoin) extractCaClaim() (ca []byte, err error) {
 		token  *jwt.Token
 	)
 
-	token, _, err = parser.ParseUnverified(t.Tk, &joinClaim{})
+	token, _, err = parser.ParseUnverified(t.Token, &joinClaim{})
 	if err != nil {
 		return
 	}

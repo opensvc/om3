@@ -131,7 +131,7 @@ func newCmdDaemonAuth() *cobra.Command {
 	var options commands.CmdDaemonAuth
 	cmd := &cobra.Command{
 		Use:   "auth",
-		Short: "Create new token",
+		Short: "create new token",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -140,7 +140,7 @@ func newCmdDaemonAuth() *cobra.Command {
 	addFlagsGlobal(flagSet, &options.OptsGlobal)
 	addFlagRoles(flagSet, &options.Roles)
 	addFlagDuration(flagSet, &options.Duration)
-	flagSet.StringArrayVar(&options.Out, "out", []string{}, "output value: token or token_expire_at")
+	flagSet.StringArrayVar(&options.Out, "out", []string{}, "output 'token' or 'token_expire_at'")
 	return cmd
 }
 
@@ -148,18 +148,31 @@ func newCmdDaemonJoin() *cobra.Command {
 	var options commands.CmdDaemonJoin
 	cmd := &cobra.Command{
 		Use:   "join",
-		Short: "Join the cluster of the node specified by '--node <node>', authenticating with '--tk <join-token>'.",
+		Short: "add this node to a cluster",
+		Long: "Join the cluster of the node specified by '--node <node>'.\n" +
+			"The remote node expects the joiner to provide a join token using '--token <base64>'.\n" +
+			"The join token can be created on the remote node by the 'daemon auth token --role join' command or by getting /auth/token with a user having the joiner or root role.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flagSet := cmd.Flags()
-	// TODO remove node from addFlagsGlobal
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	// TODO rename cnode to node after node from addFlagsGlobal
-	flagSet.StringVar(&options.Node, "jnode", "", "Name of the cluster node we want to join.")
-	flagSet.StringVar(&options.Tk, "token", "", "Auth token with 'join' role"+
+	flagSet.StringVar(&options.Node, "node", "", "the name of the cluster node we want to join")
+	flagSet.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
 		" (created from 'om daemon auth --role json')")
+	return cmd
+}
+
+func newCmdDaemonLeave() *cobra.Command {
+	var options commands.CmdDaemonLeave
+	cmd := &cobra.Command{
+		Use:   "leave",
+		Short: "remove this node from a cluster",
+		Long:  "Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
 	return cmd
 }
 
