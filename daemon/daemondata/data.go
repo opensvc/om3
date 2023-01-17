@@ -86,7 +86,7 @@ type (
 		nodeStatus        node.Status
 		nodeConfig        node.Config
 		imonUpdated       map[string]time.Time
-		instCfgUpdated    map[string]time.Time
+		instConfigUpdated map[string]time.Time
 		instStatusUpdated map[string]time.Time
 		gen               uint64
 	}

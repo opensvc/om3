@@ -95,7 +95,7 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 		d.pendingOps = append(d.pendingOps, op)
 	}
 	d.bus.Pub(
-		msgbus.CfgDeleted{
+		msgbus.ConfigDeleted{
 			Path: o.path,
 			Node: d.localNode,
 		},
@@ -147,7 +147,7 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 	d.pendingOps = append(d.pendingOps, op)
 
 	d.bus.Pub(
-		msgbus.CfgUpdated{
+		msgbus.ConfigUpdated{
 			Path:  o.path,
 			Node:  d.localNode,
 			Value: o.value,

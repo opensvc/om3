@@ -1,6 +1,6 @@
 // Package instcfg is responsible for local instance.Config
 //
-// New instCfg are created by daemon discover.
+// New instConfig are created by daemon discover.
 // It provides the cluster data at ["cluster", "node", localhost, "services",
 // "config, <instance>]
 // It watches local config file to load updates.
@@ -79,7 +79,7 @@ var (
 	keyOrchestrate   = key.New("DEFAULT", "orchestrate")
 )
 
-// Start launch goroutine instCfg worker for a local instance config
+// Start launch goroutine instConfig worker for a local instance config
 func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
@@ -120,10 +120,10 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
 	o.sub = bus.Sub(o.path.String() + " instcfg")
-	o.sub.AddFilter(msgbus.CfgFileUpdated{}, label)
-	o.sub.AddFilter(msgbus.CfgFileRemoved{}, label)
+	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
+	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
 	if o.path.String() != clusterId {
-		o.sub.AddFilter(msgbus.CfgUpdated{}, pubsub.Label{"path", clusterId})
+		o.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterId})
 	}
 	o.sub.Start()
 }
@@ -141,7 +141,7 @@ func (o *T) startSmon(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// worker watch for local instCfg config file updates until file is removed
+// worker watch for local instConfig config file updates until file is removed
 func (o *T) worker(parent context.Context) {
 	var (
 		hasSmon bool
@@ -150,7 +150,7 @@ func (o *T) worker(parent context.Context) {
 	defer o.log.Debug().Msg("done")
 	defer o.log.Debug().Msg("starting")
 
-	// do once what we do later on msgbus.CfgFileUpdated
+	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := o.configFileCheck(); err != nil {
 		o.log.Warn().Err(err).Msg("initial configFileCheck")
 		return
@@ -170,7 +170,7 @@ func (o *T) worker(parent context.Context) {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.CfgFileUpdated:
+			case msgbus.ConfigFileUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
 				if err = o.configFileCheck(); err != nil {
 					o.log.Error().Err(err).Msg("configFileCheck error")
@@ -184,10 +184,10 @@ func (o *T) worker(parent context.Context) {
 					}
 				}
 
-			case msgbus.CfgFileRemoved:
+			case msgbus.ConfigFileRemoved:
 				o.log.Debug().Msgf("recv %#v", c)
 				return
-			case msgbus.CfgUpdated:
+			case msgbus.ConfigUpdated:
 				o.log.Debug().Msgf("recv %#v", c)
 				if c.Node != o.localhost {
 					// only watch local cluster config updates
@@ -211,14 +211,14 @@ func (o *T) worker(parent context.Context) {
 	}
 }
 
-// updateCfg update iCfg.cfg when newCfg differ from iCfg.cfg
-func (o *T) updateCfg(newCfg *instance.Config) {
-	if instance.ConfigEqual(&o.cfg, newCfg) {
+// updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
+func (o *T) updateConfig(newConfig *instance.Config) {
+	if instance.ConfigEqual(&o.cfg, newConfig) {
 		o.log.Debug().Msg("no update required")
 		return
 	}
-	o.cfg = *newCfg
-	if err := o.databus.SetInstanceConfig(o.path, *newCfg.DeepCopy()); err != nil {
+	o.cfg = *newConfig
+	if err := o.databus.SetInstanceConfig(o.path, *newConfig.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
 	o.published = true
@@ -229,7 +229,7 @@ func (o *T) updateCfg(newCfg *instance.Config) {
 //		if config file absent cancel worker
 //		if updated time or checksum has changed:
 //	       reload load config
-//		   updateCfg
+//		   updateConfig
 //
 //		when localhost is not anymore in scope then ends worker
 func (o *T) configFileCheck() error {
@@ -296,7 +296,7 @@ func (o *T) configFileCheck() error {
 	}
 
 	o.lastMtime = mtime
-	o.updateCfg(&cfg)
+	o.updateConfig(&cfg)
 	return nil
 }
 
@@ -416,7 +416,7 @@ func (o *T) delete() {
 }
 
 func (o *T) done(parent context.Context, doneChan chan<- any) {
-	op := msgbus.MonCfgDone{
+	op := msgbus.InstanceConfigManagerDone{
 		Path:     o.path,
 		Filename: o.filename,
 	}

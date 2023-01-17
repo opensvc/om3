@@ -11,11 +11,11 @@ import (
 	"opensvc.com/opensvc/util/pubsub"
 )
 
-// onCfgFileUpdated reloads the config parser and emits the updated
+// onConfigFileUpdated reloads the config parser and emits the updated
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
-func (o *nmon) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
+func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 	if !c.Path.IsZero() && c.Path.String() != "cluster" {
 		return
 	}

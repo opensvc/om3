@@ -214,7 +214,7 @@ func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
 		imonUpdated:       make(map[string]time.Time),
-		instCfgUpdated:    make(map[string]time.Time),
+		instConfigUpdated: make(map[string]time.Time),
 		instStatusUpdated: make(map[string]time.Time),
 	}
 
@@ -233,7 +233,7 @@ func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
 			result.instStatusUpdated[p] = instUpdated
 		}
 		if inst.Config != nil {
-			result.instCfgUpdated[p] = inst.Config.Updated
+			result.instConfigUpdated[p] = inst.Config.Updated
 		}
 		if inst.Monitor != nil {
 			imonUpdated := inst.Monitor.StateUpdated
@@ -287,14 +287,14 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remot
 	if !ok {
 		previous = remoteInfo{
 			imonUpdated:       make(map[string]time.Time),
-			instCfgUpdated:    make(map[string]time.Time),
+			instConfigUpdated: make(map[string]time.Time),
 			instStatusUpdated: make(map[string]time.Time),
 		}
 	}
-	updates, removes = getUpdatedRemoved(toPath, previous.instCfgUpdated, current.instCfgUpdated)
+	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated)
 	for _, s := range updates {
 		d.bus.Pub(
-			msgbus.CfgUpdated{
+			msgbus.ConfigUpdated{
 				Path:  toPath[s],
 				Node:  nodename,
 				Value: *d.pending.Cluster.Node[nodename].Instance[s].Config.DeepCopy(),
@@ -305,7 +305,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remot
 	}
 	for _, s := range removes {
 		d.bus.Pub(
-			msgbus.CfgDeleted{
+			msgbus.ConfigDeleted{
 				Path: toPath[s],
 				Node: nodename,
 			},
@@ -360,9 +360,9 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remot
 		)
 	}
 
-	for s, updated := range current.instCfgUpdated {
+	for s, updated := range current.instConfigUpdated {
 		var update bool
-		if previousUpdated, ok := previous.instCfgUpdated[s]; !ok {
+		if previousUpdated, ok := previous.instConfigUpdated[s]; !ok {
 			// new cfg object
 			update = true
 		} else if !updated.Equal(previousUpdated) {
@@ -373,8 +373,8 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remot
 
 		}
 	}
-	for s := range previous.instCfgUpdated {
-		if _, ok := current.instCfgUpdated[s]; !ok {
+	for s := range previous.instConfigUpdated {
+		if _, ok := current.instConfigUpdated[s]; !ok {
 			// removal cfg
 		}
 	}

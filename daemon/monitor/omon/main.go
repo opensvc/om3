@@ -85,8 +85,8 @@ func (o *T) startSubscriptions() {
 	sub := bus.Sub(o.id + " omon")
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
 	sub.AddFilter(msgbus.InstanceStatusUpdated{}, label)
-	sub.AddFilter(msgbus.CfgUpdated{}, label)
-	sub.AddFilter(msgbus.CfgDeleted{}, label)
+	sub.AddFilter(msgbus.ConfigUpdated{}, label)
+	sub.AddFilter(msgbus.ConfigDeleted{}, label)
 	sub.Start()
 	o.sub = sub
 }
@@ -119,7 +119,7 @@ func (o *T) worker() {
 				o.srcEvent = i
 				o.instStatus[c.Node] = c.Value
 				o.updateStatus()
-			case msgbus.CfgUpdated:
+			case msgbus.ConfigUpdated:
 				o.status.Scope = c.Value.Scope
 				o.status.FlexTarget = c.Value.FlexTarget
 				o.status.FlexMin = c.Value.FlexMin
@@ -140,7 +140,7 @@ func (o *T) worker() {
 				}
 
 				o.updateStatus()
-			case msgbus.CfgDeleted:
+			case msgbus.ConfigDeleted:
 				if _, ok := o.instStatus[c.Node]; ok {
 					delete(o.instStatus, c.Node)
 				}
