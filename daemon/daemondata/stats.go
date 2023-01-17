@@ -40,7 +40,6 @@ const (
 	idGetInstanceConfig
 	idGetInstanceStatus
 	idGetNode
-	idGetNodeConfig
 	idGetNodeMonitor
 	idGetNodeMonitorMap
 	idGetNodeStatus
@@ -55,6 +54,7 @@ const (
 	idSetInstanceFrozen
 	idSetInstanceMonitor
 	idSetInstanceStatus
+	idSetNodeConfig
 	idSetNodeMonitor
 	idSetNodeOsPaths
 	idSetNodeStats
@@ -78,7 +78,6 @@ var (
 		idGetHbMessageType:   "get-hb-message-type",
 		idGetInstanceStatus:  "get-instance-status",
 		idGetNode:            "get-node",
-		idGetNodeConfig:      "get-node-config",
 		idGetNodeStatus:      "get-node-status",
 		idGetNodeStatusMap:   "get-node-status-map",
 		idGetNodesInfo:       "get-nodes-info",
@@ -89,6 +88,7 @@ var (
 		idSetInstanceConfig:  "set-instance-config",
 		idSetInstanceFrozen:  "set-instance-frozen",
 		idSetInstanceStatus:  "set-instance-status",
+		idSetNodeConfig:      "set-node-config",
 		idSetNodeMonitor:     "set-node-monitor",
 		idSetNodeOsPaths:     "set-node-os-paths",
 		idSetNodeStats:       "set-node-stats",

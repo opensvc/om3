@@ -6,9 +6,7 @@ import (
 	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/pubsub"
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated
@@ -28,12 +26,7 @@ func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 
 func (o *nmon) pubNodeConfig() {
 	cfg := o.getNodeConfig()
-	msg := msgbus.NodeConfigUpdated{
-		Node:  hostname.Hostname(),
-		Value: cfg,
-	}
-	bus := pubsub.BusFromContext(o.ctx)
-	bus.Pub(msg, pubsub.Label{"node", hostname.Hostname()})
+	o.databus.SetNodeConfig(cfg)
 }
 
 func (o *nmon) getNodeConfig() node.Config {
