@@ -21,7 +21,7 @@
 
 	drbd: disk.drbd
 	vdisk: disk.vdisk
-	vmdg: disk.ldom
+	vmdg: diisk.ldom
 	pool: disk.zpool
 	zpool: disk.zpool
 	loop: disk.loop
@@ -29,8 +29,6 @@
 	zvol: disk.zvol
 	lv: disk.lv
 	raw: disk.raw
-	vxdg: disk.vxdg
-	vxvol: disk.vxvol
 
 For example, a [md#1] section needs reformatting as:
 
