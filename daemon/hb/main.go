@@ -372,7 +372,7 @@ func (t *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
 	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
 	t.sub = bus.Sub("hb")
-	t.sub.AddFilter(msgbus.CfgUpdated{}, pubsub.Label{"path", clusterPath.String()})
+	t.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterPath.String()})
 	t.sub.AddFilter(msgbus.DaemonCtl{})
 	t.sub.Start()
 }
@@ -394,7 +394,7 @@ func (t *T) startJanitorHb(ctx context.Context) {
 				return
 			case i := <-t.sub.C:
 				switch msg := i.(type) {
-				case msgbus.CfgUpdated:
+				case msgbus.ConfigUpdated:
 					if msg.Node != hostname.Hostname() {
 						continue
 					}

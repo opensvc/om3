@@ -109,7 +109,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							log.Debug().Msgf("add file %s", filename)
 						}
 					*/
-					bus.Pub(msgbus.CfgFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+					bus.Pub(msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 				}
 				return nil
 			},
@@ -205,7 +205,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
-						bus.Pub(msgbus.CfgFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+						bus.Pub(msgbus.ConfigFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
@@ -221,7 +221,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
-						bus.Pub(msgbus.CfgFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+						bus.Pub(msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 					}
 				case dirCreated(event):
 					if err := d.fsWatcher.Add(filename); err != nil {

@@ -19,47 +19,47 @@ import (
 
 var (
 	kindToT = map[string]any{
-		"ApiClient":               ApiClient{},
-		"CfgDeleted":              CfgDeleted{},
-		"CfgFileRemoved":          CfgFileRemoved{},
-		"CfgFileUpdated":          CfgFileUpdated{},
-		"CfgUpdated":              CfgUpdated{},
-		"ClientSub":               ClientSub{},
-		"ClientUnSub":             ClientUnSub{},
-		"DaemonCtl":               DaemonCtl{},
-		"DataUpdated":             DataUpdated{},
-		"Exit":                    Exit{},
-		"ForgetPeer":              ForgetPeer{},
-		"FrozenFileRemoved":       FrozenFileRemoved{},
-		"FrozenFileUpdated":       FrozenFileUpdated{},
-		"Frozen":                  Frozen{},
-		"HbMessageTypeUpdated":    HbMessageTypeUpdated{},
-		"HbNodePing":              HbNodePing{},
-		"HbPing":                  HbPing{},
-		"HbStale":                 HbStale{},
-		"HbStatusUpdated":         HbStatusUpdated{},
-		"InstanceMonitorAction":   InstanceMonitorAction{},
-		"InstanceMonitorDeleted":  InstanceMonitorDeleted{},
-		"InstanceMonitorUpdated":  InstanceMonitorUpdated{},
-		"InstanceStatusDeleted":   InstanceStatusDeleted{},
-		"InstanceStatusUpdated":   InstanceStatusUpdated{},
-		"MonCfgDone":              MonCfgDone{},
-		"NodeConfigUpdated":       NodeConfigUpdated{},
-		"NodeMonitorDeleted":      NodeMonitorDeleted{},
-		"NodeMonitorUpdated":      NodeMonitorUpdated{},
-		"NodeOsPathsUpdated":      NodeOsPathsUpdated{},
-		"NodeStatsUpdated":        NodeStatsUpdated{},
-		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
-		"NodeStatusUpdated":       NodeStatusUpdated{},
-		"ObjectStatusDeleted":     ObjectStatusDeleted{},
-		"ObjectStatusDone":        ObjectStatusDone{},
-		"ObjectStatusUpdated":     ObjectStatusUpdated{},
-		"ProgressInstanceMonitor": ProgressInstanceMonitor{},
-		"RemoteFileConfig":        RemoteFileConfig{},
-		"SetInstanceMonitor":      SetInstanceMonitor{},
-		"SetNodeMonitor":          SetNodeMonitor{},
-		"SubscriptionError":       pubsub.SubscriptionError{},
-		"WatchDog":                WatchDog{},
+		"ApiClient":                 ApiClient{},
+		"ConfigDeleted":             ConfigDeleted{},
+		"ConfigFileRemoved":         ConfigFileRemoved{},
+		"ConfigFileUpdated":         ConfigFileUpdated{},
+		"ConfigUpdated":             ConfigUpdated{},
+		"ClientSub":                 ClientSub{},
+		"ClientUnSub":               ClientUnSub{},
+		"DaemonCtl":                 DaemonCtl{},
+		"DataUpdated":               DataUpdated{},
+		"Exit":                      Exit{},
+		"ForgetPeer":                ForgetPeer{},
+		"FrozenFileRemoved":         FrozenFileRemoved{},
+		"FrozenFileUpdated":         FrozenFileUpdated{},
+		"Frozen":                    Frozen{},
+		"HbMessageTypeUpdated":      HbMessageTypeUpdated{},
+		"HbNodePing":                HbNodePing{},
+		"HbPing":                    HbPing{},
+		"HbStale":                   HbStale{},
+		"HbStatusUpdated":           HbStatusUpdated{},
+		"InstanceMonitorAction":     InstanceMonitorAction{},
+		"InstanceMonitorDeleted":    InstanceMonitorDeleted{},
+		"InstanceMonitorUpdated":    InstanceMonitorUpdated{},
+		"InstanceStatusDeleted":     InstanceStatusDeleted{},
+		"InstanceStatusUpdated":     InstanceStatusUpdated{},
+		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
+		"NodeConfigUpdated":         NodeConfigUpdated{},
+		"NodeMonitorDeleted":        NodeMonitorDeleted{},
+		"NodeMonitorUpdated":        NodeMonitorUpdated{},
+		"NodeOsPathsUpdated":        NodeOsPathsUpdated{},
+		"NodeStatsUpdated":          NodeStatsUpdated{},
+		"NodeStatusLabelsUpdated":   NodeStatusLabelsUpdated{},
+		"NodeStatusUpdated":         NodeStatusUpdated{},
+		"ObjectStatusDeleted":       ObjectStatusDeleted{},
+		"ObjectStatusDone":          ObjectStatusDone{},
+		"ObjectStatusUpdated":       ObjectStatusUpdated{},
+		"ProgressInstanceMonitor":   ProgressInstanceMonitor{},
+		"RemoteFileConfig":          RemoteFileConfig{},
+		"SetInstanceMonitor":        SetInstanceMonitor{},
+		"SetNodeMonitor":            SetNodeMonitor{},
+		"SubscriptionError":         pubsub.SubscriptionError{},
+		"WatchDog":                  WatchDog{},
 	}
 )
 
@@ -76,26 +76,26 @@ type (
 		Name string
 	}
 
-	CfgDeleted struct {
+	ConfigDeleted struct {
 		Path path.T
 		Node string
 	}
 
-	// CfgFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
-	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a CfgDeleted{} event.
-	CfgFileRemoved struct {
+	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a ConfigDeleted{} event.
+	ConfigFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
-	// CfgFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
-	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a CfgUpdated{} event.
-	CfgFileUpdated struct {
+	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a ConfigUpdated{} event.
+	ConfigFileUpdated struct {
 		Path     path.T
 		Filename string
 	}
 
-	CfgUpdated struct {
+	ConfigUpdated struct {
 		Path  path.T
 		Node  string
 		Value instance.Config
@@ -208,7 +208,7 @@ type (
 		Value instance.Status
 	}
 
-	MonCfgDone struct {
+	InstanceConfigManagerDone struct {
 		Path     path.T
 		Filename string
 	}
@@ -317,20 +317,20 @@ func (e ApiClient) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
-func (e CfgDeleted) Kind() string {
-	return "CfgDeleted"
+func (e ConfigDeleted) Kind() string {
+	return "ConfigDeleted"
 }
 
-func (e CfgFileRemoved) Kind() string {
-	return "CfgFileRemoved"
+func (e ConfigFileRemoved) Kind() string {
+	return "ConfigFileRemoved"
 }
 
-func (e CfgFileUpdated) Kind() string {
-	return "CfgFileUpdated"
+func (e ConfigFileUpdated) Kind() string {
+	return "ConfigFileUpdated"
 }
 
-func (e CfgUpdated) Kind() string {
-	return "CfgUpdated"
+func (e ConfigUpdated) Kind() string {
+	return "ConfigUpdated"
 }
 
 func (e ClientSub) Kind() string {
@@ -431,8 +431,8 @@ func (e InstanceStatusUpdated) Kind() string {
 	return "InstanceStatusUpdated"
 }
 
-func (e MonCfgDone) Kind() string {
-	return "MonCfgDoneAsName"
+func (e InstanceConfigManagerDone) Kind() string {
+	return "InstanceConfigManagerDone"
 }
 
 func (e NodeConfigUpdated) Kind() string {

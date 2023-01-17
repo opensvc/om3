@@ -115,8 +115,8 @@ func Start(parent context.Context) error {
 func (o *nmon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
 	sub := bus.Sub("nmon")
-	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", "cluster"})
-	sub.AddFilter(msgbus.CfgFileUpdated{}, pubsub.Label{"path", ""})
+	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
+	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(msgbus.NodeConfigUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
@@ -176,8 +176,8 @@ func (o *nmon) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.CfgFileUpdated:
-				o.onCfgFileUpdated(c)
+			case msgbus.ConfigFileUpdated:
+				o.onConfigFileUpdated(c)
 			case msgbus.NodeConfigUpdated:
 				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:
