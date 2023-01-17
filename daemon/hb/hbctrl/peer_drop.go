@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -53,7 +53,7 @@ func peerDropWorker(ctx context.Context) {
 	}
 
 	delayDropPeer := func(peer string) {
-		if databus.GetNodeMonitor(peer).State == cluster.NodeMonitorStateMaintenance {
+		if databus.GetNodeMonitor(peer).State == node.MonitorStateMaintenance {
 			delay := maintenanceGracePeriod
 			if drop, ok := dropM[peer]; ok {
 				drop.cancel()

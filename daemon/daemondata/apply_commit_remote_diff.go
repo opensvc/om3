@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
@@ -29,51 +29,93 @@ func (d *data) getPeersFromPrevAndPending() []string {
 }
 
 // pubPeerDataChanges propagate peers data changes (node status, node monitor,
-// node instances) since last call has new publications.
+// node config, node instances) since last call has new publications.
 func (d *data) pubPeerDataChanges() {
-	for _, node := range d.getPeersFromPrevAndPending() {
-		current := d.refreshPreviousUpdated(node)
+	for _, nodename := range d.getPeersFromPrevAndPending() {
+		current := d.refreshPreviousUpdated(nodename)
 		if current == nil {
 			continue
 		}
-		d.pubMsgFromNodeStatusDiffForNode(node)
-		d.pubMsgFromNodeStatsDiffForNode(node)
-		d.pubMsgFromNodeMonitorDiffForNode(node, current)
-		d.pubMsgFromNodeInstanceDiffForNode(node, current)
-		d.previousRemoteInfo[node] = *current
+		d.pubMsgFromNodeConfigDiffForNode(nodename)
+		d.pubMsgFromNodeStatusDiffForNode(nodename)
+		d.pubMsgFromNodeStatsDiffForNode(nodename)
+		d.pubMsgFromNodeMonitorDiffForNode(nodename, current)
+		d.pubMsgFromNodeInstanceDiffForNode(nodename, current)
+		d.previousRemoteInfo[nodename] = *current
 	}
 }
 
-func (d *data) pubMsgFromNodeStatsDiffForNode(node string) {
+func (d *data) pubMsgFromNodeConfigDiffForNode(nodename string) {
 	var (
 		prevTime         remoteInfo
-		nextNode         cluster.NodeData
-		next, prev       cluster.NodeStats
+		nextNode         node.Node
+		next, prev       node.Config
 		hasNext, hasPrev bool
 	)
-	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
+	if nextNode, hasNext = d.pending.Cluster.Node[nodename]; hasNext {
+		next = nextNode.Config
+	}
+	prevTime, hasPrev = d.previousRemoteInfo[nodename]
+	prev = prevTime.nodeConfig
+	onUpdate := func() {
+		if !reflect.DeepEqual(prev, next) {
+			d.bus.Pub(
+				msgbus.NodeConfigUpdated{
+					Node:  nodename,
+					Value: *next.DeepCopy(),
+				},
+				pubsub.Label{"node", nodename},
+			)
+		}
+	}
+	onCreate := func() {
+		d.bus.Pub(
+			msgbus.NodeConfigUpdated{
+				Node:  nodename,
+				Value: *next.DeepCopy(),
+			},
+			pubsub.Label{"node", nodename},
+		)
+	}
+
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
+	}
+}
+
+func (d *data) pubMsgFromNodeStatsDiffForNode(nodename string) {
+	var (
+		prevTime         remoteInfo
+		nextNode         node.Node
+		next, prev       node.Stats
+		hasNext, hasPrev bool
+	)
+	if nextNode, hasNext = d.pending.Cluster.Node[nodename]; hasNext {
 		next = nextNode.Stats
 	}
-	prevTime, hasPrev = d.previousRemoteInfo[node]
+	prevTime, hasPrev = d.previousRemoteInfo[nodename]
 	prev = prevTime.nodeStats
 	onUpdate := func() {
 		if !reflect.DeepEqual(prev, next) {
 			d.bus.Pub(
 				msgbus.NodeStatsUpdated{
-					Node:  node,
+					Node:  nodename,
 					Value: *next.DeepCopy(),
 				},
-				pubsub.Label{"node", node},
+				pubsub.Label{"node", nodename},
 			)
 		}
 	}
 	onCreate := func() {
 		d.bus.Pub(
 			msgbus.NodeStatsUpdated{
-				Node:  node,
+				Node:  nodename,
 				Value: *next.DeepCopy(),
 			},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 
@@ -85,54 +127,54 @@ func (d *data) pubMsgFromNodeStatsDiffForNode(node string) {
 	}
 }
 
-func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
+func (d *data) pubMsgFromNodeStatusDiffForNode(nodename string) {
 	var (
 		prevTime         remoteInfo
-		nextNode         cluster.NodeData
-		next, prev       cluster.NodeStatus
+		nextNode         node.Node
+		next, prev       node.Status
 		hasNext, hasPrev bool
 	)
-	if nextNode, hasNext = d.pending.Cluster.Node[node]; hasNext {
+	if nextNode, hasNext = d.pending.Cluster.Node[nodename]; hasNext {
 		next = nextNode.Status
 	}
-	prevTime, hasPrev = d.previousRemoteInfo[node]
+	prevTime, hasPrev = d.previousRemoteInfo[nodename]
 	prev = prevTime.nodeStatus
 	onUpdate := func() {
 		var changed bool
 		if !reflect.DeepEqual(prev.Labels, next.Labels) {
 			d.bus.Pub(
 				msgbus.NodeStatusLabelsUpdated{
-					Node:  node,
+					Node:  nodename,
 					Value: next.Labels.DeepCopy(),
 				},
-				pubsub.Label{"node", node},
+				pubsub.Label{"node", nodename},
 			)
 			changed = true
 		}
 		if changed || !reflect.DeepEqual(prev, next) {
 			d.bus.Pub(
 				msgbus.NodeStatusUpdated{
-					Node:  node,
+					Node:  nodename,
 					Value: *next.DeepCopy(),
 				},
-				pubsub.Label{"node", node},
+				pubsub.Label{"node", nodename},
 			)
 		}
 	}
 	onCreate := func() {
 		d.bus.Pub(
 			msgbus.NodeStatusLabelsUpdated{
-				Node:  node,
+				Node:  nodename,
 				Value: next.Labels.DeepCopy(),
 			},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 		d.bus.Pub(
 			msgbus.NodeStatusUpdated{
-				Node:  node,
+				Node:  nodename,
 				Value: *next.DeepCopy(),
 			},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 
@@ -144,31 +186,31 @@ func (d *data) pubMsgFromNodeStatusDiffForNode(node string) {
 	}
 }
 
-func (d *data) pubMsgFromNodeMonitorDiffForNode(node string, current *remoteInfo) {
+func (d *data) pubMsgFromNodeMonitorDiffForNode(nodename string, current *remoteInfo) {
 	if current == nil {
 		return
 	}
-	prevTimes, hasPrev := d.previousRemoteInfo[node]
+	prevTimes, hasPrev := d.previousRemoteInfo[nodename]
 	if !hasPrev || current.nmonUpdated.After(prevTimes.nmonUpdated) {
-		localMonitor := d.pending.Cluster.Node[node].Monitor
+		localMonitor := d.pending.Cluster.Node[nodename].Monitor
 		d.bus.Pub(
 			msgbus.NodeMonitorUpdated{
-				Node:  node,
+				Node:  nodename,
 				Value: *localMonitor.DeepCopy(),
 			},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 		return
 	}
 }
 
-func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
-	if prev, ok := d.previousRemoteInfo[node]; ok {
-		if prev.gen == d.pending.Cluster.Node[node].Status.Gen[node] {
+func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
+	if prev, ok := d.previousRemoteInfo[nodename]; ok {
+		if prev.gen == d.pending.Cluster.Node[nodename].Status.Gen[nodename] {
 			return nil
 		}
 	}
-	c := d.pending.Cluster.Node[node]
+	c := d.pending.Cluster.Node[nodename]
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
 		imonUpdated:       make(map[string]time.Time),
@@ -201,7 +243,7 @@ func (d *data) refreshPreviousUpdated(node string) *remoteInfo {
 			result.imonUpdated[p] = imonUpdated
 		}
 	}
-	result.gen = c.Status.Gen[node]
+	result.gen = c.Status.Gen[nodename]
 
 	return &result
 }
@@ -238,10 +280,10 @@ func getUpdatedRemoved(toPath map[string]path.T, previous, current map[string]ti
 	return
 }
 
-func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInfo) {
+func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remoteInfo) {
 	var updates, removes []string
 	toPath := make(map[string]path.T)
-	previous, ok := d.previousRemoteInfo[node]
+	previous, ok := d.previousRemoteInfo[nodename]
 	if !ok {
 		previous = remoteInfo{
 			imonUpdated:       make(map[string]time.Time),
@@ -254,21 +296,21 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 		d.bus.Pub(
 			msgbus.CfgUpdated{
 				Path:  toPath[s],
-				Node:  node,
-				Value: *d.pending.Cluster.Node[node].Instance[s].Config.DeepCopy(),
+				Node:  nodename,
+				Value: *d.pending.Cluster.Node[nodename].Instance[s].Config.DeepCopy(),
 			},
 			pubsub.Label{"path", s},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 	for _, s := range removes {
 		d.bus.Pub(
 			msgbus.CfgDeleted{
 				Path: toPath[s],
-				Node: node,
+				Node: nodename,
 			},
 			pubsub.Label{"path", s},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 
@@ -277,21 +319,21 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 		d.bus.Pub(
 			msgbus.InstanceStatusUpdated{
 				Path:  toPath[s],
-				Node:  node,
-				Value: *d.pending.Cluster.Node[node].Instance[s].Status.DeepCopy(),
+				Node:  nodename,
+				Value: *d.pending.Cluster.Node[nodename].Instance[s].Status.DeepCopy(),
 			},
 			pubsub.Label{"path", s},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 	for _, s := range removes {
 		d.bus.Pub(
 			msgbus.InstanceStatusDeleted{
 				Path: toPath[s],
-				Node: node,
+				Node: nodename,
 			},
 			pubsub.Label{"path", s},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 
@@ -300,21 +342,21 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(node string, current *remoteInf
 		d.bus.Pub(
 			msgbus.InstanceMonitorUpdated{
 				Path:  toPath[s],
-				Node:  node,
-				Value: *d.pending.Cluster.Node[node].Instance[s].Monitor.DeepCopy(),
+				Node:  nodename,
+				Value: *d.pending.Cluster.Node[nodename].Instance[s].Monitor.DeepCopy(),
 			},
 			pubsub.Label{"path", s},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 	for _, s := range removes {
 		d.bus.Pub(
 			msgbus.InstanceMonitorDeleted{
 				Path: toPath[s],
-				Node: node,
+				Node: nodename,
 			},
 			pubsub.Label{"path", s},
-			pubsub.Label{"node", node},
+			pubsub.Label{"node", nodename},
 		)
 	}
 

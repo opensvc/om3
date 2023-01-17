@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/hbtype"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -31,9 +31,9 @@ func loadFixture(t *testing.T, name string) []byte {
 	return b
 }
 
-func LoadFull(t *testing.T, name string) *cluster.NodeData {
+func LoadFull(t *testing.T, name string) *node.Node {
 	t.Helper()
-	var full cluster.NodeData
+	var full node.Node
 	require.Nil(t, json.Unmarshal(loadFixture(t, name), &full))
 	return &full
 }
@@ -93,40 +93,40 @@ func TestDaemonData(t *testing.T) {
 		})
 		require.False(t, t.Failed()) // fail on first error
 
-		t.Run("GetNodeData return node data with local data initialized", func(t *testing.T) {
-			localNodeData := bus.GetNodeData(localNode)
-			require.Equalf(t, cluster.NodeMonitorStateInit, localNodeData.Monitor.State,
-				"got %+v", localNodeData)
+		t.Run("GetNode return node data with local data initialized", func(t *testing.T) {
+			localNode := bus.GetNode(localNode)
+			require.Equalf(t, node.MonitorStateInit, localNode.Monitor.State,
+				"got %+v", localNode)
 		})
 		require.False(t, t.Failed()) // fail on first error
 	})
 	require.False(t, t.Failed()) // fail on first error
 
-	t.Run("Ensure GetNodeData result is a deep copy", func(t *testing.T) {
-		initialData := bus.GetNodeData(localNode)
-		initialData.Monitor.State = cluster.NodeMonitorStateIdle
-		initialData.Status.Gen[localNode] = 30
-		refreshedData := bus.GetNodeData(localNode)
-		assert.NotNil(t, refreshedData)
-		assert.Equal(t, uint64(1), refreshedData.Status.Gen[localNode])
-		assert.Equal(t, cluster.NodeMonitorStateInit, refreshedData.Monitor.State)
+	t.Run("Ensure GetNode result is a deep copy", func(t *testing.T) {
+		initial := bus.GetNode(localNode)
+		initial.Monitor.State = node.MonitorStateIdle
+		initial.Status.Gen[localNode] = 30
+		refreshed := bus.GetNode(localNode)
+		assert.NotNil(t, refreshed)
+		assert.Equal(t, uint64(1), refreshed.Status.Gen[localNode])
+		assert.Equal(t, node.MonitorStateInit, refreshed.Monitor.State)
 	})
 	require.False(t, t.Failed()) // fail on first error
 
 	t.Run("Ensure GetNodeMonitor result is a deep copy", func(t *testing.T) {
-		initialData := bus.GetNodeMonitor(localNode)
-		initialDataUpdated := initialData.StateUpdated
-		initialDataGlobalExpectUpdated := initialData.GlobalExpectUpdated
-		initialData.State = cluster.NodeMonitorStateIdle
-		initialData.StateUpdated = time.Now()
-		initialData.GlobalExpect = cluster.NodeMonitorGlobalExpectAborted
-		initialData.GlobalExpectUpdated = time.Now()
+		initial := bus.GetNodeMonitor(localNode)
+		initialUpdated := initial.StateUpdated
+		initialGlobalExpectUpdated := initial.GlobalExpectUpdated
+		initial.State = node.MonitorStateIdle
+		initial.StateUpdated = time.Now()
+		initial.GlobalExpect = node.MonitorGlobalExpectAborted
+		initial.GlobalExpectUpdated = time.Now()
 
-		refreshedData := bus.GetNodeMonitor(localNode)
-		require.Equal(t, cluster.NodeMonitorStateInit, refreshedData.State, "State changed !")
-		require.Equal(t, initialDataUpdated, refreshedData.StateUpdated, "StateUpdated changed !")
-		require.Equal(t, cluster.NodeMonitorGlobalExpectUnset, refreshedData.GlobalExpect, "GlobalExpect changed !")
-		require.Equal(t, initialDataGlobalExpectUpdated, refreshedData.GlobalExpectUpdated, "GlobalExpectUpdated changed !")
+		refreshed := bus.GetNodeMonitor(localNode)
+		require.Equal(t, node.MonitorStateInit, refreshed.State, "State changed !")
+		require.Equal(t, initialUpdated, refreshed.StateUpdated, "StateUpdated changed !")
+		require.Equal(t, node.MonitorGlobalExpectUnset, refreshed.GlobalExpect, "GlobalExpect changed !")
+		require.Equal(t, initialGlobalExpectUpdated, refreshed.GlobalExpectUpdated, "GlobalExpectUpdated changed !")
 	})
 	require.False(t, t.Failed()) // fail on first error
 
@@ -145,11 +145,11 @@ func TestDaemonData(t *testing.T) {
 			}
 			hbRecvMsgQ <- &msg
 
-			nodeLocal := bus.GetNodeData(remoteHost)
+			nodeLocal := bus.GetNode(remoteHost)
 			t.Log("check cluster local gens view of remote")
 			require.Equal(t, full.Status.Gen[remoteHost], nodeLocal.Status.Gen[remoteHost], "local node gens has not been updated with remote gen value")
 
-			nodeRemote := bus.GetNodeData(remoteHost)
+			nodeRemote := bus.GetNode(remoteHost)
 			t.Log("check remote node gens")
 			require.Equal(t, full.Status.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 			t.Log("check remote node instance status")
@@ -169,10 +169,10 @@ func TestDaemonData(t *testing.T) {
 				patchMsg := LoadPatch(t, "patch-node2-t2.json")
 				hbRecvMsgQ <- patchMsg
 
-				nodeLocal := bus.GetNodeData(localNode)
+				nodeLocal := bus.GetNode(localNode)
 				require.Equal(t, patchMsg.Gen[remoteHost], nodeLocal.Status.Gen[remoteHost], "local node gens has not been updated with remote gen value")
 
-				nodeRemote := bus.GetNodeData(remoteHost)
+				nodeRemote := bus.GetNode(remoteHost)
 				require.NotNil(t, nodeRemote)
 				require.Equal(t, patchMsg.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 				require.Equal(t, 0.5, nodeRemote.Stats.Load15M)
@@ -183,13 +183,13 @@ func TestDaemonData(t *testing.T) {
 			require.False(t, t.Failed()) // fail on first error
 
 			t.Run("patch with some already applied gens gen patch-node2-t3-with-t2-changed.json", func(t *testing.T) {
-				assert.Equal(t, instance.MonitorStateStarting, bus.GetNodeData(remoteHost).Instance["foo"].Monitor.State)
+				assert.Equal(t, instance.MonitorStateStarting, bus.GetNode(remoteHost).Instance["foo"].Monitor.State)
 				patchMsg := LoadPatch(t, "patch-node2-t3-with-t2-changed.json")
 				hbRecvMsgQ <- patchMsg
 
-				remoteNodeData := bus.GetNodeData(remoteHost)
-				assert.Equal(t, 0.5, remoteNodeData.Stats.Load15M, "hum hacked gen 21 has been reapplied !")
-				assert.Equal(t, uint64(2), remoteNodeData.Stats.Score, "hum gen 22 has not been applied !")
+				remoteNode := bus.GetNode(remoteHost)
+				assert.Equal(t, 0.5, remoteNode.Stats.Load15M, "hum hacked gen 21 has been reapplied !")
+				assert.Equal(t, uint64(2), remoteNode.Stats.Score, "hum gen 22 has not been applied !")
 			})
 			require.False(t, t.Failed()) // fail on first error
 
@@ -197,13 +197,13 @@ func TestDaemonData(t *testing.T) {
 				patchMsg := LoadPatch(t, "patch-node2-t4.json")
 				hbRecvMsgQ <- patchMsg
 
-				localNodeData := bus.GetNodeData(localNode)
-				assert.Equal(t, uint64(0), localNodeData.Status.Gen[remoteHost], "expect local node needs full from remote")
+				localNode := bus.GetNode(localNode)
+				assert.Equal(t, uint64(0), localNode.Status.Gen[remoteHost], "expect local node needs full from remote")
 
 				t.Log("ensure future delta not applied")
-				remoteNodeData := bus.GetNodeData(remoteHost)
-				require.NotNil(t, remoteNodeData)
-				require.Equal(t, uint64(2), bus.GetNodeData(remoteHost).Stats.Score, "hum some remote data should has been applied !")
+				remoteNode := bus.GetNode(remoteHost)
+				require.NotNil(t, remoteNode)
+				require.Equal(t, uint64(2), bus.GetNode(remoteHost).Stats.Score, "hum some remote data should has been applied !")
 
 			})
 			require.False(t, t.Failed()) // fail on first error

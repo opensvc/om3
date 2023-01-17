@@ -3,21 +3,21 @@ package nmon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
 func (o *nmon) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
-	for node, data := range o.nodeMonitor {
-		if data.GlobalExpect == cluster.NodeMonitorGlobalExpectUnset {
+	for nodename, data := range o.nodeMonitor {
+		if data.GlobalExpect == node.MonitorGlobalExpectUnset {
 			// converge "aborted" to unset via orchestration
 			continue
 		}
 		nodeTime := data.GlobalExpectUpdated
 		if mostRecentUpdated.Before(nodeTime) {
-			mostRecentNode = node
+			mostRecentNode = nodename
 			mostRecentUpdated = nodeTime
 		}
 	}

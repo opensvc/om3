@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strconv"
 
-	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
@@ -140,7 +140,7 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 	}
 	if changes {
 		// patches has been applied get update pendingRemote
-		pendingRemote = cluster.NodeData{}
+		pendingRemote = node.Node{}
 		if err := json.Unmarshal(pendingB, &pendingRemote); err != nil {
 			d.log.Error().Err(err).Msgf("Unmarshal pendingB %s", remote)
 			return err

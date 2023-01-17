@@ -3,23 +3,23 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
 
 type (
 	opGetNodeStatsMap struct {
-		result chan<- map[string]cluster.NodeStats
+		result chan<- map[string]node.Stats
 	}
 	opSetNodeStats struct {
 		err   chan<- error
-		value cluster.NodeStats
+		value node.Stats
 	}
 )
 
 // SetNodeStats sets Monitor.Node.<localhost>.Stats
-func (t T) SetNodeStats(value cluster.NodeStats) error {
+func (t T) SetNodeStats(value node.Stats) error {
 	err := make(chan error)
 	op := opSetNodeStats{
 		err:   err,
@@ -30,8 +30,8 @@ func (t T) SetNodeStats(value cluster.NodeStats) error {
 }
 
 // GetNodeStatsMap returns a map of NodeStats indexed by nodename
-func (t T) GetNodeStatsMap() map[string]cluster.NodeStats {
-	result := make(chan map[string]cluster.NodeStats)
+func (t T) GetNodeStatsMap() map[string]node.Stats {
+	result := make(chan map[string]node.Stats)
 	op := opGetNodeStatsMap{
 		result: result,
 	}
@@ -41,9 +41,9 @@ func (t T) GetNodeStatsMap() map[string]cluster.NodeStats {
 
 func (o opGetNodeStatsMap) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetNodeStatsMap
-	m := make(map[string]cluster.NodeStats)
-	for node, nodeData := range d.pending.Cluster.Node {
-		m[node] = *nodeData.Stats.DeepCopy()
+	m := make(map[string]node.Stats)
+	for nodename, nodeData := range d.pending.Cluster.Node {
+		m[nodename] = *nodeData.Stats.DeepCopy()
 	}
 	o.result <- m
 }

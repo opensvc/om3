@@ -1,9 +1,9 @@
-package cluster
+package node
 
 type (
-	// NodeStats describes systems (cpu, mem, swap) resource usage of a node
+	// Stats describes systems (cpu, mem, swap) resource usage of a node
 	// and an opensvc-specific score.
-	NodeStats struct {
+	Stats struct {
 		Load15M      float64 `json:"load_15m"`
 		MemAvailPct  uint64  `json:"mem_avail"`
 		MemTotalMB   uint64  `json:"mem_total"`
@@ -13,7 +13,7 @@ type (
 	}
 )
 
-func (n *NodeStats) DeepCopy() *NodeStats {
-	var data NodeStats = *n
+func (n *Stats) DeepCopy() *Stats {
+	var data Stats = *n
 	return &data
 }

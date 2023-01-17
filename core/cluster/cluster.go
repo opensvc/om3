@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/objectselector"
 	"opensvc.com/opensvc/core/path"
@@ -26,7 +27,7 @@ type (
 		Status ClusterStatus            `json:"status"`
 		Object map[string]object.Status `json:"object"`
 
-		Node map[string]NodeData `json:"node"`
+		Node map[string]node.Node `json:"node"`
 	}
 
 	ClusterStatus struct {
@@ -127,7 +128,7 @@ func (s *Status) WithNamespace(namespace string) *Status {
 
 // GetNodeData extracts from the cluster dataset all information relative
 // to node data.
-func (s *Status) GetNodeData(nodename string) *NodeData {
+func (s *Status) GetNodeData(nodename string) *node.Node {
 	if nodeData, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeData
 	}
@@ -136,7 +137,7 @@ func (s *Status) GetNodeData(nodename string) *NodeData {
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *NodeStatus {
+func (s *Status) GetNodeStatus(nodename string) *node.Status {
 	if nodeData, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeData.Status
 	}

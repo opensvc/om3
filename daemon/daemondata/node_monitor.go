@@ -3,7 +3,7 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 )
@@ -14,14 +14,14 @@ type (
 	}
 	opGetNodeMonitor struct {
 		node  string
-		value chan<- cluster.NodeMonitor
+		value chan<- node.Monitor
 	}
 	opGetNodeMonitorMap struct {
-		result chan<- map[string]cluster.NodeMonitor
+		result chan<- map[string]node.Monitor
 	}
 	opSetNodeMonitor struct {
 		err   chan<- error
-		value cluster.NodeMonitor
+		value node.Monitor
 	}
 )
 
@@ -36,19 +36,19 @@ func (t T) DelNodeMonitor() error {
 }
 
 // GetNodeMonitor returns Monitor.Node.<node>.monitor
-func (t T) GetNodeMonitor(node string) cluster.NodeMonitor {
-	value := make(chan cluster.NodeMonitor)
+func (t T) GetNodeMonitor(nodename string) node.Monitor {
+	value := make(chan node.Monitor)
 	op := opGetNodeMonitor{
 		value: value,
-		node:  node,
+		node:  nodename,
 	}
 	t.cmdC <- op
 	return <-value
 }
 
 // GetNodeMonitorMap returns a map of NodeMonitor indexed by nodename
-func (t T) GetNodeMonitorMap() map[string]cluster.NodeMonitor {
-	result := make(chan map[string]cluster.NodeMonitor)
+func (t T) GetNodeMonitorMap() map[string]node.Monitor {
+	result := make(chan map[string]node.Monitor)
 	op := opGetNodeMonitorMap{
 		result: result,
 	}
@@ -57,7 +57,7 @@ func (t T) GetNodeMonitorMap() map[string]cluster.NodeMonitor {
 }
 
 // SetNodeMonitor sets Monitor.Node.<localhost>.monitor
-func (t T) SetNodeMonitor(v cluster.NodeMonitor) error {
+func (t T) SetNodeMonitor(v node.Monitor) error {
 	err := make(chan error)
 	op := opSetNodeMonitor{
 		err:   err,
@@ -95,7 +95,7 @@ func (o opDelNodeMonitor) call(ctx context.Context, d *data) {
 
 func (o opGetNodeMonitor) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetNodeMonitor
-	s := cluster.NodeMonitor{}
+	s := node.Monitor{}
 	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		s = nodeStatus.Monitor
 	}
@@ -107,9 +107,9 @@ func (o opGetNodeMonitor) call(ctx context.Context, d *data) {
 
 func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) {
 	d.counterCmd <- idGetNodeMonitorMap
-	m := make(map[string]cluster.NodeMonitor)
-	for node, nodeData := range d.pending.Cluster.Node {
-		m[node] = *nodeData.Monitor.DeepCopy()
+	m := make(map[string]node.Monitor)
+	for nodename, nodeData := range d.pending.Cluster.Node {
+		m[nodename] = *nodeData.Monitor.DeepCopy()
 	}
 	o.result <- m
 }

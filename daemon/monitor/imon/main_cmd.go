@@ -280,6 +280,12 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 
 }
 
+func (o *imon) onNodeConfigUpdated(c msgbus.NodeConfigUpdated) {
+	o.readyDuration = c.Value.ReadyPeriod
+	o.orchestrate()
+	o.updateIfChange()
+}
+
 func (o *imon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.nodeMonitor[c.Node] = c.Value
 	o.updateIsLeader()

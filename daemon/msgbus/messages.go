@@ -9,6 +9,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
@@ -43,6 +44,7 @@ var (
 		"InstanceStatusDeleted":   InstanceStatusDeleted{},
 		"InstanceStatusUpdated":   InstanceStatusUpdated{},
 		"MonCfgDone":              MonCfgDone{},
+		"NodeConfigUpdated":       NodeConfigUpdated{},
 		"NodeMonitorDeleted":      NodeMonitorDeleted{},
 		"NodeMonitorUpdated":      NodeMonitorUpdated{},
 		"NodeOsPathsUpdated":      NodeOsPathsUpdated{},
@@ -211,13 +213,18 @@ type (
 		Filename string
 	}
 
+	NodeConfigUpdated struct {
+		Node  string
+		Value node.Config
+	}
+
 	NodeMonitorDeleted struct {
 		Node string
 	}
 
 	NodeMonitorUpdated struct {
 		Node  string
-		Value cluster.NodeMonitor
+		Value node.Monitor
 	}
 
 	NodeOsPathsUpdated struct {
@@ -227,7 +234,7 @@ type (
 
 	NodeStatsUpdated struct {
 		Node  string
-		Value cluster.NodeStats
+		Value node.Stats
 	}
 
 	NodeStatusLabelsUpdated struct {
@@ -237,7 +244,7 @@ type (
 
 	NodeStatusUpdated struct {
 		Node  string
-		Value cluster.NodeStatus
+		Value node.Status
 	}
 
 	ObjectStatusDeleted struct {
@@ -281,7 +288,7 @@ type (
 
 	SetNodeMonitor struct {
 		Node  string
-		Value cluster.NodeMonitorUpdate
+		Value node.MonitorUpdate
 	}
 
 	WatchDog struct {
@@ -426,6 +433,10 @@ func (e InstanceStatusUpdated) Kind() string {
 
 func (e MonCfgDone) Kind() string {
 	return "MonCfgDoneAsName"
+}
+
+func (e NodeConfigUpdated) Kind() string {
+	return "NodeConfigUpdated"
 }
 
 func (e NodeMonitorDeleted) Kind() string {

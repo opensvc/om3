@@ -1,4 +1,4 @@
-package cluster
+package node
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	"opensvc.com/opensvc/core/status"
 )
 
-func Test_TNodeStatus_DeepCopy(t *testing.T) {
+func Test_TStatus_DeepCopy(t *testing.T) {
 	t1 := time.Now()
-	value := &NodeStatus{
+	value := &Status{
 		Agent: "a",
 		API:   12,
 		Arbitrators: map[string]ArbitratorStatus{

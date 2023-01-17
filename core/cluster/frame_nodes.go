@@ -5,6 +5,7 @@ import (
 
 	"github.com/golang-collections/collections/set"
 
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/sizeconv"
 )
@@ -143,7 +144,7 @@ func (f Frame) sNodeSwap(n string) string {
 
 func (f Frame) sNodeMonState(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		if val.Monitor.State != NodeMonitorStateIdle {
+		if val.Monitor.State != node.MonitorStateIdle {
 			return val.Monitor.State.String()
 		}
 	}
@@ -162,10 +163,10 @@ func (f Frame) sNodeFrozen(n string) string {
 func (f Frame) sNodeMonTarget(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		s := ""
-		if val.Monitor.GlobalExpect != NodeMonitorGlobalExpectUnset {
+		if val.Monitor.GlobalExpect != node.MonitorGlobalExpectUnset {
 			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect.String())
 		}
-		if val.Monitor.LocalExpect != NodeMonitorLocalExpectUnset {
+		if val.Monitor.LocalExpect != node.MonitorLocalExpectUnset {
 			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.LocalExpect.String())
 		}
 		return s

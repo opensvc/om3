@@ -7,6 +7,7 @@ import (
 
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -31,7 +32,7 @@ func newData(counterCmd chan<- interface{}) *data {
 			},
 			Object: map[string]object.Status{},
 
-			Node: map[string]cluster.NodeData{
+			Node: map[string]node.Node{
 				localNode: nodeData,
 			},
 		},
@@ -65,17 +66,17 @@ func newData(counterCmd chan<- interface{}) *data {
 	}
 }
 
-func newNodeData(localNode string) cluster.NodeData {
+func newNodeData(localNode string) node.Node {
 	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
 	frozen := file.ModTime(nodeFrozenFile)
-	nodeStatus := cluster.NodeData{
+	nodeStatus := node.Node{
 		Instance: map[string]instance.Instance{},
-		Monitor:  cluster.NodeMonitor{},
-		Stats:    cluster.NodeStats{},
-		Status: cluster.NodeStatus{
+		Monitor:  node.Monitor{},
+		Stats:    node.Stats{},
+		Status: node.Status{
 			Agent:           "3.0-0",
 			API:             8,
-			Arbitrators:     map[string]cluster.ArbitratorStatus{},
+			Arbitrators:     map[string]node.ArbitratorStatus{},
 			Compat:          12,
 			Env:             "",
 			Frozen:          frozen,
@@ -85,7 +86,7 @@ func newNodeData(localNode string) cluster.NodeData {
 			MinAvailSwapPct: 0,
 			Speaker:         false,
 		},
-		Os: cluster.NodeOs{
+		Os: node.Os{
 			Paths: san.Paths{},
 		},
 	}

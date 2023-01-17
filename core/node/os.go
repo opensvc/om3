@@ -1,10 +1,10 @@
-package cluster
+package node
 
 import "opensvc.com/opensvc/util/san"
 
 type (
-	// NodeOs defines Os details
-	NodeOs struct {
+	// Os defines Os details
+	Os struct {
 		Paths san.Paths `json:"paths"`
 	}
 )

@@ -3,27 +3,71 @@ package nmon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
+// onCfgFileUpdated reloads the config parser and emits the updated
+// node.Config data in a NodeConfigUpdated event, so other go routine
+// can just subscribe to this event to maintain the cache of keywords
+// they care about.
 func (o *nmon) onCfgFileUpdated(c msgbus.CfgFileUpdated) {
 	if !c.Path.IsZero() && c.Path.String() != "cluster" {
-		return
-	}
-	if o.state.State != cluster.NodeMonitorStateRejoin {
 		return
 	}
 	if err := o.config.Reload(); err != nil {
 		o.log.Error().Err(err).Msg("readjust rejoin timer")
 		return
 	}
-	rejoinGracePeriod := o.config.GetDuration(key.New("node", "rejoin_grace_period"))
-	left := o.startedAt.Add(*rejoinGracePeriod).Sub(time.Now())
-	o.rejoinTicker.Reset(left)
-	o.log.Info().Msgf("rejoin grace period timer reset to %s", left)
+	o.pubNodeConfig()
+}
+
+func (o *nmon) pubNodeConfig() {
+	cfg := o.getNodeConfig()
+	msg := msgbus.NodeConfigUpdated{
+		Node:  hostname.Hostname(),
+		Value: cfg,
+	}
+	bus := pubsub.BusFromContext(o.ctx)
+	bus.Pub(msg, pubsub.Label{"node", hostname.Hostname()})
+}
+
+func (o *nmon) getNodeConfig() node.Config {
+	var (
+		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
+		keyReadyPeriod            = key.New("node", "ready_period")
+		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
+	)
+	cfg := node.Config{}
+	if d := o.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
+		cfg.MaintenanceGracePeriod = *d
+	}
+	if d := o.config.GetDuration(keyReadyPeriod); d != nil {
+		cfg.ReadyPeriod = *d
+	}
+	if d := o.config.GetDuration(keyRejoinGracePeriod); d != nil {
+		cfg.RejoinGracePeriod = *d
+	}
+	return cfg
+}
+
+func (o *nmon) onNodeConfigUpdated(c msgbus.NodeConfigUpdated) {
+	if c.Node != o.localhost {
+		return
+	}
+	if o.state.State != node.MonitorStateRejoin {
+		return
+	}
+	if left := o.startedAt.Add(c.Value.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
+		return
+	} else {
+		o.rejoinTicker.Reset(left)
+		o.log.Info().Msgf("rejoin grace period timer reset to %s", left)
+	}
 }
 
 func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
@@ -32,7 +76,7 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 			return
 		}
 		// sanity check the state value
-		if _, ok := cluster.NodeMonitorStateStrings[*c.Value.State]; !ok {
+		if _, ok := node.MonitorStateStrings[*c.Value.State]; !ok {
 			o.log.Warn().Msgf("invalid set node monitor state: %s", c.Value.State)
 			return
 		}
@@ -52,7 +96,7 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 			return
 		}
 		// sanity check the local expect value
-		if _, ok := cluster.NodeMonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
+		if _, ok := node.MonitorLocalExpectStrings[*c.Value.LocalExpect]; !ok {
 			o.log.Warn().Msgf("invalid set node monitor local expect: %s", c.Value.LocalExpect)
 			return
 		}
@@ -71,11 +115,11 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 		if c.Value.GlobalExpect == nil {
 			return
 		}
-		if _, ok := cluster.NodeMonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
+		if _, ok := node.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
 			o.log.Warn().Msgf("invalid set node monitor local expect: %s", *c.Value.GlobalExpect)
 			return
 		}
-		if *c.Value.GlobalExpect != cluster.NodeMonitorGlobalExpectAborted {
+		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for node, data := range o.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
 					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", *c.Value.GlobalExpect, node)
@@ -152,7 +196,7 @@ func missingNodes(nodes, joinedNodes []string) []string {
 }
 
 func (o *nmon) onHbMessageTypeUpdated(c msgbus.HbMessageTypeUpdated) {
-	if o.state.State != cluster.NodeMonitorStateRejoin {
+	if o.state.State != node.MonitorStateRejoin {
 		return
 	}
 	if c.To != "patch" {
@@ -163,7 +207,7 @@ func (o *nmon) onHbMessageTypeUpdated(c msgbus.HbMessageTypeUpdated) {
 		return
 	}
 	o.rejoinTicker.Stop()
-	o.transitionTo(cluster.NodeMonitorStateIdle)
+	o.transitionTo(node.MonitorStateIdle)
 }
 
 func (o *nmon) onOrchestrate(c cmdOrchestrate) {
@@ -175,11 +219,11 @@ func (o *nmon) onOrchestrate(c cmdOrchestrate) {
 	time.Sleep(50 * time.Millisecond)
 }
 
-func (o *nmon) orchestrateAfterAction(state, nextState cluster.NodeMonitorState) {
+func (o *nmon) orchestrateAfterAction(state, nextState node.MonitorState) {
 	o.cmdC <- cmdOrchestrate{state: state, newState: nextState}
 }
 
-func (o *nmon) transitionTo(newState cluster.NodeMonitorState) {
+func (o *nmon) transitionTo(newState node.MonitorState) {
 	o.change = true
 	o.state.State = newState
 	o.updateIfChange()

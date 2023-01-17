@@ -39,7 +39,8 @@ const (
 	idGetHbMessageType
 	idGetInstanceConfig
 	idGetInstanceStatus
-	idGetNodeData
+	idGetNode
+	idGetNodeConfig
 	idGetNodeMonitor
 	idGetNodeMonitorMap
 	idGetNodeStatus
@@ -76,7 +77,8 @@ var (
 		idGetHbMessage:       "get-hb-message",
 		idGetHbMessageType:   "get-hb-message-type",
 		idGetInstanceStatus:  "get-instance-status",
-		idGetNodeData:        "get-node-data",
+		idGetNode:            "get-node",
+		idGetNodeConfig:      "get-node-config",
 		idGetNodeStatus:      "get-node-status",
 		idGetNodeStatusMap:   "get-node-status-map",
 		idGetNodesInfo:       "get-nodes-info",
