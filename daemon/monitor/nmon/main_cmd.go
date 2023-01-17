@@ -31,6 +31,7 @@ func (o *nmon) pubNodeConfig() {
 
 func (o *nmon) getNodeConfig() node.Config {
 	var (
+		keyClusterSecret          = key.New("cluster", "secret")
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
@@ -44,6 +45,9 @@ func (o *nmon) getNodeConfig() node.Config {
 	}
 	if d := o.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
+	}
+	if s := o.config.GetString(keyClusterSecret); s != "" {
+		cfg.SetSecret(s)
 	}
 	return cfg
 }
