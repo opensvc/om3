@@ -24,14 +24,14 @@ func TestGetDaemonEventsParams(t *testing.T) {
 			},
 		},
 		"types and labels": {
-			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo", "CfgFileRemoved,path=root/svc/bar"},
+			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo", "ConfigFileRemoved,path=root/svc/bar"},
 			expected: []Filter{
 				{
 					Kind:   msgbus.ObjectStatusUpdated{},
 					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
 				},
 				{
-					Kind:   msgbus.CfgFileRemoved{},
+					Kind:   msgbus.ConfigFileRemoved{},
 					Labels: []pubsub.Label{{"path", "root/svc/bar"}},
 				},
 			},
