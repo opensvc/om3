@@ -13,8 +13,10 @@ type (
 		// A patch is a change to the cluster dataset.
 		//
 		// Event subscribers can maintain a clone of the
-		// cluster dataset by patching a full with received
-		// patch events.
+		// cluster dataset by:
+		// installing a full dataset with received full dataset
+		// or
+		// patching a full dataset with received patch events
 		Kind string `json:"kind"`
 
 		// ID is a unique event id
@@ -27,8 +29,12 @@ type (
 		Data json.RawMessage `json:"data"`
 	}
 
-	ReadCloser interface {
+	Reader interface {
 		Read() (*Event, error)
+	}
+
+	ReadCloser interface {
+		Reader
 		Close() error
 	}
 
