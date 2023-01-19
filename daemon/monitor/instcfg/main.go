@@ -16,20 +16,19 @@ package instcfg
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
-	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -46,18 +45,21 @@ type (
 	T struct {
 		cfg instance.Config
 
-		path         path.T
-		id           string
-		configure    object.Configurer
-		filename     string
-		log          zerolog.Logger
-		lastMtime    time.Time
-		localhost    string
-		forceRefresh bool
-		published    bool
-		cmdC         chan any
-		databus      *daemondata.T
-		sub          *pubsub.Subscription
+		path                     path.T
+		id                       string
+		configure                object.Configurer
+		filename                 string
+		log                      zerolog.Logger
+		lastMtime                time.Time
+		localhost                string
+		forceRefresh             bool
+		published                bool
+		cmdC                     chan any
+		databus                  *daemondata.T
+		sub                      *pubsub.Subscription
+		clusterConfig            cluster.Config
+		instanceMonitorCtx       context.Context
+		isInstanceMonitorStarted bool
 	}
 )
 
@@ -119,22 +121,26 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
+	nodeLabel := pubsub.Label{"node", o.localhost}
 	o.sub = bus.Sub(o.path.String() + " instcfg")
-	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
 	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
+	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label, nodeLabel)
+	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}, nodeLabel); last != nil {
+		o.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
+	}
 	if o.path.String() != clusterId {
 		o.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterId})
 	}
 	o.sub.Start()
 }
 
-func (o *T) startSmon(ctx context.Context) (bool, error) {
+func (o *T) startInstanceMonitor() (bool, error) {
 	if len(o.cfg.Scope) == 0 {
 		o.log.Info().Msgf("wait scopes to create associated imon")
 		return false, nil
 	}
 	o.log.Info().Msgf("starting imon worker...")
-	if err := imon.Start(ctx, o.path, o.cfg.Scope); err != nil {
+	if err := imon.Start(o.instanceMonitorCtx, o.path, o.cfg.Scope); err != nil {
 		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
 	}
@@ -144,8 +150,7 @@ func (o *T) startSmon(ctx context.Context) (bool, error) {
 // worker watch for local instConfig config file updates until file is removed
 func (o *T) worker(parent context.Context) {
 	var (
-		hasSmon bool
-		err     error
+		err error
 	)
 	defer o.log.Debug().Msg("done")
 	defer o.log.Debug().Msg("starting")
@@ -157,9 +162,10 @@ func (o *T) worker(parent context.Context) {
 	}
 	defer o.delete()
 
-	imonCtx, cancelSmon := context.WithCancel(parent)
-	defer cancelSmon()
-	if hasSmon, err = o.startSmon(imonCtx); err != nil {
+	instanceMonitorCtx, cancelInstanceMonitor := context.WithCancel(parent)
+	o.instanceMonitorCtx = instanceMonitorCtx
+	defer cancelInstanceMonitor()
+	if o.isInstanceMonitorStarted, err = o.startInstanceMonitor(); err != nil {
 		o.log.Error().Err(err).Msg("fail to start imon worker")
 		return
 	}
@@ -168,37 +174,6 @@ func (o *T) worker(parent context.Context) {
 		select {
 		case <-parent.Done():
 			return
-		case i := <-o.sub.C:
-			switch c := i.(type) {
-			case msgbus.ConfigFileUpdated:
-				o.log.Debug().Msgf("recv %#v", c)
-				if err = o.configFileCheck(); err != nil {
-					o.log.Error().Err(err).Msg("configFileCheck error")
-					return
-				}
-				if !hasSmon {
-					o.log.Info().Msgf("imon not yet started, try start")
-					if hasSmon, err = o.startSmon(imonCtx); err != nil {
-						o.log.Error().Err(err).Msgf("imon start error")
-						return
-					}
-				}
-
-			case msgbus.ConfigFileRemoved:
-				o.log.Debug().Msgf("recv %#v", c)
-				return
-			case msgbus.ConfigUpdated:
-				o.log.Debug().Msgf("recv %#v", c)
-				if c.Node != o.localhost {
-					// only watch local cluster config updates
-					continue
-				}
-				o.log.Info().Msg("local cluster config changed => refresh cfg")
-				o.forceRefresh = true
-				if err = o.configFileCheck(); err != nil {
-					return
-				}
-			}
 		case i := <-o.cmdC:
 			switch i.(type) {
 			case msgbus.Exit:
@@ -207,7 +182,53 @@ func (o *T) worker(parent context.Context) {
 			default:
 				o.log.Error().Interface("cmd", i).Msg("unexpected cmd")
 			}
+		case i := <-o.sub.C:
+			switch c := i.(type) {
+			case msgbus.ConfigFileUpdated:
+				o.onConfigFileUpdated(c)
+			case msgbus.ConfigFileRemoved:
+				o.onConfigFileRemoved(c)
+			case msgbus.ConfigUpdated:
+				o.onConfigUpdated(c)
+			case msgbus.ClusterConfigUpdated:
+				o.onClusterConfigUpdated(c)
+			}
 		}
+	}
+}
+
+func (o *T) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+	o.clusterConfig = c.Value
+}
+
+func (o *T) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
+	var err error
+	o.log.Debug().Msgf("recv %#v", c)
+	if err = o.configFileCheck(); err != nil {
+		o.log.Error().Err(err).Msg("configFileCheck error")
+		o.cmdC <- msgbus.Exit{}
+		return
+	}
+	if !o.isInstanceMonitorStarted {
+		o.log.Info().Msgf("imon not yet started, try start")
+		if o.isInstanceMonitorStarted, err = o.startInstanceMonitor(); err != nil {
+			o.log.Error().Err(err).Msgf("imon start error")
+			o.cmdC <- msgbus.Exit{}
+			return
+		}
+	}
+
+}
+
+func (o *T) onConfigFileRemoved(c msgbus.ConfigFileRemoved) {
+	o.cmdC <- msgbus.Exit{}
+}
+
+func (o *T) onConfigUpdated(c msgbus.ConfigUpdated) {
+	o.log.Info().Msg("local cluster config changed => refresh cfg")
+	o.forceRefresh = true
+	if err := o.configFileCheck(); err != nil {
+		o.cmdC <- msgbus.Exit{}
 	}
 }
 
@@ -246,9 +267,6 @@ func (o *T) configFileCheck() error {
 	if err != nil {
 		o.log.Info().Msgf("configFile no present(md5sum)")
 		return configFileCheckError
-	}
-	if o.path.String() == clusterPath.String() {
-		rawconfig.LoadSections()
 	}
 	if err := o.setConfigure(); err != nil {
 		return configFileCheckError
@@ -308,7 +326,7 @@ func (o *T) configFileCheck() error {
 func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	switch o.path.Kind {
 	case kind.Ccfg:
-		scope = strings.Split(rawconfig.ClusterSection().Nodes, " ")
+		scope = o.clusterConfig.Nodes
 	default:
 		var evalNodes interface{}
 		evalNodes, err = cf.Eval(keyNodes)

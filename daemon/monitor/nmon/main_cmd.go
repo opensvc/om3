@@ -3,6 +3,7 @@ package nmon
 import (
 	"time"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
@@ -14,14 +15,42 @@ import (
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
-	if !c.Path.IsZero() && c.Path.String() != "cluster" {
+	isCluster := c.Path.String() == "cluster"
+	if !c.Path.IsZero() && !isCluster {
 		return
 	}
+	if isCluster {
+		if err := o.clusterConfig.Reload(); err != nil {
+			o.log.Error().Err(err).Msg("reload merged config")
+			return
+		}
+		o.pubClusterConfig()
+	}
 	if err := o.config.Reload(); err != nil {
-		o.log.Error().Err(err).Msg("readjust rejoin timer")
+		o.log.Error().Err(err).Msg("reload merged config")
 		return
 	}
 	o.pubNodeConfig()
+}
+
+func (o *nmon) pubClusterConfig() {
+	cfg := o.getClusterConfig()
+	o.databus.SetClusterConfig(cfg)
+}
+
+func (o *nmon) getClusterConfig() cluster.Config {
+	var (
+		keySecret = key.New("cluster", "secret")
+		keyName   = key.New("cluster", "name")
+		keyNodes  = key.New("cluster", "nodes")
+		keyDNS    = key.New("cluster", "dns")
+	)
+	cfg := cluster.Config{}
+	cfg.DNS = o.clusterConfig.GetStrings(keyDNS)
+	cfg.Nodes = o.clusterConfig.GetStrings(keyNodes)
+	cfg.Name = o.clusterConfig.GetString(keyName)
+	cfg.SetSecret(o.clusterConfig.GetString(keySecret))
+	return cfg
 }
 
 func (o *nmon) pubNodeConfig() {
@@ -31,7 +60,6 @@ func (o *nmon) pubNodeConfig() {
 
 func (o *nmon) getNodeConfig() node.Config {
 	var (
-		keyClusterSecret          = key.New("cluster", "secret")
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
@@ -45,9 +73,6 @@ func (o *nmon) getNodeConfig() node.Config {
 	}
 	if d := o.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
-	}
-	if s := o.config.GetString(keyClusterSecret); s != "" {
-		cfg.SetSecret(s)
 	}
 	return cfg
 }
