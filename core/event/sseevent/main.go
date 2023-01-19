@@ -100,12 +100,13 @@ func (r *ReadCloser) Close() error {
 	r.closed = true
 	err := r.wrapped.Close()
 	// drop pending go routine channels
+	_, _ = <- r.errC
 	for {
 		if _, ok := <-r.eventC; !ok {
 			break
 		}
 	}
-	_, _ = <-r.errC
+	_, _ = <- r.errC
 	return err
 }
 
