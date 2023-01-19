@@ -132,6 +132,11 @@ type (
 		err chan<- error
 	}
 
+	cacheEntry struct {
+		cmdPub      cmdPub
+		publishedAt time.Time
+	}
+
 	Bus struct {
 		sync.WaitGroup
 		name        string
@@ -143,7 +148,7 @@ type (
 		subMap      subscriptionMap
 		beginNotify chan uuid.UUID
 		endNotify   chan uuid.UUID
-		lastPub     map[string]any
+		lastPub     map[string]cacheEntry
 	}
 
 	stringer interface {
@@ -223,7 +228,7 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.lastPub = make(map[string]any)
+	b.lastPub = make(map[string]cacheEntry)
 	b.log = log.Logger.With().Str("bus", name).Logger()
 	return b
 }
@@ -316,7 +321,10 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 
 func (b *Bus) onPubCmd(c cmdPub) {
 	// store last event to serve subscribers using AddFilterGetLast()
-	b.lastPub[c.key()] = c.data
+	b.lastPub[c.key()] = cacheEntry{
+		cmdPub:      c,
+		publishedAt: time.Now(),
+	}
 
 	for _, toFilterKey := range c.keys() {
 		// search publication that listen on one of cmdPub.keys
@@ -337,19 +345,18 @@ func (b *Bus) onPubCmd(c cmdPub) {
 }
 
 func (bus *Bus) onGetLastCmd(c cmdGetLast) {
-	keys := pubKeys(c.dataType, c.labels)
-
-	// sort from most precise to least
-	sortableKeys := sort.StringSlice(keys)
-	sort.Sort(sortableKeys)
-	sort.Reverse(sortableKeys)
-	for _, key := range sortableKeys {
-		if last, ok := bus.lastPub[key]; ok {
-			c.resp <- last
-			return
+	var last any
+	lastPublished := time.Time{}
+	filterKey := fmtKey(c.dataType, c.labels)
+	for _, entry := range bus.lastPub {
+		for _, key := range pubKeys(entry.cmdPub.dataType, entry.cmdPub.labels) {
+			if (key == filterKey) && entry.publishedAt.After(lastPublished) {
+				last = entry.cmdPub.data
+				lastPublished = entry.publishedAt
+			}
 		}
 	}
-	c.resp <- nil
+	c.resp <- last
 }
 
 func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
@@ -645,6 +652,17 @@ func pubKeys(dataType string, labels labelMap) []string {
 	)
 }
 
+func keys(dataType string, labels labelMap) []string {
+	var l []string
+	if len(labels) == 0 {
+		return []string{dataType + ":"}
+	}
+	for _, key := range labels.keys() {
+		l = append(l, dataType+":"+key)
+	}
+	return l
+}
+
 func (sub *Subscription) String() string {
 	s := fmt.Sprintf("subscription '%s'", sub.name)
 	for _, f := range sub.filters {
@@ -774,17 +792,6 @@ func (sub *Subscription) push(i any) error {
 		}
 	}
 	return nil
-}
-
-func keys(dataType string, labels labelMap) []string {
-	var l []string
-	if len(labels) == 0 {
-		return []string{dataType + ":"}
-	}
-	for _, key := range labels.keys() {
-		l = append(l, dataType+":"+key)
-	}
-	return l
 }
 
 func (subM subscriptionMap) Del(id uuid.UUID, keys ...string) {

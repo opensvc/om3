@@ -28,6 +28,40 @@ func TestPub(t *testing.T) {
 	bus.Pub("foobar")
 }
 
+func TestGetLast(t *testing.T) {
+	label1 := Label{"path", "svc1"}
+	label2 := Label{"node", "dev2n1"}
+	label3 := Label{"cluster", "dev2"}
+	bus := newRun(t.Name())
+	defer bus.Stop()
+	bus.Pub("msg1", label1)
+	bus.Pub("msg2", label1, label2)
+	bus.Pub("msg3")
+	bus.Pub("msg4", label1)
+	sub := bus.Sub(t.Name())
+	sub.AddFilter("")
+	sub.Start()
+	defer sub.Stop()
+	t.Run("no label", func(t *testing.T) {
+		assert.Equal(t, "msg4", sub.GetLast("").(string))
+	})
+	t.Run("label1", func(t *testing.T) {
+		assert.Equal(t, "msg4", sub.GetLast("", label1).(string))
+	})
+	t.Run("label2", func(t *testing.T) {
+		assert.Equal(t, "msg2", sub.GetLast("", label2).(string))
+	})
+	t.Run("label2 label1", func(t *testing.T) {
+		assert.Equal(t, "msg2", sub.GetLast("", label2, label1).(string))
+	})
+	t.Run("label1 label2", func(t *testing.T) {
+		assert.Equal(t, "msg2", sub.GetLast("", label2, label1).(string))
+	})
+	t.Run("label3", func(t *testing.T) {
+		assert.Nil(t, sub.GetLast("", label3))
+	})
+}
+
 func TestSub(t *testing.T) {
 	type (
 		testPub struct {
