@@ -468,3 +468,13 @@ func TestString(t *testing.T) {
 	p := T{}
 	assert.Equal(t, "", p.String())
 }
+
+func TestT_Equal(t *testing.T) {
+	p := T{Name: "foo", Namespace: "ns1", Kind: kind.Svc}
+
+	assert.True(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: kind.Svc}))
+
+	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns2", Kind: kind.Svc}))
+	assert.False(t, p.Equal(T{Name: "foo", Namespace: "ns1", Kind: kind.Cfg}))
+	assert.False(t, p.Equal(T{Name: "bar", Namespace: "ns1", Kind: kind.Svc}))
+}
