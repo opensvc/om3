@@ -12,29 +12,24 @@ import (
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemon"
 	"opensvc.com/opensvc/daemon/daemonapi"
 	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 	"opensvc.com/opensvc/util/lock"
 )
 
 var (
-	clientOptions      []funcopt.O
 	lockPath           = "/tmp/locks/main"
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 4 * time.Second
 	WaitRunningDelay   = 100 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
 	WaitStoppedDelay   = 100 * time.Millisecond
-
-	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
 )
 
 type (
@@ -48,7 +43,7 @@ type (
 )
 
 func bootStrapCcfg() error {
-	ccfg, err := object.NewCcfg(clusterPath, object.WithVolatile(false))
+	ccfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
@@ -200,8 +195,8 @@ func (t *T) start() (waiter, error) {
 		log.Error().Err(err).Msgf("cli-start can't create mandatory directories")
 		return nil, err
 	}
-	if !clusterPath.Exists() {
-		log.Warn().Msgf("cli-start no %s config, bootstrap new one", clusterPath)
+	if !path.Cluster.Exists() {
+		log.Warn().Msg("cli-start no cluster config, bootstrap new one")
 		if err := bootStrapCcfg(); err != nil {
 			return nil, err
 		}
