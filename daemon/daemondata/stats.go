@@ -29,6 +29,7 @@ const (
 	idApplyFull
 	idApplyPatch
 	idCommitPending
+	idClusterConfigUpdated
 	idDelInstanceConfig
 	idDelInstanceStatus
 	idDelObjectStatus
@@ -49,7 +50,7 @@ const (
 	idGetServiceNames
 	idGetStatus
 	idSetHeartbeatPing
-	idSetSubHb
+	idSetClusterConfig
 	idSetInstanceConfig
 	idSetInstanceFrozen
 	idSetInstanceMonitor
@@ -59,40 +60,43 @@ const (
 	idSetNodeOsPaths
 	idSetNodeStats
 	idSetObjectStatus
+	idSetSubHb
 	idStats
 )
 
 var (
 	idToName = map[int]string{
-		idUndef:              "undef",
-		idApplyFull:          "apply-full",
-		idApplyPatch:         "apply-patch",
-		idCommitPending:      "commit-pending",
-		idDelInstanceConfig:  "del-instance-config",
-		idDelInstanceStatus:  "del-instance-status",
-		idDelObjectStatus:    "del-object-status",
-		idDelNodeMonitor:     "del-node-monitor",
-		idDelInstanceMonitor: "del-intance-monitor",
-		idDropPeerNode:       "drop-peer-node",
-		idGetHbMessage:       "get-hb-message",
-		idGetHbMessageType:   "get-hb-message-type",
-		idGetInstanceStatus:  "get-instance-status",
-		idGetNode:            "get-node",
-		idGetNodeStatus:      "get-node-status",
-		idGetNodeStatusMap:   "get-node-status-map",
-		idGetNodesInfo:       "get-nodes-info",
-		idGetServiceNames:    "get-service-names",
-		idGetStatus:          "get-status",
-		idSetSubHb:           "set-sub-hb",
-		idSetObjectStatus:    "set-object-status",
-		idSetInstanceConfig:  "set-instance-config",
-		idSetInstanceFrozen:  "set-instance-frozen",
-		idSetInstanceStatus:  "set-instance-status",
-		idSetNodeConfig:      "set-node-config",
-		idSetNodeMonitor:     "set-node-monitor",
-		idSetNodeOsPaths:     "set-node-os-paths",
-		idSetNodeStats:       "set-node-stats",
-		idSetInstanceMonitor: "set-instance-monitor",
-		idStats:              "stats",
+		idUndef:                "undef",
+		idApplyFull:            "apply-full",
+		idApplyPatch:           "apply-patch",
+		idCommitPending:        "commit-pending",
+		idClusterConfigUpdated: "cluster-config-updated",
+		idDelInstanceConfig:    "del-instance-config",
+		idDelInstanceStatus:    "del-instance-status",
+		idDelObjectStatus:      "del-object-status",
+		idDelNodeMonitor:       "del-node-monitor",
+		idDelInstanceMonitor:   "del-intance-monitor",
+		idDropPeerNode:         "drop-peer-node",
+		idGetHbMessage:         "get-hb-message",
+		idGetHbMessageType:     "get-hb-message-type",
+		idGetInstanceStatus:    "get-instance-status",
+		idGetNode:              "get-node",
+		idGetNodeStatus:        "get-node-status",
+		idGetNodeStatusMap:     "get-node-status-map",
+		idGetNodesInfo:         "get-nodes-info",
+		idGetServiceNames:      "get-service-names",
+		idGetStatus:            "get-status",
+		idSetClusterConfig:     "set-cluster-config",
+		idSetObjectStatus:      "set-object-status",
+		idSetInstanceConfig:    "set-instance-config",
+		idSetInstanceFrozen:    "set-instance-frozen",
+		idSetInstanceMonitor:   "set-instance-monitor",
+		idSetInstanceStatus:    "set-instance-status",
+		idSetNodeConfig:        "set-node-config",
+		idSetNodeMonitor:       "set-node-monitor",
+		idSetNodeOsPaths:       "set-node-os-paths",
+		idSetNodeStats:         "set-node-stats",
+		idSetSubHb:             "set-sub-hb",
+		idStats:                "stats",
 	}
 )

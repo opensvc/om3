@@ -30,9 +30,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -47,6 +49,7 @@ import (
 type (
 	nmon struct {
 		config        *xconfig.T
+		clusterConfig *xconfig.T
 		state         node.Monitor
 		previousState node.Monitor
 
@@ -99,6 +102,12 @@ func Start(parent context.Context) error {
 		return err
 	} else {
 		o.config = n.MergedConfig()
+	}
+
+	if n, err := object.NewCcfg(path.T{Kind: kind.Ccfg, Name: "cluster"}); err != nil {
+		return err
+	} else {
+		o.clusterConfig = n.Config()
 	}
 
 	o.startSubscriptions()

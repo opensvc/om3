@@ -56,8 +56,8 @@ type (
 	Frame struct {
 		Nodes    []string
 		Sections []string
-		Current  Status
-		Previous Status
+		Current  Data
+		Previous Data
 		Stats    Stats
 
 		// private

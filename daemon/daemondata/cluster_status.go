@@ -7,8 +7,8 @@ import (
 )
 
 // GetStatus returns deep copy of status
-func (t T) GetStatus() *cluster.Status {
-	status := make(chan *cluster.Status)
+func (t T) GetStatus() *cluster.Data {
+	status := make(chan *cluster.Data)
 	t.cmdC <- opGetStatus{
 		status: status,
 	}
@@ -16,7 +16,7 @@ func (t T) GetStatus() *cluster.Status {
 }
 
 type opGetStatus struct {
-	status chan<- *cluster.Status
+	status chan<- *cluster.Data
 }
 
 func (o opGetStatus) call(ctx context.Context, d *data) {

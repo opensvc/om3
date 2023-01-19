@@ -293,7 +293,6 @@ func (t T) IPNet() (*net.IPNet, error) {
 	return ipnet, err
 }
 
-//
 // NodeSubnet returns the network subnet assigned to a cluster node, as a *net.IPNet.
 // This subnet is usually found in the network configuration, as a subnet@<nodename>
 // option. If not found there, allocate and write one.
@@ -305,14 +304,16 @@ func (t T) IPNet() (*net.IPNet, error) {
 //
 // Example:
 // With
-//    cluster.nodes = n1 n2 n3
-//    net1.network = 10.0.0.0/24
-//    net1.ips_per_node = 64
-// =>
-//    subnet@n1 = 10.0.0.0/26
-//    subnet@n2 = 10.0.0.64/26
-//    subnet@n3 = 10.0.0.128/26
 //
+//	cluster.nodes = n1 n2 n3
+//	net1.network = 10.0.0.0/24
+//	net1.ips_per_node = 64
+//
+// =>
+//
+//	subnet@n1 = 10.0.0.0/26
+//	subnet@n2 = 10.0.0.64/26
+//	subnet@n3 = 10.0.0.128/26
 func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	if nodename == "" {
 		return nil, fmt.Errorf("empty nodename")
@@ -372,7 +373,7 @@ func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
 	var (
 		err           error
 		b             []byte
-		clusterStatus cluster.Status
+		clusterStatus cluster.Data
 	)
 	b, err = c.NewGetDaemonStatus().
 		SetSelector(selector).

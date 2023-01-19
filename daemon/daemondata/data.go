@@ -32,7 +32,7 @@ type (
 		previousRemoteInfo map[string]remoteInfo
 
 		// pending is the live current data (after apply patch, commit local pendingOps)
-		pending *cluster.Status
+		pending *cluster.Data
 
 		pendingOps    []jsondelta.Operation // local data pending operations not yet in patchQueue
 		patchQueue    patchQueue            // local data patch queue for remotes

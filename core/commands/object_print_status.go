@@ -104,7 +104,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	var (
 		err           error
 		b             []byte
-		clusterStatus cluster.Status
+		clusterStatus cluster.Data
 	)
 	b, err = c.NewGetDaemonStatus().
 		SetSelector(selector).

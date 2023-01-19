@@ -20,6 +20,7 @@ import (
 var (
 	kindToT = map[string]any{
 		"ApiClient":                 ApiClient{},
+		"ClusterConfigUpdated":      ClusterConfigUpdated{},
 		"ConfigDeleted":             ConfigDeleted{},
 		"ConfigFileRemoved":         ConfigFileRemoved{},
 		"ConfigFileUpdated":         ConfigFileUpdated{},
@@ -107,6 +108,11 @@ type (
 
 	ClientUnSub struct {
 		ApiClient
+	}
+
+	ClusterConfigUpdated struct {
+		Node  string
+		Value cluster.Config
 	}
 
 	// DataUpdated is a patch of changed data
@@ -315,6 +321,10 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 
 func (e ApiClient) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
+}
+
+func (e ClusterConfigUpdated) Kind() string {
+	return "ClusterConfigUpdated"
 }
 
 func (e ConfigDeleted) Kind() string {

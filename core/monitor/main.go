@@ -109,7 +109,7 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	var data cluster.Status
+	var data cluster.Data
 	if err := json.Unmarshal(b, &data); err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (m *T) Do(getter Getter, out io.Writer) error {
 	return nil
 }
 
-func (m *T) doOneShot(data cluster.Status, clear bool, out io.Writer) {
+func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 	human := func() string {
 		f := cluster.Frame{
 			Current:  data,
@@ -145,13 +145,13 @@ func (m *T) DoWatch(statusGetter Getter, evReader event.ReadCloser, out io.Write
 	return m.watch(statusGetter, evReader, out)
 }
 
-func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Status, error) {
+func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Data, error) {
 	newB, err := p.Apply(b)
 	if err != nil {
 		//_, _ = fmt.Fprintf(os.Stderr, "patches.Apply failure: %s, patch len: %d, patch:%+v\n", err, len(p), p)
 		return nil, nil, err
 	}
-	data := cluster.Status{}
+	data := cluster.Data{}
 	if err := json.Unmarshal(newB, &data); err != nil {
 		return nil, nil, err
 	}
@@ -161,12 +161,12 @@ func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Status, error)
 func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer) error {
 	var (
 		b    []byte
-		data *cluster.Status
+		data *cluster.Data
 		err  error
 
 		errC   = make(chan error)
 		eventC = make(chan *event.Event, 100)
-		dataC  = make(chan *cluster.Status)
+		dataC  = make(chan *cluster.Data)
 
 		patchById = make(map[uint64][]jsondelta.Operation)
 		nextId    uint64
@@ -203,7 +203,7 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 	}
 
 	wg.Add(1)
-	go func(d *cluster.Status) {
+	go func(d *cluster.Data) {
 		defer wg.Done()
 		m.doOneShot(*d, true, out)
 		// show data when new data published on dataC

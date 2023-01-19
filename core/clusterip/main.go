@@ -79,7 +79,7 @@ func (t T) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText("")
 }
 
-func (t L) Load(clusterStatus cluster.Status) L {
+func (t L) Load(clusterStatus cluster.Data) L {
 	l := NewL()
 	for nodename, nodeData := range clusterStatus.Cluster.Node {
 		for ps, inst := range nodeData.Instance {

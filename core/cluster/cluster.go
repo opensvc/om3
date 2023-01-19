@@ -11,8 +11,8 @@ import (
 )
 
 type (
-	// Status describes the full Cluster state.
-	Status struct {
+	// Data describes the full Cluster state.
+	Data struct {
 		Cluster   Cluster               `json:"cluster"`
 		Collector CollectorThreadStatus `json:"collector"`
 		DNS       DNSThreadStatus       `json:"dns"`
@@ -23,25 +23,16 @@ type (
 	}
 
 	Cluster struct {
-		Config ClusterConfig            `json:"config"`
-		Status ClusterStatus            `json:"status"`
+		Config Config                   `json:"config"`
+		Status Status                   `json:"status"`
 		Object map[string]object.Status `json:"object"`
 
 		Node map[string]node.Node `json:"node"`
 	}
 
-	ClusterStatus struct {
+	Status struct {
 		Compat bool `json:"compat"`
 		Frozen bool `json:"frozen"`
-	}
-
-	// ClusterConfig describes the cluster id, name and nodes
-	// The cluster name is used as the right most part of cluster dns
-	// names.
-	ClusterConfig struct {
-		ID    string   `json:"id"`
-		Name  string   `json:"name"`
-		Nodes []string `json:"nodes"`
 	}
 
 	Sub struct {
@@ -64,12 +55,12 @@ type (
 	}
 )
 
-func (s *Status) DeepCopy() *Status {
+func (s *Data) DeepCopy() *Data {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil
 	}
-	newStatus := Status{}
+	newStatus := Data{}
 	if err := json.Unmarshal(b, &newStatus); err != nil {
 		return nil
 	}
@@ -77,7 +68,7 @@ func (s *Status) DeepCopy() *Status {
 }
 
 // WithSelector purges the dataset from objects not matching the selector expression
-func (s *Status) WithSelector(selector string) *Status {
+func (s *Data) WithSelector(selector string) *Data {
 	if selector == "" {
 		return s
 	}
@@ -105,7 +96,7 @@ func (s *Status) WithSelector(selector string) *Status {
 }
 
 // WithNamespace purges the dataset from objects not matching the namespace
-func (s *Status) WithNamespace(namespace string) *Status {
+func (s *Data) WithNamespace(namespace string) *Data {
 	if namespace == "" {
 		return s
 	}
@@ -128,7 +119,7 @@ func (s *Status) WithNamespace(namespace string) *Status {
 
 // GetNodeData extracts from the cluster dataset all information relative
 // to node data.
-func (s *Status) GetNodeData(nodename string) *node.Node {
+func (s *Data) GetNodeData(nodename string) *node.Node {
 	if nodeData, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeData
 	}
@@ -137,7 +128,7 @@ func (s *Status) GetNodeData(nodename string) *node.Node {
 
 // GetNodeStatus extracts from the cluster dataset all information relative
 // to node status.
-func (s *Status) GetNodeStatus(nodename string) *node.Status {
+func (s *Data) GetNodeStatus(nodename string) *node.Status {
 	if nodeData, ok := s.Cluster.Node[nodename]; ok {
 		return &nodeData.Status
 	}
@@ -146,7 +137,7 @@ func (s *Status) GetNodeStatus(nodename string) *node.Status {
 
 // GetObjectStatus extracts from the cluster dataset all information relative
 // to an object.
-func (s *Status) GetObjectStatus(p path.T) object.Digest {
+func (s *Data) GetObjectStatus(p path.T) object.Digest {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p

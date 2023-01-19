@@ -2,7 +2,6 @@ package daemondata
 
 import (
 	"path/filepath"
-	"strings"
 	"time"
 
 	"opensvc.com/opensvc/core/cluster"
@@ -19,14 +18,9 @@ import (
 func newData(counterCmd chan<- interface{}) *data {
 	localNode := hostname.Hostname()
 	nodeData := newNodeData(localNode)
-	status := cluster.Status{
+	status := cluster.Data{
 		Cluster: cluster.Cluster{
-			Config: cluster.ClusterConfig{
-				ID:    rawconfig.ClusterSection().ID,
-				Name:  rawconfig.ClusterSection().Name,
-				Nodes: strings.Fields(rawconfig.ClusterSection().Nodes),
-			},
-			Status: cluster.ClusterStatus{
+			Status: cluster.Status{
 				Compat: false,
 				Frozen: true,
 			},

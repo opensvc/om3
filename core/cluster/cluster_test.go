@@ -10,7 +10,7 @@ import (
 )
 
 func TestStatusUnmarshalJSON(t *testing.T) {
-	var clusterStatus Status
+	var clusterStatus Data
 	path := filepath.Join("test-fixtures", "clusterStatus.json")
 	b, err := os.ReadFile(path)
 	assert.Nil(t, err)
