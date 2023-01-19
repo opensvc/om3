@@ -44,6 +44,10 @@ var (
 		"InstanceStatusDeleted":     InstanceStatusDeleted{},
 		"InstanceStatusUpdated":     InstanceStatusUpdated{},
 		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
+		"JoinRequest":               JoinRequest{},
+		"JoinError":                 JoinError{},
+		"JoinIgnored":               JoinIgnored{},
+		"JoinSuccess":               JoinSuccess{},
 		"NodeConfigUpdated":         NodeConfigUpdated{},
 		"NodeMonitorDeleted":        NodeMonitorDeleted{},
 		"NodeMonitorUpdated":        NodeMonitorUpdated{},
@@ -211,6 +215,27 @@ type (
 	InstanceConfigManagerDone struct {
 		Path     path.T
 		Filename string
+	}
+
+	JoinError struct {
+		// Node is a node that can't be added to cluster config nodes
+		Node   string
+		Reason string
+	}
+
+	JoinIgnored struct {
+		// Node is a node that is already in cluster config nodes
+		Node   string
+	}
+
+	JoinRequest struct {
+		// Node is a node to add to cluster config nodes
+		Node string
+	}
+
+	JoinSuccess struct {
+		// Node is the successfully added node in cluster config nodes
+		Node string
 	}
 
 	NodeConfigUpdated struct {
@@ -433,6 +458,22 @@ func (e InstanceStatusUpdated) Kind() string {
 
 func (e InstanceConfigManagerDone) Kind() string {
 	return "InstanceConfigManagerDone"
+}
+
+func (e JoinError) Kind() string {
+	return "JoinError"
+}
+
+func (e JoinIgnored) Kind() string {
+	return "JoinIgnored"
+}
+
+func (e JoinRequest) Kind() string {
+	return "JoinRequest"
+}
+
+func (e JoinSuccess) Kind() string {
+	return "JoinSuccess"
 }
 
 func (e NodeConfigUpdated) Kind() string {
