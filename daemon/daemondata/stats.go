@@ -49,6 +49,7 @@ const (
 	idGetNodesInfo
 	idGetServiceNames
 	idGetStatus
+	idSetClusterConfig
 	idSetHeartbeatPing
 	idSetSubHb
 	idSetInstanceConfig
@@ -84,6 +85,7 @@ var (
 		idGetNodesInfo:       "get-nodes-info",
 		idGetServiceNames:    "get-service-names",
 		idGetStatus:          "get-status",
+		idSetClusterConfig:   "set-cluster-config",
 		idSetSubHb:           "set-sub-hb",
 		idSetObjectStatus:    "set-object-status",
 		idSetInstanceConfig:  "set-instance-config",
