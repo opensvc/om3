@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -235,8 +234,7 @@ func bootStrapCertPath(p path.T, caPath path.T) error {
 }
 
 func getClusterName() (string, error) {
-	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
-	clusterCfg, err := object.NewCcfg(clusterPath, object.WithVolatile(true))
+	clusterCfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(true))
 	if err != nil {
 		return "", err
 	}
