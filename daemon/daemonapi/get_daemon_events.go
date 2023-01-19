@@ -55,8 +55,8 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	}
 
 	grants := daemonauth.UserGrants(r)
-	if !grants.HasRoot() {
-		log.Info().Msg("not allowed, need grant root")
+	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleJoin) {
+		log.Info().Msg("not allowed, need at least 'root' or 'join' grant")
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
