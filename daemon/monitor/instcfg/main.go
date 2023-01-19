@@ -125,7 +125,7 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	o.sub = bus.Sub(o.path.String() + " instcfg")
 	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
 	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label, nodeLabel)
-	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}, nodeLabel); last != nil {
+	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
 		o.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
 	}
 	if o.path.String() != clusterId {
