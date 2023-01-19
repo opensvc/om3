@@ -110,3 +110,18 @@ func Permute(slice []string) [][]string {
 
 	return result
 }
+
+// Diff returns removed, added from diff between a and b
+func Diff(a, b []string) (removed, added []string) {
+	for _, v := range a {
+		if !Has(v, b) {
+			removed = append(removed, v)
+		}
+	}
+	for _, v := range b {
+		if !Has(v, a) {
+			added = append(added, v)
+		}
+	}
+	return
+}
