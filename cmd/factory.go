@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 
 	"opensvc.com/opensvc/core/commands"
@@ -139,7 +141,7 @@ func newCmdDaemonAuth() *cobra.Command {
 	flagSet := cmd.Flags()
 	addFlagsGlobal(flagSet, &options.OptsGlobal)
 	addFlagRoles(flagSet, &options.Roles)
-	addFlagDuration(flagSet, &options.Duration)
+	flagSet.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
 	flagSet.StringArrayVar(&options.Out, "out", []string{}, "output 'token' or 'token_expire_at'")
 	return cmd
 }
