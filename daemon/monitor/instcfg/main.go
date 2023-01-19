@@ -23,6 +23,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/core/instance"
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
@@ -57,13 +58,12 @@ type (
 		published    bool
 		cmdC         chan any
 		databus      *daemondata.T
+		bus          *pubsub.Bus
 		sub          *pubsub.Subscription
 	}
 )
 
 var (
-	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
-
 	dropMsgTimeout = 100 * time.Millisecond
 
 	configFileCheckError = errors.New("config file check")
@@ -116,14 +116,13 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 }
 
 func (o *T) startSubscriptions(ctx context.Context) {
-	clusterId := clusterPath.String()
-	bus := pubsub.BusFromContext(ctx)
+	o.bus = pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
-	o.sub = bus.Sub(o.path.String() + " instcfg")
+	o.sub = o.bus.Sub(o.path.String() + " instcfg")
 	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
 	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
-	if o.path.String() != clusterId {
-		o.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterId})
+	if !o.path.Equal(path.Cluster) {
+		o.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", path.Cluster.String()})
 	}
 	o.sub.Start()
 }
@@ -211,15 +210,47 @@ func (o *T) worker(parent context.Context) {
 	}
 }
 
+// checkClusterChanges informs daemondata about updated cluster scopes
+// and publish msgbus.JoinSuccess,added=<newnode> for added nodes
+func (o *T) checkClusterChanges(previous, new instance.Config) {
+	labelNode := pubsub.Label{"node", hostname.Hostname()}
+	o.log.Debug().Msgf("comparing scope: %s vs %s", previous.Scope, new.Scope)
+	removed, added := stringslice.Diff(previous.Scope, new.Scope)
+	if len(added) > 0 {
+		o.log.Debug().Msgf("added nodes: %s", added)
+	}
+	if len(removed) > 0 {
+		o.log.Debug().Msgf("removed nodes: %s", removed)
+	}
+	for _, v := range added {
+		o.bus.Pub(
+			msgbus.JoinSuccess{Node: v},
+			labelNode,
+			pubsub.Label{"added", v})
+	}
+	if (len(added) + len(removed)) > 0 {
+		if err := o.databus.SetClusterConfig(cluster.ClusterConfig{Nodes: append([]string{}, new.Scope...)}); err != nil {
+			o.log.Error().Err(err).Msg("SetClusterConfig")
+		}
+	}
+}
+
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
 func (o *T) updateConfig(newConfig *instance.Config) {
 	if instance.ConfigEqual(&o.cfg, newConfig) {
 		o.log.Debug().Msg("no update required")
 		return
 	}
+
+    // previous value used checkClusterChanges when instance is cluster config
+	previousConfig := o.cfg
+
 	o.cfg = *newConfig
 	if err := o.databus.SetInstanceConfig(o.path, *newConfig.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
+	}
+	if o.path.Equal(path.Cluster) {
+		o.checkClusterChanges(previousConfig, *newConfig)
 	}
 	o.published = true
 }
@@ -247,7 +278,7 @@ func (o *T) configFileCheck() error {
 		o.log.Info().Msgf("configFile no present(md5sum)")
 		return configFileCheckError
 	}
-	if o.path.String() == clusterPath.String() {
+	if o.path.Equal(path.Cluster) {
 		rawconfig.LoadSections()
 	}
 	if err := o.setConfigure(); err != nil {
