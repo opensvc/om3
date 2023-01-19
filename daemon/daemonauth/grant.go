@@ -79,6 +79,18 @@ func (t Grants) HasRoot() bool {
 	return false
 }
 
+// HasAnyRole returns true if t has any role
+func (t Grants) HasAnyRole(roles ...Role) bool {
+	for _, g := range t {
+		for _, r := range roles {
+			if g.Role() == r {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // FilterPaths return the list of path.T allowed by grants of <role>
 func (t Grants) FilterPaths(r *http.Request, role Role, l path.L) path.L {
 	fl := make(path.L, 0)
@@ -148,6 +160,8 @@ func (t Grant) Role() Role {
 		return RoleBlacklistAdmin
 	case "heartbeat":
 		return RoleHeartbeat
+	case "join":
+		return RoleJoin
 	default:
 		return RoleUndef
 	}
