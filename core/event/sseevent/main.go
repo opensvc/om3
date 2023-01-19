@@ -101,12 +101,13 @@ func (r *ReadCloser) Close() error {
 	err := r.wrapped.Close()
 	// drop pending go routine channels
 	for {
-		if _, ok := <-r.eventC; !ok {
-			break
+		select {
+		case <-r.errC:
+		case <-r.eventC:
+		default:
+			return err
 		}
 	}
-	_, _ = <-r.errC
-	return err
 }
 
 // parse runs scanner on wrapped reader, parse read lines to construct
