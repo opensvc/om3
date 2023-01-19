@@ -263,6 +263,8 @@ func (b *Bus) Start(ctx context.Context) {
 			case cmd := <-b.cmdC:
 				beginCmd <- cmd
 				switch c := cmd.(type) {
+				case cmdGetLast:
+					b.onGetLastCmd(c)
 				case cmdPub:
 					b.onPubCmd(c)
 				case cmdSubAddFilter:
