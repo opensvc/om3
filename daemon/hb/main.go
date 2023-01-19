@@ -16,7 +16,6 @@ import (
 	"opensvc.com/opensvc/core/clusterhb"
 	"opensvc.com/opensvc/core/hbcfg"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
@@ -370,9 +369,8 @@ func (t *T) msgFromRx(ctx context.Context) {
 
 func (t *T) startSubscriptions(ctx context.Context) {
 	bus := pubsub.BusFromContext(ctx)
-	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
 	t.sub = bus.Sub("hb")
-	t.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterPath.String()})
+	t.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", path.Cluster.String()})
 	t.sub.AddFilter(msgbus.DaemonCtl{})
 	t.sub.Start()
 }
