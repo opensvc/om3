@@ -55,6 +55,7 @@ const (
 )
 
 var (
+	Cluster = T{Name: "cluster", Namespace: "root", Kind: kind.Ccfg}
 
 	// ErrInvalid is raised when the path allocator can not return a path
 	// because one of the path element is not valid.
@@ -151,6 +152,13 @@ func (t T) String() string {
 		s += t.Kind.String() + Separator
 	}
 	return s + t.Name
+}
+
+func (t T) Equal(o T) bool {
+	if t.Namespace != o.Namespace || t.Kind != o.Kind || t.Name != o.Name {
+		return false
+	}
+	return true
 }
 
 // ToMetadata returns the parsed representation of the path
