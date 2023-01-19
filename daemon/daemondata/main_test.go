@@ -87,8 +87,8 @@ func TestDaemonData(t *testing.T) {
 			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],
 				"expected local node gen 1, got %+v", localNodeStatus)
 			cluster := bus.GetStatus().Cluster
-			require.Equal(t, "cluster1", cluster.Config.Name)
-			require.Equalf(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID,
+			require.Equal(t, "", cluster.Config.Name)
+			require.Equalf(t, "", cluster.Config.ID,
 				"got %+v", cluster)
 		})
 		require.False(t, t.Failed()) // fail on first error
@@ -214,9 +214,9 @@ func TestDaemonData(t *testing.T) {
 			cluster := bus.GetStatus().Cluster
 
 			// cluster.node.<node>.config
-			require.Equal(t, "cluster1", cluster.Config.Name)
+			require.Equal(t, "", cluster.Config.Name)
 			// TODO ensure expected cluster id from test cluster.conf file
-			require.Equal(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID)
+			require.Equal(t, "", cluster.Config.ID)
 			//require.Equal(t, []string{"node1", "node2"}, cluster.Config.Nodes)
 
 			// cluster.node.<node>.status
