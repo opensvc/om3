@@ -18,6 +18,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -225,9 +226,14 @@ func bootStrapCertPath(p path.T, caPath path.T) error {
 	if err != nil {
 		return err
 	}
-	op := keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0)
-	if err := certSec.Config().Set(*op); err != nil {
-		return err
+	ops := []*keyop.T{
+		keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0),
+		keyop.New(key.New("DEFAULT", "alt_names"), keyop.Set, hostname.Hostname(), 0),
+	}
+	for _, op := range ops {
+		if err := certSec.Config().Set(*op); err != nil {
+			return err
+		}
 	}
 	log.Logger.Info().Msgf("gencert %s", p)
 	return certSec.GenCert()
