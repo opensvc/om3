@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.31
+  version: 3.6.32
 servers:
   - url: https://localhost:1215
 paths:
@@ -71,6 +71,43 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/responseEventList'
+  /daemon/join:
+    post:
+      operationId: PostDaemonJoin
+      description: |
+        Register a join request to add a new cluster node member.
+        The authenticated client requires at least grant 'root' or 'Join'.
+        
+        Processing of the join request is done asynchronously by daemon, http response is sent
+        when the join request has been published with label: node=<apinode>
+
+        To follow processing of the join request, you have to watch following events:
+        - JoinSuccess,node=<apinode>,join-node=<node> (the new node has been added to cluster nodes)
+        - JoinIgnored,node=<apinode>,join-node=<node> (the new node was already a cluster node)
+        - JoinError,node=<apinode>,added=<node> (an error occur during update cluster node list)
+      tags:
+        - daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - in: query
+          name: node
+          description: The node to add to cluster nodes
+          required: true
+          schema:
+            type: string
+            example: newnode
+            minLength: 2
+      responses:
+        '200':
+          description: success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
