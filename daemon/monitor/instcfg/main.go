@@ -93,7 +93,9 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
 		localhost:    localhost,
 		forceRefresh: false,
-		cmdC:         make(chan any),
+		// cmdC is internal command channel to receive msgbus.Exit message. Worker reads on this chan to exit itself.
+		// cmdC is buffered, this allows some worker on* functions to ask worker exit
+		cmdC:         make(chan any, 1),
 		databus:      daemondata.FromContext(parent),
 		filename:     filename,
 	}
@@ -151,8 +153,8 @@ func (o *T) worker(parent context.Context) {
 	var (
 		err error
 	)
-	defer o.log.Debug().Msg("done")
-	defer o.log.Debug().Msg("starting")
+	defer o.log.Error().Msg("done")
+	o.log.Debug().Msg("starting")
 
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := o.configFileCheck(); err != nil {
