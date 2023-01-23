@@ -43,8 +43,6 @@ import (
 
 type (
 	T struct {
-		cfg instance.Config
-
 		path                     path.T
 		id                       string
 		configure                object.Configurer
@@ -57,6 +55,7 @@ type (
 		cmdC                     chan any
 		databus                  *daemondata.T
 		sub                      *pubsub.Subscription
+		instanceConfig           instance.Config
 		clusterConfig            cluster.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
@@ -87,17 +86,19 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 	id := daemondata.InstanceId(p, localhost)
 
 	o := &T{
-		cfg:          instance.Config{Path: p},
-		path:         p,
-		id:           id,
-		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
-		localhost:    localhost,
-		forceRefresh: false,
-		// cmdC is internal command channel to receive msgbus.Exit message. Worker reads on this chan to exit itself.
-		// cmdC is buffered, this allows some worker on* functions to ask worker exit
-		cmdC:         make(chan any, 1),
-		databus:      daemondata.FromContext(parent),
-		filename:     filename,
+		instanceConfig: instance.Config{Path: p},
+		path:           p,
+		id:             id,
+		log:            log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
+		localhost:      localhost,
+		forceRefresh:   false,
+		databus:        daemondata.FromContext(parent),
+		filename:       filename,
+
+		// cmdC is an internal command channel to receive msgbus.Exit message.
+		// The worker reads on this chan to exit itself.
+		// This chan is buffered to allow an event handler to post the poison pill.
+		cmdC: make(chan any, 1),
 	}
 
 	if err := o.setConfigure(); err != nil {
@@ -136,12 +137,12 @@ func (o *T) startSubscriptions(ctx context.Context) {
 }
 
 func (o *T) startInstanceMonitor() (bool, error) {
-	if len(o.cfg.Scope) == 0 {
+	if len(o.instanceConfig.Scope) == 0 {
 		o.log.Info().Msgf("wait scopes to create associated imon")
 		return false, nil
 	}
 	o.log.Info().Msgf("starting imon worker...")
-	if err := imon.Start(o.instanceMonitorCtx, o.path, o.cfg.Scope); err != nil {
+	if err := imon.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
 		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
 	}
@@ -235,11 +236,11 @@ func (o *T) onConfigUpdated(c msgbus.ConfigUpdated) {
 
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
 func (o *T) updateConfig(newConfig *instance.Config) {
-	if instance.ConfigEqual(&o.cfg, newConfig) {
+	if instance.ConfigEqual(&o.instanceConfig, newConfig) {
 		o.log.Debug().Msg("no update required")
 		return
 	}
-	o.cfg = *newConfig
+	o.instanceConfig = *newConfig
 	if err := o.databus.SetInstanceConfig(o.path, *newConfig.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
@@ -296,7 +297,7 @@ func (o *T) configFileCheck() error {
 		o.log.Info().Msg("localhost not anymore an instance node")
 		return configFileCheckError
 	}
-	cfg := o.cfg
+	cfg := o.instanceConfig
 	cfg.Nodename = o.localhost
 	cfg.Topology = o.getTopology(cf)
 	cfg.Orchestrate = o.getOrchestrate(cf)
