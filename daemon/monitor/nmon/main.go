@@ -30,11 +30,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/nodesinfo"
 	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -106,7 +104,7 @@ func Start(parent context.Context) error {
 		o.config = n.MergedConfig()
 	}
 
-	if n, err := object.NewCcfg(path.T{Kind: kind.Ccfg, Name: "cluster"}); err != nil {
+	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
 		return err
 	} else {
 		o.clusterConfig = n.Config()

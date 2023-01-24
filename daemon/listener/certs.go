@@ -240,7 +240,7 @@ func bootStrapCertPath(p path.T, caPath path.T) error {
 }
 
 func getClusterName() (string, error) {
-	clusterCfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(true))
+	clusterCfg, err := object.NewCluster(object.WithVolatile(true))
 	if err != nil {
 		return "", err
 	}

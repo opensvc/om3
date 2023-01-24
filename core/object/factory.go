@@ -89,7 +89,7 @@ func New(id any, opts ...funcopt.O) (any, error) {
 	case kind.Usr:
 		return NewUsr(p, opts...)
 	case kind.Ccfg:
-		return NewCcfg(p, opts...)
+		return newCcfg(p, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", p.Kind)
 	}

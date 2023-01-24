@@ -3,7 +3,6 @@ package nmon
 import (
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -37,7 +36,7 @@ func (o *nmon) onJoinRequest(c msgbus.JoinRequest) {
 // addClusterNode adds node to cluster config
 func (o *nmon) addClusterNode(node string) error {
 	o.log.Debug().Msgf("adding cluster node %s", node)
-	ccfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(false))
+	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
