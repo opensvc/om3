@@ -6,6 +6,7 @@ import (
 	"github.com/goccy/go-json"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
 	"opensvc.com/opensvc/util/pubsub"
@@ -39,6 +40,9 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 			return
 		}
 	*/
+	// TODO: rawconfig.LoadSections() to refresh cluster sections after config
+	// changes. Perhaps need to move this elsewhere
+	rawconfig.LoadSections()
 	previousNodes := d.pending.Cluster.Config.Nodes
 	d.pending.Cluster.Config = o.value
 	op := jsondelta.Operation{
