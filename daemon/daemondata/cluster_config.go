@@ -3,6 +3,8 @@ package daemondata
 import (
 	"context"
 
+	"github.com/goccy/go-json"
+
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
@@ -15,7 +17,7 @@ type (
 	}
 )
 
-// SetClusterConfig sets Monitor.Cluster.Config
+// SetClusterConfig sets .cluster.config
 func (t T) SetClusterConfig(value cluster.Config) error {
 	err := make(chan error)
 	op := opSetClusterConfig{
@@ -41,15 +43,20 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 		OpValue: jsondelta.NewOptValue(o.value),
 		OpKind:  "replace",
 	}
-	d.pendingOps = append(d.pendingOps, op)
+	// TODO find more explicit method to send such events
+	// Here .cluter.config is used within 'om mon' event watcher
+	rootPatch := jsondelta.Patch{op}
+	if eventB, err := json.Marshal(rootPatch); err != nil {
+		d.log.Error().Err(err).Msg("opSetClusterConfig Marshal patch")
+	} else {
+		eventId++
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
+	}
 	d.bus.Pub(
 		msgbus.ClusterConfigUpdated{
 			Node:  d.localNode,
 			Value: o.value,
 		},
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	o.err <- nil
 }
