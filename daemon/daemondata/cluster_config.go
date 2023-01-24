@@ -8,6 +8,8 @@ import (
 	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/pubsub"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 type (
@@ -37,6 +39,7 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 			return
 		}
 	*/
+	previousNodes := d.pending.Cluster.Config.Nodes
 	d.pending.Cluster.Config = o.value
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"cluster", "config"},
@@ -58,5 +61,18 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 			Value: o.value,
 		},
 	)
+	removed, added := stringslice.Diff(previousNodes, o.value.Nodes)
+	if len(added) > 0 {
+		d.log.Debug().Msgf("added nodes: %s", added)
+	}
+	if len(removed) > 0 {
+		d.log.Debug().Msgf("removed nodes: %s", removed)
+	}
+	for _, v := range added {
+		d.bus.Pub(
+			msgbus.JoinSuccess{Node: v},
+			labelLocalNode,
+			pubsub.Label{"added", v})
+	}
 	o.err <- nil
 }
