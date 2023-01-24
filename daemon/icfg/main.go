@@ -1,4 +1,4 @@
-// Package instcfg is responsible for local instance.Config
+// Package icfg is responsible for local instance.Config
 //
 // New instConfig are created by daemon discover.
 // It provides the cluster data at ["cluster", "node", localhost, "services",
@@ -6,12 +6,12 @@
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
 //
-// The instcfg also starts imon object (with instcfg context)
+// The icfg also starts imon object (with icfg context)
 // => this will end imon object
 //
 // The worker routine is terminated when config file is not any more present, or
 // when daemon discover context is done.
-package instcfg
+package icfg
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/monitor/imon"
+	"opensvc.com/opensvc/daemon/imon"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -89,7 +89,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
 		id:             id,
-		log:            log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
+		log:            log.Logger.With().Str("func", "icfg").Stringer("object", p).Logger(),
 		localhost:      localhost,
 		forceRefresh:   false,
 		databus:        daemondata.FromContext(parent),
@@ -124,7 +124,7 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
-	o.sub = bus.Sub(o.path.String() + " instcfg")
+	o.sub = bus.Sub(o.path.String() + " icfg")
 	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
 	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
 	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
