@@ -19,12 +19,13 @@ import (
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/remoteconfig"
-	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/hostname"
 )
 
 type (
 	CmdDaemonJoin struct {
+		CmdDaemonCommon
+
 		Node  string
 		Token string
 	}
@@ -104,7 +105,7 @@ func (t *CmdDaemonJoin) Run() error {
 		_, _ = fmt.Fprintf(os.Stderr, "Daemon join %s error %s: %s\n", t.Node, err, b)
 	}
 
-	if err := t.waitJoinResult(ctx, evReader, duration); err != nil {
+	if err := t.waitJoinResult(ctx, evReader); err != nil {
 		return err
 	}
 	err = t.onJoined(cli, clusterName)
@@ -198,18 +199,17 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) 
 		filePaths[file] = p
 	}
 
-	args := []string{"daemon", "stop"}
-	cmd := command.New(
-		command.WithName(os.Args[0]),
-		command.WithArgs(args),
-	)
-	_, _ = fmt.Fprintf(os.Stderr, "Stop daemon\n")
-	err = cmd.Run()
-	if err != nil {
+	if err := t.stopDaemon(); err != nil {
 		return err
 	}
 
-	// TODO backup conf files before install files from remote
+	if err := t.backupLocalConfig(".pre-daemon-join"); err != nil {
+		return err
+	}
+
+	if err := t.deleteLocalConfig(); err != nil {
+		return err
+	}
 
 	for fileName, p := range filePaths {
 		_, _ = fmt.Fprintf(os.Stderr, "Install fetched config %s\n", p)
@@ -219,21 +219,14 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) 
 		}
 	}
 
-	args = []string{"daemon", "start"}
-	cmd = command.New(
-		command.WithName(os.Args[0]),
-		command.WithArgs(args),
-	)
-	_, _ = fmt.Fprintf(os.Stderr, "Start daemon\n")
-	err = cmd.Run()
-	if err != nil {
+	if err := t.startDaemon(); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "Joined\n")
 	return nil
 }
 
-func (t *CmdDaemonJoin) waitJoinResult(ctx context.Context, evReader event.Reader, duration time.Duration) error {
+func (t *CmdDaemonJoin) waitJoinResult(ctx context.Context, evReader event.Reader) error {
 	for {
 		for {
 			select {
