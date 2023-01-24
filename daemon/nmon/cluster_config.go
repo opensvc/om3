@@ -79,7 +79,7 @@ func (o *nmon) onLeaveRequest(c msgbus.LeaveRequest) {
 // removeClusterNode removes node from cluster config
 func (o *nmon) removeClusterNode(node string) error {
 	o.log.Debug().Msgf("removing cluster node %s", node)
-	ccfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(false))
+	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
@@ -91,6 +91,10 @@ func (o *nmon) removeClusterNode(node string) error {
 		return err
 	}
 	if err != nil {
+		return err
+	}
+	// remove peer node from daemon data
+	if err := o.databus.DropPeerNode(node); err != nil {
 		return err
 	}
 	return nil
