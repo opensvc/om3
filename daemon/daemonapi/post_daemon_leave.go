@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"net/http"
 
+	"opensvc.com/opensvc/daemon/daemonauth"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
@@ -15,6 +16,13 @@ func (a *DaemonApi) PostDaemonLeave(w http.ResponseWriter, r *http.Request, para
 		node string
 	)
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "PostDaemonLeave").Logger()
+
+	grants := daemonauth.UserGrants(r)
+	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleLeave) {
+		log.Info().Msg("not allowed, need at least 'root' or 'leave' grant")
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
 
 	node = params.Node
 	// TODO verify is node value is a valid nodename
