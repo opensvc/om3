@@ -67,7 +67,7 @@ func (t *CmdDaemonJoin) Run() error {
 	defer func() {
 		_ = os.Remove(file)
 	}()
-	clusterCfg, err := object.NewCcfg(path.Cluster, object.WithConfigFile(file))
+	clusterCfg, err := object.NewCluster(object.WithConfigFile(file))
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (t *CmdDaemonJoin) Run() error {
 		_, _ = fmt.Fprintf(os.Stderr, "Daemon join %s error %s: %s\n", t.Node, err, b)
 	}
 
-	if err := t.waitJoinResult(ctx, evReader, duration) ; err != nil {
+	if err := t.waitJoinResult(ctx, evReader, duration); err != nil {
 		return err
 	}
 	err = t.onJoined(cli, clusterName)

@@ -36,7 +36,7 @@ func init() {
 }
 
 func runArray(args []string) error {
-	o, err := object.NewCcfg("cluster", object.WithVolatile(true))
+	o, err := object.NewCluster(object.WithVolatile(true))
 	if err != nil {
 		return err
 	}

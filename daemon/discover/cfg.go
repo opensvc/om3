@@ -14,7 +14,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/monitor/instcfg"
+	"opensvc.com/opensvc/daemon/icfg"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
@@ -28,6 +28,9 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(msgbus.ConfigUpdated{})
 	sub.AddFilter(msgbus.ConfigDeleted{})
 	sub.AddFilter(msgbus.ConfigFileUpdated{})
+	if last := sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
+		d.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
+	}
 	sub.Start()
 	return sub
 }
@@ -63,6 +66,8 @@ func (d *discover) cfg(started chan<- bool) {
 				d.onConfigDeleted(c)
 			case msgbus.ConfigFileUpdated:
 				d.onConfigFileUpdated(c)
+			case msgbus.ClusterConfigUpdated:
+				d.onClusterConfigUpdated(c)
 			}
 		case i := <-d.cfgCmdC:
 			switch c := i.(type) {
@@ -75,6 +80,10 @@ func (d *discover) cfg(started chan<- bool) {
 			}
 		}
 	}
+}
+
+func (d *discover) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+	d.clusterConfig = c.Value
 }
 
 func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
@@ -92,7 +101,7 @@ func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		return
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
-		if err := instcfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC); err != nil {
+		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC); err != nil {
 			return
 		}
 	}
@@ -109,7 +118,7 @@ func (d *discover) setNodeLabels() {
 	d.databus.SetNodeStatusLabels(labels)
 }
 
-// cmdLocalConfigDeleted starts a new instcfg when a local configuration file exists
+// cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
 func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 	filename := c.Filename
 	p := c.Path
@@ -120,7 +129,7 @@ func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 	if mtime.IsZero() {
 		return
 	}
-	if err := instcfg.Start(d.ctx, p, filename, d.cfgCmdC); err != nil {
+	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC); err != nil {
 		return
 	}
 	d.cfgMTime[s] = mtime
@@ -152,7 +161,7 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 			return
 		}
 	} else {
-		// Not yet started instcfg, but file exists
+		// Not yet started icfg, but file exists
 		localUpdated := file.ModTime(p.ConfigFile())
 		if !remoteConfig.Updated.After(localUpdated) {
 			return
@@ -246,7 +255,7 @@ func (d *discover) fetchConfigFromRemote(p path.T, node string, updated time.Tim
 		d.fetcherNodeCancel[node] = make(map[string]context.CancelFunc)
 	}
 
-	cli, err := newDaemonClient(node)
+	cli, err := d.newDaemonClient(node)
 	if err != nil {
 		d.log.Error().Msgf("can't create newDaemonClient to fetch %s from %s", p, node)
 		return
@@ -254,12 +263,12 @@ func (d *discover) fetchConfigFromRemote(p path.T, node string, updated time.Tim
 	go fetch(ctx, cli, p, node, d.cfgCmdC)
 }
 
-func newDaemonClient(node string) (*client.T, error) {
+func (d *discover) newDaemonClient(node string) (*client.T, error) {
 	// TODO add WithRootCa to avoid send password to wrong url ?
 	return client.New(
 		client.WithURL(daemonenv.UrlHttpNode(node)),
 		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(rawconfig.ClusterSection().Secret),
+		client.WithPassword(d.clusterConfig.Secret()),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

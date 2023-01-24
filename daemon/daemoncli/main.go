@@ -43,7 +43,7 @@ type (
 )
 
 func bootStrapCcfg() error {
-	ccfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(false))
+	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	if err != nil {
 		return err
 	}

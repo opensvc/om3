@@ -19,6 +19,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog"
 
+	"opensvc.com/opensvc/core/cluster"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/util/hostname"
@@ -38,6 +39,7 @@ type (
 		// More recent remote config files are fetched.
 		cfgMTime map[string]time.Time
 
+		clusterConfig       cluster.Config
 		objectMonitorCancel map[string]context.CancelFunc
 		objectMonitor       map[string]map[string]struct{}
 

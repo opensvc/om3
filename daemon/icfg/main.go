@@ -1,4 +1,4 @@
-// Package instcfg is responsible for local instance.Config
+// Package icfg is responsible for local instance.Config
 //
 // New instConfig are created by daemon discover.
 // It provides the cluster data at ["cluster", "node", localhost, "services",
@@ -6,12 +6,12 @@
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
 //
-// The instcfg also starts imon object (with instcfg context)
+// The icfg also starts imon object (with icfg context)
 // => this will end imon object
 //
 // The worker routine is terminated when config file is not any more present, or
 // when daemon discover context is done.
-package instcfg
+package icfg
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/monitor/imon"
+	"opensvc.com/opensvc/daemon/imon"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -43,8 +43,6 @@ import (
 
 type (
 	T struct {
-		cfg instance.Config
-
 		path                     path.T
 		id                       string
 		configure                object.Configurer
@@ -57,6 +55,7 @@ type (
 		cmdC                     chan any
 		databus                  *daemondata.T
 		sub                      *pubsub.Subscription
+		instanceConfig           instance.Config
 		clusterConfig            cluster.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
@@ -87,17 +86,19 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 	id := daemondata.InstanceId(p, localhost)
 
 	o := &T{
-		cfg:          instance.Config{Path: p},
-		path:         p,
-		id:           id,
-		log:          log.Logger.With().Str("func", "instcfg").Stringer("object", p).Logger(),
-		localhost:    localhost,
-		forceRefresh: false,
-		// cmdC is internal command channel to receive msgbus.Exit message. Worker reads on this chan to exit itself.
-		// cmdC is buffered, this allows some worker on* functions to ask worker exit
-		cmdC:         make(chan any, 1),
-		databus:      daemondata.FromContext(parent),
-		filename:     filename,
+		instanceConfig: instance.Config{Path: p},
+		path:           p,
+		id:             id,
+		log:            log.Logger.With().Str("func", "icfg").Stringer("object", p).Logger(),
+		localhost:      localhost,
+		forceRefresh:   false,
+		databus:        daemondata.FromContext(parent),
+		filename:       filename,
+
+		// cmdC is an internal command channel to receive msgbus.Exit message.
+		// The worker reads on this chan to exit itself.
+		// This chan is buffered to allow an event handler to post the poison pill.
+		cmdC: make(chan any, 1),
 	}
 
 	if err := o.setConfigure(); err != nil {
@@ -123,7 +124,7 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	clusterId := clusterPath.String()
 	bus := pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
-	o.sub = bus.Sub(o.path.String() + " instcfg")
+	o.sub = bus.Sub(o.path.String() + " icfg")
 	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
 	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
 	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
@@ -136,12 +137,12 @@ func (o *T) startSubscriptions(ctx context.Context) {
 }
 
 func (o *T) startInstanceMonitor() (bool, error) {
-	if len(o.cfg.Scope) == 0 {
+	if len(o.instanceConfig.Scope) == 0 {
 		o.log.Info().Msgf("wait scopes to create associated imon")
 		return false, nil
 	}
 	o.log.Info().Msgf("starting imon worker...")
-	if err := imon.Start(o.instanceMonitorCtx, o.path, o.cfg.Scope); err != nil {
+	if err := imon.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
 		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
 	}
@@ -235,11 +236,11 @@ func (o *T) onConfigUpdated(c msgbus.ConfigUpdated) {
 
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
 func (o *T) updateConfig(newConfig *instance.Config) {
-	if instance.ConfigEqual(&o.cfg, newConfig) {
+	if instance.ConfigEqual(&o.instanceConfig, newConfig) {
 		o.log.Debug().Msg("no update required")
 		return
 	}
-	o.cfg = *newConfig
+	o.instanceConfig = *newConfig
 	if err := o.databus.SetInstanceConfig(o.path, *newConfig.DeepCopy()); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceConfig")
 	}
@@ -296,7 +297,7 @@ func (o *T) configFileCheck() error {
 		o.log.Info().Msg("localhost not anymore an instance node")
 		return configFileCheckError
 	}
-	cfg := o.cfg
+	cfg := o.instanceConfig
 	cfg.Nodename = o.localhost
 	cfg.Topology = o.getTopology(cf)
 	cfg.Orchestrate = o.getOrchestrate(cf)

@@ -1,7 +1,7 @@
 /*
 Package daemon provide the subdaemon main responsible ot other opensvc daemons
 
-It is responsible for other sub daemons (monitor, ...)
+It is responsible for other sub daemons (listener, discover, scheduler, hb...)
 */
 package daemon
 
@@ -22,9 +22,8 @@ import (
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/listener"
-	"opensvc.com/opensvc/daemon/monitor"
-	"opensvc.com/opensvc/daemon/monitor/nmon"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/daemon/nmon"
 	"opensvc.com/opensvc/daemon/routinehelper"
 	"opensvc.com/opensvc/daemon/scheduler"
 	"opensvc.com/opensvc/daemon/subdaemon"
@@ -56,11 +55,6 @@ type (
 
 var (
 	mandatorySubs = []func(t *T) subdaemon.Manager{
-		func(t *T) subdaemon.Manager {
-			return monitor.New(
-				monitor.WithRoutineTracer(&t.TT),
-			)
-		},
 		func(t *T) subdaemon.Manager {
 			return listener.New(
 				listener.WithRoutineTracer(&t.TT),

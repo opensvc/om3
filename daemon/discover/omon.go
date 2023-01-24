@@ -3,8 +3,8 @@ package discover
 import (
 	"time"
 
-	"opensvc.com/opensvc/daemon/monitor/omon"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/daemon/omon"
 	"opensvc.com/opensvc/util/pubsub"
 )
 
