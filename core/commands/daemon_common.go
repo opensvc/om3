@@ -6,6 +6,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/file"
@@ -20,8 +22,11 @@ func (t *CmdDaemonCommon) startDaemon() (err error) {
 		command.WithName(os.Args[0]),
 		command.WithArgs([]string{"daemon", "start"}),
 	)
-	_, _ = fmt.Fprintf(os.Stderr, "start daemon\n")
-	return cmd.Run()
+	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%s", cmd.String())
+	}
+	return nil
 }
 
 func (t *CmdDaemonCommon) stopDaemon() (err error) {
@@ -29,14 +34,17 @@ func (t *CmdDaemonCommon) stopDaemon() (err error) {
 		command.WithName(os.Args[0]),
 		command.WithArgs([]string{"daemon", "stop"}),
 	)
-	_, _ = fmt.Fprintf(os.Stderr, "Stop daemon\n")
-	return cmd.Run()
+	_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%s", cmd.String())
+	}
+	return nil
 }
 
 func (t *CmdDaemonCommon) backupLocalConfig(name string) (err error) {
 	pathEtc := rawconfig.Paths.Etc
 	if !file.ExistsAndDir(pathEtc) {
-		_, _ = fmt.Fprintf(os.Stderr, "empty %s, skip backup\n", pathEtc)
+		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip backup\n", pathEtc)
 		return nil
 	}
 	cmd := command.New(
@@ -46,13 +54,13 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) (err error) {
 		// allow exit code 1 (Error: no match)
 		command.WithIgnoredExitCodes(0, 1),
 	)
-	_, _ = fmt.Fprintln(os.Stderr, "dump all configs")
+	_, _ = fmt.Fprintln(os.Stdout, "Dump all configs")
 	if err := cmd.Run(); err != nil {
-		return err
+		return errors.Wrapf(err, "%s", cmd.String())
 	}
 
 	backup := path.Join(pathEtc, name+time.Now().Format(name+"-2006-01-02T15:04:05.json"))
-	_, _ = fmt.Fprintf(os.Stderr, "save configs to %s\n", backup)
+	_, _ = fmt.Fprintf(os.Stdout,"Save configs to %s\n", backup)
 	if err := os.WriteFile(backup, cmd.Stdout(), 0o400); err != nil {
 		return err
 	}
@@ -66,12 +74,12 @@ func (t *CmdDaemonCommon) deleteLocalConfig() (err error) {
 			command.WithName(os.Args[0]),
 			command.WithArgs([]string{"**", "delete", "--local"}),
 		)
-		_, _ = fmt.Fprintf(os.Stderr, "delete all config\n")
+		_, _ = fmt.Fprintf(os.Stdout, "delete all config\n")
 		if err := cmd.Run(); err != nil {
-			return err
+			return errors.Wrapf(err, "%s", cmd.String())
 		}
 	} else {
-		_, _ = fmt.Fprintf(os.Stderr, "empty %s, skip delete local config\n", pathEtc)
+		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip delete local config\n", pathEtc)
 	}
 	return rawconfig.CreateMandatoryDirectories()
 }

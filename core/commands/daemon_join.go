@@ -60,7 +60,7 @@ func (t *CmdDaemonJoin) Run() error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Fetch cluster config from %s\n", t.Node)
+	_, _ = fmt.Fprintf(os.Stdout, "Fetch cluster config from %s\n", t.Node)
 	file, _, err := remoteconfig.FetchObjectFile(cli, path.Cluster)
 	if err != nil {
 		return err
@@ -97,12 +97,12 @@ func (t *CmdDaemonJoin) Run() error {
 		_ = evReader.Close()
 	}()
 
-	_, _ = fmt.Fprintf(os.Stderr, "Add localhost node to the remote cluster configuration on %s\n", t.Node)
+	_, _ = fmt.Fprintf(os.Stdout, "Add localhost node to the remote cluster configuration on %s\n", t.Node)
 	join := api.NewPostDaemonJoin(cli)
 	join.SetNode(hostname.Hostname())
-	_, _ = fmt.Fprintf(os.Stderr, "Daemon join\n")
+	_, _ = fmt.Fprintf(os.Stdout, "Daemon join\n")
 	if b, err := join.Do(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Daemon join %s error %s: %s\n", t.Node, err, b)
+		return errors.Wrapf(err, "daemon join %s response %s", t.Node, b)
 	}
 
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
@@ -110,7 +110,7 @@ func (t *CmdDaemonJoin) Run() error {
 	}
 	err = t.onJoined(cli, clusterName)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "onJoined error: %s\n", err)
+		return errors.Wrapf(err, "post join action")
 	}
 	return err
 }
@@ -190,7 +190,7 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) 
 
 	for _, p := range toFetch {
 		var file string
-		_, _ = fmt.Fprintf(os.Stderr, "Fetch %s from %s\n", p, t.Node)
+		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
 		file, _, err = remoteconfig.FetchObjectFile(cli, p)
 		if err != nil {
 			return err
@@ -212,17 +212,17 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) 
 	}
 
 	for fileName, p := range filePaths {
-		_, _ = fmt.Fprintf(os.Stderr, "Install fetched config %s\n", p)
+		_, _ = fmt.Fprintf(os.Stdout, "Install fetched config %s\n", p)
 		err := os.Rename(fileName, p.ConfigFile())
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "can't install fetched config %s from file %s\n", p, fileName)
+			return errors.Wrapf(err, "Can't install fetched config %s from file %s\n", p, fileName)
 		}
 	}
 
 	if err := t.startDaemon(); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "Joined\n")
+	_, _ = fmt.Fprintf(os.Stdout, "Joined\n")
 	return nil
 }
 
@@ -240,14 +240,14 @@ func (t *CmdDaemonJoin) waitJoinResult(ctx context.Context, evReader event.Reade
 			}
 			switch ev.Kind {
 			case msgbus.JoinSuccess{}.Kind():
-				_, _ = fmt.Fprintf(os.Stderr, "cluster nodes updated\n")
+				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
 			case msgbus.JoinError{}.Kind():
-				err := errors.Errorf("Join error: %s", ev.Data)
+				err := errors.Errorf("join error: %s", ev.Data)
 				return err
 			case msgbus.JoinIgnored{}.Kind():
 				// TODO parse Reason
-				_, _ = fmt.Fprintf(os.Stderr, "Join ignored: %s", ev.Data)
+				_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s", ev.Data)
 				return nil
 			default:
 				return errors.Errorf("unexpected event %s %v", ev.Kind, ev.Data)
