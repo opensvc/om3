@@ -45,10 +45,14 @@ var (
 		"InstanceStatusDeleted":     InstanceStatusDeleted{},
 		"InstanceStatusUpdated":     InstanceStatusUpdated{},
 		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
-		"JoinRequest":               JoinRequest{},
 		"JoinError":                 JoinError{},
 		"JoinIgnored":               JoinIgnored{},
+		"JoinRequest":               JoinRequest{},
 		"JoinSuccess":               JoinSuccess{},
+		"LeaveError":                LeaveError{},
+		"LeaveIgnored":              LeaveIgnored{},
+		"LeaveRequest":              LeaveRequest{},
+		"LeaveSuccess":              LeaveSuccess{},
 		"NodeConfigUpdated":         NodeConfigUpdated{},
 		"NodeMonitorDeleted":        NodeMonitorDeleted{},
 		"NodeMonitorUpdated":        NodeMonitorUpdated{},
@@ -223,7 +227,6 @@ type (
 		Filename string
 	}
 
-
 	JoinError struct {
 		// Node is a node that can't be added to cluster config nodes
 		Node   string
@@ -232,7 +235,7 @@ type (
 
 	JoinIgnored struct {
 		// Node is a node that is already in cluster config nodes
-		Node   string
+		Node string
 	}
 
 	JoinRequest struct {
@@ -242,6 +245,27 @@ type (
 
 	JoinSuccess struct {
 		// Node is the successfully added node in cluster config nodes
+		Node string
+	}
+
+	LeaveError struct {
+		// Node is a node that can't be removed from cluster config nodes
+		Node   string
+		Reason string
+	}
+
+	LeaveIgnored struct {
+		// Node is a node that is not in cluster config nodes
+		Node string
+	}
+
+	LeaveRequest struct {
+		// Node is a node to remove to cluster config nodes
+		Node string
+	}
+
+	LeaveSuccess struct {
+		// Node is the successfully removed node from cluster config nodes
 		Node string
 	}
 
@@ -485,6 +509,22 @@ func (e JoinRequest) Kind() string {
 
 func (e JoinSuccess) Kind() string {
 	return "JoinSuccess"
+}
+
+func (e LeaveError) Kind() string {
+	return "LeaveError"
+}
+
+func (e LeaveIgnored) Kind() string {
+	return "LeaveIgnored"
+}
+
+func (e LeaveRequest) Kind() string {
+	return "LeaveRequest"
+}
+
+func (e LeaveSuccess) Kind() string {
+	return "LeaveSuccess"
 }
 
 func (e NodeConfigUpdated) Kind() string {

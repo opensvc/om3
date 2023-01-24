@@ -26,11 +26,12 @@ const (
 	RoleBlacklistAdmin Role = "blacklistadmin"
 	RoleHeartbeat      Role = "heartbeat"
 	RoleJoin           Role = "join"
+	RoleLeave          Role = "leave"
 )
 
 func roleHasNamespace(role Role) bool {
 	switch role {
-	case RoleRoot, RoleBlacklistAdmin, RoleHeartbeat, RoleJoin:
+	case RoleRoot, RoleBlacklistAdmin, RoleHeartbeat, RoleJoin, RoleLeave:
 		return false
 	default:
 		return true
@@ -162,6 +163,8 @@ func (t Grant) Role() Role {
 		return RoleHeartbeat
 	case "join":
 		return RoleJoin
+	case "leave":
+		return RoleLeave
 	default:
 		return RoleUndef
 	}

@@ -154,7 +154,7 @@ func (o *T) worker(parent context.Context) {
 	var (
 		err error
 	)
-	defer o.log.Error().Msg("done")
+	defer o.log.Debug().Msg("done")
 	o.log.Debug().Msg("starting")
 
 	// do once what we do later on msgbus.ConfigFileUpdated

@@ -8,6 +8,7 @@ import (
 	"opensvc.com/opensvc/daemon/hbcache"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/jsondelta"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 func (d *data) setSubHb() {
@@ -15,6 +16,11 @@ func (d *data) setSubHb() {
 	hbModes := make([]cluster.HbMode, 0)
 	nodes := make([]string, 0)
 	for node := range d.subHbMode {
+		if !stringslice.Has(node, d.pending.Cluster.Config.Nodes) {
+			// Drop not anymore in cluster config nodes
+			hbcache.DropPeer(node)
+			continue
+		}
 		nodes = append(nodes, node)
 	}
 	sort.Strings(nodes)

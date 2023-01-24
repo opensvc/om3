@@ -78,5 +78,11 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 			labelLocalNode,
 			pubsub.Label{"added", v})
 	}
+	for _, v := range removed {
+		d.bus.Pub(
+			msgbus.LeaveSuccess{Node: v},
+			labelLocalNode,
+			pubsub.Label{"removed", v})
+	}
 	o.err <- nil
 }

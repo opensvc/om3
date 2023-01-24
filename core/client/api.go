@@ -86,6 +86,10 @@ func (t T) NewPostDaemonJoin() *api.PostDaemonJoin {
 	return api.NewPostDaemonJoin(t)
 }
 
+func (t T) NewPostDaemonLeave() *api.PostDaemonLeave {
+	return api.NewPostDaemonLeave(t)
+}
+
 func (t T) NewPostKey() *api.PostKey {
 	return api.NewPostKey(t)
 }

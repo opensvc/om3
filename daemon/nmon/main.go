@@ -125,16 +125,17 @@ func (o *nmon) startSubscriptions() {
 	sub := o.bus.Sub("nmon")
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
-	sub.AddFilter(msgbus.NodeConfigUpdated{})
-	sub.AddFilter(msgbus.NodeMonitorUpdated{})
-	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
 	sub.AddFilter(msgbus.FrozenFileUpdated{})
-	sub.AddFilter(msgbus.SetNodeMonitor{})
-	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
-	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", hostname.Hostname()})
+	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", hostname.Hostname()})
+	sub.AddFilter(msgbus.NodeConfigUpdated{})
+	sub.AddFilter(msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
+	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
+	sub.AddFilter(msgbus.SetNodeMonitor{})
 	sub.Start()
 	o.sub = sub
 }
@@ -201,6 +202,8 @@ func (o *nmon) worker() {
 				o.onHbMessageTypeUpdated(c)
 			case msgbus.JoinRequest:
 				o.onJoinRequest(c)
+			case msgbus.LeaveRequest:
+				o.onLeaveRequest(c)
 			case msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			case msgbus.NodeStatusLabelsUpdated:

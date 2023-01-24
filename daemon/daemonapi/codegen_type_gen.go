@@ -528,6 +528,12 @@ type PostDaemonJoinParams struct {
 	Node string `form:"node" json:"node"`
 }
 
+// PostDaemonLeaveParams defines parameters for PostDaemonLeave.
+type PostDaemonLeaveParams struct {
+	// The leaving cluster node
+	Node string `form:"node" json:"node"`
+}
+
 // PostDaemonLogsControlJSONBody defines parameters for PostDaemonLogsControl.
 type PostDaemonLogsControlJSONBody = PostDaemonLogsControl
 

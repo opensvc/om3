@@ -26,10 +26,10 @@ import (
 var (
 	lockPath           = "/tmp/locks/main"
 	lockTimeout        = 60 * time.Second
-	WaitRunningTimeout = 4 * time.Second
-	WaitRunningDelay   = 100 * time.Millisecond
+	WaitRunningTimeout = 20 * time.Second
+	WaitRunningDelay   = 250 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
-	WaitStoppedDelay   = 100 * time.Millisecond
+	WaitStoppedDelay   = 250 * time.Millisecond
 )
 
 type (
