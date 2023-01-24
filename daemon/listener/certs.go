@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
@@ -19,6 +18,7 @@ import (
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
 	"opensvc.com/opensvc/util/findmnt"
+	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
 )
 
@@ -226,17 +226,21 @@ func bootStrapCertPath(p path.T, caPath path.T) error {
 	if err != nil {
 		return err
 	}
-	op := keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0)
-	if err := certSec.Config().Set(*op); err != nil {
-		return err
+	ops := []*keyop.T{
+		keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0),
+		keyop.New(key.New("DEFAULT", "alt_names"), keyop.Set, hostname.Hostname(), 0),
+	}
+	for _, op := range ops {
+		if err := certSec.Config().Set(*op); err != nil {
+			return err
+		}
 	}
 	log.Logger.Info().Msgf("gencert %s", p)
 	return certSec.GenCert()
 }
 
 func getClusterName() (string, error) {
-	clusterPath := path.T{Name: "cluster", Kind: kind.Ccfg}
-	clusterCfg, err := object.NewCcfg(clusterPath, object.WithVolatile(true))
+	clusterCfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(true))
 	if err != nil {
 		return "", err
 	}

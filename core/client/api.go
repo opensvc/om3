@@ -82,6 +82,10 @@ func (t T) NewGetRelayMessage() *api.GetRelayMessage {
 	return api.NewGetRelayMessage(t)
 }
 
+func (t T) NewPostDaemonJoin() *api.PostDaemonJoin {
+	return api.NewPostDaemonJoin(t)
+}
+
 func (t T) NewPostKey() *api.PostKey {
 	return api.NewPostKey(t)
 }

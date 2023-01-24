@@ -35,7 +35,10 @@ func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 
 func (o *nmon) pubClusterConfig() {
 	cfg := o.getClusterConfig()
-	o.databus.SetClusterConfig(cfg)
+	err := o.databus.SetClusterConfig(cfg)
+	if err != nil {
+		o.log.Error().Err(err).Msg("SetClusterConfig")
+	}
 }
 
 func (o *nmon) getClusterConfig() cluster.Config {

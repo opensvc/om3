@@ -57,6 +57,7 @@ type (
 		cancel       context.CancelFunc
 		cmdC         chan any
 		databus      *daemondata.T
+		bus          *pubsub.Bus
 		log          zerolog.Logger
 		rejoinTicker *time.Ticker
 		startedAt    time.Time
@@ -92,6 +93,7 @@ func Start(parent context.Context) error {
 		cancel:        cancel,
 		cmdC:          make(chan any),
 		databus:       daemondata.FromContext(ctx),
+		bus:           pubsub.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "nmon").Logger(),
 		localhost:     hostname.Hostname(),
 		change:        true,
@@ -122,8 +124,7 @@ func Start(parent context.Context) error {
 }
 
 func (o *nmon) startSubscriptions() {
-	bus := pubsub.BusFromContext(o.ctx)
-	sub := bus.Sub("nmon")
+	sub := o.bus.Sub("nmon")
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(msgbus.NodeConfigUpdated{})
@@ -135,6 +136,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
+	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", hostname.Hostname()})
 	sub.Start()
 	o.sub = sub
 }
@@ -199,6 +201,8 @@ func (o *nmon) worker() {
 				o.onFrozenFileUpdated(c)
 			case msgbus.HbMessageTypeUpdated:
 				o.onHbMessageTypeUpdated(c)
+			case msgbus.JoinRequest:
+				o.onJoinRequest(c)
 			case msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			case msgbus.NodeStatusLabelsUpdated:
