@@ -41,6 +41,18 @@ func (t *CmdDaemonCommon) stopDaemon() (err error) {
 	return nil
 }
 
+func (t *CmdDaemonCommon) nodeDrain() (err error) {
+	cmd := command.New(
+		command.WithName(os.Args[0]),
+		command.WithArgs([]string{"node", "drain", "--wait"}),
+	)
+	_, _ = fmt.Fprintf(os.Stdout, "Draining node\n")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%s", cmd.String())
+	}
+	return nil
+}
+
 func (t *CmdDaemonCommon) backupLocalConfig(name string) (err error) {
 	pathEtc := rawconfig.Paths.Etc
 	if !file.ExistsAndDir(pathEtc) {
