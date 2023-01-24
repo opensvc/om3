@@ -52,3 +52,46 @@ func (o *nmon) addClusterNode(node string) error {
 	}
 	return nil
 }
+
+// onLeaveRequest handle LeaveRequest to update cluster config with node removal.
+//
+// If error occurs publish msgbus.LeaveIgnored, or msgbus.LeaveError:
+//
+// - publish msgbus.LeaveIgnored,leave-node=node (the node is not a cluster nodes)
+// - publish msgbus.LeaveError,leave-node=node (update cluster config object fails)
+func (o *nmon) onLeaveRequest(c msgbus.LeaveRequest) {
+	nodes := o.config.GetStrings(key.New("cluster", "nodes"))
+	node := c.Node
+	labels := []pubsub.Label{
+		{"node", hostname.Hostname()},
+		{"leave-node", node},
+	}
+	o.log.Info().Msgf("leave request for node %s", node)
+	if !stringslice.Has(node, nodes) {
+		o.log.Debug().Msgf("leave request ignored for not cluster member")
+		o.bus.Pub(msgbus.LeaveIgnored{Node: node}, labels...)
+	} else if err := o.removeClusterNode(node); err != nil {
+		o.log.Warn().Err(err).Msgf("leave request denied")
+		o.bus.Pub(msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
+	}
+}
+
+// removeClusterNode removes node from cluster config
+func (o *nmon) removeClusterNode(node string) error {
+	o.log.Debug().Msgf("removing cluster node %s", node)
+	ccfg, err := object.NewCcfg(path.Cluster, object.WithVolatile(false))
+	if err != nil {
+		return err
+	}
+	op := keyop.New(key.New("cluster", "nodes"), keyop.Remove, node, 0)
+	if err := ccfg.Config().Set(*op); err != nil {
+		return err
+	}
+	if err := ccfg.Config().Commit(); err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
