@@ -106,6 +106,7 @@ func init() {
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
 		newCmdNodeLs(),
+		newCmdNodePRKey(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),
 		newCmdNodeEvents(),
