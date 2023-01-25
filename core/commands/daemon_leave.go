@@ -54,6 +54,10 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		_ = t.evReader.Close()
 	}()
 
+	//if err := t.nodeDrain(); err != nil {
+	//	return err
+	//}
+
 	if err := t.leave(); err != nil {
 		return err
 	}
@@ -108,14 +112,14 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 			}
 			switch ev.Kind {
 			case msgbus.LeaveSuccess{}.Kind():
-				_, _ = fmt.Fprintf(os.Stderr, "cluster nodes updated\n")
+				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
 			case msgbus.LeaveError{}.Kind():
-				err := errors.Errorf("Join error: %s", ev.Data)
+				err := errors.Errorf("leave error: %s", ev.Data)
 				return err
 			case msgbus.LeaveIgnored{}.Kind():
 				// TODO parse Reason
-				_, _ = fmt.Fprintf(os.Stderr, "Join ignored: %s", ev.Data)
+				_, _ = fmt.Fprintf(os.Stdout, "Leave ignored: %s", ev.Data)
 				return nil
 			default:
 				return errors.Errorf("unexpected event %s %v", ev.Kind, ev.Data)
@@ -127,9 +131,9 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 func (t *CmdDaemonLeave) leave() error {
 	req := api.NewPostDaemonLeave(t.cli)
 	req.SetNode(t.localhost)
-	_, _ = fmt.Fprintf(os.Stderr, "Daemon leave\n")
+	_, _ = fmt.Fprintf(os.Stdout, "Daemon leave\n")
 	if _, err := req.Do(); err != nil {
-		return errors.Wrapf(err, "Daemon leave error")
+		return errors.Wrapf(err, "daemon leave error")
 	}
 	return nil
 }
