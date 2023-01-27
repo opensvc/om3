@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/hbtype"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
@@ -177,6 +178,9 @@ func (t *T) MainStart(ctx context.Context) error {
 		if err := sub.Start(t.ctx); err != nil {
 			return err
 		}
+	}
+	if err := ccfg.Start(t.ctx); err != nil {
+		return err
 	}
 	if err := nmon.Start(t.ctx); err != nil {
 		return err
