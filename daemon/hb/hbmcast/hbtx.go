@@ -12,7 +12,7 @@ import (
 
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/util/hostname"
@@ -106,11 +106,11 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 }
 
 func (t *tx) encryptMessage(b []byte) ([]byte, error) {
-	cluster := rawconfig.ClusterSection()
+	cluster := ccfg.Get()
 	msg := &reqjsonrpc.Message{
 		NodeName:    hostname.Hostname(),
 		ClusterName: cluster.Name,
-		Key:         cluster.Secret,
+		Key:         cluster.Secret(),
 		Data:        b,
 	}
 	return msg.Encrypt()

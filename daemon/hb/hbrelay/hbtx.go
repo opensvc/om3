@@ -9,7 +9,7 @@ import (
 
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
 	"opensvc.com/opensvc/util/hostname"
@@ -111,7 +111,7 @@ func (t *tx) send(b []byte) {
 		return
 	}
 
-	cluster := rawconfig.ClusterSection()
+	cluster := ccfg.Get()
 	req := cli.NewPostRelayMessage()
 	req.Nodename = hostname.Hostname()
 	req.ClusterId = cluster.ID

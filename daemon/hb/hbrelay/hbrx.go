@@ -11,7 +11,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
 	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonapi"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/hb/hbctrl"
@@ -103,7 +103,7 @@ func (t *rx) onTick() {
 }
 
 func (t *rx) recv(nodename string) {
-	cluster := rawconfig.ClusterSection()
+	cluster := ccfg.Get()
 	cli, err := client.New(
 		client.WithURL(t.relay),
 		client.WithUsername(t.username),

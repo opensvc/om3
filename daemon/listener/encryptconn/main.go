@@ -7,7 +7,7 @@ import (
 	"net"
 
 	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/util/hostname"
 )
 
@@ -35,11 +35,11 @@ func New(encConn net.Conn) *T {
 //
 // Write encrypted d to T.Conn
 func (t *T) Write(b []byte) (n int, err error) {
-	cluster := rawconfig.ClusterSection()
+	cluster := ccfg.Get()
 	msg := &reqjsonrpc.Message{
 		NodeName:    hostname.Hostname(),
 		ClusterName: cluster.Name,
-		Key:         cluster.Secret,
+		Key:         cluster.Secret(),
 		Data:        b,
 	}
 	encBytes, err := msg.Encrypt()

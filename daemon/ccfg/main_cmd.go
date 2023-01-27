@@ -28,15 +28,19 @@ func (o *ccfg) pubClusterConfig() {
 
 func (o *ccfg) getClusterConfig() cluster.Config {
 	var (
-		keySecret = key.New("cluster", "secret")
-		keyName   = key.New("cluster", "name")
-		keyNodes  = key.New("cluster", "nodes")
-		keyDNS    = key.New("cluster", "dns")
+		keyID         = key.New("cluster", "id")
+		keySecret     = key.New("cluster", "secret")
+		keyName       = key.New("cluster", "name")
+		keyNodes      = key.New("cluster", "nodes")
+		keyDNS        = key.New("cluster", "dns")
+		keyCASecPaths = key.New("cluster", "ca")
 	)
 	cfg := cluster.Config{}
+	cfg.ID = o.clusterConfig.GetString(keyID)
 	cfg.DNS = o.clusterConfig.GetStrings(keyDNS)
 	cfg.Nodes = o.clusterConfig.GetStrings(keyNodes)
 	cfg.Name = o.clusterConfig.GetString(keyName)
+	cfg.CASecPaths = o.clusterConfig.GetStrings(keyCASecPaths)
 	cfg.SetSecret(o.clusterConfig.GetString(keySecret))
 	return cfg
 }

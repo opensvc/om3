@@ -170,6 +170,10 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	<-started
 
+	if err := ccfg.Start(t.ctx); err != nil {
+		return err
+	}
+
 	for _, newSub := range mandatorySubs {
 		sub := newSub(t)
 		if err := t.Register(sub); err != nil {
@@ -178,9 +182,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		if err := sub.Start(t.ctx); err != nil {
 			return err
 		}
-	}
-	if err := ccfg.Start(t.ctx); err != nil {
-		return err
 	}
 	if err := nmon.Start(t.ctx); err != nil {
 		return err
