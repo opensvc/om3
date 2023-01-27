@@ -20,6 +20,7 @@ import (
 	"github.com/cpuguy83/go-docker/image/imageapi"
 	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
+	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 
 	"opensvc.com/opensvc/core/actionrollback"
@@ -89,7 +90,7 @@ type (
 	}
 
 	imageCacheMap struct {
-		m  map[string]*image.Image
+		m  map[string]imageapi.Image
 		mu sync.Mutex
 	}
 )
@@ -103,18 +104,18 @@ var (
 
 func NewImageCacheMap() *imageCacheMap {
 	return &imageCacheMap{
-		m: make(map[string]*image.Image),
+		m: make(map[string]imageapi.Image),
 	}
 }
 
-func (t imageCacheMap) Get(name string) (*image.Image, bool) {
+func (t imageCacheMap) Get(name string) (imageapi.Image, bool) {
 	t.mu.Lock()
 	img, ok := t.m[name]
 	t.mu.Unlock()
 	return img, ok
 }
 
-func (t *imageCacheMap) Put(name string, img *image.Image) {
+func (t *imageCacheMap) Put(name string, img imageapi.Image) {
 	t.mu.Lock()
 	t.m[name] = img
 	t.mu.Unlock()
@@ -162,20 +163,14 @@ func parseImage(s string) (repo string, img string, tag string, err error) {
 }
 
 func (t T) pull(ctx context.Context) error {
-	repo, img, tag, err := parseImage(t.Image)
+	remote, err := image.ParseRef(t.Image)
 	if err != nil {
 		return err
 	}
 	t.Log().Info().
-		Str("repo", repo).
-		Str("image", img).
-		Str("tag", tag).
+		Stringer("image", remote).
 		Msg("pull image")
-	_, err = cli().ImageService().Pull(ctx, func(config *image.PullConfig) {
-		config.Image = img
-		config.Tag = tag
-		config.Repo = repo
-	})
+	err = cli().ImageService().Pull(ctx, remote)
 	return err
 }
 
@@ -292,7 +287,7 @@ func (t T) Start(ctx context.Context) error {
 			if err := t.pull(ctx); err != nil {
 				return err
 			}
-		} else if _, err = t.imageInspect(); err != nil {
+		} else if _, err = t.image(); err != nil {
 			if err := t.pull(ctx); err != nil {
 				return err
 			}
@@ -337,11 +332,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		devices []containerapi.DeviceMapping
 		mounts  []mount.Mount
 		err     error
-		inspect imageapi.ImageInspect
 	)
-	if inspect, err = t.imageInspect(); err != nil {
-		return nil, err
-	}
 	if env, err = t.env(); err != nil {
 		return nil, err
 	}
@@ -359,8 +350,8 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Hostname:    t.hostname(),
 		Tty:         t.TTY,
 		Env:         env,
-		Cmd:         t.command(inspect),
-		Entrypoint:  t.entrypoint(inspect),
+		Cmd:         t.command(),
+		Entrypoint:  t.entrypoint(),
 		Image:       t.Image,
 		WorkingDir:  t.CWD,
 		Labels:      labels,
@@ -420,6 +411,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Msg("create container")
 	c, err := cli().ContainerService().Create(
 		ctx,
+		t.Image,
 		container.WithCreateName(name),
 		container.WithCreateConfig(config),
 		container.WithCreateHostConfig(hostConfig),
@@ -435,7 +427,7 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		if x, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionNotRunning)); err != nil {
 			return err
 		} else {
-			xc = x.ExitCode()
+			xc, _ = x.ExitCode()
 		}
 		t.Log().Info().Msgf("exited with code %d", xc)
 		return nil
@@ -464,7 +456,8 @@ func (t T) Stop(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		t.Log().Debug().Msgf("wait removed condition ended with exit code %d", xs.ExitCode())
+		xc, _ := xs.ExitCode()
+		t.Log().Debug().Msgf("wait removed condition ended with exit code %d", xc)
 	} else {
 		t.Log().Info().Msg("already removed")
 	}
@@ -549,10 +542,10 @@ func (t *T) Status(ctx context.Context) status.T {
 func (t *T) statusInspectImage(ctx context.Context, inspect containerapi.ContainerInspect) {
 	var tgtID, curID string
 	if img, err := t.image(); err == nil {
-		tgtID = img.ID()
+		tgtID = img.ID
 	}
 	if img, err := getImage(ctx, inspect.Config.Image); err == nil {
-		curID = img.ID()
+		curID = img.ID
 	}
 	if curID != tgtID {
 		t.warnAttrDiff("image", curID, tgtID)
@@ -664,42 +657,39 @@ func (t T) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
 
-func (t T) entrypoint(inspect imageapi.ImageInspect) []string {
+func (t T) entrypoint() []string {
 	if len(t.Entrypoint) > 0 {
 		return t.Entrypoint
 	}
-	return inspect.Config.Entrypoint
+	return nil
 }
 
-func (t T) command(inspect imageapi.ImageInspect) []string {
+func (t T) command() []string {
 	if len(t.Command) > 0 {
 		return t.Command
 	}
-	return inspect.Config.Cmd
+	return nil
 }
 
-func (t T) imageInspect() (imageapi.ImageInspect, error) {
-	img, err := t.image()
-	if err != nil {
-		return imageapi.ImageInspect{}, err
-	}
-	return img.Inspect(context.Background())
-}
-
-func (t T) image() (*image.Image, error) {
+func (t T) image() (imageapi.Image, error) {
 	return getImage(context.Background(), t.Image)
 }
 
-func getImage(ctx context.Context, name string) (*image.Image, error) {
+func getImage(ctx context.Context, name string) (imageapi.Image, error) {
 	if img, ok := imageCache.Get(name); ok {
 		return img, nil
 	}
-	img, err := cli().ImageService().FindImage(ctx, name)
+	imgs, err := cli().ImageService().List(ctx)
 	if err != nil {
-		return nil, err
+		return imageapi.Image{}, err
 	}
-	imageCache.Put(name, img)
-	return img, nil
+	for _, img := range imgs {
+		if stringslice.Has(name, img.RepoTags) {
+			imageCache.Put(name, img)
+			return img, nil
+		}
+	}
+	return imageapi.Image{}, errors.Errorf("image %s not found", name)
 }
 
 func (t T) env() (env []string, err error) {
