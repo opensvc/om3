@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"net"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"opensvc.com/opensvc/util/device"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
+	"opensvc.com/opensvc/util/stringslice"
 )
 
 var (
@@ -320,17 +322,31 @@ func (t core) Dereference(ref string) (string, error) {
 			return url.String(), nil
 		}
 	case "clusterid":
-		return ref, fmt.Errorf("TODO")
+		return rawconfig.ClusterSection().ID, nil
 	case "clustername":
-		return ref, fmt.Errorf("TODO")
+		return rawconfig.ClusterSection().Name, nil
 	case "clusternodes":
-		return ref, fmt.Errorf("TODO")
+		return rawconfig.ClusterSection().Nodes, nil
 	case "clusterdrpnodes":
-		return ref, fmt.Errorf("TODO")
+		return ref, fmt.Errorf("Deprecated")
 	case "dns":
-		return ref, fmt.Errorf("TODO")
+		return rawconfig.ClusterSection().DNS, nil
 	case "dnsnodes":
-		return ref, fmt.Errorf("TODO")
+		ips := rawconfig.ClusterSection().DNS
+		l := make([]string, 0)
+		nodes := strings.Fields(rawconfig.ClusterSection().Nodes)
+		for _, ip := range strings.Fields(ips) {
+			if names, err := net.LookupAddr(ip); err != nil {
+				return "", err
+			} else {
+				for _, name := range names {
+					if stringslice.Has(name, nodes) {
+						l = append(l, name)
+					}
+				}
+			}
+		}
+		return strings.Join(l, " "), nil
 	case "dnsuxsock":
 		return rawconfig.DNSUDSFile(), nil
 	case "dnsuxsockd":

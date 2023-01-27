@@ -50,6 +50,7 @@ type (
 		Secret     string `mapstructure:"secret"`
 		CASecPaths string `mapstructure:"ca"`
 		Nodes      string `mapstructure:"nodes"`
+		DNS        string `mapstructure:"dns"`
 	}
 
 	nodeSection struct {
