@@ -161,7 +161,11 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	req.SessionId = xsession.ID
 	req.IsPartial = !resourceselector.FromContext(ctx, nil).IsZero()
 	_, err = req.Do()
-	if err != nil {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		t.log.Debug().Msg("skip announce progress: daemon is not running")
+		return nil
+	case err != nil:
 		t.log.Error().Err(err).Msgf("announce %s state", progress)
 		return err
 	}
