@@ -320,6 +320,11 @@ func (t T) start(ctx context.Context, c *container.Container) error {
 	}()
 	select {
 	case err := <-errs:
+		if err == nil {
+			actionrollback.Register(ctx, func() error {
+				return t.Stop(ctx)
+			})
+		}
 		return err
 	case <-time.After(*t.StartTimeout):
 		return fmt.Errorf("timeout")
@@ -429,19 +434,6 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	actionrollback.Register(ctx, func() error {
-		var xc int
-		if err := c.Stop(ctx); err != nil {
-			return err
-		}
-		if x, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionNotRunning)); err != nil {
-			return err
-		} else {
-			xc, _ = x.ExitCode()
-		}
-		t.Log().Info().Msgf("exited with code %d", xc)
-		return nil
-	})
 	return c, nil
 }
 
@@ -453,7 +445,11 @@ func (t T) Stop(ctx context.Context) error {
 		t.Log().Info().Str("name", name).Msg("already stopped")
 	} else {
 		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("stop container (timeout %s)", t.StopTimeout)
-		if err := c.Stop(ctx, container.WithStopTimeout(*t.StopTimeout)); err != nil {
+		err = c.Stop(ctx, container.WithStopTimeout(*t.StopTimeout))
+		switch {
+		case errdefs.IsNotFound(err):
+			t.Log().Info().Str("name", name).Msg("stopped while requesting stop")
+		case err != nil:
 			return err
 		}
 		t.Log().Debug().Err(err).Msgf("stopped container")
@@ -465,11 +461,15 @@ func (t T) Stop(ctx context.Context) error {
 		}
 		t.Log().Debug().Msgf("wait removed condition")
 		xs, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionRemoved))
-		if err != nil {
+		switch {
+		case errdefs.IsNotFound(err):
+			t.Log().Info().Str("name", name).Msg("stopped while requesting stop")
+		case err != nil:
 			return err
+		default:
+			xc, _ := xs.ExitCode()
+			t.Log().Debug().Msgf("wait removed condition ended with exit code %d", xc)
 		}
-		xc, _ := xs.ExitCode()
-		t.Log().Debug().Msgf("wait removed condition ended with exit code %d", xc)
 	} else {
 		t.Log().Info().Msg("already removed")
 	}
