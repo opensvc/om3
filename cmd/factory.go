@@ -1609,7 +1609,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagsLock(flags, &options.OptsLock)
-	addFlagCreateFrom(flags, &options.From)
+	addFlagCreateConfig(flags, &options.Config)
 	addFlagCreateForce(flags, &options.Force)
 	addFlagCreateNamespace(flags, &options.Namespace)
 	addFlagCreateRestore(flags, &options.Restore)

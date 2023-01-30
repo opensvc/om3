@@ -10,7 +10,7 @@ require (
 	github.com/containerd/cgroups v1.0.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
-	github.com/cpuguy83/go-docker v0.0.0-20201116220134-debea1262389
+	github.com/cpuguy83/go-docker v0.0.0-20230118175646-6070475a5194
 	github.com/cvaroqui/ini v1.66.7-0.20220627091046-b218d4fc5c30
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/deepmap/oapi-codegen v1.11.0
@@ -44,6 +44,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/mlafeldt/sysrq v0.0.0-20171106101645-38dd78d6e663
 	github.com/msoap/byline v1.1.1
 	github.com/ncw/directio v1.0.5
 	github.com/opencontainers/runtime-spec v1.0.2
@@ -117,7 +118,6 @@ require (
 	github.com/mdlayher/netlink v1.4.2 // indirect
 	github.com/mdlayher/socket v0.0.0-20211102153432-57e3fa563ecb // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
-	github.com/mlafeldt/sysrq v0.0.0-20171106101645-38dd78d6e663 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -142,5 +142,3 @@ require (
 )
 
 replace github.com/spf13/viper => github.com/opensvc/viper v1.7.0-osvc.1
-
-replace github.com/cpuguy83/go-docker => github.com/opensvc/go-docker v0.0.0-20211017135555-65a1ec774c95

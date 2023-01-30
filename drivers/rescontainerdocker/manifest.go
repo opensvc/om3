@@ -137,6 +137,14 @@ func (t T) Manifest() *manifest.T {
 			Text:      "Give extended privileges to the container.",
 		},
 		{
+			Option:    "init",
+			Attr:      "Init",
+			Scopable:  true,
+			Default:   "true",
+			Converter: converters.Bool,
+			Text:      "Run an init inside the container that forwards signals and reaps processes.",
+		},
+		{
 			Option:    "interactive",
 			Attr:      "Interactive",
 			Scopable:  true,
@@ -189,6 +197,13 @@ func (t T) Manifest() *manifest.T {
 			Scopable: true,
 			Example:  "container#0",
 			Text:     "Sets the :cmd:`docker run --net` argument. The default is ``none`` if :opt:`--net` is not specified in :kw:`run_args`, meaning the container will have a private netns other containers can share. A :c-res:`ip.netns` or :c-res:`ip.cni` resource can configure an ip address in this container. A container with ``netns=container#0`` will share the container#0 netns. In this case agent format a :opt:`--net=container:<name of container#0 docker instance>`. ``netns=host`` shares the host netns.",
+		},
+		{
+			Option:   "user",
+			Attr:     "User",
+			Scopable: true,
+			Example:  "guest",
+			Text:     "Sets the :cmd:`docker run --user` argument. The user that will run the command inside the container, also support user:group.",
 		},
 		{
 			Option:   "userns",

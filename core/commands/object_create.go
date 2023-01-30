@@ -28,7 +28,7 @@ type (
 	CmdObjectCreate struct {
 		OptsGlobal
 		OptsLock
-		From        string
+		Config      string
 		Keywords    []string
 		Env         string
 		Interactive bool
@@ -86,18 +86,18 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (path.T, error) {
 }
 
 func (t *CmdObjectCreate) getTemplate() string {
-	if strings.HasPrefix(t.From, schemeTemplate) {
-		return t.From[len(schemeTemplate):]
+	if strings.HasPrefix(t.Config, schemeTemplate) {
+		return t.Config[len(schemeTemplate):]
 	}
-	if _, err := strconv.Atoi(t.From); err == nil {
-		return t.From
+	if _, err := strconv.Atoi(t.Config); err == nil {
+		return t.Config
 	}
 	return ""
 }
 
 func (t *CmdObjectCreate) getSourcePaths() path.L {
 	paths, _ := objectselector.NewSelection(
-		t.From,
+		t.Config,
 		objectselector.SelectionWithLocal(t.Local),
 		objectselector.SelectionWithServer(t.Server),
 	).Expand()
@@ -108,9 +108,9 @@ func (t *CmdObjectCreate) Do() error {
 	template := t.getTemplate()
 	paths := t.getSourcePaths()
 	switch {
-	case t.From == "":
+	case t.Config == "":
 		return t.fromScratch()
-	case t.From == "-" || t.From == "/dev/stdin" || t.From == "stdin":
+	case t.Config == "-" || t.Config == "/dev/stdin" || t.Config == "stdin":
 		return t.fromStdin()
 	case template != "":
 		return t.fromTemplate(template)
@@ -217,14 +217,14 @@ func (t CmdObjectCreate) rawFromTemplate(template string) (Pivot, error) {
 }
 
 func (t CmdObjectCreate) rawFromConfig() (Pivot, error) {
-	u := uri.New(t.From)
+	u := uri.New(t.Config)
 	switch {
-	case file.Exists(t.From):
-		return rawFromConfigFile(t.path, t.From)
+	case file.Exists(t.Config):
+		return rawFromConfigFile(t.path, t.Config)
 	case u.IsValid():
 		return rawFromConfigURI(t.path, u)
 	default:
-		return nil, fmt.Errorf("invalid configuration: %s is not a file, nor an uri", t.From)
+		return nil, fmt.Errorf("invalid configuration: %s is not a file, nor an uri", t.Config)
 	}
 }
 
