@@ -59,6 +59,7 @@ type (
 		Image           string         `json:"image"`
 		ImagePullPolicy string         `json:"image_pull_policy"`
 		CWD             string         `json:"cwd"`
+		User            string         `json:"user"`
 		Command         []string       `json:"command"`
 		DNS             []string       `json:"dns"`
 		DNSSearch       []string       `json:"dns_search"`
@@ -67,6 +68,7 @@ type (
 		Detach          bool           `json:"detach"`
 		Remove          bool           `json:"remove"`
 		Privileged      bool           `json:"privileged"`
+		Init            bool           `json:"init"`
 		Interactive     bool           `json:"interactive"`
 		TTY             bool           `json:"tty"`
 		VolumeMounts    []string       `json:"volume_mounts"`
@@ -261,7 +263,7 @@ func (t T) Start(ctx context.Context) error {
 			t.Log().Info().Msg("already running")
 			return nil
 		} else {
-			if t.needRemove() {
+			if t.needPreStartRemove() {
 				t.Log().Info().Str("name", name).Msgf("remove leftover container")
 				if err := cs.Remove(ctx, name); err != nil {
 					return err
@@ -357,17 +359,25 @@ func (t T) create(ctx context.Context) (*container.Container, error) {
 		Labels:      labels,
 		OpenStdin:   t.Interactive,
 		StopTimeout: t.stopTimeout(),
+		StopSignal:  "SIGKILL",
+		User:        t.User,
+		/*
+			AttachStdin:  !t.Detach,
+			AttachStdout: !t.Detach,
+			AttachStderr: !t.Detach,
+		*/
 	}
 
 	hostConfig := containerapi.HostConfig{}
 	hostConfig.Privileged = t.Privileged
-	hostConfig.AutoRemove = t.needRemove()
+	hostConfig.AutoRemove = t.Remove
 	hostConfig.Cgroup = t.PG.ID
 	hostConfig.Devices = devices
 	hostConfig.Mounts = mounts
 	hostConfig.DNS = t.dns()
 	hostConfig.DNSOptions = t.dnsOptions()
 	hostConfig.DNSSearch = t.dnsSearch()
+	hostConfig.Init = &t.Init
 	if hostConfig.NetworkMode, err = t.formatNS(t.NetNS); err != nil {
 		return nil, err
 	}
@@ -442,16 +452,18 @@ func (t T) Stop(ctx context.Context) error {
 	if (err == nil && !inspect.State.Running) || errdefs.IsNotFound(err) {
 		t.Log().Info().Str("name", name).Msg("already stopped")
 	} else {
-		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msg("stop container")
-		if err := c.Stop(ctx); err != nil {
+		t.Log().Info().Str("name", name).Str("id", inspect.ID).Msgf("stop container (timeout %s)", t.StopTimeout)
+		if err := c.Stop(ctx, container.WithStopTimeout(*t.StopTimeout)); err != nil {
 			return err
 		}
+		t.Log().Debug().Err(err).Msgf("stopped container")
 	}
-	if t.needRemove() && !errdefs.IsNotFound(err) {
+	if t.Remove && !errdefs.IsNotFound(err) {
 		if !inspect.HostConfig.AutoRemove {
 			t.Log().Info().Str("name", name).Msg("remove container")
 			return cli().ContainerService().Remove(ctx, name)
 		}
+		t.Log().Debug().Msgf("wait removed condition")
 		xs, err := c.Wait(ctx, container.WithWaitCondition(container.WaitConditionRemoved))
 		if err != nil {
 			return err
@@ -809,7 +821,7 @@ func (t T) dnsSearch() []string {
 	return []string{dom0, dom1, dom2}
 }
 
-func (t T) needRemove() bool {
+func (t T) needPreStartRemove() bool {
 	return t.Remove || !t.Detach
 }
 
