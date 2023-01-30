@@ -46,27 +46,28 @@ func (t T) Usage() (network.StatusUsage, error) {
 }
 
 // CNIConfigData returns a cni network configuration, like
-// {
-//    "cniVersion": "0.3.0",
-//    "name": "net1",
-//    "type": "bridge",
-//    "bridge": "obr_net1",
-//    "isGateway": true,
-//    "ipMasq": false,
-//    "ipam": {
-//        "type": "host-local",
-//        "subnet": "10.23.0.0/26",
-//        "routes": [
-//            {
-//                "dst": "0.0.0.0/0"
-//            },
-//            {
-//                "dst": "10.23.0.0/24",
-//                "gw": "10.23.0.1"
-//            }
-//        ]
-//    }
-//}
+//
+//	{
+//	   "cniVersion": "0.3.0",
+//	   "name": "net1",
+//	   "type": "bridge",
+//	   "bridge": "obr_net1",
+//	   "isGateway": true,
+//	   "ipMasq": false,
+//	   "ipam": {
+//	       "type": "host-local",
+//	       "subnet": "10.23.0.0/26",
+//	       "routes": [
+//	           {
+//	               "dst": "0.0.0.0/0"
+//	           },
+//	           {
+//	               "dst": "10.23.0.0/24",
+//	               "gw": "10.23.0.1"
+//	           }
+//	       ]
+//	   }
+//	}
 func (t T) CNIConfigData() (interface{}, error) {
 	name := t.Name()
 	nwStr := t.Network()
@@ -415,14 +416,18 @@ func tunName(peerIP net.IP, nodeIndex int) string {
 func (t T) setupBridge() (netlink.Link, error) {
 	la := netlink.NewLinkAttrs()
 	la.Name = t.brName()
-	if link, err := netlink.LinkByName(la.Name); err != nil {
+	link, err := netlink.LinkByName(la.Name)
+	_, linkNotFound := err.(netlink.LinkNotFoundError)
+	switch {
+	case linkNotFound:
+	case err != nil:
 		return nil, err
-	} else if link != nil {
+	case link != nil:
 		t.Log().Info().Msgf("bridge link %s already exists", la.Name)
 		return link, nil
 	}
 	br := &netlink.Bridge{LinkAttrs: la}
-	err := netlink.LinkAdd(br)
+	err = netlink.LinkAdd(br)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add bridge link %s: %v", la.Name, err)
 	}
