@@ -32,7 +32,6 @@ import (
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/imon"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -59,6 +58,11 @@ type (
 		clusterConfig            cluster.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
+		iMonStarter              IMonStarter
+	}
+
+	IMonStarter interface {
+		Start(parent context.Context, p path.T, nodes []string) error
 	}
 )
 
@@ -81,7 +85,7 @@ var (
 )
 
 // Start launch goroutine instConfig worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any, iMonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -99,6 +103,8 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		// The worker reads on this chan to exit itself.
 		// This chan is buffered to allow an event handler to post the poison pill.
 		cmdC: make(chan any, 1),
+
+		iMonStarter: iMonStarter,
 	}
 
 	if err := o.setConfigure(); err != nil {
@@ -142,7 +148,7 @@ func (o *T) startInstanceMonitor() (bool, error) {
 		return false, nil
 	}
 	o.log.Info().Msgf("starting imon worker...")
-	if err := imon.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
+	if err := o.iMonStarter.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
 		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
 	}
