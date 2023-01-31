@@ -29,6 +29,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
@@ -73,6 +74,7 @@ var (
 
 	configFileCheckError = errors.New("config file check")
 
+	keyClusterNodes  = key.New("cluster", "nodes")
 	keyFlexMax       = key.New("DEFAULT", "flex_max")
 	keyFlexMin       = key.New("DEFAULT", "flex_min")
 	keyFlexTarget    = key.New("DEFAULT", "flex_target")
@@ -329,21 +331,26 @@ func (o *T) configFileCheck() error {
 // getScope return sorted scopes for object
 //
 // depending on object kind
-// Ccfg => cluster.nodes
+// Ccfg => eval cluster.nodes
 // else => eval DEFAULT.nodes
 func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
+	var kNode key.T
 	switch o.path.Kind {
 	case kind.Ccfg:
-		scope = o.clusterConfig.Nodes
+		kNode = keyClusterNodes
+		rawconfig.LoadSections()
 	default:
-		var evalNodes interface{}
-		evalNodes, err = cf.Eval(keyNodes)
-		if err != nil {
-			o.log.Error().Err(err).Msg("eval DEFAULT.nodes")
-			return
-		}
-		scope = evalNodes.([]string)
+		kNode = keyNodes
+
 	}
+	var evalNodes interface{}
+	evalNodes, err = cf.Eval(kNode)
+	if err != nil {
+		o.log.Error().Err(err).Msgf("eval %s", kNode)
+		return
+	}
+	scope = evalNodes.([]string)
+	o.log.Debug().Msgf("scope:'%s'", scope)
 	return
 }
 
