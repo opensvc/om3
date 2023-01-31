@@ -15,6 +15,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/daemonlogctx"
 	"opensvc.com/opensvc/daemon/icfg"
+	"opensvc.com/opensvc/daemon/imon"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/daemon/remoteconfig"
 	"opensvc.com/opensvc/util/file"
@@ -101,7 +102,8 @@ func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		return
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
-		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC); err != nil {
+		// TODO handle startup of imon
+		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC, imon.Factory); err != nil {
 			return
 		}
 	}
@@ -129,7 +131,8 @@ func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 	if mtime.IsZero() {
 		return
 	}
-	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC); err != nil {
+	// TODO handle startup of imon
+	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC, imon.Factory); err != nil {
 		return
 	}
 	d.cfgMTime[s] = mtime
