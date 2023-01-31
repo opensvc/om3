@@ -146,6 +146,20 @@ func newCmdDaemonAuth() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonDNSDump() *cobra.Command {
+	var options commands.CmdDaemonDNSDump
+	cmd := &cobra.Command{
+		Use:   "dump",
+		Short: "dump the content of the cluster zone",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdDaemonJoin() *cobra.Command {
 	var options commands.CmdDaemonJoin
 	cmd := &cobra.Command{

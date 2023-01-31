@@ -99,6 +99,18 @@ type Daemon struct {
 	Sub        Sub `json:"sub"`
 }
 
+// DnsRecord defines model for dnsRecord.
+type DnsRecord struct {
+	Class string `json:"class"`
+	Data  string `json:"data"`
+	Name  string `json:"name"`
+	Ttl   int    `json:"ttl"`
+	Type  string `json:"type"`
+}
+
+// DnsZone defines model for dnsZone.
+type DnsZone = []DnsRecord
+
 // Error defines model for error.
 type Error struct {
 	// Error code

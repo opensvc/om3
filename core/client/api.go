@@ -22,6 +22,10 @@ func (t T) NewPostDaemonStop() *api.PostDaemonStop {
 	return api.NewPostDaemonStop(t)
 }
 
+func (t T) NewGetDaemonDNSDump() *api.GetDaemonDNSDump {
+	return api.NewGetDaemonDNSDump(t)
+}
+
 func (t T) NewGetEvents() *api.GetEvents {
 	return api.NewGetEvents(t)
 }

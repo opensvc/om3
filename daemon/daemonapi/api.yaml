@@ -28,6 +28,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responsePostAuthToken'
+  /daemon/dns/dump:
+    get:
+      operationId: GetDaemonDNSDump
+      tags:
+        - daemon
+        - dns
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Dump the cluster DNS zone content.
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dnsZone'
   /daemon/logs/control:
     post:
       operationId: PostDaemonLogsControl
@@ -1016,6 +1034,29 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
+    dnsZone:
+      type: array
+      items:
+        $ref: '#/components/schemas/dnsRecord'
+    dnsRecord:
+      type: object
+      required:
+        - name
+        - type
+        - class
+        - ttl
+        - data
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        class:
+          type: string
+        ttl:
+          type: integer
+        data:
+          type: string
     responseDaemonStatus:
       type: object
       required:

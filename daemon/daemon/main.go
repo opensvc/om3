@@ -19,6 +19,7 @@ import (
 	"opensvc.com/opensvc/daemon/daemondata"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/discover"
+	"opensvc.com/opensvc/daemon/dns"
 	"opensvc.com/opensvc/daemon/enable"
 	"opensvc.com/opensvc/daemon/hb"
 	"opensvc.com/opensvc/daemon/hbcache"
@@ -186,6 +187,10 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := nmon.Start(t.ctx); err != nil {
 		return err
 	}
+	if err := dns.Start(t.ctx); err != nil {
+		return err
+	}
+
 	cancelDiscover, err := discover.Start(t.ctx)
 	if err != nil {
 		return err

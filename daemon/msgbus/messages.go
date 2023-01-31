@@ -69,6 +69,8 @@ var (
 		"SetNodeMonitor":            SetNodeMonitor{},
 		"SubscriptionError":         pubsub.SubscriptionError{},
 		"WatchDog":                  WatchDog{},
+		"ZoneRecordDeleted":         ZoneRecordDeleted{},
+		"ZoneRecordUpdated":         ZoneRecordUpdated{},
 	}
 )
 
@@ -350,6 +352,20 @@ type (
 	WatchDog struct {
 		Name string
 	}
+	ZoneRecordDeleted struct {
+		Name  string
+		Class string
+		Type  string
+		TTL   int
+		Data  string
+	}
+	ZoneRecordUpdated struct {
+		Name  string
+		Class string
+		Type  string
+		TTL   int
+		Data  string
+	}
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -595,4 +611,12 @@ func (e WatchDog) String() string {
 
 func (e WatchDog) Kind() string {
 	return "WatchDog"
+}
+
+func (e ZoneRecordDeleted) Kind() string {
+	return "ZoneRecordDeleted"
+}
+
+func (e ZoneRecordUpdated) Kind() string {
+	return "ZoneRecordUpdated"
 }
