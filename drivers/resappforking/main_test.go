@@ -13,6 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/core/actionrollback"
+	"opensvc.com/opensvc/core/kind"
+	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/status"
 	"opensvc.com/opensvc/drivers/resapp"
@@ -43,6 +46,12 @@ func WithLoggerAndPgApp(app T) T {
 	app.SetLoggerForTest(log)
 	app.SetRID("foo")
 	app.SetPG(&pg.Config{})
+
+	o, err := object.NewSvc(path.T{Kind: kind.Svc, Name: "ooo"}, object.WithVolatile(true))
+	if err != nil {
+		panic(err)
+	}
+	app.SetObject(o)
 	return app
 }
 
