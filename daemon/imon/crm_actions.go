@@ -16,6 +16,9 @@ var (
 
 	// runners chan limit number of // crmActions to maxRunners
 	runners = make(chan struct{}, maxRunners)
+
+	// crmAction can be used to define alternate crmAction for tests
+	crmAction func(title string, cmdArgs ...string) error
 )
 
 func init() {
@@ -82,6 +85,13 @@ func (o *imon) crmUnprovisionLeader() error {
 }
 
 func (o *imon) crmAction(title string, cmdArgs ...string) error {
+	if crmAction != nil {
+		return crmAction(title, cmdArgs...)
+	}
+	return o.crmDefaultAction(title, cmdArgs...)
+}
+
+func (o *imon) crmDefaultAction(title string, cmdArgs ...string) error {
 	runners <- struct{}{}
 	defer func() {
 		<-runners
