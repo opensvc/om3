@@ -79,7 +79,7 @@ func setup(t *testing.T) {
 }
 
 func TestDaemonStartThenStop(t *testing.T) {
-	if runtime.GOOS != "darwin" && os.Getpid() != 0 {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	for name, getUrl := range casesWithMissingConf {
@@ -171,7 +171,7 @@ func TestDaemonStartThenStop(t *testing.T) {
 }
 
 func TestDaemonReStartThenStop(t *testing.T) {
-	if runtime.GOOS != "darwin" && os.Getpid() != 0 {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	for name, getUrl := range cases {
@@ -207,7 +207,7 @@ func TestDaemonReStartThenStop(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	if runtime.GOOS != "darwin" && os.Getpid() != 0 {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	for name, getUrl := range cases {

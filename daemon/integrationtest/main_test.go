@@ -1,6 +1,8 @@
 package integrationtest
 
 import (
+	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -14,6 +16,9 @@ import (
 )
 
 func Test_Setup(t *testing.T) {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	t.Logf("Setup...")
 	env, cancel := Setup(t)
 	defer cancel()
@@ -27,6 +32,9 @@ func Test_GetClient(t *testing.T) {
 }
 
 func Test_GetDaemonStatus(t *testing.T) {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	env, cancel := Setup(t)
 	defer cancel()
 

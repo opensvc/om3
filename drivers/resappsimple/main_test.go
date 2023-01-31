@@ -60,7 +60,7 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("does not execute start command if status is already up", func(t *testing.T) {
-		if os.Getpid() != 0 {
+		if os.Getuid() != 0 {
 			t.Skip("skipped for non root user")
 		}
 		td, cleanup := prepareConfig(t)
@@ -74,7 +74,7 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when start succeed stop is added to rollback stack", func(t *testing.T) {
-		if os.Getpid() != 0 {
+		if os.Getuid() != 0 {
 			t.Skip("skipped for non root user")
 		}
 		td, cleanup := prepareConfig(t)
@@ -112,7 +112,7 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when already started stop is not added to rollback stack", func(t *testing.T) {
-		if os.Getpid() != 0 {
+		if os.Getuid() != 0 {
 			t.Skip("skipped for non root user")
 		}
 		td, cleanup := prepareConfig(t)
@@ -134,7 +134,7 @@ func TestStart(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	if os.Getpid() != 0 {
+	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	t.Run("execute stop command", func(t *testing.T) {
