@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -62,6 +63,10 @@ func (o *imon) startedFromThawed() {
 	}
 	if o.hasOtherNodeActing() {
 		o.log.Debug().Msg("another node acting")
+		return
+	}
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.Undef) {
+		o.log.Debug().Msg("provisioned is false or undef")
 		return
 	}
 	o.transitionTo(instance.MonitorStateReady)
