@@ -62,3 +62,15 @@ func Impersonate(s string) func() {
 	hostname = s
 	return fn
 }
+
+// SetHostnameForGoTest can be used during go test to define alternate hostname
+//
+// Example:
+//   func Test_something(t *testing.T) {
+//     SetHostnameForGoTest("newhostname")
+//     defer SetHostnameForGoTest("")
+//     // test...
+//   }
+func SetHostnameForGoTest(s string) {
+	hostname = s
+}
