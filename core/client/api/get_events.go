@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -18,12 +19,18 @@ type GetEvents struct {
 	namespace string
 	selector  string
 	relatives bool
+	Limit     uint64
 	Filters   []string
-	Duration   time.Duration
+	Duration  time.Duration
 }
 
 func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
 	t.Duration = duration
+	return t
+}
+
+func (t *GetEvents) SetLimit(limit uint64) *GetEvents {
+	t.Limit = limit
 	return t
 }
 
@@ -131,7 +138,7 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 		}
 		e := &event.Event{}
 		if err := json.Unmarshal(b, e); err != nil {
-			log.Error().Err(err).Msg("")
+			log.Error().Err(err).Msgf("can't unmarshal '%s' has Event", b)
 			continue
 		}
 		out <- *e
@@ -149,6 +156,9 @@ func (t GetEvents) newRequest() *request.T {
 	req.Options["selector"] = t.selector
 	req.Options["namespace"] = t.namespace
 	req.Options["full"] = t.relatives
+	if t.Limit > 0 {
+		req.Values.Add("limit", fmt.Sprintf("%d", t.Limit))
+	}
 	for _, filter := range t.Filters {
 		req.Values.Add("filter", filter)
 	}
