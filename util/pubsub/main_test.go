@@ -128,6 +128,7 @@ func TestSub(t *testing.T) {
 	for s, c := range cases {
 		t.Run(s, func(t *testing.T) {
 			bus := newRun(t.Name())
+			defer bus.Stop()
 			sub := bus.Sub(t.Name())
 			for _, f := range c.filters {
 				sub.AddFilter(f.filterType, f.labels...)
