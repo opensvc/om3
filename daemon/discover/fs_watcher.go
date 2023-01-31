@@ -224,6 +224,10 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						bus.Pub(msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 					}
 				case dirCreated(event):
+					if event.Name == "." {
+						log.Debug().Msgf("skip event %s", event)
+						continue
+					}
 					if err := d.fsWatcher.Add(filename); err != nil {
 						log.Error().Err(err).Msgf("add dir watch %s", filename)
 					} else {
