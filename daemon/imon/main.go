@@ -74,10 +74,23 @@ type (
 		state    instance.MonitorState
 		newState instance.MonitorState
 	}
+
+	imonFactory struct {}
 )
 
-// Start launch goroutine imon worker for a local instance state
-func Start(parent context.Context, p path.T, nodes []string) error {
+// Start creates a new imon and starts worker goroutine to manage local instance monitor
+func (i imonFactory) Start(parent context.Context, p path.T, nodes []string) error {
+	return start(parent, p, nodes)
+}
+
+var (
+	Factory imonFactory
+
+	defaultReadyDuration = 5 * time.Second
+)
+
+// start launch goroutine imon worker for a local instance state
+func start(parent context.Context, p path.T, nodes []string) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
@@ -106,7 +119,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 		localhost:     hostname.Hostname(),
 		scopeNodes:    nodes,
 		change:        true,
-		readyDuration: 5 * time.Second,
+		readyDuration: defaultReadyDuration,
 	}
 
 	o.startSubscriptions()
@@ -129,7 +142,7 @@ func Start(parent context.Context, p path.T, nodes []string) error {
 
 func (o *imon) startSubscriptions() {
 	bus := pubsub.BusFromContext(o.ctx)
-	sub := bus.Sub(o.id + "imon")
+	sub := bus.Sub(o.id + " imon")
 	label := pubsub.Label{"path", o.id}
 	nodeLabel := pubsub.Label{"node", o.localhost}
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
