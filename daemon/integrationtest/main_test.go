@@ -47,7 +47,7 @@ func Test_GetDaemonStatus(t *testing.T) {
 
 	t.Run("discover newly created object", func(t *testing.T) {
 		env.InstallFile("./testdata/foo.conf", "etc/foo.conf")
-		time.Sleep(150 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		cData, err := GetDaemonStatus(t)
 		p := path.T{Name: "foo", Kind: kind.Svc}
 		require.Nil(t, err)
