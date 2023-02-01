@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/pubsub"
 )
@@ -77,12 +78,13 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	t := &dns{
-		ctx:    ctx,
-		cancel: cancel,
-		cmdC:   make(chan any),
-		bus:    pubsub.BusFromContext(ctx),
-		log:    log.Logger.With().Str("func", "dns").Logger(),
-		state:  make(map[stateKey]Zone),
+		cluster: ccfg.Get(),
+		ctx:     ctx,
+		cancel:  cancel,
+		cmdC:    make(chan any),
+		bus:     pubsub.BusFromContext(ctx),
+		log:     log.Logger.With().Str("func", "dns").Logger(),
+		state:   make(map[stateKey]Zone),
 	}
 
 	t.startSubscriptions()
@@ -107,8 +109,10 @@ func Start(parent context.Context) error {
 
 func (t *dns) startSubscriptions() {
 	sub := t.bus.Sub("dns")
+	for _, last := range sub.AddFilterGetLasts(msgbus.InstanceStatusUpdated{}) {
+		t.onInstanceStatusUpdated(last.(msgbus.InstanceStatusUpdated))
+	}
 	sub.AddFilter(msgbus.InstanceStatusDeleted{})
-	sub.AddFilter(msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
 	sub.Start()
 	t.sub = sub

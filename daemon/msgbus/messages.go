@@ -353,12 +353,16 @@ type (
 		Name string
 	}
 	ZoneRecordDeleted struct {
+		Path    path.T
+		Node    string
 		Name    string
 		Type    string
 		TTL     int
 		Content string
 	}
 	ZoneRecordUpdated struct {
+		Path    path.T
+		Node    string
 		Name    string
 		Type    string
 		TTL     int

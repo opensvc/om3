@@ -8,6 +8,7 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/daemon/msgbus"
+	"opensvc.com/opensvc/util/pubsub"
 )
 
 const hexDigit = "0123456789abcdef"
@@ -35,29 +36,33 @@ func (t *dns) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 	t.cluster = c.Value
 }
 
-func (t *dns) pubDeleted(record Record) {
+func (t *dns) pubDeleted(record Record, p path.T, node string) {
 	t.bus.Pub(msgbus.ZoneRecordDeleted{
+		Path:    p,
+		Node:    node,
 		Name:    record.Name,
 		Type:    record.Type,
 		TTL:     record.TTL,
 		Content: record.Content,
-	})
+	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
 }
 
-func (t *dns) pubUpdated(record Record) {
+func (t *dns) pubUpdated(record Record, p path.T, node string) {
 	t.bus.Pub(msgbus.ZoneRecordUpdated{
+		Path:    p,
+		Node:    node,
 		Name:    record.Name,
 		Type:    record.Type,
 		TTL:     record.TTL,
 		Content: record.Content,
-	})
+	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
 }
 
 func (t *dns) onInstanceStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	key := t.stateKey(c.Path, c.Node)
 	if records, ok := t.state[key]; ok {
 		for _, record := range records {
-			t.pubDeleted(record)
+			t.pubDeleted(record, c.Path, c.Node)
 		}
 		delete(t.state, key)
 	}
@@ -87,7 +92,7 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 			change = true
 		}
 		if change {
-			t.pubUpdated(record)
+			t.pubUpdated(record, c.Path, c.Node)
 			updatedRecords[record.Name] = nil
 		}
 	}
@@ -190,7 +195,7 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 	}
 	for key, record := range existingRecords {
 		if _, ok := updatedRecords[key]; !ok {
-			t.pubDeleted(record)
+			t.pubDeleted(record, c.Path, c.Node)
 		}
 	}
 	if len(records) > 0 {
