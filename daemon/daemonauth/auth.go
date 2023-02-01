@@ -14,7 +14,7 @@ import (
 	"opensvc.com/opensvc/core/kind"
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonctx"
 	"opensvc.com/opensvc/util/key"
 
@@ -72,11 +72,11 @@ func validateNode(_ context.Context, _ *http.Request, username, password string)
 	if username == "" {
 		return nil, errors.Errorf("empty user")
 	}
-	clusterSection := rawconfig.ClusterSection()
-	if !strings.Contains(" "+clusterSection.Nodes+" ", username) {
+	cluster := ccfg.Get()
+	if !cluster.Nodes.Contains(username) {
 		return nil, errors.Errorf("user %s is not a cluster node", username)
 	}
-	storedPassword := clusterSection.Secret
+	storedPassword := cluster.Secret()
 	if storedPassword == "" {
 		return nil, errors.Errorf("no cluster.secret set")
 	}

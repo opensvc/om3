@@ -23,6 +23,10 @@ type (
 		HumanRenderer RenderFunc
 		Colorize      *palette.ColorPaletteFunc
 	}
+
+	renderer interface {
+		Render() string
+	}
 )
 
 var (
@@ -36,12 +40,10 @@ var (
 	regexpJSONSecondary = regexp.MustCompile(`(")(n/a)(")`)
 )
 
-//
 // Sprint returns the string representation of the data in one of the
 // supported format (json, flat, human, ...).
 //
 // The human format needs a RenderFunc to be passed.
-//
 func (t Renderer) Sprint() string {
 	format := toID[t.Format]
 	render.SetColor(t.Color)
@@ -81,17 +83,18 @@ func (t Renderer) Sprint() string {
 		if t.HumanRenderer != nil {
 			return t.HumanRenderer()
 		}
+		if r, ok := t.Data.(renderer); ok {
+			return r.Render()
+		}
 		b, _ := json.MarshalIndent(t.Data, "", indent)
 		return string(b) + "\n"
 	}
 }
 
-//
 // Print prints the representation of the data in one of the
 // supported format (json, flat, human, ...).
 //
 // The human format needs a RenderFunc to be passed.
-//
 func (t Renderer) Print() {
 	fmt.Print(t.Sprint())
 }

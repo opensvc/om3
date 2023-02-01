@@ -51,11 +51,17 @@ func TestGetLast(t *testing.T) {
 	t.Run("label2", func(t *testing.T) {
 		assert.Equal(t, "msg2", sub.GetLast("", label2).(string))
 	})
+	t.Run("label1 label1", func(t *testing.T) {
+		assert.Equal(t, "msg4", sub.GetLast("", label1, label1).(string))
+	})
+	t.Run("label2 label2", func(t *testing.T) {
+		assert.Equal(t, "msg2", sub.GetLast("", label2, label2).(string))
+	})
 	t.Run("label2 label1", func(t *testing.T) {
 		assert.Equal(t, "msg2", sub.GetLast("", label2, label1).(string))
 	})
 	t.Run("label1 label2", func(t *testing.T) {
-		assert.Equal(t, "msg2", sub.GetLast("", label2, label1).(string))
+		assert.Equal(t, "msg2", sub.GetLast("", label1, label2).(string))
 	})
 	t.Run("label3", func(t *testing.T) {
 		assert.Nil(t, sub.GetLast("", label3))

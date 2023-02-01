@@ -47,7 +47,6 @@ import (
 type (
 	nmon struct {
 		config        *xconfig.T
-		clusterConfig *xconfig.T
 		state         node.Monitor
 		previousState node.Monitor
 
@@ -104,12 +103,6 @@ func Start(parent context.Context) error {
 		o.config = n.MergedConfig()
 	}
 
-	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
-		return err
-	} else {
-		o.clusterConfig = n.Config()
-	}
-
 	o.startSubscriptions()
 	go func() {
 		defer func() {
@@ -123,7 +116,6 @@ func Start(parent context.Context) error {
 
 func (o *nmon) startSubscriptions() {
 	sub := o.bus.Sub("nmon")
-	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
 	sub.AddFilter(msgbus.FrozenFileUpdated{})

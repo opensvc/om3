@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -14,6 +13,7 @@ import (
 	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/filesystems"
@@ -116,7 +116,7 @@ func installCaFiles(clusterName string) error {
 	var b []byte
 	validCA := make([]string, 0)
 	caList := []string{caPath.String()}
-	caList = append(caList, strings.Fields(rawconfig.ClusterSection().CASecPaths)...)
+	caList = append(caList, ccfg.Get().CASecPaths...)
 	for _, p := range caList {
 		caPath, err := path.Parse(p)
 		if err != nil {

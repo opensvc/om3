@@ -146,6 +146,20 @@ func newCmdDaemonAuth() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonDNSDump() *cobra.Command {
+	var options commands.CmdDaemonDNSDump
+	cmd := &cobra.Command{
+		Use:   "dump",
+		Short: "dump the content of the cluster zone",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdDaemonJoin() *cobra.Command {
 	var options commands.CmdDaemonJoin
 	cmd := &cobra.Command{
@@ -960,7 +974,7 @@ func newCmdNodePRKey() *cobra.Command {
 	var options commands.CmdNodePRKey
 	cmd := &cobra.Command{
 		Use:     "prkey",
-		Short:   "Show the scsi3 persistent reservation key of this node",
+		Short:   "show the scsi3 persistent reservation key of this node",
 		Aliases: []string{"prk", "prke"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()

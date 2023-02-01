@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog"
 
 	clientrequest "opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/listener/routeresponse"
 )
@@ -139,7 +139,7 @@ func (r *request) do(resp *routeresponse.Response) error {
 	body := r.body
 	request, err := http.NewRequest(r.method, r.path, body)
 	request.Header = r.header
-	request.SetBasicAuth(r.header.Get(daemonenv.HeaderNode), rawconfig.ClusterSection().Secret)
+	request.SetBasicAuth(r.header.Get(daemonenv.HeaderNode), ccfg.Get().Secret())
 	if err != nil {
 		return err
 	}

@@ -113,6 +113,13 @@ type (
 		resp     chan<- error
 	}
 
+	cmdGetLasts struct {
+		id       uuid.UUID
+		labels   labelMap
+		dataType string
+		resp     chan<- []any
+	}
+
 	cmdGetLast struct {
 		id       uuid.UUID
 		labels   labelMap
@@ -270,6 +277,8 @@ func (b *Bus) Start(ctx context.Context) {
 				switch c := cmd.(type) {
 				case cmdGetLast:
 					b.onGetLastCmd(c)
+				case cmdGetLasts:
+					b.onGetLastsCmd(c)
 				case cmdPub:
 					b.onPubCmd(c)
 				case cmdSubAddFilter:
@@ -342,6 +351,19 @@ func (b *Bus) onPubCmd(c cmdPub) {
 		}
 	}
 	c.resp <- true
+}
+
+func (bus *Bus) onGetLastsCmd(c cmdGetLasts) {
+	var lasts []any
+	filterKey := fmtKey(c.dataType, c.labels)
+	for _, entry := range bus.lastPub {
+		for _, key := range pubKeys(entry.cmdPub.dataType, entry.cmdPub.labels) {
+			if key == filterKey {
+				lasts = append(lasts, entry.cmdPub.data)
+			}
+		}
+	}
+	c.resp <- lasts
 }
 
 func (bus *Bus) onGetLastCmd(c cmdGetLast) {
@@ -678,11 +700,42 @@ func (sub *Subscription) String() string {
 	return s
 }
 
+func (sub *Subscription) AddFilterGetLasts(v any, labels ...Label) []any {
+	sub.AddFilter(v, labels...)
+	return sub.GetLasts(v, labels...)
+}
+
+// GetLasts returns all last published events of each type and labelset, matching type and labels
+func (sub *Subscription) GetLasts(v any, labels ...Label) []any {
+	respC := make(chan []any)
+	op := cmdGetLasts{
+		id:     sub.id,
+		labels: newLabels(labels...),
+		resp:   respC,
+	}
+	dataType := reflect.TypeOf(v)
+	if dataType != nil {
+		op.dataType = dataType.String()
+	}
+	select {
+	case sub.bus.cmdC <- op:
+	case <-sub.bus.ctx.Done():
+		return nil
+	}
+	select {
+	case last := <-respC:
+		return last
+	case <-sub.bus.ctx.Done():
+		return nil
+	}
+}
+
 func (sub *Subscription) AddFilterGetLast(v any, labels ...Label) any {
 	sub.AddFilter(v, labels...)
 	return sub.GetLast(v, labels...)
 }
 
+// GetLast returns the last published event matching type and labels
 func (sub *Subscription) GetLast(v any, labels ...Label) any {
 	respC := make(chan any)
 	op := cmdGetLast{
