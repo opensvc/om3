@@ -5,6 +5,7 @@ package network
 import (
 	"net"
 
+	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
 	"opensvc.com/opensvc/util/rttables"
@@ -57,13 +58,15 @@ func (t Route) Add() error {
 		Src: t.Src,
 		Gw:  t.Gateway,
 	}
-	if intf, err := net.InterfaceByName(t.Dev); err != nil {
-		return err
-	} else {
-		nlRoute.LinkIndex = intf.Index
+	if t.Dev != "" {
+		if intf, err := net.InterfaceByName(t.Dev); err != nil {
+			return errors.Wrapf(err, "interface lookup '%s'", t.Dev)
+		} else {
+			nlRoute.LinkIndex = intf.Index
+		}
 	}
 	if i, err := rttables.Index(t.Table); err != nil {
-		return err
+		return errors.Wrapf(err, "table lookup '%s'", t.Table)
 	} else {
 		nlRoute.Table = i
 	}
