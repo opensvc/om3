@@ -353,18 +353,16 @@ type (
 		Name string
 	}
 	ZoneRecordDeleted struct {
-		Name  string
-		Class string
-		Type  string
-		TTL   int
-		Data  string
+		Name    string
+		Type    string
+		TTL     int
+		Content string
 	}
 	ZoneRecordUpdated struct {
-		Name  string
-		Class string
-		Type  string
-		TTL   int
-		Data  string
+		Name    string
+		Type    string
+		TTL     int
+		Content string
 	}
 )
 

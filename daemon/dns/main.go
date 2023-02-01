@@ -21,11 +21,11 @@ import (
 
 type (
 	Record struct {
-		Name  string `json:"name"`
-		Class string `json:"class"`
-		Type  string `json:"type"`
-		TTL   int    `json:"ttl"`
-		Data  string `json:"data"`
+		Name     string `json:"qname"`
+		Type     string `json:"qtype"`
+		TTL      int    `json:"ttl"`
+		Content  string `json:"content"`
+		DomainId int    `json:"domain_id"`
 	}
 	Zone []Record
 
@@ -49,6 +49,11 @@ type (
 		sub *pubsub.Subscription
 	}
 
+	cmdGet struct {
+		Name string
+		Type string
+		resp chan Zone
+	}
 	cmdGetZone struct {
 		resp chan Zone
 	}
@@ -76,6 +81,11 @@ func Start(parent context.Context) error {
 	}
 
 	t.startSubscriptions()
+
+	if err := t.startUDSListener(); err != nil {
+		return err
+	}
+
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(t.cmdC, time.Second)
@@ -122,6 +132,8 @@ func (t *dns) worker() {
 			switch c := i.(type) {
 			case cmdGetZone:
 				t.onCmdGetZone(c)
+			case cmdGet:
+				t.onCmdGet(c)
 			}
 		}
 	}
@@ -137,10 +149,9 @@ func GetZone() Zone {
 
 func (t Zone) Render() string {
 	type widthsMap struct {
-		Name  int
-		Class int
-		Type  int
-		TTL   int
+		Name int
+		Type int
+		TTL  int
 	}
 	var (
 		widths widthsMap
@@ -148,9 +159,6 @@ func (t Zone) Render() string {
 	for _, record := range t {
 		if n := len(record.Name) + 1; n > widths.Name {
 			widths.Name = n
-		}
-		if n := len(record.Class) + 1; n > widths.Class {
-			widths.Class = n
 		}
 		if n := len(record.Type) + 1; n > widths.Type {
 			widths.Type = n
@@ -161,8 +169,8 @@ func (t Zone) Render() string {
 	}
 	lines := make([]string, len(t))
 	for i, record := range t {
-		lineFormat := "%-" + fmt.Sprint(widths.Name) + "s %-" + fmt.Sprint(widths.Class) + "s %-" + fmt.Sprint(widths.Type) + "s %-" + fmt.Sprint(widths.TTL) + "d %s\n"
-		lines[i] = fmt.Sprintf(lineFormat, record.Name, record.Class, record.Type, record.TTL, record.Data)
+		lineFormat := "%-" + fmt.Sprint(widths.Name) + "s  IN  %-" + fmt.Sprint(widths.Type) + "s %-" + fmt.Sprint(widths.TTL) + "d %s\n"
+		lines[i] = fmt.Sprintf(lineFormat, record.Name, record.Type, record.TTL, record.Content)
 	}
 	sort.Sort(sort.StringSlice(lines))
 	return strings.Join(lines, "")

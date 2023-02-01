@@ -13,6 +13,14 @@ const hexDigit = "0123456789abcdef"
 
 var (
 	ipAddrInfoKey = "ipaddr"
+
+	// SOA records properties
+	contact = "contact@opensvc.com"
+	serial  = 1
+	refresh = 7200
+	retry   = 3600
+	expire  = 432000
+	minimum = 86400
 )
 
 func (t *dns) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
@@ -21,21 +29,19 @@ func (t *dns) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 
 func (t *dns) pubDeleted(record Record) {
 	t.bus.Pub(msgbus.ZoneRecordDeleted{
-		Name:  record.Name,
-		Class: record.Class,
-		Type:  record.Type,
-		TTL:   record.TTL,
-		Data:  record.Data,
+		Name:    record.Name,
+		Type:    record.Type,
+		TTL:     record.TTL,
+		Content: record.Content,
 	})
 }
 
 func (t *dns) pubUpdated(record Record) {
 	t.bus.Pub(msgbus.ZoneRecordUpdated{
-		Name:  record.Name,
-		Class: record.Class,
-		Type:  record.Type,
-		TTL:   record.TTL,
-		Data:  record.Data,
+		Name:    record.Name,
+		Type:    record.Type,
+		TTL:     record.TTL,
+		Content: record.Content,
 	})
 }
 
@@ -62,11 +68,11 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 		switch {
 		case !ok:
 			change = true
-		case existingRecord.Data != record.Data:
+		case existingRecord.Content != record.Content:
 			change = true
 		case existingRecord.Type != record.Type:
 			change = true
-		case existingRecord.Class != record.Class:
+		case existingRecord.DomainId != record.DomainId:
 			change = true
 		case existingRecord.TTL != record.TTL:
 			change = true
@@ -98,38 +104,38 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 
 		// Add a direct record (node agnostic)
 		stage(Record{
-			Name:  name,
-			Class: "IN",
-			Type:  aType,
-			TTL:   60,
-			Data:  ipAddr,
+			Name:     name,
+			DomainId: -1,
+			Type:     aType,
+			TTL:      60,
+			Content:  ipAddr,
 		})
 
 		// Add a reverse record (node agnostic)
 		stage(Record{
-			Name:  reverseAddr(ip),
-			Class: "IN",
-			Type:  ptrType,
-			TTL:   60,
-			Data:  name,
+			Name:     reverseAddr(ip),
+			DomainId: -1,
+			Type:     ptrType,
+			TTL:      60,
+			Content:  name,
 		})
 
 		// Add a direct record (node affine)
 		stage(Record{
-			Name:  nameOnNode,
-			Class: "IN",
-			Type:  aType,
-			TTL:   60,
-			Data:  ipAddr,
+			Name:     nameOnNode,
+			DomainId: -1,
+			Type:     aType,
+			TTL:      60,
+			Content:  ipAddr,
 		})
 
 		// Add a reverse record (node affine)
 		stage(Record{
-			Name:  reverseAddr(ip),
-			Class: "IN",
-			Type:  ptrType,
-			TTL:   60,
-			Data:  nameOnNode,
+			Name:     reverseAddr(ip),
+			DomainId: -1,
+			Type:     ptrType,
+			TTL:      60,
+			Content:  nameOnNode,
 		})
 
 		if rid, err := resourceid.Parse(r.Rid); err == nil {
@@ -138,38 +144,38 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 
 			// Add a resource direct record (node agnostic)
 			stage(Record{
-				Name:  nameWithResourceName,
-				Class: "IN",
-				Type:  aType,
-				TTL:   60,
-				Data:  ipAddr,
+				Name:     nameWithResourceName,
+				DomainId: -1,
+				Type:     aType,
+				TTL:      60,
+				Content:  ipAddr,
 			})
 
 			// Add a resource reverse record (node agnostic)
 			stage(Record{
-				Name:  reverseAddr(ip),
-				Class: "IN",
-				Type:  ptrType,
-				TTL:   60,
-				Data:  nameWithResourceName,
+				Name:     reverseAddr(ip),
+				DomainId: -1,
+				Type:     ptrType,
+				TTL:      60,
+				Content:  nameWithResourceName,
 			})
 
 			// Add a direct record (node affine)
 			stage(Record{
-				Name:  nameOnNodeWithResourceName,
-				Class: "IN",
-				Type:  aType,
-				TTL:   60,
-				Data:  ipAddr,
+				Name:     nameOnNodeWithResourceName,
+				DomainId: -1,
+				Type:     aType,
+				TTL:      60,
+				Content:  ipAddr,
 			})
 
 			// Add a reverse record (node affine)
 			stage(Record{
-				Name:  reverseAddr(ip),
-				Class: "IN",
-				Type:  ptrType,
-				TTL:   60,
-				Data:  nameOnNodeWithResourceName,
+				Name:     reverseAddr(ip),
+				DomainId: -1,
+				Type:     ptrType,
+				TTL:      60,
+				Content:  nameOnNodeWithResourceName,
 			})
 		}
 	}
@@ -185,6 +191,20 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 	}
 }
 
+func (t *dns) onCmdGet(c cmdGet) {
+	zone := make(Zone, 0)
+	for _, record := range t.zone() {
+		if record.Name != c.Name {
+			continue
+		}
+		if (c.Type != "ANY") && (record.Type != c.Type) {
+			continue
+		}
+		zone = append(zone, record)
+	}
+	c.resp <- zone
+}
+
 func (t *dns) onCmdGetZone(c cmdGetZone) {
 	c.resp <- t.zone()
 }
@@ -193,21 +213,29 @@ func (t *dns) zone() Zone {
 	zone := make(Zone, 0)
 	zoneName := t.cluster.Name + "."
 	for i, dns := range t.cluster.DNS {
-		nsName := fmt.Sprintf("ns%d.%s", i, zoneName)
+		nsName := fmt.Sprintf("ns%d.%s", i+1, zoneName)
+		soaContent := fmt.Sprintf("dns.%s %s %d %d %d %d %d", zoneName, contact, serial, refresh, retry, expire, minimum)
 		zone = append(zone,
 			Record{
-				Name:  nsName,
-				Class: "IN",
-				Type:  "A",
-				TTL:   60,
-				Data:  dns,
+				Name:     zoneName,
+				DomainId: -1,
+				Type:     "SOA",
+				TTL:      60,
+				Content:  soaContent,
 			},
 			Record{
-				Name:  zoneName,
-				Class: "IN",
-				Type:  "NS",
-				TTL:   3600,
-				Data:  nsName,
+				Name:     nsName,
+				DomainId: -1,
+				Type:     "A",
+				TTL:      60,
+				Content:  dns,
+			},
+			Record{
+				Name:     zoneName,
+				DomainId: -1,
+				Type:     "NS",
+				TTL:      3600,
+				Content:  nsName,
 			},
 		)
 	}
