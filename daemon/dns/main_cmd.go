@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"opensvc.com/opensvc/core/fqdn"
+	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/resourceid"
 	"opensvc.com/opensvc/daemon/msgbus"
 )
@@ -22,6 +23,13 @@ var (
 	expire  = 432000
 	minimum = 86400
 )
+
+func (t *dns) stateKey(p path.T, node string) stateKey {
+	return stateKey{
+		path: p.String(),
+		node: node,
+	}
+}
 
 func (t *dns) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 	t.cluster = c.Value
@@ -46,21 +54,22 @@ func (t *dns) pubUpdated(record Record) {
 }
 
 func (t *dns) onInstanceStatusDeleted(c msgbus.InstanceStatusDeleted) {
-	name := fqdn.New(c.Path, t.cluster.Name).String()
-	if records, ok := t.state[name]; ok {
+	key := t.stateKey(c.Path, c.Node)
+	if records, ok := t.state[key]; ok {
 		for _, record := range records {
 			t.pubDeleted(record)
 		}
-		delete(t.state, name)
+		delete(t.state, key)
 	}
 }
 
 func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
+	key := t.stateKey(c.Path, c.Node)
 	name := fqdn.New(c.Path, t.cluster.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.cluster.Name)
 	records := make(Zone, 0)
 	updatedRecords := make(map[string]any)
-	existingRecords := t.getExistingRecords(name)
+	existingRecords := t.getExistingRecords(key)
 	stage := func(record Record) {
 		records = append(records, record)
 		existingRecord, ok := existingRecords[record.Name]
@@ -179,15 +188,15 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 			})
 		}
 	}
-	for name, record := range existingRecords {
-		if _, ok := updatedRecords[name]; !ok {
+	for key, record := range existingRecords {
+		if _, ok := updatedRecords[key]; !ok {
 			t.pubDeleted(record)
 		}
 	}
 	if len(records) > 0 {
-		t.state[name] = records
+		t.state[key] = records
 	} else {
-		delete(t.state, name)
+		delete(t.state, key)
 	}
 }
 
@@ -245,9 +254,9 @@ func (t *dns) zone() Zone {
 	return zone
 }
 
-func (t *dns) getExistingRecords(name string) map[string]Record {
+func (t *dns) getExistingRecords(key stateKey) map[string]Record {
 	m := make(map[string]Record)
-	records, ok := t.state[name]
+	records, ok := t.state[key]
 	if !ok {
 		return m
 	}

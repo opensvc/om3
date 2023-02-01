@@ -29,11 +29,16 @@ type (
 	}
 	Zone []Record
 
+	stateKey struct {
+		path string
+		node string
+	}
+
 	dns struct {
 		// state is a map indexed by object path where the key is a zone fragment regrouping all records created for this object.
 		// Using this map layout permits fast records drop on InstanceStatusDeleted.
 		// The zone data is obtained by merging all map values.
-		state map[string]Zone
+		state map[stateKey]Zone
 
 		cluster   cluster.Config
 		ctx       context.Context
@@ -77,7 +82,7 @@ func Start(parent context.Context) error {
 		cmdC:   make(chan any),
 		bus:    pubsub.BusFromContext(ctx),
 		log:    log.Logger.With().Str("func", "dns").Logger(),
-		state:  make(map[string]Zone),
+		state:  make(map[stateKey]Zone),
 	}
 
 	t.startSubscriptions()
