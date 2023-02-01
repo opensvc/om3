@@ -37,6 +37,7 @@ const (
 	MonitorStateIdle
 	MonitorStateDraining
 	MonitorStateDrainFailed
+	MonitorStateDrained
 	MonitorStateThawedFailed
 	MonitorStateFreezeFailed
 	MonitorStateFreezing
@@ -64,6 +65,7 @@ var (
 	MonitorStateStrings = map[MonitorState]string{
 		MonitorStateDraining:     "draining",
 		MonitorStateDrainFailed:  "drain failed",
+		MonitorStateDrained:      "drained",
 		MonitorStateIdle:         "idle",
 		MonitorStateThawedFailed: "unfreeze failed",
 		MonitorStateFreezeFailed: "freeze failed",
@@ -78,6 +80,7 @@ var (
 	}
 
 	MonitorStateValues = map[string]MonitorState{
+		"drained":         MonitorStateDrained,
 		"draining":        MonitorStateDraining,
 		"drain failed":    MonitorStateDrainFailed,
 		"idle":            MonitorStateIdle,

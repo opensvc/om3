@@ -2,20 +2,23 @@ package daemoncli_test
 
 import (
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 
 	"opensvc.com/opensvc/cmd"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/event"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/daemon/daemoncli"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/testhelper"
 	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/usergroup"
 )
 
 var (
@@ -24,20 +27,22 @@ var (
 		"UrlUxRaw":    daemonenv.UrlUxRaw,
 		"UrlInetHttp": daemonenv.UrlInetHttp,
 		"UrlInetRaw":  daemonenv.UrlInetRaw,
-
-		"NoSecCa":          daemonenv.UrlInetHttp,
-		"NoSecCert":        daemonenv.UrlInetHttp,
-		"NoSecCaNoSecCert": daemonenv.UrlInetHttp,
 	}
+
+	casesWithMissingConf = map[string]func() string{
+		"UrlUxHttp":   daemonenv.UrlUxHttp,
+		"UrlUxRaw":    daemonenv.UrlUxRaw,
+		"UrlInetHttp": daemonenv.UrlInetHttp,
+		"UrlInetRaw":  daemonenv.UrlInetRaw,
+
+		"NoSecCa":                   daemonenv.UrlInetHttp,
+		"NoSecCert":                 daemonenv.UrlInetHttp,
+		"NoSecCaNoSecCert":          daemonenv.UrlInetHttp,
+		"NoClusterNoSecCaNoSecCert": daemonenv.UrlInetHttp,
+	}
+
+	certDelay = 100 * time.Millisecond
 )
-
-func privileged() bool {
-	ok, err := usergroup.IsPrivileged()
-	if err == nil && ok {
-		return true
-	}
-	return false
-}
 
 func TestMain(m *testing.M) {
 	testhelper.Main(m, cmd.ExecuteArgs)
@@ -61,7 +66,9 @@ func newClient(serverUrl string) (*client.T, error) {
 
 func setup(t *testing.T) {
 	env := testhelper.Setup(t)
-	env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
+	if !strings.Contains(t.Name(), "NoCluster") {
+		env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
+	}
 	if !strings.Contains(t.Name(), "NoSecCa") {
 		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
 	}
@@ -72,10 +79,10 @@ func setup(t *testing.T) {
 }
 
 func TestDaemonStartThenStop(t *testing.T) {
-	if os.Getpid() != 0 {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
-	for name, getUrl := range cases {
+	for name, getUrl := range casesWithMissingConf {
 		t.Run(name, func(t *testing.T) {
 			setup(t)
 			url := getUrl()
@@ -98,19 +105,63 @@ func TestDaemonStartThenStop(t *testing.T) {
 				require.NoError(t, daemonCli.Start())
 			}()
 			<-goStart
+			time.Sleep(50 * time.Millisecond)
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
-				maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
-				t.Logf("wait %s for certs created", maxDurationForCerts)
-				time.Sleep(maxDurationForCerts)
-				t.Logf("recreate client %s", url)
-				cli, err = newClient(url)
-				require.NoError(t, err)
+				cli, err = recreateClient(t, url)
+				require.NoError(t, err, "unable to recreate client")
 			}
 			t.Logf("daemonCli.WaitRunning")
 			require.NoError(t, daemonCli.WaitRunning())
 			t.Logf("daemonCli.Running")
 			require.True(t, daemonCli.Running())
+
+			// TODO move test get node events to other location asap
+			t.Logf("get node events")
+			readEv, err := cli.NewGetEvents().
+				SetLimit(5).
+				SetDuration(250 * time.Millisecond).
+				GetReader()
+			require.NoError(t, err)
+			defer func() {
+				_ = readEv.Close()
+			}()
+			events := make([]event.Event, 0)
+			for {
+				if ev, err := readEv.Read(); err != nil {
+					t.Logf("readEv.Read error %s", err)
+					break
+				} else {
+					t.Logf("read event %#v", *ev)
+					events = append(events, *ev)
+				}
+			}
+			require.Greaterf(t, len(events), 0, "no events returned !")
+
+			t.Logf("get daemon status")
+			var b []byte
+			b, err = cli.NewGetDaemonStatus().Do()
+			require.NoError(t, err)
+			t.Logf("get daemon status response: %s", b)
+			cData := cluster.Data{}
+			err = json.Unmarshal(b, &cData)
+			require.NoErrorf(t, err, "unmarshall daemon status response: %s", b)
+			t.Logf("get daemon status response: %+v", cData)
+			expectedClusterName := "cluster1"
+			if strings.Contains(t.Name(), "NoCluster") {
+				expectedClusterName = "default"
+			}
+			require.Equal(t, expectedClusterName, cData.Cluster.Config.Name)
+			for _, objectName := range []string{
+				"system/sec/cert-" + expectedClusterName,
+				"system/sec/ca-" + expectedClusterName,
+				"cluster",
+			} {
+				t.Logf("search object %s", objectName)
+				_, ok := cData.Cluster.Object[objectName]
+				require.Truef(t, ok, "unable to detect object %s", objectName)
+			}
+
 			t.Logf("daemonCli.Stop...")
 			require.NoError(t, daemonCli.Stop())
 			t.Logf("daemonCli.Running")
@@ -120,13 +171,10 @@ func TestDaemonStartThenStop(t *testing.T) {
 }
 
 func TestDaemonReStartThenStop(t *testing.T) {
-	if os.Getpid() != 0 {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	for name, getUrl := range cases {
-		if os.Getpid() != 0 {
-			t.Skip("skipped for non root user")
-		}
 		t.Run(name, func(t *testing.T) {
 			setup(t)
 
@@ -147,11 +195,7 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			}()
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
-				maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
-				t.Logf("wait %s for certs created %s", maxDurationForCerts, t.Name())
-				time.Sleep(maxDurationForCerts)
-				t.Logf("recreate client %s", url)
-				cli, err = newClient(url)
+				cli, err = recreateClient(t, url)
 				require.NoError(t, err)
 			}
 			require.NoError(t, daemonCli.WaitRunning())
@@ -163,7 +207,7 @@ func TestDaemonReStartThenStop(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	if os.Getpid() != 0 {
+	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	for name, getUrl := range cases {
@@ -186,13 +230,34 @@ func TestStop(t *testing.T) {
 
 func getMaxDurationForCertCreated(name string) time.Duration {
 	// give more time to gen cert
-	maxDurationForCerts := 100 * time.Millisecond
+	maxDurationForCerts := certDelay
 	if strings.Contains(name, "NoSecCa") {
-		maxDurationForCerts = maxDurationForCerts * 10
+		maxDurationForCerts = maxDurationForCerts * 50
 	}
 	if strings.Contains(name, "NoSecCert") {
 		// give more time to gen cert
-		maxDurationForCerts = maxDurationForCerts * 10
+		maxDurationForCerts = maxDurationForCerts * 50
 	}
 	return maxDurationForCerts
+}
+
+func recreateClient(t *testing.T, url string) (cli *client.T, err error) {
+	t.Helper()
+	maxDurationForCerts := getMaxDurationForCertCreated(t.Name())
+	after := time.After(maxDurationForCerts)
+	t.Logf("wait %s for certs created", maxDurationForCerts)
+	for {
+		t.Logf("recreate client %s", url)
+		cli, err = newClient(url)
+		if err == nil {
+			break
+		}
+		select {
+		case <-after:
+			require.NoError(t, err)
+		default:
+		}
+		time.Sleep(certDelay)
+	}
+	return
 }

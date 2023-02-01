@@ -62,7 +62,7 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("does not execute start command if status is already up", func(t *testing.T) {
-		if os.Getpid() != 0 {
+		if os.Getuid() != 0 {
 			t.Skip("skipped for non root user")
 		}
 		td, cleanup := prepareConfig(t)
@@ -110,7 +110,7 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("when already started stop is not added to rollback stack", func(t *testing.T) {
-		if os.Getpid() != 0 {
+		if os.Getuid() != 0 {
 			t.Skip("skipped for non root user")
 		}
 		td, cleanup := prepareConfig(t)
@@ -145,7 +145,7 @@ func TestStop(t *testing.T) {
 	})
 
 	t.Run("does not execute stop command if status is already down", func(t *testing.T) {
-		if os.Getpid() != 0 {
+		if os.Getuid() != 0 {
 			t.Skip("skipped for non root user")
 		}
 		td, cleanup := prepareConfig(t)
@@ -160,7 +160,7 @@ func TestStop(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
-	if os.Getpid() != 0 {
+	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	ctx := context.Background()
@@ -199,7 +199,7 @@ func TestStatus(t *testing.T) {
 		}
 		for name := range cases {
 			t.Run(name, func(t *testing.T) {
-				if strings.Contains("Down when exit 0 and retcode 1:up 0:down", name) && os.Getpid() != 0 {
+				if strings.Contains("Down when exit 0 and retcode 1:up 0:down", name) && os.Getuid() != 0 {
 					t.Skip("skipped for non root user")
 				}
 				_, cleanup := prepareConfig(t)

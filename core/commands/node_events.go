@@ -15,8 +15,9 @@ import (
 type (
 	CmdNodeEvents struct {
 		OptsGlobal
-		Filters []string
+		Filters  []string
 		Duration time.Duration
+		Limit    uint64
 	}
 )
 
@@ -35,6 +36,7 @@ func (t *CmdNodeEvents) Run() error {
 
 	evReader, err := c.NewGetEvents().
 		SetRelatives(false).
+		SetLimit(t.Limit).
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		GetReader()
@@ -48,6 +50,7 @@ func (t *CmdNodeEvents) Run() error {
 	if err != nil {
 		return err
 	}
+	var count uint64
 	for {
 		for {
 			select {
@@ -59,7 +62,11 @@ func (t *CmdNodeEvents) Run() error {
 			if err != nil {
 				break
 			}
+			count++
 			t.doEvent(*ev)
+			if t.Limit > 0 && count >= t.Limit {
+				return nil
+			}
 		}
 		if err1 := evReader.Close(); err1 != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "close event reader error '%s'\n", err1)
@@ -86,6 +93,7 @@ func (t *CmdNodeEvents) Run() error {
 			}
 			evReader, err = c.NewGetEvents().
 				SetRelatives(false).
+				SetLimit(t.Limit).
 				SetFilters(t.Filters).
 				SetDuration(t.Duration).
 				GetReader()

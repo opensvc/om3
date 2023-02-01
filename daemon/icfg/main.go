@@ -29,10 +29,10 @@ import (
 	"opensvc.com/opensvc/core/path"
 	"opensvc.com/opensvc/core/placement"
 	"opensvc.com/opensvc/core/priority"
+	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/core/topology"
 	"opensvc.com/opensvc/core/xconfig"
 	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/imon"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/file"
 	"opensvc.com/opensvc/util/hostname"
@@ -59,6 +59,11 @@ type (
 		clusterConfig            cluster.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
+		iMonStarter              IMonStarter
+	}
+
+	IMonStarter interface {
+		Start(parent context.Context, p path.T, nodes []string) error
 	}
 )
 
@@ -69,6 +74,7 @@ var (
 
 	configFileCheckError = errors.New("config file check")
 
+	keyClusterNodes  = key.New("cluster", "nodes")
 	keyFlexMax       = key.New("DEFAULT", "flex_max")
 	keyFlexMin       = key.New("DEFAULT", "flex_min")
 	keyFlexTarget    = key.New("DEFAULT", "flex_target")
@@ -81,7 +87,7 @@ var (
 )
 
 // Start launch goroutine instConfig worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any, iMonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 
@@ -99,6 +105,8 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		// The worker reads on this chan to exit itself.
 		// This chan is buffered to allow an event handler to post the poison pill.
 		cmdC: make(chan any, 1),
+
+		iMonStarter: iMonStarter,
 	}
 
 	if err := o.setConfigure(); err != nil {
@@ -142,7 +150,7 @@ func (o *T) startInstanceMonitor() (bool, error) {
 		return false, nil
 	}
 	o.log.Info().Msgf("starting imon worker...")
-	if err := imon.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
+	if err := o.iMonStarter.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
 		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
 	}
@@ -323,21 +331,26 @@ func (o *T) configFileCheck() error {
 // getScope return sorted scopes for object
 //
 // depending on object kind
-// Ccfg => cluster.nodes
+// Ccfg => eval cluster.nodes
 // else => eval DEFAULT.nodes
 func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
+	var kNode key.T
 	switch o.path.Kind {
 	case kind.Ccfg:
-		scope = o.clusterConfig.Nodes
+		kNode = keyClusterNodes
+		rawconfig.LoadSections()
 	default:
-		var evalNodes interface{}
-		evalNodes, err = cf.Eval(keyNodes)
-		if err != nil {
-			o.log.Error().Err(err).Msg("eval DEFAULT.nodes")
-			return
-		}
-		scope = evalNodes.([]string)
+		kNode = keyNodes
+
 	}
+	var evalNodes interface{}
+	evalNodes, err = cf.Eval(kNode)
+	if err != nil {
+		o.log.Error().Err(err).Msgf("eval %s", kNode)
+		return
+	}
+	scope = evalNodes.([]string)
+	o.log.Debug().Msgf("scope:'%s'", scope)
 	return
 }
 

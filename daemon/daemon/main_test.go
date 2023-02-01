@@ -28,7 +28,7 @@ func setup(t *testing.T) testhelper.Env {
 }
 
 func TestDaemon(t *testing.T) {
-	if os.Getpid() != 0 {
+	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	var main *daemon.T

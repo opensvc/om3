@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"opensvc.com/opensvc/core/instance"
+	"opensvc.com/opensvc/core/provisioned"
 	"opensvc.com/opensvc/core/status"
 )
 
@@ -62,6 +63,10 @@ func (o *imon) startedFromThawed() {
 	}
 	if o.hasOtherNodeActing() {
 		o.log.Debug().Msg("another node acting")
+		return
+	}
+	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.Undef) {
+		o.log.Debug().Msg("provisioned is false or undef")
 		return
 	}
 	o.transitionTo(instance.MonitorStateReady)
@@ -176,12 +181,14 @@ func (o *imon) startedClearIfReached() bool {
 func (o *imon) isLocalStarted() bool {
 	instStatus := o.instStatus[o.localhost]
 	switch instStatus.Avail {
-	case status.NotApplicable, status.Undef:
+	case status.NotApplicable:
 		return true
 	case status.Up:
 		return true
 	case status.StandbyUp:
 		return true
+	case status.Undef:
+		return false
 	default:
 		return false
 	}

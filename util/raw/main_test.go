@@ -16,7 +16,7 @@ func TestRaw(t *testing.T) {
 		WithLogger(log),
 	)
 	t.Logf("data")
-	if os.Getpid() != 0 {
+	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
 	data, err := ra.QueryAll()
