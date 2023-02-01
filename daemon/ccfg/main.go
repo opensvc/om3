@@ -80,6 +80,8 @@ func Start(parent context.Context) error {
 		o.clusterConfig = n.Config()
 	}
 
+	o.pubClusterConfig()
+
 	o.startSubscriptions()
 	go func() {
 		defer func() {

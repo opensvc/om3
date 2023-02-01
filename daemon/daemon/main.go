@@ -175,6 +175,10 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	}
 
+	if ccfg.Get().Name == "" {
+		panic("cluster name read from ccfg is empty")
+	}
+
 	for _, newSub := range mandatorySubs {
 		sub := newSub(t)
 		if err := t.Register(sub); err != nil {
