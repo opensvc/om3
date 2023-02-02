@@ -98,11 +98,11 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 		nw.Log().Info().Msgf("network setup: skip invalid network")
 		return nil
 	}
-	if err := setupNetworkCNI(n, dir, nw); err != nil {
-		return err
-	}
 	if i, ok := nw.(Setuper); ok {
 		return i.Setup()
+	}
+	if err := setupNetworkCNI(n, dir, nw); err != nil {
+		return err
 	}
 	return nil
 }
