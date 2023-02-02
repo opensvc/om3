@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,6 +67,12 @@ func checkOverlap(nw Networker, nws []Networker) error {
 	_, refIPNet, err := net.ParseCIDR(nw.Network())
 	if err != nil {
 		return nil
+	}
+	if prefix, err := netip.ParsePrefix(nw.Network()); err != nil {
+		return err
+	} else if prefix.Addr().String() != refIPNet.IP.String() {
+		// ex: 172.10.10.0/22 prefix addr 172.10.10.0 does not match the prefix length (expected 172.10.8.0)
+		return errors.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), refIPNet.IP)
 	}
 	for _, other := range nws {
 		if nw == other {
