@@ -1,7 +1,11 @@
 package ccfg
 
 import (
+	"strings"
+
 	"opensvc.com/opensvc/core/cluster"
+	"opensvc.com/opensvc/core/network"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/key"
 )
@@ -42,6 +46,28 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.Name = o.clusterConfig.GetString(keyName)
 	cfg.CASecPaths = o.clusterConfig.GetStrings(keyCASecPaths)
 	cfg.SetSecret(o.clusterConfig.GetString(keySecret))
+
+	var change bool
+
+	for _, name := range o.clusterConfig.SectionStrings() {
+		if strings.HasPrefix(name, "network#") {
+			lastSig, _ := o.networkSigs[name]
+			sig := o.clusterConfig.SectionSig(name)
+			if sig != lastSig {
+				change = true
+				o.log.Info().Msgf("%s configuration changed (sig %s => %s)", name, lastSig, sig)
+				o.networkSigs[name] = sig
+			}
+		}
+	}
+	if change {
+		if n, err := object.NewNode(); err != nil {
+			o.log.Error().Err(err).Msg("allocate Node for network setup")
+		} else {
+			o.log.Info().Msgf("reconfigure networks")
+			network.Setup(n)
+		}
+	}
 	return cfg
 }
 

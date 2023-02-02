@@ -172,7 +172,7 @@ func (t T) delObjectNetNS() error {
 
 func (t *T) StatusInfo() map[string]interface{} {
 	data := make(map[string]interface{})
-	if ip, _, err := t.ipNet(); err == nil {
+	if ip, _, err := t.ipNet(); (err == nil) && (len(ip) > 0) {
 		data["ipaddr"] = ip.String()
 	}
 	/*

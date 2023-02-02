@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,6 +68,12 @@ func checkOverlap(nw Networker, nws []Networker) error {
 	if err != nil {
 		return nil
 	}
+	if prefix, err := netip.ParsePrefix(nw.Network()); err != nil {
+		return err
+	} else if prefix.Addr().String() != refIPNet.IP.String() {
+		// ex: 172.10.10.0/22 prefix addr 172.10.10.0 does not match the prefix length (expected 172.10.8.0)
+		return errors.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), refIPNet.IP)
+	}
 	for _, other := range nws {
 		if nw == other {
 			continue
@@ -91,11 +98,13 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 		nw.Log().Info().Msgf("network setup: skip invalid network")
 		return nil
 	}
+	if i, ok := nw.(Setuper); ok {
+		if err := i.Setup(); err != nil {
+			return err
+		}
+	}
 	if err := setupNetworkCNI(n, dir, nw); err != nil {
 		return err
-	}
-	if i, ok := nw.(Setuper); ok {
-		return i.Setup()
 	}
 	return nil
 }
@@ -128,18 +137,25 @@ func setupNetworkCNI(n *object.Node, dir string, nw Networker) error {
 		return err
 	}
 	p := CNIConfigFile(dir, nw)
-	if file.Exists(p) {
-		nw.Log().Info().Msgf("cni %s is already setup", p)
-		return nil
-	}
 	nw.Log().Info().Msgf("cni %s write", p)
 	return writeCNIConfig(p, data)
 }
 
 func writeCNIConfig(fpath string, data interface{}) error {
+	tmp, err := os.CreateTemp(filepath.Dir(fpath), "."+filepath.Base(fpath)+".")
+	if err != nil {
+		return err
+	}
 	if b, err := json.MarshalIndent(data, "", "   "); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
+		return err
+	} else if _, err := tmp.Write(b); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
 		return err
 	} else {
-		return os.WriteFile(fpath, b, 0644)
+		_ = tmp.Close()
+		return os.Rename(tmp.Name(), fpath)
 	}
 }

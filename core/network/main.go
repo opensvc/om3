@@ -206,6 +206,11 @@ func (t T) key(option string) key.T {
 	return key.New("network#"+t.name, option)
 }
 
+func (t *T) GetInt(s string) int {
+	k := t.key(s)
+	return t.Config().GetInt(k)
+}
+
 func (t *T) GetString(s string) string {
 	k := t.key(s)
 	return t.Config().GetString(k)

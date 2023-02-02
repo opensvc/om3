@@ -4,15 +4,19 @@ package networkroutedbridge
 
 import (
 	"fmt"
+	"math"
 	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
 	"opensvc.com/opensvc/core/driver"
+	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/network"
 	"opensvc.com/opensvc/util/hostname"
+	"opensvc.com/opensvc/util/key"
 )
 
 type (
@@ -124,6 +128,56 @@ func (t T) bridgeIP() (net.IP, error) {
 	return ip, nil
 }
 
+func (t T) allocateSubnets() error {
+	for _, s := range t.subnetMap() {
+		if s != "" {
+			// A subnet setup is already configured. Don't change, even if bogus.
+			return nil
+		}
+	}
+
+	ipsPerNode := t.GetInt("ips_per_node")
+	if ipsPerNode == 0 {
+		return errors.Errorf("ips_per_node must be greater than 0")
+	}
+	if ipsPerNode&(ipsPerNode-1) == 1 {
+		return errors.Errorf("ips_per_node must be a power of 2")
+	}
+
+	ip, network, err := net.ParseCIDR(t.Network())
+	if err != nil {
+		return err
+	}
+	nodes := t.Nodes()
+	ones, bits := network.Mask.Size()
+	maxIps := 1 << (bits - ones)
+	maxIpsPerNodes := maxIps / len(nodes)
+	subnetOnes := int(math.Log2(float64(maxIpsPerNodes)))
+	maxIpsPerNodes = 1 << subnetOnes
+	if ipsPerNode > maxIpsPerNodes {
+		return errors.Errorf("ips_per_node must be <%d (%d ips in %s divided by %d nodes)", maxIpsPerNodes, maxIps, network, len(nodes))
+	}
+	addr, err := netip.ParseAddr(ip.String())
+	if err != nil {
+		return err
+	}
+
+	kops := make([]keyop.T, 0)
+	for _, nodename := range t.Nodes() {
+		subnet := fmt.Sprintf("%s/%d", addr, bits-subnetOnes)
+		for i := 0; i < maxIpsPerNodes; i += 1 {
+			addr = addr.Next()
+		}
+		kops = append(kops, keyop.T{
+			Key:   key.New("network#"+t.Name(), "subnet@"+nodename),
+			Op:    keyop.Set,
+			Value: subnet,
+		})
+		t.Log().Info().Msgf("assign subnet %s to node %s", subnet, nodename)
+	}
+	return t.Config().SetKeys(kops...)
+}
+
 func (t *T) Setup() error {
 	var (
 		localIP net.IP
@@ -131,6 +185,9 @@ func (t *T) Setup() error {
 		link    netlink.Link
 		err     error
 	)
+	if err := t.allocateSubnets(); err != nil {
+		return err
+	}
 	if brIP, err = t.bridgeIP(); err != nil {
 		return err
 	}
