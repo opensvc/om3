@@ -24,7 +24,9 @@ import (
 
 type (
 	ccfg struct {
-		state         cluster.Config
+		state       cluster.Config
+		networkSigs map[string]string
+
 		clusterConfig *xconfig.T
 		ctx           context.Context
 		cancel        context.CancelFunc
@@ -65,13 +67,14 @@ func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	o := &ccfg{
-		ctx:       ctx,
-		cancel:    cancel,
-		cmdC:      make(chan any),
-		databus:   daemondata.FromContext(ctx),
-		bus:       pubsub.BusFromContext(ctx),
-		log:       log.Logger.With().Str("func", "ccfg").Logger(),
-		localhost: hostname.Hostname(),
+		networkSigs: make(map[string]string),
+		ctx:         ctx,
+		cancel:      cancel,
+		cmdC:        make(chan any),
+		databus:     daemondata.FromContext(ctx),
+		bus:         pubsub.BusFromContext(ctx),
+		log:         log.Logger.With().Str("func", "ccfg").Logger(),
+		localhost:   hostname.Hostname(),
 	}
 
 	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {

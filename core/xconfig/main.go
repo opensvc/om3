@@ -1,6 +1,8 @@
 package xconfig
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -751,6 +753,18 @@ func (t *T) replaceReferences(v string, section string, impersonate string) (str
 		return s
 	})
 	return v, errs
+}
+
+func (t T) SectionSig(section string) string {
+	s, err := t.file.GetSection(section)
+	if err != nil {
+		return ""
+	}
+	sum := md5.New()
+	for _, k := range s.Keys() {
+		sum.Write([]byte(k.Value()))
+	}
+	return hex.EncodeToString(sum.Sum([]byte{}))
 }
 
 func (t T) SectionMap(section string) map[string]string {
