@@ -8,9 +8,18 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
+	"opensvc.com/opensvc/util/file"
 )
 
 func TestRaw(t *testing.T) {
+	rawdev := "/dev/raw"
+	if !file.ExistsAndDir(rawdev) {
+		t.Skipf("no %s, skip test", rawdev)
+	}
+	if os.Getuid() != 0 {
+		t.Skip("skipped for non root user")
+	}
 	log := &zerolog.Logger{}
 	ra := New(
 		WithLogger(log),
