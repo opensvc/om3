@@ -1,9 +1,13 @@
 package testhelper
 
 import (
+	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -79,12 +83,60 @@ func Main(m *testing.M, execute func([]string)) {
 	switch os.Getenv("GO_TEST_MODE") {
 	case "":
 		// test mode
-		os.Setenv("GO_TEST_MODE", "off")
+		_ = os.Setenv("GO_TEST_MODE", "off")
 		os.Exit(m.Run())
 
 	case "off":
 		// test bypass mode
-		os.Setenv("LANG", "C.UTF-8")
+		_ = os.Setenv("LANG", "C.UTF-8")
 		execute(os.Args[1:])
 	}
+}
+
+func TcpPortAvailable(port string) error {
+	ln, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		return err
+	}
+	return ln.Close()
+}
+
+func RunCmd(t *testing.T, name string, args ...string) {
+	cmd := exec.Command(name, args...)
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("%s error %s\n%s", cmd, err, b)
+	} else {
+		t.Logf("%s\n%s", cmd, b)
+	}
+}
+
+func Trace(t *testing.T) {
+	RunCmd(t, "ps", "fax")
+	RunCmd(t, "netstat", "-petulan")
+	pid := os.Getpid()
+	RunCmd(t, "ls", "-l", fmt.Sprintf("/proc/%d/fd", pid))
+}
+
+func DaemonPorts(t *testing.T, name string) error {
+	t.Logf("Verify daemon ports [%s]", name)
+	Trace(t)
+	var delay time.Duration
+	for _, port := range []string{"1214", "1215"} {
+		if err := TcpPortAvailable(port); err != nil {
+			t.Logf("Verify daemon ports [%s] failed for port %s '%s' wait delay then check again", name, port, err)
+			Trace(t)
+			delay = 250 * time.Millisecond
+		}
+	}
+	time.Sleep(delay)
+	for _, port := range []string{"1214", "1215"} {
+		if err := TcpPortAvailable(port); err != nil {
+			t.Logf("Verify daemon ports [%s] failed for port %s '%s'", name, port, err)
+			Trace(t)
+			return err
+		}
+	}
+	t.Logf("Verify daemon ports [%s] [done]", name)
+	return nil
 }
