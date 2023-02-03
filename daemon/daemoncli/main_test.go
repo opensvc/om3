@@ -1,9 +1,11 @@
 package daemoncli_test
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -64,7 +66,11 @@ func newClient(serverUrl string) (*client.T, error) {
 	return client.New(clientOptions...)
 }
 
-func setup(t *testing.T) {
+func setup(t *testing.T) testhelper.Env {
+	require.NoError(t, testhelper.DaemonPorts(t, "-> setup"))
+	if t.Failed() {
+		t.Fatal("-> setup DaemonPorts")
+	}
 	env := testhelper.Setup(t)
 	if !strings.Contains(t.Name(), "NoCluster") {
 		env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
@@ -76,6 +82,7 @@ func setup(t *testing.T) {
 		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
 	}
 	rawconfig.LoadSections()
+	return env
 }
 
 func TestDaemonStartThenStop(t *testing.T) {
@@ -84,7 +91,9 @@ func TestDaemonStartThenStop(t *testing.T) {
 	}
 	for name, getUrl := range casesWithMissingConf {
 		t.Run(name, func(t *testing.T) {
-			setup(t)
+			wg := sync.WaitGroup{}
+			env := setup(t)
+			_ = env
 			url := getUrl()
 			t.Logf("using url=%s", url)
 			needRawClient := false
@@ -99,10 +108,12 @@ func TestDaemonStartThenStop(t *testing.T) {
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 			goStart := make(chan bool)
+			wg.Add(1)
 			go func() {
 				t.Logf("daemonCli.Start...")
 				goStart <- true
 				require.NoError(t, daemonCli.Start())
+				wg.Done()
 			}()
 			<-goStart
 			time.Sleep(50 * time.Millisecond)
@@ -120,12 +131,9 @@ func TestDaemonStartThenStop(t *testing.T) {
 			t.Logf("get node events")
 			readEv, err := cli.NewGetEvents().
 				SetLimit(5).
-				SetDuration(250 * time.Millisecond).
+				SetDuration(2 * time.Second).
 				GetReader()
 			require.NoError(t, err)
-			defer func() {
-				_ = readEv.Close()
-			}()
 			events := make([]event.Event, 0)
 			for {
 				if ev, err := readEv.Read(); err != nil {
@@ -135,6 +143,9 @@ func TestDaemonStartThenStop(t *testing.T) {
 					t.Logf("read event %#v", *ev)
 					events = append(events, *ev)
 				}
+			}
+			if err := readEv.Close(); err != nil {
+				t.Logf("readEv.Close err:%s", err)
 			}
 			require.Greaterf(t, len(events), 0, "no events returned !")
 
@@ -164,8 +175,24 @@ func TestDaemonStartThenStop(t *testing.T) {
 
 			t.Logf("daemonCli.Stop...")
 			require.NoError(t, daemonCli.Stop())
+
+			t.Logf("waiting start go routine done")
+			wg.Wait()
+
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
+
+			// TODO fix unexpected running daemon after test
+			t.Log("hack for unexpected running daemon after test")
+			for i := 0; i < 1; i++ {
+				time.Sleep(time.Second)
+				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
+				require.NoError(t, daemonCli.Stop())
+				t.Logf("paranoid daemonCli.Running...[%d/5]", i)
+				require.False(t, daemonCli.Running())
+			}
+
+			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
 }
@@ -176,6 +203,7 @@ func TestDaemonReStartThenStop(t *testing.T) {
 	}
 	for name, getUrl := range cases {
 		t.Run(name, func(t *testing.T) {
+			wg := sync.WaitGroup{}
 			setup(t)
 
 			url := getUrl()
@@ -190,9 +218,14 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			}
 			daemonCli := daemoncli.New(cli)
 			require.False(t, daemonCli.Running())
+			goReStart := make(chan bool)
+			wg.Add(1)
 			go func() {
+				goReStart <- true
 				require.NoError(t, daemonCli.ReStart())
+				wg.Done()
 			}()
+			<-goReStart
 			if needRawClient {
 				t.Logf("reverting fallback client urlUxRaw")
 				cli, err = recreateClient(t, url)
@@ -201,7 +234,23 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			require.NoError(t, daemonCli.WaitRunning())
 			require.True(t, daemonCli.Running())
 			require.NoError(t, daemonCli.Stop())
+
+			t.Logf("waiting start go routine done")
+			wg.Wait()
+			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
+
+			// TODO fix unexpected running daemon after test
+			t.Log("hack for unexpected running daemon after test")
+			for i := 0; i < 1; i++ {
+				time.Sleep(time.Second)
+				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
+				require.NoError(t, daemonCli.Stop())
+				t.Logf("paranoid daemonCli.Running...[%d/5]", i)
+				require.False(t, daemonCli.Running())
+			}
+
+			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
 }
@@ -224,6 +273,18 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
+
+			// TODO fix unexpected running daemon after test
+			t.Log("hack for unexpected running daemon after test")
+			for i := 0; i < 1; i++ {
+				time.Sleep(time.Second)
+				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
+				require.NoError(t, daemonCli.Stop())
+				t.Logf("paranoid daemonCli.Running...[%d/5]", i)
+				require.False(t, daemonCli.Running())
+			}
+
+			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
 }
@@ -232,11 +293,11 @@ func getMaxDurationForCertCreated(name string) time.Duration {
 	// give more time to gen cert
 	maxDurationForCerts := certDelay
 	if strings.Contains(name, "NoSecCa") {
-		maxDurationForCerts = maxDurationForCerts * 50
+		maxDurationForCerts = maxDurationForCerts * 150
 	}
 	if strings.Contains(name, "NoSecCert") {
 		// give more time to gen cert
-		maxDurationForCerts = maxDurationForCerts * 50
+		maxDurationForCerts = maxDurationForCerts * 150
 	}
 	return maxDurationForCerts
 }

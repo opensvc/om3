@@ -66,6 +66,7 @@ func New(mux http.Handler, log zerolog.Logger, timeout time.Duration) *T {
 // 3- Response is sent to w
 func (t *T) Serve(w ReadWriteCloseSetDeadliner) {
 	defer func() {
+		t.log.Info().Msg("rawunix.Serve close")
 		err := w.Close()
 		if err != nil {
 			t.log.Debug().Err(err).Msg("rawunix.Serve close failure")

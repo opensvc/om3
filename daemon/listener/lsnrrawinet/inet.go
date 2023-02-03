@@ -24,6 +24,7 @@ func (t *T) stop() error {
 }
 
 func (t *T) start(ctx context.Context) error {
+	t.log.Info().Msg("listener starting")
 	listener, err := net.Listen("tcp", t.addr)
 	if err != nil {
 		t.log.Error().Err(err).Msg("listen failed")
@@ -45,6 +46,10 @@ func (t *T) start(ctx context.Context) error {
 			}
 			clearConn := encryptconn.New(conn)
 			go mux.Serve(clearConn)
+		}
+		t.log.Info().Msg("listener close")
+		if err := listener.Close(); err != nil {
+			//t.log.Debug().Err(err).Msg("listen close failure")
 		}
 	}()
 	t.listener = &listener

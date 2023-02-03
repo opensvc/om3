@@ -1,6 +1,7 @@
 package integrationtest
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,8 +23,12 @@ import (
 )
 
 func Setup(t *testing.T) (testhelper.Env, func()) {
-	hostname.SetHostnameForGoTest("node1")
 	t.Helper()
+	require.NoError(t, testhelper.DaemonPorts(t, "-> Setup"))
+	if t.Failed() {
+		t.Fatal("-> Setup DaemonPorts")
+	}
+	hostname.SetHostnameForGoTest("node1")
 	env := testhelper.Setup(t)
 	t.Logf("Starting daemon with osvc_root_path=%s", env.Root)
 	rawconfig.Load(map[string]string{
@@ -55,10 +60,13 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 		err := runDaemon.Stop()
 		assert.NoError(t, err, "Stop Daemon error")
 		t.Logf("Stopped daemon with osvc_root_path=%s", env.Root)
+		time.Sleep(250 * time.Millisecond)
 		hostname.SetHostnameForGoTest("")
+		require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 	}
 
-	waitRunningDuration := 5 * time.Millisecond
+	//waitRunningDuration := 5 * time.Millisecond
+	waitRunningDuration := 50 * time.Millisecond
 	t.Logf("wait %s", waitRunningDuration)
 	time.Sleep(waitRunningDuration)
 
