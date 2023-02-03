@@ -182,7 +182,9 @@ func TestDaemonStartThenStop(t *testing.T) {
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 
-			for i := 0; i < 0; i++ {
+			// TODO fix unexpected running daemon after test
+			t.Log("hack for unexpected running daemon after test")
+			for i := 0; i < 1; i++ {
 				time.Sleep(time.Second)
 				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
 				require.NoError(t, daemonCli.Stop())
@@ -238,7 +240,9 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 
-			for i := 0; i < 0; i++ {
+			// TODO fix unexpected running daemon after test
+			t.Log("hack for unexpected running daemon after test")
+			for i := 0; i < 1; i++ {
 				time.Sleep(time.Second)
 				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
 				require.NoError(t, daemonCli.Stop())
@@ -270,7 +274,9 @@ func TestStop(t *testing.T) {
 			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
 
-			for i := 0; i < 0; i++ {
+			// TODO fix unexpected running daemon after test
+			t.Log("hack for unexpected running daemon after test")
+			for i := 0; i < 1; i++ {
 				time.Sleep(time.Second)
 				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
 				require.NoError(t, daemonCli.Stop())
