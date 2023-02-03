@@ -41,6 +41,8 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(ResponseText("daemon stopping"))
 		go func() {
+			// Give time for response received by client before stop daemon
+			time.Sleep(50 * time.Millisecond)
 			if err := daemon.Stop(); err != nil {
 				log.Error().Err(err).Msg("daemon stop failure")
 				return
