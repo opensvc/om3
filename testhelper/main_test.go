@@ -11,6 +11,7 @@ func Test_TcpPortAvailable(t *testing.T) {
 	port := "1215"
 	require.NoErrorf(t, TcpPortAvailable(port), "port %s should be available before test", port)
 	if t.Failed() {
+		Trace(t)
 		return
 	}
 	ln, err := net.Listen("tcp", ":"+port)
