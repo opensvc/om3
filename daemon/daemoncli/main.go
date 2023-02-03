@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,7 +29,7 @@ var (
 	lockPath           = "/tmp/locks/main"
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 20 * time.Second
-	WaitRunningDelay   = 250 * time.Millisecond
+	WaitRunningDelay   = 500 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
 	WaitStoppedDelay   = 250 * time.Millisecond
 )
@@ -174,10 +176,13 @@ func (t *T) stop() error {
 		return nil
 	}
 	_, err := t.client.NewPostDaemonStop().Do()
-	if err != nil &&
-		!strings.Contains(err.Error(), "unexpected EOF") &&
-		!strings.Contains(err.Error(), "unexpected end of JSON input") {
-		return err
+	if err != nil {
+		if !errors.Is(err, syscall.ECONNRESET) &&
+			!strings.Contains(err.Error(), "unexpected EOF") &&
+			!strings.Contains(err.Error(), "unexpected end of JSON input") {
+			log.Debug().Err(err).Msgf("client.NewPostDaemonStop().Do(), error is %s", reflect.TypeOf(err))
+			return err
+		}
 	}
 	log.Debug().Msg("wait for stop...")
 	if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
