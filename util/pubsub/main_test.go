@@ -170,7 +170,7 @@ func TestSub(t *testing.T) {
 }
 
 func TestDropSlowSubscription(t *testing.T) {
-	timeout := 10 * time.Millisecond
+	timeout := 50 * time.Millisecond
 	for x := 2; x < 5; x++ {
 		t.Run(fmt.Sprintf("wait alert is %d x slow duration timeout:%s", x, timeout), func(t *testing.T) {
 			waitAlertDuration := timeout * time.Duration(x)

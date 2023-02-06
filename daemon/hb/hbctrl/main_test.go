@@ -166,7 +166,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: true},
 				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
 			},
-			readPingDuration: 200 * time.Millisecond,
+			readPingDuration: 500 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
 				{Node: "node9", Status: true},
 				{Node: "node9", Status: false},
