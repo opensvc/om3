@@ -112,10 +112,12 @@ func RunCmd(t *testing.T, name string, args ...string) {
 }
 
 func Trace(t *testing.T) {
-	RunCmd(t, "ps", "fax")
-	RunCmd(t, "netstat", "-petulan")
-	pid := os.Getpid()
-	RunCmd(t, "ls", "-l", fmt.Sprintf("/proc/%d/fd", pid))
+	if _, ok := os.LookupEnv("TEST_HELPER_TRACE"); ok {
+		RunCmd(t, "ps", "fax")
+		RunCmd(t, "netstat", "-petulan")
+		pid := os.Getpid()
+		RunCmd(t, "ls", "-l", fmt.Sprintf("/proc/%d/fd", pid))
+	}
 }
 
 func DaemonPorts(t *testing.T, name string) error {

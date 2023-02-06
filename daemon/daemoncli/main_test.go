@@ -182,16 +182,6 @@ func TestDaemonStartThenStop(t *testing.T) {
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 
-			// TODO fix unexpected running daemon after test
-			t.Log("hack for unexpected running daemon after test")
-			for i := 0; i < 1; i++ {
-				time.Sleep(time.Second)
-				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
-				require.NoError(t, daemonCli.Stop())
-				t.Logf("paranoid daemonCli.Running...[%d/5]", i)
-				require.False(t, daemonCli.Running())
-			}
-
 			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
@@ -240,16 +230,6 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
 
-			// TODO fix unexpected running daemon after test
-			t.Log("hack for unexpected running daemon after test")
-			for i := 0; i < 1; i++ {
-				time.Sleep(time.Second)
-				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
-				require.NoError(t, daemonCli.Stop())
-				t.Logf("paranoid daemonCli.Running...[%d/5]", i)
-				require.False(t, daemonCli.Running())
-			}
-
 			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
@@ -273,16 +253,6 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
-
-			// TODO fix unexpected running daemon after test
-			t.Log("hack for unexpected running daemon after test")
-			for i := 0; i < 1; i++ {
-				time.Sleep(time.Second)
-				t.Logf("paranoid daemonCli.Stop again...[%d/5]", i)
-				require.NoError(t, daemonCli.Stop())
-				t.Logf("paranoid daemonCli.Running...[%d/5]", i)
-				require.False(t, daemonCli.Running())
-			}
 
 			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
