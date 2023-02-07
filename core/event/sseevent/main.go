@@ -73,6 +73,16 @@ func NewReadCloser(r io.ReadCloser) *ReadCloser {
 	return t
 }
 
+// SetContext set reader context, it will replace default reader context,
+// it can't be called after initial Read
+func (r *ReadCloser) SetContext(ctx context.Context) {
+	if r.parseStarted {
+		panic("SetContext called after Read")
+	}
+	r.cancel()
+	r.ctx, r.cancel = context.WithCancel(ctx)
+}
+
 // Buffer defines buffer value for internal go routine io.Scanner
 func (r *ReadCloser) Buffer(buf []byte, max int) {
 	if r.parseStarted {
