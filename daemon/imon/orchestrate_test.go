@@ -128,7 +128,6 @@ func Test_Orchestrate_HA(t *testing.T) {
 			},
 		},
 	}
-	t.Skip("bypass waiting fix")
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			c := c
