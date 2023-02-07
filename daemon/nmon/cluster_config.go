@@ -3,6 +3,7 @@ package nmon
 import (
 	"opensvc.com/opensvc/core/keyop"
 	"opensvc.com/opensvc/core/object"
+	"opensvc.com/opensvc/daemon/ccfg"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/key"
@@ -17,7 +18,7 @@ import (
 // - publish msgbus.JoinIgnored,join-node=node (the node already exists in cluster nodes)
 // - publish msgbus.JoinError,join-node=node (update cluster config object fails)
 func (o *nmon) onJoinRequest(c msgbus.JoinRequest) {
-	nodes := o.config.GetStrings(key.New("cluster", "nodes"))
+	nodes := ccfg.Get().Nodes
 	node := c.Node
 	labels := []pubsub.Label{
 		{"node", hostname.Hostname()},
@@ -60,7 +61,7 @@ func (o *nmon) addClusterNode(node string) error {
 // - publish msgbus.LeaveIgnored,leave-node=node (the node is not a cluster nodes)
 // - publish msgbus.LeaveError,leave-node=node (update cluster config object fails)
 func (o *nmon) onLeaveRequest(c msgbus.LeaveRequest) {
-	nodes := o.config.GetStrings(key.New("cluster", "nodes"))
+	nodes := ccfg.Get().Nodes
 	node := c.Node
 	labels := []pubsub.Label{
 		{"node", hostname.Hostname()},
