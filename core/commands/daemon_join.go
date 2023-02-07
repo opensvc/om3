@@ -28,6 +28,9 @@ type (
 
 		Node  string
 		Token string
+
+		// Timeout is the maximum duration for leave
+		Timeout time.Duration
 	}
 )
 
@@ -80,14 +83,13 @@ func (t *CmdDaemonJoin) Run() error {
 		"JoinError,join-node=" + localhost,
 		"JoinIgnored,join-node=" + localhost,
 	}
-	duration := 5 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
 	defer cancel()
 
 	evReader, err := cli.NewGetEvents().
 		SetRelatives(false).
 		SetFilters(filters).
-		SetDuration(duration).
+		SetDuration(t.Timeout).
 		GetReader()
 
 	if err != nil {
@@ -199,12 +201,13 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) 
 		filePaths[file] = p
 	}
 
-	if err := t.nodeDrain(); err != nil {
-		return err
-	}
-
-	if err := t.stopDaemon(); err != nil {
-		return err
+	if t.isRunning() {
+		if err := t.nodeDrain(); err != nil {
+			return err
+		}
+		if err := t.stopDaemon(); err != nil {
+			return err
+		}
 	}
 
 	if err := t.backupLocalConfig(".pre-daemon-join"); err != nil {
