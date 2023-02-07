@@ -176,6 +176,7 @@ func newCmdDaemonJoin() *cobra.Command {
 	flagSet.StringVar(&options.Node, "node", "", "the name of the cluster node we want to join")
 	flagSet.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
 		" (created from 'om daemon auth --role json')")
+	flagSet.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
 	return cmd
 }
 
@@ -189,6 +190,8 @@ func newCmdDaemonLeave() *cobra.Command {
 			return options.Run()
 		},
 	}
+	flags := cmd.Flags()
+	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node removed from cluster")
 	return cmd
 }
 
