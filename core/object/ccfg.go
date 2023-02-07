@@ -54,3 +54,9 @@ func (t ccfg) Name() string {
 	k := key.New("cluster", "name")
 	return t.config.GetString(k)
 }
+
+// ClusterNodes return cluster nodes from config cluster.nodes
+func (t ccfg) ClusterNodes() []string {
+	k := key.New("cluster", "nodes")
+	return t.config.GetStrings(k)
+}

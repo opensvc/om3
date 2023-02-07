@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,7 +11,7 @@ import (
 	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/client/api"
 	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/core/object"
 	"opensvc.com/opensvc/daemon/daemonenv"
 	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/hostname"
@@ -21,6 +20,9 @@ import (
 type (
 	CmdDaemonLeave struct {
 		CmdDaemonCommon
+
+		// Timeout is the maximum duration for leave
+		Timeout time.Duration
 
 		// ApiNode is a cluster node where the leave request will be posted
 		ApiNode string
@@ -42,21 +44,22 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		return
 	}
 
+	if t.isRunning() {
+		if err := t.nodeDrain(); err != nil {
+			return err
+		}
+	}
+
 	t.localhost = hostname.Hostname()
-	duration := 5 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
 	defer cancel()
 
-	if err := t.setEvReader(duration); err != nil {
+	if err := t.setEvReader(); err != nil {
 		return err
 	}
 	defer func() {
 		_ = t.evReader.Close()
 	}()
-
-	if err := t.nodeDrain(); err != nil {
-		return err
-	}
 
 	if err := t.leave(); err != nil {
 		return err
@@ -83,7 +86,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 	return nil
 }
 
-func (t *CmdDaemonLeave) setEvReader(duration time.Duration) (err error) {
+func (t *CmdDaemonLeave) setEvReader() (err error) {
 	filters := []string{
 		"LeaveSuccess,removed=" + t.localhost + ",node=" + t.ApiNode,
 		"LeaveError,leave-node=" + t.localhost,
@@ -93,7 +96,7 @@ func (t *CmdDaemonLeave) setEvReader(duration time.Duration) (err error) {
 	t.evReader, err = t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetFilters(filters).
-		SetDuration(duration).
+		SetDuration(t.Timeout).
 		GetReader()
 	return
 }
@@ -140,7 +143,11 @@ func (t *CmdDaemonLeave) leave() error {
 
 func (t *CmdDaemonLeave) checkParams() error {
 	if t.ApiNode == "" {
-		for _, node := range strings.Split(rawconfig.ClusterSection().Nodes, " ") {
+		ccfg, err := object.NewCluster(object.WithVolatile(true))
+		if err != nil {
+			return err
+		}
+		for _, node := range ccfg.ClusterNodes() {
 			if node != hostname.Hostname() {
 				t.ApiNode = node
 				return nil

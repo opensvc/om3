@@ -147,7 +147,11 @@ func (d *discover) onConfigUpdated(c msgbus.ConfigUpdated) {
 
 func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig instance.Config) {
 	s := p.String()
-	if !d.inScope(&remoteConfig) {
+
+	localUpdated := file.ModTime(p.ConfigFile())
+
+	// Never drop local cluster config, ignore remote config older that local
+	if !p.Equal(path.Cluster) && remoteConfig.Updated.After(localUpdated) && !d.inScope(&remoteConfig) {
 		d.cancelFetcher(s)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) {
@@ -163,12 +167,9 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 			// our version is more recent than remote one
 			return
 		}
-	} else {
+	} else if !remoteConfig.Updated.After(localUpdated) {
 		// Not yet started icfg, but file exists
-		localUpdated := file.ModTime(p.ConfigFile())
-		if !remoteConfig.Updated.After(localUpdated) {
-			return
-		}
+		return
 	}
 	if remoteFetcherUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s, verify if new fetcher is required

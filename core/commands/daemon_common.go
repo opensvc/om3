@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"opensvc.com/opensvc/core/client"
 	"opensvc.com/opensvc/core/rawconfig"
 	"opensvc.com/opensvc/util/command"
 	"opensvc.com/opensvc/util/file"
@@ -41,6 +42,18 @@ func (t *CmdDaemonCommon) stopDaemon() (err error) {
 	return nil
 }
 
+// isRunning returns true if daemon is running
+func (t *CmdDaemonCommon) isRunning() bool {
+	cli, err := client.New()
+	if err != nil {
+		return false
+	}
+	if _, err := cli.NewGetDaemonRunning().Do(); err == nil {
+		return true
+	}
+	return false
+}
+
 func (t *CmdDaemonCommon) nodeDrain() (err error) {
 	cmd := command.New(
 		command.WithName(os.Args[0]),
@@ -72,7 +85,7 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) (err error) {
 	}
 
 	backup := path.Join(pathEtc, name+time.Now().Format(name+"-2006-01-02T15:04:05.json"))
-	_, _ = fmt.Fprintf(os.Stdout,"Save configs to %s\n", backup)
+	_, _ = fmt.Fprintf(os.Stdout, "Save configs to %s\n", backup)
 	if err := os.WriteFile(backup, cmd.Stdout(), 0o400); err != nil {
 		return err
 	}
