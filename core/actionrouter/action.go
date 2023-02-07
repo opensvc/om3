@@ -75,6 +75,12 @@ type (
 		//
 		TargetOptions any
 
+		// Wait runs an event watcher to wait for target state or global expect reached
+		Wait bool
+
+		// WaitDuration is the maximum duration allowed for the Wait
+		WaitDuration time.Duration
+
 		//
 		// Watch runs a event-driven monitor on the selected objects after
 		// setting a new target. So the operator can see the orchestration

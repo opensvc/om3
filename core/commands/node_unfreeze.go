@@ -15,6 +15,8 @@ func (t *CmdNodeUnfreeze) Run() error {
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("unfreeze"),
 		nodeaction.WithAsyncTarget("thawed"),
+		nodeaction.WithAsyncTime(t.Time),
+		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Format),
 		nodeaction.WithColor(t.Color),

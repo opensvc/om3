@@ -38,6 +38,10 @@ type (
 		Close() error
 	}
 
+	ContextSetter interface {
+		SetContext(ctx context.Context)
+	}
+
 	Kinder interface {
 		Kind() string
 	}

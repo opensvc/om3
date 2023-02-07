@@ -1,18 +1,24 @@
 package nodeaction
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"opensvc.com/opensvc/core/actionrouter"
 	"opensvc.com/opensvc/core/client"
+	"opensvc.com/opensvc/core/event"
+	"opensvc.com/opensvc/core/node"
 	"opensvc.com/opensvc/core/output"
 	"opensvc.com/opensvc/core/rawconfig"
+	"opensvc.com/opensvc/daemon/msgbus"
 	"opensvc.com/opensvc/util/funcopt"
 	"opensvc.com/opensvc/util/hostname"
 	"opensvc.com/opensvc/util/xerrors"
@@ -24,6 +30,8 @@ type (
 		actionrouter.T
 		Func func() (any, error)
 	}
+
+	Expectation any
 )
 
 func New(opts ...funcopt.O) *T {
@@ -92,7 +100,26 @@ func WithAsyncTarget(s string) funcopt.O {
 	})
 }
 
-// WithAsyncWatch runs a event-driven monitor on the selected objects after
+// WithAsyncTime is the maximum duration to wait for an async action
+// It needs WithAsyncWait(true)
+func WithAsyncTime(d time.Duration) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.WaitDuration = d
+		return nil
+	})
+}
+
+// WithAsyncWait runs an event-watcher waiting for target state, global expect reached
+func WithAsyncWait(v bool) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Wait = v
+		return nil
+	})
+}
+
+// WithAsyncWatch runs an event-driven monitor on the selected objects after
 // setting a new target. So the operator can see the orchestration
 // unfolding.
 func WithAsyncWatch(v bool) funcopt.O {
@@ -137,7 +164,7 @@ func WithServer(s string) funcopt.O {
 	})
 }
 
-// WithLocalRun sets a function to run if the the action is local
+// WithLocalRun sets a function to run if the action is local
 func WithLocalRun(f func() (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
@@ -197,15 +224,38 @@ func (t T) DoLocal() error {
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t T) DoAsync() error {
+	var (
+		ctx         context.Context
+		cancel      context.CancelFunc
+		expectation any
+		waitC       = make(chan error)
+	)
 	c, err := client.New(client.WithURL(t.Server))
 	if err != nil {
 		return err
 	}
-	req := c.NewPostNodeMonitor()
-	if t.Target == "drained" {
-		req.LocalExpect = t.Target
+	if t.WaitDuration > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), t.WaitDuration)
+		defer cancel()
 	} else {
-		req.GlobalExpect = t.Target
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
+	req := c.NewPostNodeMonitor()
+	switch t.Target {
+	case node.MonitorStateDrained.String():
+		req.LocalExpect = t.Target
+		expectation = node.MonitorStateDrained
+	default:
+		if globalExpect, ok := node.MonitorGlobalExpectValues[t.Target]; ok {
+			req.GlobalExpect = t.Target
+			expectation = globalExpect
+		} else {
+			return errors.Errorf("unexpected global expect value %s", t.Target)
+		}
+	}
+	if t.Wait {
+		go t.waitExpectation(ctx, c, expectation, waitC)
 	}
 	b, err := req.Do()
 	human := func() string {
@@ -222,6 +272,18 @@ func (t T) DoAsync() error {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+
+	if err != nil {
+		return err
+	}
+	if t.Wait {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-waitC:
+			return err
+		}
+	}
 	return nil
 }
 
@@ -248,8 +310,8 @@ func (t T) DoRemote() error {
 	if err := json.Unmarshal(b, data); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, data.Out)
-	fmt.Fprintf(os.Stderr, data.Err)
+	_, _ = fmt.Fprintf(os.Stdout, data.Out)
+	_, _ = fmt.Fprintf(os.Stderr, data.Err)
 	return nil
 }
 
@@ -269,4 +331,91 @@ func nodeDo(fn func() (any, error)) actionrouter.Result {
 		log.Error().Err(result.Error).Msg("do")
 	}
 	return result
+}
+
+// waitExpectation subscribes to NodeMonitorUpdated and wait for expectation reached
+// It writes result to errC chanel
+func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, errC chan<- error) {
+	var (
+		filters      []string
+		msg          msgbus.NodeMonitorUpdated
+		reached      = make(map[string]bool)
+		reachedUnset = make(map[string]bool)
+
+		err      error
+		evReader event.ReadCloser
+	)
+	defer func() {
+		select {
+		case <-ctx.Done():
+		case errC <- err:
+		}
+	}()
+	switch exp.(type) {
+	case node.MonitorState:
+		filters = []string{"NodeMonitorUpdated,node=" + hostname.Hostname()}
+	case node.MonitorGlobalExpect:
+		filters = []string{"NodeMonitorUpdated"}
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if t.WaitDuration > 0 {
+		getEvents = getEvents.SetDuration(t.WaitDuration)
+	}
+	evReader, err = getEvents.GetReader()
+	if err != nil {
+		return
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	}
+	go func() {
+		// close reader when ctx is done
+		select {
+		case <-ctx.Done():
+			_ = evReader.Close()
+		}
+	}()
+	for {
+		ev, readError := evReader.Read()
+		if readError != nil {
+			if errors.Is(readError, io.EOF) {
+				err = errors.Errorf("no more events (%s), wait %v failed", err, exp)
+			} else {
+				err = readError
+			}
+			return
+		}
+		switch ev.Kind {
+		case "NodeMonitorUpdated":
+			err = json.Unmarshal(ev.Data, &msg)
+			if err != nil {
+				return
+			}
+			log.Debug().Msgf("NodeMonitorUpdated %+v", msg)
+			nmon := msg.Value
+			switch v := exp.(type) {
+			case node.MonitorState:
+				if nmon.State == v {
+					reached[msg.Node] = true
+					log.Debug().Msgf("NodeMonitorUpdated reached state %s", v)
+				} else if reached[msg.Node] && nmon.State == node.MonitorStateIdle {
+					log.Debug().Msgf("NodeMonitorUpdated reached state %s unset", v)
+					return
+				}
+			case node.MonitorGlobalExpect:
+				if nmon.GlobalExpect == v {
+					reached[msg.Node] = true
+					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s", v)
+				} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectUnset {
+					reachedUnset[msg.Node] = true
+					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
+				}
+				if len(reached) > 0 && len(reached) == len(reachedUnset) {
+					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
+					return
+				}
+			}
+		}
+	}
 }

@@ -15,6 +15,8 @@ func (t *CmdNodeFreeze) Run() error {
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("freeze"),
 		nodeaction.WithAsyncTarget("frozen"),
+		nodeaction.WithAsyncTime(t.Time),
+		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Format),
 		nodeaction.WithColor(t.Color),

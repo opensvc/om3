@@ -3,6 +3,7 @@ package sseevent
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"strconv"
@@ -30,8 +31,12 @@ type (
 
 		// max is the maxTokenSize for internal scanner
 		max int
+
 		// buf is initial scanner buffer for split
 		buf []byte
+
+		ctx    context.Context
+		cancel context.CancelFunc
 	}
 
 	Writer struct {
@@ -63,13 +68,25 @@ func NewReadCloser(r io.ReadCloser) *ReadCloser {
 		max:          MaxScanTokenSize,
 		buf:          make([]byte, initialBufferSize),
 	}
+	t.ctx, t.cancel = context.WithCancel(context.Background())
+
 	return t
+}
+
+// SetContext set reader context, it will replace default reader context,
+// it can't be called after initial Read
+func (r *ReadCloser) SetContext(ctx context.Context) {
+	if r.parseStarted {
+		panic("SetContext called after Read")
+	}
+	r.cancel()
+	r.ctx, r.cancel = context.WithCancel(ctx)
 }
 
 // Buffer defines buffer value for internal go routine io.Scanner
 func (r *ReadCloser) Buffer(buf []byte, max int) {
 	if r.parseStarted {
-		panic("Buffer caller after Read")
+		panic("Buffer called after Read")
 	}
 	r.buf = buf
 	r.max = max
@@ -85,6 +102,8 @@ func (r *ReadCloser) Read() (*event.Event, error) {
 		r.parseStarted = true
 	}
 	select {
+	case <-r.ctx.Done():
+		return nil, r.ctx.Err()
 	case err := <-r.errC:
 		return nil, err
 	case e := <-r.eventC:
@@ -97,17 +116,9 @@ func (r *ReadCloser) Close() error {
 	if r.closed {
 		return ErrClosed
 	}
+	r.cancel()
 	r.closed = true
-	err := r.wrapped.Close()
-	// drop pending go routine channels
-	_, _ = <- r.errC
-	for {
-		if _, ok := <-r.eventC; !ok {
-			break
-		}
-	}
-	_, _ = <- r.errC
-	return err
+	return r.wrapped.Close()
 }
 
 // parse runs scanner on wrapped reader, parse read lines to construct
@@ -129,7 +140,7 @@ func (r *ReadCloser) parse() {
 	)
 	defer close(r.eventC)
 	defer close(r.errC)
-
+	defer r.cancel()
 	scanner.Buffer(r.buf, r.max)
 
 	for scanner.Scan() {
@@ -171,7 +182,11 @@ func (r *ReadCloser) parse() {
 				ev.Time = time.Now()
 			}
 			ev.Time = time.Now()
-			r.eventC <- ev
+			select {
+			case <-r.ctx.Done():
+				return
+			case r.eventC <- ev:
+			}
 
 			// reset for next event
 			dispatchReady = false
@@ -182,7 +197,10 @@ func (r *ReadCloser) parse() {
 	if err == nil {
 		err = io.EOF
 	}
-	r.errC <- err
+	select {
+	case <-r.ctx.Done():
+	case r.errC <- err:
+	}
 }
 
 func NewWriter(w io.Writer) *Writer {

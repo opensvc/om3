@@ -54,9 +54,9 @@ func (t *CmdDaemonLeave) Run() (err error) {
 		_ = t.evReader.Close()
 	}()
 
-	//if err := t.nodeDrain(); err != nil {
-	//	return err
-	//}
+	if err := t.nodeDrain(); err != nil {
+		return err
+	}
 
 	if err := t.leave(); err != nil {
 		return err
