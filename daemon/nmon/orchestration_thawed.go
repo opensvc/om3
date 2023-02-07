@@ -6,6 +6,7 @@ func (o *nmon) orchestrateThawed() {
 	switch o.state.State {
 	case node.MonitorStateIdle:
 		o.ThawedFromIdle()
+	case node.MonitorStateThawing:
 	default:
 		o.log.Warn().Msgf("don't know how to orchestrate %s from %s", o.state.GlobalExpect, o.state.State)
 	}
