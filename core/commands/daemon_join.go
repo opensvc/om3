@@ -199,6 +199,10 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) 
 		filePaths[file] = p
 	}
 
+	if err := t.nodeDrain(); err != nil {
+		return err
+	}
+
 	if err := t.stopDaemon(); err != nil {
 		return err
 	}
