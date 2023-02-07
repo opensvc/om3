@@ -42,12 +42,11 @@ var expected = "Threads                 \n" +
 	"  swap                  \n" +
 	"  version  warn         \n" +
 	"  compat   warn         \n" +
-	" hb-q                  \n" +
 	" state                  \n" +
 	"                        \n" +
 	"Objects                 \n"
 
-var daemonResultString = "{\"monitor\": {\"nodes\": {}, \"services\": {}}}"
+var daemonResultString = string(`{"monitor": {"nodes": {}, "services": {}}}`)
 
 func TestMonitorOutputIsCorrect(t *testing.T) {
 	m := New()
