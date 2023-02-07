@@ -167,7 +167,14 @@ func (o *nmon) worker() {
 	o.updateIfChange()
 	defer o.delete()
 
-	o.startRejoin()
+	if len(initialNodes) > 1 {
+		o.startRejoin()
+	} else {
+		o.rejoinTicker = time.NewTicker(time.Millisecond)
+		o.rejoinTicker.Stop()
+		o.log.Info().Msgf("single cluster node, transition to idle")
+		o.transitionTo(node.MonitorStateIdle)
+	}
 
 	statsTicker := time.NewTicker(10 * time.Second)
 	defer statsTicker.Stop()
