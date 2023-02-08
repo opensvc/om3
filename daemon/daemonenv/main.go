@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	// TODO use values from config
 	RawPort  = 1214
 	HttpPort = 1215
 

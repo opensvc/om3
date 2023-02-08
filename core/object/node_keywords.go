@@ -552,7 +552,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 	{
 		Section: "listener",
 		Option:  "tls_addr",
-		Default: "::",
+		Default: "",
 		Example: "1.2.3.4",
 		Text:    "The ip addr the daemon tls listener must listen on.",
 	},
@@ -566,7 +566,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 	{
 		Section: "listener",
 		Option:  "addr",
-		Default: "::",
+		Default: "",
 		Example: "1.2.3.4",
 		Text:    "The ip addr the daemon raw listener must listen on.",
 	},
