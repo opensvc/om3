@@ -17,6 +17,8 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/hostname"
@@ -51,7 +53,7 @@ func TestMain(m *testing.M) {
 
 func setup(t *testing.T) {
 	env := testhelper.Setup(t)
-	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../../testdata/cluster-2-nodes.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
 	rawconfig.LoadSections()
@@ -76,19 +78,24 @@ func TestDaemonData(t *testing.T) {
 	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx)
 	defer cancel()
 
+	ctx = daemondata.ContextWithBus(ctx, cmdC)
+	ctx = daemonctx.WithHBRecvMsgQ(ctx, hbRecvMsgQ)
+
+	require.NoError(t, ccfg.Start(ctx))
+
 	bus := daemondata.New(cmdC)
 	localNode := hostname.Hostname()
 	remoteHost := "node2"
 
-	t.Run("from initialized", func(t *testing.T) {
+	t.Run("from daemon start", func(t *testing.T) {
 		t.Run("GetStatus return status with instance state initialized", func(t *testing.T) {
 			localNodeStatus := bus.GetNodeStatus(localNode)
 			require.NotNil(t, localNodeStatus)
 			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],
 				"expected local node gen 1, got %+v", localNodeStatus)
 			cluster := bus.GetStatus().Cluster
-			require.Equal(t, "", cluster.Config.Name)
-			require.Equalf(t, "", cluster.Config.ID,
+			require.Equal(t, "cluster1", cluster.Config.Name)
+			require.Equalf(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID,
 				"got %+v", cluster)
 		})
 		require.False(t, t.Failed()) // fail on first error
@@ -162,6 +169,28 @@ func TestDaemonData(t *testing.T) {
 			require.Equal(t, uint64(96), nodeRemote.Stats.MemAvailPct)
 			require.Equal(t, uint64(979), nodeRemote.Stats.SwapTotalMB)
 		})
+
+		t.Run("on receive hb message from non cluster member", func(t *testing.T) {
+			peerNotMemmber := "peer-not-member"
+			full := LoadFull(t, "full-node2-t1.json")
+			fullGens := make(map[string]uint64)
+			for n, gen := range full.Status.Gen {
+				fullGens[n] = gen
+			}
+			msg := hbtype.Msg{
+				Kind:     "full",
+				Gen:      fullGens,
+				Full:     *full,
+				Nodename: peerNotMemmber,
+			}
+			hbRecvMsgQ <- &msg
+
+			assert.Nilf(t, bus.GetNode(peerNotMemmber),
+				"not cluster member '%s' message should not be applied", peerNotMemmber)
+			nodeLocal := bus.GetNode(localNode)
+			notPeerGens, ok := nodeLocal.Status.Gen[peerNotMemmber]
+			assert.Falsef(t, ok, "not cluster member has been added to local status gens: %v", notPeerGens)
+		})
 		require.False(t, t.Failed()) // fail on first error
 
 		t.Run("on receive hb message patch...", func(t *testing.T) {
@@ -214,9 +243,9 @@ func TestDaemonData(t *testing.T) {
 			cluster := bus.GetStatus().Cluster
 
 			// cluster.node.<node>.config
-			require.Equal(t, "", cluster.Config.Name)
+			require.Equal(t, "cluster1", cluster.Config.Name)
 			// TODO ensure expected cluster id from test cluster.conf file
-			require.Equal(t, "", cluster.Config.ID)
+			require.Equal(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID)
 			//require.Equal(t, []string{"node1", "node2"}, cluster.Config.Nodes)
 
 			// cluster.node.<node>.status

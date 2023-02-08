@@ -41,10 +41,11 @@ type (
 		localNode     string
 
 		// cluster nodes from local cluster config
-		clusterNodes  map[string]struct{}
-		counterCmd    chan<- interface{}
-		log           zerolog.Logger
-		bus           *pubsub.Bus
+		clusterNodes map[string]struct{}
+
+		counterCmd chan<- interface{}
+		log        zerolog.Logger
+		bus        *pubsub.Bus
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
