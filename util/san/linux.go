@@ -3,6 +3,7 @@
 package san
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -150,7 +151,10 @@ func GetISCSIInitiators() ([]Initiator, error) {
 	}
 	p := "/etc/iscsi/initiatorname.iscsi"
 	b, err := os.ReadFile(p)
-	if err != nil {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return l, nil
+	case err != nil:
 		return l, err
 	}
 	s := string(b)
