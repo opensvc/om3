@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
@@ -100,6 +101,31 @@ func (t *CmdDaemonRelayStatus) Run() error {
 	return nil
 }
 
+func (t relayMessages) Len() int {
+	return len(t)
+}
+
+func (t relayMessages) Less(i, j int) bool {
+	switch {
+	case t[i].ClusterName < t[j].ClusterName:
+		return true
+	case t[i].ClusterName > t[j].ClusterName:
+		return false
+	case t[i].ClusterId < t[j].ClusterId:
+		return true
+	case t[i].ClusterId > t[j].ClusterId:
+		return false
+	case t[i].Nodename < t[j].Nodename:
+		return true
+	default:
+		return false
+	}
+}
+
+func (t relayMessages) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
 func (t relayMessages) Render() string {
 	tree := tree.New()
 	tree.AddColumn().AddText("Relay").SetColor(rawconfig.Color.Bold)
@@ -109,6 +135,7 @@ func (t relayMessages) Render() string {
 	tree.AddColumn().AddText("NodeAddr").SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("UpdatedAt").SetColor(rawconfig.Color.Bold)
 	tree.AddColumn().AddText("MessageLength").SetColor(rawconfig.Color.Bold)
+	sort.Sort(t)
 	for _, e := range t {
 		n := tree.AddNode()
 		n.AddColumn().AddText(e.Relay).SetColor(rawconfig.Color.Primary)
