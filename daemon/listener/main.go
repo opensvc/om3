@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/enable"
@@ -52,44 +53,49 @@ type (
 )
 
 func getMandatorySub() map[string]sub {
-	return map[string]sub{
-		"listenerRaw": {
-			new: func(t *T) subdaemon.Manager {
-				return lsnrrawux.New(
-					lsnrrawux.WithRoutineTracer(&t.TT),
-					lsnrrawux.WithAddr(daemonenv.PathUxRaw()),
-				)
-			},
+	clusterConfig := ccfg.Get()
+	subs := make(map[string]sub)
+	subs["listenerRaw"] = sub{
+		new: func(t *T) subdaemon.Manager {
+			return lsnrrawux.New(
+				lsnrrawux.WithRoutineTracer(&t.TT),
+				lsnrrawux.WithAddr(daemonenv.PathUxRaw()),
+			)
 		},
-		"listenerRawInet": {
+	}
+	subs["listenerHttpUx"] = sub{
+		new: func(t *T) subdaemon.Manager {
+			return lsnrhttpux.New(
+				lsnrhttpux.WithRoutineTracer(&t.TT),
+				lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
+				lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
+				lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
+			)
+		},
+	}
+	if clusterConfig.Listener.Port > 0 {
+		subs["listenerRawInet"] = sub{
 			new: func(t *T) subdaemon.Manager {
 				return lsnrrawinet.New(
 					lsnrrawinet.WithRoutineTracer(&t.TT),
-					lsnrrawinet.WithAddr(fmt.Sprintf(":%d", daemonenv.RawPort)),
+					lsnrrawinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
 				)
 			},
-		},
-		"listenerHttpInet": {
+		}
+	}
+	if clusterConfig.Listener.TLSPort > 0 {
+		subs["listenerHttpInet"] = sub{
 			new: func(t *T) subdaemon.Manager {
 				return lsnrhttpinet.New(
 					lsnrhttpinet.WithRoutineTracer(&t.TT),
-					lsnrhttpinet.WithAddr(fmt.Sprintf(":%d", daemonenv.HttpPort)),
+					lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.TLSAddr, clusterConfig.Listener.TLSPort)),
 					lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
 					lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
 				)
 			},
-		},
-		"listenerHttpUx": {
-			new: func(t *T) subdaemon.Manager {
-				return lsnrhttpux.New(
-					lsnrhttpux.WithRoutineTracer(&t.TT),
-					lsnrhttpux.WithAddr(daemonenv.PathUxHttp()),
-					lsnrhttpux.WithCertFile(daemonenv.CertChainFile()),
-					lsnrhttpux.WithKeyFile(daemonenv.KeyFile()),
-				)
-			},
-		},
+		}
 	}
+	return subs
 }
 
 func New(opts ...funcopt.O) *T {

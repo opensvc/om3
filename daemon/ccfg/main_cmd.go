@@ -38,7 +38,15 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 		keyNodes      = key.New("cluster", "nodes")
 		keyDNS        = key.New("cluster", "dns")
 		keyCASecPaths = key.New("cluster", "ca")
+
+		keyListenerCRL             = key.New("listener", "crl")
+		keyListenerAddr            = key.New("listener", "addr")
+		keyListenerPort            = key.New("listener", "port")
+		keyListenerTLSAddr         = key.New("listener", "tls_addr")
+		keyListenerTLSPort         = key.New("listener", "tls_port")
+		keyListenerOpenIdWellKnown = key.New("listener", "openid_well_known")
 	)
+
 	cfg := cluster.Config{}
 	cfg.ID = o.clusterConfig.GetString(keyID)
 	cfg.DNS = o.clusterConfig.GetStrings(keyDNS)
@@ -46,6 +54,13 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.Name = o.clusterConfig.GetString(keyName)
 	cfg.CASecPaths = o.clusterConfig.GetStrings(keyCASecPaths)
 	cfg.SetSecret(o.clusterConfig.GetString(keySecret))
+
+	cfg.Listener.CRL = o.clusterConfig.GetString(keyListenerCRL)
+	cfg.Listener.Addr = o.clusterConfig.GetString(keyListenerAddr)
+	cfg.Listener.Port = o.clusterConfig.GetInt(keyListenerPort)
+	cfg.Listener.TLSAddr = o.clusterConfig.GetString(keyListenerTLSAddr)
+	cfg.Listener.TLSPort = o.clusterConfig.GetInt(keyListenerTLSPort)
+	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIdWellKnown)
 
 	var change bool
 
