@@ -39,6 +39,9 @@ type (
 		gen           uint64                // gen of local TNodeData
 		hbMessageType string                // latest created hb message type
 		localNode     string
+
+		// cluster nodes from local cluster config
+		clusterNodes  map[string]struct{}
 		counterCmd    chan<- interface{}
 		log           zerolog.Logger
 		bus           *pubsub.Bus
@@ -224,7 +227,11 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			}
 			propagationTicker.Reset(propagationInterval)
 		case msg := <-hbRecvQ:
-			d.onReceiveHbMsg(msg)
+			if _, ok := d.clusterNodes[msg.Nodename]; ok {
+				d.onReceiveHbMsg(msg)
+			} else {
+				d.log.Debug().Msgf("drop rx message message: %s is not cluster member", msg.Nodename)
+			}
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
 				beginCmd <- cmd

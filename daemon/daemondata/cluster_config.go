@@ -73,12 +73,14 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 		d.log.Debug().Msgf("removed nodes: %s", removed)
 	}
 	for _, v := range added {
+		d.clusterNodes[v] = struct{}{}
 		d.bus.Pub(
 			msgbus.JoinSuccess{Node: v},
 			labelLocalNode,
 			pubsub.Label{"added", v})
 	}
 	for _, v := range removed {
+		delete(d.clusterNodes, v)
 		d.bus.Pub(
 			msgbus.LeaveSuccess{Node: v},
 			labelLocalNode,

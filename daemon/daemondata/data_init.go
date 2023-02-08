@@ -52,6 +52,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		hbMessageType:      initialMsgType,
 		hbPatchMsgUpdated:  make(map[string]time.Time),
 		localNode:          localNode,
+		clusterNodes:       map[string]struct{}{localNode: struct{}{}},
 		pending:            status.DeepCopy(),
 		patchQueue:         make(patchQueue),
 		previousRemoteInfo: make(map[string]remoteInfo),
