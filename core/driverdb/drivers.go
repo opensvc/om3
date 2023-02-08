@@ -29,7 +29,3 @@ import (
 	_ "opensvc.com/opensvc/drivers/resvhostenvoy"
 	_ "opensvc.com/opensvc/drivers/resvol"
 )
-
-func Load() {
-	return
-}
