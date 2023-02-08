@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/daemon/daemonapi"
@@ -45,19 +44,48 @@ type (
 )
 
 func bootStrapCcfg() error {
+	type mandatoryKeyT struct {
+		Key       key.T
+		Default   string
+		Obfuscate bool
+	}
+	keys := []mandatoryKeyT{
+		{
+			Key:       key.New("cluster", "id"),
+			Default:   uuid.New().String(),
+			Obfuscate: false,
+		},
+		{
+			Key:       key.New("cluster", "nodes"),
+			Default:   hostname.Hostname(),
+			Obfuscate: false,
+		},
+		{
+			Key:       key.New("cluster", "secret"),
+			Default:   strings.ReplaceAll(uuid.New().String(), "-", ""),
+			Obfuscate: true,
+		},
+	}
+
 	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
-	for _, op := range []keyop.T{
-		*keyop.New(key.New("cluster", "id"), keyop.Set, uuid.New().String(), 0),
-		*keyop.New(key.New("cluster", "nodes"), keyop.Set, hostname.Hostname(), 0),
-		*keyop.New(key.New("cluster", "secret"), keyop.Set, strings.ReplaceAll(uuid.New().String(), "-", ""), 0),
-	} {
-		if err := ccfg.Config().Set(op); err != nil {
+
+	for _, k := range keys {
+		if ccfg.Config().Get(k.Key) != "" {
+			continue
+		}
+		op := keyop.New(k.Key, keyop.Set, k.Default, 0)
+		if err := ccfg.Config().Set(*op); err != nil {
 			return err
 		}
+		if k.Obfuscate {
+			op.Value = "xxxx"
+		}
+		log.Info().Msgf("bootstrap cluster config: %s", op)
 	}
+
 	if err := ccfg.Config().Commit(); err != nil {
 		return err
 	}
@@ -200,11 +228,8 @@ func (t *T) start() (waiter, error) {
 		log.Error().Err(err).Msgf("cli-start can't create mandatory directories")
 		return nil, err
 	}
-	if !path.Cluster.Exists() {
-		log.Warn().Msg("cli-start no cluster config, bootstrap new one")
-		if err := bootStrapCcfg(); err != nil {
-			return nil, err
-		}
+	if err := bootStrapCcfg(); err != nil {
+		return nil, err
 	}
 	log.Debug().Msg("cli-start check if not already running")
 	if t.running() {
