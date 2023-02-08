@@ -8,10 +8,10 @@ import (
 
 	"github.com/rs/zerolog"
 
-	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
-	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/hb/hbctrl"
+	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
+	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/hb/hbctrl"
 )
 
 type (

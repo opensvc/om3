@@ -12,11 +12,11 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/routehttp"
-	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/listener/routehttp"
+	"github.com/opensvc/om3/daemon/routinehelper"
+	"github.com/opensvc/om3/daemon/subdaemon"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (

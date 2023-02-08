@@ -8,16 +8,16 @@ import (
 	"strconv"
 	"strings"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/nodesinfo"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/volaccess"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/render/tree"
-	"opensvc.com/opensvc/util/san"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/nodesinfo"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/volaccess"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/render/tree"
+	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 type (

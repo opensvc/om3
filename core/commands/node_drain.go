@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/nodeaction"
+	"github.com/opensvc/om3/core/nodeaction"
 )
 
 type CmdNodeDrain struct {

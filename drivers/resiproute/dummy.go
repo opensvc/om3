@@ -5,7 +5,7 @@ package resiproute
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/status"
 )
 
 // Start the Resource

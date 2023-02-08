@@ -2,7 +2,7 @@
 
 package resdisklv
 
-import "opensvc.com/opensvc/util/lvm2"
+import "github.com/opensvc/om3/util/lvm2"
 
 func (t T) lv() LVDriver {
 	lv := lvm2.NewLV(

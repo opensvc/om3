@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/util/capexec"
+	"github.com/opensvc/om3/util/capexec"
 )
 
 var (

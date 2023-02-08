@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func peerDropWorker(ctx context.Context) {

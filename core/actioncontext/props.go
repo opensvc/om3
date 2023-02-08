@@ -1,8 +1,8 @@
 package actioncontext
 
 import (
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/ordering"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/ordering"
 )
 
 type (

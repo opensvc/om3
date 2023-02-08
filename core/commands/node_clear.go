@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/client"
+	"github.com/opensvc/om3/core/client"
 )
 
 type CmdNodeClear struct {

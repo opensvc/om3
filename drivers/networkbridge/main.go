@@ -1,8 +1,8 @@
 package networkbridge
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/network"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/network"
 )
 
 type (

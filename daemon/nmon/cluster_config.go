@@ -1,14 +1,14 @@
 package nmon
 
 import (
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/daemon/ccfg"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 // onJoinRequest handle JoinRequest to update cluster config with new node.

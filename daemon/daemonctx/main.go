@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/subdaemon"
+	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/daemon/subdaemon"
 )
 
 type (

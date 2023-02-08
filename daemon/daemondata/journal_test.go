@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/jsondelta"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/jsondelta"
 )
 
 func TestJournal(t *testing.T) {

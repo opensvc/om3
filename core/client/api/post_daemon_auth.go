@@ -3,7 +3,7 @@ package api
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/client/request"
+	"github.com/opensvc/om3/core/client/request"
 )
 
 // PostDaemonAuth describes the daemon auth api handler options.

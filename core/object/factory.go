@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 // WithConfigFile sets a non-standard configuration location.

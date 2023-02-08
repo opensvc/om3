@@ -1,9 +1,9 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/objectdevice"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/device"
+	"github.com/opensvc/om3/core/objectdevice"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/device"
 )
 
 type (

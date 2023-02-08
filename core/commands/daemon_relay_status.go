@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/daemon/daemonapi"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/render/tree"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (

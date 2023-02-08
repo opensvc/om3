@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

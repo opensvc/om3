@@ -3,7 +3,7 @@ package commands
 import (
 	"os"
 
-	"opensvc.com/opensvc/core/monitor"
+	"github.com/opensvc/om3/core/monitor"
 )
 
 type (

@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"opensvc.com/opensvc/core/commands"
-	"opensvc.com/opensvc/core/monitor"
+	"github.com/opensvc/om3/core/commands"
+	"github.com/opensvc/om3/core/monitor"
 )
 
 func newCmdAll() *cobra.Command {

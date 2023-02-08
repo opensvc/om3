@@ -3,8 +3,8 @@ package cluster
 import (
 	"fmt"
 
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/render/listener"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/render/listener"
 )
 
 func (f Frame) wThreadDaemon() string {

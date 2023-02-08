@@ -1,7 +1,7 @@
 package api
 
 import (
-	"opensvc.com/opensvc/core/client/request"
+	"github.com/opensvc/om3/core/client/request"
 )
 
 // GetNodesInfo describes the options supported by GET /nodes

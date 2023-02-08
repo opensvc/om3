@@ -3,11 +3,11 @@ package ccfg
 import (
 	"strings"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/network"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/network"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/key"
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated

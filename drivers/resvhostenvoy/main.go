@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
 )
 
 type (

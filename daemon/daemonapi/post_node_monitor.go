@@ -5,10 +5,10 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,8 @@
 package resappforking
 
 import (
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/util/converters"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/util/converters"
 )
 
 var (

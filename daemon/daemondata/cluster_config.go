@@ -5,12 +5,12 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

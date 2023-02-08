@@ -2,8 +2,8 @@ package object
 
 import (
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/patches"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/patches"
 )
 
 func (t Node) PushPatch() ([]patches.Patch, error) {

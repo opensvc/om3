@@ -3,8 +3,8 @@
 package resdisklv
 
 import (
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/lvm2"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/lvm2"
 )
 
 func init() {

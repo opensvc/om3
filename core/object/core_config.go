@@ -10,18 +10,18 @@ import (
 
 	"github.com/google/uuid"
 
-	"opensvc.com/opensvc/core/fqdn"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/priority"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/fqdn"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 var (

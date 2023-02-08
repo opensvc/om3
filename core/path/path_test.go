@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func TestNew(t *testing.T) {

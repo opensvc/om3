@@ -12,15 +12,15 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemoncli"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/testhelper"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/cmd"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemoncli"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 var (

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/ssrathi/go-attr"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/render/tree"
-	"opensvc.com/opensvc/util/san"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/render/tree"
+	"github.com/opensvc/om3/util/san"
 )
 
 var (

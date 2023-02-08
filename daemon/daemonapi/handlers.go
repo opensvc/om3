@@ -12,9 +12,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type DaemonApi struct {

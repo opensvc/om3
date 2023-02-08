@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"opensvc.com/opensvc/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemondata"
 )
 
 type (

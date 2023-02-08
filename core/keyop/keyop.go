@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 func nodeDrvDoc(group, name string) (string, error) {

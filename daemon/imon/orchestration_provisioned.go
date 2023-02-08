@@ -3,8 +3,8 @@ package imon
 import (
 	"sort"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/provisioned"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/provisioned"
 )
 
 func (o *imon) orchestrateProvisioned() {

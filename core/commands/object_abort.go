@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

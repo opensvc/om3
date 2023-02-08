@@ -8,11 +8,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemon"
-	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/cmd"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemon"
+	"github.com/opensvc/om3/daemon/routinehelper"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func TestMain(m *testing.M) {

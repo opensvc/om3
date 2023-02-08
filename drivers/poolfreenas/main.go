@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/pool"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/drivers/arrayfreenas"
-	"opensvc.com/opensvc/util/san"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/drivers/arrayfreenas"
+	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 type (

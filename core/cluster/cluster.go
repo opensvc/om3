@@ -3,11 +3,11 @@ package cluster
 import (
 	"encoding/json"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/core/path"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/path"
 )
 
 type (

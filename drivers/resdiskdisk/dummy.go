@@ -5,8 +5,8 @@ package resdiskdisk
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/device"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/device"
 )
 
 func (t *T) Status(ctx context.Context) status.T {

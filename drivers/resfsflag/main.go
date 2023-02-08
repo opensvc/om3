@@ -10,16 +10,16 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/sshnode"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/sshnode"
 )
 
 // T is the driver structure.

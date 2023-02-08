@@ -7,14 +7,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/compliance"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/logging"
-	"opensvc.com/opensvc/util/xsession"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/compliance"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 type (

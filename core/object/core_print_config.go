@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 // PrintConfig gets a keyword value

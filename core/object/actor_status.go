@@ -5,12 +5,12 @@ import (
 	"sync"
 	"time"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/statusbus"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {

@@ -11,8 +11,8 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/command"
 )
 
 const (

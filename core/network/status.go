@@ -6,9 +6,9 @@ import (
 	"net"
 	"sort"
 
-	"opensvc.com/opensvc/core/clusterip"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/render/tree"
+	"github.com/opensvc/om3/core/clusterip"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/render/tree"
 )
 
 type (

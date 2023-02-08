@@ -16,7 +16,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
 
-	"opensvc.com/opensvc/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonenv"
 )
 
 type (

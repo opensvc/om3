@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/command"
 )
 
 func (t T) Mount(dev string, mnt string, options string) error {

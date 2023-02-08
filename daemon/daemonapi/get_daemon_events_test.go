@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func TestGetDaemonEventsParams(t *testing.T) {

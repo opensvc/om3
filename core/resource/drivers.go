@@ -3,7 +3,7 @@ package resource
 import (
 	"sort"
 
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

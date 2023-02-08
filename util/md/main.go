@@ -10,12 +10,12 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/fcache"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/fcache"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

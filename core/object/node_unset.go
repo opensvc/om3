@@ -3,7 +3,7 @@ package object
 import (
 	"context"
 
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/util/key"
 )
 
 // Unset gets a keyword value

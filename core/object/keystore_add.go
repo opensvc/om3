@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/uri"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/uri"
 )
 
 // AddKey sets a new key and commits immediately

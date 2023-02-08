@@ -3,8 +3,8 @@ package disks
 import (
 	"fmt"
 
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/device"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/device"
 )
 
 type (

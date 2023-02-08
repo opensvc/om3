@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client/request"
+	"github.com/opensvc/om3/core/client/request"
 )
 
 // HasRequester returns true if the client has a requester defined.

@@ -13,10 +13,10 @@ import (
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
 
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/xerrors"
-	"opensvc.com/opensvc/util/xsession"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/xerrors"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 func (t *PersistentReservationHandle) setup() error {

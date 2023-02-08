@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

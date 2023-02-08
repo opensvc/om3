@@ -1,8 +1,8 @@
 package resdiskloop
 
 import (
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/loop"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/loop"
 )
 
 func init() {

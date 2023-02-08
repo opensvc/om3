@@ -7,12 +7,12 @@ import (
 	"os"
 	"sync"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/nodeselector"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/slog"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/render"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/render"
 )
 
 type (

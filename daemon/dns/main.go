@@ -14,10 +14,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/ccfg"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

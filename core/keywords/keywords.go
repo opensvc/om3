@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
 	"golang.org/x/term"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 // Keyword represents a configuration option in an object or node configuration file

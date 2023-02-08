@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/util/key"
 )
 
 func TestKeyopParse(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 func validatePRKey(s string) error {

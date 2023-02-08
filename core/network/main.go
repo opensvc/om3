@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/clusterip"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusterip"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

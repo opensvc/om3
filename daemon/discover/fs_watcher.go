@@ -13,11 +13,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 const (

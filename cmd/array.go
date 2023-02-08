@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"opensvc.com/opensvc/core/array"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/array"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/key"
 )
 
 var (

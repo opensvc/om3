@@ -2,8 +2,8 @@ package zfs
 
 import (
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (

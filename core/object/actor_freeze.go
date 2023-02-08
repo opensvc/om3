@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/statusbus"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/util/file"
 )
 
 //

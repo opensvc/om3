@@ -11,14 +11,14 @@ import (
 	"github.com/danwakefield/fnmatch"
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/xerrors"
-	"opensvc.com/opensvc/util/xmap"
-	"opensvc.com/opensvc/util/xstrings"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/xerrors"
+	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/util/xstrings"
 )
 
 type (

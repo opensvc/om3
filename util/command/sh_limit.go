@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"opensvc.com/opensvc/util/limits"
+	"github.com/opensvc/om3/util/limits"
 	"runtime"
 	"strings"
 )

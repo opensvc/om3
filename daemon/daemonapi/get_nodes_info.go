@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 )
 
 func (a *DaemonApi) GetNodesInfo(w http.ResponseWriter, r *http.Request) {

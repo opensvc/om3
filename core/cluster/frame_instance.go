@@ -1,10 +1,10 @@
 package cluster
 
 import (
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (f Frame) sObjectInstance(path string, node string, scope []string) string {

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net"
 
-	"opensvc.com/opensvc/core/fqdn"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/fqdn"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 const hexDigit = "0123456789abcdef"

@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/xsession"
-	"opensvc.com/opensvc/util/xstrings"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/xsession"
+	"github.com/opensvc/om3/util/xstrings"
 )
 
 type (

@@ -1,10 +1,10 @@
 package ressharenfs
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/util/capabilities"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/util/capabilities"
 )
 
 var (

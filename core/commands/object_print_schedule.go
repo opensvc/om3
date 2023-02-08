@@ -7,13 +7,13 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/schedule"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/schedule"
 )
 
 type (

@@ -3,7 +3,7 @@
 package udevadm
 
 import (
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/command"
 )
 
 func Settle() {

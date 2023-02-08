@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/objectaction"
-	"opensvc.com/opensvc/core/path"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/core/path"
 )
 
 type (

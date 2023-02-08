@@ -6,15 +6,15 @@ import (
 	"os"
 	"sync"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/slog"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/render"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/render"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

@@ -1,6 +1,6 @@
 package client
 
-import "opensvc.com/opensvc/core/client/api"
+import "github.com/opensvc/om3/core/client/api"
 
 func (t T) NewGetDaemonStats() *api.GetDaemonStats {
 	return api.NewGetDaemonStats(t)

@@ -3,9 +3,9 @@ package array
 import (
 	"strings"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

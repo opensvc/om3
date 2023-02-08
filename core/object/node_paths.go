@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 // nodePaths contains lazy initialized object paths on the node filesystem.

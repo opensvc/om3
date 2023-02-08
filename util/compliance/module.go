@@ -8,7 +8,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

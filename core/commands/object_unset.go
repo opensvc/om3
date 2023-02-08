@@ -3,11 +3,11 @@ package commands
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/objectaction"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

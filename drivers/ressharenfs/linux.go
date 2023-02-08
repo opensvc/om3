@@ -10,9 +10,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

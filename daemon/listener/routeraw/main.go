@@ -15,10 +15,10 @@ import (
 
 	"github.com/rs/zerolog"
 
-	clientrequest "opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/daemon/ccfg"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/daemon/listener/routeresponse"
+	clientrequest "github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/listener/routeresponse"
 )
 
 type (

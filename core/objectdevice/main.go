@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/device"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/device"
 )
 
 type (

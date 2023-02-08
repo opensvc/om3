@@ -3,7 +3,7 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/nodesinfo"
+	"github.com/opensvc/om3/core/nodesinfo"
 )
 
 type opGetNodesInfo struct {

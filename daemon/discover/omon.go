@@ -3,9 +3,9 @@ package discover
 import (
 	"time"
 
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/daemon/omon"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/omon"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (d *discover) omon(started chan<- bool) {

@@ -3,15 +3,15 @@ package imon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/toc"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/toc"
 )
 
 type (

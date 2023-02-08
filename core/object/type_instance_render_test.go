@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func Test_Instance_States_Render(t *testing.T) {

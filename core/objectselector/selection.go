@@ -10,15 +10,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

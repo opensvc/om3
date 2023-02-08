@@ -1,6 +1,6 @@
 package systemd
 
-import "opensvc.com/opensvc/util/capabilities"
+import "github.com/opensvc/om3/util/capabilities"
 
 const (
 	NodeCapability = "node.x.systemd"

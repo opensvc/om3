@@ -3,7 +3,7 @@ package node
 import (
 	"encoding/json"
 
-	"opensvc.com/opensvc/core/instance"
+	"github.com/opensvc/om3/core/instance"
 )
 
 type (

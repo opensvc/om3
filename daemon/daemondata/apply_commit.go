@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/jsondelta"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/jsondelta"
 )
 
 // commitPendingOps manage patch queue from current pending ops

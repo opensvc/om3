@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/util/key"
 )
 
 // Remove gets a keyword value

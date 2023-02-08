@@ -1,8 +1,8 @@
 package imon
 
 import (
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/node"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
 )
 
 // orchestrate from omon vs global expect

@@ -3,8 +3,8 @@ package nmon
 import (
 	"os"
 
-	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/util/command"
 )
 
 var (

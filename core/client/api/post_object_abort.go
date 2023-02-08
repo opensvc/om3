@@ -1,8 +1,8 @@
 package api
 
 import (
-	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/path"
+	"github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/core/path"
 )
 
 // PostObjectAbort is the client type to request an orchestration abort

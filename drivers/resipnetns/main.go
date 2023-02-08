@@ -12,14 +12,14 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"opensvc.com/opensvc/core/actionresdeps"
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/fqdn"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/netif"
+	"github.com/opensvc/om3/core/actionresdeps"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/fqdn"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/netif"
 
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"

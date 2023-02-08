@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

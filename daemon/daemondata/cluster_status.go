@@ -3,7 +3,7 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/cluster"
+	"github.com/opensvc/om3/core/cluster"
 )
 
 // GetStatus returns deep copy of status

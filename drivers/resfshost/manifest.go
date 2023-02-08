@@ -1,12 +1,12 @@
 package resfshost
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/filesystems"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/filesystems"
 )
 
 var (

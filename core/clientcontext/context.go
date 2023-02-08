@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/core/env"
+	"github.com/opensvc/om3/core/env"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"

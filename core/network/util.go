@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/key"
 )
 
 func sectionName(networkName string) string {

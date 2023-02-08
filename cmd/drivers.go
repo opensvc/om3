@@ -4,5 +4,5 @@
 package cmd
 
 import (
-	_ "opensvc.com/opensvc/core/driverdb"
+	_ "github.com/opensvc/om3/core/driverdb"
 )

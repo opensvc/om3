@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
-	"opensvc.com/opensvc/core/actionrollback"
+	"github.com/opensvc/om3/core/actionrollback"
 )
 
 func (t T) IPVLANMode() (netlink.IPVlanMode, error) {

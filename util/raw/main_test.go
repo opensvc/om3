@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/file"
 )
 
 func TestRaw(t *testing.T) {

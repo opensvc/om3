@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"opensvc.com/opensvc/core/resourceselector"
+	"github.com/opensvc/om3/core/resourceselector"
 )
 
 type enterer interface {

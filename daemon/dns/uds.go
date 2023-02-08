@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (

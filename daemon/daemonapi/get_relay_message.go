@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/relay"
+	"github.com/opensvc/om3/daemon/relay"
 )
 
 func (a *DaemonApi) GetRelayMessage(w http.ResponseWriter, r *http.Request, params GetRelayMessageParams) {

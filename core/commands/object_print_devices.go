@@ -2,13 +2,13 @@ package commands
 
 import (
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/objectdevice"
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectdevice"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (

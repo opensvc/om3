@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/file"
 )
 
 var (

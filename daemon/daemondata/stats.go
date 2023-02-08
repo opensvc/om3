@@ -3,7 +3,7 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/util/callcount"
+	"github.com/opensvc/om3/util/callcount"
 )
 
 type opStats struct {

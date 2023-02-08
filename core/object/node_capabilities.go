@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/util/capabilities"
+	"github.com/opensvc/om3/util/capabilities"
 )
 
 // NodeScanCapabilities scan node capabilities and return new capabilities

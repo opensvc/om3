@@ -4,9 +4,9 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/core/schedule"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/schedule"
+	"github.com/opensvc/om3/util/command"
 )
 
 func (o T) action(e schedule.Entry) error {

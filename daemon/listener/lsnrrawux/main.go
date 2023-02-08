@@ -7,11 +7,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/listener/routeraw"
-	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/listener/routeraw"
+	"github.com/opensvc/om3/daemon/routinehelper"
+	"github.com/opensvc/om3/daemon/subdaemon"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (

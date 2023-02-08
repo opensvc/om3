@@ -5,8 +5,8 @@ import (
 	"io"
 	"sort"
 
-	"opensvc.com/opensvc/util/timestamp"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/timestamp"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

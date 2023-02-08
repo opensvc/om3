@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/ssrathi/go-attr"
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func (t *core) statusFile() string {

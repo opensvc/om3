@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

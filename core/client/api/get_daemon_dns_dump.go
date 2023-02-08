@@ -1,7 +1,7 @@
 package api
 
 import (
-	"opensvc.com/opensvc/core/client/request"
+	"github.com/opensvc/om3/core/client/request"
 )
 
 // GetDaemonDNSDump describes the daemon statistics api handler options.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
 type (

@@ -3,7 +3,7 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/path"
+	"github.com/opensvc/om3/core/path"
 )
 
 type opGetServiceNames struct {

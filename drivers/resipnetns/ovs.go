@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/util/command"
 )
 
 func (t *T) startOVSPort(ctx context.Context, dev string) error {

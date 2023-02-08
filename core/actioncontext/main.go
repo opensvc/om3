@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/util/pg"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/util/pg"
 )
 
 type (

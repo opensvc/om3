@@ -5,9 +5,9 @@ import (
 	"strings"
 	"unicode"
 
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

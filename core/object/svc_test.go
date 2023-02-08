@@ -9,17 +9,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/cmd"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/testhelper"
 
-	_ "opensvc.com/opensvc/core/driverdb"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/slog"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/xsession"
+	_ "github.com/opensvc/om3/core/driverdb"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 var sectionApp0 = []byte(`

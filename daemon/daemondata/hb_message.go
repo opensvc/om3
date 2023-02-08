@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"opensvc.com/opensvc/core/hbtype"
+	"github.com/opensvc/om3/core/hbtype"
 )
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen

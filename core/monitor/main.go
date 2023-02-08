@@ -12,11 +12,11 @@ import (
 
 	"github.com/inancgumus/screen"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/jsondelta"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/jsondelta"
 )
 
 type (

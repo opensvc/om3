@@ -11,8 +11,8 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 // ApplyProc creates the cgroup, set caps, and add the specified process

@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/object"
+	"github.com/opensvc/om3/core/object"
 )
 
 type (

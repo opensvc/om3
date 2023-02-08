@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/drivers/resapp"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/pg"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/resapp"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/pg"
 )
 
 var (

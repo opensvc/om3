@@ -1,8 +1,8 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/objectaction"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

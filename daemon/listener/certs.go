@@ -9,17 +9,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/ccfg"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/filesystems"
-	"opensvc.com/opensvc/util/findmnt"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/filesystems"
+	"github.com/opensvc/om3/util/findmnt"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 func startCertFS() error {

@@ -8,9 +8,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/event/sseevent"
+	"github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/event/sseevent"
 )
 
 // GetEvents describes the events request options.

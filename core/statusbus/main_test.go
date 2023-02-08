@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/status"
 )
 
 func TestRefuseStartTwice(t *testing.T) {

@@ -16,13 +16,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/api/apimodel"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/listener/routectx"
-	"opensvc.com/opensvc/daemon/listener/routeresponse"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/httpclientcache"
+	"github.com/opensvc/om3/core/api/apimodel"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/listener/routectx"
+	"github.com/opensvc/om3/daemon/listener/routeresponse"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/httpclientcache"
 )
 
 type (

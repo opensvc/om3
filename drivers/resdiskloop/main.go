@@ -5,16 +5,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/drivers/resdisk"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/df"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/loop"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/resdisk"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/df"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/loop"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 type (

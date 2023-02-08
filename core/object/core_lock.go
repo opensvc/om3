@@ -6,8 +6,8 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/util/xsession"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 func (t *core) lockPath(group string) (path string) {

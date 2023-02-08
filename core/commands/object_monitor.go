@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/monitor"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/monitor"
 )
 
 type (

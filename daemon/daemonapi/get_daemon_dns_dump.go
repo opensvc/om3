@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/dns"
+	"github.com/opensvc/om3/daemon/dns"
 )
 
 // GetDaemonDNSDump returns the DNS zone content.

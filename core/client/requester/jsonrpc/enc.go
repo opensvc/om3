@@ -13,8 +13,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

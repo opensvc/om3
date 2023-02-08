@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (

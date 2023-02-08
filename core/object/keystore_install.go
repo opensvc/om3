@@ -13,11 +13,11 @@ import (
 	"github.com/danwakefield/fnmatch"
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

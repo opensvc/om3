@@ -1,6 +1,6 @@
 package object
 
-import "opensvc.com/opensvc/util/compliance"
+import "github.com/opensvc/om3/util/compliance"
 
 func (t core) NewCompliance() (*compliance.T, error) {
 	n, err := t.Node()

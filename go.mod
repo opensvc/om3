@@ -1,4 +1,4 @@
-module opensvc.com/opensvc
+module github.com/opensvc/om3
 
 go 1.19
 

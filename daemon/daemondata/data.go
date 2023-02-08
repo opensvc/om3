@@ -8,17 +8,17 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/callcount"
-	"opensvc.com/opensvc/util/durationlog"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/callcount"
+	"github.com/opensvc/om3/util/durationlog"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

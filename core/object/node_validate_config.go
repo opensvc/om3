@@ -1,6 +1,6 @@
 package object
 
-import "opensvc.com/opensvc/core/xconfig"
+import "github.com/opensvc/om3/core/xconfig"
 
 // ValidateConfig
 func (t *Node) ValidateConfig() (xconfig.ValidateAlerts, error) {

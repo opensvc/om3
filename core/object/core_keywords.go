@@ -1,16 +1,16 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/key"
 )
 
 var keywordStore = keywords.Store{

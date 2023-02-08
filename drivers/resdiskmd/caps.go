@@ -3,8 +3,8 @@
 package resdiskmd
 
 import (
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/md"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/md"
 )
 
 func init() {

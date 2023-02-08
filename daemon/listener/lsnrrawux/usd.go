@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"opensvc.com/opensvc/daemon/listener/routehttp"
-	"opensvc.com/opensvc/daemon/listener/routeraw"
+	"github.com/opensvc/om3/daemon/listener/routehttp"
+	"github.com/opensvc/om3/daemon/listener/routeraw"
 )
 
 func (t *T) stop() error {

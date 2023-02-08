@@ -2,12 +2,12 @@ package poolvirtual
 
 import (
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/pool"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

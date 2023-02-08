@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/loop"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/loop"
 )
 
 var (

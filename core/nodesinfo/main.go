@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/san"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

@@ -3,8 +3,8 @@ package event
 import (
 	"fmt"
 
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/util/jsondelta"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/util/jsondelta"
 )
 
 // Render formats a opensvc agent event

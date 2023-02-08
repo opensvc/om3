@@ -13,10 +13,10 @@ import (
 	"github.com/hpcloud/tail"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/logging"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

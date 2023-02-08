@@ -7,17 +7,17 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
-	"opensvc.com/opensvc/core/actionresdeps"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/resourceset"
-	"opensvc.com/opensvc/core/schedule"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/pg"
+	"github.com/opensvc/om3/core/actionresdeps"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/resourceset"
+	"github.com/opensvc/om3/core/schedule"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/pg"
 )
 
 type (

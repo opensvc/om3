@@ -7,7 +7,7 @@ import (
 	"github.com/opensvc/flock"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/util/xsession"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 // Func call f() inside lock protection

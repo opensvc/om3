@@ -15,8 +15,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

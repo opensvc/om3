@@ -8,12 +8,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/hbcache"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/daemon/subdaemon"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {

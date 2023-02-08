@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func TestMain(m *testing.M) {

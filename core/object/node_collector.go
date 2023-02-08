@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"time"
 
-	"opensvc.com/opensvc/core/collector"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/util/key"
 )
 
 func (t Node) CollectorFeedClient() (*collector.Client, error) {

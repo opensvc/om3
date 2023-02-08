@@ -5,7 +5,7 @@ import (
 
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/util/exe"
+	"github.com/opensvc/om3/util/exe"
 )
 
 func TestFindExe(t *testing.T) {

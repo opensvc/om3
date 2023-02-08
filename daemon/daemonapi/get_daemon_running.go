@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/handlers/dispatchhandler"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/handlers/dispatchhandler"
 )
 
 func (a *DaemonApi) GetDaemonRunning(w http.ResponseWriter, r *http.Request) {

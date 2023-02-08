@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/monitor"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/monitor"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

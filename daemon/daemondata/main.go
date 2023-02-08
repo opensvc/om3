@@ -19,7 +19,7 @@ import (
 	"context"
 	"sync"
 
-	"opensvc.com/opensvc/core/hbtype"
+	"github.com/opensvc/om3/core/hbtype"
 )
 
 type (

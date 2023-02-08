@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/daemon/daemoncli"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/daemon/daemoncli"
+	"github.com/opensvc/om3/util/command"
 )
 
 type (

@@ -8,9 +8,9 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"opensvc.com/opensvc/daemon/daemonauth"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/util/converters"
+	"github.com/opensvc/om3/daemon/daemonauth"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/util/converters"
 )
 
 // PostAuthToken create a new token for a user

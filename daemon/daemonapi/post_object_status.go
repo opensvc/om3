@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/daemondata"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/daemondata"
 )
 
 func (a *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {

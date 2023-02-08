@@ -12,16 +12,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/actionrouter"
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/actionrouter"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

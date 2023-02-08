@@ -3,7 +3,7 @@ package rescontainerdocker
 import (
 	"os/exec"
 
-	"opensvc.com/opensvc/util/capabilities"
+	"github.com/opensvc/om3/util/capabilities"
 )
 
 func init() {

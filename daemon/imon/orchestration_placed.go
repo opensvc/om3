@@ -1,7 +1,7 @@
 package imon
 
 import (
-	"opensvc.com/opensvc/core/topology"
+	"github.com/opensvc/om3/core/topology"
 )
 
 func (o *imon) orchestratePlaced() {

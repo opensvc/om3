@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/util/file"
 )
 
 //

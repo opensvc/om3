@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/viper"
 
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/render/palette"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/render/palette"
 )
 
 const (

@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/command"
 )
 
 func init() {

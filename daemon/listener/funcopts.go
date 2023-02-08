@@ -1,9 +1,9 @@
 package listener
 
 import (
-	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/daemon/subdaemon"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/daemon/routinehelper"
+	"github.com/opensvc/om3/daemon/subdaemon"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 func WithRoutineTracer(o routinehelper.Tracer) funcopt.O {

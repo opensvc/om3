@@ -16,10 +16,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/util/httpclientcache"
+	"github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/util/httpclientcache"
 
 	"golang.org/x/net/http2"
 )

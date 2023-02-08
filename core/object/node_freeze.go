@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/file"
 )
 
 // lockName is the path of the file to use as an action lock.

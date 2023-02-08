@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"time"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 func (d *data) getPeersFromPrevAndPending() []string {

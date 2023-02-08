@@ -11,8 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/file"
 )
 
 const (
