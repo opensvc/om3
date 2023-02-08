@@ -1,11 +1,11 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/key"
 )
 
 const repoDirTreeText = `

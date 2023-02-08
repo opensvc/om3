@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/relay"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/relay"
 )
 
 func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 // T is an integer representing the opensvc object topology.

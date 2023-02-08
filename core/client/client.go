@@ -6,14 +6,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client/api"
-	reqh2 "opensvc.com/opensvc/core/client/requester/h2"
-	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
-	"opensvc.com/opensvc/core/clientcontext"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/client/api"
+	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
+	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
+	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

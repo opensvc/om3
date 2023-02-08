@@ -8,9 +8,9 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/hb/hbctrl"
 )
 
 type (

@@ -9,7 +9,7 @@ import (
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
 
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 func TestOutput(t *testing.T) {

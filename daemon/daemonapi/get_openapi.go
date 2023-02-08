@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
+	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 )
 
 func (a *DaemonApi) GetSwagger(w http.ResponseWriter, r *http.Request) {

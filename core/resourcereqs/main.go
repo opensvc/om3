@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/status"
 )
 
 var (

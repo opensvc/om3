@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/version"
-	"opensvc.com/opensvc/util/asset"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/san"
+	"github.com/opensvc/om3/core/version"
+	"github.com/opensvc/om3/util/asset"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/san"
 )
 
 type (

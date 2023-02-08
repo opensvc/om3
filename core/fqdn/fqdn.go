@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"opensvc.com/opensvc/core/path"
+	"github.com/opensvc/om3/core/path"
 )
 
 type (

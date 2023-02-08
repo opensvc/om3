@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) {

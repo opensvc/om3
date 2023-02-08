@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/status"
 )
 
 func Test_TStatus_DeepCopy(t *testing.T) {

@@ -3,8 +3,8 @@ package imon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/status"
 )
 
 var (

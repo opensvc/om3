@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yookoala/realpath"
 
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/scsi"
-	"opensvc.com/opensvc/util/udevadm"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/scsi"
+	"github.com/opensvc/om3/util/udevadm"
 )
 
 func (t T) expectedDevPath() string {

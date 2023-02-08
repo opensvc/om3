@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func Test_getClusterName(t *testing.T) {

@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/schedule"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/schedule"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 // PrintSchedule display the object scheduling table

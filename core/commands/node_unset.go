@@ -3,10 +3,10 @@ package commands
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/nodeaction"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/nodeaction"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

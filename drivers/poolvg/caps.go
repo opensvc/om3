@@ -3,8 +3,8 @@
 package poolvg
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/util/capabilities"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/util/capabilities"
 )
 
 func init() {

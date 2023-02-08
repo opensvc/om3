@@ -3,7 +3,7 @@ package nmon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/node"
+	"github.com/opensvc/om3/core/node"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value

@@ -6,7 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/command"
 )
 
 func extCanFSCK() error {

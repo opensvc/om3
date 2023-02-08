@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/util/command"
 )
 
 var (

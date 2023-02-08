@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"time"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/nodesinfo"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/pubsub"
-	"opensvc.com/opensvc/util/san"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/nodesinfo"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/san"
 )
 
 var (

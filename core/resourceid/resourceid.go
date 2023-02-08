@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"opensvc.com/opensvc/core/driver"
+	"github.com/opensvc/om3/core/driver"
 )
 
 type T struct {

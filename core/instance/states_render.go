@@ -3,11 +3,11 @@ package instance
 import (
 	"strings"
 
-	"opensvc.com/opensvc/core/colorstatus"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/render/tree"
+	"github.com/opensvc/om3/core/colorstatus"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/render/tree"
 )
 
 // Render returns a human friendly string representation of the type instance.

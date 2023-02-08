@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"sort"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/hbcache"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (d *data) setSubHb() {

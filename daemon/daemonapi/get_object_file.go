@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
+	"github.com/opensvc/om3/util/file"
 )
 
 func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params GetObjectFileParams) {

@@ -3,7 +3,7 @@ package object
 import (
 	"strings"
 
-	"opensvc.com/opensvc/core/array"
+	"github.com/opensvc/om3/core/array"
 )
 
 func (t *Node) Array(name string) array.Driver {

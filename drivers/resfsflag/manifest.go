@@ -1,8 +1,8 @@
 package resfsflag
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/manifest"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/manifest"
 )
 
 var (

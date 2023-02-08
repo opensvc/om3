@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/pool"
-	"opensvc.com/opensvc/util/df"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/util/df"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 type (

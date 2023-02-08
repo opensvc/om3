@@ -3,7 +3,7 @@ package imon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/instance"
+	"github.com/opensvc/om3/core/instance"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value

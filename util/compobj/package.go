@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

@@ -4,8 +4,8 @@ package hbtype
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/util/jsondelta"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/util/jsondelta"
 )
 
 type (

@@ -1,6 +1,6 @@
 package nmon
 
-import "opensvc.com/opensvc/core/node"
+import "github.com/opensvc/om3/core/node"
 
 func (o *nmon) orchestrate() {
 	switch o.state.State {

@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/envprovider"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/envprovider"
 )
 
 // BaseT is the app base driver structure

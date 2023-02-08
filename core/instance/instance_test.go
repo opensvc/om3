@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/status"
 )
 
 func Test_Status_Unmarshal(t *testing.T) {

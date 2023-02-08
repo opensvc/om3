@@ -3,9 +3,9 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/san"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/san"
 )
 
 type (

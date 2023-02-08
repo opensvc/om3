@@ -1,6 +1,6 @@
 package commands
 
-import "opensvc.com/opensvc/daemon/daemoncli"
+import "github.com/opensvc/om3/daemon/daemoncli"
 
 type (
 	CmdDaemonStop struct {

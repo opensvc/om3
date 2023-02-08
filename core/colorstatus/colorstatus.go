@@ -2,8 +2,8 @@ package colorstatus
 
 import (
 	"github.com/fatih/color"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/render/palette"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/render/palette"
 )
 
 func Sprint(t status.T, colorize *palette.ColorPaletteFunc) string {

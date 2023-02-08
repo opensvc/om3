@@ -6,11 +6,11 @@ import (
 
 	"github.com/iancoleman/orderedmap"
 
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
+	"github.com/opensvc/om3/util/file"
 )
 
 func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params GetObjectConfigParams) {

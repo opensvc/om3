@@ -8,11 +8,11 @@ import (
 	"syscall"
 
 	"golang.org/x/sys/unix"
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/volsignal"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/volsignal"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

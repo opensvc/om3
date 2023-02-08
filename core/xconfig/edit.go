@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/util/editor"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/editor"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

@@ -3,9 +3,9 @@
 package poolloop
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/util/capabilities"
-	"opensvc.com/opensvc/util/loop"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/loop"
 )
 
 func init() {

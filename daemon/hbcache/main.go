@@ -11,8 +11,8 @@ package hbcache
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
 var (

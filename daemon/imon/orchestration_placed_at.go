@@ -1,9 +1,9 @@
 package imon
 
 import (
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (o *imon) orchestrateFailoverPlacedStart() {

@@ -1,9 +1,9 @@
 package xconfig
 
 import (
-	"opensvc.com/opensvc/core/env"
-	"opensvc.com/opensvc/core/nodeselector"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

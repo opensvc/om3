@@ -12,10 +12,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/ybbus/jsonrpc"
 
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/logging"
-	"opensvc.com/opensvc/util/xsession"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 var (

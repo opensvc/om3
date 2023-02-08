@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func TestSubscriptionFilter(t *testing.T) {

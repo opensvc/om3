@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/util/callcount"
+	"github.com/opensvc/om3/util/callcount"
 )
 
 func TestCounter(t *testing.T) {

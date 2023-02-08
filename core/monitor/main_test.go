@@ -6,7 +6,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"opensvc.com/opensvc/core/mock_monitor"
+	"github.com/opensvc/om3/core/mock_monitor"
 )
 
 type recorder struct {

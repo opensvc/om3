@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (

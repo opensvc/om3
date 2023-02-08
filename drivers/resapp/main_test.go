@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/pg"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/pg"
 )
 
 func TestT_Info(t *testing.T) {

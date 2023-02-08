@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

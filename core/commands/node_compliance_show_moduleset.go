@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/nodeaction"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/util/xstrings"
+	"github.com/opensvc/om3/core/nodeaction"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/util/xstrings"
 )
 
 type (

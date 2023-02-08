@@ -5,9 +5,9 @@ import (
 
 	"github.com/golang-collections/collections/set"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 func (f Frame) sNodeScoreLine() string {

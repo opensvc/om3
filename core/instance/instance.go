@@ -5,16 +5,16 @@ import (
 	"sort"
 	"time"
 
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/priority"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/resourceid"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (

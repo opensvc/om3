@@ -8,10 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/file"
 )
 
 type (

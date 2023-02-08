@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"opensvc.com/opensvc/core/check"
-	"opensvc.com/opensvc/util/df"
+	"github.com/opensvc/om3/core/check"
+	"github.com/opensvc/om3/util/df"
 )
 
 func skipper(dfEntry df.Entry) bool {

@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/status"
 )
 
 type (

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/command"
 )
 
 func GetPaths() (Paths, error) {

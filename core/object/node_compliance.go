@@ -1,6 +1,6 @@
 package object
 
-import "opensvc.com/opensvc/util/compliance"
+import "github.com/opensvc/om3/util/compliance"
 
 func (t Node) NewCompliance() (*compliance.T, error) {
 	client, err := t.CollectorComplianceClient()

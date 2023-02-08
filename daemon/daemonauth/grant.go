@@ -6,8 +6,8 @@ import (
 
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/daemondata"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/daemondata"
 )
 
 type (

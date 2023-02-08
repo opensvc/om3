@@ -7,14 +7,14 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/check"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/exe"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/check"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/exe"
+	"github.com/opensvc/om3/util/hostname"
 
-	_ "opensvc.com/opensvc/drivers/chkfsidf"
-	_ "opensvc.com/opensvc/drivers/chkfsudf"
+	_ "github.com/opensvc/om3/drivers/chkfsidf"
+	_ "github.com/opensvc/om3/drivers/chkfsudf"
 )
 
 // Checks finds and runs the check drivers.

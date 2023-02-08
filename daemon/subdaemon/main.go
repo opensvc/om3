@@ -16,10 +16,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/daemon/enable"
-	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/daemon/enable"
+	"github.com/opensvc/om3/daemon/routinehelper"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

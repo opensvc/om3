@@ -6,8 +6,8 @@ import (
 	"regexp"
 
 	"github.com/fatih/color"
-	"opensvc.com/opensvc/util/render"
-	"opensvc.com/opensvc/util/render/palette"
+	"github.com/opensvc/om3/util/render"
+	"github.com/opensvc/om3/util/render/palette"
 )
 
 type (

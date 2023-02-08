@@ -6,9 +6,9 @@ package encryptconn
 import (
 	"net"
 
-	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
-	"opensvc.com/opensvc/daemon/ccfg"
-	"opensvc.com/opensvc/util/hostname"
+	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

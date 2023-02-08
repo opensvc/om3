@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/slog"
-	"opensvc.com/opensvc/daemon/daemonauth"
-	"opensvc.com/opensvc/daemon/handlers/handlerhelper"
+	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/daemon/daemonauth"
+	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 )
 
 type logPayload struct {

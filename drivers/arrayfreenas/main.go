@@ -13,12 +13,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"opensvc.com/opensvc/core/array"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/san"
-	"opensvc.com/opensvc/util/sizeconv"
+	"github.com/opensvc/om3/core/array"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 var (

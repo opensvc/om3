@@ -3,9 +3,9 @@ package object
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/key"
 )
 
 // Unset gets a keyword value

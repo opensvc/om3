@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"opensvc.com/opensvc/core/event"
+	"github.com/opensvc/om3/core/event"
 )
 
 type (

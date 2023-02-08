@@ -50,9 +50,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/util/durationlog"
-	"opensvc.com/opensvc/util/stringslice"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/durationlog"
+	"github.com/opensvc/om3/util/stringslice"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

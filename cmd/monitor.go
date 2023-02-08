@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/monitor"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/monitor"
 )
 
 var (

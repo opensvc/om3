@@ -7,8 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/ybbus/jsonrpc"
-	"opensvc.com/opensvc/core/collector"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

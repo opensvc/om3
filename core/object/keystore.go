@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/user"
 
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/util/key"
 )
 
 const (

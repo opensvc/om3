@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
 )
 
 type (

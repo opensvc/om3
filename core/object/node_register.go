@@ -11,9 +11,9 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/term"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

@@ -10,13 +10,13 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/hbcache"
-	"opensvc.com/opensvc/testhelper"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

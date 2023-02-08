@@ -1,8 +1,8 @@
 package api
 
 import (
-	"opensvc.com/opensvc/core/api/apimodel"
-	"opensvc.com/opensvc/core/client/request"
+	"github.com/opensvc/om3/core/api/apimodel"
+	"github.com/opensvc/om3/core/client/request"
 )
 
 type (

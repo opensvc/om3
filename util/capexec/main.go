@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	"opensvc.com/opensvc/util/pg"
-	"opensvc.com/opensvc/util/sizeconv"
-	"opensvc.com/opensvc/util/ulimit"
+	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/util/ulimit"
 )
 
 type (

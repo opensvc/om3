@@ -6,17 +6,17 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/nodesinfo"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/pool"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/drivers/resdisk"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/nodesinfo"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/drivers/resdisk"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

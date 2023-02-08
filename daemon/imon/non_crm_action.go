@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/file"
 )
 
 func (o *imon) freeze() error {

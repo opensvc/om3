@@ -1,6 +1,6 @@
 package imon
 
-import "opensvc.com/opensvc/core/instance"
+import "github.com/opensvc/om3/core/instance"
 
 func (o *imon) orchestrateAborted() {
 	o.log.Info().Msg("abort orchestration: unset global expect")

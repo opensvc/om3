@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

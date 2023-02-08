@@ -7,8 +7,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

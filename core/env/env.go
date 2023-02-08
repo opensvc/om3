@@ -3,7 +3,7 @@ package env
 import (
 	"os"
 
-	"opensvc.com/opensvc/util/xsession"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 var (

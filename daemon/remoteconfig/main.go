@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/path"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/path"
 )
 
 func FetchObjectFile(cli *client.T, p path.T) (filename string, updated time.Time, err error) {

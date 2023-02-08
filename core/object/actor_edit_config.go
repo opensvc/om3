@@ -3,9 +3,9 @@ package object
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/statusbus"
-	"opensvc.com/opensvc/core/xconfig"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/core/xconfig"
 )
 
 func (t *actor) RecoverAndEditConfig() error {

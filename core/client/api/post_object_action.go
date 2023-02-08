@@ -1,6 +1,6 @@
 package api
 
-import "opensvc.com/opensvc/core/client/request"
+import "github.com/opensvc/om3/core/client/request"
 
 // PostObjectAction describes the daemon object selector expression
 // resolver options.

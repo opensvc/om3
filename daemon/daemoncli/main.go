@@ -12,17 +12,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/daemon"
-	"opensvc.com/opensvc/daemon/daemonapi"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/lock"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/daemon"
+	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/lock"
 )
 
 var (

@@ -3,10 +3,10 @@ package nmon
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/key"
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated

@@ -1,7 +1,7 @@
 package object
 
 import (
-	"opensvc.com/opensvc/core/xconfig"
+	"github.com/opensvc/om3/core/xconfig"
 )
 
 func (t core) RecoverAndEditConfig() error {

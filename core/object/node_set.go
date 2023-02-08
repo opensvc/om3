@@ -3,7 +3,7 @@ package object
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/keyop"
+	"github.com/opensvc/om3/core/keyop"
 )
 
 // Set sets a keyword value

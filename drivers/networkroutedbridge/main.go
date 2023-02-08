@@ -12,11 +12,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/network"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/network"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

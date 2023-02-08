@@ -1,9 +1,9 @@
 package api
 
 import (
-	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/slog"
+	"github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/slog"
 )
 
 // GetObjectsLog describes the node log request options.

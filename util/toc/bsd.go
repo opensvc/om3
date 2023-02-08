@@ -3,7 +3,7 @@
 package toc
 
 import (
-	"opensvc.com/opensvc/util/command"
+	"github.com/opensvc/om3/util/command"
 )
 
 func Reboot() error {

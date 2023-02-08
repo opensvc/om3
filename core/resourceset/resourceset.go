@@ -8,10 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/pg"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

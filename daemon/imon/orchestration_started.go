@@ -3,9 +3,9 @@ package imon
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
 )
 
 func (o *imon) orchestrateStarted() {

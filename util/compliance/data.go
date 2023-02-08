@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

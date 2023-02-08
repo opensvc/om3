@@ -3,7 +3,7 @@ package daemondata
 import (
 	"context"
 
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

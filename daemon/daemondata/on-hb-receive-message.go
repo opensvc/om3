@@ -3,7 +3,7 @@ package daemondata
 import (
 	"fmt"
 
-	"opensvc.com/opensvc/core/hbtype"
+	"github.com/opensvc/om3/core/hbtype"
 )
 
 func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {

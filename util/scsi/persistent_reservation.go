@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/device"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/device"
 )
 
 type (

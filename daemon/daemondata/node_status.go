@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/nodesinfo"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/jsondelta"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/nodesinfo"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/jsondelta"
 )
 
 type (

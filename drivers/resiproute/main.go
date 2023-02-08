@@ -3,7 +3,7 @@ package resiproute
 import (
 	"fmt"
 
-	"opensvc.com/opensvc/core/resource"
+	"github.com/opensvc/om3/core/resource"
 )
 
 // T ...

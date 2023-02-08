@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"opensvc.com/opensvc/cmd"
+	"github.com/opensvc/om3/cmd"
 )
 
 func main() {

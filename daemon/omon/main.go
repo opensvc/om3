@@ -13,16 +13,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

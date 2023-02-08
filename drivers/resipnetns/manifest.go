@@ -3,12 +3,12 @@
 package resipnetns
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/manifest"
-	"opensvc.com/opensvc/util/converters"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/key"
 )
 
 var (

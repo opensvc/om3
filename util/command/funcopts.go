@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 // WithName sets the process args[0]

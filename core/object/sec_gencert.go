@@ -13,10 +13,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/fqdn"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/fqdn"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.

@@ -15,14 +15,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"opensvc.com/opensvc/daemon/daemonapi"
-	"opensvc.com/opensvc/daemon/daemonauth"
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/daemon/handlers/daemonhandler"
-	"opensvc.com/opensvc/daemon/handlers/objecthandler"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/daemon/daemonauth"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/handlers/daemonhandler"
+	"github.com/opensvc/om3/daemon/handlers/objecthandler"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

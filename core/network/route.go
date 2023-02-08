@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
-	"opensvc.com/opensvc/util/rttables"
+	"github.com/opensvc/om3/util/rttables"
 )
 
 type (

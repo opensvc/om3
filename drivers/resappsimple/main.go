@@ -6,13 +6,13 @@ import (
 	"syscall"
 	"time"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/drivers/resapp"
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/proc"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/resapp"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/proc"
 )
 
 // T is the driver structure.

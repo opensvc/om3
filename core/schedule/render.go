@@ -3,8 +3,8 @@ package schedule
 import (
 	"time"
 
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/util/render/tree"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/render/tree"
 )
 
 func SprintTime(t time.Time) string {

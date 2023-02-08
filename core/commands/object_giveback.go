@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/objectaction"
+	"github.com/opensvc/om3/core/objectaction"
 )
 
 type (

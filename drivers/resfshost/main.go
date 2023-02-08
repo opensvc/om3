@@ -10,17 +10,17 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/vpath"
-	"opensvc.com/opensvc/drivers/resfsdir"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/filesystems"
-	"opensvc.com/opensvc/util/findmnt"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/vpath"
+	"github.com/opensvc/om3/drivers/resfsdir"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/filesystems"
+	"github.com/opensvc/om3/util/findmnt"
 )
 
 type (

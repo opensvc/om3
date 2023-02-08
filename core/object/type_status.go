@@ -5,17 +5,17 @@ import (
 	"sort"
 	"strings"
 
-	"opensvc.com/opensvc/core/colorstatus"
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/priority"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/util/render/tree"
-	"opensvc.com/opensvc/util/xmap"
+	"github.com/opensvc/om3/core/colorstatus"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/util/render/tree"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 type (

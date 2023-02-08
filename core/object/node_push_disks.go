@@ -2,10 +2,10 @@ package object
 
 import (
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/collector"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/disks"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/collector"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/disks"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func allObjectsDeviceClaims() (disks.ObjectsDeviceClaims, error) {

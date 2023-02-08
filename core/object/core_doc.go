@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/key"
 )
 
 func drvDoc(drvID driver.ID, kwName string) (string, error) {

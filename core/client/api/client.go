@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"opensvc.com/opensvc/core/client/request"
+	"github.com/opensvc/om3/core/client/request"
 )
 
 type (

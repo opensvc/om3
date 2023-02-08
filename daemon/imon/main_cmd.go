@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/nodeselector"
-	"opensvc.com/opensvc/core/placement"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/core/topology"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceStatusUpdated) {

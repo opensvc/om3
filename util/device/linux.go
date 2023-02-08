@@ -13,9 +13,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
 
-	"opensvc.com/opensvc/util/command"
-	"opensvc.com/opensvc/util/devicedriver"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/devicedriver"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 func (t T) IsReadWrite() (bool, error) {

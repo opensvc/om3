@@ -3,10 +3,10 @@ package commands
 import (
 	"github.com/goccy/go-json"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/daemon/dns"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/dns"
 )
 
 type (

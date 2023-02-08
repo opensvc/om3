@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"opensvc.com/opensvc/util/editor"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/util/editor"
+	"github.com/opensvc/om3/util/file"
 )
 
 func (t keystore) EditKey(keyName string) (err error) {

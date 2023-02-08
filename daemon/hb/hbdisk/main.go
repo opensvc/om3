@@ -21,12 +21,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"opensvc.com/opensvc/core/hbcfg"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
-	"opensvc.com/opensvc/util/file"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/xerrors"
+	"github.com/opensvc/om3/core/hbcfg"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (

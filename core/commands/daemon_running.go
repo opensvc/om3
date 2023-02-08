@@ -3,7 +3,7 @@ package commands
 import (
 	"os"
 
-	"opensvc.com/opensvc/daemon/daemoncli"
+	"github.com/opensvc/om3/daemon/daemoncli"
 )
 
 type (

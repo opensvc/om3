@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"opensvc.com/opensvc/util/render/palette"
+	"github.com/opensvc/om3/util/render/palette"
 )
 
 type (

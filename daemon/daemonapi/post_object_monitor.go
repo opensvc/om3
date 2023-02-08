@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {

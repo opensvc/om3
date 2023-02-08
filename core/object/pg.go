@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/util/key"
-	"opensvc.com/opensvc/util/pg"
-	"opensvc.com/opensvc/util/stringslice"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 func pgNameObject(p path.T) string {

@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"os"
 
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (

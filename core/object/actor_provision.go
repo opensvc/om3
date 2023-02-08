@@ -3,8 +3,8 @@ package object
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/resource"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/resource"
 )
 
 // Provision allocates and starts the local instance of the object

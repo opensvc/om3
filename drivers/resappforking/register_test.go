@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func getAppRid(rid string, resources []resource.Driver) *T {

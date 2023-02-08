@@ -1,9 +1,9 @@
 package chkfsudf
 
 import (
-	"opensvc.com/opensvc/core/check"
-	"opensvc.com/opensvc/core/check/helpers/checkdf"
-	"opensvc.com/opensvc/util/df"
+	"github.com/opensvc/om3/core/check"
+	"github.com/opensvc/om3/core/check/helpers/checkdf"
+	"github.com/opensvc/om3/util/df"
 )
 
 const (

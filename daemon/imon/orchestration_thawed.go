@@ -1,7 +1,7 @@
 package imon
 
 import (
-	"opensvc.com/opensvc/core/instance"
+	"github.com/opensvc/om3/core/instance"
 )
 
 func (o *imon) orchestrateThawed() {

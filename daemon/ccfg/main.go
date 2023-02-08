@@ -12,14 +12,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/cluster"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/xconfig"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

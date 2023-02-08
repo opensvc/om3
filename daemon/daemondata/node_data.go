@@ -5,11 +5,11 @@ import (
 
 	"github.com/goccy/go-json"
 
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/daemon/hbcache"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/jsondelta"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (

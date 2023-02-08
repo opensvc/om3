@@ -3,9 +3,9 @@ package object
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/keyop"
-	"opensvc.com/opensvc/core/statusbus"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/statusbus"
 )
 
 func (t *actor) Set(ctx context.Context, kops ...keyop.T) error {

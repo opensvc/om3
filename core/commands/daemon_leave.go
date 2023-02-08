@@ -8,13 +8,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/core/client/api"
-	"opensvc.com/opensvc/core/event"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/daemon/msgbus"
-	"opensvc.com/opensvc/util/hostname"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/client/api"
+	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/daemon/daemonlogctx"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
 func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params GetObjectSelectorParams) {

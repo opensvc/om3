@@ -5,8 +5,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/slog"
+	"github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/core/slog"
 )
 
 // GetNodeLog describes the node log request options.

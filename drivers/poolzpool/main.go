@@ -3,10 +3,10 @@
 package poolzpool
 
 import (
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/pool"
-	"opensvc.com/opensvc/util/sizeconv"
-	"opensvc.com/opensvc/util/zfs"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/pool"
+	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/util/zfs"
 )
 
 type (

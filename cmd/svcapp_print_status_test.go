@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/testhelper"
+	"github.com/opensvc/om3/testhelper"
 )
 
 func TestAppPrintStatusFlatJson(t *testing.T) {

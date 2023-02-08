@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"opensvc.com/opensvc/core/client"
-	"opensvc.com/opensvc/daemon/daemonenv"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 func newClient(server string) (*client.T, error) {

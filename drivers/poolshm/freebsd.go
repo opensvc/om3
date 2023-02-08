@@ -5,7 +5,7 @@ package poolshm
 import (
 	"path/filepath"
 
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 func (t T) path() string {

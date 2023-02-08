@@ -7,11 +7,11 @@ import (
 	"os/user"
 	"strconv"
 
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/file"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/file"
 )
 
 const (

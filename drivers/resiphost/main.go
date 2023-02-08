@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"opensvc.com/opensvc/core/actioncontext"
-	"opensvc.com/opensvc/core/actionrollback"
-	"opensvc.com/opensvc/core/provisioned"
-	"opensvc.com/opensvc/core/resource"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/fqdn"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/netif"
+	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/fqdn"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/netif"
 
 	"github.com/go-ping/ping"
 )

@@ -11,16 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"opensvc.com/opensvc/cmd"
-	"opensvc.com/opensvc/core/hbtype"
-	"opensvc.com/opensvc/core/instance"
-	"opensvc.com/opensvc/core/node"
-	"opensvc.com/opensvc/core/rawconfig"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/daemon/daemondata"
-	"opensvc.com/opensvc/testhelper"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/pubsub"
+	"github.com/opensvc/om3/cmd"
+	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func loadFixture(t *testing.T, name string) []byte {

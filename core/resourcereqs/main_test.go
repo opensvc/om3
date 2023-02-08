@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"opensvc.com/opensvc/core/status"
+	"github.com/opensvc/om3/core/status"
 )
 
 func TestResourceRequirements(t *testing.T) {

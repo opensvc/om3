@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	reqjsonrpc "opensvc.com/opensvc/core/client/requester/jsonrpc"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/key"
+	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (

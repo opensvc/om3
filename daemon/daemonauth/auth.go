@@ -11,12 +11,12 @@ import (
 	"github.com/shaj13/libcache"
 	_ "github.com/shaj13/libcache/fifo"
 
-	"opensvc.com/opensvc/core/kind"
-	"opensvc.com/opensvc/core/object"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/daemon/ccfg"
-	"opensvc.com/opensvc/daemon/daemonctx"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/kind"
+	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/util/key"
 
 	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"

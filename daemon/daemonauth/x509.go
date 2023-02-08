@@ -9,7 +9,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/x509"
 
-	"opensvc.com/opensvc/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/daemonenv"
 )
 
 func initX509() auth.Strategy {

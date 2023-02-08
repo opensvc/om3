@@ -1,7 +1,7 @@
 package command
 
 import (
-	"opensvc.com/opensvc/util/usergroup"
+	"github.com/opensvc/om3/util/usergroup"
 	"syscall"
 )
 

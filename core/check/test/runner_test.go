@@ -2,7 +2,7 @@ package check_test
 
 import (
 	"github.com/pkg/errors"
-	"opensvc.com/opensvc/core/check"
+	"github.com/opensvc/om3/core/check"
 
 	"encoding/json"
 	"fmt"

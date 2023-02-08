@@ -1,8 +1,8 @@
 package lsnrrawinet
 
 import (
-	"opensvc.com/opensvc/daemon/routinehelper"
-	"opensvc.com/opensvc/util/funcopt"
+	"github.com/opensvc/om3/daemon/routinehelper"
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 func WithRoutineTracer(o routinehelper.Tracer) funcopt.O {

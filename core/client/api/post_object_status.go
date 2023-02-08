@@ -1,8 +1,8 @@
 package api
 
 import (
-	"opensvc.com/opensvc/core/client/request"
-	"opensvc.com/opensvc/core/instance"
+	"github.com/opensvc/om3/core/client/request"
+	"github.com/opensvc/om3/core/instance"
 )
 
 // PostObjectStatus describes the daemon object selector expression

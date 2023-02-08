@@ -3,8 +3,8 @@ package resource
 import (
 	"context"
 
-	"opensvc.com/opensvc/core/actionresdeps"
-	"opensvc.com/opensvc/core/schedule"
+	"github.com/opensvc/om3/core/actionresdeps"
+	"github.com/opensvc/om3/core/schedule"
 )
 
 type (

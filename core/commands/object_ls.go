@@ -3,9 +3,9 @@ package commands
 import (
 	"sort"
 
-	"opensvc.com/opensvc/core/objectselector"
-	"opensvc.com/opensvc/core/output"
-	"opensvc.com/opensvc/core/rawconfig"
+	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (

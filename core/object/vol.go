@@ -4,14 +4,14 @@ import (
 	"context"
 	"sort"
 
-	"opensvc.com/opensvc/core/driver"
-	"opensvc.com/opensvc/core/keywords"
-	"opensvc.com/opensvc/core/path"
-	"opensvc.com/opensvc/core/status"
-	"opensvc.com/opensvc/util/device"
-	"opensvc.com/opensvc/util/funcopt"
-	"opensvc.com/opensvc/util/hostname"
-	"opensvc.com/opensvc/util/key"
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/key"
 )
 
 type (
