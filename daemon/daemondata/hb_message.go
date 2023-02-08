@@ -115,6 +115,12 @@ func (d *data) setNextMsgType() {
 			if node == d.localNode {
 				continue
 			}
+			if _, ok := d.clusterNodes[node]; !ok {
+				// unexpected hb gens from non cluster member, so it doesn't need full
+				d.log.Warn().Msgf("evict unexpected hb gens %s: not a cluster node", node)
+				delete(d.hbGens, node)
+				continue
+			}
 			if gen[d.localNode] == 0 {
 				remoteNeedFull = append(remoteNeedFull, node)
 			} else if d.hbMessageType == "full" && gen[d.localNode] < d.gen {

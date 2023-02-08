@@ -1,0 +1,146 @@
+{
+  "cluster": {
+    "config": {
+      "id": "5a4014c7-3cd5-46b9-89ad-a279d1b1161f",
+      "name": "default",
+      "nodes": [
+        "dev1n3"
+      ],
+      "dns": [],
+      "ca_sec_paths": []
+    },
+    "status": {
+      "compat": false,
+      "frozen": true
+    },
+    "object": {},
+    "node": {
+      "dev1n3": {
+        "instance": {},
+        "monitor": {
+          "state": "idle",
+          "local_expect": "unset",
+          "global_expect": "unset",
+          "state_updated": "2023-02-07T18:59:38.067674438+01:00",
+          "global_expect_updated": "0001-01-01T00:00:00Z",
+          "local_expect_updated": "0001-01-01T00:00:00Z"
+        },
+        "stats": {
+          "load_15m": 0.08,
+          "mem_avail": 74,
+          "mem_total": 1987,
+          "score": 96,
+          "swap_avail": 100,
+          "swap_total": 1961
+        },
+        "status": {
+          "agent": "3.0-0",
+          "api": 8,
+          "arbitrators": {},
+          "compat": 12,
+          "env": "",
+          "frozen": "2023-02-07T18:49:21.985310975+01:00",
+          "gen": {
+            "dev1n3": 18
+          },
+          "min_avail_mem": 0,
+          "min_avail_swap": 0,
+          "speaker": false,
+          "labels": {}
+        },
+        "os": {
+          "paths": [
+            {
+              "initiator": {
+                "name": "iqn.2009-11.com.opensvc.srv:dev1n3.storage.initiator",
+                "type": "iscsi"
+              },
+              "target": {
+                "name": "iqn.2009-11.com.opensvc.srv:dev1n3.storage.target.1",
+                "type": "iscsi"
+              }
+            },
+            {
+              "initiator": {
+                "name": "iqn.2009-11.com.opensvc.srv:dev1n3.storage.initiator",
+                "type": "iscsi"
+              },
+              "target": {
+                "name": "iqn.2009-11.com.opensvc.srv:dev1n3.storage.target.2",
+                "type": "iscsi"
+              }
+            }
+          ]
+        },
+        "config": {
+          "maintenance_grace_period": 0,
+          "ready_period": 0,
+          "rejoin_grace_period": 0
+        }
+      }
+    }
+  },
+  "collector": {
+    "id": "",
+    "configured": "0001-01-01T00:00:00Z",
+    "created": "0001-01-01T00:00:00Z",
+    "state": "",
+    "tid": 0
+  },
+  "dns": {
+    "id": "",
+    "configured": "0001-01-01T00:00:00Z",
+    "created": "0001-01-01T00:00:00Z",
+    "state": "",
+    "tid": 0
+  },
+  "scheduler": {
+    "id": "",
+    "configured": "0001-01-01T00:00:00Z",
+    "created": "0001-01-01T00:00:00Z",
+    "state": "",
+    "tid": 0,
+    "delayed": null
+  },
+  "listener": {
+    "id": "",
+    "configured": "0001-01-01T00:00:00Z",
+    "created": "0001-01-01T00:00:00Z",
+    "state": "",
+    "tid": 0,
+    "config": {
+      "addr": "",
+      "port": 0
+    },
+    "stats": {
+      "sessions": {
+        "accepted": 0,
+        "auth_validated": 0,
+        "rx": 0,
+        "tx": 0,
+        "alive": null,
+        "clients": null
+      }
+    }
+  },
+  "Monitor": {
+    "id": "",
+    "configured": "0001-01-01T00:00:00Z",
+    "created": "0001-01-01T00:00:00Z",
+    "state": "",
+    "tid": 0,
+    "routines": 76
+  },
+  "sub": {
+    "hb": {
+      "heartbeats": [],
+      "modes": [
+        {
+          "Node": "dev1n3",
+          "Mode": "ping",
+          "Type": "ping"
+        }
+      ]
+    }
+  }
+}

@@ -226,7 +226,9 @@ func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
-	fmt.Fprintln(f.w, f.sNodeHbMode())
+	if len(f.Current.Sub.Hb.Modes) > 1 {
+		fmt.Fprintln(f.w, f.sNodeHbMode())
+	}
 	fmt.Fprintln(f.w, f.sNodeWarningsLine())
 	fmt.Fprintln(f.w, f.info.empty)
 }
