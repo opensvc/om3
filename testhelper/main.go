@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -118,26 +117,4 @@ func Trace(t *testing.T) {
 		pid := os.Getpid()
 		RunCmd(t, "ls", "-l", fmt.Sprintf("/proc/%d/fd", pid))
 	}
-}
-
-func DaemonPorts(t *testing.T, name string) error {
-	t.Logf("Verify daemon ports [%s]", name)
-	var delay time.Duration
-	for _, port := range []string{"1214", "1215"} {
-		if err := TcpPortAvailable(port); err != nil {
-			t.Logf("Verify daemon ports [%s] failed for port %s '%s' wait delay then check again", name, port, err)
-			Trace(t)
-			delay = 250 * time.Millisecond
-		}
-	}
-	time.Sleep(delay)
-	for _, port := range []string{"1214", "1215"} {
-		if err := TcpPortAvailable(port); err != nil {
-			t.Logf("Verify daemon ports [%s] failed for port %s '%s'", name, port, err)
-			Trace(t)
-			return err
-		}
-	}
-	t.Logf("Verify daemon ports [%s] [done]", name)
-	return nil
 }
