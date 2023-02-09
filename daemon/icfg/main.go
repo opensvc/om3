@@ -316,9 +316,9 @@ func (o *T) configFileCheck() error {
 	cfg.Updated = mtime
 
 	if cfg.Topology == topology.Flex {
-		cfg.FlexTarget = o.getFlexTarget(cf)
 		cfg.FlexMin = o.getFlexMin(cf)
 		cfg.FlexMax = o.getFlexMax(cf)
+		cfg.FlexTarget = o.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
 	}
 
 	o.lastMtime = mtime
@@ -389,12 +389,18 @@ func (o *T) getPriority(cf *xconfig.T) priority.T {
 	return priority.T(s)
 }
 
-func (o *T) getFlexTarget(cf *xconfig.T) int {
+func (o *T) getFlexTarget(cf *xconfig.T, min, max int) (target int) {
 	switch o.path.Kind {
 	case kind.Svc, kind.Vol:
-		return cf.GetInt(keyFlexTarget)
+		target = cf.GetInt(keyFlexTarget)
 	}
-	return 0
+	switch {
+	case target < min:
+		target = min
+	case target > max:
+		target = max
+	}
+	return
 }
 
 func (o *T) getFlexMin(cf *xconfig.T) int {
