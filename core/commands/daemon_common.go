@@ -99,7 +99,7 @@ func (t *CmdDaemonCommon) deleteLocalConfig() (err error) {
 			command.WithName(os.Args[0]),
 			command.WithArgs([]string{"**", "delete", "--local"}),
 		)
-		_, _ = fmt.Fprintf(os.Stdout, "delete all config\n")
+		_, _ = fmt.Fprintf(os.Stdout, "Delete all config\n")
 		if err := cmd.Run(); err != nil {
 			return errors.Wrapf(err, "%s", cmd.String())
 		}
