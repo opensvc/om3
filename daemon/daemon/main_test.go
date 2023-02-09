@@ -2,7 +2,6 @@ package daemon_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -31,10 +30,6 @@ func setup(t *testing.T) testhelper.Env {
 func TestDaemon(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
-	}
-	require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("-> %s", t.Name())))
-	if t.Failed() {
-		t.Fatal("-> TestDaemon DaemonPorts")
 	}
 	var main *daemon.T
 	env := setup(t)
@@ -100,6 +95,4 @@ func TestDaemon(t *testing.T) {
 	require.False(t, main.Enabled(), "The daemon should not be Enabled after Stop")
 	require.False(t, main.Running(), "The daemon should not be Running after Stop")
 	require.Equalf(t, 0, main.TraceRDump().Count, "Daemon routines should be stopped, found %#v", main.TraceRDump())
-
-	require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 }

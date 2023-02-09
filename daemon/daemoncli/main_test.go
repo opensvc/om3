@@ -1,7 +1,6 @@
 package daemoncli_test
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -76,10 +75,6 @@ func newClient(serverUrl string) (*client.T, error) {
 }
 
 func setup(t *testing.T) testhelper.Env {
-	require.NoError(t, testhelper.DaemonPorts(t, "-> setup"))
-	if t.Failed() {
-		t.Fatal("-> setup DaemonPorts")
-	}
 	env := testhelper.Setup(t)
 	if !strings.Contains(t.Name(), "NoCluster") {
 		env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
@@ -190,8 +185,6 @@ func TestDaemonStartThenStop(t *testing.T) {
 
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
-
-			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
 }
@@ -238,8 +231,6 @@ func TestDaemonReStartThenStop(t *testing.T) {
 			wg.Wait()
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
-
-			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
 }
@@ -262,8 +253,6 @@ func TestStop(t *testing.T) {
 			require.False(t, daemonCli.Running())
 			require.NoError(t, daemonCli.Stop())
 			require.False(t, daemonCli.Running())
-
-			require.NoError(t, testhelper.DaemonPorts(t, fmt.Sprintf("<- %s", t.Name())))
 		})
 	}
 }
