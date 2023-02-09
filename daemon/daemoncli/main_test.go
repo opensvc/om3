@@ -27,24 +27,33 @@ var (
 	cases = map[string]func() string{
 		"UrlUxHttp":   daemonenv.UrlUxHttp,
 		"UrlUxRaw":    daemonenv.UrlUxRaw,
-		"UrlInetHttp": daemonenv.UrlInetHttp,
-		"UrlInetRaw":  daemonenv.UrlInetRaw,
+		"UrlInetHttp": urlInetHttpTest,
+		"UrlInetRaw":  urlInetRawTest,
 	}
 
 	casesWithMissingConf = map[string]func() string{
 		"UrlUxHttp":   daemonenv.UrlUxHttp,
 		"UrlUxRaw":    daemonenv.UrlUxRaw,
-		"UrlInetHttp": daemonenv.UrlInetHttp,
-		"UrlInetRaw":  daemonenv.UrlInetRaw,
+		"UrlInetHttp": urlInetHttpTest,
+		"UrlInetRaw":  urlInetRawTest,
 
-		"NoSecCa":                   daemonenv.UrlInetHttp,
-		"NoSecCert":                 daemonenv.UrlInetHttp,
-		"NoSecCaNoSecCert":          daemonenv.UrlInetHttp,
-		"NoClusterNoSecCaNoSecCert": daemonenv.UrlInetHttp,
+		"NoSecCa":                          urlInetHttpTest,
+		"NoSecCert":                        urlInetHttpTest,
+		"NoSecCaNoSecCert":                 urlInetHttpTest,
+		"NoClusterNoSecCaNoSecCert":        daemonenv.UrlInetHttp,
+		"NoClusterNoSecCaNoSecCertWithRaw": daemonenv.UrlUxRaw,
 	}
 
 	certDelay = 100 * time.Millisecond
 )
+
+func urlInetRawTest() string {
+	return "raw://localhost:1314"
+}
+
+func urlInetHttpTest() string {
+	return "https://localhost:1315"
+}
 
 func TestMain(m *testing.M) {
 	testhelper.Main(m, cmd.ExecuteArgs)
