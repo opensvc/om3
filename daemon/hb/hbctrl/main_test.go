@@ -209,7 +209,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 
 			for _, id := range tc.hbs {
 				t.Logf("register id %s", id)
-				testCtrl.cmd <- CmdRegister{Id: id}
+				testCtrl.cmd <- CmdRegister{Id: id, Type: "test-type"}
 				t.Logf("add watcher id %s nodename %s", id, node)
 				testCtrl.cmd <- CmdAddWatcher{
 					HbId:     id,
