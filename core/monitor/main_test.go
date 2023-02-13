@@ -29,11 +29,12 @@ func (c *mockDaemonStatus) Get() ([]byte, error) {
 	return []byte(c.value), nil
 }
 
-var expected = "Threads                 \n" +
+var expected = "" +
+	"Threads                 \n" +
 	" daemon    running      \n" +
 	" dns                    \n" +
 	" collector              \n" +
-	" hb                    \n" +
+	" hb                     \n" +
 	" listener          :0   \n" +
 	" monitor                \n" +
 	" scheduler              \n" +

@@ -1,8 +1,8 @@
-Threads                 dev1n3 
- daemon    running    |        
- dns                  |        
- collector            |        
- hb                   |
+Threads                 dev1n3        
+ daemon    running    |               
+ dns                  |               
+ collector            |               
+ hb                   |               
  listener          :0 |               
  monitor              |               
  scheduler            |               
