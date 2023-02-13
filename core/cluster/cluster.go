@@ -18,8 +18,8 @@ type (
 		DNS       DNSThreadStatus       `json:"dns"`
 		Scheduler SchedulerThreadStatus `json:"scheduler"`
 		Listener  ListenerThreadStatus  `json:"listener"`
-		Monitor   MonitorThreadStatus
-		Sub       Sub `json:"sub"`
+		Monitor   MonitorThreadStatus   `json:"monitor"`
+		Sub       Sub                   `json:"sub"`
 	}
 
 	Cluster struct {
@@ -45,13 +45,13 @@ type (
 	}
 
 	HbMode struct {
-		Node string
+		Node string `json:"node"`
 
 		// Mode is the type of hb message except when Type is patch where it is the patch queue length
-		Mode string
+		Mode string `json:"mode"`
 
 		// Type is the hb message type (unset/ping/full/patch)
-		Type string
+		Type string `json:"type"`
 	}
 )
 
