@@ -37,7 +37,7 @@ func newData(counterCmd chan<- interface{}) *data {
 		Monitor: cluster.MonitorThreadStatus{
 			ThreadStatus: cluster.ThreadStatus{},
 		},
-		Sub: cluster.Sub{
+		Subsys: cluster.Subsys{
 			Hb: cluster.SubHb{
 				Heartbeats: make([]cluster.HeartbeatThreadStatus, 0),
 				Modes:      make([]cluster.HbMode, 0),

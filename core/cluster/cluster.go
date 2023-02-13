@@ -19,7 +19,7 @@ type (
 		Scheduler SchedulerThreadStatus `json:"scheduler"`
 		Listener  ListenerThreadStatus  `json:"listener"`
 		Monitor   MonitorThreadStatus   `json:"monitor"`
-		Sub       Sub                   `json:"sub"`
+		Subsys    Subsys                `json:"subsys"`
 	}
 
 	Cluster struct {
@@ -35,7 +35,7 @@ type (
 		Frozen bool `json:"frozen"`
 	}
 
-	Sub struct {
+	Subsys struct {
 		Hb SubHb `json:"hb"`
 	}
 

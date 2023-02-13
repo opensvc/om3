@@ -36,7 +36,7 @@ func (d *data) setSubHb() {
 		Heartbeats: hbcache.Heartbeats(),
 		Modes:      hbModes,
 	}
-	d.pending.Sub.Hb = subHb
+	d.pending.Subsys.Hb = subHb
 	// TODO Use a dedicated msg for heartbeats updates
 	eventId++
 	patch := make(jsondelta.Patch, 0)
