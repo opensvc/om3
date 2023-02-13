@@ -48,6 +48,7 @@ func run(ctx context.Context) {
 					result = append(result, cluster.HeartbeatStream{
 						DaemonSubsystemStatus: status,
 						Peers:                 peers,
+						Type:                  hb.Type,
 					})
 				}
 				cmd.response <- result

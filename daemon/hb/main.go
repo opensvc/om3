@@ -149,7 +149,7 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	if tx == nil {
 		return errors.New("nil tx for " + hb.Name())
 	}
-	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id()}
+	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id(), Type: hb.Type()}
 	localDataC := make(chan []byte)
 	if err := tx.Start(t.ctrlC, localDataC); err != nil {
 		t.log.Error().Err(err).Msgf("starting %s", tx.Id())
@@ -166,7 +166,7 @@ func (t *T) startHbRx(hb hbcfg.Confer) error {
 	if rx == nil {
 		return errors.New("nil rx for " + hb.Name())
 	}
-	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id()}
+	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id(), Type: hb.Type()}
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
 		t.ctrlC <- hbctrl.CmdSetState{Id: rx.Id(), State: "failed"}
 		t.log.Error().Err(err).Msgf("starting %s", rx.Id())

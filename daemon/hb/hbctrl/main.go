@@ -64,6 +64,8 @@ type (
 	// CmdRegister is the command to register a new heartbeat status
 	CmdRegister struct {
 		Id string // the new hb id (example: hb#1.tx)
+		// Type is the hb type
+		Type string
 	}
 
 	// CmdUnregister is the command to unregister a heartbeat status
@@ -201,6 +203,7 @@ func (c *ctrl) run(ctx context.Context) {
 				}
 				heartbeats = append(heartbeats, cluster.HeartbeatStream{
 					DaemonSubsystemStatus: heartbeat[key].DaemonSubsystemStatus,
+					Type:                  heartbeat[key].Type,
 					Peers:                 peers,
 				})
 			}
@@ -216,6 +219,7 @@ func (c *ctrl) run(ctx context.Context) {
 						Configured: now,
 						State:      "running",
 					},
+					Type:  o.Type,
 					Peers: make(map[string]cluster.HeartbeatPeerStatus),
 				}
 			case CmdUnregister:
