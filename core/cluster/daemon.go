@@ -40,6 +40,8 @@ type (
 	// changes to or from peer nodes.
 	HeartbeatStream struct {
 		DaemonSubsystemStatus
+		// Type is the heartbeat type example: unicast, ...
+		Type  string                         `json:"type"`
 		Peers map[string]HeartbeatPeerStatus `json:"peers"`
 	}
 
