@@ -207,6 +207,14 @@ func (t T) GetReader(r request.T) (reader io.ReadCloser, err error) {
 	if err != nil {
 		return
 	}
+	if resp.StatusCode != http.StatusOK {
+		if b, errRead := io.ReadAll(resp.Body); errRead == nil {
+			err = fmt.Errorf("%s: %s", resp.Status, string(b))
+		} else {
+			err = fmt.Errorf("%s", resp.Status)
+		}
+		return
+	}
 	reader = resp.Body
 	return
 }

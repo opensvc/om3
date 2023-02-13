@@ -122,10 +122,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /daemon/leave:
     post:
       operationId: PostDaemonLeave
@@ -159,10 +155,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -248,10 +240,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /node/monitor:
     post:
       operationId: PostNodeMonitor
@@ -276,10 +264,6 @@ paths:
                 $ref: '#/components/schemas/responseInfoStatus'
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /nodes/info:
     get:
       operationId: GetNodesInfo
@@ -315,10 +299,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /object/clear:
     post:
       operationId: PostObjectClear
@@ -339,10 +319,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /object/config:
     get:
       operationId: GetObjectConfig
@@ -407,10 +383,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /object/progress:
     post:
       operationId: PostObjectProgress
@@ -431,10 +403,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /object/selector:
     get:
       operationId: GetObjectSelector
@@ -472,10 +440,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /object/switchTo:
     post:
       operationId: PostObjectSwitchTo
@@ -496,10 +460,6 @@ paths:
           description: success
         default:
           description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/error'
   /public/openapi:
     get:
       operationId: GetSwagger
@@ -693,18 +653,6 @@ components:
           type: string
         state:
           type: string
-    error:
-      required:
-        - code
-        - message
-      properties:
-        code:
-          type: integer
-          format: int32
-          description: Error code
-        message:
-          type: string
-          description: Error message
     instanceStatus:
       type: object
       required:
