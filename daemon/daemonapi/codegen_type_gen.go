@@ -149,12 +149,21 @@ type DaemonHbStream struct {
 	Id         string                 `json:"id"`
 	Last       time.Time              `json:"last"`
 	State      string                 `json:"state"`
+
+	// hb stream type
+	Type string `json:"type"`
 }
 
 // DaemonHbStreamPeer defines model for daemonHbStreamPeer.
 type DaemonHbStreamPeer struct {
 	Beating bool      `json:"beating"`
 	Last    time.Time `json:"last"`
+}
+
+// DaemonHbStreamType defines model for daemonHbStreamType.
+type DaemonHbStreamType struct {
+	// hb stream type
+	Type string `json:"type"`
 }
 
 // DaemonListener defines model for daemonListener.

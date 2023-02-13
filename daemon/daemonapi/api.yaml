@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.35
+  version: 3.6.36
 servers:
   - url: https://localhost:1215
 paths:
@@ -583,6 +583,7 @@ components:
     daemonHbStream:
       allOf:
         - $ref: '#/components/schemas/daemonSubsystemStatus'
+        - $ref: '#/components/schemas/daemonHbStreamType'
         - $ref: '#/components/schemas/daemonHbStreamPeer'
     daemonHbMode:
       type: object
@@ -600,6 +601,14 @@ components:
         type:
           type: string
           description: the heartbeat message type used by node
+    daemonHbStreamType:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: hb stream type
     daemonHbStreamPeer:
       type: object
       required:
