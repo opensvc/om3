@@ -94,7 +94,8 @@ func (f Frame) wThreadDNS() string {
 }
 
 func (f Frame) wThreadHeartbeats() string {
-	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb"), f.info.separator)
+	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb"), f.info.separator+"\t")
+	s += f.info.emptyNodes
 	for _, hbStatus := range f.Current.Daemon.Hb.Streams {
 		name := hbStatus.Id
 		s += bold("\n  "+name) + "\t"
