@@ -44,6 +44,10 @@ var (
 		Use:   "push",
 		Short: "push node discover information to the collector",
 	}
+	cmdNodeRelay = &cobra.Command{
+		Use:   "relay",
+		Short: "relay subsystem commands",
+	}
 	cmdNodeScan = &cobra.Command{
 		Use:   "scan",
 		Short: "node discover",
@@ -95,6 +99,7 @@ func init() {
 		cmdNodeEdit,
 		cmdNodePrint,
 		cmdNodePush,
+		cmdNodeRelay,
 		cmdNodeScan,
 		cmdNodeValidate,
 		newCmdNodeAbort(),
@@ -133,6 +138,9 @@ func init() {
 	)
 	cmdNodeValidate.AddCommand(
 		newCmdNodeValidateConfig(),
+	)
+	cmdNodeRelay.AddCommand(
+		newCmdNodeRelayStatus(),
 	)
 
 }
