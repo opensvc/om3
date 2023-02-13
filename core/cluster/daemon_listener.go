@@ -38,10 +38,10 @@ type (
 		Sessions ListenerThreadSessions `json:"sessions"`
 	}
 
-	// ListenerThreadStatus describes the OpenSVC daemon listener thread,
+	// DaemonListener describes the OpenSVC daemon listener thread,
 	// which is responsible for serving the API.
-	ListenerThreadStatus struct {
-		ThreadStatus
+	DaemonListener struct {
+		DaemonSubsystemStatus
 		Config ListenerThreadStatusConfig `json:"config"`
 		Stats  ListenerThreadStats        `json:"stats"`
 	}

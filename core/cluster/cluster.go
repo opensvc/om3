@@ -13,13 +13,8 @@ import (
 type (
 	// Data describes the full Cluster state.
 	Data struct {
-		Cluster   Cluster               `json:"cluster"`
-		Collector CollectorThreadStatus `json:"collector"`
-		DNS       DNSThreadStatus       `json:"dns"`
-		Scheduler SchedulerThreadStatus `json:"scheduler"`
-		Listener  ListenerThreadStatus  `json:"listener"`
-		Monitor   MonitorThreadStatus
-		Sub       Sub `json:"sub"`
+		Cluster Cluster `json:"cluster"`
+		Daemon  Deamon  `json:"daemon"`
 	}
 
 	Cluster struct {
@@ -35,23 +30,29 @@ type (
 		Frozen bool `json:"frozen"`
 	}
 
-	Sub struct {
-		Hb SubHb `json:"hb"`
+	Deamon struct {
+		Collector DaemonCollector `json:"collector"`
+		DNS       DaemonDNS       `json:"dns"`
+		Hb        DaemonHb        `json:"hb"`
+		Listener  DaemonListener  `json:"listener"`
+		Monitor   DaemonMonitor   `json:"monitor"`
+		Routines  int             `json:"routines"`
+		Scheduler DaemonScheduler `json:"scheduler"`
 	}
 
-	SubHb struct {
-		Heartbeats []HeartbeatThreadStatus `json:"heartbeats"`
-		Modes      []HbMode                `json:"modes"`
+	DaemonHb struct {
+		Streams []HeartbeatStream `json:"streams"`
+		Modes   []HbMode          `json:"modes"`
 	}
 
 	HbMode struct {
-		Node string
+		Node string `json:"node"`
 
 		// Mode is the type of hb message except when Type is patch where it is the patch queue length
-		Mode string
+		Mode string `json:"mode"`
 
 		// Type is the hb message type (unset/ping/full/patch)
-		Type string
+		Type string `json:"type"`
 	}
 )
 

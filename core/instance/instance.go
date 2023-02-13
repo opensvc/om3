@@ -43,10 +43,10 @@ type (
 		Updated         time.Time                 `json:"updated"`
 	}
 	ResourceConfig struct {
-		Restart      int
-		RestartDelay *time.Duration
-		IsMonitored  bool
-		IsDisabled   bool
+		Restart      int            `json:"restart"`
+		RestartDelay *time.Duration `json:"restart_delay"`
+		IsMonitored  bool           `json:"is_monitored"`
+		IsDisabled   bool           `json:"is_disabled"`
 	}
 
 	MonitorAction string

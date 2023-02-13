@@ -10,19 +10,19 @@ import (
 )
 
 type (
-	subRefresh struct {
+	daemonRefresh struct {
 		*sync.Mutex
 		updated time.Time
 	}
 )
 
 const (
-	// subRefreshInterval defines the maximum duration before next SubRefresh
-	subRefreshInterval = 2 * time.Second
+	// daemonRefreshInterval defines the maximum duration before next DaemonRefresh
+	daemonRefreshInterval = 2 * time.Second
 )
 
 var (
-	subRefreshed = subRefresh{Mutex: &sync.Mutex{}}
+	subRefreshed = daemonRefresh{Mutex: &sync.Mutex{}}
 )
 
 // GetDaemonStatus returns daemon data status
@@ -32,8 +32,8 @@ func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, para
 	now := time.Now()
 	subRefreshed.Lock()
 	databus := daemondata.FromContext(r.Context())
-	if now.After(subRefreshed.updated.Add(subRefreshInterval)) {
-		if err := databus.SubRefresh(); err != nil {
+	if now.After(subRefreshed.updated.Add(daemonRefreshInterval)) {
+		if err := databus.DaemonRefresh(); err != nil {
 
 		}
 		subRefreshed.updated = now

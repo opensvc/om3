@@ -51,6 +51,7 @@ const (
 	idGetStatus
 	idSetHeartbeatPing
 	idSetClusterConfig
+	idSetDaemonHb
 	idSetInstanceConfig
 	idSetInstanceFrozen
 	idSetInstanceMonitor
@@ -60,7 +61,6 @@ const (
 	idSetNodeOsPaths
 	idSetNodeStats
 	idSetObjectStatus
-	idSetSubHb
 	idStats
 )
 
@@ -87,6 +87,7 @@ var (
 		idGetServiceNames:      "get-service-names",
 		idGetStatus:            "get-status",
 		idSetClusterConfig:     "set-cluster-config",
+		idSetDaemonHb:          "set-daemon-hb",
 		idSetObjectStatus:      "set-object-status",
 		idSetInstanceConfig:    "set-instance-config",
 		idSetInstanceFrozen:    "set-instance-frozen",
@@ -96,7 +97,6 @@ var (
 		idSetNodeMonitor:       "set-node-monitor",
 		idSetNodeOsPaths:       "set-node-os-paths",
 		idSetNodeStats:         "set-node-stats",
-		idSetSubHb:             "set-sub-hb",
 		idStats:                "stats",
 	}
 )

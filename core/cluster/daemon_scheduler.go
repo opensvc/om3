@@ -14,11 +14,11 @@ type (
 		Rid    string    `json:"rid"`
 	}
 
-	// SchedulerThreadStatus describes the OpenSVC daemon scheduler thread
+	// DaemonScheduler describes the OpenSVC daemon scheduler thread
 	// state, which is responsible for executing node and objects scheduled
 	// jobs.
-	SchedulerThreadStatus struct {
-		ThreadStatus
+	DaemonScheduler struct {
+		DaemonSubsystemStatus
 		Delayed []SchedulerThreadEntry `json:"delayed"`
 	}
 )

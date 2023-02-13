@@ -24,7 +24,7 @@ type (
 		Port            int    `json:"port"`
 		TLSAddr         string `json:"tls_addr"`
 		TLSPort         int    `json:"tls_port"`
-		OpenIdWellKnown string `"openid_well_known"`
+		OpenIdWellKnown string `json:"openid_well_known"`
 	}
 )
 

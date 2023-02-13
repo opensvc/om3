@@ -11,11 +11,11 @@ import (
 	"github.com/opensvc/om3/util/stringslice"
 )
 
-func (d *data) setSubHb() {
-	d.counterCmd <- idSetSubHb
+func (d *data) setDaemonHb() {
+	d.counterCmd <- idSetDaemonHb
 	hbModes := make([]cluster.HbMode, 0)
 	nodes := make([]string, 0)
-	for node := range d.subHbMode {
+	for node := range d.hbMsgMode {
 		if !stringslice.Has(node, d.pending.Cluster.Config.Nodes) {
 			// Drop not anymore in cluster config nodes
 			hbcache.DropPeer(node)
@@ -27,27 +27,27 @@ func (d *data) setSubHb() {
 	for _, node := range nodes {
 		hbModes = append(hbModes, cluster.HbMode{
 			Node: node,
-			Mode: d.subHbMode[node],
-			Type: d.subHbMsgType[node],
+			Mode: d.hbMsgMode[node],
+			Type: d.hbMsgType[node],
 		})
 	}
 
-	subHb := cluster.SubHb{
-		Heartbeats: hbcache.Heartbeats(),
-		Modes:      hbModes,
+	subHb := cluster.DaemonHb{
+		Streams: hbcache.Heartbeats(),
+		Modes:   hbModes,
 	}
-	d.pending.Sub.Hb = subHb
+	d.pending.Daemon.Hb = subHb
 	// TODO Use a dedicated msg for heartbeats updates
 	eventId++
 	patch := make(jsondelta.Patch, 0)
 	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"sub", "hb"},
+		OpPath:  jsondelta.OperationPath{"daemon", "hb"},
 		OpValue: jsondelta.NewOptValue(subHb),
 		OpKind:  "replace",
 	}
 	patch = append(patch, op)
 	if eventB, err := json.Marshal(patch); err != nil {
-		d.log.Error().Err(err).Msg("setSubHb Marshal")
+		d.log.Error().Err(err).Msg("setDaemonHb Marshal")
 	} else {
 		d.bus.Pub(
 			msgbus.DataUpdated{RawMessage: eventB},
@@ -56,18 +56,18 @@ func (d *data) setSubHb() {
 	}
 }
 
-func (d *data) setMsgMode(node string, mode string) {
-	d.subHbMode[node] = mode
+func (d *data) setHbMsgMode(node string, mode string) {
+	d.hbMsgMode[node] = mode
 }
 
-// setMsgType update the sub.hb.mode.x.Type for node,
+// setHbMsgType update the sub.hb.mode.x.Type for node,
 // if value is changed publish msgbus.HbMessageTypeUpdated
-func (d *data) setMsgType(node string, msgType string) {
-	previous := d.subHbMsgType[node]
+func (d *data) setHbMsgType(node string, msgType string) {
+	previous := d.hbMsgType[node]
 	if msgType != previous {
-		d.subHbMsgType[node] = msgType
+		d.hbMsgType[node] = msgType
 		joinedNodes := make([]string, 0)
-		for n, v := range d.subHbMsgType {
+		for n, v := range d.hbMsgType {
 			if v == "patch" {
 				joinedNodes = append(joinedNodes, n)
 			}

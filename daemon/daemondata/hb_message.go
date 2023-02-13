@@ -65,15 +65,15 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 			return msg, err
 		}
 		msg.Deltas = delta
-		d.setMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Deltas)))
+		d.setHbMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Deltas)))
 		return msg, nil
 	case "full":
 		nodeData := d.pending.Cluster.Node[d.localNode]
 		msg.Full = *nodeData.DeepCopy()
-		d.setMsgMode(d.localNode, msg.Kind)
+		d.setHbMsgMode(d.localNode, msg.Kind)
 		return msg, nil
 	case "ping":
-		d.setMsgMode(d.localNode, msg.Kind)
+		d.setHbMsgMode(d.localNode, msg.Kind)
 		return msg, nil
 	default:
 		err = fmt.Errorf("opGetHbMessage unsupported message type %s", d.hbMessageType)
@@ -145,7 +145,7 @@ func (d *data) setNextMsgType() {
 				d.hbMessageType, messageType, d.gen, d.hbGens)
 		}
 		d.hbMessageType = messageType
-		d.setMsgType(d.localNode, messageType)
+		d.setHbMsgType(d.localNode, messageType)
 	}
 	return
 }

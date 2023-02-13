@@ -192,7 +192,7 @@ type (
 
 	HbStatusUpdated struct {
 		Node  string
-		Value cluster.HeartbeatThreadStatus
+		Value cluster.HeartbeatStream
 	}
 
 	InstanceMonitorAction struct {

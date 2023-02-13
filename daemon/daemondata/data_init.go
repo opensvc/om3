@@ -30,17 +30,17 @@ func newData(counterCmd chan<- interface{}) *data {
 				localNode: nodeData,
 			},
 		},
-		Collector: cluster.CollectorThreadStatus{},
-		DNS:       cluster.DNSThreadStatus{},
-		Scheduler: cluster.SchedulerThreadStatus{},
-		Listener:  cluster.ListenerThreadStatus{},
-		Monitor: cluster.MonitorThreadStatus{
-			ThreadStatus: cluster.ThreadStatus{},
-		},
-		Sub: cluster.Sub{
-			Hb: cluster.SubHb{
-				Heartbeats: make([]cluster.HeartbeatThreadStatus, 0),
-				Modes:      make([]cluster.HbMode, 0),
+		Daemon: cluster.Deamon{
+			Collector: cluster.DaemonCollector{},
+			DNS:       cluster.DaemonDNS{},
+			Scheduler: cluster.DaemonScheduler{},
+			Listener:  cluster.DaemonListener{},
+			Monitor: cluster.DaemonMonitor{
+				DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{},
+			},
+			Hb: cluster.DaemonHb{
+				Streams: make([]cluster.HeartbeatStream, 0),
+				Modes:   make([]cluster.HbMode, 0),
 			},
 		},
 	}
@@ -56,8 +56,8 @@ func newData(counterCmd chan<- interface{}) *data {
 		pending:            status.DeepCopy(),
 		patchQueue:         make(patchQueue),
 		previousRemoteInfo: make(map[string]remoteInfo),
-		subHbMode:          map[string]string{localNode: initialMsgType},
-		subHbMsgType:       map[string]string{localNode: initialMsgType},
+		hbMsgMode:          map[string]string{localNode: initialMsgType},
+		hbMsgType:          map[string]string{localNode: initialMsgType},
 	}
 }
 
