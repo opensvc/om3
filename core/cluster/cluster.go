@@ -14,7 +14,7 @@ type (
 	// Data describes the full Cluster state.
 	Data struct {
 		Cluster Cluster `json:"cluster"`
-		Subsys  Subsys  `json:"subsys"`
+		Daemon  Deamon  `json:"daemon"`
 	}
 
 	Cluster struct {
@@ -30,18 +30,19 @@ type (
 		Frozen bool `json:"frozen"`
 	}
 
-	Subsys struct {
-		Collector CollectorThreadStatus `json:"collector"`
-		DNS       DNSThreadStatus       `json:"dns"`
-		Scheduler SchedulerThreadStatus `json:"scheduler"`
-		Listener  ListenerThreadStatus  `json:"listener"`
-		Monitor   MonitorThreadStatus   `json:"monitor"`
-		Hb        SubHb                 `json:"hb"`
+	Deamon struct {
+		Collector DaemonCollector `json:"collector"`
+		DNS       DaemonDNS       `json:"dns"`
+		Hb        DaemonHb        `json:"hb"`
+		Listener  DaemonListener  `json:"listener"`
+		Monitor   DaemonMonitor   `json:"monitor"`
+		Routines  int             `json:"routines"`
+		Scheduler DaemonScheduler `json:"scheduler"`
 	}
 
-	SubHb struct {
-		Heartbeats []HeartbeatThreadStatus `json:"heartbeats"`
-		Modes      []HbMode                `json:"modes"`
+	DaemonHb struct {
+		Streams []HeartbeatStream `json:"streams"`
+		Modes   []HbMode          `json:"modes"`
 	}
 
 	HbMode struct {

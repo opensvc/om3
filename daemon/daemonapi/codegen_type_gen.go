@@ -95,8 +95,108 @@ type ClusterStatus = map[string]interface{}
 
 // Daemon defines model for daemon.
 type Daemon struct {
-	Goroutines int    `json:"goroutines"`
-	Subsys     Subsys `json:"subsys"`
+	Collector DaemonCollector `json:"collector"`
+	Dns       DaemonDNS       `json:"dns"`
+	Hb        DaemonHb        `json:"hb"`
+	Listener  DaemonListener  `json:"listener"`
+	Monitor   DaemonMonitor   `json:"monitor"`
+	Routines  int             `json:"routines"`
+	Scheduler DaemonScheduler `json:"scheduler"`
+}
+
+// DaemonCollector defines model for daemonCollector.
+type DaemonCollector struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
+}
+
+// DaemonDNS defines model for daemonDNS.
+type DaemonDNS struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
+}
+
+// DaemonHb defines model for daemonHb.
+type DaemonHb struct {
+	Modes   []DaemonHbMode   `json:"modes"`
+	Streams []DaemonHbStream `json:"streams"`
+}
+
+// DaemonHbMode defines model for daemonHbMode.
+type DaemonHbMode struct {
+	// the type of hb message used by node except when Type is patch where it is the patch queue length
+	Mode string `json:"mode"`
+
+	// a cluster node
+	Node string `json:"node"`
+
+	// the heartbeat message type used by node
+	Type string `json:"type"`
+}
+
+// DaemonHbStream defines model for daemonHbStream.
+type DaemonHbStream struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Beating    bool                   `json:"beating"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	Last       time.Time              `json:"last"`
+	State      string                 `json:"state"`
+}
+
+// DaemonHbStreamPeer defines model for daemonHbStreamPeer.
+type DaemonHbStreamPeer struct {
+	Beating bool      `json:"beating"`
+	Last    time.Time `json:"last"`
+}
+
+// DaemonListener defines model for daemonListener.
+type DaemonListener struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
+}
+
+// DaemonMonitor defines model for daemonMonitor.
+type DaemonMonitor struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
+}
+
+// DaemonScheduler defines model for daemonScheduler.
+type DaemonScheduler struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
+}
+
+// DaemonSubsystemAlert defines model for daemonSubsystemAlert.
+type DaemonSubsystemAlert struct {
+	Message  string   `json:"message"`
+	Severity Severity `json:"severity"`
+}
+
+// DaemonSubsystemStatus defines model for daemonSubsystemStatus.
+type DaemonSubsystemStatus struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
 }
 
 // DnsRecord defines model for dnsRecord.
@@ -434,13 +534,11 @@ type SanPathTarget struct {
 	Type *string `json:"type,omitempty"`
 }
 
+// Severity defines model for severity.
+type Severity = string
+
 // Status defines model for status.
 type Status = string
-
-// Subsys defines model for subsys.
-type Subsys struct {
-	Heartbeats *[]interface{} `json:"heartbeats,omitempty"`
-}
 
 // object topology
 type Topology string

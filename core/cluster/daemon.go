@@ -3,45 +3,43 @@ package cluster
 import "time"
 
 type (
-	// ThreadStatus describes a OpenSVC daemon thread: when the thread
-	// was last configured, when it was created, its current state and thread
+	// DaemonSubsystemStatus describes a OpenSVC daemon subsystem: when it
+	// was last configured, when it was created, its current state and its
 	// id.
-	// TODO rename ThreadStatus to component or sub ?
-	ThreadStatus struct {
+	DaemonSubsystemStatus struct {
 		Id         string        `json:"id"`
 		Configured time.Time     `json:"configured"`
 		Created    time.Time     `json:"created"`
 		State      string        `json:"state"`
-		TID        int64         `json:"tid"`
 		Alerts     []ThreadAlert `json:"alerts,omitempty"`
 	}
 
-	// ThreadAlert describes a message with a severity. Embedded in ThreadStatus
+	// ThreadAlert describes a message with a severity. Embedded in DaemonSubsystemStatus
 	ThreadAlert struct {
 		Message  string `json:"message"`
 		Severity string `json:"severity"`
 	}
 
-	// CollectorThreadStatus describes the OpenSVC daemon collector thread,
+	// DaemonCollector describes the OpenSVC daemon collector thread,
 	// which is responsible for communicating with the collector on behalf
 	// of the cluster. Only one node runs a collector thread.
-	CollectorThreadStatus struct {
-		ThreadStatus
+	DaemonCollector struct {
+		DaemonSubsystemStatus
 	}
 
-	// DNSThreadStatus describes the OpenSVC daemon dns thread, which is
+	// DaemonDNS describes the OpenSVC daemon dns thread, which is
 	// responsible for janitoring and serving the cluster DNS zone. This
 	// zone is dynamically populated by ip address allocated for the
 	// services (frontend and backend).
-	DNSThreadStatus struct {
-		ThreadStatus
+	DaemonDNS struct {
+		DaemonSubsystemStatus
 	}
 
-	// HeartbeatThreadStatus describes one OpenSVC daemon heartbeat thread,
+	// HeartbeatStream describes one OpenSVC daemon heartbeat thread,
 	// which is responsible for sending or receiving the node DataSet
 	// changes to or from peer nodes.
-	HeartbeatThreadStatus struct {
-		ThreadStatus
+	HeartbeatStream struct {
+		DaemonSubsystemStatus
 		Peers map[string]HeartbeatPeerStatus `json:"peers"`
 	}
 

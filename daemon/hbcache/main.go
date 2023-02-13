@@ -1,4 +1,4 @@
-// Package hbcache manage []cluster.HeartbeatThreadStatus cache localnode
+// Package hbcache manage []cluster.HeartbeatStream cache localnode
 //
 // This cache will be populated from:
 //   - heartbeat status
@@ -25,7 +25,7 @@ func Start(ctx context.Context) {
 
 func run(ctx context.Context) {
 	gens := make(map[string]map[string]uint64)
-	heartbeats := make([]cluster.HeartbeatThreadStatus, 0)
+	heartbeats := make([]cluster.HeartbeatStream, 0)
 	log := daemonlogctx.Logger(ctx).With().Str("name", "hbcache").Logger()
 	log.Debug().Msg("started")
 	defer log.Debug().Msg("done")
@@ -37,17 +37,17 @@ func run(ctx context.Context) {
 		case i := <-cmdI:
 			switch cmd := i.(type) {
 			case getHeartbeats:
-				result := make([]cluster.HeartbeatThreadStatus, 0)
+				result := make([]cluster.HeartbeatStream, 0)
 				for _, hb := range heartbeats {
-					status := hb.ThreadStatus
+					status := hb.DaemonSubsystemStatus
 					status.Alerts = append([]cluster.ThreadAlert{}, hb.Alerts...)
 					peers := make(map[string]cluster.HeartbeatPeerStatus)
 					for node, peerStatus := range hb.Peers {
 						peers[node] = peerStatus
 					}
-					result = append(result, cluster.HeartbeatThreadStatus{
-						ThreadStatus: status,
-						Peers:        peers,
+					result = append(result, cluster.HeartbeatStream{
+						DaemonSubsystemStatus: status,
+						Peers:                 peers,
 					})
 				}
 				cmd.response <- result
@@ -64,8 +64,8 @@ func run(ctx context.Context) {
 
 // Getters
 
-func Heartbeats() []cluster.HeartbeatThreadStatus {
-	response := make(chan []cluster.HeartbeatThreadStatus)
+func Heartbeats() []cluster.HeartbeatStream {
+	response := make(chan []cluster.HeartbeatStream)
 	var i interface{} = getHeartbeats{response: response}
 	cmdI <- i
 	return <-response
@@ -82,7 +82,7 @@ func DropPeer(peer string) {
 // SetHeartbeats updates the heartbeats status cache
 //
 // can be used from a heartbeat controller
-func SetHeartbeats(hbs []cluster.HeartbeatThreadStatus) {
+func SetHeartbeats(hbs []cluster.HeartbeatStream) {
 	var i interface{} = setHeartbeats(hbs)
 	cmdI <- i
 }
@@ -91,10 +91,10 @@ func SetHeartbeats(hbs []cluster.HeartbeatThreadStatus) {
 type (
 	// getters
 	getHeartbeats struct {
-		response chan<- []cluster.HeartbeatThreadStatus
+		response chan<- []cluster.HeartbeatStream
 	}
 
 	// setters
 	dropPeer      string
-	setHeartbeats []cluster.HeartbeatThreadStatus
+	setHeartbeats []cluster.HeartbeatStream
 )

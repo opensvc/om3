@@ -189,7 +189,7 @@ func (f Frame) sNodeVersion(n string) string {
 }
 
 func (f Frame) sNodeHbMode() string {
-	modes := f.Current.Subsys.Hb.Modes
+	modes := f.Current.Daemon.Hb.Modes
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-q"), f.info.separator)
 	mode := make(map[string]string)
 	for _, m := range modes {
@@ -226,7 +226,7 @@ func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
-	if len(f.Current.Subsys.Hb.Modes) > 1 {
+	if len(f.Current.Daemon.Hb.Modes) > 1 {
 		fmt.Fprintln(f.w, f.sNodeHbMode())
 	}
 	fmt.Fprintln(f.w, f.sNodeWarningsLine())

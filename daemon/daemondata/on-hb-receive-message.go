@@ -31,8 +31,8 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 }
 
 func (d *data) setFromPeerMsg(peer string, msgType, mode string, gen gens) {
-	d.setMsgType(peer, msgType)
-	d.setMsgMode(peer, mode)
+	d.setHbMsgType(peer, msgType)
+	d.setHbMsgMode(peer, mode)
 	d.hbGens[peer] = gen
 	if gen[d.localNode] != d.hbGens[d.localNode][d.localNode] {
 		d.needMsg = true

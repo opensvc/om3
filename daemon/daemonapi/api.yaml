@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.34
+  version: 3.6.35
 servers:
   - url: https://localhost:1215
 paths:
@@ -578,13 +578,121 @@ components:
     daemon:
       type: object
       required:
-        - goroutines
-        - subsys
+        - collector
+        - dns
+        - hb
+        - listener
+        - monitor
+        - routines
+        - scheduler
       properties:
-        goroutines:
+        collector:
+          $ref: '#/components/schemas/daemonCollector'
+        dns:
+          $ref: '#/components/schemas/daemonDNS'
+        hb:
+          $ref: '#/components/schemas/daemonHb'
+        listener:
+          $ref: '#/components/schemas/daemonListener'
+        monitor:
+          $ref: '#/components/schemas/daemonMonitor'
+        routines:
           type: integer
-        subsys:
-          $ref: '#/components/schemas/subsys'
+        scheduler:
+          $ref: '#/components/schemas/daemonScheduler'
+    daemonCollector:
+      allOf:
+        - $ref: '#/components/schemas/daemonSubsystemStatus'
+    daemonDNS:
+      allOf:
+        - $ref: '#/components/schemas/daemonSubsystemStatus'
+    daemonHb:
+      type: object
+      required:
+        - streams
+        - modes
+      properties:
+        streams:
+          type: array
+          items:
+            $ref: '#/components/schemas/daemonHbStream'
+        modes:
+          type: array
+          items:
+            $ref: '#/components/schemas/daemonHbMode'
+    daemonHbStream:
+      allOf:
+        - $ref: '#/components/schemas/daemonSubsystemStatus'
+        - $ref: '#/components/schemas/daemonHbStreamPeer'
+    daemonHbMode:
+      type: object
+      required:
+        - node
+        - mode
+        - type
+      properties:
+        node:
+          type: string
+          description: a cluster node
+        mode:
+          type: string
+          description: the type of hb message used by node except when Type is patch where it is the patch queue length
+        type:
+          type: string
+          description: the heartbeat message type used by node
+    daemonHbStreamPeer:
+      type: object
+      required:
+        - beating
+        - last
+      properties:
+        beating:
+          type: boolean
+        last:
+          type: string
+          format: date-time
+    daemonListener:
+      allOf:
+        - $ref: '#/components/schemas/daemonSubsystemStatus'
+    daemonMonitor:
+      allOf:
+        - $ref: '#/components/schemas/daemonSubsystemStatus'
+    daemonScheduler:
+      allOf:
+        - $ref: '#/components/schemas/daemonSubsystemStatus'
+    daemonSubsystemAlert:
+      type: object
+      required:
+        - message
+        - severity
+      properties:
+        message:
+          type: string
+        severity:
+          $ref: '#/components/schemas/severity'
+    daemonSubsystemStatus:
+      type: object
+      required:
+        - alerts
+        - configured
+        - created
+        - id
+        - state
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/daemonSubsystemAlert'
+        configured:
+          type: string
+          format: date-time
+        created:
+          type: string
+          format: date-time
+        id:
+          type: string
+        state:
+          type: string
     error:
       required:
         - code
@@ -1155,62 +1263,6 @@ components:
       type: string
     status:
       type: string
-    subsys:
-      type: object
-      properties:
-        heartbeats:
-          type: array
-          items:
-            anyOff:
-              - $ref: '#/components/schemas/subsysHeartbeats'
-    subsysAlert:
-      type: object
-      required:
-        - message
-        - severity
-      properties:
-        message:
-          type: string
-        severity:
-          $ref: '#/components/schemas/severity'
-    subsysBase:
-      type: object
-      required:
-        - alerts
-        - configured
-        - created
-        - id
-        - state
-      properties:
-        alerts:
-          type: array
-          items:
-            $ref: '#/components/schemas/subsysAlert'
-        configured:
-          type: string
-          format: date-time
-        created:
-          type: string
-          format: date-time
-        id:
-          type: string
-        state:
-          type: string
-    subsysHeartbeatPeerStatus:
-      type: object
-      required:
-        - beating
-        - last
-      properties:
-        beating:
-          type: boolean
-        last:
-          type: string
-          format: date-time
-    subsysHeartbeats:
-      allOf:
-        - $ref: '#/components/schemas/subsysBase'
-        - $ref: '#/components/schemas/subsysHeartbeatPeerStatus'
     topology:
       type: string
       description: "object topology"

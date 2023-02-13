@@ -57,8 +57,8 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) {
 		delete(d.pending.Cluster.Node, peerNode)
 		delete(d.hbGens, peerNode)
 		delete(d.hbPatchMsgUpdated, peerNode)
-		delete(d.subHbMode, peerNode)
-		delete(d.subHbMsgType, peerNode)
+		delete(d.hbMsgMode, peerNode)
+		delete(d.hbMsgType, peerNode)
 	}
 	patch := make(jsondelta.Patch, 0)
 	op := jsondelta.Operation{

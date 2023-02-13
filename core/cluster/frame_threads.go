@@ -20,7 +20,7 @@ func (f Frame) wThreadDaemon() string {
 func (f Frame) wThreadCollector() string {
 	var s string
 	s += bold(" collector") + "\t"
-	if f.Current.Subsys.Collector.State == "running" {
+	if f.Current.Daemon.Collector.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -40,12 +40,12 @@ func (f Frame) wThreadCollector() string {
 func (f Frame) wThreadListener() string {
 	var s string
 	s += bold(" listener") + "\t"
-	if f.Current.Subsys.Listener.State == "running" {
+	if f.Current.Daemon.Listener.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
 	}
-	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Subsys.Listener.Config.Addr, f.Current.Subsys.Listener.Config.Port))
+	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Daemon.Listener.Config.Addr, f.Current.Daemon.Listener.Config.Port))
 	s += f.info.separator + "\t"
 	s += f.info.emptyNodes
 	return s
@@ -54,7 +54,7 @@ func (f Frame) wThreadListener() string {
 func (f Frame) wThreadScheduler() string {
 	var s string
 	s += bold(" scheduler") + "\t"
-	if f.Current.Subsys.Scheduler.State == "running" {
+	if f.Current.Daemon.Scheduler.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -68,7 +68,7 @@ func (f Frame) wThreadScheduler() string {
 func (f Frame) wThreadMonitor() string {
 	var s string
 	s += bold(" monitor") + "\t"
-	if f.Current.Subsys.Monitor.State == "running" {
+	if f.Current.Daemon.Monitor.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -82,7 +82,7 @@ func (f Frame) wThreadMonitor() string {
 func (f Frame) wThreadDNS() string {
 	var s string
 	s += bold(" dns") + "\t"
-	if f.Current.Subsys.DNS.State == "running" {
+	if f.Current.Daemon.DNS.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -95,7 +95,7 @@ func (f Frame) wThreadDNS() string {
 
 func (f Frame) wThreadHeartbeats() string {
 	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb"), f.info.separator)
-	for _, hbStatus := range f.Current.Subsys.Hb.Heartbeats {
+	for _, hbStatus := range f.Current.Daemon.Hb.Streams {
 		name := hbStatus.Id
 		s += bold("\n  "+name) + "\t"
 		switch hbStatus.State {

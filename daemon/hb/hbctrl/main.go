@@ -175,7 +175,7 @@ func (c *ctrl) run(ctx context.Context) {
 	c.log.Info().Msg("start")
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
-	heartbeat := make(map[string]cluster.HeartbeatThreadStatus)
+	heartbeat := make(map[string]cluster.HeartbeatStream)
 	bus := pubsub.BusFromContext(c.ctx)
 	defer c.log.Info().Msgf("stopped: %v", events)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
@@ -188,7 +188,7 @@ func (c *ctrl) run(ctx context.Context) {
 		case <-c.ctx.Done():
 			return
 		case <-updateDaemonDataHeartbeatsTicker.C:
-			heartbeats := make([]cluster.HeartbeatThreadStatus, 0)
+			heartbeats := make([]cluster.HeartbeatStream, 0)
 			hbIds := make([]string, 0)
 			for hbId := range heartbeat {
 				hbIds = append(hbIds, hbId)
@@ -199,9 +199,9 @@ func (c *ctrl) run(ctx context.Context) {
 				for k, v := range heartbeat[key].Peers {
 					peers[k] = v
 				}
-				heartbeats = append(heartbeats, cluster.HeartbeatThreadStatus{
-					ThreadStatus: heartbeat[key].ThreadStatus,
-					Peers:        peers,
+				heartbeats = append(heartbeats, cluster.HeartbeatStream{
+					DaemonSubsystemStatus: heartbeat[key].DaemonSubsystemStatus,
+					Peers:                 peers,
 				})
 			}
 			hbcache.SetHeartbeats(heartbeats)
@@ -209,8 +209,8 @@ func (c *ctrl) run(ctx context.Context) {
 			switch o := i.(type) {
 			case CmdRegister:
 				now := time.Now()
-				heartbeat[o.Id] = cluster.HeartbeatThreadStatus{
-					ThreadStatus: cluster.ThreadStatus{
+				heartbeat[o.Id] = cluster.HeartbeatStream{
+					DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{
 						Id:         o.Id,
 						Created:    now,
 						Configured: now,
