@@ -211,15 +211,6 @@ type DnsRecord struct {
 // DnsZone defines model for dnsZone.
 type DnsZone = []DnsRecord
 
-// Error defines model for error.
-type Error struct {
-	// Error code
-	Code int32 `json:"code"`
-
-	// Error message
-	Message string `json:"message"`
-}
-
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
 	App         *App          `json:"app,omitempty"`

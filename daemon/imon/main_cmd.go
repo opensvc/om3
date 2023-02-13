@@ -385,8 +385,8 @@ func (o imon) isExtraInstance() (bool, string) {
 }
 
 func (o imon) isHAOrchestrateable() (bool, string) {
-	if o.objStatus.Avail == status.Warn {
-		return false, "object is warn state"
+	if (o.objStatus.Topology == topology.Failover) && (o.objStatus.Avail == status.Warn) {
+		return false, "failover object is warn state"
 	}
 	switch o.objStatus.Provisioned {
 	case provisioned.Mixed:

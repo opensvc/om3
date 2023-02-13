@@ -61,11 +61,6 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
-	bus := pubsub.BusFromContext(r.Context())
-	if r.Header.Get("accept") == "text/event-stream" {
-		setStreamHeaders(w)
-	}
-
 	filters, err := params.parseFilters()
 	if err != nil {
 		log.Warn().Err(err).Msgf("invalid filter")
@@ -73,10 +68,16 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
+	if r.Header.Get("accept") == "text/event-stream" {
+		setStreamHeaders(w)
+	}
+
 	name := fmt.Sprintf("lsnr-handler-event %s from %s %s", handlerName, r.RemoteAddr, daemonctx.Uuid(r.Context()))
 	if params.Filter != nil && len(*params.Filter) > 0 {
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
+
+	bus := pubsub.BusFromContext(r.Context())
 	AnnounceSub(bus, name)
 	defer AnnounceUnSub(bus, name)
 

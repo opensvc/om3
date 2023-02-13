@@ -199,14 +199,13 @@ func newCmdDaemonRelayStatus() *cobra.Command {
 	var options commands.CmdDaemonRelayStatus
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "show the daemon relay clients and last data update time",
+		Short: "show the local daemon relay clients and last data update time",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flagSet := cmd.Flags()
 	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	addFlagRelay(flagSet, &options.Relays)
 	return cmd
 }
 
@@ -1112,6 +1111,21 @@ func newCmdNodeRegister() *cobra.Command {
 	addFlagCollectorPassword(flags, &options.Password)
 	addFlagCollectorApp(flags, &options.App)
 
+	return cmd
+}
+
+func newCmdNodeRelayStatus() *cobra.Command {
+	var options commands.CmdNodeRelayStatus
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "show the clients and last data update time of the configured relays",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flagSet := cmd.Flags()
+	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	addFlagRelay(flagSet, &options.Relays)
 	return cmd
 }
 
