@@ -13,13 +13,8 @@ import (
 type (
 	// Data describes the full Cluster state.
 	Data struct {
-		Cluster   Cluster               `json:"cluster"`
-		Collector CollectorThreadStatus `json:"collector"`
-		DNS       DNSThreadStatus       `json:"dns"`
-		Scheduler SchedulerThreadStatus `json:"scheduler"`
-		Listener  ListenerThreadStatus  `json:"listener"`
-		Monitor   MonitorThreadStatus   `json:"monitor"`
-		Subsys    Subsys                `json:"subsys"`
+		Cluster Cluster `json:"cluster"`
+		Subsys  Subsys  `json:"subsys"`
 	}
 
 	Cluster struct {
@@ -36,7 +31,12 @@ type (
 	}
 
 	Subsys struct {
-		Hb SubHb `json:"hb"`
+		Collector CollectorThreadStatus `json:"collector"`
+		DNS       DNSThreadStatus       `json:"dns"`
+		Scheduler SchedulerThreadStatus `json:"scheduler"`
+		Listener  ListenerThreadStatus  `json:"listener"`
+		Monitor   MonitorThreadStatus   `json:"monitor"`
+		Hb        SubHb                 `json:"hb"`
 	}
 
 	SubHb struct {

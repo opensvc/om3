@@ -30,14 +30,14 @@ func newData(counterCmd chan<- interface{}) *data {
 				localNode: nodeData,
 			},
 		},
-		Collector: cluster.CollectorThreadStatus{},
-		DNS:       cluster.DNSThreadStatus{},
-		Scheduler: cluster.SchedulerThreadStatus{},
-		Listener:  cluster.ListenerThreadStatus{},
-		Monitor: cluster.MonitorThreadStatus{
-			ThreadStatus: cluster.ThreadStatus{},
-		},
 		Subsys: cluster.Subsys{
+			Collector: cluster.CollectorThreadStatus{},
+			DNS:       cluster.DNSThreadStatus{},
+			Scheduler: cluster.SchedulerThreadStatus{},
+			Listener:  cluster.ListenerThreadStatus{},
+			Monitor: cluster.MonitorThreadStatus{
+				ThreadStatus: cluster.ThreadStatus{},
+			},
 			Hb: cluster.SubHb{
 				Heartbeats: make([]cluster.HeartbeatThreadStatus, 0),
 				Modes:      make([]cluster.HbMode, 0),

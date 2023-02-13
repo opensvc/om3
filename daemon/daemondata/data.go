@@ -209,7 +209,7 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			}
 			select {
 			case <-countRoutineTicker.C:
-				d.pending.Monitor.Routines = runtime.NumGoroutine()
+				d.pending.Subsys.Monitor.Routines = runtime.NumGoroutine()
 			default:
 			}
 			if needMessage || d.needMsg {

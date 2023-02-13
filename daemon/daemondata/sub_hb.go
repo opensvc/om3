@@ -41,7 +41,7 @@ func (d *data) setSubHb() {
 	eventId++
 	patch := make(jsondelta.Patch, 0)
 	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"sub", "hb"},
+		OpPath:  jsondelta.OperationPath{"subsys", "hb"},
 		OpValue: jsondelta.NewOptValue(subHb),
 		OpKind:  "replace",
 	}

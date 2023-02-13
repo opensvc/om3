@@ -20,7 +20,7 @@ func (f Frame) wThreadDaemon() string {
 func (f Frame) wThreadCollector() string {
 	var s string
 	s += bold(" collector") + "\t"
-	if f.Current.Collector.State == "running" {
+	if f.Current.Subsys.Collector.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -40,12 +40,12 @@ func (f Frame) wThreadCollector() string {
 func (f Frame) wThreadListener() string {
 	var s string
 	s += bold(" listener") + "\t"
-	if f.Current.Listener.State == "running" {
+	if f.Current.Subsys.Listener.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
 	}
-	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Listener.Config.Addr, f.Current.Listener.Config.Port))
+	s += fmt.Sprintf("%s\t", listener.Render(f.Current.Subsys.Listener.Config.Addr, f.Current.Subsys.Listener.Config.Port))
 	s += f.info.separator + "\t"
 	s += f.info.emptyNodes
 	return s
@@ -54,7 +54,7 @@ func (f Frame) wThreadListener() string {
 func (f Frame) wThreadScheduler() string {
 	var s string
 	s += bold(" scheduler") + "\t"
-	if f.Current.Scheduler.State == "running" {
+	if f.Current.Subsys.Scheduler.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -68,7 +68,7 @@ func (f Frame) wThreadScheduler() string {
 func (f Frame) wThreadMonitor() string {
 	var s string
 	s += bold(" monitor") + "\t"
-	if f.Current.Monitor.State == "running" {
+	if f.Current.Subsys.Monitor.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
@@ -82,7 +82,7 @@ func (f Frame) wThreadMonitor() string {
 func (f Frame) wThreadDNS() string {
 	var s string
 	s += bold(" dns") + "\t"
-	if f.Current.DNS.State == "running" {
+	if f.Current.Subsys.DNS.State == "running" {
 		s += green("running") + "\t"
 	} else {
 		s += "\t"
