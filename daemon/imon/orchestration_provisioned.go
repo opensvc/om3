@@ -9,7 +9,9 @@ import (
 
 func (o *imon) orchestrateProvisioned() {
 	switch o.state.State {
-	case instance.MonitorStateIdle:
+	case instance.MonitorStateIdle,
+		instance.MonitorStateStopFailed,
+		instance.MonitorStateUnprovisionFailed:
 		o.provisionedFromIdle()
 	case instance.MonitorStateWaitLeader:
 		o.provisionedFromWaitLeader()
