@@ -30,7 +30,7 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 			},
 			IsLeader:           true,
 			IsHALeader:         false,
-			LocalExpect:        MonitorLocalExpectUnset,
+			LocalExpect:        MonitorLocalExpectNone,
 			LocalExpectUpdated: t0,
 			State:              MonitorStateIdle,
 			StateUpdated:       t0,

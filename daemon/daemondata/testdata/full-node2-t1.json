@@ -19,7 +19,7 @@
         "global_expect_options": null,
         "is_leader": false,
         "is_ha_leader": false,
-        "local_expect": "unset",
+        "local_expect": "none",
         "local_expect_updated": "0001-01-01T00:00:00Z",
         "state": "starting",
         "state_updated": "2022-12-29T13:45:06.984597202+01:00"
