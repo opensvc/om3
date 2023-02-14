@@ -95,6 +95,10 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 			o.onConfigUpdated(c.Node, srcCmd)
 		case msgbus.ConfigDeleted:
 			o.onConfigDeleted(c.Node, srcCmd)
+		case msgbus.InstanceMonitorUpdated:
+			o.onInstanceMonitorUpdated(srcCmd)
+		case msgbus.InstanceMonitorDeleted:
+			o.onInstanceMonitorDeleted(srcCmd)
 		}
 	}
 	o.objStatus = c.Value

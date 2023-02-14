@@ -149,8 +149,6 @@ func (o *imon) startSubscriptions() {
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
 	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
-	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
-	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
 	sub.AddFilter(msgbus.NodeConfigUpdated{}, nodeLabel)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeStatusUpdated{})
@@ -185,10 +183,6 @@ func (o *imon) worker(initialNodes []string) {
 				o.onProgressInstanceMonitor(c)
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitor(c)
-			case msgbus.InstanceMonitorUpdated:
-				o.onInstanceMonitorUpdated(c)
-			case msgbus.InstanceMonitorDeleted:
-				o.onInstanceMonitorDeleted(c)
 			case msgbus.NodeConfigUpdated:
 				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:
