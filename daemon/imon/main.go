@@ -95,8 +95,8 @@ func start(parent context.Context, p path.T, nodes []string) error {
 	id := p.String()
 
 	previousState := instance.Monitor{
-		LocalExpect:  instance.MonitorLocalExpectUnset,
-		GlobalExpect: instance.MonitorGlobalExpectUnset,
+		LocalExpect:  instance.MonitorLocalExpectNone,
+		GlobalExpect: instance.MonitorGlobalExpectNone,
 		State:        instance.MonitorStateIdle,
 		Resources:    make(map[string]instance.ResourceMonitor),
 		StateUpdated: time.Now(),
@@ -289,11 +289,15 @@ func (o *imon) clearPending() {
 
 func (o *imon) loggerWithState() *zerolog.Logger {
 	ctx := o.log.With()
-	if o.state.GlobalExpect != instance.MonitorGlobalExpectEmpty {
+	if o.state.GlobalExpect != instance.MonitorGlobalExpectZero {
 		ctx.Str("global_expect", o.state.GlobalExpect.String())
+	} else {
+		ctx.Str("global_expect", "<zero>")
 	}
-	if o.state.LocalExpect != instance.MonitorLocalExpectUnset {
+	if o.state.LocalExpect != instance.MonitorLocalExpectZero {
 		ctx.Str("local_expect", o.state.LocalExpect.String())
+	} else {
+		ctx.Str("local_expect", "<zero>")
 	}
 	stateLogger := ctx.Logger()
 	return &stateLogger

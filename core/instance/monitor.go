@@ -57,7 +57,7 @@ type (
 )
 
 const (
-	MonitorStateEmpty MonitorState = iota
+	MonitorStateZero MonitorState = iota
 	MonitorStateIdle
 	MonitorStateDeleted
 	MonitorStateDeleting
@@ -87,14 +87,16 @@ const (
 )
 
 const (
-	MonitorLocalExpectUnset MonitorLocalExpect = iota
+	MonitorLocalExpectZero MonitorLocalExpect = iota
+	MonitorLocalExpectNone
 	MonitorLocalExpectStarted
 )
 
 const (
-	MonitorGlobalExpectEmpty MonitorGlobalExpect = iota
+	MonitorGlobalExpectZero MonitorGlobalExpect = iota
 	MonitorGlobalExpectAborted
 	MonitorGlobalExpectFrozen
+	MonitorGlobalExpectNone
 	MonitorGlobalExpectPlaced
 	MonitorGlobalExpectPlacedAt
 	MonitorGlobalExpectProvisioned
@@ -103,14 +105,12 @@ const (
 	MonitorGlobalExpectStopped
 	MonitorGlobalExpectThawed
 	MonitorGlobalExpectUnprovisioned
-	MonitorGlobalExpectUnset
 )
 
 var (
 	MonitorStateStrings = map[MonitorState]string{
 		MonitorStateDeleted:           "deleted",
 		MonitorStateDeleting:          "deleting",
-		MonitorStateEmpty:             "",
 		MonitorStateFreezeFailed:      "freeze failed",
 		MonitorStateFreezing:          "freezing",
 		MonitorStateFrozen:            "frozen",
@@ -135,10 +135,11 @@ var (
 		MonitorStateUnprovisioning:    "unprovisioning",
 		MonitorStateWaitLeader:        "wait leader",
 		MonitorStateWaitNonLeader:     "wait non-leader",
+		MonitorStateZero:              "",
 	}
 
 	MonitorStateValues = map[string]MonitorState{
-		"":                   MonitorStateEmpty,
+		"":                   MonitorStateZero,
 		"idle":               MonitorStateIdle,
 		"deleted":            MonitorStateDeleted,
 		"deleting":           MonitorStateDeleting,
@@ -169,18 +170,21 @@ var (
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
 		MonitorLocalExpectStarted: "started",
-		MonitorLocalExpectUnset:   "unset",
+		MonitorLocalExpectNone:    "none",
+		MonitorLocalExpectZero:    "",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
 		"started": MonitorLocalExpectStarted,
-		"unset":   MonitorLocalExpectUnset,
+		"none":    MonitorLocalExpectNone,
+		"":        MonitorLocalExpectZero,
 	}
 
 	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
 		MonitorGlobalExpectAborted:       "aborted",
-		MonitorGlobalExpectEmpty:         "",
+		MonitorGlobalExpectZero:          "",
 		MonitorGlobalExpectFrozen:        "frozen",
+		MonitorGlobalExpectNone:          "none",
 		MonitorGlobalExpectPlaced:        "placed",
 		MonitorGlobalExpectPlacedAt:      "placed@",
 		MonitorGlobalExpectProvisioned:   "provisioned",
@@ -189,12 +193,11 @@ var (
 		MonitorGlobalExpectStopped:       "stopped",
 		MonitorGlobalExpectThawed:        "thawed",
 		MonitorGlobalExpectUnprovisioned: "unprovisioned",
-		MonitorGlobalExpectUnset:         "unset",
 	}
 
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
 		"aborted":       MonitorGlobalExpectAborted,
-		"":              MonitorGlobalExpectEmpty,
+		"":              MonitorGlobalExpectZero,
 		"frozen":        MonitorGlobalExpectFrozen,
 		"placed":        MonitorGlobalExpectPlaced,
 		"placed@":       MonitorGlobalExpectPlacedAt,
@@ -204,7 +207,7 @@ var (
 		"stopped":       MonitorGlobalExpectStopped,
 		"thawed":        MonitorGlobalExpectThawed,
 		"unprovisioned": MonitorGlobalExpectUnprovisioned,
-		"unset":         MonitorGlobalExpectUnset,
+		"none":          MonitorGlobalExpectNone,
 	}
 )
 

@@ -129,7 +129,7 @@ func (o *imon) onProgressInstanceMonitor(c msgbus.ProgressInstanceMonitor) {
 		}
 		o.log.Info().Msgf("this instance is no longer considered started, resource restart and monitoring are disabled")
 		o.change = true
-		o.state.LocalExpect = instance.MonitorLocalExpectUnset
+		o.state.LocalExpect = instance.MonitorLocalExpectNone
 	}
 	doState := func() {
 		if prevState == c.State {
@@ -171,7 +171,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			o.log.Warn().Msgf("invalid set instance monitor state: %s", *c.Value.State)
 			return
 		}
-		if *c.Value.State == instance.MonitorStateEmpty {
+		if *c.Value.State == instance.MonitorStateZero {
 			return
 		}
 		if o.state.State == *c.Value.State {
@@ -192,7 +192,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			return
 		}
 		switch *c.Value.GlobalExpect {
-		case instance.MonitorGlobalExpectEmpty:
+		case instance.MonitorGlobalExpectZero:
 			return
 		case instance.MonitorGlobalExpectPlacedAt:
 			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
@@ -228,11 +228,14 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			if instMon.GlobalExpect == *c.Value.GlobalExpect {
 				continue
 			}
-			if instMon.GlobalExpect == instance.MonitorGlobalExpectEmpty {
+			if instMon.GlobalExpect == instance.MonitorGlobalExpectZero {
+				continue
+			}
+			if instMon.GlobalExpect == instance.MonitorGlobalExpectNone {
 				continue
 			}
 			if instMon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
-				o.log.Info().Msgf("global expect is already %s on node %s", *c.Value.GlobalExpect, node)
+				o.log.Info().Msgf("refuse to set global expect '%s': node %s global expect is already '%s'", instMon.GlobalExpect, node, *c.Value.GlobalExpect)
 				return
 			}
 		}
@@ -252,7 +255,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			return
 		}
 		switch *c.Value.LocalExpect {
-		case instance.MonitorLocalExpectUnset:
+		case instance.MonitorLocalExpectNone:
 		case instance.MonitorLocalExpectStarted:
 		default:
 			o.log.Warn().Msgf("invalid set instance monitor local expect: %s", *c.Value.LocalExpect)
@@ -419,7 +422,7 @@ func (o imon) isStarted() bool {
 }
 
 func (o *imon) needOrchestrate(c cmdOrchestrate) {
-	if c.state == instance.MonitorStateEmpty {
+	if c.state == instance.MonitorStateZero {
 		return
 	}
 	if o.state.State == c.state {

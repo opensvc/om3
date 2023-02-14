@@ -26,8 +26,8 @@ func (o *imon) frozenClearIfReached() bool {
 	if o.instStatus[o.localhost].IsFrozen() {
 		o.log.Info().Msg("instance state is frozen, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
-		o.state.LocalExpect = instance.MonitorLocalExpectUnset
+		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.clearPending()
 		return true
 	}

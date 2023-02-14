@@ -117,12 +117,18 @@ func (t States) descString() string {
 	}
 
 	// Monitor global expect
-	if t.Monitor.GlobalExpect != MonitorGlobalExpectUnset {
+	switch t.Monitor.GlobalExpect {
+	case MonitorGlobalExpectNone:
+	case MonitorGlobalExpectZero:
+	default:
 		l = append(l, t.Monitor.GlobalExpect.String())
 	}
 
 	// Monitor local expect
-	if t.Monitor.LocalExpect != MonitorLocalExpectUnset {
+	switch t.Monitor.LocalExpect {
+	case MonitorLocalExpectNone:
+	case MonitorLocalExpectZero:
+	default:
 		l = append(l, t.Monitor.LocalExpect.String())
 	}
 

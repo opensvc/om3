@@ -54,8 +54,8 @@ func (o *imon) provisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		o.log.Info().Msg("provisioned orchestration: instance state is provisioned, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
-		o.state.LocalExpect = instance.MonitorLocalExpectUnset
+		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.updateIfChange()
 		return true
 	}

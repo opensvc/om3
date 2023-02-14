@@ -6,7 +6,7 @@ import (
 	"github.com/opensvc/om3/core/topology"
 )
 
-func (o *imon) orchestrateUnset() {
+func (o *imon) orchestrateNone() {
 	o.clearStartFailed()
 	if o.objStatus.Orchestrate == "ha" {
 		o.orchestrateHAStart()
@@ -44,8 +44,7 @@ func (o *imon) clearStartFailed() {
 	}
 	for _, instanceMonitor := range o.instMonitor {
 		switch instanceMonitor.GlobalExpect {
-		case instance.MonitorGlobalExpectEmpty:
-		case instance.MonitorGlobalExpectUnset:
+		case instance.MonitorGlobalExpectNone:
 		default:
 			return
 		}
