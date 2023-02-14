@@ -11,7 +11,7 @@ func (o *nmon) orchestrateDrained() {
 	case node.MonitorStateDrained:
 		o.change = true
 		o.state.State = node.MonitorStateIdle
-		o.state.LocalExpect = node.MonitorLocalExpectUnset
+		o.state.LocalExpect = node.MonitorLocalExpectNone
 	}
 }
 

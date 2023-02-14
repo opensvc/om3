@@ -61,6 +61,8 @@ const (
 	idSetNodeMonitor
 	idSetNodeOsPaths
 	idSetNodeStats
+	idSetNodeStatusFrozen
+	idSetNodeStatusLabels
 	idSetObjectStatus
 	idStats
 )
@@ -99,6 +101,8 @@ var (
 		idSetNodeMonitor:        "set-node-monitor",
 		idSetNodeOsPaths:        "set-node-os-paths",
 		idSetNodeStats:          "set-node-stats",
+		idSetNodeStatusFrozen:   "set-node-status-frozen",
+		idSetNodeStatusLabels:   "set-node-status-labels",
 		idStats:                 "stats",
 	}
 )

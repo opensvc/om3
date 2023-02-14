@@ -102,7 +102,7 @@ func TestDaemonData(t *testing.T) {
 
 		t.Run("GetNode return node data with local data initialized", func(t *testing.T) {
 			localNode := bus.GetNode(localNode)
-			require.Equalf(t, node.MonitorStateInit, localNode.Monitor.State,
+			require.Equalf(t, node.MonitorStateZero, localNode.Monitor.State,
 				"got %+v", localNode)
 		})
 		require.False(t, t.Failed()) // fail on first error
@@ -116,7 +116,7 @@ func TestDaemonData(t *testing.T) {
 		refreshed := bus.GetNode(localNode)
 		assert.NotNil(t, refreshed)
 		assert.Equal(t, uint64(1), refreshed.Status.Gen[localNode])
-		assert.Equal(t, node.MonitorStateInit, refreshed.Monitor.State)
+		assert.Equal(t, node.MonitorStateZero, refreshed.Monitor.State)
 	})
 	require.False(t, t.Failed()) // fail on first error
 
@@ -130,9 +130,9 @@ func TestDaemonData(t *testing.T) {
 		initial.GlobalExpectUpdated = time.Now()
 
 		refreshed := bus.GetNodeMonitor(localNode)
-		require.Equal(t, node.MonitorStateInit, refreshed.State, "State changed !")
+		require.Equal(t, node.MonitorStateZero, refreshed.State, "State changed !")
 		require.Equal(t, initialUpdated, refreshed.StateUpdated, "StateUpdated changed !")
-		require.Equal(t, node.MonitorGlobalExpectUnset, refreshed.GlobalExpect, "GlobalExpect changed !")
+		require.Equal(t, node.MonitorGlobalExpectZero, refreshed.GlobalExpect, "GlobalExpect changed !")
 		require.Equal(t, initialGlobalExpectUpdated, refreshed.GlobalExpectUpdated, "GlobalExpectUpdated changed !")
 	})
 	require.False(t, t.Failed()) // fail on first error
