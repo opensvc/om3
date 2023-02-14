@@ -75,7 +75,7 @@ type (
 		newState instance.MonitorState
 	}
 
-	imonFactory struct {}
+	imonFactory struct{}
 )
 
 // Start creates a new imon and starts worker goroutine to manage local instance monitor
@@ -126,6 +126,7 @@ func start(parent context.Context, p path.T, nodes []string) error {
 	o.nodeStatus = databus.GetNodeStatusMap()
 	o.nodeStats = databus.GetNodeStatsMap()
 	o.nodeMonitor = databus.GetNodeMonitorMap()
+	o.instMonitor = databus.GetInstanceMonitorMap(o.path)
 	o.instConfig = databus.GetInstanceConfig(o.path, o.localhost)
 	o.initResourceMonitor()
 

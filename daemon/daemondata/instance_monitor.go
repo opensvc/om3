@@ -21,6 +21,11 @@ type (
 		path  path.T
 		value instance.Monitor
 	}
+
+	opGetInstanceMonitorMap struct {
+		path   path.T
+		result chan map[string]instance.Monitor
+	}
 )
 
 // DelInstanceMonitor
@@ -117,4 +122,28 @@ func (o opSetInstanceMonitor) call(ctx context.Context, d *data) {
 	case <-ctx.Done():
 	case o.err <- nil:
 	}
+}
+
+// GetInstanceMonitorMap returns a map of InstanceMonitor indexed by nodename
+func (t T) GetInstanceMonitorMap(p path.T) map[string]instance.Monitor {
+	result := make(chan map[string]instance.Monitor)
+	op := opGetInstanceMonitorMap{
+		path:   p,
+		result: result,
+	}
+	t.cmdC <- op
+	return <-result
+}
+
+func (o opGetInstanceMonitorMap) call(ctx context.Context, d *data) {
+	d.counterCmd <- idGetInstanceMonitorMap
+	m := make(map[string]instance.Monitor)
+	for nodename, nodeData := range d.pending.Cluster.Node {
+		if inst, ok := nodeData.Instance[o.path.String()]; ok {
+			if inst.Monitor != nil {
+				m[nodename] = *inst.Monitor.DeepCopy()
+			}
+		}
+	}
+	o.result <- m
 }
