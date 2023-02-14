@@ -13,7 +13,7 @@ func (t *actor) Provision(ctx context.Context) error {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
-	t.setenv("provision", false)
+	t.setenv("provision", actioncontext.IsLeader(ctx))
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err

@@ -11,8 +11,7 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 	var mostRecentNode string
 	var mostRecentUpdated time.Time
 	for node, instMon := range o.instMonitor {
-		if instMon.GlobalExpect == instance.MonitorGlobalExpectEmpty {
-			// converge "aborted" to unset via orchestration
+		if instMon.GlobalExpect == instance.MonitorGlobalExpectZero {
 			continue
 		}
 		nodeTime := instMon.GlobalExpectUpdated

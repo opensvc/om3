@@ -345,14 +345,13 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if volume.Path().Exists() {
+	if !volume.Path().Exists() {
+		if volume, err = t.createVolume(volume); err != nil {
+			return err
+		}
+	} else {
 		t.Log().Info().Msgf("%s is already provisioned", volume.Path())
-		return nil
 	}
-	if volume, err = t.createVolume(volume); err != nil {
-		return err
-	}
-	//ctx = actioncontext.WithLeader(false)
 	return volume.Provision(ctx)
 }
 
@@ -365,8 +364,8 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 		t.Log().Info().Msgf("%s is already unprovisioned", volume.Path())
 		return nil
 	}
-	//ctx = actioncontext.WithLeader(false)
-	return volume.Unprovision(ctx)
+	// don't unprovision vol objects (independent lifecycle)
+	return nil
 }
 
 func (t T) Provisioned() (provisioned.T, error) {

@@ -102,15 +102,21 @@ func sObjectInstanceUnprovisioned(instance instance.Status) string {
 }
 
 func sObjectInstanceMonitorState(instanceMonitor instance.Monitor) string {
-	if instanceMonitor.State != instance.MonitorStateIdle {
+	switch instanceMonitor.State {
+	case instance.MonitorStateIdle:
+		return ""
+	default:
 		return " " + instanceMonitor.State.String()
 	}
-	return ""
 }
 
 func sObjectInstanceMonitorGlobalExpect(instanceMonitor instance.Monitor) string {
-	if instanceMonitor.GlobalExpect != instance.MonitorGlobalExpectUnset {
+	switch instanceMonitor.GlobalExpect {
+	case instance.MonitorGlobalExpectZero:
+		return ""
+	case instance.MonitorGlobalExpectNone:
+		return ""
+	default:
 		return hiblack(" >" + instanceMonitor.GlobalExpect.String())
 	}
-	return ""
 }

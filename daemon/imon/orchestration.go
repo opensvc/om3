@@ -31,8 +31,8 @@ func (o *imon) orchestrate() {
 	o.orchestrateResourceRestart()
 
 	switch o.state.GlobalExpect {
-	case instance.MonitorGlobalExpectUnset:
-		o.orchestrateUnset()
+	case instance.MonitorGlobalExpectNone:
+		o.orchestrateNone()
 	case instance.MonitorGlobalExpectFrozen:
 		o.orchestrateFrozen()
 	case instance.MonitorGlobalExpectProvisioned:

@@ -38,7 +38,7 @@ func (o *imon) orchestrateStarted() {
 // else   => try startedFromThawed
 func (o *imon) startedFromIdle() {
 	if o.instStatus[o.localhost].IsFrozen() {
-		if o.state.GlobalExpect == instance.MonitorGlobalExpectUnset {
+		if o.state.GlobalExpect == instance.MonitorGlobalExpectNone {
 			return
 		}
 		o.doUnfreeze()
@@ -135,7 +135,7 @@ func (o *imon) startedFromStartFailed() {
 	if o.isStarted() {
 		o.loggerWithState().Info().Msg("clear start failed (object is up)")
 		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 		o.state.State = instance.MonitorStateIdle
 		return
 	}
@@ -148,10 +148,10 @@ func (o *imon) startedClearIfReached() bool {
 			o.change = true
 			o.state.State = instance.MonitorStateIdle
 		}
-		if o.state.GlobalExpect != instance.MonitorGlobalExpectUnset {
+		if o.state.GlobalExpect != instance.MonitorGlobalExpectNone {
 			o.loggerWithState().Info().Msg("instance is started, unset global expect")
 			o.change = true
-			o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+			o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 		}
 		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
 			o.loggerWithState().Info().Msg("instance is started, unset local expect")
@@ -167,10 +167,10 @@ func (o *imon) startedClearIfReached() bool {
 			o.change = true
 			o.state.State = instance.MonitorStateIdle
 		}
-		if o.state.GlobalExpect != instance.MonitorGlobalExpectUnset {
+		if o.state.GlobalExpect != instance.MonitorGlobalExpectNone {
 			o.loggerWithState().Info().Msg("object is started, unset global expect")
 			o.change = true
-			o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+			o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 		}
 		o.clearPending()
 		return true

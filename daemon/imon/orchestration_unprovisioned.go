@@ -66,10 +66,10 @@ func (o *imon) hasNonLeaderProvisioned() bool {
 
 func (o *imon) UnprovisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
-		o.loggerWithState().Info().Msg("instance state is not provisioned, unset global expect")
+		o.loggerWithState().Info().Msg("instance state is not provisioned, set global expect 'none'")
 		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
-		o.state.LocalExpect = instance.MonitorLocalExpectUnset
+		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		return true
 	}
 	return false

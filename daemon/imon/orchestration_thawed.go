@@ -28,8 +28,8 @@ func (o *imon) thawedClearIfReached() bool {
 	if o.instStatus[o.localhost].IsThawed() {
 		o.log.Info().Msg("instance state is thawed, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
-		o.state.LocalExpect = instance.MonitorLocalExpectUnset
+		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.clearPending()
 		return true
 	}

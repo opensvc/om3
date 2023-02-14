@@ -34,7 +34,7 @@ func (o *imon) purgedFromIdle() {
 
 func (o *imon) purgedFromDeleted() {
 	o.change = true
-	o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	o.state.State = instance.MonitorStateIdle
 	o.updateIfChange()
 }

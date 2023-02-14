@@ -185,8 +185,8 @@ func (o *imon) clearStoppedIfObjectStatusAvailUp() {
 func (o *imon) clearStopped() {
 	o.loggerWithState().Info().Msg("object avail status is up, unset global expect")
 	o.change = true
-	o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
-	o.state.LocalExpect = instance.MonitorLocalExpectUnset
+	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	o.state.LocalExpect = instance.MonitorLocalExpectNone
 	o.state.State = instance.MonitorStateIdle
 	o.clearPending()
 }
@@ -229,7 +229,7 @@ func (o *imon) orchestratePlacedFromStartFailed() {
 	case o.AllInstanceMonitorState(instance.MonitorStateStartFailed):
 		o.loggerWithState().Info().Msg("all instances are start failed, unset global expect")
 		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectUnset
+		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
 		o.clearPending()
 	case o.objStatus.Avail == status.Up:
 		o.startedClearIfReached()
