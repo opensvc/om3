@@ -115,6 +115,10 @@ func (o *T) worker() {
 				o.srcEvent = i
 				o.instMonitor[c.Node] = c.Value
 				o.updateStatus()
+			case msgbus.InstanceMonitorDeleted:
+				o.srcEvent = i
+				delete(o.instMonitor, c.Node)
+				o.updateStatus()
 			case msgbus.InstanceStatusUpdated:
 				o.srcEvent = i
 				o.instStatus[c.Node] = c.Value
