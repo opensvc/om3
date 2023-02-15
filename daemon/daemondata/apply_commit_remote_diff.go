@@ -237,8 +237,8 @@ func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
 		}
 		if inst.Monitor != nil {
 			imonUpdated := inst.Monitor.StateUpdated
-			if inst.Monitor.GlobalExpectUpdated.After(imonUpdated) {
-				imonUpdated = inst.Monitor.GlobalExpectUpdated
+			if inst.Monitor.UpdatedAt.After(imonUpdated) {
+				imonUpdated = inst.Monitor.UpdatedAt
 			}
 			result.imonUpdated[p] = imonUpdated
 		}

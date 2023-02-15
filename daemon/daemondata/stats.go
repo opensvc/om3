@@ -30,6 +30,7 @@ const (
 	idApplyPatch
 	idCommitPending
 	idClusterConfigUpdated
+	idClusterStatusUpdated
 	idDelInstanceConfig
 	idDelInstanceStatus
 	idDelObjectStatus
@@ -52,6 +53,7 @@ const (
 	idGetStatus
 	idSetHeartbeatPing
 	idSetClusterConfig
+	idSetClusterStatus
 	idSetDaemonHb
 	idSetInstanceConfig
 	idSetInstanceFrozen
@@ -61,6 +63,8 @@ const (
 	idSetNodeMonitor
 	idSetNodeOsPaths
 	idSetNodeStats
+	idSetNodeStatusFrozen
+	idSetNodeStatusLabels
 	idSetObjectStatus
 	idStats
 )
@@ -72,6 +76,7 @@ var (
 		idApplyPatch:            "apply-patch",
 		idCommitPending:         "commit-pending",
 		idClusterConfigUpdated:  "cluster-config-updated",
+		idClusterStatusUpdated:  "cluster-status-updated",
 		idDelInstanceConfig:     "del-instance-config",
 		idDelInstanceStatus:     "del-instance-status",
 		idDelObjectStatus:       "del-object-status",
@@ -89,6 +94,7 @@ var (
 		idGetServiceNames:       "get-service-names",
 		idGetStatus:             "get-status",
 		idSetClusterConfig:      "set-cluster-config",
+		idSetClusterStatus:      "set-cluster-status",
 		idSetDaemonHb:           "set-daemon-hb",
 		idSetObjectStatus:       "set-object-status",
 		idSetInstanceConfig:     "set-instance-config",
@@ -99,6 +105,8 @@ var (
 		idSetNodeMonitor:        "set-node-monitor",
 		idSetNodeOsPaths:        "set-node-os-paths",
 		idSetNodeStats:          "set-node-stats",
+		idSetNodeStatusFrozen:   "set-node-status-frozen",
+		idSetNodeStatusLabels:   "set-node-status-labels",
 		idStats:                 "stats",
 	}
 )

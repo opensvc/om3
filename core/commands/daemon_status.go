@@ -9,7 +9,8 @@ import (
 type (
 	CmdDaemonStatus struct {
 		OptsGlobal
-		Watch bool
+		Watch    bool
+		Sections string
 	}
 )
 
@@ -17,6 +18,7 @@ func (t *CmdDaemonStatus) Run() error {
 	m := monitor.New()
 	m.SetColor(t.Color)
 	m.SetFormat(t.Format)
+	m.SetSectionsFromExpression(t.Sections)
 
 	cli, err := newClient(t.Server)
 	if err != nil {

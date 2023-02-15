@@ -66,8 +66,12 @@ func newNodeData(localNode string) node.Node {
 	frozen := file.ModTime(nodeFrozenFile)
 	nodeStatus := node.Node{
 		Instance: map[string]instance.Instance{},
-		Monitor:  node.Monitor{},
-		Stats:    node.Stats{},
+		Monitor: node.Monitor{
+			LocalExpect:  node.MonitorLocalExpectNone,
+			GlobalExpect: node.MonitorGlobalExpectNone,
+			State:        node.MonitorStateIdle,
+		},
+		Stats: node.Stats{},
 		Status: node.Status{
 			Agent:           "3.0-0",
 			API:             8,

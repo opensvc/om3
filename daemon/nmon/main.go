@@ -82,19 +82,26 @@ type (
 // Start launches the nmon worker goroutine
 func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
-
 	o := &nmon{
-		state:         node.Monitor{},
-		previousState: node.Monitor{},
-		ctx:           ctx,
-		cancel:        cancel,
-		cmdC:          make(chan any),
-		databus:       daemondata.FromContext(ctx),
-		bus:           pubsub.BusFromContext(ctx),
-		log:           log.Logger.With().Str("func", "nmon").Logger(),
-		localhost:     hostname.Hostname(),
-		change:        true,
-		nodeMonitor:   make(map[string]node.Monitor),
+		state: node.Monitor{
+			LocalExpect:  node.MonitorLocalExpectNone,
+			GlobalExpect: node.MonitorGlobalExpectNone,
+			State:        node.MonitorStateIdle,
+		},
+		previousState: node.Monitor{
+			LocalExpect:  node.MonitorLocalExpectNone,
+			GlobalExpect: node.MonitorGlobalExpectNone,
+			State:        node.MonitorStateIdle,
+		},
+		ctx:         ctx,
+		cancel:      cancel,
+		cmdC:        make(chan any),
+		databus:     daemondata.FromContext(ctx),
+		bus:         pubsub.BusFromContext(ctx),
+		log:         log.Logger.With().Str("func", "nmon").Logger(),
+		localhost:   hostname.Hostname(),
+		change:      true,
+		nodeMonitor: make(map[string]node.Monitor),
 	}
 
 	if n, err := object.NewNode(object.WithVolatile(true)); err != nil {

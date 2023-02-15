@@ -349,6 +349,11 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		if volume, err = t.createVolume(volume); err != nil {
 			return err
 		}
+		// the volume resources cache is now wrong. Allocate a new one.
+		volume, err = t.Volume()
+		if err != nil {
+			return err
+		}
 	} else {
 		t.Log().Info().Msgf("%s is already provisioned", volume.Path())
 	}

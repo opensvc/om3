@@ -243,12 +243,15 @@ func (t T) DoAsync() error {
 	}
 	req := c.NewPostNodeMonitor()
 	switch t.Target {
+	case "":
 	case node.MonitorStateDrained.String():
-		req.LocalExpect = t.Target
+		s := t.Target
+		req.LocalExpect = &s
 		expectation = node.MonitorStateDrained
 	default:
 		if globalExpect, ok := node.MonitorGlobalExpectValues[t.Target]; ok {
-			req.GlobalExpect = t.Target
+			s := t.Target
+			req.GlobalExpect = &s
 			expectation = globalExpect
 		} else {
 			return errors.Errorf("unexpected global expect value %s", t.Target)
@@ -407,7 +410,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 				if nmon.GlobalExpect == v {
 					reached[msg.Node] = true
 					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s", v)
-				} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectUnset {
+				} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectNone {
 					reachedUnset[msg.Node] = true
 					log.Debug().Msgf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
 				}

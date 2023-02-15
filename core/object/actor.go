@@ -5,8 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/ssrathi/go-attr"
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
@@ -18,6 +16,8 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
 )
 
 type (
@@ -157,6 +157,7 @@ func (t *actor) ResourceSets() resourceset.L {
 		}
 		if rset, err := resourceset.Generic(k); err == nil {
 			rset.ResourceLister = t
+			rset.SetLogger(&t.log)
 			l = append(l, rset)
 		} else {
 			t.log.Debug().Err(err)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,6 +83,16 @@ func (m *T) SetSelector(v string) {
 // as all sections.
 func (m *T) SetSections(v []string) {
 	m.sections = v
+}
+
+// SetSectionsFromExpression sets the sections option, parsing a string representation
+// of a section list, using comma as separator.
+func (m *T) SetSectionsFromExpression(s string) {
+	v := make([]string, 0)
+	if s != "" {
+		v = strings.Split(s, ",")
+	}
+	m.SetSections(v)
 }
 
 // SetNodes sets the nodes option, controlling which node columns to render.

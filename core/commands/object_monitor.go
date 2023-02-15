@@ -12,7 +12,8 @@ import (
 type (
 	CmdObjectMonitor struct {
 		OptsGlobal
-		Watch bool
+		Watch    bool
+		Sections string
 	}
 )
 
@@ -26,7 +27,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	m := monitor.New()
 	m.SetColor(t.Color)
 	m.SetFormat(t.Format)
-	m.SetSections([]string{"objects"})
+	m.SetSectionsFromExpression(t.Sections)
 	m.SetSelector(mergedSelector)
 
 	if t.Watch {

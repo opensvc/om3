@@ -8,9 +8,9 @@ import (
 // resolver options.
 type PostNodeMonitor struct {
 	Base
-	LocalExpect  string `json:"local_expect"`
-	GlobalExpect string `json:"global_expect"`
-	Status       string `json:"status"`
+	LocalExpect  *string `json:"local_expect"`
+	GlobalExpect *string `json:"global_expect"`
+	Status       *string `json:"status"`
 }
 
 // NewPostNodeMonitor allocates a PostNodeMonitor struct and sets

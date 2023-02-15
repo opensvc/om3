@@ -33,7 +33,7 @@ type (
 )
 
 const (
-	MonitorStateInit MonitorState = iota
+	MonitorStateZero MonitorState = iota
 	MonitorStateIdle
 	MonitorStateDraining
 	MonitorStateDrainFailed
@@ -50,14 +50,16 @@ const (
 )
 
 const (
-	MonitorLocalExpectUnset MonitorLocalExpect = iota
+	MonitorLocalExpectZero MonitorLocalExpect = iota
 	MonitorLocalExpectDrained
+	MonitorLocalExpectNone
 )
 
 const (
-	MonitorGlobalExpectUnset MonitorGlobalExpect = iota
+	MonitorGlobalExpectZero MonitorGlobalExpect = iota
 	MonitorGlobalExpectAborted
 	MonitorGlobalExpectFrozen
+	MonitorGlobalExpectNone
 	MonitorGlobalExpectThawed
 )
 
@@ -74,7 +76,7 @@ var (
 		MonitorStateThawing:      "thawing",
 		MonitorStateShutting:     "shutting",
 		MonitorStateMaintenance:  "maintenance",
-		MonitorStateInit:         "init",
+		MonitorStateZero:         "",
 		MonitorStateUpgrade:      "upgrade",
 		MonitorStateRejoin:       "rejoin",
 	}
@@ -91,40 +93,44 @@ var (
 		"thawing":         MonitorStateThawing,
 		"shutting":        MonitorStateShutting,
 		"maintenance":     MonitorStateMaintenance,
-		"init":            MonitorStateInit,
+		"":                MonitorStateZero,
 		"upgrade":         MonitorStateUpgrade,
 		"rejoin":          MonitorStateRejoin,
 	}
 
 	MonitorLocalExpectStrings = map[MonitorLocalExpect]string{
-		MonitorLocalExpectUnset:   "unset",
+		MonitorLocalExpectZero:    "",
 		MonitorLocalExpectDrained: "drained",
+		MonitorLocalExpectNone:    "none",
 	}
 
 	MonitorLocalExpectValues = map[string]MonitorLocalExpect{
-		"unset":   MonitorLocalExpectUnset,
+		"":        MonitorLocalExpectZero,
 		"drained": MonitorLocalExpectDrained,
+		"none":    MonitorLocalExpectNone,
 	}
 
 	MonitorGlobalExpectStrings = map[MonitorGlobalExpect]string{
 		MonitorGlobalExpectAborted: "aborted",
 		MonitorGlobalExpectFrozen:  "frozen",
+		MonitorGlobalExpectNone:    "none",
 		MonitorGlobalExpectThawed:  "thawed",
-		MonitorGlobalExpectUnset:   "unset",
+		MonitorGlobalExpectZero:    "",
 	}
 
 	MonitorGlobalExpectValues = map[string]MonitorGlobalExpect{
 		"aborted": MonitorGlobalExpectAborted,
 		"frozen":  MonitorGlobalExpectFrozen,
+		"none":    MonitorGlobalExpectNone,
 		"thawed":  MonitorGlobalExpectThawed,
-		"unset":   MonitorGlobalExpectUnset,
+		"":        MonitorGlobalExpectZero,
 	}
 
 	// the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
 		MonitorStateMaintenance: nil,
 		MonitorStateUpgrade:     nil,
-		MonitorStateInit:        nil,
+		MonitorStateZero:        nil,
 		MonitorStateShutting:    nil,
 		MonitorStateRejoin:      nil,
 	}

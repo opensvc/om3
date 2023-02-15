@@ -4,7 +4,7 @@ import "github.com/opensvc/om3/core/node"
 
 func (o *nmon) orchestrate() {
 	switch o.state.State {
-	case node.MonitorStateInit:
+	case node.MonitorStateZero:
 		return
 	case node.MonitorStateRejoin:
 		return
@@ -15,13 +15,15 @@ func (o *nmon) orchestrate() {
 	}
 
 	switch o.state.LocalExpect {
-	case node.MonitorLocalExpectUnset:
+	case node.MonitorLocalExpectZero:
+	case node.MonitorLocalExpectNone:
 	case node.MonitorLocalExpectDrained:
 		o.orchestrateDrained()
 	}
 
 	switch o.state.GlobalExpect {
-	case node.MonitorGlobalExpectUnset:
+	case node.MonitorGlobalExpectZero:
+	case node.MonitorGlobalExpectNone:
 	case node.MonitorGlobalExpectAborted:
 		o.orchestrateAborted()
 	case node.MonitorGlobalExpectFrozen:

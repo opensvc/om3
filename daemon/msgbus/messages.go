@@ -21,6 +21,7 @@ var (
 	kindToT = map[string]any{
 		"ApiClient":                 ApiClient{},
 		"ClusterConfigUpdated":      ClusterConfigUpdated{},
+		"ClusterStatusUpdated":      ClusterStatusUpdated{},
 		"ConfigDeleted":             ConfigDeleted{},
 		"ConfigFileRemoved":         ConfigFileRemoved{},
 		"ConfigFileUpdated":         ConfigFileUpdated{},
@@ -123,6 +124,11 @@ type (
 	ClusterConfigUpdated struct {
 		Node  string
 		Value cluster.Config
+	}
+
+	ClusterStatusUpdated struct {
+		Node  string
+		Value cluster.Status
 	}
 
 	// DataUpdated is a patch of changed data
@@ -393,6 +399,10 @@ func (e ApiClient) String() string {
 
 func (e ClusterConfigUpdated) Kind() string {
 	return "ClusterConfigUpdated"
+}
+
+func (e ClusterStatusUpdated) Kind() string {
+	return "ClusterStatusUpdated"
 }
 
 func (e ConfigDeleted) Kind() string {

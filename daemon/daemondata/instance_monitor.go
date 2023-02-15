@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"context"
+	"time"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
@@ -46,6 +47,7 @@ func (t T) DelInstanceMonitor(p path.T) error {
 // cluster.node.<localhost>.instance.<path>.monitor
 func (t T) SetInstanceMonitor(p path.T, v instance.Monitor) error {
 	err := make(chan error)
+	v.UpdatedAt = time.Now()
 	op := opSetInstanceMonitor{
 		err:   err,
 		path:  p,

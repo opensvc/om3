@@ -271,12 +271,19 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return ErrDisabled
 	}
 	wd, _ := os.Getwd()
-	t.log.Info().Strs("argv", os.Args).Str("cwd", wd).Str("origin", env.Origin()).Msg("do")
+	action := actioncontext.Props(ctx)
+	t.log.Info().
+		Strs("argv", os.Args).
+		Str("cwd", wd).
+		Str("action", action.Name).
+		Str("origin", env.Origin()).
+		Msg("do")
 	beginTime := time.Now()
 	defer func() {
 		t.log.Info().
 			Strs("argv", os.Args).
 			Str("cwd", wd).
+			Str("action", action.Name).
 			Str("origin", env.Origin()).
 			Dur("duration", time.Now().Sub(beginTime)).
 			Msg("done")
@@ -299,7 +306,6 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer stop()
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
-	action := actioncontext.Props(ctx)
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if linkToer, ok := r.(resource.LinkToer); ok {

@@ -71,6 +71,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 		log:          log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
 	}
 	o.startSubscriptions()
+	o.instMonitor = o.databus.GetInstanceMonitorMap(o.path)
 
 	go func() {
 		defer o.sub.Stop()
@@ -97,7 +98,6 @@ func (o *T) worker() {
 
 	for _, node := range o.status.Scope {
 		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
-		o.instMonitor[node] = instance.Monitor{}
 	}
 	o.update()
 	defer o.delete()

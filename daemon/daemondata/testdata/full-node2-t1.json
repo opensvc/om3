@@ -81,8 +81,8 @@
   },
   "monitor": {
     "state": "idle",
-    "local_expect": "unset",
-    "global_expect": "unset",
+    "local_expect": "none",
+    "global_expect": "none",
     "state_updated": "2022-12-29T13:43:03.563020909+01:00",
     "global_expect_updated": "2022-12-29T13:43:02.719851626+01:00",
     "local_expect_updated": "0001-01-01T00:00:00Z"
