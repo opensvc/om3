@@ -163,10 +163,16 @@ func (f Frame) sNodeFrozen(n string) string {
 func (f Frame) sNodeMonTarget(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		s := ""
-		if val.Monitor.GlobalExpect != node.MonitorGlobalExpectNone {
+		switch val.Monitor.GlobalExpect {
+		case node.MonitorGlobalExpectNone:
+		case node.MonitorGlobalExpectZero:
+		default:
 			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.GlobalExpect.String())
 		}
-		if val.Monitor.LocalExpect != node.MonitorLocalExpectNone {
+		switch val.Monitor.LocalExpect {
+		case node.MonitorLocalExpectNone:
+		case node.MonitorLocalExpectZero:
+		default:
 			s += rawconfig.Colorize.Secondary(" >" + val.Monitor.LocalExpect.String())
 		}
 		return s

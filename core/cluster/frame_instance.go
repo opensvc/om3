@@ -103,6 +103,8 @@ func sObjectInstanceUnprovisioned(instance instance.Status) string {
 
 func sObjectInstanceMonitorState(instanceMonitor instance.Monitor) string {
 	switch instanceMonitor.State {
+	case instance.MonitorStateZero:
+		return ""
 	case instance.MonitorStateIdle:
 		return ""
 	default:
