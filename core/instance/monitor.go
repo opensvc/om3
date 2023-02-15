@@ -68,6 +68,7 @@ type (
 const (
 	MonitorStateZero MonitorState = iota
 	MonitorStateIdle
+	MonitorStateReached
 	MonitorStateDeleted
 	MonitorStateDeleting
 	MonitorStateFreezeFailed
@@ -128,6 +129,7 @@ var (
 		MonitorStateProvisioning:      "provisioning",
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
+		MonitorStateReached:           "reached",
 		MonitorStateReady:             "ready",
 		MonitorStateShutting:          "shutting",
 		MonitorStateStarted:           "started",
@@ -159,6 +161,7 @@ var (
 		"provisioning":       MonitorStateProvisioning,
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
+		"reached":            MonitorStateReached,
 		"ready":              MonitorStateReady,
 		"shutting":           MonitorStateShutting,
 		"started":            MonitorStateStarted,
