@@ -15,6 +15,7 @@ import (
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -172,6 +173,9 @@ func (t *T) MainStart(ctx context.Context) error {
 	<-started
 
 	if err := ccfg.Start(t.ctx); err != nil {
+		return err
+	}
+	if err := cstat.Start(t.ctx); err != nil {
 		return err
 	}
 

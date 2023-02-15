@@ -33,13 +33,6 @@ func (t T) SetClusterConfig(value cluster.Config) error {
 
 func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetClusterConfig
-	/*
-		// TODO: do we need a Equal() ?
-		if d.pending.Cluster.Config == o.value {
-			o.err <- nil
-			return
-		}
-	*/
 	// TODO: rawconfig.LoadSections() to refresh cluster sections after config
 	// changes. Perhaps need to move this elsewhere
 	rawconfig.LoadSections()
