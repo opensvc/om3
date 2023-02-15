@@ -257,6 +257,10 @@ func addFlagRuleset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "ruleset", "", "the rulesets to limit the action to. the special value `all` can be used in conjonction with detach.")
 }
 
+func addFlagSections(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "sections", "", "Sections to include in the output. threads,nodes,objects")
+}
+
 func addFlagSubset(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "subset", "", "A subset selector expression (g1,g2).")
 }

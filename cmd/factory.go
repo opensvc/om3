@@ -138,11 +138,11 @@ func newCmdDaemonAuth() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	addFlagRoles(flagSet, &options.Roles)
-	flagSet.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
-	flagSet.StringArrayVar(&options.Out, "out", []string{}, "output 'token' or 'token_expire_at'")
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagRoles(flags, &options.Roles)
+	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
+	flags.StringArrayVar(&options.Out, "out", []string{}, "output 'token' or 'token_expire_at'")
 	return cmd
 }
 
@@ -155,8 +155,8 @@ func newCmdDaemonDNSDump() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -172,11 +172,11 @@ func newCmdDaemonJoin() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	flagSet.StringVar(&options.Node, "node", "", "the name of the cluster node we want to join")
-	flagSet.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Node, "node", "", "the name of the cluster node we want to join")
+	flags.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
 		" (created from 'om daemon auth --role json')")
-	flagSet.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
+	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
 	return cmd
 }
 
@@ -204,8 +204,8 @@ func newCmdDaemonRelayStatus() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -219,10 +219,10 @@ func newCmdDaemonRestart() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	addFlagForeground(flagSet, &options.Foreground)
-	addFlagDebug(flagSet, &options.Debug)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagForeground(flags, &options.Foreground)
+	addFlagDebug(flags, &options.Debug)
 	return cmd
 }
 
@@ -236,8 +236,8 @@ func newCmdDaemonRunning() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -251,28 +251,30 @@ func newCmdDaemonStart() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	addFlagDebug(flagSet, &options.Debug)
-	addFlagForeground(flagSet, &options.Foreground)
-	addFlagCpuProfile(flagSet, &options.CpuProfile)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagDebug(flags, &options.Debug)
+	addFlagForeground(flags, &options.Foreground)
+	addFlagCpuProfile(flags, &options.CpuProfile)
 	return cmd
 }
 
 func newCmdDaemonStatus() *cobra.Command {
-	var options commands.CmdDaemonStatus
+	var options commands.CmdObjectMonitor
+	//var options commands.CmdDaemonStatus
 	cmd := &cobra.Command{
 		Use:     "status",
 		Short:   "print the cluster status",
 		Long:    monitor.CmdLong,
 		Aliases: []string{"statu"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
+			return options.Run("**", "")
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	addFlagWatch(flagSet, &options.Watch)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagWatch(flags, &options.Watch)
+	addFlagSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -285,8 +287,8 @@ func newCmdDaemonStats() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -299,8 +301,8 @@ func newCmdDaemonStop() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
@@ -402,48 +404,21 @@ func newCmdKeystoreRemove(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdSecFullPEM(kind string) *cobra.Command {
-	var options commands.CmdFullPEM
+func newCmdMonitor() *cobra.Command {
+	var options commands.CmdObjectMonitor
 	cmd := &cobra.Command{
-		Use:   "fullpem",
-		Short: "dump the x509 private key and certificate chain in PEM format",
-		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The fullpem command decodes the private_key and certificate_chain keys, concatenate and print the results.",
+		Use:     "monitor",
+		Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
+		Short:   "Print the cluster status",
+		Long:    monitor.CmdLong,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run("*", "")
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdSecGenCert(kind string) *cobra.Command {
-	var options commands.CmdSecGenCert
-	cmd := &cobra.Command{
-		Use:   "gencert",
-		Short: "create or replace a x509 certificate stored as a keyset",
-		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
-func newCmdSecPKCS(kind string) *cobra.Command {
-	var options commands.CmdPKCS
-	cmd := &cobra.Command{
-		Use:   "pkcs",
-		Short: "dump the x509 private key and certificate chain in PKCS#12 format",
-		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagWatch(flags, &options.Watch)
+	addFlagSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -1810,6 +1785,7 @@ func newCmdObjectMonitor(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagWatch(flags, &options.Watch)
+	addFlagSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -2346,5 +2322,50 @@ func newCmdPoolStatus() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagPoolStatusName(flags, &options.Name)
 	addFlagPoolStatusVerbose(flags, &options.Verbose)
+	return cmd
+}
+
+func newCmdSecFullPEM(kind string) *cobra.Command {
+	var options commands.CmdFullPEM
+	cmd := &cobra.Command{
+		Use:   "fullpem",
+		Short: "dump the x509 private key and certificate chain in PEM format",
+		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The fullpem command decodes the private_key and certificate_chain keys, concatenate and print the results.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdSecGenCert(kind string) *cobra.Command {
+	var options commands.CmdSecGenCert
+	cmd := &cobra.Command{
+		Use:   "gencert",
+		Short: "create or replace a x509 certificate stored as a keyset",
+		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdSecPKCS(kind string) *cobra.Command {
+	var options commands.CmdPKCS
+	cmd := &cobra.Command{
+		Use:   "pkcs",
+		Short: "dump the x509 private key and certificate chain in PKCS#12 format",
+		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
