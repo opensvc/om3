@@ -52,9 +52,8 @@ func (o *imon) provisionedFromWaitLeader() {
 
 func (o *imon) provisionedClearIfReached() bool {
 	if o.instStatus[o.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-		o.log.Info().Msg("provisioned orchestration: instance state is provisioned, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.log.Info().Msg("provisioned orchestration: instance state is provisioned -> set reached, clear local expect")
+		o.setReached()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.updateIfChange()
 		return true
