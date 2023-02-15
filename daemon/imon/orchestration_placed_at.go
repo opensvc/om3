@@ -183,11 +183,9 @@ func (o *imon) clearStoppedIfObjectStatusAvailUp() {
 }
 
 func (o *imon) clearStopped() {
-	o.loggerWithState().Info().Msg("object avail status is up, unset global expect")
-	o.change = true
-	o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	o.loggerWithState().Info().Msg("object avail status is up -> set reached, reset local expect")
+    o.setReached()
 	o.state.LocalExpect = instance.MonitorLocalExpectNone
-	o.state.State = instance.MonitorStateIdle
 	o.clearPending()
 }
 
@@ -227,9 +225,8 @@ func (o *imon) orchestrateFlexPlacedStartFromStarted() {
 func (o *imon) orchestratePlacedFromStartFailed() {
 	switch {
 	case o.AllInstanceMonitorState(instance.MonitorStateStartFailed):
-		o.loggerWithState().Info().Msg("all instances are start failed, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.loggerWithState().Info().Msg("all instances are start failed -> set reached")
+		o.setReached()
 		o.clearPending()
 	case o.objStatus.Avail == status.Up:
 		o.startedClearIfReached()
