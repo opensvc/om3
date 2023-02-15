@@ -98,7 +98,6 @@ func (o *T) worker() {
 
 	for _, node := range o.status.Scope {
 		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
-		o.instMonitor[node] = instance.Monitor{}
 	}
 	o.update()
 	defer o.delete()

@@ -22,6 +22,7 @@ type (
 		StateUpdated            time.Time           `json:"state_updated"`
 		MonitorActionExecutedAt time.Time           `json:"monitor_action_executed_at"`
 		Resources               ResourceMonitorMap  `json:"resources,omitempty"`
+		UpdatedAt               time.Time           `json:"updated_at"`
 	}
 
 	ResourceMonitorMap map[string]ResourceMonitor
