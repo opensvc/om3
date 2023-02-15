@@ -1,6 +1,8 @@
 package imon
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
@@ -21,6 +23,9 @@ func (o *imon) orchestrateHAStop() {
 	if v, _ := o.isExtraInstance(); !v {
 		return
 	}
+	if o.state.OrchestrationId == "" {
+		o.state.OrchestrationId = uuid.New().String()
+	}
 	o.stop()
 }
 
@@ -31,6 +36,9 @@ func (o *imon) orchestrateHAStart() {
 	}
 	if v, _ := o.isStartable(); !v {
 		return
+	}
+	if o.state.OrchestrationId == "" {
+		o.state.OrchestrationId = uuid.New().String()
 	}
 	o.orchestrateStarted()
 }

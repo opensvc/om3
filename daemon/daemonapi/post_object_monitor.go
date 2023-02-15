@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -39,6 +41,8 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 		i := instance.MonitorStateValues[*payload.State]
 		instMonitor.State = &i
 	}
+	orchestrationId := uuid.New().String()
+	instMonitor.CandidateOrchestrationId = orchestrationId
 	bus := pubsub.BusFromContext(r.Context())
 	msg := msgbus.SetInstanceMonitor{
 		Path:  p,
@@ -47,4 +51,5 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	bus.Pub(msg, pubsub.Label{"path", p.String()}, labelApi)
 	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(orchestrationId)
 }

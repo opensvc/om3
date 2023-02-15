@@ -133,9 +133,8 @@ func (o *imon) startedFromAny() {
 
 func (o *imon) startedFromStartFailed() {
 	if o.isStarted() {
-		o.loggerWithState().Info().Msg("clear start failed (object is up)")
-		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.loggerWithState().Info().Msg("object is up -> set reached, clear start failed")
+		o.setReached()
 		o.state.State = instance.MonitorStateIdle
 		return
 	}
@@ -143,15 +142,9 @@ func (o *imon) startedFromStartFailed() {
 
 func (o *imon) startedClearIfReached() bool {
 	if o.isLocalStarted() {
-		if o.state.State != instance.MonitorStateIdle {
-			o.loggerWithState().Info().Msg("instance is started, unset state")
-			o.change = true
-			o.state.State = instance.MonitorStateIdle
-		}
-		if o.state.GlobalExpect != instance.MonitorGlobalExpectNone {
-			o.loggerWithState().Info().Msg("instance is started, unset global expect")
-			o.change = true
-			o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		if o.state.State != instance.MonitorStateReached {
+			o.loggerWithState().Info().Msg("instance is started -> set reached")
+			o.setReached()
 		}
 		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
 			o.loggerWithState().Info().Msg("instance is started, unset local expect")
@@ -162,15 +155,9 @@ func (o *imon) startedClearIfReached() bool {
 		return true
 	}
 	if o.isStarted() {
-		if o.state.State != instance.MonitorStateIdle {
-			o.loggerWithState().Info().Msg("object is started, unset status")
-			o.change = true
-			o.state.State = instance.MonitorStateIdle
-		}
-		if o.state.GlobalExpect != instance.MonitorGlobalExpectNone {
-			o.loggerWithState().Info().Msg("object is started, unset global expect")
-			o.change = true
-			o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		if o.state.State != instance.MonitorStateReached {
+			o.loggerWithState().Info().Msg("object is started -> set reached")
+			o.setReached()
 		}
 		o.clearPending()
 		return true

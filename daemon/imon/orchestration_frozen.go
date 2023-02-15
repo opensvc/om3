@@ -24,9 +24,8 @@ func (o *imon) frozenFromIdle() {
 
 func (o *imon) frozenClearIfReached() bool {
 	if o.instStatus[o.localhost].IsFrozen() {
-		o.log.Info().Msg("instance state is frozen, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.log.Info().Msg("instance state is frozen -> set reached, clear local expect")
+		o.setReached()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.clearPending()
 		return true

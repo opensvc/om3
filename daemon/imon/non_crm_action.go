@@ -34,6 +34,8 @@ func (o *imon) freeze() error {
 		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
 		return err
 	}
+	// don't wait for delayed update of local cache
+	o.instStatus[o.localhost] = status
 	return nil
 }
 
@@ -54,5 +56,8 @@ func (o *imon) unfreeze() error {
 		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
 		return err
 	}
+	// don't wait for delayed update of local cache
+	// to avoid 'idle -> thawing -> idle -> thawing' until receive local instance status update
+	o.instStatus[o.localhost] = status
 	return nil
 }

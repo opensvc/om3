@@ -67,6 +67,10 @@ type (
 		change      bool
 
 		sub *pubsub.Subscription
+
+		// waitConvergedOrchestrationMsg is a map indexed by nodename to latest waitConvergedOrchestrationMsg.
+		// It is used while we are waiting for orchestration reached
+		waitConvergedOrchestrationMsg map[string]string
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -120,6 +124,8 @@ func start(parent context.Context, p path.T, nodes []string) error {
 		scopeNodes:    nodes,
 		change:        true,
 		readyDuration: defaultReadyDuration,
+
+		waitConvergedOrchestrationMsg: make(map[string]string),
 	}
 
 	o.startSubscriptions()
@@ -133,7 +139,10 @@ func start(parent context.Context, p path.T, nodes []string) error {
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			o.sub.Stop()
+			err := o.sub.Stop()
+			if err != nil {
+				o.log.Error().Err(err).Msg("sub.stop")
+			}
 		}()
 		o.worker(nodes)
 	}()
@@ -149,8 +158,6 @@ func (o *imon) startSubscriptions() {
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
 	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, label)
 	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
-	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
-	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, label)
 	sub.AddFilter(msgbus.NodeConfigUpdated{}, nodeLabel)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeStatusUpdated{})
@@ -163,8 +170,8 @@ func (o *imon) startSubscriptions() {
 func (o *imon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
-	for _, node := range initialNodes {
-		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
+	for _, initialNode := range initialNodes {
+		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
 	}
 	o.updateIfChange()
 	defer o.delete()
@@ -185,10 +192,6 @@ func (o *imon) worker(initialNodes []string) {
 				o.onProgressInstanceMonitor(c)
 			case msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitor(c)
-			case msgbus.InstanceMonitorUpdated:
-				o.onInstanceMonitorUpdated(c)
-			case msgbus.InstanceMonitorDeleted:
-				o.onInstanceMonitorDeleted(c)
 			case msgbus.NodeConfigUpdated:
 				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:

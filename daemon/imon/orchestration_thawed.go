@@ -26,9 +26,8 @@ func (o *imon) ThawedFromIdle() {
 
 func (o *imon) thawedClearIfReached() bool {
 	if o.instStatus[o.localhost].IsThawed() {
-		o.log.Info().Msg("instance state is thawed, unset global expect")
-		o.change = true
-		o.state.GlobalExpect = instance.MonitorGlobalExpectNone
+		o.log.Info().Msg("instance state is thawed -> set reached, clear local expect")
+		o.setReached()
 		o.state.LocalExpect = instance.MonitorLocalExpectNone
 		o.clearPending()
 		return true

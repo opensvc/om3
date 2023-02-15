@@ -17,6 +17,11 @@ type (
 		IsHALeader              bool                `json:"is_ha_leader"`
 		LocalExpect             MonitorLocalExpect  `json:"local_expect"`
 		LocalExpectUpdated      time.Time           `json:"local_expect_updated"`
+
+		// OrchestrationId is the accepted orchestration id that will be unset
+		// when orchestration is reached on local node
+		OrchestrationId         string              `json:"orchestration_id"`
+
 		SessionId               string              `json:"session_id"`
 		State                   MonitorState        `json:"state"`
 		StateUpdated            time.Time           `json:"state_updated"`
@@ -35,6 +40,9 @@ type (
 		GlobalExpectOptions any                  `json:"global_expect_options"`
 		LocalExpect         *MonitorLocalExpect  `json:"local_expect"`
 		State               *MonitorState        `json:"state"`
+
+		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
+		CandidateOrchestrationId string `json:"orchestration_id"`
 	}
 
 	// ResourceMonitor describes the restart states maintained by the daemon
@@ -60,6 +68,7 @@ type (
 const (
 	MonitorStateZero MonitorState = iota
 	MonitorStateIdle
+	MonitorStateReached
 	MonitorStateDeleted
 	MonitorStateDeleting
 	MonitorStateFreezeFailed
@@ -120,6 +129,7 @@ var (
 		MonitorStateProvisioning:      "provisioning",
 		MonitorStateProvisionFailed:   "provision failed",
 		MonitorStatePurgeFailed:       "purge failed",
+		MonitorStateReached:           "reached",
 		MonitorStateReady:             "ready",
 		MonitorStateShutting:          "shutting",
 		MonitorStateStarted:           "started",
@@ -151,6 +161,7 @@ var (
 		"provisioning":       MonitorStateProvisioning,
 		"provision failed":   MonitorStateProvisionFailed,
 		"purge failed":       MonitorStatePurgeFailed,
+		"reached":            MonitorStateReached,
 		"ready":              MonitorStateReady,
 		"shutting":           MonitorStateShutting,
 		"started":            MonitorStateStarted,

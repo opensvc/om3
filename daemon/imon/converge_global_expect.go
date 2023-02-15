@@ -28,6 +28,7 @@ func (o *imon) convergeGlobalExpectFromRemote() {
 		o.state.GlobalExpect = o.instMonitor[mostRecentNode].GlobalExpect
 		o.state.GlobalExpectUpdated = o.instMonitor[mostRecentNode].GlobalExpectUpdated
 		o.state.GlobalExpectOptions = o.instMonitor[mostRecentNode].GlobalExpectOptions
+		o.state.OrchestrationId = o.instMonitor[mostRecentNode].OrchestrationId
 		strVal := o.instMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"

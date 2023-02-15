@@ -37,6 +37,10 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 		if srcCmd.Node != o.localhost {
 			return
 		}
+		if o.state.State != instance.MonitorStateIdle {
+			// wait for idle state, we may be MonitorStateProvisioning, MonitorStateProvisioned ...
+			return
+		}
 		if !srcCmd.Value.Avail.Is(status.Up) {
 			return
 		}
@@ -95,6 +99,10 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 			o.onConfigUpdated(c.Node, srcCmd)
 		case msgbus.ConfigDeleted:
 			o.onConfigDeleted(c.Node, srcCmd)
+		case msgbus.InstanceMonitorUpdated:
+			o.onInstanceMonitorUpdated(srcCmd)
+		case msgbus.InstanceMonitorDeleted:
+			o.onInstanceMonitorDeleted(srcCmd)
 		}
 	}
 	o.objStatus = c.Value
@@ -276,6 +284,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 	doLocalExpect()
 
 	if o.change {
+		o.state.OrchestrationId = c.Value.CandidateOrchestrationId
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()
