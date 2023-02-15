@@ -37,6 +37,10 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 		if srcCmd.Node != o.localhost {
 			return
 		}
+		if o.state.State != instance.MonitorStateIdle {
+			// wait for idle state, we may be MonitorStateProvisioning, MonitorStateProvisioned ...
+			return
+		}
 		if !srcCmd.Value.Avail.Is(status.Up) {
 			return
 		}
