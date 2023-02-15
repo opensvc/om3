@@ -6,12 +6,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/xerrors"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -92,18 +92,14 @@ func (t *T) SetLogger(parent *zerolog.Logger) {
 	t.log = &log
 }
 
-//
 // Generic allocates and initializes a new resourceset for a given
 // driver group, and return an error if this name is not valid.
-//
 func Generic(driverGroupName string) (*T, error) {
 	return Parse(prefix + driverGroupName)
 }
 
-//
 // Parse allocates and initializes new resourceset for a given name,
 // and return an error if the name is not valid.
-//
 func Parse(s string) (*T, error) {
 	t := New()
 	t.SectionName = s
@@ -122,10 +118,8 @@ func Parse(s string) (*T, error) {
 	return t, nil
 }
 
-//
 // FormatSectionName returns the resourceset section name for a given
 // driver group name and subset name.
-//
 func FormatSectionName(driverGroupName, name string) string {
 	return prefix + driverGroupName + separator + name
 }
@@ -142,10 +136,8 @@ func (t T) String() string {
 	return s
 }
 
-//
 // Resources returns the list of resources handled by the resourceset.
 // This function make the resourceset a ResourceLister.
-//
 func (t T) Resources() resource.Drivers {
 	if t.ResourceLister == nil {
 		panic(errors.WithStack(errors.New("resourceset has no ResourceLister set")))
