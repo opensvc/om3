@@ -1,6 +1,7 @@
 package objectaction
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -356,6 +357,15 @@ func (t T) DoAsync() error {
 		return err
 	}
 	var errs error
+	type (
+		result struct {
+			Path            string `json:"path"`
+			OrchestrationId string `json:"orchestration_id,omitempty"`
+			Error           error  `json:"error,omitempty"`
+		}
+		results []result
+	)
+	rs := make(results, 0)
 	for _, path := range paths {
 		var (
 			b   []byte
@@ -379,21 +389,35 @@ func (t T) DoAsync() error {
 		if err != nil {
 			errs = xerrors.Append(errs, err)
 		}
-		human := func() string {
-			if len(b) == 0 {
-				return ""
+		var orchestrationId string
+		var r result
+		if err := json.Unmarshal(b, &orchestrationId); err == nil {
+			r = result{
+				OrchestrationId: orchestrationId,
+				Path:            path.String(),
 			}
-			s := fmt.Sprintln(string(b))
-			return s
+		} else {
+			r = result{
+				Error: err,
+				Path:  path.String(),
+			}
 		}
-		output.Renderer{
-			Format:        t.Format,
-			Color:         t.Color,
-			Data:          b,
-			HumanRenderer: human,
-			Colorize:      rawconfig.Colorize,
-		}.Print()
+		rs = append(rs, r)
 	}
+	human := func() string {
+		s := ""
+		for _, r := range rs {
+			s += fmt.Sprintf("%s: %s\n", r.Path, r.OrchestrationId)
+		}
+		return s
+	}
+	output.Renderer{
+		Format:        t.Format,
+		Color:         t.Color,
+		Data:          rs,
+		HumanRenderer: human,
+		Colorize:      rawconfig.Colorize,
+	}.Print()
 	return errs
 }
 
