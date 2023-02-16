@@ -56,7 +56,7 @@ jobs:
         run: sudo GOCACHE=$GOCACHE GOPATH=$GOPATH $GOROOT/bin/go build -v .
 
       - name: Test root
-        run: sudo GOCACHE=$GOCACHE GOPATH=$GOPATH $GOROOT/bin/go test -p 1 ./...
+        run: sudo GOCACHE=$GOCACHE GOPATH=$GOPATH $GOROOT/bin/go test -p 1 -timeout 60s ./...
 
       - name: chown cache
         run: sudo chown -R runner:docker $GOPATH $GOCACHE
