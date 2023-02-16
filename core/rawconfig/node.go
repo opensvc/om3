@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render/palette"
 )
@@ -131,6 +132,7 @@ func Load(env map[string]string) {
 		return
 	}
 	Paths = fromViper.Paths
+	capabilities.SetCacheFile(Paths.Capabilities)
 
 	LoadSections()
 
@@ -144,6 +146,7 @@ func setDefaults(root string) {
 		nodeViper.SetDefault("paths.root", "")
 		nodeViper.SetDefault("paths.bin", defPathBin)
 		nodeViper.SetDefault("paths.var", defPathVar)
+		nodeViper.SetDefault("paths.capabilities", defPathCapabilities)
 		nodeViper.SetDefault("paths.lock", defPathLock)
 		nodeViper.SetDefault("paths.lsnr", defPathLsnr)
 		nodeViper.SetDefault("paths.cache", defPathCache)
@@ -160,6 +163,7 @@ func setDefaults(root string) {
 		nodeViper.SetDefault("paths.root", root)
 		nodeViper.SetDefault("paths.bin", filepath.Join(root, "bin"))
 		nodeViper.SetDefault("paths.var", filepath.Join(root, "var"))
+		nodeViper.SetDefault("paths.capabilities", filepath.Join(root, "var", "capabilities.json"))
 		nodeViper.SetDefault("paths.lock", filepath.Join(root, "var", "lock"))
 		nodeViper.SetDefault("paths.lsnr", filepath.Join(root, "var", "lsnr"))
 		nodeViper.SetDefault("paths.cache", filepath.Join(root, "var", "cache"))

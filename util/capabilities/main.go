@@ -17,8 +17,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-
-	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (
@@ -33,9 +31,14 @@ var (
 	// ErrorNeedScan error mean capabilities needs scan
 	ErrorNeedScan = errors.New("capabilities not yet scanned")
 
-	scanners []scanner
-	caps     L
+	scanners  []scanner
+	caps      L
+	cacheFile = ""
 )
+
+func SetCacheFile(s string) {
+	cacheFile = s
+}
 
 // Render is a human rendered for node capabilities
 func (t L) Render() string {
@@ -144,5 +147,8 @@ func runScanner(sc scanner, running chan int, result chan L) {
 }
 
 func getPath() string {
-	return rawconfig.Paths.Var + "/capabilities.json"
+	if cacheFile == "" {
+		panic("Capabilities cache file is not set. Use capabilities.SetCacheFile().")
+	}
+	return cacheFile
 }

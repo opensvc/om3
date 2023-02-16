@@ -3,35 +3,28 @@ package capabilities
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/opensvc/om3/core/rawconfig"
 )
 
-func setup(t *testing.T) (string, func()) {
+func setup(t *testing.T) {
 	td := t.TempDir()
-	rawconfig.Load(map[string]string{"osvc_root_path": td})
-	assert.NoError(t, rawconfig.CreateMandatoryDirectories())
+	SetCacheFile(filepath.Join(td, "capabilities.json"))
 	scanners = nil
 	caps = nil
-	return td + "/var/capabilities.json", func() {
-		rawconfig.Load(map[string]string{})
-	}
 }
 
 func TestLoad(t *testing.T) {
 	t.Run("return ErrorNeedScan when not yet scanned", func(t *testing.T) {
-		_, cleanup := setup(t)
-		defer cleanup()
+		setup(t)
 		_, err := Load()
 		assert.Equal(t, ErrorNeedScan, err)
 	})
 	t.Run("return ErrorNeedScan when current capabilities is corrupt", func(t *testing.T) {
-		capFile, cleanup := setup(t)
-		defer cleanup()
-		assert.Nil(t, os.WriteFile(capFile, []byte{}, 0666))
+		setup(t)
+		assert.Nil(t, os.WriteFile(cacheFile, []byte{}, 0666))
 		_, err := Load()
 		assert.Equal(t, ErrorNeedScan, err)
 
@@ -50,9 +43,8 @@ func TestLoad(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run("succeed and has expected cap "+tc.name, func(t *testing.T) {
-			capFile, cleanup := setup(t)
-			defer cleanup()
-			assert.Nil(t, os.WriteFile(capFile, tc.data, 0666))
+			setup(t)
+			assert.Nil(t, os.WriteFile(cacheFile, tc.data, 0666))
 			loadCaps, err := Load()
 			assert.Nil(t, err)
 			assert.Equal(t, tc.expectedCap, loadCaps)
@@ -72,9 +64,8 @@ func TestHas(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			capFile, cleanup := setup(t)
-			defer cleanup()
-			assert.Nil(t, os.WriteFile(capFile, tc.data, 0666))
+			setup(t)
+			assert.Nil(t, os.WriteFile(cacheFile, tc.data, 0666))
 			for _, c := range tc.expectedCap {
 				t.Run("has expected "+c, func(t *testing.T) {
 					assert.True(t, Has(c))
@@ -86,8 +77,7 @@ func TestHas(t *testing.T) {
 		})
 	}
 	t.Run("can be used even if no capacities not yet scanned", func(t *testing.T) {
-		_, cleanup := setup(t)
-		defer cleanup()
+		setup(t)
 		assert.False(t, Has("foo"))
 		assert.False(t, Has("bar"))
 	})
@@ -95,24 +85,20 @@ func TestHas(t *testing.T) {
 
 func TestScan(t *testing.T) {
 	t.Run("succeed when no Scanner", func(t *testing.T) {
-		_, cleanup := setup(t)
-		defer cleanup()
+		setup(t)
 		assert.Nil(t, Scan())
 		assert.Equalf(t, L{}, caps, "must have empty caps")
 	})
 
 	t.Run("return error is not able to update cache", func(t *testing.T) {
-		capFile, cleanup := setup(t)
-		defer cleanup()
-		rawconfig.Load(map[string]string{"osvc_root_path": capFile})
+		setup(t)
+		SetCacheFile("/tmp/does-not-exist/capabilities.json")
 		err := Scan()
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "no such file or directory")
+		assert.Error(t, err, os.ErrNotExist)
 	})
 
 	t.Run("succeed even if some Scanner has errors", func(t *testing.T) {
-		_, cleanup := setup(t)
-		defer cleanup()
+		setup(t)
 
 		Register(func() ([]string, error) { return []string{"c", "b"}, nil })
 		Register(func() ([]string, error) { return []string{}, nil })
