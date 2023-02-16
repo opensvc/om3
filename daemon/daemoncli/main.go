@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -224,6 +225,11 @@ func (t *T) stop() error {
 }
 
 func (t *T) start() (waiter, error) {
+	if err := capabilities.Scan(); err != nil {
+		return nil, err
+	}
+	log.Info().Strs("capabilities", capabilities.Data()).Msg("rescanned node capabilities")
+
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		log.Error().Err(err).Msgf("cli-start can't create mandatory directories")
 		return nil, err

@@ -6,7 +6,6 @@ import (
 	"github.com/goccy/go-json"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/jsondelta"
 	"github.com/opensvc/om3/util/pubsub"
@@ -33,9 +32,6 @@ func (t T) SetClusterConfig(value cluster.Config) error {
 
 func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 	d.counterCmd <- idSetClusterConfig
-	// TODO: rawconfig.LoadSections() to refresh cluster sections after config
-	// changes. Perhaps need to move this elsewhere
-	rawconfig.LoadSections()
 	previousNodes := d.pending.Cluster.Config.Nodes
 	d.pending.Cluster.Config = o.value
 	op := jsondelta.Operation{
