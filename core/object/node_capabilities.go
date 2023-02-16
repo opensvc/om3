@@ -4,8 +4,8 @@ import (
 	"github.com/opensvc/om3/util/capabilities"
 )
 
-// NodeScanCapabilities scan node capabilities and return new capabilities
-func (t Node) NodeScanCapabilities() (capabilities.L, error) {
+// ScanCapabilities scan node capabilities and return new capabilities
+func (t Node) ScanCapabilities() (capabilities.L, error) {
 	err := capabilities.Scan()
 	if err != nil {
 		return nil, err

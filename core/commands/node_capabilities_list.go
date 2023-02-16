@@ -6,28 +6,30 @@ import (
 )
 
 type (
-	CmdNodeScanCapabilities struct {
+	CmdNodeCapabilitiesList struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdNodeScanCapabilities) Run() error {
+func (t *CmdNodeCapabilitiesList) Run() error {
 	return nodeaction.New(
-		nodeaction.WithLocal(t.Local),
-		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Format),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithServer(t.Server),
-		nodeaction.WithRemoteAction("scan capabilities"),
+
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithRemoteAction("node print capabilities"),
 		nodeaction.WithRemoteOptions(map[string]interface{}{
 			"format": t.Format,
 		}),
+
+		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
 			}
-			return n.NodeScanCapabilities()
+			return n.PrintCapabilities()
 		}),
 	).Do()
 }

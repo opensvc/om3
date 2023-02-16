@@ -61,6 +61,12 @@ For example, a [md#1] section needs reformatting as:
 		--from template://111
 		--from "template://my tmpl 111"
 
+*  **breaking change:** Rename commands
+
+	node scan capabilities => node capabilities scan
+	node print capabilities => node capabilities list
+
+
 ### driver fs
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.

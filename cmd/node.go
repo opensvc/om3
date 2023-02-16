@@ -10,6 +10,11 @@ var (
 		Short: "manage a opensvc cluster node",
 	}
 
+	cmdNodeCapabilities = &cobra.Command{
+		Use:     "capabilities",
+		Short:   "scan and list what the node is capable of",
+		Aliases: []string{"capa", "caps", "cap", "ca"},
+	}
 	cmdNodeCompliance = &cobra.Command{
 		Use:     "compliance",
 		Short:   "node configuration manager commands",
@@ -48,10 +53,6 @@ var (
 		Use:   "relay",
 		Short: "relay subsystem commands",
 	}
-	cmdNodeScan = &cobra.Command{
-		Use:   "scan",
-		Short: "node discover",
-	}
 	cmdNodeValidate = &cobra.Command{
 		Use:     "validate",
 		Short:   "validate the node config syntax",
@@ -63,6 +64,11 @@ var (
 
 func init() {
 	root.AddCommand(cmdNode)
+	cmdNode.AddCommand(cmdNodeCapabilities)
+	cmdNodeCapabilities.AddCommand(
+		newCmdNodeCapabilitiesList(),
+		newCmdNodeCapabilitiesScan(),
+	)
 	cmdNode.AddCommand(cmdNodeCompliance)
 	cmdNodeCompliance.AddCommand(
 		cmdNodeComplianceAttach,
@@ -100,7 +106,6 @@ func init() {
 		cmdNodePrint,
 		cmdNodePush,
 		cmdNodeRelay,
-		cmdNodeScan,
 		cmdNodeValidate,
 		newCmdNodeAbort(),
 		newCmdNodeChecks(),
@@ -123,7 +128,6 @@ func init() {
 		newCmdNodeUnset(),
 	)
 	cmdNodePrint.AddCommand(
-		newCmdNodePrintCapabilities(),
 		newCmdNodePrintConfig(),
 		newCmdNodePrintSchedule(),
 	)
@@ -132,9 +136,6 @@ func init() {
 		newCmdNodePushDisks(),
 		newCmdNodePushPatch(),
 		newCmdNodePushPkg(),
-	)
-	cmdNodeScan.AddCommand(
-		newCmdNodeScanCapabilities(),
 	)
 	cmdNodeValidate.AddCommand(
 		newCmdNodeValidateConfig(),
