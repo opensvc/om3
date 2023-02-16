@@ -19,59 +19,111 @@ import (
 
 var (
 	kindToT = map[string]any{
-		"ApiClient":                 ApiClient{},
-		"ClusterConfigUpdated":      ClusterConfigUpdated{},
-		"ClusterStatusUpdated":      ClusterStatusUpdated{},
-		"ConfigDeleted":             ConfigDeleted{},
-		"ConfigFileRemoved":         ConfigFileRemoved{},
-		"ConfigFileUpdated":         ConfigFileUpdated{},
-		"ConfigUpdated":             ConfigUpdated{},
-		"ClientSub":                 ClientSub{},
-		"ClientUnSub":               ClientUnSub{},
-		"DaemonCtl":                 DaemonCtl{},
-		"DataUpdated":               DataUpdated{},
-		"Exit":                      Exit{},
-		"ForgetPeer":                ForgetPeer{},
-		"FrozenFileRemoved":         FrozenFileRemoved{},
-		"FrozenFileUpdated":         FrozenFileUpdated{},
-		"Frozen":                    Frozen{},
-		"HbMessageTypeUpdated":      HbMessageTypeUpdated{},
-		"HbNodePing":                HbNodePing{},
-		"HbPing":                    HbPing{},
-		"HbStale":                   HbStale{},
-		"HbStatusUpdated":           HbStatusUpdated{},
-		"InstanceMonitorAction":     InstanceMonitorAction{},
-		"InstanceMonitorDeleted":    InstanceMonitorDeleted{},
-		"InstanceMonitorUpdated":    InstanceMonitorUpdated{},
-		"InstanceStatusDeleted":     InstanceStatusDeleted{},
-		"InstanceStatusUpdated":     InstanceStatusUpdated{},
+		"ApiClient": ApiClient{},
+
+		"ClusterConfigUpdated": ClusterConfigUpdated{},
+
+		"ClusterStatusUpdated": ClusterStatusUpdated{},
+
+		"ConfigDeleted": ConfigDeleted{},
+
+		"ConfigFileRemoved": ConfigFileRemoved{},
+
+		"ConfigFileUpdated": ConfigFileUpdated{},
+
+		"ConfigUpdated": ConfigUpdated{},
+
+		"ClientSub": ClientSub{},
+
+		"ClientUnSub": ClientUnSub{},
+
+		"DaemonCtl": DaemonCtl{},
+
+		"DataUpdated": DataUpdated{},
+
+		"Exit": Exit{},
+
+		"ForgetPeer": ForgetPeer{},
+
+		"FrozenFileRemoved": FrozenFileRemoved{},
+
+		"FrozenFileUpdated": FrozenFileUpdated{},
+
+		"Frozen": Frozen{},
+
+		"HbMessageTypeUpdated": HbMessageTypeUpdated{},
+
+		"HbNodePing": HbNodePing{},
+
+		"HbPing": HbPing{},
+
+		"HbStale": HbStale{},
+
+		"HbStatusUpdated": HbStatusUpdated{},
+
+		"InstanceMonitorAction": InstanceMonitorAction{},
+
+		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
+
+		"InstanceMonitorUpdated": InstanceMonitorUpdated{},
+
+		"InstanceStatusDeleted": InstanceStatusDeleted{},
+
+		"InstanceStatusUpdated": InstanceStatusUpdated{},
+
 		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
-		"JoinError":                 JoinError{},
-		"JoinIgnored":               JoinIgnored{},
-		"JoinRequest":               JoinRequest{},
-		"JoinSuccess":               JoinSuccess{},
-		"LeaveError":                LeaveError{},
-		"LeaveIgnored":              LeaveIgnored{},
-		"LeaveRequest":              LeaveRequest{},
-		"LeaveSuccess":              LeaveSuccess{},
-		"NodeConfigUpdated":         NodeConfigUpdated{},
-		"NodeMonitorDeleted":        NodeMonitorDeleted{},
-		"NodeMonitorUpdated":        NodeMonitorUpdated{},
-		"NodeOsPathsUpdated":        NodeOsPathsUpdated{},
-		"NodeStatsUpdated":          NodeStatsUpdated{},
-		"NodeStatusLabelsUpdated":   NodeStatusLabelsUpdated{},
-		"NodeStatusUpdated":         NodeStatusUpdated{},
-		"ObjectStatusDeleted":       ObjectStatusDeleted{},
-		"ObjectStatusDone":          ObjectStatusDone{},
-		"ObjectStatusUpdated":       ObjectStatusUpdated{},
-		"ProgressInstanceMonitor":   ProgressInstanceMonitor{},
-		"RemoteFileConfig":          RemoteFileConfig{},
-		"SetInstanceMonitor":        SetInstanceMonitor{},
-		"SetNodeMonitor":            SetNodeMonitor{},
-		"SubscriptionError":         pubsub.SubscriptionError{},
-		"WatchDog":                  WatchDog{},
-		"ZoneRecordDeleted":         ZoneRecordDeleted{},
-		"ZoneRecordUpdated":         ZoneRecordUpdated{},
+
+		"JoinError": JoinError{},
+
+		"JoinIgnored": JoinIgnored{},
+
+		"JoinRequest": JoinRequest{},
+
+		"JoinSuccess": JoinSuccess{},
+
+		"LeaveError": LeaveError{},
+
+		"LeaveIgnored": LeaveIgnored{},
+
+		"LeaveRequest": LeaveRequest{},
+
+		"LeaveSuccess": LeaveSuccess{},
+
+		"NodeConfigUpdated": NodeConfigUpdated{},
+
+		"NodeMonitorDeleted": NodeMonitorDeleted{},
+
+		"NodeMonitorUpdated": NodeMonitorUpdated{},
+
+		"NodeOsPathsUpdated": NodeOsPathsUpdated{},
+
+		"NodeStatsUpdated": NodeStatsUpdated{},
+
+		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
+
+		"NodeStatusUpdated": NodeStatusUpdated{},
+
+		"ObjectStatusDeleted": ObjectStatusDeleted{},
+
+		"ObjectStatusDone": ObjectStatusDone{},
+
+		"ObjectStatusUpdated": ObjectStatusUpdated{},
+
+		"ProgressInstanceMonitor": ProgressInstanceMonitor{},
+
+		"RemoteFileConfig": RemoteFileConfig{},
+
+		"SetInstanceMonitor": SetInstanceMonitor{},
+
+		"SetNodeMonitor": SetNodeMonitor{},
+
+		"SubscriptionError": pubsub.SubscriptionError{},
+
+		"WatchDog": WatchDog{},
+
+		"ZoneRecordDeleted": ZoneRecordDeleted{},
+
+		"ZoneRecordUpdated": ZoneRecordUpdated{},
 	}
 )
 
