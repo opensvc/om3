@@ -288,6 +288,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 
 	if o.change {
 		o.state.OrchestrationId = c.Value.CandidateOrchestrationId
+		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationId
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()

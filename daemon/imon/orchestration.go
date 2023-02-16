@@ -76,26 +76,26 @@ func (o *imon) endOrchestration() {
 	o.state.GlobalExpectOptions = nil
 	o.clearPending()
 	o.updateIfChange()
-}
-
-// setReached set state to reached and unset orchestration id, it is used to
-// set convergence for orchestration reached expectation on all instances.
-func (o *imon) setReached() {
-	id := o.state.OrchestrationId
-	o.change = true
-	o.state.State = instance.MonitorStateReached
-	o.state.OrchestrationId = ""
-	if id != "" {
+	if o.acceptedOrchestrationId != "" {
 		o.pubsubBus.Pub(msgbus.InstanceMonitorOrchestrationEnded{
 			Node: o.localhost,
 			Path: o.path,
-			Id:    id,
+			Id:    o.acceptedOrchestrationId,
 			Error: nil,
 		},
 			pubsub.Label{"path", o.path.String()},
 			pubsub.Label{"node", o.localhost},
 		)
+		o.acceptedOrchestrationId = ""
 	}
+}
+
+// setReached set state to reached and unset orchestration id, it is used to
+// set convergence for orchestration reached expectation on all instances.
+func (o *imon) setReached() {
+	o.change = true
+	o.state.State = instance.MonitorStateReached
+	o.state.OrchestrationId = ""
 }
 
 // isConvergedOrchestrationReached returns true instance orchestration is reached

@@ -73,6 +73,8 @@ type (
 		// waitConvergedOrchestrationMsg is a map indexed by nodename to latest waitConvergedOrchestrationMsg.
 		// It is used while we are waiting for orchestration reached
 		waitConvergedOrchestrationMsg map[string]string
+
+		acceptedOrchestrationId string
 	}
 
 	// cmdOrchestrate can be used from post action go routines
