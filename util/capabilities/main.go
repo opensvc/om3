@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 
@@ -103,11 +104,20 @@ func cache() L {
 }
 
 func save(newCaps L) error {
-	if data, err := json.Marshal(newCaps); err != nil {
+	var dst, tmp string
+	dst = getPath()
+	f, err := os.CreateTemp(filepath.Dir(dst), filepath.Base(dst)+".temp.")
+	if err != nil {
 		return err
-	} else {
-		return os.WriteFile(getPath(), data, 0600)
 	}
+	tmp = f.Name()
+	enc := json.NewEncoder(f)
+	err = enc.Encode(newCaps)
+	f.Close()
+	if err != nil {
+		return err
+	}
+	return os.Rename(tmp, dst)
 }
 
 // Load fetch existing capabilities from its backend file
