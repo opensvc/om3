@@ -488,7 +488,7 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "list the node capabilities",
-		Aliases: []string{"lis", "li"},
+		Aliases: []string{"lis", "li", "ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
