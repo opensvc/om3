@@ -147,7 +147,7 @@ func (o *imon) startedClearIfReached() bool {
 			o.setReached()
 		}
 		if o.state.LocalExpect != instance.MonitorLocalExpectStarted {
-			o.loggerWithState().Info().Msg("instance is started, unset local expect")
+			o.loggerWithState().Info().Msg("instance is started, set local expect started")
 			o.change = true
 			o.state.LocalExpect = instance.MonitorLocalExpectStarted
 		}
