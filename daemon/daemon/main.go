@@ -30,7 +30,6 @@ import (
 	"github.com/opensvc/om3/daemon/routinehelper"
 	"github.com/opensvc/om3/daemon/scheduler"
 	"github.com/opensvc/om3/daemon/subdaemon"
-	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -173,10 +172,6 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	<-started
 
-	if err := capabilities.Scan(); err != nil {
-		return err
-	}
-	t.log.Info().Strs("capabilities", capabilities.Data()).Msg("rescanned node capabilities")
 	if err := ccfg.Start(t.ctx); err != nil {
 		return err
 	}
