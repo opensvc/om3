@@ -483,6 +483,39 @@ func newCmdNodeAbort() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeCapabilitiesList() *cobra.Command {
+	var options commands.CmdNodeCapabilitiesList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the node capabilities",
+		Aliases: []string{"lis", "li"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdNodeCapabilitiesScan() *cobra.Command {
+	var options commands.CmdNodeCapabilitiesScan
+	cmd := &cobra.Command{
+		Use:     "scan",
+		Short:   "scan the node capabilities",
+		Aliases: []string{"sca", "sc"},
+		Long: `Scan the node for capabilities.
+
+Capabilities are normally scanned at daemon startup and when the installed 
+system packages change, so admins only have to use this when they want manually 
+installed software to be discovered without restarting the daemon.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	return cmd
+}
+
 func newCmdNodeChecks() *cobra.Command {
 	var options commands.CmdNodeChecks
 	cmd := &cobra.Command{
@@ -962,21 +995,6 @@ func newCmdNodePRKey() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePrintCapabilities() *cobra.Command {
-	var options commands.CmdNodePrintCapabilities
-	cmd := &cobra.Command{
-		Use:     "capabilities",
-		Short:   "print the node capabilities",
-		Aliases: []string{"capa", "cap", "ca", "caps"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdNodePrintConfig() *cobra.Command {
 	var options commands.CmdNodePrintConfig
 	cmd := &cobra.Command{
@@ -1101,24 +1119,6 @@ func newCmdNodeRelayStatus() *cobra.Command {
 	flagSet := cmd.Flags()
 	addFlagsGlobal(flagSet, &options.OptsGlobal)
 	addFlagRelay(flagSet, &options.Relays)
-	return cmd
-}
-
-func newCmdNodeScanCapabilities() *cobra.Command {
-	var options commands.CmdNodeScanCapabilities
-	cmd := &cobra.Command{
-		Use:     "capabilities",
-		Short:   "scan the node capabilities",
-		Aliases: []string{"capa", "caps", "cap", "ca", "c"},
-		Long: `Scan the node for capabilities.
-
-Capabilities are normally scanned at daemon startup and when the installed 
-system packages change, so admins only have to use this when they want manually 
-installed software to be discovered without restarting the daemon.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
 	return cmd
 }
 

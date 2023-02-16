@@ -6,12 +6,12 @@ import (
 )
 
 type (
-	CmdNodePrintCapabilities struct {
+	CmdNodeCapabilitiesList struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdNodePrintCapabilities) Run() error {
+func (t *CmdNodeCapabilitiesList) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Format),
 		nodeaction.WithColor(t.Color),

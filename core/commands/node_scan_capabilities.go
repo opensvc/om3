@@ -6,12 +6,12 @@ import (
 )
 
 type (
-	CmdNodeScanCapabilities struct {
+	CmdNodeCapabilitiesScan struct {
 		OptsGlobal
 	}
 )
 
-func (t *CmdNodeScanCapabilities) Run() error {
+func (t *CmdNodeCapabilitiesScan) Run() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
@@ -27,7 +27,7 @@ func (t *CmdNodeScanCapabilities) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			return n.NodeScanCapabilities()
+			return n.ScanCapabilities()
 		}),
 	).Do()
 }
