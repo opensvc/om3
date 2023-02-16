@@ -5,6 +5,8 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 // orchestrate from omon vs global expect
@@ -79,9 +81,21 @@ func (o *imon) endOrchestration() {
 // setReached set state to reached and unset orchestration id, it is used to
 // set convergence for orchestration reached expectation on all instances.
 func (o *imon) setReached() {
+	id := o.state.OrchestrationId
 	o.change = true
 	o.state.State = instance.MonitorStateReached
 	o.state.OrchestrationId = ""
+	if id != "" {
+		o.pubsubBus.Pub(msgbus.InstanceMonitorOrchestrationEnded{
+			Node: o.localhost,
+			Path: o.path,
+			Id:    id,
+			Error: nil,
+		},
+			pubsub.Label{"path", o.path.String()},
+			pubsub.Label{"node", o.localhost},
+		)
+	}
 }
 
 // isConvergedOrchestrationReached returns true instance orchestration is reached

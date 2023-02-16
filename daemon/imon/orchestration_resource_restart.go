@@ -38,8 +38,7 @@ func newRestartTodoMap() restartTodoMap {
 func (o *imon) orchestrateResourceRestart() {
 	todo := newRestartTodoMap()
 	pubMonitorAction := func(rid string) {
-		bus := pubsub.BusFromContext(o.ctx)
-		bus.Pub(msgbus.InstanceMonitorAction{
+		o.pubsubBus.Pub(msgbus.InstanceMonitorAction{
 			Path:   o.path,
 			Node:   hostname.Hostname(),
 			Action: o.instConfig.MonitorAction,

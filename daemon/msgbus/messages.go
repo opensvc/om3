@@ -65,6 +65,8 @@ var (
 
 		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
 
+		"InstanceMonitorOrchestrationEnded": InstanceMonitorOrchestrationEnded{},
+
 		"InstanceMonitorUpdated": InstanceMonitorUpdated{},
 
 		"InstanceStatusDeleted": InstanceStatusDeleted{},
@@ -263,6 +265,13 @@ type (
 	InstanceMonitorDeleted struct {
 		Path path.T
 		Node string
+	}
+
+	InstanceMonitorOrchestrationEnded struct {
+		Id    string
+		Node  string
+		Path  path.T
+		Error error
 	}
 
 	InstanceMonitorUpdated struct {
@@ -557,6 +566,10 @@ func (e InstanceMonitorAction) Kind() string {
 
 func (e InstanceMonitorDeleted) Kind() string {
 	return "InstanceMonitorDeleted"
+}
+
+func (e InstanceMonitorOrchestrationEnded) Kind() string {
+	return "InstanceMonitorOrchestrationEnded"
 }
 
 func (e InstanceMonitorUpdated) Kind() string {
