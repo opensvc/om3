@@ -5,6 +5,8 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 // orchestrate from omon vs global expect
@@ -74,6 +76,18 @@ func (o *imon) endOrchestration() {
 	o.state.GlobalExpectOptions = nil
 	o.clearPending()
 	o.updateIfChange()
+	if o.acceptedOrchestrationId != "" {
+		o.pubsubBus.Pub(msgbus.ObjectOrchestrationEnd{
+			Node:  o.localhost,
+			Path:  o.path,
+			Id:    o.acceptedOrchestrationId,
+			Error: nil,
+		},
+			pubsub.Label{"path", o.path.String()},
+			pubsub.Label{"node", o.localhost},
+		)
+		o.acceptedOrchestrationId = ""
+	}
 }
 
 // setReached set state to reached and unset orchestration id, it is used to

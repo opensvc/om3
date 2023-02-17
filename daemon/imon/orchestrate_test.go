@@ -138,7 +138,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
 			p := path.T{Kind: kind.Svc, Name: c.name}
 
-			evC := watchEv(t, setup.Ctx, p, 350*time.Millisecond)
+			evC := watchEv(t, setup.Ctx, p, 500*time.Millisecond)
 
 			t.Logf("Set initial node monitor value")
 			databus := daemondata.FromContext(setup.Ctx)
@@ -158,15 +158,13 @@ func Test_Orchestrate_HA(t *testing.T) {
 			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), Factory)
 			require.Nil(t, err)
 
-			time.Sleep(5 * time.Millisecond)
-
 			evImon := <-evC
 			t.Logf("crm calls: %v", crm.calls)
-			require.Equalf(t, c.expectedState, evImon.Value.State,
+			require.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
 				"expected state %s found %s", c.expectedState, evImon.Value.State)
-			require.Equalf(t, c.expectedGlobalExpect, evImon.Value.GlobalExpect,
+			require.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
 				"expected global expect %s found %s", c.expectedGlobalExpect, evImon.Value.GlobalExpect)
-			require.Equalf(t, c.expectedLocalExpect, evImon.Value.LocalExpect,
+			require.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
 				"expected local expect %s found %s", c.expectedLocalExpect, evImon.Value.LocalExpect)
 			require.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
 				"expected IsLeader %v found %v", c.expectedIsLeader, evImon.Value.IsLeader)

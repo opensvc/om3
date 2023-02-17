@@ -68,9 +68,13 @@ type (
 
 		sub *pubsub.Subscription
 
+		pubsubBus *pubsub.Bus
+
 		// waitConvergedOrchestrationMsg is a map indexed by nodename to latest waitConvergedOrchestrationMsg.
 		// It is used while we are waiting for orchestration reached
 		waitConvergedOrchestrationMsg map[string]string
+
+		acceptedOrchestrationId string
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -117,6 +121,7 @@ func start(parent context.Context, p path.T, nodes []string) error {
 		cancel:        cancel,
 		cmdC:          make(chan any),
 		databus:       databus,
+		pubsubBus:     pubsub.BusFromContext(ctx),
 		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
@@ -151,8 +156,7 @@ func start(parent context.Context, p path.T, nodes []string) error {
 }
 
 func (o *imon) startSubscriptions() {
-	bus := pubsub.BusFromContext(o.ctx)
-	sub := bus.Sub(o.id + " imon")
+	sub := o.pubsubBus.Sub(o.id + " imon")
 	label := pubsub.Label{"path", o.id}
 	nodeLabel := pubsub.Label{"node", o.localhost}
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)

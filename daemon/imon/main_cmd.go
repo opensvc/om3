@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/placement"
@@ -15,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -285,9 +288,20 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 
 	if o.change {
 		o.state.OrchestrationId = c.Value.CandidateOrchestrationId
+		o.acceptedOrchestrationId = c.Value.CandidateOrchestrationId
 		o.updateIsLeader()
 		o.orchestrate()
 		o.updateIfChange()
+	} else {
+		o.pubsubBus.Pub(msgbus.ObjectOrchestrationEnd{
+			Node:  o.localhost,
+			Path:  o.path,
+			Id:    c.Value.CandidateOrchestrationId,
+			Error: errors.Errorf("dropped set instance monitor request: %v", c.Value),
+		},
+			pubsub.Label{"path", o.path.String()},
+			pubsub.Label{"node", o.localhost},
+		)
 	}
 
 }
