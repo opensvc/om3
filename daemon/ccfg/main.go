@@ -1,4 +1,4 @@
-// ccfg is responsible of the cluster config
+// Package ccfg is responsible for the cluster config
 //
 // It provides:
 //
@@ -58,10 +58,6 @@ var (
 	cmdC chan any
 )
 
-func init() {
-	cmdC = make(chan any)
-}
-
 // Start launches the ccfg worker goroutine
 func Start(parent context.Context) error {
 	ctx, cancel := context.WithCancel(parent)
@@ -76,6 +72,7 @@ func Start(parent context.Context) error {
 		log:         log.Logger.With().Str("func", "ccfg").Logger(),
 		localhost:   hostname.Hostname(),
 	}
+	cmdC = o.cmdC
 
 	if n, err := object.NewCluster(object.WithVolatile(true)); err != nil {
 		return err
@@ -89,7 +86,9 @@ func Start(parent context.Context) error {
 	go func() {
 		defer func() {
 			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			o.sub.Stop()
+			if err := o.sub.Stop(); err != nil {
+				o.log.Error().Err(err).Msg("subscription stop")
+			}
 		}()
 		o.worker()
 	}()
