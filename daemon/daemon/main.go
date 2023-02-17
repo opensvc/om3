@@ -13,7 +13,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -149,7 +148,6 @@ func (t *T) MainStart(ctx context.Context) error {
 	}(ctx)
 
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
-	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan hbtype.Msg))
 
 	hbcache.Start(t.ctx)
 

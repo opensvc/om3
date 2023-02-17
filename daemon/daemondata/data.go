@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/callcount"
@@ -162,8 +161,6 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 
 	countRoutineTicker := time.NewTicker(countRoutineInterval)
 	defer countRoutineTicker.Stop()
-
-	d.hbSendQ = daemonctx.HBSendQ(ctx)
 
 	for {
 		select {

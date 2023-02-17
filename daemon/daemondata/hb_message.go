@@ -11,6 +11,34 @@ import (
 	"github.com/opensvc/om3/core/hbtype"
 )
 
+type (
+	opSetHBSendQ struct {
+		hbSendQ chan<- hbtype.Msg
+		err     chan<- error
+	}
+)
+
+// SetHBSendQ defines daemondata hbSendQ. The hbSendQ is used during queueNewHbMsg
+// to push heartbeat message to this queue, see usage example for hb msgToTx multiplexer
+// Example:
+//     msgC := make(chan hbtype.Msg)
+//     SetHBSendQ(msgC) // inform daemondata we are listening on this queue
+//     defer SetHBSendQ(nil) // inform daemondata, we are not anymore reading on this queue
+//     for {
+//        select {
+//        case msg := <- msgC:
+//           ...
+//        case <-ctx.Done():
+//           return
+//        }
+//     }
+func (t T) SetHBSendQ(hbSendQ chan<- hbtype.Msg) error {
+	errC := make(chan error)
+	op := opSetHBSendQ{hbSendQ: hbSendQ, err: errC}
+	t.cmdC <- op
+	return <-errC
+}
+
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
 //
 // It aborts on done context
@@ -148,4 +176,10 @@ func (d *data) setNextMsgType() {
 		d.setHbMsgType(d.localNode, messageType)
 	}
 	return
+}
+
+func (o opSetHBSendQ) call(ctx context.Context, d *data) {
+	d.counterCmd <- idSetHBSendQ
+	d.hbSendQ = o.hbSendQ
+	o.err <- nil
 }

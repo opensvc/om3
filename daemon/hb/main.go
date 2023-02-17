@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/daemonctx"
+	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/routinehelper"
@@ -266,13 +267,19 @@ func (t *T) rescanHb(ctx context.Context) error {
 
 // msgToTx starts a msg multiplexer data messages to hb tx drivers
 func (t *T) msgToTx(ctx context.Context) error {
-	msgC := daemonctx.HBSendQ(ctx)
-	if msgC == nil {
-		return errors.New("msgToTx unable to retrieve HBSendQ")
+	msgC := make(chan hbtype.Msg)
+	databus := daemondata.FromContext(ctx)
+	if err := databus.SetHBSendQ(msgC); err != nil {
+		return errors.New("msgToTx can't set daemondata HBSendQ")
 	}
 	t.registerTxC = make(chan registerTxQueue)
 	t.unregisterTxC = make(chan string)
 	go func() {
+		defer func() {
+			if err := databus.SetHBSendQ(nil); err != nil {
+				t.log.Error().Err(err).Msg("msgToTx can't unset daemondata HBSendQ")
+			}
+		}()
 		registeredTxMsgQueue := make(map[string]chan []byte)
 		defer func() {
 			tC := time.After(100 * time.Millisecond)
@@ -385,7 +392,11 @@ func (t *T) startJanitorHb(ctx context.Context) {
 
 	go func() {
 		started <- true
-		defer t.sub.Stop()
+		defer func() {
+			if err := t.sub.Stop(); err != nil {
+				t.log.Error().Err(err).Msg("subscription stop")
+			}
+		}()
 		for {
 			select {
 			case <-ctx.Done():
