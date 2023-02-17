@@ -65,8 +65,6 @@ var (
 
 		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
 
-		"InstanceMonitorOrchestrationEnded": InstanceMonitorOrchestrationEnded{},
-
 		"InstanceMonitorUpdated": InstanceMonitorUpdated{},
 
 		"InstanceStatusDeleted": InstanceStatusDeleted{},
@@ -104,6 +102,8 @@ var (
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 
 		"NodeStatusUpdated": NodeStatusUpdated{},
+
+		"ObjectOrchestrationEnd": ObjectOrchestrationEnd{},
 
 		"ObjectStatusDeleted": ObjectStatusDeleted{},
 
@@ -267,13 +267,6 @@ type (
 		Node string
 	}
 
-	InstanceMonitorOrchestrationEnded struct {
-		Id    string
-		Node  string
-		Path  path.T
-		Error error
-	}
-
 	InstanceMonitorUpdated struct {
 		Path  path.T
 		Node  string
@@ -370,6 +363,13 @@ type (
 	NodeStatusUpdated struct {
 		Node  string
 		Value node.Status
+	}
+
+	ObjectOrchestrationEnd struct {
+		Id    string
+		Node  string
+		Path  path.T
+		Error error
 	}
 
 	ObjectStatusDeleted struct {
@@ -568,10 +568,6 @@ func (e InstanceMonitorDeleted) Kind() string {
 	return "InstanceMonitorDeleted"
 }
 
-func (e InstanceMonitorOrchestrationEnded) Kind() string {
-	return "InstanceMonitorOrchestrationEnded"
-}
-
 func (e InstanceMonitorUpdated) Kind() string {
 	return "InstanceMonitorUpdated"
 }
@@ -646,6 +642,10 @@ func (e NodeStatusLabelsUpdated) Kind() string {
 
 func (e NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
+}
+
+func (e ObjectOrchestrationEnd) Kind() string {
+	return "ObjectOrchestrationEnd"
 }
 
 func (e ObjectStatusDeleted) Kind() string {

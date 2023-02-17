@@ -293,14 +293,14 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 		o.orchestrate()
 		o.updateIfChange()
 	} else {
-		o.pubsubBus.Pub(msgbus.InstanceMonitorOrchestrationEnded{
-			Node: o.localhost,
-			Path: o.path,
+		o.pubsubBus.Pub(msgbus.ObjectOrchestrationEnd{
+			Node:  o.localhost,
+			Path:  o.path,
 			Id:    c.Value.CandidateOrchestrationId,
 			Error: errors.Errorf("dropped set instance monitor request: %v", c.Value),
 		},
-		pubsub.Label{"path", o.path.String()},
-		pubsub.Label{"node", o.localhost},
+			pubsub.Label{"path", o.path.String()},
+			pubsub.Label{"node", o.localhost},
 		)
 	}
 
