@@ -137,7 +137,6 @@ func (t Lookup) Do() (Pooler, error) {
 type (
 	consumer interface {
 		String() string
-		Nodes() []string
 		Config() *xconfig.T
 	}
 )
@@ -176,5 +175,11 @@ func (t Lookup) ConfigureVolume(volume volumer, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	return ConfigureVolume(p, volume, t.Size, t.Format, t.Access, t.Shared, c.Nodes(), env)
+	var nodes []string
+	if i, err := c.Config().Eval(key.T{"DEFAULT", "nodes"}); err != nil {
+		return err
+	} else {
+		nodes = i.([]string)
+	}
+	return ConfigureVolume(p, volume, t.Size, t.Format, t.Access, t.Shared, nodes, env)
 }
