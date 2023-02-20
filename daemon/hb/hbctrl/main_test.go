@@ -49,7 +49,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 	ctx = bootstrapDaemon(t, ctx)
 	bus := pubsub.BusFromContext(ctx)
 
-	changeDelay = 10 * time.Millisecond
+	pubDelay = 10 * time.Millisecond
 	testCtrl := setupCtrl(ctx)
 
 	type (
