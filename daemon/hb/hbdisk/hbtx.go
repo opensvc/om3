@@ -2,6 +2,7 @@ package hbdisk
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -59,6 +60,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	if err := t.base.LoadPeerConfig(t.nodes); err != nil {
 		return err
 	}
+	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cancel = cancel
 	t.cmdC = cmdC
@@ -76,7 +78,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			}
 		}
 		var b []byte
-		ticker := time.NewTimer(t.interval)
+		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		var reason string
 		for {
@@ -85,16 +87,17 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				return
 			case b = <-msgC:
 				reason = "send msg"
+
+				// No need to send the next message before a full ticker period.
 				ticker.Reset(t.interval)
 			case <-ticker.C:
-				reason = "send msg (interval)"
+				reason = reasonTick
 			}
 			if len(b) == 0 {
 				continue
-			} else {
-				t.log.Debug().Msg(reason)
-				t.send(b)
 			}
+			t.log.Debug().Msg(reason)
+			t.send(b)
 		}
 	}()
 	return nil
