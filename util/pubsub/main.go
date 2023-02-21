@@ -512,12 +512,7 @@ func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	case <-b.ctx.Done():
 		return nil
 	}
-	select {
-	case as := <-respC:
-		return as
-	case <-b.ctx.Done():
-		return nil
-	}
+	return <-respC
 }
 
 // Unsub function remove a subscription
@@ -532,12 +527,7 @@ func (b *Bus) unsub(sub *Subscription) error {
 	case <-b.ctx.Done():
 		return b.ctx.Err()
 	}
-	select {
-	case err := <-errC:
-		return err
-	case <-b.ctx.Done():
-		return b.ctx.Err()
-	}
+	return <-errC
 }
 
 // warnExceededNotification log when notify duration between <-begin and <-end exceeds maxDuration.
@@ -752,12 +742,7 @@ func (sub *Subscription) GetLast(v any, labels ...Label) any {
 	case <-sub.bus.ctx.Done():
 		return nil
 	}
-	select {
-	case last := <-respC:
-		return last
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
+	return <-respC
 }
 
 func (sub *Subscription) AddFilter(v any, labels ...Label) {
@@ -776,12 +761,7 @@ func (sub *Subscription) AddFilter(v any, labels ...Label) {
 	case <-sub.bus.ctx.Done():
 		return
 	}
-	select {
-	case <-respC:
-		return
-	case <-sub.bus.ctx.Done():
-		return
-	}
+	<-respC
 }
 
 func (sub *Subscription) Start() {
