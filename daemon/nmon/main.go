@@ -131,7 +131,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", hostname.Hostname()})
 	sub.AddFilter(msgbus.NodeConfigUpdated{})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
-	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(msgbus.NodeMonitorUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
 	sub.AddFilter(msgbus.SetNodeMonitor{})
@@ -197,7 +197,7 @@ func (o *nmon) worker() {
 			case msgbus.NodeConfigUpdated:
 				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:
-				o.onNodeMonitorUpdated(c)
+				o.onPeerNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:
 				o.onNodeMonitorDeleted(c)
 			case msgbus.FrozenFileRemoved:
@@ -265,6 +265,8 @@ func (o *nmon) update() {
 	if err := o.databus.SetNodeMonitor(newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetNodeMonitor")
 	}
+	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
+	o.nodeMonitor[o.localhost] = o.state
 }
 
 // updateIfChange log updates and publish new state value when changed
