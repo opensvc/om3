@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -37,6 +38,9 @@ type (
 		jobs        Jobs
 		enabled     bool
 		provisioned map[path.T]bool
+
+		// selfWaitGroup is wait group for T
+		selfWaitGroup sync.WaitGroup
 	}
 
 	Jobs map[string]Job
@@ -69,10 +73,11 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		log:         log.Logger.With().Str("name", "scheduler").Logger(),
-		events:      make(chan any),
-		jobs:        make(Jobs),
-		provisioned: make(map[path.T]bool),
+		log:           log.Logger.With().Str("name", "scheduler").Logger(),
+		events:        make(chan any),
+		jobs:          make(Jobs),
+		provisioned:   make(map[path.T]bool),
+		selfWaitGroup: sync.WaitGroup{},
 	}
 	t.SetTracer(routinehelper.NewTracerNoop())
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -205,6 +210,8 @@ func (t *T) MainStart(ctx context.Context) error {
 	started := make(chan error)
 	t.Add(1)
 	go func() {
+		t.selfWaitGroup.Add(1)
+		defer t.selfWaitGroup.Done()
 		defer t.Done()
 		defer t.Trace(t.Name() + "-loop")()
 		started <- nil
@@ -216,7 +223,7 @@ func (t *T) MainStart(ctx context.Context) error {
 
 func (t *T) MainStop() error {
 	t.cancel()
-	t.jobs.Purge()
+	t.selfWaitGroup.Wait()
 	return nil
 }
 
@@ -234,7 +241,11 @@ func (t *T) loop() {
 	t.log.Info().Msg("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
 	sub := t.startSubscriptions()
-	defer sub.Stop()
+	defer func() {
+		if err := sub.Stop(); err != nil {
+			t.log.Error().Err(err).Msg("subscription stop")
+		}
+	}()
 
 	for {
 		select {
@@ -258,6 +269,7 @@ func (t *T) loop() {
 				t.log.Error().Interface("cmd", c).Msg("unknown cmd")
 			}
 		case <-t.ctx.Done():
+			t.jobs.Purge()
 			return
 		}
 	}

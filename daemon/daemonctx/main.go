@@ -15,7 +15,6 @@ type (
 
 var (
 	contextDaemon         = contextKey("daemon")
-	contextHBSendQueue    = contextKey("hb-sendQ")
 	contextHBRecvMsgQueue = contextKey("hb-recv-msg-queue")
 	contextUuid           = contextKey("uuid")
 	contextListenAddr     = contextKey("listen-addr")
@@ -40,21 +39,6 @@ func HBRecvMsgQ(ctx context.Context) (hbRecvQ chan<- *hbtype.Msg) {
 // the queue used by daemondata to retrieve hb rx decoded messages
 func WithHBRecvMsgQ(parent context.Context, hbRecvQ chan<- *hbtype.Msg) context.Context {
 	return context.WithValue(parent, contextHBRecvMsgQueue, hbRecvQ)
-}
-
-// HBSendQ function returns HBSendQ from context
-func HBSendQ(ctx context.Context) (hbSendQ chan hbtype.Msg) {
-	var ok bool
-	hbSendQ, ok = ctx.Value(contextHBSendQueue).(chan hbtype.Msg)
-	if ok {
-		return
-	}
-	return nil
-}
-
-// WithHBSendQ function returns copy of parent with HBSendQ.
-func WithHBSendQ(parent context.Context, HBSendQ chan hbtype.Msg) context.Context {
-	return context.WithValue(parent, contextHBSendQueue, HBSendQ)
 }
 
 // WithDaemon function returns copy of parent with daemon.

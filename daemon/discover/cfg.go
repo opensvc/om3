@@ -52,7 +52,11 @@ func (d *discover) cfg(started chan<- bool) {
 		}
 	}()
 	sub := d.startSubscriptions()
-	defer sub.Stop()
+	defer func() {
+		if err := sub.Stop(); err != nil {
+			d.log.Error().Err(err).Msg("subscription stop")
+		}
+	}()
 	started <- true
 	for {
 		select {

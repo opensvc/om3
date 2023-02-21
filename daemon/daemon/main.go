@@ -13,7 +13,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -130,7 +129,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	bus.Start(t.ctx)
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
-	go func() {
+	go func(ctx context.Context) {
 		labels := []pubsub.Label{
 			{"os", hostname.Hostname()},
 			{"sub", "pubsub"},
@@ -140,16 +139,15 @@ func (t *T) MainStart(ctx context.Context) error {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				bus.Pub(msg, labels...)
 			}
 		}
-	}()
+	}(ctx)
 
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
-	t.ctx = daemonctx.WithHBSendQ(t.ctx, make(chan hbtype.Msg))
 
 	hbcache.Start(t.ctx)
 

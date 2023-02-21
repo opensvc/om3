@@ -15,7 +15,6 @@ func (d *discover) omon(started chan<- bool) {
 	sub := bus.Sub("omon-from-cfg-create")
 	sub.AddFilter(msgbus.ConfigUpdated{})
 	sub.Start()
-	defer sub.Stop()
 	started <- true
 	defer func() {
 		defer log.Info().Msg("stopped")
@@ -27,6 +26,11 @@ func (d *discover) omon(started chan<- bool) {
 			case <-d.objectMonitorCmdC:
 			}
 		}
+	}()
+	defer func() {
+		d.log.Debug().Msg("subscription stopping")
+		sub.Stop()
+		d.log.Debug().Msg("subscription stopped")
 	}()
 	for {
 		select {

@@ -55,6 +55,7 @@ const (
 	idSetClusterConfig
 	idSetClusterStatus
 	idSetDaemonHb
+	idSetHBSendQ
 	idSetInstanceConfig
 	idSetInstanceFrozen
 	idSetInstanceMonitor
@@ -96,7 +97,7 @@ var (
 		idSetClusterConfig:      "set-cluster-config",
 		idSetClusterStatus:      "set-cluster-status",
 		idSetDaemonHb:           "set-daemon-hb",
-		idSetObjectStatus:       "set-object-status",
+		idSetHBSendQ:            "set-hb-send-q",
 		idSetInstanceConfig:     "set-instance-config",
 		idSetInstanceFrozen:     "set-instance-frozen",
 		idSetInstanceMonitor:    "set-instance-monitor",
@@ -107,6 +108,7 @@ var (
 		idSetNodeStats:          "set-node-stats",
 		idSetNodeStatusFrozen:   "set-node-status-frozen",
 		idSetNodeStatusLabels:   "set-node-status-labels",
+		idSetObjectStatus:       "set-object-status",
 		idStats:                 "stats",
 	}
 )

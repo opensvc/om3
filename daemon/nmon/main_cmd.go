@@ -162,7 +162,7 @@ func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {
 	o.updateIfChange()
 }
 
-func (o *nmon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
+func (o *nmon) onPeerNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
 	o.nodeMonitor[c.Node] = c.Value
 	o.convergeGlobalExpectFromRemote()

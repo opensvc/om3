@@ -149,8 +149,12 @@ func TestSub(t *testing.T) {
 			}
 			maxDurationTimer := time.NewTimer(5 * time.Millisecond)
 			defer maxDurationTimer.Stop()
-			received := make([]interface{}, 0)
+			receivedC := make(chan []interface{})
 			go func() {
+				received := make([]interface{}, 0)
+				defer func() {
+					receivedC <- received
+				}()
 				for {
 					select {
 					case i := <-sub.C:
@@ -163,8 +167,7 @@ func TestSub(t *testing.T) {
 					}
 				}
 			}()
-			<-maxDurationTimer.C
-			require.Equal(t, c.expected, received)
+			require.Equal(t, c.expected, <-receivedC)
 		})
 	}
 }
