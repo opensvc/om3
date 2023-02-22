@@ -71,6 +71,16 @@ For example, a [md#1] section needs reformatting as:
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
 
+### driver sync
+
+* **breaking change:** The "sync drp" action is removed. Use "sync update --target drpnodes" instead.
+
+* **breaking change:** The "sync nodes" action is removed. Use "sync update --target nodes" instead.
+
+* The "sync all" action is deprecated. Use "sync update" with no --target flag instead.
+
+* The "sync full" and "sync update" now both accept a "--target nodes|drpnodes|node_selector_expr" flag
+
 ### driver app
 
 * **breaking change:** keyword `environment` now keep var name unchanged (respect mixedCase)
