@@ -345,6 +345,10 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			if err := attr.SetValue(r, c.Attr, t.path); err != nil {
 				return err
 			}
+		case c.Ref == "object.drpnodes":
+			if err := attr.SetValue(r, c.Attr, t.DRPNodes()); err != nil {
+				return err
+			}
 		case c.Ref == "object.nodes":
 			if err := attr.SetValue(r, c.Attr, t.Nodes()); err != nil {
 				return err
