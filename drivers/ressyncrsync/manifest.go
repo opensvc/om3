@@ -31,6 +31,11 @@ func (t T) Manifest() *manifest.T {
 			Ref:  "object.nodes",
 		},
 		{
+			Key:  "drpnodes",
+			Attr: "DRPNodes",
+			Ref:  "object.drpnodes",
+		},
+		{
 			Key:  "objectID",
 			Attr: "ObjectID",
 			Ref:  "object.id",
