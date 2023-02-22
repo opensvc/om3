@@ -80,4 +80,10 @@ type (
 	resyncer interface {
 		Resync(context.Context) error
 	}
+	fuller interface {
+		Full(context.Context) error
+	}
+	updater interface {
+		Update(context.Context) error
+	}
 )

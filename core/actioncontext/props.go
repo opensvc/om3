@@ -60,6 +60,13 @@ var (
 		Kinds:       []kind.T{kind.Svc, kind.Vol},
 		PG:          true,
 	}
+	SyncFull = Properties{
+		Name:     "sync_full",
+		Local:    true,
+		MustLock: true,
+		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		PG:       true,
+	}
 	GenCert = Properties{
 		Name:       "gen_cert",
 		RelayToAny: true,
@@ -258,5 +265,12 @@ var (
 		Kinds:           []kind.T{kind.Svc, kind.Vol},
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
+	}
+	SyncUpdate = Properties{
+		Name:     "sync_update",
+		Local:    true,
+		MustLock: true,
+		Kinds:    []kind.T{kind.Svc, kind.Vol},
+		PG:       true,
 	}
 )

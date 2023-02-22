@@ -20,29 +20,36 @@ import (
 	"github.com/opensvc/om3/util/schedule"
 )
 
-const (
-	rsync = "rsync"
+// T is the driver structure.
+type (
+	T struct {
+		ressync.T
+		Path           path.T
+		BandwidthLimit string
+		Src            string
+		Dst            string
+		DstFS          string
+		Options        []string
+		Target         []string
+		Schedule       string
+		ResetOptions   bool
+		Snap           bool
+		Snooze         *time.Duration
+		Nodes          []string
+		DRPNodes       []string
+		ObjectID       uuid.UUID
+		Timeout        *time.Duration
+	}
+
+	modeT uint
 )
 
-// T is the driver structure.
-type T struct {
-	ressync.T
-	Path           path.T
-	BandwidthLimit string
-	Src            string
-	Dst            string
-	DstFS          string
-	Options        []string
-	Target         []string
-	Schedule       string
-	ResetOptions   bool
-	Snap           bool
-	Snooze         *time.Duration
-	Nodes          []string
-	DRPNodes       []string
-	ObjectID       uuid.UUID
-	Timeout        *time.Duration
-}
+const (
+	rsync = "rsync"
+
+	modeFull modeT = iota
+	modeIncr
+)
 
 func New() resource.Driver {
 	return &T{}
@@ -60,21 +67,36 @@ func (t T) Start(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t T) Sync(ctx context.Context) error {
+func (t T) Full(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
-	err := t.DoWithLock(disable, timeout, "run", func() error {
-		return t.lockedSync(ctx)
+	target := actioncontext.Target(ctx)
+	err := t.DoWithLock(disable, timeout, "sync", func() error {
+		return t.lockedSync(modeFull, target)
 	})
 	return err
 }
 
-func (t T) lockedSync(ctx context.Context) (err error) {
-	for _, nodename := range t.Nodes {
+func (t T) Update(ctx context.Context) error {
+	disable := actioncontext.IsLockDisabled(ctx)
+	timeout := actioncontext.LockTimeout(ctx)
+	target := actioncontext.Target(ctx)
+	err := t.DoWithLock(disable, timeout, "sync", func() error {
+		return t.lockedSync(modeIncr, target)
+	})
+	return err
+}
+
+func (t T) lockedSync(mode modeT, target []string) (err error) {
+	if len(target) == 0 {
+		target = t.Target
+	}
+	for _, nodename := range t.getTargetNodenames(target) {
 		if nodename == hostname.Hostname() {
 			continue
 		}
 		// DO
+		t.Log().Info().Msgf("sync mode %s to %s", mode, nodename)
 		if err := t.writeLastSync(nodename); err != nil {
 			return err
 		}
@@ -144,13 +166,13 @@ func (t T) lastSyncFile(nodename string) string {
 }
 
 func (t *T) statusLastSync() status.T {
-	nodenames := t.getTargetNodenames()
+	nodenames := t.getTargetNodenames(t.Target)
 	if len(nodenames) == 0 {
 		t.StatusLog().Info("no target nodes")
 		return status.NotApplicable
 	}
 	state := status.NotApplicable
-	for _, nodename := range t.getTargetNodenames() {
+	for _, nodename := range t.getTargetNodenames(t.Target) {
 		if nodename == hostname.Hostname() {
 			continue
 		}
@@ -176,10 +198,10 @@ func (t *T) statusLastSync() status.T {
 	return state
 }
 
-func (t *T) getTargetNodenames() []string {
+func (t *T) getTargetNodenames(target []string) []string {
 	nodenames := make([]string, 0)
 	targetMap := make(map[string]any)
-	for _, target := range t.Target {
+	for _, target := range target {
 		targetMap[target] = nil
 	}
 	if _, ok := targetMap["nodes"]; ok {

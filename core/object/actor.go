@@ -66,7 +66,9 @@ type (
 		Unprovision(context.Context) error
 		SetProvisioned(context.Context) error
 		SetUnprovisioned(context.Context) error
+		SyncFull(context.Context) error
 		SyncResync(context.Context) error
+		SyncUpdate(context.Context) error
 		Enter(context.Context, string) error
 
 		PrintSchedule() schedule.Table
