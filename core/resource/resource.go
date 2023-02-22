@@ -803,7 +803,7 @@ func Start(ctx context.Context, r Driver) error {
 	return nil
 }
 
-// Resync deactivates a resource interfacer
+// Resync execute the resource Resync function, if exposed.
 func Resync(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(resyncer)
@@ -816,6 +816,42 @@ func Resync(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := s.Resync(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Full execute the resource Update function, if exposed.
+func Full(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(fuller)
+	if !ok {
+		return nil
+	}
+	defer Status(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
+	Setenv(r)
+	if err := s.Full(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Update execute the resource Update function, if exposed.
+func Update(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(updater)
+	if !ok {
+		return nil
+	}
+	defer Status(ctx, r)
+	if r.IsDisabled() {
+		return nil
+	}
+	Setenv(r)
+	if err := s.Update(ctx); err != nil {
 		return err
 	}
 	return nil

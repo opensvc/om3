@@ -2003,6 +2003,26 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectSyncFull(kind string) *cobra.Command {
+	var options commands.CmdObjectSyncFull
+	cmd := &cobra.Command{
+		Use:   "full",
+		Short: "full copy of the local dataset on peers",
+		Long:  "This update can use only full copy.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagDryRun(flags, &options.DryRun)
+	addFlagForce(flags, &options.Force)
+	addFlagTarget(flags, &options.Target)
+	return cmd
+}
+
 func newCmdObjectSyncResync(kind string) *cobra.Command {
 	var options commands.CmdObjectSyncResync
 	cmd := &cobra.Command{
@@ -2019,6 +2039,26 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
 	addFlagDryRun(flags, &options.DryRun)
 	addFlagForce(flags, &options.Force)
+	return cmd
+}
+
+func newCmdObjectSyncUpdate(kind string) *cobra.Command {
+	var options commands.CmdObjectSyncUpdate
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "synchronize the copy of the local dataset on peers",
+		Long:  "This update can use either full or incremental copy, depending on the resource drivers and host capabilities. This is the action executed by the scheduler.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagDryRun(flags, &options.DryRun)
+	addFlagForce(flags, &options.Force)
+	addFlagTarget(flags, &options.Target)
 	return cmd
 }
 
