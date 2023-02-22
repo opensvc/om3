@@ -2,20 +2,22 @@ package ressyncrsync
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/ressync"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
+	"github.com/opensvc/om3/util/schedule"
 )
 
 const (
@@ -24,7 +26,7 @@ const (
 
 // T is the driver structure.
 type T struct {
-	resource.T
+	ressync.T
 	Path           path.T
 	BandwidthLimit string
 	Src            string
@@ -37,6 +39,7 @@ type T struct {
 	Snap           bool
 	Snooze         *time.Duration
 	Nodes          []string
+	DRPNodes       []string
 	ObjectID       uuid.UUID
 	Timeout        *time.Duration
 }
@@ -71,9 +74,8 @@ func (t T) lockedSync(ctx context.Context) (err error) {
 		if nodename == hostname.Hostname() {
 			continue
 		}
-		exitCode := 0
 		// DO
-		if err := t.writeLastSync(nodename, exitCode); err != nil {
+		if err := t.writeLastSync(nodename); err != nil {
 			return err
 		}
 	}
@@ -88,27 +90,52 @@ func (t *T) Kill(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Status(ctx context.Context) status.T {
-	return status.NotApplicable
+// maxDelay return the configured max_delay if set.
+// If not set, return the duration from now to the end of the
+// next schedule period.
+func (t *T) maxDelay(lastSync time.Time) *time.Duration {
+	if t.MaxDelay != nil {
+		return t.MaxDelay
+	}
+	sched := schedule.New(t.Schedule)
+	begin, duration, err := sched.Next(schedule.NextWithLast(lastSync))
+	if err != nil {
+		return nil
+	}
+	end := begin.Add(duration)
+	maxDelay := end.Sub(time.Now())
+	if maxDelay < 0 {
+		maxDelay = 0
+	}
+	return &maxDelay
 }
 
-func (t T) writeLastSync(nodename string, retcode int) error {
+func (t *T) Status(ctx context.Context) status.T {
+	s := t.statusLastSync()
+	return s
+}
+
+func (t T) writeLastSync(nodename string) error {
 	p := t.lastSyncFile(nodename)
 	f, err := os.Create(p)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	fmt.Fprintf(f, "%d\n", retcode)
 	return nil
 }
 
-func (t T) readLastSync(nodename string) (int, error) {
+func (t T) readLastSync(nodename string) (time.Time, error) {
+	var tm time.Time
 	p := t.lastSyncFile(nodename)
-	if b, err := os.ReadFile(p); err != nil {
-		return 0, err
-	} else {
-		return strconv.Atoi(strings.TrimSpace(string(b)))
+	info, err := os.Stat(p)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return tm, nil
+	case err != nil:
+		return tm, err
+	default:
+		return info.ModTime(), nil
 	}
 }
 
@@ -116,27 +143,53 @@ func (t T) lastSyncFile(nodename string) string {
 	return filepath.Join(t.VarDir(), "last_sync_"+nodename)
 }
 
-/*
-func (t *T) statusLastSync(ctx context.Context) status.T {
-	if err := resource.StatusCheckRequires(ctx, t); err != nil {
-		t.StatusLog().Info("requirements not met")
+func (t *T) statusLastSync() status.T {
+	nodenames := t.getTargetNodenames()
+	if len(nodenames) == 0 {
+		t.StatusLog().Info("no target nodes")
 		return status.NotApplicable
 	}
-	if i, err := t.readLastRun(); err != nil {
-		t.StatusLog().Info("never run")
-		return status.NotApplicable
-	} else {
-		s, err := t.ExitCodeToStatus(i)
-		if err != nil {
-			t.StatusLog().Info("%s", err)
+	state := status.NotApplicable
+	for _, nodename := range t.getTargetNodenames() {
+		if nodename == hostname.Hostname() {
+			continue
 		}
-		if s != status.Up {
-			t.StatusLog().Info("last run failed (%d)", i)
+		if tm, err := t.readLastSync(nodename); err != nil {
+			t.StatusLog().Error("%s last sync: %s", nodename, err)
+		} else if tm.IsZero() {
+			t.StatusLog().Warn("%s never synced", nodename)
+		} else {
+			maxDelay := t.maxDelay(tm)
+			if maxDelay == nil {
+				t.StatusLog().Info("no schedule and no max delay")
+				continue
+			}
+			elapsed := time.Now().Sub(tm)
+			if elapsed > *maxDelay {
+				t.StatusLog().Warn("%s last sync at %s (>%s after last)", nodename, tm, maxDelay)
+				state.Add(status.Warn)
+			} else {
+				state.Add(status.Up)
+			}
 		}
-		return s
 	}
+	return state
 }
-*/
+
+func (t *T) getTargetNodenames() []string {
+	nodenames := make([]string, 0)
+	targetMap := make(map[string]any)
+	for _, target := range t.Target {
+		targetMap[target] = nil
+	}
+	if _, ok := targetMap["nodes"]; ok {
+		nodenames = append(nodenames, t.Nodes...)
+	}
+	if _, ok := targetMap["drpnodes"]; ok {
+		nodenames = append(nodenames, t.DRPNodes...)
+	}
+	return nodenames
+}
 
 func (t *T) running(ctx context.Context) bool {
 	return false
@@ -156,10 +209,6 @@ func (t T) Label() string {
 	}
 }
 
-func (t *T) status() status.T {
-	return status.Undef
-}
-
 func (t T) getRunning(cmdArgs []string) (proc.L, error) {
 	procs, err := proc.All()
 	if err != nil {
@@ -176,4 +225,8 @@ func (t T) ScheduleOptions() resource.ScheduleOptions {
 		Option: "schedule",
 		Base:   "",
 	}
+}
+
+func (t T) Provisioned() (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
 }

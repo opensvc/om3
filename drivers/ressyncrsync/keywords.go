@@ -8,14 +8,6 @@ import (
 var (
 	Keywords = []keywords.Keyword{
 		{
-			Option:        "schedule",
-			DefaultOption: "run_schedule",
-			Attr:          "Schedule",
-			Scopable:      true,
-			Text:          "Set the this task run schedule. See ``/usr/share/doc/opensvc/schedule`` for the schedule syntax reference.",
-			Example:       "00:00-01:00 mon",
-		},
-		{
 			Option:    "timeout",
 			Attr:      "Timeout",
 			Converter: converters.Duration,
