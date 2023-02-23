@@ -4,6 +4,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/drivers/ressync"
 )
 
 var (
@@ -42,5 +43,6 @@ func (t T) Manifest() *manifest.T {
 		},
 	}...)
 	m.AddKeyword(keywordL...)
+	m.AddKeyword(ressync.BaseKeywords...)
 	return m
 }
