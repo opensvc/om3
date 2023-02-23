@@ -3,8 +3,11 @@ package ressyncrsync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,9 +18,13 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/ressync"
+	"github.com/opensvc/om3/util/args"
+	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
 	"github.com/opensvc/om3/util/schedule"
+	"github.com/rs/zerolog"
 )
 
 // T is the driver structure.
@@ -29,6 +36,7 @@ type (
 		Src            string
 		Dst            string
 		DstFS          string
+		User           string
 		Options        []string
 		Target         []string
 		Schedule       string
@@ -95,8 +103,9 @@ func (t T) lockedSync(mode modeT, target []string) (err error) {
 		if nodename == hostname.Hostname() {
 			continue
 		}
-		// DO
-		t.Log().Info().Msgf("sync mode %s to %s", mode, nodename)
+		if err := t.peerSync(mode, nodename); err != nil {
+			return err
+		}
 		if err := t.writeLastSync(nodename); err != nil {
 			return err
 		}
@@ -243,7 +252,7 @@ func (t T) getRunning(cmdArgs []string) (proc.L, error) {
 
 func (t T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "sync",
+		Action: "sync_update",
 		Option: "schedule",
 		Base:   "",
 	}
@@ -251,4 +260,156 @@ func (t T) ScheduleOptions() resource.ScheduleOptions {
 
 func (t T) Provisioned() (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
+}
+
+func (t T) fullOptions() []string {
+	a := args.New()
+	if !t.ResetOptions {
+		a.Append("-HAXpogDtrlvx", "--stats", "--delete", "--force")
+	}
+	a.Append(t.Options...)
+	if !capabilities.Has(drvID.Cap() + "xattrs") {
+		a.DropOption("-X")
+	}
+	if !capabilities.Has(drvID.Cap() + "acls") {
+		a.DropOption("-A")
+	}
+	if t.Timeout != nil {
+		a.DropOption("--timeout")
+		a.Append("--timeout=" + fmt.Sprint(int(t.Timeout.Seconds())))
+	}
+	a.Append(t.bandwitdthLimitOptions()...)
+	return a.Get()
+}
+
+func (t T) bandwitdthLimitOptions() []string {
+	if t.BandwidthLimit != "" {
+		return []string{"-bwlimit=" + t.BandwidthLimit}
+	} else {
+		return []string{}
+	}
+}
+
+func (t T) user() string {
+	if t.User != "" {
+		return t.User
+	} else {
+		return "root"
+	}
+}
+
+func (t T) peerSync(mode modeT, nodename string) (err error) {
+	if v, err := t.isDstFSMounted(nodename); err != nil {
+		return err
+	} else if !v {
+		msg := fmt.Sprintf("The destination fs %s is not mounted on node %s. refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
+		t.Log().Error().Msg(msg)
+		return errors.New(msg)
+	}
+	options := t.fullOptions()
+	dst := t.user() + "@" + nodename + ":" + t.Dst
+	args := append([]string{}, options...)
+	args = append(args, t.Src, dst)
+	var timeout time.Duration
+	if t.Timeout != nil {
+		timeout = *t.Timeout
+	}
+	addBytesSent := func(line string, stats *ressync.Stats) {
+		prefix := "Total bytes sent: "
+		prefixLen := len(prefix)
+		if !strings.HasPrefix(line, prefix) {
+			return
+		}
+		if i, err := strconv.ParseUint(line[prefixLen:], 10, 64); err == nil {
+			stats.SentBytes = i
+		} else {
+			t.Log().Warn().Msgf("error parsing rsync bytes sent: %s", err)
+		}
+	}
+
+	addBytesReceived := func(line string, stats *ressync.Stats) {
+		prefix := "Total bytes received: "
+		prefixLen := len(prefix)
+		if !strings.HasPrefix(line, prefix) {
+			return
+		}
+		if i, err := strconv.ParseUint(line[prefixLen:], 10, 64); err == nil {
+			stats.ReceivedBytes = i
+		} else {
+			t.Log().Warn().Msgf("error parsing rsync bytes received: %s", err)
+		}
+	}
+
+	stats := ressync.NewStats()
+
+	cmd := command.New(
+		command.WithName(rsync),
+		command.WithArgs(args),
+		command.WithTimeout(timeout),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithOnStdoutLine(func(line string) {
+			addBytesSent(line, stats)
+			addBytesReceived(line, stats)
+		}),
+	)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	stats.Close()
+	t.Log().Info().
+		Float64("speed_bps", stats.SpeedBPS()).
+		Dur("duration", stats.Duration()).
+		Uint64("sent_b", stats.SentBytes).
+		Uint64("received_b", stats.ReceivedBytes).
+		Msgf("sync stat")
+	return nil
+}
+
+func (t T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	target := sort.StringSlice(t.Target)
+	sort.Sort(target)
+	m := resource.InfoKeys{
+		{"src", t.Src},
+		{"dst", t.Dst},
+		{"bwlimit", t.BandwidthLimit},
+		{"snap", fmt.Sprintf("%v", t.Snap)},
+		{"target", strings.Join(target, " ")},
+		{"options", strings.Join(t.Options, " ")},
+		{"reset_options", fmt.Sprintf("%v", t.ResetOptions)},
+	}
+	if t.Timeout != nil {
+		m = append(m, resource.InfoKey{"timeout", fmt.Sprintf("%s", t.Timeout)})
+	}
+	if t.DstFS != "" {
+		m = append(m, resource.InfoKey{"dstfs", fmt.Sprintf("%v", t.DstFS)})
+	}
+	return m, nil
+}
+
+func (t T) isDstFSMounted(nodename string) (bool, error) {
+	if t.DstFS == "" {
+		return true, nil
+	}
+	return isFSMounted(t.user(), nodename, t.DstFS)
+}
+
+func isFSMounted(user, nodename, mnt string) (bool, error) {
+	a := args.New()
+	a.Append(user + "@" + nodename)
+	a.Append("stat --printf=%m " + mnt)
+	cmd := command.New(
+		command.WithName("ssh"),
+		command.WithArgs(a.Get()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+	same := string(b) == mnt
+	return same, nil
 }
