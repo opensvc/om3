@@ -13,10 +13,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/drivers/ressync"
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/capabilities"
@@ -80,7 +82,7 @@ func (t T) Full(ctx context.Context) error {
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
 	err := t.DoWithLock(disable, timeout, "sync", func() error {
-		return t.lockedSync(modeFull, target)
+		return t.lockedSync(ctx, modeFull, target)
 	})
 	return err
 }
@@ -90,14 +92,19 @@ func (t T) Update(ctx context.Context) error {
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
 	err := t.DoWithLock(disable, timeout, "sync", func() error {
-		return t.lockedSync(modeIncr, target)
+		return t.lockedSync(ctx, modeIncr, target)
 	})
 	return err
 }
 
-func (t T) lockedSync(mode modeT, target []string) (err error) {
+func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
 	if len(target) == 0 {
 		target = t.Target
+	}
+	if v, rids := t.isInstanceSufficientlyStarted(ctx); !v {
+		msg := fmt.Sprintf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
+		t.Log().Error().Msg(msg)
+		return errors.New(msg)
 	}
 	for _, nodename := range t.getTargetNodenames(target) {
 		if nodename == hostname.Hostname() {
@@ -200,6 +207,7 @@ func (t *T) statusLastSync() status.T {
 				t.StatusLog().Warn("%s last sync at %s (>%s after last)", nodename, tm, maxDelay)
 				state.Add(status.Warn)
 			} else {
+				//t.StatusLog().Info("%s last sync at %s (%s after last)", nodename, tm, maxDelay)
 				state.Add(status.Up)
 			}
 		}
@@ -302,7 +310,7 @@ func (t T) peerSync(mode modeT, nodename string) (err error) {
 	if v, err := t.isDstFSMounted(nodename); err != nil {
 		return err
 	} else if !v {
-		msg := fmt.Sprintf("The destination fs %s is not mounted on node %s. refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
+		msg := fmt.Sprintf("The destination fs %s is not mounted on node %s. Refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
 		t.Log().Error().Msg(msg)
 		return errors.New(msg)
 	}
@@ -412,4 +420,45 @@ func isFSMounted(user, nodename, mnt string) (bool, error) {
 	}
 	same := string(b) == mnt
 	return same, nil
+}
+
+func (t *T) isInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []string) {
+	sb := statusbus.FromContext(ctx)
+	o := t.GetObjectDriver()
+	l := o.ResourcesByDrivergroups([]driver.Group{
+		driver.GroupIP,
+		driver.GroupFS,
+		driver.GroupShare,
+		driver.GroupDisk,
+		driver.GroupContainer,
+	})
+	v = true
+	for _, r := range l {
+		switch r.ID().DriverGroup() {
+		case driver.GroupIP:
+		case driver.GroupFS:
+		case driver.GroupShare:
+		case driver.GroupDisk:
+			switch r.Manifest().DriverID.Name {
+			case "drbd":
+				continue
+			case "scsireserv":
+				continue
+			}
+		case driver.GroupContainer:
+		default:
+			continue
+		}
+		st := sb.Get(r.RID())
+		switch st {
+		case status.Up:
+		case status.StandbyUp:
+		case status.NotApplicable:
+		default:
+			// required resource is not up
+			rids = append(rids, r.RID())
+			v = false
+		}
+	}
+	return
 }
