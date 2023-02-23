@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/drivers/ressync"
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/capabilities"
@@ -49,6 +50,7 @@ type (
 		DRPNodes       []string
 		ObjectID       uuid.UUID
 		Timeout        *time.Duration
+		Topology       topology.T
 	}
 
 	modeT uint
@@ -101,6 +103,13 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 	if len(target) == 0 {
 		target = t.Target
 	}
+
+	if t.isFlexAndNotPrimary() {
+		msg := fmt.Sprintf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
+		t.Log().Error().Msg(msg)
+		return errors.New(msg)
+	}
+
 	if v, rids := t.isInstanceSufficientlyStarted(ctx); !v {
 		msg := fmt.Sprintf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 		t.Log().Error().Msg(msg)
@@ -461,4 +470,14 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []s
 		}
 	}
 	return
+}
+
+func (t *T) isFlexAndNotPrimary() bool {
+	if t.Topology != topology.Flex {
+		return false
+	}
+	if hostname.Hostname() == t.Nodes[0] {
+		return false
+	}
+	return true
 }
