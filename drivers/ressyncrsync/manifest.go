@@ -37,6 +37,11 @@ func (t T) Manifest() *manifest.T {
 			Ref:  "object.drpnodes",
 		},
 		{
+			Key:  "topology",
+			Attr: "Topology",
+			Ref:  "object.topology",
+		},
+		{
 			Key:  "objectID",
 			Attr: "ObjectID",
 			Ref:  "object.id",
