@@ -39,7 +39,7 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 func (d *discover) cfg(started chan<- bool) {
 	d.log.Info().Msg("cfg started")
 	defer func() {
-		t := time.NewTicker(dropCmdTimeout)
+		t := time.NewTicker(d.dropCmdDuration)
 		defer t.Stop()
 		for {
 			select {

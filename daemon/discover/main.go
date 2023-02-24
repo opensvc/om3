@@ -65,16 +65,16 @@ type (
 		subCfgUpdated     pubsub.Subscription
 		subCfgDeleted     pubsub.Subscription
 		subCfgFileUpdated pubsub.Subscription
+
+		// dropCmdDuration is the max duration to wait while dropping commands
+		dropCmdDuration time.Duration
 	}
 )
 
-var (
-	dropCmdTimeout = 100 * time.Millisecond
-)
-
 // Start function starts file system watcher on config directory
-// then listen for config file creation to create
-func Start(ctx context.Context) (func(), error) {
+// then listen for config file creation to create. drainDuration is the maximum duration to wait
+// while dropping discover commands
+func Start(ctx context.Context, drainDuration time.Duration) (func(), error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
@@ -92,6 +92,7 @@ func Start(ctx context.Context) (func(), error) {
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
+		dropCmdDuration: drainDuration,
 	}
 	wg.Add(2)
 	cfgStarted := make(chan bool)
