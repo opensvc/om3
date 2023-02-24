@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/routinehelper"
@@ -282,7 +283,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 		}()
 		registeredTxMsgQueue := make(map[string]chan []byte)
 		defer func() {
-			tC := time.After(100 * time.Millisecond)
+			tC := time.After(daemonenv.DrainChanDuration)
 			for {
 				select {
 				case <-tC:
@@ -338,7 +339,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 	msgTimes := make(map[string]time.Time)
 	msgTimeDuration := 10 * time.Minute
 	defer func() {
-		tC := time.After(100 * time.Millisecond)
+		tC := time.After(daemonenv.DrainChanDuration)
 		for {
 			select {
 			case <-tC:
