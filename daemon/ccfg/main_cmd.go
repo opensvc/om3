@@ -88,5 +88,6 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 
 func (o *ccfg) onCmdGet(c cmdGet) {
 	resp := o.state
+	c.ErrC <- nil
 	c.resp <- resp
 }
