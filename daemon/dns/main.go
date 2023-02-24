@@ -16,6 +16,7 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/ccfg"
+	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -56,13 +57,17 @@ type (
 	}
 
 	cmdGet struct {
+		errC
 		Name string
 		Type string
 		resp chan Zone
 	}
 	cmdGetZone struct {
+		errC
 		resp chan Zone
 	}
+
+	errC draincommand.ErrC
 )
 
 var (
@@ -74,7 +79,7 @@ func init() {
 }
 
 // Start launches the dns worker goroutine
-func Start(parent context.Context) error {
+func Start(parent context.Context, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	t := &dns{
@@ -95,8 +100,10 @@ func Start(parent context.Context) error {
 
 	go func() {
 		defer func() {
-			msgbus.DropPendingMsg(t.cmdC, time.Second)
-			t.sub.Stop()
+			draincommand.Do(t.cmdC, drainDuration)
+			if err := t.sub.Stop(); err != nil {
+				t.log.Error().Err(err).Msg("subscription stop")
+			}
 		}()
 		t.worker()
 	}()
@@ -149,10 +156,15 @@ func (t *dns) worker() {
 }
 
 func GetZone() Zone {
+	err := make(chan error, 1)
 	c := cmdGetZone{
+		errC: err,
 		resp: make(chan Zone),
 	}
 	cmdC <- c
+	if <-err != nil {
+		return Zone{}
+	}
 	return <-c.resp
 }
 
