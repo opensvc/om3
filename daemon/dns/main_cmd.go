@@ -216,10 +216,12 @@ func (t *dns) onCmdGet(c cmdGet) {
 		}
 		zone = append(zone, record)
 	}
+	c.errC <- nil
 	c.resp <- zone
 }
 
 func (t *dns) onCmdGetZone(c cmdGetZone) {
+	c.errC <- nil
 	c.resp <- t.zone()
 }
 
