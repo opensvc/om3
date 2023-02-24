@@ -2,7 +2,6 @@ package ressyncrsync
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
 	"github.com/opensvc/om3/util/schedule"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -104,6 +105,8 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 		target = t.Target
 	}
 
+	isCron := actioncontext.IsCron(ctx)
+
 	if t.isFlexAndNotPrimary() {
 		msg := fmt.Sprintf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
 		t.Log().Error().Msg(msg)
@@ -117,6 +120,14 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 	}
 	for _, nodename := range t.getTargetNodenames(target) {
 		if nodename == hostname.Hostname() {
+			continue
+		}
+		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
+			if isCron {
+				t.Log().Debug().Msgf("%s", err)
+			} else {
+				t.Log().Info().Msgf("%s", err)
+			}
 			continue
 		}
 		if err := t.peerSync(mode, nodename); err != nil {
@@ -480,4 +491,30 @@ func (t *T) isFlexAndNotPrimary() bool {
 		return false
 	}
 	return true
+}
+
+func (t *T) isSendAllowedToPeerEnv(nodename string) error {
+	var localEnv, peerEnv string
+	nodesInfo, err := nodesinfo.Get()
+	if err != nil {
+		return errors.Wrap(err, "error loading nodes_info.json")
+	}
+	getEnv := func(n string, s *string) error {
+		if m, ok := nodesInfo[n]; !ok {
+			return errors.Errorf("node %s not found in nodes_info.json", n)
+		} else {
+			*s = m.Env
+		}
+		return nil
+	}
+	if err := getEnv(hostname.Hostname(), &localEnv); err != nil {
+		return err
+	}
+	if err := getEnv(nodename, &peerEnv); err != nil {
+		return err
+	}
+	if localEnv != "PRD" && peerEnv == "PRD" {
+		return errors.Errorf("Refuse to sync from a non-PRD node to a PRD node")
+	}
+	return nil
 }
