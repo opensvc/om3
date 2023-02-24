@@ -51,7 +51,6 @@ type (
 		localhost                string
 		forceRefresh             bool
 		published                bool
-		cmdC                     chan any
 		databus                  *daemondata.T
 		sub                      *pubsub.Subscription
 		instanceConfig           instance.Config
@@ -59,6 +58,10 @@ type (
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
 		iMonStarter              IMonStarter
+		// ctx is a context created from parent context
+		ctx                      context.Context
+		// cancel is a cancel func for icfg, used to stop ifg if error occurs
+		cancel                   context.CancelFunc
 	}
 
 	IMonStarter interface {
@@ -68,8 +71,6 @@ type (
 
 var (
 	clusterPath = path.T{Name: "cluster", Kind: kind.Ccfg}
-
-	dropMsgTimeout = 100 * time.Millisecond
 
 	configFileCheckError = errors.New("config file check")
 
@@ -88,7 +89,7 @@ var (
 func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any, iMonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
-
+	ctx, cancel := context.WithCancel(parent)
 	o := &T{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
@@ -96,31 +97,31 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:            log.Logger.With().Str("func", "icfg").Stringer("object", p).Logger(),
 		localhost:      localhost,
 		forceRefresh:   false,
-		databus:        daemondata.FromContext(parent),
+		databus:        daemondata.FromContext(ctx),
 		filename:       filename,
 
-		// cmdC is an internal command channel to receive msgbus.Exit message.
-		// The worker reads on this chan to exit itself.
-		// This chan is buffered to allow an event handler to post the poison pill.
-		cmdC: make(chan any, 1),
-
 		iMonStarter: iMonStarter,
+
+		ctx: ctx,
+		cancel: cancel,
 	}
 
 	if err := o.setConfigure(); err != nil {
 		return err
 	}
 
-	o.startSubscriptions(parent)
+	o.startSubscriptions(ctx)
 
 	go func() {
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
-			msgbus.DropPendingMsg(o.cmdC, dropMsgTimeout)
-			o.sub.Stop()
+			cancel()
+			if err := o.sub.Stop(); err != nil {
+				o.log.Error().Err(err).Msg("subscription stop")
+			}
 			o.done(parent, svcDiscoverCmd)
 		}()
-		o.worker(parent)
+		o.worker()
 	}()
 
 	return nil
@@ -148,6 +149,7 @@ func (o *T) startInstanceMonitor() (bool, error) {
 		return false, nil
 	}
 	o.log.Info().Msgf("starting imon worker...")
+	// TODO refactor Start to use icfg context, and remove o.instanceMonitorCtx
 	if err := o.iMonStarter.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
 		o.log.Error().Err(err).Msg("failure during start imon worker")
 		return false, err
@@ -156,7 +158,7 @@ func (o *T) startInstanceMonitor() (bool, error) {
 }
 
 // worker watch for local instConfig config file updates until file is removed
-func (o *T) worker(parent context.Context) {
+func (o *T) worker() {
 	var (
 		err error
 	)
@@ -170,7 +172,7 @@ func (o *T) worker(parent context.Context) {
 	}
 	defer o.delete()
 
-	instanceMonitorCtx, cancelInstanceMonitor := context.WithCancel(parent)
+	instanceMonitorCtx, cancelInstanceMonitor := context.WithCancel(o.ctx)
 	o.instanceMonitorCtx = instanceMonitorCtx
 	defer cancelInstanceMonitor()
 	if o.isInstanceMonitorStarted, err = o.startInstanceMonitor(); err != nil {
@@ -180,16 +182,8 @@ func (o *T) worker(parent context.Context) {
 	o.log.Debug().Msg("started")
 	for {
 		select {
-		case <-parent.Done():
+		case <-o.ctx.Done():
 			return
-		case i := <-o.cmdC:
-			switch i.(type) {
-			case msgbus.Exit:
-				log.Debug().Msg("eat poison pill")
-				return
-			default:
-				o.log.Error().Interface("cmd", i).Msg("unexpected cmd")
-			}
 		case i := <-o.sub.C:
 			switch c := i.(type) {
 			case msgbus.ConfigFileUpdated:
@@ -214,14 +208,14 @@ func (o *T) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 	o.log.Debug().Msgf("recv %#v", c)
 	if err = o.configFileCheck(); err != nil {
 		o.log.Error().Err(err).Msg("configFileCheck error")
-		o.cmdC <- msgbus.Exit{}
+		o.cancel()
 		return
 	}
 	if !o.isInstanceMonitorStarted {
 		o.log.Info().Msgf("imon not yet started, try start")
 		if o.isInstanceMonitorStarted, err = o.startInstanceMonitor(); err != nil {
 			o.log.Error().Err(err).Msgf("imon start error")
-			o.cmdC <- msgbus.Exit{}
+			o.cancel()
 			return
 		}
 	}
@@ -229,14 +223,14 @@ func (o *T) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 }
 
 func (o *T) onConfigFileRemoved(c msgbus.ConfigFileRemoved) {
-	o.cmdC <- msgbus.Exit{}
+	o.cancel()
 }
 
 func (o *T) onConfigUpdated(c msgbus.ConfigUpdated) {
 	o.log.Info().Msg("local cluster config changed => refresh cfg")
 	o.forceRefresh = true
 	if err := o.configFileCheck(); err != nil {
-		o.cmdC <- msgbus.Exit{}
+		o.cancel()
 	}
 }
 
