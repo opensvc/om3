@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -50,6 +51,7 @@ type (
 	}
 
 	cmdGet struct {
+		draincommand.ErrC
 		resp chan cluster.Config
 	}
 )
@@ -59,7 +61,7 @@ var (
 )
 
 // Start launches the ccfg worker goroutine
-func Start(parent context.Context) error {
+func Start(parent context.Context, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 
 	o := &ccfg{
@@ -85,9 +87,9 @@ func Start(parent context.Context) error {
 	o.startSubscriptions()
 	go func() {
 		defer func() {
-			msgbus.DropPendingMsg(o.cmdC, time.Second)
+			draincommand.Do(o.cmdC, drainDuration)
 			if err := o.sub.Stop(); err != nil {
-				o.log.Error().Err(err).Msg("subscription stop")
+				o.log.Warn().Err(err).Msg("subscription stop")
 			}
 		}()
 		o.worker()
@@ -131,9 +133,14 @@ func (o *ccfg) worker() {
 }
 
 func Get() cluster.Config {
+	err := make(chan error, 1)
 	c := cmdGet{
+		ErrC: err,
 		resp: make(chan cluster.Config),
 	}
 	cmdC <- c
+	if <-err != nil {
+		return cluster.Config{}
+	}
 	return <-c.resp
 }
