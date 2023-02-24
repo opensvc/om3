@@ -3,6 +3,7 @@ package callcount_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +16,7 @@ func TestCounter(t *testing.T) {
 		2: "operation 2",
 		3: "operation 3",
 	}
-	c, cancel := callcount.Start(context.Background(), mapping)
+	c, cancel := callcount.Start(context.Background(), mapping, time.Millisecond)
 	defer cancel()
 	for _, i := range []int{1, 1, 2, 8, 9, 5, 9} {
 		c <- i
