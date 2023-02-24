@@ -10,26 +10,28 @@ package hbcache
 
 import (
 	"context"
+	"time"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/draincommand"
 )
 
 var (
 	cmdI = make(chan interface{})
 )
 
-func Start(ctx context.Context) {
-	go run(ctx)
+func Start(ctx context.Context, drainDuration time.Duration) {
+	go run(ctx, drainDuration)
 }
 
-func run(ctx context.Context) {
+func run(ctx context.Context, drainDuration time.Duration) {
 	gens := make(map[string]map[string]uint64)
 	heartbeats := make([]cluster.HeartbeatStream, 0)
 	log := daemonlogctx.Logger(ctx).With().Str("name", "hbcache").Logger()
 	log.Debug().Msg("started")
 	defer log.Debug().Msg("done")
-
+	defer draincommand.Do(cmdI, drainDuration)
 	for {
 		select {
 		case <-ctx.Done():
@@ -51,6 +53,7 @@ func run(ctx context.Context) {
 						Type:                  hb.Type,
 					})
 				}
+				cmd.errC <- nil
 				cmd.response <- result
 			case dropPeer:
 				delete(gens, string(cmd))
@@ -66,9 +69,17 @@ func run(ctx context.Context) {
 // Getters
 
 func Heartbeats() []cluster.HeartbeatStream {
+	err := make(chan error, 1)
 	response := make(chan []cluster.HeartbeatStream)
-	var i interface{} = getHeartbeats{response: response}
+	cmd := getHeartbeats{
+		errC:     err,
+		response: response,
+	}
+	var i interface{} = cmd
 	cmdI <- i
+	if <-err != nil {
+		return nil
+	}
 	return <-response
 }
 
@@ -90,8 +101,11 @@ func SetHeartbeats(hbs []cluster.HeartbeatStream) {
 
 // commands
 type (
+	errC draincommand.ErrC
+
 	// getters
 	getHeartbeats struct {
+		errC
 		response chan<- []cluster.HeartbeatStream
 	}
 
