@@ -308,6 +308,16 @@ func (b *Bus) Start(ctx context.Context) {
 	b.log.Info().Msg("bus started")
 }
 
+// SetDrainChanDuration overrides defaultDrainChanDuration for not yet started bus.
+//
+// It panics if called on started bus.
+func (b *Bus) SetDrainChanDuration(duration time.Duration) {
+	if b.started {
+		panic("can't set drain channel duration on started bus")
+	}
+	b.drainChanDuration = duration
+}
+
 func (b *Bus) onSubCmd(c cmdSub) {
 	id := uuid.New()
 	sub := &Subscription{
