@@ -19,6 +19,9 @@ func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		return
 	}
 	o.pubNodeConfig()
+
+	// env might have changed. nmon is responsible for updating nodes_info.json
+	o.saveNodesInfo()
 }
 
 func (o *nmon) pubNodeConfig() {
@@ -31,6 +34,7 @@ func (o *nmon) getNodeConfig() node.Config {
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
+		keyEnv                    = key.New("node", "env")
 	)
 	cfg := node.Config{}
 	if d := o.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
@@ -42,6 +46,7 @@ func (o *nmon) getNodeConfig() node.Config {
 	if d := o.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
 	}
+	cfg.Env = o.config.GetString(keyEnv)
 	return cfg
 }
 

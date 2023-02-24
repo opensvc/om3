@@ -77,7 +77,6 @@ func newNodeData(localNode string) node.Node {
 			API:             8,
 			Arbitrators:     map[string]node.ArbitratorStatus{},
 			Compat:          12,
-			Env:             "",
 			Frozen:          frozen,
 			Gen:             map[string]uint64{localNode: 1},
 			Labels:          nodesinfo.Labels{},
