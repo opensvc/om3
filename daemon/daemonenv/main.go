@@ -3,6 +3,7 @@ package daemonenv
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/opensvc/om3/core/rawconfig"
 )
@@ -13,6 +14,8 @@ var (
 
 	HeaderNode        = "o-node"
 	HeaderMultiplexed = "o-multiplexed"
+
+	DrainChanDuration = 10 * time.Millisecond
 )
 
 func CAKeyFile() string {
