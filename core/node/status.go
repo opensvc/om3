@@ -14,7 +14,6 @@ type (
 		API             uint64                      `json:"api"`
 		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
 		Compat          uint64                      `json:"compat"`
-		Env             string                      `json:"env"`
 		Frozen          time.Time                   `json:"frozen"`
 		Gen             map[string]uint64           `json:"gen"`
 		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
