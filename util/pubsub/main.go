@@ -469,12 +469,7 @@ func (b *Bus) Pub(v any, labels ...Label) {
 	case <-b.ctx.Done():
 		return
 	}
-	select {
-	case <-done:
-		return
-	case <-b.ctx.Done():
-		return
-	}
+	<-done
 }
 
 type (
