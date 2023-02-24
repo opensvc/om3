@@ -71,10 +71,11 @@ type (
 	}
 )
 
+
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create. drainDuration is the maximum duration to wait
 // while dropping discover commands
-func Start(ctx context.Context, drainDuration time.Duration) (func(), error) {
+func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), err error) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	d := discover{
@@ -112,13 +113,17 @@ func Start(ctx context.Context, drainDuration time.Duration) (func(), error) {
 	stopFSWatcher, err := d.fsWatcherStart()
 	if err != nil {
 		d.log.Error().Err(err).Msg("start")
-		return stopFSWatcher, err
+		stopFunc = func() {
+			cancel()
+			stopFSWatcher()
+		}
+		return
 	}
 
-	cancelAndWait := func() {
+	stopFunc = func() {
 		stopFSWatcher()
 		cancel() // stop cfg and omon via context cancel
 		wg.Wait()
 	}
-	return cancelAndWait, nil
+	return
 }
