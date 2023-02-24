@@ -126,6 +126,7 @@ func (t *T) MainStart(ctx context.Context) error {
 	}()
 
 	bus := pubsub.NewBus("daemon")
+	bus.SetDrainChanDuration(3 * daemonenv.DrainChanDuration)
 	bus.Start(t.ctx)
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
@@ -149,9 +150,9 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	t.ctx = daemonctx.WithDaemon(t.ctx, t)
 
-	hbcache.Start(t.ctx)
+	hbcache.Start(t.ctx, 2*daemonenv.DrainChanDuration)
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration)
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
 
@@ -170,7 +171,7 @@ func (t *T) MainStart(ctx context.Context) error {
 
 	<-started
 
-	if err := ccfg.Start(t.ctx); err != nil {
+	if err := ccfg.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
 		return err
 	}
 	if err := cstat.Start(t.ctx); err != nil {
@@ -190,14 +191,14 @@ func (t *T) MainStart(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := nmon.Start(t.ctx); err != nil {
+	if err := nmon.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
 		return err
 	}
-	if err := dns.Start(t.ctx); err != nil {
+	if err := dns.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
 		return err
 	}
 
-	cancelDiscover, err := discover.Start(t.ctx)
+	cancelDiscover, err := discover.Start(t.ctx, daemonenv.DrainChanDuration)
 	if err != nil {
 		return err
 	}
