@@ -13,12 +13,12 @@ import (
 
 type (
 	opDelObjectStatus struct {
-		err  chan<- error
+		errC
 		path path.T
 	}
 
 	opSetObjectStatus struct {
-		err   chan<- error
+		errC
 		path  path.T
 		value object.Status
 		srcEv any
@@ -29,9 +29,9 @@ type (
 //
 // cluster.object.*
 func (t T) DelObjectStatus(p path.T) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDelObjectStatus{
-		err:  err,
+		errC: err,
 		path: p,
 	}
 	t.cmdC <- op
@@ -42,9 +42,9 @@ func (t T) DelObjectStatus(p path.T) error {
 //
 // cluster.object.*
 func (t T) SetObjectStatus(p path.T, v object.Status, ev any) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetObjectStatus{
-		err:   err,
+		errC:  err,
 		path:  p,
 		value: v,
 		srcEv: ev,
@@ -53,15 +53,7 @@ func (t T) SetObjectStatus(p path.T, v object.Status, ev any) error {
 	return <-err
 }
 
-func (o opDelObjectStatus) setError(err error) {
-	o.err <- err
-}
-
-func (o opSetObjectStatus) setError(err error) {
-	o.err <- err
-}
-
-func (o opDelObjectStatus) call(ctx context.Context, d *data) {
+func (o opDelObjectStatus) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idDelObjectStatus
 	s := o.path.String()
 	if _, ok := d.pending.Cluster.Object[s]; ok {
@@ -85,13 +77,10 @@ func (o opDelObjectStatus) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }
 
-func (o opSetObjectStatus) call(ctx context.Context, d *data) {
+func (o opSetObjectStatus) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idSetObjectStatus
 	s := o.path.String()
 	labelPath := pubsub.Label{"path", s}
@@ -119,8 +108,5 @@ func (o opSetObjectStatus) call(ctx context.Context, d *data) {
 		labelLocalNode,
 		labelPath,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

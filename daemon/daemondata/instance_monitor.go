@@ -13,17 +13,18 @@ import (
 
 type (
 	opDelInstanceMonitor struct {
-		err  chan<- error
+		errC
 		path path.T
 	}
 
 	opSetInstanceMonitor struct {
-		err   chan<- error
+		errC
 		path  path.T
 		value instance.Monitor
 	}
 
 	opGetInstanceMonitorMap struct {
+		errC
 		path   path.T
 		result chan map[string]instance.Monitor
 	}
@@ -33,9 +34,9 @@ type (
 //
 // cluster.node.<localhost>.instance.<path>.monitor
 func (t T) DelInstanceMonitor(p path.T) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDelInstanceMonitor{
-		err:  err,
+		errC: err,
 		path: p,
 	}
 	t.cmdC <- op
@@ -46,10 +47,10 @@ func (t T) DelInstanceMonitor(p path.T) error {
 //
 // cluster.node.<localhost>.instance.<path>.monitor
 func (t T) SetInstanceMonitor(p path.T, v instance.Monitor) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	v.UpdatedAt = time.Now()
 	op := opSetInstanceMonitor{
-		err:   err,
+		errC:  err,
 		path:  p,
 		value: v,
 	}
@@ -57,11 +58,7 @@ func (t T) SetInstanceMonitor(p path.T, v instance.Monitor) error {
 	return <-err
 }
 
-func (o opDelInstanceMonitor) setError(err error) {
-	o.err <- err
-}
-
-func (o opDelInstanceMonitor) call(ctx context.Context, d *data) {
+func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idDelInstanceMonitor
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Monitor != nil {
@@ -81,13 +78,10 @@ func (o opDelInstanceMonitor) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }
 
-func (o opSetInstanceMonitor) call(ctx context.Context, d *data) {
+func (o opSetInstanceMonitor) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idSetInstanceMonitor
 	var op jsondelta.Operation
 	s := o.path.String()
@@ -120,24 +114,26 @@ func (o opSetInstanceMonitor) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }
 
 // GetInstanceMonitorMap returns a map of InstanceMonitor indexed by nodename
 func (t T) GetInstanceMonitorMap(p path.T) map[string]instance.Monitor {
-	result := make(chan map[string]instance.Monitor)
+	err := make(chan error, 1)
+	result := make(chan map[string]instance.Monitor, 1)
 	op := opGetInstanceMonitorMap{
+		errC:   err,
 		path:   p,
 		result: result,
 	}
 	t.cmdC <- op
+	if <-err != nil {
+		return make(map[string]instance.Monitor)
+	}
 	return <-result
 }
 
-func (o opGetInstanceMonitorMap) call(ctx context.Context, d *data) {
+func (o opGetInstanceMonitorMap) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idGetInstanceMonitorMap
 	m := make(map[string]instance.Monitor)
 	for nodename, nodeData := range d.pending.Cluster.Node {
@@ -148,4 +144,5 @@ func (o opGetInstanceMonitorMap) call(ctx context.Context, d *data) {
 		}
 	}
 	o.result <- m
+	return nil
 }

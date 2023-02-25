@@ -10,26 +10,28 @@ import (
 
 type (
 	opDelNodeMonitor struct {
-		err chan<- error
+		errC
 	}
 	opGetNodeMonitor struct {
+		errC
 		node  string
 		value chan<- node.Monitor
 	}
 	opGetNodeMonitorMap struct {
+		errC
 		result chan<- map[string]node.Monitor
 	}
 	opSetNodeMonitor struct {
-		err   chan<- error
+		errC
 		value node.Monitor
 	}
 )
 
 // DelNodeMonitor deletes Monitor.Node.<localhost>.monitor
 func (t T) DelNodeMonitor() error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDelNodeMonitor{
-		err: err,
+		errC: err,
 	}
 	t.cmdC <- op
 	return <-err
@@ -37,8 +39,10 @@ func (t T) DelNodeMonitor() error {
 
 // GetNodeMonitor returns Monitor.Node.<node>.monitor
 func (t T) GetNodeMonitor(nodename string) node.Monitor {
-	value := make(chan node.Monitor)
+	err := make(chan error, 1)
+	value := make(chan node.Monitor, 1)
 	op := opGetNodeMonitor{
+		errC:  err,
 		value: value,
 		node:  nodename,
 	}
@@ -48,30 +52,31 @@ func (t T) GetNodeMonitor(nodename string) node.Monitor {
 
 // GetNodeMonitorMap returns a map of NodeMonitor indexed by nodename
 func (t T) GetNodeMonitorMap() map[string]node.Monitor {
-	result := make(chan map[string]node.Monitor)
+	err := make(chan error, 1)
+	result := make(chan map[string]node.Monitor, 1)
 	op := opGetNodeMonitorMap{
+		errC:   err,
 		result: result,
 	}
 	t.cmdC <- op
+	if <-err != nil {
+		return make(map[string]node.Monitor)
+	}
 	return <-result
 }
 
 // SetNodeMonitor sets Monitor.Node.<localhost>.monitor
 func (t T) SetNodeMonitor(v node.Monitor) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetNodeMonitor{
-		err:   err,
+		errC:  err,
 		value: v,
 	}
 	t.cmdC <- op
 	return <-err
 }
 
-func (o opDelNodeMonitor) setError(err error) {
-	o.err <- err
-}
-
-func (o opDelNodeMonitor) call(ctx context.Context, d *data) {
+func (o opDelNodeMonitor) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idDelNodeMonitor
 	if _, ok := d.pending.Cluster.Node[d.localNode]; ok {
 		delete(d.pending.Cluster.Node, d.localNode)
@@ -87,34 +92,30 @@ func (o opDelNodeMonitor) call(ctx context.Context, d *data) {
 		},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }
 
-func (o opGetNodeMonitor) call(ctx context.Context, d *data) {
+func (o opGetNodeMonitor) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idGetNodeMonitor
 	s := node.Monitor{}
 	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		s = nodeStatus.Monitor
 	}
-	select {
-	case <-ctx.Done():
-	case o.value <- s:
-	}
+	o.value <- s
+	return nil
 }
 
-func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) {
+func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idGetNodeMonitorMap
 	m := make(map[string]node.Monitor)
 	for nodename, nodeData := range d.pending.Cluster.Node {
 		m[nodename] = *nodeData.Monitor.DeepCopy()
 	}
 	o.result <- m
+	return nil
 }
 
-func (o opSetNodeMonitor) call(ctx context.Context, d *data) {
+func (o opSetNodeMonitor) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idSetNodeMonitor
 	newValue := d.pending.Cluster.Node[d.localNode]
 	newValue.Monitor = o.value
@@ -132,8 +133,5 @@ func (o opSetNodeMonitor) call(ctx context.Context, d *data) {
 		},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

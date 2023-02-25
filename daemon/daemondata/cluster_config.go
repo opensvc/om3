@@ -14,23 +14,23 @@ import (
 
 type (
 	opSetClusterConfig struct {
-		err   chan<- error
+		errC
 		value cluster.Config
 	}
 )
 
 // SetClusterConfig sets .cluster.config
 func (t T) SetClusterConfig(value cluster.Config) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetClusterConfig{
-		err:   err,
+		errC:  err,
 		value: value,
 	}
 	t.cmdC <- op
 	return <-err
 }
 
-func (o opSetClusterConfig) call(ctx context.Context, d *data) {
+func (o opSetClusterConfig) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idSetClusterConfig
 	previousNodes := d.pending.Cluster.Config.Nodes
 	d.pending.Cluster.Config = o.value
@@ -75,5 +75,5 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) {
 			labelLocalNode,
 			pubsub.Label{"removed", v})
 	}
-	o.err <- nil
+	return nil
 }

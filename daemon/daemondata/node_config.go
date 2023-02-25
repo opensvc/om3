@@ -10,28 +10,27 @@ import (
 
 type (
 	opSetNodeConfig struct {
-		err   chan<- error
+		errC
 		value node.Config
 	}
 )
 
 // SetNodeConfig sets Monitor.Node.<localhost>.Config
 func (t T) SetNodeConfig(value node.Config) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetNodeConfig{
-		err:   err,
+		errC:  err,
 		value: value,
 	}
 	t.cmdC <- op
 	return <-err
 }
 
-func (o opSetNodeConfig) call(ctx context.Context, d *data) {
+func (o opSetNodeConfig) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idSetNodeConfig
 	v := d.pending.Cluster.Node[d.localNode]
 	if v.Config == o.value {
-		o.err <- nil
-		return
+		return nil
 	}
 	v.Config = o.value
 	d.pending.Cluster.Node[d.localNode] = v
@@ -48,8 +47,5 @@ func (o opSetNodeConfig) call(ctx context.Context, d *data) {
 		},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

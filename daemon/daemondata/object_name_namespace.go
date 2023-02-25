@@ -7,15 +7,21 @@ import (
 )
 
 type opGetServiceNames struct {
+	errC
 	services chan<- []string
 }
 
 // GetServiceNames returns the cluster wide list of path.T.String() parsed from the cluster dataset, in
 // cluster.node[*].instance[*].config
 func (t T) GetServiceNames() []string {
-	services := make(chan []string)
+	err := make(chan error, 1)
+	services := make(chan []string, 1)
 	t.cmdC <- opGetServiceNames{
+		errC:     err,
 		services: services,
+	}
+	if <-err != nil {
+		return make([]string, 0)
 	}
 	return <-services
 }
@@ -32,7 +38,7 @@ func (t T) GetNamespaces() []string {
 	return t.GetServicePaths().Namespaces()
 }
 
-func (o opGetServiceNames) call(ctx context.Context, d *data) {
+func (o opGetServiceNames) call(ctx context.Context, d *data) error {
 	paths := make(map[string]bool)
 	for node := range d.pending.Cluster.Node {
 		for s, inst := range d.pending.Cluster.Node[node].Instance {
@@ -45,10 +51,8 @@ func (o opGetServiceNames) call(ctx context.Context, d *data) {
 	for s := range paths {
 		services = append(services, s)
 	}
-	select {
-	case <-ctx.Done():
-	case o.services <- services:
-	}
+	o.services <- services
+	return nil
 }
 
 type (
