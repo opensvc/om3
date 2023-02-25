@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,7 +27,7 @@ type (
 		testhelper.Env
 
 		// Ctx is the daemon context, can be used to retrieve bus, data...
-		Ctx    context.Context
+		Ctx context.Context
 
 		// Cancel is the daemon cancel function
 		Cancel context.CancelFunc
@@ -42,15 +43,17 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	if env == nil {
 		env = initEnv(t)
 	}
+
+	drainDuration := 10 * time.Millisecond
 	d.Env = *env
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := pubsub.NewBus("daemon")
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 
-	hbcache.Start(ctx)
+	hbcache.Start(ctx, drainDuration)
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, 10*time.Millisecond)
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 

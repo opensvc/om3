@@ -76,7 +76,7 @@ func TestDaemonData(t *testing.T) {
 	defer psbus.Stop()
 
 	t.Logf("start daemondata")
-	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx)
+	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx, 10*time.Millisecond)
 	defer cancel()
 
 	ctx = daemondata.ContextWithBus(ctx, cmdC)

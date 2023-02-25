@@ -18,6 +18,7 @@ package daemondata
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/opensvc/om3/core/hbtype"
 )
@@ -33,7 +34,7 @@ type (
 // Start runs the daemon journaled data manager
 //
 // It returns a cmdC chan to submit actions on cluster data
-func Start(parent context.Context) (chan<- caller, chan<- *hbtype.Msg, context.CancelFunc) {
+func Start(parent context.Context, drainDuration time.Duration) (chan<- caller, chan<- *hbtype.Msg, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
 	cmdC := make(chan caller)
 	hbRecvMsgQ := make(chan *hbtype.Msg)
@@ -41,7 +42,7 @@ func Start(parent context.Context) (chan<- caller, chan<- *hbtype.Msg, context.C
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		run(ctx, cmdC, hbRecvMsgQ)
+		run(ctx, cmdC, hbRecvMsgQ, drainDuration)
 	}()
 	return cmdC, hbRecvMsgQ, func() {
 		cancel()
