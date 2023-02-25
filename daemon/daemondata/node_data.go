@@ -14,11 +14,12 @@ import (
 
 type (
 	opDropPeerNode struct {
-		err  chan<- error
+		errC
 		node string
 	}
 
 	opGetNode struct {
+		errC
 		node   string
 		result chan<- *node.Node
 	}
@@ -26,9 +27,9 @@ type (
 
 // DropPeerNode drops cluster.node.<peer>
 func (t T) DropPeerNode(peerNode string) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDropPeerNode{
-		err:  err,
+		errC: err,
 		node: peerNode,
 	}
 	t.cmdC <- op
@@ -37,16 +38,21 @@ func (t T) DropPeerNode(peerNode string) error {
 
 // GetNode returns a deep copy of cluster.Node.<node>
 func (t T) GetNode(nodename string) *node.Node {
-	result := make(chan *node.Node)
+	err := make(chan error, 1)
+	result := make(chan *node.Node, 1)
 	op := opGetNode{
+		errC:   err,
 		result: result,
 		node:   nodename,
 	}
 	t.cmdC <- op
+	if <-err != nil {
+		return nil
+	}
 	return <-result
 }
 
-func (o opDropPeerNode) call(ctx context.Context, d *data) {
+func (o opDropPeerNode) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idDropPeerNode
 	peerNode := o.node
 	// TODO publish event for b2.1 "forget_peer" hook
@@ -76,14 +82,15 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) {
 		)
 	}
 	d.bus.Pub(msgbus.ForgetPeer{Node: peerNode}, pubsub.Label{"node", peerNode})
-	o.err <- nil
+	return nil
 }
 
-func (o opGetNode) call(ctx context.Context, d *data) {
+func (o opGetNode) call(ctx context.Context, d *data) error {
 	d.counterCmd <- idGetNode
 	if nodeData, ok := d.pending.Cluster.Node[o.node]; ok {
 		o.result <- nodeData.DeepCopy()
 	} else {
 		o.result <- nil
 	}
+	return nil
 }
