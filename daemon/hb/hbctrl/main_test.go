@@ -18,16 +18,16 @@ import (
 
 func bootstrapDaemon(t *testing.T, ctx context.Context) context.Context {
 	t.Logf("start pubsub")
+	drainDuration := 10 * time.Millisecond
 	bus := pubsub.NewBus("daemon")
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
-
 	var daemon subdaemon.RootManager
 	ctx = daemonctx.WithDaemon(ctx, daemon)
 
 	t.Logf("start daemon")
-	hbcache.Start(ctx)
-	dataCmd, dataMsgRecvQ, _ := daemondata.Start(ctx)
+	hbcache.Start(ctx, drainDuration)
+	dataCmd, dataMsgRecvQ, _ := daemondata.Start(ctx, drainDuration)
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 

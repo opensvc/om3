@@ -12,7 +12,6 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/callcount"
@@ -120,8 +119,6 @@ var (
 
 	labelLocalNode = pubsub.Label{"node", hostname.Hostname()}
 
-	dropPendingCmdTimeout = 2 * daemonenv.DrainChanDuration
-
 	ErrDrained = errors.New("drained command")
 )
 
@@ -205,8 +202,8 @@ func PropagationInterval() time.Duration {
 //	        x <- resC
 //	        return
 //	     }
-func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg) {
-	counterCmd, counterCancel := callcount.Start(ctx, idToName, 4*daemonenv.DrainChanDuration)
+func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
+	counterCmd, counterCancel := callcount.Start(ctx, idToName, drainDuration)
 	defer counterCancel()
 	d := newData(counterCmd)
 	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
@@ -239,7 +236,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg) {
 		d.log.Debug().Msg("draining")
 		defer d.log.Debug().Msg("drained")
 
-		tC := time.After(dropPendingCmdTimeout)
+		tC := time.After(drainDuration)
 		for {
 			select {
 			case <-hbRecvQ:
