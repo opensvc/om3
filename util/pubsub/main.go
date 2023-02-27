@@ -803,7 +803,7 @@ func (sub *Subscription) Start() {
 		// listen all until AddFilter is called
 		sub.AddFilter(nil)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(sub.bus.ctx)
 	sub.cancel = cancel
 	started := make(chan bool)
 	sub.bus.Add(1)
@@ -816,10 +816,13 @@ func (sub *Subscription) Start() {
 			select {
 			case <-ctx.Done():
 				return
-			case <-sub.bus.ctx.Done():
-				return
 			case i := <-sub.q:
-				sub.bus.beginNotify <- sub.id
+				select {
+				case <-ctx.Done():
+					// sub, or bus is done
+					return
+				case sub.bus.beginNotify <- sub.id:
+				}
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warn().Msgf("%s error: %s. stop subscription", sub, err)
@@ -830,10 +833,17 @@ func (sub *Subscription) Start() {
 							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
 						}
 					}()
-					sub.bus.endNotify <- sub.id
-					return
+					select {
+					case <-sub.bus.ctx.Done():
+						return
+					case sub.bus.endNotify <- sub.id:
+					}
 				}
-				sub.bus.endNotify <- sub.id
+				select {
+				case <-sub.bus.ctx.Done():
+					return
+				case sub.bus.endNotify <- sub.id:
+				}
 			}
 		}
 	}()
