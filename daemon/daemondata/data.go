@@ -335,10 +335,19 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 			}
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
-				beginCmd <- cmd
+				select {
+				case <-ctx.Done():
+					c.SetError(ctx.Err())
+					return
+				case beginCmd <- cmd:
+				}
 				err := c.call(ctx, d)
 				c.SetError(err)
-				endCmd <- true
+				select {
+				case <-ctx.Done():
+					return
+				case endCmd <- true:
+				}
 			} else {
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				counterCmd <- idUndef
