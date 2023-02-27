@@ -28,6 +28,17 @@ func (t *T) WarnExceeded(ctx context.Context, begin <-chan interface{}, end <-ch
 	for {
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
+			tC := time.After(5 * time.Millisecond)
+			for {
+				select {
+				case <-tC:
+					return
+				case <-begin:
+				case <-end:
+				case <-ticker.C:
+				}
+			}
 			return
 		case c := <-begin:
 			startTime = time.Now()
