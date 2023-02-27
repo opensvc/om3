@@ -92,11 +92,7 @@ func run(ctx context.Context, c <-chan interface{}, mapping map[int]string) {
 		case op := <-c:
 			switch o := op.(type) {
 			case int:
-				if _, ok := counts[o]; ok {
-					counts[o]++
-				} else {
-					counts[o] = 1
-				}
+				counts[o]++
 			case getCount:
 				resCounts := make(Counts)
 				for i, v := range counts {
