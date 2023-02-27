@@ -31,6 +31,8 @@ type (
 
 		// Cancel is the daemon cancel function
 		Cancel context.CancelFunc
+
+		DrainDuration time.Duration
 	}
 )
 
@@ -38,22 +40,21 @@ type (
 func Setup(t *testing.T, env *testhelper.Env) *D {
 	t.Helper()
 	hostname.SetHostnameForGoTest("node1")
-	t.Log("Setup...")
-	d := D{}
+	drainDuration := 40 * time.Millisecond
+	t.Logf("Setup with drain duration %s", drainDuration)
 	if env == nil {
 		env = initEnv(t)
 	}
 
-	drainDuration := 10 * time.Millisecond
-	d.Env = *env
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := pubsub.NewBus("daemon")
+	bus.SetDrainChanDuration(drainDuration)
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 
 	hbcache.Start(ctx, drainDuration)
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, 10*time.Millisecond)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration)
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 
@@ -63,9 +64,10 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 		hostname.SetHostnameForGoTest("")
 	}
 	return &D{
-		Env:    *env,
-		Ctx:    ctx,
-		Cancel: cancelD,
+		Env:           *env,
+		Ctx:           ctx,
+		Cancel:        cancelD,
+		DrainDuration: drainDuration,
 	}
 }
 
