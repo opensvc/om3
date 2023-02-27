@@ -15,7 +15,7 @@ var (
 	HeaderNode        = "o-node"
 	HeaderMultiplexed = "o-multiplexed"
 
-	DrainChanDuration = 10 * time.Millisecond
+	DrainChanDuration = 40 * time.Millisecond
 )
 
 func CAKeyFile() string {
