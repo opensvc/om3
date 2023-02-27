@@ -77,7 +77,12 @@ func initEnv(t *testing.T) *testhelper.Env {
 		"osvc_cluster_name": env.ClusterName,
 	})
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+	out := zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: time.StampMicro,
+	}
+
+	log.Logger = log.Logger.Output(out).With().Caller().Logger()
 
 	// Create mandatory dirs
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
