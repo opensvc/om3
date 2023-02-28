@@ -208,6 +208,11 @@ func (o *imon) worker(initialNodes []string) {
 		case <-o.ctx.Done():
 			return
 		case i := <-o.sub.C:
+			select {
+			case <-o.ctx.Done():
+				return
+			default:
+			}
 			switch c := i.(type) {
 			case msgbus.ObjectStatusUpdated:
 				o.onObjectStatusUpdated(c)
@@ -225,6 +230,11 @@ func (o *imon) worker(initialNodes []string) {
 				o.onNodeStatsUpdated(c)
 			}
 		case i := <-o.cmdC:
+			select {
+			case <-o.ctx.Done():
+				return
+			default:
+			}
 			switch c := i.(type) {
 			case cmdOrchestrate:
 				o.needOrchestrate(c)
@@ -240,6 +250,11 @@ func (o *imon) delete() {
 }
 
 func (o *imon) update() {
+	select {
+	case <-o.ctx.Done():
+		return
+	default:
+	}
 	newValue := o.state
 	if err := o.databus.SetInstanceMonitor(o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceMonitor")
@@ -254,6 +269,11 @@ func (o *imon) transitionTo(newState instance.MonitorState) {
 
 // updateIfChange log updates and publish new state value when changed
 func (o *imon) updateIfChange() {
+	select {
+	case <-o.ctx.Done():
+		return
+	default:
+	}
 	if !o.change {
 		return
 	}

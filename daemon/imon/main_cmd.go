@@ -448,10 +448,20 @@ func (o *imon) needOrchestrate(c cmdOrchestrate) {
 	if c.state == instance.MonitorStateZero {
 		return
 	}
+	select {
+	case <-o.ctx.Done():
+		return
+	default:
+	}
 	if o.state.State == c.state {
 		o.change = true
 		o.state.State = c.newState
 		o.updateIfChange()
+	}
+	select {
+	case <-o.ctx.Done():
+		return
+	default:
 	}
 	o.orchestrate()
 }
