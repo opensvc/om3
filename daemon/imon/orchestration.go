@@ -9,8 +9,20 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
+func (o *imon) isDone() bool {
+	select {
+	case <-o.ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
+
 // orchestrate from omon vs global expect
 func (o *imon) orchestrate() {
+	if o.isDone() {
+		return
+	}
 	if _, ok := o.instStatus[o.localhost]; !ok {
 		return
 	}
@@ -33,7 +45,9 @@ func (o *imon) orchestrate() {
 		o.endOrchestration()
 		return
 	}
-
+	if o.isDone() {
+		return
+	}
 	if nodeMonitor, ok := o.nodeMonitor[o.localhost]; !ok {
 		return
 	} else if nodeMonitor.State != node.MonitorStateIdle {
@@ -41,6 +55,9 @@ func (o *imon) orchestrate() {
 	}
 
 	o.orchestrateResourceRestart()
+	if o.isDone() {
+		return
+	}
 
 	switch o.state.GlobalExpect {
 	case instance.MonitorGlobalExpectNone:
