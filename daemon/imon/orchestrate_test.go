@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/instance"
@@ -21,7 +23,6 @@ import (
 	"github.com/opensvc/om3/daemon/icfg"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
-	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -32,14 +33,15 @@ type (
 	}
 
 	crm struct {
-		calls  [][]string
+		crmSpy
 		action func(title string, cmdArgs ...string) error
 	}
-)
 
-func TestMain(m *testing.M) {
-	testhelper.Main(m, func(args []string) {})
-}
+	crmSpy struct {
+		sync.RWMutex
+		calls [][]string
+	}
+)
 
 func Test_Orchestrate_HA(t *testing.T) {
 	type tCase struct {
@@ -160,19 +162,26 @@ func Test_Orchestrate_HA(t *testing.T) {
 			require.Nil(t, err)
 
 			evImon := <-evC
-			t.Logf("crm calls: %v", crm.calls)
-			require.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
+			calls := crm.getCalls()
+			t.Logf("crm calls: %v", calls)
+			t.Logf("verify state")
+			assert.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
 				"expected state %s found %s", c.expectedState, evImon.Value.State)
-			require.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
+			t.Logf("verify global expect")
+			assert.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
 				"expected global expect %s found %s", c.expectedGlobalExpect, evImon.Value.GlobalExpect)
-			require.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
+			t.Logf("verify local expect")
+			assert.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
 				"expected local expect %s found %s", c.expectedLocalExpect, evImon.Value.LocalExpect)
-			require.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
+			t.Logf("verify leader")
+			assert.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
 				"expected IsLeader %v found %v", c.expectedIsLeader, evImon.Value.IsLeader)
-			require.Equalf(t, c.expectedIsHALeader, evImon.Value.IsHALeader,
+			t.Logf("verify ha leader")
+			assert.Equalf(t, c.expectedIsHALeader, evImon.Value.IsHALeader,
 				"expected IsHALeader %v found %v", c.expectedIsHALeader, evImon.Value.IsHALeader)
-			require.Equalf(t, c.expectedCrm, crm.calls,
-				"expected calls %v, found %v", c.expectedCrm, crm.calls)
+			t.Logf("verify calls")
+			assert.Equalf(t, c.expectedCrm, calls,
+				"expected calls %v, found %v", c.expectedCrm, calls)
 		})
 	}
 }
@@ -208,14 +217,30 @@ func createOmon(t *testing.T, ctx context.Context) {
 	}
 }
 
+func (c *crmSpy) addCall(cmdArgs ...string) {
+	c.Lock()
+	defer c.Unlock()
+	c.calls = append(c.calls, cmdArgs)
+}
+
+func (c *crmSpy) getCalls() [][]string {
+	c.RLock()
+	defer c.RUnlock()
+	return append([][]string{}, c.calls...)
+}
+
 func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[string]sideEffect) *crm {
 	dBus := daemondata.FromContext(ctx)
 	c := crm{
-		calls: make([][]string, 0),
+		crmSpy: crmSpy{
+			RWMutex: sync.RWMutex{},
+			calls:   make([][]string, 0),
+		},
+		action: nil,
 	}
 	c.action = func(title string, cmdArgs ...string) error {
 		t.Logf("--- crmAction %s %s", title, cmdArgs)
-		c.calls = append(c.calls, cmdArgs)
+		c.addCall(cmdArgs...)
 		if len(cmdArgs) < 2 {
 			err := errors.Errorf("unexpected command %s", cmdArgs)
 			t.Logf("--- crmAction error %s", err)
