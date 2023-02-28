@@ -49,7 +49,7 @@ func (t T) GetNodeStatus(nodename string) *node.Status {
 }
 
 func (o opGetNodeStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetNodeStatus
+	d.statCount[idGetNodeStatus]++
 	if nodeData, ok := d.pending.Cluster.Node[o.node]; ok {
 		o.result <- nodeData.Status.DeepCopy()
 	} else {
@@ -75,7 +75,7 @@ func (t T) GetNodeStatusMap() map[string]node.Status {
 
 func (o opGetNodeStatusMap) call(ctx context.Context, d *data) error {
 	m := make(map[string]node.Status)
-	d.counterCmd <- idGetNodeStatusMap
+	d.statCount[idGetNodeStatusMap]++
 	for nodename, nodeData := range d.pending.Cluster.Node {
 		m[nodename] = *nodeData.Status.DeepCopy()
 	}
@@ -95,7 +95,7 @@ func (t T) SetNodeFrozen(tm time.Time) error {
 }
 
 func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetNodeStatusFrozen
+	d.statCount[idSetNodeStatusFrozen]++
 	v := d.pending.Cluster.Node[d.localNode]
 	v.Status.Frozen = o.value
 	d.pending.Cluster.Node[d.localNode] = v
@@ -136,7 +136,7 @@ func (t T) SetNodeStatusLabels(labels nodesinfo.Labels) error {
 }
 
 func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetNodeStatusLabels
+	d.statCount[idSetNodeStatusLabels]++
 	v := d.pending.Cluster.Node[d.localNode]
 	v.Status.Labels = o.value
 	d.pending.Cluster.Node[d.localNode] = v

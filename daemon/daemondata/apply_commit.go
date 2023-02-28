@@ -25,7 +25,7 @@ import (
 //			   drop pending ops
 //			   drop patch queue
 func (d *data) commitPendingOps() (changes bool) {
-	d.counterCmd <- idCommitPending
+	d.statCount[idCommitPending]++
 	d.log.Debug().Msg("commitPendingOps")
 	if len(d.pendingOps) > 0 {
 		changes = true

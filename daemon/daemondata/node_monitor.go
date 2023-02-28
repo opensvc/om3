@@ -77,7 +77,7 @@ func (t T) SetNodeMonitor(v node.Monitor) error {
 }
 
 func (o opDelNodeMonitor) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idDelNodeMonitor
+	d.statCount[idDelNodeMonitor]++
 	if _, ok := d.pending.Cluster.Node[d.localNode]; ok {
 		delete(d.pending.Cluster.Node, d.localNode)
 		op := jsondelta.Operation{
@@ -96,7 +96,7 @@ func (o opDelNodeMonitor) call(ctx context.Context, d *data) error {
 }
 
 func (o opGetNodeMonitor) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetNodeMonitor
+	d.statCount[idGetNodeMonitor]++
 	s := node.Monitor{}
 	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		s = nodeStatus.Monitor
@@ -106,7 +106,7 @@ func (o opGetNodeMonitor) call(ctx context.Context, d *data) error {
 }
 
 func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetNodeMonitorMap
+	d.statCount[idGetNodeMonitorMap]++
 	m := make(map[string]node.Monitor)
 	for nodename, nodeData := range d.pending.Cluster.Node {
 		m[nodename] = *nodeData.Monitor.DeepCopy()
@@ -116,7 +116,7 @@ func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetNodeMonitor) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetNodeMonitor
+	d.statCount[idSetNodeMonitor]++
 	newValue := d.pending.Cluster.Node[d.localNode]
 	newValue.Monitor = o.value
 	d.pending.Cluster.Node[d.localNode] = newValue

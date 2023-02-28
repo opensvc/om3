@@ -53,7 +53,7 @@ func (t T) GetNode(nodename string) *node.Node {
 }
 
 func (o opDropPeerNode) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idDropPeerNode
+	d.statCount[idDropPeerNode]++
 	peerNode := o.node
 	// TODO publish event for b2.1 "forget_peer" hook
 	delete(d.pending.Cluster.Node[d.localNode].Status.Gen, peerNode)
@@ -86,7 +86,7 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) error {
 }
 
 func (o opGetNode) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetNode
+	d.statCount[idGetNode]++
 	if nodeData, ok := d.pending.Cluster.Node[o.node]; ok {
 		o.result <- nodeData.DeepCopy()
 	} else {

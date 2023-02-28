@@ -59,7 +59,7 @@ func (t T) SetInstanceMonitor(p path.T, v instance.Monitor) error {
 }
 
 func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idDelInstanceMonitor
+	d.statCount[idDelInstanceMonitor]++
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Monitor != nil {
 		inst.Monitor = nil
@@ -82,7 +82,7 @@ func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetInstanceMonitor) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetInstanceMonitor
+	d.statCount[idSetInstanceMonitor]++
 	var op jsondelta.Operation
 	s := o.path.String()
 	value := o.value.DeepCopy()
@@ -134,7 +134,7 @@ func (t T) GetInstanceMonitorMap(p path.T) map[string]instance.Monitor {
 }
 
 func (o opGetInstanceMonitorMap) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetInstanceMonitorMap
+	d.statCount[idGetInstanceMonitorMap]++
 	m := make(map[string]instance.Monitor)
 	for nodename, nodeData := range d.pending.Cluster.Node {
 		if inst, ok := nodeData.Instance[o.path.String()]; ok {

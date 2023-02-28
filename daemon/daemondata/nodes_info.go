@@ -29,7 +29,7 @@ func (t T) GetNodesInfo() *nodesinfo.NodesInfo {
 }
 
 func (o opGetNodesInfo) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetNodesInfo
+	d.statCount[idGetNodesInfo]++
 	result := make(nodesinfo.NodesInfo)
 	for node, nodeData := range d.pending.Cluster.Node {
 		result[node] = nodesinfo.NodeInfo{

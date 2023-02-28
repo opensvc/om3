@@ -46,7 +46,7 @@ func (t T) GetNodeStatsMap() map[string]node.Stats {
 }
 
 func (o opGetNodeStatsMap) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetNodeStatsMap
+	d.statCount[idGetNodeStatsMap]++
 	m := make(map[string]node.Stats)
 	for nodename, nodeData := range d.pending.Cluster.Node {
 		m[nodename] = *nodeData.Stats.DeepCopy()
@@ -56,7 +56,7 @@ func (o opGetNodeStatsMap) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetNodeStats) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetNodeStats
+	d.statCount[idSetNodeStats]++
 	v := d.pending.Cluster.Node[d.localNode]
 	if v.Stats == o.value {
 		return nil

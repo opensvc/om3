@@ -98,7 +98,7 @@ func (t T) SetInstanceStatus(p path.T, v instance.Status) error {
 }
 
 func (o opDelInstanceStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idDelInstanceStatus
+	d.statCount[idDelInstanceStatus]++
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Status != nil {
 		inst.Status = nil
@@ -121,7 +121,7 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) error {
 }
 
 func (o opGetInstanceStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetInstanceStatus
+	d.statCount[idGetInstanceStatus]++
 	s := instance.Status{}
 	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		if inst, ok := nodeStatus.Instance[o.path.String()]; ok && inst.Status != nil {
@@ -133,7 +133,7 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetInstanceFrozen) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetInstanceFrozen
+	d.statCount[idSetInstanceFrozen]++
 	var (
 		op   jsondelta.Operation
 		ok   bool
@@ -175,7 +175,7 @@ func (o opSetInstanceFrozen) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetInstanceStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetInstanceStatus
+	d.statCount[idSetInstanceStatus]++
 	var op jsondelta.Operation
 	s := o.path.String()
 	value := o.value.DeepCopy()

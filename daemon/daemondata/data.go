@@ -14,7 +14,6 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/callcount"
 	"github.com/opensvc/om3/util/durationlog"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/jsondelta"
@@ -48,8 +47,9 @@ type (
 		// cluster nodes from local cluster config
 		clusterNodes map[string]struct{}
 
-		counterCmd chan<- interface{}
-		log        zerolog.Logger
+		// statCount is a map[<stat id>] to track number of <id> calls
+		statCount map[int]uint64
+		log       zerolog.Logger
 		bus        *pubsub.Bus
 
 		// msgLocalGen hold the latest published msg gen for localhost
@@ -203,9 +203,7 @@ func PropagationInterval() time.Duration {
 //	        return
 //	     }
 func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
-	counterCmd, counterCancel := callcount.Start(ctx, idToName, drainDuration)
-	defer counterCancel()
-	d := newData(counterCmd)
+	d := newData()
 	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
 	d.log.Info().Msg("starting")
 	defer d.log.Info().Msg("stopped")
@@ -350,7 +348,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 				}
 			} else {
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
-				counterCmd <- idUndef
+				d.statCount[idUndef]++
 			}
 		}
 	}

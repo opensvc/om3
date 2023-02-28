@@ -12,7 +12,7 @@ import (
 )
 
 func (d *data) setDaemonHb() {
-	d.counterCmd <- idSetDaemonHb
+	d.statCount[idSetDaemonHb]++
 	hbModes := make([]cluster.HbMode, 0)
 	nodes := make([]string, 0)
 	for node := range d.hbMsgMode {

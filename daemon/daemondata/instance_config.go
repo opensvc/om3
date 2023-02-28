@@ -77,7 +77,7 @@ func (t T) SetInstanceConfig(p path.T, v instance.Config) error {
 }
 
 func (o opDelInstanceConfig) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idDelInstanceConfig
+	d.statCount[idDelInstanceConfig]++
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Config != nil {
 		inst.Config = nil
@@ -100,7 +100,7 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) error {
 }
 
 func (o opGetInstanceConfig) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetInstanceConfig
+	d.statCount[idGetInstanceConfig]++
 	s := instance.Config{}
 	if nodeConfig, ok := d.pending.Cluster.Node[o.node]; ok {
 		if inst, ok := nodeConfig.Instance[o.path.String()]; ok && inst.Config != nil {
@@ -112,7 +112,7 @@ func (o opGetInstanceConfig) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetInstanceConfig) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetInstanceConfig
+	d.statCount[idSetInstanceConfig]++
 	var op jsondelta.Operation
 	s := o.path.String()
 	value := o.value.DeepCopy()
