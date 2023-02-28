@@ -209,7 +209,7 @@ func createOmon(t *testing.T, ctx context.Context) {
 }
 
 func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[string]sideEffect) *crm {
-	bus := pubsub.BusFromContext(ctx)
+	dBus := daemondata.FromContext(ctx)
 	c := crm{
 		calls: make([][]string, 0),
 	}
@@ -236,20 +236,16 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 		}
 
 		if se.iStatus != nil {
-			istatus := msgbus.InstanceStatusUpdated{
-				Path: p,
-				Node: "node1",
-				Value: instance.Status{
-					Avail:       se.iStatus.Avail,
-					Overall:     se.iStatus.Overall,
-					Kind:        p.Kind,
-					Provisioned: se.iStatus.Provisioned,
-					Optional:    se.iStatus.Optional,
-					Updated:     time.Now(),
-				},
+			v := instance.Status{
+				Avail:       se.iStatus.Avail,
+				Overall:     se.iStatus.Overall,
+				Kind:        p.Kind,
+				Provisioned: se.iStatus.Provisioned,
+				Optional:    se.iStatus.Optional,
+				Updated:     time.Now(),
 			}
-			t.Logf("--- crmAction %s %v publish %#v", title, cmdArgs, istatus)
-			bus.Pub(istatus, pubsub.Label{"path", p.String()}, pubsub.Label{"node", "node1"})
+			require.NoError(t, dBus.SetInstanceStatus(p, v))
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated)
 		}
 
 		if se.err != nil {
