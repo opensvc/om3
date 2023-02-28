@@ -75,7 +75,7 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 //
 //	"full", "ping" or len <msg.delta> (patch)
 func (d *data) getHbMessage() (hbtype.Msg, error) {
-	d.counterCmd <- idGetHbMessage
+	d.statCount[idGetHbMessage]++
 	d.log.Debug().Msg("getHbMessage")
 	d.setNextMsgType()
 	var err error
@@ -180,7 +180,7 @@ func (d *data) setNextMsgType() {
 }
 
 func (o opSetHBSendQ) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetHBSendQ
+	d.statCount[idSetHBSendQ]++
 	d.hbSendQ = o.hbSendQ
 	return nil
 }

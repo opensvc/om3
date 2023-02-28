@@ -31,7 +31,7 @@ func (t T) SetClusterConfig(value cluster.Config) error {
 }
 
 func (o opSetClusterConfig) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetClusterConfig
+	d.statCount[idSetClusterConfig]++
 	previousNodes := d.pending.Cluster.Config.Nodes
 	d.pending.Cluster.Config = o.value
 	op := jsondelta.Operation{

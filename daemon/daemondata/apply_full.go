@@ -9,7 +9,7 @@ import (
 )
 
 func (d *data) applyFull(msg *hbtype.Msg) error {
-	d.counterCmd <- idApplyFull
+	d.statCount[idApplyFull]++
 	remote := msg.Nodename
 	local := d.localNode
 	d.log.Debug().Msgf("applyFull %s", remote)

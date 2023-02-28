@@ -27,7 +27,7 @@ func (t T) SetNodeConfig(value node.Config) error {
 }
 
 func (o opSetNodeConfig) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetNodeConfig
+	d.statCount[idSetNodeConfig]++
 	v := d.pending.Cluster.Node[d.localNode]
 	if v.Config == o.value {
 		return nil

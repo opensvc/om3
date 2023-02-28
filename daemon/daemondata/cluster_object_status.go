@@ -54,7 +54,7 @@ func (t T) SetObjectStatus(p path.T, v object.Status, ev any) error {
 }
 
 func (o opDelObjectStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idDelObjectStatus
+	d.statCount[idDelObjectStatus]++
 	s := o.path.String()
 	if _, ok := d.pending.Cluster.Object[s]; ok {
 		delete(d.pending.Cluster.Object, s)
@@ -81,7 +81,7 @@ func (o opDelObjectStatus) call(ctx context.Context, d *data) error {
 }
 
 func (o opSetObjectStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetObjectStatus
+	d.statCount[idSetObjectStatus]++
 	s := o.path.String()
 	labelPath := pubsub.Label{"path", s}
 	d.pending.Cluster.Object[s] = o.value

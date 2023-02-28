@@ -35,7 +35,7 @@ func (t T) GetHbMessageType() HbMessageType {
 }
 
 func (o opGetHbMessageType) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetHbMessageType
+	d.statCount[idGetHbMessageType]++
 	o.result <- HbMessageType{
 		Type:        d.hbMessageType,
 		Nodes:       d.pending.Cluster.Config.Nodes,

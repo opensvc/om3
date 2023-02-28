@@ -8,12 +8,12 @@ import (
 
 type opStats struct {
 	errC
-	stats chan<- callcount.Stats
+	stats chan<- map[string]uint64
 }
 
 func (t T) Stats() callcount.Stats {
 	err := make(chan error, 1)
-	stats := make(chan callcount.Stats, 1)
+	stats := make(chan map[string]uint64, 1)
 	cmd := opStats{stats: stats, errC: err}
 	t.cmdC <- cmd
 	if <-err != nil {
@@ -22,9 +22,13 @@ func (t T) Stats() callcount.Stats {
 	return <-stats
 }
 
-func (o opStats) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idStats
-	o.stats <- callcount.GetStats(d.counterCmd)
+func (o opStats) call(_ context.Context, d *data) error {
+	d.statCount[idStats]++
+	stats := make(map[string]uint64)
+	for id, count := range d.statCount {
+		stats[idToName[id]] = count
+	}
+	o.stats <- stats
 	return nil
 }
 
@@ -55,7 +59,6 @@ const (
 	idGetNodesInfo
 	idGetServiceNames
 	idGetStatus
-	idSetHeartbeatPing
 	idSetClusterConfig
 	idSetClusterStatus
 	idSetDaemonHb

@@ -34,7 +34,7 @@ type opGetStatus struct {
 }
 
 func (o opGetStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idGetStatus
+	d.statCount[idGetStatus]++
 	o.status <- d.pending.DeepCopy()
 	return nil
 }
@@ -53,7 +53,7 @@ func (t T) SetClusterStatus(v cluster.Status) error {
 }
 
 func (o opSetClusterStatus) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetClusterStatus
+	d.statCount[idSetClusterStatus]++
 	d.pending.Cluster.Status = o.value
 	d.bus.Pub(
 		msgbus.ClusterStatusUpdated{

@@ -27,7 +27,7 @@ func (t T) SetNodeOsPaths(paths san.Paths) error {
 }
 
 func (o opSetNodeOsPaths) call(ctx context.Context, d *data) error {
-	d.counterCmd <- idSetNodeOsPaths
+	d.statCount[idSetNodeOsPaths]++
 	v := d.pending.Cluster.Node[d.localNode]
 	v.Os.Paths = o.value
 	d.pending.Cluster.Node[d.localNode] = v
