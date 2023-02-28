@@ -12,7 +12,7 @@ import (
 )
 
 func TestJournal(t *testing.T) {
-	data := newData(nil).pending
+	data := newData().pending
 	b, err := json.Marshal(data)
 	require.NoError(t, err)
 
