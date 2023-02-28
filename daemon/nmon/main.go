@@ -21,6 +21,7 @@ package nmon
 
 import (
 	"context"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -123,7 +124,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 					}
 				}
 			}()
-			if err := o.sub.Stop(); err != nil {
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 		}()

@@ -116,7 +116,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
 			cancel()
-			if err := o.sub.Stop(); err != nil {
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 			o.done(parent, svcDiscoverCmd)

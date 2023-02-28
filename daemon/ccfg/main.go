@@ -7,6 +7,7 @@ package ccfg
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -88,7 +89,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	go func() {
 		defer func() {
 			draincommand.Do(o.cmdC, drainDuration)
-			if err := o.sub.Stop(); err != nil {
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
 				o.log.Warn().Err(err).Msg("subscription stop")
 			}
 		}()

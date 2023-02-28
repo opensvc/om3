@@ -7,6 +7,7 @@ package cstat
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -59,7 +60,7 @@ func Start(parent context.Context) error {
 	o.startSubscriptions()
 	go func() {
 		defer func() {
-			if err := o.sub.Stop(); err != nil {
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 		}()
