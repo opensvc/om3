@@ -20,6 +20,7 @@ package imon
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -75,6 +76,8 @@ type (
 		waitConvergedOrchestrationMsg map[string]string
 
 		acceptedOrchestrationId string
+
+		drainDuration time.Duration
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -83,22 +86,22 @@ type (
 		newState instance.MonitorState
 	}
 
-	imonFactory struct{}
+	Factory struct {
+		DrainDuration time.Duration
+	}
 )
 
 // Start creates a new imon and starts worker goroutine to manage local instance monitor
-func (i imonFactory) Start(parent context.Context, p path.T, nodes []string) error {
-	return start(parent, p, nodes)
+func (f Factory) Start(parent context.Context, p path.T, nodes []string) error {
+	return start(parent, p, nodes, f.DrainDuration)
 }
 
 var (
-	Factory imonFactory
-
 	defaultReadyDuration = 5 * time.Second
 )
 
 // start launch goroutine imon worker for a local instance state
-func start(parent context.Context, p path.T, nodes []string) error {
+func start(parent context.Context, p path.T, nodes []string, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
@@ -131,6 +134,8 @@ func start(parent context.Context, p path.T, nodes []string) error {
 		readyDuration: defaultReadyDuration,
 
 		waitConvergedOrchestrationMsg: make(map[string]string),
+
+		drainDuration: drainDuration,
 	}
 
 	o.startSubscriptions()
@@ -142,13 +147,6 @@ func start(parent context.Context, p path.T, nodes []string) error {
 	o.initResourceMonitor()
 
 	go func() {
-		defer func() {
-			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			err := o.sub.Stop()
-			if err != nil {
-				o.log.Error().Err(err).Msg("sub.stop")
-			}
-		}()
 		o.worker(nodes)
 	}()
 
@@ -178,8 +176,29 @@ func (o *imon) worker(initialNodes []string) {
 		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
 	}
 	o.updateIfChange()
-	defer o.delete()
-
+	defer func() {
+		go func() {
+			err := o.sub.Stop()
+			if err != nil && !errors.Is(err, context.Canceled) {
+				o.log.Error().Err(err).Msg("subscription stop")
+			}
+		}()
+		go func() {
+			if err := o.databus.DelInstanceMonitor(o.path); err != nil && !!errors.Is(err, context.Canceled) {
+				o.log.Error().Err(err).Msg("DelInstanceMonitor")
+			}
+		}()
+		go func() {
+			tC := time.After(o.drainDuration)
+			for {
+				select {
+				case <-tC:
+					return
+				case <-o.cmdC:
+				}
+			}
+		}()
+	}()
 	if err := o.crmStatus(); err != nil {
 		o.log.Error().Err(err).Msg("error during initial crm status")
 	}

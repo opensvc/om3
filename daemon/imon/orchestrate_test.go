@@ -155,7 +155,8 @@ func Test_Orchestrate_HA(t *testing.T) {
 				crmAction = nil
 			}()
 
-			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), Factory)
+			factory := Factory{DrainDuration: setup.DrainDuration}
+			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), factory)
 			require.Nil(t, err)
 
 			evImon := <-evC

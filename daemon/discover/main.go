@@ -22,6 +22,8 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/daemon/icfg"
+	"github.com/opensvc/om3/daemon/imon"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -68,9 +70,10 @@ type (
 
 		// dropCmdDuration is the max duration to wait while dropping commands
 		dropCmdDuration time.Duration
+
+		imonStarter icfg.IMonStarter
 	}
 )
-
 
 // Start function starts file system watcher on config directory
 // then listen for config file creation to create. drainDuration is the maximum duration to wait
@@ -93,7 +96,8 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         hostname.Hostname(),
-		dropCmdDuration: drainDuration,
+		dropCmdDuration:   drainDuration,
+		imonStarter:       imon.Factory{DrainDuration: drainDuration},
 	}
 	wg.Add(2)
 	cfgStarted := make(chan bool)
