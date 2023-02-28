@@ -172,6 +172,15 @@ func (o *imon) startSubscriptions() {
 func (o *imon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
+	// Initiate crmStatus fisrt, this will update our instance status cache
+	// as soon as possible.
+	// crmStatus => publish instance status update
+	//   => data update (so available from next GetInstanceStatus)
+	//   => omon update with srcEvent: instance status update (we watch omon updates)
+	if err := o.crmStatus(); err != nil {
+		o.log.Error().Err(err).Msg("error during initial crm status")
+	}
+
 	for _, initialNode := range initialNodes {
 		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
 	}
@@ -199,9 +208,6 @@ func (o *imon) worker(initialNodes []string) {
 			}
 		}()
 	}()
-	if err := o.crmStatus(); err != nil {
-		o.log.Error().Err(err).Msg("error during initial crm status")
-	}
 	o.log.Debug().Msg("started")
 	for {
 		select {
