@@ -19,7 +19,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword([]keywords.Keyword{
+	m.Add(
 		resfshost.KeywordMountPoint,
 		resfshost.KeywordDevice,
 		resfshost.KeywordMountOptions,
@@ -71,6 +71,6 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The dataset 'reservation' property value to set on provision. The value can be 'none', or a size expression, or a multiplier of the size keyword value (ex: x2).",
 			Provisioning: true,
 		},
-	}...)
+	)
 	return m
 }

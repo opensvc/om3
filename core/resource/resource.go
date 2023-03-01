@@ -17,9 +17,10 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resourceid"
@@ -28,9 +29,9 @@ import (
 	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/core/trigger"
 	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/scsi"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -96,6 +97,9 @@ type (
 		TagSet() TagSet
 		VarDir() string
 		Requires(string) *resourcereqs.T
+
+		Progress(context.Context, string)
+		Progressf(context.Context, string, ...any)
 	}
 
 	// T is the resource type, embedded in each drivers type
@@ -1107,26 +1111,28 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 	return ""
 }
 
-var (
-	SCSIPersistentReservationKeywords = []keywords.Keyword{
-		{
-			Option:   "prkey",
-			Attr:     "SCSIPersistentReservation.Key",
-			Scopable: true,
-			Text:     "Defines a specific persistent reservation key for the resource. Takes priority over the service-level defined prkey and the node.conf specified prkey.",
-		},
-		{
-			Option:    "no_preempt_abort",
-			Attr:      "SCSIPersistentReservation.NoPreemptAbort",
-			Scopable:  true,
-			Converter: converters.Bool,
-			Text:      "If set to ``true``, OpenSVC will preempt scsi reservation with a preempt command instead of a preempt and and abort. Some scsi target implementations do not support this last mode (esx). If set to ``false`` or not set, :kw:`no_preempt_abort` can be activated on a per-resource basis.",
-		},
-		{
-			Option:    "scsireserv",
-			Attr:      "SCSIPersistentReservation.Enabled",
-			Converter: converters.Bool,
-			Text:      "If set to ``true``, OpenSVC will try to acquire a type-5 (write exclusive, registrant only) scsi3 persistent reservation on every path to every disks held by this resource. Existing reservations are preempted to not block service start-up. If the start-up was not legitimate the data are still protected from being written over from both nodes. If set to ``false`` or not set, :kw:`scsireserv` can be activated on a per-resource basis.",
-		},
+func (t *T) progressKey() string {
+	return fmt.Sprintf("%s %s", path.PathOf(t.object), t.RID())
+}
+
+// progressMsg prepends the last known colored status or the resource
+func (t *T) progressMsg(ctx context.Context, msg string) string {
+	sb := statusbus.FromContext(ctx)
+	return fmt.Sprintf("%-19s │ %s", colorstatus.Sprint(sb.Get(t.RID()), rawconfig.Colorize), msg)
+}
+
+func (t *T) Progress(ctx context.Context, msg string) {
+	if view := progress.ViewFromContext(ctx); view != nil {
+		key := t.progressKey()
+		msg = t.progressMsg(ctx, msg)
+		view.Info(key, msg)
 	}
-)
+}
+
+func (t *T) Progressf(ctx context.Context, format string, args ...any) {
+	if view := progress.ViewFromContext(ctx); view != nil {
+		key := t.progressKey()
+		format = t.progressMsg(ctx, format)
+		view.Infof(key, format, args)
+	}
+}

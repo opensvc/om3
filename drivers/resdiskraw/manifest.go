@@ -19,9 +19,9 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:    "devs",
 			Attr:      "Devices",
 			Required:  true,
@@ -30,7 +30,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "A list of device paths or <src>[:<dst>] device paths mappings, whitespace separated. The scsi reservation policy is applied to the src devices.",
 			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
 		},
-		{
+		keywords.Keyword{
 			Option:    "create_char_devices",
 			Attr:      "CreateCharDevices",
 			Scopable:  true,
@@ -39,7 +39,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "On Linux, char devices are not automatically created when devices are discovered. If set to true (the default), the raw resource driver will create and delete them using the raw kernel driver.",
 			Example:   "false",
 		},
-		{
+		keywords.Keyword{
 			Option:    "user",
 			Attr:      "User",
 			Scopable:  true,
@@ -47,7 +47,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "The user that should own the device. Either in numeric or symbolic form.",
 			Example:   "root",
 		},
-		{
+		keywords.Keyword{
 			Option:    "group",
 			Attr:      "Group",
 			Scopable:  true,
@@ -55,7 +55,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "The group that should own the device. Either in numeric or symbolic form.",
 			Example:   "sys",
 		},
-		{
+		keywords.Keyword{
 			Option:    "perm",
 			Attr:      "Perm",
 			Scopable:  true,
@@ -63,13 +63,13 @@ func (t T) Manifest() *manifest.T {
 			Text:      "The permissions the device should have. A string representing the octal permissions.",
 			Example:   "600",
 		},
-		{
+		keywords.Keyword{
 			Option:   "zone",
 			Attr:     "Zone",
 			Scopable: true,
 			Text:     "The zone name the raw resource is linked to. If set, the raw files are configured from the global reparented to the zonepath.",
 			Example:  "zone1",
 		},
-	}...)
+	)
 	return m
 }

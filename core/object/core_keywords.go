@@ -676,7 +676,7 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 		if !ok {
 			continue
 		}
-		kws := allocator().Manifest().Keywords
+		kws := allocator().Manifest().Keywords()
 		if kws == nil {
 			continue
 		}
