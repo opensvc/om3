@@ -76,11 +76,6 @@ func (t T) IsRunning() bool {
 	return err != nil
 }
 
-// Start the Resource
-func (t T) Start(ctx context.Context) (err error) {
-	return nil
-}
-
 func (t T) Full(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
@@ -135,10 +130,6 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 			return err
 		}
 	}
-	return nil
-}
-
-func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 

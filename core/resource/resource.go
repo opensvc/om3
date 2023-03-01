@@ -60,8 +60,8 @@ type (
 	Driver interface {
 		Label() string
 		Manifest() *manifest.T
-		Start(context.Context) error
-		Stop(context.Context) error
+		//	Start(context.Context) error
+		//	Stop(context.Context) error
 		Status(context.Context) status.T
 		Provisioned() (provisioned.T, error)
 		Provision(context.Context) error
@@ -778,6 +778,11 @@ func PRStart(ctx context.Context, r Driver) error {
 
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(starter)
+	if !ok {
+		return nil
+	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
 		return nil
@@ -795,7 +800,7 @@ func Start(ctx context.Context, r Driver) error {
 	if err := SCSIPersistentReservationStart(r); err != nil {
 		return err
 	}
-	if err := r.Start(ctx); err != nil {
+	if err := s.Start(ctx); err != nil {
 		return errors.Wrapf(err, "start")
 	}
 	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Start); err != nil {
@@ -877,6 +882,11 @@ func Stop(ctx context.Context, r Driver) error {
 }
 
 func stop(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(stopper)
+	if !ok {
+		return nil
+	}
 	if r.IsDisabled() {
 		return nil
 	}
@@ -890,7 +900,7 @@ func stop(ctx context.Context, r Driver) error {
 	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	if err := r.Stop(ctx); err != nil {
+	if err := s.Stop(ctx); err != nil {
 		return err
 	}
 	if err := SCSIPersistentReservationStop(r); err != nil {
