@@ -21,28 +21,20 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-		{
-			Key:  "nodes",
-			Attr: "Nodes",
-			Ref:  "object.nodes",
-		},
-	}...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		manifest.ContextPath,
+		manifest.ContextNodes,
+	)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:   "uuid",
 			Attr:     "UUID",
 			Scopable: true,
 			Text:     "The md uuid to use with mdadm assemble commands",
 			Example:  "dev1",
 		},
-		{
+		keywords.Keyword{
 			Option:       "devs",
 			Attr:         "Devs",
 			Scopable:     true,
@@ -51,7 +43,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The md member devices to use with mdadm create command",
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 		},
-		{
+		keywords.Keyword{
 			Option:       "level",
 			Attr:         "Level",
 			Scopable:     true,
@@ -59,7 +51,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The md raid level to use with mdadm create command (see mdadm man for values)",
 			Example:      "raid1",
 		},
-		{
+		keywords.Keyword{
 			Option:       "chunk",
 			Attr:         "Chunk",
 			Scopable:     true,
@@ -68,7 +60,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The md chunk size to use with mdadm create command. The value is adjusted to the first greater or equal multiple of 4.",
 			Example:      "128k",
 		},
-		{
+		keywords.Keyword{
 			Option:       "spares",
 			Attr:         "Spares",
 			Scopable:     true,
@@ -78,6 +70,6 @@ func (t T) Manifest() *manifest.T {
 			Default:      "0",
 			Example:      "1",
 		},
-	}...)
+	)
 	return m
 }

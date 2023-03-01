@@ -4,7 +4,6 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
-	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/filesystems"
 )
@@ -152,14 +151,8 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(driver.NewID(driver.GroupFS, t.Type), t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-	}...)
-	m.AddKeyword(KeywordsBase...)
-	m.AddKeyword(resource.SCSIPersistentReservationKeywords...)
+	m.Add(manifest.ContextPath)
+	m.AddKeywords(KeywordsBase...)
+	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	return m
 }

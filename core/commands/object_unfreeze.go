@@ -27,12 +27,12 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("unfreeze"),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Unfreeze(context.Background())
+			return nil, o.Unfreeze(ctx)
 		}),
 	).Do()
 }

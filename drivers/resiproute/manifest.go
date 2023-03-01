@@ -17,8 +17,8 @@ func init() {
 // Manifest ...
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		keywords.Keyword{
 			Option:   "netns",
 			Attr:     "NetNS",
 			Scopable: true,
@@ -26,7 +26,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "the resource id of the container to plumb the ip into.",
 			Example:  "container#0",
 		},
-		{
+		keywords.Keyword{
 			Option:   "gateway",
 			Attr:     "Gateway",
 			Scopable: true,
@@ -34,7 +34,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "the gateway ip address.",
 			Example:  "1.2.3.4",
 		},
-		{
+		keywords.Keyword{
 			Option:   "to",
 			Attr:     "To",
 			Scopable: true,
@@ -42,7 +42,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The route destination node.",
 			Example:  "192.168.100.0/24",
 		},
-		{
+		keywords.Keyword{
 			Option:      "dev",
 			Attr:        "Dev",
 			Scopable:    true,
@@ -51,6 +51,6 @@ func (t T) Manifest() *manifest.T {
 			Text:        "The network link to add the route on.",
 			Example:     "eth1",
 		},
-	}...)
+	)
 	return m
 }

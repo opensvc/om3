@@ -23,16 +23,10 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-	}...)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(manifest.ContextPath)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:   "name",
 			Attr:     "VGName",
 			Required: true,
@@ -41,7 +35,7 @@ func (t T) Manifest() *manifest.T {
 			Example:  "vg1",
 			Aliases:  []string{"vgname"},
 		},
-		{
+		keywords.Keyword{
 			Option:       "pvs",
 			Attr:         "PVs",
 			Scopable:     true,
@@ -50,7 +44,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The list of paths to the physical volumes of the volume group.",
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 		},
-		{
+		keywords.Keyword{
 			Option:       "options",
 			Attr:         "Options",
 			Converter:    converters.Shlex,
@@ -59,6 +53,6 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The vgcreate options to use upon vg provisioning.",
 			Example:      "--zero=y",
 		},
-	}...)
+	)
 	return m
 }

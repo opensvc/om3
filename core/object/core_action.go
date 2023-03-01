@@ -131,11 +131,14 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 		q <- false
 		return
 	}
+	r.Progress(ctx, "run abort tests")
 	if a.Abort(ctx) {
 		t.log.Error().Str("rid", r.RID()).Msg("abort start")
+		r.Progress(ctx, rawconfig.Colorize.Error("abort"))
 		q <- true
 		return
 	}
+	r.Progress(ctx, "")
 	q <- false
 }
 
@@ -236,8 +239,6 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 }
 
 func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err error) {
-	t.log.Log().Msg("abort tests")
-	t.log.Debug().Msg("call resource drivers abort start")
 	sb := statusbus.FromContext(ctx)
 	resources := l.Resources()
 	added := 0

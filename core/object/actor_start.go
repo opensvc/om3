@@ -34,7 +34,6 @@ func (t *actor) lockedStart(ctx context.Context) error {
 
 func (t *actor) masterStart(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Debug().Str("rid", r.RID()).Msg("start resource")
 		return resource.Start(ctx, r)
 	})
 }
