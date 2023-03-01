@@ -238,6 +238,9 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 
 func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
 	for _, r := range resources {
+		t.log.Error().Msgf("xxxx %s %#v", desc, r.RID())
+	}
+	for _, r := range resources {
 		rid := r.RID()
 		if desc != "" {
 			r.Progress(ctx, desc)
@@ -260,6 +263,12 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 			} else {
 				r.Progress(ctx, rawconfig.Colorize.Error(err))
 			}
+		}
+		if err == nil {
+			continue
+		}
+		if r.IsOptional() {
+			continue
 		}
 		return errors.Wrap(err, rid)
 	}
