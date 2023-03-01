@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/xerrors"
@@ -193,6 +194,9 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
+		if desc != "" {
+			r.Progress(ctx, desc)
+		}
 		var err error
 		c := make(chan error, 1)
 		if err = l.ReconfigureResource(r); err == nil {
@@ -202,6 +206,15 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		case <-ctx.Done():
 			err = fmt.Errorf("timeout")
 		case err = <-c:
+		}
+		if desc != "" {
+			if err == nil {
+				r.Progress(ctx, "")
+			} else if r.IsOptional() {
+				r.Progress(ctx, rawconfig.Colorize.Warning(err))
+			} else {
+				r.Progress(ctx, rawconfig.Colorize.Error(err))
+			}
 		}
 		q <- result{
 			Error:    err,
@@ -215,7 +228,6 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	nResources := len(resources)
 	for i := 0; i < nResources; i++ {
 		res := <-q
-		t.Log().Log().Msgf("wait %s parallel %s: %d/%d running", t.Name, desc, nResources-i, nResources)
 		if res.Resource.IsOptional() {
 			continue
 		}
@@ -226,10 +238,13 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 
 func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
 	for _, r := range resources {
+		rid := r.RID()
+		if desc != "" {
+			r.Progress(ctx, desc)
+		}
 		var err error
 		c := make(chan error, 1)
 		if err = l.ReconfigureResource(r); err == nil {
-			t.Log().Log().Msgf("%s %s", desc, r.RID())
 			c <- fn(ctx, r)
 		}
 		select {
@@ -237,13 +252,16 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 			err = fmt.Errorf("timeout")
 		case err = <-c:
 		}
-		if err == nil {
-			continue
+		if desc != "" {
+			if err == nil {
+				r.Progress(ctx, "ok")
+			} else if r.IsOptional() {
+				r.Progress(ctx, rawconfig.Colorize.Warning(err))
+			} else {
+				r.Progress(ctx, rawconfig.Colorize.Error(err))
+			}
 		}
-		if r.IsOptional() {
-			continue
-		}
-		return errors.Wrap(err, r.RID())
+		return errors.Wrap(err, rid)
 	}
 	return nil
 }

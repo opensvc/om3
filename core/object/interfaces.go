@@ -29,6 +29,7 @@ type (
 		Delete(context.Context) error
 		Set(context.Context, ...keyop.T) error
 		Unset(context.Context, ...key.T) error
+		Doc(string, string) (string, error)
 		DriverDoc(string) (string, error)
 		KeywordDoc(string) (string, error)
 	}

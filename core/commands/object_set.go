@@ -31,12 +31,11 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 		objectaction.WithRemoteOptions(map[string]interface{}{
 			"kw": t.KeywordOps,
 		}),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err
 			}
-			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			return nil, o.Set(ctx, keyop.ParseOps(t.KeywordOps)...)

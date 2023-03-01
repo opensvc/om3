@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/eidolon/wordwrap"
-	"github.com/pkg/errors"
-	"github.com/ssrathi/go-attr"
-	"golang.org/x/term"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
+	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
+	"golang.org/x/term"
 )
 
 // Keyword represents a configuration option in an object or node configuration file
@@ -95,6 +95,11 @@ const (
 	InheritLeaf
 	InheritHead
 )
+
+// Name is a func required by the resource manifest Attr interface
+func (t Keyword) Name() string {
+	return t.Attr
+}
 
 func (t Store) Len() int {
 	return len(t)

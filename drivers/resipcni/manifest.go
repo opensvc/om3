@@ -19,25 +19,11 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "cni_plugins",
-			Attr: "CNIPlugins",
-			Ref:  "cni.plugins",
-		},
-		{
-			Key:  "cni_config",
-			Attr: "CNIConfig",
-			Ref:  "cni.config",
-		},
-		{
-			Key:  "object_id",
-			Attr: "ObjectID",
-			Ref:  "object.id",
-		},
-	}...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		manifest.ContextCNIPlugins,
+		manifest.ContextCNIConfig,
+		manifest.ContextObjectID,
+		keywords.Keyword{
 			Option:   "network",
 			Attr:     "Network",
 			Scopable: true,
@@ -45,7 +31,7 @@ func (t T) Manifest() *manifest.T {
 			Example:  "my-weave-net",
 			Text:     "The name of the CNI network to plug into. The default network is created using the host-local bridge plugin if no existing configuration already exists.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "nsdev",
 			Attr:     "NSDev",
 			Scopable: true,
@@ -54,7 +40,7 @@ func (t T) Manifest() *manifest.T {
 			Example:  "front",
 			Text:     "The interface name in the container namespace.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "netns",
 			Attr:     "NetNS",
 			Scopable: true,
@@ -62,6 +48,6 @@ func (t T) Manifest() *manifest.T {
 			Example:  "container#0",
 			Text:     "The resource id of the container to plumb the ip into.",
 		},
-	}...)
+	)
 	return m
 }

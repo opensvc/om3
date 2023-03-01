@@ -21,9 +21,10 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(manifest.ContextPath)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:      "name",
 			Attr:        "Name",
 			Scopable:    true,
@@ -31,7 +32,7 @@ func (t T) Manifest() *manifest.T {
 			DefaultText: "The basename of the underlying device, suffixed with '-crypt'.",
 			Example:     "{fqdn}-crypt",
 		},
-		{
+		keywords.Keyword{
 			Option:   "dev",
 			Attr:     "Dev",
 			Scopable: true,
@@ -39,7 +40,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The fullpath of the underlying block device.",
 			Example:  "/dev/{fqdn}/lv1",
 		},
-		{
+		keywords.Keyword{
 			Option:       "manage_passphrase",
 			Attr:         "ManagePassphrase",
 			Scopable:     true,
@@ -48,14 +49,14 @@ func (t T) Manifest() *manifest.T {
 			Default:      "true",
 			Text:         "By default, on provision the driver allocates a new random passphrase (256 printable chars), and forgets it on unprovision. If set to false, require a passphrase to be already present in the sec object to provision, and don't remove it on unprovision.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "secret",
 			Attr:     "Secret",
 			Scopable: true,
 			Text:     "The name of the sec object hosting the crypt secrets. The sec object must be in the same namespace than the object defining the disk.crypt resource.",
 			Default:  "{name}",
 		},
-		{
+		keywords.Keyword{
 			Option:       "label",
 			Attr:         "FormatLabel",
 			Scopable:     true,
@@ -63,13 +64,6 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The label to set in the cryptsetup metadata writen on dev. A label helps admin understand the role of a device.",
 			Default:      "{fqdn}",
 		},
-	}...)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-	}...)
+	)
 	return m
 }

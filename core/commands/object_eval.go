@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/path"
@@ -30,7 +32,7 @@ func (t *CmdObjectEval) Run(selector, kind string) error {
 			"impersonate": t.Impersonate,
 			"eval":        true,
 		}),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			c, err := object.NewConfigurer(p)
 			if err != nil {
 				return nil, err

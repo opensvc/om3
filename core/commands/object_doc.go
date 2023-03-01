@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/core/object"
@@ -30,7 +31,7 @@ func (t *CmdObjectDoc) Run(selector, kind string) error {
 			"kw":     t.Keyword,
 			"driver": t.Driver,
 		}),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.New(p)
 			if err != nil {
 				return nil, err
@@ -39,14 +40,7 @@ func (t *CmdObjectDoc) Run(selector, kind string) error {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a configurer", o)
 			}
-			switch {
-			case t.Driver != "":
-				return c.DriverDoc(t.Driver)
-			case t.Keyword != "":
-				return c.KeywordDoc(t.Keyword)
-			default:
-				return "", nil
-			}
+			return c.Doc(t.Driver, t.Keyword)
 		}),
 	).Do()
 }

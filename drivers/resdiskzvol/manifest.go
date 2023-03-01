@@ -19,9 +19,9 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:   "name",
 			Attr:     "Name",
 			Required: true,
@@ -29,7 +29,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The full name of the zfs volume in the ``<pool>/<name>`` form.",
 			Example:  "tank/zvol1",
 		},
-		{
+		keywords.Keyword{
 			Option:       "create_options",
 			Attr:         "CreateOptions",
 			Converter:    converters.Shlex,
@@ -38,7 +38,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The :cmd:`zfs create -V <name>` extra options.",
 			Example:      "-o dedup=on",
 		},
-		{
+		keywords.Keyword{
 			Option:       "size",
 			Attr:         "Size",
 			Scopable:     true,
@@ -47,7 +47,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The size of the zfs volume to create.",
 			Example:      "10m",
 		},
-		{
+		keywords.Keyword{
 			Option:       "blocksize",
 			Attr:         "BlockSize",
 			Scopable:     true,
@@ -56,6 +56,6 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The blocksize of the zfs volume to create.",
 			Example:      "256k",
 		},
-	}...)
+	)
 	return m
 }
