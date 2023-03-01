@@ -73,6 +73,7 @@ require (
 	golang.org/x/net v0.0.0-20220513224357-95641704303c
 	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	golang.org/x/time v0.0.0-20220411224347-583f2d630306
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	software.sslmate.com/src/go-pkcs12 v0.2.0

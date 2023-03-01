@@ -25,6 +25,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -78,6 +79,8 @@ type (
 		acceptedOrchestrationId string
 
 		drainDuration time.Duration
+
+		orchestrationRateLimiter *rate.Limiter
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -98,6 +101,11 @@ func (f Factory) Start(parent context.Context, p path.T, nodes []string) error {
 
 var (
 	defaultReadyDuration = 5 * time.Second
+
+	// orchestrateLimitRate is the limit rate for imon orchestration per second
+	// when orchestration loop occur on an object, too many events/commands may block
+	// databus or event bus. We must prevent such situations
+	orchestrateLimitRate rate.Limit = 25
 )
 
 // start launch goroutine imon worker for a local instance state
@@ -136,6 +144,8 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		waitConvergedOrchestrationMsg: make(map[string]string),
 
 		drainDuration: drainDuration,
+
+		orchestrationRateLimiter: rate.NewLimiter(orchestrateLimitRate, 1),
 	}
 
 	o.startSubscriptions()

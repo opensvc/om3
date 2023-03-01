@@ -23,6 +23,9 @@ func (o *imon) orchestrate() {
 	if o.isDone() {
 		return
 	}
+	if err := o.orchestrationRateLimiter.Wait(o.ctx); err != nil {
+		return
+	}
 	if _, ok := o.instStatus[o.localhost]; !ok {
 		return
 	}
