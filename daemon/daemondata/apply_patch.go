@@ -17,7 +17,7 @@ var (
 )
 
 func (d *data) applyPatch(msg *hbtype.Msg) error {
-	d.counterCmd <- idApplyPatch
+	d.statCount[idApplyPatch]++
 	local := d.localNode
 	remote := msg.Nodename
 	d.log.Debug().Msgf("apply patch %s", remote)

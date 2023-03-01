@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/instance"
@@ -32,17 +36,16 @@ type (
 	}
 
 	crm struct {
-		calls  [][]string
+		crmSpy
 		action func(title string, cmdArgs ...string) error
 	}
-)
 
-func TestMain(m *testing.M) {
-	testhelper.Main(m, func(args []string) {})
-}
+	crmSpy struct {
+		sync.RWMutex
+		calls [][]string
+	}
 
-func Test_Orchestrate_HA(t *testing.T) {
-	type tCase struct {
+	tCase struct {
 		name        string
 		srcFile     string
 		sideEffects map[string]sideEffect
@@ -55,6 +58,17 @@ func Test_Orchestrate_HA(t *testing.T) {
 
 		expectedCrm [][]string
 	}
+)
+
+func TestMain(m *testing.M) {
+	testhelper.Main(m, func(args []string) {})
+}
+
+var (
+	testCount atomic.Uint64
+)
+
+func Test_Orchestrate_HA(t *testing.T) {
 	cases := []tCase{
 		{
 			name:    "ha",
@@ -130,91 +144,115 @@ func Test_Orchestrate_HA(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			c := c
+			maxRoutine := 10
+			maxWaitTime := 2 * 1000 * time.Millisecond
+			testCount.Add(1)
+			now := time.Now()
+			t.Logf("iteration %d starting", testCount.Load())
+
 			setup := daemonhelper.Setup(t, nil)
 			defer setup.Cancel()
-			defaultReadyDuration = time.Millisecond
-			cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.name)
-			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
-			p := path.T{Kind: kind.Svc, Name: c.name}
 
-			evC := watchEv(t, setup.Ctx, p, 500*time.Millisecond)
+			c := c
+			p := path.T{Kind: kind.Svc, Name: c.name}
 
 			t.Logf("Set initial node monitor value")
 			databus := daemondata.FromContext(setup.Ctx)
-			now := time.Now()
 			nodeMonitor := node.Monitor{State: node.MonitorStateIdle, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
 			err := databus.SetNodeMonitor(nodeMonitor)
 			require.Nil(t, err)
 
-			go createOmon(t, setup.Ctx)
-
+			initialReadyDuration := defaultReadyDuration
+			defaultReadyDuration = 1 * time.Millisecond
 			crm := crmBuilder(t, setup.Ctx, p, c.sideEffects)
 			crmAction = crm.action
 			defer func() {
+				defaultReadyDuration = initialReadyDuration
 				crmAction = nil
 			}()
 
-			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), Factory)
+			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c)
+
+			cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.name)
+			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
+			t.Logf("--- starting icfg for %s", p)
+			factory := Factory{DrainDuration: setup.DrainDuration}
+			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), factory)
 			require.Nil(t, err)
 
+			t.Logf("waiting for watcher result")
 			evImon := <-evC
-			t.Logf("crm calls: %v", crm.calls)
-			require.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
+
+			calls := crm.getCalls()
+			t.Logf("crm calls: %v", calls)
+
+			t.Logf("verify state")
+			assert.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
 				"expected state %s found %s", c.expectedState, evImon.Value.State)
-			require.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
+
+			t.Logf("verify global expect")
+			assert.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
 				"expected global expect %s found %s", c.expectedGlobalExpect, evImon.Value.GlobalExpect)
-			require.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
+
+			t.Logf("verify local expect")
+			assert.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
 				"expected local expect %s found %s", c.expectedLocalExpect, evImon.Value.LocalExpect)
-			require.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
+
+			t.Logf("verify leader")
+			assert.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
 				"expected IsLeader %v found %v", c.expectedIsLeader, evImon.Value.IsLeader)
-			require.Equalf(t, c.expectedIsHALeader, evImon.Value.IsHALeader,
+
+			t.Logf("verify ha leader")
+			assert.Equalf(t, c.expectedIsHALeader, evImon.Value.IsHALeader,
 				"expected IsHALeader %v found %v", c.expectedIsHALeader, evImon.Value.IsHALeader)
-			require.Equalf(t, c.expectedCrm, crm.calls,
-				"expected calls %v, found %v", c.expectedCrm, crm.calls)
+
+			t.Logf("verify calls")
+			assert.Equalf(t, c.expectedCrm, calls,
+				"expected calls %v, found %v", c.expectedCrm, calls)
+
+			drainDuration := setup.DrainDuration
+			t.Logf("setup cancel and wait for drain duration %s", drainDuration)
+			setup.Cancel()
+			time.Sleep(drainDuration)
+
+			t.Logf("Verify goroutine counts")
+			numGoroutine := runtime.NumGoroutine()
+			t.Logf("iteration %d goroutines: %d", testCount.Load(), numGoroutine)
+			if numGoroutine > maxRoutine {
+				buf := make([]byte, 1<<16)
+				runtime.Stack(buf, true)
+				require.LessOrEqualf(t, numGoroutine, maxRoutine, "end test %d goroutines:\n %s", testCount.Load(), buf)
+			}
+
+			t.Logf("iteration %d duration: %s now: %s", testCount.Load(), time.Now().Sub(now), time.Now())
 		})
 	}
 }
 
-func createOmon(t *testing.T, ctx context.Context) {
-	t.Logf("--- create omon from discovered ConfigUpdated")
-	defer t.Logf("--- create omon from discovered ConfigUpdated [done]")
-	monStarted := make(map[string]bool)
-	bus := pubsub.BusFromContext(ctx)
-	sub := bus.Sub("createOmon " + t.Name())
-	sub.AddFilter(msgbus.ConfigUpdated{})
-	sub.Start()
-	defer func() {
-		_ = sub.Stop()
-	}()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case i := <-sub.C:
-			switch o := i.(type) {
-			case msgbus.ConfigUpdated:
-				p := o.Path
-				if monStarted[p.String()] {
-					continue
-				}
-				t.Logf("--- starting omon for %s", p)
-				err := omon.Start(ctx, p, o.Value, make(chan any, 100))
-				require.Nil(t, err)
-				monStarted[p.String()] = true
-			}
-		}
-	}
+func (c *crmSpy) addCall(cmdArgs ...string) {
+	c.Lock()
+	defer c.Unlock()
+	c.calls = append(c.calls, cmdArgs)
+}
+
+func (c *crmSpy) getCalls() [][]string {
+	c.RLock()
+	defer c.RUnlock()
+	return append([][]string{}, c.calls...)
 }
 
 func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[string]sideEffect) *crm {
-	bus := pubsub.BusFromContext(ctx)
+	dBus := daemondata.FromContext(ctx)
 	c := crm{
-		calls: make([][]string, 0),
+		crmSpy: crmSpy{
+			RWMutex: sync.RWMutex{},
+			calls:   make([][]string, 0),
+		},
+		action: nil,
 	}
 	c.action = func(title string, cmdArgs ...string) error {
 		t.Logf("--- crmAction %s %s", title, cmdArgs)
-		c.calls = append(c.calls, cmdArgs)
+		c.addCall(cmdArgs...)
 		if len(cmdArgs) < 2 {
 			err := errors.Errorf("unexpected command %s", cmdArgs)
 			t.Logf("--- crmAction error %s", err)
@@ -235,20 +273,16 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 		}
 
 		if se.iStatus != nil {
-			istatus := msgbus.InstanceStatusUpdated{
-				Path: p,
-				Node: "node1",
-				Value: instance.Status{
-					Avail:       se.iStatus.Avail,
-					Overall:     se.iStatus.Overall,
-					Kind:        p.Kind,
-					Provisioned: se.iStatus.Provisioned,
-					Optional:    se.iStatus.Optional,
-					Updated:     time.Now(),
-				},
+			v := instance.Status{
+				Avail:       se.iStatus.Avail,
+				Overall:     se.iStatus.Overall,
+				Kind:        p.Kind,
+				Provisioned: se.iStatus.Provisioned,
+				Optional:    se.iStatus.Optional,
+				Updated:     time.Now(),
 			}
-			t.Logf("--- crmAction %s %v publish %#v", title, cmdArgs, istatus)
-			bus.Pub(istatus, pubsub.Label{"path", p.String()}, pubsub.Label{"node", "node1"})
+			require.NoError(t, dBus.SetInstanceStatus(p, v))
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated)
 		}
 
 		if se.err != nil {
@@ -261,30 +295,57 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 	return &c
 }
 
-func watchEv(t *testing.T, parent context.Context, p path.T, timeout time.Duration) chan msgbus.InstanceMonitorUpdated {
-	evC := make(chan msgbus.InstanceMonitorUpdated)
+// objectMonCreatorAndExpectationWatch returns a channel where we can read the InstanceMonitorUpdated for c
+// that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
+//
+// It emulates discover omon creation for c (creates omon worker for c on first received ConfigUpdated)
+func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase) <-chan msgbus.InstanceMonitorUpdated {
+	r := make(chan chan msgbus.InstanceMonitorUpdated)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(parent, timeout)
+		var (
+			evC = make(chan msgbus.InstanceMonitorUpdated)
+
+			p = path.T{Kind: kind.Svc, Name: c.name}
+
+			monStarted bool
+
+			latestInstanceMonitorUpdated msgbus.InstanceMonitorUpdated
+		)
+		ctx, cancel := context.WithTimeout(ctx, duration)
 		defer cancel()
-		var lastEv msgbus.InstanceMonitorUpdated
-		pub := pubsub.BusFromContext(ctx)
-		sub := pub.Sub("watchEv " + t.Name())
+
+		sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover & watcher")
 		sub.AddFilter(msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
+		sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", p.String()})
 		sub.Start()
 		defer func() {
 			_ = sub.Stop()
 		}()
 
+		t.Logf("watching InstanceMonitorUpdated and ConfigUpdated for path: %s, max duration %s", p, duration)
+
+		// serve response channel
+		r <- evC
+
 		for {
 			select {
 			case <-ctx.Done():
-				evC <- lastEv
+				evC <- latestInstanceMonitorUpdated
 				return
 			case i := <-sub.C:
 				switch o := i.(type) {
+				case msgbus.ConfigUpdated:
+					if monStarted {
+						continue
+					}
+					t.Logf("--- starting omon for %s", p)
+					if err := omon.Start(ctx, p, o.Value, make(chan any, 100)); err != nil {
+						t.Errorf("omon.Start failed: %s", err)
+					}
+					monStarted = true
 				case msgbus.InstanceMonitorUpdated:
-					lastEv = o
+					latestInstanceMonitorUpdated = o
 					value := o.Value
 					t.Logf("----  WATCH InstanceMonitorUpdated %s state: %s localExpect: %s globalExpect: %s isLeader: %v isHaLeader: %v",
 						o.Path,
@@ -292,10 +353,21 @@ func watchEv(t *testing.T, parent context.Context, p path.T, timeout time.Durati
 						value.LocalExpect,
 						value.GlobalExpect,
 						value.IsLeader,
-						value.IsHALeader)
+						value.IsHALeader,
+					)
+					v := o.Value
+					t.Logf("Verify if expected is reached for fast return")
+					if c.expectedIsHALeader == v.IsHALeader &&
+						c.expectedIsLeader == v.IsLeader &&
+						c.expectedGlobalExpect == v.GlobalExpect &&
+						c.expectedState == v.State &&
+						c.expectedLocalExpect == v.LocalExpect {
+						cancel()
+					}
 				}
 			}
 		}
 	}()
-	return evC
+
+	return <-r
 }

@@ -12,18 +12,19 @@ import (
 
 type (
 	opDelInstanceConfig struct {
-		err  chan<- error
+		errC
 		path path.T
 	}
 
 	opGetInstanceConfig struct {
+		errC
 		config chan<- instance.Config
 		path   path.T
 		node   string
 	}
 
 	opSetInstanceConfig struct {
-		err   chan<- error
+		errC
 		path  path.T
 		value instance.Config
 	}
@@ -33,9 +34,9 @@ type (
 //
 // Monitor.Node.*.services.config.*
 func (t T) DelInstanceConfig(p path.T) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDelInstanceConfig{
-		err:  err,
+		errC: err,
 		path: p,
 	}
 	t.cmdC <- op
@@ -46,13 +47,18 @@ func (t T) DelInstanceConfig(p path.T) error {
 //
 // Monitor.Node.<localhost>.services.status.*
 func (t T) GetInstanceConfig(p path.T, node string) instance.Config {
-	config := make(chan instance.Config)
+	config := make(chan instance.Config, 1)
+	err := make(chan error, 1)
 	op := opGetInstanceConfig{
+		errC:   err,
 		config: config,
 		path:   p,
 		node:   node,
 	}
 	t.cmdC <- op
+	if <-err != nil {
+		return instance.Config{}
+	}
 	return <-config
 }
 
@@ -60,9 +66,9 @@ func (t T) GetInstanceConfig(p path.T, node string) instance.Config {
 //
 // Monitor.Node.*.services.config.*
 func (t T) SetInstanceConfig(p path.T, v instance.Config) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetInstanceConfig{
-		err:   err,
+		errC:  err,
 		path:  p,
 		value: v,
 	}
@@ -70,20 +76,8 @@ func (t T) SetInstanceConfig(p path.T, v instance.Config) error {
 	return <-err
 }
 
-func (o opSetInstanceConfig) setError(err error) {
-	select {
-	case o.err <- err:
-	}
-}
-
-func (o opDelInstanceConfig) setError(err error) {
-	select {
-	case o.err <- err:
-	}
-}
-
-func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
-	d.counterCmd <- idDelInstanceConfig
+func (o opDelInstanceConfig) call(ctx context.Context, d *data) error {
+	d.statCount[idDelInstanceConfig]++
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Config != nil {
 		inst.Config = nil
@@ -102,28 +96,23 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }
 
-func (o opGetInstanceConfig) call(ctx context.Context, d *data) {
-	d.counterCmd <- idGetInstanceConfig
+func (o opGetInstanceConfig) call(ctx context.Context, d *data) error {
+	d.statCount[idGetInstanceConfig]++
 	s := instance.Config{}
 	if nodeConfig, ok := d.pending.Cluster.Node[o.node]; ok {
 		if inst, ok := nodeConfig.Instance[o.path.String()]; ok && inst.Config != nil {
 			s = *inst.Config
 		}
 	}
-	select {
-	case <-ctx.Done():
-	case o.config <- s:
-	}
+	o.config <- s
+	return nil
 }
 
-func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetInstanceConfig
+func (o opSetInstanceConfig) call(ctx context.Context, d *data) error {
+	d.statCount[idSetInstanceConfig]++
 	var op jsondelta.Operation
 	s := o.path.String()
 	value := o.value.DeepCopy()
@@ -155,8 +144,5 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

@@ -9,6 +9,7 @@ package omon
 
 import (
 	"context"
+	"errors"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -74,7 +75,11 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 	o.instMonitor = o.databus.GetInstanceMonitorMap(o.path)
 
 	go func() {
-		defer o.sub.Stop()
+		defer func() {
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
+				o.log.Warn().Err(err).Msg("subscription stop")
+			}
+		}()
 		o.worker()
 	}()
 	return nil
@@ -99,7 +104,7 @@ func (o *T) worker() {
 	for _, node := range o.status.Scope {
 		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
 	}
-	o.update()
+	o.updateStatus()
 	defer o.delete()
 	for {
 		if len(o.instStatus) == 0 {

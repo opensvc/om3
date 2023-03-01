@@ -6,23 +6,23 @@ import (
 
 type (
 	opDaemonRefresh struct {
-		err chan<- error
+		errC
 	}
 )
 
 // DaemonRefresh updates the private dataset of a daemon subsystem
 // (scheduler, dns, ...)
 func (t T) DaemonRefresh() error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDaemonRefresh{
-		err: err,
+		errC: err,
 	}
 	t.cmdC <- op
 	return <-err
 }
 
-func (o opDaemonRefresh) call(ctx context.Context, d *data) {
+func (o opDaemonRefresh) call(ctx context.Context, d *data) error {
 	d.log.Debug().Msg("refresh daemon data sub...")
 	d.setDaemonHb()
-	o.err <- nil
+	return nil
 }

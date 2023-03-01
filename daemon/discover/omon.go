@@ -18,7 +18,10 @@ func (d *discover) omon(started chan<- bool) {
 	started <- true
 	defer func() {
 		defer log.Info().Msg("stopped")
-		tC := time.After(dropCmdTimeout)
+		if err := sub.Stop(); err != nil {
+			d.log.Error().Err(err).Msg("subscription stop")
+		}
+		tC := time.After(d.dropCmdDuration)
 		for {
 			select {
 			case <-tC:
@@ -26,11 +29,6 @@ func (d *discover) omon(started chan<- bool) {
 			case <-d.objectMonitorCmdC:
 			}
 		}
-	}()
-	defer func() {
-		d.log.Debug().Msg("subscription stopping")
-		sub.Stop()
-		d.log.Debug().Msg("subscription stopped")
 	}()
 	for {
 		select {

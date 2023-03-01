@@ -1,4 +1,4 @@
-// nmon is responsible of the local node states
+// Package nmon is responsible for the local node states
 //
 // It provides the cluster data:
 //
@@ -21,6 +21,7 @@ package nmon
 
 import (
 	"context"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -80,7 +81,7 @@ type (
 )
 
 // Start launches the nmon worker goroutine
-func Start(parent context.Context) error {
+func Start(parent context.Context, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
 	o := &nmon{
 		state: node.Monitor{
@@ -113,8 +114,19 @@ func Start(parent context.Context) error {
 	o.startSubscriptions()
 	go func() {
 		defer func() {
-			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			o.sub.Stop()
+			go func() {
+				tC := time.After(drainDuration)
+				for {
+					select {
+					case <-tC:
+						return
+					case <-o.cmdC:
+					}
+				}
+			}()
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+				o.log.Error().Err(err).Msg("subscription stop")
+			}
 		}()
 		o.worker()
 	}()

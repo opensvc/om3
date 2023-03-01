@@ -10,19 +10,20 @@ import (
 
 type (
 	opGetNodeStatsMap struct {
+		errC
 		result chan<- map[string]node.Stats
 	}
 	opSetNodeStats struct {
-		err   chan<- error
+		errC
 		value node.Stats
 	}
 )
 
 // SetNodeStats sets Monitor.Node.<localhost>.Stats
 func (t T) SetNodeStats(value node.Stats) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetNodeStats{
-		err:   err,
+		errC:  err,
 		value: value,
 	}
 	t.cmdC <- op
@@ -31,29 +32,34 @@ func (t T) SetNodeStats(value node.Stats) error {
 
 // GetNodeStatsMap returns a map of NodeStats indexed by nodename
 func (t T) GetNodeStatsMap() map[string]node.Stats {
-	result := make(chan map[string]node.Stats)
+	err := make(chan error, 1)
+	result := make(chan map[string]node.Stats, 1)
 	op := opGetNodeStatsMap{
+		errC:   err,
 		result: result,
 	}
 	t.cmdC <- op
+	if <-err != nil {
+		return make(map[string]node.Stats)
+	}
 	return <-result
 }
 
-func (o opGetNodeStatsMap) call(ctx context.Context, d *data) {
-	d.counterCmd <- idGetNodeStatsMap
+func (o opGetNodeStatsMap) call(ctx context.Context, d *data) error {
+	d.statCount[idGetNodeStatsMap]++
 	m := make(map[string]node.Stats)
 	for nodename, nodeData := range d.pending.Cluster.Node {
 		m[nodename] = *nodeData.Stats.DeepCopy()
 	}
 	o.result <- m
+	return nil
 }
 
-func (o opSetNodeStats) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetNodeStats
+func (o opSetNodeStats) call(ctx context.Context, d *data) error {
+	d.statCount[idSetNodeStats]++
 	v := d.pending.Cluster.Node[d.localNode]
 	if v.Stats == o.value {
-		o.err <- nil
-		return
+		return nil
 	}
 	v.Stats = o.value
 	d.pending.Cluster.Node[d.localNode] = v
@@ -70,8 +76,5 @@ func (o opSetNodeStats) call(ctx context.Context, d *data) {
 		},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

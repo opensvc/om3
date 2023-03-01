@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,10 +27,12 @@ type (
 		testhelper.Env
 
 		// Ctx is the daemon context, can be used to retrieve bus, data...
-		Ctx    context.Context
+		Ctx context.Context
 
 		// Cancel is the daemon cancel function
 		Cancel context.CancelFunc
+
+		DrainDuration time.Duration
 	}
 )
 
@@ -37,20 +40,21 @@ type (
 func Setup(t *testing.T, env *testhelper.Env) *D {
 	t.Helper()
 	hostname.SetHostnameForGoTest("node1")
-	t.Log("Setup...")
-	d := D{}
+	drainDuration := 40 * time.Millisecond
+	t.Logf("Setup with drain duration %s", drainDuration)
 	if env == nil {
 		env = initEnv(t)
 	}
-	d.Env = *env
+
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := pubsub.NewBus("daemon")
+	bus.SetDrainChanDuration(drainDuration)
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
 
-	hbcache.Start(ctx)
+	hbcache.Start(ctx, drainDuration)
 
-	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx)
+	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(ctx, drainDuration)
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 
@@ -60,9 +64,10 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 		hostname.SetHostnameForGoTest("")
 	}
 	return &D{
-		Env:    *env,
-		Ctx:    ctx,
-		Cancel: cancelD,
+		Env:           *env,
+		Ctx:           ctx,
+		Cancel:        cancelD,
+		DrainDuration: drainDuration,
 	}
 }
 
@@ -74,7 +79,12 @@ func initEnv(t *testing.T) *testhelper.Env {
 		"osvc_cluster_name": env.ClusterName,
 	})
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+	out := zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: time.StampMicro,
+	}
+
+	log.Logger = log.Logger.Output(out).With().Caller().Logger()
 
 	// Create mandatory dirs
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {

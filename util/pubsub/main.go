@@ -97,6 +97,9 @@ type (
 
 		// cancel defines the subscription canceler
 		cancel context.CancelFunc
+
+		// drainChanDuration is the max duration during draining channels
+		drainChanDuration time.Duration
 	}
 
 	cmdPub struct {
@@ -156,6 +159,11 @@ type (
 		beginNotify chan uuid.UUID
 		endNotify   chan uuid.UUID
 		lastPub     map[string]cacheEntry
+		started     bool
+
+		// drainChanDuration is the max duration during draining private and exposed
+		// channel
+		drainChanDuration time.Duration
 	}
 
 	stringer interface {
@@ -166,6 +174,9 @@ type (
 var (
 	cmdDurationWarn    = time.Second
 	notifyDurationWarn = 5 * time.Second
+
+	// defaultDrainChanDuration is the default duration to wait while draining channel
+	defaultDrainChanDuration = 10 * time.Millisecond
 )
 
 // Key returns labelMap key as a string
@@ -237,6 +248,7 @@ func NewBus(name string) *Bus {
 	b.endNotify = make(chan uuid.UUID)
 	b.lastPub = make(map[string]cacheEntry)
 	b.log = log.Logger.With().Str("bus", name).Logger()
+	b.drainChanDuration = defaultDrainChanDuration
 	return b
 }
 
@@ -292,8 +304,18 @@ func (b *Bus) Start(ctx context.Context) {
 			}
 		}
 	}()
-	<-started
+	b.started = <-started
 	b.log.Info().Msg("bus started")
+}
+
+// SetDrainChanDuration overrides defaultDrainChanDuration for not yet started bus.
+//
+// It panics if called on started bus.
+func (b *Bus) SetDrainChanDuration(duration time.Duration) {
+	if b.started {
+		panic("can't set drain channel duration on started bus")
+	}
+	b.drainChanDuration = duration
 }
 
 func (b *Bus) onSubCmd(c cmdSub) {
@@ -305,6 +327,8 @@ func (b *Bus) onSubCmd(c cmdSub) {
 		id:      id,
 		timeout: c.timeout,
 		bus:     b,
+
+		drainChanDuration: b.drainChanDuration,
 	}
 	b.subs[id] = sub
 	c.resp <- sub
@@ -402,7 +426,7 @@ func (b *Bus) drain() {
 	b.log.Info().Msg("draining")
 	defer b.log.Info().Msg("drained")
 	i := 0
-	tC := time.After(100 * time.Millisecond)
+	tC := time.After(b.drainChanDuration)
 	for {
 		select {
 		case <-b.cmdC:
@@ -445,12 +469,7 @@ func (b *Bus) Pub(v any, labels ...Label) {
 	case <-b.ctx.Done():
 		return
 	}
-	select {
-	case <-done:
-		return
-	case <-b.ctx.Done():
-		return
-	}
+	<-done
 }
 
 type (
@@ -611,9 +630,24 @@ func (t labelMap) String() string {
 	return s
 }
 
-// drain dequeues any pending message
+// Drain dequeues exposed channel.
+//
+// Drain is automatically called during sub.Stop()
+func (sub *Subscription) Drain() {
+	tC := time.NewTicker(sub.drainChanDuration)
+	defer tC.Stop()
+	for {
+		select {
+		case <-sub.C:
+		case <-tC.C:
+			return
+		}
+	}
+}
+
+// drain dequeues any pending message from private channel
 func (sub *Subscription) drain() {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(sub.drainChanDuration)
 	defer ticker.Stop()
 	for {
 		select {
@@ -769,7 +803,7 @@ func (sub *Subscription) Start() {
 		// listen all until AddFilter is called
 		sub.AddFilter(nil)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(sub.bus.ctx)
 	sub.cancel = cancel
 	started := make(chan bool)
 	sub.bus.Add(1)
@@ -782,10 +816,13 @@ func (sub *Subscription) Start() {
 			select {
 			case <-ctx.Done():
 				return
-			case <-sub.bus.ctx.Done():
-				return
 			case i := <-sub.q:
-				sub.bus.beginNotify <- sub.id
+				select {
+				case <-ctx.Done():
+					// sub, or bus is done
+					return
+				case sub.bus.beginNotify <- sub.id:
+				}
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warn().Msgf("%s error: %s. stop subscription", sub, err)
@@ -796,17 +833,26 @@ func (sub *Subscription) Start() {
 							sub.bus.log.Warn().Err(err).Msgf("stop %s", sub)
 						}
 					}()
-					sub.bus.endNotify <- sub.id
-					return
+					select {
+					case <-sub.bus.ctx.Done():
+						return
+					case sub.bus.endNotify <- sub.id:
+					}
 				}
-				sub.bus.endNotify <- sub.id
+				select {
+				case <-sub.bus.ctx.Done():
+					return
+				case sub.bus.endNotify <- sub.id:
+				}
 			}
 		}
 	}()
 	<-started
 }
 
+// Stop closes the subscription and deueues private and exposed subscription channels
 func (sub *Subscription) Stop() error {
+	go sub.Drain()
 	return sub.bus.unsub(sub)
 }
 

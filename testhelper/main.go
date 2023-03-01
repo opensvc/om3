@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -52,8 +53,12 @@ func SetupEnv(env Env) Env {
 		"osvc_root_path":    env.Root,
 		"osvc_cluster_name": env.ClusterName,
 	})
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	log.Logger = log.Logger.Output(zerolog.NewConsoleWriter()).With().Caller().Logger()
+	zerolog.TimeFieldFormat = time.StampMicro
+	out := zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: time.StampMicro,
+	}
+	log.Logger = log.Logger.Output(out).With().Caller().Logger()
 
 	// Create mandatory dirs
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {

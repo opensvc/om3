@@ -13,30 +13,31 @@ import (
 
 type (
 	opSetHBSendQ struct {
+		errC
 		hbSendQ chan<- hbtype.Msg
-		err     chan<- error
 	}
 )
 
 // SetHBSendQ defines daemondata hbSendQ. The hbSendQ is used during queueNewHbMsg
 // to push heartbeat message to this queue, see usage example for hb msgToTx multiplexer
 // Example:
-//     msgC := make(chan hbtype.Msg)
-//     SetHBSendQ(msgC) // inform daemondata we are listening on this queue
-//     defer SetHBSendQ(nil) // inform daemondata, we are not anymore reading on this queue
-//     for {
-//        select {
-//        case msg := <- msgC:
-//           ...
-//        case <-ctx.Done():
-//           return
-//        }
-//     }
+//
+//	msgC := make(chan hbtype.Msg)
+//	SetHBSendQ(msgC) // inform daemondata we are listening on this queue
+//	defer SetHBSendQ(nil) // inform daemondata, we are not anymore reading on this queue
+//	for {
+//	   select {
+//	   case msg := <- msgC:
+//	      ...
+//	   case <-ctx.Done():
+//	      return
+//	   }
+//	}
 func (t T) SetHBSendQ(hbSendQ chan<- hbtype.Msg) error {
-	errC := make(chan error)
-	op := opSetHBSendQ{hbSendQ: hbSendQ, err: errC}
+	err := make(chan error, 1)
+	op := opSetHBSendQ{hbSendQ: hbSendQ, errC: err}
 	t.cmdC <- op
-	return <-errC
+	return <-err
 }
 
 // queueNewHbMsg gets a new hb msg, push it to hb send queue, update msgLocalGen
@@ -74,7 +75,7 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 //
 //	"full", "ping" or len <msg.delta> (patch)
 func (d *data) getHbMessage() (hbtype.Msg, error) {
-	d.counterCmd <- idGetHbMessage
+	d.statCount[idGetHbMessage]++
 	d.log.Debug().Msg("getHbMessage")
 	d.setNextMsgType()
 	var err error
@@ -178,8 +179,8 @@ func (d *data) setNextMsgType() {
 	return
 }
 
-func (o opSetHBSendQ) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetHBSendQ
+func (o opSetHBSendQ) call(ctx context.Context, d *data) error {
+	d.statCount[idSetHBSendQ]++
 	d.hbSendQ = o.hbSendQ
-	o.err <- nil
+	return nil
 }

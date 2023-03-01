@@ -41,7 +41,7 @@ Start launch new go routine that watch call counts
 
 It returns command control channel, and stop function to stop the counter
 */
-func Start(parent context.Context, mapping map[int]string) (chan<- interface{}, context.CancelFunc) {
+func Start(parent context.Context, mapping map[int]string, drainDuration time.Duration) (chan<- interface{}, context.CancelFunc) {
 	if parent == nil {
 		parent = context.Background()
 	}
@@ -49,7 +49,7 @@ func Start(parent context.Context, mapping map[int]string) (chan<- interface{}, 
 	c := make(chan interface{})
 	go func() {
 		run(ctx, c, mapping)
-		tC := time.After(100 * time.Millisecond)
+		tC := time.After(drainDuration)
 		for {
 			select {
 			case <-tC:
@@ -92,11 +92,7 @@ func run(ctx context.Context, c <-chan interface{}, mapping map[int]string) {
 		case op := <-c:
 			switch o := op.(type) {
 			case int:
-				if _, ok := counts[o]; ok {
-					counts[o]++
-				} else {
-					counts[o] = 1
-				}
+				counts[o]++
 			case getCount:
 				resCounts := make(Counts)
 				for i, v := range counts {

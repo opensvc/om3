@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"runtime"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/callcount"
 	"github.com/opensvc/om3/util/durationlog"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/jsondelta"
@@ -21,8 +21,13 @@ import (
 )
 
 type (
+	// caller defines interface to implement for daemondata loop cmd processing
+	// the function will hold the daemondata loop while running
+	//    err := caller.call(ctx, d)
+	//    caller.SetError(err)
 	caller interface {
-		call(context.Context, *data)
+		call(context.Context, *data) error
+		SetError(error)
 	}
 
 	data struct {
@@ -42,8 +47,9 @@ type (
 		// cluster nodes from local cluster config
 		clusterNodes map[string]struct{}
 
-		counterCmd chan<- interface{}
-		log        zerolog.Logger
+		// statCount is a map[<stat id>] to track number of <id> calls
+		statCount map[int]uint64
+		log       zerolog.Logger
 		bus        *pubsub.Bus
 
 		// msgLocalGen hold the latest published msg gen for localhost
@@ -93,6 +99,8 @@ type (
 		instStatusUpdated map[string]time.Time
 		gen               uint64
 	}
+
+	errC chan<- error
 )
 
 var (
@@ -110,32 +118,92 @@ var (
 	countRoutineInterval = 1 * time.Second
 
 	labelLocalNode = pubsub.Label{"node", hostname.Hostname()}
+
+	ErrDrained = errors.New("drained command")
 )
 
 func PropagationInterval() time.Duration {
 	return propagationInterval
 }
 
-// run the daemondata loop
+// run function loop on external events (op, hb) to updates data
+// and queue hb message for hb sender
 //
 // the loop does following action in order
 //
-//	 1- on propagate ticker:
-//	   commitPendingOps
-//	   pubPeerDataChanges
-//	   update sub hb stat on adaptive ticker (from 250ms to 25s)
-//	   queueNewHbMsg when hb message is needed
+//			 1- on propagate ticker:
+//			   commitPendingOps
+//			   pubPeerDataChanges
+//			   update sub hb stat on adaptive ticker (from 250ms to 25s)
+//			   queueNewHbMsg when hb message is needed
 //
-//	 2- read hbrx message from queue -> onReceiveHbMsg
-//	    apply ping
-//	    or apply full
-//	    or apply patch
+//			 2- read hbrx message from queue -> onReceiveHbMsg
+//			    apply ping
+//			    or apply full
+//			    or apply patch
 //
-//	3- process daemondata cmd
-func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Msg) {
-	counterCmd, cancel := callcount.Start(ctx, idToName)
-	defer cancel()
-	d := newData(counterCmd)
+//			3- process daemondata op commands from <-cmdC (chan <- caller)
+//
+//	       err := caller.call(ctx, d)
+//	       caller.SetError(err)
+//
+//	     Note: client functions that send op caller to cmdC must use buffered
+//	           channel to prevent daemondata loop hang during
+//	           <client> <-channel-> <daemondata op processing>
+//
+//		During drain pending op commands (not yet processed by cmdC loop) will receive ErrDrained.
+//	 => exposed caller clients can read the error channel to know if op commands succeed, failed or drained
+//
+//	 caller examples:
+//
+//	     type opGetX struct {
+//	         errC
+//	         resultC chan<- X
+//	     }
+//
+//	     type opDoX struct {
+//	         errC    // chan <- error
+//	     }
+//
+//	     func (o opGetX) call(ctx context.Context, d *data) error {
+//	         //
+//	         return err
+//	     }
+//
+//	    // client function
+//	     func (t T) DoX() error {
+//	          eC := make(chan err, 1)
+//	          t.cmdC <- opDoX{errC: eC}
+//	          return <- eC
+//	     }
+//
+//	     // client function
+//	     func (t T) GetX(...) X {
+//	        eC := make(chan err, 1) // buffered channel to prevent hang
+//	        resC := make(chan X, 1) // buffered channel to prevent hang
+//	        t.cmdC <- opGetX{errC: eC, resultC: resC}
+//	        if <-eC != nil {
+//	            return X{}
+//	        }
+//	        // err is nil, we can read on resC
+//	        return <- resC
+//	     }
+//
+//	     // client function
+//	     func (t T) GetXError(...) (x X, err error) {
+//	        eC := make(chan err, 1) // buffered channel to prevent hang
+//	        resC := make(chan X, 1) // buffered channel to prevent hang
+//	        t.cmdC <- opGetY{errC: eC, resultC: resC}
+//	        err = <- eC
+//	        if err != nil {
+//	            return
+//	        }
+//	        // err is nil, we can read on resC
+//	        x <- resC
+//	        return
+//	     }
+func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
+	d := newData()
 	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
 	d.log.Info().Msg("starting")
 	defer d.log.Info().Msg("stopped")
@@ -162,27 +230,47 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 	countRoutineTicker := time.NewTicker(countRoutineInterval)
 	defer countRoutineTicker.Stop()
 
+	doDrain := func() {
+		d.log.Debug().Msg("draining")
+		defer d.log.Debug().Msg("drained")
+
+		tC := time.After(drainDuration)
+		for {
+			select {
+			case <-hbRecvQ:
+				// don't hang hbRecvQ writers
+			case c := <-cmdC:
+				c.SetError(ErrDrained)
+			case <-tC:
+				d.log.Debug().Msg("drop pending cmds done")
+				return
+			}
+		}
+	}
+	isCtxDone := func() bool {
+		select {
+		case <-ctx.Done():
+			return true
+		default:
+			return false
+		}
+	}
+	defer doDrain()
 	for {
 		select {
 		case <-ctx.Done():
-			d.log.Debug().Msg("drop pending cmds")
-			tC := time.After(100 * time.Millisecond)
-			for {
-				select {
-				case <-hbRecvQ:
-					// don't hang hbRecvQ writers
-				case c := <-cmdC:
-					dropCmd(ctx, c)
-				case <-tC:
-					d.log.Debug().Msg("drop pending cmds done")
-					return
-				}
-			}
+			return
 		case <-propagationTicker.C:
 			needMessage := d.commitPendingOps()
+			if isCtxDone() {
+				return
+			}
 			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
 				needMessage = true
 				s := d.pending.Cluster.Node[d.localNode].Status
+				if isCtxDone() {
+					return
+				}
 				d.bus.Pub(
 					msgbus.NodeStatusUpdated{
 						Node:  d.localNode,
@@ -191,8 +279,13 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 					labelLocalNode,
 				)
 			}
+			if isCtxDone() {
+				return
+			}
 			d.pubPeerDataChanges()
 			select {
+			case <-ctx.Done():
+				return
 			case <-subHbRefreshTicker.C:
 				d.setDaemonHb()
 				d.log.Debug().Msgf("current hb msg mode %s", d.hbMsgMode[d.localNode])
@@ -205,12 +298,17 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			default:
 			}
 			select {
+			case <-ctx.Done():
+				return
 			case <-countRoutineTicker.C:
 				d.pending.Daemon.Routines = runtime.NumGoroutine()
 			default:
 			}
 			if needMessage || d.needMsg {
 				hbMsgType := d.hbMessageType
+				if isCtxDone() {
+					return
+				}
 				if err := d.queueNewHbMsg(ctx); err != nil {
 					d.log.Error().Err(err).Msg("queue hb message")
 				} else {
@@ -225,6 +323,9 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			}
 			propagationTicker.Reset(propagationInterval)
 		case msg := <-hbRecvQ:
+			if isCtxDone() {
+				return
+			}
 			if _, ok := d.clusterNodes[msg.Nodename]; ok {
 				d.onReceiveHbMsg(msg)
 			} else {
@@ -232,36 +333,29 @@ func run(ctx context.Context, cmdC <-chan interface{}, hbRecvQ <-chan *hbtype.Ms
 			}
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
-				beginCmd <- cmd
-				c.call(ctx, d)
-				endCmd <- true
+				select {
+				case <-ctx.Done():
+					c.SetError(ctx.Err())
+					return
+				case beginCmd <- cmd:
+				}
+				err := c.call(ctx, d)
+				c.SetError(err)
+				select {
+				case <-ctx.Done():
+					return
+				case endCmd <- true:
+				}
 			} else {
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
-				counterCmd <- idUndef
+				d.statCount[idUndef]++
 			}
 		}
 	}
 }
 
-type (
-	errorSetter interface {
-		setError(context.Context, error)
-	}
-
-	doneSetter interface {
-		setDone(context.Context, bool)
-	}
-)
-
-// dropCmd drops commands with side effects
-func dropCmd(ctx context.Context, c interface{}) {
-	// TODO implement all side effects
-	switch cmd := c.(type) {
-	case errorSetter:
-		cmd.setError(ctx, nil)
-	case doneSetter:
-		cmd.setDone(ctx, true)
-	}
+func (c errC) SetError(err error) {
+	c <- err
 }
 
 func gensEqual(a, b gens) bool {

@@ -2,6 +2,7 @@ package discover
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/icfg"
-	"github.com/opensvc/om3/daemon/imon"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/remoteconfig"
 	"github.com/opensvc/om3/util/file"
@@ -39,7 +39,7 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 func (d *discover) cfg(started chan<- bool) {
 	d.log.Info().Msg("cfg started")
 	defer func() {
-		t := time.NewTicker(dropCmdTimeout)
+		t := time.NewTicker(d.dropCmdDuration)
 		defer t.Stop()
 		for {
 			select {
@@ -107,7 +107,7 @@ func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
 		// TODO handle startup of imon
-		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC, imon.Factory); err != nil {
+		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC, d.imonStarter); err != nil {
 			return
 		}
 	}
@@ -121,7 +121,10 @@ func (d *discover) setNodeLabels() {
 		return
 	}
 	labels := node.Labels()
-	d.databus.SetNodeStatusLabels(labels)
+	if err := d.databus.SetNodeStatusLabels(labels); err != nil && !errors.Is(err, context.Canceled){
+		d.log.Error().Err(err).Msg("SetNodeStatusLabels")
+		return
+	}
 }
 
 // cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
@@ -136,7 +139,7 @@ func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 		return
 	}
 	// TODO handle startup of imon
-	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC, imon.Factory); err != nil {
+	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC, d.imonStarter); err != nil {
 		return
 	}
 	d.cfgMTime[s] = mtime

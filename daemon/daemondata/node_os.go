@@ -10,24 +10,24 @@ import (
 
 type (
 	opSetNodeOsPaths struct {
-		err   chan<- error
+		errC
 		value san.Paths
 	}
 )
 
 // SetNodeOsPaths sets Monitor.Node.<localhost>.Status.Paths
 func (t T) SetNodeOsPaths(paths san.Paths) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetNodeOsPaths{
-		err:   err,
+		errC:  err,
 		value: paths,
 	}
 	t.cmdC <- op
 	return <-err
 }
 
-func (o opSetNodeOsPaths) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetNodeOsPaths
+func (o opSetNodeOsPaths) call(ctx context.Context, d *data) error {
+	d.statCount[idSetNodeOsPaths]++
 	v := d.pending.Cluster.Node[d.localNode]
 	v.Os.Paths = o.value
 	d.pending.Cluster.Node[d.localNode] = v
@@ -44,8 +44,5 @@ func (o opSetNodeOsPaths) call(ctx context.Context, d *data) {
 		},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

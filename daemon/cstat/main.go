@@ -7,6 +7,7 @@ package cstat
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -50,7 +51,6 @@ func Start(parent context.Context) error {
 	o := &cstat{
 		ctx:        ctx,
 		cancel:     cancel,
-		cmdC:       make(chan any),
 		databus:    daemondata.FromContext(ctx),
 		bus:        pubsub.BusFromContext(ctx),
 		log:        log.Logger.With().Str("func", "cstat").Logger(),
@@ -60,8 +60,9 @@ func Start(parent context.Context) error {
 	o.startSubscriptions()
 	go func() {
 		defer func() {
-			msgbus.DropPendingMsg(o.cmdC, time.Second)
-			o.sub.Stop()
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+				o.log.Error().Err(err).Msg("subscription stop")
+			}
 		}()
 		o.worker()
 	}()

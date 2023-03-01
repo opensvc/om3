@@ -9,44 +9,51 @@ import (
 
 type (
 	opSetClusterStatus struct {
-		err   chan<- error
+		errC
 		value cluster.Status
 	}
 )
 
 // GetStatus returns deep copy of status
 func (t T) GetStatus() *cluster.Data {
-	status := make(chan *cluster.Data)
+	status := make(chan *cluster.Data, 1)
+	err := make(chan error, 1)
 	t.cmdC <- opGetStatus{
+		errC:   err,
 		status: status,
+	}
+	if <-err != nil {
+		return nil
 	}
 	return <-status
 }
 
 type opGetStatus struct {
+	errC
 	status chan<- *cluster.Data
 }
 
-func (o opGetStatus) call(ctx context.Context, d *data) {
-	d.counterCmd <- idGetStatus
+func (o opGetStatus) call(ctx context.Context, d *data) error {
+	d.statCount[idGetStatus]++
 	o.status <- d.pending.DeepCopy()
+	return nil
 }
 
 // SetClusterStatus
 //
 // cluster.status
 func (t T) SetClusterStatus(v cluster.Status) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetClusterStatus{
-		err:   err,
+		errC:  err,
 		value: v,
 	}
 	t.cmdC <- op
 	return <-err
 }
 
-func (o opSetClusterStatus) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetClusterStatus
+func (o opSetClusterStatus) call(ctx context.Context, d *data) error {
+	d.statCount[idSetClusterStatus]++
 	d.pending.Cluster.Status = o.value
 	d.bus.Pub(
 		msgbus.ClusterStatusUpdated{
@@ -55,8 +62,5 @@ func (o opSetClusterStatus) call(ctx context.Context, d *data) {
 		},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

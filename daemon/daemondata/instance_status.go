@@ -13,24 +13,25 @@ import (
 
 type (
 	opDelInstanceStatus struct {
-		err  chan<- error
+		errC
 		path path.T
 	}
 
 	opGetInstanceStatus struct {
+		errC
 		status chan<- instance.Status
 		path   path.T
 		node   string
 	}
 
 	opSetInstanceStatus struct {
-		err   chan<- error
+		errC
 		path  path.T
 		value instance.Status
 	}
 
 	opSetInstanceFrozen struct {
-		err    chan<- error
+		errC
 		path   path.T
 		frozen time.Time
 	}
@@ -40,9 +41,9 @@ type (
 //
 // Monitor.Node.<localhost>.services.status.*
 func (t T) DelInstanceStatus(p path.T) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opDelInstanceStatus{
-		err:  err,
+		errC: err,
 		path: p,
 	}
 	t.cmdC <- op
@@ -53,13 +54,18 @@ func (t T) DelInstanceStatus(p path.T) error {
 //
 // Monitor.Node.<localhost>.services.status.*
 func (t T) GetInstanceStatus(p path.T, node string) instance.Status {
-	status := make(chan instance.Status)
+	err := make(chan error, 1)
+	status := make(chan instance.Status, 1)
 	op := opGetInstanceStatus{
+		errC:   err,
 		status: status,
 		path:   p,
 		node:   node,
 	}
 	t.cmdC <- op
+	if <-err != nil {
+		return instance.Status{}
+	}
 	return <-status
 }
 
@@ -67,9 +73,9 @@ func (t T) GetInstanceStatus(p path.T, node string) instance.Status {
 //
 // Monitor.Node.<localhost>.instance.<p>.status.Frozen
 func (t T) SetInstanceFrozen(p path.T, frozen time.Time) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetInstanceFrozen{
-		err:    err,
+		errC:   err,
 		path:   p,
 		frozen: frozen,
 	}
@@ -81,9 +87,9 @@ func (t T) SetInstanceFrozen(p path.T, frozen time.Time) error {
 //
 // Monitor.Node.<localhost>.services.status.*
 func (t T) SetInstanceStatus(p path.T, v instance.Status) error {
-	err := make(chan error)
+	err := make(chan error, 1)
 	op := opSetInstanceStatus{
-		err:   err,
+		errC:  err,
 		path:  p,
 		value: v,
 	}
@@ -91,15 +97,8 @@ func (t T) SetInstanceStatus(p path.T, v instance.Status) error {
 	return <-err
 }
 
-func (o opDelInstanceStatus) setError(ctx context.Context, err error) {
-	select {
-	case o.err <- err:
-	case <-ctx.Done():
-	}
-}
-
-func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
-	d.counterCmd <- idDelInstanceStatus
+func (o opDelInstanceStatus) call(ctx context.Context, d *data) error {
+	d.statCount[idDelInstanceStatus]++
 	s := o.path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Status != nil {
 		inst.Status = nil
@@ -118,28 +117,23 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }
 
-func (o opGetInstanceStatus) call(ctx context.Context, d *data) {
-	d.counterCmd <- idGetInstanceStatus
+func (o opGetInstanceStatus) call(ctx context.Context, d *data) error {
+	d.statCount[idGetInstanceStatus]++
 	s := instance.Status{}
 	if nodeStatus, ok := d.pending.Cluster.Node[o.node]; ok {
 		if inst, ok := nodeStatus.Instance[o.path.String()]; ok && inst.Status != nil {
 			s = *inst.Status
 		}
 	}
-	select {
-	case <-ctx.Done():
-	case o.status <- s:
-	}
+	o.status <- s
+	return nil
 }
 
-func (o opSetInstanceFrozen) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetInstanceFrozen
+func (o opSetInstanceFrozen) call(ctx context.Context, d *data) error {
+	d.statCount[idSetInstanceFrozen]++
 	var (
 		op   jsondelta.Operation
 		ok   bool
@@ -148,8 +142,7 @@ func (o opSetInstanceFrozen) call(ctx context.Context, d *data) {
 	s := o.path.String()
 	value := o.frozen
 	if inst, ok = d.pending.Cluster.Node[d.localNode].Instance[s]; !ok {
-		o.err <- nil
-		return
+		return nil
 	}
 	newStatus := inst.Status.DeepCopy()
 	newStatus.Frozen = value
@@ -178,11 +171,11 @@ func (o opSetInstanceFrozen) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	o.err <- nil
+	return nil
 }
 
-func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
-	d.counterCmd <- idSetInstanceStatus
+func (o opSetInstanceStatus) call(ctx context.Context, d *data) error {
+	d.statCount[idSetInstanceStatus]++
 	var op jsondelta.Operation
 	s := o.path.String()
 	value := o.value.DeepCopy()
@@ -214,8 +207,5 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) {
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
-	select {
-	case <-ctx.Done():
-	case o.err <- nil:
-	}
+	return nil
 }

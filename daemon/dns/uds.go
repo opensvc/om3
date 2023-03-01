@@ -60,13 +60,18 @@ func (t *dns) lookup(b []byte) lookupResponse {
 }
 
 func (t *dns) getRecords(recordType, recordName string) Zone {
-	resp := make(chan Zone)
-	t.cmdC <- cmdGet{
-		Type: recordType,
+	err := make(chan error, 1)
+	c := cmdGet{
+		errC: err,
 		Name: recordName,
-		resp: resp,
+		Type: recordType,
+		resp: make(chan Zone),
 	}
-	return <-resp
+	t.cmdC <- c
+	if <-err != nil {
+		return Zone{}
+	}
+	return <-c.resp
 }
 
 func (t *dns) startUDSListener() error {

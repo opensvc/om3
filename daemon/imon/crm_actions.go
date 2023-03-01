@@ -36,6 +36,11 @@ func SetCmdPathForTest(s string) {
 }
 
 func (o *imon) orchestrateAfterAction(state, newState instance.MonitorState) {
+	select {
+	case <- o.ctx.Done():
+		return
+	default:
+	}
 	o.cmdC <- cmdOrchestrate{state: state, newState: newState}
 }
 

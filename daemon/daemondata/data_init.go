@@ -15,7 +15,7 @@ import (
 	"github.com/opensvc/om3/util/san"
 )
 
-func newData(counterCmd chan<- interface{}) *data {
+func newData() *data {
 	localNode := hostname.Hostname()
 	nodeData := newNodeData(localNode)
 	status := cluster.Data{
@@ -46,7 +46,7 @@ func newData(counterCmd chan<- interface{}) *data {
 	}
 	initialMsgType := "undef"
 	return &data{
-		counterCmd:         counterCmd,
+		statCount:          make(map[int]uint64),
 		gen:                nodeData.Status.Gen[localNode],
 		hbGens:             map[string]map[string]uint64{localNode: map[string]uint64{localNode: 0}},
 		hbMessageType:      initialMsgType,
