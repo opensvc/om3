@@ -21,7 +21,6 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 			},
 		},
 		Compat: 9,
-		Env:    "test",
 		Frozen: t1,
 		Gen: map[string]uint64{
 			"node1": uint64(19),
