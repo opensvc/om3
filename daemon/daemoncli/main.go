@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
@@ -32,6 +34,7 @@ var (
 	WaitRunningDelay   = 500 * time.Millisecond
 	WaitStoppedTimeout = 4 * time.Second
 	WaitStoppedDelay   = 250 * time.Millisecond
+	PidFile            = filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 )
 
 type (
@@ -108,6 +111,10 @@ func (t *T) Start() error {
 	if err != nil {
 		return err
 	}
+	if err := pidfile.WriteControl(PidFile, os.Getpid(), true); err != nil {
+		return err
+	}
+	defer os.Remove(PidFile)
 	d, err := t.start()
 	release()
 	if err != nil {
