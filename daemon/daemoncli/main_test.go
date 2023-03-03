@@ -3,7 +3,6 @@ package daemoncli_test
 import (
 	"os"
 	"runtime"
-	"sync"
 	"testing"
 	"time"
 
@@ -69,26 +68,27 @@ func TestDaemonBootstrap(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			hasConfig := hasConfig
-			wg := sync.WaitGroup{}
 			env := setup(t, hasConfig)
 			t.Logf("using env root: %s", env.Root)
 			cli, err := client.New(client.WithURL(daemonenv.UrlUxHttp()))
 			daemonCli := daemoncli.New(cli)
 			t.Logf("daemonCli.Running")
 			require.False(t, daemonCli.Running())
-			goStart := make(chan bool)
-			wg.Add(1)
+			startError := make(chan error)
 
 			t.Run("check daemonCli.Start", func(t *testing.T) {
+				t.Logf("daemonCli.Start...")
 				go func() {
-					t.Logf("daemonCli.Start...")
-					goStart <- true
-					require.NoError(t, daemonCli.Start())
-					wg.Done()
+					startError <- daemonCli.Start()
 				}()
-				<-goStart
-				//time.Sleep(50 * time.Millisecond)
+				select {
+				case err := <-startError:
+					require.NoError(t, err, "daemonCli.Start() returns error !")
+				case <-time.After(100 * time.Millisecond):
+					t.Logf("daemonCli.Start() doesn't return error yet, it must be running...")
+				}
 			})
+			require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
 
 			t.Run("daemonCli.WaitRunning", func(t *testing.T) {
 				t.Logf("daemonCli.WaitRunning")
@@ -163,23 +163,33 @@ func TestDaemonBootstrap(t *testing.T) {
 				})
 			}
 
-			t.Logf("daemonCli.Stop...")
-			require.NoError(t, daemonCli.Stop())
-
-			t.Logf("waiting start go routine done")
-			wg.Wait()
-
-			t.Logf("daemonCli.Running")
-			require.False(t, daemonCli.Running())
-
-			for name, url := range getClientUrl(hasConfig) {
-				t.Run("check stop again with client "+name, func(t *testing.T) {
-					cli, err := newClient(url)
-					require.Nil(t, err)
-					require.NoError(t, daemoncli.New(cli).Stop())
-					require.False(t, daemonCli.Running())
+			t.Run("stopping", func(t *testing.T) {
+				t.Run("daemoncli stop", func(t *testing.T) {
+					t.Logf("daemonCli.Stop...")
+					require.NoError(t, daemonCli.Stop())
 				})
-			}
+				require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
+
+				t.Run("Verify initial daemon start from daemonCli.Start() returns no error after daemonCli.Stop()", func(t *testing.T) {
+					select {
+					case err := <-startError:
+						require.NoError(t, err, "daemonCli.Start() returns error after daemonCli.Stop() succeeds")
+					case <-time.After(time.Second):
+						t.Fatalf("initial daemonCli.Start() should returns after daemonCli.Stop() succeeds")
+					}
+				})
+
+				require.False(t, t.Failed(), "can't continue test: initial daemonCli.Start() has errors")
+
+				for name, url := range getClientUrl(hasConfig) {
+					t.Run("check stop again with client "+name, func(t *testing.T) {
+						cli, err := newClient(url)
+						require.Nil(t, err)
+						require.NoError(t, daemoncli.New(cli).Stop())
+						require.False(t, daemonCli.Running())
+					})
+				}
+			})
 		})
 	}
 }
