@@ -80,7 +80,7 @@ type (
 
 		drainDuration time.Duration
 
-		orchestrationRateLimiter *rate.Limiter
+		updateLimiter *rate.Limiter
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -102,10 +102,10 @@ func (f Factory) Start(parent context.Context, p path.T, nodes []string) error {
 var (
 	defaultReadyDuration = 5 * time.Second
 
-	// orchestrateLimitRate is the limit rate for imon orchestration per second
+	// updateRate is the limit rate for imon publish updates per second
 	// when orchestration loop occur on an object, too many events/commands may block
 	// databus or event bus. We must prevent such situations
-	orchestrateLimitRate rate.Limit = 25
+	updateRate rate.Limit = 25
 )
 
 // start launch goroutine imon worker for a local instance state
@@ -145,7 +145,7 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 
 		drainDuration: drainDuration,
 
-		orchestrationRateLimiter: rate.NewLimiter(orchestrateLimitRate, 1),
+		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
 	}
 
 	o.startSubscriptions()
@@ -272,6 +272,9 @@ func (o *imon) update() {
 	default:
 	}
 	newValue := o.state
+	if err := o.updateLimiter.Wait(o.ctx); err != nil {
+		return
+	}
 	if err := o.databus.SetInstanceMonitor(o.path, newValue); err != nil {
 		o.log.Error().Err(err).Msg("SetInstanceMonitor")
 	}
