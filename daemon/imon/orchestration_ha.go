@@ -25,9 +25,21 @@ func (o *imon) orchestrateHAStop() {
 }
 
 func (o *imon) orchestrateHAStart() {
+	// we are here because we are ha object with global expect None
 	switch o.state.State {
 	case instance.MonitorStateReady:
 		o.cancelReadyState()
+	case instance.MonitorStateStarted:
+		// started means the action start has been done. This state is a
+		// waiter step to verify if received started like local instance status
+		// to transition state: started -> idle
+		// It prevents unexpected transition state -> ready
+		if o.isLocalStarted() {
+			o.log.Info().Msg("local instance status is now started like, leave state started, set local expect started")
+			o.state.LocalExpect = instance.MonitorLocalExpectStarted
+			o.transitionTo(instance.MonitorStateIdle)
+		}
+		return
 	}
 	if v, _ := o.isStartable(); !v {
 		return
