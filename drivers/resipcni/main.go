@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
+	"github.com/pkg/errors"
 
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -39,6 +40,11 @@ type (
 	}
 
 	Addrs []net.Addr
+
+	response struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
 )
 
 func New() resource.Driver {
@@ -405,7 +411,14 @@ func (t T) stop() error {
 		Msg("run")
 	err = cmd.Run()
 	if outB := cmd.Stdout(); len(outB) > 0 {
-		t.Log().Info().Msg(string(outB))
+		var resp response
+		if err := json.Unmarshal(outB, &resp); err == nil && resp.Code != 0 {
+			msg := fmt.Sprintf("cni error code %d: %s", resp.Code, resp.Msg)
+			t.Log().Error().Msg(msg)
+			return errors.New(msg)
+		} else {
+			t.Log().Info().Msg(string(outB))
+		}
 	}
 	if errB := cmd.Stderr(); len(errB) > 0 {
 		t.Log().Info().Msg(string(errB))
@@ -466,7 +479,14 @@ func (t T) start() error {
 		Msg("run")
 	err = cmd.Run()
 	if outB := cmd.Stdout(); len(outB) > 0 {
-		t.Log().Info().Msg(string(outB))
+		var resp response
+		if err := json.Unmarshal(outB, &resp); err == nil && resp.Code != 0 {
+			msg := fmt.Sprintf("cni error code %d: %s", resp.Code, resp.Msg)
+			t.Log().Error().Msg(msg)
+			return errors.New(msg)
+		} else {
+			t.Log().Info().Msg(string(outB))
+		}
 	}
 	if errB := cmd.Stderr(); len(errB) > 0 {
 		t.Log().Info().Msg(string(errB))
