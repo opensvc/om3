@@ -128,6 +128,9 @@ func TestDaemonBootstrap(t *testing.T) {
 
 			t.Run("check daemon status", func(t *testing.T) {
 				t.Logf("get daemon status")
+				t.Logf("give extra time for objects get pushed to daemon")
+				time.Sleep(150 * time.Millisecond)
+
 				var b []byte
 				b, err = cli.NewGetDaemonStatus().Do()
 				require.NoError(t, err)
