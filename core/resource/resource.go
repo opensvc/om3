@@ -58,48 +58,44 @@ type (
 
 	// Driver exposes what can be done with a resource
 	Driver interface {
-		Label() string
-		Manifest() *manifest.T
-		//	Start(context.Context) error
-		//	Stop(context.Context) error
-		Status(context.Context) status.T
 		Provisioned() (provisioned.T, error)
 		Provision(context.Context) error
 		Unprovision(context.Context) error
 
 		// common
-		StatusLog() StatusLogger
-		Trigger(trigger.Blocking, trigger.Hook, trigger.Action) error
-		Log() *zerolog.Logger
-		ID() *resourceid.T
-		IsOptional() bool
-		IsDisabled() bool
-		IsStandby() bool
-		IsShared() bool
-		IsMonitored() bool
-		IsEncap() bool
-		IsStatusDisabled() bool
-		RestartCount() int
+		ApplyPGChain(context.Context) error
+		GetObject() any
+		GetPG() *pg.Config
+		GetPGID() string
 		GetRestartDelay() time.Duration
+		ID() *resourceid.T
+		IsDisabled() bool
+		IsEncap() bool
+		IsMonitored() bool
+		IsOptional() bool
+		IsShared() bool
+		IsStandby() bool
+		IsStatusDisabled() bool
+		Label() string
+		Log() *zerolog.Logger
+		Manifest() *manifest.T
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
+		Progress(context.Context, string)
+		ProgressKey() []string
+		Requires(string) *resourcereqs.T
+		RestartCount() int
 		RID() string
 		RSubset() string
-		GetObjectDriver() ObjectDriver
 		SetObject(any)
-		GetObject() any
-		SetRID(string) error
 		SetPG(*pg.Config)
-		GetPG() *pg.Config
-		GetPGID() string
-		ApplyPGChain(context.Context) error
+		SetRID(string) error
+		Status(context.Context) status.T
+		StatusLog() StatusLogger
 		TagSet() TagSet
+		Trigger(context.Context, trigger.Blocking, trigger.Hook, trigger.Action) error
 		VarDir() string
-		Requires(string) *resourcereqs.T
-
-		Progress(context.Context, string)
-		Progressf(context.Context, string, ...any)
 	}
 
 	// T is the resource type, embedded in each drivers type
@@ -260,7 +256,11 @@ const (
 )
 
 var (
-	ErrReqNotMet = errors.New("")
+	ErrActionNotSupported      = errors.New("The resource action is not supported on resource")
+	ErrActionPostponedToLinker = errors.New("The resource action is postponed to its linker")
+	ErrDisabled                = errors.New("The resource is disabled")
+	ErrNotLinkable             = errors.New("The resource does not support linking")
+	ErrActionReqNotMet         = errors.New("The resource action requirements are not met")
 )
 
 // FlagString returns a one character representation of the type instance.
@@ -550,7 +550,7 @@ func formatResourceLabel(r Driver) string {
 	}
 }
 
-func (t T) trigger(s string) error {
+func (t T) trigger(ctx context.Context, s string) error {
 	cmdArgs, err := command.CmdArgsFromString(s)
 	if err != nil {
 		return err
@@ -567,9 +567,10 @@ func (t T) trigger(s string) error {
 	return cmd.Run()
 }
 
-func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
+func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
 	var cmd string
-	switch trigger.Format(blocking, hook, action) {
+	hookId := trigger.Format(blocking, hook, action)
+	switch hookId {
 	case "blocking_pre_start":
 		cmd = t.BlockingPreStart
 	case "pre_start":
@@ -621,7 +622,8 @@ func (t T) Trigger(blocking trigger.Blocking, hook trigger.Hook, action trigger.
 		return nil
 	}
 	t.log.Info().Msgf("trigger %s %s %s: %s", blocking, hook, action, cmd)
-	return t.trigger(cmd)
+	t.Progress(ctx, hookId)
+	return t.trigger(ctx, cmd)
 }
 
 func (t T) Requires(action string) *resourcereqs.T {
@@ -671,7 +673,7 @@ func StatusCheckRequires(ctx context.Context, r Driver) error {
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
-		return errors.Wrapf(ErrReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+		return errors.Wrapf(ErrActionReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met
 	return nil
@@ -705,7 +707,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 				continue // requirement met
 			}
 		}
-		return errors.Wrapf(ErrReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+		return errors.Wrapf(ErrActionReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met. flag a status transition as pending in the bus.
 	sb.Pending(r.RID())
@@ -716,29 +718,30 @@ func checkRequires(ctx context.Context, r Driver) error {
 func Run(ctx context.Context, r Driver) error {
 	runner, ok := r.(Runner)
 	if !ok {
-		return nil
+		return ErrActionNotSupported
 	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "run requires")
 	}
-	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Run); err != nil {
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Run); err != nil {
 		return errors.Wrapf(err, "pre run trigger")
 	}
-	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
+	r.Progress(ctx, "run")
 	if err := runner.Run(ctx); err != nil {
 		return errors.Wrapf(err, "run")
 	}
-	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Run); err != nil {
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Run); err != nil {
 		return errors.Wrapf(err, "post run trigger")
 	}
-	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	return nil
@@ -748,13 +751,13 @@ func Run(ctx context.Context, r Driver) error {
 func PRStop(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "start requires")
 	}
-	if err := SCSIPersistentReservationStop(r); err != nil {
+	if err := SCSIPersistentReservationStop(ctx, r); err != nil {
 		return err
 	}
 	return nil
@@ -764,13 +767,13 @@ func PRStop(ctx context.Context, r Driver) error {
 func PRStart(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "start requires")
 	}
-	if err := SCSIPersistentReservationStart(r); err != nil {
+	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
 	}
 	return nil
@@ -781,32 +784,33 @@ func Start(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(starter)
 	if !ok {
-		return nil
+		return ErrActionNotSupported
 	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "start requires")
 	}
-	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Start); err != nil {
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Start); err != nil {
 		return errors.Wrapf(err, "pre start trigger")
 	}
-	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	if err := SCSIPersistentReservationStart(r); err != nil {
+	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
 	}
+	r.Progress(ctx, "start")
 	if err := s.Start(ctx); err != nil {
 		return errors.Wrapf(err, "start")
 	}
-	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Start); err != nil {
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Start); err != nil {
 		return errors.Wrapf(err, "post start trigger")
 	}
-	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	return nil
@@ -817,13 +821,14 @@ func Resync(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(resyncer)
 	if !ok {
-		return nil
+		return ErrActionNotSupported
 	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
+	r.Progress(ctx, "resync")
 	if err := s.Resync(ctx); err != nil {
 		return err
 	}
@@ -835,13 +840,14 @@ func Full(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(fuller)
 	if !ok {
-		return nil
+		return ErrActionNotSupported
 	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
+	r.Progress(ctx, "full")
 	if err := s.Full(ctx); err != nil {
 		return err
 	}
@@ -853,12 +859,13 @@ func Update(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(updater)
 	if !ok {
-		return nil
+		return ErrActionNotSupported
 	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
+	r.Progress(ctx, "update")
 	Setenv(r)
 	if err := s.Update(ctx); err != nil {
 		return err
@@ -885,31 +892,32 @@ func stop(ctx context.Context, r Driver) error {
 	var i any = r
 	s, ok := i.(stopper)
 	if !ok {
-		return nil
+		return ErrActionNotSupported
 	}
 	if r.IsDisabled() {
-		return nil
+		return ErrDisabled
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
 		return errors.Wrapf(err, "requires")
 	}
-	if err := r.Trigger(trigger.Block, trigger.Pre, trigger.Stop); err != nil {
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Stop); err != nil {
 		return errors.Wrapf(err, "trigger")
 	}
-	if err := r.Trigger(trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
+	r.Progress(ctx, "stop")
 	if err := s.Stop(ctx); err != nil {
 		return err
 	}
-	if err := SCSIPersistentReservationStop(r); err != nil {
+	if err := SCSIPersistentReservationStop(ctx, r); err != nil {
 		return err
 	}
-	if err := r.Trigger(trigger.Block, trigger.Post, trigger.Stop); err != nil {
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Stop); err != nil {
 		return errors.Wrapf(err, "trigger")
 	}
-	if err := r.Trigger(trigger.NoBlock, trigger.Post, trigger.Stop); err != nil {
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	return nil
@@ -965,18 +973,20 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 	return &hdl
 }
 
-func SCSIPersistentReservationStop(r Driver) error {
+func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {
+		r.Progress(ctx, "prstop")
 		return hdl.Stop()
 	}
 }
 
-func SCSIPersistentReservationStart(r Driver) error {
+func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {
+		r.Progress(ctx, "prstart")
 		return hdl.Start()
 	}
 }
@@ -1121,28 +1131,24 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 	return ""
 }
 
-func (t *T) progressKey() string {
-	return fmt.Sprintf("%s %s", path.PathOf(t.object), t.RID())
+func (t *T) ProgressKey() []string {
+	p := rawconfig.Colorize.Bold(path.PathOf(t.object).String())
+	return []string{p, t.RID()}
 }
 
 // progressMsg prepends the last known colored status or the resource
-func (t *T) progressMsg(ctx context.Context, msg string) string {
+func (t *T) progressMsg(ctx context.Context, msg *string) []*string {
 	sb := statusbus.FromContext(ctx)
-	return fmt.Sprintf("%-19s │ %s", colorstatus.Sprint(sb.Get(t.RID()), rawconfig.Colorize), msg)
+	rid := t.RID()
+	first := colorstatus.Sprint(sb.First(rid), rawconfig.Colorize)
+	last := colorstatus.Sprint(sb.Get(rid), rawconfig.Colorize)
+	return []*string{&first, &last, msg}
 }
 
 func (t *T) Progress(ctx context.Context, msg string) {
 	if view := progress.ViewFromContext(ctx); view != nil {
-		key := t.progressKey()
-		msg = t.progressMsg(ctx, msg)
-		view.Info(key, msg)
-	}
-}
-
-func (t *T) Progressf(ctx context.Context, format string, args ...any) {
-	if view := progress.ViewFromContext(ctx); view != nil {
-		key := t.progressKey()
-		format = t.progressMsg(ctx, format)
-		view.Infof(key, format, args)
+		key := t.ProgressKey()
+		cols := t.progressMsg(ctx, &msg)
+		view.Info(key, cols)
 	}
 }

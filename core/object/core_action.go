@@ -307,12 +307,36 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer stop()
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
+
+	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
+		return func(ctx context.Context, r resource.Driver) error {
+			err := fn(ctx, r)
+			switch {
+			case errors.Is(err, resource.ErrDisabled):
+				err = nil
+			case errors.Is(err, resource.ErrActionNotSupported):
+				err = nil
+			case errors.Is(err, resource.ErrNotLinkable):
+				err = nil
+			case errors.Is(err, resource.ErrActionPostponedToLinker):
+				err = nil
+			case err == nil:
+				r.Progress(ctx, "done")
+			case r.IsOptional():
+				r.Progress(ctx, rawconfig.Colorize.Warning(err))
+			default:
+				r.Progress(ctx, rawconfig.Colorize.Error(err))
+			}
+			return err
+		}
+	}
+
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if linkToer, ok := r.(resource.LinkToer); ok {
 				if name := linkToer.LinkTo(); name != "" && l.Resources().HasRID(name) {
 					// will be handled by the targeted LinkNameser resource
-					return nil
+					return resource.ErrActionPostponedToLinker
 				}
 			}
 			if linkNameser, ok := r.(resource.LinkNameser); !ok {
@@ -326,7 +350,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 					// filter applies the action only on linkers
 					return func(ctx context.Context, r resource.Driver) error {
 						if !stringslice.Has(r.RID(), rids) {
-							return nil
+							return resource.ErrNotLinkable
 						}
 						return fn(ctx, r)
 					}
@@ -360,7 +384,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		_, _ = t.statusEval(ctx)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctx, l, b, action.Name, linkWrap(fn)); err != nil {
+	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
 				t.Log().Err(errRollback).Msg("rollback")
