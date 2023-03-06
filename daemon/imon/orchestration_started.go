@@ -20,6 +20,8 @@ func (o *imon) orchestrateStarted() {
 		o.startedFromThawed()
 	case instance.MonitorStateReady:
 		o.startedFromReady()
+	case instance.MonitorStateStarted:
+		o.startedFromStarted()
 	case instance.MonitorStateStartFailed:
 		o.startedFromStartFailed()
 	case instance.MonitorStateStarting:
@@ -117,7 +119,7 @@ func (o *imon) startedFromReady() {
 			o.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		o.doAction(o.crmStart, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
+		o.doAction(o.crmStart, instance.MonitorStateStarting, instance.MonitorStateStarted, instance.MonitorStateStartFailed)
 		return
 	default:
 		return
@@ -129,6 +131,10 @@ func (o *imon) startedFromAny() {
 		o.startedClearIfReached()
 		return
 	}
+}
+
+func (o *imon) startedFromStarted() {
+	o.startedClearIfReached()
 }
 
 func (o *imon) startedFromStartFailed() {

@@ -210,7 +210,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 			assert.Equalf(t, c.expectedCrm, calls,
 				"expected calls %v, found %v", c.expectedCrm, calls)
 
-			drainDuration := setup.DrainDuration
+			drainDuration := setup.DrainDuration + 15*time.Millisecond
 			t.Logf("setup cancel and wait for drain duration %s", drainDuration)
 			setup.Cancel()
 			time.Sleep(drainDuration)
