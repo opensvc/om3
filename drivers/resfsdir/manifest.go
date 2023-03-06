@@ -18,15 +18,15 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		keywords.Keyword{
 			Option:   "path",
 			Attr:     "Path",
 			Scopable: true,
 			Required: true,
 			Text:     "The fullpath of the directory to create.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "user",
 			Attr:      "User",
 			Scopable:  true,
@@ -34,7 +34,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "root",
 			Text:      "The user that should be owner of the directory. Either in numeric or symbolic form.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "group",
 			Attr:      "Group",
 			Scopable:  true,
@@ -42,7 +42,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "sys",
 			Text:      "The group that should be owner of the directory. Either in numeric or symbolic form.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "perm",
 			Attr:      "Perm",
 			Scopable:  true,
@@ -56,6 +56,6 @@ func (t T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     "The zone name the fs refers to. If set, the fs mount point is reparented into the zonepath rootfs.",
 		},
-	}...)
+	)
 	return m
 }

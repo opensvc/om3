@@ -26,6 +26,7 @@ const (
 	dryRunKey
 	rollbackDisabledKey
 	leaderKey
+	targetKey
 )
 
 func WithLockDisabled(ctx context.Context, v bool) context.Context {
@@ -136,6 +137,16 @@ func Subset(ctx context.Context) string {
 		return i.(string)
 	}
 	return ""
+}
+
+func WithTarget(ctx context.Context, s []string) context.Context {
+	return context.WithValue(ctx, targetKey, s)
+}
+func Target(ctx context.Context) []string {
+	if i := ctx.Value(targetKey); i != nil {
+		return i.([]string)
+	}
+	return []string{}
 }
 
 func WithLockTimeout(ctx context.Context, d time.Duration) context.Context {

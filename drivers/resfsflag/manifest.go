@@ -16,22 +16,10 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-		{
-			Key:  "nodes",
-			Attr: "Nodes",
-			Ref:  "object.nodes",
-		},
-		{
-			Key:  "topology",
-			Attr: "Topology",
-			Ref:  "object.topology",
-		},
-	}...)
+	m.Add(
+		manifest.ContextPath,
+		manifest.ContextNodes,
+		manifest.ContextTopology,
+	)
 	return m
 }

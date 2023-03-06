@@ -17,7 +17,7 @@ func drvDoc(drvID driver.ID, kwName string) (string, error) {
 	}
 	r := factory()
 	buff := ""
-	store := keywords.Store(r.Manifest().Keywords)
+	store := keywords.Store(r.Manifest().Keywords())
 	sort.Sort(store)
 	for _, kw := range store {
 		if (kwName != "") && kw.Option != kwName {
@@ -45,6 +45,18 @@ func (t core) defaultDoc() (string, error) {
 	return buff, nil
 }
 
+func (t *core) Doc(drvStr, kwStr string) (string, error) {
+	switch {
+	case drvStr == "":
+		return t.KeywordDoc(kwStr)
+	case kwStr == "":
+		return t.DriverDoc(drvStr)
+	default:
+		drvID := driver.Parse(drvStr)
+		return drvDoc(drvID, kwStr)
+	}
+}
+
 // KeywordDoc returns the documentation of a single keyword.
 func (t *core) KeywordDoc(s string) (string, error) {
 	k := key.Parse(s)
@@ -64,5 +76,5 @@ func (t *core) KeywordDoc(s string) (string, error) {
 // DriverDoc returns the documentation of all keywords of the specified driver.
 func (t *core) DriverDoc(s string) (string, error) {
 	drvID := driver.Parse(s)
-	return drvDoc(drvID, s)
+	return drvDoc(drvID, "")
 }

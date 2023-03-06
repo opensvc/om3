@@ -125,6 +125,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/soellman/pidfile v0.0.0-20160225184504-d482c905736b // indirect
 	github.com/spf13/afero v1.1.2 // indirect
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect

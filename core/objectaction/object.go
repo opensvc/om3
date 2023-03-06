@@ -1,6 +1,7 @@
 package objectaction
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -22,10 +23,10 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xsession"
-	"github.com/opensvc/om3/util/xspin"
 )
 
 type (
@@ -33,14 +34,9 @@ type (
 	// method implementation differ.
 	T struct {
 		actionrouter.T
-		Func func(path.T) (interface{}, error)
+		Func func(context.Context, path.T) (interface{}, error)
 	}
-
-	// ZerologHook implements the zerolog.Hook interface, ie a Run func executed on Event
-	ZerologHook struct{}
 )
-
-var spinner *xspin.Spinner
 
 // New allocates a new client configuration and returns the reference
 // so users are not tempted to use client.Config{} dereferenced, which would
@@ -157,7 +153,7 @@ func WithAsyncTargetOptions(o any) funcopt.O {
 	})
 }
 
-// WithDigest enables the action spinner rendering
+// WithDigest enables the action progress rendering
 func WithDigest() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -212,7 +208,7 @@ func WithServer(s string) funcopt.O {
 }
 
 // WithLocalRun sets a function to run if the the action is local
-func WithLocalRun(f func(path.T) (interface{}, error)) funcopt.O {
+func WithLocalRun(f func(context.Context, path.T) (interface{}, error)) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.Func = f
@@ -225,18 +221,6 @@ func (t T) Options() actionrouter.T {
 	return t.T
 }
 
-func (h ZerologHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
-	if spinner == nil {
-		return
-	}
-	if level == zerolog.NoLevel {
-		spinner.TickWithMsg(msg)
-		e.Discard()
-	} else {
-		spinner.Tick()
-	}
-}
-
 func (t T) DoLocal() error {
 	log.Debug().
 		Str("format", t.Format).
@@ -247,16 +231,9 @@ func (t T) DoLocal() error {
 		objectselector.SelectionWithLocal(true),
 	)
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
-		spinner = xspin.New("wave")
-		log.Logger = log.Logger.Hook(ZerologHook{})
-		fmt.Println(xsession.ID)
-		fmt.Printf("%s", spinner)
+		fmt.Printf("sid=%s\n", xsession.ID)
 	}
 	rs, err := selectionDo(sel, t.Func)
-	if spinner != nil {
-		spinner.Disable()
-		spinner.Erase()
-	}
 	if err != nil {
 		return err
 	}
@@ -333,9 +310,9 @@ func (t T) DoLocal() error {
 	for _, ar := range rs {
 		switch {
 		case ar.Panic != nil:
-			errs = xerrors.Append(errs, errors.Errorf(fmt.Sprint(ar.Panic)))
+			errs = xerrors.Append(errs, errors.Errorf(fmt.Sprintf("%s: %s", ar.Path, ar.Panic)))
 		case ar.Error != nil:
-			errs = xerrors.Append(errs, ar.Error)
+			errs = xerrors.Append(errs, errors.Errorf(fmt.Sprintf("%s: %s", ar.Path, ar.Error)))
 		}
 	}
 	return errs
@@ -456,13 +433,21 @@ func (t T) Do() error {
 
 // selectionDo executes in parallel the action on all selected objects supporting
 // the action.
-func selectionDo(selection *objectselector.Selection, fn func(path.T) (interface{}, error)) ([]actionrouter.Result, error) {
+func selectionDo(selection *objectselector.Selection, fn func(context.Context, path.T) (interface{}, error)) ([]actionrouter.Result, error) {
 	results := make([]actionrouter.Result, 0)
 
 	paths, err := selection.Expand()
 	if err != nil {
 		return results, err
 	}
+
+	// push a progress view to the context, so objects can use it to
+	// display what they are doing.
+	progressView := progress.NewView()
+	progressView.Start()
+	defer progressView.Stop()
+	ctx := context.Background()
+	ctx = progress.ContextWithView(ctx, progressView)
 
 	q := make(chan actionrouter.Result, len(paths))
 	started := 0
@@ -480,7 +465,7 @@ func selectionDo(selection *objectselector.Selection, fn func(path.T) (interface
 					q <- result
 				}
 			}()
-			data, err := fn(p)
+			data, err := fn(ctx, p)
 			result.Data = data
 			result.Error = err
 			result.HumanRenderer = func() string { return actionrouter.DefaultHumanRenderer(data) }

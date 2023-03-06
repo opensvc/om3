@@ -22,6 +22,7 @@ var (
 	Colorize *palette.ColorPaletteFunc
 	Color    *palette.ColorPalette
 	Paths    AgentPaths
+	Envs     []string
 
 	// nodeViper is the global accessor to the viper instance handling configuration
 	nodeViper *viper.Viper
@@ -33,6 +34,24 @@ var (
 
 	sectionCluster clusterSection
 	sectionNode    nodeSection
+
+	defaultEnvs = []string{
+		"CERT",
+		"DEV",
+		"DRP",
+		"FOR",
+		"INT",
+		"PRA",
+		"PRD",
+		"PRJ",
+		"PPRD",
+		"QUAL",
+		"REC",
+		"STG",
+		"TMP",
+		"TST",
+		"UAT",
+	}
 )
 
 type (
@@ -43,6 +62,7 @@ type (
 		Node     nodeSection           `mapstructure:"node"`
 		Palette  palette.StringPalette `mapstructure:"palette"`
 		Paths    AgentPaths            `mapstructure:"paths"`
+		Envs     []string              `mapstructure:"envs"`
 	}
 
 	clusterSection struct {
@@ -126,6 +146,7 @@ func Load(env map[string]string) {
 	setDefaults(root)
 	nodeViper.SetDefault("paths.python", python)
 	nodeViper.SetDefault("cluster.name", clusterName)
+	nodeViper.SetDefault("envs", defaultEnvs)
 
 	if err := nodeViper.Unmarshal(&fromViper); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to extract the configuration %s\n", err)

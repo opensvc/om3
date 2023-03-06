@@ -18,8 +18,8 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		keywords.Keyword{
 			Option:    "domains",
 			Attr:      "Domains",
 			Scopable:  true,
@@ -28,7 +28,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "{name}",
 			Text:      "The list of http domains in this expose.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "routes",
 			Attr:      "Routes",
 			Scopable:  true,
@@ -36,6 +36,6 @@ func (t T) Manifest() *manifest.T {
 			Example:   "route#1 route#2",
 			Text:      "The list of route resource identifiers for this vhost.",
 		},
-	}...)
+	)
 	return m
 }

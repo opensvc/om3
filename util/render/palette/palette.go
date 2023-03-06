@@ -39,13 +39,13 @@ type (
 
 	// ColorPaletteFunc declares the string colorizer to use for each role.
 	ColorPaletteFunc struct {
-		Primary   func(a ...interface{}) string
-		Secondary func(a ...interface{}) string
-		Optimal   func(a ...interface{}) string
-		Error     func(a ...interface{}) string
-		Warning   func(a ...interface{}) string
-		Frozen    func(a ...interface{}) string
-		Bold      func(a ...interface{}) string
+		Primary   func(a ...any) string
+		Secondary func(a ...any) string
+		Optimal   func(a ...any) string
+		Error     func(a ...any) string
+		Warning   func(a ...any) string
+		Frozen    func(a ...any) string
+		Bold      func(a ...any) string
 	}
 )
 

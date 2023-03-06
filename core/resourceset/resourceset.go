@@ -215,7 +215,6 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	nResources := len(resources)
 	for i := 0; i < nResources; i++ {
 		res := <-q
-		t.Log().Log().Msgf("wait %s parallel %s: %d/%d running", t.Name, desc, nResources-i, nResources)
 		if res.Resource.IsOptional() {
 			continue
 		}
@@ -226,10 +225,10 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 
 func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
 	for _, r := range resources {
+		rid := r.RID()
 		var err error
 		c := make(chan error, 1)
 		if err = l.ReconfigureResource(r); err == nil {
-			t.Log().Log().Msgf("%s %s", desc, r.RID())
 			c <- fn(ctx, r)
 		}
 		select {
@@ -237,13 +236,14 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 			err = fmt.Errorf("timeout")
 		case err = <-c:
 		}
-		if err == nil {
+		switch {
+		case err == nil:
 			continue
-		}
-		if r.IsOptional() {
+		case r.IsOptional():
 			continue
+		default:
+			return errors.Wrap(err, rid)
 		}
-		return errors.Wrap(err, r.RID())
 	}
 	return nil
 }

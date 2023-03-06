@@ -21,25 +21,11 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-		{
-			Key:  "object_id",
-			Attr: "ObjectID",
-			Ref:  "object.id",
-		},
-		{
-			Key:  "dns",
-			Attr: "DNS",
-			Ref:  "node.dns",
-		},
-	}...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		manifest.ContextPath,
+		manifest.ContextObjectID,
+		manifest.ContextDNS,
+		keywords.Keyword{
 			Option:      "name",
 			Attr:        "Name",
 			Scopable:    true,
@@ -47,14 +33,14 @@ func (t T) Manifest() *manifest.T {
 			Text:        "The name to assign to the container on docker run. If none is specified a ``<namespace>..<name>.container.<rid idx>`` name is automatically assigned.",
 			Example:     "osvcprd..rundeck.container.db",
 		},
-		{
+		keywords.Keyword{
 			Option:   "hostname",
 			Attr:     "Hostname",
 			Scopable: true,
 			Example:  "nginx1",
 			Text:     "Set the container hostname. If not set, a unique id is used.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "dns_search",
 			Attr:      "DNSSearch",
 			Converter: converters.List,
@@ -64,7 +50,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "opensvc.com",
 			Text:      "The whitespace separated list of dns domains to search for shortname lookups. If empty or not set, the list will be <name>.<namespace>.svc.<clustername> <namespace>.svc.<clustername> svc.<clustername>.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "image",
 			Attr:     "Image",
 			Aliases:  []string{"run_image"},
@@ -73,7 +59,7 @@ func (t T) Manifest() *manifest.T {
 			Example:  "google/pause",
 			Text:     "The docker image pull, and run the container with.",
 		},
-		{
+		keywords.Keyword{
 			Option:     "image_pull_policy",
 			Attr:       "ImagePullPolicy",
 			Scopable:   true,
@@ -81,14 +67,14 @@ func (t T) Manifest() *manifest.T {
 			Example:    "once",
 			Text:       "The docker image pull policy. ``always`` pull upon each container start, ``once`` pull if not already pulled (default).",
 		},
-		{
+		keywords.Keyword{
 			Option:   "cwd",
 			Attr:     "CWD",
 			Scopable: true,
 			Example:  "/opt/foo",
 			Text:     "The current working directory set for the executed command.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "command",
 			Attr:      "Command",
 			Aliases:   []string{"run_command"},
@@ -97,7 +83,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "/opt/tomcat/bin/catalina.sh",
 			Text:      "The command to execute in the docker container on run.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "run_args",
 			Attr:      "RunArgs",
 			Scopable:  true,
@@ -105,7 +91,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "-v /opt/docker.opensvc.com/vol1:/vol1:rw -p 37.59.71.25:8080:8080",
 			Text:      "Extra arguments to pass to the docker run command, like volume and port mappings.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "entrypoint",
 			Attr:      "Entrypoint",
 			Scopable:  true,
@@ -113,7 +99,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "/bin/sh",
 			Text:      "The script or binary executed in the container. Args must be set in :kw:`command`.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "detach",
 			Attr:      "Detach",
 			Scopable:  true,
@@ -121,7 +107,7 @@ func (t T) Manifest() *manifest.T {
 			Default:   "true",
 			Text:      "Run container in background. Set to ``false`` only for init containers, alongside :kw:`start_timeout` and the :c-tag:`nostatus` tag.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "rm",
 			Attr:      "Remove",
 			Scopable:  true,
@@ -129,14 +115,14 @@ func (t T) Manifest() *manifest.T {
 			Example:   "false",
 			Text:      "If set to ``true``, add :opt:`--rm` to the docker run args and make sure the instance is removed on resource stop.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "privileged",
 			Attr:      "Privileged",
 			Scopable:  true,
 			Converter: converters.Bool,
 			Text:      "Give extended privileges to the container.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "init",
 			Attr:      "Init",
 			Scopable:  true,
@@ -144,21 +130,21 @@ func (t T) Manifest() *manifest.T {
 			Converter: converters.Bool,
 			Text:      "Run an init inside the container that forwards signals and reaps processes.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "interactive",
 			Attr:      "Interactive",
 			Scopable:  true,
 			Converter: converters.Bool,
 			Text:      "Keep stdin open even if not attached. To use if the container entrypoint is a shell.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "tty",
 			Attr:      "TTY",
 			Scopable:  true,
 			Converter: converters.Bool,
 			Text:      "Allocate a pseudo-tty.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "volume_mounts",
 			Attr:      "VolumeMounts",
 			Scopable:  true,
@@ -166,7 +152,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "The whitespace separated list of ``<volume name|local dir>:<containerized mount path>:<mount options>``. When the source is a local dir, the default <mount option> is rw. When the source is a volume name, the default <mount option> is taken from volume access.",
 			Example:   "myvol1:/vol1 myvol2:/vol2:rw /localdir:/data:ro",
 		},
-		{
+		keywords.Keyword{
 			Option:    "environment",
 			Attr:      "Env",
 			Scopable:  true,
@@ -174,7 +160,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "A whitespace separated list of ``<var>=<secret name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<secret name>/<key path>`` only or whole ``<var>=<secret name>/<key path>``. Variables are uppercased.",
 			Example:   "KEY=cert1/server.key PASSWORD=db/password",
 		},
-		{
+		keywords.Keyword{
 			Option:    "configs_environment",
 			Attr:      "ConfigsEnv",
 			Scopable:  true,
@@ -182,7 +168,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "A whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
 			Example:   "CRT=cert1/server.crt PEM=cert1/server.pem",
 		},
-		{
+		keywords.Keyword{
 			Option:    "devices",
 			Attr:      "Devices",
 			Scopable:  true,
@@ -190,7 +176,7 @@ func (t T) Manifest() *manifest.T {
 			Text:      "The whitespace separated list of ``<host devpath>:<containerized devpath>``, specifying the host devices the container should have access to.",
 			Example:   "myvol1:/dev/xvda myvol2:/dev/xvdb",
 		},
-		{
+		keywords.Keyword{
 			Option:   "netns",
 			Attr:     "NetNS",
 			Aliases:  []string{"net"},
@@ -198,35 +184,35 @@ func (t T) Manifest() *manifest.T {
 			Example:  "container#0",
 			Text:     "Sets the :cmd:`docker run --net` argument. The default is ``none`` if :opt:`--net` is not specified in :kw:`run_args`, meaning the container will have a private netns other containers can share. A :c-res:`ip.netns` or :c-res:`ip.cni` resource can configure an ip address in this container. A container with ``netns=container#0`` will share the container#0 netns. In this case agent format a :opt:`--net=container:<name of container#0 docker instance>`. ``netns=host`` shares the host netns.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "user",
 			Attr:     "User",
 			Scopable: true,
 			Example:  "guest",
 			Text:     "Sets the :cmd:`docker run --user` argument. The user that will run the command inside the container, also support user:group.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "userns",
 			Attr:     "UserNS",
 			Scopable: true,
 			Example:  "container#0",
 			Text:     "Sets the :cmd:`docker run --userns` argument. If not set, the container will have a private userns other containers can share. A container with ``userns=host`` will share the host's userns.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "pidns",
 			Attr:     "PIDNS",
 			Scopable: true,
 			Example:  "container#0",
 			Text:     "Sets the :cmd:`docker run --pid` argument. If not set, the container will have a private pidns other containers can share. Usually a pidns sharer will run a google/pause image to reap zombies. A container with ``pidns=container#0`` will share the container#0 pidns. In this case agent format a :opt:`--pid=container:<name of container#0 docker instance>`. Use ``pidns=host`` to share the host's pidns.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "ipcns",
 			Attr:     "IPCNS",
 			Scopable: true,
 			Example:  "container#0",
 			Text:     "Sets the :cmd:`docker run --ipc` argument. If not set, the docker daemon's default value is used. ``ipcns=none`` does not mount /dev/shm. ``ipcns=private`` creates a ipcns other containers can not share. ``ipcns=shareable`` creates a netns other containers can share. ``ipcns=container#0`` will share the container#0 ipcns.",
 		},
-		{
+		keywords.Keyword{
 			Option:     "utsns",
 			Attr:       "UTSNS",
 			Scopable:   true,
@@ -234,14 +220,14 @@ func (t T) Manifest() *manifest.T {
 			Example:    "container#0",
 			Text:       "Sets the :cmd:`docker run --uts` argument. If not set, the container will have a private utsns. A container with ``utsns=host`` will share the host's hostname.",
 		},
-		{
+		keywords.Keyword{
 			Option:   "registry_creds",
 			Attr:     "RegistryCreds",
 			Scopable: true,
 			Example:  "creds-registry-opensvc-com",
 			Text:     "The name of a secret in the same namespace having a config.json key which value is used to login to the container image registry. If not specified, the node-level registry credential store is used.",
 		},
-		{
+		keywords.Keyword{
 			Option:    "pull_timeout",
 			Attr:      "PullTimeout",
 			Scopable:  true,
@@ -250,7 +236,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "2m",
 			Default:   "2m",
 		},
-		{
+		keywords.Keyword{
 			Option:    "start_timeout",
 			Attr:      "StartTimeout",
 			Scopable:  true,
@@ -259,7 +245,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "1m5s",
 			Default:   "5s",
 		},
-		{
+		keywords.Keyword{
 			Option:    "stop_timeout",
 			Attr:      "StopTimeout",
 			Scopable:  true,
@@ -268,7 +254,7 @@ func (t T) Manifest() *manifest.T {
 			Example:   "2m",
 			Default:   "2m30s",
 		},
-		{
+		keywords.Keyword{
 			Option:    "secrets_environment",
 			Attr:      "SecretsEnv",
 			Scopable:  true,
@@ -281,7 +267,7 @@ func (t T) Manifest() *manifest.T {
 			Example: "``CRT=cert1/server.pem sec1/*`` to create following env vars CRT=< <ns>/sec/cert1 decoded" +
 				" value of key server.pem> <key1>=< <ns>/sec/sec1 decoded value of <key1> ...",
 		},
-		{
+		keywords.Keyword{
 			Option:    "configs_environment",
 			Attr:      "ConfigsEnv",
 			Scopable:  true,
@@ -298,6 +284,6 @@ func (t T) Manifest() *manifest.T {
 		rescontainer.KWNoPreemptAbort,
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
-	}...)
+	)
 	return m
 }

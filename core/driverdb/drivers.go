@@ -25,6 +25,7 @@ import (
 	_ "github.com/opensvc/om3/drivers/resiproute"
 	_ "github.com/opensvc/om3/drivers/resrouteenvoy"
 	_ "github.com/opensvc/om3/drivers/ressharenfs"
+	_ "github.com/opensvc/om3/drivers/ressyncrsync"
 	_ "github.com/opensvc/om3/drivers/restaskhost"
 	_ "github.com/opensvc/om3/drivers/resvhostenvoy"
 	_ "github.com/opensvc/om3/drivers/resvol"

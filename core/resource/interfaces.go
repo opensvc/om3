@@ -77,7 +77,19 @@ type (
 		PID() int
 	}
 
+	starter interface {
+		Start(context.Context) error
+	}
+	stopper interface {
+		Stop(context.Context) error
+	}
 	resyncer interface {
 		Resync(context.Context) error
+	}
+	fuller interface {
+		Full(context.Context) error
+	}
+	updater interface {
+		Update(context.Context) error
 	}
 )

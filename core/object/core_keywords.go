@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/xconfig"
@@ -224,7 +225,7 @@ var keywordStore = keywords.Store{
 		Aliases:     []string{"service_type"},
 		Inherit:     keywords.InheritHead,
 		DefaultText: "Same as the node env",
-		Candidates:  validEnvs,
+		Candidates:  rawconfig.Envs,
 		Text:        "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation). The default value is the node :kw:`env`.",
 	},
 	{
@@ -675,7 +676,7 @@ func keywordLookup(store keywords.Store, k key.T, kd kind.T, sectionType string)
 		if !ok {
 			continue
 		}
-		kws := allocator().Manifest().Keywords
+		kws := allocator().Manifest().Keywords()
 		if kws == nil {
 			continue
 		}

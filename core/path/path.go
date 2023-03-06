@@ -47,6 +47,10 @@ type (
 		Namespace string `json:"namespace"`
 		Kind      kind.T `json:"kind"`
 	}
+
+	pather interface {
+		Path() T
+	}
 )
 
 const (
@@ -486,4 +490,11 @@ func List() (L, error) {
 		l = append(l, p)
 	}
 	return l, nil
+}
+
+func PathOf(o any) T {
+	if p, ok := o.(pather); ok {
+		return p.Path()
+	}
+	return T{}
 }

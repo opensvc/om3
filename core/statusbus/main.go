@@ -39,6 +39,12 @@ type (
 		pending bool
 	}
 
+	getFirstStatus struct {
+		path     path.T
+		rid      string
+		response chan status.T
+	}
+
 	getStatus struct {
 		path     path.T
 		rid      string
@@ -46,9 +52,10 @@ type (
 	}
 
 	leaf struct {
-		hooks   map[uuid.UUID]func(status.T)
-		state   status.T
-		pending bool
+		hooks      map[uuid.UUID]func(status.T)
+		state      status.T
+		firstState status.T
+		pending    bool
 	}
 	statesMap map[path.T]map[string]leaf
 
@@ -58,7 +65,7 @@ type (
 		channel struct {
 			stop       chan int
 			post       chan postStatus
-			get        chan getStatus
+			get        chan any
 			register   chan register
 			unregister chan unregister
 		}
@@ -93,7 +100,6 @@ func (t *T) Stop() {
 // bus := T{}
 // defer bus.Stop()
 // bus.Start()
-//
 func (t *T) Start() {
 	if t.started {
 		panic(ErrorStarted)
@@ -101,7 +107,7 @@ func (t *T) Start() {
 	t.started = true
 	t.channel.stop = make(chan int)
 	t.channel.post = make(chan postStatus)
-	t.channel.get = make(chan getStatus)
+	t.channel.get = make(chan any)
 	t.channel.register = make(chan register)
 	t.channel.unregister = make(chan unregister)
 	t.states = make(statesMap)
@@ -111,9 +117,9 @@ func (t *T) Start() {
 // Post push a new object rid status to status bus
 //
 // bus.Post(path.T{Name:"foo",Namespace: "root", Kind: kind.Svc},
-//          "app#1",
-//          status.Down))
 //
+//	"app#1",
+//	status.Down))
 func (t *T) Post(p path.T, rid string, state status.T, pending bool) {
 	if !t.started {
 		panic(ErrorNeedStart)
@@ -143,21 +149,34 @@ func (t *T) Pending(p path.T, rid string) {
 // returns status.Undef if no object rid is not found
 //
 // Example:
-//    p := path.T{Name:"foo",Namespace: "root", Kind: kind.Svc}
-//    bus.Post(p, "app#1", status.Up)
-//    bus.Post(p, "app#2", status.Down)
 //
-//    bus.Get(p, "app#1") // returns status.Up
-//    bus.Get(p, "app#2") // returns status.Down
-//    bus.Get(p, "app#99") // returns status.Undef
-//    bus.Get(path.T{}, "app#1") // returns status.Undef
+//	p := path.T{Name:"foo",Namespace: "root", Kind: kind.Svc}
+//	bus.Post(p, "app#1", status.Up)
+//	bus.Post(p, "app#2", status.Down)
 //
+//	bus.Get(p, "app#1") // returns status.Up
+//	bus.Get(p, "app#2") // returns status.Down
+//	bus.Get(p, "app#99") // returns status.Undef
+//	bus.Get(path.T{}, "app#1") // returns status.Undef
 func (t *T) Get(p path.T, rid string) status.T {
 	if !t.started {
 		panic(ErrorNeedStart)
 	}
 	resp := make(chan status.T)
 	t.channel.get <- getStatus{
+		path:     p,
+		rid:      rid,
+		response: resp,
+	}
+	return <-resp
+}
+
+func (t *T) First(p path.T, rid string) status.T {
+	if !t.started {
+		panic(ErrorNeedStart)
+	}
+	resp := make(chan status.T)
+	t.channel.get <- getFirstStatus{
 		path:     p,
 		rid:      rid,
 		response: resp,
@@ -262,6 +281,9 @@ func (t *T) post(p path.T, rid string, state status.T, pending bool) {
 	if state >= 0 {
 		l.state = state
 	}
+	if l.firstState == 0 {
+		l.firstState = state
+	}
 	t.states[p][rid] = l
 	if !l.pending {
 		for _, hook := range l.hooks {
@@ -281,14 +303,23 @@ func (t *T) start() {
 			t.delHook(req.path, req.rid, req.uuid)
 		case req := <-t.channel.post:
 			t.post(req.path, req.rid, req.state, req.pending)
-		case req := <-t.channel.get:
-			req.response <- t.getLeaf(req.path, req.rid).state
+		case i := <-t.channel.get:
+			switch req := i.(type) {
+			case getStatus:
+				req.response <- t.getLeaf(req.path, req.rid).state
+			case getFirstStatus:
+				req.response <- t.getLeaf(req.path, req.rid).firstState
+			}
 		}
 	}
 }
 
 func (t *ObjT) Wait(rid string, timeout time.Duration) status.T {
 	return t.bus.Wait(t.path, rid, timeout)
+}
+
+func (t *ObjT) First(rid string) status.T {
+	return t.bus.First(t.path, rid)
 }
 
 func (t *ObjT) Get(rid string) status.T {

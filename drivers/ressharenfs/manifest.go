@@ -19,8 +19,8 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		keywords.Keyword{
 			Option:   "path",
 			Attr:     "SharePath",
 			Required: true,
@@ -28,7 +28,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The fullpath of the directory to share.",
 			Example:  "/srv/{fqdn}/share",
 		},
-		{
+		keywords.Keyword{
 			Option:   "opts",
 			Attr:     "ShareOpts",
 			Required: true,
@@ -36,6 +36,6 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The NFS share export options, as they woud be set in /etc/exports or passed to Solaris share command.",
 			Example:  "*(ro)",
 		},
-	}...)
+	)
 	return m
 }
