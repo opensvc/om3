@@ -24,12 +24,11 @@ func (t *CmdObjectEnter) Run(selector, kind string) error {
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
-			ctx := context.Background()
 			return nil, o.Enter(ctx, t.RID)
 		}),
 	).Do()

@@ -27,7 +27,7 @@ func (t *CmdObjectValidateConfig) Run(selector, kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("validate config"),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.New(p)
 			if err != nil {
 				return nil, err
@@ -36,7 +36,6 @@ func (t *CmdObjectValidateConfig) Run(selector, kind string) error {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a configurer", o)
 			}
-			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			return c.ValidateConfig(ctx)

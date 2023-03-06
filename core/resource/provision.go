@@ -84,7 +84,12 @@ func startLeader(ctx context.Context, t Driver, leader bool) error {
 	if isLeaded(t, leader) {
 		return nil
 	}
-	return t.Start(ctx)
+	switch o := t.(type) {
+	case starter:
+		return o.Start(ctx)
+	default:
+		return nil
+	}
 }
 
 func provisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
@@ -125,10 +130,13 @@ func Unprovision(ctx context.Context, t Driver, leader bool) error {
 }
 
 func unprovisionStop(ctx context.Context, t Driver) error {
-	if i, ok := t.(UnprovisionStoper); ok {
-		return i.UnprovisionStop(ctx)
-	} else {
-		return t.Stop(ctx)
+	switch o := t.(type) {
+	case UnprovisionStoper:
+		return o.UnprovisionStop(ctx)
+	case stopper:
+		return o.Stop(ctx)
+	default:
+		return nil
 	}
 }
 

@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/path"
@@ -34,7 +36,7 @@ func (t *CmdObjectComplianceFixable) Run(selector, kind string) error {
 			"moduleset": t.Moduleset,
 			"attach":    t.Attach,
 		}),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			if o, err := object.NewSvc(p); err != nil {
 				return nil, err
 			} else {

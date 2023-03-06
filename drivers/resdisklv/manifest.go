@@ -21,9 +21,9 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:   "name",
 			Attr:     "LVName",
 			Required: true,
@@ -31,7 +31,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The name of the logical volume.",
 			Example:  "lv1",
 		},
-		{
+		keywords.Keyword{
 			Option:   "vg",
 			Attr:     "VGName",
 			Scopable: true,
@@ -39,7 +39,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The name of the volume group hosting the logical volume.",
 			Example:  "vg1",
 		},
-		{
+		keywords.Keyword{
 			Option:       "size",
 			Attr:         "Size",
 			Scopable:     true,
@@ -47,7 +47,7 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The size of the logical volume to provision. A size expression or <n>%{FREE|PVS|VG}.",
 			Example:      "10m",
 		},
-		{
+		keywords.Keyword{
 			Option:       "create_options",
 			Attr:         "CreateOptions",
 			Converter:    converters.Shlex,
@@ -56,6 +56,6 @@ func (t T) Manifest() *manifest.T {
 			Text:         "Additional options to pass to the logical volume create command (:cmd:`lvcreate` or :cmd:`vxassist`, depending on the driver). Size and name are alread set.",
 			Example:      "--contiguous y",
 		},
-	}...)
+	)
 	return m
 }

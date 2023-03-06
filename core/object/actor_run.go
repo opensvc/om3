@@ -3,9 +3,9 @@ package object
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/pkg/errors"
 )
 
 // Run starts the local instance of the object
@@ -31,7 +31,7 @@ func (t *actor) masterRun(ctx context.Context) error {
 		if err == nil {
 			return nil
 		}
-		if errors.Is(err, resource.ErrReqNotMet) && actioncontext.IsCron(ctx) {
+		if errors.Is(err, resource.ErrActionReqNotMet) && actioncontext.IsCron(ctx) {
 			return nil
 		}
 		return err

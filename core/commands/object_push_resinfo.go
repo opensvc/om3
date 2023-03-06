@@ -31,12 +31,11 @@ func (t *CmdObjectPushResInfo) Run(selector, kind string) error {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("push resinfo"),
 		//objectaction.WithDigest(),
-		objectaction.WithLocalRun(func(p path.T) (any, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
-			ctx := context.Background()
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithRID(ctx, t.RID)

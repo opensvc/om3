@@ -7,6 +7,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
@@ -66,7 +67,9 @@ type (
 		Unprovision(context.Context) error
 		SetProvisioned(context.Context) error
 		SetUnprovisioned(context.Context) error
+		SyncFull(context.Context) error
 		SyncResync(context.Context) error
+		SyncUpdate(context.Context) error
 		Enter(context.Context, string) error
 
 		PrintSchedule() schedule.Table
@@ -302,21 +305,6 @@ func (t *actor) ReconfigureResource(r resource.Driver) error {
 func (t *actor) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	m := r.Manifest()
-	for _, kw := range m.Keywords {
-		//r.Log().Debug().Str("kw", kw.Option).Msg("")
-		k := key.New(rid, kw.Option)
-		val, err := t.config.EvalKeywordAs(k, kw, "")
-		if err != nil {
-			if kw.Required {
-				return err
-			}
-			r.Log().Debug().Msgf("%s keyword eval: %s", k, err)
-			continue
-		}
-		if err := kw.SetValue(r, val); err != nil {
-			return errors.Wrapf(err, "%s.%s", rid, kw.Option)
-		}
-	}
 	getDNS := func() ([]string, error) {
 		n, err := t.Node()
 		if err != nil {
@@ -343,6 +331,10 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		switch {
 		case c.Ref == "object.path":
 			if err := attr.SetValue(r, c.Attr, t.path); err != nil {
+				return err
+			}
+		case c.Ref == "object.drpnodes":
+			if err := attr.SetValue(r, c.Attr, t.DRPNodes()); err != nil {
 				return err
 			}
 		case c.Ref == "object.nodes":
@@ -382,9 +374,25 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		}
 		return nil
 	}
-	for _, c := range m.Context {
-		if err := setAttr(c); err != nil {
-			return errors.Wrapf(err, "%s", c.Attr)
+	for _, attr := range m.Attrs {
+		switch o := attr.(type) {
+		case keywords.Keyword:
+			k := key.New(rid, o.Option)
+			val, err := t.config.EvalKeywordAs(k, o, "")
+			if err != nil {
+				if o.Required {
+					return err
+				}
+				r.Log().Debug().Msgf("%s keyword eval: %s", k, err)
+				continue
+			}
+			if err := o.SetValue(r, val); err != nil {
+				return errors.Wrapf(err, "%s.%s", rid, o.Option)
+			}
+		case manifest.Context:
+			if err := setAttr(o); err != nil {
+				return errors.Wrapf(err, "%s", o.Attr)
+			}
 		}
 	}
 	r.SetObject(t)

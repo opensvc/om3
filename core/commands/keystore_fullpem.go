@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/core/object"
@@ -25,7 +26,7 @@ func (t *CmdFullPEM) Run(selector, kind string) error {
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("fullpem"),
 		//objectaction.WithRemoteOptions(map[string]interface{}{}),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.New(p)
 			if err != nil {
 				return nil, err

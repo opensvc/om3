@@ -18,9 +18,9 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:   "file",
 			Attr:     "File",
 			Required: true,
@@ -28,7 +28,7 @@ func (t T) Manifest() *manifest.T {
 			Text:     "The loopback device backing file full path.",
 			Example:  "/srv/{fqdn}-loop-{rindex}",
 		},
-		{
+		keywords.Keyword{
 			Option:       "size",
 			Attr:         "Size",
 			Scopable:     true,
@@ -36,6 +36,6 @@ func (t T) Manifest() *manifest.T {
 			Text:         "The size of the loop file to provision.",
 			Example:      "100m",
 		},
-	}...)
+	)
 	return m
 }

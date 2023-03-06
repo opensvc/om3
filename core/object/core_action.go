@@ -131,11 +131,14 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 		q <- false
 		return
 	}
+	r.Progress(ctx, "run abort tests")
 	if a.Abort(ctx) {
 		t.log.Error().Str("rid", r.RID()).Msg("abort start")
+		r.Progress(ctx, rawconfig.Colorize.Error("abort"))
 		q <- true
 		return
 	}
+	r.Progress(ctx, "")
 	q <- false
 }
 
@@ -236,8 +239,6 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 }
 
 func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err error) {
-	t.log.Log().Msg("abort tests")
-	t.log.Debug().Msg("call resource drivers abort start")
 	sb := statusbus.FromContext(ctx)
 	resources := l.Resources()
 	added := 0
@@ -306,12 +307,36 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer stop()
 	l := resourceselector.FromContext(ctx, t)
 	b := actioncontext.To(ctx)
+
+	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
+		return func(ctx context.Context, r resource.Driver) error {
+			err := fn(ctx, r)
+			switch {
+			case errors.Is(err, resource.ErrDisabled):
+				err = nil
+			case errors.Is(err, resource.ErrActionNotSupported):
+				err = nil
+			case errors.Is(err, resource.ErrNotLinkable):
+				err = nil
+			case errors.Is(err, resource.ErrActionPostponedToLinker):
+				err = nil
+			case err == nil:
+				r.Progress(ctx, "done")
+			case r.IsOptional():
+				r.Progress(ctx, rawconfig.Colorize.Warning(err))
+			default:
+				r.Progress(ctx, rawconfig.Colorize.Error(err))
+			}
+			return err
+		}
+	}
+
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if linkToer, ok := r.(resource.LinkToer); ok {
 				if name := linkToer.LinkTo(); name != "" && l.Resources().HasRID(name) {
 					// will be handled by the targeted LinkNameser resource
-					return nil
+					return resource.ErrActionPostponedToLinker
 				}
 			}
 			if linkNameser, ok := r.(resource.LinkNameser); !ok {
@@ -325,7 +350,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 					// filter applies the action only on linkers
 					return func(ctx context.Context, r resource.Driver) error {
 						if !stringslice.Has(r.RID(), rids) {
-							return nil
+							return resource.ErrNotLinkable
 						}
 						return fn(ctx, r)
 					}
@@ -359,7 +384,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		_, _ = t.statusEval(ctx)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctx, l, b, action.Name, linkWrap(fn)); err != nil {
+	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
 				t.Log().Err(errRollback).Msg("rollback")
@@ -386,13 +411,13 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 	switch action.Name {
 	case "stop":
 		switch instStatus.Avail {
-		case status.Down, status.StandbyUp, status.NotApplicable:
+		case status.Down, status.StandbyUp, status.StandbyUpWithDown, status.NotApplicable:
 		default:
 			return errors.Errorf("the stop action returned no error but end avail status is %s", instStatus.Avail)
 		}
 	case "start":
 		switch instStatus.Avail {
-		case status.Up, status.NotApplicable:
+		case status.Up, status.NotApplicable, status.StandbyUpWithUp:
 		default:
 			return errors.Errorf("the start action returned no error but end avail status is %s", instStatus.Avail)
 		}

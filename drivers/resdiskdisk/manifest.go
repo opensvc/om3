@@ -19,28 +19,20 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
-	m.AddContext([]manifest.Context{
-		{
-			Key:  "path",
-			Attr: "Path",
-			Ref:  "object.path",
-		},
-		{
-			Key:  "nodes",
-			Attr: "Nodes",
-			Ref:  "object.nodes",
-		},
-	}...)
-	m.AddKeyword(resdisk.BaseKeywords...)
-	m.AddKeyword([]keywords.Keyword{
-		{
+	m.Add(
+		manifest.ContextPath,
+		manifest.ContextNodes,
+	)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.Add(
+		keywords.Keyword{
 			Option:   "disk_id",
 			Attr:     "DiskID",
 			Scopable: true,
 			Text:     "The wwn of the disk.",
 			Example:  "6589cfc00000097484f0728d8b2118a6",
 		},
-		{
+		keywords.Keyword{
 			Option:       "size",
 			Attr:         "Size",
 			Scopable:     true,
@@ -49,41 +41,41 @@ func (t T) Manifest() *manifest.T {
 			Text:         "A size expression for the disk allocation.",
 			Example:      "20g",
 		},
-		{
+		keywords.Keyword{
 			Option:   "pool",
 			Attr:     "Pool",
 			Scopable: true,
 			Text:     "The name of the pool this volume was allocated from.",
 			Example:  "fcpool1",
 		},
-		{
+		keywords.Keyword{
 			Option:   "name",
 			Attr:     "Name",
 			Scopable: true,
 			Text:     "The name of the disk.",
 			Example:  "myfcdisk1",
 		},
-		{
+		keywords.Keyword{
 			Option:   "array",
 			Attr:     "Array",
 			Scopable: true,
 			Text:     "The array to provision the disk from.",
 			Example:  "xtremio-prod1",
 		},
-		{
+		keywords.Keyword{
 			Option:   "diskgroup",
 			Attr:     "DiskGroup",
 			Scopable: true,
 			Text:     "The array disk group to provision the disk from.",
 			Example:  "default",
 		},
-		{
+		keywords.Keyword{
 			Option:   "slo",
 			Attr:     "SLO",
 			Scopable: true,
 			Text:     "The provisioned disk service level objective. This keyword is honored on arrays supporting this (ex: EMC VMAX)",
 			Example:  "Optimized",
 		},
-	}...)
+	)
 	return m
 }

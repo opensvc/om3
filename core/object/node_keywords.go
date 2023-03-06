@@ -261,7 +261,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section:    "node",
 		Option:     "env",
 		Default:    "TST",
-		Candidates: validEnvs,
+		Candidates: rawconfig.Envs,
 		Text:       "A non-PRD service can not be brought up on a PRD node, but a PRD service can be startup on a non-PRD node (in a DRP situation).",
 	},
 	{

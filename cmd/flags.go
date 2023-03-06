@@ -277,6 +277,10 @@ func addFlagTag(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "tag", "", "A tag selector expression (t1,t2).")
 }
 
+func addFlagTarget(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringSliceVar(p, "target", []string{}, "The peers to sync to. The value can be either nodes or drpnodes. If not set, all nodes and drpnodes are synchronized.")
+}
+
 func addFlagUpTo(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "upto", "", "Start up to the specified rid or driver group.")
 	flagSet.Lookup("upto").Deprecated = "Use --to."

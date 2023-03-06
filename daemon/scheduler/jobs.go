@@ -3,10 +3,10 @@ package scheduler
 import (
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/util/command"
+	"github.com/pkg/errors"
 )
 
 func (o T) action(e schedule.Entry) error {
@@ -43,8 +43,8 @@ func (o T) action(e schedule.Entry) error {
 		cmdArgs = append(cmdArgs, "push", "stats", "--local")
 	case "sysreport":
 		cmdArgs = append(cmdArgs, "sysreport", "--local")
-	//case "sync_all":
-	//	cmdArgs = append(cmdArgs, "sync", "all", "--local")
+	case "sync_update":
+		cmdArgs = append(cmdArgs, "sync", "update", "--local")
 	//case "collect_stats":
 	//	cmdArgs = append(cmdArgs, "collect", "stats", "--local")
 	//case "dequeue_actions":

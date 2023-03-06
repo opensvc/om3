@@ -33,6 +33,7 @@ func (o opGetNodesInfo) call(ctx context.Context, d *data) error {
 	result := make(nodesinfo.NodesInfo)
 	for node, nodeData := range d.pending.Cluster.Node {
 		result[node] = nodesinfo.NodeInfo{
+			Env:    nodeData.Config.Env,
 			Labels: nodeData.Status.Labels.DeepCopy(),
 			Paths:  nodeData.Os.Paths.DeepCopy(),
 		}

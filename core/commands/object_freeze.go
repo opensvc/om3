@@ -27,12 +27,12 @@ func (t *CmdObjectFreeze) Run(selector, kind string) error {
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("freeze"),
-		objectaction.WithLocalRun(func(p path.T) (interface{}, error) {
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
-			return nil, o.Freeze(context.Background())
+			return nil, o.Freeze(ctx)
 		}),
 	).Do()
 }

@@ -19,6 +19,7 @@ type (
 	NodesInfo map[string]NodeInfo
 
 	NodeInfo struct {
+		Env    string    `json:"env"`
 		Labels Labels    `json:"labels"`
 		Paths  san.Paths `json:"paths"`
 	}

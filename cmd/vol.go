@@ -71,7 +71,9 @@ func init() {
 		newCmdObjectPushResInfo(kind),
 	)
 	cmdObjectSync.AddCommand(
+		newCmdObjectSyncFull(kind),
 		newCmdObjectSyncResync(kind),
+		newCmdObjectSyncUpdate(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
