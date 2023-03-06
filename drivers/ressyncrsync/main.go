@@ -27,7 +27,9 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/proc"
+	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/schedule"
+	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -123,7 +125,8 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 			}
 			continue
 		}
-		if err := t.peerSync(mode, nodename); err != nil {
+		t.progress(ctx, nodename)
+		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
 		if err := t.writeLastSync(nodename); err != nil {
@@ -135,6 +138,17 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 
 func (t *T) Kill(ctx context.Context) error {
 	return nil
+}
+
+func (t *T) progress(ctx context.Context, nodename string, more ...string) {
+	if view := progress.ViewFromContext(ctx); view != nil {
+		key := append(t.ProgressKey(), nodename)
+		cols := []*string{}
+		for i, _ := range more {
+			cols = append(cols, &more[i])
+		}
+		view.Info(key, cols)
+	}
 }
 
 // maxDelay return the configured max_delay if set.
@@ -340,7 +354,7 @@ func (t T) user() string {
 	}
 }
 
-func (t T) peerSync(mode modeT, nodename string) (err error) {
+func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error) {
 	if v, err := t.isDstFSMounted(nodename); err != nil {
 		return err
 	} else if !v {
@@ -362,6 +376,10 @@ func (t T) peerSync(mode modeT, nodename string) (err error) {
 		if !strings.HasPrefix(line, prefix) {
 			return
 		}
+
+		// strip the comma thousand separator
+		line = strings.Replace(line, ",", "", -1)
+
 		if i, err := strconv.ParseUint(line[prefixLen:], 10, 64); err == nil {
 			stats.SentBytes = i
 		} else {
@@ -375,6 +393,10 @@ func (t T) peerSync(mode modeT, nodename string) (err error) {
 		if !strings.HasPrefix(line, prefix) {
 			return
 		}
+
+		// strip the comma thousand separator
+		line = strings.Replace(line, ",", "", -1)
+
 		if i, err := strconv.ParseUint(line[prefixLen:], 10, 64); err == nil {
 			stats.ReceivedBytes = i
 		} else {
@@ -395,6 +417,9 @@ func (t T) peerSync(mode modeT, nodename string) (err error) {
 		command.WithOnStdoutLine(func(line string) {
 			addBytesSent(line, stats)
 			addBytesReceived(line, stats)
+			rx := fmt.Sprintf("rx:%s", sizeconv.BSizeCompact(float64(stats.ReceivedBytes)))
+			tx := fmt.Sprintf("tx:%s", sizeconv.BSizeCompact(float64(stats.SentBytes)))
+			t.progress(ctx, nodename, "-", "-", rx, tx)
 		}),
 	)
 	if err := cmd.Run(); err != nil {

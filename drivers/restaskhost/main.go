@@ -53,11 +53,6 @@ func (t T) IsRunning() bool {
 	return err != nil
 }
 
-// Start the Resource
-func (t T) Start(ctx context.Context) (err error) {
-	return nil
-}
-
 func (t T) Run(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
@@ -126,10 +121,6 @@ func (t T) onError() error {
 	cmd := command.New(opts...)
 	t.Log().Info().Stringer("cmd", cmd).Msg("on error run")
 	return cmd.Run()
-}
-
-func (t *T) Stop(ctx context.Context) error {
-	return nil
 }
 
 func (t *T) Kill(ctx context.Context) error {
