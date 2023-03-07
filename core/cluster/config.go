@@ -13,6 +13,7 @@ type (
 		DNS        []string       `json:"dns"`
 		CASecPaths []string       `json:"ca_sec_paths"`
 		Listener   ConfigListener `json:"listener"`
+		Quorum     bool           `json:"quorum"`
 
 		// fields private, no exposed in daemon data
 		// json nor events
