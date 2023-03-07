@@ -5,9 +5,9 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/daemon/daemoncli"
 	"github.com/opensvc/om3/util/command"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -41,8 +41,8 @@ func (t *CmdDaemonStart) Run() error {
 		}
 	} else {
 		args := []string{"daemon", "start", "--foreground"}
-		if t.Debug {
-			args = append(args, "--debug")
+		if t.Log != "" {
+			args = append(args, "--log", t.Log)
 		}
 		if t.Server != "" {
 			args = append(args, "--server", t.Server)

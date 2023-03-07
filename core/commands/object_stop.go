@@ -35,10 +35,10 @@ func (t *CmdObjectStop) Run(selector, kind string) error {
 		objectaction.WithRemoteAction("stop"),
 		objectaction.WithAsyncTarget("stopped"),
 		objectaction.WithAsyncWatch(t.Watch),
-		objectaction.WithProgress(!t.Quiet && !t.Info && !t.Debug),
+		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Info || t.Debug),
+				object.WithConsoleLog(t.Log != ""),
 				object.WithConsoleColor(t.Color != "no"),
 			)
 			if err != nil {

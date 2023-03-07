@@ -32,7 +32,7 @@ func (t *CmdObjectPushResInfo) Run(selector, kind string) error {
 		objectaction.WithRemoteAction("push resinfo"),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (any, error) {
 			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Info || t.Debug),
+				object.WithConsoleLog(t.Log != ""),
 				object.WithConsoleColor(t.Color != "no"),
 			)
 

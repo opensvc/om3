@@ -32,10 +32,10 @@ func (t *CmdObjectPRStart) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("prstart"),
-		objectaction.WithProgress(!t.Quiet && !t.Info && !t.Debug),
+		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (any, error) {
 			o, err := object.NewActor(p,
-				object.WithConsoleLog(t.Info || t.Debug),
+				object.WithConsoleLog(t.Log != ""),
 				object.WithConsoleColor(t.Color != "no"),
 			)
 
