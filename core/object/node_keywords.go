@@ -686,6 +686,7 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 	{
 		Section:    "node",
 		Option:     "split_action",
+		Scopable:   true,
 		Candidates: []string{"crash", "reboot"},
 		Default:    "crash",
 		Text:       "Commit suicide method when cluster split occur. Default is crash. reboot method may be used instead of crash when it is not simple to poweron node after crash.",
