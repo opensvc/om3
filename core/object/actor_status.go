@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
@@ -107,7 +109,7 @@ func (t *actor) subsetsStatus() map[string]instance.SubsetStatus {
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) error {
 	resources := make([]resource.ExposedStatus, 0)
 	var mu sync.Mutex
-	return t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
+	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
 		xd := resource.GetExposedStatus(ctx, r)
 		mu.Lock()
 		resources = append(resources, xd)
@@ -120,4 +122,6 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) e
 		mu.Unlock()
 		return nil
 	})
+	t.Progress(ctx, "-", colorstatus.Sprint(data.Avail, rawconfig.Colorize))
+	return err
 }

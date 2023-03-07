@@ -1137,12 +1137,12 @@ func (t *T) ProgressKey() []string {
 }
 
 // progressMsg prepends the last known colored status or the resource
-func (t *T) progressMsg(ctx context.Context, msg *string) []*string {
+func (t *T) progressMsg(ctx context.Context, msg *string) []any {
 	sb := statusbus.FromContext(ctx)
 	rid := t.RID()
 	first := colorstatus.Sprint(sb.First(rid), rawconfig.Colorize)
 	last := colorstatus.Sprint(sb.Get(rid), rawconfig.Colorize)
-	return []*string{&first, &last, msg}
+	return []any{first, last, msg}
 }
 
 func (t *T) Progress(ctx context.Context, msg string) {

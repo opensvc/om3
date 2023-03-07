@@ -9,11 +9,13 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/compliance"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/xsession"
 )
 
@@ -157,4 +159,16 @@ func (t *core) Node() (*Node, error) {
 
 func (t core) Log() *zerolog.Logger {
 	return &t.log
+}
+
+func (t core) ProgressKey() []string {
+	p := rawconfig.Colorize.Bold(t.path.String())
+	return []string{p}
+}
+
+func (t core) Progress(ctx context.Context, cols ...any) {
+	if view := progress.ViewFromContext(ctx); view != nil {
+		key := t.ProgressKey()
+		view.Info(key, cols)
+	}
 }

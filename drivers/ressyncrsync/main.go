@@ -140,14 +140,10 @@ func (t *T) Kill(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) progress(ctx context.Context, nodename string, more ...string) {
+func (t *T) progress(ctx context.Context, nodename string, more ...any) {
 	if view := progress.ViewFromContext(ctx); view != nil {
 		key := append(t.ProgressKey(), nodename)
-		cols := []*string{}
-		for i, _ := range more {
-			cols = append(cols, &more[i])
-		}
-		view.Info(key, cols)
+		view.Info(key, more)
 	}
 }
 
