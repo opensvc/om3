@@ -33,6 +33,7 @@ var (
 	serverFlag     string
 	nodeFlag       string
 	debugFlag      bool
+	infoFlag       bool
 	foregroundFlag bool
 	callerFlag     bool
 
@@ -69,28 +70,14 @@ func listNodes() []string {
 }
 
 func configureLogger() {
-	initLogger()
-	if colorLogFlag == "no" {
-		logging.DisableDefaultConsoleWriterColor()
-	}
-	if debugFlag {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
-	if callerFlag {
-		log.Logger = log.Logger.With().Caller().Logger()
-	}
-}
-
-func initLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
 	zerolog.MessageFieldName = "m"
 
 	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: debugFlag || foregroundFlag,
+		ConsoleLoggingEnabled: debugFlag || infoFlag || foregroundFlag,
+		ConsoleLoggingColor:   colorLogFlag != "no",
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             rawconfig.Paths.Log,
@@ -103,12 +90,25 @@ func initLogger() {
 		Str("n", hostname.Hostname()).
 		Str("sid", xsession.ID).
 		Logger()
+	if debugFlag {
+		//zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		l = l.Level(zerolog.DebugLevel)
+	} else {
+		//zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		l = l.Level(zerolog.InfoLevel)
+	}
+	if callerFlag {
+		l = l.With().Caller().Logger()
+	}
 	log.Logger = l
 }
 
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if flag := cmd.Flags().Lookup("debug"); flag != nil && flag.Value.String() == "true" {
 		debugFlag = true
+	}
+	if flag := cmd.Flags().Lookup("info"); flag != nil && flag.Value.String() == "true" {
+		infoFlag = true
 	}
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
 		foregroundFlag = true
@@ -198,6 +198,7 @@ func init() {
 	root.PersistentFlags().StringVar(&colorLogFlag, "colorlog", "auto", "log output colorization yes|no|auto")
 	root.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
+	root.PersistentFlags().BoolVar(&infoFlag, "info", false, "show info log")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show caller <file>:<line> in logs")
 }

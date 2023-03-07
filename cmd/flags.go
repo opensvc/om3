@@ -8,30 +8,33 @@ import (
 	"github.com/opensvc/om3/core/commands"
 )
 
-func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto")
-	flagSet.StringVar(&p.Format, "format", "auto", "Output format json|flat|auto")
-	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme raw|https")
-	flagSet.BoolVar(&p.Local, "local", false, "Inline action on local instance")
-	flagSet.StringVar(&p.NodeSelector, "node", "", "Execute on a list of nodes")
-	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects")
-}
-
 func addFlagsAsync(flagSet *pflag.FlagSet, p *commands.OptsAsync) {
 	addFlagTime(flagSet, &p.Time)
 	addFlagWait(flagSet, &p.Wait)
 	addFlagWatch(flagSet, &p.Watch)
 }
 
-func addFlagsResourceSelector(flagSet *pflag.FlagSet, p *commands.OptsResourceSelector) {
-	addFlagRID(flagSet, &p.RID)
-	addFlagSubset(flagSet, &p.Subset)
-	addFlagTag(flagSet, &p.Tag)
+func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
+	flagSet.BoolVar(&p.Local, "local", false, "Inline action on local instance.")
+	flagSet.BoolVar(&p.Debug, "debug", false, "Display the debug log.")
+	flagSet.BoolVar(&p.Info, "info", false, "Display the info log.")
+	flagSet.BoolVarP(&p.Quiet, "quiet", "q", false, "Display no logs and no progress.")
+	flagSet.StringVar(&p.Color, "color", "auto", "Output colorization yes|no|auto.")
+	flagSet.StringVar(&p.Format, "format", "auto", "Output format json|flat|auto.")
+	flagSet.StringVar(&p.Server, "server", "", "URI of the opensvc api server. scheme raw|https.")
+	flagSet.StringVar(&p.NodeSelector, "node", "", "Execute on a list of nodes.")
+	flagSet.StringVarP(&p.ObjectSelector, "service", "s", "", "Execute on a list of objects.")
 }
 
 func addFlagsLock(flagSet *pflag.FlagSet, p *commands.OptsLock) {
 	addFlagNoLock(flagSet, &p.Disable)
 	addFlagWaitLock(flagSet, &p.Timeout)
+}
+
+func addFlagsResourceSelector(flagSet *pflag.FlagSet, p *commands.OptsResourceSelector) {
+	addFlagRID(flagSet, &p.RID)
+	addFlagSubset(flagSet, &p.Subset)
+	addFlagTag(flagSet, &p.Tag)
 }
 
 func addFlagsTo(flagSet *pflag.FlagSet, p *commands.OptTo) {
@@ -109,10 +112,6 @@ func addFlagEnv(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "env", "", "Export the uppercased variable in the os environment. With the create action only, set a env section parameter in the service configuration file. Multiple `--env <key>=<val>` can be specified.")
 }
 
-func addFlagDebug(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "debug", false, "Activate debug mode.")
-}
-
 func addFlagEval(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVar(p, "eval", false, "Dereference and evaluate arythmetic expressions in value.")
 }
@@ -177,8 +176,8 @@ func addFlagNetworkStatusName(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "name", "", "Filter on a network name.")
 }
 
-func addFlagNetworkStatusVerbose(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "verbose", false, "Include network addresses.")
+func addFlagNetworkStatusExtended(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVarP(p, "extended", "x", false, "Include network addresses.")
 }
 
 func addFlagNode(flagSet *pflag.FlagSet, p *string) {
@@ -201,8 +200,8 @@ func addFlagPoolStatusName(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "name", "", "Filter on a pool name.")
 }
 
-func addFlagPoolStatusVerbose(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "verbose", false, "Include pool volumes.")
+func addFlagPoolStatusExtended(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVarP(p, "extended", "x", false, "Include pool volumes.")
 }
 
 func addFlagProvision(flagSet *pflag.FlagSet, p *bool) {

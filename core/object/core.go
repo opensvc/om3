@@ -25,8 +25,10 @@ type (
 		path path.T
 
 		// private
-		volatile bool
-		log      zerolog.Logger
+		volatile         bool
+		withConsoleLog   bool
+		withConsoleColor bool
+		log              zerolog.Logger
 
 		// caches
 		id         uuid.UUID
@@ -92,7 +94,8 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 		return err
 	}
 	t.log = logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: zerolog.GlobalLevel() == zerolog.DebugLevel,
+		ConsoleLoggingEnabled: t.withConsoleLog,
+		ConsoleLoggingColor:   t.withConsoleColor,
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    !t.volatile,
 		Directory:             t.logDir(), // contains the ns/kind
@@ -129,10 +132,8 @@ func (t *core) Path() path.T {
 	return t.path
 }
 
-//
 // ConfigFile returns the absolute path of an opensvc object configuration
 // file.
-//
 func (t core) ConfigFile() string {
 	if t.configFile == "" {
 		t.configFile = t.path.ConfigFile()
@@ -140,10 +141,8 @@ func (t core) ConfigFile() string {
 	return t.configFile
 }
 
-//
 // Node returns a cache Node struct pointer. If none is already cached,
 // allocate a new Node{} and cache it.
-//
 func (t *core) Node() (*Node, error) {
 	if t.node != nil {
 		return t.node, nil

@@ -18,6 +18,9 @@ type Config struct {
 	// Enable console logging
 	ConsoleLoggingEnabled bool
 
+	// Enable console logging coloring
+	ConsoleLoggingColor bool
+
 	// EncodeLogsAsJSON makes the log framework log JSON
 	EncodeLogsAsJSON bool
 
@@ -82,11 +85,6 @@ func marshalStack(err error) interface{} {
 	return f
 }
 
-// DisableDefaultConsoleWriterColor disable color on defauult console writer
-func DisableDefaultConsoleWriterColor() {
-	consoleWriter.NoColor = true
-}
-
 // SetDefaultConsoleWriter set the default console writer
 func SetDefaultConsoleWriter(w zerolog.ConsoleWriter) {
 	consoleWriter = w
@@ -97,6 +95,7 @@ func Configure(config Config) *Logger {
 	var writers []io.Writer
 
 	if config.ConsoleLoggingEnabled {
+		consoleWriter.NoColor = !config.ConsoleLoggingColor
 		writers = append(writers, consoleWriter)
 	}
 	if config.FileLoggingEnabled {

@@ -36,8 +36,13 @@ func (t *CmdObjectRestart) Run(selector, kind string) error {
 		objectaction.WithRemoteAction("restart"),
 		objectaction.WithAsyncTarget("restarted"),
 		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithProgress(!t.Quiet && !t.Info && !t.Debug),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
-			o, err := object.NewActor(p)
+			o, err := object.NewActor(p,
+				object.WithConsoleLog(t.Info || t.Debug),
+				object.WithConsoleColor(t.Color != "no"),
+			)
+
 			if err != nil {
 				return nil, err
 			}

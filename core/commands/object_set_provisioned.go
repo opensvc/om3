@@ -32,7 +32,11 @@ func (t *CmdObjectSetProvisioned) Run(selector, kind string) error {
 			"rid": t.RID,
 		}),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
-			o, err := object.NewActor(p)
+			o, err := object.NewActor(p,
+				object.WithConsoleLog(t.Info || t.Debug),
+				object.WithConsoleColor(t.Color != "no"),
+			)
+
 			if err != nil {
 				return nil, err
 			}

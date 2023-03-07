@@ -222,7 +222,6 @@ func newCmdDaemonRestart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagForeground(flags, &options.Foreground)
-	addFlagDebug(flags, &options.Debug)
 	return cmd
 }
 
@@ -253,7 +252,6 @@ func newCmdDaemonStart() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagDebug(flags, &options.Debug)
 	addFlagForeground(flags, &options.Foreground)
 	addFlagCpuProfile(flags, &options.CpuProfile)
 	return cmd
@@ -465,7 +463,7 @@ func newCmdNetworkStatus() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagNetworkStatusName(flags, &options.Name)
-	addFlagNetworkStatusVerbose(flags, &options.Verbose)
+	addFlagNetworkStatusExtended(flags, &options.Verbose)
 	return cmd
 }
 
@@ -2361,7 +2359,7 @@ func newCmdPoolStatus() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagPoolStatusName(flags, &options.Name)
-	addFlagPoolStatusVerbose(flags, &options.Verbose)
+	addFlagPoolStatusExtended(flags, &options.Verbose)
 	return cmd
 }
 
