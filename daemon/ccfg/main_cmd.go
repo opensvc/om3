@@ -38,6 +38,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 		keyNodes      = key.New("cluster", "nodes")
 		keyDNS        = key.New("cluster", "dns")
 		keyCASecPaths = key.New("cluster", "ca")
+		keyQuorum     = key.New("cluster", "quorum")
 
 		keyListenerCRL             = key.New("listener", "crl")
 		keyListenerAddr            = key.New("listener", "addr")
@@ -54,6 +55,7 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.Name = o.clusterConfig.GetString(keyName)
 	cfg.CASecPaths = o.clusterConfig.GetStrings(keyCASecPaths)
 	cfg.SetSecret(o.clusterConfig.GetString(keySecret))
+	cfg.Quorum = o.clusterConfig.GetBool(keyQuorum)
 
 	cfg.Listener.CRL = o.clusterConfig.GetString(keyListenerCRL)
 	cfg.Listener.Addr = o.clusterConfig.GetString(keyListenerAddr)
