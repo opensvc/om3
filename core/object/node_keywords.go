@@ -712,6 +712,13 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 		Text:      "The maximum time to wait for the arbitrator vote during a quorum election. Upon expiration, the vote is considered lost for the querying node.",
 	},
 	{
+		Section:   "arbitrator",
+		Option:    "insecure",
+		Converter: converters.Bool,
+		Default:   "false",
+		Text:      "Set to true to disable the arbitrator certificate verification. This should only be done for testing.",
+	},
+	{
 		Section:   "stonith",
 		Option:    "cmd",
 		Scopable:  true,
