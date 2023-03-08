@@ -9,6 +9,14 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
+func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+	o.clusterConfig = c.Value
+	o.setArbitratorConfig()
+	if err := o.getAndUpdateStatusArbitrator(); err != nil {
+		o.log.Error().Err(err).Msg("arbitrator status failure (after cluster config updated)")
+	}
+}
+
 // onConfigFileUpdated reloads the config parser and emits the updated
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
@@ -149,6 +157,12 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 	if o.change {
 		o.updateIfChange()
 		o.orchestrate()
+	}
+}
+
+func (o *nmon) onArbitratorTicker() {
+	if err := o.getAndUpdateStatusArbitrator(); err != nil {
+		o.log.Warn().Err(err).Msg("arbitrator status failure (arbitrator ticker)")
 	}
 }
 
