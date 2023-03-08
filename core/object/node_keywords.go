@@ -695,9 +695,19 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 	},
 	{
 		Section:  "arbitrator",
-		Option:   "name",
+		Option:   "url",
 		Required: true,
-		Text:     "The arbitrator resolvable node name. An arbitrator is a opensvc node (running the usual osvc daemon) this cluster nodes can ask for a vote when the cluster is split. Arbitrators are tried in sequence, the first reachable arbitrator gives a vote. In case of a real split, all arbitrators are expected to be unreachable from the lost segment. At least one of them is expected to be reachable from the surviving segment. Arbitrators of a cluster must thus be located close enough to each other, so a subset of arbitrators can't be reachable from a split cluster segment, while another subset of arbitrators is reachable from the other split cluster segment. But not close enough so they can all fail together. Usually, this can be interpreted as: same site, not same rack and power lines. Arbitrators usually don't run services, even though they could, as their secret might be known by multiple clusters of different responsibles. Arbitrators can be tested using :cmd:`om node ping --node <arbitrator name>`.",
+		Text:     "The arbitrator https url." +
+			" cluster nodes can ask for a vote using 'GET <url>' when the cluster is split." +
+			" Arbitrators are tried in sequence, each reachable arbitrator gives a vote." +
+			" In case of a real split, all arbitrators are expected to be unreachable from the lost segment." +
+			" At least one of them is expected to be reachable from the surviving segment." +
+			" Arbitrators of a cluster must thus be located close enough to each other," +
+			" so a subset of arbitrators can't be reachable from a split cluster segment," +
+			" while another subset of arbitrators is reachable from the other split cluster segment." +
+			" But not close enough so they can all fail together." +
+			" Usually, this can be interpreted as: same site, not same rack and power lines." +
+			" Arbitrators are verified every 60s to alarm sys admin on possible arbitrator failure.",
 	},
 	{
 		Section:  "arbitrator",

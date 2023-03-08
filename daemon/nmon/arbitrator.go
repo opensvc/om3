@@ -13,8 +13,8 @@ import (
 
 type (
 	arbitratorConfig struct {
-		Id       string `json:"id"`
 		Name     string `json:"name"`
+		Url      string `json:"url"`
 		Insecure bool
 
 		timeout time.Duration
@@ -30,15 +30,16 @@ func (o *nmon) setArbitratorConfig() {
 		if !strings.HasPrefix(s, "arbitrator#") {
 			continue
 		}
+		name := strings.TrimPrefix(s, "arbitrator#")
 		a := arbitratorConfig{
-			Id: s,
-			Name: o.config.GetString(key.New(s, "name")),
+			Name:     name,
+			Url:      o.config.GetString(key.New(s, "url")),
 			Insecure: o.config.GetBool(key.New(s, "insecure")),
 		}
 		if d := o.config.GetDuration(key.New(s, "timeout")); d != nil {
 			a.timeout = *d
 		}
-		arbitrators[s] = a
+		arbitrators[name] = a
 	}
 	o.arbitrators = arbitrators
 }
@@ -46,26 +47,27 @@ func (o *nmon) setArbitratorConfig() {
 // getStatusArbitrators checks all arbitrators and returns result
 func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	type res struct {
-		id  string
-		err error
+		name string
+		err  error
 	}
 	c := make(chan res, len(o.arbitrators))
 	for _, a := range o.arbitrators {
 		go func(a arbitratorConfig) {
-			c <- res{id: a.Id, err: o.arbitratorCheck(a)}
+			c <- res{name: a.Name, err: o.arbitratorCheck(a)}
 		}(a)
 	}
 	result := make(map[string]node.ArbitratorStatus)
 	for i := 0; i < len(o.arbitrators); i++ {
 		r := <-c
-		name := o.arbitrators[r.id].Name
+		name := r.name
+		url := o.arbitrators[name].Url
 		aStatus := status.Up
 		if r.err != nil {
-			o.log.Warn().Msgf("arbitrator#%s is down", r.id)
-			o.log.Debug().Err(r.err).Msgf("arbitrator#%s is down", r.id)
+			o.log.Warn().Msgf("arbitrator#%s is down", name)
+			o.log.Debug().Err(r.err).Msgf("arbitrator#%s is down", name)
 			aStatus = status.Down
 		}
-		result[r.id] = node.ArbitratorStatus{Name: name, Status: aStatus}
+		result[name] = node.ArbitratorStatus{Url: url, Status: aStatus}
 	}
 	return result
 }
@@ -93,7 +95,7 @@ func (o *nmon) arbitratorCheck(a arbitratorConfig) error {
 			},
 		},
 	}
-	if req, err := http.NewRequestWithContext(o.ctx, "GET", a.Name, nil); err != nil {
+	if req, err := http.NewRequestWithContext(o.ctx, "GET", a.Url, nil); err != nil {
 		return err
 	} else {
 		_, err = client.Do(req)
