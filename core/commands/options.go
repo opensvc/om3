@@ -9,10 +9,12 @@ type (
 	OptsGlobal struct {
 		Color          string
 		Format         string
-		Server         string
 		Local          bool
+		Log            string
 		NodeSelector   string
 		ObjectSelector string
+		Quiet          bool
+		Server         string
 	}
 
 	// OptsAsync contains options accepted by all actions having an orchestration

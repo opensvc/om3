@@ -82,7 +82,7 @@ type (
 		MatchRID(string) bool
 		MatchSubset(string) bool
 		MatchTag(string) bool
-		Progress(context.Context, string)
+		Progress(context.Context, ...any)
 		ProgressKey() []string
 		Requires(string) *resourcereqs.T
 		RestartCount() int
@@ -259,7 +259,6 @@ var (
 	ErrActionNotSupported      = errors.New("The resource action is not supported on resource")
 	ErrActionPostponedToLinker = errors.New("The resource action is postponed to its linker")
 	ErrDisabled                = errors.New("The resource is disabled")
-	ErrNotLinkable             = errors.New("The resource does not support linking")
 	ErrActionReqNotMet         = errors.New("The resource action requirements are not met")
 )
 
@@ -622,7 +621,7 @@ func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.
 		return nil
 	}
 	t.log.Info().Msgf("trigger %s %s %s: %s", blocking, hook, action, cmd)
-	t.Progress(ctx, hookId)
+	t.Progress(ctx, "▶ "+hookId)
 	return t.trigger(ctx, cmd)
 }
 
@@ -734,7 +733,7 @@ func Run(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	r.Progress(ctx, "run")
+	r.Progress(ctx, "▶ run")
 	if err := runner.Run(ctx); err != nil {
 		return errors.Wrapf(err, "run")
 	}
@@ -803,7 +802,7 @@ func Start(ctx context.Context, r Driver) error {
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
 	}
-	r.Progress(ctx, "start")
+	r.Progress(ctx, "▶ start")
 	if err := s.Start(ctx); err != nil {
 		return errors.Wrapf(err, "start")
 	}
@@ -828,7 +827,7 @@ func Resync(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	r.Progress(ctx, "resync")
+	r.Progress(ctx, "▶ resync")
 	if err := s.Resync(ctx); err != nil {
 		return err
 	}
@@ -847,7 +846,7 @@ func Full(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	r.Progress(ctx, "full")
+	r.Progress(ctx, "▶ full")
 	if err := s.Full(ctx); err != nil {
 		return err
 	}
@@ -865,7 +864,7 @@ func Update(ctx context.Context, r Driver) error {
 	if r.IsDisabled() {
 		return ErrDisabled
 	}
-	r.Progress(ctx, "update")
+	r.Progress(ctx, "▶ update")
 	Setenv(r)
 	if err := s.Update(ctx); err != nil {
 		return err
@@ -907,7 +906,7 @@ func stop(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	r.Progress(ctx, "stop")
+	r.Progress(ctx, "▶ stop")
 	if err := s.Stop(ctx); err != nil {
 		return err
 	}
@@ -977,7 +976,7 @@ func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {
-		r.Progress(ctx, "prstop")
+		r.Progress(ctx, "▶ prstop")
 		return hdl.Stop()
 	}
 }
@@ -986,7 +985,7 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
 		return nil
 	} else {
-		r.Progress(ctx, "prstart")
+		r.Progress(ctx, "▶ prstart")
 		return hdl.Start()
 	}
 }
@@ -1137,18 +1136,17 @@ func (t *T) ProgressKey() []string {
 }
 
 // progressMsg prepends the last known colored status or the resource
-func (t *T) progressMsg(ctx context.Context, msg *string) []*string {
+func (t *T) progressMsg(ctx context.Context, msg *string) []any {
 	sb := statusbus.FromContext(ctx)
 	rid := t.RID()
 	first := colorstatus.Sprint(sb.First(rid), rawconfig.Colorize)
 	last := colorstatus.Sprint(sb.Get(rid), rawconfig.Colorize)
-	return []*string{&first, &last, msg}
+	return []any{first, last, msg}
 }
 
-func (t *T) Progress(ctx context.Context, msg string) {
+func (t *T) Progress(ctx context.Context, cols ...any) {
 	if view := progress.ViewFromContext(ctx); view != nil {
 		key := t.ProgressKey()
-		cols := t.progressMsg(ctx, &msg)
 		view.Info(key, cols)
 	}
 }

@@ -27,12 +27,11 @@ import (
 var (
 	configFlag     string
 	colorFlag      string
-	colorLogFlag   string
+	logFlag        string
 	formatFlag     string
 	selectorFlag   string
 	serverFlag     string
 	nodeFlag       string
-	debugFlag      bool
 	foregroundFlag bool
 	callerFlag     bool
 
@@ -69,28 +68,14 @@ func listNodes() []string {
 }
 
 func configureLogger() {
-	initLogger()
-	if colorLogFlag == "no" {
-		logging.DisableDefaultConsoleWriterColor()
-	}
-	if debugFlag {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
-	if callerFlag {
-		log.Logger = log.Logger.With().Caller().Logger()
-	}
-}
-
-func initLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	zerolog.TimestampFieldName = "t"
 	zerolog.LevelFieldName = "l"
 	zerolog.MessageFieldName = "m"
 
 	l := logging.Configure(logging.Config{
-		ConsoleLoggingEnabled: debugFlag || foregroundFlag,
+		ConsoleLoggingEnabled: logFlag != "" || foregroundFlag,
+		ConsoleLoggingColor:   colorFlag != "no",
 		EncodeLogsAsJSON:      true,
 		FileLoggingEnabled:    true,
 		Directory:             rawconfig.Paths.Log,
@@ -103,12 +88,34 @@ func initLogger() {
 		Str("n", hostname.Hostname()).
 		Str("sid", xsession.ID).
 		Logger()
+
+	switch logFlag {
+	case "debug":
+		l = l.Level(zerolog.DebugLevel)
+	case "info":
+		l = l.Level(zerolog.InfoLevel)
+	case "warn", "warning":
+		l = l.Level(zerolog.WarnLevel)
+	case "error":
+		l = l.Level(zerolog.ErrorLevel)
+	case "fatal":
+		l = l.Level(zerolog.FatalLevel)
+	case "panic":
+		l = l.Level(zerolog.PanicLevel)
+	default:
+		l = l.Level(zerolog.InfoLevel)
+	}
+
+	if callerFlag {
+		l = l.With().Caller().Logger()
+	}
 	log.Logger = l
 }
 
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
-	if flag := cmd.Flags().Lookup("debug"); flag != nil && flag.Value.String() == "true" {
-		debugFlag = true
+	if flag := cmd.Flags().Lookup("log"); flag != nil {
+		s := flag.Value.String()
+		logFlag = s
 	}
 	if flag := cmd.Flags().Lookup("foreground"); flag != nil && flag.Value.String() == "true" {
 		foregroundFlag = true
@@ -193,13 +200,12 @@ func guessSubsystem(s string) string {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	root.PersistentFlags().StringVar(&configFlag, "config", "", "config file (default \"$HOME/.opensvc.yaml\")")
-	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization yes|no|auto")
-	root.PersistentFlags().StringVar(&colorLogFlag, "colorlog", "auto", "log output colorization yes|no|auto")
-	root.PersistentFlags().StringVar(&formatFlag, "format", "auto", "output format json|flat|auto")
-	root.PersistentFlags().StringVar(&serverFlag, "server", "", "uri of the opensvc api server. scheme raw|https")
-	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "show debug log")
-	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show caller <file>:<line> in logs")
+	root.PersistentFlags().StringVar(&configFlag, "config", "", "Config file (default \"$HOME/.opensvc.yaml\").")
+	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
+	root.PersistentFlags().StringVar(&formatFlag, "format", "auto", "Output format json|flat|auto.")
+	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server. scheme raw|https.")
+	root.PersistentFlags().StringVar(&logFlag, "log", "", "Display logs on the console at the specified level.")
+	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "Show caller <file>:<line> in logs.")
 }
 
 // initConfig reads in config file and ENV variables if set.

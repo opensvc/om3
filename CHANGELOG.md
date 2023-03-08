@@ -4,6 +4,10 @@
 
 ### core
 
+* **breaking change:** replace the --debug flag with --log debug|info|warn|error|fatal|panic
+
+* Add --quiet to disable both the progress renderer and the console logging
+
 * **breaking change:** remove the --eval flag of the get command.
 
 	users need to use the "eval" command instead.

@@ -3,16 +3,16 @@ package object
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/xerrors"
+	"github.com/pkg/errors"
 )
 
 // WithConfigFile sets a non-standard configuration location.
 func WithConfigFile(s string) funcopt.O {
-	return funcopt.F(func(t interface{}) error {
+	return funcopt.F(func(t any) error {
 		o := t.(*core)
 		o.configFile = s
 		return nil
@@ -22,7 +22,7 @@ func WithConfigFile(s string) funcopt.O {
 // WithConfigData sets configuration overriding what is installed in the config file
 // Useful for testing volatile services.
 func WithConfigData(b any) funcopt.O {
-	return funcopt.F(func(t interface{}) error {
+	return funcopt.F(func(t any) error {
 		o := t.(*core)
 		o.configData = b
 		return nil
@@ -38,9 +38,27 @@ func WithVolatile(s bool) funcopt.O {
 	})
 }
 
-func NewList(paths path.L, opts ...funcopt.O) ([]interface{}, error) {
+// WithConsoleLog displays the logs on the console
+func WithConsoleLog(s bool) funcopt.O {
+	return funcopt.F(func(t any) error {
+		o := t.(*core)
+		o.withConsoleLog = s
+		return nil
+	})
+}
+
+// WithConsoleColor turns on console log coloring
+func WithConsoleColor(s bool) funcopt.O {
+	return funcopt.F(func(t any) error {
+		o := t.(*core)
+		o.withConsoleColor = s
+		return nil
+	})
+}
+
+func NewList(paths path.L, opts ...funcopt.O) ([]any, error) {
 	var errs error
-	l := make([]interface{}, 0)
+	l := make([]any, 0)
 	for _, p := range paths {
 		if obj, err := New(p, opts...); err != nil {
 			xerrors.Append(errs, err)

@@ -15,18 +15,20 @@ type (
 const (
 	confirmKey key = iota
 	cronKey
-	propsKey
-	ridKey
-	tagKey
-	subsetKey
 	forceKey
+	leaderKey
 	lockTimeoutKey
 	lockDisabledKey
-	toKey
+	propsKey
+	quietKey
 	dryRunKey
+	ridKey
 	rollbackDisabledKey
-	leaderKey
+	subsetKey
+	tagKey
 	targetKey
+	toKey
+	verboseKey
 )
 
 func WithLockDisabled(ctx context.Context, v bool) context.Context {
@@ -47,6 +49,26 @@ func IsRollbackDisabled(ctx context.Context) bool {
 		return i.(bool)
 	}
 	return false
+}
+
+func WithQuiet(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, quietKey, v)
+}
+func IsQuiet(ctx context.Context) bool {
+	if i := ctx.Value(quietKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithVerbose(ctx context.Context, v int) context.Context {
+	return context.WithValue(ctx, verboseKey, v)
+}
+func Verbose(ctx context.Context) int {
+	if i := ctx.Value(verboseKey); i != nil {
+		return i.(int)
+	}
+	return 0
 }
 
 func WithDryRun(ctx context.Context, v bool) context.Context {

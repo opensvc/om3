@@ -36,9 +36,13 @@ func (t *CmdObjectUnprovision) Run(selector, kind string) error {
 		objectaction.WithRemoteAction("unprovision"),
 		objectaction.WithAsyncTarget("unprovisioned"),
 		objectaction.WithAsyncWatch(t.Watch),
-		objectaction.WithDigest(),
+		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
-			o, err := object.NewActor(p)
+			o, err := object.NewActor(p,
+				object.WithConsoleLog(t.Log != ""),
+				object.WithConsoleColor(t.Color != "no"),
+			)
+
 			if err != nil {
 				return nil, err
 			}

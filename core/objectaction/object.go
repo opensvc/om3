@@ -34,7 +34,7 @@ type (
 	// method implementation differ.
 	T struct {
 		actionrouter.T
-		Func func(context.Context, path.T) (interface{}, error)
+		Func func(context.Context, path.T) (any, error)
 	}
 )
 
@@ -50,7 +50,7 @@ func New(opts ...funcopt.O) *T {
 // WithObjectSelector expands into a selection of objects to execute
 // the action on.
 func WithObjectSelector(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.ObjectSelector = s
 		return nil
@@ -60,7 +60,7 @@ func WithObjectSelector(s string) funcopt.O {
 // WithRemoteNodes expands into a selection of nodes to execute the
 // action on.
 func WithRemoteNodes(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.NodeSelector = s
 		return nil
@@ -69,7 +69,7 @@ func WithRemoteNodes(s string) funcopt.O {
 
 // WithRID expands into a selection of resources to execute the action on.
 func WithRID(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.RID = s
 		return nil
@@ -78,7 +78,7 @@ func WithRID(s string) funcopt.O {
 
 // WithTag expands into a selection of resources to execute the action on.
 func WithTag(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Tag = s
 		return nil
@@ -87,7 +87,7 @@ func WithTag(s string) funcopt.O {
 
 // WithSubset expands into a selection of resources to execute the action on.
 func WithSubset(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Subset = s
 		return nil
@@ -97,7 +97,7 @@ func WithSubset(s string) funcopt.O {
 // WithLocal routes the action to the CRM instead of remoting it via
 // orchestration or remote execution.
 func WithLocal(v bool) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Local = v
 		return nil
@@ -107,7 +107,7 @@ func WithLocal(v bool) funcopt.O {
 // LocalFirst makes actions not explicitely Local nor remoted
 // via NodeSelector be treated as local (CRM level).
 func LocalFirst() funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultIsLocal = true
 		return nil
@@ -117,7 +117,7 @@ func LocalFirst() funcopt.O {
 // WithRemoteAction is the name of the action as passed to the command line
 // interface.
 func WithRemoteAction(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Action = s
 		return nil
@@ -126,8 +126,8 @@ func WithRemoteAction(s string) funcopt.O {
 
 // WithRemoteOptions is the dataset submited in the POST /{object|node}_action
 // api handler to execute the action remotely.
-func WithRemoteOptions(m map[string]interface{}) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+func WithRemoteOptions(m map[string]any) funcopt.O {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.PostFlags = m
 		return nil
@@ -137,7 +137,7 @@ func WithRemoteOptions(m map[string]interface{}) funcopt.O {
 // WithAsyncTarget is the node or object state the daemons should orchestrate
 // to reach.
 func WithAsyncTarget(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Target = s
 		return nil
@@ -146,18 +146,18 @@ func WithAsyncTarget(s string) funcopt.O {
 
 // WithAsyncTargetOptions is the options of the target defined by WithAsyncTarget.
 func WithAsyncTargetOptions(o any) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.TargetOptions = o
 		return nil
 	})
 }
 
-// WithDigest enables the action progress rendering
-func WithDigest() funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+// WithProgress decides if the action progress renderer is used.
+func WithProgress(v bool) funcopt.O {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
-		t.Digest = true
+		t.WithProgress = v
 		return nil
 	})
 }
@@ -166,7 +166,7 @@ func WithDigest() funcopt.O {
 // setting a new target. So the operator can see the orchestration
 // unfolding.
 func WithAsyncWatch(v bool) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Watch = v
 		return nil
@@ -179,7 +179,7 @@ func WithAsyncWatch(v bool) funcopt.O {
 // flat      => flattened json (<k>=<v>) machine readable format
 // flat_json => same as flat (backward compat)
 func WithFormat(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Format = s
 		return nil
@@ -191,7 +191,7 @@ func WithFormat(s string) funcopt.O {
 // yes
 // no
 func WithColor(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Color = s
 		return nil
@@ -200,7 +200,7 @@ func WithColor(s string) funcopt.O {
 
 // WithServer sets the api url.
 func WithServer(s string) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Server = s
 		return nil
@@ -208,8 +208,8 @@ func WithServer(s string) funcopt.O {
 }
 
 // WithLocalRun sets a function to run if the the action is local
-func WithLocalRun(f func(context.Context, path.T) (interface{}, error)) funcopt.O {
-	return funcopt.F(func(i interface{}) error {
+func WithLocalRun(f func(context.Context, path.T) (any, error)) funcopt.O {
+	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.Func = f
 		return nil
@@ -233,7 +233,7 @@ func (t T) DoLocal() error {
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
 		fmt.Printf("sid=%s\n", xsession.ID)
 	}
-	rs, err := selectionDo(sel, t.Func)
+	rs, err := t.selectionDo(sel, t.Func)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (t T) DoLocal() error {
 					log.Fatal().Msgf("%s", err)
 				}
 			}
-			if i, ok := interface{}(r.Data).(treeProvider); ok {
+			if i, ok := any(r.Data).(treeProvider); ok {
 				if rsTree == nil {
 					rsTree = tree.New()
 				}
@@ -433,7 +433,7 @@ func (t T) Do() error {
 
 // selectionDo executes in parallel the action on all selected objects supporting
 // the action.
-func selectionDo(selection *objectselector.Selection, fn func(context.Context, path.T) (interface{}, error)) ([]actionrouter.Result, error) {
+func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Context, path.T) (any, error)) ([]actionrouter.Result, error) {
 	results := make([]actionrouter.Result, 0)
 
 	paths, err := selection.Expand()
@@ -441,13 +441,16 @@ func selectionDo(selection *objectselector.Selection, fn func(context.Context, p
 		return results, err
 	}
 
+	ctx := context.Background()
+
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
-	progressView := progress.NewView()
-	progressView.Start()
-	defer progressView.Stop()
-	ctx := context.Background()
-	ctx = progress.ContextWithView(ctx, progressView)
+	if t.WithProgress {
+		progressView := progress.NewView()
+		progressView.Start()
+		defer progressView.Stop()
+		ctx = progress.ContextWithView(ctx, progressView)
+	}
 
 	q := make(chan actionrouter.Result, len(paths))
 	started := 0

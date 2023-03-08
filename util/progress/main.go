@@ -17,9 +17,10 @@ type (
 		cmdQ      chan any
 		renderQ   chan any
 		format    string
-		widths    []int
-		width     int
 		displayed int
+		depth     int
+		width     int
+		widths    []int
 	}
 	nodes struct {
 		l []*node
@@ -127,7 +128,7 @@ func msgWidths(msg []*string) []int {
 func (t info) widths() (widths []int) {
 	keyWidth := 0
 	for i, s := range t.keys {
-		w := len(s) + i*len(PadFiller)
+		w := realLen(s) + i*len(PadFiller)
 		if w > keyWidth {
 			keyWidth = w
 		}
@@ -139,12 +140,23 @@ func (t info) widths() (widths []int) {
 
 func (v *View) mergeInfo(m info) {
 	v.nodes.merge(m)
+	v.updateDepth(m)
 	v.updateWidths(m)
+}
+
+func (v *View) updateDepth(m info) {
+	depth := len(m.keys)
+	if depth > v.depth {
+		v.depth = depth
+	}
 }
 
 func (v *View) updateWidths(m info) {
 	widths := m.widths()
 	n := len(v.widths)
+	if n > 0 {
+		widths[0] += v.depth * len(PadFiller)
+	}
 	for i, w := range widths {
 		if i >= n-1 {
 			v.widths = append(v.widths, w)
@@ -227,10 +239,29 @@ func (v *View) updateTermWidth() {
 	}
 }
 
-func (v *View) Info(key []string, msg []*string) {
+func toStringPtrSlice(cols []any) []*string {
+	l := make([]*string, len(cols))
+	for i, col := range cols {
+		if col == nil {
+			l[i] = nil
+		} else if s, ok := col.(string); ok {
+			l[i] = &s
+		} else if s, ok := col.(*string); ok {
+			l[i] = s
+		} else if s, ok := col.(fmt.Stringer); ok {
+			v := s.String()
+			l[i] = &v
+		} else {
+			l[i] = nil
+		}
+	}
+	return l
+}
+
+func (v *View) Info(key []string, msg []any) {
 	line := info{
 		keys: key,
-		msg:  msg,
+		msg:  toStringPtrSlice(msg),
 	}
 	v.cmdQ <- line
 
@@ -271,7 +302,9 @@ func (t nodes) render(widths []int, depth int) {
 
 func leftPadPrint(width int, s string) {
 	w := width + len(s) - realLen(s)
-	fmt.Printf("%-"+fmt.Sprint(w)+"s", s)
+	format := fmt.Sprintf("%%-%ds ", w)
+	fmt.Printf(format, s)
+	//fmt.Printf("%d=>%d ", width, w)
 }
 
 func (t node) render(widths []int, depth int, last bool) {
@@ -287,10 +320,9 @@ func (t node) render(widths []int, depth int, last bool) {
 			padding += PadNextNode
 		}
 	}
-	fmt.Print(padding)
-	leftPadPrint(widths[0]-len(padding)+1, t.key)
+	leftPadPrint(widths[0], padding+t.key)
 	for i, s := range t.msg {
-		leftPadPrint(widths[i+1]+1, s)
+		leftPadPrint(widths[i+1], s)
 	}
 	fmt.Println("")
 	t.nodes.render(widths, depth+1)

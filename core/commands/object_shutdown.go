@@ -32,9 +32,13 @@ func (t *CmdObjectShutdown) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("shutdown"),
-		objectaction.WithDigest(),
+		objectaction.WithProgress(!t.Quiet && t.Log == ""),
 		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
-			o, err := object.NewActor(p)
+			o, err := object.NewActor(p,
+				object.WithConsoleLog(t.Log != ""),
+				object.WithConsoleColor(t.Color != "no"),
+			)
+
 			if err != nil {
 				return nil, err
 			}

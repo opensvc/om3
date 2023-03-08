@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
@@ -140,14 +141,10 @@ func (t *T) Kill(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) progress(ctx context.Context, nodename string, more ...string) {
+func (t *T) progress(ctx context.Context, nodename string, more ...any) {
 	if view := progress.ViewFromContext(ctx); view != nil {
 		key := append(t.ProgressKey(), nodename)
-		cols := []*string{}
-		for i, _ := range more {
-			cols = append(cols, &more[i])
-		}
-		view.Info(key, cols)
+		view.Info(key, more)
 	}
 }
 
@@ -419,12 +416,13 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 			addBytesReceived(line, stats)
 			rx := fmt.Sprintf("rx:%s", sizeconv.BSizeCompact(float64(stats.ReceivedBytes)))
 			tx := fmt.Sprintf("tx:%s", sizeconv.BSizeCompact(float64(stats.SentBytes)))
-			t.progress(ctx, nodename, "-", "-", rx, tx)
+			t.progress(ctx, nodename, "▶", rx, tx)
 		}),
 	)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
+	t.progress(ctx, nodename, rawconfig.Colorize.Optimal("✓"), nil, nil)
 	stats.Close()
 	t.Log().Info().
 		Float64("speed_bps", stats.SpeedBPS()).

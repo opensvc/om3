@@ -131,14 +131,14 @@ func (t actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, 
 		q <- false
 		return
 	}
-	r.Progress(ctx, "run abort tests")
+	r.Progress(ctx, "▶ run abort tests")
 	if a.Abort(ctx) {
-		t.log.Error().Str("rid", r.RID()).Msg("abort start")
-		r.Progress(ctx, rawconfig.Colorize.Error("abort"))
+		t.log.Error().Str("rid", r.RID()).Msg("deny start")
+		r.Progress(ctx, rawconfig.Colorize.Error("deny start"))
 		q <- true
 		return
 	}
-	r.Progress(ctx, "")
+	r.Progress(ctx, rawconfig.Colorize.Optimal("✓")+" allow start")
 	q <- false
 }
 
@@ -316,12 +316,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				err = nil
 			case errors.Is(err, resource.ErrActionNotSupported):
 				err = nil
-			case errors.Is(err, resource.ErrNotLinkable):
-				err = nil
 			case errors.Is(err, resource.ErrActionPostponedToLinker):
 				err = nil
 			case err == nil:
-				r.Progress(ctx, "done")
+				r.Progress(ctx, rawconfig.Colorize.Optimal("✓"))
 			case r.IsOptional():
 				r.Progress(ctx, rawconfig.Colorize.Warning(err))
 			default:
@@ -350,7 +348,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 					// filter applies the action only on linkers
 					return func(ctx context.Context, r resource.Driver) error {
 						if !stringslice.Has(r.RID(), rids) {
-							return resource.ErrNotLinkable
+							return nil
 						}
 						return fn(ctx, r)
 					}
@@ -358,7 +356,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 				// On descending action, do action on linkers first.
 				if l.IsDesc() {
-					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, filter(fn)); err != nil {
+					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
 						return err
 					}
 				}
@@ -367,7 +365,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				}
 				// On ascending action, do action on linkers last.
 				if !l.IsDesc() {
-					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, filter(fn)); err != nil {
+					if err := t.ResourceSets().Do(ctx, l, b, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
 						return err
 					}
 				}
