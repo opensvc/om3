@@ -7,6 +7,16 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/toc"
+)
+
+var (
+	splitActionDelay = 2 * time.Second
+	slitActions      = map[string]func() error{
+		"crash":  toc.Crash,
+		"reboot": toc.Reboot,
+	}
 )
 
 func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
@@ -49,6 +59,7 @@ func (o *nmon) getNodeConfig() node.Config {
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
 		keyEnv                    = key.New("node", "env")
+		keySplitAction            = key.New("node", "split_action")
 	)
 	cfg := node.Config{}
 	if d := o.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
@@ -61,6 +72,7 @@ func (o *nmon) getNodeConfig() node.Config {
 		cfg.RejoinGracePeriod = *d
 	}
 	cfg.Env = o.config.GetString(keyEnv)
+	cfg.SplitAction = o.config.GetString(keySplitAction)
 	return cfg
 }
 
@@ -166,6 +178,56 @@ func (o *nmon) onArbitratorTicker() {
 	}
 }
 
+func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
+	delete(o.livePeers, c.Node)
+	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
+		o.log.Info().Msgf("peer %s not anymore alive, we still have majority", c.Node)
+		return
+	}
+	if !o.clusterConfig.Quorum {
+		o.log.Warn().Msgf("cluster is split, ignore as cluster.quorum is false")
+		return
+	}
+	if false {
+		o.log.Warn().Msgf("cluster is split, ignore as the node is frozen")
+		return
+	}
+	o.log.Warn().Msgf("cluster is split, check for arbitrator votes")
+	total := len(o.clusterConfig.Nodes) + len(o.arbitrators)
+	arbitratorVotes := o.arbitratorVotes()
+	votes := len(o.livePeers) + len(arbitratorVotes)
+	livePeers := make([]string, 0)
+	for k := range o.livePeers {
+		livePeers = append(livePeers, k)
+	}
+	if votes > total/2 {
+		o.log.Warn().Msgf("cluster is split, we have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
+		return
+	}
+	action := o.nodeConfig.SplitAction
+	o.log.Warn().Msgf("cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
+	o.bus.Pub(msgbus.NodeSplitAction{
+		Node:            o.localhost,
+		Action:          action,
+		NodeVotes:       len(o.livePeers),
+		ArbitratorVotes: len(arbitratorVotes),
+		Voting:          total,
+		ProVoters:       len(o.livePeers) + len(arbitratorVotes),
+	}, pubsub.Label{"node", o.localhost})
+
+	splitAction, ok := slitActions[action]
+	if !ok {
+		o.log.Error().Msgf("invalid split action %s", action)
+		return
+	}
+	o.log.Warn().Msgf("cluster is split, will call split action %s in %s", action, splitActionDelay)
+	time.Sleep(splitActionDelay)
+	o.log.Warn().Msgf("cluster is split, now calling split action %s", action)
+	if err := splitAction(); err != nil {
+		o.log.Error().Err(err).Msgf("split action %s failed", action)
+	}
+}
+
 func (o *nmon) onFrozenFileRemoved(c msgbus.FrozenFileRemoved) {
 	o.databus.SetNodeFrozen(time.Time{})
 }
@@ -187,6 +249,10 @@ func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {
 func (o *nmon) onPeerNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
 	o.nodeMonitor[c.Node] = c.Value
+	if _, ok := o.livePeers[c.Node]; !ok {
+		o.log.Debug().Msgf("new live peer %s", c.Node)
+	}
+	o.livePeers[c.Node] = true
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()

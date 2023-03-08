@@ -75,6 +75,11 @@ type (
 		// clusterConfig is a cache of published ClusterConfigUpdated
 		clusterConfig cluster.Config
 
+		// livePeers is a map of peer nodes
+		// exists when we receive msgbus.NodeMonitorUpdated
+		// removed when we receive msgbus.ForgetPeer
+		livePeers   map[string]bool
+
 		// arbitrators is a map for arbitratorConfig
 		arbitrators map[string]arbitratorConfig
 
@@ -124,6 +129,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
+		livePeers:   map[string]bool{localhost: true},
 	}
 
 	if n, err := object.NewNode(object.WithVolatile(true)); err != nil {
@@ -165,6 +171,7 @@ func (o *nmon) startSubscriptions() {
 	sub := o.bus.Sub("nmon")
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
+	sub.AddFilter(msgbus.ForgetPeer{})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
 	sub.AddFilter(msgbus.FrozenFileUpdated{})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
@@ -246,6 +253,8 @@ func (o *nmon) worker() {
 				o.onPeerNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:
 				o.onNodeMonitorDeleted(c)
+			case msgbus.ForgetPeer:
+				o.onForgetPeer(c)
 			case msgbus.FrozenFileRemoved:
 				o.onFrozenFileRemoved(c)
 			case msgbus.FrozenFileUpdated:
