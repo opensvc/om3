@@ -50,9 +50,9 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 		err error
 	}
 	c := make(chan res, len(o.arbitrators))
-	for s, a := range o.arbitrators {
+	for _, a := range o.arbitrators {
 		go func(a arbitratorConfig) {
-			c <- res{id: s, err: o.arbitratorCheck(a)}
+			c <- res{id: a.Id, err: o.arbitratorCheck(a)}
 		}(a)
 	}
 	result := make(map[string]node.ArbitratorStatus)
