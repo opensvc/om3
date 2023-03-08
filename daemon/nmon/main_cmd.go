@@ -181,8 +181,9 @@ func (o *nmon) onArbitratorTicker() {
 
 func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	delete(o.livePeers, c.Node)
+	o.log.Info().Msgf("lost peer %s => new live peers: %v", c.Node, o.livePeers)
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
-		o.log.Info().Msgf("peer %s not anymore alive, we still have majority", c.Node)
+		o.log.Info().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
 		return
 	}
 	if !o.clusterConfig.Quorum {
@@ -251,9 +252,9 @@ func (o *nmon) onPeerNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
 	o.nodeMonitor[c.Node] = c.Value
 	if _, ok := o.livePeers[c.Node]; !ok {
-		o.log.Debug().Msgf("new live peer %s", c.Node)
+		o.livePeers[c.Node] = true
+		o.log.Info().Msgf("new peer %s => new live peers: %v", c.Node, o.livePeers)
 	}
-	o.livePeers[c.Node] = true
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()
