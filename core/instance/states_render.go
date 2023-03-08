@@ -25,6 +25,15 @@ func (t States) Tree() *tree.Tree {
 
 // LoadTreeNode add the tree nodes representing the type instance into another
 // tree, at the specified node.
+func (t States) LoadTreeNodeFolded(head *tree.Node) {
+	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
+	head.AddColumn()
+	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Colorize))
+	head.AddColumn().AddText(t.descString())
+}
+
+// LoadTreeNode add the tree nodes representing the type instance into another
+// tree, at the specified node.
 func (t States) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()

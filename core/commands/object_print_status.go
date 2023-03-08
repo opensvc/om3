@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -19,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/xerrors"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -162,7 +162,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 				if !paths.Contains(d.Path) {
 					continue
 				}
-				s += d.Render()
+				s += d.Render([]string{hostname.Hostname()})
 			}
 			return s
 		},

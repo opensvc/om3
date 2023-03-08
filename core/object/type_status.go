@@ -52,30 +52,48 @@ type (
 )
 
 // Render returns a human friendy string representation of the type instance.
-func (t Digest) Render() string {
-	tree := t.Tree()
+func (t Digest) Render(nodes []string) string {
+	tree := t.Tree(nodes)
 	return tree.Render()
 }
 
 // Tree returns a tree loaded with the type instance.
-func (t Digest) Tree() *tree.Tree {
+func (t Digest) Tree(nodes []string) *tree.Tree {
 	tree := tree.New()
-	t.LoadTreeNode(tree.Head())
+	t.LoadTreeNode(tree.Head(), nodes)
 	return tree
 }
 
 // LoadTreeNode add the tree nodes representing the type instance into another.
-func (t Digest) LoadTreeNode(head *tree.Node) {
+func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 	head.AddColumn().AddText(t.Path.String()).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
 	head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Colorize))
 	head.AddColumn().AddText(t.descString())
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
-	nodenames := xmap.Keys(t.Instances)
-	sort.Sort(sort.StringSlice(nodenames))
+	openMap := make(map[string]any)
+	folded := make([]string, 0)
+	for _, nodename := range nodes {
+		if _, ok := t.Instances[nodename]; ok {
+			openMap[nodename] = nil
+		}
+	}
+	for _, nodename := range xmap.Keys(t.Instances) {
+		if _, ok := openMap[nodename]; !ok {
+			folded = append(folded, nodename)
+		}
+	}
+	open := xmap.Keys(openMap)
+	sort.Sort(sort.StringSlice(open))
+	sort.Sort(sort.StringSlice(folded))
 
-	for _, nodename := range nodenames {
+	for _, nodename := range folded {
+		data := t.Instances[nodename]
+		n := instances.AddNode()
+		data.LoadTreeNodeFolded(n)
+	}
+	for _, nodename := range open {
 		data := t.Instances[nodename]
 		n := instances.AddNode()
 		data.LoadTreeNode(n)
