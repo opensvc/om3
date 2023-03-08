@@ -142,6 +142,7 @@ func (s *Data) GetObjectStatus(p path.T) object.Digest {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p
+	data.Compat = s.Cluster.Status.Compat
 	data.Object, _ = s.Cluster.Object[ps]
 	for nodename, ndata := range s.Cluster.Node {
 		instanceStates := instance.States{}
