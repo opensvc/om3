@@ -22,6 +22,10 @@ type (
 		errC
 		result chan<- map[string]node.Status
 	}
+	opSetNodeStatusArbitrator struct {
+		errC
+		value map[string]node.ArbitratorStatus
+	}
 	opSetNodeStatusFrozen struct {
 		errC
 		value time.Time
@@ -80,6 +84,39 @@ func (o opGetNodeStatusMap) call(ctx context.Context, d *data) error {
 		m[nodename] = *nodeData.Status.DeepCopy()
 	}
 	o.result <- m
+	return nil
+}
+
+// SetNodeStatusArbitrator sets Monitor.Node.<localhost>.Status.Arbitrators
+func (t T) SetNodeStatusArbitrator(a map[string]node.ArbitratorStatus) error {
+	err := make(chan error, 1)
+	op := opSetNodeStatusArbitrator{
+		errC:  err,
+		value: a,
+	}
+	t.cmdC <- op
+	return <-err
+}
+
+func (o opSetNodeStatusArbitrator) call(ctx context.Context, d *data) error {
+	d.statCount[idSetNodeStatusArbitrator]++
+	v := d.pending.Cluster.Node[d.localNode]
+	v.Status.Arbitrators = o.value
+	d.pending.Cluster.Node[d.localNode] = v
+	op := jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"status", "arbitrators"},
+		OpValue: jsondelta.NewOptValue(o.value),
+		OpKind:  "replace",
+	}
+	d.pendingOps = append(d.pendingOps, op)
+
+	d.bus.Pub(
+		msgbus.NodeStatusUpdated{
+			Node:  d.localNode,
+			Value: *v.Status.DeepCopy(),
+		},
+		labelLocalNode,
+	)
 	return nil
 }
 

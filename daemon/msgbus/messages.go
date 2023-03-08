@@ -101,6 +101,8 @@ var (
 
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 
+		"NodeSplitAction": NodeSplitAction{},
+
 		"NodeStatusUpdated": NodeStatusUpdated{},
 
 		"ObjectOrchestrationEnd": ObjectOrchestrationEnd{},
@@ -348,6 +350,15 @@ type (
 	NodeOsPathsUpdated struct {
 		Node  string
 		Value san.Paths
+	}
+
+	NodeSplitAction struct {
+		Node            string
+		Action          string
+		NodeVotes       int
+		ArbitratorVotes int
+		Voting          int
+		ProVoters       int
 	}
 
 	NodeStatsUpdated struct {
@@ -630,6 +641,10 @@ func (e NodeMonitorUpdated) Kind() string {
 
 func (e NodeOsPathsUpdated) Kind() string {
 	return "NodeOsPathsUpdated"
+}
+
+func (e NodeSplitAction) Kind() string {
+	return "NodeSplitAction"
 }
 
 func (e NodeStatsUpdated) Kind() string {
