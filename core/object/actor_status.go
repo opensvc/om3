@@ -122,6 +122,6 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status) e
 		mu.Unlock()
 		return nil
 	})
-	t.Progress(ctx, "-", colorstatus.Sprint(data.Avail, rawconfig.Colorize))
+	t.Progress(ctx, colorstatus.Sprint(data.Avail, rawconfig.Colorize))
 	return err
 }
