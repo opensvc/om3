@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
 )
 
@@ -25,7 +26,6 @@ type (
 // setArbitratorConfig load config to sets arbitrators
 func (o *nmon) setArbitratorConfig() {
 	arbitrators := make(map[string]arbitratorConfig)
-	o.config.Reload()
 	for _, s := range o.config.SectionStrings() {
 		if !strings.HasPrefix(s, "arbitrator#") {
 			continue
@@ -66,6 +66,11 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 			o.log.Warn().Msgf("arbitrator#%s is down", name)
 			o.log.Debug().Err(r.err).Msgf("arbitrator#%s is down", name)
 			aStatus = status.Down
+			o.bus.Pub(msgbus.ArbitratorError{
+				Node: o.localhost,
+				Name: name,
+				Err:  r.err,
+			})
 		}
 		result[name] = node.ArbitratorStatus{Url: url, Status: aStatus}
 	}

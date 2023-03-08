@@ -70,6 +70,9 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
+		// frozen is true when local node is frozen
+		frozen bool
+
 		nodeMonitor map[string]node.Monitor
 
 		// clusterConfig is a cache of published ClusterConfigUpdated
@@ -78,7 +81,7 @@ type (
 		// livePeers is a map of peer nodes
 		// exists when we receive msgbus.NodeMonitorUpdated
 		// removed when we receive msgbus.ForgetPeer
-		livePeers   map[string]bool
+		livePeers map[string]bool
 
 		// arbitrators is a map for arbitratorConfig
 		arbitrators map[string]arbitratorConfig
@@ -132,18 +135,13 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		livePeers:   map[string]bool{localhost: true},
 	}
 
-	if n, err := object.NewNode(object.WithVolatile(true)); err != nil {
+	// we are responsible for publication or node config, don't wait for
+	// first ConfigFileUpdated event to do the job.
+	if err := o.loadAndPublishConfig(); err != nil {
 		return err
-	} else {
-		o.config = n.MergedConfig()
-		o.nodeConfig = o.getNodeConfig()
-		// we are responsible for publication or node config, don't wait for
-		// first ConfigFileUpdated event to do the job.
-		if err := o.pubNodeConfig(); err != nil {
-			o.log.Error().Err(err).Msg("publish initial node config")
-		}
-		o.setArbitratorConfig()
 	}
+
+	o.setArbitratorConfig()
 
 	o.startSubscriptions()
 	go func() {
@@ -169,8 +167,15 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 
 func (o *nmon) startSubscriptions() {
 	sub := o.bus.Sub("nmon")
+
+	// watching for ClusterConfigUpdated (so we get notified when cluster config file
+	// has been changed and reloaded
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
+
+	// We don't need to watch for ConfigFileUpdated on path cluster, instead
+	// we watch for ClusterConfigUpdated.
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
+
 	sub.AddFilter(msgbus.ForgetPeer{})
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
 	sub.AddFilter(msgbus.FrozenFileUpdated{})
@@ -434,4 +439,25 @@ func (o *nmon) saveNodesInfo() {
 	} else {
 		o.log.Info().Msg("nodes info cache refreshed")
 	}
+}
+
+func (o *nmon) loadConfig() error {
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return err
+	}
+	o.config = n.MergedConfig()
+	o.nodeConfig = o.getNodeConfig()
+	return nil
+}
+
+func (o *nmon) loadAndPublishConfig() error {
+	if err := o.loadConfig(); err != nil {
+		return err
+	}
+	if err := o.pubNodeConfig(); err != nil {
+		o.log.Error().Err(err).Msg("publish node config")
+		return err
+	}
+	return nil
 }

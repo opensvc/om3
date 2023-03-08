@@ -21,6 +21,8 @@ var (
 	kindToT = map[string]any{
 		"ApiClient": ApiClient{},
 
+		"ArbitratorError": ArbitratorError{},
+
 		"ClusterConfigUpdated": ClusterConfigUpdated{},
 
 		"ClusterStatusUpdated": ClusterStatusUpdated{},
@@ -142,6 +144,13 @@ type (
 	ApiClient struct {
 		Time time.Time
 		Name string
+	}
+
+	// ArbitratorError message is published when an arbitrator error is detected
+	ArbitratorError struct {
+		Node string
+		Name string
+		Err error
 	}
 
 	ConfigDeleted struct {
@@ -467,6 +476,10 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 
 func (e ApiClient) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
+}
+
+func (e ArbitratorError) Kind() string {
+	return "ArbitratorError"
 }
 
 func (e ClusterConfigUpdated) Kind() string {
