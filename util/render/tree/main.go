@@ -234,7 +234,6 @@ func (t *Tree) setTotalWidth() {
 	t.totalWidth = columns - 4
 }
 
-//
 // Render returns the string representation of the tree.
 //
 // Each node is considered tabular, with cells content aligned and wrapped.
@@ -242,11 +241,12 @@ func (t *Tree) setTotalWidth() {
 // The widths parameter can used to set per-column min/max or exact widths:
 //
 // widths = [
-//     (0, 10),   # col1: min 0, max 10 chars
-//     None,      # col2: no constraints, auto detect
-//     10         # col3: exactly 10 chars
-// ]
 //
+//	(0, 10),   # col1: min 0, max 10 chars
+//	None,      # col2: no constraints, auto detect
+//	10         # col3: exactly 10 chars
+//
+// ]
 func (t *Tree) Render() string {
 	t.setTotalWidth()
 	t.getPads()
@@ -508,40 +508,38 @@ func (n *Node) AddColumn() *Column {
 	return c
 }
 
-//
 // Load loads data in the node
 //
 // Example dataset:
 //
-// {
-//     "data": [
-//         {
-//             "text": "node1",
-//             "color": color.BOLD
-//         }
-//     ],
-//     "children": [
-//         {
-//             "data": [
-//                 {
-//                     "text": "node2"
-//                 },
-//                 {
-//                     "text": "foo",
-//                     "color": color.RED
-//                 }
-//             ],
-//             "children": [
-//             ]
-//         }
-//     ]
-// }
+//	{
+//	    "data": [
+//	        {
+//	            "text": "node1",
+//	            "color": color.BOLD
+//	        }
+//	    ],
+//	    "children": [
+//	        {
+//	            "data": [
+//	                {
+//	                    "text": "node2"
+//	                },
+//	                {
+//	                    "text": "foo",
+//	                    "color": color.RED
+//	                }
+//	            ],
+//	            "children": [
+//	            ]
+//	        }
+//	    ]
+//	}
 //
 // would be rendered as:
 //
 // node1
 // `- node2 foo
-//
 func (n *Node) Load(data interface{}, title string) {
 	head := n
 	if title == "" {
