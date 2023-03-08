@@ -197,7 +197,7 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 		o.log.Warn().Msgf("cluster is split, ignore as cluster.quorum is false")
 		return
 	}
-	if false {
+	if o.frozen {
 		o.log.Warn().Msgf("cluster is split, ignore as the node is frozen")
 		return
 	}
@@ -239,11 +239,13 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 
 func (o *nmon) onFrozenFileRemoved(c msgbus.FrozenFileRemoved) {
 	o.databus.SetNodeFrozen(time.Time{})
+	o.frozen = false
 }
 
 func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
 	tm := file.ModTime(c.Filename)
 	o.databus.SetNodeFrozen(tm)
+	o.frozen = true
 }
 
 func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {

@@ -70,6 +70,9 @@ type (
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
+		// frozen is true when local node is frozen
+		frozen bool
+
 		nodeMonitor map[string]node.Monitor
 
 		// clusterConfig is a cache of published ClusterConfigUpdated
