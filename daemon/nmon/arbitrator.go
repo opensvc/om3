@@ -25,7 +25,6 @@ type (
 // setArbitratorConfig load config to sets arbitrators
 func (o *nmon) setArbitratorConfig() {
 	arbitrators := make(map[string]arbitratorConfig)
-	o.config.Reload()
 	for _, s := range o.config.SectionStrings() {
 		if !strings.HasPrefix(s, "arbitrator#") {
 			continue

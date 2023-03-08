@@ -20,9 +20,21 @@ var (
 	}
 )
 
+// onClusterConfigUpdated updates local config and arbitrator status after detected
+// local cluster config updates
+//
+// it updates cluster config cache from event value
+// it loads and publish config (some common settings such as node split_action keyword..)
+// it updates arbitrators config
+// then refresh arbitrator status
 func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 	o.clusterConfig = c.Value
+
+	if err := o.loadAndPublishConfig(); err != nil {
+		o.log.Error().Err(err).Msgf("load and publish config from cluster config updated event")
+	}
 	o.setArbitratorConfig()
+
 	if err := o.getAndUpdateStatusArbitrator(); err != nil {
 		o.log.Error().Err(err).Msg("arbitrator status failure (after cluster config updated)")
 	}
@@ -33,14 +45,9 @@ func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
-	if err := o.config.Reload(); err != nil {
-		o.log.Error().Err(err).Msg("reload merged config")
+	if err := o.loadAndPublishConfig(); err != nil {
+		o.log.Error().Err(err).Msg("load and publish config from node config file updated event")
 		return
-	}
-	o.nodeConfig = o.getNodeConfig()
-	err := o.pubNodeConfig()
-	if err != nil {
-		o.log.Error().Err(err).Msg("publish node config")
 	}
 
 	// env might have changed. nmon is responsible for updating nodes_info.json
