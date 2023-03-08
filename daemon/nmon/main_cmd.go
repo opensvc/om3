@@ -14,8 +14,9 @@ import (
 var (
 	splitActionDelay = 2 * time.Second
 	slitActions      = map[string]func() error{
-		"crash":  toc.Crash,
-		"reboot": toc.Reboot,
+		"crash":    toc.Crash,
+		"reboot":   toc.Reboot,
+		"disabled": func() error { return nil },
 	}
 )
 
