@@ -47,7 +47,13 @@ import (
 
 type (
 	nmon struct {
-		config        *xconfig.T
+		// config is the node merged config
+		config *xconfig.T
+
+		// nodeConfig is the published node.Config. It is refreshed when config is
+		// created or reloaded.
+		nodeConfig node.Config
+
 		state         node.Monitor
 		previousState node.Monitor
 
@@ -80,9 +86,15 @@ type (
 	}
 )
 
+var (
+	// statsInterval is the interval duration between 2 stats refresh
+	statsInterval = 60 * time.Second
+)
+
 // Start launches the nmon worker goroutine
 func Start(parent context.Context, drainDuration time.Duration) error {
 	ctx, cancel := context.WithCancel(parent)
+	localhost := hostname.Hostname()
 	o := &nmon{
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
@@ -100,7 +112,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		databus:     daemondata.FromContext(ctx),
 		bus:         pubsub.BusFromContext(ctx),
 		log:         log.Logger.With().Str("func", "nmon").Logger(),
-		localhost:   hostname.Hostname(),
+		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
 	}
@@ -109,6 +121,12 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		return err
 	} else {
 		o.config = n.MergedConfig()
+		o.nodeConfig = o.getNodeConfig()
+		// we are responsible for publication or node config, don't wait for
+		// first ConfigFileUpdated event to do the job.
+		if err := o.pubNodeConfig(); err != nil {
+			o.log.Error().Err(err).Msg("publish initial node config")
+		}
 	}
 
 	o.startSubscriptions()
@@ -124,7 +142,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 					}
 				}
 			}()
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 		}()
@@ -139,9 +157,8 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.FrozenFileRemoved{})
 	sub.AddFilter(msgbus.FrozenFileUpdated{})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
-	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", hostname.Hostname()})
-	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", hostname.Hostname()})
-	sub.AddFilter(msgbus.NodeConfigUpdated{})
+	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", o.localhost})
+	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", o.localhost})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
@@ -163,8 +180,8 @@ func (o *nmon) startRejoin() {
 		// Begin the rejoin state phase.
 		// Arm the rejoin grace period ticker.
 		// The onHbMessageTypeUpdated() event handler can stop it.
-		rejoinGracePeriod := o.config.GetDuration(key.New("node", "rejoin_grace_period"))
-		o.rejoinTicker = time.NewTicker(*rejoinGracePeriod)
+		rejoinGracePeriod := o.nodeConfig.RejoinGracePeriod
+		o.rejoinTicker = time.NewTicker(rejoinGracePeriod)
 		o.log.Info().Msgf("rejoin grace period timer set to %s", rejoinGracePeriod)
 		o.transitionTo(node.MonitorStateRejoin)
 	}
@@ -195,7 +212,7 @@ func (o *nmon) worker() {
 		o.transitionTo(node.MonitorStateIdle)
 	}
 
-	statsTicker := time.NewTicker(10 * time.Second)
+	statsTicker := time.NewTicker(statsInterval)
 	defer statsTicker.Stop()
 
 	for {
@@ -206,8 +223,6 @@ func (o *nmon) worker() {
 			switch c := i.(type) {
 			case msgbus.ConfigFileUpdated:
 				o.onConfigFileUpdated(c)
-			case msgbus.NodeConfigUpdated:
-				o.onNodeConfigUpdated(c)
 			case msgbus.NodeMonitorUpdated:
 				o.onPeerNodeMonitorUpdated(c)
 			case msgbus.NodeMonitorDeleted:
@@ -389,5 +404,4 @@ func (o *nmon) saveNodesInfo() {
 	} else {
 		o.log.Info().Msg("nodes info cache refreshed")
 	}
-
 }

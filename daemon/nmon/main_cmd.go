@@ -18,15 +18,21 @@ func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		o.log.Error().Err(err).Msg("reload merged config")
 		return
 	}
-	o.pubNodeConfig()
+	o.nodeConfig = o.getNodeConfig()
+	err := o.pubNodeConfig()
+	if err != nil {
+		o.log.Error().Err(err).Msg("publish node config")
+	}
 
 	// env might have changed. nmon is responsible for updating nodes_info.json
 	o.saveNodesInfo()
+
+	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
+	o.checkRejoinTicker()
 }
 
-func (o *nmon) pubNodeConfig() {
-	cfg := o.getNodeConfig()
-	o.databus.SetNodeConfig(cfg)
+func (o *nmon) pubNodeConfig() error {
+	return o.databus.SetNodeConfig(o.nodeConfig)
 }
 
 func (o *nmon) getNodeConfig() node.Config {
@@ -50,14 +56,11 @@ func (o *nmon) getNodeConfig() node.Config {
 	return cfg
 }
 
-func (o *nmon) onNodeConfigUpdated(c msgbus.NodeConfigUpdated) {
-	if c.Node != o.localhost {
-		return
-	}
+func (o *nmon) checkRejoinTicker() {
 	if o.state.State != node.MonitorStateRejoin {
 		return
 	}
-	if left := o.startedAt.Add(c.Value.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
+	if left := o.startedAt.Add(o.nodeConfig.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
 		return
 	} else {
 		o.rejoinTicker.Reset(left)
