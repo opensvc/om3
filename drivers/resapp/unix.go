@@ -76,10 +76,6 @@ func (t T) SortKey() string {
 	}
 }
 
-func (t T) Abort(ctx context.Context) bool {
-	return false
-}
-
 // Stop the Resource
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	t.Log().Debug().Msg("CommonStop()")
