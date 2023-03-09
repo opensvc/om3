@@ -148,6 +148,10 @@ func (m *T) doOneShot(data cluster.Data, clear bool, out io.Writer) {
 	if clear {
 		screen.Clear()
 		screen.MoveTopLeft()
+
+		// Clearing is used by the watch mode.
+		// In this case we want to see the date as a proof of activity.
+		_, _ = fmt.Fprintf(out, "%s\n\n", time.Now().Format(time.RFC1123))
 	}
 	_, _ = fmt.Fprint(out, s)
 }
