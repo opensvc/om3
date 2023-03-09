@@ -96,6 +96,10 @@
 	 -               -               -               -               -                -               
 	=============== =============== =============== =============== ================ =================
 
+### commands
+
+* **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
+
 ### driver fs
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.

@@ -129,6 +129,52 @@ func newCmdArrayLs() *cobra.Command {
 	return cmd
 }
 
+func newCmdClusterFreeze() *cobra.Command {
+	var options commands.CmdClusterFreeze
+	cmd := &cobra.Command{
+		Use:   "freeze",
+		Short: "block ha automatic start and split action on all nodes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	return cmd
+}
+
+func newCmdClusterThaw() *cobra.Command {
+	var options commands.CmdClusterUnfreeze
+	cmd := &cobra.Command{
+		Use:    "thaw",
+		Hidden: true,
+		Short:  "unblock ha automatic and split action start on all nodes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	return cmd
+}
+
+func newCmdClusterUnfreeze() *cobra.Command {
+	var options commands.CmdClusterUnfreeze
+	cmd := &cobra.Command{
+		Use:   "unfreeze",
+		Short: "unblock ha automatic and split action start on all nodes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsAsync(flags, &options.OptsAsync)
+	return cmd
+}
+
 func newCmdDaemonAuth() *cobra.Command {
 	var options commands.CmdDaemonAuth
 	cmd := &cobra.Command{
@@ -919,14 +965,13 @@ func newCmdNodeFreeze() *cobra.Command {
 	var options commands.CmdNodeFreeze
 	cmd := &cobra.Command{
 		Use:   "freeze",
-		Short: "block ha automatic start",
+		Short: "block ha automatic start and split action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }
 
@@ -1157,7 +1202,7 @@ func newCmdNodeThaw() *cobra.Command {
 	var options commands.CmdNodeUnfreeze
 	cmd := &cobra.Command{
 		Use:     "thaw",
-		Short:   "unblock ha automatic start",
+		Short:   "unblock ha automatic start and split action",
 		Hidden:  true,
 		Aliases: []string{"thaw"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1166,7 +1211,6 @@ func newCmdNodeThaw() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }
 
@@ -1174,7 +1218,7 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	var options commands.CmdNodeUnfreeze
 	cmd := &cobra.Command{
 		Use:     "unfreeze",
-		Short:   "unblock ha automatic start",
+		Short:   "unblock ha automatic start and split action",
 		Aliases: []string{"thaw"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1182,7 +1226,6 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	addFlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }
 

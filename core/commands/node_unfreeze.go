@@ -7,20 +7,15 @@ import (
 
 type CmdNodeUnfreeze struct {
 	OptsGlobal
-	OptsAsync
 }
 
 func (t *CmdNodeUnfreeze) Run() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteAction("unfreeze"),
-		nodeaction.WithAsyncTarget("thawed"),
-		nodeaction.WithAsyncTime(t.Time),
-		nodeaction.WithAsyncWait(t.Wait),
-		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Format),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocal(t.Local),
+		nodeaction.WithLocal(true),
 		nodeaction.WithLocalRun(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
