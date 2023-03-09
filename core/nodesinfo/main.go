@@ -52,7 +52,8 @@ func Save(data NodesInfo) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp)
+	defer func() { _ = jsonFile.Close() }()
+	defer func() { _ = os.Remove(tmp) }()
 	enc := json.NewEncoder(jsonFile)
 	err = enc.Encode(data)
 	if err != nil {
