@@ -1245,6 +1245,21 @@ func newCmdNodeUnset() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeValidate() *cobra.Command {
+	var options commands.CmdNodeValidateConfig
+	cmd := &cobra.Command{
+		Use:     "validate",
+		Short:   "verify the node configuration syntax",
+		Aliases: []string{"validat", "valida", "valid", "val"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdNodeValidateConfig() *cobra.Command {
 	var options commands.CmdNodeValidateConfig
 	cmd := &cobra.Command{
@@ -1305,11 +1320,19 @@ func newCmdObjectPush(kind string) *cobra.Command {
 }
 
 func newCmdObjectValidate(kind string) *cobra.Command {
-	return &cobra.Command{
+	var options commands.CmdObjectValidateConfig
+	cmd := &cobra.Command{
 		Use:     "validate",
-		Short:   "Validation command group",
+		Short:   "verify the object configuration syntax",
 		Aliases: []string{"validat", "valida", "valid", "vali", "val"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
 	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	return cmd
 }
 
 func newCmdObjectSync(kind string) *cobra.Command {

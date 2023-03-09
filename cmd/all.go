@@ -26,6 +26,7 @@ func init() {
 		cmdObjectPush,
 		cmdObjectSet,
 		cmdObjectSync,
+		cmdObjectValidate,
 		newCmdObjectAbort(kind),
 		newCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
