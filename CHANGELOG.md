@@ -71,6 +71,8 @@
 	node print capabilities => node capabilities list
 
 
+*  **breaking change:** In previous releases, om node get --kw node.env returned the keyword's raw string value from cluster.conf if it is not defined in node.conf. In this release, this get command returns the empty string. The eval command is unchanged though: it still falls back to cluster.conf.
+
 ### driver fs
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
