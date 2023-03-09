@@ -73,6 +73,29 @@
 
 *  **breaking change:** In previous releases, om node get --kw node.env returned the keyword's raw string value from cluster.conf if it is not defined in node.conf. In this release, this get command returns the empty string. The eval command is unchanged though: it still falls back to cluster.conf.
 
+	In v2:
+
+	=============== =============== =============== =============== ================ =================
+	 node.conf       cluster.conf    om node get     om node eval    om cluster get   om cluster eval 
+	=============== =============== =============== =============== ================ =================
+	 fr              kr              fr              fr              kr               kr              
+	 fr              -               fr              fr              -                -               
+	 -               kr              kr              kr              kr               kr              
+	 -               -               -               -               -                -               
+	=============== =============== =============== =============== ================ =================
+
+
+	In v3:
+
+	=============== =============== =============== =============== ================ =================
+	 node.conf       cluster.conf    om node get     om node eval    om cluster get   om cluster eval 
+	=============== =============== =============== =============== ================ =================
+	 fr              kr              fr              fr              kr               kr              
+	 fr              -               fr              fr              -                -               
+	 -               kr              -               kr              kr               kr              
+	 -               -               -               -               -                -               
+	=============== =============== =============== =============== ================ =================
+
 ### driver fs
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
@@ -101,7 +124,7 @@
 
   Following env var are not anymore added to process env var during actions
   * OPENSVC_SVCNAME
-  * OPENSVC_SVC_ID
+   OPENSVC_SVC_ID
 
 * **breaking change:** Fix OPENSVC_ID var value on app resources
 
