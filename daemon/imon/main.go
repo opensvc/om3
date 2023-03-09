@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -100,7 +101,9 @@ func (f Factory) Start(parent context.Context, p path.T, nodes []string) error {
 }
 
 var (
-	defaultReadyDuration = 5 * time.Second
+	// defaultReadyDuration is pickup from daemonenv.ReadyDuration. It should not be
+	// changed without verify possible impacts on cluster split detection.
+	defaultReadyDuration = daemonenv.ReadyDuration
 
 	// updateRate is the limit rate for imon publish updates per second
 	// when orchestration loop occur on an object, too many events/commands may block

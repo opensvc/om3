@@ -689,16 +689,19 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 		Scopable:   true,
 		Candidates: []string{"crash", "reboot", "disabled"},
 		Default:    "crash",
-		Text:       "Commit suicide method when cluster split occur. Default is crash." +
+		Text: "Commit suicide method when cluster split occur. Default is crash." +
 			" reboot method may be used instead of crash when it is not simple to poweron node after crash," +
 			" disabled method may be used for test or training only (it does nothing).",
 	},
 	{
 		Section:  "arbitrator",
-		Option:   "url",
+		Option:   "uri",
+		Aliases:  []string{"name"},
 		Required: true,
-		Text:     "The arbitrator https url." +
-			" cluster nodes can ask for a vote using 'GET <url>' when the cluster is split." +
+		Text: "The arbitrator uri used by cluster node to ask for a vote when the cluster is split." +
+			" When the uri scheme is http or https, the vote checker is based on a GET request," +
+			" else it is based on a TCP connect. For backward compatibility," +
+			" when the port is not specified in a TCP connect uri, the 1214 port is implied." +
 			" Arbitrators are tried in sequence, each reachable arbitrator gives a vote." +
 			" In case of a real split, all arbitrators are expected to be unreachable from the lost segment." +
 			" At least one of them is expected to be reachable from the surviving segment." +
@@ -707,28 +710,14 @@ The default ruser is root for all nodes. ruser accepts a list of user[@node] ...
 			" while another subset of arbitrators is reachable from the other split cluster segment." +
 			" But not close enough so they can all fail together." +
 			" Usually, this can be interpreted as: same site, not same rack and power lines." +
-			" Arbitrators are verified every 60s to alarm sys admin on possible arbitrator failure.",
-	},
-	{
-		Section:  "arbitrator",
-		Option:   "secret",
-		Required: true,
-		Text:     "The secret to use to encrypt/decrypt data exchanged with the arbitrator (AES256).",
-	},
-	{
-		Section:   "arbitrator",
-		Option:    "timeout",
-		Converter: converters.Duration,
-		Scopable:  true,
-		Default:   "5s",
-		Text:      "The maximum time to wait for the arbitrator vote during a quorum election. Upon expiration, the vote is considered lost for the querying node.",
+			" Arbitrators are verified every 60s to alert sys admins of arbitrator failures.",
 	},
 	{
 		Section:   "arbitrator",
 		Option:    "insecure",
 		Converter: converters.Bool,
 		Default:   "false",
-		Text:      "Set to true to disable the arbitrator certificate verification. This should only be done for testing.",
+		Text:      "Set to true to disable the arbitrator certificate verification on https uri. This should only be done for testing.",
 	},
 	{
 		Section:   "stonith",

@@ -16,6 +16,11 @@ var (
 	HeaderMultiplexed = "o-multiplexed"
 
 	DrainChanDuration = 40 * time.Millisecond
+
+	// ReadyDuration define the minimum time to wait during the startup of an instance object by imon
+	// The ready duration impacts the durations involved during daemon cluster split analyse (see nmon spit
+	// detection details).
+	ReadyDuration = 5 * time.Second
 )
 
 func CAKeyFile() string {

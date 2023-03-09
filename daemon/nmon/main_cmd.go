@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	splitActionDelay = 2 * time.Second
 	slitActions      = map[string]func() error{
 		"crash":    toc.Crash,
 		"reboot":   toc.Reboot,
@@ -24,7 +23,7 @@ var (
 // local cluster config updates
 //
 // it updates cluster config cache from event value
-// it loads and publish config (some common settings such as node split_action keyword..)
+// it loads and publish config (some common settings such as node split_action keyword...)
 // it updates arbitrators config
 // then refresh arbitrator status
 func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
@@ -44,7 +43,7 @@ func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
-func (o *nmon) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
+func (o *nmon) onConfigFileUpdated(_ msgbus.ConfigFileUpdated) {
 	if err := o.loadAndPublishConfig(); err != nil {
 		o.log.Error().Err(err).Msg("load and publish config from node config file updated event")
 		return
@@ -146,17 +145,17 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 			return
 		}
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
-			for node, data := range o.nodeMonitor {
+			for nodename, data := range o.nodeMonitor {
 				if data.GlobalExpect == *c.Value.GlobalExpect {
-					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", *c.Value.GlobalExpect, node)
+					o.log.Info().Msgf("set nmon: already targeting %s (on node %s)", *c.Value.GlobalExpect, nodename)
 					return
 				}
 				if !data.State.IsRankable() {
-					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, node, data.State)
+					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, nodename, data.State)
 					return
 				}
 				if data.State.IsDoing() {
-					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, node, data.State)
+					o.log.Error().Msgf("set nmon: can't set global expect to %s (node %s is %s)", *c.Value.GlobalExpect, nodename, data.State)
 					return
 				}
 			}
@@ -188,9 +187,9 @@ func (o *nmon) onArbitratorTicker() {
 
 func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	delete(o.livePeers, c.Node)
-	o.log.Info().Msgf("lost peer %s => new live peers: %v", c.Node, o.livePeers)
+	o.log.Warn().Msgf("lost peer %s => new live peers: %v", c.Node, o.livePeers)
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
-		o.log.Info().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
+		o.log.Warn().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
 		return
 	}
 	if !o.clusterConfig.Quorum {
@@ -237,14 +236,20 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	}
 }
 
-func (o *nmon) onFrozenFileRemoved(c msgbus.FrozenFileRemoved) {
-	o.databus.SetNodeFrozen(time.Time{})
+func (o *nmon) onFrozenFileRemoved(_ msgbus.FrozenFileRemoved) {
+	err := o.databus.SetNodeFrozen(time.Time{})
+	if err != nil {
+		o.log.Error().Err(err).Msg("onFrozenFileRemoved SetNodeFrozen")
+	}
 	o.frozen = false
 }
 
 func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
 	tm := file.ModTime(c.Filename)
-	o.databus.SetNodeFrozen(tm)
+	err := o.databus.SetNodeFrozen(tm)
+	if err != nil {
+		o.log.Error().Err(err).Msg("onFrozenFileUpdated SetNodeFrozen")
+	}
 	o.frozen = true
 }
 
@@ -272,13 +277,13 @@ func (o *nmon) onPeerNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
 
 func missingNodes(nodes, joinedNodes []string) []string {
 	m := make(map[string]any)
-	for _, node := range joinedNodes {
-		m[node] = nil
+	for _, nodename := range joinedNodes {
+		m[nodename] = nil
 	}
 	l := make([]string, 0)
-	for _, node := range nodes {
-		if _, ok := m[node]; !ok {
-			l = append(l, node)
+	for _, nodename := range nodes {
+		if _, ok := m[nodename]; !ok {
+			l = append(l, nodename)
 		}
 	}
 	return l
