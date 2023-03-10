@@ -51,6 +51,7 @@ type (
 		statCount map[int]uint64
 		log       zerolog.Logger
 		bus       *pubsub.Bus
+		sub       *pubsub.Subscription
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -209,6 +210,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 	defer d.log.Info().Msg("stopped")
 	d.bus = pubsub.BusFromContext(ctx)
 
+	d.startSubscriptions()
 	watchCmd := &durationlog.T{Log: d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 	defer watchDurationCancel()
@@ -346,6 +348,8 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				d.statCount[idUndef]++
 			}
+		case i := <-d.sub.C:
+			d.onSubEvent(i)
 		}
 	}
 }
@@ -365,4 +369,18 @@ func gensEqual(a, b gens) bool {
 		}
 	}
 	return true
+}
+
+func (d *data) startSubscriptions() {
+	sub := d.bus.Sub("daemondata")
+	sub.AddFilter(msgbus.ClusterConfigUpdated{})
+	sub.Start()
+	d.sub = sub
+}
+
+func (d *data) onSubEvent(i interface{}) {
+	switch c := i.(type) {
+	case msgbus.ClusterConfigUpdated:
+		d.onClusterConfigUpdated(c)
+	}
 }

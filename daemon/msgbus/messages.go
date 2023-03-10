@@ -187,8 +187,10 @@ type (
 	}
 
 	ClusterConfigUpdated struct {
-		Node  string
-		Value cluster.Config
+		Node         string
+		Value        cluster.Config
+		NodesAdded   []string
+		NodesRemoved []string
 	}
 
 	ClusterStatusUpdated struct {
