@@ -112,9 +112,11 @@ func (t States) descString() string {
 		l = append(l, rawconfig.Colorize.Error("mix-provisioned"))
 	}
 
-	// Priority
-	if s := t.Config.Priority.StatusString(); s != "" {
-		l = append(l, rawconfig.Colorize.Secondary(s))
+	if !t.Config.Updated.IsZero() {
+		// Priority
+		if s := t.Config.Priority.StatusString(); s != "" {
+			l = append(l, rawconfig.Colorize.Secondary(s))
+		}
 	}
 
 	// Monitor state

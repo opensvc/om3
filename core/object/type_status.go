@@ -156,9 +156,7 @@ func (t Digest) descString() string {
 	}
 
 	// Placement
-	switch t.Object.PlacementState {
-	case placement.Optimal, placement.NotApplicable:
-	default:
+	if t.Object.PlacementState == placement.NonOptimal {
 		l = append(l, rawconfig.Colorize.Warning(fmt.Sprintf("%s placement", t.Object.PlacementState)))
 	}
 

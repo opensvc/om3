@@ -32,7 +32,8 @@ const (
 	// Score is the policy where node priorities are assigned to nodes based on score. The higher the score, the higher the priority.
 	Score
 
-	NotApplicable State = iota
+	Undef State = iota
+	NotApplicable
 	Optimal
 	NonOptimal
 )
@@ -57,12 +58,15 @@ var (
 	}
 
 	stateToString = map[State]string{
+		Undef:         "undef",
 		NotApplicable: "n/a",
 		Optimal:       "optimal",
 		NonOptimal:    "non-optimal",
 	}
 
 	stateToID = map[string]State{
+		"":            Undef,
+		"undef":       Undef,
 		"n/a":         NotApplicable,
 		"optimal":     Optimal,
 		"non-optimal": NonOptimal,
