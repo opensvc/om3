@@ -94,6 +94,10 @@ func (t T) NewPostDaemonLeave() *api.PostDaemonLeave {
 	return api.NewPostDaemonLeave(t)
 }
 
+func (t T) NewPostInstanceStatus() *api.PostInstanceStatus {
+	return api.NewPostInstanceStatus(t)
+}
+
 func (t T) NewPostKey() *api.PostKey {
 	return api.NewPostKey(t)
 }
@@ -132,10 +136,6 @@ func (t T) NewPostObjectMonitor() *api.PostObjectMonitor {
 
 func (t T) NewPostObjectProgress() *api.PostObjectProgress {
 	return api.NewPostObjectProgress(t)
-}
-
-func (t T) NewPostObjectStatus() *api.PostObjectStatus {
-	return api.NewPostObjectStatus(t)
 }
 
 func (t T) NewPostObjectSwitchTo() *api.PostObjectSwitchTo {

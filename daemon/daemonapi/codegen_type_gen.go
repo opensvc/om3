@@ -343,6 +343,12 @@ type PostDaemonSubAction struct {
 // PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
 type PostDaemonSubActionAction string
 
+// PostInstanceStatus defines model for postInstanceStatus.
+type PostInstanceStatus struct {
+	Path   string         `json:"path"`
+	Status InstanceStatus `json:"status"`
+}
+
 // PostNodeMonitor defines model for postNodeMonitor.
 type PostNodeMonitor struct {
 	GlobalExpect *string `json:"global_expect,omitempty"`
@@ -374,12 +380,6 @@ type PostObjectProgress struct {
 	Path      string `json:"path"`
 	SessionId string `json:"session_id"`
 	State     string `json:"state"`
-}
-
-// PostObjectStatus defines model for postObjectStatus.
-type PostObjectStatus struct {
-	Path   string         `json:"path"`
-	Status InstanceStatus `json:"status"`
 }
 
 // PostObjectSwitchTo defines model for postObjectSwitchTo.
@@ -627,6 +627,9 @@ type GetDaemonStatusParams struct {
 // PostDaemonSubActionJSONBody defines parameters for PostDaemonSubAction.
 type PostDaemonSubActionJSONBody = PostDaemonSubAction
 
+// PostInstanceStatusJSONBody defines parameters for PostInstanceStatus.
+type PostInstanceStatusJSONBody = PostInstanceStatus
+
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
 type PostNodeMonitorJSONBody = PostNodeMonitor
 
@@ -666,9 +669,6 @@ type GetObjectSelectorParams struct {
 	Selector QueryObjectSelector `form:"selector" json:"selector"`
 }
 
-// PostObjectStatusJSONBody defines parameters for PostObjectStatus.
-type PostObjectStatusJSONBody = PostObjectStatus
-
 // PostObjectSwitchToJSONBody defines parameters for PostObjectSwitchTo.
 type PostObjectSwitchToJSONBody = PostObjectSwitchTo
 
@@ -690,6 +690,9 @@ type PostDaemonLogsControlJSONRequestBody = PostDaemonLogsControlJSONBody
 // PostDaemonSubActionJSONRequestBody defines body for PostDaemonSubAction for application/json ContentType.
 type PostDaemonSubActionJSONRequestBody = PostDaemonSubActionJSONBody
 
+// PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
+type PostInstanceStatusJSONRequestBody = PostInstanceStatusJSONBody
+
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitorJSONBody
 
@@ -704,9 +707,6 @@ type PostObjectMonitorJSONRequestBody = PostObjectMonitorJSONBody
 
 // PostObjectProgressJSONRequestBody defines body for PostObjectProgress for application/json ContentType.
 type PostObjectProgressJSONRequestBody = PostObjectProgressJSONBody
-
-// PostObjectStatusJSONRequestBody defines body for PostObjectStatus for application/json ContentType.
-type PostObjectStatusJSONRequestBody = PostObjectStatusJSONBody
 
 // PostObjectSwitchToJSONRequestBody defines body for PostObjectSwitchTo for application/json ContentType.
 type PostObjectSwitchToJSONRequestBody = PostObjectSwitchToJSONBody
