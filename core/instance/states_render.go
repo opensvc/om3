@@ -118,32 +118,34 @@ func (t States) descString() string {
 	}
 
 	// Monitor state
-	switch t.Monitor.State {
-	case MonitorStateIdle:
-		l = append(l, rawconfig.Colorize.Secondary(t.Monitor.State.String()))
-	default:
-		l = append(l, rawconfig.Colorize.Primary(t.Monitor.State.String()))
-	}
+	if t.Monitor.UpdatedAt.IsZero() {
+		// Daemon down
+		if t.Monitor.UpdatedAt.IsZero() {
+			l = append(l, rawconfig.Colorize.Warning("daemon-down"))
+		}
+	} else {
+		switch t.Monitor.State {
+		case MonitorStateIdle:
+			l = append(l, rawconfig.Colorize.Secondary(t.Monitor.State.String()))
+		default:
+			l = append(l, rawconfig.Colorize.Primary(t.Monitor.State.String()))
+		}
 
-	// Monitor global expect
-	switch t.Monitor.GlobalExpect {
-	case MonitorGlobalExpectNone:
-	case MonitorGlobalExpectZero:
-	default:
-		l = append(l, t.Monitor.GlobalExpect.String())
-	}
+		// Monitor global expect
+		switch t.Monitor.GlobalExpect {
+		case MonitorGlobalExpectNone:
+		case MonitorGlobalExpectZero:
+		default:
+			l = append(l, t.Monitor.GlobalExpect.String())
+		}
 
-	// Monitor local expect
-	switch t.Monitor.LocalExpect {
-	case MonitorLocalExpectNone:
-	case MonitorLocalExpectZero:
-	default:
-		l = append(l, t.Monitor.LocalExpect.String())
-	}
-
-	// Daemon down
-	if t.Monitor.StateUpdated.IsZero() {
-		l = append(l, rawconfig.Colorize.Warning("daemon-down"))
+		// Monitor local expect
+		switch t.Monitor.LocalExpect {
+		case MonitorLocalExpectNone:
+		case MonitorLocalExpectZero:
+		default:
+			l = append(l, t.Monitor.LocalExpect.String())
+		}
 	}
 
 	return strings.Join(l, " ")
