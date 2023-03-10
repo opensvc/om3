@@ -3,6 +3,7 @@ package lsnrhttpux
 import (
 	"context"
 	"errors"
+	golog "log"
 	"net"
 	"net/http"
 	"os"
@@ -98,6 +99,7 @@ func (t *T) start(ctx context.Context) error {
 	s := &http2.Server{}
 	server := http.Server{
 		Handler: h2c.NewHandler(routehttp.New(ctx, false), s),
+		ErrorLog: golog.New(t.log, "", 0),
 	}
 	listener, err := net.Listen("unix", t.addr)
 	if err != nil {
