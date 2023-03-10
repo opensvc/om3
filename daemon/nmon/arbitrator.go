@@ -1,13 +1,18 @@
 package nmon
 
 import (
+	"context"
 	"crypto/tls"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
-	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
 )
@@ -15,11 +20,8 @@ import (
 type (
 	arbitratorConfig struct {
 		Name     string `json:"name"`
-		Url      string `json:"url"`
+		Uri      string `json:"uri"`
 		Insecure bool
-
-		timeout time.Duration
-		secret  string
 	}
 )
 
@@ -33,11 +35,16 @@ func (o *nmon) setArbitratorConfig() {
 		name := strings.TrimPrefix(s, "arbitrator#")
 		a := arbitratorConfig{
 			Name:     name,
-			Url:      o.config.GetString(key.New(s, "url")),
+			Uri:      o.config.GetString(key.New(s, "uri")),
 			Insecure: o.config.GetBool(key.New(s, "insecure")),
 		}
-		if d := o.config.GetDuration(key.New(s, "timeout")); d != nil {
-			a.timeout = *d
+		if a.Uri == "" {
+			o.log.Debug().Msgf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
+			a.Uri = o.config.GetString(key.New(s, "name"))
+		}
+		if a.Uri == "" {
+			o.log.Warn().Msgf("ignored arbitrator %s (empty uri)", s)
+			continue
 		}
 		arbitrators[name] = a
 	}
@@ -50,17 +57,19 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 		name string
 		err  error
 	}
+	ctx, cancel := context.WithTimeout(o.ctx, arbitratorCheckDuration)
+	defer cancel()
 	c := make(chan res, len(o.arbitrators))
 	for _, a := range o.arbitrators {
 		go func(a arbitratorConfig) {
-			c <- res{name: a.Name, err: o.arbitratorCheck(a)}
+			c <- res{name: a.Name, err: o.arbitratorCheck(ctx, a)}
 		}(a)
 	}
 	result := make(map[string]node.ArbitratorStatus)
 	for i := 0; i < len(o.arbitrators); i++ {
 		r := <-c
 		name := r.name
-		url := o.arbitrators[name].Url
+		url := o.arbitrators[name].Uri
 		aStatus := status.Up
 		if r.err != nil {
 			o.log.Warn().Msgf("arbitrator#%s is down", name)
@@ -91,19 +100,41 @@ func (o *nmon) arbitratorVotes() (votes []string) {
 	return
 }
 
-func (o *nmon) arbitratorCheck(a arbitratorConfig) error {
+func (o *nmon) arbitratorCheck(ctx context.Context, a arbitratorConfig) error {
+	if strings.HasPrefix(a.Uri, "http") {
+		return a.checkUrl(ctx)
+	}
+	if a.Uri != "" {
+		return a.checkDial(ctx)
+	}
+	return errors.New("invalid arbitrator uri")
+}
+
+func (a *arbitratorConfig) checkUrl(ctx context.Context) error {
 	client := &http.Client{
-		Timeout: a.timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: a.Insecure,
 			},
 		},
 	}
-	if req, err := http.NewRequestWithContext(o.ctx, "GET", a.Url, nil); err != nil {
-		return err
-	} else {
-		_, err = client.Do(req)
+	req, err := http.NewRequestWithContext(ctx, "GET", a.Uri, nil)
+	if err != nil {
 		return err
 	}
+	_, err = client.Do(req)
+	return err
+}
+
+func (a *arbitratorConfig) checkDial(ctx context.Context) error {
+	d := net.Dialer{}
+	addr := a.Uri
+	if !strings.Contains(addr, ":") {
+		addr += ":" + fmt.Sprint(daemonenv.RawPort)
+	}
+	dialContext, err := d.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return err
+	}
+	return dialContext.Close()
 }

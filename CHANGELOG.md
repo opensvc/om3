@@ -36,10 +36,10 @@
 	vxdg: disk.vxdg
 	vxvol: disk.vxvol
 
-For example, a [md#1] section needs reformatting as:
+    For example, a [md#1] section needs reformatting as:
 
-	[disk#1]
-	type = md
+      [disk#1]
+      type = md
 
 * **breaking change:** stop matching DEFAULT.<string> for "<string>:" object selector expressions. Match only sections basename (like in [<basename>#<index>]).
 
@@ -126,3 +126,24 @@ For example, a [md#1] section needs reformatting as:
 
 	The password value is the sec object path containing the actual relay password encoded in the password key.
 
+#### arbitrator
+
+* The new keyword **uri** replaces **name**.
+
+* When the uri scheme is http or https, the vote checker is based on a GET request, else it is based on a TCP connect. For backward compatibility, when the port is not specified in a TCP connect uri, the 1214 port is implied.
+
+  Examples:
+
+      uri = https://arbitrator.opensvc.com/check
+      uri = arbitrator1.opensvc.com:1215
+      uri = arbitrator1.opensvc.com               # implicitly port 1214
+
+* The new keyword **insecure** disables the server certificate validation when the uri scheme is https, the default is false.
+
+* The **name** keyword is deprecated. Aliased to **uri** to ease transition.
+
+* The **timeout** keyword is removed to avoid users setting a value greater than the ready period,
+  which would let the service double start before the end of the vote.
+  The internal timeout value is now set to a third of the ready period.
+
+* The **secret** keyword is now ignored.

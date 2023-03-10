@@ -38,6 +38,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -106,6 +107,17 @@ var (
 
 	// arbitratorInterval is the interval duration between 2 arbitrator checks
 	arbitratorInterval = 60 * time.Second
+
+	// To ensure no actions are performed during the split analyse
+	// splitActionDelay + arbitratorCheckDuration must be lower than daemonenv.ReadyDuration
+
+	// splitActionDelay is the duration to wait before call split action when
+	// we are split and don't have majority
+	splitActionDelay = daemonenv.ReadyDuration / 3
+
+	// abitratorCheckDuration is the maximum duration to wait while
+	// checking arbitrators
+	arbitratorCheckDuration = daemonenv.ReadyDuration / 3
 )
 
 // Start launches the nmon worker goroutine
@@ -201,7 +213,7 @@ func (o *nmon) startRejoin() {
 		o.transitionTo(node.MonitorStateIdle)
 	} else {
 		// Begin the rejoin state phase.
-		// Arm the rejoin grace period ticker.
+		// Arm the re-join grace period ticker.
 		// The onHbMessageTypeUpdated() event handler can stop it.
 		rejoinGracePeriod := o.nodeConfig.RejoinGracePeriod
 		o.rejoinTicker = time.NewTicker(rejoinGracePeriod)
@@ -218,8 +230,8 @@ func (o *nmon) worker() {
 
 	// cluster nodes at the time the worker starts
 	initialNodes := o.config.GetStrings(key.New("cluster", "nodes"))
-	for _, node := range initialNodes {
-		o.nodeMonitor[node] = o.databus.GetNodeMonitor(node)
+	for _, name := range initialNodes {
+		o.nodeMonitor[name] = o.databus.GetNodeMonitor(name)
 	}
 	o.updateStats()
 	o.setNodeOsPaths()
@@ -424,11 +436,11 @@ func (o *nmon) setNodeOsPaths() {
 	}
 }
 
-func (o *nmon) onNodeOsPathsUpdated(c msgbus.NodeOsPathsUpdated) {
+func (o *nmon) onNodeOsPathsUpdated(_ msgbus.NodeOsPathsUpdated) {
 	o.saveNodesInfo()
 }
 
-func (o *nmon) onNodeStatusLabelsUpdated(c msgbus.NodeStatusLabelsUpdated) {
+func (o *nmon) onNodeStatusLabelsUpdated(_ msgbus.NodeStatusLabelsUpdated) {
 	o.saveNodesInfo()
 }
 
