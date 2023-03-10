@@ -19,12 +19,6 @@ type (
 		node   string
 	}
 
-	opSetInstanceStatus struct {
-		errC
-		path  path.T
-		value instance.Status
-	}
-
 	opSetInstanceFrozen struct {
 		errC
 		path   path.T
@@ -65,20 +59,7 @@ func (t T) SetInstanceFrozen(p path.T, frozen time.Time) error {
 	return <-err
 }
 
-// SetInstanceStatus
-//
-// Monitor.Node.<localhost>.services.status.*
-func (t T) SetInstanceStatus(p path.T, v instance.Status) error {
-	err := make(chan error, 1)
-	op := opSetInstanceStatus{
-		errC:  err,
-		path:  p,
-		value: v,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
+// onInstanceStatusDeleted remove .cluster.node.<node>.instance.<path>.status
 func (d *data) onInstanceStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	d.statCount[idDelInstanceStatus]++
 	s := c.Path.String()
@@ -142,11 +123,12 @@ func (o opSetInstanceFrozen) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-func (o opSetInstanceStatus) call(ctx context.Context, d *data) error {
+// onInstanceStatusUpdated updates .cluster.node.<node>.instance.<path>.status
+func (d *data) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 	d.statCount[idSetInstanceStatus]++
 	var op jsondelta.Operation
-	s := o.path.String()
-	value := o.value.DeepCopy()
+	s := c.Path.String()
+	value := c.Value.DeepCopy()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
 		inst.Status = value
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
@@ -166,9 +148,4 @@ func (o opSetInstanceStatus) call(ctx context.Context, d *data) error {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.InstanceStatusUpdated{Path: o.path, Node: d.localNode, Value: o.value},
-		pubsub.Label{"path", s},
-		d.labelLocalNode,
-	)
-	return nil
 }

@@ -375,6 +375,7 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
 	sub.Start()
 	d.sub = sub
@@ -388,6 +389,8 @@ func (d *data) onSubEvent(i interface{}) {
 		d.onInstanceConfigDeleted(c)
 	case msgbus.InstanceConfigUpdated:
 		d.onInstanceConfigUpdated(c)
+	case msgbus.InstanceStatusUpdated:
+		d.onInstanceStatusUpdated(c)
 	case msgbus.InstanceStatusDeleted:
 		d.onInstanceStatusDeleted(c)
 	}

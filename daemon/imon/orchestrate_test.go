@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -242,7 +243,7 @@ func (c *crmSpy) getCalls() [][]string {
 }
 
 func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[string]sideEffect) *crm {
-	dBus := daemondata.FromContext(ctx)
+	bus := pubsub.BusFromContext(ctx)
 	c := crm{
 		crmSpy: crmSpy{
 			RWMutex: sync.RWMutex{},
@@ -280,9 +281,13 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 				Provisioned: se.iStatus.Provisioned,
 				Optional:    se.iStatus.Optional,
 				Updated:     time.Now(),
+				Frozen:      time.Time{},
 			}
-			require.NoError(t, dBus.SetInstanceStatus(p, v))
-			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated)
+			bus.Pub(msgbus.InstanceStatusUpdated{Path: p, Node: hostname.Hostname(), Value: v},
+				pubsub.Label{"path", p.String()},
+				pubsub.Label{"node", hostname.Hostname()},
+			)
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated, v.Frozen)
 		}
 
 		if se.err != nil {
