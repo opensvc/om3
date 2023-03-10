@@ -150,7 +150,7 @@ type (
 	ArbitratorError struct {
 		Node string
 		Name string
-		Err error
+		Err  error
 	}
 
 	ConfigDeleted struct {

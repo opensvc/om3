@@ -48,12 +48,7 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) error {
 		eventId++
 		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 	}
-	d.bus.Pub(
-		msgbus.ClusterConfigUpdated{
-			Node:  d.localNode,
-			Value: o.value,
-		},
-	)
+	d.bus.Pub(msgbus.ClusterConfigUpdated{Node: d.localNode, Value: o.value})
 	removed, added := stringslice.Diff(previousNodes, o.value.Nodes)
 	if len(added) > 0 {
 		d.log.Debug().Msgf("added nodes: %s", added)
@@ -63,15 +58,13 @@ func (o opSetClusterConfig) call(ctx context.Context, d *data) error {
 	}
 	for _, v := range added {
 		d.clusterNodes[v] = struct{}{}
-		d.bus.Pub(
-			msgbus.JoinSuccess{Node: v},
+		d.bus.Pub(msgbus.JoinSuccess{Node: v},
 			labelLocalNode,
 			pubsub.Label{"added", v})
 	}
 	for _, v := range removed {
 		delete(d.clusterNodes, v)
-		d.bus.Pub(
-			msgbus.LeaveSuccess{Node: v},
+		d.bus.Pub(msgbus.LeaveSuccess{Node: v},
 			labelLocalNode,
 			pubsub.Label{"removed", v})
 	}

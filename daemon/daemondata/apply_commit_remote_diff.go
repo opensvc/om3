@@ -63,21 +63,13 @@ func (d *data) pubMsgFromNodeConfigDiffForNode(nodename string) {
 	prev = prevTime.nodeConfig
 	onUpdate := func() {
 		if !reflect.DeepEqual(prev, next) {
-			d.bus.Pub(
-				msgbus.NodeConfigUpdated{
-					Node:  nodename,
-					Value: *next.DeepCopy(),
-				},
+			d.bus.Pub(msgbus.NodeConfigUpdated{Node: nodename, Value: *next.DeepCopy()},
 				pubsub.Label{"node", nodename},
 			)
 		}
 	}
 	onCreate := func() {
-		d.bus.Pub(
-			msgbus.NodeConfigUpdated{
-				Node:  nodename,
-				Value: *next.DeepCopy(),
-			},
+		d.bus.Pub(msgbus.NodeConfigUpdated{Node: nodename, Value: *next.DeepCopy()},
 			pubsub.Label{"node", nodename},
 		)
 	}
@@ -104,21 +96,13 @@ func (d *data) pubMsgFromNodeStatsDiffForNode(nodename string) {
 	prev = prevTime.nodeStats
 	onUpdate := func() {
 		if !reflect.DeepEqual(prev, next) {
-			d.bus.Pub(
-				msgbus.NodeStatsUpdated{
-					Node:  nodename,
-					Value: *next.DeepCopy(),
-				},
+			d.bus.Pub(msgbus.NodeStatsUpdated{Node: nodename, Value: *next.DeepCopy()},
 				pubsub.Label{"node", nodename},
 			)
 		}
 	}
 	onCreate := func() {
-		d.bus.Pub(
-			msgbus.NodeStatsUpdated{
-				Node:  nodename,
-				Value: *next.DeepCopy(),
-			},
+		d.bus.Pub(msgbus.NodeStatsUpdated{Node: nodename, Value: *next.DeepCopy()},
 			pubsub.Label{"node", nodename},
 		)
 	}

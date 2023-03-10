@@ -49,8 +49,7 @@ func (d *data) setDaemonHb() {
 	if eventB, err := json.Marshal(patch); err != nil {
 		d.log.Error().Err(err).Msg("setDaemonHb Marshal")
 	} else {
-		d.bus.Pub(
-			msgbus.DataUpdated{RawMessage: eventB},
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB},
 			labelLocalNode,
 		)
 	}

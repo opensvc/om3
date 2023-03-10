@@ -69,11 +69,7 @@ func (o opDelObjectStatus) call(ctx context.Context, d *data) error {
 			d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
 		}
 	}
-	d.bus.Pub(
-		msgbus.ObjectStatusDeleted{
-			Path: o.path,
-			Node: d.localNode,
-		},
+	d.bus.Pub(msgbus.ObjectStatusDeleted{Path: o.path, Node: d.localNode},
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)
@@ -98,13 +94,7 @@ func (o opSetObjectStatus) call(ctx context.Context, d *data) error {
 		eventId++
 		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode, labelPath)
 	}
-	d.bus.Pub(
-		msgbus.ObjectStatusUpdated{
-			Path:  o.path,
-			Node:  d.localNode,
-			Value: o.value,
-			SrcEv: o.srcEv,
-		},
+	d.bus.Pub(msgbus.ObjectStatusUpdated{Path: o.path, Node: d.localNode, Value: o.value, SrcEv: o.srcEv},
 		labelLocalNode,
 		labelPath,
 	)

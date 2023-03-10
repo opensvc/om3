@@ -70,11 +70,7 @@ func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(
-		msgbus.InstanceMonitorDeleted{
-			Path: o.path,
-			Node: d.localNode,
-		},
+	d.bus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: d.localNode},
 		pubsub.Label{"path", s},
 		labelLocalNode,
 	)

@@ -110,13 +110,8 @@ func (o opSetNodeStatusArbitrator) call(ctx context.Context, d *data) error {
 	}
 	d.pendingOps = append(d.pendingOps, op)
 
-	d.bus.Pub(
-		msgbus.NodeStatusUpdated{
-			Node:  d.localNode,
-			Value: *v.Status.DeepCopy(),
-		},
-		labelLocalNode,
-	)
+	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
+		labelLocalNode)
 	return nil
 }
 
@@ -142,22 +137,11 @@ func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) error {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(
-		msgbus.Frozen{
-			Node:  hostname.Hostname(),
-			Path:  path.T{},
-			Value: o.value,
-		},
-		labelLocalNode,
-	)
+	d.bus.Pub(msgbus.Frozen{Node: hostname.Hostname(), Path: path.T{}, Value: o.value},
+		labelLocalNode)
 
-	d.bus.Pub(
-		msgbus.NodeStatusUpdated{
-			Node:  d.localNode,
-			Value: *v.Status.DeepCopy(),
-		},
-		labelLocalNode,
-	)
+	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
+		labelLocalNode)
 	return nil
 }
 
@@ -183,19 +167,9 @@ func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) error {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(
-		msgbus.NodeStatusLabelsUpdated{
-			Node:  hostname.Hostname(),
-			Value: o.value,
-		},
-		labelLocalNode,
-	)
-	d.bus.Pub(
-		msgbus.NodeStatusUpdated{
-			Node:  d.localNode,
-			Value: *v.Status.DeepCopy(),
-		},
-		labelLocalNode,
-	)
+	d.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: hostname.Hostname(), Value: o.value},
+		labelLocalNode)
+	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
+		labelLocalNode)
 	return nil
 }

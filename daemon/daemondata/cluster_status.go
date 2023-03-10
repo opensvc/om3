@@ -55,11 +55,7 @@ func (t T) SetClusterStatus(v cluster.Status) error {
 func (o opSetClusterStatus) call(ctx context.Context, d *data) error {
 	d.statCount[idSetClusterStatus]++
 	d.pending.Cluster.Status = o.value
-	d.bus.Pub(
-		msgbus.ClusterStatusUpdated{
-			Node:  d.localNode,
-			Value: o.value,
-		},
+	d.bus.Pub(msgbus.ClusterStatusUpdated{Node: d.localNode, Value: o.value},
 		labelLocalNode,
 	)
 	return nil

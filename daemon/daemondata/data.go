@@ -50,7 +50,7 @@ type (
 		// statCount is a map[<stat id>] to track number of <id> calls
 		statCount map[int]uint64
 		log       zerolog.Logger
-		bus        *pubsub.Bus
+		bus       *pubsub.Bus
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -271,11 +271,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 				if isCtxDone() {
 					return
 				}
-				d.bus.Pub(
-					msgbus.NodeStatusUpdated{
-						Node:  d.localNode,
-						Value: *s.DeepCopy(),
-					},
+				d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *s.DeepCopy()},
 					labelLocalNode,
 				)
 			}
