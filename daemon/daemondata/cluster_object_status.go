@@ -66,12 +66,12 @@ func (o opDelObjectStatus) call(ctx context.Context, d *data) error {
 			d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 		} else {
 			eventId++
-			d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
+			d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, d.labelLocalNode)
 		}
 	}
 	d.bus.Pub(msgbus.ObjectStatusDeleted{Path: o.path, Node: d.localNode},
 		pubsub.Label{"path", s},
-		labelLocalNode,
+		d.labelLocalNode,
 	)
 	return nil
 }
@@ -92,10 +92,10 @@ func (o opSetObjectStatus) call(ctx context.Context, d *data) error {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode, labelPath)
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, d.labelLocalNode, labelPath)
 	}
 	d.bus.Pub(msgbus.ObjectStatusUpdated{Path: o.path, Node: d.localNode, Value: o.value, SrcEv: o.srcEv},
-		labelLocalNode,
+		d.labelLocalNode,
 		labelPath,
 	)
 	return nil

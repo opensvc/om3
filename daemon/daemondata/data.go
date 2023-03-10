@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/durationlog"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/jsondelta"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -84,6 +83,8 @@ type (
 		// needMsg is set to true when a peer node doesn't know localnode current data gen
 		// set to false after a hb message is created
 		needMsg bool
+
+		labelLocalNode pubsub.Label
 	}
 
 	gens       map[string]uint64
@@ -117,8 +118,6 @@ var (
 	subHbRefreshInterval = 100 * propagationInterval
 
 	countRoutineInterval = 1 * time.Second
-
-	labelLocalNode = pubsub.Label{"node", hostname.Hostname()}
 
 	ErrDrained = errors.New("drained command")
 )
@@ -274,7 +273,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 					return
 				}
 				d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *s.DeepCopy()},
-					labelLocalNode,
+					d.labelLocalNode,
 				)
 			}
 			if isCtxDone() {
@@ -374,9 +373,9 @@ func gensEqual(a, b gens) bool {
 func (d *data) startSubscriptions() {
 	sub := d.bus.Sub("daemondata")
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
-	sub.AddFilter(msgbus.InstanceConfigDeleted{}, labelLocalNode)
-	sub.AddFilter(msgbus.InstanceConfigUpdated{}, labelLocalNode)
-	sub.AddFilter(msgbus.InstanceStatusDeleted{}, labelLocalNode)
+	sub.AddFilter(msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
 	sub.Start()
 	d.sub = sub
 }

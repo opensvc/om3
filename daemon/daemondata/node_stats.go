@@ -69,6 +69,6 @@ func (o opSetNodeStats) call(ctx context.Context, d *data) error {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatsUpdated{Node: d.localNode, Value: o.value}, labelLocalNode)
+	d.bus.Pub(msgbus.NodeStatsUpdated{Node: d.localNode, Value: o.value}, d.labelLocalNode)
 	return nil
 }

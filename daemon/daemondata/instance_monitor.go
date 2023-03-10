@@ -72,7 +72,7 @@ func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
 	}
 	d.bus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: d.localNode},
 		pubsub.Label{"path", s},
-		labelLocalNode,
+		d.labelLocalNode,
 	)
 	return nil
 }
@@ -108,7 +108,7 @@ func (o opSetInstanceMonitor) call(ctx context.Context, d *data) error {
 			Value: o.value,
 		},
 		pubsub.Label{"path", s},
-		labelLocalNode,
+		d.labelLocalNode,
 	)
 	return nil
 }

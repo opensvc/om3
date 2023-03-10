@@ -105,6 +105,6 @@ func (d *data) eventCommitPendingOps() {
 		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
 	} else {
 		eventId++
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, d.labelLocalNode)
 	}
 }

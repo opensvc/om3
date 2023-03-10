@@ -50,7 +50,7 @@ func (d *data) setDaemonHb() {
 		d.log.Error().Err(err).Msg("setDaemonHb Marshal")
 	} else {
 		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB},
-			labelLocalNode,
+			d.labelLocalNode,
 		)
 	}
 }

@@ -30,6 +30,6 @@ func (d *data) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 		d.log.Error().Err(err).Msg("opSetClusterConfig Marshal patch")
 	} else {
 		eventId++
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, d.labelLocalNode)
 	}
 }

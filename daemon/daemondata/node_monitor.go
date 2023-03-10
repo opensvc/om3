@@ -87,7 +87,7 @@ func (o opDelNodeMonitor) call(ctx context.Context, d *data) error {
 		d.pendingOps = append(d.pendingOps, op)
 	}
 	d.bus.Pub(msgbus.NodeMonitorDeleted{Node: d.localNode},
-		labelLocalNode)
+		d.labelLocalNode)
 	return nil
 }
 
@@ -123,6 +123,6 @@ func (o opSetNodeMonitor) call(ctx context.Context, d *data) error {
 	}
 	d.pendingOps = append(d.pendingOps, op)
 	d.bus.Pub(msgbus.NodeMonitorUpdated{Node: d.localNode, Value: o.value},
-		labelLocalNode)
+		d.labelLocalNode)
 	return nil
 }

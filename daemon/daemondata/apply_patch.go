@@ -134,7 +134,7 @@ func (d *data) applyPatch(msg *hbtype.Msg) error {
 			return err
 		} else {
 			eventId++
-			d.bus.Pub(msgbus.DataUpdated{RawMessage: b}, labelLocalNode)
+			d.bus.Pub(msgbus.DataUpdated{RawMessage: b}, d.labelLocalNode)
 		}
 		pendingNodeGen = gen
 	}
