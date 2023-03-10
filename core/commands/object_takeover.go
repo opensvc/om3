@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -15,13 +16,17 @@ type (
 
 func (t *CmdObjectTakeover) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	hn := hostname.Hostname()
+	target := instance.MonitorGlobalExpectPlacedAt.String()
+	options := instance.MonitorGlobalExpectOptionsPlacedAt{
+		Destination: []string{hostname.Hostname()},
+	}
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithFormat(t.Format),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("placed@"+hn),
+		objectaction.WithAsyncTarget(target),
+		objectaction.WithAsyncTargetOptions(options),
 		objectaction.WithAsyncWatch(t.Watch),
 	).Do()
 }
