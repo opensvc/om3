@@ -49,6 +49,10 @@ func NewMessage(b []byte) *Message {
 //
 // returns decodedMsg []byte, nodename string, error
 func (m *Message) DecryptWithNode() ([]byte, string, error) {
+	if len(m.Data) == 0 {
+		// fast return, Unmarshal will fail
+		return nil, "", io.EOF
+	}
 	var b []byte
 	key := []byte(m.Key)
 	msg := &encryptedMessage{}
