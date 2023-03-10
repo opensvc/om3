@@ -29,10 +29,10 @@ type (
 	}
 )
 
-func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.Digest, error) {
+func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
 	if t.Refresh || t.Local {
 		// explicitely local
-		return t.extractLocal(selector)
+		data, err = t.extractLocal(selector)
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		// try daemon
@@ -42,6 +42,9 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) ([]object.D
 		return []object.Digest{}, err
 	}
 	// fallback to local
+	if data != nil {
+		return data, err
+	}
 	return t.extractLocal(selector)
 }
 
