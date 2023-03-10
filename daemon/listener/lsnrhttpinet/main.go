@@ -3,6 +3,7 @@ package lsnrhttpinet
 import (
 	"context"
 	"crypto/tls"
+	golog "log"
 	"net"
 	"net/http"
 
@@ -103,6 +104,7 @@ func (t *T) start(ctx context.Context) error {
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.NoClientCert,
 		},
+		ErrorLog: golog.New(t.log, "", 0),
 	}
 	go func() {
 		started <- true
