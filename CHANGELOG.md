@@ -4,6 +4,8 @@
 
 ### core
 
+* **breaking change:** Deny object path name and namespaces longer than 63 character.
+
 * **breaking change:** replace the --debug flag with --log debug|info|warn|error|fatal|panic
 
 * Add --quiet to disable both the progress renderer and the console logging

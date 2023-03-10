@@ -47,6 +47,13 @@ func TestNew(t *testing.T) {
 			output:    "svc1",
 			ok:        true,
 		},
+		"one char name is allowed": {
+			name:      "a",
+			namespace: "root",
+			kind:      "svc",
+			output:    "a",
+			ok:        true,
+		},
 		"invalid kind": {
 			name:      "svc1",
 			namespace: "root",
@@ -56,6 +63,13 @@ func TestNew(t *testing.T) {
 		},
 		"invalid name": {
 			name:      "name#",
+			namespace: "root",
+			kind:      "svc",
+			output:    "",
+			ok:        false,
+		},
+		"invalid name (longer than 63 char)": {
+			name:      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			namespace: "root",
 			kind:      "svc",
 			output:    "",

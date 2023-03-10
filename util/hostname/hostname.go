@@ -2,19 +2,41 @@ package hostname
 
 import (
 	"os"
-	"regexp"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
-const regexStringRFC952 = `^[a-zA-Z]([a-zA-Z0-9\-]+[\.]?)*[a-zA-Z0-9]$` // https://tools.ietf.org/html/rfc952
+const (
+	alnums = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
 
 var (
-	regexRFC952 = regexp.MustCompile(regexStringRFC952)
-	hostname    string
+	hostname string
 )
 
 func IsValid(s string) bool {
-	return regexRFC952.MatchString(s)
+	if err := validate(s); err != nil {
+		return false
+	}
+	return true
+}
+
+func validate(s string) error {
+	n := len(s)
+	switch {
+	case n < 1:
+		return errors.Errorf("too short (<1)")
+	case n > 63:
+		return errors.Errorf("too long (>63)")
+	}
+	if strings.Trim(s[0:1], alnums) != "" {
+		return errors.Errorf("invalid first character")
+	}
+	if strings.Trim(s[1:], alnums+"-") != "" {
+		return errors.Errorf("invalid characters")
+	}
+	return nil
 }
 
 // StrictHostname is like os.StrictHostname except it returns a lowercased hostname,
@@ -66,11 +88,12 @@ func Impersonate(s string) func() {
 // SetHostnameForGoTest can be used during go test to define alternate hostname
 //
 // Example:
-//   func Test_something(t *testing.T) {
-//     SetHostnameForGoTest("newhostname")
-//     defer SetHostnameForGoTest("")
-//     // test...
-//   }
+//
+//	func Test_something(t *testing.T) {
+//	  SetHostnameForGoTest("newhostname")
+//	  defer SetHostnameForGoTest("")
+//	  // test...
+//	}
 func SetHostnameForGoTest(s string) {
 	hostname = s
 }
