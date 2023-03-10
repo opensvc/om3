@@ -374,6 +374,9 @@ func gensEqual(a, b gens) bool {
 func (d *data) startSubscriptions() {
 	sub := d.bus.Sub("daemondata")
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(msgbus.InstanceConfigDeleted{}, labelLocalNode)
+	sub.AddFilter(msgbus.InstanceConfigUpdated{}, labelLocalNode)
+	sub.AddFilter(msgbus.InstanceStatusDeleted{}, labelLocalNode)
 	sub.Start()
 	d.sub = sub
 }
@@ -382,5 +385,11 @@ func (d *data) onSubEvent(i interface{}) {
 	switch c := i.(type) {
 	case msgbus.ClusterConfigUpdated:
 		d.onClusterConfigUpdated(c)
+	case msgbus.InstanceConfigDeleted:
+		d.onInstanceConfigDeleted(c)
+	case msgbus.InstanceConfigUpdated:
+		d.onInstanceConfigUpdated(c)
+	case msgbus.InstanceStatusDeleted:
+		d.onInstanceStatusDeleted(c)
 	}
 }

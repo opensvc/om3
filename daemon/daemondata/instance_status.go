@@ -12,11 +12,6 @@ import (
 )
 
 type (
-	opDelInstanceStatus struct {
-		errC
-		path path.T
-	}
-
 	opGetInstanceStatus struct {
 		errC
 		status chan<- instance.Status
@@ -36,19 +31,6 @@ type (
 		frozen time.Time
 	}
 )
-
-// DelInstanceStatus
-//
-// Monitor.Node.<localhost>.services.status.*
-func (t T) DelInstanceStatus(p path.T) error {
-	err := make(chan error, 1)
-	op := opDelInstanceStatus{
-		errC: err,
-		path: p,
-	}
-	t.cmdC <- op
-	return <-err
-}
 
 // GetInstanceStatus
 //
@@ -97,9 +79,9 @@ func (t T) SetInstanceStatus(p path.T, v instance.Status) error {
 	return <-err
 }
 
-func (o opDelInstanceStatus) call(ctx context.Context, d *data) error {
+func (d *data) onInstanceStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	d.statCount[idDelInstanceStatus]++
-	s := o.path.String()
+	s := c.Path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Status != nil {
 		inst.Status = nil
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
@@ -109,11 +91,6 @@ func (o opDelInstanceStatus) call(ctx context.Context, d *data) error {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: d.localNode},
-		pubsub.Label{"path", s},
-		labelLocalNode,
-	)
-	return nil
 }
 
 func (o opGetInstanceStatus) call(ctx context.Context, d *data) error {
