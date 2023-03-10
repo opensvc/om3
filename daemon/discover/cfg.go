@@ -26,8 +26,8 @@ import (
 func (d *discover) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(d.ctx)
 	sub := bus.Sub("discover.cfg")
-	sub.AddFilter(msgbus.ConfigUpdated{})
-	sub.AddFilter(msgbus.ConfigDeleted{})
+	sub.AddFilter(msgbus.InstanceConfigUpdated{})
+	sub.AddFilter(msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(msgbus.ConfigFileUpdated{})
 	if last := sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
 		d.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
@@ -65,10 +65,10 @@ func (d *discover) cfg(started chan<- bool) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
-			case msgbus.ConfigUpdated:
-				d.onConfigUpdated(c)
-			case msgbus.ConfigDeleted:
-				d.onConfigDeleted(c)
+			case msgbus.InstanceConfigUpdated:
+				d.onInstanceConfigUpdated(c)
+			case msgbus.InstanceConfigDeleted:
+				d.onInstanceConfigDeleted(c)
 			case msgbus.ConfigFileUpdated:
 				d.onConfigFileUpdated(c)
 			case msgbus.ClusterConfigUpdated:
@@ -145,7 +145,7 @@ func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 	d.cfgMTime[s] = mtime
 }
 
-func (d *discover) onConfigUpdated(c msgbus.ConfigUpdated) {
+func (d *discover) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
 	if c.Node == d.localhost {
 		return
 	}
@@ -192,7 +192,7 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 	d.fetchConfigFromRemote(p, node, remoteConfig.Updated)
 }
 
-func (d *discover) onConfigDeleted(c msgbus.ConfigDeleted) {
+func (d *discover) onInstanceConfigDeleted(c msgbus.InstanceConfigDeleted) {
 	if c.Node == "" || c.Node == d.localhost {
 		return
 	}

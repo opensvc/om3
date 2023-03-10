@@ -258,14 +258,14 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remot
 	}
 	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated)
 	for _, s := range updates {
-		d.bus.Pub(msgbus.ConfigUpdated{Path: toPath[s], Node: nodename, Value: *d.pending.Cluster.Node[nodename].Instance[s].Config.DeepCopy()},
+		d.bus.Pub(msgbus.InstanceConfigUpdated{Path: toPath[s], Node: nodename, Value: *d.pending.Cluster.Node[nodename].Instance[s].Config.DeepCopy()},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", nodename},
 			labelPeerNode,
 		)
 	}
 	for _, s := range removes {
-		d.bus.Pub(msgbus.ConfigDeleted{Path: toPath[s], Node: nodename},
+		d.bus.Pub(msgbus.InstanceConfigDeleted{Path: toPath[s], Node: nodename},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", nodename},
 			labelPeerNode,

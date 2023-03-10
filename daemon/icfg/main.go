@@ -138,7 +138,7 @@ func (o *T) startSubscriptions(ctx context.Context) {
 		o.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
 	}
 	if o.path.String() != clusterId {
-		o.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterId})
+		o.sub.AddFilter(msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", clusterId})
 	}
 	o.sub.Start()
 }
@@ -190,8 +190,8 @@ func (o *T) worker() {
 				o.onConfigFileUpdated(c)
 			case msgbus.ConfigFileRemoved:
 				o.onConfigFileRemoved(c)
-			case msgbus.ConfigUpdated:
-				o.onConfigUpdated(c)
+			case msgbus.InstanceConfigUpdated:
+				o.onInstanceConfigUpdated(c)
 			case msgbus.ClusterConfigUpdated:
 				o.onClusterConfigUpdated(c)
 			}
@@ -226,7 +226,7 @@ func (o *T) onConfigFileRemoved(c msgbus.ConfigFileRemoved) {
 	o.cancel()
 }
 
-func (o *T) onConfigUpdated(c msgbus.ConfigUpdated) {
+func (o *T) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
 	o.log.Info().Msg("local cluster config changed => refresh cfg")
 	o.forceRefresh = true
 	if err := o.configFileCheck(); err != nil {

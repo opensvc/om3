@@ -298,7 +298,7 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 // objectMonCreatorAndExpectationWatch returns a channel where we can read the InstanceMonitorUpdated for c
 // that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
 //
-// It emulates discover omon creation for c (creates omon worker for c on first received ConfigUpdated)
+// It emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
 func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase) <-chan msgbus.InstanceMonitorUpdated {
 	r := make(chan chan msgbus.InstanceMonitorUpdated)
 
@@ -317,13 +317,13 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 
 		sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover & watcher")
 		sub.AddFilter(msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
-		sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", p.String()})
+		sub.AddFilter(msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
 		sub.Start()
 		defer func() {
 			_ = sub.Stop()
 		}()
 
-		t.Logf("watching InstanceMonitorUpdated and ConfigUpdated for path: %s, max duration %s", p, duration)
+		t.Logf("watching InstanceMonitorUpdated and InstanceConfigUpdated for path: %s, max duration %s", p, duration)
 
 		// serve response channel
 		r <- evC
@@ -335,7 +335,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 				return
 			case i := <-sub.C:
 				switch o := i.(type) {
-				case msgbus.ConfigUpdated:
+				case msgbus.InstanceConfigUpdated:
 					if monStarted {
 						continue
 					}

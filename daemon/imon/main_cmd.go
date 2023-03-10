@@ -63,7 +63,7 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 	setLocalExpectStarted()
 }
 
-func (o *imon) onConfigUpdated(srcNode string, srcCmd msgbus.ConfigUpdated) {
+func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd msgbus.InstanceConfigUpdated) {
 	if srcCmd.Node == o.localhost {
 		o.instConfig = srcCmd.Value
 		o.initResourceMonitor()
@@ -82,10 +82,10 @@ func (o *imon) onConfigUpdated(srcNode string, srcCmd msgbus.ConfigUpdated) {
 		}
 	}
 	o.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
-	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated ConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
+	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
-func (o *imon) onConfigDeleted(srcNode string, srcCmd msgbus.ConfigDeleted) {
+func (o *imon) onInstanceConfigDeleted(srcNode string, srcCmd msgbus.InstanceConfigDeleted) {
 	if _, ok := o.instStatus[srcCmd.Node]; ok {
 		o.log.Info().Msgf("drop deleted instance status from node %s", srcCmd.Node)
 		delete(o.instStatus, srcCmd.Node)
@@ -98,10 +98,10 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
 			o.onInstanceStatusUpdated(c.Node, srcCmd)
-		case msgbus.ConfigUpdated:
-			o.onConfigUpdated(c.Node, srcCmd)
-		case msgbus.ConfigDeleted:
-			o.onConfigDeleted(c.Node, srcCmd)
+		case msgbus.InstanceConfigUpdated:
+			o.onInstanceConfigUpdated(c.Node, srcCmd)
+		case msgbus.InstanceConfigDeleted:
+			o.onInstanceConfigDeleted(c.Node, srcCmd)
 		case msgbus.InstanceMonitorUpdated:
 			o.onInstanceMonitorUpdated(srcCmd)
 		case msgbus.InstanceMonitorDeleted:

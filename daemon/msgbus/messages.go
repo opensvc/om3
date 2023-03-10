@@ -27,13 +27,9 @@ var (
 
 		"ClusterStatusUpdated": ClusterStatusUpdated{},
 
-		"ConfigDeleted": ConfigDeleted{},
-
 		"ConfigFileRemoved": ConfigFileRemoved{},
 
 		"ConfigFileUpdated": ConfigFileUpdated{},
-
-		"ConfigUpdated": ConfigUpdated{},
 
 		"ClientSub": ClientSub{},
 
@@ -62,6 +58,10 @@ var (
 		"HbStale": HbStale{},
 
 		"HbStatusUpdated": HbStatusUpdated{},
+
+		"InstanceConfigDeleted": InstanceConfigDeleted{},
+
+		"InstanceConfigUpdated": InstanceConfigUpdated{},
 
 		"InstanceMonitorAction": InstanceMonitorAction{},
 
@@ -153,29 +153,18 @@ type (
 		Err  error
 	}
 
-	ConfigDeleted struct {
-		Path path.T
-		Node string
-	}
-
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
-	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a ConfigDeleted{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigDeleted{} event.
 	ConfigFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
-	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a ConfigUpdated{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigUpdated{} event.
 	ConfigFileUpdated struct {
 		Path     path.T
 		Filename string
-	}
-
-	ConfigUpdated struct {
-		Path  path.T
-		Node  string
-		Value instance.Config
 	}
 
 	ClientSub struct {
@@ -266,6 +255,17 @@ type (
 	HbStatusUpdated struct {
 		Node  string
 		Value cluster.HeartbeatStream
+	}
+
+	InstanceConfigDeleted struct {
+		Path path.T
+		Node string
+	}
+
+	InstanceConfigUpdated struct {
+		Path  path.T
+		Node  string
+		Value instance.Config
 	}
 
 	InstanceMonitorAction struct {
@@ -492,20 +492,12 @@ func (e ClusterStatusUpdated) Kind() string {
 	return "ClusterStatusUpdated"
 }
 
-func (e ConfigDeleted) Kind() string {
-	return "ConfigDeleted"
-}
-
 func (e ConfigFileRemoved) Kind() string {
 	return "ConfigFileRemoved"
 }
 
 func (e ConfigFileUpdated) Kind() string {
 	return "ConfigFileUpdated"
-}
-
-func (e ConfigUpdated) Kind() string {
-	return "ConfigUpdated"
 }
 
 func (e ClientSub) Kind() string {
@@ -584,6 +576,14 @@ func (e HbStale) Kind() string {
 
 func (e HbStatusUpdated) Kind() string {
 	return "HbStatusUpdated"
+}
+
+func (e InstanceConfigDeleted) Kind() string {
+	return "InstanceConfigDeleted"
+}
+
+func (e InstanceConfigUpdated) Kind() string {
+	return "InstanceConfigUpdated"
 }
 
 func (e InstanceMonitorAction) Kind() string {
