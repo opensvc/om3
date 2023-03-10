@@ -21,10 +21,7 @@ func (f Frame) wObjects() {
 
 func sObjectPlacement(d object.Status) string {
 	var s string
-	switch d.PlacementState {
-	case placement.NotApplicable, placement.Optimal:
-		s = ""
-	default:
+	if d.PlacementState == placement.NonOptimal {
 		s = iconPlacementAlert
 	}
 	return s

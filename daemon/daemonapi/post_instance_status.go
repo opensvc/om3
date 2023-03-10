@@ -14,13 +14,13 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 )
 
-func (a *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 	var (
 		err     error
 		p       path.T
-		payload PostObjectStatus
+		payload PostInstanceStatus
 	)
-	log := getLogger(r, "PostObjectStatus")
+	log := getLogger(r, "PostInstanceStatus")
 	log.Debug().Msgf("starting")
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		log.Warn().Err(err).Msgf("decode body")
@@ -33,7 +33,7 @@ func (a *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
 		sendErrorf(w, http.StatusBadRequest, "invalid path %s", payload.Path)
 		return
 	}
-	instanceStatus, err := postObjectStatusToInstanceStatus(payload)
+	instanceStatus, err := postInstanceStatusToInstanceStatus(payload)
 	if err != nil {
 		log.Warn().Err(err).Msgf("can't parse instance status %s", payload.Path)
 		sendError(w, http.StatusBadRequest, "can't parse instance status")
@@ -48,7 +48,7 @@ func (a *DaemonApi) PostObjectStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func postObjectStatusToInstanceStatus(payload PostObjectStatus) (*instance.Status, error) {
+func postInstanceStatusToInstanceStatus(payload PostInstanceStatus) (*instance.Status, error) {
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
 		Avail:       status.Parse(payloadStatus.Avail),

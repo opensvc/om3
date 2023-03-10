@@ -12,13 +12,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ssrathi/go-attr"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/ssrathi/go-attr"
 )
 
 func (t *core) statusFile() string {
@@ -170,16 +170,16 @@ func (t *core) statusDump(data instance.Status) error {
 		return err
 	}
 	t.log.Debug().Str("file", p).Msg("dumped")
-	_ = t.postObjectStatus(data)
+	_ = t.postInstanceStatus(data)
 	return nil
 }
 
-func (t *core) postObjectStatus(data instance.Status) error {
+func (t *core) postInstanceStatus(data instance.Status) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	req := c.NewPostObjectStatus()
+	req := c.NewPostInstanceStatus()
 	req.Path = t.path.String()
 	req.Data = data
 	_, err = req.Do()

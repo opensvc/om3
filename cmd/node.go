@@ -53,13 +53,8 @@ var (
 		Use:   "relay",
 		Short: "relay subsystem commands",
 	}
-	cmdNodeValidate = &cobra.Command{
-		Use:     "validate",
-		Short:   "validate the node config syntax",
-		Aliases: []string{"validat", "valida", "valid", "val"},
-	}
-
-	cmdNodeEdit = newCmdNodeEdit()
+	cmdNodeEdit     = newCmdNodeEdit()
+	cmdNodeValidate = newCmdNodeValidate()
 )
 
 func init() {

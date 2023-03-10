@@ -420,9 +420,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectSelector'
-  /object/status:
+  /instance/status:
     post:
-      operationId: PostObjectStatus
+      operationId: PostInstanceStatus
       tags:
         - object
       security:
@@ -434,7 +434,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postObjectStatus'
+              $ref: '#/components/schemas/postInstanceStatus'
       responses:
         '200':
           description: success
@@ -925,7 +925,7 @@ components:
           type: string
         is_partial:
           type: boolean
-    postObjectStatus:
+    postInstanceStatus:
       type: object
       required:
         - path
