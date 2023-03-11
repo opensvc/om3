@@ -140,7 +140,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 
 		if !file.ModTime(nodeFrozenFile).IsZero() {
 			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
-			bus.Pub(msgbus.FrozenFileUpdated{Filename: nodeFrozenFile})
+			bus.Pub(msgbus.NodeFrozenFileUpdated{Filename: nodeFrozenFile})
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -174,7 +174,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(msgbus.FrozenFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
+							bus.Pub(msgbus.NodeFrozenFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
 						} else {
 							// TODO enable watch on instance frozen files
 							bus.Pub(msgbus.InstanceFrozenFileRemoved{Path: p, Filename: filename, Updated: time.Now()}, pubsub.Label{"path", p.String()})
@@ -195,7 +195,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						}
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(msgbus.FrozenFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
+							bus.Pub(msgbus.NodeFrozenFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
 						} else {
 							// TODO enable watch on instance frozen files
 							bus.Pub(msgbus.InstanceFrozenFileUpdated{Path: p, Filename: filename, Updated: time.Now()}, pubsub.Label{"path", p.String()})

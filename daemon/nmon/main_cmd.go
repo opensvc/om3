@@ -236,19 +236,19 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	}
 }
 
-func (o *nmon) onFrozenFileRemoved(_ msgbus.FrozenFileRemoved) {
+func (o *nmon) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
 	err := o.databus.SetNodeFrozen(time.Time{})
 	if err != nil {
-		o.log.Error().Err(err).Msg("onFrozenFileRemoved SetNodeFrozen")
+		o.log.Error().Err(err).Msg("onNodeFrozenFileRemoved SetNodeFrozen")
 	}
 	o.frozen = false
 }
 
-func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
+func (o *nmon) onNodeFrozenFileUpdated(c msgbus.NodeFrozenFileUpdated) {
 	tm := file.ModTime(c.Filename)
 	err := o.databus.SetNodeFrozen(tm)
 	if err != nil {
-		o.log.Error().Err(err).Msg("onFrozenFileUpdated SetNodeFrozen")
+		o.log.Error().Err(err).Msg("onNodeFrozenFileUpdated SetNodeFrozen")
 	}
 	o.frozen = true
 }

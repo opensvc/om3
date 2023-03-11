@@ -189,8 +189,8 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 
 	sub.AddFilter(msgbus.ForgetPeer{})
-	sub.AddFilter(msgbus.FrozenFileRemoved{})
-	sub.AddFilter(msgbus.FrozenFileUpdated{})
+	sub.AddFilter(msgbus.NodeFrozenFileRemoved{})
+	sub.AddFilter(msgbus.NodeFrozenFileUpdated{})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", o.localhost})
 	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", o.localhost})
@@ -272,10 +272,10 @@ func (o *nmon) worker() {
 				o.onNodeMonitorDeleted(c)
 			case msgbus.ForgetPeer:
 				o.onForgetPeer(c)
-			case msgbus.FrozenFileRemoved:
-				o.onFrozenFileRemoved(c)
-			case msgbus.FrozenFileUpdated:
-				o.onFrozenFileUpdated(c)
+			case msgbus.NodeFrozenFileRemoved:
+				o.onNodeFrozenFileRemoved(c)
+			case msgbus.NodeFrozenFileUpdated:
+				o.onNodeFrozenFileUpdated(c)
 			case msgbus.HbMessageTypeUpdated:
 				o.onHbMessageTypeUpdated(c)
 			case msgbus.JoinRequest:

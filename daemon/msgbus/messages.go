@@ -43,10 +43,6 @@ var (
 
 		"ForgetPeer": ForgetPeer{},
 
-		"FrozenFileRemoved": FrozenFileRemoved{},
-
-		"FrozenFileUpdated": FrozenFileUpdated{},
-
 		"Frozen": Frozen{},
 
 		"HbMessageTypeUpdated": HbMessageTypeUpdated{},
@@ -96,6 +92,10 @@ var (
 		"LeaveSuccess": LeaveSuccess{},
 
 		"NodeConfigUpdated": NodeConfigUpdated{},
+
+		"NodeFrozenFileRemoved": NodeFrozenFileRemoved{},
+
+		"NodeFrozenFileUpdated": NodeFrozenFileUpdated{},
 
 		"NodeMonitorDeleted": NodeMonitorDeleted{},
 
@@ -214,20 +214,6 @@ type (
 		Path  path.T
 		Node  string
 		Value time.Time
-	}
-
-	// FrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
-	FrozenFileRemoved struct {
-		Path     path.T
-		Filename string
-	}
-
-	// FrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
-	FrozenFileUpdated struct {
-		Path     path.T
-		Filename string
 	}
 
 	HbNodePing struct {
@@ -365,6 +351,20 @@ type (
 	NodeConfigUpdated struct {
 		Node  string
 		Value node.Config
+	}
+
+	// NodeFrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
+	NodeFrozenFileRemoved struct {
+		Path     path.T
+		Filename string
+	}
+
+	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
+	NodeFrozenFileUpdated struct {
+		Path     path.T
+		Filename string
 	}
 
 	NodeMonitorDeleted struct {
@@ -550,14 +550,6 @@ func (e Frozen) Kind() string {
 	return "Frozen"
 }
 
-func (e FrozenFileRemoved) Kind() string {
-	return "FrozenFileRemoved"
-}
-
-func (e FrozenFileUpdated) Kind() string {
-	return "FrozenFileUpdated"
-}
-
 func (e HbMessageTypeUpdated) Kind() string {
 	return "HbMessageTypeUpdated"
 }
@@ -670,6 +662,14 @@ func (e LeaveSuccess) Kind() string {
 
 func (e NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
+}
+
+func (e NodeFrozenFileRemoved) Kind() string {
+	return "NodeFrozenFileRemoved"
+}
+
+func (e NodeFrozenFileUpdated) Kind() string {
+	return "NodeFrozenFileUpdated"
 }
 
 func (e NodeMonitorDeleted) Kind() string {
