@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -44,7 +45,11 @@ type (
 		ctx context.Context
 		log zerolog.Logger
 
+		bus *pubsub.Bus
 		sub *pubsub.Subscription
+
+		labelPath pubsub.Label
+		labelNode pubsub.Label
 	}
 )
 
@@ -64,12 +69,15 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 		},
 		path:         p,
 		id:           id,
+		bus:          pubsub.BusFromContext(ctx),
 		discoverCmdC: discoverCmdC,
 		databus:      daemondata.FromContext(ctx),
 		instStatus:   make(map[string]instance.Status),
 		instMonitor:  make(map[string]instance.Monitor),
 		ctx:          ctx,
 		log:          log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
+		labelNode:    pubsub.Label{"node", hostname.Hostname()},
+		labelPath:    pubsub.Label{"path", id},
 	}
 	o.startSubscriptions()
 	o.instMonitor = o.databus.GetInstanceMonitorMap(o.path)
@@ -86,13 +94,11 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 }
 
 func (o *T) startSubscriptions() {
-	bus := pubsub.BusFromContext(o.ctx)
-	label := pubsub.Label{"path", o.id}
-	sub := bus.Sub(o.id + " omon")
-	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
-	sub.AddFilter(msgbus.InstanceStatusUpdated{}, label)
-	sub.AddFilter(msgbus.InstanceConfigUpdated{}, label)
-	sub.AddFilter(msgbus.InstanceConfigDeleted{}, label)
+	sub := o.bus.Sub(o.id + " omon")
+	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.InstanceStatusUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.InstanceConfigUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.InstanceConfigDeleted{}, o.labelPath)
 	sub.Start()
 	o.sub = sub
 }
@@ -276,16 +282,18 @@ func (o *T) updateStatus() {
 }
 
 func (o *T) delete() {
-	if err := o.databus.DelObjectStatus(o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelObjectStatus")
-	}
+	o.bus.Pub(msgbus.ObjectStatusDeleted{Path: o.path, Node: hostname.Hostname()},
+		o.labelPath,
+		o.labelNode,
+	)
 	o.discoverCmdC <- msgbus.ObjectStatusDone{Path: o.path}
 }
 
 func (o *T) update() {
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
-	if err := o.databus.SetObjectStatus(o.path, *value, o.srcEvent); err != nil {
-		o.log.Error().Err(err).Msg("SetObjectStatus")
-	}
+	o.bus.Pub(msgbus.ObjectStatusUpdated{Path: o.path, Node: hostname.Hostname(), Value: *value, SrcEv: o.srcEvent},
+		o.labelPath,
+		o.labelNode,
+	)
 }
