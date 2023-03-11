@@ -7,13 +7,6 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-type (
-	opSetClusterStatus struct {
-		errC
-		value cluster.Status
-	}
-)
-
 // GetStatus returns deep copy of status
 func (t T) GetStatus() *cluster.Data {
 	status := make(chan *cluster.Data, 1)
@@ -39,24 +32,8 @@ func (o opGetStatus) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-// SetClusterStatus
-//
-// cluster.status
-func (t T) SetClusterStatus(v cluster.Status) error {
-	err := make(chan error, 1)
-	op := opSetClusterStatus{
-		errC:  err,
-		value: v,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opSetClusterStatus) call(ctx context.Context, d *data) error {
+// onClusterStatusUpdated updates .cluster.status
+func (d *data) onClusterStatusUpdated(m msgbus.ClusterStatusUpdated) {
 	d.statCount[idSetClusterStatus]++
-	d.pending.Cluster.Status = o.value
-	d.bus.Pub(msgbus.ClusterStatusUpdated{Node: d.localNode, Value: o.value},
-		d.labelLocalNode,
-	)
-	return nil
+	d.pending.Cluster.Status = m.Value
 }
