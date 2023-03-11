@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (o *imon) freeze() error {
@@ -21,19 +23,19 @@ func (o *imon) freeze() error {
 			return err
 		}
 	}
+	now := time.Now()
 	f, err := os.Create(p)
 	if err != nil {
 		o.log.Error().Err(err).Msg("freeze")
 		return err
 	}
-	f.Close()
+	_ = f.Close()
 	status := o.instStatus[o.localhost]
-	now := time.Now()
 	status.Frozen = now
-	if err := o.databus.SetInstanceFrozen(o.path, now); err != nil {
-		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
-		return err
-	}
+
+	// TODO don't publish and trust discover for this ?
+	o.pubsubBus.Pub(msgbus.InstanceFrozenFileUpdated{Path: o.path, Filename: p, Updated: now}, pubsub.Label{"path", o.path.String()})
+
 	// don't wait for delayed update of local cache
 	o.instStatus[o.localhost] = status
 	return nil
@@ -45,17 +47,16 @@ func (o *imon) unfreeze() error {
 		return nil
 	}
 	o.log.Info().Msg("daemon action unfreeze")
+	now := time.Now()
 	err := os.Remove(p)
 	if err != nil {
 		o.log.Error().Err(err).Msg("unfreeze")
 		return err
 	}
+	// TODO don't publish and trust discover for this ?
+	o.pubsubBus.Pub(msgbus.InstanceFrozenFileRemoved{Path: o.path, Filename: p, Updated: now}, pubsub.Label{"path", o.path.String()})
 	status := o.instStatus[o.localhost]
 	status.Frozen = time.Time{}
-	if err := o.databus.SetInstanceFrozen(o.path, time.Time{}); err != nil {
-		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
-		return err
-	}
 	// don't wait for delayed update of local cache
 	// to avoid 'idle -> thawing -> idle -> thawing' until receive local instance status update
 	o.instStatus[o.localhost] = status

@@ -18,12 +18,6 @@ type (
 		path   path.T
 		node   string
 	}
-
-	opSetInstanceFrozen struct {
-		errC
-		path   path.T
-		frozen time.Time
-	}
 )
 
 // GetInstanceStatus
@@ -43,20 +37,6 @@ func (t T) GetInstanceStatus(p path.T, node string) instance.Status {
 		return instance.Status{}
 	}
 	return <-status
-}
-
-// SetInstanceFrozen
-//
-// Monitor.Node.<localhost>.instance.<p>.status.Frozen
-func (t T) SetInstanceFrozen(p path.T, frozen time.Time) error {
-	err := make(chan error, 1)
-	op := opSetInstanceFrozen{
-		errC:   err,
-		path:   p,
-		frozen: frozen,
-	}
-	t.cmdC <- op
-	return <-err
 }
 
 // onInstanceStatusDeleted remove .cluster.node.<node>.instance.<path>.status
@@ -86,41 +66,60 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-func (o opSetInstanceFrozen) call(ctx context.Context, d *data) error {
+// onInstanceFrozenFileUpdated may publish InstanceStatusUpdated with updated frozen and updated.
+// It publishes when instance status exists with both updated and frozen older that c.Updated
+func (d *data) onInstanceFrozenFileUpdated(c msgbus.InstanceFrozenFileUpdated) {
 	d.statCount[idSetInstanceFrozen]++
-	var (
-		op   jsondelta.Operation
-		ok   bool
-		inst instance.Instance
-	)
-	s := o.path.String()
-	value := o.frozen
-	if inst, ok = d.pending.Cluster.Node[d.localNode].Instance[s]; !ok {
-		return nil
+	s := c.Path.String()
+	eventUpdated := c.Updated
+	inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]
+	if !ok {
+		return
+	}
+	if inst.Status.Frozen.After(eventUpdated) {
+		// skip update, we already have a more recent value for frozen
+		return
+	}
+	if inst.Status.Updated.After(eventUpdated) {
+		// skip update, we already have a more recent value of status
+		return
 	}
 	newStatus := inst.Status.DeepCopy()
-	newStatus.Frozen = value
-	// TODO don't update newStatus.Updated if more recent
-	if value.IsZero() {
-		newStatus.Updated = time.Now()
-	} else {
-		newStatus.Updated = value
-	}
-	newStatus.Frozen = value
-	inst.Status = newStatus
-	d.pending.Cluster.Node[d.localNode].Instance[s] = inst
+	newStatus.Frozen = eventUpdated
+	newStatus.Updated = eventUpdated
 
-	op = jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"instance", s, "status"},
-		OpValue: jsondelta.NewOptValue(inst.Status.DeepCopy()),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.InstanceStatusUpdated{Path: o.path, Node: d.localNode, Value: *newStatus},
+	d.bus.Pub(msgbus.InstanceStatusUpdated{Path: c.Path, Node: d.localNode, Value: *newStatus},
 		pubsub.Label{"path", s},
 		d.labelLocalNode,
 	)
-	return nil
+}
+
+// onInstanceFrozenFileRemoved may publish InstanceStatusUpdated with updated frozen and updated.
+// It publishes when instance status exists with both updated and frozen older that c.Updated
+func (d *data) onInstanceFrozenFileRemoved(c msgbus.InstanceFrozenFileRemoved) {
+	d.statCount[idSetInstanceFrozen]++
+	s := c.Path.String()
+	eventUpdated := c.Updated
+	inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]
+	if !ok {
+		return
+	}
+	if inst.Status.Frozen.After(eventUpdated) {
+		// skip update, we already have a more recent value for frozen
+		return
+	}
+	if inst.Status.Updated.After(eventUpdated) {
+		// skip update, we already have a more recent value of status
+		return
+	}
+	newStatus := inst.Status.DeepCopy()
+	newStatus.Frozen = time.Time{}
+	newStatus.Updated = eventUpdated
+
+	d.bus.Pub(msgbus.InstanceStatusUpdated{Path: c.Path, Node: d.localNode, Value: *newStatus},
+		pubsub.Label{"path", s},
+		d.labelLocalNode,
+	)
 }
 
 // onInstanceStatusUpdated updates .cluster.node.<node>.instance.<path>.status

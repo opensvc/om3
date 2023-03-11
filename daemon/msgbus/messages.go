@@ -63,6 +63,10 @@ var (
 
 		"InstanceConfigUpdated": InstanceConfigUpdated{},
 
+		"InstanceFrozenFileRemoved": InstanceFrozenFileRemoved{},
+
+		"InstanceFrozenFileUpdated": InstanceFrozenFileUpdated{},
+
 		"InstanceMonitorAction": InstanceMonitorAction{},
 
 		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
@@ -266,6 +270,20 @@ type (
 		Path  path.T
 		Node  string
 		Value instance.Config
+	}
+
+	// InstanceFrozenFileUpdated is emitted by a fs watcher, or imon when an instance frozen file is updated or created.
+	InstanceFrozenFileUpdated struct {
+		Path     path.T
+		Filename string
+		Updated  time.Time
+	}
+
+	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
+	InstanceFrozenFileRemoved struct {
+		Path     path.T
+		Filename string
+		Updated  time.Time
 	}
 
 	InstanceMonitorAction struct {
@@ -584,6 +602,14 @@ func (e InstanceConfigDeleted) Kind() string {
 
 func (e InstanceConfigUpdated) Kind() string {
 	return "InstanceConfigUpdated"
+}
+
+func (e InstanceFrozenFileRemoved) Kind() string {
+	return "InstanceFrozenFileRemoved"
+}
+
+func (e InstanceFrozenFileUpdated) Kind() string {
+	return "InstanceFrozenFileUpdated"
 }
 
 func (e InstanceMonitorAction) Kind() string {
