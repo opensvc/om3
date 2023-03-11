@@ -365,6 +365,7 @@ type (
 	NodeFrozenFileUpdated struct {
 		Path     path.T
 		Filename string
+		Updated  time.Time
 	}
 
 	NodeMonitorDeleted struct {

@@ -26,10 +26,6 @@ type (
 		errC
 		value map[string]node.ArbitratorStatus
 	}
-	opSetNodeStatusFrozen struct {
-		errC
-		value time.Time
-	}
 	opSetNodeStatusLabels struct {
 		errC
 		value nodesinfo.Labels
@@ -115,34 +111,34 @@ func (o opSetNodeStatusArbitrator) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-// SetNodeFrozen sets Monitor.Node.<localhost>.Status.Frozen
-func (t T) SetNodeFrozen(tm time.Time) error {
-	err := make(chan error, 1)
-	op := opSetNodeStatusFrozen{
-		errC:  err,
-		value: tm,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) error {
+// onNodeFrozenFileRemoved delete .cluster.node.<node>.status.frozen
+func (d *data) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
 	d.statCount[idSetNodeStatusFrozen]++
 	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Frozen = o.value
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"status", "frozen"},
-		OpValue: jsondelta.NewOptValue(o.value),
+		OpValue: jsondelta.NewOptValue(time.Time{}),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.Frozen{Node: hostname.Hostname(), Path: path.T{}, Value: o.value},
+	d.bus.Pub(msgbus.Frozen{Node: hostname.Hostname(), Path: path.T{}, Value: time.Time{}},
 		d.labelLocalNode)
+}
 
-	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
+// onNodeFrozenFileUpdated update .cluster.node.<node>.status.frozen
+func (d *data) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
+	d.statCount[idSetNodeStatusFrozen]++
+	v := d.pending.Cluster.Node[d.localNode]
+	d.pending.Cluster.Node[d.localNode] = v
+	op := jsondelta.Operation{
+		OpPath:  jsondelta.OperationPath{"status", "frozen"},
+		OpValue: jsondelta.NewOptValue(m.Updated),
+		OpKind:  "replace",
+	}
+	d.pendingOps = append(d.pendingOps, op)
+	d.bus.Pub(msgbus.Frozen{Node: hostname.Hostname(), Path: path.T{}, Value: time.Time{}},
 		d.labelLocalNode)
-	return nil
 }
 
 // SetNodeStatusLabels sets Monitor.Node.<localhost>.frozen

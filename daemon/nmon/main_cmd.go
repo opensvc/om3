@@ -5,14 +5,13 @@ import (
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/toc"
 )
 
 var (
-	slitActions      = map[string]func() error{
+	slitActions = map[string]func() error{
 		"crash":    toc.Crash,
 		"reboot":   toc.Reboot,
 		"disabled": func() error { return nil },
@@ -237,19 +236,10 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 }
 
 func (o *nmon) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
-	err := o.databus.SetNodeFrozen(time.Time{})
-	if err != nil {
-		o.log.Error().Err(err).Msg("onNodeFrozenFileRemoved SetNodeFrozen")
-	}
 	o.frozen = false
 }
 
-func (o *nmon) onNodeFrozenFileUpdated(c msgbus.NodeFrozenFileUpdated) {
-	tm := file.ModTime(c.Filename)
-	err := o.databus.SetNodeFrozen(tm)
-	if err != nil {
-		o.log.Error().Err(err).Msg("onNodeFrozenFileUpdated SetNodeFrozen")
-	}
+func (o *nmon) onNodeFrozenFileUpdated(_ msgbus.NodeFrozenFileUpdated) {
 	o.frozen = true
 }
 
