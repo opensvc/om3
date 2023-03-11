@@ -2,27 +2,14 @@ package daemondata
 
 import (
 	"context"
-	"time"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/jsondelta"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
-	opDelInstanceMonitor struct {
-		errC
-		path path.T
-	}
-
-	opSetInstanceMonitor struct {
-		errC
-		path  path.T
-		value instance.Monitor
-	}
-
 	opGetInstanceMonitorMap struct {
 		errC
 		path   path.T
@@ -30,37 +17,10 @@ type (
 	}
 )
 
-// DelInstanceMonitor
-//
-// cluster.node.<localhost>.instance.<path>.monitor
-func (t T) DelInstanceMonitor(p path.T) error {
-	err := make(chan error, 1)
-	op := opDelInstanceMonitor{
-		errC: err,
-		path: p,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-// SetInstanceMonitor
-//
-// cluster.node.<localhost>.instance.<path>.monitor
-func (t T) SetInstanceMonitor(p path.T, v instance.Monitor) error {
-	err := make(chan error, 1)
-	v.UpdatedAt = time.Now()
-	op := opSetInstanceMonitor{
-		errC:  err,
-		path:  p,
-		value: v,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
+// onInstanceMonitorDeleted delete .cluster.node.<node>.instance.<path>.monitor
+func (d *data) onInstanceMonitorDeleted(m msgbus.InstanceMonitorDeleted) {
 	d.statCount[idDelInstanceMonitor]++
-	s := o.path.String()
+	s := m.Path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Monitor != nil {
 		inst.Monitor = nil
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
@@ -70,18 +30,14 @@ func (o opDelInstanceMonitor) call(ctx context.Context, d *data) error {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: d.localNode},
-		pubsub.Label{"path", s},
-		d.labelLocalNode,
-	)
-	return nil
 }
 
-func (o opSetInstanceMonitor) call(ctx context.Context, d *data) error {
+// onInstanceMonitorUpdated updates .cluster.node.<node>.instance.<path>.monitor
+func (d *data) onInstanceMonitorUpdated(m msgbus.InstanceMonitorUpdated){
 	d.statCount[idSetInstanceMonitor]++
 	var op jsondelta.Operation
-	s := o.path.String()
-	value := o.value.DeepCopy()
+	s := m.Path.String()
+	value := &m.Value
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
 		inst.Monitor = value
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
@@ -101,16 +57,6 @@ func (o opSetInstanceMonitor) call(ctx context.Context, d *data) error {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(
-		msgbus.InstanceMonitorUpdated{
-			Path:  o.path,
-			Node:  d.localNode,
-			Value: o.value,
-		},
-		pubsub.Label{"path", s},
-		d.labelLocalNode,
-	)
-	return nil
 }
 
 // GetInstanceMonitorMap returns a map of InstanceMonitor indexed by nodename

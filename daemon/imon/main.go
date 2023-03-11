@@ -206,9 +206,10 @@ func (o *imon) worker(initialNodes []string) {
 			}
 		}()
 		go func() {
-			if err := o.databus.DelInstanceMonitor(o.path); err != nil && !!errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msg("DelInstanceMonitor")
-			}
+			o.pubsubBus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
+				pubsub.Label{"path", o.id},
+				pubsub.Label{"node", o.localhost},
+			)
 		}()
 		go func() {
 			tC := time.After(o.drainDuration)
@@ -262,12 +263,6 @@ func (o *imon) worker(initialNodes []string) {
 	}
 }
 
-func (o *imon) delete() {
-	if err := o.databus.DelInstanceMonitor(o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelInstanceMonitor")
-	}
-}
-
 func (o *imon) update() {
 	select {
 	case <-o.ctx.Done():
@@ -278,9 +273,11 @@ func (o *imon) update() {
 	if err := o.updateLimiter.Wait(o.ctx); err != nil {
 		return
 	}
-	if err := o.databus.SetInstanceMonitor(o.path, newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetInstanceMonitor")
-	}
+
+	o.pubsubBus.Pub(msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
+		pubsub.Label{"path", o.id},
+		pubsub.Label{"node", o.localhost},
+	)
 }
 
 func (o *imon) transitionTo(newState instance.MonitorState) {
