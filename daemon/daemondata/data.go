@@ -385,7 +385,7 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(msgbus.NodeFrozenFileRemoved{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeFrozenFileUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
 	sub.Start()
 	d.sub = sub
 }
