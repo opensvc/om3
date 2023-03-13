@@ -105,6 +105,8 @@ var (
 
 		"NodeStatsUpdated": NodeStatsUpdated{},
 
+		"NodeStatusArbitratorsUpdated": NodeStatusArbitratorsUpdated{},
+
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 
 		"NodeSplitAction": NodeSplitAction{},
@@ -394,6 +396,11 @@ type (
 	NodeStatsUpdated struct {
 		Node  string
 		Value node.Stats
+	}
+
+	NodeStatusArbitratorsUpdated struct {
+		Node  string
+		Value map[string]node.ArbitratorStatus
 	}
 
 	NodeStatusLabelsUpdated struct {
@@ -691,6 +698,10 @@ func (e NodeSplitAction) Kind() string {
 
 func (e NodeStatsUpdated) Kind() string {
 	return "NodeStatsUpdated"
+}
+
+func (e NodeStatusArbitratorsUpdated) Kind() string {
+	return "NodeStatusArbitratorsUpdated"
 }
 
 func (e NodeStatusLabelsUpdated) Kind() string {

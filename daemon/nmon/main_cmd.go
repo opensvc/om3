@@ -33,9 +33,7 @@ func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 	}
 	o.setArbitratorConfig()
 
-	if err := o.getAndUpdateStatusArbitrator(); err != nil {
-		o.log.Error().Err(err).Msg("arbitrator status failure (after cluster config updated)")
-	}
+	o.getAndUpdateStatusArbitrator()
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated
@@ -175,9 +173,7 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 }
 
 func (o *nmon) onArbitratorTicker() {
-	if err := o.getAndUpdateStatusArbitrator(); err != nil {
-		o.log.Warn().Err(err).Msg("arbitrator status failure (arbitrator ticker)")
-	}
+	o.getAndUpdateStatusArbitrator()
 }
 
 func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {

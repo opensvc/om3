@@ -155,7 +155,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		nodeMonitor: make(map[string]node.Monitor),
 		livePeers:   map[string]bool{localhost: true},
 
-		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: nodesinfo.NodeInfo{}},
+		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: {}},
 	}
 
 	// we are responsible for publication or node config, don't wait for
@@ -251,9 +251,7 @@ func (o *nmon) worker() {
 	o.updateIfChange()
 	defer o.bus.Pub(msgbus.NodeMonitorDeleted{Node: o.localhost}, pubsub.Label{"node", o.localhost})
 
-	if err := o.getAndUpdateStatusArbitrator(); err != nil {
-		o.log.Error().Err(err).Msg("arbitrator status failure (initial)")
-	}
+	o.getAndUpdateStatusArbitrator()
 
 	if len(initialNodes) > 1 {
 		o.startRejoin()
