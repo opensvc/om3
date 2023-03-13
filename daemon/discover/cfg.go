@@ -2,7 +2,6 @@ package discover
 
 import (
 	"context"
-	"errors"
 	"os"
 	"time"
 
@@ -93,10 +92,7 @@ func (d *discover) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 
 func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 	if c.Path.Kind == kind.Invalid {
-		if c.Filename == rawconfig.NodeConfigFile() {
-			// node config file change
-			d.setNodeLabels()
-		}
+		// may be node.conf
 		return
 	}
 	s := c.Path.String()
@@ -112,19 +108,6 @@ func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		}
 	}
 	d.cfgMTime[s] = mtime
-}
-
-func (d *discover) setNodeLabels() {
-	node, err := object.NewNode(object.WithVolatile(true))
-	if err != nil {
-		d.log.Error().Err(err).Msg("on node.conf change, error updating labels")
-		return
-	}
-	labels := node.Labels()
-	if err := d.databus.SetNodeStatusLabels(labels); err != nil && !errors.Is(err, context.Canceled){
-		d.log.Error().Err(err).Msg("SetNodeStatusLabels")
-		return
-	}
 }
 
 // cmdLocalConfigDeleted starts a new icfg when a local configuration file exists

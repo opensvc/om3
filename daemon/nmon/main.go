@@ -6,6 +6,8 @@
 //	.cluster.node.<localhost>.stats
 //	.cluster.node.<localhost>.status
 //
+// # It maintains the nodesinfo.json
+//
 // The worker watches local status updates and clear reached status
 //
 //	=> unsetStatusWhenReached
@@ -92,6 +94,13 @@ type (
 		change      bool
 
 		sub *pubsub.Subscription
+
+		// cacheNodesInfo is a map of nodes to nodesinfo.NodeInfo, it is used to
+		// maintain the nodesinfo.json file.
+		// local values are computed by nmon.
+		// peer values are updated from msgbus events NodeStatusLabelsUpdated, NodeConfigUpdated, NodeOsPathsUpdated
+		// and ForgetPeer.
+		cacheNodesInfo map[string]nodesinfo.NodeInfo
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -145,6 +154,8 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
 		livePeers:   map[string]bool{localhost: true},
+
+		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: nodesinfo.NodeInfo{}},
 	}
 
 	// we are responsible for publication or node config, don't wait for
@@ -189,14 +200,16 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 
 	sub.AddFilter(msgbus.ForgetPeer{})
+	sub.AddFilter(msgbus.NodeConfigUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.NodeFrozenFileRemoved{})
 	sub.AddFilter(msgbus.NodeFrozenFileUpdated{})
+	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", o.localhost})
 	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", o.localhost})
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{}, pubsub.Label{"peer", "true"})
-	sub.AddFilter(msgbus.NodeOsPathsUpdated{})
+	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
 	sub.AddFilter(msgbus.SetNodeMonitor{})
 	sub.Start()
@@ -234,7 +247,7 @@ func (o *nmon) worker() {
 		o.nodeMonitor[name] = o.databus.GetNodeMonitor(name)
 	}
 	o.updateStats()
-	o.setNodeOsPaths()
+	o.refreshSanPaths()
 	o.updateIfChange()
 	defer o.delete()
 
@@ -256,6 +269,7 @@ func (o *nmon) worker() {
 	arbitratorTicker := time.NewTicker(arbitratorInterval)
 	defer arbitratorTicker.Stop()
 
+	// TODO refreshSanPaths should be refreshed on events,  on ticker ?
 	for {
 		select {
 		case <-o.ctx.Done():
@@ -266,28 +280,30 @@ func (o *nmon) worker() {
 				o.onClusterConfigUpdated(c)
 			case msgbus.ConfigFileUpdated:
 				o.onConfigFileUpdated(c)
-			case msgbus.NodeMonitorUpdated:
-				o.onPeerNodeMonitorUpdated(c)
-			case msgbus.NodeMonitorDeleted:
-				o.onNodeMonitorDeleted(c)
 			case msgbus.ForgetPeer:
 				o.onForgetPeer(c)
+			case msgbus.JoinRequest:
+				o.onJoinRequest(c)
+			case msgbus.HbMessageTypeUpdated:
+				o.onHbMessageTypeUpdated(c)
+			case msgbus.NodeConfigUpdated:
+				o.onPeerNodeConfigUpdated(c)
+			case msgbus.NodeMonitorDeleted:
+				o.onNodeMonitorDeleted(c)
+			case msgbus.NodeMonitorUpdated:
+				o.onPeerNodeMonitorUpdated(c)
+			case msgbus.NodeOsPathsUpdated:
+				o.onPeerNodeOsPathsUpdated(c)
 			case msgbus.NodeFrozenFileRemoved:
 				o.onNodeFrozenFileRemoved(c)
 			case msgbus.NodeFrozenFileUpdated:
 				o.onNodeFrozenFileUpdated(c)
-			case msgbus.HbMessageTypeUpdated:
-				o.onHbMessageTypeUpdated(c)
-			case msgbus.JoinRequest:
-				o.onJoinRequest(c)
+			case msgbus.NodeStatusLabelsUpdated:
+				o.onPeerNodeStatusLabelsUpdated(c)
 			case msgbus.LeaveRequest:
 				o.onLeaveRequest(c)
 			case msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
-			case msgbus.NodeStatusLabelsUpdated:
-				o.onNodeStatusLabelsUpdated(c)
-			case msgbus.NodeOsPathsUpdated:
-				o.onNodeOsPathsUpdated(c)
 			}
 		case i := <-o.cmdC:
 			switch c := i.(type) {
@@ -428,25 +444,42 @@ func (o *nmon) updateStats() {
 	}
 }
 
-func (o *nmon) setNodeOsPaths() {
-	if paths, err := san.GetPaths(); err != nil {
+func (o *nmon) refreshSanPaths() {
+	paths, err := san.GetPaths()
+	if err != nil {
 		o.log.Error().Err(err).Msg("get san paths")
-	} else if err := o.databus.SetNodeOsPaths(paths); err != nil {
-		o.log.Error().Err(err).Msg("set san paths")
+		return
 	}
+	localNodeInfo := o.cacheNodesInfo[o.localhost]
+	localNodeInfo.Paths = append(san.Paths{}, paths...)
+	o.cacheNodesInfo[o.localhost] = localNodeInfo
+	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths},
+		pubsub.Label{"node", o.localhost})
 }
 
-func (o *nmon) onNodeOsPathsUpdated(_ msgbus.NodeOsPathsUpdated) {
+func (o *nmon) onPeerNodeConfigUpdated(m msgbus.NodeConfigUpdated) {
+	peerNodeInfo := o.cacheNodesInfo[m.Node]
+	peerNodeInfo.Env = m.Value.Env
+	o.cacheNodesInfo[m.Node] = peerNodeInfo
 	o.saveNodesInfo()
 }
 
-func (o *nmon) onNodeStatusLabelsUpdated(_ msgbus.NodeStatusLabelsUpdated) {
+func (o *nmon) onPeerNodeOsPathsUpdated(m msgbus.NodeOsPathsUpdated) {
+	peerNodeInfo := o.cacheNodesInfo[m.Node]
+	peerNodeInfo.Paths = m.Value
+	o.cacheNodesInfo[m.Node] = peerNodeInfo
+	o.saveNodesInfo()
+}
+
+func (o *nmon) onPeerNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
+	peerNodeInfo := o.cacheNodesInfo[m.Node]
+	peerNodeInfo.Labels = m.Value
+	o.cacheNodesInfo[m.Node] = peerNodeInfo
 	o.saveNodesInfo()
 }
 
 func (o *nmon) saveNodesInfo() {
-	data := *o.databus.GetNodesInfo()
-	if err := nodesinfo.Save(data); err != nil {
+	if err := nodesinfo.Save(o.cacheNodesInfo); err != nil {
 		o.log.Error().Err(err).Msg("save nodes info")
 	} else {
 		o.log.Info().Msg("nodes info cache refreshed")
@@ -458,18 +491,27 @@ func (o *nmon) loadConfig() error {
 	if err != nil {
 		return err
 	}
+	localNodeInfo := o.cacheNodesInfo[o.localhost]
+	localNodeInfo.Labels = n.Labels()
 	o.config = n.MergedConfig()
 	o.nodeConfig = o.getNodeConfig()
+	localNodeInfo.Env = o.nodeConfig.Env
+	o.cacheNodesInfo[o.localhost] = localNodeInfo
 	return nil
 }
 
 func (o *nmon) loadAndPublishConfig() error {
+	labelLocalhost := pubsub.Label{"node", o.localhost}
 	if err := o.loadConfig(); err != nil {
 		return err
 	}
-	if err := o.pubNodeConfig(); err != nil {
-		o.log.Error().Err(err).Msg("publish node config")
-		return err
-	}
+	o.bus.Pub(msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig},
+		labelLocalhost,
+	)
+	localNodeInfo := o.cacheNodesInfo[o.localhost]
+	o.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()},
+		labelLocalhost)
+	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()},
+		labelLocalhost)
 	return nil
 }

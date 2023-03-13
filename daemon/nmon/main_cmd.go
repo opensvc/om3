@@ -55,10 +55,6 @@ func (o *nmon) onConfigFileUpdated(_ msgbus.ConfigFileUpdated) {
 	o.checkRejoinTicker()
 }
 
-func (o *nmon) pubNodeConfig() error {
-	return o.databus.SetNodeConfig(o.nodeConfig)
-}
-
 func (o *nmon) getNodeConfig() node.Config {
 	var (
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
@@ -186,6 +182,10 @@ func (o *nmon) onArbitratorTicker() {
 
 func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	delete(o.livePeers, c.Node)
+
+	delete(o.cacheNodesInfo, c.Node)
+	o.saveNodesInfo()
+
 	o.log.Warn().Msgf("lost peer %s => new live peers: %v", c.Node, o.livePeers)
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
 		o.log.Warn().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)

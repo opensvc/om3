@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
@@ -25,10 +24,6 @@ type (
 	opSetNodeStatusArbitrator struct {
 		errC
 		value map[string]node.ArbitratorStatus
-	}
-	opSetNodeStatusLabels struct {
-		errC
-		value nodesinfo.Labels
 	}
 )
 
@@ -141,31 +136,18 @@ func (d *data) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
 		d.labelLocalNode)
 }
 
-// SetNodeStatusLabels sets Monitor.Node.<localhost>.frozen
-func (t T) SetNodeStatusLabels(labels nodesinfo.Labels) error {
-	err := make(chan error, 1)
-	op := opSetNodeStatusLabels{
-		errC:  err,
-		value: labels,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) error {
+// onNodeStatusLabelsUpdated updates cluster.node.<node>.status.labels
+func (d *data) onNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
 	d.statCount[idSetNodeStatusLabels]++
 	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Labels = o.value
+	v.Status.Labels = m.Value
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"status", "labels"},
-		OpValue: jsondelta.NewOptValue(o.value),
+		OpValue: jsondelta.NewOptValue(m.Value),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: hostname.Hostname(), Value: o.value},
-		d.labelLocalNode)
 	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
 		d.labelLocalNode)
-	return nil
 }
