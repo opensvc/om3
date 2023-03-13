@@ -428,11 +428,12 @@ func (o *nmon) getStats() (node.Stats, error) {
 }
 
 func (o *nmon) updateStats() {
-	if stats, err := o.getStats(); err != nil {
+	stats, err := o.getStats()
+	if err != nil {
 		o.log.Error().Err(err).Msg("get stats")
-	} else if err := o.databus.SetNodeStats(stats); err != nil {
-		o.log.Error().Err(err).Msg("set stats")
 	}
+	o.bus.Pub(msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()},
+		pubsub.Label{"node", o.localhost})
 }
 
 func (o *nmon) refreshSanPaths() {

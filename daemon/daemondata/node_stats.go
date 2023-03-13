@@ -13,22 +13,7 @@ type (
 		errC
 		result chan<- map[string]node.Stats
 	}
-	opSetNodeStats struct {
-		errC
-		value node.Stats
-	}
 )
-
-// SetNodeStats sets Monitor.Node.<localhost>.Stats
-func (t T) SetNodeStats(value node.Stats) error {
-	err := make(chan error, 1)
-	op := opSetNodeStats{
-		errC:  err,
-		value: value,
-	}
-	t.cmdC <- op
-	return <-err
-}
 
 // GetNodeStatsMap returns a map of NodeStats indexed by nodename
 func (t T) GetNodeStatsMap() map[string]node.Stats {
@@ -55,20 +40,19 @@ func (o opGetNodeStatsMap) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-func (o opSetNodeStats) call(ctx context.Context, d *data) error {
+// onNodeStatsUpdated updates .cluster.node.<node>.stats
+func (d *data) onNodeStatsUpdated(m msgbus.NodeStatsUpdated) {
 	d.statCount[idSetNodeStats]++
 	v := d.pending.Cluster.Node[d.localNode]
-	if v.Stats == o.value {
-		return nil
+	if v.Stats == m.Value {
+		return
 	}
-	v.Stats = o.value
+	v.Stats = m.Value
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"stats"},
-		OpValue: jsondelta.NewOptValue(o.value),
+		OpValue: jsondelta.NewOptValue(m.Value),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatsUpdated{Node: d.localNode, Value: o.value}, d.labelLocalNode)
-	return nil
 }
