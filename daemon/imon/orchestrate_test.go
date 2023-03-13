@@ -20,7 +20,6 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonhelper"
 	"github.com/opensvc/om3/daemon/icfg"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -145,6 +144,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			var err error
 			maxRoutine := 10
 			maxWaitTime := 2 * 1000 * time.Millisecond
 			testCount.Add(1)
@@ -157,11 +157,11 @@ func Test_Orchestrate_HA(t *testing.T) {
 			c := c
 			p := path.T{Kind: kind.Svc, Name: c.name}
 
-			t.Logf("Set initial node monitor value")
-			databus := daemondata.FromContext(setup.Ctx)
+			t.Logf("publish initial node monitor value")
+			bus := pubsub.BusFromContext(setup.Ctx)
 			nodeMonitor := node.Monitor{State: node.MonitorStateIdle, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
-			err := databus.SetNodeMonitor(nodeMonitor)
-			require.Nil(t, err)
+			bus.Pub(msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
+				pubsub.Label{"node", hostname.Hostname()})
 
 			initialReadyDuration := defaultReadyDuration
 			defaultReadyDuration = 1 * time.Millisecond

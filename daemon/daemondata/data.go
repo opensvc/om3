@@ -385,6 +385,8 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(msgbus.NodeConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeFrozenFileRemoved{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeFrozenFileUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeMonitorUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
@@ -421,6 +423,10 @@ func (d *data) onSubEvent(i interface{}) {
 		d.onNodeFrozenFileRemoved(c)
 	case msgbus.NodeFrozenFileUpdated:
 		d.onNodeFrozenFileUpdated(c)
+	case msgbus.NodeMonitorDeleted:
+		d.onNodeMonitorDeleted(c)
+	case msgbus.NodeMonitorUpdated:
+		d.onNodeMonitorUpdated(c)
 	case msgbus.NodeOsPathsUpdated:
 		d.onNodeOsPathsUpdated(c)
 	case msgbus.NodeStatusLabelsUpdated:

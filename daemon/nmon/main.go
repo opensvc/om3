@@ -249,7 +249,7 @@ func (o *nmon) worker() {
 	o.updateStats()
 	o.refreshSanPaths()
 	o.updateIfChange()
-	defer o.delete()
+	defer o.bus.Pub(msgbus.NodeMonitorDeleted{Node: o.localhost}, pubsub.Label{"node", o.localhost})
 
 	if err := o.getAndUpdateStatusArbitrator(); err != nil {
 		o.log.Error().Err(err).Msg("arbitrator status failure (initial)")
@@ -344,17 +344,10 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 	o.rejoinTicker.Stop()
 }
 
-func (o *nmon) delete() {
-	if err := o.databus.DelNodeMonitor(); err != nil {
-		o.log.Error().Err(err).Msg("DelNodeMonitor")
-	}
-}
-
 func (o *nmon) update() {
 	newValue := o.state
-	if err := o.databus.SetNodeMonitor(newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetNodeMonitor")
-	}
+	o.bus.Pub(msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()},
+		pubsub.Label{"node", o.localhost})
 	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
 	o.nodeMonitor[o.localhost] = o.state
 }

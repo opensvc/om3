@@ -9,9 +9,6 @@ import (
 )
 
 type (
-	opDelNodeMonitor struct {
-		errC
-	}
 	opGetNodeMonitor struct {
 		errC
 		node  string
@@ -21,21 +18,7 @@ type (
 		errC
 		result chan<- map[string]node.Monitor
 	}
-	opSetNodeMonitor struct {
-		errC
-		value node.Monitor
-	}
 )
-
-// DelNodeMonitor deletes Monitor.Node.<localhost>.monitor
-func (t T) DelNodeMonitor() error {
-	err := make(chan error, 1)
-	op := opDelNodeMonitor{
-		errC: err,
-	}
-	t.cmdC <- op
-	return <-err
-}
 
 // GetNodeMonitor returns Monitor.Node.<node>.monitor
 func (t T) GetNodeMonitor(nodename string) node.Monitor {
@@ -65,18 +48,8 @@ func (t T) GetNodeMonitorMap() map[string]node.Monitor {
 	return <-result
 }
 
-// SetNodeMonitor sets Monitor.Node.<localhost>.monitor
-func (t T) SetNodeMonitor(v node.Monitor) error {
-	err := make(chan error, 1)
-	op := opSetNodeMonitor{
-		errC:  err,
-		value: v,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opDelNodeMonitor) call(ctx context.Context, d *data) error {
+// onNodeMonitorDeleted removes .cluster.node.<node>.monitor
+func (d *data) onNodeMonitorDeleted(m msgbus.NodeMonitorDeleted) {
 	d.statCount[idDelNodeMonitor]++
 	if _, ok := d.pending.Cluster.Node[d.localNode]; ok {
 		delete(d.pending.Cluster.Node, d.localNode)
@@ -86,9 +59,6 @@ func (o opDelNodeMonitor) call(ctx context.Context, d *data) error {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(msgbus.NodeMonitorDeleted{Node: d.localNode},
-		d.labelLocalNode)
-	return nil
 }
 
 func (o opGetNodeMonitor) call(ctx context.Context, d *data) error {
@@ -111,18 +81,16 @@ func (o opGetNodeMonitorMap) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-func (o opSetNodeMonitor) call(ctx context.Context, d *data) error {
+// onNodeMonitorUpdated updates .cluster.node.<node>.monitor
+func (d *data) onNodeMonitorUpdated(m msgbus.NodeMonitorUpdated) {
 	d.statCount[idSetNodeMonitor]++
 	newValue := d.pending.Cluster.Node[d.localNode]
-	newValue.Monitor = o.value
+	newValue.Monitor = m.Value
 	d.pending.Cluster.Node[d.localNode] = newValue
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"monitor"},
-		OpValue: jsondelta.NewOptValue(o.value),
+		OpValue: jsondelta.NewOptValue(m.Value),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeMonitorUpdated{Node: d.localNode, Value: o.value},
-		d.labelLocalNode)
-	return nil
 }
