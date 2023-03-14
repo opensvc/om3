@@ -78,10 +78,12 @@ func (d *data) onInstanceFrozenFileUpdated(c msgbus.InstanceFrozenFileUpdated) {
 	}
 	if inst.Status.Frozen.After(eventUpdated) {
 		// skip update, we already have a more recent value for frozen
+		d.log.Debug().Msgf("skip onInstanceFrozenFileUpdated frozen is after event (%s > %s)", inst.Status.Frozen, eventUpdated)
 		return
 	}
 	if inst.Status.Updated.After(eventUpdated) {
 		// skip update, we already have a more recent value of status
+		d.log.Debug().Msgf("skip onInstanceFrozenFileUpdated status is after event (%s > %s)", inst.Status.Updated, eventUpdated)
 		return
 	}
 	newStatus := inst.Status.DeepCopy()
@@ -106,10 +108,12 @@ func (d *data) onInstanceFrozenFileRemoved(c msgbus.InstanceFrozenFileRemoved) {
 	}
 	if inst.Status.Frozen.After(eventUpdated) {
 		// skip update, we already have a more recent value for frozen
+		d.log.Debug().Msgf("skip InstanceFrozenFileRemoved frozen is after event (%s > %s)", inst.Status.Frozen, eventUpdated)
 		return
 	}
 	if inst.Status.Updated.After(eventUpdated) {
 		// skip update, we already have a more recent value of status
+		d.log.Debug().Msgf("skip InstanceFrozenFileRemoved Updated is after event (%s > %s)", inst.Status.Frozen, eventUpdated)
 		return
 	}
 	newStatus := inst.Status.DeepCopy()
