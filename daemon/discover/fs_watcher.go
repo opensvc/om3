@@ -184,7 +184,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							time.Sleep(delayExistAfterRemove)
 							if !file.Exists(filename) {
 								log.Info().Msg("file removed")
-								return
+								continue
 							} else {
 								if err := watcher.Add(filename); err != nil {
 									log.Error().Err(err).Msgf("re-add file watch %s", filename)
@@ -221,7 +221,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							time.Sleep(delayExistAfterRemove)
 							if !file.Exists(filename) {
 								log.Info().Msg("file removed")
-								return
+								continue
 							} else {
 								if err := watcher.Add(filename); err != nil {
 									log.Error().Err(err).Msgf("re-add file watch %s", filename)
