@@ -199,7 +199,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			return
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("invalid set instance monitor global expect: %s", *c.Value.GlobalExpect)
+			o.log.Warn().Msgf("refuse to set global expect '%s': invalid value %s", *c.Value.GlobalExpect)
 			return
 		}
 		switch *c.Value.GlobalExpect {
@@ -212,7 +212,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 				// Select some nodes automatically.
 				dst := o.nextPlacedAtCandidate()
 				if dst == "" {
-					o.log.Info().Msg("no destination node could be selected from candidates")
+					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from candidates", *c.Value.GlobalExpect)
 					return
 				}
 				options.Destination = []string{dst}
@@ -221,7 +221,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 				want := options.Destination
 				can := o.nextPlacedAtCandidates(want)
 				if can == "" {
-					o.log.Info().Msgf("no destination node could be selected from %s", want)
+					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from %s", *c.Value.GlobalExpect, want)
 					return
 				} else if can != want[0] {
 					o.log.Info().Msgf("change destination nodes from %s to %s", want, can)
@@ -231,7 +231,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := o.isStartable(); !v {
-				o.log.Info().Msg(reason)
+				o.log.Info().Msgf("refuse to set global expect '%s': %s", *c.Value.GlobalExpect, reason)
 				return
 			}
 		}
