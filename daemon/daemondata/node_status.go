@@ -2,12 +2,9 @@ package daemondata
 
 import (
 	"context"
-	"time"
 
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/jsondelta"
 )
 
@@ -49,7 +46,7 @@ func (o opGetNodeStatus) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-// GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
+// GetNodeStatusMap returns daemondata deep copy of cluster.Node.<node>
 func (t T) GetNodeStatusMap() map[string]node.Status {
 	err := make(chan error, 1)
 	result := make(chan map[string]node.Status, 1)
@@ -90,34 +87,18 @@ func (d *data) onNodeStatusArbitratorsUpdated(m msgbus.NodeStatusArbitratorsUpda
 		d.labelLocalNode)
 }
 
-// onNodeFrozenFileRemoved delete .cluster.node.<node>.status.frozen
-func (d *data) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
+// onNodeFrozen updates .cluster.node.<node>.status.frozen
+func (d *data) onNodeFrozen(m msgbus.NodeFrozen) {
 	d.statCount[idSetNodeStatusFrozen]++
 	v := d.pending.Cluster.Node[d.localNode]
+	v.Status.Frozen = m.FrozenAt
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"status", "frozen"},
-		OpValue: jsondelta.NewOptValue(time.Time{}),
+		OpValue: jsondelta.NewOptValue(m.FrozenAt),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.Frozen{Node: hostname.Hostname(), Path: path.T{}, Value: time.Time{}},
-		d.labelLocalNode)
-}
-
-// onNodeFrozenFileUpdated update .cluster.node.<node>.status.frozen
-func (d *data) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
-	d.statCount[idSetNodeStatusFrozen]++
-	v := d.pending.Cluster.Node[d.localNode]
-	d.pending.Cluster.Node[d.localNode] = v
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "frozen"},
-		OpValue: jsondelta.NewOptValue(m.Updated),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.Frozen{Node: hostname.Hostname(), Path: path.T{}, Value: time.Time{}},
-		d.labelLocalNode)
 }
 
 // onNodeStatusLabelsUpdated updates cluster.node.<node>.status.labels

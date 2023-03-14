@@ -233,10 +233,16 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 
 func (o *nmon) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
 	o.frozen = false
+	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: time.Time{}},
+		pubsub.Label{"node", o.localhost},
+	)
 }
 
-func (o *nmon) onNodeFrozenFileUpdated(_ msgbus.NodeFrozenFileUpdated) {
+func (o *nmon) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
 	o.frozen = true
+	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.Updated},
+		pubsub.Label{"node", o.localhost},
+	)
 }
 
 func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {

@@ -43,8 +43,6 @@ var (
 
 		"ForgetPeer": ForgetPeer{},
 
-		"Frozen": Frozen{},
-
 		"HbMessageTypeUpdated": HbMessageTypeUpdated{},
 
 		"HbNodePing": HbNodePing{},
@@ -92,6 +90,8 @@ var (
 		"LeaveSuccess": LeaveSuccess{},
 
 		"NodeConfigUpdated": NodeConfigUpdated{},
+
+		"NodeFrozen": NodeFrozen{},
 
 		"NodeFrozenFileRemoved": NodeFrozenFileRemoved{},
 
@@ -210,12 +210,6 @@ type (
 
 	ForgetPeer struct {
 		Node string
-	}
-
-	Frozen struct {
-		Path  path.T
-		Node  string
-		Value time.Time
 	}
 
 	HbNodePing struct {
@@ -355,15 +349,24 @@ type (
 		Value node.Config
 	}
 
+	// NodeFrozen message describe a node frozen state update
+	NodeFrozen struct {
+		Node string
+		// Status is true when frozen, else false
+		Status bool
+		// FrozenAt is the time when node has been frozen or zero when not frozen
+		FrozenAt time.Time
+	}
+
 	// NodeFrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
 	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileUpdated struct {
 		Path     path.T
 		Filename string
@@ -554,10 +557,6 @@ func (e ForgetPeer) Kind() string {
 	return "forget_peer"
 }
 
-func (e Frozen) Kind() string {
-	return "Frozen"
-}
-
 func (e HbMessageTypeUpdated) Kind() string {
 	return "HbMessageTypeUpdated"
 }
@@ -670,6 +669,10 @@ func (e LeaveSuccess) Kind() string {
 
 func (e NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
+}
+
+func (e NodeFrozen) Kind() string {
+	return "NodeFrozen"
 }
 
 func (e NodeFrozenFileRemoved) Kind() string {
