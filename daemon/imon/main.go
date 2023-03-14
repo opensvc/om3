@@ -269,10 +269,12 @@ func (o *imon) update() {
 		return
 	default:
 	}
-	newValue := o.state
 	if err := o.updateLimiter.Wait(o.ctx); err != nil {
 		return
 	}
+
+	o.state.UpdatedAt = time.Now()
+	newValue := o.state
 
 	o.pubsubBus.Pub(msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
 		pubsub.Label{"path", o.id},
