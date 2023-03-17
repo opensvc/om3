@@ -175,9 +175,6 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
 							bus.Pub(msgbus.NodeFrozenFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
-						} else {
-							// TODO enable watch on instance frozen files
-							bus.Pub(msgbus.InstanceFrozenFileRemoved{Path: p, Filename: filename, Updated: time.Now()}, pubsub.Label{"path", p.String()})
 						}
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
@@ -196,9 +193,6 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
 							bus.Pub(msgbus.NodeFrozenFileUpdated{Path: p, Filename: filename, Updated: file.ModTime(filename)}, pubsub.Label{"path", "node"})
-						} else {
-							// TODO enable watch on instance frozen files
-							bus.Pub(msgbus.InstanceFrozenFileUpdated{Path: p, Filename: filename, Updated: time.Now()}, pubsub.Label{"path", p.String()})
 						}
 					}
 				case strings.HasSuffix(filename, ".conf"):
