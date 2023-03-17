@@ -162,7 +162,7 @@ func (o *T) onInstanceFrozenFileUpdated(frozen msgbus.InstanceFrozenFileUpdated)
 
 func (o *T) onInstanceStatusPost(post msgbus.InstanceStatusPost) {
 	s := post.Path.String()
-	o.iStatusM[post.Node] = *post.Value.DeepCopy()
+	o.iStatusM[s] = *post.Value.DeepCopy()
 	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
 		o.labelLocalhost,
 		pubsub.Label{"path", s})
