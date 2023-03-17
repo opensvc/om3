@@ -1,0 +1,3 @@
+The ip address network, in dotted notation.
+
+Used to set the network route if `del_net_route=true`.

@@ -1,0 +1,5 @@
+By default, on `provision` the driver allocates a new random passphrase (256
+printable chars), and forgets it on `unprovision`.
+
+If set to `false`, require a passphrase to be already present in the `sec`
+object to `provision`, and don't remove it on `unprovision`.

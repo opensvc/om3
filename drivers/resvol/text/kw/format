@@ -1,0 +1,2 @@
+If `true`, the pool's `vol` configuration producer will include a `fs`
+resource layered over the `disk` resource.

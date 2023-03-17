@@ -1,0 +1,5 @@
+Force use of a symcli programs installation, pointing the path of its head
+directory.
+
+For the case multiple symcli versions are installed and the default selector
+does not select the version preferred for the array.

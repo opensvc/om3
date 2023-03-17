@@ -1,6 +1,8 @@
 package resdiskloop
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupDisk, "loop")
 )
 
@@ -25,7 +30,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "File",
 			Required: true,
 			Scopable: true,
-			Text:     "The loopback device backing file full path.",
+			Text:     keywords.NewText(fs, "text/kw/file"),
 			Example:  "/srv/{fqdn}-loop-{rindex}",
 		},
 		keywords.Keyword{
@@ -33,8 +38,8 @@ func (t T) Manifest() *manifest.T {
 			Attr:         "Size",
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "The size of the loop file to provision.",
 			Example:      "100m",
+			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
 	)
 	return m

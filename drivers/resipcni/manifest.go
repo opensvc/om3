@@ -3,12 +3,17 @@
 package resipcni
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupIP, "cni")
 )
 
@@ -29,7 +34,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable: true,
 			Default:  "default",
 			Example:  "my-weave-net",
-			Text:     "The name of the CNI network to plug into. The default network is created using the host-local bridge plugin if no existing configuration already exists.",
+			Text:     keywords.NewText(fs, "text/kw/network"),
 		},
 		keywords.Keyword{
 			Option:   "nsdev",
@@ -38,7 +43,7 @@ func (t T) Manifest() *manifest.T {
 			Default:  "eth12",
 			Aliases:  []string{"ipdev"},
 			Example:  "front",
-			Text:     "The interface name in the container namespace.",
+			Text:     keywords.NewText(fs, "text/kw/nsdev"),
 		},
 		keywords.Keyword{
 			Option:   "netns",
@@ -46,7 +51,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable: true,
 			Aliases:  []string{"container_rid"},
 			Example:  "container#0",
-			Text:     "The resource id of the container to plumb the ip into.",
+			Text:     keywords.NewText(fs, "text/kw/netns"),
 		},
 	)
 	return m

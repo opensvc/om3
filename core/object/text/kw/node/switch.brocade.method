@@ -1,0 +1,7 @@
+The method to use to connect to the switch. 
+
+* `ssh`
+  Use `key` to provide a ssh key, or use the `sshpass` program.
+
+* `telnet`
+  Set `username` and `password` with this method.

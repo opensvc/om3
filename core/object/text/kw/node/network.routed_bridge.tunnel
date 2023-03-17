@@ -1,0 +1,11 @@
+Create and route trafic through tunnels to peer nodes policy.
+
+* `auto`
+
+  Tunnel if the peer is not in the same subnet
+
+* `always`
+
+  Tunnel even if the peer seems to be in the same subnet.
+  Some hosting providers require this as traffic goes through routers even
+  between adjacent nodes.

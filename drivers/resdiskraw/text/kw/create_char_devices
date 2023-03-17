@@ -1,0 +1,5 @@
+On Linux, char devices are not automatically created when devices are
+discovered.
+
+If set to `true` (the default), the `raw` resource driver will create and
+delete them using the `raw` kernel driver.

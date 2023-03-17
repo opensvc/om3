@@ -1,0 +1,3 @@
+Allow service process to bind only the specified cpus.
+
+Cpus are specified as list or range : `0,1,2` or `0-2`.

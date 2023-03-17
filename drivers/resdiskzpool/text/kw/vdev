@@ -1,0 +1,2 @@
+The vdev list, including optional parity keywords, as would be passed to zpool
+create.

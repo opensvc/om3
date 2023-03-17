@@ -1,0 +1,3 @@
+Wait for `<duration>` before declaring the task `run` action a failure.
+
+If no timeout is set, the agent waits indefinitely for the task command to exit.

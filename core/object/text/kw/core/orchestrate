@@ -1,0 +1,24 @@
+Orchestrate defines how the daemon will manage the service.
+
+* `no`
+  The daemon does not try to keep the service `up`.
+  On boot, the service won't be started.
+
+  The daemon does not try to reach the `flex_target` number of `up` instances
+  for flex services.
+
+* `start`
+  Services with `topology=failover` won't failover automatically only if the
+  target instance is the natural placement leader. Which means the service is
+  started when its primary node reboots, if it does not run elsewhere already.
+
+  The daemon does not try to reach the `flex_target` number of `up` instances
+  for flex services.
+
+* `ha`
+  Services with `topology=failover` failover automatically.
+
+  The daemon tries to reach the `flex_target` number of `up` instances for
+  flex services.
+
+The resource restart policy is not affected by the `orchestrate` value.

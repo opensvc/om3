@@ -56,17 +56,13 @@ func (t *Node) newScheduleEntry(action, keyStr, rid, base string) schedule.Entry
 func (t *Node) Schedules() schedule.Table {
 	table := schedule.NewTable(
 		t.newScheduleEntry("pushasset", "asset.schedule", "", "asset_push"),
-		t.newScheduleEntry("reboot", "reboot.schedule", "", "auto_reboot"),
 		t.newScheduleEntry("checks", "checks.schedule", "", "checks_push"),
 		t.newScheduleEntry("compliance_auto", "compliance.schedule", "", "comp_check"),
 		t.newScheduleEntry("pushdisks", "disks.schedule", "", "disks_push"),
 		t.newScheduleEntry("pushpkg", "packages.schedule", "", "packages_push"),
 		t.newScheduleEntry("pushpatch", "patches.schedule", "", "patches_push"),
-		t.newScheduleEntry("pushstats", "stats.schedule", "", "stats_push"),
 		t.newScheduleEntry("sysreport", "sysreport.schedule", "", "sysreport_push"),
-		//		t.newScheduleEntry("collect_stats", "stats_collection.schedule", "stats_collection_push"),
-		//		t.newScheduleEntry("dequeue_actions", "dequeue_actions.schedule", "dequeue_actions_push"),
-		//		t.newScheduleEntry("rotate_root_pw", "rotate_root_pw.schedule", "rotate_root_pw"),
+		t.newScheduleEntry("dequeue_actions", "dequeue_actions.schedule", "", "dequeue_actions_push"),
 	)
 	type scheduleOptioner interface {
 		ScheduleOptions() resource.ScheduleOptions

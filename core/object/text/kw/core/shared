@@ -1,0 +1,24 @@
+If `true`, the resource will be considered shared during provision and
+unprovision actions.
+
+A shared resource driver can implement a different behaviour depending
+on weither it is run from the leader instance, or not:
+
+* When `--leader` is set, the driver creates and configures the system
+  objects. For example the disk.disk driver allocates a SAN disk and
+  discover its block devices.
+
+* When `--leader` is not set, the driver does not redo the actions
+  already done by the leader, but may do some. For example, the
+  disk.disk driver skips the SAN disk allocation, but discovers the
+  block devices.
+
+The daemon takes care of setting the `--leader` flags on the commands
+it submits during deploy, purge, provision and unprovision
+orchestrations.
+
+> *Warning*: If admins want to submit `--local` provision or unprovision
+  commands themselves, they have to set the `--leader` flag correctly.
+
+Flex objects usually don't use shared resources. But if they do, only
+the flex primary gets `--leader` commands.

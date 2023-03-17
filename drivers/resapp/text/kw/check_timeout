@@ -1,0 +1,10 @@
+Wait for `<duration>` before declaring the app launcher `status` action a
+failure.
+
+Takes precedence over `timeout`.
+
+If neither `timeout` nor `check_timeout` is set, the agent waits indefinitely
+for the app launcher to return.
+
+A timeout can be coupled with `optional=true` to not abort a service instance
+status when an app launcher did not return.

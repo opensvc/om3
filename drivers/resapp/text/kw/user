@@ -1,0 +1,2 @@
+If the binary is owned by the `root` user, run it as the specified user
+instead of `root`.

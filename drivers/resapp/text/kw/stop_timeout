@@ -1,0 +1,10 @@
+Wait for `<duration>` before declaring the app launcher `stop` action a
+failure.
+
+Takes precedence over `timeout`.
+
+If neither `timeout` nor `stop_timeout` is set, the agent waits indefinitely
+for the app launcher to return.
+
+A timeout can be coupled with `optional=true` to not abort a service instance
+stop when an app launcher did not return.

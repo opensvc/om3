@@ -1,6 +1,8 @@
 package ressharenfs
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupShare, "nfs")
 )
 
@@ -25,16 +30,16 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "SharePath",
 			Required: true,
 			Scopable: true,
-			Text:     "The fullpath of the directory to share.",
 			Example:  "/srv/{fqdn}/share",
+			Text:     keywords.NewText(fs, "text/kw/path"),
 		},
 		keywords.Keyword{
 			Option:   "opts",
 			Attr:     "ShareOpts",
 			Required: true,
 			Scopable: true,
-			Text:     "The NFS share export options, as they woud be set in /etc/exports or passed to Solaris share command.",
 			Example:  "*(ro)",
+			Text:     keywords.NewText(fs, "text/kw/opts"),
 		},
 	)
 	return m

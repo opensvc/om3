@@ -1,0 +1,4 @@
+A whitespace separated list of object paths.
+
+These object must not be started on the local node to allow the local monitor
+to start an instance of the object.

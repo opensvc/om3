@@ -1,0 +1,4 @@
+Set to `true` to disable the arbitrator SSL certificate verification on the
+https uri.
+
+This should only be enabled for testing.

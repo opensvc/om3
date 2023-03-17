@@ -1,0 +1,6 @@
+The device to write the hearbeats to and read from.
+
+It must be,
+
+* Dedicated to the daemon use.
+* Sized 1MB for metadata + 1MB/node.

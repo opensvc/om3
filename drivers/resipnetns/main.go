@@ -38,25 +38,22 @@ type (
 		resource.T
 
 		// config
-		NetNS         string   `json:"netns"`
-		VLANTag       string   `json:"vlan_tag"`
-		VLANMode      string   `json:"vlan_mode"`
-		Mode          string   `json:"mode"`
-		NSDev         string   `json:"nsdev"`
-		MacAddr       string   `json:"mac_addr"`
-		DelNetRoute   bool     `json:"del_net_route"`
-		IpName        string   `json:"ipname"`
-		IpDev         string   `json:"ipdev"`
-		Netmask       string   `json:"netmask"`
-		Gateway       string   `json:"gateway"`
-		Network       string   `json:"network"`
-		WaitDNS       bool     `json:"wait_dns"`
-		DNSUpdate     bool     `json:"dns_update"`
-		DNSNameSuffix string   `json:"dns_name_suffix"`
-		Provisioner   string   `json:"provisioner"`
-		CheckCarrier  bool     `json:"check_carrier"`
-		Alias         bool     `json:"alias"`
-		Expose        []string `json:"expose"`
+		NetNS        string   `json:"netns"`
+		VLANTag      string   `json:"vlan_tag"`
+		VLANMode     string   `json:"vlan_mode"`
+		Mode         string   `json:"mode"`
+		NSDev        string   `json:"nsdev"`
+		MacAddr      string   `json:"mac_addr"`
+		DelNetRoute  bool     `json:"del_net_route"`
+		IpName       string   `json:"ipname"`
+		IpDev        string   `json:"ipdev"`
+		Netmask      string   `json:"netmask"`
+		Gateway      string   `json:"gateway"`
+		Network      string   `json:"network"`
+		WaitDNS      bool     `json:"wait_dns"`
+		CheckCarrier bool     `json:"check_carrier"`
+		Alias        bool     `json:"alias"`
+		Expose       []string `json:"expose"`
 
 		// cache
 		_ipaddr net.IP

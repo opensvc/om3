@@ -1,6 +1,8 @@
 package rescontainerlxc
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -9,6 +11,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupContainer, "lxc")
 )
 
@@ -19,6 +24,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
 		manifest.ContextPath,
 		manifest.ContextObjectID,
@@ -29,28 +35,28 @@ func (t T) Manifest() *manifest.T {
 			Aliases:  []string{"container_data_dir"},
 			Attr:     "DataDir",
 			Scopable: true,
-			Text:     "If this keyword is set, the service configures a resource-private container data store. This setup is allows stateful service relocalization.",
+			Text:     keywords.NewText(fs, "text/kw/data_dir"),
 			Example:  "/srv/svc1/data/containers",
 		},
 		keywords.Keyword{
 			Option:       "rootfs",
 			Attr:         "RootDir",
 			Provisioning: true,
-			Text:         "Sets the root fs directory of the container",
+			Text:         keywords.NewText(fs, "text/kw/rootfs"),
 			Example:      "/srv/svc1/data/containers",
 		},
 		keywords.Keyword{
 			Option:       "cf",
 			Attr:         "ConfigFile",
 			Provisioning: true,
-			Text:         "Defines a lxc configuration file in a non-standard location.",
+			Text:         keywords.NewText(fs, "text/kw/cf"),
 			Example:      "/srv/svc1/config",
 		},
 		keywords.Keyword{
 			Option:       "template",
 			Attr:         "Template",
 			Provisioning: true,
-			Text:         "Sets the url of the template unpacked into the container root fs or the name of the template passed to :cmd:`lxc-create`.",
+			Text:         keywords.NewText(fs, "text/kw/template"),
 			Example:      "ubuntu",
 		},
 		keywords.Keyword{
@@ -58,7 +64,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:         "TemplateOptions",
 			Provisioning: true,
 			Converter:    converters.Shlex,
-			Text:         "The arguments to pass through :cmd:`lxc-create` to the per-template script.",
+			Text:         keywords.NewText(fs, "text/kw/template_options"),
 			Example:      "--release focal",
 		},
 		keywords.Keyword{
@@ -67,7 +73,7 @@ func (t T) Manifest() *manifest.T {
 			Provisioning: true,
 			Scopable:     true,
 			Converter:    converters.Shlex,
-			Text:         "Set variables in the :cmd:`lxc-create` execution environment. A whitespace separated list of ``<var>=<secret name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<secret name>/<key path>`` only or whole ``<var>=<secret name>/<key path>``. Variables are uppercased.",
+			Text:         keywords.NewText(fs, "text/kw/create_secrets_environment"),
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 		},
 		keywords.Keyword{
@@ -76,7 +82,7 @@ func (t T) Manifest() *manifest.T {
 			Provisioning: true,
 			Scopable:     true,
 			Converter:    converters.Shlex,
-			Text:         "Set variables in the :cmd:`lxc-create` execution environment. The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
+			Text:         keywords.NewText(fs, "text/kw/create_configs_environment"),
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 		},
 		keywords.Keyword{
@@ -85,7 +91,7 @@ func (t T) Manifest() *manifest.T {
 			Provisioning: true,
 			Scopable:     true,
 			Converter:    converters.Shlex,
-			Text:         "Set variables in the :cmd:`lxc-create` execution environment. The whitespace separated list of ``<var>=<config name>/<key path>``. A shell expression spliter is applied, so double quotes can be around ``<config name>/<key path>`` only or whole ``<var>=<config name>/<key path>``. Variables are uppercased.",
+			Text:         keywords.NewText(fs, "text/kw/create_environment"),
 			Example:      "FOO=bar BAR=baz",
 		},
 		rescontainer.KWRCmd,
@@ -93,9 +99,7 @@ func (t T) Manifest() *manifest.T {
 		rescontainer.KWHostname,
 		rescontainer.KWStartTimeout,
 		rescontainer.KWStopTimeout,
-		rescontainer.KWSCSIReserv,
 		rescontainer.KWPromoteRW,
-		rescontainer.KWNoPreemptAbort,
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
 	)

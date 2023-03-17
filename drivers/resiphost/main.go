@@ -30,18 +30,15 @@ type (
 		resource.T
 
 		// config
-		IpName        string   `json:"ipname"`
-		IpDev         string   `json:"ipdev"`
-		Netmask       string   `json:"netmask"`
-		Network       string   `json:"network"`
-		Gateway       string   `json:"gateway"`
-		WaitDNS       bool     `json:"wait_dns"`
-		DNSUpdate     bool     `json:"dns_update"`
-		DNSNameSuffix string   `json:"dns_name_suffix"`
-		Provisioner   string   `json:"provisioner"`
-		CheckCarrier  bool     `json:"check_carrier"`
-		Alias         bool     `json:"alias"`
-		Expose        []string `json:"expose"`
+		IpName       string   `json:"ipname"`
+		IpDev        string   `json:"ipdev"`
+		Netmask      string   `json:"netmask"`
+		Network      string   `json:"network"`
+		Gateway      string   `json:"gateway"`
+		Provisioner  string   `json:"provisioner"`
+		CheckCarrier bool     `json:"check_carrier"`
+		Alias        bool     `json:"alias"`
+		Expose       []string `json:"expose"`
 
 		// cache
 		_ipaddr net.IP

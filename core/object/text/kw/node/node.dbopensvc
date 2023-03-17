@@ -1,0 +1,6 @@
+Set the uri of the collector's feed rpc server.
+
+The path part of the uri can be left unspecified.
+
+If `dbopensvc` is not set, the agent does not try to communicate with a
+collector.

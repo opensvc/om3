@@ -1,0 +1,5 @@
+If the OpenSVC agent is installed via package in the container, this keyword
+must not be set.
+
+Else the value can be set to the fullpath hosting the agent installed from
+sources.

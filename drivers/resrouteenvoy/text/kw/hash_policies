@@ -1,0 +1,3 @@
+The list of hash policy resource ids for the route.
+
+Honored if `lb_policy` is set to `ring_hash` or `maglev`.

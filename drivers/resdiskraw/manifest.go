@@ -1,6 +1,8 @@
 package resdiskraw
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -9,6 +11,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupDisk, "raw")
 )
 
@@ -27,7 +32,7 @@ func (t T) Manifest() *manifest.T {
 			Required:  true,
 			Scopable:  true,
 			Converter: converters.List,
-			Text:      "A list of device paths or <src>[:<dst>] device paths mappings, whitespace separated. The scsi reservation policy is applied to the src devices.",
+			Text:      keywords.NewText(fs, "text/kw/devs"),
 			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
 		},
 		keywords.Keyword{
@@ -36,7 +41,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.Bool,
 			Default:   "true",
-			Text:      "On Linux, char devices are not automatically created when devices are discovered. If set to true (the default), the raw resource driver will create and delete them using the raw kernel driver.",
+			Text:      keywords.NewText(fs, "text/kw/create_char_devices"),
 			Example:   "false",
 		},
 		keywords.Keyword{
@@ -44,7 +49,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "User",
 			Scopable:  true,
 			Converter: converters.User,
-			Text:      "The user that should own the device. Either in numeric or symbolic form.",
+			Text:      keywords.NewText(fs, "text/kw/user"),
 			Example:   "root",
 		},
 		keywords.Keyword{
@@ -52,7 +57,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "Group",
 			Scopable:  true,
 			Converter: converters.Group,
-			Text:      "The group that should own the device. Either in numeric or symbolic form.",
+			Text:      keywords.NewText(fs, "text/kw/group"),
 			Example:   "sys",
 		},
 		keywords.Keyword{
@@ -60,14 +65,14 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "Perm",
 			Scopable:  true,
 			Converter: converters.FileMode,
-			Text:      "The permissions the device should have. A string representing the octal permissions.",
+			Text:      keywords.NewText(fs, "text/kw/perm"),
 			Example:   "600",
 		},
 		keywords.Keyword{
 			Option:   "zone",
 			Attr:     "Zone",
 			Scopable: true,
-			Text:     "The zone name the raw resource is linked to. If set, the raw files are configured from the global reparented to the zonepath.",
+			Text:     keywords.NewText(fs, "text/kw/zone"),
 			Example:  "zone1",
 		},
 	)

@@ -1,0 +1,11 @@
+Use process grouping when possible.
+
+If turned on, the agent will create a container group for:
+
+* the object
+* each resource group (ie, the subset:drivergroup tuple)
+* each resource
+
+A container group allows capping the memory, swap and cpu usage.
+These cappings can be defined using the `pg_*` keywords in the
+DEFAULT, the subset or the resource section.

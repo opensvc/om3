@@ -1,0 +1,3 @@
+A command or script to execute before the resource `provision` action.
+
+Errors interrupt the action.

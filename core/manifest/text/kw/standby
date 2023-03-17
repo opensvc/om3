@@ -1,0 +1,11 @@
+If `true`, always start the resource, even on non-started instances.
+
+The daemon is responsible for starting standby resources.
+
+A resource can be set standby on a subset of nodes using keyword scoping.
+
+A typical use-case is a synchronized filesystem on non-shared disks. The
+remote filesystem must be mounted to not overflow the underlying filesystem.
+
+> **Warning**: In most situation, don't set shared resources standby, a
+  non-clustered fs on shared disks for example.

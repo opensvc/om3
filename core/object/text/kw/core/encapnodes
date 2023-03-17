@@ -1,0 +1,12 @@
+A node selector expression specifying the list of cluster nodes hosting
+object encapsulated instances.
+
+An object with container resources can have resources managed by OpensSVC
+agents deployed in these containers.
+These encapsulated agents form an encapsulated cluster, usually a single
+node cluster for a failover service.
+
+For example a `test/svc/s1` failover service, with a `container#0` resource
+managing a `e1` lxc host, can define `encapnodes = e1`.
+A `app#1` resource with `encap = true` is then managed by the OpenSVC
+agent in `e1`.

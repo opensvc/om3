@@ -1,0 +1,8 @@
+This list of node names contains only the local node name on install.
+
+When the node joins a cluster, the joined node provides the new list,
+with the new node added. The joiner then replace its nodes list with
+the one received.
+
+When a node receives a join request, it adds the new node to its
+cluster nodes list, then provide the new list to the joiner.

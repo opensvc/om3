@@ -1,6 +1,8 @@
 package rescontainerkvm
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -9,6 +11,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupContainer, "kvm")
 )
 
@@ -19,6 +24,7 @@ func init() {
 // Manifest exposes to the core the input expected by the driver.
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
+	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
 		manifest.ContextPath,
 		manifest.ContextObjectID,
@@ -32,6 +38,7 @@ func (t T) Manifest() *manifest.T {
 				Scopable:     true,
 				Provisioning: true,
 				Text:         "If this keyword is set, the service configures a resource-private container data store. This setup is allows stateful service relocalization.",
+				Text: keywords.NewText(fs, "text/kw/snap"),
 				Example:      "/srv/svc1/data/containers",
 			},
 			keywords.Keyword{
@@ -40,6 +47,7 @@ func (t T) Manifest() *manifest.T {
 				Scopable:     true,
 				Provisioning: true,
 				Text:         "Sets the root fs directory of the container",
+				Text: keywords.NewText(fs, "text/kw/snapof"),
 				Example:      "/srv/svc1/data/containers",
 			},
 		*/
@@ -48,7 +56,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:         "VirtInst",
 			Provisioning: true,
 			Converter:    converters.Shlex,
-			Text:         "The arguments to pass through :cmd:`lxc-create` to the per-template script.",
+			Text:         keywords.NewText(fs, "text/kw/virtinst"),
 			Example:      "--release focal",
 		},
 		rescontainer.KWRCmd,
@@ -56,9 +64,7 @@ func (t T) Manifest() *manifest.T {
 		rescontainer.KWHostname,
 		rescontainer.KWStartTimeout,
 		rescontainer.KWStopTimeout,
-		rescontainer.KWSCSIReserv,
 		rescontainer.KWPromoteRW,
-		rescontainer.KWNoPreemptAbort,
 		rescontainer.KWOsvcRootPath,
 		rescontainer.KWGuestOS,
 	)

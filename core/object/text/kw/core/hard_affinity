@@ -1,0 +1,4 @@
+A whitespace separated list of object paths.
+
+These objects must be started on the local node to allow the local monitor
+to start an instance of the service.

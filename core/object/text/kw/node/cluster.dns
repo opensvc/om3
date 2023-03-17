@@ -1,0 +1,8 @@
+The list of nodes to set as nameserver in the resolv.conf of the containers
+the CRM starts.
+
+If set, the search will also be set to:
+
+1/ `<name>.<namespace>.svc.<clustername>`
+2/ `<namespace>.svc.<clustername>`
+3/ `<clustername>`.

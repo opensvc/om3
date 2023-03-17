@@ -1,0 +1,3 @@
+The name of the CNI network to plug into.
+
+The `default` network is created using the `host-local` bridge plugin.

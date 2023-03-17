@@ -1,0 +1,1 @@
+If set to false, disable ssl authentication checks on all uri fetches.

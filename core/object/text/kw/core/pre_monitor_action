@@ -1,0 +1,6 @@
+A callout to execute before the `monitor_action`.
+
+For example, if `monitor_action = freezestop`, a `pre_monitor_action` script
+may decide to crash the server if it detects a situation were `freezestop` can
+not succeed (for example, a fs can not be umounted due to an unresponsive
+storage array).

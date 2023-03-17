@@ -1,0 +1,3 @@
+The name connect to the switch (dns name or ip address).
+
+If not set, fallback to the section name suffix.

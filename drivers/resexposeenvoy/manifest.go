@@ -1,6 +1,8 @@
 package resexposeenvoy
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupExpose, "envoy")
 )
 
@@ -23,13 +28,13 @@ func (t T) Manifest() *manifest.T {
 			Option:   "cluster_data",
 			Attr:     "ClusterData",
 			Scopable: true,
-			Text:     "The envoy protocol compliant data in json format used to bootstrap the Cluster config messages. Parts of this structure, like endpoints, are amended to reflect the actual cluster state.",
+			Text:     keywords.NewText(fs, "text/kw/cluster_data"),
 		},
 		keywords.Keyword{
 			Option:   "filter_config_data",
 			Attr:     "FilterConfigData",
 			Scopable: true,
-			Text:     "The envoy protocol compliant data in json format used to bootstrap the Listener filter config messages. Parts of this structure, like routes, are amended by more specific keywords.",
+			Text:     keywords.NewText(fs, "text/kw/filter_config_data"),
 		},
 		keywords.Keyword{
 			Option:    "port",
@@ -37,7 +42,7 @@ func (t T) Manifest() *manifest.T {
 			Converter: converters.Int,
 			Scopable:  true,
 			Required:  true,
-			Text:      "The port number of the endpoint.",
+			Text:      keywords.NewText(fs, "text/kw/port"),
 		},
 		keywords.Keyword{
 			Option:     "protocol",
@@ -45,14 +50,14 @@ func (t T) Manifest() *manifest.T {
 			Candidates: []string{"tcp", "udp"},
 			Default:    "tcp",
 			Scopable:   true,
-			Text:       "The envoy protocol compliant data in json format used to bootstrap the Listener filter config messages. Parts of this structure, like routes, are amended by more specific keywords.",
+			Text:       keywords.NewText(fs, "text/kw/protocol"),
 		},
 		keywords.Keyword{
 			Option:      "listener_addr",
 			Attr:        "ListenerAddr",
 			Scopable:    true,
 			DefaultText: "The main proxy ip address.",
-			Text:        "The public ip address to expose from.",
+			Text:        keywords.NewText(fs, "text/kw/listener_addr"),
 		},
 		keywords.Keyword{
 			Option:      "listener_port",
@@ -60,14 +65,14 @@ func (t T) Manifest() *manifest.T {
 			Converter:   converters.Int,
 			Scopable:    true,
 			DefaultText: "The expose <port>.",
-			Text:        "The public port number to expose from. The special value 0 is interpreted as a request for auto-allocation.",
+			Text:        keywords.NewText(fs, "text/kw/listener_port"),
 		},
 		keywords.Keyword{
 			Option:    "sni",
 			Attr:      "SNI",
 			Converter: converters.List,
 			Scopable:  true,
-			Text:      "The SNI server names to match on the proxy to select this service endpoints. The socket server must support TLS.",
+			Text:      keywords.NewText(fs, "text/kw/sni"),
 		},
 		keywords.Keyword{
 			Option:     "lb_policy",
@@ -75,40 +80,40 @@ func (t T) Manifest() *manifest.T {
 			Default:    "round robin",
 			Scopable:   true,
 			Candidates: []string{"round robin", "least_request", "ring_hash", "random", "original_dst_lb", "maglev"},
-			Text:       "The name of the envoy cluster load balancing policy.",
+			Text:       keywords.NewText(fs, "text/kw/lb_policy"),
 		},
 		keywords.Keyword{
 			Option:   "gateway",
 			Attr:     "Gateway",
 			Scopable: true,
-			Text:     "The name of the ingress gateway that should handle this expose.",
+			Text:     keywords.NewText(fs, "text/kw/gateway"),
 		},
 		keywords.Keyword{
 			Option:    "vhosts",
 			Attr:      "Vhosts",
 			Converter: converters.List,
 			Scopable:  true,
-			Text:      "The list of vhost resource identifiers for this expose.",
+			Text:      keywords.NewText(fs, "text/kw/vhosts"),
 		},
 		keywords.Keyword{
 			Option:    "listener_certificates",
 			Attr:      "ListenerCertificates",
 			Converter: converters.List,
 			Scopable:  true,
-			Text:      "The TLS certificates used by the listener.",
+			Text:      keywords.NewText(fs, "text/kw/listener_certificates"),
 		},
 		keywords.Keyword{
 			Option:    "cluster_certificates",
 			Attr:      "ClusterCertificates",
 			Converter: converters.List,
 			Scopable:  true,
-			Text:      "The TLS certificates used to communicate with cluster endpoints.",
+			Text:      keywords.NewText(fs, "text/kw/cluster_certificates"),
 		},
 		keywords.Keyword{
 			Option:   "cluster_private_key_filename",
 			Attr:     "ClusterPrivateKeyFilename",
 			Scopable: true,
-			Text:     "Local filesystem data source of the TLS private key used to communicate with cluster endpoints.",
+			Text:     keywords.NewText(fs, "text/kw/cluster_private_key_filename"),
 		},
 	)
 	return m

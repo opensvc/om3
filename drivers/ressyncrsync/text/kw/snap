@@ -1,0 +1,2 @@
+If `true`, OpenSVC will try to snapshot the first snapshottable parent of the
+`src` and replicate from the snap instead of the `src`.

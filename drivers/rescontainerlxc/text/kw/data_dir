@@ -1,0 +1,4 @@
+If this keyword is set, the service configures a resource-private container
+data store.
+
+This setup is required for stateful service relocalization.

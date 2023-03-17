@@ -1,0 +1,3 @@
+The ip address used as local endpoint for the ipip tunnel configured by the
+`network setup` command to access the backend subnet of peer nodes not
+reachable on the same subnet.

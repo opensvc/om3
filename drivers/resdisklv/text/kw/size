@@ -1,0 +1,2 @@
+The size of the logical volume to provision. A size expression or
+`<n>%{FREE|PVS|VG}`.

@@ -1,0 +1,4 @@
+Additional options to pass to the logical volume create command (`lvcreate` or
+`vxassist`, depending on the driver).
+
+The `size` and `name` are managed natively.

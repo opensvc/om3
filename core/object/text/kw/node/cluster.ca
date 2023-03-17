@@ -1,0 +1,4 @@
+A whitespace-separated list of `sec` paths.
+
+The listener accepts a x509 client certificate if it is trusted by any
+CA certificate found in these `sec` objects.

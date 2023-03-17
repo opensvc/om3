@@ -1,0 +1,1 @@
+The limit on how much memory a process can lock with mlock(2) (unit byte, no solaris support).

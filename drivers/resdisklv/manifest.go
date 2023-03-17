@@ -3,6 +3,8 @@
 package resdisklv
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -11,6 +13,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupDisk, "lv")
 )
 
@@ -28,7 +33,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "LVName",
 			Required: true,
 			Scopable: true,
-			Text:     "The name of the logical volume.",
+			Text:     keywords.NewText(fs, "text/kw/name"),
 			Example:  "lv1",
 		},
 		keywords.Keyword{
@@ -36,7 +41,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "VGName",
 			Scopable: true,
 			Required: true,
-			Text:     "The name of the volume group hosting the logical volume.",
+			Text:     keywords.NewText(fs, "text/kw/vg"),
 			Example:  "vg1",
 		},
 		keywords.Keyword{
@@ -44,7 +49,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:         "Size",
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "The size of the logical volume to provision. A size expression or <n>%{FREE|PVS|VG}.",
+			Text:         keywords.NewText(fs, "text/kw/size"),
 			Example:      "10m",
 		},
 		keywords.Keyword{
@@ -53,7 +58,7 @@ func (t T) Manifest() *manifest.T {
 			Converter:    converters.Shlex,
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "Additional options to pass to the logical volume create command (:cmd:`lvcreate` or :cmd:`vxassist`, depending on the driver). Size and name are alread set.",
+			Text:         keywords.NewText(fs, "text/kw/create_options"),
 			Example:      "--contiguous y",
 		},
 	)

@@ -1,0 +1,19 @@
+The daemon will try to restart a resource if:
+
+* The resource is `down`, `stdby down` or `warn`.
+
+* The instance has `local_expect=started` in its daemon monitor data, which
+  means the daemon considers this instance is and should remain started.
+
+* The node is not frozen
+
+* The instance is not frozen
+
+In this case, the daemon try `restart=<n>` times before falling back to the
+monitor action.
+
+The `restart_delay` keyword sets the interval after a failed restart before
+the next tentative.
+
+Resources with `standby=true` have `restart` forced to a minimum of 2, to
+increase chances of a restart success.

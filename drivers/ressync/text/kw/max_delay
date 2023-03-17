@@ -1,0 +1,5 @@
+The delay above which the status of the resource reports `warn`.
+
+It should be set according to your application service level agreement.
+
+The scheduler task interval should be lower than `max_delay`.

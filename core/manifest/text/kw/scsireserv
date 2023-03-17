@@ -1,0 +1,7 @@
+If `true`, try to acquire a type-5 (write exclusive, registrant only) scsi3
+persistent reservation on every path to every disk used by this resource.
+
+Existing reservations are preempted to not block service failover.
+
+If the `start` was not legitimate the data are still protected from being
+written concurrently from all nodes.

@@ -1,0 +1,6 @@
+An asset information pushed to the collector on pushasset.
+
+If not set, the collector picks one of the node ip addresses inventoried on
+pushasset too.
+
+On GCE instances, defaults to the instance ip address.

@@ -1,0 +1,3 @@
+Bandwidth limit (the default unit is kb/s) applied to this rsync transfer.
+
+Leave empty to enforce no limit.

@@ -3,6 +3,8 @@
 package resdiskmd
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -11,6 +13,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupDisk, "md")
 )
 
@@ -31,7 +36,7 @@ func (t T) Manifest() *manifest.T {
 			Option:   "uuid",
 			Attr:     "UUID",
 			Scopable: true,
-			Text:     "The md uuid to use with mdadm assemble commands",
+			Text:     keywords.NewText(fs, "text/kw/uuid"),
 			Example:  "dev1",
 		},
 		keywords.Keyword{
@@ -40,7 +45,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.List,
 			Provisioning: true,
-			Text:         "The md member devices to use with mdadm create command",
+			Text:         keywords.NewText(fs, "text/kw/devs"),
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 		},
 		keywords.Keyword{
@@ -48,7 +53,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:         "Level",
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "The md raid level to use with mdadm create command (see mdadm man for values)",
+			Text:         keywords.NewText(fs, "text/kw/level"),
 			Example:      "raid1",
 		},
 		keywords.Keyword{
@@ -57,7 +62,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.Size,
 			Provisioning: true,
-			Text:         "The md chunk size to use with mdadm create command. The value is adjusted to the first greater or equal multiple of 4.",
+			Text:         keywords.NewText(fs, "text/kw/chunk"),
 			Example:      "128k",
 		},
 		keywords.Keyword{
@@ -66,7 +71,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.Int,
 			Provisioning: true,
-			Text:         "The md number of spare devices to use with mdadm create command",
+			Text:         keywords.NewText(fs, "text/kw/spares"),
 			Default:      "0",
 			Example:      "1",
 		},

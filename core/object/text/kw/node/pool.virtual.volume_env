@@ -1,0 +1,4 @@
+The list of the `vol` consumer service config keywords which values are mapped
+as env keys in the allocated volume service.
+
+If the keyword is not set at the source, an error is raised.

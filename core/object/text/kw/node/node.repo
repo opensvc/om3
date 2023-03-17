@@ -1,0 +1,28 @@
+Set the uri of the opensvc agent package repository and compliance modules
+gzipped tarball repository.
+
+This parameter is used by the `om node updatepkg` and `om node updatecomp`
+commands.
+
+Expected repository structure:
+
+ROOT
++- compliance
+|+- compliance-100.tar.gz
+|+- compliance-101.tar.gz
+|`- current -> compliance-101.tar.gz
++- packages
+ +- deb
+ +- depot
+ +- pkg
+ +- sunos-pkg
+ +- rpms
+ |+- current -> 2.0/current
+ |+- 1.9
+ | +- current -> opensvc-1.9-50.rpm
+ | +- opensvc-1.9-49.rpm
+ | `- opensvc-1.9-50.rpm
+ |+- 2.0
+ | +- current -> opensvc-2.0-90.rpm
+ | `- opensvc-2.0-90.rpm
+ `- tbz

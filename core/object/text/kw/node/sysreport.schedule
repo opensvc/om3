@@ -1,0 +1,7 @@
+Schedule parameter for the `sysreport` node action, which collects into an
+archive all files and command outputs defined in /etc/opensvc/sysreport and
+sends that archive to the collector.
+
+The collector stores the unpacked files in a per-node git repository.
+
+See `usr/share/doc/schedule` for the schedule syntax.

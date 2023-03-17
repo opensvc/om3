@@ -1,0 +1,4 @@
+The list of services or instances expressed as `<path>[@<nodename>]` that must
+be `up` to allow this service to be started by the daemon.
+
+The list is whitespace-separated.

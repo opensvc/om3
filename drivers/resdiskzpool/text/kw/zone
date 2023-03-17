@@ -1,0 +1,2 @@
+The zone name the zpool refers to. If set, the zpool is activated in the zone
+context.

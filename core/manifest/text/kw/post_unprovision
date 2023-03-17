@@ -1,0 +1,3 @@
+A command or script to execute after the resource `unprovision` action.
+
+Errors do not interrupt the action.

@@ -1,0 +1,15 @@
+* `true`
+
+   Execute the `script` command with `info` argument on `push resinfo` action.
+
+* `false`
+
+  Do nothing on `push resinfo` action.
+
+* `<shlex expression>`
+
+   Execute this command on `push resinfo` action.
+
+Stdout lines must contain only one `key:value`.
+
+Invalid lines are dropped.

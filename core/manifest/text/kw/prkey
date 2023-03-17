@@ -1,0 +1,3 @@
+A specific scsi3 persistent reservation key for the resource.
+
+It overrides the object-level `prkey` and the node-level `prkey`.

@@ -1,6 +1,8 @@
 package resvhostenvoy
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupVhost, "envoy")
 )
 
@@ -26,7 +31,7 @@ func (t T) Manifest() *manifest.T {
 			Converter: converters.List,
 			Default:   "{name}",
 			Example:   "{name}",
-			Text:      "The list of http domains in this expose.",
+			Text:      keywords.NewText(fs, "text/kw/domains"),
 		},
 		keywords.Keyword{
 			Option:    "routes",
@@ -34,7 +39,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.List,
 			Example:   "route#1 route#2",
-			Text:      "The list of route resource identifiers for this vhost.",
+			Text:      keywords.NewText(fs, "text/kw/routes"),
 		},
 	)
 	return m

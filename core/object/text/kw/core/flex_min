@@ -1,0 +1,2 @@
+The minimum number of up instances of this object in the cluster.
+Below this number the aggregated object status is degraded to warn.

@@ -1,0 +1,5 @@
+If `true`, redirect the checker script:
+
+* stdout to the resource status info-log.
+
+* stderr to the resource status warn-log.

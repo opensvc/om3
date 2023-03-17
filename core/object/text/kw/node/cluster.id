@@ -1,0 +1,5 @@
+This unique identifier is auto-generated on install and should never be
+change by the cluster administrators.
+
+It is changed when the node joins a cluster, so the remote cluster id
+replaces the joiners' cluster id.

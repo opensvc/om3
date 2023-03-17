@@ -1,0 +1,3 @@
+If set to `true`, ask for an interactive confirmation to run the task.
+
+This flag can be used for dangerous tasks like data restoration.

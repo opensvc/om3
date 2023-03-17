@@ -1,0 +1,4 @@
+Use network interface stacking.
+
+Modern ip stack support multiple ip addresses per interface, so `alias`
+should be set to `false` when possible.

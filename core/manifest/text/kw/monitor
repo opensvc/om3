@@ -1,0 +1,9 @@
+A resource with `monitor=true` will trigger the `monitor_action`
+(crash or reboot the node, freezestop or switch the service) if:
+
+* The resource is `down`.
+
+* The instance has `local_expect=started` in its daemon monitor data, which
+  means the daemon considers this instance is and should remain started.
+
+* All restart tentatives failed.

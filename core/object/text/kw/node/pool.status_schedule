@@ -1,0 +1,4 @@
+The value to set to the `status_schedule` keyword of the `vol` objects
+allocated from the pool.
+
+See `usr/share/doc/schedule` for the schedule syntax.

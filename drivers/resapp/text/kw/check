@@ -1,0 +1,11 @@
+* `true`
+
+   Execute the `script` command with `status` argument on `status` action.
+
+* `false`
+
+  Do nothing on `status` action.
+
+* `<shlex expression>`
+
+   Execute this command on `status` action.

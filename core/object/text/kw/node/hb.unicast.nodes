@@ -1,0 +1,13 @@
+The nodes participating to the heartbeat.
+
+This keyword can be used to setup a partial redundancy like:
+
+	       n1   n2   n3   n4
+	hb#1   O    O    O    O
+	hb#2   O    O          
+	hb#1             O    O
+
+Which can be relevant if n[12] are in the same bladecenter b1, and n[34] are
+in the same bladecenter b2. The bladecenter having an internal network
+completely hardware independant of the network used to go outside of the
+bladecenters.

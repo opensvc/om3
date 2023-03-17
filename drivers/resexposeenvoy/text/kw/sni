@@ -1,0 +1,3 @@
+The SNI server names to match on the proxy to select this service endpoints.
+
+The socket server must support TLS.

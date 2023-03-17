@@ -1,0 +1,41 @@
+Grant roles to the user.
+
+A whitespace-separated list of pervasives role or per-namespace roles.
+
+Pervasive roles:
+
+* `root`
+
+  Add resource triggers, non-containerized resources (non-root users can only
+  add container.docker, container.podman task.docker, task.podman and volume)
+
+* `squatter`
+
+  Create a new namespace. 
+
+* `prioritizer`
+
+  Set the `priority` keyword of an object.
+
+* `blacklistadmin`
+
+  Clear the blacklist of daemon listeners clients.
+
+* `<per-namespace role>:<namespace selector>`
+ 
+Per-namespace roles:
+
+* `admin`
+
+  Create, delete objects in the namespace.
+
+* `operator`
+
+  Start, stop, provision, unprovision, freeze, unfreeze objects in the
+  namespace.
+
+* `guest`
+
+  List and read configuration and status of the objects in the namespace.
+ 
+A `namespace selector` is a glob pattern applied to existing namespaces.

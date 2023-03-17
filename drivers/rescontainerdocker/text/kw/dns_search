@@ -1,0 +1,4 @@
+The whitespace-separated list of DNS domains to search for shortname lookups.
+
+If empty or not set, the list will be `<name>.<namespace>.svc.<clustername>
+ <namespace>.svc.<clustername> svc.<clustername>`.

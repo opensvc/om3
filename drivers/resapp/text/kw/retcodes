@@ -1,0 +1,11 @@
+The whitespace-separated list of `<retcode>:<status name>`.
+
+All undefined retcodes are mapped to the `warn` status.
+
+Valid `<status names>` are:
+
+* `up`
+* `down`
+* `warn`
+* `n/a`
+* `undef`

@@ -1,0 +1,8 @@
+Set the targeted opensvc agent branch.
+
+The downloaded upgrades will honor that branch.
+
+If not set, the `repopkg` imposes the target branch via the current link.
+
+It is recommended to set `branch` when `repopkg` points to a repository
+you are not responsible for.

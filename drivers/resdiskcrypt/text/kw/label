@@ -1,0 +1,3 @@
+The label to set in the cryptsetup metadata writen on dev.
+
+A label helps admin understand the role of a device.

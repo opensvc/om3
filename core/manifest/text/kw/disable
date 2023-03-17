@@ -1,0 +1,16 @@
+A disabled resource will be ignored on `start`, `stop`, `provision` and
+`unprovision` actions.
+
+A disabled resource status is `n/a`.
+
+If set in the `DEFAULT` section of an object, the object is disabled and
+ignores `start`, `stop`, `shutdown`, `provision` and `unprovision` actions.
+
+These actions immediately return success.
+
+`om <path> disable` sets `DEFAULT.disable=true`.
+
+`om <path> enable` sets `DEFAULT.disable=false`.
+
+> **Note**: The `enable` and `disable` actions preserve the individual
+  resource `disable` state.

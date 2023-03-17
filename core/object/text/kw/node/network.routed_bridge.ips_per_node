@@ -1,0 +1,3 @@
+The number of allocatable ips per node on the network.
+
+Converted to the closest power of two.

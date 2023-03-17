@@ -1,0 +1,2 @@
+The zvol, lv, and other block device creation command options to use to
+prepare the pool devices.

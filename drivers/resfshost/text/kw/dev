@@ -1,0 +1,4 @@
+The block device file or filesystem image file hosting the filesystem to mount.
+
+A different device can be set up on different nodes using the `dev@<nodename>`
+scoping syntax.

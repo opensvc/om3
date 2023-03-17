@@ -1,0 +1,5 @@
+If `true` and `dbopensvc` is set, the objects action logs are reported to the
+collector.
+
+Set to `false` to disable log reporting to the collector, even if `dbopensvc`
+is set.

@@ -1,0 +1,8 @@
+* `failover`
+
+  The service is allowed to be up on one node at a time.
+
+* `flex`
+
+  The service can be up on `flex_target` nodes, where `flex_target` must be in
+  the `[flex_min, flex_max]` range.

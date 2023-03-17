@@ -1,0 +1,3 @@
+A whitespace separated list of services that must be started on the node to allow the monitor to start this service.
+
+If the local node is the only candidate ignore this constraint and allow start.

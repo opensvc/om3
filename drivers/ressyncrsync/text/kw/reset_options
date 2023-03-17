@@ -1,0 +1,3 @@
+Use `options` only instead of merging `options` to default hardcoded options.
+
+This keyword can be used to disable `--xattr` or `--acls` for example.
