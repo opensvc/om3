@@ -98,12 +98,14 @@ func (d *data) pubMsgFromNodeStatsDiffForNode(nodename string) {
 		if !reflect.DeepEqual(prev, next) {
 			d.bus.Pub(msgbus.NodeStatsUpdated{Node: nodename, Value: *next.DeepCopy()},
 				pubsub.Label{"node", nodename},
+				labelPeerNode,
 			)
 		}
 	}
 	onCreate := func() {
 		d.bus.Pub(msgbus.NodeStatsUpdated{Node: nodename, Value: *next.DeepCopy()},
 			pubsub.Label{"node", nodename},
+			labelPeerNode,
 		)
 	}
 
@@ -178,6 +180,7 @@ func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
 	c := d.pending.Cluster.Node[nodename]
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
+		nodeStats:         *c.Stats.DeepCopy(),
 		imonUpdated:       make(map[string]time.Time),
 		instConfigUpdated: make(map[string]time.Time),
 		instStatusUpdated: make(map[string]time.Time),

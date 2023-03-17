@@ -47,7 +47,7 @@ func (d *data) onNodeStatsUpdated(m msgbus.NodeStatsUpdated) {
 	if v.Stats == m.Value {
 		return
 	}
-	v.Stats = m.Value
+	v.Stats = *m.Value.DeepCopy()
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
 		OpPath:  jsondelta.OperationPath{"stats"},
