@@ -374,8 +374,6 @@ func (d *data) startSubscriptions() {
 	sub := d.bus.Sub("daemondata")
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceFrozenFileUpdated{})
-	sub.AddFilter(msgbus.InstanceFrozenFileRemoved{})
 	sub.AddFilter(msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, d.labelLocalNode)
@@ -410,10 +408,6 @@ func (d *data) onSubEvent(i interface{}) {
 		d.onInstanceMonitorDeleted(c)
 	case msgbus.InstanceMonitorUpdated:
 		d.onInstanceMonitorUpdated(c)
-	case msgbus.InstanceFrozenFileRemoved:
-		d.onInstanceFrozenFileRemoved(c)
-	case msgbus.InstanceFrozenFileUpdated:
-		d.onInstanceFrozenFileUpdated(c)
 	case msgbus.InstanceStatusUpdated:
 		d.onInstanceStatusUpdated(c)
 	case msgbus.InstanceStatusDeleted:

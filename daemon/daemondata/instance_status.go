@@ -2,13 +2,11 @@ package daemondata
 
 import (
 	"context"
-	"time"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/jsondelta"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
@@ -64,66 +62,6 @@ func (o opGetInstanceStatus) call(ctx context.Context, d *data) error {
 	}
 	o.status <- s
 	return nil
-}
-
-// onInstanceFrozenFileUpdated may publish InstanceStatusUpdated with updated frozen and updated.
-// It publishes when instance status exists with both updated and frozen older that c.Updated
-func (d *data) onInstanceFrozenFileUpdated(c msgbus.InstanceFrozenFileUpdated) {
-	d.statCount[idSetInstanceFrozen]++
-	s := c.Path.String()
-	eventUpdated := c.Updated
-	inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]
-	if !ok {
-		return
-	}
-	if inst.Status.Frozen.After(eventUpdated) {
-		// skip update, we already have a more recent value for frozen
-		d.log.Debug().Msgf("skip onInstanceFrozenFileUpdated frozen is after event (%s > %s)", inst.Status.Frozen, eventUpdated)
-		return
-	}
-	if inst.Status.Updated.After(eventUpdated) {
-		// skip update, we already have a more recent value of status
-		d.log.Debug().Msgf("skip onInstanceFrozenFileUpdated status is after event (%s > %s)", inst.Status.Updated, eventUpdated)
-		return
-	}
-	newStatus := inst.Status.DeepCopy()
-	newStatus.Frozen = eventUpdated
-	newStatus.Updated = eventUpdated
-
-	d.bus.Pub(msgbus.InstanceStatusUpdated{Path: c.Path, Node: d.localNode, Value: *newStatus},
-		pubsub.Label{"path", s},
-		d.labelLocalNode,
-	)
-}
-
-// onInstanceFrozenFileRemoved may publish InstanceStatusUpdated with updated frozen and updated.
-// It publishes when instance status exists with both updated and frozen older that c.Updated
-func (d *data) onInstanceFrozenFileRemoved(c msgbus.InstanceFrozenFileRemoved) {
-	d.statCount[idSetInstanceFrozen]++
-	s := c.Path.String()
-	eventUpdated := c.Updated
-	inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]
-	if !ok {
-		return
-	}
-	if inst.Status.Frozen.After(eventUpdated) {
-		// skip update, we already have a more recent value for frozen
-		d.log.Debug().Msgf("skip InstanceFrozenFileRemoved frozen is after event (%s > %s)", inst.Status.Frozen, eventUpdated)
-		return
-	}
-	if inst.Status.Updated.After(eventUpdated) {
-		// skip update, we already have a more recent value of status
-		d.log.Debug().Msgf("skip InstanceFrozenFileRemoved Updated is after event (%s > %s)", inst.Status.Frozen, eventUpdated)
-		return
-	}
-	newStatus := inst.Status.DeepCopy()
-	newStatus.Frozen = time.Time{}
-	newStatus.Updated = eventUpdated
-
-	d.bus.Pub(msgbus.InstanceStatusUpdated{Path: c.Path, Node: d.localNode, Value: *newStatus},
-		pubsub.Label{"path", s},
-		d.labelLocalNode,
-	)
 }
 
 // onInstanceStatusUpdated updates .cluster.node.<node>.instance.<path>.status

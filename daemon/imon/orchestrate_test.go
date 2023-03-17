@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemonhelper"
 	"github.com/opensvc/om3/daemon/icfg"
+	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/testhelper"
@@ -154,6 +155,8 @@ func Test_Orchestrate_HA(t *testing.T) {
 			setup := daemonhelper.Setup(t, nil)
 			defer setup.Cancel()
 
+			require.NoError(t, istat.Start(setup.Ctx))
+
 			c := c
 			p := path.T{Kind: kind.Svc, Name: c.name}
 
@@ -283,7 +286,7 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 				Updated:     time.Now(),
 				Frozen:      time.Time{},
 			}
-			bus.Pub(msgbus.InstanceStatusUpdated{Path: p, Node: hostname.Hostname(), Value: v},
+			bus.Pub(msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)
