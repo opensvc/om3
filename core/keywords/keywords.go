@@ -43,7 +43,7 @@ type (
 		Text Text
 
 		// DefaultText is a text explaining the default value.
-		DefaultText string
+		DefaultText Text
 
 		// Example demonstrates the keyword usage.
 		Example string
@@ -167,6 +167,10 @@ func (t Keyword) DefaultKey() key.T {
 	return k
 }
 
+func (t Text) IsZero() bool {
+	return t.path == ""
+}
+
 func (t Keyword) IsZero() bool {
 	return t.Option == ""
 }
@@ -188,8 +192,8 @@ func (t Keyword) Doc() string {
 		}
 		buff += sprintProp("depends", strings.Join(l, ", "))
 	}
-	if t.DefaultText != "" {
-		buff += sprintProp("default", t.DefaultText)
+	if !t.DefaultText.IsZero() {
+		buff += sprintProp("default", t.DefaultText.String())
 	} else if t.Default != "" {
 		buff += sprintProp("default", t.Default)
 	}

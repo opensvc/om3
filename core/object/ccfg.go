@@ -27,8 +27,8 @@ var ccfgPrivateKeywords = []keywords.Keyword{
 	{
 		Section:     "DEFAULT",
 		Option:      "id",
-		DefaultText: "<random uuid>",
 		Scopable:    false,
+		DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
 		Text:        keywords.NewText(fs, "text/kw/ccfg/id"),
 	},
 }

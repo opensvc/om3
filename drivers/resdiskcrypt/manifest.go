@@ -33,8 +33,8 @@ func (t T) Manifest() *manifest.T {
 			Option:      "name",
 			Attr:        "Name",
 			Scopable:    true,
-			DefaultText: "The basename of the underlying device, suffixed with '-crypt'.",
 			Example:     "{fqdn}-crypt",
+			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
 			Text:        keywords.NewText(fs, "text/kw/name"),
 		},
 		keywords.Keyword{

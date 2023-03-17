@@ -56,7 +56,7 @@ func (t T) Manifest() *manifest.T {
 			Option:      "listener_addr",
 			Attr:        "ListenerAddr",
 			Scopable:    true,
-			DefaultText: "The main proxy ip address.",
+			DefaultText: keywords.NewText(fs, "text/kw/listener_addr.default"),
 			Text:        keywords.NewText(fs, "text/kw/listener_addr"),
 		},
 		keywords.Keyword{
@@ -64,7 +64,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:        "ListenerPort",
 			Converter:   converters.Int,
 			Scopable:    true,
-			DefaultText: "The expose <port>.",
+			DefaultText: keywords.NewText(fs, "text/kw/listener_port.default"),
 			Text:        keywords.NewText(fs, "text/kw/listener_port"),
 		},
 		keywords.Keyword{

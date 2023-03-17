@@ -52,7 +52,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:        "Dev",
 			Scopable:    true,
 			Required:    false,
-			DefaultText: "Any first dev with an addr in the same network than the gateway.",
+			DefaultText: keywords.NewText(fs, "text/kw/dev.default"),
 			Text:        keywords.NewText(fs, "text/kw/dev"),
 			Example:     "eth1",
 		},
