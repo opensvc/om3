@@ -199,7 +199,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			return
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("refuse to set global expect '%s': invalid value %s", *c.Value.GlobalExpect)
+			o.log.Warn().Msgf("refuse to set global expect '%s': invalid value", *c.Value.GlobalExpect)
 			return
 		}
 		switch *c.Value.GlobalExpect {
