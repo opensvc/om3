@@ -109,6 +109,8 @@ var (
 
 		"NodeStatusArbitratorsUpdated": NodeStatusArbitratorsUpdated{},
 
+		"NodeStatusGenUpdates": NodeStatusGenUpdates{},
+
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 
 		"NodeSplitAction": NodeSplitAction{},
@@ -414,6 +416,13 @@ type (
 		Value map[string]node.ArbitratorStatus
 	}
 
+	// NodeStatusGenUpdates is emitted when then hb message gens are changed
+	NodeStatusGenUpdates struct {
+		Node  string
+		// Value is Node.Status.Gen
+		Value map[string]uint64
+	}
+
 	NodeStatusLabelsUpdated struct {
 		Node  string
 		Value nodesinfo.Labels
@@ -717,6 +726,10 @@ func (e NodeStatsUpdated) Kind() string {
 
 func (e NodeStatusArbitratorsUpdated) Kind() string {
 	return "NodeStatusArbitratorsUpdated"
+}
+
+func (e NodeStatusGenUpdates) Kind() string {
+	return "NodeStatusGenUpdates"
 }
 
 func (e NodeStatusLabelsUpdated) Kind() string {

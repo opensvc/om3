@@ -71,48 +71,14 @@ func (o opGetNodeStatusMap) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-func (d *data) onNodeStatusArbitratorsUpdated(m msgbus.NodeStatusArbitratorsUpdated) {
-	d.statCount[idSetNodeStatusArbitrator]++
+func (d *data) onNodeStatusUpdated(m msgbus.NodeStatusUpdated) {
 	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Arbitrators = m.Value
+	v.Status = m.Value
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "arbitrators"},
+		OpPath:  jsondelta.OperationPath{"status"},
 		OpValue: jsondelta.NewOptValue(m.Value),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-
-	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
-		d.labelLocalNode)
-}
-
-// onNodeFrozen updates .cluster.node.<node>.status.frozen
-func (d *data) onNodeFrozen(m msgbus.NodeFrozen) {
-	d.statCount[idSetNodeStatusFrozen]++
-	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Frozen = m.FrozenAt
-	d.pending.Cluster.Node[d.localNode] = v
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "frozen"},
-		OpValue: jsondelta.NewOptValue(m.FrozenAt),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-}
-
-// onNodeStatusLabelsUpdated updates cluster.node.<node>.status.labels
-func (d *data) onNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
-	d.statCount[idSetNodeStatusLabels]++
-	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Labels = m.Value
-	d.pending.Cluster.Node[d.localNode] = v
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "labels"},
-		OpValue: jsondelta.NewOptValue(m.Value),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *v.Status.DeepCopy()},
-		d.labelLocalNode)
 }

@@ -95,12 +95,18 @@ type (
 
 		sub *pubsub.Subscription
 
+		labelLocalhost pubsub.Label
+
 		// cacheNodesInfo is a map of nodes to nodesinfo.NodeInfo, it is used to
 		// maintain the nodesinfo.json file.
 		// local values are computed by nmon.
 		// peer values are updated from msgbus events NodeStatusLabelsUpdated, NodeConfigUpdated, NodeOsPathsUpdated
 		// and ForgetPeer.
 		cacheNodesInfo map[string]nodesinfo.NodeInfo
+
+		// nodeStatus is the node.Status for localhost that is the source of publication of msgbus.NodeStatusUpdated for
+		// localhost.
+		nodeStatus node.Status
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -156,6 +162,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		livePeers:   map[string]bool{localhost: true},
 
 		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: {}},
+		labelLocalhost: pubsub.Label{"node", localhost},
 	}
 
 	// we are responsible for publication or node config, don't wait for
@@ -205,12 +212,12 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.NodeFrozenFileUpdated{})
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
-	sub.AddFilter(msgbus.JoinRequest{}, pubsub.Label{"node", o.localhost})
-	sub.AddFilter(msgbus.LeaveRequest{}, pubsub.Label{"node", o.localhost})
+	sub.AddFilter(msgbus.JoinRequest{}, o.labelLocalhost)
+	sub.AddFilter(msgbus.LeaveRequest{}, o.labelLocalhost)
 	sub.AddFilter(msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(msgbus.NodeMonitorUpdated{}, pubsub.Label{"peer", "true"})
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, pubsub.Label{"peer", "true"})
-	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{})
+	sub.AddFilter(msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
 	sub.AddFilter(msgbus.SetNodeMonitor{})
 	sub.Start()
 	o.sub = sub
@@ -298,6 +305,8 @@ func (o *nmon) worker() {
 				o.onNodeFrozenFileUpdated(c)
 			case msgbus.NodeStatusLabelsUpdated:
 				o.onPeerNodeStatusLabelsUpdated(c)
+			case msgbus.NodeStatusGenUpdates:
+				o.onNodeStatusGenUpdates(c)
 			case msgbus.LeaveRequest:
 				o.onLeaveRequest(c)
 			case msgbus.SetNodeMonitor:
@@ -470,6 +479,15 @@ func (o *nmon) onPeerNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
 	o.saveNodesInfo()
 }
 
+func (o *nmon) onNodeStatusGenUpdates(m msgbus.NodeStatusGenUpdates) {
+	gens := make(map[string]uint64)
+	for k, v := range m.Value {
+		gens[k] = v
+	}
+	o.nodeStatus.Gen = gens
+	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+}
+
 func (o *nmon) saveNodesInfo() {
 	if err := nodesinfo.Save(o.cacheNodesInfo); err != nil {
 		o.log.Error().Err(err).Msg("save nodes info")
@@ -493,17 +511,14 @@ func (o *nmon) loadConfig() error {
 }
 
 func (o *nmon) loadAndPublishConfig() error {
-	labelLocalhost := pubsub.Label{"node", o.localhost}
 	if err := o.loadConfig(); err != nil {
 		return err
 	}
-	o.bus.Pub(msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig},
-		labelLocalhost,
-	)
+	o.bus.Pub(msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
-	o.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()},
-		labelLocalhost)
-	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()},
-		labelLocalhost)
+	o.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
+	o.nodeStatus.Labels = localNodeInfo.Labels
+	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
 	return nil
 }

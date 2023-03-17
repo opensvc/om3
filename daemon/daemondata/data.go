@@ -268,11 +268,14 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 			}
 			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
 				needMessage = true
-				s := d.pending.Cluster.Node[d.localNode].Status
 				if isCtxDone() {
 					return
 				}
-				d.bus.Pub(msgbus.NodeStatusUpdated{Node: d.localNode, Value: *s.DeepCopy()},
+				gens := make(map[string]uint64)
+				for s, v := range d.msgLocalGen {
+					gens[s] = v
+				}
+				d.bus.Pub(msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
 					d.labelLocalNode,
 				)
 			}
@@ -381,13 +384,11 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeConfigUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeFrozen{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.NodeStatsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeStatusArbitratorsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeStatusUpdated{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
 	sub.AddFilter(msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
 	sub.Start()
@@ -414,8 +415,6 @@ func (d *data) onSubEvent(i interface{}) {
 		d.onInstanceStatusDeleted(c)
 	case msgbus.NodeConfigUpdated:
 		d.onNodeConfigUpdated(c)
-	case msgbus.NodeFrozen:
-		d.onNodeFrozen(c)
 	case msgbus.NodeMonitorDeleted:
 		d.onNodeMonitorDeleted(c)
 	case msgbus.NodeMonitorUpdated:
@@ -424,10 +423,8 @@ func (d *data) onSubEvent(i interface{}) {
 		d.onNodeOsPathsUpdated(c)
 	case msgbus.NodeStatsUpdated:
 		d.onNodeStatsUpdated(c)
-	case msgbus.NodeStatusArbitratorsUpdated:
-		d.onNodeStatusArbitratorsUpdated(c)
-	case msgbus.NodeStatusLabelsUpdated:
-		d.onNodeStatusLabelsUpdated(c)
+	case msgbus.NodeStatusUpdated:
+		d.onNodeStatusUpdated(c)
 	case msgbus.ObjectStatusDeleted:
 		d.onObjectStatusDeleted(c)
 	case msgbus.ObjectStatusUpdated:

@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
@@ -88,8 +87,13 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 }
 
 func (o *nmon) getAndUpdateStatusArbitrator() {
-	o.bus.Pub(msgbus.NodeStatusArbitratorsUpdated{Node: o.localhost, Value: o.getStatusArbitrators()},
-		pubsub.Label{"node", o.localhost})
+	o.nodeStatus.Arbitrators = o.getStatusArbitrators()
+	pubValue := make(map[string]node.ArbitratorStatus)
+	for k, v := range o.nodeStatus.Arbitrators {
+		pubValue[k] = v
+	}
+	o.bus.Pub(msgbus.NodeStatusArbitratorsUpdated{Node: o.localhost, Value: pubValue}, o.labelLocalhost)
+	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
 }
 
 func (o *nmon) arbitratorVotes() (votes []string) {
