@@ -69,6 +69,8 @@ var (
 
 		"InstanceStatusDeleted": InstanceStatusDeleted{},
 
+		"InstanceStatusPost": InstanceStatusPost{},
+
 		"InstanceStatusUpdated": InstanceStatusUpdated{},
 
 		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
@@ -289,6 +291,12 @@ type (
 	InstanceStatusDeleted struct {
 		Path path.T
 		Node string
+	}
+
+	InstanceStatusPost struct {
+		Path  path.T
+		Node  string
+		Value instance.Status
 	}
 
 	InstanceStatusUpdated struct {
@@ -625,6 +633,10 @@ func (e InstanceMonitorUpdated) Kind() string {
 
 func (e InstanceStatusDeleted) Kind() string {
 	return "InstanceStatusDeleted"
+}
+
+func (e InstanceStatusPost) Kind() string {
+	return "InstanceStatusPost"
 }
 
 func (e InstanceStatusUpdated) Kind() string {
