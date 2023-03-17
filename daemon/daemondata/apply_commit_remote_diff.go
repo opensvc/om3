@@ -181,6 +181,7 @@ func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
 		nodeStats:         *c.Stats.DeepCopy(),
+		nodeConfig:        *c.Config.DeepCopy(),
 		imonUpdated:       make(map[string]time.Time),
 		instConfigUpdated: make(map[string]time.Time),
 		instStatusUpdated: make(map[string]time.Time),
