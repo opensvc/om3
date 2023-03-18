@@ -428,6 +428,8 @@ type (
 		Value nodesinfo.Labels
 	}
 
+	// NodeStatusUpdated is the message that nmon publish when node status is modified.
+	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
 		Node  string
 		Value node.Status

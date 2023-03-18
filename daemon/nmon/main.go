@@ -4,7 +4,7 @@
 //
 //	.cluster.node.<localhost>.monitor
 //	.cluster.node.<localhost>.stats
-//	.cluster.node.<localhost>.status
+//	.cluster.node.<localhost>.status (except gen)
 //
 // # It maintains the nodesinfo.json
 //
@@ -211,6 +211,7 @@ func (o *nmon) startSubscriptions() {
 	sub.AddFilter(msgbus.NodeFrozenFileRemoved{})
 	sub.AddFilter(msgbus.NodeFrozenFileUpdated{})
 	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"peer", "true"})
+	sub.AddFilter(msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
 	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
 	sub.AddFilter(msgbus.JoinRequest{}, o.labelLocalhost)
 	sub.AddFilter(msgbus.LeaveRequest{}, o.labelLocalhost)
@@ -479,13 +480,16 @@ func (o *nmon) onPeerNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
 	o.saveNodesInfo()
 }
 
+// onNodeStatusGenUpdates updates the localhost node status gen from daemondata
+// msgbus.NodeStatusGenUpdates publication. It is daemondata that is responsible for
+// localhost gens management. The value stored here is lazy updated for debug.
+// We must not publish a msgbus.NodeStatusUpdated to avoid ping pong nmon<->data
 func (o *nmon) onNodeStatusGenUpdates(m msgbus.NodeStatusGenUpdates) {
 	gens := make(map[string]uint64)
 	for k, v := range m.Value {
 		gens[k] = v
 	}
 	o.nodeStatus.Gen = gens
-	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 }
 
 func (o *nmon) saveNodesInfo() {

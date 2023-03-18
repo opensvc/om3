@@ -272,7 +272,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 					return
 				}
 				gens := make(map[string]uint64)
-				for s, v := range d.msgLocalGen {
+				for s, v := range d.pending.Cluster.Node[d.localNode].Status.Gen {
 					gens[s] = v
 				}
 				d.bus.Pub(msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
