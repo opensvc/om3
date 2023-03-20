@@ -1,6 +1,7 @@
 package converters
 
 import (
+	"embed"
 	"errors"
 	"fmt"
 	"os"
@@ -269,4 +270,12 @@ func (t TFileMode) convert(s string) (*os.FileMode, error) {
 
 func (t TFileMode) String() string {
 	return "file-mode"
+}
+
+func ReadFile(fs embed.FS, s string) string {
+	if b, err := fs.ReadFile(s); err != nil {
+		panic("missing documentation text file: " + s)
+	} else {
+		return string(b)
+	}
 }

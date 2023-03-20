@@ -1,0 +1,10 @@
+The capabilities exposed by the virtual pool.
+
+Supported capabilities:
+
+* `shared`
+* `roo`
+* `rox`
+* `rwo`
+* `rwx`
+* `blk`

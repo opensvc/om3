@@ -1,0 +1,3 @@
+Set the uri of the collector's main rpc server.
+
+The path part of the uri can be left unspecified.

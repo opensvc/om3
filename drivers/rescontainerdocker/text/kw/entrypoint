@@ -1,0 +1,3 @@
+The script or binary executed in the container.
+
+The entrypoint args must be set in `command`.

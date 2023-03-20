@@ -1,6 +1,8 @@
 package resfsdir
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupFS, "directory")
 )
 
@@ -24,7 +29,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "Path",
 			Scopable: true,
 			Required: true,
-			Text:     "The fullpath of the directory to create.",
+			Text:     keywords.NewText(fs, "text/kw/path"),
 		},
 		keywords.Keyword{
 			Option:    "user",
@@ -32,7 +37,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.User,
 			Example:   "root",
-			Text:      "The user that should be owner of the directory. Either in numeric or symbolic form.",
+			Text:      keywords.NewText(fs, "text/kw/user"),
 		},
 		keywords.Keyword{
 			Option:    "group",
@@ -40,7 +45,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.Group,
 			Example:   "sys",
-			Text:      "The group that should be owner of the directory. Either in numeric or symbolic form.",
+			Text:      keywords.NewText(fs, "text/kw/group"),
 		},
 		keywords.Keyword{
 			Option:    "perm",
@@ -48,13 +53,13 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.FileMode,
 			Example:   "1777",
-			Text:      "The permissions the directory should have. A string representing the octal permissions.",
+			Text:      keywords.NewText(fs, "text/kw/perm"),
 		},
 		keywords.Keyword{
 			Option:   "zone",
 			Attr:     "Zone",
 			Scopable: true,
-			Text:     "The zone name the fs refers to. If set, the fs mount point is reparented into the zonepath rootfs.",
+			Text:     keywords.NewText(fs, "text/kw/zone"),
 		},
 	)
 	return m

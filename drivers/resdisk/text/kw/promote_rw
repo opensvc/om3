@@ -1,0 +1,2 @@
+If `true`, OpenSVC will try to promote the exposed devices to read-write on
+`start` actions.

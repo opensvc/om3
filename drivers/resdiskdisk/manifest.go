@@ -1,6 +1,8 @@
 package resdiskdisk
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -9,6 +11,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupDisk, "disk")
 )
 
@@ -29,8 +34,8 @@ func (t T) Manifest() *manifest.T {
 			Option:   "disk_id",
 			Attr:     "DiskID",
 			Scopable: true,
-			Text:     "The wwn of the disk.",
 			Example:  "6589cfc00000097484f0728d8b2118a6",
+			Text:     keywords.NewText(fs, "text/kw/disk_id"),
 		},
 		keywords.Keyword{
 			Option:       "size",
@@ -38,43 +43,43 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Provisioning: true,
 			Converter:    converters.Size,
-			Text:         "A size expression for the disk allocation.",
 			Example:      "20g",
+			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
 		keywords.Keyword{
 			Option:   "pool",
 			Attr:     "Pool",
 			Scopable: true,
-			Text:     "The name of the pool this volume was allocated from.",
 			Example:  "fcpool1",
+			Text:     keywords.NewText(fs, "text/kw/pool"),
 		},
 		keywords.Keyword{
 			Option:   "name",
 			Attr:     "Name",
 			Scopable: true,
-			Text:     "The name of the disk.",
 			Example:  "myfcdisk1",
+			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
 		keywords.Keyword{
 			Option:   "array",
 			Attr:     "Array",
 			Scopable: true,
-			Text:     "The array to provision the disk from.",
 			Example:  "xtremio-prod1",
+			Text:     keywords.NewText(fs, "text/kw/array"),
 		},
 		keywords.Keyword{
 			Option:   "diskgroup",
 			Attr:     "DiskGroup",
 			Scopable: true,
-			Text:     "The array disk group to provision the disk from.",
 			Example:  "default",
+			Text:     keywords.NewText(fs, "text/kw/diskgroup"),
 		},
 		keywords.Keyword{
 			Option:   "slo",
 			Attr:     "SLO",
 			Scopable: true,
-			Text:     "The provisioned disk service level objective. This keyword is honored on arrays supporting this (ex: EMC VMAX)",
 			Example:  "Optimized",
+			Text:     keywords.NewText(fs, "text/kw/slo"),
 		},
 	)
 	return m

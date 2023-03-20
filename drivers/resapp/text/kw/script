@@ -1,0 +1,8 @@
+Full path to the app launcher script.
+
+This script must accept as argument 0 the action word:
+
+* `start` for start
+* `stop` for stop
+* `status` for status check
+* `info` for resource info

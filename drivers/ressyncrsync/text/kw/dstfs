@@ -1,0 +1,5 @@
+If set to a remote mount point, OpenSVC will verify that the specified mount
+point is really hosting a mounted FS.
+
+This is a safety net to prevent overflowing the parent filesystem (`/` for
+example).

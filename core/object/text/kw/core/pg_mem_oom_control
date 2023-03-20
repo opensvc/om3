@@ -1,0 +1,10 @@
+A flag (0 or 1) that enables or disables the Out of Memory killer for the
+processes of the group.
+
+* If enabled (0), tasks that attempt to consume more memory than they are
+  allowed are immediately killed by the OOM killer.
+* If disabled (1), tasks are allowed to continue to try allocating memory,
+  stressing the system.
+
+The OOM killer is enabled by default in every cgroup using the memory
+controller.

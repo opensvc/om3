@@ -1,0 +1,23 @@
+The arbitrator uri used by cluster node to ask for a vote when the cluster is
+split.
+
+When the uri scheme is http or https, the vote checker is based on a GET
+request, else it is based on a TCP connect.
+
+For backward compatibility, when the port is not specified in a TCP connect
+uri, the 1214 port is implied.
+
+Arbitrators are tried in sequence, each reachable arbitrator gives a vote.
+
+In case of a real split, all arbitrators are expected to be unreachable from
+the lost segment. At least one of them is expected to be reachable from the
+surviving segment.
+
+Arbitrators of a cluster must thus be located close enough to each other, so a
+subset of arbitrators can't be reachable from a split cluster segment, while
+another subset of arbitrators is reachable from the other split cluster segment.
+
+But not close enough so they can all fail together. Usually, this can be
+interpreted as: same site, not same rack and power lines.
+
+Arbitrators are verified every 60s to alert admins of the arbitrator failures.

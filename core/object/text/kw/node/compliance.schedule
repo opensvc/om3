@@ -1,0 +1,4 @@
+Schedule parameter for the `compliance auto` node action, which check all
+attached modules and fix only those flagged ``autofix``.
+
+See `usr/share/doc/schedule` for the schedule syntax.

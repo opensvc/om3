@@ -1,0 +1,3 @@
+Run container in background.
+
+Set to `false` only for init containers, alongside `start_timeout` and the `nostatus` tag.

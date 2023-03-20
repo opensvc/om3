@@ -1,0 +1,6 @@
+A duration expression, like `10s`, defining how long the daemon waits before
+starting a service instance in `ready` state.
+
+A peer node can preempt the start during this period.
+
+Usually set to allow at least a couple of heartbeats to be received.

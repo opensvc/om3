@@ -1,0 +1,8 @@
+The access mode of the volume.
+
+* `rwo` is Read Write Once
+* `roo` is Read Only Once
+* `rwx` is Read Write Many
+* `rox` is Read Only Many
+
+`rox` and `rwx` modes are served by flex volume services.

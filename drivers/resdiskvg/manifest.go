@@ -3,6 +3,8 @@
 package resdiskvg
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -11,6 +13,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID    = driver.NewID(driver.GroupDisk, "vg")
 	altDrvID = driver.NewID(driver.GroupDisk, "lvm") // deprecated, backward compat
 )
@@ -31,7 +36,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "VGName",
 			Required: true,
 			Scopable: true,
-			Text:     "The name of the logical volume group.",
+			Text:     keywords.NewText(fs, "text/kw/name"),
 			Example:  "vg1",
 			Aliases:  []string{"vgname"},
 		},
@@ -41,7 +46,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.List,
 			Provisioning: true,
-			Text:         "The list of paths to the physical volumes of the volume group.",
+			Text:         keywords.NewText(fs, "text/kw/pvs"),
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 		},
 		keywords.Keyword{
@@ -50,7 +55,7 @@ func (t T) Manifest() *manifest.T {
 			Converter:    converters.Shlex,
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "The vgcreate options to use upon vg provisioning.",
+			Text:         keywords.NewText(fs, "text/kw/options"),
 			Example:      "--zero=y",
 		},
 	)

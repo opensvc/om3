@@ -1,0 +1,9 @@
+The dataset `refquota` property value to set on provision.
+
+The value can be:
+
+* `none`
+
+* A size expression
+
+* A multiplier of the size keyword value (ex: `x2`).

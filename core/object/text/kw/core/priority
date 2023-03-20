@@ -1,0 +1,9 @@
+When the daemon has so many actions to submit in parallel that the
+`node.max_parallel` limit is reached, this `priority` is used to determine
+which service are served first.
+
+The `priority` is an just an number used as a sort key. The smaller the
+number, the higher the priority.
+
+The priority setting is dropped from a service configuration injected via the
+api by a user not having the prioritizer grant.

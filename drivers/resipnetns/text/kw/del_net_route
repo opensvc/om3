@@ -1,0 +1,4 @@
+Some docker ip configurations require dropping the network route
+autoconfigured when installing the ip address.
+
+In this case set `del_net_route=true` and `network=<cidr>`.

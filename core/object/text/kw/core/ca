@@ -1,0 +1,2 @@
+The name of secret containing a certificate to use as a Certificate Authority.
+This secret must be in the same namespace.

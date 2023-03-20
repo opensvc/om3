@@ -1,0 +1,13 @@
+A whitespace-separated list of tags.
+
+Tags can be used for resource selection by tag.
+
+Some tags can influence the driver behaviour:
+
+* `noaction`
+
+  Skip any state changing action on the resource and imply `optional=true`.
+
+* `nostatus`
+
+  Force the status `n/a`.

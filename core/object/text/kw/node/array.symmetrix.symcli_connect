@@ -1,0 +1,5 @@
+Set the `SYMCLI_CONNECT` environment variable to this value.
+
+If not set, the SCSI communication channels are used.
+
+The value set must be declared in the `/var/symapi/config/netcnfg` file.

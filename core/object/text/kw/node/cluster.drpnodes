@@ -1,0 +1,5 @@
+This list is fetched from the join command payload received from the joined
+node.
+
+The service configuration ``{clusterdrpnodes}`` is resolved to this keyword
+value.

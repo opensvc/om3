@@ -1,0 +1,3 @@
+The zone name the raw resource is linked to.
+
+If set, the raw files are configured from the global reparented to the zonepath.

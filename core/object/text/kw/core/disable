@@ -1,0 +1,5 @@
+Disables the object instance, which has the following effects:
+
+* The instance status and the status of all its resource is `n/a`.
+* Stop and start actions have no effect, and not produce error.
+* Disabled resources are not enabled when DEFAULT.disable=false.

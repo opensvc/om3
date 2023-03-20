@@ -1,0 +1,4 @@
+If `true`, the agent will preempt the scsi3 persistent reservation with a `preempt`
+command instead of a `preempt and and abort`.
+
+Some scsi target implementations do not support `preempt and and abort` (esx).

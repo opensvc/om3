@@ -1,0 +1,4 @@
+Used by default as the refquota of the provisioned dataset.
+
+The quota, refquota, reservation and refreservation values can be expressed
+as a multiplier of size (example: `quota=x2`).

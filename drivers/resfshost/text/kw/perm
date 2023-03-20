@@ -1,0 +1,3 @@
+The permissions the mnt directory should have.
+
+A string representing the octal permissions.

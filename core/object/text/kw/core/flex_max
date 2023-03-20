@@ -1,0 +1,4 @@
+The maximum number of up instances of this object in the cluster.
+Above this number the aggregated object status is degraded to warn.
+
+The `0` value is interpreted as unlimited.

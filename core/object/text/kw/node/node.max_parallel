@@ -1,0 +1,6 @@
+Allow a maximum of `max_parallel` CRM commands to run simultaneously.
+
+Applies to both:
+
+* `om <selector> <action>` commands.
+* commands executed by the daemon for orchestrations

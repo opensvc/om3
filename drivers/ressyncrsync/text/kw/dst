@@ -1,0 +1,7 @@
+The destination of the sync.
+
+Can be a whitespace-separated list of files or directories passed untamed to
+rsync.
+
+> **Attention**: The ending '/' is meaningful. Refer to the rsync man page for
+  details.

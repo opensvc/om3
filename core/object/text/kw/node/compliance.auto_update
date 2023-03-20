@@ -1,0 +1,8 @@
+If set to `true`, execute `om node updatecomp` upon every scheduler-executed
+`om node compliance check`.
+
+These updates keep the compliance modules in sync with the reference
+repository.
+
+> *Warning*: the module repository security is critical. Attackers could
+  insert malicious code in served modules.

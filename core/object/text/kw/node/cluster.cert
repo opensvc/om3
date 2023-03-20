@@ -1,0 +1,2 @@
+The path of the secret hosting the certificate that the listener use for its
+TLS socket.

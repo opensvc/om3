@@ -1,0 +1,8 @@
+A `<signal>:<target>` whitespace-separated list, where `<signal>` is a signal
+name or number (ex. `1`, `hup` or `sighup`), and target is the comma-separated
+list of resource ids to send the signal to (ex: `container#1,container#2`).
+
+If only the signal is specified, all candidate resources will be signaled.
+
+This keyword is typically used to reload daemons on certicate or configuration
+files changes.

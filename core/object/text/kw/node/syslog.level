@@ -1,0 +1,4 @@
+The minimum message criticity to feed to syslog.
+
+Setting to `critical` actually disables the syslog logging, as the
+agent does not emit messages at this level.

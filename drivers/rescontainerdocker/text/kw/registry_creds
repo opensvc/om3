@@ -1,0 +1,4 @@
+The name of a secret in the same namespace having a `config.json` key which
+value is used to login to the container image registry.
+
+If not specified, the node-level registry credential store is used.

@@ -1,0 +1,4 @@
+The cluster virtual ip.
+
+If configured, the daemon creates a `system/svc/vip` HA failover service to
+manage this ip.

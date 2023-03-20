@@ -1,0 +1,4 @@
+Use the scoping syntax to assign non-default ip addresses nodes.
+
+> **Warning**: Using the unscoped syntax would assign the same address to
+  all nodes and the heartbeat would go down.

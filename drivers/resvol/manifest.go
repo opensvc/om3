@@ -1,6 +1,8 @@
 package resvol
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupVolume, "")
 )
 
@@ -27,14 +32,14 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "Name",
 			Scopable: true,
 			Default:  "{name}-vol-{rindex}",
-			Text:     "The volume service name. A service can only reference volumes in the same namespace.",
+			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
 		keywords.Keyword{
 			Option:       "type",
 			Attr:         "PoolType",
 			Provisioning: true,
 			Scopable:     true,
-			Text:         "The type of the pool to allocate from. The selected pool will be the one matching type and capabilities and with the maximum available space.",
+			Text:         keywords.NewText(fs, "text/kw/type"),
 		},
 		keywords.Keyword{
 			Option:       "access",
@@ -43,7 +48,7 @@ func (t T) Manifest() *manifest.T {
 			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
 			Provisioning: true,
 			Scopable:     true,
-			Text:         "The access mode of the volume.\n``rwo`` is Read Write Once,\n``roo`` is Read Only Once,\n``rwx`` is Read Write Many,\n``rox`` is Read Only Many.\n``rox`` and ``rwx`` modes are served by flex volume services.",
+			Text:         keywords.NewText(fs, "text/kw/access"),
 		},
 		keywords.Keyword{
 			Option:       "size",
@@ -51,14 +56,14 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.Size,
 			Provisioning: true,
-			Text:         "The size to allocate in the pool.",
+			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
 		keywords.Keyword{
 			Option:       "pool",
 			Attr:         "Pool",
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "The name of the pool to allocate from.",
+			Text:         keywords.NewText(fs, "text/kw/pool"),
 		},
 		keywords.Keyword{
 			Option:       "format",
@@ -67,14 +72,14 @@ func (t T) Manifest() *manifest.T {
 			Provisioning: true,
 			Default:      "true",
 			Converter:    converters.Bool,
-			Text:         "If true the volume translator will also produce a fs resource layered over the disk allocated in the pool.",
+			Text:         keywords.NewText(fs, "text/kw/format"),
 		},
 		keywords.Keyword{
 			Option:    "configs",
 			Attr:      "Configs",
 			Scopable:  true,
 			Converter: converters.Shlex,
-			Text:      "The whitespace separated list of ``<config name>/<key>:<volume relative path>:<options>``.",
+			Text:      keywords.NewText(fs, "text/kw/configs"),
 			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
 		},
 		keywords.Keyword{
@@ -84,7 +89,7 @@ func (t T) Manifest() *manifest.T {
 			Types:     []string{"shm"},
 			Converter: converters.Shlex,
 			Default:   "",
-			Text:      "The whitespace separated list of ``<secret name>/<key>:<volume relative path>:<options>``.",
+			Text:      keywords.NewText(fs, "text/kw/secrets"),
 			Example:   "cert/pem:server.pem cert/key:server.key",
 		},
 		keywords.Keyword{
@@ -93,7 +98,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:  true,
 			Converter: converters.List,
 			Default:   "",
-			Text:      "The whitespace separated list of directories to create in the volume.",
+			Text:      keywords.NewText(fs, "text/kw/directories"),
 			Example:   "a/b/c d /e",
 		},
 		keywords.Keyword{
@@ -101,7 +106,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "User",
 			Scopable:  true,
 			Converter: converters.User,
-			Text:      "The user name or id that will own the volume root and installed files and directories.",
+			Text:      keywords.NewText(fs, "text/kw/user"),
 			Example:   "1001",
 		},
 		keywords.Keyword{
@@ -109,7 +114,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "Group",
 			Scopable:  true,
 			Converter: converters.Group,
-			Text:      "The group name or id that will own the volume root and installed files and directories.",
+			Text:      keywords.NewText(fs, "text/kw/group"),
 			Example:   "1001",
 		},
 		keywords.Keyword{
@@ -117,7 +122,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "Perm",
 			Scopable:  true,
 			Converter: converters.FileMode,
-			Text:      "The permissions, in octal notation, to apply to the installed files.",
+			Text:      keywords.NewText(fs, "text/kw/perm"),
 			Example:   "660",
 		},
 		keywords.Keyword{
@@ -125,7 +130,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:      "DirPerm",
 			Scopable:  true,
 			Converter: converters.FileMode,
-			Text:      "The permissions, in octal notation, to apply to the volume root and installed directories.",
+			Text:      keywords.NewText(fs, "text/kw/dirperm"),
 			Default:   "700",
 			Example:   "750",
 		},
@@ -133,7 +138,7 @@ func (t T) Manifest() *manifest.T {
 			Option:   "signal",
 			Attr:     "Signal",
 			Scopable: true,
-			Text:     "A <signal>:<target> whitespace separated list, where signal is a signal name or number (ex. 1, hup or sighup), and target is the comma separated list of resource ids to send the signal to (ex: container#1,container#2). If only the signal is specified, all candidate resources will be signaled. This keyword is usually used to reload daemons on certicate or configuration files changes.",
+			Text:     keywords.NewText(fs, "text/kw/signal"),
 			Example:  "hup:container#1",
 		},
 	)

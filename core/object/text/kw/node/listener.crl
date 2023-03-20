@@ -1,0 +1,3 @@
+The URL serving the certificate revocation list.
+
+The default points to the path of the cluster CA CRL in `{var}/certs/ca_crl`.

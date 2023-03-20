@@ -1,0 +1,17 @@
+The cluster name is used,
+
+* as the zone name in the cluster dns records
+* in the {fqdn} configuration reference
+* in the AES secret encryption metadata
+* in the default name of the secret storing the listener certificate authority
+  `system/sec/ca-<clustername>`
+* in the default name of the secret storing the listener certificate and
+  private key `system/sec/cert-<clustername>`.
+
+The cluster name should be unique site-wide and be set right before starting
+to add `sec` keys.
+
+It is always lowercased, so better to set it to a lowercase value to avoid
+confusion.
+
+The cluster name is provided to joining nodes, so they can replace their own.

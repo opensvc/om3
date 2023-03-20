@@ -1,0 +1,4 @@
+The limit on the total virtual memory that can be in use by a process (unit bytes)
+(same as limit_vmem).
+
+When both `limit_vmem` and `limit_as` is used, the max value is chosen.

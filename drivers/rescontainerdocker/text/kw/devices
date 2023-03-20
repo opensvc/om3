@@ -1,0 +1,2 @@
+The whitespace-separated list of `<host devpath>:<containerized devpath>`
+exposing host devices as container devices.

@@ -1,0 +1,7 @@
+The cidr subnet handled by this node.
+
+This parameter must be scoped for each node.
+
+Usually, the subnets are allocated automatically upon initial network setup,
+each node being attributed a subnet based on its index in the cluster.nodes
+list.

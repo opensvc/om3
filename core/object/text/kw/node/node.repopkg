@@ -1,0 +1,21 @@
+Set the uri of the opensvc agent package repository.
+
+This parameter is used by the `om node updatepkg` command.
+
+Expected repository structure:
+
+ROOT
++- deb
++- depot
++- pkg
++- sunos-pkg
++- rpms
+|+- current -> 2.0/current
+|+- 1.9
+| +- current -> opensvc-1.9-50.rpm
+| +- opensvc-1.9-49.rpm
+| `- opensvc-1.9-50.rpm
+|+- 2.0
+| +- current -> opensvc-2.0-90.rpm
+| `- opensvc-2.0-90.rpm
+`- tbz

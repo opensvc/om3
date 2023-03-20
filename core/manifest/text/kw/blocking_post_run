@@ -1,0 +1,3 @@
+A command or script to execute after the resource `run` action.
+
+Errors interrupt the action.

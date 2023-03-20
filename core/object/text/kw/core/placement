@@ -1,0 +1,27 @@
+Set a service instances placement policy:
+
+* `none`
+
+  No placement policy. a policy for dummy, observe-only, services.
+
+* `nodes order`
+
+  The left-most available node is allowed to start a service instance when
+  necessary.
+
+* `load avg`
+
+  The least loaded node takes precedences.
+
+* `shift`
+
+  Shift the nodes order ranking by the service prefix converter to an integer.
+
+* `spread`
+
+  A spread policy tends to perfect leveling with many services.
+
+* `score`
+
+  The highest scoring node takes precedence (the score is a composite indice
+  of load, mem and swap).

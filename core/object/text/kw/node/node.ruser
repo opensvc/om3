@@ -1,0 +1,12 @@
+Set the remote user to use to login to a remote node with ssh and rsync.
+
+The remote user must have the privileges to run as root the following commands
+on the remote node:
+
+* om
+* rsync
+
+The default ruser is root for all nodes.
+
+`ruser` accepts a list of `user[@node]`.
+If @node is ommited, user is considered the new default user.

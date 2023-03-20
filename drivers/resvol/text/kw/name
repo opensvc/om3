@@ -1,0 +1,3 @@
+The `vol` name.
+
+An object can only reference a `vol` in the same namespace.

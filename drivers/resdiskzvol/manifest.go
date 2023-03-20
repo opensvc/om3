@@ -1,6 +1,8 @@
 package resdiskzvol
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -9,6 +11,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupDisk, "zvol")
 )
 
@@ -26,7 +31,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "Name",
 			Required: true,
 			Scopable: true,
-			Text:     "The full name of the zfs volume in the ``<pool>/<name>`` form.",
+			Text:     keywords.NewText(fs, "text/kw/name"),
 			Example:  "tank/zvol1",
 		},
 		keywords.Keyword{
@@ -35,7 +40,7 @@ func (t T) Manifest() *manifest.T {
 			Converter:    converters.Shlex,
 			Scopable:     true,
 			Provisioning: true,
-			Text:         "The :cmd:`zfs create -V <name>` extra options.",
+			Text:         keywords.NewText(fs, "text/kw/create_options"),
 			Example:      "-o dedup=on",
 		},
 		keywords.Keyword{
@@ -44,7 +49,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.Size,
 			Provisioning: true,
-			Text:         "The size of the zfs volume to create.",
+			Text:         keywords.NewText(fs, "text/kw/size"),
 			Example:      "10m",
 		},
 		keywords.Keyword{
@@ -53,7 +58,7 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Converter:    converters.Size,
 			Provisioning: true,
-			Text:         "The blocksize of the zfs volume to create.",
+			Text:         keywords.NewText(fs, "text/kw/blocksize"),
 			Example:      "256k",
 		},
 	)

@@ -1,0 +1,13 @@
+The netmask to configure with `ipname`.
+
+If an ip is already plumbed on the root interface, the netmask default is the
+netmask of this existing ip.
+
+`netmask` is mandatory for interfaces dedicated to the object. Dummy interfaces
+are likely to be in this case.
+
+The format is:
+
+* dotted or octal for IPv4, ex: `255.255.252.0` or `22`.
+
+* octal only for IPv6, ex: `64`.

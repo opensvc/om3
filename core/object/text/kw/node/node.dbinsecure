@@ -1,0 +1,3 @@
+Set to `true` to disable the collector x509 certificate verification.
+
+This should only be used for testing.

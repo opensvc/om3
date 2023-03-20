@@ -1,0 +1,3 @@
+Schedule parameter for the `pushswitch` node action.
+
+See `usr/share/doc/schedule` for the schedule syntax.

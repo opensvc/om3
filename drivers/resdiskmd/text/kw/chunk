@@ -1,0 +1,3 @@
+The md chunk size to use with the `mdadm create` command.
+
+The value is adjusted to the first greater or equal multiple of 4.

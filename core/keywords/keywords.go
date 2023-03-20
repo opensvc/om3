@@ -1,25 +1,28 @@
 package keywords
 
 import (
+	"embed"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 
-	"github.com/eidolon/wordwrap"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
-	"golang.org/x/term"
 )
 
 // Keyword represents a configuration option in an object or node configuration file
 type (
 	Converter interface {
 		Convert(string) (interface{}, error)
+	}
+
+	Text struct {
+		fs   embed.FS
+		path string
 	}
 
 	Keyword struct {
@@ -37,10 +40,10 @@ type (
 		Converter Converter
 
 		// Text is a text explaining the role of the keyword.
-		Text string
+		Text Text
 
 		// DefaultText is a text explaining the default value.
-		DefaultText string
+		DefaultText Text
 
 		// Example demonstrates the keyword usage.
 		Example string
@@ -95,6 +98,18 @@ const (
 	InheritLeaf
 	InheritHead
 )
+
+func NewText(fs embed.FS, path string) Text {
+	return Text{fs, path}
+}
+
+func (t Text) String() string {
+	if b, err := t.fs.ReadFile(t.path); err != nil {
+		panic("missing documentation text file: " + t.path)
+	} else {
+		return string(b)
+	}
+}
 
 // Name is a func required by the resource manifest Attr interface
 func (t Keyword) Name() string {
@@ -152,50 +167,48 @@ func (t Keyword) DefaultKey() key.T {
 	return k
 }
 
+func (t Text) IsZero() bool {
+	return t.path == ""
+}
+
 func (t Keyword) IsZero() bool {
 	return t.Option == ""
 }
 
 func (t Keyword) Doc() string {
-	columns, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if (err != nil) || (columns > 78) {
-		columns = 78
+	sprintProp := func(a, b string) string {
+		return fmt.Sprintf("\t%-12s %s\n", a+":", b)
 	}
-	pad := 12
-	wrapper := wordwrap.Wrapper(columns-pad, false)
-	fmt1 := func(a, b string) string {
-		prefix := fmt.Sprintf("#   %-"+fmt.Sprintf("%d", pad)+"s", a+":")
-		return wordwrap.Indent(wrapper(b), prefix, false) + "\n"
-	}
-	buff := "#\n"
-	buff = buff + wordwrap.Indent(wrapper(t.Option), "# keyword:       ", false) + "\n"
-	buff = buff + "# " + strings.Repeat("-", columns-2) + "\n"
-	buff = buff + fmt1("required", fmt.Sprint(t.Required))
-	buff = buff + fmt1("scopable", fmt.Sprint(t.Scopable))
+	buff := "# " + t.Option + "\n\n"
+	buff += sprintProp("required", fmt.Sprint(t.Required))
+	buff += sprintProp("scopable", fmt.Sprint(t.Scopable))
 	if len(t.Candidates) > 0 {
-		buff = buff + fmt1("candidates", strings.Join(t.Candidates, ", "))
+		buff += sprintProp("candidates", strings.Join(t.Candidates, ", "))
 	}
 	if len(t.Depends) > 0 {
 		l := make([]string, len(t.Depends))
 		for i, kop := range t.Depends {
 			l[i] = kop.String()
 		}
-		buff = buff + fmt1("depends", strings.Join(l, ", "))
+		buff += sprintProp("depends", strings.Join(l, ", "))
 	}
-	if t.DefaultText != "" {
-		buff = buff + fmt1("default", t.DefaultText)
+	if !t.DefaultText.IsZero() {
+		buff += sprintProp("default", t.DefaultText.String())
 	} else if t.Default != "" {
-		buff = buff + fmt1("default", t.Default)
+		buff += sprintProp("default", t.Default)
 	}
 	if t.Converter != nil {
-		buff = buff + fmt1("convert", fmt.Sprint(t.Converter))
+		buff += sprintProp("convert", fmt.Sprint(t.Converter))
 	}
-	buff = buff + "#\n"
-	buff = buff + wordwrap.Indent(wordwrap.Wrapper(columns-4, false)(t.Text), "#   ", true) + "\n"
-	buff = buff + "#\n"
+	buff += "\n"
 	if t.Example != "" {
-		buff = buff + ";" + t.Option + " = " + t.Example + "\n"
+		buff += "Example:\n"
+		buff += "\n"
+		buff += "\t" + t.Option + " = " + t.Example + "\n"
+		buff += "\n"
 	}
+	buff += t.Text.String()
+	buff += "\n"
 	return buff
 }
 

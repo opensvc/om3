@@ -1,0 +1,3 @@
+A command or script to execute before the resource `stop` action.
+
+Errors do not interrupt the action.

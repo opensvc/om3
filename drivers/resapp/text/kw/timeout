@@ -1,0 +1,9 @@
+Wait for `<duration>` before declaring the app launcher action a failure.
+
+Can be overridden by `<action>_timeout`.
+
+If no timeout is set, the agent waits indefinitely for the app launcher to
+return.
+
+A timeout can be coupled with `optional=true` to not abort a service instance
+action when an app launcher did not return.

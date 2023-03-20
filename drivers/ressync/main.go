@@ -1,6 +1,7 @@
 package ressync
 
 import (
+	"embed"
 	"time"
 
 	"github.com/opensvc/om3/core/keywords"
@@ -17,21 +18,24 @@ type (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	KWMaxDelay = keywords.Keyword{
 		Option:        "max_delay",
 		DefaultOption: "sync_max_delay",
 		Aliases:       []string{"sync_max_delay"},
 		Attr:          "MaxDelay",
 		Converter:     converters.Duration,
-		Text:          "This sets the delay above which the status of the resource is considered down. It should be set according to your application service level agreement. The scheduler task interval should be lower than :kw:`sync_max_delay`.",
+		Text:          keywords.NewText(fs, "text/kw/max_delay"),
 	}
 	KWSchedule = keywords.Keyword{
 		Option:        "schedule",
 		DefaultOption: "sync_schedule",
 		Attr:          "Schedule",
 		Scopable:      true,
-		Text:          "Set the this task run schedule. See ``/usr/share/doc/opensvc/schedule`` for the schedule syntax reference.",
 		Example:       "00:00-01:00 mon",
+		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
 
 	BaseKeywords = append(

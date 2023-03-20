@@ -1,0 +1,3 @@
+A whitespace-separated list of params passed unchanged to `rsync`.
+
+Typical usage is ACL preservation activation.

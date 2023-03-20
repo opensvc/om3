@@ -1,6 +1,8 @@
 package resrouteenvoy
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -8,6 +10,9 @@ import (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	drvID = driver.NewID(driver.GroupRoute, "envoy")
 )
 
@@ -23,20 +28,20 @@ func (t T) Manifest() *manifest.T {
 			Option:   "match_path",
 			Attr:     "MatchPath",
 			Scopable: true,
-			Text:     "If specified, the route is an exact path rule meaning that the path must exactly match the :path header once the query string is removed. Precisely one of prefix, path, regex must be set.",
+			Text:     keywords.NewText(fs, "text/kw/match_path"),
 		},
 		keywords.Keyword{
 			Option:   "match_regex",
 			Attr:     "MatchRegex",
 			Scopable: true,
-			Text:     "If specified, the route is a regular expression rule meaning that the regex must match the :path header once the query string is removed. The entire path (without the query string) must match the regex. The rule will not match if only a subsequence of the :path header matches the regex.",
 			Example:  "/b[io]t",
+			Text:     keywords.NewText(fs, "text/kw/match_regex"),
 		},
 		keywords.Keyword{
 			Option:   "match_prefix",
 			Attr:     "MatchPrefix",
 			Scopable: true,
-			Text:     "If specified, the route is a prefix rule meaning that the prefix must match the beginning of the :path header. Precisely one of prefix, path, regex must be set.",
+			Text:     keywords.NewText(fs, "text/kw/match_prefix"),
 		},
 		keywords.Keyword{
 			Option:    "match_case_sensitive",
@@ -44,25 +49,25 @@ func (t T) Manifest() *manifest.T {
 			Converter: converters.Bool,
 			Default:   "true",
 			Scopable:  true,
-			Text:      "Indicates that prefix/path matching should be case sensitive. The default is ``true``.",
+			Text:      keywords.NewText(fs, "text/kw/match_case_sensitive"),
 		},
 		keywords.Keyword{
 			Option:   "route_prefix_rewrite",
 			Attr:     "RoutePrefixRewrite",
 			Scopable: true,
-			Text:     "The string replacing the url path prefix if matching.",
+			Text:     keywords.NewText(fs, "text/kw/route_prefix_rewrite"),
 		},
 		keywords.Keyword{
 			Option:   "route_host_rewrite",
 			Attr:     "RouteHostRewrite",
 			Scopable: true,
-			Text:     "Indicates that during forwarding, the host header will be swapped with this value.",
+			Text:     keywords.NewText(fs, "text/kw/route_host_rewrite"),
 		},
 		keywords.Keyword{
 			Option:   "route_cluster_header",
 			Attr:     "RouteClusterHeader",
 			Scopable: true,
-			Text:     "If the route is not a redirect (host_redirect and/or path_redirect is not specified), one of cluster, cluster_header, or weighted_clusters must be specified. When cluster_header is specified, Envoy will determine the cluster to route to by reading the value of the HTTP header named by cluster_header from the request headers. If the header is not found or the referenced cluster does not exist, Envoy will return a 404 response.",
+			Text:     keywords.NewText(fs, "text/kw/route_cluster_header"),
 		},
 		keywords.Keyword{
 			Option:    "route_timeout",
@@ -70,52 +75,52 @@ func (t T) Manifest() *manifest.T {
 			Converter: converters.Duration,
 			Default:   "15s",
 			Scopable:  true,
-			Text:      "Specifies the timeout for the route. If not specified. Note that this timeout includes all retries.",
+			Text:      keywords.NewText(fs, "text/kw/route_timeout"),
 		},
 		keywords.Keyword{
 			Option:   "redirect_host_redirect",
 			Attr:     "RedirectHostRedirect",
 			Scopable: true,
-			Text:     "The host portion of the URL will be swapped with this value.",
+			Text:     keywords.NewText(fs, "text/kw/redirect_host_redirect"),
 		},
 		keywords.Keyword{
 			Option:   "redirect_prefix_rewrite",
 			Attr:     "RedirectPrefixRewrite",
 			Scopable: true,
-			Text:     "Indicates that during redirection, the matched prefix (or path) should be swapped with this value. This option allows redirect URLs be dynamically created based on the request.",
+			Text:     keywords.NewText(fs, "text/kw/redirect_prefix_rewrite"),
 		},
 		keywords.Keyword{
 			Option:   "redirect_path_redirect",
 			Attr:     "RedirectPathRedirect",
 			Scopable: true,
-			Text:     "Indicates that the route is a redirect rule. If there is a match, a 301 redirect response will be sent which swaps the path portion of the URL with this value. host_redirect can also be specified along with this option.",
+			Text:     keywords.NewText(fs, "text/kw/redirect_path_redirect"),
 		},
 		keywords.Keyword{
 			Option:   "redirect_response_code",
 			Attr:     "RedirectResponseCode",
 			Scopable: true,
-			Text:     "The HTTP status code to use in the redirect response. The default response code is MOVED_PERMANENTLY (301).",
+			Text:     keywords.NewText(fs, "text/kw/redirect_response_code"),
 		},
 		keywords.Keyword{
 			Option:    "redirect_https_redirect",
 			Attr:      "RedirectHTTPSRedirect",
 			Converter: converters.Bool,
 			Scopable:  true,
-			Text:      "The scheme portion of the URL will be swapped with 'https'.",
+			Text:      keywords.NewText(fs, "text/kw/redirect_https_redirect"),
 		},
 		keywords.Keyword{
 			Option:    "redirect_strip_query",
 			Attr:      "RedirectStripQuery",
 			Converter: converters.Bool,
 			Scopable:  true,
-			Text:      "Indicates that during redirection, the query portion of the URL will be removed.",
+			Text:      keywords.NewText(fs, "text/kw/redirect_strip_query"),
 		},
 		keywords.Keyword{
 			Option:    "hash_policies",
 			Attr:      "HashPolicies",
 			Converter: converters.List,
 			Scopable:  true,
-			Text:      "The list of hash policy resource ids for the route. Honored if lb_policy is set to ring_hash or maglev.",
+			Text:      keywords.NewText(fs, "text/kw/hash_policies"),
 		},
 	)
 	return m

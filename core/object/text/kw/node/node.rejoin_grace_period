@@ -1,0 +1,38 @@
+A duration expression, like `1m30s`, defining how long a starting daemon waits
+in `rejoin` state.
+
+The daemon normally exits the `rejoin` state when it has received a heartbeat
+from all its peer nodes.
+
+During this phase, the orchestration is not allowed, to give a chance to
+place the services optimally when multiple daemon were restarted at the same
+time.
+
+But if a peer stays down, the other daemons have to stop waiting at some
+point to let the service start, even if not on their natural placement leader.
+
+This should be adjusted to:
+
+	2s + <longest reboot duration>
+
+
+The worse case of multiple nodes reboot is when the longest reboot node is
+rebooted near the end of the reboot of the second longest rebooting node.
+
+	|==========>
+        n1 reboot
+                    |--------------------|
+                    n1 rejoin_grace_period
+                    |================>
+                    n1 in rejoin state
+                                      |=====================
+                                      n1 in idle state
+                  |==================>
+                  n2 reboot
+                                      |--------------------|
+                                      n2 rejoin_grace_period
+                                      |=====================
+                                      n2 in idle state
+                                           
+As a consequence, to minimize the `rejoin_grace_period`, prefer fast boot
+nodes.

@@ -1,0 +1,3 @@
+The default micro-container driver.
+
+If not set, prefer podman if installed, else fallback to docker.

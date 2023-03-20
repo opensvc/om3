@@ -1,0 +1,10 @@
+Action errors on optional resources are logged but do not stop the action
+sequence.
+
+The optional resources status is not aggregated in the instance availability
+status, but aggregated in the overall status.
+
+Resource tagged `noaction` and sync resources are considered optional by
+default.
+
+Dump filesystems are a typical use-case for `optional=true`.

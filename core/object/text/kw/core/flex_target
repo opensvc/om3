@@ -1,0 +1,5 @@
+The optimal number of up instances of the object in the cluster.
+The value must be between `flex_min` and `flex_max`.
+
+If `orchestrate=ha`, the daemon is free to take action to reach the
+`flex_target`.

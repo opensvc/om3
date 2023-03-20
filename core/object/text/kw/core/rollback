@@ -1,0 +1,6 @@
+If set to `false`, the default *rollback on start action error* behaviour is
+disabled, leaving the instance in its half-started state (avail `warn`).
+
+The daemon then refuses to failover a service if any instance is in `warn`
+availabity state. It is highly recommended to not use `rollback=false` if
+`orchestrate=ha`.

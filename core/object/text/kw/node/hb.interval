@@ -1,0 +1,6 @@
+The maximum interval between 2 heartbeat payload sends.
+
+The actual interval is not fixed, because the daemon tries to send the
+message as soon as it has something to notify. A minimum interval
+protects the node from saturating the network and cpu with the daemon
+synchronization workload.

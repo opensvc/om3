@@ -1,0 +1,5 @@
+Wait for the cluster DNS records associated to the resource to appear after
+a resource start and before the next resource can be started.
+
+This can be set when apps or containers require the ip or ip name to be
+resolvable to provision or start properly.

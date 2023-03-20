@@ -1,6 +1,8 @@
 package resdisk
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/resource"
@@ -16,11 +18,18 @@ type (
 )
 
 var (
+	//go:embed text
+	fs embed.FS
+
 	KWPromoteRW = keywords.Keyword{
 		Option:    "promote_rw",
 		Attr:      "PromoteRW",
 		Converter: converters.Bool,
-		Text:      "If set to ``true``, OpenSVC will try to promote the base devices to read-write on start.",
+		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
-	BaseKeywords = append(manifest.SCSIPersistentReservationKeywords, KWPromoteRW)
+
+	BaseKeywords = append(
+		manifest.SCSIPersistentReservationKeywords,
+		KWPromoteRW,
+	)
 )

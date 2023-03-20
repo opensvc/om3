@@ -1,0 +1,29 @@
+If set to `true`, actions are executed in parallel on the resource of this subset.
+
+For example, a service with:
+
+```
+[app#1]
+start = /bin/true
+
+[app#2]
+start = /bin/true
+
+[app#3]
+start = /bin/true
+subset = workers
+
+[app#4]
+start = /bin/true
+subset = workers
+
+[subset#app:workers]
+parallel = true
+```
+
+Would have a start sequence like:
+
+```
+app#1 ---> app#2 -+-> app#3
+                  `-> app#4
+```

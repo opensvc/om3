@@ -1,0 +1,2 @@
+A whitespace-separated list of device paths or `<src>[:<dst>]` device paths
+mappings.

@@ -1,0 +1,6 @@
+A cpu garantied time reservation for the pg.
+
+* `-1` means unlimited
+* `500` means 500ms out of every period
+* `50%@all` means 50% of all cores
+* `50%@2` means 50% of two cores.

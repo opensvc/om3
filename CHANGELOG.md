@@ -4,6 +4,14 @@
 
 ### core
 
+* **breaking change:** Drop the `default_mon_format` node keyword. It should be a user-level setting, not a node-level config.
+
+* **breaking change:** Drop the `reboot` node command and associated keywords: `reboot.schedule`, `reboot.pre`, `reboot.once`, `reboot.blocking_pre`
+
+* **breaking change:** Drop the `rotate root password` node command and associated keywords: `rotate_root_pw.schedule`
+
+* **breaking change:** Drop the `pushstats` node command and associated keywords: `stats_collection.schedule`, `stats.schedule`, `stats.disable`
+
 * **breaking change:** Deny object path name and namespaces longer than 63 character.
 
 * **breaking change:** replace the --debug flag with --log debug|info|warn|error|fatal|panic
@@ -102,6 +110,10 @@
 
 * **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
 
+### driver ip
+
+* **breaking change:** Drop the `dns_name_suffix`, `provisioner`, `dns_update` keywords. The zone management feature of the collector will be dropped in the collector too.
+
 ### driver fs
 
 * **breaking change:** keywords `size` and `vg` are no longer supported, and a logical volume can no longer be created by the fs provisioner. Use a proper disk.lv to do that.
@@ -128,9 +140,10 @@
 
 * **breaking change:** Remove support on some deprecated env var
 
-  Following env var are not anymore added to process env var during actions
-  * OPENSVC_SVCNAME
-   OPENSVC_SVC_ID
+  The following env var are not anymore added to process env var during actions:
+
+	OPENSVC_SVCNAME
+	OPENSVC_SVC_ID
 
 * **breaking change:** Fix OPENSVC_ID var value on app resources
 

@@ -1,0 +1,11 @@
+Set the uri of the opensvc compliance modules repository.
+
+A gzipped tarball is expected to be found there by the `om node updatecomp`
+command.
+
+Expected repository structure:
+
+	ROOT
+	+- compliance-100.tar.gz
+	+- compliance-101.tar.gz
+	`- current -> compliance-101.tar.gz

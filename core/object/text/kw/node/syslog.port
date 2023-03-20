@@ -1,0 +1,4 @@
+The syslog server port to send logs to.
+
+If neither `host` nor `port` are specified and if `/dev/log` exists, the
+messages are posted to `/dev/log`.

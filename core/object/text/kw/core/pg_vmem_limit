@@ -1,0 +1,4 @@
+Ensures the service does not use more than specified memory+swap (in bytes).
+
+The Out-Of-Memory killer is triggered in case of tresspassing.
+The specified value must be greater than `pg_mem_limit`.

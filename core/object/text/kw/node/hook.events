@@ -1,0 +1,3 @@
+The list of events to execute the hook command on.
+
+The special value `all` is also supported.

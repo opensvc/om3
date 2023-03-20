@@ -1,0 +1,3 @@
+The md raid level to use with the `mdadm create` command.
+
+See `man mdadm` for the list of supported values.

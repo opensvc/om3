@@ -1,0 +1,2 @@
+The limit on the total physical memory that can be in use by a process
+(unit byte, no solaris support).

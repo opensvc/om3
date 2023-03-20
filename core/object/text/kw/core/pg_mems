@@ -1,0 +1,3 @@
+Allow service process to bind only the specified memory nodes.
+
+Memory nodes are specified as list or range : `0,1,2` or `0-2`.
