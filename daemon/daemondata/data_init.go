@@ -71,7 +71,7 @@ func newNodeData(localNode string) node.Node {
 		Monitor: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateIdle,
+			State:        node.MonitorStateZero, // this prevents imon orchestration
 		},
 		Stats: node.Stats{},
 		Status: node.Status{

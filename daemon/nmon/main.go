@@ -143,12 +143,12 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateIdle,
+			State:        node.MonitorStateZero, // this prevents imon orchestration
 		},
 		previousState: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateIdle,
+			State:        node.MonitorStateZero,
 		},
 		ctx:         ctx,
 		cancel:      cancel,
