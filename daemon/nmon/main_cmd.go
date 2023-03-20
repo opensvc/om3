@@ -5,14 +5,13 @@ import (
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/toc"
 )
 
 var (
-	slitActions      = map[string]func() error{
+	slitActions = map[string]func() error{
 		"crash":    toc.Crash,
 		"reboot":   toc.Reboot,
 		"disabled": func() error { return nil },
@@ -34,9 +33,7 @@ func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 	}
 	o.setArbitratorConfig()
 
-	if err := o.getAndUpdateStatusArbitrator(); err != nil {
-		o.log.Error().Err(err).Msg("arbitrator status failure (after cluster config updated)")
-	}
+	o.getAndUpdateStatusArbitrator()
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated
@@ -54,10 +51,6 @@ func (o *nmon) onConfigFileUpdated(_ msgbus.ConfigFileUpdated) {
 
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
 	o.checkRejoinTicker()
-}
-
-func (o *nmon) pubNodeConfig() error {
-	return o.databus.SetNodeConfig(o.nodeConfig)
 }
 
 func (o *nmon) getNodeConfig() node.Config {
@@ -180,13 +173,15 @@ func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
 }
 
 func (o *nmon) onArbitratorTicker() {
-	if err := o.getAndUpdateStatusArbitrator(); err != nil {
-		o.log.Warn().Err(err).Msg("arbitrator status failure (arbitrator ticker)")
-	}
+	o.getAndUpdateStatusArbitrator()
 }
 
 func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	delete(o.livePeers, c.Node)
+
+	delete(o.cacheNodesInfo, c.Node)
+	o.saveNodesInfo()
+
 	o.log.Warn().Msgf("lost peer %s => new live peers: %v", c.Node, o.livePeers)
 	if len(o.livePeers) > len(o.clusterConfig.Nodes)/2 {
 		o.log.Warn().Msgf("peer %s not anymore alive, we still have nodes quorum %d > %d", c.Node, len(o.livePeers), len(o.clusterConfig.Nodes)/2)
@@ -236,21 +231,18 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	}
 }
 
-func (o *nmon) onFrozenFileRemoved(_ msgbus.FrozenFileRemoved) {
-	err := o.databus.SetNodeFrozen(time.Time{})
-	if err != nil {
-		o.log.Error().Err(err).Msg("onFrozenFileRemoved SetNodeFrozen")
-	}
+func (o *nmon) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
 	o.frozen = false
+	o.nodeStatus.Frozen = time.Time{}
+	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: time.Time{}}, o.labelLocalhost)
+	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
 }
 
-func (o *nmon) onFrozenFileUpdated(c msgbus.FrozenFileUpdated) {
-	tm := file.ModTime(c.Filename)
-	err := o.databus.SetNodeFrozen(tm)
-	if err != nil {
-		o.log.Error().Err(err).Msg("onFrozenFileUpdated SetNodeFrozen")
-	}
+func (o *nmon) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
 	o.frozen = true
+	o.nodeStatus.Frozen = m.Updated
+	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.Updated}, o.labelLocalhost)
+	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
 }
 
 func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {

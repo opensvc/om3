@@ -63,21 +63,13 @@ func (d *data) pubMsgFromNodeConfigDiffForNode(nodename string) {
 	prev = prevTime.nodeConfig
 	onUpdate := func() {
 		if !reflect.DeepEqual(prev, next) {
-			d.bus.Pub(
-				msgbus.NodeConfigUpdated{
-					Node:  nodename,
-					Value: *next.DeepCopy(),
-				},
+			d.bus.Pub(msgbus.NodeConfigUpdated{Node: nodename, Value: *next.DeepCopy()},
 				pubsub.Label{"node", nodename},
 			)
 		}
 	}
 	onCreate := func() {
-		d.bus.Pub(
-			msgbus.NodeConfigUpdated{
-				Node:  nodename,
-				Value: *next.DeepCopy(),
-			},
+		d.bus.Pub(msgbus.NodeConfigUpdated{Node: nodename, Value: *next.DeepCopy()},
 			pubsub.Label{"node", nodename},
 		)
 	}
@@ -104,22 +96,16 @@ func (d *data) pubMsgFromNodeStatsDiffForNode(nodename string) {
 	prev = prevTime.nodeStats
 	onUpdate := func() {
 		if !reflect.DeepEqual(prev, next) {
-			d.bus.Pub(
-				msgbus.NodeStatsUpdated{
-					Node:  nodename,
-					Value: *next.DeepCopy(),
-				},
+			d.bus.Pub(msgbus.NodeStatsUpdated{Node: nodename, Value: *next.DeepCopy()},
 				pubsub.Label{"node", nodename},
+				labelPeerNode,
 			)
 		}
 	}
 	onCreate := func() {
-		d.bus.Pub(
-			msgbus.NodeStatsUpdated{
-				Node:  nodename,
-				Value: *next.DeepCopy(),
-			},
+		d.bus.Pub(msgbus.NodeStatsUpdated{Node: nodename, Value: *next.DeepCopy()},
 			pubsub.Label{"node", nodename},
+			labelPeerNode,
 		)
 	}
 
@@ -194,6 +180,8 @@ func (d *data) refreshPreviousUpdated(nodename string) *remoteInfo {
 	c := d.pending.Cluster.Node[nodename]
 	result := remoteInfo{
 		nodeStatus:        *c.Status.DeepCopy(),
+		nodeStats:         *c.Stats.DeepCopy(),
+		nodeConfig:        *c.Config.DeepCopy(),
 		imonUpdated:       make(map[string]time.Time),
 		instConfigUpdated: make(map[string]time.Time),
 		instStatusUpdated: make(map[string]time.Time),
@@ -274,14 +262,14 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(nodename string, current *remot
 	}
 	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated)
 	for _, s := range updates {
-		d.bus.Pub(msgbus.ConfigUpdated{Path: toPath[s], Node: nodename, Value: *d.pending.Cluster.Node[nodename].Instance[s].Config.DeepCopy()},
+		d.bus.Pub(msgbus.InstanceConfigUpdated{Path: toPath[s], Node: nodename, Value: *d.pending.Cluster.Node[nodename].Instance[s].Config.DeepCopy()},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", nodename},
 			labelPeerNode,
 		)
 	}
 	for _, s := range removes {
-		d.bus.Pub(msgbus.ConfigDeleted{Path: toPath[s], Node: nodename},
+		d.bus.Pub(msgbus.InstanceConfigDeleted{Path: toPath[s], Node: nodename},
 			pubsub.Label{"path", s},
 			pubsub.Label{"node", nodename},
 			labelPeerNode,

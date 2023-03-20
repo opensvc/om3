@@ -2,6 +2,8 @@ package cstat
 
 import (
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (o *cstat) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
@@ -10,7 +12,9 @@ func (o *cstat) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
 	o.updateFrozen()
 	if o.change {
 		o.change = false
-		o.databus.SetClusterStatus(o.state)
+		localhost := hostname.Hostname()
+		labelLocalNode := pubsub.Label{"node", localhost}
+		o.bus.Pub(msgbus.ClusterStatusUpdated{Node: localhost, Value: o.state}, labelLocalNode)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
 
@@ -58,6 +59,7 @@ func newData() *data {
 		previousRemoteInfo: make(map[string]remoteInfo),
 		hbMsgMode:          map[string]string{localNode: initialMsgType},
 		hbMsgType:          map[string]string{localNode: initialMsgType},
+		labelLocalNode:     pubsub.Label{"node", hostname.Hostname()},
 	}
 }
 
@@ -69,7 +71,7 @@ func newNodeData(localNode string) node.Node {
 		Monitor: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateIdle,
+			State:        node.MonitorStateZero, // this prevents imon orchestration
 		},
 		Stats: node.Stats{},
 		Status: node.Status{

@@ -149,12 +149,13 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		drainDuration: drainDuration,
 
 		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
+
+		nodeMonitor: make(map[string]node.Monitor),
 	}
 
 	o.startSubscriptions()
 	o.nodeStatus = databus.GetNodeStatusMap()
 	o.nodeStats = databus.GetNodeStatsMap()
-	o.nodeMonitor = databus.GetNodeMonitorMap()
 	o.instMonitor = databus.GetInstanceMonitorMap(o.path)
 	o.instConfig = databus.GetInstanceConfig(o.path, o.localhost)
 	o.initResourceMonitor()
@@ -197,6 +198,11 @@ func (o *imon) worker(initialNodes []string) {
 	for _, initialNode := range initialNodes {
 		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
 	}
+	for _, v := range o.sub.GetLasts(msgbus.NodeMonitorUpdated{}) {
+		nodeMonitor := v.(msgbus.NodeMonitorUpdated)
+		o.nodeMonitor[nodeMonitor.Node] = *nodeMonitor.Value.DeepCopy()
+	}
+
 	o.updateIfChange()
 	defer func() {
 		go func() {
@@ -206,9 +212,10 @@ func (o *imon) worker(initialNodes []string) {
 			}
 		}()
 		go func() {
-			if err := o.databus.DelInstanceMonitor(o.path); err != nil && !!errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msg("DelInstanceMonitor")
-			}
+			o.pubsubBus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
+				pubsub.Label{"path", o.id},
+				pubsub.Label{"node", o.localhost},
+			)
 		}()
 		go func() {
 			tC := time.After(o.drainDuration)
@@ -262,25 +269,23 @@ func (o *imon) worker(initialNodes []string) {
 	}
 }
 
-func (o *imon) delete() {
-	if err := o.databus.DelInstanceMonitor(o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelInstanceMonitor")
-	}
-}
-
 func (o *imon) update() {
 	select {
 	case <-o.ctx.Done():
 		return
 	default:
 	}
-	newValue := o.state
 	if err := o.updateLimiter.Wait(o.ctx); err != nil {
 		return
 	}
-	if err := o.databus.SetInstanceMonitor(o.path, newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetInstanceMonitor")
-	}
+
+	o.state.UpdatedAt = time.Now()
+	newValue := o.state
+
+	o.pubsubBus.Pub(msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
+		pubsub.Label{"path", o.id},
+		pubsub.Label{"node", o.localhost},
+	)
 }
 
 func (o *imon) transitionTo(newState instance.MonitorState) {

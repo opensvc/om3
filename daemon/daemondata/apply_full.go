@@ -30,7 +30,7 @@ func (d *data) applyFull(msg *hbtype.Msg) error {
 		return err
 	} else {
 		eventId++
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, labelLocalNode)
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, d.labelLocalNode)
 	}
 	return nil
 }

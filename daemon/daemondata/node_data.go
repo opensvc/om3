@@ -76,9 +76,8 @@ func (o opDropPeerNode) call(ctx context.Context, d *data) error {
 	if eventB, err := json.Marshal(patch); err != nil {
 		d.log.Error().Err(err).Msg("opSetHeartbeatPing Marshal")
 	} else {
-		d.bus.Pub(
-			msgbus.DataUpdated{RawMessage: eventB},
-			labelLocalNode,
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB},
+			d.labelLocalNode,
 		)
 	}
 	d.bus.Pub(msgbus.ForgetPeer{Node: peerNode}, pubsub.Label{"node", peerNode})

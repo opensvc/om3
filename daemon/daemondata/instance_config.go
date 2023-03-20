@@ -7,41 +7,16 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/jsondelta"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
-	opDelInstanceConfig struct {
-		errC
-		path path.T
-	}
-
 	opGetInstanceConfig struct {
 		errC
 		config chan<- instance.Config
 		path   path.T
 		node   string
 	}
-
-	opSetInstanceConfig struct {
-		errC
-		path  path.T
-		value instance.Config
-	}
 )
-
-// DelInstanceConfig
-//
-// Monitor.Node.*.services.config.*
-func (t T) DelInstanceConfig(p path.T) error {
-	err := make(chan error, 1)
-	op := opDelInstanceConfig{
-		errC: err,
-		path: p,
-	}
-	t.cmdC <- op
-	return <-err
-}
 
 // GetInstanceConfig
 //
@@ -62,23 +37,10 @@ func (t T) GetInstanceConfig(p path.T, node string) instance.Config {
 	return <-config
 }
 
-// SetInstanceConfig
-//
-// Monitor.Node.*.services.config.*
-func (t T) SetInstanceConfig(p path.T, v instance.Config) error {
-	err := make(chan error, 1)
-	op := opSetInstanceConfig{
-		errC:  err,
-		path:  p,
-		value: v,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opDelInstanceConfig) call(ctx context.Context, d *data) error {
+// onConfigDeleted removes cluster.node.<node>.instance.<path>.config
+func (d *data) onInstanceConfigDeleted(c msgbus.InstanceConfigDeleted) {
 	d.statCount[idDelInstanceConfig]++
-	s := o.path.String()
+	s := c.Path.String()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok && inst.Config != nil {
 		inst.Config = nil
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
@@ -88,34 +50,14 @@ func (o opDelInstanceConfig) call(ctx context.Context, d *data) error {
 		}
 		d.pendingOps = append(d.pendingOps, op)
 	}
-	d.bus.Pub(
-		msgbus.ConfigDeleted{
-			Path: o.path,
-			Node: d.localNode,
-		},
-		pubsub.Label{"path", s},
-		labelLocalNode,
-	)
-	return nil
 }
 
-func (o opGetInstanceConfig) call(ctx context.Context, d *data) error {
-	d.statCount[idGetInstanceConfig]++
-	s := instance.Config{}
-	if nodeConfig, ok := d.pending.Cluster.Node[o.node]; ok {
-		if inst, ok := nodeConfig.Instance[o.path.String()]; ok && inst.Config != nil {
-			s = *inst.Config
-		}
-	}
-	o.config <- s
-	return nil
-}
-
-func (o opSetInstanceConfig) call(ctx context.Context, d *data) error {
+// onInstanceConfigUpdated updates cluster.node.<node>.instance.<path>.config
+func (d *data) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
 	d.statCount[idSetInstanceConfig]++
 	var op jsondelta.Operation
-	s := o.path.String()
-	value := o.value.DeepCopy()
+	s := c.Path.String()
+	value := c.Value.DeepCopy()
 	if inst, ok := d.pending.Cluster.Node[d.localNode].Instance[s]; ok {
 		inst.Config = value
 		d.pending.Cluster.Node[d.localNode].Instance[s] = inst
@@ -134,15 +76,16 @@ func (o opSetInstanceConfig) call(ctx context.Context, d *data) error {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
+}
 
-	d.bus.Pub(
-		msgbus.ConfigUpdated{
-			Path:  o.path,
-			Node:  d.localNode,
-			Value: o.value,
-		},
-		pubsub.Label{"path", s},
-		labelLocalNode,
-	)
+func (o opGetInstanceConfig) call(ctx context.Context, d *data) error {
+	d.statCount[idGetInstanceConfig]++
+	s := instance.Config{}
+	if nodeConfig, ok := d.pending.Cluster.Node[o.node]; ok {
+		if inst, ok := nodeConfig.Instance[o.path.String()]; ok && inst.Config != nil {
+			s = *inst.Config
+		}
+	}
+	o.config <- s
 	return nil
 }

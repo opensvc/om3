@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/durationlog"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/jsondelta"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -50,7 +49,8 @@ type (
 		// statCount is a map[<stat id>] to track number of <id> calls
 		statCount map[int]uint64
 		log       zerolog.Logger
-		bus        *pubsub.Bus
+		bus       *pubsub.Bus
+		sub       *pubsub.Subscription
 
 		// msgLocalGen hold the latest published msg gen for localhost
 		msgLocalGen map[string]uint64
@@ -83,6 +83,8 @@ type (
 		// needMsg is set to true when a peer node doesn't know localnode current data gen
 		// set to false after a hb message is created
 		needMsg bool
+
+		labelLocalNode pubsub.Label
 	}
 
 	gens       map[string]uint64
@@ -116,8 +118,6 @@ var (
 	subHbRefreshInterval = 100 * propagationInterval
 
 	countRoutineInterval = 1 * time.Second
-
-	labelLocalNode = pubsub.Label{"node", hostname.Hostname()}
 
 	ErrDrained = errors.New("drained command")
 )
@@ -209,6 +209,7 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 	defer d.log.Info().Msg("stopped")
 	d.bus = pubsub.BusFromContext(ctx)
 
+	d.startSubscriptions()
 	watchCmd := &durationlog.T{Log: d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 	defer watchDurationCancel()
@@ -267,16 +268,15 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 			}
 			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
 				needMessage = true
-				s := d.pending.Cluster.Node[d.localNode].Status
 				if isCtxDone() {
 					return
 				}
-				d.bus.Pub(
-					msgbus.NodeStatusUpdated{
-						Node:  d.localNode,
-						Value: *s.DeepCopy(),
-					},
-					labelLocalNode,
+				gens := make(map[string]uint64)
+				for s, v := range d.pending.Cluster.Node[d.localNode].Status.Gen {
+					gens[s] = v
+				}
+				d.bus.Pub(msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
+					d.labelLocalNode,
 				)
 			}
 			if isCtxDone() {
@@ -350,6 +350,8 @@ func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, dr
 				d.log.Debug().Msgf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 				d.statCount[idUndef]++
 			}
+		case i := <-d.sub.C:
+			d.onSubEvent(i)
 		}
 	}
 }
@@ -369,4 +371,63 @@ func gensEqual(a, b gens) bool {
 		}
 	}
 	return true
+}
+
+func (d *data) startSubscriptions() {
+	sub := d.bus.Sub("daemondata")
+	sub.AddFilter(msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeMonitorUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeStatsUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.NodeStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
+	sub.AddFilter(msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
+	sub.Start()
+	d.sub = sub
+}
+
+func (d *data) onSubEvent(i interface{}) {
+	switch c := i.(type) {
+	case msgbus.ClusterConfigUpdated:
+		d.onClusterConfigUpdated(c)
+	case msgbus.ClusterStatusUpdated:
+		d.onClusterStatusUpdated(c)
+	case msgbus.InstanceConfigDeleted:
+		d.onInstanceConfigDeleted(c)
+	case msgbus.InstanceConfigUpdated:
+		d.onInstanceConfigUpdated(c)
+	case msgbus.InstanceMonitorDeleted:
+		d.onInstanceMonitorDeleted(c)
+	case msgbus.InstanceMonitorUpdated:
+		d.onInstanceMonitorUpdated(c)
+	case msgbus.InstanceStatusUpdated:
+		d.onInstanceStatusUpdated(c)
+	case msgbus.InstanceStatusDeleted:
+		d.onInstanceStatusDeleted(c)
+	case msgbus.NodeConfigUpdated:
+		d.onNodeConfigUpdated(c)
+	case msgbus.NodeMonitorDeleted:
+		d.onNodeMonitorDeleted(c)
+	case msgbus.NodeMonitorUpdated:
+		d.onNodeMonitorUpdated(c)
+	case msgbus.NodeOsPathsUpdated:
+		d.onNodeOsPathsUpdated(c)
+	case msgbus.NodeStatsUpdated:
+		d.onNodeStatsUpdated(c)
+	case msgbus.NodeStatusUpdated:
+		d.onNodeStatusUpdated(c)
+	case msgbus.ObjectStatusDeleted:
+		d.onObjectStatusDeleted(c)
+	case msgbus.ObjectStatusUpdated:
+		d.onObjectStatusUpdated(c)
+	}
 }

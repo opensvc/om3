@@ -51,17 +51,18 @@ type (
 		localhost                string
 		forceRefresh             bool
 		published                bool
-		databus                  *daemondata.T
+		bus                      *pubsub.Bus
 		sub                      *pubsub.Subscription
 		instanceConfig           instance.Config
 		clusterConfig            cluster.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
 		iMonStarter              IMonStarter
+
 		// ctx is a context created from parent context
-		ctx                      context.Context
+		ctx context.Context
 		// cancel is a cancel func for icfg, used to stop ifg if error occurs
-		cancel                   context.CancelFunc
+		cancel context.CancelFunc
 	}
 
 	IMonStarter interface {
@@ -97,12 +98,12 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		log:            log.Logger.With().Str("func", "icfg").Stringer("object", p).Logger(),
 		localhost:      localhost,
 		forceRefresh:   false,
-		databus:        daemondata.FromContext(ctx),
+		bus:            pubsub.BusFromContext(ctx),
 		filename:       filename,
 
 		iMonStarter: iMonStarter,
 
-		ctx: ctx,
+		ctx:    ctx,
 		cancel: cancel,
 	}
 
@@ -116,7 +117,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
 			cancel()
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 			o.done(parent, svcDiscoverCmd)
@@ -129,16 +130,15 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 
 func (o *T) startSubscriptions(ctx context.Context) {
 	clusterId := clusterPath.String()
-	bus := pubsub.BusFromContext(ctx)
 	label := pubsub.Label{"path", o.path.String()}
-	o.sub = bus.Sub(o.path.String() + " icfg")
+	o.sub = o.bus.Sub(o.path.String() + " icfg")
 	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
 	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
 	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
 		o.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
 	}
 	if o.path.String() != clusterId {
-		o.sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", clusterId})
+		o.sub.AddFilter(msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", clusterId})
 	}
 	o.sub.Start()
 }
@@ -190,8 +190,8 @@ func (o *T) worker() {
 				o.onConfigFileUpdated(c)
 			case msgbus.ConfigFileRemoved:
 				o.onConfigFileRemoved(c)
-			case msgbus.ConfigUpdated:
-				o.onConfigUpdated(c)
+			case msgbus.InstanceConfigUpdated:
+				o.onInstanceConfigUpdated(c)
 			case msgbus.ClusterConfigUpdated:
 				o.onClusterConfigUpdated(c)
 			}
@@ -226,7 +226,7 @@ func (o *T) onConfigFileRemoved(c msgbus.ConfigFileRemoved) {
 	o.cancel()
 }
 
-func (o *T) onConfigUpdated(c msgbus.ConfigUpdated) {
+func (o *T) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
 	o.log.Info().Msg("local cluster config changed => refresh cfg")
 	o.forceRefresh = true
 	if err := o.configFileCheck(); err != nil {
@@ -241,9 +241,10 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 		return
 	}
 	o.instanceConfig = *newConfig
-	if err := o.databus.SetInstanceConfig(o.path, *newConfig.DeepCopy()); err != nil {
-		o.log.Error().Err(err).Msg("SetInstanceConfig")
-	}
+	o.bus.Pub(msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},
+		pubsub.Label{"path", o.path.String()},
+		pubsub.Label{"node", o.localhost},
+	)
 	o.published = true
 }
 
@@ -431,14 +432,14 @@ func (o *T) setConfigure() error {
 }
 
 func (o *T) delete() {
+	labels := []pubsub.Label{
+		{"node", o.localhost},
+		{"path", o.path.String()},
+	}
 	if o.published {
-		if err := o.databus.DelInstanceConfig(o.path); err != nil {
-			o.log.Error().Err(err).Msg("DelInstanceConfig")
-		}
+		o.bus.Pub(msgbus.InstanceConfigDeleted{Path: o.path, Node: o.localhost}, labels...)
 	}
-	if err := o.databus.DelInstanceStatus(o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelInstanceStatus")
-	}
+	o.bus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost}, labels...)
 }
 
 func (o *T) done(parent context.Context, doneChan chan<- any) {
