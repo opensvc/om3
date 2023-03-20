@@ -9,9 +9,11 @@ import (
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/toc"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -45,11 +47,51 @@ func (o *imon) orchestrateResourceRestart() {
 			RID:    rid,
 		}, pubsub.Label{"path", o.path.String()}, pubsub.Label{"node", hostname.Hostname()})
 	}
-	doMonitorAction := func(rid string) {
-		if o.instConfig.MonitorAction != "" {
-			o.log.Info().Msgf("do %s monitor action", o.instConfig.MonitorAction)
-			pubMonitorAction(rid)
+
+	// doPreMonitorAction executes a user-defined command before imon
+	// runs the MonitorAction. This command can detect a situation where
+	// the MonitorAction can not succeed, and decide to do another action.
+	doPreMonitorAction := func() error {
+		if o.instConfig.PreMonitorAction == "" {
+			return nil
 		}
+		o.log.Info().Msgf("execute pre monitor action: %s", o.instConfig.PreMonitorAction)
+		cmdArgs, err := command.CmdArgsFromString(o.instConfig.PreMonitorAction)
+		if err != nil {
+			return err
+		}
+		if len(cmdArgs) == 0 {
+			return nil
+		}
+		cmd := command.New(
+			command.WithName(cmdArgs[0]),
+			command.WithVarArgs(cmdArgs[1:]...),
+			command.WithLogger(&o.log),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithTimeout(60*time.Second),
+		)
+		return cmd.Run()
+	}
+
+	doMonitorAction := func(rid string) {
+		switch o.instConfig.MonitorAction {
+		case instance.MonitorActionCrash:
+		case instance.MonitorActionFreezeStop:
+		case instance.MonitorActionReboot:
+		case instance.MonitorActionSwitch:
+		default:
+			o.log.Error().Msgf("skip monitor action: unsupported: %s", o.instConfig.MonitorAction)
+			return
+		}
+
+		if err := doPreMonitorAction(); err != nil {
+			o.log.Error().Err(err).Msg("pre monitor action")
+		}
+
+		o.log.Info().Msgf("do %s monitor action", o.instConfig.MonitorAction)
+		pubMonitorAction(rid)
+
 		switch o.instConfig.MonitorAction {
 		case instance.MonitorActionCrash:
 			if err := toc.Crash(); err != nil {

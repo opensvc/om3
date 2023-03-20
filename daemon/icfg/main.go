@@ -59,9 +59,9 @@ type (
 		isInstanceMonitorStarted bool
 		iMonStarter              IMonStarter
 		// ctx is a context created from parent context
-		ctx                      context.Context
+		ctx context.Context
 		// cancel is a cancel func for icfg, used to stop ifg if error occurs
-		cancel                   context.CancelFunc
+		cancel context.CancelFunc
 	}
 
 	IMonStarter interface {
@@ -74,15 +74,16 @@ var (
 
 	configFileCheckError = errors.New("config file check")
 
-	keyFlexMax       = key.New("DEFAULT", "flex_max")
-	keyFlexMin       = key.New("DEFAULT", "flex_min")
-	keyFlexTarget    = key.New("DEFAULT", "flex_target")
-	keyMonitorAction = key.New("DEFAULT", "monitor_action")
-	keyNodes         = key.New("DEFAULT", "nodes")
-	keyPlacement     = key.New("DEFAULT", "placement")
-	keyPriority      = key.New("DEFAULT", "priority")
-	keyTopology      = key.New("DEFAULT", "topology")
-	keyOrchestrate   = key.New("DEFAULT", "orchestrate")
+	keyFlexMax          = key.New("DEFAULT", "flex_max")
+	keyFlexMin          = key.New("DEFAULT", "flex_min")
+	keyFlexTarget       = key.New("DEFAULT", "flex_target")
+	keyMonitorAction    = key.New("DEFAULT", "monitor_action")
+	keyNodes            = key.New("DEFAULT", "nodes")
+	keyPlacement        = key.New("DEFAULT", "placement")
+	keyPreMonitorAction = key.New("DEFAULT", "pre_monitor_action")
+	keyPriority         = key.New("DEFAULT", "priority")
+	keyTopology         = key.New("DEFAULT", "topology")
+	keyOrchestrate      = key.New("DEFAULT", "orchestrate")
 )
 
 // Start launch goroutine instConfig worker for a local instance config
@@ -102,7 +103,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 
 		iMonStarter: iMonStarter,
 
-		ctx: ctx,
+		ctx:    ctx,
 		cancel: cancel,
 	}
 
@@ -116,7 +117,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		defer o.log.Debug().Msg("stopped")
 		defer func() {
 			cancel()
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Error().Err(err).Msg("subscription stop")
 			}
 			o.done(parent, svcDiscoverCmd)
@@ -305,6 +306,7 @@ func (o *T) configFileCheck() error {
 	cfg.Resources = o.getResources(cf)
 	cfg.MonitorAction = o.getMonitorAction(cf)
 	cfg.PlacementPolicy = o.getPlacementPolicy(cf)
+	cfg.PreMonitorAction = cf.GetString(keyPreMonitorAction)
 	cfg.Scope = scope
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Updated = mtime

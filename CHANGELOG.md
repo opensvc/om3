@@ -157,6 +157,8 @@
 
 ### daemon
 
+* Add a 60 seconds timeout to pre_monitor_action. The 2.1 daemon waits forever for this callout to terminate.
+
 * **breaking change:** switch to time.Time in RFC3389 format in all internal and exposed data
 
 	A unix timestamp was previously used, but it was tedious for users to understand the json data. And go makes the time.Time type unavoidable anyway, so the performance argument for timestamps doesn't stand anymore.

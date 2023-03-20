@@ -27,20 +27,21 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Checksum        string                    `json:"csum"`
-		FlexMax         int                       `json:"flex_max,omitempty"`
-		FlexMin         int                       `json:"flex_min,omitempty"`
-		FlexTarget      int                       `json:"flex_target,omitempty"`
-		MonitorAction   MonitorAction             `json:"monitor_action,omitempty"`
-		Nodename        string                    `json:"-"`
-		Orchestrate     string                    `json:"orchestrate"`
-		Path            path.T                    `json:"-"`
-		PlacementPolicy placement.Policy          `json:"placement_policy"`
-		Priority        priority.T                `json:"priority,omitempty"`
-		Resources       map[string]ResourceConfig `json:"resources"`
-		Scope           []string                  `json:"scope"`
-		Topology        topology.T                `json:"topology"`
-		Updated         time.Time                 `json:"updated"`
+		Checksum         string                    `json:"csum"`
+		FlexMax          int                       `json:"flex_max,omitempty"`
+		FlexMin          int                       `json:"flex_min,omitempty"`
+		FlexTarget       int                       `json:"flex_target,omitempty"`
+		MonitorAction    MonitorAction             `json:"monitor_action,omitempty"`
+		PreMonitorAction string                    `json:"pre_monitor_action,omitempty"`
+		Nodename         string                    `json:"-"`
+		Orchestrate      string                    `json:"orchestrate"`
+		Path             path.T                    `json:"-"`
+		PlacementPolicy  placement.Policy          `json:"placement_policy"`
+		Priority         priority.T                `json:"priority,omitempty"`
+		Resources        map[string]ResourceConfig `json:"resources"`
+		Scope            []string                  `json:"scope"`
+		Topology         topology.T                `json:"topology"`
+		Updated          time.Time                 `json:"updated"`
 	}
 	ResourceConfig struct {
 		Restart      int            `json:"restart"`
