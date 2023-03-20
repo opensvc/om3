@@ -51,6 +51,8 @@ type (
 		srcFile     string
 		sideEffects map[string]sideEffect
 
+		nodeMonitorStates []node.MonitorState
+
 		expectedState        instance.MonitorState
 		expectedGlobalExpect instance.MonitorGlobalExpect
 		expectedLocalExpect  instance.MonitorLocalExpect
@@ -84,6 +86,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 					err:     nil,
 				},
 			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
 			expectedState:        instance.MonitorStateIdle,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
@@ -92,6 +95,54 @@ func Test_Orchestrate_HA(t *testing.T) {
 			expectedCrm: [][]string{
 				{"ha", "status", "-r"},
 				{"ha", "start", "--local"},
+			},
+		},
+
+		{
+			name:    "ha-no-orchestration-when-nmon-state-is-rejoin",
+			srcFile: "./testdata/ha.conf",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateRejoin},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"ha-no-orchestration-when-nmon-state-is-rejoin", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "ha-no-orchestration-when-no-nmon-publication",
+			srcFile: "./testdata/ha.conf",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"ha-no-orchestration-when-no-nmon-publication", "status", "-r"},
 			},
 		},
 
@@ -108,6 +159,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 					err:     nil,
 				},
 			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
 			expectedState:        instance.MonitorStateIdle,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectNone,
@@ -131,6 +183,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 					err:     errors.New("start failed"),
 				},
 			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
 			expectedState:        instance.MonitorStateStartFailed,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectNone,
@@ -160,11 +213,14 @@ func Test_Orchestrate_HA(t *testing.T) {
 			c := c
 			p := path.T{Kind: kind.Svc, Name: c.name}
 
-			t.Logf("publish initial node monitor value")
 			bus := pubsub.BusFromContext(setup.Ctx)
-			nodeMonitor := node.Monitor{State: node.MonitorStateIdle, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
-			bus.Pub(msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
-				pubsub.Label{"node", hostname.Hostname()})
+
+			for _, nmonState := range c.nodeMonitorStates {
+				t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
+				nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
+				bus.Pub(msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
+					pubsub.Label{"node", hostname.Hostname()})
+			}
 
 			initialReadyDuration := defaultReadyDuration
 			defaultReadyDuration = 1 * time.Millisecond

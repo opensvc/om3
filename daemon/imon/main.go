@@ -149,12 +149,13 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		drainDuration: drainDuration,
 
 		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
+
+		nodeMonitor: make(map[string]node.Monitor),
 	}
 
 	o.startSubscriptions()
 	o.nodeStatus = databus.GetNodeStatusMap()
 	o.nodeStats = databus.GetNodeStatsMap()
-	o.nodeMonitor = databus.GetNodeMonitorMap()
 	o.instMonitor = databus.GetInstanceMonitorMap(o.path)
 	o.instConfig = databus.GetInstanceConfig(o.path, o.localhost)
 	o.initResourceMonitor()
@@ -197,6 +198,11 @@ func (o *imon) worker(initialNodes []string) {
 	for _, initialNode := range initialNodes {
 		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
 	}
+	for _, v := range o.sub.GetLasts(msgbus.NodeMonitorUpdated{}) {
+		nodeMonitor := v.(msgbus.NodeMonitorUpdated)
+		o.nodeMonitor[nodeMonitor.Node] = *nodeMonitor.Value.DeepCopy()
+	}
+
 	o.updateIfChange()
 	defer func() {
 		go func() {
