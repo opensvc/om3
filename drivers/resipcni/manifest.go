@@ -33,7 +33,7 @@ func (t T) Manifest() *manifest.T {
 			Attr:     "Network",
 			Scopable: true,
 			Default:  "default",
-			Example:  "my-weave-net",
+			Example:  "mynet",
 			Text:     keywords.NewText(fs, "text/kw/network"),
 		},
 		keywords.Keyword{
