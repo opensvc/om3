@@ -1,13 +1,10 @@
 // Package icfg is responsible for local instance.Config
 //
-// New instConfig are created by daemon discover.
+// NewData instConfig are created by daemon discover.
 // It provides the cluster data at ["cluster", "node", localhost, "services",
 // "config, <instance>]
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
-//
-// The icfg also starts imon object (with icfg context)
-// => this will end imon object
 //
 // The worker routine is terminated when config file is not any more present, or
 // when daemon discover context is done.
@@ -241,6 +238,7 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 		return
 	}
 	o.instanceConfig = *newConfig
+	instance.ConfigData.Set(o.path, o.localhost, newConfig.DeepCopy())
 	o.bus.Pub(msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},
 		pubsub.Label{"path", o.path.String()},
 		pubsub.Label{"node", o.localhost},
@@ -437,8 +435,10 @@ func (o *T) delete() {
 		{"path", o.path.String()},
 	}
 	if o.published {
+		instance.ConfigData.Unset(o.path, o.localhost)
 		o.bus.Pub(msgbus.InstanceConfigDeleted{Path: o.path, Node: o.localhost}, labels...)
 	}
+	instance.StatusData.Unset(o.path, o.localhost)
 	o.bus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost}, labels...)
 }
 
