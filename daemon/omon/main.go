@@ -10,6 +10,7 @@ package omon
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -314,6 +315,7 @@ func (o *T) updateStatus() {
 }
 
 func (o *T) delete() {
+	object.StatusData.Unset(o.path)
 	o.bus.Pub(msgbus.ObjectStatusDeleted{Path: o.path, Node: o.localhost},
 		o.labelPath,
 		o.labelNode,
@@ -322,8 +324,10 @@ func (o *T) delete() {
 }
 
 func (o *T) update() {
+	o.status.UpdatedAt = time.Now()
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
+	object.StatusData.Set(o.path, o.status.DeepCopy())
 	o.bus.Pub(msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
 		o.labelPath,
 		o.labelNode,
