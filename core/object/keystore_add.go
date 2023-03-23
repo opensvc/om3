@@ -1,12 +1,15 @@
 package object
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/uri"
+	"github.com/pkg/errors"
 )
 
 // AddKey sets a new key and commits immediately
@@ -57,8 +60,12 @@ func (t *keystore) ChangeKeyFrom(name string, from string) error {
 }
 
 func (t *keystore) alterFrom(name string, from string) error {
-	switch {
-	case from != "":
+	switch from {
+	case "":
+		return fmt.Errorf("empty value source")
+	case "-", "stdin", "/dev/stdin":
+		return t.fromStdin(name)
+	default:
 		u := uri.New(from)
 		if u.IsValid() {
 			return t.fromURI(name, u)
@@ -74,8 +81,20 @@ func (t *keystore) alterFrom(name string, from string) error {
 			return t.fromDir(name, from)
 		}
 		return fmt.Errorf("unexpected value source: %s", from)
-	default:
-		return fmt.Errorf("empty value source")
+	}
+}
+
+func (t *keystore) fromStdin(name string) error {
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		reader := bufio.NewReader(os.Stdin)
+		b, err := io.ReadAll(reader)
+		if err != nil {
+			return err
+		}
+		return t.addKey(name, b)
+	} else {
+		return errors.Errorf("stdin must be a pipe")
 	}
 }
 
