@@ -144,6 +144,9 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
+		nodeMonitor:   make(map[string]node.Monitor),
+		nodeStats:     make(map[string]node.Stats),
+		nodeStatus:    make(map[string]node.Status),
 		localhost:     localhost,
 		scopeNodes:    nodes,
 		change:        true,
@@ -155,18 +158,11 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 
 		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
 
-		nodeMonitor: make(map[string]node.Monitor),
-
 		labelLocalhost: pubsub.Label{"node", localhost},
 		labelPath:      pubsub.Label{"path", id},
 	}
 
 	o.startSubscriptions()
-	o.nodeStatus = databus.GetNodeStatusMap()
-	o.nodeStats = databus.GetNodeStatsMap()
-	o.instMonitor = databus.GetInstanceMonitorMap(o.path)
-	o.instConfig = databus.GetInstanceConfig(o.path, o.localhost)
-	o.initResourceMonitor()
 
 	go func() {
 		o.worker(nodes)
@@ -192,7 +188,7 @@ func (o *imon) startSubscriptions() {
 func (o *imon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
-	// Initiate crmStatus fisrt, this will update our instance status cache
+	// Initiate crmStatus first, this will update our instance status cache
 	// as soon as possible.
 	// crmStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
@@ -201,15 +197,31 @@ func (o *imon) worker(initialNodes []string) {
 		o.log.Error().Err(err).Msg("error during initial crm status")
 	}
 
-	for _, initialNode := range initialNodes {
-		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
+	// Populate caches (published messages before subscription startup are lost)
+	for _, v := range node.StatusData.GetAll() {
+		o.nodeStatus[v.Node] = *v.Value
 	}
-	for _, v := range o.sub.GetLasts(msgbus.NodeMonitorUpdated{}) {
-		nodeMonitor := v.(msgbus.NodeMonitorUpdated)
-		o.nodeMonitor[nodeMonitor.Node] = *nodeMonitor.Value.DeepCopy()
+	for _, v := range node.StatsData.GetAll() {
+		o.nodeStats[v.Node] = *v.Value
+	}
+	for _, v := range node.MonitorData.GetAll() {
+		o.nodeMonitor[v.Node] = *v.Value
+	}
+	if iConfig := instance.ConfigData.Get(o.path, o.localhost); iConfig != nil {
+		o.instConfig = *iConfig
+		o.scopeNodes = append([]string{}, o.instConfig.Scope...)
+	}
+	for n, v := range instance.MonitorData.GetByPath(o.path) {
+		o.instMonitor[n] = *v
+	}
+	for n, v := range instance.StatusData.GetByPath(o.path) {
+		o.instStatus[n] = *v
 	}
 
+	o.initResourceMonitor()
+	o.updateIsLeader()
 	o.updateIfChange()
+
 	defer func() {
 		go func() {
 			err := o.sub.Stop()
