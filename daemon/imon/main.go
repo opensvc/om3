@@ -237,6 +237,13 @@ func (o *imon) worker(initialNodes []string) {
 			)
 		}()
 		go func() {
+			instance.StatusData.Unset(o.path, o.localhost)
+			o.pubsubBus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost},
+				o.labelPath,
+				o.labelLocalhost,
+			)
+		}()
+		go func() {
 			tC := time.After(o.drainDuration)
 			for {
 				select {

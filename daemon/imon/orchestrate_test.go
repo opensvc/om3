@@ -267,13 +267,13 @@ func Test_Orchestrate_HA(t *testing.T) {
 				crmAction = nil
 			}()
 
-			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c)
+			factory := Factory{DrainDuration: setup.DrainDuration}
+			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c, factory)
 
 			cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.name)
 			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
 			t.Logf("--- starting icfg for %s", p)
-			factory := Factory{DrainDuration: setup.DrainDuration}
-			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), factory)
+			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20))
 			require.Nil(t, err)
 
 			t.Logf("waiting for watcher result")
@@ -399,7 +399,7 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 // that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
 //
 // It emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
-func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase) <-chan msgbus.InstanceMonitorUpdated {
+func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase, factory Factory) <-chan msgbus.InstanceMonitorUpdated {
 	r := make(chan chan msgbus.InstanceMonitorUpdated)
 
 	go func() {
@@ -440,7 +440,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 						continue
 					}
 					t.Logf("--- starting omon for %s", p)
-					if err := omon.Start(ctx, p, o.Value, make(chan any, 100)); err != nil {
+					if err := omon.Start(ctx, p, o.Value, make(chan any, 100), factory); err != nil {
 						t.Errorf("omon.Start failed: %s", err)
 					}
 					monStarted = true
