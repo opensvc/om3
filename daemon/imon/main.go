@@ -82,6 +82,9 @@ type (
 		drainDuration time.Duration
 
 		updateLimiter *rate.Limiter
+
+		labelLocalhost pubsub.Label
+		labelPath      pubsub.Label
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -126,6 +129,8 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 	state := previousState
 	databus := daemondata.FromContext(ctx)
 
+	localhost := hostname.Hostname()
+
 	o := &imon{
 		state:         state,
 		previousState: previousState,
@@ -139,7 +144,7 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
-		localhost:     hostname.Hostname(),
+		localhost:     localhost,
 		scopeNodes:    nodes,
 		change:        true,
 		readyDuration: defaultReadyDuration,
@@ -151,6 +156,9 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
 
 		nodeMonitor: make(map[string]node.Monitor),
+
+		labelLocalhost: pubsub.Label{"node", localhost},
+		labelPath:      pubsub.Label{"path", id},
 	}
 
 	o.startSubscriptions()
@@ -169,12 +177,10 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 
 func (o *imon) startSubscriptions() {
 	sub := o.pubsubBus.Sub(o.id + " imon")
-	label := pubsub.Label{"path", o.id}
-	nodeLabel := pubsub.Label{"node", o.localhost}
-	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
-	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, label)
-	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
-	sub.AddFilter(msgbus.NodeConfigUpdated{}, nodeLabel)
+	sub.AddFilter(msgbus.ObjectStatusUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(msgbus.SetInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(msgbus.NodeConfigUpdated{}, o.labelLocalhost)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeStatusUpdated{})
 	sub.AddFilter(msgbus.NodeStatsUpdated{})
@@ -212,9 +218,10 @@ func (o *imon) worker(initialNodes []string) {
 			}
 		}()
 		go func() {
+			instance.MonitorData.Unset(o.path, o.localhost)
 			o.pubsubBus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
-				pubsub.Label{"path", o.id},
-				pubsub.Label{"node", o.localhost},
+				o.labelPath,
+				o.labelLocalhost,
 			)
 		}()
 		go func() {
@@ -282,9 +289,10 @@ func (o *imon) update() {
 	o.state.UpdatedAt = time.Now()
 	newValue := o.state
 
+	instance.MonitorData.Set(o.path, o.localhost, newValue.DeepCopy())
 	o.pubsubBus.Pub(msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
-		pubsub.Label{"path", o.id},
-		pubsub.Label{"node", o.localhost},
+		o.labelPath,
+		o.labelLocalhost,
 	)
 }
 
