@@ -98,7 +98,6 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 		localhost:   localhost,
 	}
 	o.startSubscriptions()
-	o.instMonitor = o.databus.GetInstanceMonitorMap(o.path)
 
 	go func() {
 		defer func() {
@@ -129,12 +128,16 @@ func (o *T) worker() {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
 
-	// Initiate instStatus values
-	for _, i := range o.sub.GetLasts(msgbus.InstanceStatusUpdated{}, o.labelPath, pubsub.Label{"peer", "true"}) {
-		switch istatus := i.(type) {
-		case msgbus.InstanceStatusUpdated:
-			o.instStatus[istatus.Node] = *istatus.Value.DeepCopy()
-		}
+	// Initiate cache
+	for n, v := range instance.MonitorData.GetByPath(o.path) {
+		o.instMonitor[n] = *v
+	}
+	for n, v := range instance.StatusData.GetByPath(o.path) {
+		o.instStatus[n] = *v
+	}
+	// TODO make omon the starter of imon when local instance config is detected
+	if !o.instStatus[o.localhost].Updated.IsZero() {
+		o.srcEvent = msgbus.InstanceStatusUpdated{Path: o.path, Node: o.localhost, Value: o.instStatus[o.localhost]}
 	}
 
 	o.updateStatus()
