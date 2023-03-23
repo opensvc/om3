@@ -49,10 +49,17 @@ func (t *sec) genSelfSigned() error {
 	if err != nil {
 		return err
 	}
+	privBytes, err := t.privPEM(priv)
+	if err != nil {
+		return err
+	}
 	if err := t.addKey("certificate", certBytes); err != nil {
 		return err
 	}
 	if err := t.addKey("certificate_chain", certBytes); err != nil {
+		return err
+	}
+	if err := t.addKey("fullpem", append(privBytes, certBytes...)); err != nil {
 		return err
 	}
 	return nil
@@ -80,10 +87,18 @@ func (t *sec) genCASigned(ca string) error {
 	if err != nil {
 		return err
 	}
+	privBytes, err := t.privPEM(priv)
+	if err != nil {
+		return err
+	}
+	chainBytes := append(certBytes, caCertBytes...)
 	if err := t.addKey("certificate", certBytes); err != nil {
 		return err
 	}
-	if err := t.addKey("certificate_chain", append(certBytes, caCertBytes...)); err != nil {
+	if err := t.addKey("certificate_chain", chainBytes); err != nil {
+		return err
+	}
+	if err := t.addKey("fullpem", append(privBytes, chainBytes...)); err != nil {
 		return err
 	}
 	return nil
@@ -190,12 +205,20 @@ func (t *sec) getCASec() (*sec, error) {
 	return NewSec(p, WithVolatile(true))
 }
 
-func (t *sec) setPriv(priv *rsa.PrivateKey) error {
+func (t *sec) privPEM(priv *rsa.PrivateKey) ([]byte, error) {
 	b, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return []byte{}, err
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b})
+	return pemBytes, nil
+}
+
+func (t *sec) setPriv(priv *rsa.PrivateKey) error {
+	pemBytes, err := t.privPEM(priv)
 	if err != nil {
 		return err
 	}
-	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b})
 	return t.addKey("private_key", pemBytes)
 }
 
