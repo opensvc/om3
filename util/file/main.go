@@ -25,6 +25,14 @@ func IsProtected(fpath string) bool {
 	}
 }
 
+func IsNotDir(err error) bool {
+	e, ok := err.(*os.PathError)
+	if !ok {
+		return false
+	}
+	return e.Err == syscall.ENOTDIR
+}
+
 // Exists returns true if the file path exists.
 func Exists(path string) bool {
 	_, err := os.Stat(path)
@@ -35,39 +43,63 @@ func Exists(path string) bool {
 }
 
 // ExistsNotDir returns true if the file path exists and is not a directory.
-func ExistsNotDir(path string) bool {
+func ExistsNotDir(path string) (bool, error) {
 	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
+	switch {
+	case os.IsNotExist(err):
+		return false, nil
+	case IsNotDir(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return !info.IsDir(), nil
 	}
-	return !info.IsDir()
 }
 
 // ExistsAndDir returns true if the file path exists and is a directory.
-func ExistsAndDir(path string) bool {
+func ExistsAndDir(path string) (bool, error) {
 	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
+	switch {
+	case os.IsNotExist(err):
+		return false, nil
+	case IsNotDir(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return info.IsDir(), nil
 	}
-	return info.IsDir()
 }
 
 // ExistsAndRegular returns true if the file path exists and is a regular file.
-func ExistsAndRegular(path string) bool {
+func ExistsAndRegular(path string) (bool, error) {
 	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
+	switch {
+	case os.IsNotExist(err):
+		return false, nil
+	case IsNotDir(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return info.Mode().IsRegular(), nil
 	}
-	return info.Mode().IsRegular()
 }
 
 // ExistsAndSymlink returns true if the file path exists and is a symbolic link.
-func ExistsAndSymlink(path string) bool {
+func ExistsAndSymlink(path string) (bool, error) {
 	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
+	switch {
+	case os.IsNotExist(err):
+		return false, nil
+	case IsNotDir(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return info.Mode()&os.ModeSymlink != 0, nil
 	}
-	return info.Mode()&os.ModeSymlink != 0
 }
 
 // Copy copies the file content from src file path to dst file path.

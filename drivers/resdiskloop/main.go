@@ -87,12 +87,13 @@ func (t T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
-func (t T) fileExists() bool {
+func (t T) fileExists() (bool, error) {
 	return file.ExistsAndRegular(t.File)
 }
 
 func (t T) Provisioned() (provisioned.T, error) {
-	return provisioned.FromBool(t.fileExists()), nil
+	v, err := t.fileExists()
+	return provisioned.FromBool(v), err
 }
 
 func (t T) Label() string {
@@ -113,7 +114,9 @@ func (t T) isVolatile() bool {
 // autoProvision provisions the loop on start if the backing file is
 // hosted on a tmpfs
 func (t T) autoProvision(ctx context.Context) error {
-	if t.fileExists() {
+	if v, err := t.fileExists(); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	if !t.isVolatile() {
@@ -125,7 +128,9 @@ func (t T) autoProvision(ctx context.Context) error {
 // autoUnprovision unprovisions the loop on stop if the backing file is
 // hosted on a tmpfs
 func (t T) autoUnprovision(ctx context.Context) error {
-	if !t.fileExists() {
+	if v, err := t.fileExists(); err != nil {
+		return err
+	} else if !v {
 		return nil
 	}
 	if !t.isVolatile() {
@@ -135,14 +140,18 @@ func (t T) autoUnprovision(ctx context.Context) error {
 }
 
 func (t T) ProvisionLeader(ctx context.Context) error {
-	if t.fileExists() {
+	if v, err := t.fileExists(); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	return t.provision(ctx)
 }
 
 func (t T) UnprovisionLeader(ctx context.Context) error {
-	if !t.fileExists() {
+	if v, err := t.fileExists(); err != nil {
+		return err
+	} else if !v {
 		return nil
 	}
 	return t.unprovision(ctx)
@@ -150,7 +159,9 @@ func (t T) UnprovisionLeader(ctx context.Context) error {
 
 func (t T) provisionDir(ctx context.Context) error {
 	dir := filepath.Dir(t.File)
-	if file.ExistsAndDir(dir) {
+	if v, err := file.ExistsAndDir(dir); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	t.Log().Info().Msgf("create dir %s", dir)

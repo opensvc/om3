@@ -7,12 +7,12 @@ import (
 	"strings"
 	"syscall"
 
-	"golang.org/x/sys/unix"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/volsignal"
 	"github.com/opensvc/om3/util/file"
+	"golang.org/x/sys/unix"
 )
 
 type (
@@ -280,7 +280,9 @@ func (t T) installDir(dir string, head string, mode *os.FileMode) error {
 	} else {
 		perm = *mode
 	}
-	if !file.ExistsAndDir(p) {
+	if v, err := file.ExistsAndDir(p); err != nil {
+		return err
+	} else if !v {
 		if err := os.MkdirAll(p, perm); err != nil {
 			return err
 		}

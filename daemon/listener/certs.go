@@ -52,7 +52,9 @@ func mountCertFS() error {
 		if err1, ok := err.(*exec.Error); ok {
 			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
 				// fallback when findmnt is not present
-				if !file.ExistsAndDir(rawconfig.Paths.Certs) {
+				if exists, err := file.ExistsAndDir(rawconfig.Paths.Certs); err != nil {
+					return err
+				} else if !exists {
 					return errors.New("missing mandatory dir " + rawconfig.Paths.Certs)
 				}
 				return nil

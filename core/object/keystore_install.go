@@ -137,22 +137,28 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 	if err != nil {
 		return false, err
 	}
-	if file.ExistsAndDir(dst) {
+	if v, err := file.ExistsAndDir(dst); err != nil {
+		t.Log().Error().Err(err).Msgf("install %s key=%s directory at location %s", t, vk.Key, dst)
+	} else if v {
 		t.Log().Info().Msgf("remove %s key=%s directory at location %s", t, vk.Key, dst)
 		if err := os.RemoveAll(dst); err != nil {
 			return false, err
 		}
 	}
 	vdir := filepath.Dir(dst)
-	if file.ExistsAndRegular(vdir) || file.ExistsAndSymlink(vdir) {
-		t.Log().Info().Msgf("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
-		if err := os.Remove(vdir); err != nil {
-			return false, err
-		}
-	}
-	if !file.Exists(vdir) {
+	info, err := os.Stat(vdir)
+	switch {
+	case os.IsNotExist(err):
 		t.Log().Info().Msgf("create directory %s to host %s key=%s", vdir, t, vk.Key)
 		if err := os.MkdirAll(vdir, *dirmode); err != nil {
+			return false, err
+		}
+	case file.IsNotDir(err):
+	case err != nil:
+		return false, err
+	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
+		t.Log().Info().Msgf("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
+		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
 	}

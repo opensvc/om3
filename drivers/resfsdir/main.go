@@ -57,7 +57,10 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("path is not defined")
 		return status.Undef
 	}
-	if !file.ExistsAndDir(p) {
+	if v, err := file.ExistsAndDir(p); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	} else if !v {
 		t.Log().Debug().Msgf("dir does not exist: %s", p)
 		return status.Down
 	}
@@ -91,7 +94,9 @@ func (t T) Provisioned() (provisioned.T, error) {
 
 func (t T) create(ctx context.Context) error {
 	p := t.path()
-	if file.ExistsAndDir(p) {
+	if v, err := file.ExistsAndDir(p); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	t.Log().Info().Msgf("create directory %s", p)

@@ -40,7 +40,10 @@ func List(dev string, mnt string) ([]MountInfo, error) {
 	if _, err := exec.LookPath("findmnt"); err != nil {
 		return data.Filesystems, err
 	}
-	bind := file.ExistsAndDir(dev)
+	bind, err := file.ExistsAndDir(dev)
+	if err != nil {
+		return data.Filesystems, err
+	}
 	opts := []string{"-J", "-T", mnt}
 	if dev != "" && !bind {
 		opts = append(opts, "-S", dev)

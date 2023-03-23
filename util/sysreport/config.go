@@ -197,21 +197,23 @@ func (t *T) collectFile(path string) error {
 	if !file.Exists(path) {
 		return nil
 	}
-	if file.ExistsAndSymlink(path) {
+	if v, err := file.ExistsAndSymlink(path); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	dest := filepath.Join(t.collectFileDir(), path)
 	destDir := filepath.Dir(dest)
-	if file.ExistsAndDir(dest) {
+	if v, err := file.ExistsAndDir(dest); err != nil {
+		return err
+	} else if v {
 		// change from regular to dir ... clean up cache
 		if err := t.unlinkAll(dest); err != nil {
 			return err
 		}
 	}
-	if !file.Exists(destDir) {
-		if err := os.MkdirAll(destDir, 0700); err != nil {
-			return err
-		}
+	if err := os.MkdirAll(destDir, 0700); err != nil {
+		return err
 	}
 	buff, err := os.ReadFile(path)
 	if err != nil {

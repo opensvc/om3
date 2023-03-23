@@ -66,9 +66,11 @@ func (t *CmdDaemonCommon) nodeDrain() (err error) {
 	return nil
 }
 
-func (t *CmdDaemonCommon) backupLocalConfig(name string) (err error) {
+func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 	pathEtc := rawconfig.Paths.Etc
-	if !file.ExistsAndDir(pathEtc) {
+	if v, err := file.ExistsAndDir(pathEtc); err != nil {
+		return err
+	} else if !v {
 		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip backup\n", pathEtc)
 		return nil
 	}
@@ -92,9 +94,11 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) (err error) {
 	return nil
 }
 
-func (t *CmdDaemonCommon) deleteLocalConfig() (err error) {
+func (t *CmdDaemonCommon) deleteLocalConfig() error {
 	pathEtc := rawconfig.Paths.Etc
-	if file.ExistsAndDir(pathEtc) {
+	if v, err := file.ExistsAndDir(pathEtc); err != nil {
+		return err
+	} else if v {
 		cmd := command.New(
 			command.WithName(os.Args[0]),
 			command.WithArgs([]string{"**", "delete", "--local"}),

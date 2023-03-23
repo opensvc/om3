@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -25,6 +23,8 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/opensvc/om3/util/zfs"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -266,7 +266,9 @@ func (t T) umountNative() error {
 }
 
 func (t *T) createMountPoint(ctx context.Context) error {
-	if file.ExistsAndDir(t.MountPoint) {
+	if v, err := file.ExistsAndDir(t.MountPoint); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	if file.Exists(t.MountPoint) {

@@ -57,24 +57,26 @@ func (t *keystore) ChangeKeyFrom(name string, from string) error {
 }
 
 func (t *keystore) alterFrom(name string, from string) error {
-	var err error
 	switch {
 	case from != "":
 		u := uri.New(from)
-		switch {
-		case u.IsValid():
-			err = t.fromURI(name, u)
-		case file.ExistsAndRegular(from):
-			err = t.fromRegular(name, from)
-		case file.ExistsAndDir(from):
-			err = t.fromDir(name, from)
-		default:
-			err = fmt.Errorf("unexpected value source: %s", from)
+		if u.IsValid() {
+			return t.fromURI(name, u)
 		}
+		if v, err := file.ExistsAndRegular(from); err != nil {
+			return err
+		} else if v {
+			return t.fromRegular(name, from)
+		}
+		if v, err := file.ExistsAndDir(from); err != nil {
+			return err
+		} else if v {
+			return t.fromDir(name, from)
+		}
+		return fmt.Errorf("unexpected value source: %s", from)
 	default:
-		err = fmt.Errorf("empty value source")
+		return fmt.Errorf("empty value source")
 	}
-	return err
 }
 
 func (t *keystore) fromRegular(name string, p string) error {
