@@ -17,7 +17,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -299,8 +298,8 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			Id:    c.Value.CandidateOrchestrationId,
 			Error: errors.Errorf("dropped set instance monitor request: %v", c.Value),
 		},
-			pubsub.Label{"path", o.path.String()},
-			pubsub.Label{"node", o.localhost},
+			o.labelPath,
+			o.labelLocalhost,
 		)
 	}
 
