@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/fqdn"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
@@ -14,6 +15,7 @@ import (
 const hexDigit = "0123456789abcdef"
 
 var (
+	exposeInfoKey = "expose"
 	ipAddrInfoKey = "ipaddr"
 
 	// SOA records properties
@@ -23,6 +25,9 @@ var (
 	retry   = 3600
 	expire  = 432000
 	minimum = 86400
+
+	defaultPrio   = 0
+	defaultWeight = 10
 )
 
 func (t *dns) stateKey(p path.T, node string) stateKey {
@@ -30,6 +35,10 @@ func (t *dns) stateKey(p path.T, node string) stateKey {
 		path: p.String(),
 		node: node,
 	}
+}
+
+func (t *dns) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
+	t.score[c.Node] = c.Value.Score
 }
 
 func (t *dns) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
@@ -94,6 +103,41 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 		if change {
 			t.pubUpdated(record, c.Path, c.Node)
 			updatedRecords[record.Name] = nil
+		}
+	}
+	stageSRV := func(s string) {
+		expose, err := ParseExpose(s)
+		if err != nil {
+			t.log.Error().Err(err).Msgf("parse expose %s", s)
+			return
+		}
+		var weight int
+		if i, ok := t.score[c.Node]; ok {
+			weight = int(i)
+		} else {
+			weight = defaultWeight
+		}
+		stage(Record{
+			Name:     fmt.Sprintf("_%d._%s.%s", expose.FrontendPort, expose.Network, name),
+			DomainId: -1,
+			Type:     "SRV",
+			TTL:      60,
+			Content:  fmt.Sprintf("%d %d %d %s", defaultPrio, weight, expose.BackendPort, nameOnNode),
+		})
+
+	}
+	stageSRVs := func(r resource.ExposedStatus) {
+		i, ok := r.Info[exposeInfoKey]
+		if !ok {
+			return
+		}
+		switch exposes := i.(type) {
+		case []any:
+			for _, expose := range exposes {
+				if s, ok := expose.(string); ok {
+					stageSRV(s)
+				}
+			}
 		}
 	}
 	for _, r := range c.Value.Resources {
@@ -192,7 +236,9 @@ func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
 				Content:  nameOnNodeWithResourceName,
 			})
 		}
+		stageSRVs(r)
 	}
+
 	for key, record := range existingRecords {
 		if _, ok := updatedRecords[key]; !ok {
 			t.pubDeleted(record, c.Path, c.Node)

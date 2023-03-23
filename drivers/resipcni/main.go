@@ -31,9 +31,10 @@ type (
 		resource.T
 
 		// config
-		NetNS      string `json:"netns"`
-		NSDev      string `json:"nsdev"`
-		Network    string `json:"network"`
+		Expose     []string `json:"expose"`
+		NetNS      string   `json:"netns"`
+		NSDev      string   `json:"nsdev"`
+		Network    string   `json:"network"`
 		CNIConfig  string
 		CNIPlugins string
 		ObjectID   uuid.UUID
@@ -181,6 +182,7 @@ func (t *T) StatusInfo() map[string]interface{} {
 	if ip, _, err := t.ipNet(); (err == nil) && (len(ip) > 0) {
 		data["ipaddr"] = ip.String()
 	}
+	data["expose"] = t.Expose
 	/*
 	   if self.container:
 	       if self.container.vm_hostname != self.container.name:

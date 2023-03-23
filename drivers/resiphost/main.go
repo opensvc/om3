@@ -57,6 +57,7 @@ func New() resource.Driver {
 func (t *T) StatusInfo() map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
+	data["expose"] = t.Expose
 	data["ipaddr"] = t.ipaddr()
 	data["ipdev"] = t.IpDev
 	data["netmask"] = netmask

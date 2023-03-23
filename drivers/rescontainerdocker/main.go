@@ -46,6 +46,7 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.SCSIPersistentReservation
 		PG              pg.Config      `json:"pg"`
 		Path            path.T         `json:"path"`
 		ObjectID        uuid.UUID      `json:"object_id"`

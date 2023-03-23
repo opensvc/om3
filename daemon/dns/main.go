@@ -42,6 +42,9 @@ type (
 		// The zone data is obtained by merging all map values.
 		state map[stateKey]Zone
 
+		// score stores the node.Stats.Score values, to use as weight in SRV records
+		score map[string]uint64
+
 		cluster   cluster.Config
 		ctx       context.Context
 		cancel    context.CancelFunc
@@ -90,6 +93,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		bus:     pubsub.BusFromContext(ctx),
 		log:     log.Logger.With().Str("func", "dns").Logger(),
 		state:   make(map[stateKey]Zone),
+		score:   make(map[string]uint64),
 	}
 
 	t.startSubscriptions()
@@ -121,6 +125,7 @@ func (t *dns) startSubscriptions() {
 	}
 	sub.AddFilter(msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(msgbus.NodeStatsUpdated{})
 	sub.Start()
 	t.sub = sub
 }
@@ -143,6 +148,8 @@ func (t *dns) worker() {
 				t.onInstanceStatusDeleted(c)
 			case msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
+			case msgbus.NodeStatsUpdated:
+				t.onNodeStatsUpdated(c)
 			}
 		case i := <-t.cmdC:
 			switch c := i.(type) {
