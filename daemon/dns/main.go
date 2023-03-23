@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/draincommand"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -116,9 +117,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 
 func (t *dns) startSubscriptions() {
 	sub := t.bus.Sub("dns")
-	for _, last := range sub.AddFilterGetLasts(msgbus.InstanceStatusUpdated{}) {
-		t.onInstanceStatusUpdated(last.(msgbus.InstanceStatusUpdated))
-	}
+	sub.AddFilter(msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(msgbus.ClusterConfigUpdated{})
 	sub.Start()
@@ -128,6 +127,10 @@ func (t *dns) startSubscriptions() {
 // worker watch for local dns updates
 func (t *dns) worker() {
 	defer t.log.Debug().Msg("done")
+
+	for _, v := range instance.StatusData.GetAll() {
+		t.onInstanceStatusUpdated(msgbus.InstanceStatusUpdated{Node: v.Node, Path: v.Path, Value: *v.Value})
+	}
 
 	t.startedAt = time.Now()
 
