@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/instance"
@@ -32,7 +33,7 @@ type (
 	}
 
 	// Status contains the object states obtained via
-	// aggregation of all instances states. It exists when a instance config exists somewhere
+	// aggregation of all instances states. It exists when an instance config exists somewhere
 	Status struct {
 		Avail            status.T         `json:"avail"`
 		FlexTarget       int              `json:"flex_target,omitempty"`
@@ -48,6 +49,8 @@ type (
 		Scope            []string         `json:"scope"`
 		Topology         topology.T       `json:"topology"`
 		UpInstancesCount int              `json:"up_instances_count"`
+
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 )
 
@@ -194,5 +197,6 @@ func (s *Status) DeepCopy() *Status {
 		FlexMax:          s.FlexMax,
 		UpInstancesCount: s.UpInstancesCount,
 		Scope:            append([]string{}, s.Scope...),
+		UpdatedAt:        s.UpdatedAt,
 	}
 }
