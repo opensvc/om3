@@ -364,7 +364,7 @@ func (o *imon) onInstanceMonitorDeleted(c msgbus.InstanceMonitorDeleted) {
 	o.updateIfChange()
 }
 
-func (o imon) GetInstanceMonitor(node string) (instance.Monitor, bool) {
+func (o *imon) GetInstanceMonitor(node string) (instance.Monitor, bool) {
 	if o.localhost == node {
 		return o.state, true
 	}
@@ -381,7 +381,7 @@ func (o *imon) AllInstanceMonitorState(s instance.MonitorState) bool {
 	return true
 }
 
-func (o imon) AllInstanceMonitors() map[string]instance.Monitor {
+func (o *imon) AllInstanceMonitors() map[string]instance.Monitor {
 	m := make(map[string]instance.Monitor)
 	m[o.localhost] = o.state
 	for node, instMon := range o.instMonitor {
@@ -390,7 +390,7 @@ func (o imon) AllInstanceMonitors() map[string]instance.Monitor {
 	return m
 }
 
-func (o imon) isExtraInstance() (bool, string) {
+func (o *imon) isExtraInstance() (bool, string) {
 	if o.state.IsHALeader {
 		return false, "object is not leader"
 	}
@@ -409,7 +409,7 @@ func (o imon) isExtraInstance() (bool, string) {
 	return true, ""
 }
 
-func (o imon) isHAOrchestrateable() (bool, string) {
+func (o *imon) isHAOrchestrateable() (bool, string) {
 	if (o.objStatus.Topology == topology.Failover) && (o.objStatus.Avail == status.Warn) {
 		return false, "failover object is warn state"
 	}
@@ -422,7 +422,7 @@ func (o imon) isHAOrchestrateable() (bool, string) {
 	return true, ""
 }
 
-func (o imon) isStartable() (bool, string) {
+func (o *imon) isStartable() (bool, string) {
 	if v, reason := o.isHAOrchestrateable(); !v {
 		return false, reason
 	}
@@ -432,7 +432,7 @@ func (o imon) isStartable() (bool, string) {
 	return true, "object is startable"
 }
 
-func (o imon) isStarted() bool {
+func (o *imon) isStarted() bool {
 	switch o.objStatus.Topology {
 	case topology.Flex:
 		return o.objStatus.UpInstancesCount >= o.objStatus.FlexTarget
@@ -566,7 +566,7 @@ func (o *imon) nextPlacedAtCandidate() string {
 	return ""
 }
 
-func (o imon) IsInstanceStartFailed(node string) (bool, bool) {
+func (o *imon) IsInstanceStartFailed(node string) (bool, bool) {
 	instMon, ok := o.GetInstanceMonitor(node)
 	if !ok {
 		return false, false
@@ -579,7 +579,7 @@ func (o imon) IsInstanceStartFailed(node string) (bool, bool) {
 	}
 }
 
-func (o imon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
+func (o *imon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
 	nodeMonitor, ok := o.nodeMonitor[node]
 	if !ok {
 		return false, false
