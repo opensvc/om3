@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 	"time"
 
@@ -57,8 +56,8 @@ type (
 		Configs     []string     `json:"configs"`
 		Secrets     []string     `json:"secrets"`
 		Directories []string     `json:"directories"`
-		User        *user.User   `json:"user"`
-		Group       *user.Group  `json:"group"`
+		User        string       `json:"user"`
+		Group       string       `json:"group"`
 		Perm        *os.FileMode `json:"perm"`
 		DirPerm     *os.FileMode `json:"dirperm"`
 		Signal      string       `json:"signal"`
