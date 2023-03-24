@@ -43,7 +43,6 @@ type (
 	SecureKeystore interface {
 		GenCert() error
 		PKCS() ([]byte, error)
-		FullPEM() (string, error)
 	}
 )
 

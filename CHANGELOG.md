@@ -155,6 +155,10 @@
   If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
 
 
+### object sec
+
+* **breaking change:**  Remove the `fullpem` action. Add the `fullpem` key on `gencert` action.
+
 ### daemon
 
 * Add a 60 seconds timeout to pre_monitor_action. The 2.1 daemon waits forever for this callout to terminate.

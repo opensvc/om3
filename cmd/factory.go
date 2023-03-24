@@ -2429,21 +2429,6 @@ func newCmdPoolStatus() *cobra.Command {
 	return cmd
 }
 
-func newCmdSecFullPEM(kind string) *cobra.Command {
-	var options commands.CmdFullPEM
-	cmd := &cobra.Command{
-		Use:   "fullpem",
-		Short: "dump the x509 private key and certificate chain in PEM format",
-		Long:  "A sec can contain a certificate, created by the gencert command. The private_key, certificate and certificate_chain are stored as sec keys. The fullpem command decodes the private_key and certificate_chain keys, concatenate and print the results.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdSecGenCert(kind string) *cobra.Command {
 	var options commands.CmdSecGenCert
 	cmd := &cobra.Command{

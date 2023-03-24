@@ -33,7 +33,6 @@ func init() {
 		newCmdObjectMonitor(kind),
 		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
-		newCmdSecFullPEM(kind),
 		newCmdSecGenCert(kind),
 		newCmdSecPKCS(kind),
 	)
