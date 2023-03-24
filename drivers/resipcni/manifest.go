@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -29,11 +30,19 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextCNIConfig,
 		manifest.ContextObjectID,
 		keywords.Keyword{
+			Option:    "expose",
+			Attr:      "Expose",
+			Scopable:  true,
+			Converter: converters.List,
+			Example:   "443/tcp:8443 53/udp",
+			Text:      keywords.NewText(fs, "text/kw/expose"),
+		},
+		keywords.Keyword{
 			Option:   "network",
 			Attr:     "Network",
 			Scopable: true,
 			Default:  "default",
-			Example:  "my-weave-net",
+			Example:  "mynet",
 			Text:     keywords.NewText(fs, "text/kw/network"),
 		},
 		keywords.Keyword{

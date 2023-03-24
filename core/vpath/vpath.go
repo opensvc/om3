@@ -7,20 +7,19 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/loop"
+	"github.com/pkg/errors"
 )
 
 var (
 	ErrAccess = errors.New("vol is not accessible")
 )
 
-//
 // Realpath expand a volume-relative path to a host full path.
 //
 // Example:
@@ -28,7 +27,6 @@ var (
 // INPUT        VOL     OUPUT            COMMENT
 // /path                /path            host full path
 // myvol/path   myvol   /srv/myvol/path  vol head relative path
-//
 func HostPath(s string, namespace string) (string, error) {
 	var volRelativeSourcePath string
 	l := strings.SplitN(s, "/", 2)
@@ -74,49 +72,48 @@ func HostPaths(l []string, namespace string) ([]string, error) {
 	return l, nil
 }
 
-//
 // translation rules:
 // INPUT        VOL     OUPUT       COMMENT
 // /path                /dev/sda1   loop dev
 // /dev/sda1            /dev/sda1   host full path
 // myvol        myvol   /dev/sda1   vol dev path in host
-//
 func HostDevpath(s string, namespace string) (string, error) {
 	if strings.HasPrefix(s, "/dev/") {
 		return s, nil
-	} else if file.ExistsAndRegular(s) {
+	}
+	if v, err := file.ExistsAndRegular(s); err != nil {
+		return s, err
+	} else if v {
 		if lo, err := loop.New().FileGet(s); err != nil {
 			return "", err
 		} else {
 			return lo.Name, nil
 		}
-		return s, nil
-	} else {
-		// volume device
-		volPath := path.T{
-			Name:      s,
-			Namespace: namespace,
-			Kind:      kind.Vol,
-		}
-		vol, err := object.NewVol(volPath)
-		if err != nil {
-			return s, err
-		}
-		st, err := vol.Status(context.Background())
-		if err != nil {
-			return s, err
-		}
-		switch st.Avail {
-		case status.Up, status.NotApplicable, status.StandbyUp:
-		default:
-			return s, errors.Wrapf(ErrAccess, "%s(%s)", volPath, st.Avail)
-		}
-		dev := vol.Device()
-		if dev == nil {
-			return s, errors.Errorf("%s is not a device-capable vol", s)
-		}
-		return dev.Path(), nil
 	}
+	// volume device
+	volPath := path.T{
+		Name:      s,
+		Namespace: namespace,
+		Kind:      kind.Vol,
+	}
+	vol, err := object.NewVol(volPath)
+	if err != nil {
+		return s, err
+	}
+	st, err := vol.Status(context.Background())
+	if err != nil {
+		return s, err
+	}
+	switch st.Avail {
+	case status.Up, status.NotApplicable, status.StandbyUp:
+	default:
+		return s, errors.Wrapf(ErrAccess, "%s(%s)", volPath, st.Avail)
+	}
+	dev := vol.Device()
+	if dev == nil {
+		return s, errors.Errorf("%s is not a device-capable vol", s)
+	}
+	return dev.Path(), nil
 }
 
 // HostDevpaths applies the HostDevpath function to each path of the input list

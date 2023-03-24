@@ -957,7 +957,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Section:    "network",
 		Option:     "type",
-		Candidates: []string{"bridge", "routed_bridge", "weave"},
+		Candidates: []string{"bridge", "routed_bridge"},
 		Default:    "bridge",
 		Text:       keywords.NewText(fs, "text/kw/node/network.type"),
 	},

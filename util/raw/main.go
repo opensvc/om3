@@ -91,7 +91,9 @@ func (t T) modprobe() error {
 	if probed {
 		return nil
 	}
-	if file.ExistsAndDir("/sys/class/raw") {
+	if v, err := file.ExistsAndDir("/sys/class/raw"); err != nil {
+		return err
+	} else if v {
 		probed = true
 		return nil
 	}
@@ -121,7 +123,6 @@ func RawMajor() int {
 // nextMinor returns the next available raw device driver free minor.
 //
 // It must be called from a locked code section.
-//
 func (t T) nextMinor() int {
 	binds, err := t.QueryAll()
 	if err != nil {
@@ -210,7 +211,6 @@ func (t T) HasBlockDev(path string) (bool, error) {
 // Bind create a new raw device for block dev 'bDevPath'
 //
 // it returns device minor of created raw device
-//
 func (t T) Bind(bDevPath string) (int, error) {
 	p := "/var/lock/opensvc.raw.lock"
 	lock := flock.New(p, "", fcntllock.New)
@@ -261,7 +261,6 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 // UnbindBDevPath unbind raw device associated with block device path 'bDevPath'
 //
 // It return nil if succeed or if no raw device for block 'bDevPath'
-//
 func (t T) UnbindBDevPath(bDevPath string) error {
 	binds, err := t.QueryAll()
 	if err != nil {

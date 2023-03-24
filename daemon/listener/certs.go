@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
-	"os/user"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -20,6 +19,13 @@ import (
 	"github.com/opensvc/om3/util/findmnt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+)
+
+var (
+	certUsr                  = "root"
+	certGrp                  = "root"
+	certFileMode fs.FileMode = 0600
+	certDirMode  fs.FileMode = 0700
 )
 
 func startCertFS() error {
@@ -52,7 +58,9 @@ func mountCertFS() error {
 		if err1, ok := err.(*exec.Error); ok {
 			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
 				// fallback when findmnt is not present
-				if !file.ExistsAndDir(rawconfig.Paths.Certs) {
+				if exists, err := file.ExistsAndDir(rawconfig.Paths.Certs); err != nil {
+					return err
+				} else if !exists {
 					return errors.New("missing mandatory dir " + rawconfig.Paths.Certs)
 				}
 				return nil
@@ -91,22 +99,17 @@ func installCaFiles(clusterName string) error {
 		return err
 	}
 
-	err, usr, grp, fmode, dmode := getCertFilesModes()
-	if err != nil {
-		return err
-	}
-
 	// ca_certificates for jwt
 	dst := daemonenv.CAKeyFile()
 
-	if err := caSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
+	if err := caSec.InstallKeyTo("private_key", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
 
 	dst = daemonenv.CACertChainFile()
-	if err := caSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
+	if err := caSec.InstallKeyTo("certificate_chain", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
@@ -140,7 +143,7 @@ func installCaFiles(clusterName string) error {
 	}
 	if len(b) > 0 {
 		dst := daemonenv.CAsCertFile()
-		if err := os.WriteFile(dst, b, fmode); err != nil {
+		if err := os.WriteFile(dst, b, certFileMode); err != nil {
 			return err
 		}
 		log.Logger.Info().Strs("ca", validCA).Msgf("installed %s", dst)
@@ -170,44 +173,26 @@ func installCertFiles(clusterName string) error {
 		log.Logger.Error().Err(err).Msgf("create %s", certPath)
 		return err
 	}
-	err, usr, grp, fmode, dmode := getCertFilesModes()
-	if err != nil {
-		return err
-	}
 	dst := daemonenv.KeyFile()
-	if err := certSec.InstallKeyTo("private_key", dst, &fmode, &dmode, usr, grp); err != nil {
+	if err := certSec.InstallKeyTo("private_key", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
 	dst = daemonenv.CertChainFile()
-	if err := certSec.InstallKeyTo("certificate_chain", dst, &fmode, &dmode, usr, grp); err != nil {
+	if err := certSec.InstallKeyTo("certificate_chain", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
 
 	dst = daemonenv.CertFile()
-	if err := certSec.InstallKeyTo("certificate", dst, &fmode, &dmode, usr, grp); err != nil {
+	if err := certSec.InstallKeyTo("certificate", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
 		return err
 	} else {
 		log.Logger.Info().Msgf("installed %s", dst)
 	}
 	return nil
-}
-
-func getCertFilesModes() (err error, usr *user.User, grp *user.Group, fmode, dmode fs.FileMode) {
-	usr, err = user.Lookup("root")
-	if err != nil {
-		return
-	}
-	grp, err = user.LookupGroupId(usr.Gid)
-	if err != nil {
-		return
-	}
-	fmode = 0600
-	dmode = 0700
-	return
 }
 
 func bootStrapCaPath(p path.T) error {

@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -161,7 +161,9 @@ func GetDevices() (Devices, error) {
 }
 
 func getDeviceFromPath(s string) (Dev, error) {
-	if file.ExistsAndSymlink(s) {
+	if v, err := file.ExistsAndSymlink(s); err != nil {
+		return Dev{}, err
+	} else if v {
 		if rp, err := os.Readlink(s); err == nil {
 			s = rp
 		} else {

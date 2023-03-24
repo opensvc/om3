@@ -3,16 +3,17 @@ package resvol
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
-	"golang.org/x/sys/unix"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/volsignal"
-	"github.com/opensvc/om3/util/file"
+	"golang.org/x/sys/unix"
 )
 
 type (
@@ -269,6 +270,37 @@ func (t T) InstallDataByKind(filter kind.T) (bool, error) {
 	return changed, nil
 }
 
+func (t T) chmod(p string, mode *os.FileMode) error {
+	if mode == nil {
+		return nil
+	}
+	return os.Chmod(p, *mode)
+}
+
+func (t T) chown(p string, usr, grp string) error {
+	uid := -1
+	gid := -1
+	if usr != "" {
+		if i, err := strconv.Atoi(usr); err == nil {
+			uid = i
+		} else if u, err := user.Lookup(usr); err == nil {
+			uid, _ = strconv.Atoi(u.Uid)
+		} else {
+			return fmt.Errorf("user %s is not integer and not resolved", usr)
+		}
+	}
+	if grp != "" {
+		if i, err := strconv.Atoi(grp); err == nil {
+			gid = i
+		} else if g, err := user.LookupGroup(grp); err == nil {
+			gid, _ = strconv.Atoi(g.Gid)
+		} else {
+			return fmt.Errorf("group %s is not integer and not resolved", grp)
+		}
+	}
+	return os.Chown(p, uid, gid)
+}
+
 func (t T) installDir(dir string, head string, mode *os.FileMode) error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dir %s in /", dir)
@@ -278,14 +310,29 @@ func (t T) installDir(dir string, head string, mode *os.FileMode) error {
 	if mode == nil {
 		perm = os.ModePerm
 	} else {
-		perm = *mode
+		perm = *t.DirPerm
 	}
-	if !file.ExistsAndDir(p) {
+	info, err := os.Stat(p)
+	switch {
+	case os.IsNotExist(err):
 		if err := os.MkdirAll(p, perm); err != nil {
 			return err
 		}
-	} else if file.Exists(p) {
-		return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
+		if err := t.chown(p, t.User, t.Group); err != nil {
+			return err
+		}
+	case err != nil:
+		return err
+	default:
+		if !info.IsDir() {
+			return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
+		}
+		if err := t.chmod(p, &perm); err != nil {
+			return err
+		}
+		if err := t.chown(p, t.User, t.Group); err != nil {
+			return err
+		}
 	}
 	return nil
 }

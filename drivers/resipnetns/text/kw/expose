@@ -1,4 +1,2 @@
 A whitespace-separated list of `<port>/<protocol>[:<host port>]` describing
 socket services that mandate a SRV exposition.
-
-If `<host_port>` is set, the `ip.cni` driver configures the port mappings.

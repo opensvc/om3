@@ -39,19 +39,21 @@ import (
 
 type (
 	T struct {
-		path           path.T
-		id             string
-		configure      object.Configurer
-		filename       string
-		log            zerolog.Logger
-		lastMtime      time.Time
-		localhost      string
-		forceRefresh   bool
-		published      bool
-		bus            *pubsub.Bus
-		sub            *pubsub.Subscription
-		instanceConfig instance.Config
-		clusterConfig  cluster.Config
+		path                     path.T
+		id                       string
+		configure                object.Configurer
+		filename                 string
+		log                      zerolog.Logger
+		lastMtime                time.Time
+		localhost                string
+		forceRefresh             bool
+		published                bool
+		bus                      *pubsub.Bus
+		sub                      *pubsub.Subscription
+		instanceConfig           instance.Config
+		clusterConfig            cluster.Config
+		instanceMonitorCtx       context.Context
+		isInstanceMonitorStarted bool
 
 		// ctx is a context created from parent context
 		ctx context.Context
@@ -65,15 +67,16 @@ var (
 
 	configFileCheckError = errors.New("config file check")
 
-	keyFlexMax       = key.New("DEFAULT", "flex_max")
-	keyFlexMin       = key.New("DEFAULT", "flex_min")
-	keyFlexTarget    = key.New("DEFAULT", "flex_target")
-	keyMonitorAction = key.New("DEFAULT", "monitor_action")
-	keyNodes         = key.New("DEFAULT", "nodes")
-	keyPlacement     = key.New("DEFAULT", "placement")
-	keyPriority      = key.New("DEFAULT", "priority")
-	keyTopology      = key.New("DEFAULT", "topology")
-	keyOrchestrate   = key.New("DEFAULT", "orchestrate")
+	keyFlexMax          = key.New("DEFAULT", "flex_max")
+	keyFlexMin          = key.New("DEFAULT", "flex_min")
+	keyFlexTarget       = key.New("DEFAULT", "flex_target")
+	keyMonitorAction    = key.New("DEFAULT", "monitor_action")
+	keyNodes            = key.New("DEFAULT", "nodes")
+	keyPlacement        = key.New("DEFAULT", "placement")
+	keyPreMonitorAction = key.New("DEFAULT", "pre_monitor_action")
+	keyPriority         = key.New("DEFAULT", "priority")
+	keyTopology         = key.New("DEFAULT", "topology")
+	keyOrchestrate      = key.New("DEFAULT", "orchestrate")
 )
 
 // Start launch goroutine instConfig worker for a local instance config
@@ -262,6 +265,7 @@ func (o *T) configFileCheck() error {
 	cfg.Resources = o.getResources(cf)
 	cfg.MonitorAction = o.getMonitorAction(cf)
 	cfg.PlacementPolicy = o.getPlacementPolicy(cf)
+	cfg.PreMonitorAction = cf.GetString(keyPreMonitorAction)
 	cfg.Scope = scope
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Updated = mtime

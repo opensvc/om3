@@ -1,12 +1,15 @@
 package object
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/uri"
+	"github.com/pkg/errors"
 )
 
 // AddKey sets a new key and commits immediately
@@ -57,24 +60,42 @@ func (t *keystore) ChangeKeyFrom(name string, from string) error {
 }
 
 func (t *keystore) alterFrom(name string, from string) error {
-	var err error
-	switch {
-	case from != "":
-		u := uri.New(from)
-		switch {
-		case u.IsValid():
-			err = t.fromURI(name, u)
-		case file.ExistsAndRegular(from):
-			err = t.fromRegular(name, from)
-		case file.ExistsAndDir(from):
-			err = t.fromDir(name, from)
-		default:
-			err = fmt.Errorf("unexpected value source: %s", from)
-		}
+	switch from {
+	case "":
+		return fmt.Errorf("empty value source")
+	case "-", "stdin", "/dev/stdin":
+		return t.fromStdin(name)
 	default:
-		err = fmt.Errorf("empty value source")
+		u := uri.New(from)
+		if u.IsValid() {
+			return t.fromURI(name, u)
+		}
+		if v, err := file.ExistsAndRegular(from); err != nil {
+			return err
+		} else if v {
+			return t.fromRegular(name, from)
+		}
+		if v, err := file.ExistsAndDir(from); err != nil {
+			return err
+		} else if v {
+			return t.fromDir(name, from)
+		}
+		return fmt.Errorf("unexpected value source: %s", from)
 	}
-	return err
+}
+
+func (t *keystore) fromStdin(name string) error {
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		reader := bufio.NewReader(os.Stdin)
+		b, err := io.ReadAll(reader)
+		if err != nil {
+			return err
+		}
+		return t.addKey(name, b)
+	} else {
+		return errors.Errorf("stdin must be a pipe")
+	}
 }
 
 func (t *keystore) fromRegular(name string, p string) error {

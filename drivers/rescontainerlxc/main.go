@@ -687,14 +687,14 @@ func (t *T) nativeConfigFile() string {
 		dir = filepath.Dir(dir)
 		switch dir {
 		case "/", "/usr":
-			if file.ExistsAndDir("/var/lib/lxc") {
+			if v, _ := file.ExistsAndDir("/var/lib/lxc"); v {
 				return fmt.Sprintf("/var/lib/lxc/%s/config", t.Name)
 			}
-			if file.ExistsAndDir("/etc/lxc") {
+			if v, _ := file.ExistsAndDir("/etc/lxc"); v {
 				return fmt.Sprintf("/etc/lxc/%s/config", t.Name)
 			}
 		case "/usr/local":
-			if file.ExistsAndDir("/usr/local/var/lib/lxc") {
+			if v, _ := file.ExistsAndDir("/usr/local/var/lib/lxc"); v {
 				return fmt.Sprintf("/usr/local/var/lib/lxc/%s/config", t.Name)
 			}
 		}
@@ -713,11 +713,11 @@ func (t *T) lxcPath() string {
 			return p
 		}
 		p := "/var/lib/lxc"
-		if file.ExistsAndDir(p) {
+		if v, _ := file.ExistsAndDir(p); v {
 			return p
 		}
 		p = "/usr/local/var/lib/lxc"
-		if file.ExistsAndDir(p) {
+		if v, _ := file.ExistsAndDir(p); v {
 			return p
 		}
 		return ""

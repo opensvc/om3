@@ -3,7 +3,6 @@ package object
 import (
 	"io/ioutil"
 	"os"
-	"os/user"
 
 	"github.com/opensvc/om3/util/key"
 )
@@ -37,14 +36,13 @@ type (
 		RemoveKey(name string) error
 		EditKey(name string) error
 		InstallKey(name string) error
-		InstallKeyTo(string, string, *os.FileMode, *os.FileMode, *user.User, *user.Group) error
+		InstallKeyTo(string, string, *os.FileMode, *os.FileMode, string, string) error
 	}
 
 	// SecureKeystore is implemented by encrypting Keystore object kinds (usr, sec).
 	SecureKeystore interface {
 		GenCert() error
 		PKCS() ([]byte, error)
-		FullPEM() (string, error)
 	}
 )
 

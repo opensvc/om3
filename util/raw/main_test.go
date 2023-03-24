@@ -14,7 +14,9 @@ import (
 
 func TestRaw(t *testing.T) {
 	rawdev := "/dev/raw"
-	if !file.ExistsAndDir(rawdev) {
+	if v, err := file.ExistsAndDir(rawdev); err != nil {
+		t.Fatalf("%s", err)
+	} else if !v {
 		t.Skipf("no %s, skip test", rawdev)
 	}
 	if os.Getuid() != 0 {

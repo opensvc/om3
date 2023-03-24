@@ -99,7 +99,7 @@ func (t keystore) _install(k string, dst string) error {
 		return fmt.Errorf("%s key=%s not found", t, k)
 	}
 	for _, vk := range keys {
-		if _, err := t.installKey(vk, dst, nil, nil, nil, nil); err != nil {
+		if _, err := t.installKey(vk, dst, nil, nil, "", ""); err != nil {
 			return err
 		}
 	}
@@ -115,7 +115,7 @@ func (t keystore) keyPath(vk vKey, dst string) string {
 	return dst
 }
 
-func (t keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) (bool, error) {
+func (t keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
 	switch vk.Type {
 	case vKeyFile:
 		vpath := t.keyPath(vk, dst)
@@ -128,7 +128,7 @@ func (t keystore) installKey(vk vKey, dst string, mode *os.FileMode, dirmode *os
 }
 
 // installFileKey installs a key content in the host storage
-func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) (bool, error) {
+func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
 	if strings.Contains(dst, "..") {
 		// paranoid checks before RemoveAll() and Remove()
 		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", dst)
@@ -137,22 +137,28 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 	if err != nil {
 		return false, err
 	}
-	if file.ExistsAndDir(dst) {
+	if v, err := file.ExistsAndDir(dst); err != nil {
+		t.Log().Error().Err(err).Msgf("install %s key=%s directory at location %s", t, vk.Key, dst)
+	} else if v {
 		t.Log().Info().Msgf("remove %s key=%s directory at location %s", t, vk.Key, dst)
 		if err := os.RemoveAll(dst); err != nil {
 			return false, err
 		}
 	}
 	vdir := filepath.Dir(dst)
-	if file.ExistsAndRegular(vdir) || file.ExistsAndSymlink(vdir) {
-		t.Log().Info().Msgf("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
-		if err := os.Remove(vdir); err != nil {
-			return false, err
-		}
-	}
-	if !file.Exists(vdir) {
+	info, err := os.Stat(vdir)
+	switch {
+	case os.IsNotExist(err):
 		t.Log().Info().Msgf("create directory %s to host %s key=%s", vdir, t, vk.Key)
 		if err := os.MkdirAll(vdir, *dirmode); err != nil {
+			return false, err
+		}
+	case file.IsNotDir(err):
+	case err != nil:
+		return false, err
+	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
+		t.Log().Info().Msgf("remove %s key=%s file at parent location %s", t, vk.Key, vdir)
+		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
 	}
@@ -160,7 +166,7 @@ func (t keystore) installFileKey(vk vKey, dst string, mode *os.FileMode, dirmode
 }
 
 // installDirKey creates a directory to host projected keys
-func (t keystore) installDirKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) (bool, error) {
+func (t keystore) installDirKey(vk vKey, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) (bool, error) {
 	if strings.HasSuffix(dst, "/") {
 		dirname := filepath.Base(vk.Path)
 		dst = filepath.Join(dst, dirname, "")
@@ -186,18 +192,25 @@ func (t keystore) chmod(p string, mode *os.FileMode) error {
 	return os.Chmod(p, *mode)
 }
 
-func (t keystore) chown(p string, usr *user.User, grp *user.Group) error {
-	var err error
+func (t keystore) chown(p string, usr, grp string) error {
 	uid := -1
 	gid := -1
-	if usr != nil {
-		if uid, err = strconv.Atoi(usr.Uid); err != nil {
-			return fmt.Errorf("uid %s is not integer", usr.Uid)
+	if usr != "" {
+		if i, err := strconv.Atoi(usr); err == nil {
+			uid = i
+		} else if u, err := user.Lookup(usr); err == nil {
+			uid, _ = strconv.Atoi(u.Uid)
+		} else {
+			return fmt.Errorf("user %s is not integer and not resolved", usr)
 		}
 	}
-	if grp != nil {
-		if gid, err = strconv.Atoi(grp.Gid); err != nil {
-			return fmt.Errorf("gid %s is not integer", grp.Gid)
+	if grp != "" {
+		if i, err := strconv.Atoi(grp); err == nil {
+			gid = i
+		} else if g, err := user.LookupGroup(grp); err == nil {
+			gid, _ = strconv.Atoi(g.Gid)
+		} else {
+			return fmt.Errorf("group %s is not integer and not resolved", grp)
 		}
 	}
 	return os.Chown(p, uid, gid)
@@ -205,7 +218,7 @@ func (t keystore) chown(p string, usr *user.User, grp *user.Group) error {
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
 // This function return false if the dst content didn't change.
-func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr *user.User, grp *user.Group) (bool, error) {
+func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
 	mtime := t.configModTime()
 	if file.Exists(dst) {
 		if err := t.chmod(dst, mode); err != nil {
@@ -228,12 +241,16 @@ func (t keystore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr
 		}
 	}
 	t.log.Info().Msgf("install %s/%s in %s", t.path.Name, vk.Key, dst)
+	fmt.Printf("install %s/%s in %s\n", t.path.Name, vk.Key, dst)
 	perm := os.ModePerm
 	if mode != nil {
 		perm = *mode
 	}
 	if err := os.WriteFile(dst, b, perm); err != nil {
 		return true, err
+	}
+	if err := t.chown(dst, usr, grp); err != nil {
+		return false, err
 	}
 	return true, os.Chtimes(dst, mtime, mtime)
 }
@@ -242,7 +259,7 @@ func (t keystore) InstallKey(keyName string) error {
 	return t.postInstall(keyName)
 }
 
-func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr *user.User, grp *user.Group) error {
+func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) error {
 	t.log.Debug().Msgf("install key=%s to %s", keyName, dst)
 	keys, err := t.resolveKey(keyName)
 	if err != nil {

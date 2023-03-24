@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
@@ -21,6 +20,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/filesystems"
 	"github.com/opensvc/om3/util/findmnt"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -228,7 +228,9 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) createMountPoint(ctx context.Context) error {
-	if file.ExistsAndDir(t.MountPoint) {
+	if v, err := file.ExistsAndDir(t.MountPoint); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	if file.Exists(t.MountPoint) {

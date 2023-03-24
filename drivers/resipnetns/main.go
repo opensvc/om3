@@ -94,12 +94,16 @@ func (t T) getNS() (ns.NetNS, error) {
 	if err != nil {
 		return nil, err
 	}
+	if path == "" {
+		return nil, nil
+	}
 	return ns.GetNS(path)
 }
 
 func (t *T) StatusInfo() map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
+	data["expose"] = t.Expose
 	data["ipaddr"] = t.ipaddr()
 	data["ipdev"] = t.IpDev
 	data["netmask"] = netmask
@@ -404,6 +408,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	netns, err := t.getNS()
 	if err != nil {
 		t.StatusLog().Error("netns: %s", err)
+		return status.Down
+	}
+	if netns == nil {
 		return status.Down
 	}
 	defer netns.Close()

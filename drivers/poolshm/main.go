@@ -63,11 +63,10 @@ func (t T) Usage() (pool.StatusUsage, error) {
 func (t *T) mntOpt(size float64) string {
 	sizeOpt := "size=" + sizeconv.ExactBSizeCompact(size)
 	opts := t.GetString("mnt_opt")
-	if opts != "" {
-		opts = strings.Join([]string{opts, sizeOpt}, ",")
-	} else {
-		opts = sizeOpt
+	if opts == "" {
+		opts = "mode=700"
 	}
+	opts = strings.Join([]string{opts, sizeOpt}, ",")
 	return opts
 }
 
