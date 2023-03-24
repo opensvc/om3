@@ -1,13 +1,10 @@
 // Package icfg is responsible for local instance.Config
 //
-// New instConfig are created by daemon discover.
+// NewData instConfig are created by daemon discover.
 // It provides the cluster data at ["cluster", "node", localhost, "services",
 // "config, <instance>]
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
-//
-// The icfg also starts imon object (with icfg context)
-// => this will end imon object
 //
 // The worker routine is terminated when config file is not any more present, or
 // when daemon discover context is done.
@@ -42,31 +39,24 @@ import (
 
 type (
 	T struct {
-		path                     path.T
-		id                       string
-		configure                object.Configurer
-		filename                 string
-		log                      zerolog.Logger
-		lastMtime                time.Time
-		localhost                string
-		forceRefresh             bool
-		published                bool
-		bus                      *pubsub.Bus
-		sub                      *pubsub.Subscription
-		instanceConfig           instance.Config
-		clusterConfig            cluster.Config
-		instanceMonitorCtx       context.Context
-		isInstanceMonitorStarted bool
-		iMonStarter              IMonStarter
+		path           path.T
+		id             string
+		configure      object.Configurer
+		filename       string
+		log            zerolog.Logger
+		lastMtime      time.Time
+		localhost      string
+		forceRefresh   bool
+		published      bool
+		bus            *pubsub.Bus
+		sub            *pubsub.Subscription
+		instanceConfig instance.Config
+		clusterConfig  cluster.Config
 
 		// ctx is a context created from parent context
 		ctx context.Context
 		// cancel is a cancel func for icfg, used to stop ifg if error occurs
 		cancel context.CancelFunc
-	}
-
-	IMonStarter interface {
-		Start(parent context.Context, p path.T, nodes []string) error
 	}
 )
 
@@ -87,7 +77,7 @@ var (
 )
 
 // Start launch goroutine instConfig worker for a local instance config
-func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any, iMonStarter IMonStarter) error {
+func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
 	id := daemondata.InstanceId(p, localhost)
 	ctx, cancel := context.WithCancel(parent)
@@ -101,8 +91,6 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		bus:            pubsub.BusFromContext(ctx),
 		filename:       filename,
 
-		iMonStarter: iMonStarter,
-
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -111,7 +99,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 		return err
 	}
 
-	o.startSubscriptions(ctx)
+	o.startSubscriptions()
 
 	go func() {
 		defer o.log.Debug().Msg("stopped")
@@ -128,7 +116,7 @@ func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd cha
 	return nil
 }
 
-func (o *T) startSubscriptions(ctx context.Context) {
+func (o *T) startSubscriptions() {
 	clusterId := clusterPath.String()
 	label := pubsub.Label{"path", o.path.String()}
 	o.sub = o.bus.Sub(o.path.String() + " icfg")
@@ -143,25 +131,8 @@ func (o *T) startSubscriptions(ctx context.Context) {
 	o.sub.Start()
 }
 
-func (o *T) startInstanceMonitor() (bool, error) {
-	if len(o.instanceConfig.Scope) == 0 {
-		o.log.Info().Msgf("wait scopes to create associated imon")
-		return false, nil
-	}
-	o.log.Info().Msgf("starting imon worker...")
-	// TODO refactor Start to use icfg context, and remove o.instanceMonitorCtx
-	if err := o.iMonStarter.Start(o.instanceMonitorCtx, o.path, o.instanceConfig.Scope); err != nil {
-		o.log.Error().Err(err).Msg("failure during start imon worker")
-		return false, err
-	}
-	return true, nil
-}
-
 // worker watch for local instConfig config file updates until file is removed
 func (o *T) worker() {
-	var (
-		err error
-	)
 	defer o.log.Debug().Msg("done")
 	o.log.Debug().Msg("starting")
 
@@ -172,13 +143,6 @@ func (o *T) worker() {
 	}
 	defer o.delete()
 
-	instanceMonitorCtx, cancelInstanceMonitor := context.WithCancel(o.ctx)
-	o.instanceMonitorCtx = instanceMonitorCtx
-	defer cancelInstanceMonitor()
-	if o.isInstanceMonitorStarted, err = o.startInstanceMonitor(); err != nil {
-		o.log.Error().Err(err).Msg("fail to start imon worker")
-		return
-	}
 	o.log.Debug().Msg("started")
 	for {
 		select {
@@ -211,15 +175,6 @@ func (o *T) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		o.cancel()
 		return
 	}
-	if !o.isInstanceMonitorStarted {
-		o.log.Info().Msgf("imon not yet started, try start")
-		if o.isInstanceMonitorStarted, err = o.startInstanceMonitor(); err != nil {
-			o.log.Error().Err(err).Msgf("imon start error")
-			o.cancel()
-			return
-		}
-	}
-
 }
 
 func (o *T) onConfigFileRemoved(c msgbus.ConfigFileRemoved) {
@@ -241,6 +196,7 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 		return
 	}
 	o.instanceConfig = *newConfig
+	instance.ConfigData.Set(o.path, o.localhost, newConfig.DeepCopy())
 	o.bus.Pub(msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},
 		pubsub.Label{"path", o.path.String()},
 		pubsub.Label{"node", o.localhost},
@@ -437,9 +393,9 @@ func (o *T) delete() {
 		{"path", o.path.String()},
 	}
 	if o.published {
+		instance.ConfigData.Unset(o.path, o.localhost)
 		o.bus.Pub(msgbus.InstanceConfigDeleted{Path: o.path, Node: o.localhost}, labels...)
 	}
-	o.bus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost}, labels...)
 }
 
 func (o *T) done(parent context.Context, doneChan chan<- any) {

@@ -108,6 +108,7 @@ func (t *T) worker() {
 func (t *T) onInstanceConfigDeleted(m msgbus.InstanceConfigDeleted) {
 	s := m.Path.String()
 	delete(t.iStatusM, m.Path.String())
+	instance.StatusData.Unset(m.Path, t.localhost)
 	t.bus.Pub(msgbus.InstanceStatusDeleted{Path: m.Path, Node: t.localhost},
 		t.labelLocalhost,
 		pubsub.Label{"path", s},
@@ -130,6 +131,7 @@ func (o *T) onInstanceFrozenFileRemoved(fileRemoved msgbus.InstanceFrozenFileRem
 		iStatus.Updated = fileRemoved.Updated
 	}
 	o.iStatusM[s] = iStatus
+	instance.StatusData.Set(fileRemoved.Path, o.localhost, iStatus.DeepCopy())
 	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
 		o.labelLocalhost,
 		pubsub.Label{"path", s},
@@ -154,6 +156,7 @@ func (o *T) onInstanceFrozenFileUpdated(frozen msgbus.InstanceFrozenFileUpdated)
 		iStatus.Updated = frozen.Updated
 	}
 	o.iStatusM[s] = iStatus
+	instance.StatusData.Set(frozen.Path, o.localhost, iStatus.DeepCopy())
 	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: frozen.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
 		o.labelLocalhost,
 		pubsub.Label{"path", s},
@@ -162,7 +165,8 @@ func (o *T) onInstanceFrozenFileUpdated(frozen msgbus.InstanceFrozenFileUpdated)
 
 func (o *T) onInstanceStatusPost(post msgbus.InstanceStatusPost) {
 	s := post.Path.String()
-	o.iStatusM[s] = *post.Value.DeepCopy()
+	o.iStatusM[s] = post.Value
+	instance.StatusData.Set(post.Path, post.Node, post.Value.DeepCopy())
 	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
 		o.labelLocalhost,
 		pubsub.Label{"path", s})

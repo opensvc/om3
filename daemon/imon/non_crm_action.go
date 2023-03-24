@@ -9,7 +9,6 @@ import (
 
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (o *imon) getFrozen() time.Time {
@@ -50,8 +49,8 @@ func (o *imon) freeze() error {
 		return err
 	}
 	o.pubsubBus.Pub(msgbus.InstanceFrozenFileUpdated{Path: o.path, Updated: frozen},
-		pubsub.Label{"node", o.localhost},
-		pubsub.Label{"path", o.path.String()},
+		o.labelPath,
+		o.labelLocalhost,
 	)
 	return nil
 }
@@ -75,8 +74,8 @@ func (o *imon) unfreeze() error {
 		o.instStatus[o.localhost] = instanceStatus
 	}
 	o.pubsubBus.Pub(msgbus.InstanceFrozenFileRemoved{Path: o.path, Updated: time.Now()},
-		pubsub.Label{"node", o.localhost},
-		pubsub.Label{"path", o.path.String()},
+		o.labelLocalhost,
+		o.labelPath,
 	)
 	return nil
 }

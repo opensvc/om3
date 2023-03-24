@@ -102,8 +102,7 @@ func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 		return
 	}
 	if _, ok := d.cfgMTime[s]; !ok {
-		// TODO handle startup of imon
-		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC, d.imonStarter); err != nil {
+		if err := icfg.Start(d.ctx, c.Path, c.Filename, d.cfgCmdC); err != nil {
 			return
 		}
 	}
@@ -121,8 +120,7 @@ func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 	if mtime.IsZero() {
 		return
 	}
-	// TODO handle startup of imon
-	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC, d.imonStarter); err != nil {
+	if err := icfg.Start(d.ctx, p, filename, d.cfgCmdC); err != nil {
 		return
 	}
 	d.cfgMTime[s] = mtime

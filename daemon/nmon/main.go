@@ -258,6 +258,7 @@ func (o *nmon) worker() {
 	o.refreshSanPaths()
 	o.updateIfChange()
 	defer o.bus.Pub(msgbus.NodeMonitorDeleted{Node: o.localhost}, pubsub.Label{"node", o.localhost})
+	defer node.MonitorData.Unset(o.localhost)
 
 	o.getAndUpdateStatusArbitrator()
 
@@ -354,6 +355,7 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 
 func (o *nmon) update() {
 	newValue := o.state
+	node.MonitorData.Set(o.localhost, newValue.DeepCopy())
 	o.bus.Pub(msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()},
 		pubsub.Label{"node", o.localhost})
 	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
@@ -442,6 +444,7 @@ func (o *nmon) updateStats() {
 	if err != nil {
 		o.log.Error().Err(err).Msg("get stats")
 	}
+	node.StatsData.Set(o.localhost, stats.DeepCopy())
 	o.bus.Pub(msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()},
 		pubsub.Label{"node", o.localhost})
 }
@@ -518,10 +521,12 @@ func (o *nmon) loadAndPublishConfig() error {
 	if err := o.loadConfig(); err != nil {
 		return err
 	}
+	node.ConfigData.Set(o.localhost, o.nodeConfig.DeepCopy())
 	o.bus.Pub(msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
 	o.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
 	o.nodeStatus.Labels = localNodeInfo.Labels
+	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
 	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
 	return nil

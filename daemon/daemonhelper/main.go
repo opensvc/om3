@@ -11,6 +11,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -45,6 +48,10 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	if env == nil {
 		env = initEnv(t)
 	}
+	// Reset existing data caches
+	node.InitData()
+	instance.InitData()
+	object.InitData()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := pubsub.NewBus("daemon")

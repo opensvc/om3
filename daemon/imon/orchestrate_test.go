@@ -52,6 +52,7 @@ type (
 		sideEffects map[string]sideEffect
 
 		nodeMonitorStates []node.MonitorState
+		nodeFrozen        bool
 
 		expectedState        instance.MonitorState
 		expectedGlobalExpect instance.MonitorGlobalExpect
@@ -95,6 +96,31 @@ func Test_Orchestrate_HA(t *testing.T) {
 			expectedCrm: [][]string{
 				{"ha", "status", "-r"},
 				{"ha", "start", "--local"},
+			},
+		},
+
+		{
+			name:    "ha-with-frozen-node", // frozen node => no orchestration
+			srcFile: "./testdata/ha.conf",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			nodeFrozen:           true,
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"ha-with-frozen-node", "status", "-r"},
 			},
 		},
 
@@ -218,9 +244,19 @@ func Test_Orchestrate_HA(t *testing.T) {
 			for _, nmonState := range c.nodeMonitorStates {
 				t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
 				nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
+				node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
 				bus.Pub(msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
 					pubsub.Label{"node", hostname.Hostname()})
 			}
+
+			t.Logf("publish initial node status with frozen %v", c.nodeFrozen)
+			nodeStatus := node.Status{}
+			if c.nodeFrozen {
+				nodeStatus.Frozen = time.Now()
+			}
+			node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
+			bus.Pub(msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
+				pubsub.Label{"node", hostname.Hostname()})
 
 			initialReadyDuration := defaultReadyDuration
 			defaultReadyDuration = 1 * time.Millisecond
@@ -231,13 +267,13 @@ func Test_Orchestrate_HA(t *testing.T) {
 				crmAction = nil
 			}()
 
-			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c)
+			factory := Factory{DrainDuration: setup.DrainDuration}
+			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c, factory)
 
 			cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.name)
 			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
 			t.Logf("--- starting icfg for %s", p)
-			factory := Factory{DrainDuration: setup.DrainDuration}
-			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), factory)
+			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20))
 			require.Nil(t, err)
 
 			t.Logf("waiting for watcher result")
@@ -363,7 +399,7 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 // that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
 //
 // It emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
-func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase) <-chan msgbus.InstanceMonitorUpdated {
+func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase, factory Factory) <-chan msgbus.InstanceMonitorUpdated {
 	r := make(chan chan msgbus.InstanceMonitorUpdated)
 
 	go func() {
@@ -404,7 +440,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 						continue
 					}
 					t.Logf("--- starting omon for %s", p)
-					if err := omon.Start(ctx, p, o.Value, make(chan any, 100)); err != nil {
+					if err := omon.Start(ctx, p, o.Value, make(chan any, 100), factory); err != nil {
 						t.Errorf("omon.Start failed: %s", err)
 					}
 					monStarted = true
