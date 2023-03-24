@@ -11,7 +11,9 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
@@ -39,12 +41,12 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, "can't parse instance status")
 		return
 	}
-	databus := daemondata.FromContext(r.Context())
-	if err := databus.SetInstanceStatus(p, *instanceStatus); err != nil {
-		log.Warn().Err(err).Msgf("can't set instance status for %s", p)
-		sendError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+	bus := pubsub.BusFromContext(r.Context())
+	localhost := hostname.Hostname()
+	bus.Pub(msgbus.InstanceStatusPost{Path: p, Node: localhost, Value: *instanceStatus},
+		pubsub.Label{"path", payload.Path},
+		pubsub.Label{"node", localhost},
+	)
 	w.WriteHeader(http.StatusOK)
 }
 

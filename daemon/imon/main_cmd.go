@@ -17,7 +17,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -63,7 +62,7 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 	setLocalExpectStarted()
 }
 
-func (o *imon) onConfigUpdated(srcNode string, srcCmd msgbus.ConfigUpdated) {
+func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd msgbus.InstanceConfigUpdated) {
 	if srcCmd.Node == o.localhost {
 		o.instConfig = srcCmd.Value
 		o.initResourceMonitor()
@@ -82,10 +81,10 @@ func (o *imon) onConfigUpdated(srcNode string, srcCmd msgbus.ConfigUpdated) {
 		}
 	}
 	o.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
-	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated ConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
+	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
-func (o *imon) onConfigDeleted(srcNode string, srcCmd msgbus.ConfigDeleted) {
+func (o *imon) onInstanceConfigDeleted(srcNode string, srcCmd msgbus.InstanceConfigDeleted) {
 	if _, ok := o.instStatus[srcCmd.Node]; ok {
 		o.log.Info().Msgf("drop deleted instance status from node %s", srcCmd.Node)
 		delete(o.instStatus, srcCmd.Node)
@@ -98,10 +97,10 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 		switch srcCmd := c.SrcEv.(type) {
 		case msgbus.InstanceStatusUpdated:
 			o.onInstanceStatusUpdated(c.Node, srcCmd)
-		case msgbus.ConfigUpdated:
-			o.onConfigUpdated(c.Node, srcCmd)
-		case msgbus.ConfigDeleted:
-			o.onConfigDeleted(c.Node, srcCmd)
+		case msgbus.InstanceConfigUpdated:
+			o.onInstanceConfigUpdated(c.Node, srcCmd)
+		case msgbus.InstanceConfigDeleted:
+			o.onInstanceConfigDeleted(c.Node, srcCmd)
 		case msgbus.InstanceMonitorUpdated:
 			o.onInstanceMonitorUpdated(srcCmd)
 		case msgbus.InstanceMonitorDeleted:
@@ -199,7 +198,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			return
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
-			o.log.Warn().Msgf("invalid set instance monitor global expect: %s", *c.Value.GlobalExpect)
+			o.log.Warn().Msgf("refuse to set global expect '%s': invalid value", *c.Value.GlobalExpect)
 			return
 		}
 		switch *c.Value.GlobalExpect {
@@ -212,7 +211,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 				// Select some nodes automatically.
 				dst := o.nextPlacedAtCandidate()
 				if dst == "" {
-					o.log.Info().Msg("no destination node could be selected from candidates")
+					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from candidates", *c.Value.GlobalExpect)
 					return
 				}
 				options.Destination = []string{dst}
@@ -221,7 +220,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 				want := options.Destination
 				can := o.nextPlacedAtCandidates(want)
 				if can == "" {
-					o.log.Info().Msgf("no destination node could be selected from %s", want)
+					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from %s", *c.Value.GlobalExpect, want)
 					return
 				} else if can != want[0] {
 					o.log.Info().Msgf("change destination nodes from %s to %s", want, can)
@@ -231,7 +230,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := o.isStartable(); !v {
-				o.log.Info().Msg(reason)
+				o.log.Info().Msgf("refuse to set global expect '%s': %s", *c.Value.GlobalExpect, reason)
 				return
 			}
 		}
@@ -299,8 +298,8 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 			Id:    c.Value.CandidateOrchestrationId,
 			Error: errors.Errorf("dropped set instance monitor request: %v", c.Value),
 		},
-			pubsub.Label{"path", o.path.String()},
-			pubsub.Label{"node", o.localhost},
+			o.labelPath,
+			o.labelLocalhost,
 		)
 	}
 
@@ -365,7 +364,7 @@ func (o *imon) onInstanceMonitorDeleted(c msgbus.InstanceMonitorDeleted) {
 	o.updateIfChange()
 }
 
-func (o imon) GetInstanceMonitor(node string) (instance.Monitor, bool) {
+func (o *imon) GetInstanceMonitor(node string) (instance.Monitor, bool) {
 	if o.localhost == node {
 		return o.state, true
 	}
@@ -382,7 +381,7 @@ func (o *imon) AllInstanceMonitorState(s instance.MonitorState) bool {
 	return true
 }
 
-func (o imon) AllInstanceMonitors() map[string]instance.Monitor {
+func (o *imon) AllInstanceMonitors() map[string]instance.Monitor {
 	m := make(map[string]instance.Monitor)
 	m[o.localhost] = o.state
 	for node, instMon := range o.instMonitor {
@@ -391,7 +390,7 @@ func (o imon) AllInstanceMonitors() map[string]instance.Monitor {
 	return m
 }
 
-func (o imon) isExtraInstance() (bool, string) {
+func (o *imon) isExtraInstance() (bool, string) {
 	if o.state.IsHALeader {
 		return false, "object is not leader"
 	}
@@ -410,7 +409,7 @@ func (o imon) isExtraInstance() (bool, string) {
 	return true, ""
 }
 
-func (o imon) isHAOrchestrateable() (bool, string) {
+func (o *imon) isHAOrchestrateable() (bool, string) {
 	if (o.objStatus.Topology == topology.Failover) && (o.objStatus.Avail == status.Warn) {
 		return false, "failover object is warn state"
 	}
@@ -423,7 +422,7 @@ func (o imon) isHAOrchestrateable() (bool, string) {
 	return true, ""
 }
 
-func (o imon) isStartable() (bool, string) {
+func (o *imon) isStartable() (bool, string) {
 	if v, reason := o.isHAOrchestrateable(); !v {
 		return false, reason
 	}
@@ -433,7 +432,7 @@ func (o imon) isStartable() (bool, string) {
 	return true, "object is startable"
 }
 
-func (o imon) isStarted() bool {
+func (o *imon) isStarted() bool {
 	switch o.objStatus.Topology {
 	case topology.Flex:
 		return o.objStatus.UpInstancesCount >= o.objStatus.FlexTarget
@@ -567,7 +566,7 @@ func (o *imon) nextPlacedAtCandidate() string {
 	return ""
 }
 
-func (o imon) IsInstanceStartFailed(node string) (bool, bool) {
+func (o *imon) IsInstanceStartFailed(node string) (bool, bool) {
 	instMon, ok := o.GetInstanceMonitor(node)
 	if !ok {
 		return false, false
@@ -580,7 +579,7 @@ func (o imon) IsInstanceStartFailed(node string) (bool, bool) {
 	}
 }
 
-func (o imon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
+func (o *imon) IsNodeMonitorStatusRankable(node string) (bool, bool) {
 	nodeMonitor, ok := o.nodeMonitor[node]
 	if !ok {
 		return false, false

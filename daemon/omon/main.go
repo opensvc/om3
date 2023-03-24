@@ -1,15 +1,18 @@
 // Package omon is responsible for of object.Status
 //
-// It provides the cluster data ["monitor", "services," <svcname>]
+// It provides the cluster data cluster.objects.<path>
 //
 // worker ends when context is done or when no more service instance config exist
 //
-// worker watch on instance status updates to refresh object.Status
+// worker is responsible for local imon startup when local instance config is detected
+//
+// worker watch on instance status, monitor, config updates to refresh object.Status
 package omon
 
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,6 +26,7 @@ import (
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -35,8 +39,29 @@ type (
 		discoverCmdC chan<- any
 		databus      *daemondata.T
 
-		instStatus  map[string]instance.Status
+		// imonCancel is the cancel function for the local imon we have started
+		// We start imon on local instance config received or exists (when instConfig[o.localhost] is created)
+		// We cancel imon when local instance config is deleted (when instConfig[o.localhost] is deleted)
+		imonCancel  context.CancelFunc
+		imonStarter IMonStarter
+
+		// instStatus is internal cache for nodes instance status.
+		//
+		//   The map starts with zero value for the instance.Config node that have
+		//   been used to create omon.
+		//
+		//   Then instStatus map is updated from:
+		//      * msgbus.InstanceConfigDeleted
+		//      * msgbus.InstanceStatusUpdated,
+		//
+		instStatus map[string]instance.Status
+
 		instMonitor map[string]instance.Monitor
+
+		// instConfig track the known instance p configs.
+		// It is used to terminate omon (when instConfig len is 0)
+		// It is used to start imon (when instConfig[o.localhost] is [re]created)
+		instConfig map[string]instance.Config
 
 		// srcEvent is the source event that triggered the object status update
 		srcEvent any
@@ -44,13 +69,23 @@ type (
 		ctx context.Context
 		log zerolog.Logger
 
+		bus *pubsub.Bus
 		sub *pubsub.Subscription
+
+		labelPath pubsub.Label
+		labelNode pubsub.Label
+		localhost string
+	}
+
+	IMonStarter interface {
+		Start(parent context.Context, p path.T, nodes []string) error
 	}
 )
 
 // Start a goroutine responsible for the status of an object
-func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan<- any) error {
+func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan<- any, imonStarter IMonStarter) error {
 	id := p.String()
+	localhost := hostname.Hostname()
 	o := &T{
 		status: object.Status{
 			Scope:           cfg.Scope,
@@ -64,15 +99,26 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 		},
 		path:         p,
 		id:           id,
+		bus:          pubsub.BusFromContext(ctx),
 		discoverCmdC: discoverCmdC,
 		databus:      daemondata.FromContext(ctx),
-		instStatus:   make(map[string]instance.Status),
-		instMonitor:  make(map[string]instance.Monitor),
-		ctx:          ctx,
-		log:          log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
+
+		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
+		instStatus: make(map[string]instance.Status),
+
+		instMonitor: make(map[string]instance.Monitor),
+
+		instConfig: make(map[string]instance.Config),
+
+		ctx:       ctx,
+		log:       log.Logger.With().Str("func", "omon").Stringer("object", p).Logger(),
+		labelNode: pubsub.Label{"node", localhost},
+		labelPath: pubsub.Label{"path", id},
+		localhost: localhost,
+
+		imonStarter: imonStarter,
 	}
 	o.startSubscriptions()
-	o.instMonitor = o.databus.GetInstanceMonitorMap(o.path)
 
 	go func() {
 		defer func() {
@@ -85,14 +131,16 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 	return nil
 }
 
+// startSubscriptions starts the subscriptions for omon.
 func (o *T) startSubscriptions() {
-	bus := pubsub.BusFromContext(o.ctx)
-	label := pubsub.Label{"path", o.id}
-	sub := bus.Sub(o.id + " omon")
-	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, label)
-	sub.AddFilter(msgbus.InstanceStatusUpdated{}, label)
-	sub.AddFilter(msgbus.ConfigUpdated{}, label)
-	sub.AddFilter(msgbus.ConfigDeleted{}, label)
+	sub := o.bus.Sub(o.id + " omon")
+	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.InstanceConfigUpdated{}, o.labelPath)
+
+	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
+	sub.AddFilter(msgbus.InstanceConfigDeleted{}, o.labelPath)
+
+	sub.AddFilter(msgbus.InstanceStatusUpdated{}, o.labelPath)
 	sub.Start()
 	o.sub = sub
 }
@@ -101,16 +149,46 @@ func (o *T) worker() {
 	o.log.Debug().Msg("started")
 	defer o.log.Debug().Msg("done")
 
-	for _, node := range o.status.Scope {
-		o.instStatus[node] = o.databus.GetInstanceStatus(o.path, node)
+	// Initiate cache
+	for n, v := range instance.MonitorData.GetByPath(o.path) {
+		o.instMonitor[n] = *v
 	}
+	for n, v := range instance.StatusData.GetByPath(o.path) {
+		o.instStatus[n] = *v
+	}
+	for n, v := range instance.ConfigData.GetByPath(o.path) {
+		o.instConfig[n] = *v
+	}
+	if !o.instStatus[o.localhost].Updated.IsZero() {
+		o.srcEvent = msgbus.InstanceStatusUpdated{Path: o.path, Node: o.localhost, Value: o.instStatus[o.localhost]}
+	}
+
 	o.updateStatus()
+
+	if localCfg, ok := o.instConfig[o.localhost]; ok && len(localCfg.Scope) > 0 {
+		var err error
+		cancel, err := o.startInstanceMonitor(localCfg.Scope)
+		if err != nil {
+			o.log.Error().Err(err).Msg("initial startInstanceMonitor")
+			cancel()
+		} else {
+			o.imonCancel = cancel
+		}
+	}
 	defer o.delete()
+	defer func() {
+		if o.imonCancel != nil {
+			o.imonCancel()
+			o.imonCancel = nil
+		}
+		o.delete()
+	}()
 	for {
-		if len(o.instStatus) == 0 {
+		if len(o.instConfig) == 0 {
 			o.log.Info().Msg("no more nodes")
 			return
 		}
+		o.srcEvent = nil
 		select {
 		case <-o.ctx.Done():
 			return
@@ -120,15 +198,18 @@ func (o *T) worker() {
 				o.srcEvent = i
 				o.instMonitor[c.Node] = c.Value
 				o.updateStatus()
+
 			case msgbus.InstanceMonitorDeleted:
 				o.srcEvent = i
 				delete(o.instMonitor, c.Node)
 				o.updateStatus()
+
 			case msgbus.InstanceStatusUpdated:
 				o.srcEvent = i
 				o.instStatus[c.Node] = c.Value
 				o.updateStatus()
-			case msgbus.ConfigUpdated:
+
+			case msgbus.InstanceConfigUpdated:
 				o.status.Scope = c.Value.Scope
 				o.status.FlexTarget = c.Value.FlexTarget
 				o.status.FlexMin = c.Value.FlexMin
@@ -141,21 +222,26 @@ func (o *T) worker() {
 
 				// update local cache for instance status & monitor from cfg node
 				// It will be updated on InstanceStatusUpdated, or InstanceMonitorUpdated
-				if _, ok := o.instStatus[c.Node]; !ok {
-					o.instStatus[c.Node] = instance.Status{Avail: status.Undef}
+				if c.Node == o.localhost && o.imonCancel == nil && len(c.Value.Scope) > 0 {
+					var err error
+					cancel, err := o.startInstanceMonitor(c.Value.Scope)
+					if err != nil {
+						o.log.Error().Err(err).Msgf("startInstanceMonitor from %+v", c.Value)
+						cancel()
+					} else {
+						o.imonCancel = cancel
+					}
 				}
-				if _, ok := o.instMonitor[c.Node]; !ok {
-					o.instMonitor[c.Node] = instance.Monitor{}
-				}
-
 				o.updateStatus()
-			case msgbus.ConfigDeleted:
-				if _, ok := o.instStatus[c.Node]; ok {
-					delete(o.instStatus, c.Node)
+
+			case msgbus.InstanceConfigDeleted:
+				if c.Node == o.localhost && o.imonCancel != nil {
+					o.imonCancel()
+					o.imonCancel = nil
 				}
-				if _, ok := o.instMonitor[c.Node]; ok {
-					delete(o.instMonitor, c.Node)
-				}
+				delete(o.instConfig, c.Node)
+				delete(o.instStatus, c.Node)
+				delete(o.instMonitor, c.Node)
 				o.srcEvent = i
 				o.updateStatus()
 			}
@@ -276,16 +362,34 @@ func (o *T) updateStatus() {
 }
 
 func (o *T) delete() {
-	if err := o.databus.DelObjectStatus(o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelObjectStatus")
-	}
+	object.StatusData.Unset(o.path)
+	o.bus.Pub(msgbus.ObjectStatusDeleted{Path: o.path, Node: o.localhost},
+		o.labelPath,
+		o.labelNode,
+	)
 	o.discoverCmdC <- msgbus.ObjectStatusDone{Path: o.path}
 }
 
 func (o *T) update() {
+	o.status.UpdatedAt = time.Now()
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
-	if err := o.databus.SetObjectStatus(o.path, *value, o.srcEvent); err != nil {
-		o.log.Error().Err(err).Msg("SetObjectStatus")
+	object.StatusData.Set(o.path, o.status.DeepCopy())
+	o.bus.Pub(msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
+		o.labelPath,
+		o.labelNode,
+	)
+}
+
+func (o *T) startInstanceMonitor(scopes []string) (context.CancelFunc, error) {
+	if len(o.status.Scope) == 0 {
+		return nil, errors.New("can't call startInstanceMonitor with empty scope")
 	}
+	o.log.Info().Msgf("starting imon worker...")
+	ctx, cancel := context.WithCancel(o.ctx)
+	if err := o.imonStarter.Start(ctx, o.path, scopes); err != nil {
+		o.log.Error().Err(err).Msg("failure during start imon worker")
+		return cancel, err
+	}
+	return cancel, nil
 }

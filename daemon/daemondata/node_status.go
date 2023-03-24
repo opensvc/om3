@@ -2,13 +2,9 @@ package daemondata
 
 import (
 	"context"
-	"time"
 
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/jsondelta"
 )
 
@@ -21,18 +17,6 @@ type (
 	opGetNodeStatusMap struct {
 		errC
 		result chan<- map[string]node.Status
-	}
-	opSetNodeStatusArbitrator struct {
-		errC
-		value map[string]node.ArbitratorStatus
-	}
-	opSetNodeStatusFrozen struct {
-		errC
-		value time.Time
-	}
-	opSetNodeStatusLabels struct {
-		errC
-		value nodesinfo.Labels
 	}
 )
 
@@ -62,7 +46,7 @@ func (o opGetNodeStatus) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-// GetNodeStatus returns daemondata deep copy of cluster.Node.<node>
+// GetNodeStatusMap returns daemondata deep copy of cluster.Node.<node>
 func (t T) GetNodeStatusMap() map[string]node.Status {
 	err := make(chan error, 1)
 	result := make(chan map[string]node.Status, 1)
@@ -87,115 +71,21 @@ func (o opGetNodeStatusMap) call(ctx context.Context, d *data) error {
 	return nil
 }
 
-// SetNodeStatusArbitrator sets Monitor.Node.<localhost>.Status.Arbitrators
-func (t T) SetNodeStatusArbitrator(a map[string]node.ArbitratorStatus) error {
-	err := make(chan error, 1)
-	op := opSetNodeStatusArbitrator{
-		errC:  err,
-		value: a,
+// onNodeStatusUpdated updates .cluster.node.<node>.status from msgbus.NodeStatusUpdated.
+// It preserves the Gen value (because daemondata has the most recent version of gen.
+func (d *data) onNodeStatusUpdated(m msgbus.NodeStatusUpdated) {
+	daemondataGen := make(map[string]uint64)
+	for k, v := range d.pending.Cluster.Node[d.localNode].Status.Gen {
+		daemondataGen[k] = v
 	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opSetNodeStatusArbitrator) call(ctx context.Context, d *data) error {
-	d.statCount[idSetNodeStatusArbitrator]++
 	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Arbitrators = o.value
+	v.Status = m.Value
+	v.Status.Gen = daemondataGen
 	d.pending.Cluster.Node[d.localNode] = v
 	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "arbitrators"},
-		OpValue: jsondelta.NewOptValue(o.value),
+		OpPath:  jsondelta.OperationPath{"status"},
+		OpValue: jsondelta.NewOptValue(m.Value),
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-
-	d.bus.Pub(
-		msgbus.NodeStatusUpdated{
-			Node:  d.localNode,
-			Value: *v.Status.DeepCopy(),
-		},
-		labelLocalNode,
-	)
-	return nil
-}
-
-// SetNodeFrozen sets Monitor.Node.<localhost>.Status.Frozen
-func (t T) SetNodeFrozen(tm time.Time) error {
-	err := make(chan error, 1)
-	op := opSetNodeStatusFrozen{
-		errC:  err,
-		value: tm,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opSetNodeStatusFrozen) call(ctx context.Context, d *data) error {
-	d.statCount[idSetNodeStatusFrozen]++
-	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Frozen = o.value
-	d.pending.Cluster.Node[d.localNode] = v
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "frozen"},
-		OpValue: jsondelta.NewOptValue(o.value),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(
-		msgbus.Frozen{
-			Node:  hostname.Hostname(),
-			Path:  path.T{},
-			Value: o.value,
-		},
-		labelLocalNode,
-	)
-
-	d.bus.Pub(
-		msgbus.NodeStatusUpdated{
-			Node:  d.localNode,
-			Value: *v.Status.DeepCopy(),
-		},
-		labelLocalNode,
-	)
-	return nil
-}
-
-// SetNodeStatusLabels sets Monitor.Node.<localhost>.frozen
-func (t T) SetNodeStatusLabels(labels nodesinfo.Labels) error {
-	err := make(chan error, 1)
-	op := opSetNodeStatusLabels{
-		errC:  err,
-		value: labels,
-	}
-	t.cmdC <- op
-	return <-err
-}
-
-func (o opSetNodeStatusLabels) call(ctx context.Context, d *data) error {
-	d.statCount[idSetNodeStatusLabels]++
-	v := d.pending.Cluster.Node[d.localNode]
-	v.Status.Labels = o.value
-	d.pending.Cluster.Node[d.localNode] = v
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"status", "labels"},
-		OpValue: jsondelta.NewOptValue(o.value),
-		OpKind:  "replace",
-	}
-	d.pendingOps = append(d.pendingOps, op)
-	d.bus.Pub(
-		msgbus.NodeStatusLabelsUpdated{
-			Node:  hostname.Hostname(),
-			Value: o.value,
-		},
-		labelLocalNode,
-	)
-	d.bus.Pub(
-		msgbus.NodeStatusUpdated{
-			Node:  d.localNode,
-			Value: *v.Status.DeepCopy(),
-		},
-		labelLocalNode,
-	)
-	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 func (o *imon) isDone() bool {
@@ -100,8 +99,8 @@ func (o *imon) endOrchestration() {
 			Id:    o.acceptedOrchestrationId,
 			Error: nil,
 		},
-			pubsub.Label{"path", o.path.String()},
-			pubsub.Label{"node", o.localhost},
+			o.labelPath,
+			o.labelLocalhost,
 		)
 		o.acceptedOrchestrationId = ""
 	}

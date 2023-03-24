@@ -8,6 +8,8 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/stringslice"
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated
@@ -23,10 +25,23 @@ func (o *ccfg) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 }
 
 func (o *ccfg) pubClusterConfig() {
+	previousNodes := o.state.Nodes
 	o.state = o.getClusterConfig()
-	err := o.databus.SetClusterConfig(o.state)
-	if err != nil {
-		o.log.Error().Err(err).Msg("SetClusterConfig")
+	labelLocalNode := pubsub.Label{"node", o.localhost}
+
+	removed, added := stringslice.Diff(previousNodes, o.state.Nodes)
+	if len(added) > 0 {
+		o.log.Debug().Msgf("added nodes: %s", added)
+	}
+	if len(removed) > 0 {
+		o.log.Debug().Msgf("removed nodes: %s", removed)
+	}
+	o.bus.Pub(msgbus.ClusterConfigUpdated{Node: o.localhost, Value: o.state, NodesAdded: added, NodesRemoved: removed})
+	for _, v := range added {
+		o.bus.Pub(msgbus.JoinSuccess{Node: v}, labelLocalNode, pubsub.Label{"added", v})
+	}
+	for _, v := range removed {
+		o.bus.Pub(msgbus.LeaveSuccess{Node: v}, labelLocalNode, pubsub.Label{"removed", v})
 	}
 }
 

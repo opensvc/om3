@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
@@ -49,9 +50,8 @@ func (d *data) setDaemonHb() {
 	if eventB, err := json.Marshal(patch); err != nil {
 		d.log.Error().Err(err).Msg("setDaemonHb Marshal")
 	} else {
-		d.bus.Pub(
-			msgbus.DataUpdated{RawMessage: eventB},
-			labelLocalNode,
+		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB},
+			d.labelLocalNode,
 		)
 	}
 }
@@ -78,6 +78,6 @@ func (d *data) setHbMsgType(node string, msgType string) {
 			To:          msgType,
 			Nodes:       append([]string{}, d.pending.Cluster.Config.Nodes...),
 			JoinedNodes: joinedNodes,
-		})
+		}, pubsub.Label{"node", node})
 	}
 }

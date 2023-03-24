@@ -82,6 +82,9 @@ type (
 		drainDuration time.Duration
 
 		updateLimiter *rate.Limiter
+
+		labelLocalhost pubsub.Label
+		labelPath      pubsub.Label
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -126,6 +129,8 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 	state := previousState
 	databus := daemondata.FromContext(ctx)
 
+	localhost := hostname.Hostname()
+
 	o := &imon{
 		state:         state,
 		previousState: previousState,
@@ -139,7 +144,10 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		log:           log.Logger.With().Str("func", "imon").Stringer("object", p).Logger(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
-		localhost:     hostname.Hostname(),
+		nodeMonitor:   make(map[string]node.Monitor),
+		nodeStats:     make(map[string]node.Stats),
+		nodeStatus:    make(map[string]node.Status),
+		localhost:     localhost,
 		scopeNodes:    nodes,
 		change:        true,
 		readyDuration: defaultReadyDuration,
@@ -149,15 +157,12 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 		drainDuration: drainDuration,
 
 		updateLimiter: rate.NewLimiter(updateRate, int(updateRate)),
+
+		labelLocalhost: pubsub.Label{"node", localhost},
+		labelPath:      pubsub.Label{"path", id},
 	}
 
 	o.startSubscriptions()
-	o.nodeStatus = databus.GetNodeStatusMap()
-	o.nodeStats = databus.GetNodeStatsMap()
-	o.nodeMonitor = databus.GetNodeMonitorMap()
-	o.instMonitor = databus.GetInstanceMonitorMap(o.path)
-	o.instConfig = databus.GetInstanceConfig(o.path, o.localhost)
-	o.initResourceMonitor()
 
 	go func() {
 		o.worker(nodes)
@@ -168,12 +173,10 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 
 func (o *imon) startSubscriptions() {
 	sub := o.pubsubBus.Sub(o.id + " imon")
-	label := pubsub.Label{"path", o.id}
-	nodeLabel := pubsub.Label{"node", o.localhost}
-	sub.AddFilter(msgbus.ObjectStatusUpdated{}, label)
-	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, label)
-	sub.AddFilter(msgbus.SetInstanceMonitor{}, label)
-	sub.AddFilter(msgbus.NodeConfigUpdated{}, nodeLabel)
+	sub.AddFilter(msgbus.ObjectStatusUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(msgbus.SetInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(msgbus.NodeConfigUpdated{}, o.labelLocalhost)
 	sub.AddFilter(msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(msgbus.NodeStatusUpdated{})
 	sub.AddFilter(msgbus.NodeStatsUpdated{})
@@ -185,7 +188,7 @@ func (o *imon) startSubscriptions() {
 func (o *imon) worker(initialNodes []string) {
 	defer o.log.Debug().Msg("done")
 
-	// Initiate crmStatus fisrt, this will update our instance status cache
+	// Initiate crmStatus first, this will update our instance status cache
 	// as soon as possible.
 	// crmStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
@@ -194,10 +197,31 @@ func (o *imon) worker(initialNodes []string) {
 		o.log.Error().Err(err).Msg("error during initial crm status")
 	}
 
-	for _, initialNode := range initialNodes {
-		o.instStatus[initialNode] = o.databus.GetInstanceStatus(o.path, initialNode)
+	// Populate caches (published messages before subscription startup are lost)
+	for _, v := range node.StatusData.GetAll() {
+		o.nodeStatus[v.Node] = *v.Value
 	}
+	for _, v := range node.StatsData.GetAll() {
+		o.nodeStats[v.Node] = *v.Value
+	}
+	for _, v := range node.MonitorData.GetAll() {
+		o.nodeMonitor[v.Node] = *v.Value
+	}
+	if iConfig := instance.ConfigData.Get(o.path, o.localhost); iConfig != nil {
+		o.instConfig = *iConfig
+		o.scopeNodes = append([]string{}, o.instConfig.Scope...)
+	}
+	for n, v := range instance.MonitorData.GetByPath(o.path) {
+		o.instMonitor[n] = *v
+	}
+	for n, v := range instance.StatusData.GetByPath(o.path) {
+		o.instStatus[n] = *v
+	}
+
+	o.initResourceMonitor()
+	o.updateIsLeader()
 	o.updateIfChange()
+
 	defer func() {
 		go func() {
 			err := o.sub.Stop()
@@ -206,9 +230,18 @@ func (o *imon) worker(initialNodes []string) {
 			}
 		}()
 		go func() {
-			if err := o.databus.DelInstanceMonitor(o.path); err != nil && !!errors.Is(err, context.Canceled) {
-				o.log.Error().Err(err).Msg("DelInstanceMonitor")
-			}
+			instance.MonitorData.Unset(o.path, o.localhost)
+			o.pubsubBus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
+				o.labelPath,
+				o.labelLocalhost,
+			)
+		}()
+		go func() {
+			instance.StatusData.Unset(o.path, o.localhost)
+			o.pubsubBus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost},
+				o.labelPath,
+				o.labelLocalhost,
+			)
 		}()
 		go func() {
 			tC := time.After(o.drainDuration)
@@ -262,25 +295,24 @@ func (o *imon) worker(initialNodes []string) {
 	}
 }
 
-func (o *imon) delete() {
-	if err := o.databus.DelInstanceMonitor(o.path); err != nil {
-		o.log.Error().Err(err).Msg("DelInstanceMonitor")
-	}
-}
-
 func (o *imon) update() {
 	select {
 	case <-o.ctx.Done():
 		return
 	default:
 	}
-	newValue := o.state
 	if err := o.updateLimiter.Wait(o.ctx); err != nil {
 		return
 	}
-	if err := o.databus.SetInstanceMonitor(o.path, newValue); err != nil {
-		o.log.Error().Err(err).Msg("SetInstanceMonitor")
-	}
+
+	o.state.UpdatedAt = time.Now()
+	newValue := o.state
+
+	instance.MonitorData.Set(o.path, o.localhost, newValue.DeepCopy())
+	o.pubsubBus.Pub(msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
+		o.labelPath,
+		o.labelLocalhost,
+	)
 }
 
 func (o *imon) transitionTo(newState instance.MonitorState) {

@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/daemon/enable"
 	"github.com/opensvc/om3/daemon/hb"
 	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/listener"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/nmon"
@@ -175,6 +176,10 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	}
 	if err := cstat.Start(t.ctx); err != nil {
+		return err
+	}
+
+	if err := istat.Start(t.ctx); err != nil {
 		return err
 	}
 

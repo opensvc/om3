@@ -86,9 +86,14 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	return result
 }
 
-func (o *nmon) getAndUpdateStatusArbitrator() error {
-	a := o.getStatusArbitrators()
-	return o.databus.SetNodeStatusArbitrator(a)
+func (o *nmon) getAndUpdateStatusArbitrator() {
+	o.nodeStatus.Arbitrators = o.getStatusArbitrators()
+	pubValue := make(map[string]node.ArbitratorStatus)
+	for k, v := range o.nodeStatus.Arbitrators {
+		pubValue[k] = v
+	}
+	o.bus.Pub(msgbus.NodeStatusArbitratorsUpdated{Node: o.localhost, Value: pubValue}, o.labelLocalhost)
+	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
 }
 
 func (o *nmon) arbitratorVotes() (votes []string) {

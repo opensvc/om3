@@ -5,59 +5,77 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 )
 
+func (o *imon) getFrozen() time.Time {
+	return file.ModTime(filepath.Join(o.path.VarDir(), "frozen"))
+}
+
+// freeze creates missing instance frozen flag file, and publish InstanceFrozenFileUpdated
+// local instance status cache frozen value is updated with value read from file system
 func (o *imon) freeze() error {
-	p := filepath.Join(o.path.VarDir(), "frozen")
-	if file.Exists(p) {
-		return nil
-	}
+	frozen := o.getFrozen()
+
 	o.log.Info().Msg("daemon action freeze")
-	d := filepath.Dir(p)
-	if !file.Exists(d) {
-		if err := os.MkdirAll(d, os.ModePerm); err != nil {
+	p := filepath.Join(o.path.VarDir(), "frozen")
+
+	if !file.Exists(p) {
+		d := filepath.Dir(p)
+		if !file.Exists(d) {
+			if err := os.MkdirAll(d, os.ModePerm); err != nil {
+				o.log.Error().Err(err).Msg("freeze")
+				return err
+			}
+		}
+		f, err := os.Create(p)
+		if err != nil {
 			o.log.Error().Err(err).Msg("freeze")
 			return err
 		}
+		_ = f.Close()
 	}
-	f, err := os.Create(p)
-	if err != nil {
+	frozen = file.ModTime(p)
+	if instanceStatus, ok := o.instStatus[o.localhost]; ok {
+		instanceStatus.Frozen = frozen
+		o.instStatus[o.localhost] = instanceStatus
+	}
+	if frozen.IsZero() {
+		err := errors.Errorf("unexpected frozen reset on %s", p)
 		o.log.Error().Err(err).Msg("freeze")
 		return err
 	}
-	f.Close()
-	status := o.instStatus[o.localhost]
-	now := time.Now()
-	status.Frozen = now
-	if err := o.databus.SetInstanceFrozen(o.path, now); err != nil {
-		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
-		return err
-	}
-	// don't wait for delayed update of local cache
-	o.instStatus[o.localhost] = status
+	o.pubsubBus.Pub(msgbus.InstanceFrozenFileUpdated{Path: o.path, Updated: frozen},
+		o.labelPath,
+		o.labelLocalhost,
+	)
 	return nil
 }
 
+// freeze removes instance frozen flag file, and publish InstanceFrozenFileUpdated
+// local instance status cache frozen value is updated with value read from file system
 func (o *imon) unfreeze() error {
+	o.log.Info().Msg("daemon action unfreeze")
 	p := filepath.Join(o.path.VarDir(), "frozen")
 	if !file.Exists(p) {
-		return nil
+		o.log.Info().Msg("already thawed")
+	} else {
+		err := os.Remove(p)
+		if err != nil {
+			o.log.Error().Err(err).Msg("unfreeze")
+			return err
+		}
 	}
-	o.log.Info().Msg("daemon action unfreeze")
-	err := os.Remove(p)
-	if err != nil {
-		o.log.Error().Err(err).Msg("unfreeze")
-		return err
+	if instanceStatus, ok := o.instStatus[o.localhost]; ok {
+		instanceStatus.Frozen = time.Time{}
+		o.instStatus[o.localhost] = instanceStatus
 	}
-	status := o.instStatus[o.localhost]
-	status.Frozen = time.Time{}
-	if err := o.databus.SetInstanceFrozen(o.path, time.Time{}); err != nil {
-		o.log.Warn().Err(err).Msgf("can't set instance status frozen for %s", p)
-		return err
-	}
-	// don't wait for delayed update of local cache
-	// to avoid 'idle -> thawing -> idle -> thawing' until receive local instance status update
-	o.instStatus[o.localhost] = status
+	o.pubsubBus.Pub(msgbus.InstanceFrozenFileRemoved{Path: o.path, Updated: time.Now()},
+		o.labelLocalhost,
+		o.labelPath,
+	)
 	return nil
 }

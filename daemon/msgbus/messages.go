@@ -27,13 +27,9 @@ var (
 
 		"ClusterStatusUpdated": ClusterStatusUpdated{},
 
-		"ConfigDeleted": ConfigDeleted{},
-
 		"ConfigFileRemoved": ConfigFileRemoved{},
 
 		"ConfigFileUpdated": ConfigFileUpdated{},
-
-		"ConfigUpdated": ConfigUpdated{},
 
 		"ClientSub": ClientSub{},
 
@@ -47,12 +43,6 @@ var (
 
 		"ForgetPeer": ForgetPeer{},
 
-		"FrozenFileRemoved": FrozenFileRemoved{},
-
-		"FrozenFileUpdated": FrozenFileUpdated{},
-
-		"Frozen": Frozen{},
-
 		"HbMessageTypeUpdated": HbMessageTypeUpdated{},
 
 		"HbNodePing": HbNodePing{},
@@ -63,6 +53,14 @@ var (
 
 		"HbStatusUpdated": HbStatusUpdated{},
 
+		"InstanceConfigDeleted": InstanceConfigDeleted{},
+
+		"InstanceConfigUpdated": InstanceConfigUpdated{},
+
+		"InstanceFrozenFileRemoved": InstanceFrozenFileRemoved{},
+
+		"InstanceFrozenFileUpdated": InstanceFrozenFileUpdated{},
+
 		"InstanceMonitorAction": InstanceMonitorAction{},
 
 		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
@@ -70,6 +68,8 @@ var (
 		"InstanceMonitorUpdated": InstanceMonitorUpdated{},
 
 		"InstanceStatusDeleted": InstanceStatusDeleted{},
+
+		"InstanceStatusPost": InstanceStatusPost{},
 
 		"InstanceStatusUpdated": InstanceStatusUpdated{},
 
@@ -93,6 +93,12 @@ var (
 
 		"NodeConfigUpdated": NodeConfigUpdated{},
 
+		"NodeFrozen": NodeFrozen{},
+
+		"NodeFrozenFileRemoved": NodeFrozenFileRemoved{},
+
+		"NodeFrozenFileUpdated": NodeFrozenFileUpdated{},
+
 		"NodeMonitorDeleted": NodeMonitorDeleted{},
 
 		"NodeMonitorUpdated": NodeMonitorUpdated{},
@@ -100,6 +106,10 @@ var (
 		"NodeOsPathsUpdated": NodeOsPathsUpdated{},
 
 		"NodeStatsUpdated": NodeStatsUpdated{},
+
+		"NodeStatusArbitratorsUpdated": NodeStatusArbitratorsUpdated{},
+
+		"NodeStatusGenUpdates": NodeStatusGenUpdates{},
 
 		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
 
@@ -150,32 +160,21 @@ type (
 	ArbitratorError struct {
 		Node string
 		Name string
-		Err error
-	}
-
-	ConfigDeleted struct {
-		Path path.T
-		Node string
+		Err  error
 	}
 
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
-	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a ConfigDeleted{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigDeleted{} event.
 	ConfigFileRemoved struct {
 		Path     path.T
 		Filename string
 	}
 
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
-	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a ConfigUpdated{} event.
+	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigUpdated{} event.
 	ConfigFileUpdated struct {
 		Path     path.T
 		Filename string
-	}
-
-	ConfigUpdated struct {
-		Path  path.T
-		Node  string
-		Value instance.Config
 	}
 
 	ClientSub struct {
@@ -187,8 +186,10 @@ type (
 	}
 
 	ClusterConfigUpdated struct {
-		Node  string
-		Value cluster.Config
+		Node         string
+		Value        cluster.Config
+		NodesAdded   []string
+		NodesRemoved []string
 	}
 
 	ClusterStatusUpdated struct {
@@ -213,26 +214,6 @@ type (
 
 	ForgetPeer struct {
 		Node string
-	}
-
-	Frozen struct {
-		Path  path.T
-		Node  string
-		Value time.Time
-	}
-
-	// FrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
-	FrozenFileRemoved struct {
-		Path     path.T
-		Filename string
-	}
-
-	// FrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
-	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a Frozen{} event.
-	FrozenFileUpdated struct {
-		Path     path.T
-		Filename string
 	}
 
 	HbNodePing struct {
@@ -266,6 +247,31 @@ type (
 		Value cluster.HeartbeatStream
 	}
 
+	InstanceConfigDeleted struct {
+		Path path.T
+		Node string
+	}
+
+	InstanceConfigUpdated struct {
+		Path  path.T
+		Node  string
+		Value instance.Config
+	}
+
+	// InstanceFrozenFileUpdated is emitted by a fs watcher, or imon when an instance frozen file is updated or created.
+	InstanceFrozenFileUpdated struct {
+		Path     path.T
+		Filename string
+		Updated  time.Time
+	}
+
+	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
+	InstanceFrozenFileRemoved struct {
+		Path     path.T
+		Filename string
+		Updated  time.Time
+	}
+
 	InstanceMonitorAction struct {
 		Path   path.T
 		Node   string
@@ -287,6 +293,12 @@ type (
 	InstanceStatusDeleted struct {
 		Path path.T
 		Node string
+	}
+
+	InstanceStatusPost struct {
+		Path  path.T
+		Node  string
+		Value instance.Status
 	}
 
 	InstanceStatusUpdated struct {
@@ -347,6 +359,30 @@ type (
 		Value node.Config
 	}
 
+	// NodeFrozen message describe a node frozen state update
+	NodeFrozen struct {
+		Node string
+		// Status is true when frozen, else false
+		Status bool
+		// FrozenAt is the time when node has been frozen or zero when not frozen
+		FrozenAt time.Time
+	}
+
+	// NodeFrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
+	NodeFrozenFileRemoved struct {
+		Path     path.T
+		Filename string
+	}
+
+	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
+	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
+	NodeFrozenFileUpdated struct {
+		Path     path.T
+		Filename string
+		Updated  time.Time
+	}
+
 	NodeMonitorDeleted struct {
 		Node string
 	}
@@ -375,11 +411,25 @@ type (
 		Value node.Stats
 	}
 
+	NodeStatusArbitratorsUpdated struct {
+		Node  string
+		Value map[string]node.ArbitratorStatus
+	}
+
+	// NodeStatusGenUpdates is emitted when then hb message gens are changed
+	NodeStatusGenUpdates struct {
+		Node  string
+		// Value is Node.Status.Gen
+		Value map[string]uint64
+	}
+
 	NodeStatusLabelsUpdated struct {
 		Node  string
 		Value nodesinfo.Labels
 	}
 
+	// NodeStatusUpdated is the message that nmon publish when node status is modified.
+	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
 		Node  string
 		Value node.Status
@@ -490,20 +540,12 @@ func (e ClusterStatusUpdated) Kind() string {
 	return "ClusterStatusUpdated"
 }
 
-func (e ConfigDeleted) Kind() string {
-	return "ConfigDeleted"
-}
-
 func (e ConfigFileRemoved) Kind() string {
 	return "ConfigFileRemoved"
 }
 
 func (e ConfigFileUpdated) Kind() string {
 	return "ConfigFileUpdated"
-}
-
-func (e ConfigUpdated) Kind() string {
-	return "ConfigUpdated"
 }
 
 func (e ClientSub) Kind() string {
@@ -532,18 +574,6 @@ func (e Exit) Kind() string {
 
 func (e ForgetPeer) Kind() string {
 	return "forget_peer"
-}
-
-func (e Frozen) Kind() string {
-	return "Frozen"
-}
-
-func (e FrozenFileRemoved) Kind() string {
-	return "FrozenFileRemoved"
-}
-
-func (e FrozenFileUpdated) Kind() string {
-	return "FrozenFileUpdated"
 }
 
 func (e HbMessageTypeUpdated) Kind() string {
@@ -584,6 +614,22 @@ func (e HbStatusUpdated) Kind() string {
 	return "HbStatusUpdated"
 }
 
+func (e InstanceConfigDeleted) Kind() string {
+	return "InstanceConfigDeleted"
+}
+
+func (e InstanceConfigUpdated) Kind() string {
+	return "InstanceConfigUpdated"
+}
+
+func (e InstanceFrozenFileRemoved) Kind() string {
+	return "InstanceFrozenFileRemoved"
+}
+
+func (e InstanceFrozenFileUpdated) Kind() string {
+	return "InstanceFrozenFileUpdated"
+}
+
 func (e InstanceMonitorAction) Kind() string {
 	return "InstanceMonitorAction"
 }
@@ -598,6 +644,10 @@ func (e InstanceMonitorUpdated) Kind() string {
 
 func (e InstanceStatusDeleted) Kind() string {
 	return "InstanceStatusDeleted"
+}
+
+func (e InstanceStatusPost) Kind() string {
+	return "InstanceStatusPost"
 }
 
 func (e InstanceStatusUpdated) Kind() string {
@@ -644,6 +694,18 @@ func (e NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
 }
 
+func (e NodeFrozen) Kind() string {
+	return "NodeFrozen"
+}
+
+func (e NodeFrozenFileRemoved) Kind() string {
+	return "NodeFrozenFileRemoved"
+}
+
+func (e NodeFrozenFileUpdated) Kind() string {
+	return "NodeFrozenFileUpdated"
+}
+
 func (e NodeMonitorDeleted) Kind() string {
 	return "NodeMonitorDeleted"
 }
@@ -662,6 +724,14 @@ func (e NodeSplitAction) Kind() string {
 
 func (e NodeStatsUpdated) Kind() string {
 	return "NodeStatsUpdated"
+}
+
+func (e NodeStatusArbitratorsUpdated) Kind() string {
+	return "NodeStatusArbitratorsUpdated"
+}
+
+func (e NodeStatusGenUpdates) Kind() string {
+	return "NodeStatusGenUpdates"
 }
 
 func (e NodeStatusLabelsUpdated) Kind() string {

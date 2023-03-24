@@ -2,8 +2,8 @@
 
 package san
 
-func GetPaths() ([]Path, error) {
-	return []Path{}, nil
+func GetPaths() (Paths, error) {
+	return Paths{}, nil
 }
 
 func GetInitiators() ([]Initiator, error) {

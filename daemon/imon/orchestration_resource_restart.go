@@ -10,8 +10,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/toc"
 	"github.com/rs/zerolog"
 )
@@ -39,13 +37,12 @@ func newRestartTodoMap() restartTodoMap {
 
 func (o *imon) orchestrateResourceRestart() {
 	todo := newRestartTodoMap()
+	action := o.instConfig.MonitorAction
 	pubMonitorAction := func(rid string) {
-		o.pubsubBus.Pub(msgbus.InstanceMonitorAction{
-			Path:   o.path,
-			Node:   hostname.Hostname(),
-			Action: o.instConfig.MonitorAction,
-			RID:    rid,
-		}, pubsub.Label{"path", o.path.String()}, pubsub.Label{"node", hostname.Hostname()})
+		o.pubsubBus.Pub(msgbus.InstanceMonitorAction{Path: o.path, Node: o.localhost, Action: action, RID: rid},
+			o.labelPath,
+			o.labelLocalhost,
+		)
 	}
 
 	// doPreMonitorAction executes a user-defined command before imon

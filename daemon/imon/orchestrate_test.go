@@ -20,12 +20,13 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonhelper"
 	"github.com/opensvc/om3/daemon/icfg"
+	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -49,6 +50,9 @@ type (
 		name        string
 		srcFile     string
 		sideEffects map[string]sideEffect
+
+		nodeMonitorStates []node.MonitorState
+		nodeFrozen        bool
 
 		expectedState        instance.MonitorState
 		expectedGlobalExpect instance.MonitorGlobalExpect
@@ -83,6 +87,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 					err:     nil,
 				},
 			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
 			expectedState:        instance.MonitorStateIdle,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
@@ -91,6 +96,79 @@ func Test_Orchestrate_HA(t *testing.T) {
 			expectedCrm: [][]string{
 				{"ha", "status", "-r"},
 				{"ha", "start", "--local"},
+			},
+		},
+
+		{
+			name:    "ha-with-frozen-node", // frozen node => no orchestration
+			srcFile: "./testdata/ha.conf",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			nodeFrozen:           true,
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"ha-with-frozen-node", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "ha-no-orchestration-when-nmon-state-is-rejoin",
+			srcFile: "./testdata/ha.conf",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateRejoin},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"ha-no-orchestration-when-nmon-state-is-rejoin", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "ha-no-orchestration-when-no-nmon-publication",
+			srcFile: "./testdata/ha.conf",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"ha-no-orchestration-when-no-nmon-publication", "status", "-r"},
 			},
 		},
 
@@ -107,6 +185,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 					err:     nil,
 				},
 			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
 			expectedState:        instance.MonitorStateIdle,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectNone,
@@ -130,6 +209,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 					err:     errors.New("start failed"),
 				},
 			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
 			expectedState:        instance.MonitorStateStartFailed,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
 			expectedLocalExpect:  instance.MonitorLocalExpectNone,
@@ -144,6 +224,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			var err error
 			maxRoutine := 10
 			maxWaitTime := 2 * 1000 * time.Millisecond
 			testCount.Add(1)
@@ -153,14 +234,29 @@ func Test_Orchestrate_HA(t *testing.T) {
 			setup := daemonhelper.Setup(t, nil)
 			defer setup.Cancel()
 
+			require.NoError(t, istat.Start(setup.Ctx))
+
 			c := c
 			p := path.T{Kind: kind.Svc, Name: c.name}
 
-			t.Logf("Set initial node monitor value")
-			databus := daemondata.FromContext(setup.Ctx)
-			nodeMonitor := node.Monitor{State: node.MonitorStateIdle, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
-			err := databus.SetNodeMonitor(nodeMonitor)
-			require.Nil(t, err)
+			bus := pubsub.BusFromContext(setup.Ctx)
+
+			for _, nmonState := range c.nodeMonitorStates {
+				t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
+				nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
+				node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
+				bus.Pub(msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
+					pubsub.Label{"node", hostname.Hostname()})
+			}
+
+			t.Logf("publish initial node status with frozen %v", c.nodeFrozen)
+			nodeStatus := node.Status{}
+			if c.nodeFrozen {
+				nodeStatus.Frozen = time.Now()
+			}
+			node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
+			bus.Pub(msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
+				pubsub.Label{"node", hostname.Hostname()})
 
 			initialReadyDuration := defaultReadyDuration
 			defaultReadyDuration = 1 * time.Millisecond
@@ -171,13 +267,13 @@ func Test_Orchestrate_HA(t *testing.T) {
 				crmAction = nil
 			}()
 
-			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c)
+			factory := Factory{DrainDuration: setup.DrainDuration}
+			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c, factory)
 
 			cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.name)
 			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
 			t.Logf("--- starting icfg for %s", p)
-			factory := Factory{DrainDuration: setup.DrainDuration}
-			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20), factory)
+			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20))
 			require.Nil(t, err)
 
 			t.Logf("waiting for watcher result")
@@ -242,7 +338,7 @@ func (c *crmSpy) getCalls() [][]string {
 }
 
 func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[string]sideEffect) *crm {
-	dBus := daemondata.FromContext(ctx)
+	bus := pubsub.BusFromContext(ctx)
 	c := crm{
 		crmSpy: crmSpy{
 			RWMutex: sync.RWMutex{},
@@ -280,9 +376,13 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 				Provisioned: se.iStatus.Provisioned,
 				Optional:    se.iStatus.Optional,
 				Updated:     time.Now(),
+				Frozen:      time.Time{},
 			}
-			require.NoError(t, dBus.SetInstanceStatus(p, v))
-			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated)
+			bus.Pub(msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
+				pubsub.Label{"path", p.String()},
+				pubsub.Label{"node", hostname.Hostname()},
+			)
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated, v.Frozen)
 		}
 
 		if se.err != nil {
@@ -298,8 +398,8 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 // objectMonCreatorAndExpectationWatch returns a channel where we can read the InstanceMonitorUpdated for c
 // that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
 //
-// It emulates discover omon creation for c (creates omon worker for c on first received ConfigUpdated)
-func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase) <-chan msgbus.InstanceMonitorUpdated {
+// It emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
+func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase, factory Factory) <-chan msgbus.InstanceMonitorUpdated {
 	r := make(chan chan msgbus.InstanceMonitorUpdated)
 
 	go func() {
@@ -317,13 +417,13 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 
 		sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover & watcher")
 		sub.AddFilter(msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
-		sub.AddFilter(msgbus.ConfigUpdated{}, pubsub.Label{"path", p.String()})
+		sub.AddFilter(msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
 		sub.Start()
 		defer func() {
 			_ = sub.Stop()
 		}()
 
-		t.Logf("watching InstanceMonitorUpdated and ConfigUpdated for path: %s, max duration %s", p, duration)
+		t.Logf("watching InstanceMonitorUpdated and InstanceConfigUpdated for path: %s, max duration %s", p, duration)
 
 		// serve response channel
 		r <- evC
@@ -335,12 +435,12 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 				return
 			case i := <-sub.C:
 				switch o := i.(type) {
-				case msgbus.ConfigUpdated:
+				case msgbus.InstanceConfigUpdated:
 					if monStarted {
 						continue
 					}
 					t.Logf("--- starting omon for %s", p)
-					if err := omon.Start(ctx, p, o.Value, make(chan any, 100)); err != nil {
+					if err := omon.Start(ctx, p, o.Value, make(chan any, 100), factory); err != nil {
 						t.Errorf("omon.Start failed: %s", err)
 					}
 					monStarted = true

@@ -13,7 +13,7 @@ func (d *discover) omon(started chan<- bool) {
 	log.Info().Msg("started")
 	bus := pubsub.BusFromContext(d.ctx)
 	sub := bus.Sub("omon-from-cfg-create")
-	sub.AddFilter(msgbus.ConfigUpdated{})
+	sub.AddFilter(msgbus.InstanceConfigUpdated{})
 	sub.Start()
 	started <- true
 	defer func() {
@@ -36,11 +36,11 @@ func (d *discover) omon(started chan<- bool) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
-			case msgbus.ConfigUpdated:
+			case msgbus.InstanceConfigUpdated:
 				s := c.Path.String()
 				if _, ok := d.objectMonitor[s]; !ok {
 					log.Info().Msgf("discover new object %s", s)
-					if err := omon.Start(d.ctx, c.Path, c.Value, d.objectMonitorCmdC); err != nil {
+					if err := omon.Start(d.ctx, c.Path, c.Value, d.objectMonitorCmdC, d.imonStarter); err != nil {
 						log.Error().Err(err).Msgf("omon.Start %s", s)
 						return
 					}

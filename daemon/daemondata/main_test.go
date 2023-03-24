@@ -103,8 +103,13 @@ func TestDaemonData(t *testing.T) {
 
 		t.Run("GetNode return node data with local data initialized", func(t *testing.T) {
 			localNode := bus.GetNode(localNode)
-			require.Equalf(t, node.MonitorStateIdle, localNode.Monitor.State,
+			require.Equalf(t, node.MonitorGlobalExpectNone, localNode.Monitor.GlobalExpect,
 				"got %+v", localNode)
+		})
+		t.Run("the initial localhost node monitor state must prevent imon orchestrations (not idle)", func(t *testing.T) {
+			localNode := bus.GetNode(localNode)
+			require.NotEqualf(t, node.MonitorStateIdle, localNode.Monitor.State,
+				"The initial localhost node monitor state doesn't prevent imon to orchestrate: got %+v", localNode)
 		})
 		require.False(t, t.Failed()) // fail on first error
 	})
@@ -117,7 +122,7 @@ func TestDaemonData(t *testing.T) {
 		refreshed := bus.GetNode(localNode)
 		assert.NotNil(t, refreshed)
 		assert.Equal(t, uint64(1), refreshed.Status.Gen[localNode])
-		assert.Equal(t, node.MonitorStateIdle, refreshed.Monitor.State)
+		assert.Equal(t, node.MonitorStateZero, refreshed.Monitor.State)
 	})
 	require.False(t, t.Failed()) // fail on first error
 
@@ -131,7 +136,7 @@ func TestDaemonData(t *testing.T) {
 		initial.GlobalExpectUpdated = time.Now()
 
 		refreshed := bus.GetNodeMonitor(localNode)
-		require.Equal(t, node.MonitorStateIdle, refreshed.State, "State changed !")
+		require.Equal(t, node.MonitorStateZero, refreshed.State, "State changed !")
 		require.Equal(t, initialUpdated, refreshed.StateUpdated, "StateUpdated changed !")
 		require.Equal(t, node.MonitorGlobalExpectNone, refreshed.GlobalExpect, "GlobalExpect changed !")
 		require.Equal(t, initialGlobalExpectUpdated, refreshed.GlobalExpectUpdated, "GlobalExpectUpdated changed !")

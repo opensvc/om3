@@ -138,9 +138,9 @@ func (d *discover) fsWatcherStart() (func(), error) {
 			}
 		}
 
-		if !file.ModTime(nodeFrozenFile).IsZero() {
+		if updated := file.ModTime(nodeFrozenFile); !updated.IsZero() {
 			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
-			bus.Pub(msgbus.FrozenFileUpdated{Filename: nodeFrozenFile})
+			bus.Pub(msgbus.NodeFrozenFileUpdated{Filename: nodeFrozenFile, Updated: updated})
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -173,13 +173,15 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
-						bus.Pub(msgbus.FrozenFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+						if filename == nodeFrozenFile {
+							bus.Pub(msgbus.NodeFrozenFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
+						}
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
 							if !file.Exists(filename) {
 								log.Info().Msg("file removed")
-								return
+								continue
 							} else {
 								if err := watcher.Add(filename); err != nil {
 									log.Error().Err(err).Msgf("re-add file watch %s", filename)
@@ -189,7 +191,9 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
-						bus.Pub(msgbus.FrozenFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+						if filename == nodeFrozenFile {
+							bus.Pub(msgbus.NodeFrozenFileUpdated{Path: p, Filename: filename, Updated: file.ModTime(filename)}, pubsub.Label{"path", "node"})
+						}
 					}
 				case strings.HasSuffix(filename, ".conf"):
 					var (
@@ -211,7 +215,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							time.Sleep(delayExistAfterRemove)
 							if !file.Exists(filename) {
 								log.Info().Msg("file removed")
-								return
+								continue
 							} else {
 								if err := watcher.Add(filename); err != nil {
 									log.Error().Err(err).Msgf("re-add file watch %s", filename)
