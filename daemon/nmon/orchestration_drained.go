@@ -16,7 +16,7 @@ func (o *nmon) orchestrateDrained() {
 }
 
 func (o *nmon) drainFreezeFromIdle() {
-	if d := o.databus.GetNodeStatus(o.localhost); (d != nil) && !d.Frozen.IsZero() {
+	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.Frozen.IsZero() {
 		// already frozen... advance to "frozen" state
 		o.change = true
 		o.state.State = node.MonitorStateFrozen

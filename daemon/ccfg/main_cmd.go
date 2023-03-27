@@ -36,6 +36,7 @@ func (o *ccfg) pubClusterConfig() {
 	if len(removed) > 0 {
 		o.log.Debug().Msgf("removed nodes: %s", removed)
 	}
+	cluster.ConfigData.Set(&o.state)
 	o.bus.Pub(msgbus.ClusterConfigUpdated{Node: o.localhost, Value: o.state, NodesAdded: added, NodesRemoved: removed})
 	for _, v := range added {
 		o.bus.Pub(msgbus.JoinSuccess{Node: v}, labelLocalNode, pubsub.Label{"added", v})

@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	certUsr                  = "root"
-	certGrp                  = "root"
+	certUsr                  = daemonenv.Username
+	certGrp                  = daemonenv.Groupname
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
 )

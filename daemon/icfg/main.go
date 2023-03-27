@@ -28,7 +28,6 @@ import (
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
@@ -40,7 +39,6 @@ import (
 type (
 	T struct {
 		path                     path.T
-		id                       string
 		configure                object.Configurer
 		filename                 string
 		log                      zerolog.Logger
@@ -82,12 +80,10 @@ var (
 // Start launch goroutine instConfig worker for a local instance config
 func Start(parent context.Context, p path.T, filename string, svcDiscoverCmd chan<- any) error {
 	localhost := hostname.Hostname()
-	id := daemondata.InstanceId(p, localhost)
 	ctx, cancel := context.WithCancel(parent)
 	o := &T{
 		instanceConfig: instance.Config{Path: p},
 		path:           p,
-		id:             id,
 		log:            log.Logger.With().Str("func", "icfg").Stringer("object", p).Logger(),
 		localhost:      localhost,
 		forceRefresh:   false,

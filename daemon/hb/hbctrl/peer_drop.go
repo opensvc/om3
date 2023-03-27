@@ -53,7 +53,7 @@ func peerDropWorker(ctx context.Context) {
 	}
 
 	delayDropPeer := func(peer string) {
-		if databus.GetNodeMonitor(peer).State == node.MonitorStateMaintenance {
+		if peerMon := node.MonitorData.Get(peer); peerMon != nil && peerMon.State == node.MonitorStateMaintenance {
 			delay := maintenanceGracePeriod
 			if drop, ok := dropM[peer]; ok {
 				drop.cancel()

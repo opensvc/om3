@@ -25,7 +25,7 @@ func (o *nmon) frozenFromIdle() {
 }
 
 func (o *nmon) frozenClearIfReached() bool {
-	if d := o.databus.GetNodeStatus(o.localhost); (d != nil) && !d.Frozen.IsZero() {
+	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.Frozen.IsZero() {
 		o.log.Info().Msg("instance state is frozen, unset global expect")
 		o.change = true
 		o.state.GlobalExpect = node.MonitorGlobalExpectNone

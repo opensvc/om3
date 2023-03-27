@@ -2,6 +2,7 @@ package daemonenv
 
 import (
 	"fmt"
+	"os/user"
 	"path/filepath"
 	"time"
 
@@ -21,6 +22,12 @@ var (
 	// The ready duration impacts the durations involved during daemon cluster split analyse (see nmon spit
 	// detection details).
 	ReadyDuration = 5 * time.Second
+
+	// Username is the current username, or "root" if user.Current has error
+	Username string
+
+	// Groupname is the current group name from user.Current, or "root" if user.LookupGroupId has error
+	Groupname string
 )
 
 func CAKeyFile() string {
@@ -77,4 +84,20 @@ func PathUxRaw() string {
 
 func PathUxHttp() string {
 	return filepath.Join(rawconfig.Paths.Lsnr, "h2.sock")
+}
+
+func init() {
+	if currentUser, err := user.Current(); err != nil {
+		Username = "root"
+		Groupname = "root"
+		return
+	} else {
+		Username = currentUser.Username
+		if grp, err := user.LookupGroupId(currentUser.Gid); err != nil {
+			Groupname = "root"
+			return
+		} else {
+			Groupname = grp.Name
+		}
+	}
 }

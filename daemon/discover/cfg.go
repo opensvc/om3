@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/icfg"
@@ -266,7 +265,7 @@ func (d *discover) newDaemonClient(node string) (*client.T, error) {
 }
 
 func fetch(ctx context.Context, cli *client.T, p path.T, node string, cmdC chan<- any) {
-	id := daemondata.InstanceId(p, node)
+	id := p.String() + "@" + node
 	log := daemonlogctx.Logger(ctx).With().Str("_pkg", "cfg.fetch").Str("id", id).Logger()
 
 	tmpFilename, updated, err := remoteconfig.FetchObjectFile(cli, p)

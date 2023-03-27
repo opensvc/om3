@@ -6,8 +6,8 @@ import (
 
 	"github.com/shaj13/go-guardian/v2/auth"
 
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/daemon/daemondata"
 )
 
 type (
@@ -178,6 +178,5 @@ func (t Grant) NamespaceSelector() string {
 // Namespaces returns the list of unique namespace names found in the
 // daemon data.
 func (t Grant) Namespaces(r *http.Request) []string {
-	bus := daemondata.FromContext(r.Context())
-	return bus.GetNamespaces()
+	return object.StatusData.GetPaths().Namespaces()
 }
