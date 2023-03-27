@@ -235,6 +235,7 @@ func (o *nmon) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
 	o.frozen = false
 	o.nodeStatus.Frozen = time.Time{}
 	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: time.Time{}}, o.labelLocalhost)
+	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
 	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
 }
 
@@ -242,6 +243,7 @@ func (o *nmon) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
 	o.frozen = true
 	o.nodeStatus.Frozen = m.Updated
 	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.Updated}, o.labelLocalhost)
+	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
 	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
 }
 
