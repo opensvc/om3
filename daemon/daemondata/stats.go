@@ -48,8 +48,6 @@ const (
 	idGetHbMessage
 	idGetHbMessageType
 	idGetNode
-	idGetNodeStatus
-	idGetNodeStatusMap
 	idGetNodesInfo
 	idGetServiceNames
 	idGetStatus
@@ -89,8 +87,6 @@ var (
 		idGetHbMessage:            "get-hb-message",
 		idGetHbMessageType:        "get-hb-message-type",
 		idGetNode:                 "get-node",
-		idGetNodeStatus:           "get-node-status",
-		idGetNodeStatusMap:        "get-node-status-map",
 		idGetNodesInfo:            "get-nodes-info",
 		idGetServiceNames:         "get-service-names",
 		idGetStatus:               "get-status",
