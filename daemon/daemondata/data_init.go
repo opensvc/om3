@@ -19,6 +19,10 @@ import (
 func newData() *data {
 	localNode := hostname.Hostname()
 	nodeData := newNodeData(localNode)
+	node.MonitorData.Set(localNode, &nodeData.Monitor)
+	node.StatusData.Set(localNode, &nodeData.Status)
+	node.StatsData.Set(localNode, &nodeData.Stats)
+	node.ConfigData.Set(localNode, &nodeData.Config)
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
 			Status: cluster.Status{
