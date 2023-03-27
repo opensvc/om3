@@ -69,7 +69,7 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 func (c *Data[T]) GetPaths() path.L {
 	l := make(path.L, 0)
 	c.RLock()
-	defer c.Unlock()
+	defer c.RUnlock()
 	for k := range c.data {
 		l = append(l, k)
 	}
