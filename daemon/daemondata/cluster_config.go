@@ -11,6 +11,7 @@ import (
 func (d *data) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 	d.statCount[idSetClusterConfig]++
 	d.pending.Cluster.Config = c.Value
+	d.log.Info().Msgf("ClusterConfigUpdated %+v", c)
 	for _, v := range c.NodesAdded {
 		d.clusterNodes[v] = struct{}{}
 	}

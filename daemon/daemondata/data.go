@@ -202,14 +202,10 @@ func PropagationInterval() time.Duration {
 //	        x <- resC
 //	        return
 //	     }
-func run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
-	d := newData()
+func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbtype.Msg, drainDuration time.Duration) {
 	d.log = daemonlogctx.Logger(ctx).With().Str("name", "daemondata").Logger()
 	d.log.Info().Msg("starting")
 	defer d.log.Info().Msg("stopped")
-	d.bus = pubsub.BusFromContext(ctx)
-
-	d.startSubscriptions()
 	watchCmd := &durationlog.T{Log: d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 	defer watchDurationCancel()
