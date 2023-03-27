@@ -2,11 +2,13 @@ package node
 
 import (
 	"sync"
+
+	"github.com/opensvc/om3/util/san"
 )
 
 type (
 	Dataer interface {
-		Config | Monitor | Stats | Status
+		Config | Monitor | san.Paths | Stats | Status
 	}
 
 	DataElement[T Dataer] struct {
@@ -27,6 +29,9 @@ var (
 
 	// MonitorData is the package data holder for all nodes Monitors
 	MonitorData *Data[Monitor]
+
+	// OsPathsData is the package data holder for all nodes Os paths data
+	OsPathsData *Data[san.Paths]
 
 	// StatsData is the package data holder for all nodes stats
 	StatsData *Data[Stats]
@@ -77,10 +82,19 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	return result
 }
 
+func DropNode(nodename string) {
+	ConfigData.Unset(nodename)
+	MonitorData.Unset(nodename)
+	OsPathsData.Unset(nodename)
+	StatusData.Unset(nodename)
+	StatsData.Unset(nodename)
+}
+
 // InitData reset package node data, it can be used for tests.
 func InitData() {
 	ConfigData = NewData[Config]()
 	MonitorData = NewData[Monitor]()
+	OsPathsData = NewData[san.Paths]()
 	StatusData = NewData[Status]()
 	StatsData = NewData[Stats]()
 }

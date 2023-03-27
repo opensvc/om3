@@ -532,6 +532,8 @@ func (o *nmon) loadAndPublishConfig() error {
 	o.nodeStatus.Labels = localNodeInfo.Labels
 	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
 	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+	paths := localNodeInfo.Paths.DeepCopy()
+	node.OsPathsData.Set(o.localhost, &paths)
 	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
 	return nil
 }
