@@ -252,7 +252,11 @@ func (o *nmon) worker() {
 	// cluster nodes at the time the worker starts
 	initialNodes := o.config.GetStrings(key.New("cluster", "nodes"))
 	for _, name := range initialNodes {
-		o.nodeMonitor[name] = o.databus.GetNodeMonitor(name)
+		if nodeMon := node.MonitorData.Get(name); nodeMon != nil {
+			o.nodeMonitor[name] = *nodeMon
+		} else {
+			o.nodeMonitor[name] = node.Monitor{}
+		}
 	}
 	o.updateStats()
 	o.refreshSanPaths()

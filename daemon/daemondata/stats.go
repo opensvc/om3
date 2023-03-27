@@ -47,15 +47,9 @@ const (
 	idDropPeerNode
 	idGetHbMessage
 	idGetHbMessageType
-	idGetInstanceConfig
-	idGetInstanceMonitorMap
-	idGetInstanceStatus
 	idGetNode
-	idGetNodeMonitor
-	idGetNodeMonitorMap
 	idGetNodeStatus
 	idGetNodeStatusMap
-	idGetNodeStatsMap
 	idGetNodesInfo
 	idGetServiceNames
 	idGetStatus
@@ -94,8 +88,6 @@ var (
 		idDropPeerNode:            "drop-peer-node",
 		idGetHbMessage:            "get-hb-message",
 		idGetHbMessageType:        "get-hb-message-type",
-		idGetInstanceMonitorMap:   "get-instance-monitor-map",
-		idGetInstanceStatus:       "get-instance-status",
 		idGetNode:                 "get-node",
 		idGetNodeStatus:           "get-node-status",
 		idGetNodeStatusMap:        "get-node-status-map",

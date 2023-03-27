@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/cmd"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -89,15 +90,15 @@ func TestDaemonData(t *testing.T) {
 	remoteHost := "node2"
 
 	t.Run("from daemon start", func(t *testing.T) {
-		t.Run("GetStatus return status with instance state initialized", func(t *testing.T) {
-			localNodeStatus := bus.GetNodeStatus(localNode)
+		t.Run("node.StatusData & cluster.ConfigData are populated initialized", func(t *testing.T) {
+			localNodeStatus := node.StatusData.Get(localNode)
 			require.NotNil(t, localNodeStatus)
 			require.Equalf(t, uint64(1), localNodeStatus.Gen[localNode],
 				"expected local node gen 1, got %+v", localNodeStatus)
-			cluster := bus.GetStatus().Cluster
-			require.Equal(t, "cluster1", cluster.Config.Name)
-			require.Equalf(t, "d0cdc684-b235-11eb-b929-acde48001122", cluster.Config.ID,
-				"got %+v", cluster)
+			clusterConfig := cluster.ConfigData.Get()
+			require.Equal(t, "cluster1", clusterConfig.Name)
+			require.Equalf(t, "d0cdc684-b235-11eb-b929-acde48001122", clusterConfig.ID,
+				"got %+v", clusterConfig)
 		})
 		require.False(t, t.Failed()) // fail on first error
 
@@ -126,8 +127,9 @@ func TestDaemonData(t *testing.T) {
 	})
 	require.False(t, t.Failed()) // fail on first error
 
-	t.Run("Ensure GetNodeMonitor result is a deep copy", func(t *testing.T) {
-		initial := bus.GetNodeMonitor(localNode)
+	t.Run("Ensure node.MonitorData.Get result is a deep copy", func(t *testing.T) {
+		initial := *node.MonitorData.Get(localNode)
+		require.Equal(t, node.MonitorGlobalExpectNone, initial.GlobalExpect, "GlobalExpect changed !")
 		initialUpdated := initial.StateUpdated
 		initialGlobalExpectUpdated := initial.GlobalExpectUpdated
 		initial.State = node.MonitorStateIdle
@@ -135,7 +137,7 @@ func TestDaemonData(t *testing.T) {
 		initial.GlobalExpect = node.MonitorGlobalExpectAborted
 		initial.GlobalExpectUpdated = time.Now()
 
-		refreshed := bus.GetNodeMonitor(localNode)
+		refreshed := *node.MonitorData.Get(localNode)
 		require.Equal(t, node.MonitorStateZero, refreshed.State, "State changed !")
 		require.Equal(t, initialUpdated, refreshed.StateUpdated, "StateUpdated changed !")
 		require.Equal(t, node.MonitorGlobalExpectNone, refreshed.GlobalExpect, "GlobalExpect changed !")

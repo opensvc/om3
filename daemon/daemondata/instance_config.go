@@ -1,41 +1,10 @@
 package daemondata
 
 import (
-	"context"
-
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/jsondelta"
 )
-
-type (
-	opGetInstanceConfig struct {
-		errC
-		config chan<- instance.Config
-		path   path.T
-		node   string
-	}
-)
-
-// GetInstanceConfig
-//
-// Monitor.Node.<localhost>.services.status.*
-func (t T) GetInstanceConfig(p path.T, node string) instance.Config {
-	config := make(chan instance.Config, 1)
-	err := make(chan error, 1)
-	op := opGetInstanceConfig{
-		errC:   err,
-		config: config,
-		path:   p,
-		node:   node,
-	}
-	t.cmdC <- op
-	if <-err != nil {
-		return instance.Config{}
-	}
-	return <-config
-}
 
 // onConfigDeleted removes cluster.node.<node>.instance.<path>.config
 func (d *data) onInstanceConfigDeleted(c msgbus.InstanceConfigDeleted) {
@@ -76,16 +45,4 @@ func (d *data) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
 		OpKind:  "replace",
 	}
 	d.pendingOps = append(d.pendingOps, op)
-}
-
-func (o opGetInstanceConfig) call(ctx context.Context, d *data) error {
-	d.statCount[idGetInstanceConfig]++
-	s := instance.Config{}
-	if nodeConfig, ok := d.pending.Cluster.Node[o.node]; ok {
-		if inst, ok := nodeConfig.Instance[o.path.String()]; ok && inst.Config != nil {
-			s = *inst.Config
-		}
-	}
-	o.config <- s
-	return nil
 }
