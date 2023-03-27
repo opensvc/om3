@@ -325,7 +325,7 @@ func (t *T) hasAnyJob(p path.T) bool {
 }
 
 func (t *T) scheduleAll() {
-	for _, p := range t.databus.GetServicePaths() {
+	for _, p := range object.StatusData.GetPaths() {
 		t.scheduleObject(p)
 	}
 	t.scheduleNode()

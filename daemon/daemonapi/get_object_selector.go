@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
 func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params GetObjectSelectorParams) {
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "GetObjectSelector").Logger()
 	log.Debug().Msg("starting")
-	daemonData := daemondata.FromContext(r.Context())
-	paths := daemonData.GetServicePaths()
+	paths := object.StatusData.GetPaths()
 	selection := objectselector.NewSelection(
 		params.Selector,
 		objectselector.SelectionWithInstalled(paths),

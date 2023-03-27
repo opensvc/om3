@@ -66,6 +66,16 @@ func (c *Data[T]) GetAll() []DataElement[T] {
 	return result
 }
 
+func (c *Data[T]) GetPaths() path.L {
+	l := make(path.L, 0)
+	c.RLock()
+	defer c.Unlock()
+	for k := range c.data {
+		l = append(l, k)
+	}
+	return l
+}
+
 // InitData reset package objects data, it can be used for tests.
 func InitData() {
 	StatusData = NewData[Status]()
