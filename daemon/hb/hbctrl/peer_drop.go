@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
@@ -46,6 +47,8 @@ func peerDropWorker(ctx context.Context) {
 	dropM := make(map[string]dropCall)
 
 	dropPeer := func(peer string) {
+		instance.DropNode(peer)
+		node.DropNode(peer)
 		err := databus.DropPeerNode(peer)
 		if err != nil {
 			log.Error().Err(err).Msgf("drop peer %s", peer)

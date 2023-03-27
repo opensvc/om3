@@ -69,6 +69,17 @@ func (c *Data[T]) Unset(p path.T, nodename string) {
 	delete(c.data, id)
 }
 
+// DropNode removes node instances
+func (c *Data[T]) DropNode(nodename string) {
+	c.Lock()
+	defer c.Unlock()
+	for p := range c.nodeToPath[nodename] {
+		delete(c.pathToNode[p], nodename)
+		delete(c.data, p.String()+"@"+nodename)
+	}
+	delete(c.nodeToPath, nodename)
+}
+
 // Get returns an instance data or nil if data is not found
 func (c *Data[T]) Get(p path.T, nodename string) *T {
 	id := p.String() + "@" + nodename
@@ -123,6 +134,12 @@ func NewData[T Dataer]() *Data[T] {
 		pathToNode: make(map[path.T]map[string]struct{}),
 		data:       make(map[string]*T),
 	}
+}
+
+func DropNode(nodename string) {
+	MonitorData.DropNode(nodename)
+	ConfigData.DropNode(nodename)
+	StatusData.DropNode(nodename)
 }
 
 // InitData reset package instances data, it can be used for tests.
