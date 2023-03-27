@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
@@ -39,10 +40,13 @@ func Start(parent context.Context, drainDuration time.Duration) (chan<- caller, 
 	cmdC := make(chan caller)
 	hbRecvMsgQ := make(chan *hbtype.Msg)
 	var wg sync.WaitGroup
+	d := newData()
+	d.bus = pubsub.BusFromContext(ctx)
+	d.startSubscriptions()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		run(ctx, cmdC, hbRecvMsgQ, drainDuration)
+		d.run(ctx, cmdC, hbRecvMsgQ, drainDuration)
 	}()
 	return cmdC, hbRecvMsgQ, func() {
 		cancel()
