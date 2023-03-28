@@ -12,6 +12,8 @@ func (o *imon) orchestrateFrozen() {
 		instance.MonitorStateUnprovisionFailed,
 		instance.MonitorStateReady:
 		o.frozenFromIdle()
+	default:
+		o.log.Warn().Msgf("orchestrateFrozen has no solution from state %s", o.state.State)
 	}
 }
 
