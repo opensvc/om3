@@ -135,6 +135,7 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 func (o *T) startSubscriptions() {
 	sub := o.bus.Sub(o.id + " omon")
 	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, o.labelPath)
+	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, o.labelPath)
 	sub.AddFilter(msgbus.InstanceConfigUpdated{}, o.labelPath)
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
