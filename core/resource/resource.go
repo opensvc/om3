@@ -778,6 +778,43 @@ func PRStart(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// StartStandby activates a resource interfacer
+func StartStandby(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(startstandbyer)
+	if !ok {
+		return ErrActionNotSupported
+	}
+	defer Status(ctx, r)
+	if r.IsDisabled() {
+		return ErrDisabled
+	}
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "start requires")
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Start); err != nil {
+		return errors.Wrapf(err, "pre start trigger")
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
+		return err
+	}
+	r.Progress(ctx, "▶ start standby")
+	if err := s.StartStandby(ctx); err != nil {
+		return errors.Wrapf(err, "start standby")
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Start); err != nil {
+		return errors.Wrapf(err, "post start trigger")
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	return nil
+}
+
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
 	var i any = r

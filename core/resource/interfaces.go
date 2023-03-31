@@ -80,6 +80,9 @@ type (
 	starter interface {
 		Start(context.Context) error
 	}
+	startstandbyer interface {
+		StartStandby(context.Context) error
+	}
 	stopper interface {
 		Stop(context.Context) error
 	}

@@ -25,6 +25,9 @@ type (
 	ProvisionLeadeder interface {
 		ProvisionLeaded(context.Context) error
 	}
+	ProvisionStarter interface {
+		ProvisionStart(context.Context) error
+	}
 	UnprovisionStoper interface {
 		UnprovisionStop(context.Context) error
 	}
@@ -85,6 +88,8 @@ func startLeader(ctx context.Context, t Driver, leader bool) error {
 		return nil
 	}
 	switch o := t.(type) {
+	case ProvisionStarter:
+		return o.ProvisionStart(ctx)
 	case starter:
 		return o.Start(ctx)
 	default:
@@ -93,10 +98,11 @@ func startLeader(ctx context.Context, t Driver, leader bool) error {
 }
 
 func provisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
-	if isLeaded(t, leader) {
+	if leader {
+		return provisionLeader(ctx, t)
+	} else {
 		return provisionLeaded(ctx, t)
 	}
-	return provisionLeader(ctx, t)
 }
 
 func provisionLeader(ctx context.Context, t Driver) error {
@@ -108,7 +114,13 @@ func provisionLeader(ctx context.Context, t Driver) error {
 
 func provisionLeaded(ctx context.Context, t Driver) error {
 	if i, ok := t.(ProvisionLeadeder); ok {
+		// The driver cared to implement a ProvisionLeaded function,
+		// let it decide what to do with standby resources.
 		return i.ProvisionLeaded(ctx)
+	} else if t.IsStandby() && !t.IsShared() {
+		// The did not declare a special behaviour on leaded.
+		// Assume standby mean up, so do a normal leader provision.
+		return provisionLeader(ctx, t)
 	}
 	return nil
 }
@@ -141,7 +153,7 @@ func unprovisionStop(ctx context.Context, t Driver) error {
 }
 
 func unprovisionLeaderOrLeaded(ctx context.Context, t Driver, leader bool) error {
-	if leader || t.IsStandby() {
+	if leader {
 		return unprovisionLeader(ctx, t)
 	} else {
 		return unprovisionLeaded(ctx, t)
@@ -158,6 +170,8 @@ func unprovisionLeader(ctx context.Context, t Driver) error {
 func unprovisionLeaded(ctx context.Context, t Driver) error {
 	if i, ok := t.(UnprovisionLeadeder); ok {
 		return i.UnprovisionLeaded(ctx)
+	} else if t.IsStandby() && !t.IsShared() {
+		return unprovisionLeader(ctx, t)
 	}
 	return nil
 }

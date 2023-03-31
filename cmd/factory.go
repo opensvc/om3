@@ -2240,6 +2240,26 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectStartStandby(kind string) *cobra.Command {
+	var options commands.CmdObjectStartStandby
+	cmd := &cobra.Command{
+		Use:   "startstandby",
+		Short: "activate resources for standby",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsLock(flags, &options.OptsLock)
+	addFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	addFlagsTo(flags, &options.OptTo)
+	addFlagDryRun(flags, &options.DryRun)
+	addFlagForce(flags, &options.Force)
+	addFlagDisableRollback(flags, &options.DisableRollback)
+	return cmd
+}
+
 func newCmdObjectStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectStatus
 	cmd := &cobra.Command{
