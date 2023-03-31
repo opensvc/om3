@@ -5,6 +5,7 @@
 !**/*.yaml
 !**/*.conf
 !**/
+!**/text/*/*
 !go.sum
 !go.mod
 !LICENSE
