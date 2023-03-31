@@ -42,6 +42,10 @@ func (t T) NewGetNodesInfo() *api.GetNodesInfo {
 	return api.NewGetNodesInfo(t)
 }
 
+func (t T) NewGetNodeFile() *api.GetNodeFile {
+	return api.NewGetNodeFile(t)
+}
+
 func (t T) NewGetNodeLog() *api.GetNodeLog {
 	return api.NewGetNodeLog(t)
 }

@@ -549,6 +549,12 @@ type QueryDuration = string
 // QueryEventFilter defines model for queryEventFilter.
 type QueryEventFilter = []string
 
+// QueryFileKind defines model for queryFileKind.
+type QueryFileKind = string
+
+// QueryFileName defines model for queryFileName.
+type QueryFileName = string
+
 // QueryLimit defines model for queryLimit.
 type QueryLimit = int64
 
@@ -629,6 +635,15 @@ type PostDaemonSubActionJSONBody = PostDaemonSubAction
 
 // PostInstanceStatusJSONBody defines parameters for PostInstanceStatus.
 type PostInstanceStatusJSONBody = PostInstanceStatus
+
+// GetNodeFileParams defines parameters for GetNodeFile.
+type GetNodeFileParams struct {
+	// the full path of the file is deduced from the kind and name
+	Kind QueryFileKind `form:"kind" json:"kind"`
+
+	// the full path of the file is deduced from the kind and name
+	Name QueryFileName `form:"name" json:"name"`
+}
 
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
 type PostNodeMonitorJSONBody = PostNodeMonitor

@@ -240,6 +240,24 @@ paths:
           description: success
         default:
           description: unexpected error
+  /node/file:
+    get:
+      operationId: GetNodeFile
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryFileKind'
+        - $ref: '#/components/parameters/queryFileName'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/objectFile'
   /node/monitor:
     post:
       operationId: PostNodeMonitor
@@ -1253,6 +1271,22 @@ components:
           description: |
             filter expression: [kind][,label=value]*
           example: ObjectStatusUpdated,path=foo
+    queryFileKind:
+      name: kind
+      in: query
+      description: the full path of the file is deduced from the kind and name
+      required: true
+      enum:
+        - drbd
+      schema:
+        type: string
+    queryFileName:
+      name: name
+      in: query
+      description: the full path of the file is deduced from the kind and name
+      required: true
+      schema:
+        type: string
     queryRoles:
       name: role
       in: query
