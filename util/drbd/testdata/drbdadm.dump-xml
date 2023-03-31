@@ -1,0 +1,137 @@
+<config file="/etc/drbd.conf">
+    <common>
+    </common>
+    <resource name="cloud-backup.nc.vol.nextcloud" conf-file-line="/etc/drbd.d/cloud-backup.nc.vol.nextcloud.res:1">
+        <host name="magnetar">
+            <volume vnr="0">
+                <device minor="0">/dev/drbd0</device>
+                <disk>/dev/datavg/cloud-backup.nc.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7289">54.37.191.100</address>
+        </host>
+        <host name="pulsar">
+            <volume vnr="0">
+                <device minor="0">/dev/drbd0</device>
+                <disk>/dev/datavg/cloud-backup.nc.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7289">54.37.191.101</address>
+        </host>
+        <connection>
+            <host name="magnetar"><address family="ipv4" port="7289">54.37.191.100</address></host>
+            <host name="pulsar"><address family="ipv4" port="7289">54.37.191.101</address></host>
+        </connection>
+    </resource>
+    <resource name="cloud-data.nc.vol.nextcloud" conf-file-line="/etc/drbd.d/cloud-data.nc.vol.nextcloud.res:1">
+        <host name="magnetar">
+            <volume vnr="0">
+                <device minor="1">/dev/drbd1</device>
+                <disk>/dev/datavg/cloud-data.nc.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7290">54.37.191.100</address>
+        </host>
+        <host name="pulsar">
+            <volume vnr="0">
+                <device minor="1">/dev/drbd1</device>
+                <disk>/dev/datavg/cloud-data.nc.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7290">54.37.191.101</address>
+        </host>
+        <connection>
+            <host name="magnetar"><address family="ipv4" port="7290">54.37.191.100</address></host>
+            <host name="pulsar"><address family="ipv4" port="7290">54.37.191.101</address></host>
+        </connection>
+    </resource>
+    <resource name="demo-focal1" conf-file-line="/etc/drbd.d/demo-focal1.res:1">
+        <host name="magnetar">
+            <volume vnr="0">
+                <device minor="3">/dev/drbd3</device>
+                <disk>/dev/demo-focal/focal1</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7292">54.37.191.100</address>
+        </host>
+        <host name="pulsar">
+            <volume vnr="0">
+                <device minor="3">/dev/drbd3</device>
+                <disk>/dev/demo-focal/focal1</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7292">54.37.191.101</address>
+        </host>
+        <connection>
+            <host name="magnetar"><address family="ipv4" port="7292">54.37.191.100</address></host>
+            <host name="pulsar"><address family="ipv4" port="7292">54.37.191.101</address></host>
+        </connection>
+    </resource>
+    <resource name="grafana-data.mon.vol.nextcloud" conf-file-line="/etc/drbd.d/grafana-data.mon.vol.nextcloud.res:1">
+        <host name="magnetar">
+            <volume vnr="0">
+                <device minor="4">/dev/drbd4</device>
+                <disk>/dev/datavg/grafana-data.mon.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7293">54.37.191.100</address>
+        </host>
+        <host name="pulsar">
+            <volume vnr="0">
+                <device minor="4">/dev/drbd4</device>
+                <disk>/dev/datavg/grafana-data.mon.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7293">54.37.191.101</address>
+        </host>
+        <connection>
+            <host name="magnetar"><address family="ipv4" port="7293">54.37.191.100</address></host>
+            <host name="pulsar"><address family="ipv4" port="7293">54.37.191.101</address></host>
+        </connection>
+    </resource>
+    <resource name="loki-data.mon.vol.nextcloud" conf-file-line="/etc/drbd.d/loki-data.mon.vol.nextcloud.res:1">
+        <host name="magnetar">
+            <volume vnr="0">
+                <device minor="5">/dev/drbd5</device>
+                <disk>/dev/datavg/loki-data.mon.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7294">54.37.191.100</address>
+        </host>
+        <host name="pulsar">
+            <volume vnr="0">
+                <device minor="5">/dev/drbd5</device>
+                <disk>/dev/datavg/loki-data.mon.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7294">54.37.191.101</address>
+        </host>
+        <connection>
+            <host name="magnetar"><address family="ipv4" port="7294">54.37.191.100</address></host>
+            <host name="pulsar"><address family="ipv4" port="7294">54.37.191.101</address></host>
+        </connection>
+    </resource>
+    <resource name="swag-data.nc.vol.nextcloud" conf-file-line="/etc/drbd.d/swag-data.nc.vol.nextcloud.res:1">
+        <host name="magnetar">
+            <volume vnr="0">
+                <device minor="2">/dev/drbd2</device>
+                <disk>/dev/datavg/swag-data.nc.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7291">54.37.191.100</address>
+        </host>
+        <host name="pulsar">
+            <volume vnr="0">
+                <device minor="2">/dev/drbd2</device>
+                <disk>/dev/datavg/swag-data.nc.vol.nextcloud</disk>
+                <meta-disk>internal</meta-disk>
+            </volume>
+            <address family="ipv4" port="7291">54.37.191.101</address>
+        </host>
+        <connection>
+            <host name="magnetar"><address family="ipv4" port="7291">54.37.191.100</address></host>
+            <host name="pulsar"><address family="ipv4" port="7291">54.37.191.101</address></host>
+        </connection>
+    </resource>
+</config>
+

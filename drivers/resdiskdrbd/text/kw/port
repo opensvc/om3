@@ -1,0 +1,3 @@
+The port to use to connect a peer.
+
+Auto-allocated on provision if not already defined.
