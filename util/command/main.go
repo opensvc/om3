@@ -14,9 +14,9 @@ import (
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/kballard/go-shellquote"
+	"github.com/opensvc/om3/util/funcopt"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (
