@@ -23,7 +23,7 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/drivers/resdisk"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/device"
@@ -546,7 +546,7 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var data daemonapi.ObjectFile
+	var data api.ObjectFile
 	if err := json.Unmarshal(b, &data); err != nil {
 		return nil, err
 	}
@@ -555,6 +555,10 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 
 func (t T) fetchConfig() error {
 	cf := drbd.ResConfigFile(t.Res)
+	if file.Exists(cf) {
+		t.Log().Info().Msgf("%s already exists", cf)
+		return nil
+	}
 	for _, nodename := range t.Nodes {
 		b, err := t.fetchConfigFromNode(nodename)
 		if err != nil {
@@ -605,7 +609,39 @@ func (t T) writeConfig(ctx context.Context) error {
 	if err := t.formatConfig(file, res); err != nil {
 		return err
 	}
+	b, err := os.ReadFile(cf)
+	if err != nil {
+		return err
+	}
+	if err := t.sendConfig(b); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (t T) sendConfig(b []byte) error {
+	for _, nodename := range t.Nodes {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		if err := t.sendConfigToNode(b, nodename); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t T) sendConfigToNode(b []byte, nodename string) error {
+	c, err := client.New(client.WithURL(nodename))
+	if err != nil {
+		return err
+	}
+	req := c.NewPostNodeFile()
+	req.Kind = "drbd"
+	req.Name = t.Res
+	req.Data = b
+	_, err = req.Do()
+	return err
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {

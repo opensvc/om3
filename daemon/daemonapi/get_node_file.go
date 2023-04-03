@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetNodeFile(w http.ResponseWriter, r *http.Request, params GetNodeFileParams) {
+func (a *DaemonApi) GetNodeFile(w http.ResponseWriter, r *http.Request, params api.GetNodeFileParams) {
 	var (
 		b        []byte
 		err      error
@@ -40,7 +41,7 @@ func (a *DaemonApi) GetNodeFile(w http.ResponseWriter, r *http.Request, params G
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp := ObjectFile{
+	resp := api.ObjectFile{
 		Mtime: mtime,
 	}
 	resp.Data, err = os.ReadFile(filename)

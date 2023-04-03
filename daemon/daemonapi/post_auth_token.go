@@ -8,6 +8,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/shaj13/go-guardian/v2/auth"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/converters"
@@ -17,7 +18,7 @@ import (
 //
 // When role parameter exists a new user is created with grants from role and
 // extra claims may be added to token
-func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params PostAuthTokenParams) {
+func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params api.PostAuthTokenParams) {
 	var (
 		// duration define the default token duration
 		duration = time.Minute * 10
@@ -50,7 +51,7 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 			return
 		}
 		var err error
-		user, xClaims, err = params.userXClaims(user)
+		user, xClaims, err = userXClaims(params, user)
 		if err != nil {
 			log.Error().Err(err).Msg("userXClaims")
 			sendError(w, http.StatusServiceUnavailable, err.Error())
@@ -71,17 +72,17 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(ResponsePostAuthToken{
+	_ = json.NewEncoder(w).Encode(api.ResponsePostAuthToken{
 		Token:         tk,
 		TokenExpireAt: expireAt,
 	})
 }
 
 // userXClaims returns new user and Claims from p and current user
-func (p PostAuthTokenParams) userXClaims(srcInfo auth.Info) (info auth.Info, xClaims daemonauth.Claims, err error) {
+func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, xClaims daemonauth.Claims, err error) {
 	xClaims = make(daemonauth.Claims)
 	grants := daemonauth.Grants{}
-	roleDone := make(map[Role]bool)
+	roleDone := make(map[api.Role]bool)
 	for _, r := range *p.Role {
 		if _, ok := roleDone[r]; ok {
 			continue

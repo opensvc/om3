@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
@@ -15,7 +16,7 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 	log.Debug().Msg("starting")
 
 	var (
-		payload PostDaemonSubAction
+		payload api.PostDaemonSubAction
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		sendError(w, http.StatusBadRequest, err.Error())
@@ -36,7 +37,7 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 	if len(subs) == 0 {
 		w.WriteHeader(http.StatusOK)
 		msg := fmt.Sprintf("empty component list to %s", action)
-		_ = json.NewEncoder(w).Encode(ResponseText(msg))
+		_ = json.NewEncoder(w).Encode(api.ResponseText(msg))
 		return
 	}
 	log.Info().Msgf("asking to %s sub components: %s", action, subs)
@@ -47,5 +48,5 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 	}
 	w.WriteHeader(http.StatusOK)
 	msg := fmt.Sprintf("ask to %s sub components: %s", action, subs)
-	_ = json.NewEncoder(w).Encode(ResponseText(msg))
+	_ = json.NewEncoder(w).Encode(api.ResponseText(msg))
 }

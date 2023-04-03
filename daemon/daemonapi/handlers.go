@@ -1,6 +1,3 @@
-//go:generate oapi-codegen --config=codegen_server.yaml ./api.yaml
-//go:generate oapi-codegen --config=codegen_type.yaml ./api.yaml
-
 package daemonapi
 
 import (
@@ -11,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -29,7 +27,7 @@ func Register(r chi.Router, enableUi bool) {
 	if enableUi {
 		r.Mount("/public/ui/", http.StripPrefix("/public/ui", swaggerui.Handler("/public/openapi")))
 	}
-	HandlerFromMux(daemonApi, r)
+	api.HandlerFromMux(daemonApi, r)
 }
 
 func sendError(w http.ResponseWriter, code int, message string) {

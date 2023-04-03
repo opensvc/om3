@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"net/http"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -11,7 +12,7 @@ import (
 
 // PostDaemonLeave publishes msgbus.LeaveRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
-func (a *DaemonApi) PostDaemonLeave(w http.ResponseWriter, r *http.Request, params PostDaemonLeaveParams) {
+func (a *DaemonApi) PostDaemonLeave(w http.ResponseWriter, r *http.Request, params api.PostDaemonLeaveParams) {
 	var (
 		node string
 	)

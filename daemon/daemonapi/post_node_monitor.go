@@ -6,6 +6,7 @@ import (
 	"github.com/goccy/go-json"
 
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -13,7 +14,7 @@ import (
 
 func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload      PostNodeMonitor
+		payload      api.PostNodeMonitor
 		validRequest bool
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -41,8 +42,8 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(&msgbus.SetNodeMonitor{Node:  hostname.Hostname(), Value: value}, labelApi)
-	response := ResponseInfoStatus{
+	bus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: value}, labelApi)
+	response := api.ResponseInfoStatus{
 		Info:   0,
 		Status: "instance monitor pushed pending ops",
 	}

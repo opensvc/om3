@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -15,7 +16,7 @@ import (
 
 func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload     = PostObjectMonitor{}
+		payload     = api.PostObjectMonitor{}
 		instMonitor = instance.MonitorUpdate{}
 		p           path.T
 		err         error

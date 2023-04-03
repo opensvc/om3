@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
@@ -39,7 +40,7 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 
 		log.Info().Msg("daemon stopping")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(ResponseText("daemon stopping"))
+		_ = json.NewEncoder(w).Encode(api.ResponseText("daemon stopping"))
 		go func() {
 			// Give time for response received by client before stop daemon
 			time.Sleep(50 * time.Millisecond)
@@ -51,6 +52,6 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 		}()
 	} else {
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(ResponseText("no daemon to stop"))
+		_ = json.NewEncoder(w).Encode(api.ResponseText("no daemon to stop"))
 	}
 }

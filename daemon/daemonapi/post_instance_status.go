@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -20,7 +21,7 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 	var (
 		err     error
 		p       path.T
-		payload PostInstanceStatus
+		payload api.PostInstanceStatus
 	)
 	log := getLogger(r, "PostInstanceStatus")
 	log.Debug().Msgf("starting")
@@ -50,7 +51,7 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func postInstanceStatusToInstanceStatus(payload PostInstanceStatus) (*instance.Status, error) {
+func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instance.Status, error) {
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
 		Avail:       status.Parse(payloadStatus.Avail),
@@ -189,7 +190,7 @@ func postInstanceStatusToInstanceStatus(payload PostInstanceStatus) (*instance.S
 	return &instanceStatus, nil
 }
 
-func toPathRelationL(p *PathRelation) []path.Relation {
+func toPathRelationL(p *api.PathRelation) []path.Relation {
 	nv := make([]path.Relation, 0)
 	for _, v := range *p {
 		nv = append(nv, path.Relation(v))

@@ -258,6 +258,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectFile'
+    post:
+      operationId: PostNodeFile
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/queryFileKind'
+        - $ref: '#/components/parameters/queryFileName'
+      requestBody:
+        description: monitor
+        required: true
+        content:
+          application/json:
+            schema:
+                $ref: '#/components/schemas/objectFile'
+      responses:
+        '200':
+          description: success
   /node/monitor:
     post:
       operationId: PostNodeMonitor
@@ -399,6 +419,10 @@ paths:
       responses:
         '200':
           description: success
+        '400':
+          description: body decode error
+        '500':
+          description: file write error
         default:
           description: unexpected error
   /object/progress:

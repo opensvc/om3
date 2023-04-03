@@ -6,14 +6,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/relay"
 )
 
 func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload PostRelayMessage
-		value   RelayMessage
+		payload api.PostRelayMessage
+		value   api.RelayMessage
 	)
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "PostRelayMessage").Logger()
 	log.Debug().Msg("starting")

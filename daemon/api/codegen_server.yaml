@@ -1,4 +1,4 @@
-package: daemonapi
+package: api
 generate:
   chi-server: true
   models: false

@@ -18,8 +18,8 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemon"
-	"github.com/opensvc/om3/daemon/daemonapi"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
@@ -281,7 +281,7 @@ func (t *T) running() bool {
 		log.Debug().Err(err).Msg("daemon is not running")
 		return false
 	}
-	var resp daemonapi.ResponseMuxBool
+	var resp api.ResponseMuxBool
 	if err := json.Unmarshal(b, &resp.Data); err != nil {
 		log.Error().Err(err).Msgf("Unmarshal b: %s", b)
 		return false

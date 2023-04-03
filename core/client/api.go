@@ -114,6 +114,10 @@ func (t T) NewPostNodeClear() *api.PostNodeClear {
 	return api.NewPostNodeClear(t)
 }
 
+func (t T) NewPostNodeFile() *api.PostNodeFile {
+	return api.NewPostNodeFile(t)
+}
+
 func (t T) NewPostNodeMonitor() *api.PostNodeMonitor {
 	return api.NewPostNodeMonitor(t)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 )
 
@@ -13,7 +14,7 @@ func (a *DaemonApi) GetSwagger(w http.ResponseWriter, r *http.Request) {
 	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetOpenapi")
 	log.Debug().Msg("starting")
 
-	swagger, err := GetSwagger()
+	swagger, err := api.GetSwagger()
 	if err != nil {
 		log.Info().Err(err).Msg("GetSwagger")
 		w.WriteHeader(http.StatusInternalServerError)
