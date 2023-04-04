@@ -28,7 +28,7 @@ func (a *DaemonApi) PostNodeFile(w http.ResponseWriter, r *http.Request, params 
 		sendError(w, http.StatusBadRequest, "Unknown 'kind' parameter value.")
 		return
 	}
-	if err := os.WriteFile(cf, payload.Data, os.ModePerm); err != nil {
+	if err := os.WriteFile(cf, payload.Data, 0644); err != nil {
 		sendError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
