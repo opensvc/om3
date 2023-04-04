@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -318,7 +317,7 @@ func (t CompFiles) fixContent(rule CompFile) ExitCode {
 		t.Errorf("file %s get target content: %s\n", rule.Path, err)
 		return ExitNok
 	}
-	f, err := ioutil.TempFile(filepath.Dir(rule.Path), filepath.Base(rule.Path)+".comp-file-")
+	f, err := os.CreateTemp(filepath.Dir(rule.Path), filepath.Base(rule.Path)+".comp-file-")
 	if err != nil {
 		t.Errorf("file %s open temp: %s\n", rule.Path, err)
 		return ExitNok
