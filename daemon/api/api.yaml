@@ -226,6 +226,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /node/drbd/allocation:
+    get:
+      operationId: GetNodeDrbdAllocation
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/drbdAllocation'
   /node/clear:
     post:
       operationId: PostNodeClear
@@ -1164,6 +1179,20 @@ components:
           type: integer
         data:
           type: string
+    drbdAllocation:
+      type: object
+      required:
+        - port
+        - minor
+        - expire_at
+      properties:
+        port:
+          type: integer
+        minor:
+          type: integer
+        expire_at:
+          type: string
+          format: date-time
     responseDaemonStatus:
       type: object
       required:

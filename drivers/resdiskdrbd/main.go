@@ -405,8 +405,25 @@ func (t T) ProvisionStart(ctx context.Context) error {
 	return nil
 }
 
-func (t T) getDigest() (drbd.Digest, error) {
-	return drbd.Digest{}, nil
+func (t T) getDrbdAllocations() (map[string]api.DrbdAllocation, error) {
+	allocations := make(map[string]api.DrbdAllocation)
+	for _, nodename := range t.Nodes {
+		c, err := client.New(client.WithURL(nodename))
+		if err != nil {
+			return nil, err
+		}
+		req := c.NewGetNodeDrbdAllocation()
+		b, err := req.Do()
+		if err != nil {
+			return nil, err
+		}
+		var allocation api.DrbdAllocation
+		if err := json.Unmarshal(b, &allocation); err != nil {
+			return nil, err
+		}
+		allocations[nodename] = allocation
+	}
+	return allocations, nil
 }
 
 func (t T) formatConfig(wr io.Writer, res ConfRes) error {
@@ -423,26 +440,33 @@ func (t T) formatConfig(wr io.Writer, res ConfRes) error {
 	return templ.Execute(wr, res)
 }
 
-func (t T) makeConfRes(freePort, minor int) (ConfRes, error) {
+func (t T) makeConfRes(allocations map[string]api.DrbdAllocation) (ConfRes, error) {
 	res := ConfRes{
 		Name:  t.Res,
 		Hosts: make([]ConfResOn, 0),
 	}
-	device := fmt.Sprintf("/dev/drbd%d", minor)
 	obj := t.GetObject().(object.Configurer)
-	for nodeId, node := range t.Nodes {
+	for nodeId, nodename := range t.Nodes {
 		var (
 			disk, addr, ipVer string
 			port              int
 		)
-		if s, err := obj.Config().EvalAs(key.T{t.RID(), "disk"}, node); err != nil {
+		allocation, ok := allocations[nodename]
+		if !ok {
+			return ConfRes{}, errors.Errorf("drbd allocation for node %s not found", nodename)
+		}
+		if time.Now().After(allocation.ExpireAt) {
+			return ConfRes{}, errors.Errorf("drbd allocation for node %s has expired", nodename)
+		}
+		device := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
+		if s, err := obj.Config().EvalAs(key.T{t.RID(), "disk"}, nodename); err != nil {
 			return res, err
 		} else {
 			disk = s.(string)
 		}
 
-		if s, err := obj.Config().EvalAs(key.T{t.RID(), "addr"}, node); err != nil || addr == "" {
-			if ip, err := t.getNodeIP(node); err != nil {
+		if s, err := obj.Config().EvalAs(key.T{t.RID(), "addr"}, nodename); err != nil || addr == "" {
+			if ip, err := t.getNodeIP(nodename); err != nil {
 				return res, err
 			} else {
 				addr = ip.String()
@@ -451,10 +475,11 @@ func (t T) makeConfRes(freePort, minor int) (ConfRes, error) {
 			addr = s.(string)
 		}
 
-		if i, err := obj.Config().EvalAs(key.T{t.RID(), "port"}, node); err != nil {
+		if i, err := obj.Config().EvalAs(key.T{t.RID(), "port"}, nodename); err != nil {
 			// EvalAs will error because the port kw has no default
-			port = freePort
+			port = allocation.Port
 		} else {
+			// TODO: remove to not let the user bug ?
 			port = i.(int)
 		}
 
@@ -467,7 +492,7 @@ func (t T) makeConfRes(freePort, minor int) (ConfRes, error) {
 		}
 
 		host := ConfResOn{
-			Name:   node,
+			Name:   nodename,
 			Addr:   fmt.Sprintf("%s %s:%d", ipVer, ip, port),
 			Disk:   disk,
 			Device: device,
@@ -585,19 +610,11 @@ func (t T) writeConfig(ctx context.Context) error {
 	defer func() {
 		_ = t.unlock(ctx)
 	}()
-	digest, err := t.getDigest()
+	allocations, err := t.getDrbdAllocations()
 	if err != nil {
 		return err
 	}
-	minor, err := digest.FreeMinor()
-	if err != nil {
-		return err
-	}
-	port, err := digest.FreePort()
-	if err != nil {
-		return err
-	}
-	res, err := t.makeConfRes(port, minor)
+	res, err := t.makeConfRes(allocations)
 	if err != nil {
 		return err
 	}

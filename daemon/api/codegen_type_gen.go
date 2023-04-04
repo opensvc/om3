@@ -220,6 +220,13 @@ type DnsRecord struct {
 // DnsZone defines model for dnsZone.
 type DnsZone = []DnsRecord
 
+// DrbdAllocation defines model for drbdAllocation.
+type DrbdAllocation struct {
+	ExpireAt time.Time `json:"expire_at"`
+	Minor    int       `json:"minor"`
+	Port     int       `json:"port"`
+}
+
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
 	App         *App          `json:"app,omitempty"`

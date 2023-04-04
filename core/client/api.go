@@ -38,6 +38,10 @@ func (t T) NewGetKey() *api.GetKey {
 	return api.NewGetKey(t)
 }
 
+func (t T) NewGetNodeDrbdAllocation() *api.GetNodeDrbdAllocation {
+	return api.NewGetNodeDrbdAllocation(t)
+}
+
 func (t T) NewGetNodesInfo() *api.GetNodesInfo {
 	return api.NewGetNodesInfo(t)
 }
