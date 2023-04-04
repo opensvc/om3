@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/opensvc/om3/core/client"
@@ -106,7 +105,7 @@ func (t *CmdObjectEditKey) doRemote(p path.T, c *client.T) error {
 	if buff, err = fetchKey(p, t.Key, c); err != nil {
 		return err
 	}
-	if f, err = ioutil.TempFile("", ".opensvc.edit.key.*"); err != nil {
+	if f, err = os.CreateTemp("", ".opensvc.edit.key.*"); err != nil {
 		return err
 	}
 	fName := f.Name()

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/opensvc/om3/core/client"
@@ -113,7 +112,7 @@ func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
 	if buff, err = fetchConfig(p, c); err != nil {
 		return err
 	}
-	if f, err = ioutil.TempFile("", ".opensvc.edit.config.*"); err != nil {
+	if f, err = os.CreateTemp("", ".opensvc.edit.config.*"); err != nil {
 		return err
 	}
 	fName := f.Name()

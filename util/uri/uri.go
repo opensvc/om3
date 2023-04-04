@@ -3,7 +3,6 @@ package uri
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,7 +32,7 @@ func (t T) Fetch() (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if f, err = ioutil.TempFile(rawconfig.Paths.Tmp, ".fetch.*"); err != nil {
+	if f, err = os.CreateTemp(rawconfig.Paths.Tmp, ".fetch.*"); err != nil {
 		return "", err
 	}
 	fName := f.Name()
