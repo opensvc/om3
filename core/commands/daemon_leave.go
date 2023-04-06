@@ -114,13 +114,13 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 				return err
 			}
 			switch ev.Kind {
-			case msgbus.LeaveSuccess{}.Kind():
+			case (&msgbus.LeaveSuccess{}).Kind():
 				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
-			case msgbus.LeaveError{}.Kind():
+			case (&msgbus.LeaveError{}).Kind():
 				err := errors.Errorf("leave error: %s", ev.Data)
 				return err
-			case msgbus.LeaveIgnored{}.Kind():
+			case (&msgbus.LeaveIgnored{}).Kind():
 				// TODO parse Reason
 				_, _ = fmt.Fprintf(os.Stdout, "Leave ignored: %s", ev.Data)
 				return nil
