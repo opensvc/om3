@@ -1,4 +1,4 @@
-// Package istat implement management of local instance status
+// Package istat implements the management of local instance status
 
 package istat
 
@@ -61,10 +61,10 @@ func Start(ctx context.Context) error {
 	}
 
 	sub := t.bus.Sub("istats")
-	sub.AddFilter(msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
-	sub.AddFilter(msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
-	sub.AddFilter(msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
-	sub.AddFilter(msgbus.InstanceStatusPost{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusPost{}, t.labelLocalhost)
 	sub.Start()
 	t.sub = sub
 
@@ -92,30 +92,30 @@ func (t *T) worker() {
 			return
 		case i := <-t.sub.C:
 			switch m := i.(type) {
-			case msgbus.InstanceConfigDeleted:
+			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(m)
-			case msgbus.InstanceFrozenFileRemoved:
+			case *msgbus.InstanceFrozenFileRemoved:
 				t.onInstanceFrozenFileRemoved(m)
-			case msgbus.InstanceFrozenFileUpdated:
+			case *msgbus.InstanceFrozenFileUpdated:
 				t.onInstanceFrozenFileUpdated(m)
-			case msgbus.InstanceStatusPost:
+			case *msgbus.InstanceStatusPost:
 				t.onInstanceStatusPost(m)
 			}
 		}
 	}
 }
 
-func (t *T) onInstanceConfigDeleted(m msgbus.InstanceConfigDeleted) {
+func (t *T) onInstanceConfigDeleted(m *msgbus.InstanceConfigDeleted) {
 	s := m.Path.String()
 	delete(t.iStatusM, m.Path.String())
 	instance.StatusData.Unset(m.Path, t.localhost)
-	t.bus.Pub(msgbus.InstanceStatusDeleted{Path: m.Path, Node: t.localhost},
+	t.bus.Pub(&msgbus.InstanceStatusDeleted{Path: m.Path, Node: t.localhost},
 		t.labelLocalhost,
 		pubsub.Label{"path", s},
 	)
 }
 
-func (o *T) onInstanceFrozenFileRemoved(fileRemoved msgbus.InstanceFrozenFileRemoved) {
+func (o *T) onInstanceFrozenFileRemoved(fileRemoved *msgbus.InstanceFrozenFileRemoved) {
 	s := fileRemoved.Path.String()
 	iStatus, ok := o.iStatusM[s]
 	if !ok {
@@ -132,13 +132,13 @@ func (o *T) onInstanceFrozenFileRemoved(fileRemoved msgbus.InstanceFrozenFileRem
 	}
 	o.iStatusM[s] = iStatus
 	instance.StatusData.Set(fileRemoved.Path, o.localhost, iStatus.DeepCopy())
-	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
+	o.bus.Pub(&msgbus.InstanceStatusUpdated{Path: fileRemoved.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
 		o.labelLocalhost,
 		pubsub.Label{"path", s},
 	)
 }
 
-func (o *T) onInstanceFrozenFileUpdated(frozen msgbus.InstanceFrozenFileUpdated) {
+func (o *T) onInstanceFrozenFileUpdated(frozen *msgbus.InstanceFrozenFileUpdated) {
 	s := frozen.Path.String()
 
 	iStatus, ok := o.iStatusM[s]
@@ -157,17 +157,17 @@ func (o *T) onInstanceFrozenFileUpdated(frozen msgbus.InstanceFrozenFileUpdated)
 	}
 	o.iStatusM[s] = iStatus
 	instance.StatusData.Set(frozen.Path, o.localhost, iStatus.DeepCopy())
-	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: frozen.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
+	o.bus.Pub(&msgbus.InstanceStatusUpdated{Path: frozen.Path, Node: o.localhost, Value: *iStatus.DeepCopy()},
 		o.labelLocalhost,
 		pubsub.Label{"path", s},
 	)
 }
 
-func (o *T) onInstanceStatusPost(post msgbus.InstanceStatusPost) {
+func (o *T) onInstanceStatusPost(post *msgbus.InstanceStatusPost) {
 	s := post.Path.String()
 	o.iStatusM[s] = post.Value
 	instance.StatusData.Set(post.Path, post.Node, post.Value.DeepCopy())
-	o.bus.Pub(msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
+	o.bus.Pub(&msgbus.InstanceStatusUpdated{Path: post.Path, Node: post.Node, Value: post.Value},
 		o.labelLocalhost,
 		pubsub.Label{"path", s})
 }
