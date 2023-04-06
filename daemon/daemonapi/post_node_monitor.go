@@ -20,31 +20,28 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	cmd := msgbus.SetNodeMonitor{
-		Node:  hostname.Hostname(),
-		Value: node.MonitorUpdate{},
-	}
+	value := node.MonitorUpdate{}
 	if payload.LocalExpect != nil {
 		validRequest = true
 		i := node.MonitorLocalExpectValues[*payload.LocalExpect]
-		cmd.Value.LocalExpect = &i
+		value.LocalExpect = &i
 	}
 	if payload.GlobalExpect != nil {
 		validRequest = true
 		i := node.MonitorGlobalExpectValues[*payload.GlobalExpect]
-		cmd.Value.GlobalExpect = &i
+		value.GlobalExpect = &i
 	}
 	if payload.State != nil {
 		validRequest = true
 		i := node.MonitorStateValues[*payload.State]
-		cmd.Value.State = &i
+		value.State = &i
 	}
 	if !validRequest {
 		sendError(w, http.StatusBadRequest, "need at least state, local_expect or global_expect")
 		return
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(cmd, labelApi)
+	bus.Pub(&msgbus.SetNodeMonitor{Node:  hostname.Hostname(), Value: value}, labelApi)
 	response := ResponseInfoStatus{
 		Info:   0,
 		Status: "instance monitor pushed pending ops",

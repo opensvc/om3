@@ -36,13 +36,7 @@ func (a *DaemonApi) PostObjectProgress(w http.ResponseWriter, r *http.Request) {
 		isPartial = *payload.IsPartial
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	msg := msgbus.ProgressInstanceMonitor{
-		Path:      p,
-		Node:      hostname.Hostname(),
-		SessionId: payload.SessionId,
-		State:     state,
-		IsPartial: isPartial,
-	}
-	bus.Pub(msg, pubsub.Label{"path", p.String()}, labelApi)
+	bus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: hostname.Hostname(), SessionId: payload.SessionId, State: state, IsPartial: isPartial},
+		pubsub.Label{"path", p.String()}, labelApi)
 	w.WriteHeader(http.StatusOK)
 }

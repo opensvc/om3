@@ -25,7 +25,7 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 		log.Info().Msg("announce maintenance state")
 		bus := pubsub.BusFromContext(ctx)
 		state := node.MonitorStateMaintenance
-		bus.Pub(msgbus.SetNodeMonitor{
+		bus.Pub(&msgbus.SetNodeMonitor{
 			Node: hostname.Hostname(),
 			Value: node.MonitorUpdate{
 				State: &state,

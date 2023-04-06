@@ -12,12 +12,7 @@ import (
 func (a *DaemonApi) PostNodeClear(w http.ResponseWriter, r *http.Request) {
 	bus := pubsub.BusFromContext(r.Context())
 	state := node.MonitorStateIdle
-	msg := msgbus.SetNodeMonitor{
-		Node: hostname.Hostname(),
-		Value: node.MonitorUpdate{
-			State: &state,
-		},
-	}
-	bus.Pub(msg, labelApi)
+	bus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: node.MonitorUpdate{State: &state}},
+		labelApi)
 	w.WriteHeader(http.StatusOK)
 }

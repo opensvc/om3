@@ -43,7 +43,7 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	bus := pubsub.BusFromContext(r.Context())
 	localhost := hostname.Hostname()
-	bus.Pub(msgbus.InstanceStatusPost{Path: p, Node: localhost, Value: *instanceStatus},
+	bus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: localhost, Value: *instanceStatus},
 		pubsub.Label{"path", payload.Path},
 		pubsub.Label{"node", localhost},
 	)

@@ -39,12 +39,8 @@ func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
 	orchestrationId := uuid.New().String()
 	value.CandidateOrchestrationId = orchestrationId
 	bus := pubsub.BusFromContext(r.Context())
-	msg := msgbus.SetInstanceMonitor{
-		Path:  p,
-		Node:  hostname.Hostname(),
-		Value: value,
-	}
-	bus.Pub(msg, pubsub.Label{"path", p.String()}, labelApi)
+	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: value},
+		pubsub.Label{"path", p.String()}, labelApi)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(orchestrationId)
 }

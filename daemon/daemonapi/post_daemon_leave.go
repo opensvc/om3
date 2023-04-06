@@ -34,6 +34,6 @@ func (a *DaemonApi) PostDaemonLeave(w http.ResponseWriter, r *http.Request, para
 	ctx := r.Context()
 	bus := pubsub.BusFromContext(ctx)
 	log.Info().Msgf("publish leave request for node %s", node)
-	bus.Pub(msgbus.LeaveRequest{Node: node}, labelApi, labelNode)
+	bus.Pub(&msgbus.LeaveRequest{Node: node}, labelApi, labelNode)
 	w.WriteHeader(http.StatusOK)
 }

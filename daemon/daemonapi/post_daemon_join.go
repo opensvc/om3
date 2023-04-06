@@ -34,6 +34,6 @@ func (a *DaemonApi) PostDaemonJoin(w http.ResponseWriter, r *http.Request, param
 	ctx := r.Context()
 	bus := pubsub.BusFromContext(ctx)
 	log.Info().Msgf("publish join request for node %s", node)
-	bus.Pub(msgbus.JoinRequest{Node: node}, labelApi, labelNode)
+	bus.Pub(&msgbus.JoinRequest{Node: node}, labelApi, labelNode)
 	w.WriteHeader(http.StatusOK)
 }
