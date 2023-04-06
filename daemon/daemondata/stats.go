@@ -36,7 +36,6 @@ const (
 	idUndef = iota
 	idApplyFull
 	idApplyPatch
-	idCommitPending
 	idDropPeerNode
 	idGetHbMessage
 	idGetHbMessageType
@@ -50,7 +49,6 @@ var (
 		idUndef:            "undef",
 		idApplyFull:        "apply-full",
 		idApplyPatch:       "apply-patch",
-		idCommitPending:    "commit-clusterData",
 		idDropPeerNode:     "drop-peer-node",
 		idGetHbMessage:     "get-hb-message",
 		idGetHbMessageType: "get-hb-message-type",

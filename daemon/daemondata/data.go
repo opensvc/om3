@@ -120,6 +120,8 @@ var (
 	countRoutineInterval = 1 * time.Second
 
 	ErrDrained = errors.New("drained command")
+
+	labelPeerNode = pubsub.Label{"peer", "true"}
 )
 
 func PropagationInterval() time.Duration {
