@@ -6,7 +6,7 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (o *cstat) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
+func (o *cstat) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	o.nodeStatus[c.Node] = c.Value
 	o.updateCompat()
 	o.updateFrozen()
@@ -14,7 +14,7 @@ func (o *cstat) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
 		o.change = false
 		localhost := hostname.Hostname()
 		labelLocalNode := pubsub.Label{"node", localhost}
-		o.bus.Pub(msgbus.ClusterStatusUpdated{Node: localhost, Value: o.state}, labelLocalNode)
+		o.bus.Pub(&msgbus.ClusterStatusUpdated{Node: localhost, Value: o.state}, labelLocalNode)
 	}
 }
 
