@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/daemon/msgbus"
 )
 
 // GetStatus returns deep copy of status
@@ -28,12 +27,6 @@ type opGetStatus struct {
 
 func (o opGetStatus) call(ctx context.Context, d *data) error {
 	d.statCount[idGetStatus]++
-	o.status <- d.pending.DeepCopy()
+	o.status <- d.clusterData.DeepCopy()
 	return nil
-}
-
-// onClusterStatusUpdated updates .cluster.status
-func (d *data) onClusterStatusUpdated(m msgbus.ClusterStatusUpdated) {
-	d.statCount[idSetClusterStatus]++
-	d.pending.Cluster.Status = m.Value
 }

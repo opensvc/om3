@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -23,6 +24,7 @@ func newData() *data {
 	node.StatusData.Set(localNode, &nodeData.Status)
 	node.StatsData.Set(localNode, &nodeData.Stats)
 	node.ConfigData.Set(localNode, &nodeData.Config)
+	node.GenData.Set(localNode, &nodeData.Status.Gen)
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
 			Status: cluster.Status{
@@ -43,6 +45,7 @@ func newData() *data {
 			Monitor: cluster.DaemonMonitor{
 				DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{},
 			},
+			Nodename: localNode,
 			Hb: cluster.DaemonHb{
 				Streams: make([]cluster.HeartbeatStream, 0),
 				Modes:   make([]cluster.HbMode, 0),
@@ -58,8 +61,8 @@ func newData() *data {
 		hbPatchMsgUpdated:  make(map[string]time.Time),
 		localNode:          localNode,
 		clusterNodes:       map[string]struct{}{localNode: struct{}{}},
-		pending:            status.DeepCopy(),
-		patchQueue:         make(patchQueue),
+		clusterData:        msgbus.NewClusterData(status.DeepCopy()),
+		eventQueue:         make(eventQueue),
 		previousRemoteInfo: make(map[string]remoteInfo),
 		hbMsgMode:          map[string]string{localNode: initialMsgType},
 		hbMsgType:          map[string]string{localNode: initialMsgType},

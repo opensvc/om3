@@ -1,23 +1,20 @@
 package daemondata
 
 import (
-	"encoding/json"
 	"sort"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/jsondelta"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
 
 func (d *data) setDaemonHb() {
-	d.statCount[idSetDaemonHb]++
 	hbModes := make([]cluster.HbMode, 0)
 	nodes := make([]string, 0)
 	for node := range d.hbMsgMode {
-		if !stringslice.Has(node, d.pending.Cluster.Config.Nodes) {
+		if !stringslice.Has(node, d.clusterData.Cluster.Config.Nodes) {
 			// Drop not anymore in cluster config nodes
 			hbcache.DropPeer(node)
 			continue
@@ -37,23 +34,8 @@ func (d *data) setDaemonHb() {
 		Streams: hbcache.Heartbeats(),
 		Modes:   hbModes,
 	}
-	d.pending.Daemon.Hb = subHb
-	// TODO Use a dedicated msg for heartbeats updates
-	eventId++
-	patch := make(jsondelta.Patch, 0)
-	op := jsondelta.Operation{
-		OpPath:  jsondelta.OperationPath{"daemon", "hb"},
-		OpValue: jsondelta.NewOptValue(subHb),
-		OpKind:  "replace",
-	}
-	patch = append(patch, op)
-	if eventB, err := json.Marshal(patch); err != nil {
-		d.log.Error().Err(err).Msg("setDaemonHb Marshal")
-	} else {
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB},
-			d.labelLocalNode,
-		)
-	}
+	d.clusterData.Daemon.Hb = subHb
+	d.bus.Pub(&msgbus.DaemonHb{Node: d.localNode, Value: subHb}, d.labelLocalNode)
 }
 
 func (d *data) setHbMsgMode(node string, mode string) {
@@ -72,11 +54,11 @@ func (d *data) setHbMsgType(node string, msgType string) {
 				joinedNodes = append(joinedNodes, n)
 			}
 		}
-		d.bus.Pub(msgbus.HbMessageTypeUpdated{
+		d.bus.Pub(&msgbus.HbMessageTypeUpdated{
 			Node:        node,
 			From:        previous,
 			To:          msgType,
-			Nodes:       append([]string{}, d.pending.Cluster.Config.Nodes...),
+			Nodes:       append([]string{}, d.clusterData.Cluster.Config.Nodes...),
 			JoinedNodes: joinedNodes,
 		}, pubsub.Label{"node", node})
 	}
