@@ -4,8 +4,8 @@ package hbtype
 import (
 	"time"
 
+	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/util/jsondelta"
 )
 
 type (
@@ -16,7 +16,7 @@ type (
 		Gen      map[string]uint64          `json:"gen"`
 		Updated  time.Time                  `json:"updated"`
 		Ping     node.Monitor               `json:"monitor"`
-		Deltas   map[string]jsondelta.Patch `json:"deltas"`
+		Events   map[string][]event.Event   `json:"events,omitempty"`
 		Full     node.Node                  `json:"full"`
 		Nodename string                     `json:"nodename"`
 	}
@@ -37,7 +37,7 @@ type (
 		Compat   uint64                     `json:"compat,omitempty"`
 		Gen      map[string]uint64          `json:"gen,omitempty"`
 		Updated  time.Time                  `json:"updated,omitempty"`
-		Deltas   map[string]jsondelta.Patch `json:"deltas,omitempty"`
+		Events   map[string][]event.Event   `json:"events,omitempty"`
 		Nodename string                     `json:"nodename,omitempty"`
 	}
 
