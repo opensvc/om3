@@ -7,8 +7,10 @@ import (
 )
 
 type (
+	Gen = map[string]uint64
+
 	Dataer interface {
-		Config | Monitor | san.Paths | Stats | Status
+		Config | Monitor | san.Paths | Stats | Status | Gen
 	}
 
 	DataElement[T Dataer] struct {
@@ -38,6 +40,9 @@ var (
 
 	// StatusData is the package data holder for all nodes statuses
 	StatusData *Data[Status]
+
+	// GenData is the package data holder for all nodes statuses
+	GenData *Data[Gen]
 )
 
 func NewData[T Dataer]() *Data[T] {
@@ -88,6 +93,7 @@ func DropNode(nodename string) {
 	OsPathsData.Unset(nodename)
 	StatusData.Unset(nodename)
 	StatsData.Unset(nodename)
+	GenData.Unset(nodename)
 }
 
 // InitData reset package node data, it can be used for tests.
@@ -97,6 +103,7 @@ func InitData() {
 	OsPathsData = NewData[san.Paths]()
 	StatusData = NewData[Status]()
 	StatsData = NewData[Stats]()
+	GenData = NewData[Gen]()
 }
 
 func init() {
