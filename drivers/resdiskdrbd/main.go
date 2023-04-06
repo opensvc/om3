@@ -712,7 +712,10 @@ func (t T) WipeMD() error {
 func (t T) maxPeers() int {
 	v := t.MaxPeers
 	nNodes := len(t.Nodes)
-	min := nNodes - 1
+
+	// min could be nNodes-1 but we want to add a slot to allow a server
+	// swap.
+	min := nNodes
 	if min < 1 {
 		min = 1
 	}
