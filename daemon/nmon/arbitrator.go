@@ -75,7 +75,7 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 			o.log.Warn().Msgf("arbitrator#%s is down", name)
 			o.log.Debug().Err(r.err).Msgf("arbitrator#%s is down", name)
 			aStatus = status.Down
-			o.bus.Pub(msgbus.ArbitratorError{
+			o.bus.Pub(&msgbus.ArbitratorError{
 				Node: o.localhost,
 				Name: name,
 				Err:  r.err,
@@ -88,12 +88,12 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 
 func (o *nmon) getAndUpdateStatusArbitrator() {
 	o.nodeStatus.Arbitrators = o.getStatusArbitrators()
+	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 	pubValue := make(map[string]node.ArbitratorStatus)
 	for k, v := range o.nodeStatus.Arbitrators {
 		pubValue[k] = v
 	}
-	o.bus.Pub(msgbus.NodeStatusArbitratorsUpdated{Node: o.localhost, Value: pubValue}, o.labelLocalhost)
-	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: o.localhost, Value: pubValue}, o.labelLocalhost)
 }
 
 func (o *nmon) arbitratorVotes() (votes []string) {

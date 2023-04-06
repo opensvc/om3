@@ -17,7 +17,7 @@ import (
 //
 // - publish msgbus.JoinIgnored,join-node=node (the node already exists in cluster nodes)
 // - publish msgbus.JoinError,join-node=node (update cluster config object fails)
-func (o *nmon) onJoinRequest(c msgbus.JoinRequest) {
+func (o *nmon) onJoinRequest(c *msgbus.JoinRequest) {
 	nodes := ccfg.Get().Nodes
 	node := c.Node
 	labels := []pubsub.Label{
@@ -27,10 +27,10 @@ func (o *nmon) onJoinRequest(c msgbus.JoinRequest) {
 	o.log.Info().Msgf("join request for node %s", node)
 	if stringslice.Has(node, nodes) {
 		o.log.Debug().Msgf("join request ignored already member")
-		o.bus.Pub(msgbus.JoinIgnored{Node: node}, labels...)
+		o.bus.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
 	} else if err := o.addClusterNode(node); err != nil {
 		o.log.Warn().Err(err).Msgf("join request denied")
-		o.bus.Pub(msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
+		o.bus.Pub(&msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
 	}
 }
 
@@ -60,7 +60,7 @@ func (o *nmon) addClusterNode(node string) error {
 //
 // - publish msgbus.LeaveIgnored,leave-node=node (the node is not a cluster nodes)
 // - publish msgbus.LeaveError,leave-node=node (update cluster config object fails)
-func (o *nmon) onLeaveRequest(c msgbus.LeaveRequest) {
+func (o *nmon) onLeaveRequest(c *msgbus.LeaveRequest) {
 	nodes := ccfg.Get().Nodes
 	node := c.Node
 	labels := []pubsub.Label{
@@ -70,10 +70,10 @@ func (o *nmon) onLeaveRequest(c msgbus.LeaveRequest) {
 	o.log.Info().Msgf("leave request for node %s", node)
 	if !stringslice.Has(node, nodes) {
 		o.log.Debug().Msgf("leave request ignored for not cluster member")
-		o.bus.Pub(msgbus.LeaveIgnored{Node: node}, labels...)
+		o.bus.Pub(&msgbus.LeaveIgnored{Node: node}, labels...)
 	} else if err := o.removeClusterNode(node); err != nil {
 		o.log.Warn().Err(err).Msgf("leave request denied")
-		o.bus.Pub(msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
+		o.bus.Pub(&msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
 	}
 }
 
