@@ -1,0 +1,12 @@
+package msgbus
+
+// OnNodeConfigUpdated updates .cluster.node.<node>.config
+func (data *ClusterData) OnNodeConfigUpdated(m *NodeConfigUpdated) {
+	newConfig := m.Value
+	v := data.Cluster.Node[m.Node]
+	if v.Config == newConfig {
+		return
+	}
+	v.Config = m.Value
+	data.Cluster.Node[m.Node] = v
+}

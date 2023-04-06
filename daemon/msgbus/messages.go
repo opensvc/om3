@@ -38,6 +38,8 @@ var (
 
 		"DaemonCtl": func() any { return &DaemonCtl{} },
 
+		"DaemonHb": func() any { return &DaemonHb{} },
+
 		"DataUpdated": func() any { return &DataUpdated{} },
 
 		"Exit": func() any { return &Exit{} },
@@ -93,6 +95,8 @@ var (
 		"LeaveSuccess": func() any { return &LeaveSuccess{} },
 
 		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
+
+		"NodeDataUpdated": func() any { return &NodeDataUpdated{} },
 
 		"NodeFrozen": func() any { return &NodeFrozen{} },
 
@@ -225,6 +229,12 @@ type (
 		pubsub.Msg
 		Component string
 		Action    string
+	}
+
+	DaemonHb struct {
+		pubsub.Msg
+		Node  string
+		Value cluster.DaemonHb
 	}
 
 	Exit struct {
@@ -403,6 +413,12 @@ type (
 		pubsub.Msg
 		Node  string
 		Value node.Config
+	}
+
+	NodeDataUpdated struct {
+		pubsub.Msg
+		Node  string
+		Value node.Node
 	}
 
 	// NodeFrozen message describe a node frozen state update
@@ -636,6 +652,10 @@ func (e *DaemonCtl) Kind() string {
 	return "DaemonCtl"
 }
 
+func (e *DaemonHb) Kind() string {
+	return "DaemonHb"
+}
+
 func (e *Exit) Kind() string {
 	return "Exit"
 }
@@ -760,6 +780,10 @@ func (e *LeaveSuccess) Kind() string {
 
 func (e *NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
+}
+
+func (e *NodeDataUpdated) Kind() string {
+	return "NodeDataUpdated"
 }
 
 func (e *NodeFrozen) Kind() string {
