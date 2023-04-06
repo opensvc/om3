@@ -16,34 +16,39 @@ func TestSubscriptionFilter(t *testing.T) {
 	defer bus.Stop()
 
 	sub := bus.Sub(t.Name())
-	sub.AddFilter(HbNodePing{}, pubsub.Label{"node", "node10"})
+	sub.AddFilter(&HbNodePing{}, pubsub.Label{"node", "node10"})
 	sub.Start()
 	defer sub.Stop()
 
 	// publish non watched type
-	bus.Pub(HbStale{}, pubsub.Label{"node", "node1"})
+	bus.Pub(&HbStale{}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but not watched label
-	bus.Pub(HbNodePing{
+	bus.Pub(&HbNodePing{
 		Node:   "node1",
 		Status: true,
 	}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but without label
-	bus.Pub(HbNodePing{
+	bus.Pub(&HbNodePing{
 		Node:   "node1",
 		Status: true,
 	})
 
 	// publish message with the watched type and label
-	bus.Pub(HbNodePing{
+	bus.Pub(&HbNodePing{
 		Node:   "node10",
 		Status: true,
 	}, pubsub.Label{"node", "node10"})
 
-	t.Log("verify received message from correct label")
-	i := <-sub.C
-	require.Equal(t, "node10", i.(HbNodePing).Node)
+	receiveMsgTimeout := 50 * time.Millisecond
+	t.Logf("verify received message from correct label (timout: %s)", receiveMsgTimeout)
+	select {
+	case i := <-sub.C:
+		require.Equal(t, "node10", i.(*HbNodePing).Node)
+	case <-time.After(receiveMsgTimeout):
+		t.Fatalf("timeout, no message received")
+	}
 
 	t.Log("ensure no unexpected message")
 	select {
