@@ -77,11 +77,17 @@ type (
 		PID() int
 	}
 
+	shutdowner interface {
+		Shutdown(context.Context) error
+	}
 	starter interface {
 		Start(context.Context) error
 	}
 	startstandbyer interface {
 		StartStandby(context.Context) error
+	}
+	stopstandbyer interface {
+		StopStandby(context.Context) error
 	}
 	stopper interface {
 		Stop(context.Context) error

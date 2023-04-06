@@ -5,6 +5,8 @@ package api
 
 import (
 	"time"
+
+	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 )
 
 const (
@@ -222,9 +224,10 @@ type DnsZone = []DnsRecord
 
 // DrbdAllocation defines model for drbdAllocation.
 type DrbdAllocation struct {
-	ExpireAt time.Time `json:"expire_at"`
-	Minor    int       `json:"minor"`
-	Port     int       `json:"port"`
+	ExpireAt time.Time          `json:"expire_at"`
+	Id       openapi_types.UUID `json:"id"`
+	Minor    int                `json:"minor"`
+	Port     int                `json:"port"`
 }
 
 // InstanceStatus defines model for instanceStatus.
@@ -354,6 +357,12 @@ type PostDaemonSubActionAction string
 type PostInstanceStatus struct {
 	Path   string         `json:"path"`
 	Status InstanceStatus `json:"status"`
+}
+
+// PostNodeDrbdConfigRequestBody defines model for postNodeDrbdConfigRequestBody.
+type PostNodeDrbdConfigRequestBody struct {
+	AllocationId openapi_types.UUID `json:"allocation_id"`
+	Data         []byte             `json:"data"`
 }
 
 // PostNodeMonitor defines model for postNodeMonitor.
@@ -486,6 +495,11 @@ type ResponseDaemonStatus struct {
 // responseEventList is a list of sse
 type ResponseEventList = string
 
+// ResponseGetNodeDrbdConfig defines model for responseGetNodeDrbdConfig.
+type ResponseGetNodeDrbdConfig struct {
+	Data []byte `json:"data"`
+}
+
 // ResponseInfoStatus defines model for responseInfoStatus.
 type ResponseInfoStatus struct {
 	Info   int    `json:"info"`
@@ -550,17 +564,14 @@ type Status = string
 // object topology
 type Topology string
 
+// QueryDrbdConfigName defines model for queryDrbdConfigName.
+type QueryDrbdConfigName = string
+
 // QueryDuration defines model for queryDuration.
 type QueryDuration = string
 
 // QueryEventFilter defines model for queryEventFilter.
 type QueryEventFilter = []string
-
-// QueryFileKind defines model for queryFileKind.
-type QueryFileKind = string
-
-// QueryFileName defines model for queryFileName.
-type QueryFileName = string
 
 // QueryLimit defines model for queryLimit.
 type QueryLimit = int64
@@ -643,25 +654,19 @@ type PostDaemonSubActionJSONBody = PostDaemonSubAction
 // PostInstanceStatusJSONBody defines parameters for PostInstanceStatus.
 type PostInstanceStatusJSONBody = PostInstanceStatus
 
-// GetNodeFileParams defines parameters for GetNodeFile.
-type GetNodeFileParams struct {
-	// the full path of the file is deduced from the kind and name
-	Kind QueryFileKind `form:"kind" json:"kind"`
-
-	// the full path of the file is deduced from the kind and name
-	Name QueryFileName `form:"name" json:"name"`
+// GetNodeDrbdConfigParams defines parameters for GetNodeDrbdConfig.
+type GetNodeDrbdConfigParams struct {
+	// the full path of the file is deduced from the name
+	Name QueryDrbdConfigName `form:"name" json:"name"`
 }
 
-// PostNodeFileJSONBody defines parameters for PostNodeFile.
-type PostNodeFileJSONBody = ObjectFile
+// PostNodeDrbdConfigJSONBody defines parameters for PostNodeDrbdConfig.
+type PostNodeDrbdConfigJSONBody = PostNodeDrbdConfigRequestBody
 
-// PostNodeFileParams defines parameters for PostNodeFile.
-type PostNodeFileParams struct {
-	// the full path of the file is deduced from the kind and name
-	Kind QueryFileKind `form:"kind" json:"kind"`
-
-	// the full path of the file is deduced from the kind and name
-	Name QueryFileName `form:"name" json:"name"`
+// PostNodeDrbdConfigParams defines parameters for PostNodeDrbdConfig.
+type PostNodeDrbdConfigParams struct {
+	// the full path of the file is deduced from the name
+	Name QueryDrbdConfigName `form:"name" json:"name"`
 }
 
 // PostNodeMonitorJSONBody defines parameters for PostNodeMonitor.
@@ -727,8 +732,8 @@ type PostDaemonSubActionJSONRequestBody = PostDaemonSubActionJSONBody
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = PostInstanceStatusJSONBody
 
-// PostNodeFileJSONRequestBody defines body for PostNodeFile for application/json ContentType.
-type PostNodeFileJSONRequestBody = PostNodeFileJSONBody
+// PostNodeDrbdConfigJSONRequestBody defines body for PostNodeDrbdConfig for application/json ContentType.
+type PostNodeDrbdConfigJSONRequestBody = PostNodeDrbdConfigJSONBody
 
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitorJSONBody

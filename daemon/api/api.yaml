@@ -255,41 +255,39 @@ paths:
           description: success
         default:
           description: unexpected error
-  /node/file:
+  /node/drbd/config:
     get:
-      operationId: GetNodeFile
+      operationId: GetNodeDrbdConfig
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryFileKind'
-        - $ref: '#/components/parameters/queryFileName'
+        - $ref: '#/components/parameters/queryDrbdConfigName'
       responses:
         '200':
           description: success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/objectFile'
+                $ref: '#/components/schemas/responseGetNodeDrbdConfig'
     post:
-      operationId: PostNodeFile
+      operationId: PostNodeDrbdConfig
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryFileKind'
-        - $ref: '#/components/parameters/queryFileName'
+        - $ref: '#/components/parameters/queryDrbdConfigName'
       requestBody:
         description: monitor
         required: true
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/objectFile'
+                $ref: '#/components/schemas/postNodeDrbdConfigRequestBody'
       responses:
         '200':
           description: success
@@ -719,6 +717,47 @@ components:
           type: string
         state:
           type: string
+    dnsRecord:
+      type: object
+      required:
+        - name
+        - type
+        - class
+        - ttl
+        - data
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        class:
+          type: string
+        ttl:
+          type: integer
+        data:
+          type: string
+    dnsZone:
+      type: array
+      items:
+        $ref: '#/components/schemas/dnsRecord'
+    drbdAllocation:
+      type: object
+      required:
+        - port
+        - minor
+        - expire_at
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+        port:
+          type: integer
+        minor:
+          type: integer
+        expire_at:
+          type: string
+          format: date-time
     instanceStatus:
       type: object
       required:
@@ -931,6 +970,18 @@ components:
           items:
             type: string
             example: hb#1.rx
+    postNodeDrbdConfigRequestBody:
+      type: object
+      required:
+        - allocation_id
+        - data
+      properties:
+        allocation_id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: byte
     postNodeMonitor:
       type: object
       properties:
@@ -1135,17 +1186,6 @@ components:
           type: string
     resourceId:
       type: string
-    responsePostAuthToken:
-      type: object
-      required:
-        - token
-        - token_expire_at
-      properties:
-        token:
-          type: string
-        token_expire_at:
-          type: string
-          format: date-time
     resourceProvisionStatus:
       type: object
       required:
@@ -1156,43 +1196,6 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
-    dnsZone:
-      type: array
-      items:
-        $ref: '#/components/schemas/dnsRecord'
-    dnsRecord:
-      type: object
-      required:
-        - name
-        - type
-        - class
-        - ttl
-        - data
-      properties:
-        name:
-          type: string
-        type:
-          type: string
-        class:
-          type: string
-        ttl:
-          type: integer
-        data:
-          type: string
-    drbdAllocation:
-      type: object
-      required:
-        - port
-        - minor
-        - expire_at
-      properties:
-        port:
-          type: integer
-        minor:
-          type: integer
-        expire_at:
-          type: string
-          format: date-time
     responseDaemonStatus:
       type: object
       required:
@@ -1207,6 +1210,14 @@ components:
       description: responseEventList is a list of sse
       type: string
       format: binary
+    responseGetNodeDrbdConfig:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: string
+          format: byte
     responseInfoStatus:
       type: object
       required:
@@ -1240,6 +1251,17 @@ components:
                 type: boolean
               endpoint:
                 type: string
+    responsePostAuthToken:
+      type: object
+      required:
+        - token
+        - token_expire_at
+      properties:
+        token:
+          type: string
+        token_expire_at:
+          type: string
+          format: date-time
     responseText:
       type: string
     role:
@@ -1324,19 +1346,10 @@ components:
           description: |
             filter expression: [kind][,label=value]*
           example: ObjectStatusUpdated,path=foo
-    queryFileKind:
-      name: kind
-      in: query
-      description: the full path of the file is deduced from the kind and name
-      required: true
-      enum:
-        - drbd
-      schema:
-        type: string
-    queryFileName:
+    queryDrbdConfigName:
       name: name
       in: query
-      description: the full path of the file is deduced from the kind and name
+      description: the full path of the file is deduced from the name
       required: true
       schema:
         type: string

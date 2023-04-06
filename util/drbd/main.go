@@ -1,6 +1,7 @@
 package drbd
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"strings"
@@ -413,11 +414,10 @@ func (t T) Role() (string, error) {
 }
 
 func (t T) ConnState() (string, error) {
-	args := []string{"cstate", t.res}
 	isAttached := true
 	cmd := command.New(
 		command.WithName(drbdadm),
-		command.WithArgs(args),
+		command.WithVarArgs("cstate", t.res),
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(func(s string) {
 			if strings.Contains(s, "Device minor not allocated") {
@@ -425,16 +425,15 @@ func (t T) ConnState() (string, error) {
 			}
 		}),
 	)
-	if b, err := cmd.Output(); err != nil {
+	if err := cmd.Run(); err != nil {
 		if !isAttached || cmd.ExitCode() == 10 {
 			return "Unattached", nil
 		} else {
 			return "", err
 		}
-	} else {
-		s := string(b)
-		return strings.Split(s, "\n")[0], nil
 	}
+	b := bytes.Split(cmd.Stdout(), []byte("\n"))[0]
+	return string(b), nil
 }
 
 func (t T) DiskStates() ([]string, error) {
@@ -444,12 +443,11 @@ func (t T) DiskStates() ([]string, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 	)
-	if b, err := cmd.Output(); err != nil {
+	if err := cmd.Run(); err != nil {
 		return []string{}, err
-	} else {
-		s := strings.TrimSpace(string(b))
-		return strings.Split(s, "/"), nil
 	}
+	s := strings.TrimSpace(string(cmd.Stdout()))
+	return strings.Split(s, "/"), nil
 }
 
 func (t T) Remove() error {
@@ -461,11 +459,10 @@ func (t T) IsUp() (bool, string, error) {
 }
 
 func (t T) IsDefined() (bool, error) {
-	args := []string{"status", t.res}
 	isDefined := true
 	cmd := command.New(
 		command.WithName(drbdadm),
-		command.WithArgs(args),
+		command.WithVarArgs("status", t.res),
 		command.WithOnStderrLine(func(s string) {
 			if strings.Contains(s, "no resources defined") {
 				isDefined = false
@@ -583,10 +580,24 @@ func (t T) ModProbe() error {
 	return nil
 }
 
-func (t Digest) FreeMinor() (int, error) {
+func intsContains(l []int, i int) bool {
+	for _, v := range l {
+		if v == i {
+			return true
+		}
+	}
+	return false
+}
+
+func (t Digest) FreeMinor(exclude []int) (int, error) {
+	if exclude == nil {
+		exclude = []int{}
+	}
 	for i := 0; i < MaxDRBD; i += 1 {
 		s := fmt.Sprint(i)
 		if _, ok := t.Minors[s]; ok {
+			continue
+		} else if intsContains(exclude, i) {
 			continue
 		} else {
 			return i, nil
@@ -595,10 +606,15 @@ func (t Digest) FreeMinor() (int, error) {
 	return 0, errors.Errorf("no free minor")
 }
 
-func (t Digest) FreePort() (int, error) {
+func (t Digest) FreePort(exclude []int) (int, error) {
+	if exclude == nil {
+		exclude = []int{}
+	}
 	for i := MinPort; i < MaxPort; i += 1 {
 		s := fmt.Sprint(i)
 		if _, ok := t.Ports[s]; ok {
+			continue
+		} else if intsContains(exclude, i) {
 			continue
 		} else {
 			return i, nil

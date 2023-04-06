@@ -780,10 +780,19 @@ func PRStart(ctx context.Context, r Driver) error {
 
 // StartStandby activates a resource interfacer
 func StartStandby(ctx context.Context, r Driver) error {
-	var i any = r
-	s, ok := i.(startstandbyer)
-	if !ok {
+	var (
+		i  any = r
+		fn func(context.Context) error
+	)
+	if s, ok := i.(startstandbyer); ok {
+		fn = s.StartStandby
+	} else if s, ok := i.(starter); ok {
+		fn = s.Start
+	} else {
 		return ErrActionNotSupported
+	}
+	if !r.IsStandby() {
+		return nil
 	}
 	defer Status(ctx, r)
 	if r.IsDisabled() {
@@ -803,7 +812,7 @@ func StartStandby(ctx context.Context, r Driver) error {
 		return err
 	}
 	r.Progress(ctx, "▶ start standby")
-	if err := s.StartStandby(ctx); err != nil {
+	if err := fn(ctx); err != nil {
 		return errors.Wrapf(err, "start standby")
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Start); err != nil {
@@ -909,26 +918,87 @@ func Update(ctx context.Context, r Driver) error {
 	return nil
 }
 
-// Shutdown deactivates a resource interfacer even if standby is true
+// Shutdown deactivates a resource even if standby is true
 func Shutdown(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
-	return stop(ctx, r)
+	return shutdown(ctx, r)
 }
 
-// Stop deactivates a resource interfacer
+// Stop deactivates a resource
 func Stop(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
-	if r.IsStandby() {
-		return nil
-	}
 	return stop(ctx, r)
 }
 
-func stop(ctx context.Context, r Driver) error {
-	var i any = r
-	s, ok := i.(stopper)
-	if !ok {
+// shutdown turns the resource to a state ready for a server halt
+//
+//	call Shutdown if implemented
+//	else call Stop
+func shutdown(ctx context.Context, r Driver) error {
+	var (
+		i  any = r
+		fn func(context.Context) error
+	)
+	if s, ok := i.(shutdowner); ok {
+		fn = s.Shutdown
+	} else if s, ok := i.(stopper); ok {
+		fn = s.Stop
+	} else {
 		return ErrActionNotSupported
+	}
+	if r.IsDisabled() {
+		return ErrDisabled
+	}
+	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return errors.Wrapf(err, "requires")
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Shutdown); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	r.Progress(ctx, "▶ shutdown")
+	if err := fn(ctx); err != nil {
+		return err
+	}
+	if err := SCSIPersistentReservationStop(ctx, r); err != nil {
+		return err
+	}
+	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Shutdown); err != nil {
+		return errors.Wrapf(err, "trigger")
+	}
+	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Shutdown); err != nil {
+		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
+	}
+	return nil
+}
+
+// stop turns the resource to a state ready for a start.
+//
+//	standby=false => call Stop
+//	standby=true  => call StopStandby if implemented, or do nothing
+func stop(ctx context.Context, r Driver) error {
+	var (
+		progressAction string
+		i              any = r
+		fn             func(context.Context) error
+	)
+	if r.IsStandby() {
+		if s, ok := i.(stopstandbyer); ok {
+			fn = s.StopStandby
+			progressAction = "standby"
+		} else {
+			return ErrActionNotSupported
+		}
+	} else {
+		if s, ok := i.(stopper); ok {
+			fn = s.Stop
+			progressAction = "stop"
+		} else {
+			return ErrActionNotSupported
+		}
 	}
 	if r.IsDisabled() {
 		return ErrDisabled
@@ -943,8 +1013,8 @@ func stop(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
-	r.Progress(ctx, "▶ stop")
-	if err := s.Stop(ctx); err != nil {
+	r.Progress(ctx, "▶ "+progressAction)
+	if err := fn(ctx); err != nil {
 		return err
 	}
 	if err := SCSIPersistentReservationStop(ctx, r); err != nil {

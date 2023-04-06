@@ -180,14 +180,12 @@ func Provisioned(t Driver) (provisioned.T, error) {
 	if t.IsDisabled() {
 		return provisioned.NotApplicable, nil
 	}
+	if !hasAnyProvInterface(t) {
+		return provisioned.NotApplicable, nil
+	}
 	if v, err := getProvisionedValue(t); err == nil {
 		return provisioned.FromBool(v), nil
 	}
-	/*
-		if !hasAnyProvInterface(r) {
-			return true, nil
-		}
-	*/
 	if v, err := t.Provisioned(); err == nil {
 		provBool := v.IsOneOf(provisioned.True)
 		err = setProvisionedValue(provBool, t)

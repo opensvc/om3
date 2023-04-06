@@ -46,8 +46,8 @@ func (t T) NewGetNodesInfo() *api.GetNodesInfo {
 	return api.NewGetNodesInfo(t)
 }
 
-func (t T) NewGetNodeFile() *api.GetNodeFile {
-	return api.NewGetNodeFile(t)
+func (t T) NewGetNodeDrbdConfig() *api.GetNodeDrbdConfig {
+	return api.NewGetNodeDrbdConfig(t)
 }
 
 func (t T) NewGetNodeLog() *api.GetNodeLog {
@@ -118,8 +118,8 @@ func (t T) NewPostNodeClear() *api.PostNodeClear {
 	return api.NewPostNodeClear(t)
 }
 
-func (t T) NewPostNodeFile() *api.PostNodeFile {
-	return api.NewPostNodeFile(t)
+func (t T) NewPostNodeDrbdConfig() *api.PostNodeDrbdConfig {
+	return api.NewPostNodeDrbdConfig(t)
 }
 
 func (t T) NewPostNodeMonitor() *api.PostNodeMonitor {

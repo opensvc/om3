@@ -15,12 +15,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/opensvc/om3/core/actioncontext"
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/api"
@@ -248,12 +249,6 @@ func (t T) Start(ctx context.Context) error {
 		return nil
 	}
 	dev := t.drbd()
-	if ok, err := dev.IsDefined(); err != nil {
-		return err
-	} else if !ok {
-		t.Log().Info().Msgf("skip: resource not defined (for this host)")
-		return nil
-	}
 	if err := t.StartConnection(ctx); err != nil {
 		return err
 	}
@@ -285,11 +280,7 @@ func (t T) Stop(ctx context.Context) error {
 		t.Log().Info().Msgf("skip: resource not defined (for this host)")
 		return nil
 	}
-	if t.Standby && !actioncontext.IsForce(ctx) {
-		return t.StopStandby(ctx)
-	} else {
-		return t.Down(ctx)
-	}
+	return t.Down(ctx)
 }
 
 func (t T) Shutdown(ctx context.Context) error {
@@ -304,7 +295,7 @@ func (t T) Shutdown(ctx context.Context) error {
 		t.Log().Info().Msgf("skip: resource not defined (for this host)")
 		return nil
 	}
-	return t.Down(ctx)
+	return t.DownForce(ctx)
 }
 
 func (t T) StartConnection(ctx context.Context) error {
@@ -384,7 +375,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	case "Primary":
 		return status.Up
 	case "Secondary":
-		return status.Down
+		return status.StandbyUp
 	default:
 		t.StatusLog().Warn("unexpected drbd resource %s role: %s", t.Res, role)
 		return status.Warn
@@ -564,8 +555,7 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req := c.NewGetNodeFile()
-	req.Kind = "drbd"
+	req := c.NewGetNodeDrbdConfig()
 	req.Name = t.Res
 	b, err := req.Do()
 	if err != nil {
@@ -630,32 +620,38 @@ func (t T) writeConfig(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := t.sendConfig(b); err != nil {
+	if err := t.sendConfig(b, allocations); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t T) sendConfig(b []byte) error {
+func (t T) sendConfig(b []byte, allocations map[string]api.DrbdAllocation) error {
 	for _, nodename := range t.Nodes {
+		var allocationId uuid.UUID
 		if nodename == hostname.Hostname() {
 			continue
 		}
-		if err := t.sendConfigToNode(b, nodename); err != nil {
+		if a, ok := allocations[nodename]; ok {
+			allocationId = a.Id
+		} else {
+			return errors.Errorf("allocation id for node %s not found", nodename)
+		}
+		if err := t.sendConfigToNode(nodename, allocationId, b); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t T) sendConfigToNode(b []byte, nodename string) error {
+func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) error {
 	c, err := client.New(client.WithURL(nodename))
 	if err != nil {
 		return err
 	}
-	req := c.NewPostNodeFile()
-	req.Kind = "drbd"
+	req := c.NewPostNodeDrbdConfig()
 	req.Name = t.Res
+	req.AllocationId = allocationId
 	req.Data = b
 	_, err = req.Do()
 	return err
@@ -785,6 +781,22 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (t T) Provisioned() (provisioned.T, error) {
+	if !t.isConfigured() {
+		return provisioned.False, nil
+	}
+	hasMD, err := t.drbd().HasMD()
+	if err != nil {
+		t.Log().Debug().Msg("drbd res is not configured")
+		return provisioned.Undef, err
+	}
+	if !hasMD {
+		t.Log().Debug().Msg("drbd disk has no metadata")
+		return provisioned.False, nil
+	}
+	return provisioned.True, nil
 }
 
 func (t T) ExposedDevices() device.L {

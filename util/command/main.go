@@ -306,6 +306,10 @@ func (t T) checkExitCode(exitCode int) error {
 	return errors.WithStack(err)
 }
 
+func (e *ErrExitCode) ExitCode() int {
+	return e.exitCode
+}
+
 func (e *ErrExitCode) Error() string {
 	return fmt.Sprintf("command exit code %v not in success codes: %v", e.exitCode, e.successCodes)
 }
