@@ -18,7 +18,7 @@ func TestGetDaemonEventsParams(t *testing.T) {
 			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo"},
 			expected: []Filter{
 				{
-					Kind:   msgbus.ObjectStatusUpdated{},
+					Kind:   &msgbus.ObjectStatusUpdated{},
 					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
 				},
 			},
@@ -27,11 +27,11 @@ func TestGetDaemonEventsParams(t *testing.T) {
 			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo", "ConfigFileRemoved,path=root/svc/bar"},
 			expected: []Filter{
 				{
-					Kind:   msgbus.ObjectStatusUpdated{},
+					Kind:   &msgbus.ObjectStatusUpdated{},
 					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
 				},
 				{
-					Kind:   msgbus.ConfigFileRemoved{},
+					Kind:   &msgbus.ConfigFileRemoved{},
 					Labels: []pubsub.Label{{"path", "root/svc/bar"}},
 				},
 			},
@@ -40,7 +40,7 @@ func TestGetDaemonEventsParams(t *testing.T) {
 			filterS: []string{"ObjectStatusUpdated"},
 			expected: []Filter{
 				{
-					Kind: msgbus.ObjectStatusUpdated{},
+					Kind: &msgbus.ObjectStatusUpdated{},
 				},
 			},
 		},
@@ -59,7 +59,7 @@ func TestGetDaemonEventsParams(t *testing.T) {
 			filterS: []string{"ObjectStatusUpdated", "path=root/svc/bar"},
 			expected: []Filter{
 				{
-					Kind: msgbus.ObjectStatusUpdated{},
+					Kind: &msgbus.ObjectStatusUpdated{},
 				},
 				{
 					Labels: []pubsub.Label{{"path", "root/svc/bar"}},
