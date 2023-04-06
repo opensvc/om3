@@ -262,10 +262,10 @@ func (c *ctrl) run(ctx context.Context) {
 				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
 					c.log.Warn().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
-					bus.Pub(msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
+					bus.Pub(&msgbus.HbStale{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
 				} else {
 					c.log.Info().Msgf("event %s for %s from %s", o.Name, o.Nodename, o.HbId)
-					bus.Pub(msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
+					bus.Pub(&msgbus.HbPing{Nodename: o.Nodename, HbId: o.HbId, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbId, ".rx") {
@@ -273,7 +273,7 @@ func (c *ctrl) run(ctx context.Context) {
 						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Info().Msgf("beating node %s", o.Nodename)
-								bus.Pub(msgbus.HbNodePing{Node: o.Nodename, Status: true}, pubsub.Label{"node", o.Nodename})
+								bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, Status: true}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
 						case evStale:
@@ -284,7 +284,7 @@ func (c *ctrl) run(ctx context.Context) {
 						}
 						if remote.rxBeating == 0 {
 							c.log.Info().Msgf("stale node %s", o.Nodename)
-							bus.Pub(msgbus.HbNodePing{Node: o.Nodename, Status: false}, pubsub.Label{"node", o.Nodename})
+							bus.Pub(&msgbus.HbNodePing{Node: o.Nodename, Status: false}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
 					}

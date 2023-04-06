@@ -20,9 +20,9 @@ func peerDropWorker(ctx context.Context) {
 	log := daemonlogctx.Logger(ctx).With().Str("Name", "peer-drop").Logger()
 	bus := pubsub.BusFromContext(ctx)
 	sub := bus.Sub("peer-drop-worker")
-	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
-	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
-	sub.AddFilter(msgbus.HbNodePing{})
+	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
+	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
+	sub.AddFilter(&msgbus.HbNodePing{})
 	sub.Start()
 	defer sub.Stop()
 
@@ -81,7 +81,7 @@ func peerDropWorker(ctx context.Context) {
 		}
 	}
 
-	onConfigFileUpdated := func(c msgbus.ConfigFileUpdated) {
+	onConfigFileUpdated := func(c *msgbus.ConfigFileUpdated) {
 		if err := config.Reload(); err == nil {
 			maintenanceGracePeriod = *config.GetDuration(key.New("node", "maintenance_grace_period"))
 			for peer := range dropM {
@@ -90,7 +90,7 @@ func peerDropWorker(ctx context.Context) {
 		}
 	}
 
-	onHbNodePing := func(c msgbus.HbNodePing) {
+	onHbNodePing := func(c *msgbus.HbNodePing) {
 		peer := c.Node
 		if c.Status {
 			if drop, ok := dropM[peer]; ok {
@@ -108,9 +108,9 @@ func peerDropWorker(ctx context.Context) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
-			case msgbus.ConfigFileUpdated:
+			case *msgbus.ConfigFileUpdated:
 				onConfigFileUpdated(c)
-			case msgbus.HbNodePing:
+			case *msgbus.HbNodePing:
 				onHbNodePing(c)
 			}
 		}

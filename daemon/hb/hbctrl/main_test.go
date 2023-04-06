@@ -78,7 +78,9 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{ping: true, hb: "hb#0.rx", node: "node5", delay: 1 * time.Millisecond},
 			},
 			readPingDuration: 200 * time.Millisecond,
-			expected:         []msgbus.HbNodePing{{Node: "node5", Status: true}},
+			expected: []msgbus.HbNodePing{
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node5"}}}, Node: "node5", Status: true},
+			},
 		},
 
 		"1 hb slow true->true->false->false->true => true->false->true": {
@@ -93,9 +95,9 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Node: "node6", Status: true},
-				{Node: "node6", Status: false},
-				{Node: "node6", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node6"}}}, Node: "node6", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node6"}}}, Node: "node6", Status: false},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node6"}}}, Node: "node6", Status: true},
 			},
 		},
 
@@ -130,7 +132,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Node: "node7", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node7"}}}, Node: "node7", Status: true},
 			},
 		},
 
@@ -146,8 +148,8 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Node: "node8", Status: true},
-				{Node: "node8", Status: false},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node8"}}}, Node: "node8", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node8"}}}, Node: "node8", Status: false},
 			},
 		},
 
@@ -168,23 +170,23 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			},
 			readPingDuration: 500 * time.Millisecond,
 			expected: []msgbus.HbNodePing{
-				{Node: "node9", Status: true},
-				{Node: "node9", Status: false},
-				{Node: "node9", Status: true},
-				{Node: "node9", Status: false},
-				{Node: "node9", Status: true},
-				{Node: "node9", Status: false},
-				{Node: "node9", Status: true},
-				{Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: true},
+				{Msg: pubsub.Msg{Labels: []pubsub.Label{{"node", "node9"}}}, Node: "node9", Status: false},
 			},
 		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			node := tc.node
+			tNode := tc.node
 
 			sub := bus.Sub(name, pubsub.Timeout(time.Second))
-			sub.AddFilter(msgbus.HbNodePing{}, pubsub.Label{"node", node})
+			sub.AddFilter(&msgbus.HbNodePing{}, pubsub.Label{"node", tNode})
 			sub.Start()
 			defer sub.Stop()
 
@@ -196,9 +198,9 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				for {
 					select {
 					case i := <-sub.C:
-						msg := i.(msgbus.HbNodePing)
+						msg := i.(*msgbus.HbNodePing)
 						t.Logf("receive msgbus.HbNodePing notification: ---- %+v", msg)
-						pingMsgs = append(pingMsgs, msg)
+						pingMsgs = append(pingMsgs, *msg)
 					case <-timeout:
 						t.Logf("timeout reached, HbNodePing messages are: %+v", pingMsgs)
 						pingMsgC <- pingMsgs
@@ -210,10 +212,10 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			for _, id := range tc.hbs {
 				t.Logf("register id %s", id)
 				testCtrl.cmd <- CmdRegister{Id: id, Type: "test-type"}
-				t.Logf("add watcher id %s nodename %s", id, node)
+				t.Logf("add watcher id %s nodename %s", id, tNode)
 				testCtrl.cmd <- CmdAddWatcher{
 					HbId:     id,
-					Nodename: node,
+					Nodename: tNode,
 					Ctx:      ctx,
 					Timeout:  time.Second,
 				}
@@ -222,7 +224,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			for _, ev := range tc.events {
 				t.Logf("create event %s %s %v", ev.hb, ev.node, ev.ping)
 				testCtrl.cmd <- CmdSetPeerSuccess{
-					Nodename: node,
+					Nodename: tNode,
 					HbId:     ev.hb,
 					Success:  ev.ping,
 				}
