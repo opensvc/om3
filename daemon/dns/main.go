@@ -121,10 +121,10 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 
 func (t *dns) startSubscriptions() {
 	sub := t.bus.Sub("dns")
-	sub.AddFilter(msgbus.InstanceStatusUpdated{})
-	sub.AddFilter(msgbus.InstanceStatusDeleted{})
-	sub.AddFilter(msgbus.ClusterConfigUpdated{})
-	sub.AddFilter(msgbus.NodeStatsUpdated{})
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(&msgbus.NodeStatsUpdated{})
 	sub.Start()
 	t.sub = sub
 }
@@ -134,7 +134,7 @@ func (t *dns) worker() {
 	defer t.log.Debug().Msg("done")
 
 	for _, v := range instance.StatusData.GetAll() {
-		t.onInstanceStatusUpdated(msgbus.InstanceStatusUpdated{Node: v.Node, Path: v.Path, Value: *v.Value})
+		t.onInstanceStatusUpdated(&msgbus.InstanceStatusUpdated{Node: v.Node, Path: v.Path, Value: *v.Value})
 	}
 
 	t.startedAt = time.Now()
@@ -145,13 +145,13 @@ func (t *dns) worker() {
 			return
 		case i := <-t.sub.C:
 			switch c := i.(type) {
-			case msgbus.InstanceStatusUpdated:
+			case *msgbus.InstanceStatusUpdated:
 				t.onInstanceStatusUpdated(c)
-			case msgbus.InstanceStatusDeleted:
+			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
-			case msgbus.ClusterConfigUpdated:
+			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
-			case msgbus.NodeStatsUpdated:
+			case *msgbus.NodeStatsUpdated:
 				t.onNodeStatsUpdated(c)
 			}
 		case i := <-t.cmdC:

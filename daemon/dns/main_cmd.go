@@ -37,16 +37,16 @@ func (t *dns) stateKey(p path.T, node string) stateKey {
 	}
 }
 
-func (t *dns) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
+func (t *dns) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.score[c.Node] = c.Value.Score
 }
 
-func (t *dns) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+func (t *dns) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.cluster = c.Value
 }
 
 func (t *dns) pubDeleted(record Record, p path.T, node string) {
-	t.bus.Pub(msgbus.ZoneRecordDeleted{
+	t.bus.Pub(&msgbus.ZoneRecordDeleted{
 		Path:    p,
 		Node:    node,
 		Name:    record.Name,
@@ -57,7 +57,7 @@ func (t *dns) pubDeleted(record Record, p path.T, node string) {
 }
 
 func (t *dns) pubUpdated(record Record, p path.T, node string) {
-	t.bus.Pub(msgbus.ZoneRecordUpdated{
+	t.bus.Pub(&msgbus.ZoneRecordUpdated{
 		Path:    p,
 		Node:    node,
 		Name:    record.Name,
@@ -67,7 +67,7 @@ func (t *dns) pubUpdated(record Record, p path.T, node string) {
 	}, pubsub.Label{"node", node}, pubsub.Label{"path", p.String()})
 }
 
-func (t *dns) onInstanceStatusDeleted(c msgbus.InstanceStatusDeleted) {
+func (t *dns) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	key := t.stateKey(c.Path, c.Node)
 	if records, ok := t.state[key]; ok {
 		for _, record := range records {
@@ -77,7 +77,7 @@ func (t *dns) onInstanceStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	}
 }
 
-func (t *dns) onInstanceStatusUpdated(c msgbus.InstanceStatusUpdated) {
+func (t *dns) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	key := t.stateKey(c.Path, c.Node)
 	name := fqdn.New(c.Path, t.cluster.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.cluster.Name)
