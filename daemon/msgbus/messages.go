@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -18,136 +19,146 @@ import (
 )
 
 var (
-	kindToT = map[string]any{
-		"ApiClient": ApiClient{},
+	kindToT = map[string]func() any{
+		"ApiClient": func() any { return &ApiClient{} },
 
-		"ArbitratorError": ArbitratorError{},
+		"ArbitratorError": func() any { return &ArbitratorError{} },
 
-		"ClusterConfigUpdated": ClusterConfigUpdated{},
+		"ClusterConfigUpdated": func() any { return &ClusterConfigUpdated{} },
 
-		"ClusterStatusUpdated": ClusterStatusUpdated{},
+		"ClusterStatusUpdated": func() any { return &ClusterStatusUpdated{} },
 
-		"ConfigFileRemoved": ConfigFileRemoved{},
+		"ConfigFileRemoved": func() any { return &ConfigFileRemoved{} },
 
-		"ConfigFileUpdated": ConfigFileUpdated{},
+		"ConfigFileUpdated": func() any { return &ConfigFileUpdated{} },
 
-		"ClientSub": ClientSub{},
+		"ClientSub": func() any { return &ClientSub{} },
 
-		"ClientUnSub": ClientUnSub{},
+		"ClientUnSub": func() any { return &ClientUnSub{} },
 
-		"DaemonCtl": DaemonCtl{},
+		"DaemonCtl": func() any { return &DaemonCtl{} },
 
-		"DataUpdated": DataUpdated{},
+		"DataUpdated": func() any { return &DataUpdated{} },
 
-		"Exit": Exit{},
+		"Exit": func() any { return &Exit{} },
 
-		"ForgetPeer": ForgetPeer{},
+		"ForgetPeer": func() any { return &ForgetPeer{} },
 
-		"HbMessageTypeUpdated": HbMessageTypeUpdated{},
+		"HbMessageTypeUpdated": func() any { return &HbMessageTypeUpdated{} },
 
-		"HbNodePing": HbNodePing{},
+		"HbNodePing": func() any { return &HbNodePing{} },
 
-		"HbPing": HbPing{},
+		"HbPing": func() any { return &HbPing{} },
 
-		"HbStale": HbStale{},
+		"HbStale": func() any { return &HbStale{} },
 
-		"HbStatusUpdated": HbStatusUpdated{},
+		"HbStatusUpdated": func() any { return &HbStatusUpdated{} },
 
-		"InstanceConfigDeleted": InstanceConfigDeleted{},
+		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
 
-		"InstanceConfigUpdated": InstanceConfigUpdated{},
+		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
-		"InstanceFrozenFileRemoved": InstanceFrozenFileRemoved{},
+		"InstanceFrozenFileRemoved": func() any { return &InstanceFrozenFileRemoved{} },
 
-		"InstanceFrozenFileUpdated": InstanceFrozenFileUpdated{},
+		"InstanceFrozenFileUpdated": func() any { return &InstanceFrozenFileUpdated{} },
 
-		"InstanceMonitorAction": InstanceMonitorAction{},
+		"InstanceMonitorAction": func() any { return &InstanceMonitorAction{} },
 
-		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
+		"InstanceMonitorDeleted": func() any { return &InstanceMonitorDeleted{} },
 
-		"InstanceMonitorUpdated": InstanceMonitorUpdated{},
+		"InstanceMonitorUpdated": func() any { return &InstanceMonitorUpdated{} },
 
-		"InstanceStatusDeleted": InstanceStatusDeleted{},
+		"InstanceStatusDeleted": func() any { return &InstanceStatusDeleted{} },
 
-		"InstanceStatusPost": InstanceStatusPost{},
+		"InstanceStatusPost": func() any { return &InstanceStatusPost{} },
 
-		"InstanceStatusUpdated": InstanceStatusUpdated{},
+		"InstanceStatusUpdated": func() any { return &InstanceStatusUpdated{} },
 
-		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
+		"InstanceConfigManagerDone": func() any { return &InstanceConfigManagerDone{} },
 
-		"JoinError": JoinError{},
+		"JoinError": func() any { return &JoinError{} },
 
-		"JoinIgnored": JoinIgnored{},
+		"JoinIgnored": func() any { return &JoinIgnored{} },
 
-		"JoinRequest": JoinRequest{},
+		"JoinRequest": func() any { return &JoinRequest{} },
 
-		"JoinSuccess": JoinSuccess{},
+		"JoinSuccess": func() any { return &JoinSuccess{} },
 
-		"LeaveError": LeaveError{},
+		"LeaveError": func() any { return &LeaveError{} },
 
-		"LeaveIgnored": LeaveIgnored{},
+		"LeaveIgnored": func() any { return &LeaveIgnored{} },
 
-		"LeaveRequest": LeaveRequest{},
+		"LeaveRequest": func() any { return &LeaveRequest{} },
 
-		"LeaveSuccess": LeaveSuccess{},
+		"LeaveSuccess": func() any { return &LeaveSuccess{} },
 
-		"NodeConfigUpdated": NodeConfigUpdated{},
+		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
 
-		"NodeFrozen": NodeFrozen{},
+		"NodeFrozen": func() any { return &NodeFrozen{} },
 
-		"NodeFrozenFileRemoved": NodeFrozenFileRemoved{},
+		"NodeFrozenFileUpdated": func() any { return &NodeFrozenFileUpdated{} },
 
-		"NodeFrozenFileUpdated": NodeFrozenFileUpdated{},
+		"NodeMonitorDeleted": func() any { return &NodeMonitorDeleted{} },
 
-		"NodeMonitorDeleted": NodeMonitorDeleted{},
+		"NodeMonitorUpdated": func() any { return &NodeMonitorUpdated{} },
 
-		"NodeMonitorUpdated": NodeMonitorUpdated{},
+		"NodeOsPathsUpdated": func() any { return &NodeOsPathsUpdated{} },
 
-		"NodeOsPathsUpdated": NodeOsPathsUpdated{},
+		"NodeStatsUpdated": func() any { return &NodeStatsUpdated{} },
 
-		"NodeStatsUpdated": NodeStatsUpdated{},
+		"NodeStatusArbitratorsUpdated": func() any { return &NodeStatusArbitratorsUpdated{} },
 
-		"NodeStatusArbitratorsUpdated": NodeStatusArbitratorsUpdated{},
+		"NodeStatusGenUpdates": func() any { return &NodeStatusGenUpdates{} },
 
-		"NodeStatusGenUpdates": NodeStatusGenUpdates{},
+		"NodeStatusLabelsUpdated": func() any { return &NodeStatusLabelsUpdated{} },
 
-		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
+		"NodeSplitAction": func() any { return &NodeSplitAction{} },
 
-		"NodeSplitAction": NodeSplitAction{},
+		"NodeStatusUpdated": func() any { return &NodeStatusUpdated{} },
 
-		"NodeStatusUpdated": NodeStatusUpdated{},
+		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
-		"ObjectOrchestrationEnd": ObjectOrchestrationEnd{},
+		"ObjectStatusDeleted": func() any { return &ObjectStatusDeleted{} },
 
-		"ObjectStatusDeleted": ObjectStatusDeleted{},
+		"ObjectStatusDone": func() any { return &ObjectStatusDone{} },
 
-		"ObjectStatusDone": ObjectStatusDone{},
+		"ObjectStatusUpdated": func() any { return &ObjectStatusUpdated{} },
 
-		"ObjectStatusUpdated": ObjectStatusUpdated{},
+		"ProgressInstanceMonitor": func() any { return &ProgressInstanceMonitor{} },
 
-		"ProgressInstanceMonitor": ProgressInstanceMonitor{},
+		"RemoteFileConfig": func() any { return &RemoteFileConfig{} },
 
-		"RemoteFileConfig": RemoteFileConfig{},
+		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
 
-		"SetInstanceMonitor": SetInstanceMonitor{},
+		"SetNodeMonitor": func() any { return &SetNodeMonitor{} },
 
-		"SetNodeMonitor": SetNodeMonitor{},
+		"SubscriptionError": func() any { return &pubsub.SubscriptionError{} },
 
-		"SubscriptionError": pubsub.SubscriptionError{},
+		"WatchDog": func() any { return &WatchDog{} },
 
-		"WatchDog": WatchDog{},
+		"ZoneRecordDeleted": func() any { return &ZoneRecordDeleted{} },
 
-		"ZoneRecordDeleted": ZoneRecordDeleted{},
-
-		"ZoneRecordUpdated": ZoneRecordUpdated{},
+		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
 	}
 )
 
 func KindToT(kind string) (any, error) {
-	if v, ok := kindToT[kind]; ok {
-		return v, nil
+	if f, ok := kindToT[kind]; ok {
+		return f(), nil
 	}
 	return nil, errors.New("can't find type for kind: " + kind)
+}
+
+// EventToMessage converts event.Event message as pubsub.Messager
+func EventToMessage(ev event.Event) (pubsub.Messager, error) {
+	var c pubsub.Messager
+	i, err := KindToT(ev.Kind)
+	if err != nil {
+		return c, errors.New("can't decode " + ev.Kind)
+	}
+	c = i.(pubsub.Messager)
+	err = json.Unmarshal(ev.Data, c)
+	return c, err
 }
 
 type (
