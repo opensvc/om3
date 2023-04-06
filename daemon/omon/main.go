@@ -134,21 +134,23 @@ func Start(ctx context.Context, p path.T, cfg instance.Config, discoverCmdC chan
 // startSubscriptions starts the subscriptions for omon.
 func (o *T) startSubscriptions() {
 	sub := o.bus.Sub(o.id + " omon")
-	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, o.labelPath)
-	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, o.labelPath)
-	sub.AddFilter(msgbus.InstanceConfigUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.ForgetPeer{})
+
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, o.labelPath)
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
-	sub.AddFilter(msgbus.InstanceConfigDeleted{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, o.labelPath)
 
-	sub.AddFilter(msgbus.InstanceStatusUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, o.labelPath)
 	sub.Start()
 	o.sub = sub
 }
 
 func (o *T) worker() {
-	o.log.Debug().Msg("started")
-	defer o.log.Debug().Msg("done")
+	o.log.Info().Msg("started")
+	defer o.log.Info().Msg("done")
 
 	// Initiate cache
 	for n, v := range instance.MonitorData.GetByPath(o.path) {
@@ -161,7 +163,7 @@ func (o *T) worker() {
 		o.instConfig[n] = *v
 	}
 	if !o.instStatus[o.localhost].Updated.IsZero() {
-		o.srcEvent = msgbus.InstanceStatusUpdated{Path: o.path, Node: o.localhost, Value: o.instStatus[o.localhost]}
+		o.srcEvent = &msgbus.InstanceStatusUpdated{Path: o.path, Node: o.localhost, Value: o.instStatus[o.localhost]}
 	}
 
 	o.updateStatus()
@@ -176,7 +178,6 @@ func (o *T) worker() {
 			o.imonCancel = cancel
 		}
 	}
-	defer o.delete()
 	defer func() {
 		if o.imonCancel != nil {
 			o.imonCancel()
@@ -195,22 +196,41 @@ func (o *T) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.InstanceMonitorUpdated:
-				o.srcEvent = i
+			case *msgbus.ForgetPeer:
+				if _, ok := o.instStatus[c.Node]; ok {
+					delete(o.instStatus, c.Node)
+					o.bus.Pub(&msgbus.InstanceStatusDeleted{Path: o.path, Node: c.Node},
+						pubsub.Label{"node", o.localhost},
+						pubsub.Label{"path", o.id},
+					)
+				}
+				if _, ok := o.instMonitor[c.Node]; ok {
+					delete(o.instStatus, c.Node)
+					o.bus.Pub(&msgbus.InstanceMonitorDeleted{Path: o.path, Node: c.Node},
+						pubsub.Label{"node", o.localhost},
+						pubsub.Label{"path", o.id},
+					)
+				}
+				delete(o.instMonitor, c.Node)
+				delete(o.instConfig, c.Node)
+				o.srcEvent = c
+				o.updateStatus()
+			case *msgbus.InstanceMonitorUpdated:
+				o.srcEvent = c
 				o.instMonitor[c.Node] = c.Value
 				o.updateStatus()
 
-			case msgbus.InstanceMonitorDeleted:
-				o.srcEvent = i
+			case *msgbus.InstanceMonitorDeleted:
+				o.srcEvent = c
 				delete(o.instMonitor, c.Node)
 				o.updateStatus()
 
-			case msgbus.InstanceStatusUpdated:
-				o.srcEvent = i
+			case *msgbus.InstanceStatusUpdated:
+				o.srcEvent = c
 				o.instStatus[c.Node] = c.Value
 				o.updateStatus()
 
-			case msgbus.InstanceConfigUpdated:
+			case *msgbus.InstanceConfigUpdated:
 				o.status.Scope = c.Value.Scope
 				o.status.FlexTarget = c.Value.FlexTarget
 				o.status.FlexMin = c.Value.FlexMin
@@ -235,7 +255,7 @@ func (o *T) worker() {
 				}
 				o.updateStatus()
 
-			case msgbus.InstanceConfigDeleted:
+			case *msgbus.InstanceConfigDeleted:
 				if c.Node == o.localhost && o.imonCancel != nil {
 					o.imonCancel()
 					o.imonCancel = nil
@@ -364,11 +384,11 @@ func (o *T) updateStatus() {
 
 func (o *T) delete() {
 	object.StatusData.Unset(o.path)
-	o.bus.Pub(msgbus.ObjectStatusDeleted{Path: o.path, Node: o.localhost},
+	o.bus.Pub(&msgbus.ObjectStatusDeleted{Path: o.path, Node: o.localhost},
 		o.labelPath,
 		o.labelNode,
 	)
-	o.discoverCmdC <- msgbus.ObjectStatusDone{Path: o.path}
+	o.discoverCmdC <- &msgbus.ObjectStatusDone{Path: o.path}
 }
 
 func (o *T) update() {
@@ -376,7 +396,7 @@ func (o *T) update() {
 	value := o.status.DeepCopy()
 	o.log.Debug().Msgf("update avail %s", value.Avail)
 	object.StatusData.Set(o.path, o.status.DeepCopy())
-	o.bus.Pub(msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
+	o.bus.Pub(&msgbus.ObjectStatusUpdated{Path: o.path, Node: o.localhost, Value: *value, SrcEv: o.srcEvent},
 		o.labelPath,
 		o.labelNode,
 	)
