@@ -17,15 +17,22 @@ func newRun(name string) *Bus {
 	return bus
 }
 
+type (
+	msgT struct {
+		Msg
+		v interface{}
+	}
+)
+
 func TestPub(t *testing.T) {
 	bus := newRun(t.Name())
 	defer bus.Stop()
-	bus.Pub("foo", Label{"op", "create"})
-	bus.Pub("foo", Label{"op", "update"})
-	bus.Pub("foo", Label{"op", "read"})
-	bus.Pub("foo", Label{"op", "delete"})
-	bus.Pub("bar")
-	bus.Pub("foobar")
+	bus.Pub(&msgT{v: "foo"}, Label{"op", "create"})
+	bus.Pub(&msgT{v: "foo"}, Label{"op", "update"})
+	bus.Pub(&msgT{v: "foo"}, Label{"op", "read"})
+	bus.Pub(&msgT{v: "foo"}, Label{"op", "delete"})
+	bus.Pub(&msgT{v: "bar"})
+	bus.Pub(&msgT{v: "foobar"})
 }
 
 func TestGetLast(t *testing.T) {
@@ -34,44 +41,44 @@ func TestGetLast(t *testing.T) {
 	label3 := Label{"cluster", "dev2"}
 	bus := newRun(t.Name())
 	defer bus.Stop()
-	bus.Pub("msg1", label1)
-	bus.Pub("msg2", label1, label2)
-	bus.Pub("msg3")
-	bus.Pub("msg4", label1)
+	bus.Pub(&msgT{v: "msg1"}, label1)
+	bus.Pub(&msgT{v: "msg2"}, label1, label2)
+	bus.Pub(&msgT{v: "msg3"})
+	bus.Pub(&msgT{v: "msg4"}, label1)
 	sub := bus.Sub(t.Name())
 	sub.AddFilter("")
 	sub.Start()
 	defer sub.Stop()
 	t.Run("no label", func(t *testing.T) {
-		assert.Equal(t, "msg4", sub.GetLast("").(string))
+		assert.Equal(t, "msg4", sub.GetLast(&msgT{}).(*msgT).v)
 	})
 	t.Run("label1", func(t *testing.T) {
-		assert.Equal(t, "msg4", sub.GetLast("", label1).(string))
+		assert.Equal(t, "msg4", sub.GetLast(&msgT{}, label1).(*msgT).v)
 	})
 	t.Run("label2", func(t *testing.T) {
-		assert.Equal(t, "msg2", sub.GetLast("", label2).(string))
+		assert.Equal(t, "msg2", sub.GetLast(&msgT{}, label2).(*msgT).v)
 	})
 	t.Run("label1 label1", func(t *testing.T) {
-		assert.Equal(t, "msg4", sub.GetLast("", label1, label1).(string))
+		assert.Equal(t, "msg4", sub.GetLast(&msgT{}, label1, label1).(*msgT).v)
 	})
 	t.Run("label2 label2", func(t *testing.T) {
-		assert.Equal(t, "msg2", sub.GetLast("", label2, label2).(string))
+		assert.Equal(t, "msg2", sub.GetLast(&msgT{}, label2, label2).(*msgT).v)
 	})
 	t.Run("label2 label1", func(t *testing.T) {
-		assert.Equal(t, "msg2", sub.GetLast("", label2, label1).(string))
+		assert.Equal(t, "msg2", sub.GetLast(&msgT{}, label2, label1).(*msgT).v)
 	})
 	t.Run("label1 label2", func(t *testing.T) {
-		assert.Equal(t, "msg2", sub.GetLast("", label1, label2).(string))
+		assert.Equal(t, "msg2", sub.GetLast(&msgT{}, label1, label2).(*msgT).v)
 	})
 	t.Run("label3", func(t *testing.T) {
-		assert.Nil(t, sub.GetLast("", label3))
+		assert.Nil(t, sub.GetLast(&msgT{}, label3))
 	})
 }
 
 func TestSub(t *testing.T) {
 	type (
 		testPub struct {
-			v      interface{}
+			v      Messager
 			labels []Label
 		}
 		testFilter struct {
@@ -86,10 +93,10 @@ func TestSub(t *testing.T) {
 	}{
 		"publish with or without label, subscribe without label must receive all publications": {
 			pubs: []testPub{
-				{v: "foo"},
-				{v: "pub with label", labels: []Label{{"xx", "XXX"}}},
-				{v: "foo2"},
-				{v: 1},
+				{v: &msgT{v: "foo"}},
+				{v: &msgT{v: "pub with label"}, labels: []Label{{"xx", "XXX"}}},
+				{v: &msgT{v: "foo2"}},
+				{v: &msgT{v: 1}},
 			},
 			expected: []interface{}{"foo", "pub with label", "foo2", 1},
 		},
@@ -99,9 +106,9 @@ func TestSub(t *testing.T) {
 				{labels: []Label{{"path", "path1"}}},
 			},
 			pubs: []testPub{
-				{v: "foo"},
-				{v: 1},
-				{v: []string{"foo2"}},
+				{v: &msgT{v: "foo"}},
+				{v: &msgT{v: 1}},
+				{v: &msgT{v: []string{"foo2"}}},
 			},
 			expected: []interface{}{},
 		},
@@ -113,14 +120,14 @@ func TestSub(t *testing.T) {
 				{filterType: "", labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
 			},
 			pubs: []testPub{
-				{v: uint64(9)},
-				{v: []string{"matching label but not type"}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
-				{v: "foo", labels: []Label{{"xx", "XXX"}}},
-				{v: 1, labels: []Label{{"xx", "XXX"}}},
-				{v: "two-label-match", labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
-				{v: "only-one-label-is-no-enough", labels: []Label{{"f1", "f1"}}},
-				{v: []string{"with-other-label1", "with-other-label2"}, labels: []Label{{"xx", "other-label"}}},
-				{v: []string{"foo1", "foo2"}, labels: []Label{{"xx", "XXX"}}},
+				{v: &msgT{v: uint64(9)}},
+				{v: &msgT{v: []string{"matching label but not type"}}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+				{v: &msgT{v: "foo"}, labels: []Label{{"xx", "XXX"}}},
+				{v: &msgT{v: 1}, labels: []Label{{"xx", "XXX"}}},
+				{v: &msgT{v: "two-label-match"}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+				{v: &msgT{v: "only-one-label-is-no-enough"}, labels: []Label{{"f1", "f1"}}},
+				{v: &msgT{v: []string{"with-other-label1", "with-other-label2"}}, labels: []Label{{"xx", "other-label"}}},
+				{v: &msgT{v: []string{"foo1", "foo2"}}, labels: []Label{{"xx", "XXX"}}},
 			},
 			expected: []interface{}{
 				uint64(9),
@@ -201,7 +208,7 @@ func TestDropSlowSubscription(t *testing.T) {
 
 			t.Logf("push 'queue size + 2' messages, then read one message => expect one blocking message")
 			for i := 0; i < int(queueSize)+2; i++ {
-				bus.Pub(i)
+				bus.Pub(&msgT{v: i})
 			}
 			assert.IsType(t, 0, <-slowSub.C, "expected at least one message on %s", slowSub)
 
