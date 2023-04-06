@@ -62,3 +62,21 @@ func (t *Status) DeepCopy() *Status {
 
 	return &result
 }
+
+// GetNodesInfo returns a NodesInfo struct, ie a map of
+// a subset of information from the data cache
+func GetNodesInfo() *nodesinfo.NodesInfo {
+	result := make(nodesinfo.NodesInfo)
+	for _, nodeConfig := range ConfigData.GetAll() {
+		name := nodeConfig.Node
+		nodeInfo := nodesinfo.NodeInfo{Env: nodeConfig.Value.Env}
+		if nodeStatus := StatusData.Get(name); nodeStatus != nil {
+			nodeInfo.Labels = nodeStatus.Labels.DeepCopy()
+		}
+		if osPaths := OsPathsData.Get(name); osPaths != nil {
+			nodeInfo.Paths = osPaths.DeepCopy()
+		}
+		result[name] = nodeInfo
+	}
+	return &result
+}
