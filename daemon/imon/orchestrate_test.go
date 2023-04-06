@@ -245,7 +245,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 				t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
 				nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
 				node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
-				bus.Pub(msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
+				bus.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
 					pubsub.Label{"node", hostname.Hostname()})
 			}
 
@@ -255,7 +255,7 @@ func Test_Orchestrate_HA(t *testing.T) {
 				nodeStatus.Frozen = time.Now()
 			}
 			node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
-			bus.Pub(msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
+			bus.Pub(&msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
 				pubsub.Label{"node", hostname.Hostname()})
 
 			initialReadyDuration := defaultReadyDuration
@@ -378,7 +378,7 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 				Updated:     time.Now(),
 				Frozen:      time.Time{},
 			}
-			bus.Pub(msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
+			bus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)
@@ -416,8 +416,8 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 		defer cancel()
 
 		sub := pubsub.BusFromContext(ctx).Sub(t.Name() + ": discover & watcher")
-		sub.AddFilter(msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
-		sub.AddFilter(msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
+		sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"path", p.String()})
+		sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", p.String()})
 		sub.Start()
 		defer func() {
 			_ = sub.Stop()
