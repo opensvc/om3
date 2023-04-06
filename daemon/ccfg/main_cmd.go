@@ -16,7 +16,7 @@ import (
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
-func (o *ccfg) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
+func (o *ccfg) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	if err := o.clusterConfig.Reload(); err != nil {
 		o.log.Error().Err(err).Msg("reload merged config")
 		return
@@ -37,12 +37,14 @@ func (o *ccfg) pubClusterConfig() {
 		o.log.Debug().Msgf("removed nodes: %s", removed)
 	}
 	cluster.ConfigData.Set(&o.state)
-	o.bus.Pub(msgbus.ClusterConfigUpdated{Node: o.localhost, Value: o.state, NodesAdded: added, NodesRemoved: removed})
+
+	o.bus.Pub(&msgbus.ClusterConfigUpdated{Node: o.localhost, Value: o.state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)
+
 	for _, v := range added {
-		o.bus.Pub(msgbus.JoinSuccess{Node: v}, labelLocalNode, pubsub.Label{"added", v})
+		o.bus.Pub(&msgbus.JoinSuccess{Node: v}, labelLocalNode, pubsub.Label{"added", v})
 	}
 	for _, v := range removed {
-		o.bus.Pub(msgbus.LeaveSuccess{Node: v}, labelLocalNode, pubsub.Label{"removed", v})
+		o.bus.Pub(&msgbus.LeaveSuccess{Node: v}, labelLocalNode, pubsub.Label{"removed", v})
 	}
 }
 

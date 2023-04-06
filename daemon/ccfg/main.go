@@ -104,7 +104,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 
 func (o *ccfg) startSubscriptions() {
 	sub := o.bus.Sub("ccfg")
-	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
+	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.Start()
 	o.sub = sub
 }
@@ -121,7 +121,7 @@ func (o *ccfg) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.ConfigFileUpdated:
+			case *msgbus.ConfigFileUpdated:
 				o.onConfigFileUpdated(c)
 			}
 		case i := <-o.cmdC:
