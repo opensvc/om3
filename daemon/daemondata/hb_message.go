@@ -80,7 +80,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 	d.setNextMsgType()
 	var err error
 	msg := hbtype.Msg{
-		Compat:   d.pending.Cluster.Node[d.localNode].Status.Compat,
+		Compat:   d.clusterData.Cluster.Node[d.localNode].Status.Compat,
 		Kind:     d.hbMessageType,
 		Nodename: d.localNode,
 		Gen:      d.deepCopyLocalGens(),
@@ -88,16 +88,16 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 	}
 	switch d.hbMessageType {
 	case "patch":
-		delta, err := d.patchQueue.deepCopy()
+		events, err := d.eventQueue.deepCopy()
 		if err != nil {
-			d.log.Error().Err(err).Msg("can't create delta for hb patch message")
+			d.log.Error().Err(err).Msg("can't create events for hb patch message")
 			return msg, err
 		}
-		msg.Deltas = delta
-		d.setHbMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Deltas)))
+		msg.Events = events
+		d.setHbMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Events)))
 		return msg, nil
 	case "full":
-		nodeData := d.pending.Cluster.Node[d.localNode]
+		nodeData := d.clusterData.Cluster.Node[d.localNode]
 		msg.Full = *nodeData.DeepCopy()
 		d.setHbMsgMode(d.localNode, msg.Kind)
 		return msg, nil
@@ -112,7 +112,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 }
 
 // deepCopy return clone of p
-func (p patchQueue) deepCopy() (result patchQueue, err error) {
+func (p eventQueue) deepCopy() (result eventQueue, err error) {
 	var b []byte
 	b, err = json.Marshal(p)
 	if err != nil {
@@ -124,7 +124,7 @@ func (p patchQueue) deepCopy() (result patchQueue, err error) {
 
 func (d *data) deepCopyLocalGens() gens {
 	localGens := make(gens)
-	for n, gen := range d.pending.Cluster.Node[d.localNode].Status.Gen {
+	for n, gen := range d.hbGens[d.localNode] {
 		localGens[n] = gen
 	}
 	return localGens

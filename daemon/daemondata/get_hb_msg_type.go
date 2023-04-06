@@ -38,7 +38,7 @@ func (o opGetHbMessageType) call(ctx context.Context, d *data) error {
 	d.statCount[idGetHbMessageType]++
 	o.result <- HbMessageType{
 		Type:        d.hbMessageType,
-		Nodes:       d.pending.Cluster.Config.Nodes,
+		Nodes:       d.clusterData.Cluster.Config.Nodes,
 		JoinedNodes: xmap.Keys(d.hbGens[d.localNode]),
 	}
 	return nil
