@@ -246,13 +246,13 @@ func (t *CmdDaemonJoin) waitJoinResult(ctx context.Context, evReader event.Reade
 				return err
 			}
 			switch ev.Kind {
-			case msgbus.JoinSuccess{}.Kind():
+			case (&msgbus.JoinSuccess{}).Kind():
 				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
-			case msgbus.JoinError{}.Kind():
+			case (&msgbus.JoinError{}).Kind():
 				err := errors.Errorf("join error: %s", ev.Data)
 				return err
-			case msgbus.JoinIgnored{}.Kind():
+			case (&msgbus.JoinIgnored{}).Kind():
 				// TODO parse Reason
 				_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s", ev.Data)
 				return nil

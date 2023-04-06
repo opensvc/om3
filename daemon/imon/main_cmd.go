@@ -20,7 +20,7 @@ import (
 	"github.com/opensvc/om3/util/stringslice"
 )
 
-func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceStatusUpdated) {
+func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
 	updateInstStatusMap := func() {
 		instStatus, ok := o.instStatus[srcCmd.Node]
 		switch {
@@ -62,7 +62,7 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd msgbus.InstanceSta
 	setLocalExpectStarted()
 }
 
-func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd msgbus.InstanceConfigUpdated) {
+func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {
 	if srcCmd.Node == o.localhost {
 		o.instConfig = srcCmd.Value
 		o.initResourceMonitor()
@@ -84,27 +84,30 @@ func (o *imon) onInstanceConfigUpdated(srcNode string, srcCmd msgbus.InstanceCon
 	o.log.Debug().Msgf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, o.scopeNodes)
 }
 
-func (o *imon) onInstanceConfigDeleted(srcNode string, srcCmd msgbus.InstanceConfigDeleted) {
-	if _, ok := o.instStatus[srcCmd.Node]; ok {
-		o.log.Info().Msgf("drop deleted instance status from node %s", srcCmd.Node)
-		delete(o.instStatus, srcCmd.Node)
+func (o *imon) onInstanceConfigDeletedFromNode(node string) {
+	if _, ok := o.instStatus[node]; ok {
+		o.log.Info().Msgf("drop deleted instance status from node %s", node)
+		delete(o.instStatus, node)
 	}
 }
 
 // onObjectStatusUpdated updateIfChange state global expect from object status
-func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
+func (o *imon) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	if c.SrcEv != nil {
 		switch srcCmd := c.SrcEv.(type) {
-		case msgbus.InstanceStatusUpdated:
+		case *msgbus.ForgetPeer:
+			o.onInstanceConfigDeletedFromNode(srcCmd.Node)
+			o.onInstanceMonitorDeletedFromNode(srcCmd.Node)
+		case *msgbus.InstanceStatusUpdated:
 			o.onInstanceStatusUpdated(c.Node, srcCmd)
-		case msgbus.InstanceConfigUpdated:
+		case *msgbus.InstanceConfigUpdated:
 			o.onInstanceConfigUpdated(c.Node, srcCmd)
-		case msgbus.InstanceConfigDeleted:
-			o.onInstanceConfigDeleted(c.Node, srcCmd)
-		case msgbus.InstanceMonitorUpdated:
+		case *msgbus.InstanceConfigDeleted:
+			o.onInstanceConfigDeletedFromNode(c.Node)
+		case *msgbus.InstanceMonitorUpdated:
 			o.onInstanceMonitorUpdated(srcCmd)
-		case msgbus.InstanceMonitorDeleted:
-			o.onInstanceMonitorDeleted(srcCmd)
+		case *msgbus.InstanceMonitorDeleted:
+			o.onInstanceMonitorDeletedFromNode(srcCmd.Node)
 		}
 	}
 	o.objStatus = c.Value
@@ -115,8 +118,8 @@ func (o *imon) onObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
 
 // onProgressInstanceMonitor updates the fields of instance.Monitor applying policies:
 // if state goes from stopping/shutting to idle and local expect is started, reset the
-// the local expect, so the resource restart is disabled.
-func (o *imon) onProgressInstanceMonitor(c msgbus.ProgressInstanceMonitor) {
+// local expect, so the resource restart is disabled.
+func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	prevState := o.state.State
 	doLocalExpect := func() {
 		if !o.change {
@@ -172,7 +175,7 @@ func (o *imon) onProgressInstanceMonitor(c msgbus.ProgressInstanceMonitor) {
 	}
 }
 
-func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
+func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	doState := func() {
 		if c.Value.State == nil {
 			return
@@ -292,7 +295,7 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 		o.orchestrate()
 		o.updateIfChange()
 	} else {
-		o.pubsubBus.Pub(msgbus.ObjectOrchestrationEnd{
+		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node:  o.localhost,
 			Path:  o.path,
 			Id:    c.Value.CandidateOrchestrationId,
@@ -305,27 +308,27 @@ func (o *imon) onSetInstanceMonitor(c msgbus.SetInstanceMonitor) {
 
 }
 
-func (o *imon) onNodeConfigUpdated(c msgbus.NodeConfigUpdated) {
+func (o *imon) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	o.readyDuration = c.Value.ReadyPeriod
 	o.orchestrate()
 	o.updateIfChange()
 }
 
-func (o *imon) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
+func (o *imon) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	o.nodeMonitor[c.Node] = c.Value
 	o.updateIsLeader()
 	o.orchestrate()
 	o.updateIfChange()
 }
 
-func (o *imon) onNodeStatusUpdated(c msgbus.NodeStatusUpdated) {
+func (o *imon) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	o.nodeStatus[c.Node] = c.Value
 	o.updateIsLeader()
 	o.orchestrate()
 	o.updateIfChange()
 }
 
-func (o *imon) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
+func (o *imon) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	o.nodeStats[c.Node] = c.Value
 	if o.objStatus.PlacementPolicy == placement.Score {
 		o.updateIsLeader()
@@ -334,16 +337,16 @@ func (o *imon) onNodeStatsUpdated(c msgbus.NodeStatsUpdated) {
 	}
 }
 
-func (o *imon) onInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
+func (o *imon) onInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
 	if c.Node != o.localhost {
 		o.onRemoteInstanceMonitorUpdated(c)
 	}
 }
 
-func (o *imon) onRemoteInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
+func (o *imon) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
 	instMon := c.Value
-	o.log.Debug().Msgf("updated instance imon from node %s  -> %s", remote, instMon.GlobalExpect)
+	o.log.Debug().Msgf("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	o.instMonitor[remote] = instMon
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
@@ -351,13 +354,12 @@ func (o *imon) onRemoteInstanceMonitorUpdated(c msgbus.InstanceMonitorUpdated) {
 	o.updateIfChange()
 }
 
-func (o *imon) onInstanceMonitorDeleted(c msgbus.InstanceMonitorDeleted) {
-	node := c.Node
+func (o *imon) onInstanceMonitorDeletedFromNode(node string) {
 	if node == o.localhost {
 		return
 	}
 	o.log.Debug().Msgf("delete remote instance imon from node %s", node)
-	delete(o.instMonitor, c.Node)
+	delete(o.instMonitor, node)
 	o.convergeGlobalExpectFromRemote()
 	o.updateIfChange()
 	o.orchestrate()

@@ -93,7 +93,7 @@ func (o *imon) endOrchestration() {
 	o.clearPending()
 	o.updateIfChange()
 	if o.acceptedOrchestrationId != "" {
-		o.pubsubBus.Pub(msgbus.ObjectOrchestrationEnd{
+		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node:  o.localhost,
 			Path:  o.path,
 			Id:    o.acceptedOrchestrationId,

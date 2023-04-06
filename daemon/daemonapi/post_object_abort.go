@@ -31,11 +31,7 @@ func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 		GlobalExpect: &globalExpect,
 	}
 	bus := pubsub.BusFromContext(r.Context())
-	msg := msgbus.SetInstanceMonitor{
-		Path:  p,
-		Node:  hostname.Hostname(),
-		Value: instMonitor,
-	}
-	bus.Pub(msg, pubsub.Label{"path", p.String()}, labelApi)
+	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: instMonitor},
+		pubsub.Label{"path", p.String()}, labelApi)
 	w.WriteHeader(http.StatusOK)
 }

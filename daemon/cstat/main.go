@@ -71,7 +71,7 @@ func Start(parent context.Context) error {
 
 func (o *cstat) startSubscriptions() {
 	sub := o.bus.Sub("cstat")
-	sub.AddFilter(msgbus.NodeStatusUpdated{})
+	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub
 }
@@ -88,7 +88,7 @@ func (o *cstat) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.NodeStatusUpdated:
+			case *msgbus.NodeStatusUpdated:
 				o.onNodeStatusUpdated(c)
 			}
 		}

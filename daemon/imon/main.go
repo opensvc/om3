@@ -173,13 +173,13 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 
 func (o *imon) startSubscriptions() {
 	sub := o.pubsubBus.Sub(o.id + " imon")
-	sub.AddFilter(msgbus.ObjectStatusUpdated{}, o.labelPath)
-	sub.AddFilter(msgbus.ProgressInstanceMonitor{}, o.labelPath)
-	sub.AddFilter(msgbus.SetInstanceMonitor{}, o.labelPath)
-	sub.AddFilter(msgbus.NodeConfigUpdated{}, o.labelLocalhost)
-	sub.AddFilter(msgbus.NodeMonitorUpdated{})
-	sub.AddFilter(msgbus.NodeStatusUpdated{})
-	sub.AddFilter(msgbus.NodeStatsUpdated{})
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, o.labelPath)
+	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(&msgbus.SetInstanceMonitor{}, o.labelPath)
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(&msgbus.NodeStatusUpdated{})
+	sub.AddFilter(&msgbus.NodeStatsUpdated{})
 	sub.Start()
 	o.sub = sub
 }
@@ -231,14 +231,14 @@ func (o *imon) worker(initialNodes []string) {
 		}()
 		go func() {
 			instance.MonitorData.Unset(o.path, o.localhost)
-			o.pubsubBus.Pub(msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
+			o.pubsubBus.Pub(&msgbus.InstanceMonitorDeleted{Path: o.path, Node: o.localhost},
 				o.labelPath,
 				o.labelLocalhost,
 			)
 		}()
 		go func() {
 			instance.StatusData.Unset(o.path, o.localhost)
-			o.pubsubBus.Pub(msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost},
+			o.pubsubBus.Pub(&msgbus.InstanceStatusDeleted{Path: o.path, Node: o.localhost},
 				o.labelPath,
 				o.labelLocalhost,
 			)
@@ -266,19 +266,19 @@ func (o *imon) worker(initialNodes []string) {
 			default:
 			}
 			switch c := i.(type) {
-			case msgbus.ObjectStatusUpdated:
+			case *msgbus.ObjectStatusUpdated:
 				o.onObjectStatusUpdated(c)
-			case msgbus.ProgressInstanceMonitor:
+			case *msgbus.ProgressInstanceMonitor:
 				o.onProgressInstanceMonitor(c)
-			case msgbus.SetInstanceMonitor:
+			case *msgbus.SetInstanceMonitor:
 				o.onSetInstanceMonitor(c)
-			case msgbus.NodeConfigUpdated:
+			case *msgbus.NodeConfigUpdated:
 				o.onNodeConfigUpdated(c)
-			case msgbus.NodeMonitorUpdated:
+			case *msgbus.NodeMonitorUpdated:
 				o.onNodeMonitorUpdated(c)
-			case msgbus.NodeStatusUpdated:
+			case *msgbus.NodeStatusUpdated:
 				o.onNodeStatusUpdated(c)
-			case msgbus.NodeStatsUpdated:
+			case *msgbus.NodeStatsUpdated:
 				o.onNodeStatsUpdated(c)
 			}
 		case i := <-o.cmdC:
@@ -309,7 +309,7 @@ func (o *imon) update() {
 	newValue := o.state
 
 	instance.MonitorData.Set(o.path, o.localhost, newValue.DeepCopy())
-	o.pubsubBus.Pub(msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
+	o.pubsubBus.Pub(&msgbus.InstanceMonitorUpdated{Path: o.path, Node: o.localhost, Value: newValue},
 		o.labelPath,
 		o.labelLocalhost,
 	)

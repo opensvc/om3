@@ -36,6 +36,7 @@ type (
 		Hb        DaemonHb        `json:"hb"`
 		Listener  DaemonListener  `json:"listener"`
 		Monitor   DaemonMonitor   `json:"monitor"`
+		Nodename  string          `json:"nodename"`
 		Routines  int             `json:"routines"`
 		Scheduler DaemonScheduler `json:"scheduler"`
 	}

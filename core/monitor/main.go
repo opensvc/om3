@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +17,7 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/daemon/msgbus"
 )
 
 type (
@@ -160,19 +160,6 @@ func (m *T) DoWatch(statusGetter Getter, evReader event.ReadCloser, out io.Write
 	return m.watch(statusGetter, evReader, out)
 }
 
-func patchedStatus(b []byte, p jsondelta.Patch) ([]byte, *cluster.Data, error) {
-	newB, err := p.Apply(b)
-	if err != nil {
-		//_, _ = fmt.Fprintf(os.Stderr, "patches.Apply failure: %s, patch len: %d, patch:%+v\n", err, len(p), p)
-		return nil, nil, err
-	}
-	data := cluster.Data{}
-	if err := json.Unmarshal(newB, &data); err != nil {
-		return nil, nil, err
-	}
-	return newB, &data, nil
-}
-
 func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer) error {
 	var (
 		b    []byte
@@ -180,11 +167,10 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		err  error
 
 		errC   = make(chan error)
-		eventC = make(chan *event.Event, 100)
+		eventC = make(chan event.Event, 100)
 		dataC  = make(chan *cluster.Data)
 
-		patchById = make(map[uint64][]jsondelta.Operation)
-		nextId    uint64
+		nextEvId uint64
 
 		displayInterval = 500 * time.Millisecond
 
@@ -202,10 +188,11 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		for {
 			ev, err := evReader.Read()
 			if err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "evReader.Read error %s\n", err)
 				errC <- fmt.Errorf("event read error %s", err)
 				return
 			}
-			eventC <- ev
+			eventC <- *ev
 		}
 	}()
 
@@ -217,13 +204,13 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		return err
 	}
 
+	cdata := msgbus.NewClusterData(data)
 	wg.Add(1)
 	go func(d *cluster.Data) {
 		defer wg.Done()
 		m.doOneShot(*d, true, out)
 		// show data when new data published on dataC
 		for d := range dataC {
-			//_, _ = fmt.Fprintf(os.Stderr, "doOneShot %v\n", d.Cluster.Node[hostname.Hostname()].Status.Gen)
 			m.doOneShot(*d, true, out)
 		}
 	}(data)
@@ -232,57 +219,30 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 
 	ticker := time.NewTicker(displayInterval)
 	defer ticker.Stop()
-	var patchId uint64
+	changes := false
 	for {
 		select {
 		case err := <-errC:
 			return err
 		case e := <-eventC:
-			switch e.Kind {
-			case "DataUpdated":
-				var evData []byte = e.Data
-				if len(e.Data) == 0 {
-					return fmt.Errorf("unexpected empty patch from event '%v'", e)
-				} else if patch, err := jsondelta.NewPatch(evData); err == nil {
-					patchId++
-					patchById[patchId] = patch
-				} else {
-					return fmt.Errorf("can't create patch for '%s' id %d' error:'%s' data: '%s'", e.Kind, e.ID, err, e.Data)
-				}
-			default:
-				// drop other eventC
+			if nextEvId == 0 {
+				nextEvId = e.ID
+			} else if e.ID != nextEvId {
+				_, _ = fmt.Fprintf(os.Stderr, "receive broken event id %d %s\n", e.ID, e.Kind)
+				return fmt.Errorf("broken event id sequence wanted %d got %d", nextEvId, e.ID)
+			}
+			nextEvId++
+			changes = true
+			if msg, err := msgbus.EventToMessage(e); err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "EventToMessage event id %d %s error %s\n", e.ID, e.Kind, err)
+				continue
+			} else if err := cdata.ApplyMessage(msg); err != nil {
+				return err
 			}
 		case <-ticker.C:
-			if len(patchById) > 0 {
-				sortIds := make([]uint64, 0)
-				for i := range patchById {
-					sortIds = append(sortIds, i)
-				}
-				sort.Slice(sortIds, func(i, j int) bool { return sortIds[i] < sortIds[j] })
-				patches := make([]jsondelta.Operation, 0)
-				if nextId == 0 {
-					// init nextId from first patch ev.ID
-					nextId = sortIds[0]
-				}
-				for _, id := range sortIds {
-					if id > nextId {
-						return fmt.Errorf("break %d != %d, sortIds:%v", id, nextId, sortIds)
-					} else if id < nextId && (nextId-id) > 20 {
-						return fmt.Errorf("reset break %d != %d, sortIds:%v", id, nextId, sortIds)
-					}
-					nextId++
-					patches = append(patches, patchById[id]...)
-					delete(patchById, id)
-				}
-				if len(patches) > 0 {
-					//_, _ = fmt.Fprintf(os.Stderr, "apply patches len: %d nextId: %d patch set ids: %v from available ids: %v\n",
-					//	len(patches), nextId, idToDelete, sortIds)
-					b, data, err = patchedStatus(b, patches)
-					if err != nil {
-						return fmt.Errorf("can't apply patch %s", err)
-					}
-					dataC <- data
-				}
+			if changes {
+				dataC <- cdata.DeepCopy()
+				changes = false
 			}
 		}
 	}

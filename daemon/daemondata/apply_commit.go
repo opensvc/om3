@@ -1,52 +1,49 @@
 package daemondata
 
 import (
-	"encoding/json"
 	"strconv"
 
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/jsondelta"
+	"github.com/opensvc/om3/core/event"
 )
 
-// commitPendingOps manage patch queue from current pending ops
+// commitPendingOps manage patch queue from current clusterData ops
 //
-//	  if pending ops exists (changes)
+//	  if clusterData ops exists (changes)
 //	     increase gen
-//	     publish patch events from pending ops as msgbus.DataUpdated
 //	     refresh local node gen
 //
 //		 when hb mode is patch
 //		  if changes
-//		 	  create new patch queue entry from pending ops
-//		 	  drop pending ops
-//		   drop patch queue entries that have been applied on all peers
+//		 	  create new event queue entry from clusterData events
+//		 	  drop clusterData pending events
+//		   drop event queue entries that have been applied on all peers
 //
 //		  when hb mode is not patch
-//			   drop pending ops
-//			   drop patch queue
+//			   drop clusterData pending events
+//			   drop event queue
 func (d *data) commitPendingOps() (changes bool) {
-	d.statCount[idCommitPending]++
 	d.log.Debug().Msg("commitPendingOps")
-	if len(d.pendingOps) > 0 {
+	if len(d.pendingEvs) > 0 {
 		changes = true
-		d.eventCommitPendingOps()
 		d.gen++
-		d.pending.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
-
+		d.hbGens[d.localNode][d.localNode] = d.gen
+		d.clusterData.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
 	}
 	if d.hbMessageType == "patch" {
 		if changes {
-			d.movePendingOpsToPatchQueue()
+			// add new eventQueue entry created for gen in event queue with events
+			d.eventQueue[strconv.FormatUint(d.gen, 10)] = d.pendingEvs
+			d.pendingEvs = []event.Event{}
 		}
 		d.purgeAppliedPatchQueue()
 	} else {
-		d.pendingOps = []jsondelta.Operation{}
-		d.patchQueue = make(patchQueue)
+		d.pendingEvs = []event.Event{}
+		d.eventQueue = make(map[string][]event.Event)
 	}
-	d.hbGens[d.localNode] = d.deepCopyLocalGens()
+	d.hbGens[d.localNode][d.localNode] = d.gen
 
 	d.log.Debug().
-		Interface("local gens", d.pending.Cluster.Node[d.localNode].Status.Gen).
+		Interface("local gens", d.clusterData.Cluster.Node[d.localNode].Status.Gen).
 		Msg("commitPendingOps")
 	return
 }
@@ -56,7 +53,7 @@ func (d *data) commitPendingOps() (changes bool) {
 func (d *data) purgeAppliedPatchQueue() {
 	local := d.localNode
 	remoteMinGen := d.gen
-	for _, clusterNode := range d.pending.Cluster.Node {
+	for _, clusterNode := range d.clusterData.Cluster.Node {
 		if gen, ok := clusterNode.Status.Gen[local]; ok {
 			if gen < remoteMinGen {
 				remoteMinGen = gen
@@ -66,45 +63,18 @@ func (d *data) purgeAppliedPatchQueue() {
 	purged := make([]string, 0)
 	queueGens := make([]string, 0)
 	queueGen := make([]uint64, 0)
-	for genS := range d.patchQueue {
+	for genS := range d.eventQueue {
 		queueGens = append(queueGens, genS)
 		gen, err := strconv.ParseUint(genS, 10, 64)
 		if err != nil {
-			delete(d.patchQueue, genS)
+			delete(d.eventQueue, genS)
 			purged = append(purged, genS)
 			continue
 		}
 		queueGen = append(queueGen, gen)
 		if gen <= remoteMinGen {
-			delete(d.patchQueue, genS)
+			delete(d.eventQueue, genS)
 			purged = append(purged, genS)
 		}
-	}
-}
-
-// movePendingOpsToPatchQueue moves pendingOps to patchQueue.
-//
-//	new entry created for gen in patch queue with pending operations.
-//	pending operations are cleared.
-func (d *data) movePendingOpsToPatchQueue() {
-	d.patchQueue[strconv.FormatUint(d.gen, 10)] = d.pendingOps
-	d.pendingOps = []jsondelta.Operation{}
-}
-
-func (d *data) eventCommitPendingOps() {
-	fromRootPatch := make(jsondelta.Patch, 0)
-	prefixPath := jsondelta.OperationPath{"cluster", "node", d.localNode}
-	for _, op := range d.pendingOps {
-		fromRootPatch = append(fromRootPatch, jsondelta.Operation{
-			OpPath:  append(prefixPath, op.OpPath...),
-			OpValue: op.OpValue,
-			OpKind:  op.OpKind,
-		})
-	}
-	if eventB, err := json.Marshal(fromRootPatch); err != nil {
-		d.log.Error().Err(err).Msg("eventCommitPendingOps Marshal fromRootPatch")
-	} else {
-		eventId++
-		d.bus.Pub(msgbus.DataUpdated{RawMessage: eventB}, d.labelLocalNode)
 	}
 }

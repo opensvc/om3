@@ -200,26 +200,26 @@ func (o *nmon) startSubscriptions() {
 
 	// watching for ClusterConfigUpdated (so we get notified when cluster config file
 	// has been changed and reloaded
-	sub.AddFilter(msgbus.ClusterConfigUpdated{})
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 
 	// We don't need to watch for ConfigFileUpdated on path cluster, instead
 	// we watch for ClusterConfigUpdated.
-	sub.AddFilter(msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
+	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 
-	sub.AddFilter(msgbus.ForgetPeer{})
-	sub.AddFilter(msgbus.NodeConfigUpdated{}, pubsub.Label{"peer", "true"})
-	sub.AddFilter(msgbus.NodeFrozenFileRemoved{})
-	sub.AddFilter(msgbus.NodeFrozenFileUpdated{})
-	sub.AddFilter(msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"peer", "true"})
-	sub.AddFilter(msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
-	sub.AddFilter(msgbus.HbMessageTypeUpdated{})
-	sub.AddFilter(msgbus.JoinRequest{}, o.labelLocalhost)
-	sub.AddFilter(msgbus.LeaveRequest{}, o.labelLocalhost)
-	sub.AddFilter(msgbus.NodeMonitorDeleted{})
-	sub.AddFilter(msgbus.NodeMonitorUpdated{}, pubsub.Label{"peer", "true"})
-	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, pubsub.Label{"peer", "true"})
-	sub.AddFilter(msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
-	sub.AddFilter(msgbus.SetNodeMonitor{})
+	sub.AddFilter(&msgbus.ForgetPeer{})
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"peer", "true"})
+	sub.AddFilter(&msgbus.NodeFrozenFileRemoved{})
+	sub.AddFilter(&msgbus.NodeFrozenFileUpdated{})
+	sub.AddFilter(&msgbus.NodeStatusLabelsUpdated{}, pubsub.Label{"peer", "true"})
+	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
+	sub.AddFilter(&msgbus.JoinRequest{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.LeaveRequest{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, pubsub.Label{"peer", "true"})
+	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, pubsub.Label{"peer", "true"})
+	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, o.labelLocalhost)
+	sub.AddFilter(&msgbus.SetNodeMonitor{})
 	sub.Start()
 	o.sub = sub
 }
@@ -261,7 +261,7 @@ func (o *nmon) worker() {
 	o.updateStats()
 	o.refreshSanPaths()
 	o.updateIfChange()
-	defer o.bus.Pub(msgbus.NodeMonitorDeleted{Node: o.localhost}, pubsub.Label{"node", o.localhost})
+	defer o.bus.Pub(&msgbus.NodeMonitorDeleted{Node: o.localhost}, pubsub.Label{"node", o.localhost})
 	defer node.MonitorData.Unset(o.localhost)
 
 	o.getAndUpdateStatusArbitrator()
@@ -287,35 +287,35 @@ func (o *nmon) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.ClusterConfigUpdated:
+			case *msgbus.ClusterConfigUpdated:
 				o.onClusterConfigUpdated(c)
-			case msgbus.ConfigFileUpdated:
+			case *msgbus.ConfigFileUpdated:
 				o.onConfigFileUpdated(c)
-			case msgbus.ForgetPeer:
+			case *msgbus.ForgetPeer:
 				o.onForgetPeer(c)
-			case msgbus.JoinRequest:
+			case *msgbus.JoinRequest:
 				o.onJoinRequest(c)
-			case msgbus.HbMessageTypeUpdated:
+			case *msgbus.HbMessageTypeUpdated:
 				o.onHbMessageTypeUpdated(c)
-			case msgbus.NodeConfigUpdated:
+			case *msgbus.NodeConfigUpdated:
 				o.onPeerNodeConfigUpdated(c)
-			case msgbus.NodeMonitorDeleted:
+			case *msgbus.NodeMonitorDeleted:
 				o.onNodeMonitorDeleted(c)
-			case msgbus.NodeMonitorUpdated:
+			case *msgbus.NodeMonitorUpdated:
 				o.onPeerNodeMonitorUpdated(c)
-			case msgbus.NodeOsPathsUpdated:
+			case *msgbus.NodeOsPathsUpdated:
 				o.onPeerNodeOsPathsUpdated(c)
-			case msgbus.NodeFrozenFileRemoved:
+			case *msgbus.NodeFrozenFileRemoved:
 				o.onNodeFrozenFileRemoved(c)
-			case msgbus.NodeFrozenFileUpdated:
+			case *msgbus.NodeFrozenFileUpdated:
 				o.onNodeFrozenFileUpdated(c)
-			case msgbus.NodeStatusLabelsUpdated:
+			case *msgbus.NodeStatusLabelsUpdated:
 				o.onPeerNodeStatusLabelsUpdated(c)
-			case msgbus.NodeStatusGenUpdates:
+			case *msgbus.NodeStatusGenUpdates:
 				o.onNodeStatusGenUpdates(c)
-			case msgbus.LeaveRequest:
+			case *msgbus.LeaveRequest:
 				o.onLeaveRequest(c)
-			case msgbus.SetNodeMonitor:
+			case *msgbus.SetNodeMonitor:
 				o.onSetNodeMonitor(c)
 			}
 		case i := <-o.cmdC:
@@ -360,7 +360,7 @@ func (o *nmon) onRejoinGracePeriodExpire() {
 func (o *nmon) update() {
 	newValue := o.state
 	node.MonitorData.Set(o.localhost, newValue.DeepCopy())
-	o.bus.Pub(msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()},
+	o.bus.Pub(&msgbus.NodeMonitorUpdated{Node: o.localhost, Value: *newValue.DeepCopy()},
 		pubsub.Label{"node", o.localhost})
 	// update cache for localhost, we don't subscribe on self NodeMonitorUpdated
 	o.nodeMonitor[o.localhost] = o.state
@@ -449,7 +449,7 @@ func (o *nmon) updateStats() {
 		o.log.Error().Err(err).Msg("get stats")
 	}
 	node.StatsData.Set(o.localhost, stats.DeepCopy())
-	o.bus.Pub(msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()},
+	o.bus.Pub(&msgbus.NodeStatsUpdated{Node: o.localhost, Value: *stats.DeepCopy()},
 		pubsub.Label{"node", o.localhost})
 }
 
@@ -462,25 +462,25 @@ func (o *nmon) refreshSanPaths() {
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
 	localNodeInfo.Paths = append(san.Paths{}, paths...)
 	o.cacheNodesInfo[o.localhost] = localNodeInfo
-	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths},
+	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: paths},
 		pubsub.Label{"node", o.localhost})
 }
 
-func (o *nmon) onPeerNodeConfigUpdated(m msgbus.NodeConfigUpdated) {
+func (o *nmon) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
 	peerNodeInfo := o.cacheNodesInfo[m.Node]
 	peerNodeInfo.Env = m.Value.Env
 	o.cacheNodesInfo[m.Node] = peerNodeInfo
 	o.saveNodesInfo()
 }
 
-func (o *nmon) onPeerNodeOsPathsUpdated(m msgbus.NodeOsPathsUpdated) {
+func (o *nmon) onPeerNodeOsPathsUpdated(m *msgbus.NodeOsPathsUpdated) {
 	peerNodeInfo := o.cacheNodesInfo[m.Node]
 	peerNodeInfo.Paths = m.Value
 	o.cacheNodesInfo[m.Node] = peerNodeInfo
 	o.saveNodesInfo()
 }
 
-func (o *nmon) onPeerNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
+func (o *nmon) onPeerNodeStatusLabelsUpdated(m *msgbus.NodeStatusLabelsUpdated) {
 	peerNodeInfo := o.cacheNodesInfo[m.Node]
 	peerNodeInfo.Labels = m.Value
 	o.cacheNodesInfo[m.Node] = peerNodeInfo
@@ -491,7 +491,7 @@ func (o *nmon) onPeerNodeStatusLabelsUpdated(m msgbus.NodeStatusLabelsUpdated) {
 // msgbus.NodeStatusGenUpdates publication. It is daemondata that is responsible for
 // localhost gens management. The value stored here is lazy updated for debug.
 // We must not publish a msgbus.NodeStatusUpdated to avoid ping pong nmon<->data
-func (o *nmon) onNodeStatusGenUpdates(m msgbus.NodeStatusGenUpdates) {
+func (o *nmon) onNodeStatusGenUpdates(m *msgbus.NodeStatusGenUpdates) {
 	gens := make(map[string]uint64)
 	for k, v := range m.Value {
 		gens[k] = v
@@ -526,14 +526,14 @@ func (o *nmon) loadAndPublishConfig() error {
 		return err
 	}
 	node.ConfigData.Set(o.localhost, o.nodeConfig.DeepCopy())
-	o.bus.Pub(msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeConfigUpdated{Node: o.localhost, Value: o.nodeConfig}, o.labelLocalhost)
 	localNodeInfo := o.cacheNodesInfo[o.localhost]
-	o.bus.Pub(msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: o.localhost, Value: localNodeInfo.Labels.DeepCopy()}, o.labelLocalhost)
 	o.nodeStatus.Labels = localNodeInfo.Labels
 	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
-	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 	paths := localNodeInfo.Paths.DeepCopy()
 	node.OsPathsData.Set(o.localhost, &paths)
-	o.bus.Pub(msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeOsPathsUpdated{Node: o.localhost, Value: localNodeInfo.Paths.DeepCopy()}, o.labelLocalhost)
 	return nil
 }

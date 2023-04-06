@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
@@ -30,17 +30,17 @@ type (
 	}
 
 	data struct {
-		// previousRemoteInfo map[node] of remoteInfo from pending data just
+		// previousRemoteInfo map[node] of remoteInfo from clusterData data just
 		// after commit, it is used to publish diff for other nodes
 		previousRemoteInfo map[string]remoteInfo
 
-		// pending is the live current data (after apply patch, commit local pendingOps)
-		pending *cluster.Data
+		// clusterData is the live current data (after apply msg from patch or subscription)
+		clusterData *msgbus.ClusterData
 
-		pendingOps    []jsondelta.Operation // local data pending operations not yet in patchQueue
-		patchQueue    patchQueue            // local data patch queue for remotes
-		gen           uint64                // gen of local TNodeData
-		hbMessageType string                // latest created hb message type
+		pendingEvs    []event.Event // local events not yet in eventQueue
+		eventQueue    eventQueue    // local data event queue for remotes
+		gen           uint64        // gen of local TNodeData
+		hbMessageType string        // latest created hb message type
 		localNode     string
 
 		// cluster nodes from local cluster config
@@ -88,7 +88,7 @@ type (
 	}
 
 	gens       map[string]uint64
-	patchQueue map[string]jsondelta.Patch
+	eventQueue map[string][]event.Event
 
 	// remoteInfo struct holds information about remote node used to publish diff
 	remoteInfo struct {
@@ -109,7 +109,7 @@ var (
 	cmdDurationWarn = time.Second
 
 	// propagationInterval is the minimum interval of:
-	// - commit pending ops (update patch queue, send local events to event.Event subscribers)
+	// - commit clusterData ops (update event queue, send local events to event.Event subscribers)
 	// - pub applied changes from peers
 	// - queueNewHbMsg (hb message type change, push msg to hb send queue)
 	propagationInterval = 250 * time.Millisecond
@@ -120,6 +120,8 @@ var (
 	countRoutineInterval = 1 * time.Second
 
 	ErrDrained = errors.New("drained command")
+
+	labelPeerNode = pubsub.Label{"peer", "true"}
 )
 
 func PropagationInterval() time.Duration {
@@ -151,7 +153,7 @@ func PropagationInterval() time.Duration {
 //	           channel to prevent daemondata loop hang during
 //	           <client> <-channel-> <daemondata op processing>
 //
-//		During drain pending op commands (not yet processed by cmdC loop) will receive ErrDrained.
+//		During drain clusterData op commands (not yet processed by cmdC loop) will receive ErrDrained.
 //	 => exposed caller clients can read the error channel to know if op commands succeed, failed or drained
 //
 //	 caller examples:
@@ -239,7 +241,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 			case c := <-cmdC:
 				c.SetError(ErrDrained)
 			case <-tC:
-				d.log.Debug().Msg("drop pending cmds done")
+				d.log.Debug().Msg("drop clusterData cmds done")
 				return
 			}
 		}
@@ -262,23 +264,23 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 			if isCtxDone() {
 				return
 			}
-			if !needMessage && !gensEqual(d.msgLocalGen, d.pending.Cluster.Node[d.localNode].Status.Gen) {
+			lgens := node.GenData.Get(d.localNode)
+			if !needMessage && !gensEqual(d.msgLocalGen, *lgens) {
 				needMessage = true
 				if isCtxDone() {
 					return
 				}
 				gens := make(map[string]uint64)
-				for s, v := range d.pending.Cluster.Node[d.localNode].Status.Gen {
+				for s, v := range *lgens {
 					gens[s] = v
 				}
-				d.bus.Pub(msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
+				d.bus.Pub(&msgbus.NodeStatusGenUpdates{Node: d.localNode, Value: gens},
 					d.labelLocalNode,
 				)
 			}
 			if isCtxDone() {
 				return
 			}
-			d.pubPeerDataChanges()
 			select {
 			case <-ctx.Done():
 				return
@@ -297,7 +299,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 			case <-ctx.Done():
 				return
 			case <-countRoutineTicker.C:
-				d.pending.Daemon.Routines = runtime.NumGoroutine()
+				d.clusterData.Daemon.Routines = runtime.NumGoroutine()
 			default:
 			}
 			if needMessage || d.needMsg {
@@ -325,7 +327,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan caller, hbRecvQ <-chan *hbty
 			if _, ok := d.clusterNodes[msg.Nodename]; ok {
 				d.onReceiveHbMsg(msg)
 			} else {
-				d.log.Debug().Msgf("drop rx message message: %s is not cluster member", msg.Nodename)
+				d.log.Warn().Msgf("drop rx message message: %s is not cluster member, cluster nodes: %+v", msg.Nodename, d.clusterNodes)
 			}
 		case cmd := <-cmdC:
 			if c, ok := cmd.(caller); ok {
@@ -371,59 +373,107 @@ func gensEqual(a, b gens) bool {
 
 func (d *data) startSubscriptions() {
 	sub := d.bus.Sub("daemondata")
-	sub.AddFilter(msgbus.ClusterConfigUpdated{})
-	sub.AddFilter(msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceMonitorDeleted{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceMonitorUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeConfigUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeMonitorUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeOsPathsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeStatsUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.NodeStatusUpdated{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
-	sub.AddFilter(msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
+
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
+
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{})
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{})
+
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
+
+	sub.AddFilter(&msgbus.NodeConfigUpdated{})
+
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(&msgbus.NodeOsPathsUpdated{})
+	sub.AddFilter(&msgbus.NodeStatsUpdated{})
+	sub.AddFilter(&msgbus.NodeStatusUpdated{})
+
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
 	sub.Start()
 	d.sub = sub
 }
 
+func (d *data) appendEv(i event.Kinder) {
+	eventId++
+	d.pendingEvs = append(d.pendingEvs, event.Event{
+		Kind: i.Kind(),
+		ID:   eventId,
+		Time: time.Now(),
+		Data: *jsondelta.NewOptValue(i),
+	})
+}
+
 func (d *data) onSubEvent(i interface{}) {
 	switch c := i.(type) {
-	case msgbus.ClusterConfigUpdated:
-		d.onClusterConfigUpdated(c)
-	case msgbus.ClusterStatusUpdated:
-		d.onClusterStatusUpdated(c)
-	case msgbus.InstanceConfigDeleted:
-		d.onInstanceConfigDeleted(c)
-	case msgbus.InstanceConfigUpdated:
-		d.onInstanceConfigUpdated(c)
-	case msgbus.InstanceMonitorDeleted:
-		d.onInstanceMonitorDeleted(c)
-	case msgbus.InstanceMonitorUpdated:
-		d.onInstanceMonitorUpdated(c)
-	case msgbus.InstanceStatusUpdated:
-		d.onInstanceStatusUpdated(c)
-	case msgbus.InstanceStatusDeleted:
-		d.onInstanceStatusDeleted(c)
-	case msgbus.NodeConfigUpdated:
-		d.onNodeConfigUpdated(c)
-	case msgbus.NodeMonitorDeleted:
-		d.onNodeMonitorDeleted(c)
-	case msgbus.NodeMonitorUpdated:
-		d.onNodeMonitorUpdated(c)
-	case msgbus.NodeOsPathsUpdated:
-		d.onNodeOsPathsUpdated(c)
-	case msgbus.NodeStatsUpdated:
-		d.onNodeStatsUpdated(c)
-	case msgbus.NodeStatusUpdated:
-		d.onNodeStatusUpdated(c)
-	case msgbus.ObjectStatusDeleted:
-		d.onObjectStatusDeleted(c)
-	case msgbus.ObjectStatusUpdated:
-		d.onObjectStatusUpdated(c)
+	case *msgbus.ClusterConfigUpdated:
+		for _, v := range c.NodesAdded {
+			d.clusterNodes[v] = struct{}{}
+		}
+		for _, v := range c.NodesRemoved {
+			delete(d.clusterNodes, v)
+		}
+	case *msgbus.ClusterStatusUpdated:
+	case *msgbus.InstanceConfigDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.InstanceConfigUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.InstanceMonitorDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.InstanceMonitorUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.InstanceStatusUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.InstanceStatusDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.NodeConfigUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.NodeMonitorDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.NodeMonitorUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.NodeOsPathsUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.NodeStatsUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.NodeStatusUpdated:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.ObjectStatusDeleted:
+		if c.Node == d.localNode {
+			d.appendEv(c)
+		}
+	case *msgbus.ObjectStatusUpdated:
+	}
+	if msg, ok := i.(pubsub.Messager); ok {
+		d.clusterData.ApplyMessage(msg)
 	}
 }

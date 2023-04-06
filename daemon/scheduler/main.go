@@ -230,9 +230,9 @@ func (t *T) MainStop() error {
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(t.ctx)
 	sub := bus.Sub("scheduler")
-	sub.AddFilter(msgbus.InstanceStatusDeleted{})
-	sub.AddFilter(msgbus.ObjectStatusDeleted{})
-	sub.AddFilter(msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.Start()
 	return sub
 }
@@ -251,11 +251,11 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
-			case msgbus.InstanceStatusDeleted:
+			case *msgbus.InstanceStatusDeleted:
 				t.onInstStatusDeleted(c)
-			case msgbus.NodeMonitorUpdated:
+			case *msgbus.NodeMonitorUpdated:
 				t.onNodeMonitorUpdated(c)
-			case msgbus.ObjectStatusUpdated:
+			case *msgbus.ObjectStatusUpdated:
 				t.onMonObjectStatusUpdated(c)
 			}
 		case ev := <-t.events:
@@ -275,7 +275,7 @@ func (t *T) loop() {
 	}
 }
 
-func (t *T) onInstStatusDeleted(c msgbus.InstanceStatusDeleted) {
+func (t *T) onInstStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -284,20 +284,20 @@ func (t *T) onInstStatusDeleted(c msgbus.InstanceStatusDeleted) {
 	t.unschedule(c.Path)
 }
 
-func (t *T) onMonObjectStatusUpdated(c msgbus.ObjectStatusUpdated) {
-	provisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
-	t.provisioned[c.Path] = provisioned
+func (t *T) onMonObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	isProvisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
+	t.provisioned[c.Path] = isProvisioned
 	hasAnyJob := t.hasAnyJob(c.Path)
 	switch {
-	case provisioned && !hasAnyJob:
+	case isProvisioned && !hasAnyJob:
 		t.schedule(c.Path)
-	case !provisioned && hasAnyJob:
+	case !isProvisioned && hasAnyJob:
 		t.log.Info().Stringer("path", c.Path).Msgf("unschedule (instance no longer provisionned)")
 		t.unschedule(c.Path)
 	}
 }
 
-func (t *T) onNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
+func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	if c.Node != hostname.Hostname() {
 		// discard peer node events
 		return
@@ -354,10 +354,10 @@ func (t *T) scheduleNode() {
 }
 
 func (t *T) scheduleObject(p path.T) {
-	if provisioned, ok := t.provisioned[p]; !ok {
+	if isProvisioned, ok := t.provisioned[p]; !ok {
 		t.log.Debug().Msgf("schedule object %s: provisioned state has not been discovered yet", p)
 		return
-	} else if !provisioned {
+	} else if !isProvisioned {
 		t.log.Error().Msgf("schedule object %s: not provisioned", p)
 		return
 	}

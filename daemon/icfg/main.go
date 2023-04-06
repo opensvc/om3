@@ -1,8 +1,7 @@
 // Package icfg is responsible for local instance.Config
 //
-// NewData instConfig are created by daemon discover.
-// It provides the cluster data at ["cluster", "node", localhost, "services",
-// "config, <instance>]
+// instConfig are created by daemon discover.
+// It provides the cluster data at cluster.node.<localhost>.instance.<path>.config
 // It watches local config file to load updates.
 // It watches for local cluster config update to refresh scopes.
 //
@@ -119,13 +118,14 @@ func (o *T) startSubscriptions() {
 	clusterId := clusterPath.String()
 	label := pubsub.Label{"path", o.path.String()}
 	o.sub = o.bus.Sub(o.path.String() + " icfg")
-	o.sub.AddFilter(msgbus.ConfigFileRemoved{}, label)
-	o.sub.AddFilter(msgbus.ConfigFileUpdated{}, label)
-	if last := o.sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
-		o.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
+	o.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
+	o.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
+	// TODO change AddFilterGetLast to AddFilter + cache for ClusterConfigUpdated
+	if last := o.sub.AddFilterGetLast(&msgbus.ClusterConfigUpdated{}); last != nil {
+		o.onClusterConfigUpdated(last.(*msgbus.ClusterConfigUpdated))
 	}
 	if o.path.String() != clusterId {
-		o.sub.AddFilter(msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", clusterId})
+		o.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", clusterId})
 	}
 	o.sub.Start()
 }
@@ -149,24 +149,24 @@ func (o *T) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
-			case msgbus.ConfigFileUpdated:
+			case *msgbus.ConfigFileUpdated:
 				o.onConfigFileUpdated(c)
-			case msgbus.ConfigFileRemoved:
+			case *msgbus.ConfigFileRemoved:
 				o.onConfigFileRemoved(c)
-			case msgbus.InstanceConfigUpdated:
+			case *msgbus.InstanceConfigUpdated:
 				o.onInstanceConfigUpdated(c)
-			case msgbus.ClusterConfigUpdated:
+			case *msgbus.ClusterConfigUpdated:
 				o.onClusterConfigUpdated(c)
 			}
 		}
 	}
 }
 
-func (o *T) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+func (o *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	o.clusterConfig = c.Value
 }
 
-func (o *T) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
+func (o *T) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	var err error
 	o.log.Debug().Msgf("recv %#v", c)
 	if err = o.configFileCheck(); err != nil {
@@ -176,11 +176,11 @@ func (o *T) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 	}
 }
 
-func (o *T) onConfigFileRemoved(c msgbus.ConfigFileRemoved) {
+func (o *T) onConfigFileRemoved(c *msgbus.ConfigFileRemoved) {
 	o.cancel()
 }
 
-func (o *T) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
+func (o *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	o.log.Info().Msg("local cluster config changed => refresh cfg")
 	o.forceRefresh = true
 	if err := o.configFileCheck(); err != nil {
@@ -196,7 +196,7 @@ func (o *T) updateConfig(newConfig *instance.Config) {
 	}
 	o.instanceConfig = *newConfig
 	instance.ConfigData.Set(o.path, o.localhost, newConfig.DeepCopy())
-	o.bus.Pub(msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},
+	o.bus.Pub(&msgbus.InstanceConfigUpdated{Path: o.path, Node: o.localhost, Value: *newConfig.DeepCopy()},
 		pubsub.Label{"path", o.path.String()},
 		pubsub.Label{"node", o.localhost},
 	)
@@ -394,12 +394,12 @@ func (o *T) delete() {
 	}
 	if o.published {
 		instance.ConfigData.Unset(o.path, o.localhost)
-		o.bus.Pub(msgbus.InstanceConfigDeleted{Path: o.path, Node: o.localhost}, labels...)
+		o.bus.Pub(&msgbus.InstanceConfigDeleted{Path: o.path, Node: o.localhost}, labels...)
 	}
 }
 
 func (o *T) done(parent context.Context, doneChan chan<- any) {
-	op := msgbus.InstanceConfigManagerDone{
+	op := &msgbus.InstanceConfigManagerDone{
 		Path:     o.path,
 		Filename: o.filename,
 	}

@@ -6,6 +6,7 @@ type (
 	// SubscriptionError is an emitted publication made when a subscriber notification
 	// exceeds its timeout
 	SubscriptionError struct {
+		Msg
 		Id    uuid.UUID
 		Name  string
 		Error error

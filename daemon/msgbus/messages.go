@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -18,136 +19,150 @@ import (
 )
 
 var (
-	kindToT = map[string]any{
-		"ApiClient": ApiClient{},
+	kindToT = map[string]func() any{
+		"ApiClient": func() any { return &ApiClient{} },
 
-		"ArbitratorError": ArbitratorError{},
+		"ArbitratorError": func() any { return &ArbitratorError{} },
 
-		"ClusterConfigUpdated": ClusterConfigUpdated{},
+		"ClusterConfigUpdated": func() any { return &ClusterConfigUpdated{} },
 
-		"ClusterStatusUpdated": ClusterStatusUpdated{},
+		"ClusterStatusUpdated": func() any { return &ClusterStatusUpdated{} },
 
-		"ConfigFileRemoved": ConfigFileRemoved{},
+		"ConfigFileRemoved": func() any { return &ConfigFileRemoved{} },
 
-		"ConfigFileUpdated": ConfigFileUpdated{},
+		"ConfigFileUpdated": func() any { return &ConfigFileUpdated{} },
 
-		"ClientSub": ClientSub{},
+		"ClientSub": func() any { return &ClientSub{} },
 
-		"ClientUnSub": ClientUnSub{},
+		"ClientUnSub": func() any { return &ClientUnSub{} },
 
-		"DaemonCtl": DaemonCtl{},
+		"DaemonCtl": func() any { return &DaemonCtl{} },
 
-		"DataUpdated": DataUpdated{},
+		"DaemonHb": func() any { return &DaemonHb{} },
 
-		"Exit": Exit{},
+		"DataUpdated": func() any { return &DataUpdated{} },
 
-		"ForgetPeer": ForgetPeer{},
+		"Exit": func() any { return &Exit{} },
 
-		"HbMessageTypeUpdated": HbMessageTypeUpdated{},
+		"ForgetPeer": func() any { return &ForgetPeer{} },
 
-		"HbNodePing": HbNodePing{},
+		"HbMessageTypeUpdated": func() any { return &HbMessageTypeUpdated{} },
 
-		"HbPing": HbPing{},
+		"HbNodePing": func() any { return &HbNodePing{} },
 
-		"HbStale": HbStale{},
+		"HbPing": func() any { return &HbPing{} },
 
-		"HbStatusUpdated": HbStatusUpdated{},
+		"HbStale": func() any { return &HbStale{} },
 
-		"InstanceConfigDeleted": InstanceConfigDeleted{},
+		"HbStatusUpdated": func() any { return &HbStatusUpdated{} },
 
-		"InstanceConfigUpdated": InstanceConfigUpdated{},
+		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
 
-		"InstanceFrozenFileRemoved": InstanceFrozenFileRemoved{},
+		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
-		"InstanceFrozenFileUpdated": InstanceFrozenFileUpdated{},
+		"InstanceFrozenFileRemoved": func() any { return &InstanceFrozenFileRemoved{} },
 
-		"InstanceMonitorAction": InstanceMonitorAction{},
+		"InstanceFrozenFileUpdated": func() any { return &InstanceFrozenFileUpdated{} },
 
-		"InstanceMonitorDeleted": InstanceMonitorDeleted{},
+		"InstanceMonitorAction": func() any { return &InstanceMonitorAction{} },
 
-		"InstanceMonitorUpdated": InstanceMonitorUpdated{},
+		"InstanceMonitorDeleted": func() any { return &InstanceMonitorDeleted{} },
 
-		"InstanceStatusDeleted": InstanceStatusDeleted{},
+		"InstanceMonitorUpdated": func() any { return &InstanceMonitorUpdated{} },
 
-		"InstanceStatusPost": InstanceStatusPost{},
+		"InstanceStatusDeleted": func() any { return &InstanceStatusDeleted{} },
 
-		"InstanceStatusUpdated": InstanceStatusUpdated{},
+		"InstanceStatusPost": func() any { return &InstanceStatusPost{} },
 
-		"InstanceConfigManagerDone": InstanceConfigManagerDone{},
+		"InstanceStatusUpdated": func() any { return &InstanceStatusUpdated{} },
 
-		"JoinError": JoinError{},
+		"InstanceConfigManagerDone": func() any { return &InstanceConfigManagerDone{} },
 
-		"JoinIgnored": JoinIgnored{},
+		"JoinError": func() any { return &JoinError{} },
 
-		"JoinRequest": JoinRequest{},
+		"JoinIgnored": func() any { return &JoinIgnored{} },
 
-		"JoinSuccess": JoinSuccess{},
+		"JoinRequest": func() any { return &JoinRequest{} },
 
-		"LeaveError": LeaveError{},
+		"JoinSuccess": func() any { return &JoinSuccess{} },
 
-		"LeaveIgnored": LeaveIgnored{},
+		"LeaveError": func() any { return &LeaveError{} },
 
-		"LeaveRequest": LeaveRequest{},
+		"LeaveIgnored": func() any { return &LeaveIgnored{} },
 
-		"LeaveSuccess": LeaveSuccess{},
+		"LeaveRequest": func() any { return &LeaveRequest{} },
 
-		"NodeConfigUpdated": NodeConfigUpdated{},
+		"LeaveSuccess": func() any { return &LeaveSuccess{} },
 
-		"NodeFrozen": NodeFrozen{},
+		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
 
-		"NodeFrozenFileRemoved": NodeFrozenFileRemoved{},
+		"NodeDataUpdated": func() any { return &NodeDataUpdated{} },
 
-		"NodeFrozenFileUpdated": NodeFrozenFileUpdated{},
+		"NodeFrozen": func() any { return &NodeFrozen{} },
 
-		"NodeMonitorDeleted": NodeMonitorDeleted{},
+		"NodeFrozenFileUpdated": func() any { return &NodeFrozenFileUpdated{} },
 
-		"NodeMonitorUpdated": NodeMonitorUpdated{},
+		"NodeMonitorDeleted": func() any { return &NodeMonitorDeleted{} },
 
-		"NodeOsPathsUpdated": NodeOsPathsUpdated{},
+		"NodeMonitorUpdated": func() any { return &NodeMonitorUpdated{} },
 
-		"NodeStatsUpdated": NodeStatsUpdated{},
+		"NodeOsPathsUpdated": func() any { return &NodeOsPathsUpdated{} },
 
-		"NodeStatusArbitratorsUpdated": NodeStatusArbitratorsUpdated{},
+		"NodeStatsUpdated": func() any { return &NodeStatsUpdated{} },
 
-		"NodeStatusGenUpdates": NodeStatusGenUpdates{},
+		"NodeStatusArbitratorsUpdated": func() any { return &NodeStatusArbitratorsUpdated{} },
 
-		"NodeStatusLabelsUpdated": NodeStatusLabelsUpdated{},
+		"NodeStatusGenUpdates": func() any { return &NodeStatusGenUpdates{} },
 
-		"NodeSplitAction": NodeSplitAction{},
+		"NodeStatusLabelsUpdated": func() any { return &NodeStatusLabelsUpdated{} },
 
-		"NodeStatusUpdated": NodeStatusUpdated{},
+		"NodeSplitAction": func() any { return &NodeSplitAction{} },
 
-		"ObjectOrchestrationEnd": ObjectOrchestrationEnd{},
+		"NodeStatusUpdated": func() any { return &NodeStatusUpdated{} },
 
-		"ObjectStatusDeleted": ObjectStatusDeleted{},
+		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
-		"ObjectStatusDone": ObjectStatusDone{},
+		"ObjectStatusDeleted": func() any { return &ObjectStatusDeleted{} },
 
-		"ObjectStatusUpdated": ObjectStatusUpdated{},
+		"ObjectStatusDone": func() any { return &ObjectStatusDone{} },
 
-		"ProgressInstanceMonitor": ProgressInstanceMonitor{},
+		"ObjectStatusUpdated": func() any { return &ObjectStatusUpdated{} },
 
-		"RemoteFileConfig": RemoteFileConfig{},
+		"ProgressInstanceMonitor": func() any { return &ProgressInstanceMonitor{} },
 
-		"SetInstanceMonitor": SetInstanceMonitor{},
+		"RemoteFileConfig": func() any { return &RemoteFileConfig{} },
 
-		"SetNodeMonitor": SetNodeMonitor{},
+		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
 
-		"SubscriptionError": pubsub.SubscriptionError{},
+		"SetNodeMonitor": func() any { return &SetNodeMonitor{} },
 
-		"WatchDog": WatchDog{},
+		"SubscriptionError": func() any { return &pubsub.SubscriptionError{} },
 
-		"ZoneRecordDeleted": ZoneRecordDeleted{},
+		"WatchDog": func() any { return &WatchDog{} },
 
-		"ZoneRecordUpdated": ZoneRecordUpdated{},
+		"ZoneRecordDeleted": func() any { return &ZoneRecordDeleted{} },
+
+		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
 	}
 )
 
 func KindToT(kind string) (any, error) {
-	if v, ok := kindToT[kind]; ok {
-		return v, nil
+	if f, ok := kindToT[kind]; ok {
+		return f(), nil
 	}
 	return nil, errors.New("can't find type for kind: " + kind)
+}
+
+// EventToMessage converts event.Event message as pubsub.Messager
+func EventToMessage(ev event.Event) (pubsub.Messager, error) {
+	var c pubsub.Messager
+	i, err := KindToT(ev.Kind)
+	if err != nil {
+		return c, errors.New("can't decode " + ev.Kind)
+	}
+	c = i.(pubsub.Messager)
+	err = json.Unmarshal(ev.Data, c)
+	return c, err
 }
 
 type (
@@ -158,6 +173,7 @@ type (
 
 	// ArbitratorError message is published when an arbitrator error is detected
 	ArbitratorError struct {
+		pubsub.Msg
 		Node string
 		Name string
 		Err  error
@@ -166,6 +182,7 @@ type (
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigDeleted{} event.
 	ConfigFileRemoved struct {
+		pubsub.Msg
 		Path     path.T
 		Filename string
 	}
@@ -173,19 +190,23 @@ type (
 	// ConfigFileUpdated is emitted by a fs watcher when a .conf file is updated or created in etc.
 	// The imon goroutine listens to this event and updates the daemondata, which in turns emits a InstanceConfigUpdated{} event.
 	ConfigFileUpdated struct {
+		pubsub.Msg
 		Path     path.T
 		Filename string
 	}
 
 	ClientSub struct {
+		pubsub.Msg
 		ApiClient
 	}
 
 	ClientUnSub struct {
+		pubsub.Msg
 		ApiClient
 	}
 
 	ClusterConfigUpdated struct {
+		pubsub.Msg
 		Node         string
 		Value        cluster.Config
 		NodesAdded   []string
@@ -193,18 +214,27 @@ type (
 	}
 
 	ClusterStatusUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value cluster.Status
 	}
 
 	// DataUpdated is a patch of changed data
 	DataUpdated struct {
+		pubsub.Msg
 		json.RawMessage
 	}
 
 	DaemonCtl struct {
+		pubsub.Msg
 		Component string
 		Action    string
+	}
+
+	DaemonHb struct {
+		pubsub.Msg
+		Node  string
+		Value cluster.DaemonHb
 	}
 
 	Exit struct {
@@ -213,21 +243,25 @@ type (
 	}
 
 	ForgetPeer struct {
+		pubsub.Msg
 		Node string
 	}
 
 	HbNodePing struct {
+		pubsub.Msg
 		Node   string
 		Status bool
 	}
 
 	HbPing struct {
+		pubsub.Msg
 		Nodename string
 		HbId     string
 		Time     time.Time
 	}
 
 	HbMessageTypeUpdated struct {
+		pubsub.Msg
 		Node  string
 		From  string
 		To    string
@@ -237,22 +271,26 @@ type (
 	}
 
 	HbStale struct {
+		pubsub.Msg
 		Nodename string
 		HbId     string
 		Time     time.Time
 	}
 
 	HbStatusUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value cluster.HeartbeatStream
 	}
 
 	InstanceConfigDeleted struct {
+		pubsub.Msg
 		Path path.T
 		Node string
 	}
 
 	InstanceConfigUpdated struct {
+		pubsub.Msg
 		Path  path.T
 		Node  string
 		Value instance.Config
@@ -260,6 +298,7 @@ type (
 
 	// InstanceFrozenFileUpdated is emitted by a fs watcher, or imon when an instance frozen file is updated or created.
 	InstanceFrozenFileUpdated struct {
+		pubsub.Msg
 		Path     path.T
 		Filename string
 		Updated  time.Time
@@ -267,12 +306,14 @@ type (
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
 	InstanceFrozenFileRemoved struct {
+		pubsub.Msg
 		Path     path.T
 		Filename string
 		Updated  time.Time
 	}
 
 	InstanceMonitorAction struct {
+		pubsub.Msg
 		Path   path.T
 		Node   string
 		Action instance.MonitorAction
@@ -280,87 +321,109 @@ type (
 	}
 
 	InstanceMonitorDeleted struct {
+		pubsub.Msg
 		Path path.T
 		Node string
 	}
 
 	InstanceMonitorUpdated struct {
+		pubsub.Msg
 		Path  path.T
 		Node  string
 		Value instance.Monitor
 	}
 
 	InstanceStatusDeleted struct {
+		pubsub.Msg
 		Path path.T
 		Node string
 	}
 
 	InstanceStatusPost struct {
+		pubsub.Msg
 		Path  path.T
 		Node  string
 		Value instance.Status
 	}
 
 	InstanceStatusUpdated struct {
+		pubsub.Msg
 		Path  path.T
 		Node  string
 		Value instance.Status
 	}
 
 	InstanceConfigManagerDone struct {
+		pubsub.Msg
 		Path     path.T
 		Filename string
 	}
 
 	JoinError struct {
+		pubsub.Msg
 		// Node is a node that can't be added to cluster config nodes
 		Node   string
 		Reason string
 	}
 
 	JoinIgnored struct {
+		pubsub.Msg
 		// Node is a node that is already in cluster config nodes
 		Node string
 	}
 
 	JoinRequest struct {
+		pubsub.Msg
 		// Node is a node to add to cluster config nodes
 		Node string
 	}
 
 	JoinSuccess struct {
+		pubsub.Msg
 		// Node is the successfully added node in cluster config nodes
 		Node string
 	}
 
 	LeaveError struct {
+		pubsub.Msg
 		// Node is a node that can't be removed from cluster config nodes
 		Node   string
 		Reason string
 	}
 
 	LeaveIgnored struct {
+		pubsub.Msg
 		// Node is a node that is not in cluster config nodes
 		Node string
 	}
 
 	LeaveRequest struct {
+		pubsub.Msg
 		// Node is a node to remove to cluster config nodes
 		Node string
 	}
 
 	LeaveSuccess struct {
+		pubsub.Msg
 		// Node is the successfully removed node from cluster config nodes
 		Node string
 	}
 
 	NodeConfigUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value node.Config
 	}
 
+	NodeDataUpdated struct {
+		pubsub.Msg
+		Node  string
+		Value node.Node
+	}
+
 	// NodeFrozen message describe a node frozen state update
 	NodeFrozen struct {
+		pubsub.Msg
 		Node string
 		// Status is true when frozen, else false
 		Status bool
@@ -371,33 +434,37 @@ type (
 	// NodeFrozenFileRemoved is emitted by a fs watcher when a frozen file is removed from var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileRemoved struct {
-		Path     path.T
+		pubsub.Msg
 		Filename string
 	}
 
 	// NodeFrozenFileUpdated is emitted by a fs watcher when a frozen file is updated or created in var.
 	// The nmon goroutine listens to this event and updates the daemondata, which in turns emits a NodeFrozen{} event.
 	NodeFrozenFileUpdated struct {
-		Path     path.T
+		pubsub.Msg
 		Filename string
 		Updated  time.Time
 	}
 
 	NodeMonitorDeleted struct {
+		pubsub.Msg
 		Node string
 	}
 
 	NodeMonitorUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value node.Monitor
 	}
 
 	NodeOsPathsUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value san.Paths
 	}
 
 	NodeSplitAction struct {
+		pubsub.Msg
 		Node            string
 		Action          string
 		NodeVotes       int
@@ -407,23 +474,27 @@ type (
 	}
 
 	NodeStatsUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value node.Stats
 	}
 
 	NodeStatusArbitratorsUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value map[string]node.ArbitratorStatus
 	}
 
 	// NodeStatusGenUpdates is emitted when then hb message gens are changed
 	NodeStatusGenUpdates struct {
-		Node  string
+		pubsub.Msg
+		Node string
 		// Value is Node.Status.Gen
 		Value map[string]uint64
 	}
 
 	NodeStatusLabelsUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value nodesinfo.Labels
 	}
@@ -431,11 +502,13 @@ type (
 	// NodeStatusUpdated is the message that nmon publish when node status is modified.
 	// The Value.Gen may be outdated, daemondata has the most recent version of gen.
 	NodeStatusUpdated struct {
+		pubsub.Msg
 		Node  string
 		Value node.Status
 	}
 
 	ObjectOrchestrationEnd struct {
+		pubsub.Msg
 		Id    string
 		Node  string
 		Path  path.T
@@ -443,15 +516,18 @@ type (
 	}
 
 	ObjectStatusDeleted struct {
+		pubsub.Msg
 		Path path.T
 		Node string
 	}
 
 	ObjectStatusDone struct {
+		pubsub.Msg
 		Path path.T
 	}
 
 	ObjectStatusUpdated struct {
+		pubsub.Msg
 		Path  path.T
 		Node  string
 		Value object.Status
@@ -459,6 +535,7 @@ type (
 	}
 
 	ProgressInstanceMonitor struct {
+		pubsub.Msg
 		Path      path.T
 		Node      string
 		State     instance.MonitorState
@@ -467,6 +544,7 @@ type (
 	}
 
 	RemoteFileConfig struct {
+		pubsub.Msg
 		Path     path.T
 		Node     string
 		Filename string
@@ -476,20 +554,25 @@ type (
 	}
 
 	SetInstanceMonitor struct {
+		pubsub.Msg
 		Path  path.T
 		Node  string
 		Value instance.MonitorUpdate
 	}
 
 	SetNodeMonitor struct {
+		pubsub.Msg
 		Node  string
 		Value node.MonitorUpdate
 	}
 
 	WatchDog struct {
+		pubsub.Msg
 		Name string
 	}
+
 	ZoneRecordDeleted struct {
+		pubsub.Msg
 		Path    path.T
 		Node    string
 		Name    string
@@ -498,6 +581,7 @@ type (
 		Content string
 	}
 	ZoneRecordUpdated struct {
+		pubsub.Msg
 		Path    path.T
 		Node    string
 		Name    string
@@ -524,63 +608,67 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 	<-dropping
 }
 
-func (e ApiClient) String() string {
+func (e *ApiClient) String() string {
 	return fmt.Sprintf("%s %s", e.Name, e.Time)
 }
 
-func (e ArbitratorError) Kind() string {
+func (e *ArbitratorError) Kind() string {
 	return "ArbitratorError"
 }
 
-func (e ClusterConfigUpdated) Kind() string {
+func (e *ClusterConfigUpdated) Kind() string {
 	return "ClusterConfigUpdated"
 }
 
-func (e ClusterStatusUpdated) Kind() string {
+func (e *ClusterStatusUpdated) Kind() string {
 	return "ClusterStatusUpdated"
 }
 
-func (e ConfigFileRemoved) Kind() string {
+func (e *ConfigFileRemoved) Kind() string {
 	return "ConfigFileRemoved"
 }
 
-func (e ConfigFileUpdated) Kind() string {
+func (e *ConfigFileUpdated) Kind() string {
 	return "ConfigFileUpdated"
 }
 
-func (e ClientSub) Kind() string {
+func (e *ClientSub) Kind() string {
 	return "ClientSub"
 }
 
-func (e ClientUnSub) Kind() string {
+func (e *ClientUnSub) Kind() string {
 	return "ClientUnSub"
 }
 
-func (e DataUpdated) Bytes() []byte {
+func (e *DataUpdated) Bytes() []byte {
 	return e.RawMessage
 }
 
-func (e DataUpdated) Kind() string {
+func (e *DataUpdated) Kind() string {
 	return "DataUpdated"
 }
 
-func (e DaemonCtl) Kind() string {
+func (e *DaemonCtl) Kind() string {
 	return "DaemonCtl"
 }
 
-func (e Exit) Kind() string {
+func (e *DaemonHb) Kind() string {
+	return "DaemonHb"
+}
+
+func (e *Exit) Kind() string {
 	return "Exit"
 }
 
-func (e ForgetPeer) Kind() string {
+func (e *ForgetPeer) Kind() string {
 	return "forget_peer"
 }
 
-func (e HbMessageTypeUpdated) Kind() string {
+func (e *HbMessageTypeUpdated) Kind() string {
 	return "HbMessageTypeUpdated"
 }
 
-func (e HbNodePing) String() string {
+func (e *HbNodePing) String() string {
 	if e.Status {
 		return e.Node + " ok"
 	} else {
@@ -588,210 +676,214 @@ func (e HbNodePing) String() string {
 	}
 }
 
-func (e HbNodePing) Kind() string {
+func (e *HbNodePing) Kind() string {
 	return "HbNodePing"
 }
 
-func (e HbPing) String() string {
+func (e *HbPing) String() string {
 	s := fmt.Sprintf("node %s ping detected from %s %s", e.Nodename, e.HbId, e.Time)
 	return s
 }
 
-func (e HbPing) Kind() string {
+func (e *HbPing) Kind() string {
 	return "HbPing"
 }
 
-func (e HbStale) String() string {
+func (e *HbStale) String() string {
 	s := fmt.Sprintf("node %s stale detected from %s %s", e.Nodename, e.HbId, e.Time)
 	return s
 }
 
-func (e HbStale) Kind() string {
+func (e *HbStale) Kind() string {
 	return "HbStale"
 }
 
-func (e HbStatusUpdated) Kind() string {
+func (e *HbStatusUpdated) Kind() string {
 	return "HbStatusUpdated"
 }
 
-func (e InstanceConfigDeleted) Kind() string {
+func (e *InstanceConfigDeleted) Kind() string {
 	return "InstanceConfigDeleted"
 }
 
-func (e InstanceConfigUpdated) Kind() string {
+func (e *InstanceConfigUpdated) Kind() string {
 	return "InstanceConfigUpdated"
 }
 
-func (e InstanceFrozenFileRemoved) Kind() string {
+func (e *InstanceFrozenFileRemoved) Kind() string {
 	return "InstanceFrozenFileRemoved"
 }
 
-func (e InstanceFrozenFileUpdated) Kind() string {
+func (e *InstanceFrozenFileUpdated) Kind() string {
 	return "InstanceFrozenFileUpdated"
 }
 
-func (e InstanceMonitorAction) Kind() string {
+func (e *InstanceMonitorAction) Kind() string {
 	return "InstanceMonitorAction"
 }
 
-func (e InstanceMonitorDeleted) Kind() string {
+func (e *InstanceMonitorDeleted) Kind() string {
 	return "InstanceMonitorDeleted"
 }
 
-func (e InstanceMonitorUpdated) Kind() string {
+func (e *InstanceMonitorUpdated) Kind() string {
 	return "InstanceMonitorUpdated"
 }
 
-func (e InstanceStatusDeleted) Kind() string {
+func (e *InstanceStatusDeleted) Kind() string {
 	return "InstanceStatusDeleted"
 }
 
-func (e InstanceStatusPost) Kind() string {
+func (e *InstanceStatusPost) Kind() string {
 	return "InstanceStatusPost"
 }
 
-func (e InstanceStatusUpdated) Kind() string {
+func (e *InstanceStatusUpdated) Kind() string {
 	return "InstanceStatusUpdated"
 }
 
-func (e InstanceConfigManagerDone) Kind() string {
+func (e *InstanceConfigManagerDone) Kind() string {
 	return "InstanceConfigManagerDone"
 }
 
-func (e JoinError) Kind() string {
+func (e *JoinError) Kind() string {
 	return "JoinError"
 }
 
-func (e JoinIgnored) Kind() string {
+func (e *JoinIgnored) Kind() string {
 	return "JoinIgnored"
 }
 
-func (e JoinRequest) Kind() string {
+func (e *JoinRequest) Kind() string {
 	return "JoinRequest"
 }
 
-func (e JoinSuccess) Kind() string {
+func (e *JoinSuccess) Kind() string {
 	return "JoinSuccess"
 }
 
-func (e LeaveError) Kind() string {
+func (e *LeaveError) Kind() string {
 	return "LeaveError"
 }
 
-func (e LeaveIgnored) Kind() string {
+func (e *LeaveIgnored) Kind() string {
 	return "LeaveIgnored"
 }
 
-func (e LeaveRequest) Kind() string {
+func (e *LeaveRequest) Kind() string {
 	return "LeaveRequest"
 }
 
-func (e LeaveSuccess) Kind() string {
+func (e *LeaveSuccess) Kind() string {
 	return "LeaveSuccess"
 }
 
-func (e NodeConfigUpdated) Kind() string {
+func (e *NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
 }
 
-func (e NodeFrozen) Kind() string {
+func (e *NodeDataUpdated) Kind() string {
+	return "NodeDataUpdated"
+}
+
+func (e *NodeFrozen) Kind() string {
 	return "NodeFrozen"
 }
 
-func (e NodeFrozenFileRemoved) Kind() string {
+func (e *NodeFrozenFileRemoved) Kind() string {
 	return "NodeFrozenFileRemoved"
 }
 
-func (e NodeFrozenFileUpdated) Kind() string {
+func (e *NodeFrozenFileUpdated) Kind() string {
 	return "NodeFrozenFileUpdated"
 }
 
-func (e NodeMonitorDeleted) Kind() string {
+func (e *NodeMonitorDeleted) Kind() string {
 	return "NodeMonitorDeleted"
 }
 
-func (e NodeMonitorUpdated) Kind() string {
+func (e *NodeMonitorUpdated) Kind() string {
 	return "NodeMonitorUpdated"
 }
 
-func (e NodeOsPathsUpdated) Kind() string {
+func (e *NodeOsPathsUpdated) Kind() string {
 	return "NodeOsPathsUpdated"
 }
 
-func (e NodeSplitAction) Kind() string {
+func (e *NodeSplitAction) Kind() string {
 	return "NodeSplitAction"
 }
 
-func (e NodeStatsUpdated) Kind() string {
+func (e *NodeStatsUpdated) Kind() string {
 	return "NodeStatsUpdated"
 }
 
-func (e NodeStatusArbitratorsUpdated) Kind() string {
+func (e *NodeStatusArbitratorsUpdated) Kind() string {
 	return "NodeStatusArbitratorsUpdated"
 }
 
-func (e NodeStatusGenUpdates) Kind() string {
+func (e *NodeStatusGenUpdates) Kind() string {
 	return "NodeStatusGenUpdates"
 }
 
-func (e NodeStatusLabelsUpdated) Kind() string {
+func (e *NodeStatusLabelsUpdated) Kind() string {
 	return "NodeStatusLabelsUpdated"
 }
 
-func (e NodeStatusUpdated) Kind() string {
+func (e *NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
 }
 
-func (e ObjectOrchestrationEnd) Kind() string {
+func (e *ObjectOrchestrationEnd) Kind() string {
 	return "ObjectOrchestrationEnd"
 }
 
-func (e ObjectStatusDeleted) Kind() string {
+func (e *ObjectStatusDeleted) Kind() string {
 	return "ObjectStatusDeleted"
 }
 
-func (e ObjectStatusDone) Kind() string {
+func (e *ObjectStatusDone) Kind() string {
 	return "ObjectStatusDone"
 }
 
-func (e ObjectStatusUpdated) String() string {
+func (e *ObjectStatusUpdated) String() string {
 	d := e.Value
 	s := fmt.Sprintf("%s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
 	return s
 }
 
-func (e ObjectStatusUpdated) Kind() string {
+func (e *ObjectStatusUpdated) Kind() string {
 	return "ObjectStatusUpdated"
 }
 
-func (e ProgressInstanceMonitor) Kind() string {
+func (e *ProgressInstanceMonitor) Kind() string {
 	return "ProgressInstanceMonitor"
 }
 
-func (e RemoteFileConfig) Kind() string {
+func (e *RemoteFileConfig) Kind() string {
 	return "RemoteFileConfig"
 }
 
-func (e SetInstanceMonitor) Kind() string {
+func (e *SetInstanceMonitor) Kind() string {
 	return "SetInstanceMonitor"
 }
 
-func (e SetNodeMonitor) Kind() string {
+func (e *SetNodeMonitor) Kind() string {
 	return "SetNodeMonitor"
 }
 
-func (e WatchDog) String() string {
+func (e *WatchDog) String() string {
 	return e.Name
 }
 
-func (e WatchDog) Kind() string {
+func (e *WatchDog) Kind() string {
 	return "WatchDog"
 }
 
-func (e ZoneRecordDeleted) Kind() string {
+func (e *ZoneRecordDeleted) Kind() string {
 	return "ZoneRecordDeleted"
 }
 
-func (e ZoneRecordUpdated) Kind() string {
+func (e *ZoneRecordUpdated) Kind() string {
 	return "ZoneRecordUpdated"
 }

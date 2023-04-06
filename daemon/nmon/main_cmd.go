@@ -25,7 +25,7 @@ var (
 // it loads and publish config (some common settings such as node split_action keyword...)
 // it updates arbitrators config
 // then refresh arbitrator status
-func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+func (o *nmon) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	o.clusterConfig = c.Value
 
 	if err := o.loadAndPublishConfig(); err != nil {
@@ -40,7 +40,7 @@ func (o *nmon) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
-func (o *nmon) onConfigFileUpdated(_ msgbus.ConfigFileUpdated) {
+func (o *nmon) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
 	if err := o.loadAndPublishConfig(); err != nil {
 		o.log.Error().Err(err).Msg("load and publish config from node config file updated event")
 		return
@@ -88,7 +88,7 @@ func (o *nmon) checkRejoinTicker() {
 	}
 }
 
-func (o *nmon) onSetNodeMonitor(c msgbus.SetNodeMonitor) {
+func (o *nmon) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 	doState := func() {
 		if c.Value.State == nil {
 			return
@@ -176,7 +176,7 @@ func (o *nmon) onArbitratorTicker() {
 	o.getAndUpdateStatusArbitrator()
 }
 
-func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
+func (o *nmon) onForgetPeer(c *msgbus.ForgetPeer) {
 	delete(o.livePeers, c.Node)
 
 	delete(o.cacheNodesInfo, c.Node)
@@ -209,7 +209,7 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	}
 	action := o.nodeConfig.SplitAction
 	o.log.Warn().Msgf("cluster is split, we don't have quorum: %d+%d out of %d votes (%s + %s)", len(o.livePeers), len(arbitratorVotes), total, livePeers, arbitratorVotes)
-	o.bus.Pub(msgbus.NodeSplitAction{
+	o.bus.Pub(&msgbus.NodeSplitAction{
 		Node:            o.localhost,
 		Action:          action,
 		NodeVotes:       len(o.livePeers),
@@ -231,23 +231,23 @@ func (o *nmon) onForgetPeer(c msgbus.ForgetPeer) {
 	}
 }
 
-func (o *nmon) onNodeFrozenFileRemoved(_ msgbus.NodeFrozenFileRemoved) {
+func (o *nmon) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 	o.frozen = false
 	o.nodeStatus.Frozen = time.Time{}
-	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: time.Time{}}, o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: time.Time{}}, o.labelLocalhost)
 	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
-	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 }
 
-func (o *nmon) onNodeFrozenFileUpdated(m msgbus.NodeFrozenFileUpdated) {
+func (o *nmon) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 	o.frozen = true
 	o.nodeStatus.Frozen = m.Updated
-	o.bus.Pub(msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.Updated}, o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeFrozen{Node: o.localhost, Status: o.frozen, FrozenAt: m.Updated}, o.labelLocalhost)
 	node.StatusData.Set(o.localhost, o.nodeStatus.DeepCopy())
-	o.bus.Pub(msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()},	o.labelLocalhost)
+	o.bus.Pub(&msgbus.NodeStatusUpdated{Node: o.localhost, Value: *o.nodeStatus.DeepCopy()}, o.labelLocalhost)
 }
 
-func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {
+func (o *nmon) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
 	o.log.Debug().Msgf("deleted nmon for node %s", c.Node)
 	delete(o.nodeMonitor, c.Node)
 	o.convergeGlobalExpectFromRemote()
@@ -256,7 +256,7 @@ func (o *nmon) onNodeMonitorDeleted(c msgbus.NodeMonitorDeleted) {
 	o.updateIfChange()
 }
 
-func (o *nmon) onPeerNodeMonitorUpdated(c msgbus.NodeMonitorUpdated) {
+func (o *nmon) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	o.log.Debug().Msgf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
 	o.nodeMonitor[c.Node] = c.Value
 	if _, ok := o.livePeers[c.Node]; !ok {
@@ -283,7 +283,7 @@ func missingNodes(nodes, joinedNodes []string) []string {
 	return l
 }
 
-func (o *nmon) onHbMessageTypeUpdated(c msgbus.HbMessageTypeUpdated) {
+func (o *nmon) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
 	if o.state.State != node.MonitorStateRejoin {
 		return
 	}
