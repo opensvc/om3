@@ -136,15 +136,14 @@ func (t *T) MainStart(ctx context.Context) error {
 			{"os", hostname.Hostname()},
 			{"sub", "pubsub"},
 		}
-		msg := msgbus.WatchDog{Name: "pubsub"}
-		ticker := time.NewTicker(2 * time.Second)
+		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				bus.Pub(msg, labels...)
+				bus.Pub(&msgbus.WatchDog{Name: "pubsub"}, labels...)
 			}
 		}
 	}(ctx)
