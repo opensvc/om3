@@ -24,11 +24,12 @@ import (
 func (d *discover) startSubscriptions() *pubsub.Subscription {
 	bus := pubsub.BusFromContext(d.ctx)
 	sub := bus.Sub("discover.cfg")
-	sub.AddFilter(msgbus.InstanceConfigUpdated{})
-	sub.AddFilter(msgbus.InstanceConfigDeleted{})
-	sub.AddFilter(msgbus.ConfigFileUpdated{})
-	if last := sub.AddFilterGetLast(msgbus.ClusterConfigUpdated{}); last != nil {
-		d.onClusterConfigUpdated(last.(msgbus.ClusterConfigUpdated))
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.ConfigFileUpdated{})
+	// TODO: change AddFilterGetLast to AddFilter + cache
+	if last := sub.AddFilterGetLast(&msgbus.ClusterConfigUpdated{}); last != nil {
+		d.onClusterConfigUpdated(last.(*msgbus.ClusterConfigUpdated))
 	}
 	sub.Start()
 	return sub
@@ -63,20 +64,20 @@ func (d *discover) cfg(started chan<- bool) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
-			case msgbus.InstanceConfigUpdated:
+			case *msgbus.InstanceConfigUpdated:
 				d.onInstanceConfigUpdated(c)
-			case msgbus.InstanceConfigDeleted:
+			case *msgbus.InstanceConfigDeleted:
 				d.onInstanceConfigDeleted(c)
-			case msgbus.ConfigFileUpdated:
+			case *msgbus.ConfigFileUpdated:
 				d.onConfigFileUpdated(c)
-			case msgbus.ClusterConfigUpdated:
+			case *msgbus.ClusterConfigUpdated:
 				d.onClusterConfigUpdated(c)
 			}
 		case i := <-d.cfgCmdC:
 			switch c := i.(type) {
-			case msgbus.RemoteFileConfig:
+			case *msgbus.RemoteFileConfig:
 				d.onRemoteConfigFetched(c)
-			case msgbus.InstanceConfigManagerDone:
+			case *msgbus.InstanceConfigManagerDone:
 				d.onMonConfigDone(c)
 			default:
 				d.log.Error().Interface("cmd", i).Msg("unknown cmd")
@@ -85,11 +86,11 @@ func (d *discover) cfg(started chan<- bool) {
 	}
 }
 
-func (d *discover) onClusterConfigUpdated(c msgbus.ClusterConfigUpdated) {
+func (d *discover) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	d.clusterConfig = c.Value
 }
 
-func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
+func (d *discover) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	if c.Path.Kind == kind.Invalid {
 		// may be node.conf
 		return
@@ -109,7 +110,7 @@ func (d *discover) onConfigFileUpdated(c msgbus.ConfigFileUpdated) {
 }
 
 // cmdLocalConfigDeleted starts a new icfg when a local configuration file exists
-func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
+func (d *discover) onMonConfigDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.Filename
 	p := c.Path
 	s := p.String()
@@ -125,7 +126,7 @@ func (d *discover) onMonConfigDone(c msgbus.InstanceConfigManagerDone) {
 	d.cfgMTime[s] = mtime
 }
 
-func (d *discover) onInstanceConfigUpdated(c msgbus.InstanceConfigUpdated) {
+func (d *discover) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	if c.Node == d.localhost {
 		return
 	}
@@ -172,7 +173,7 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 	d.fetchConfigFromRemote(p, node, remoteConfig.Updated)
 }
 
-func (d *discover) onInstanceConfigDeleted(c msgbus.InstanceConfigDeleted) {
+func (d *discover) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
 	if c.Node == "" || c.Node == d.localhost {
 		return
 	}
@@ -185,7 +186,7 @@ func (d *discover) onInstanceConfigDeleted(c msgbus.InstanceConfigDeleted) {
 	}
 }
 
-func (d *discover) onRemoteConfigFetched(c msgbus.RemoteFileConfig) {
+func (d *discover) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	defer d.cancelFetcher(c.Path.String())
 	select {
 	case <-c.Ctx.Done():
@@ -300,7 +301,7 @@ func fetch(ctx context.Context, cli *client.T, p path.T, node string, cmdC chan<
 		return
 	default:
 		err := make(chan error)
-		cmdC <- msgbus.RemoteFileConfig{
+		cmdC <- &msgbus.RemoteFileConfig{
 			Path:     p,
 			Node:     node,
 			Filename: tmpFilename,

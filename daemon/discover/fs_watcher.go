@@ -109,7 +109,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							log.Debug().Msgf("add file %s", filename)
 						}
 					*/
-					bus.Pub(msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+					bus.Pub(&msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 				}
 				return nil
 			},
@@ -140,7 +140,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 
 		if updated := file.ModTime(nodeFrozenFile); !updated.IsZero() {
 			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
-			bus.Pub(msgbus.NodeFrozenFileUpdated{Filename: nodeFrozenFile, Updated: updated})
+			bus.Pub(&msgbus.NodeFrozenFileUpdated{Filename: nodeFrozenFile, Updated: updated})
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -160,21 +160,15 @@ func (d *discover) fsWatcherStart() (func(), error) {
 				filename := event.Name
 				switch {
 				case strings.HasSuffix(filename, "frozen"):
-					var (
-						p   path.T
-						err error
-					)
-					if filename == nodeFrozenFile {
-						// pass
-					} else if p, err = frozenFilenameToPath(filename); err != nil {
-						log.Warn().Err(err).Msgf("%s", filename)
+					if filename != nodeFrozenFile {
+						// TODO: track instance frozen flag ? the namespace var is not yet watched
 						continue
 					}
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(msgbus.NodeFrozenFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", "node"})
+							bus.Pub(&msgbus.NodeFrozenFileRemoved{Filename: filename}, pubsub.Label{"path", "node"})
 						}
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
@@ -192,7 +186,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						}
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(msgbus.NodeFrozenFileUpdated{Path: p, Filename: filename, Updated: file.ModTime(filename)}, pubsub.Label{"path", "node"})
+							bus.Pub(&msgbus.NodeFrozenFileUpdated{Filename: filename, Updated: file.ModTime(filename)}, pubsub.Label{"path", "node"})
 						}
 					}
 				case strings.HasSuffix(filename, ".conf"):
@@ -209,7 +203,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
-						bus.Pub(msgbus.ConfigFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+						bus.Pub(&msgbus.ConfigFileRemoved{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
 							time.Sleep(delayExistAfterRemove)
@@ -225,7 +219,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 							}
 						}
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
-						bus.Pub(msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
+						bus.Pub(&msgbus.ConfigFileUpdated{Path: p, Filename: filename}, pubsub.Label{"path", p.String()})
 					}
 				case dirCreated(event):
 					if event.Name == "." {
@@ -255,10 +249,6 @@ func (d *discover) fsWatcherStart() (func(), error) {
 
 func cfgFilenameToPath(filename string) (path.T, error) {
 	return filenameToPath(filename, rawconfig.Paths.Etc, ".conf")
-}
-
-func frozenFilenameToPath(filename string) (path.T, error) {
-	return filenameToPath(filename, rawconfig.Paths.Var, "")
 }
 
 func filenameToPath(filename, prefix, suffix string) (path.T, error) {
