@@ -169,7 +169,24 @@ type (
 	stringer interface {
 		String() string
 	}
+
+	Msg struct {
+		Labels []Label
+	}
+
+	Messager interface {
+		AddLabels(...Label)
+		GetLabels() []Label
+	}
 )
+
+func (p *Msg) GetLabels() []Label {
+	return append([]Label{}, p.Labels...)
+}
+
+func (p *Msg) AddLabels(l ...Label) {
+	p.Labels = append(p.Labels, l...)
+}
 
 var (
 	cmdDurationWarn    = time.Second
@@ -452,11 +469,14 @@ func (b *Bus) Stop() {
 	}
 }
 
-// Pub posts a new Publication on the bus
-func (b *Bus) Pub(v any, labels ...Label) {
+// Pub posts a new Publication on the bus.
+// The labels are added to existing v labels, so a subscriber can retrieve message
+// publication labels from the received message.
+func (b *Bus) Pub(v Messager, labels ...Label) {
 	done := make(chan bool)
+	v.AddLabels(labels...)
 	op := cmdPub{
-		labels: newLabels(labels...),
+		labels: newLabels(v.GetLabels()...),
 		data:   v,
 		resp:   done,
 	}
@@ -724,7 +744,7 @@ func (sub *Subscription) String() string {
 	return s
 }
 
-func (sub *Subscription) AddFilterGetLasts(v any, labels ...Label) []any {
+func (sub *Subscription) AddFilterGetLasts(v Messager, labels ...Label) []any {
 	sub.AddFilter(v, labels...)
 	return sub.GetLasts(v, labels...)
 }
@@ -754,7 +774,7 @@ func (sub *Subscription) GetLasts(v any, labels ...Label) []any {
 	}
 }
 
-func (sub *Subscription) AddFilterGetLast(v any, labels ...Label) any {
+func (sub *Subscription) AddFilterGetLast(v Messager, labels ...Label) any {
 	sub.AddFilter(v, labels...)
 	return sub.GetLast(v, labels...)
 }
@@ -826,7 +846,7 @@ func (sub *Subscription) Start() {
 				if err := sub.push(i); err != nil {
 					// the subscription got push error, cancel it and ask for unsubscribe
 					sub.bus.log.Warn().Msgf("%s error: %s. stop subscription", sub, err)
-					go sub.bus.Pub(SubscriptionError{Name: sub.name, Id: sub.id, Error: err})
+					go sub.bus.Pub(&SubscriptionError{Name: sub.name, Id: sub.id, Error: err})
 					sub.cancel()
 					go func() {
 						if err := sub.Stop(); err != nil {
