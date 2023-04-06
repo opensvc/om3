@@ -125,6 +125,10 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error) {
 	var filter Filter
 
+	if params.Filter == nil {
+		return
+	}
+
 	for _, s := range *params.Filter {
 		filter, err = parseFilter(s)
 		if err != nil {
