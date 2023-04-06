@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -69,10 +70,10 @@ func TestGetDaemonEventsParams(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			p := GetDaemonEventsParams{
+			p := api.GetDaemonEventsParams{
 				Filter: &c.filterS,
 			}
-			filters, err := p.parseFilters()
+			filters, err := parseFilters(p)
 			require.Nil(t, err)
 			require.Equal(t, c.expected, filters)
 			require.Len(t, filters, len(c.expected))
