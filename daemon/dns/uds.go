@@ -138,7 +138,7 @@ func (t *dns) startUDSListener() error {
 			req     request
 		)
 		defer conn.Close()
-		t.log.Info().Msgf("Client connected [%s]", conn.RemoteAddr().Network())
+		t.log.Debug().Msg("Client connected")
 		for {
 			conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 			buffer := make([]byte, 1024)
