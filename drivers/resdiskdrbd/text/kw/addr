@@ -1,0 +1,2 @@
+The addr to use to connect a peer. Use scoping to define each non-default
+address.

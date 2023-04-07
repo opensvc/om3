@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -28,7 +29,7 @@ type (
 
 // GetDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
-func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, params GetDaemonEventsParams) {
+func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, params api.GetDaemonEventsParams) {
 	var (
 		handlerName = "GetDaemonEvents"
 		limit       uint64
@@ -61,7 +62,7 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
-	filters, err := params.parseFilters()
+	filters, err := parseFilters(params)
 	if err != nil {
 		log.Warn().Err(err).Msgf("invalid filter")
 		sendError(w, http.StatusBadRequest, err.Error())
@@ -120,15 +121,16 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	}
 }
 
-// parseFilters return filters from *b.Filter
-func (b *GetDaemonEventsParams) parseFilters() (filters []Filter, err error) {
+// parseFilters return filters from b.Filter
+func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error) {
 	var filter Filter
 
-	if b.Filter == nil {
+	if params.Filter == nil {
 		return
 	}
-	for _, s := range *b.Filter {
-		filter, err = b.parseFilter(s)
+
+	for _, s := range *params.Filter {
+		filter, err = parseFilter(s)
 		if err != nil {
 			return
 		}
@@ -140,7 +142,7 @@ func (b *GetDaemonEventsParams) parseFilters() (filters []Filter, err error) {
 // parseFilter return filter from s
 //
 // filter syntax is: [kind][,label=value]*
-func (b *GetDaemonEventsParams) parseFilter(s string) (filter Filter, err error) {
+func parseFilter(s string) (filter Filter, err error) {
 	for _, elem := range strings.Split(s, ",") {
 		if strings.HasPrefix(elem, ".") {
 			// TODO filter data ?

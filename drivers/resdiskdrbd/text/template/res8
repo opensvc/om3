@@ -1,0 +1,14 @@
+resource {{.Name}} {
+    {{range $host := .Hosts}}
+    on {{$host.Name}} {
+        device    {{$host.Device}};
+        disk      {{$host.Disk}};
+        meta-disk internal;
+        address   {{$host.Addr}};
+        node-id   {{$host.NodeId}};
+    }
+    {{end}}
+    connection-mesh {
+        hosts{{range $host := .Hosts}} {{$host.Name}}{{end}};
+    }
+}

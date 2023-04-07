@@ -14,9 +14,9 @@ import (
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/kballard/go-shellquote"
+	"github.com/opensvc/om3/util/funcopt"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (
@@ -304,6 +304,10 @@ func (t T) checkExitCode(exitCode int) error {
 	err := &ErrExitCode{exitCode: exitCode, successCodes: t.okExitCodes}
 	t.logErrorExitCode(exitCode, err)
 	return errors.WithStack(err)
+}
+
+func (e *ErrExitCode) ExitCode() int {
+	return e.exitCode
 }
 
 func (e *ErrExitCode) Error() string {

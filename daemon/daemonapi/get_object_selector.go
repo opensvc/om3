@@ -6,10 +6,11 @@ import (
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
-func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params GetObjectSelectorParams) {
+func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params api.GetObjectSelectorParams) {
 	log := daemonlogctx.Logger(r.Context()).With().Str("func", "GetObjectSelector").Logger()
 	log.Debug().Msg("starting")
 	paths := object.StatusData.GetPaths()
@@ -24,7 +25,7 @@ func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, pa
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	result := ObjectSelector{}
+	result := api.ObjectSelector{}
 	for _, v := range matchedPaths {
 		result = append(result, v.String())
 	}

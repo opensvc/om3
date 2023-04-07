@@ -60,6 +60,7 @@ type (
 		Run(context.Context) error
 		Shutdown(context.Context) error
 		Start(context.Context) error
+		StartStandby(context.Context) error
 		Stop(context.Context) error
 		PRStart(context.Context) error
 		PRStop(context.Context) error

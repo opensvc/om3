@@ -11,8 +11,8 @@ import (
 	"github.com/opensvc/om3/core/client"
 	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/ccfg"
-	"github.com/opensvc/om3/daemon/daemonapi"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 )
@@ -123,7 +123,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Debug().Err(err).Msgf("recv: node %s do request", nodename)
 		return
 	}
-	var messages daemonapi.RelayMessages
+	var messages api.RelayMessages
 	if err := json.Unmarshal(b, &messages); err != nil {
 		t.log.Debug().Err(err).Msgf("recv: node %s unmarshal data", nodename)
 		return

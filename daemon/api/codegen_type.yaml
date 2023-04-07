@@ -1,4 +1,4 @@
-package: daemonapi
+package: api
 generate:
   models: true
   embedded-spec: false

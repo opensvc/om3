@@ -204,6 +204,16 @@ var (
 		TimeoutKeywords: []string{"start_timeout", "timeout"},
 		PG:              true,
 	}
+	StartStandby = Properties{
+		Name:            "startstandby",
+		Progress:        "starting",
+		Local:           true,
+		LocalExpect:     "unset",
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Rollback:        true,
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
+		PG:              true,
+	}
 	Stop = Properties{
 		Name:            "stop",
 		Target:          "stopped",

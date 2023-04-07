@@ -38,8 +38,16 @@ func (t T) NewGetKey() *api.GetKey {
 	return api.NewGetKey(t)
 }
 
+func (t T) NewGetNodeDrbdAllocation() *api.GetNodeDrbdAllocation {
+	return api.NewGetNodeDrbdAllocation(t)
+}
+
 func (t T) NewGetNodesInfo() *api.GetNodesInfo {
 	return api.NewGetNodesInfo(t)
+}
+
+func (t T) NewGetNodeDrbdConfig() *api.GetNodeDrbdConfig {
+	return api.NewGetNodeDrbdConfig(t)
 }
 
 func (t T) NewGetNodeLog() *api.GetNodeLog {
@@ -108,6 +116,10 @@ func (t T) NewPostNodeAction() *api.PostNodeAction {
 
 func (t T) NewPostNodeClear() *api.PostNodeClear {
 	return api.NewPostNodeClear(t)
+}
+
+func (t T) NewPostNodeDrbdConfig() *api.PostNodeDrbdConfig {
+	return api.NewPostNodeDrbdConfig(t)
 }
 
 func (t T) NewPostNodeMonitor() *api.PostNodeMonitor {

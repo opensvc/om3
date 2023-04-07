@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -117,6 +118,11 @@ func (t *LV) change(args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+
+	// deactivating the last lv of a vg changes it's activation state
+	fcache.Clear("vgs")
+	fcache.Clear("vgs-device")
+
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -238,13 +244,18 @@ func (t *LV) Devices() (device.L, error) {
 }
 
 func (t *LV) Create(size string, args []string) error {
-	if i, err := sizeconv.FromSize(size); err == nil {
+	if strings.Contains(size, "%") {
+		args = append(args, "-l", size)
+	} else if i, err := sizeconv.FromSize(size); err == nil {
 		// default unit is not "B", explicitely tell
 		size = fmt.Sprintf("%dB", i)
+		args = append(args, "-L", size)
+	} else {
+		args = append(args, "-L", size)
 	}
 	cmd := command.New(
 		command.WithName("lvcreate"),
-		command.WithArgs(append(args, "--yes", "-L", size, "-n", t.LVName, t.VGName)),
+		command.WithArgs(append(args, "--yes", "-n", t.LVName, t.VGName)),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),

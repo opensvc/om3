@@ -1,0 +1,5 @@
+The name of the drbd resource associated with this service resource.
+
+OpenSVC expects the resource configuration file to reside in
+`/etc/drbd.d/<res>.res` and takes care of its replication on peer
+nodes.

@@ -6,11 +6,12 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params GetObjectFileParams) {
+func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params api.GetObjectFileParams) {
 	var b []byte
 	var err error
 	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetObjectFile")
@@ -31,7 +32,7 @@ func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp := ObjectFile{
+	resp := api.ObjectFile{
 		Mtime: mtime,
 	}
 	resp.Data, err = os.ReadFile(filename)

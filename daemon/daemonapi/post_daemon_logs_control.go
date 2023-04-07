@@ -4,12 +4,13 @@ import (
 	"net/http"
 
 	"github.com/goccy/go-json"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/rs/zerolog"
 )
 
 func (a *DaemonApi) PostDaemonLogsControl(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload PostDaemonLogsControl
+		payload api.PostDaemonLogsControl
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		sendError(w, http.StatusBadRequest, err.Error())
@@ -25,7 +26,7 @@ func (a *DaemonApi) PostDaemonLogsControl(w http.ResponseWriter, r *http.Request
 		return
 	}
 	zerolog.SetGlobalLevel(newLevel)
-	response := ResponseText("new log level " + payload.Level)
+	response := api.ResponseText("new log level " + payload.Level)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }

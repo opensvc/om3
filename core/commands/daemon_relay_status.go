@@ -6,7 +6,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -27,7 +27,7 @@ func (t *CmdDaemonRelayStatus) Run() error {
 	if err != nil {
 		return err
 	}
-	var data daemonapi.RelayMessages
+	var data api.RelayMessages
 	if err := json.Unmarshal(b, &data); err != nil {
 		return err
 	}

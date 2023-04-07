@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemondata"
 )
 
@@ -28,7 +29,7 @@ var (
 // GetDaemonStatus returns daemon data status
 //
 // When sub data hIt forces refreshing of sub data every 1
-func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, params GetDaemonStatusParams) {
+func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, params api.GetDaemonStatusParams) {
 	now := time.Now()
 	subRefreshed.Lock()
 	databus := daemondata.FromContext(r.Context())

@@ -7,7 +7,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterip"
@@ -16,6 +15,7 @@ import (
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -103,6 +103,9 @@ type (
 		// Nodes is a wrapper for the noder Nodes, which returns the
 		// list of cluster nodes to make the network available on.
 		Nodes() []string
+
+		NodeSubnet(nodename string) (*net.IPNet, error)
+		NodeSubnetIP(nodename string) (net.IP, error)
 	}
 	Setuper interface {
 		Setup() error
@@ -296,6 +299,16 @@ func namesInConfig(noder Noder) []string {
 func (t T) IPNet() (*net.IPNet, error) {
 	_, ipnet, err := net.ParseCIDR(t.Network())
 	return ipnet, err
+}
+
+func (t *T) NodeSubnetIP(nodename string) (net.IP, error) {
+	subnet, err := t.NodeSubnet(nodename)
+	if err != nil {
+		return nil, err
+	}
+	ip := subnet.IP
+	IncIPN(ip, 1)
+	return ip, nil
 }
 
 // NodeSubnet returns the network subnet assigned to a cluster node, as a *net.IPNet.

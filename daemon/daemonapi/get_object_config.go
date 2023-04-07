@@ -9,11 +9,12 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params GetObjectConfigParams) {
+func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params api.GetObjectConfigParams) {
 	var (
 		evaluate    bool
 		impersonate string
@@ -67,7 +68,7 @@ func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, para
 		}
 	}
 	data.Set("metadata", objPath.ToMetadata())
-	resp := ObjectConfig{
+	resp := api.ObjectConfig{
 		Data:  &respData,
 		Mtime: &mtime,
 	}
