@@ -16,34 +16,40 @@ import (
 )
 
 type (
-	restartTodoMap map[string]bool
+	todoMap map[string]bool
 )
 
-func (t restartTodoMap) Add(rid string) {
+func (t todoMap) Add(rid string) {
 	t[rid] = true
 }
 
-func (t restartTodoMap) Del(rid string) {
+func (t todoMap) Del(rid string) {
 	delete(t, rid)
 }
 
-func (t restartTodoMap) IsEmpty() bool {
+func (t todoMap) IsEmpty() bool {
 	return len(t) == 0
 }
 
-func newRestartTodoMap() restartTodoMap {
-	m := make(restartTodoMap)
+func newTodoMap() todoMap {
+	m := make(todoMap)
 	return m
 }
 
 func (o *imon) orchestrateResourceRestart() {
-	todo := newRestartTodoMap()
-	action := o.instConfig.MonitorAction
+	todoRestart := newTodoMap()
+	todoStandby := newTodoMap()
+
 	pubMonitorAction := func(rid string) {
-		o.pubsubBus.Pub(&msgbus.InstanceMonitorAction{Path: o.path, Node: o.localhost, Action: action, RID: rid},
+		o.pubsubBus.Pub(
+			&msgbus.InstanceMonitorAction{
+				Path:   o.path,
+				Node:   o.localhost,
+				Action: o.instConfig.MonitorAction,
+				RID:    rid,
+			},
 			o.labelPath,
-			o.labelLocalhost,
-		)
+			o.labelLocalhost)
 	}
 
 	// doPreMonitorAction executes a user-defined command before imon
@@ -107,8 +113,10 @@ func (o *imon) orchestrateResourceRestart() {
 			o.doAction(o.crmStop, instance.MonitorStateStopping, instance.MonitorStateStartFailed, instance.MonitorStateStopFailed)
 		}
 	}
+
 	resetTimer := func(rid string) {
-		todo.Del(rid)
+		todoRestart.Del(rid)
+		todoStandby.Del(rid)
 		if timer, ok := o.state.Resources.GetRestartTimer(rid); ok && timer != nil {
 			o.log.Info().Msgf("resource %s is up, reset delayed restart", rid)
 			timer.Stop()
@@ -116,6 +124,7 @@ func (o *imon) orchestrateResourceRestart() {
 			o.change = true
 		}
 	}
+
 	resetRemaining := func(rid string) {
 		rcfg, ok := o.instConfig.Resources[rid]
 		if !ok {
@@ -128,22 +137,24 @@ func (o *imon) orchestrateResourceRestart() {
 			o.change = true
 		}
 	}
+
 	resetRemainingAndTimer := func(rid string) {
 		resetRemaining(rid)
 		resetTimer(rid)
 	}
+
 	resetTimers := func() {
 		for _, res := range o.instStatus[o.localhost].Resources {
 			resetTimer(res.Rid)
 		}
 	}
-	planFor := func(rid string, resStatus status.T) {
+
+	planFor := func(rid string, resStatus status.T, started bool) {
 		rcfg, ok := o.instConfig.Resources[rid]
-		if !ok {
-			return
-		}
 		switch {
-		case rcfg.IsDisabled == true:
+		case !ok:
+			return
+		case rcfg.IsDisabled:
 			o.log.Debug().Msgf("resource %s restart skip: disable=%v", rid, rcfg.IsDisabled)
 			resetRemainingAndTimer(rid)
 		case resStatus.Is(status.NotApplicable, status.Undef):
@@ -159,22 +170,27 @@ func (o *imon) orchestrateResourceRestart() {
 		default:
 			rmon := o.state.Resources[rid]
 			o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
-			if rmon.Restart.Remaining == 0 {
-				o.state.MonitorActionExecutedAt = time.Now()
-				o.change = true
-				doMonitorAction(rid)
+			if started {
+				if rmon.Restart.Remaining == 0 {
+					o.state.MonitorActionExecutedAt = time.Now()
+					o.change = true
+					doMonitorAction(rid)
+				} else {
+					todoRestart.Add(rid)
+				}
+			} else if rcfg.IsStandby {
+				todoStandby.Add(rid)
 			} else {
-				todo.Add(rid)
+				o.log.Debug().Msgf("resource %s restart skip: instance not started", rid)
+				resetTimer(rid)
 			}
 		}
 	}
-	do := func() {
-		if todo.IsEmpty() {
-			return
-		}
+
+	getRidsAndDelay := func(todo todoMap) ([]string, time.Duration) {
+		var maxDelay time.Duration
 		rids := make([]string, 0)
 		now := time.Now()
-		var maxDelay time.Duration
 		for rid, _ := range todo {
 			rcfg := o.instConfig.Resources[rid]
 			rmon := o.state.Resources[rid]
@@ -188,10 +204,16 @@ func (o *imon) orchestrateResourceRestart() {
 				}
 			}
 			rids = append(rids, rid)
-			o.state.Resources.DecRestartRemaining(rid)
-			o.change = true
 		}
-		timer := time.AfterFunc(maxDelay, func() {
+		return rids, maxDelay
+	}
+
+	doRestart := func() {
+		rids, delay := getRidsAndDelay(todoRestart)
+		if len(rids) == 0 {
+			return
+		}
+		timer := time.AfterFunc(delay, func() {
 			now := time.Now()
 			for _, rid := range rids {
 				o.state.Resources.SetRestartLastAt(rid, now)
@@ -204,6 +226,31 @@ func (o *imon) orchestrateResourceRestart() {
 			o.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
 		})
 		for _, rid := range rids {
+			o.state.Resources.DecRestartRemaining(rid)
+			o.state.Resources.SetRestartTimer(rid, timer)
+			o.change = true
+		}
+	}
+
+	doStandby := func() {
+		rids, delay := getRidsAndDelay(todoStandby)
+		if len(rids) == 0 {
+			return
+		}
+		timer := time.AfterFunc(delay, func() {
+			now := time.Now()
+			for _, rid := range rids {
+				o.state.Resources.SetRestartLastAt(rid, now)
+				o.state.Resources.SetRestartTimer(rid, nil)
+				o.change = true
+			}
+			action := func() error {
+				return o.crmResourceStartStandby(rids)
+			}
+			o.doTransitionAction(action, instance.MonitorStateStarting, instance.MonitorStateIdle, instance.MonitorStateStartFailed)
+		})
+		for _, rid := range rids {
+			o.state.Resources.DecRestartRemaining(rid)
 			o.state.Resources.SetRestartTimer(rid, timer)
 			o.change = true
 		}
@@ -252,28 +299,28 @@ func (o *imon) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard if the instance is not idle,started
-	if instMonitor, ok := o.GetInstanceMonitor(o.localhost); !ok {
+	// discard if the instance has no monitor data
+	instMonitor, ok := o.GetInstanceMonitor(o.localhost)
+	if !ok {
 		o.log.Debug().Msgf("skip restart: no instance monitor")
 		resetTimers()
 		return
-	} else {
-		switch instMonitor.State {
-		case instance.MonitorStateIdle, instance.MonitorStateStartFailed:
-			// pass
-		default:
-			o.log.Debug().Msgf("skip restart: state=%s", instMonitor.State)
-			return
-		}
-		if instMonitor.LocalExpect != instance.MonitorLocalExpectStarted {
-			o.log.Debug().Msgf("skip restart: local_expect=%s", instMonitor.LocalExpect)
-			resetTimers()
-			return
-		}
 	}
 
-	for _, res := range o.instStatus[o.localhost].Resources {
-		planFor(res.Rid, res.Status)
+	// discard if the instance is not idle nor start failed
+	switch instMonitor.State {
+	case instance.MonitorStateIdle, instance.MonitorStateStartFailed:
+		// pass
+	default:
+		o.log.Debug().Msgf("skip restart: state=%s", instMonitor.State)
+		return
 	}
-	do()
+
+	started := instMonitor.LocalExpect == instance.MonitorLocalExpectStarted
+
+	for _, res := range o.instStatus[o.localhost].Resources {
+		planFor(res.Rid, res.Status, started)
+	}
+	doStandby()
+	doRestart()
 }

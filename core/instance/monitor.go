@@ -10,24 +10,24 @@ import (
 type (
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
-		GlobalExpect            MonitorGlobalExpect `json:"global_expect"`
-		GlobalExpectUpdated     time.Time           `json:"global_expect_updated"`
-		GlobalExpectOptions     any                 `json:"global_expect_options"`
-		IsLeader                bool                `json:"is_leader"`
-		IsHALeader              bool                `json:"is_ha_leader"`
-		LocalExpect             MonitorLocalExpect  `json:"local_expect"`
-		LocalExpectUpdated      time.Time           `json:"local_expect_updated"`
+		GlobalExpect        MonitorGlobalExpect `json:"global_expect"`
+		GlobalExpectUpdated time.Time           `json:"global_expect_updated"`
+		GlobalExpectOptions any                 `json:"global_expect_options"`
+		IsLeader            bool                `json:"is_leader"`
+		IsHALeader          bool                `json:"is_ha_leader"`
+		LocalExpect         MonitorLocalExpect  `json:"local_expect"`
+		LocalExpectUpdated  time.Time           `json:"local_expect_updated"`
 
 		// OrchestrationId is the accepted orchestration id that will be unset
 		// when orchestration is reached on local node
-		OrchestrationId         string              `json:"orchestration_id"`
+		OrchestrationId string `json:"orchestration_id"`
 
-		SessionId               string              `json:"session_id"`
-		State                   MonitorState        `json:"state"`
-		StateUpdated            time.Time           `json:"state_updated"`
-		MonitorActionExecutedAt time.Time           `json:"monitor_action_executed_at"`
-		Resources               ResourceMonitorMap  `json:"resources,omitempty"`
-		UpdatedAt               time.Time           `json:"updated_at"`
+		SessionId               string             `json:"session_id"`
+		State                   MonitorState       `json:"state"`
+		StateUpdated            time.Time          `json:"state_updated"`
+		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at"`
+		Resources               ResourceMonitorMap `json:"resources,omitempty"`
+		UpdatedAt               time.Time          `json:"updated_at"`
 	}
 
 	ResourceMonitorMap map[string]ResourceMonitor
@@ -338,6 +338,26 @@ func (m ResourceMonitorMap) GetRestartRemaining(rid string) (int, bool) {
 		return rmon.Restart.Remaining, true
 	} else {
 		return 0, false
+	}
+}
+
+func (m ResourceMonitorMap) GetRestart(rid string) (ResourceMonitorRestart, bool) {
+	if rmon, ok := m[rid]; ok {
+		return rmon.Restart, true
+	} else {
+		return ResourceMonitorRestart{}, false
+	}
+}
+
+func (m ResourceMonitorMap) StopRestartTimer(rid string) bool {
+	if rmon, ok := m[rid]; !ok {
+		return false
+	} else if rmon.Restart.Timer == nil {
+		return false
+	} else {
+		rmon.Restart.Timer.Stop()
+		rmon.Restart.Timer = nil
+		return true
 	}
 }
 

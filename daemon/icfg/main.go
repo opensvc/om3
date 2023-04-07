@@ -330,6 +330,7 @@ func (o *T) getResources(cf *xconfig.T) map[string]instance.ResourceConfig {
 			Restart:      cf.GetInt(key.New(section, "restart")),
 			IsDisabled:   cf.GetBool(key.New(section, "disable")),
 			IsMonitored:  cf.GetBool(key.New(section, "monitor")),
+			IsStandby:    cf.GetBool(key.New(section, "standby")),
 		}
 	}
 	return m
