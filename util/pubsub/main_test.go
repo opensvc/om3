@@ -22,7 +22,33 @@ type (
 		Msg
 		v interface{}
 	}
+
+	msgS struct {
+		Msg
+		v string
+	}
+
+	msgI struct {
+		Msg
+		v uint64
+	}
+
+	Valuer interface {
+		Value() interface{}
+	}
 )
+
+func (m *msgT) Value() interface{} {
+	return m.v
+}
+
+func (m *msgS) Value() interface{} {
+	return m.v
+}
+
+func (m *msgI) Value() interface{} {
+	return m.v
+}
 
 func TestPub(t *testing.T) {
 	bus := newRun(t.Name())
@@ -115,17 +141,17 @@ func TestSub(t *testing.T) {
 
 		"subscribe with (type), (type, label), (type, &&label)": {
 			filters: []testFilter{
-				{filterType: uint64(9)},
+				{filterType: &msgI{v: 9}},
 				{labels: []Label{{"xx", "XXX"}}},
-				{filterType: "", labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+				{filterType: &msgS{}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
 			},
 			pubs: []testPub{
-				{v: &msgT{v: uint64(9)}},
+				{v: &msgI{v: uint64(9)}},
 				{v: &msgT{v: []string{"matching label but not type"}}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
-				{v: &msgT{v: "foo"}, labels: []Label{{"xx", "XXX"}}},
+				{v: &msgS{v: "foo"}, labels: []Label{{"xx", "XXX"}}},
 				{v: &msgT{v: 1}, labels: []Label{{"xx", "XXX"}}},
-				{v: &msgT{v: "two-label-match"}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
-				{v: &msgT{v: "only-one-label-is-no-enough"}, labels: []Label{{"f1", "f1"}}},
+				{v: &msgS{v: "two-label-match"}, labels: []Label{{"f1", "F1"}, {"f2", "F2"}}},
+				{v: &msgS{v: "only-one-label-is-no-enough"}, labels: []Label{{"f1", "f1"}}},
 				{v: &msgT{v: []string{"with-other-label1", "with-other-label2"}}, labels: []Label{{"xx", "other-label"}}},
 				{v: &msgT{v: []string{"foo1", "foo2"}}, labels: []Label{{"xx", "XXX"}}},
 			},
@@ -166,6 +192,8 @@ func TestSub(t *testing.T) {
 					select {
 					case i := <-sub.C:
 						switch v := i.(type) {
+						case Valuer:
+							received = append(received, v.Value())
 						default:
 							received = append(received, v)
 						}
@@ -175,6 +203,10 @@ func TestSub(t *testing.T) {
 				}
 			}()
 			require.Equal(t, c.expected, <-receivedC)
+			//r := <-receivedC
+			//for i, v := range c.expected {
+			//	require.Equal(t, v, r[i].(Valuer).Value())
+			//}
 		})
 	}
 }
@@ -189,7 +221,7 @@ func TestDropSlowSubscription(t *testing.T) {
 
 			t.Log("subscribe on SubscriptionError")
 			subAlert := bus.Sub("listen SubscriptionError")
-			subAlert.AddFilter(SubscriptionError{})
+			subAlert.AddFilter(&SubscriptionError{})
 			subAlert.Start()
 			defer func() {
 				assert.NoError(t, subAlert.Stop(), "%s stop error", subAlert)
@@ -210,14 +242,14 @@ func TestDropSlowSubscription(t *testing.T) {
 			for i := 0; i < int(queueSize)+2; i++ {
 				bus.Pub(&msgT{v: i})
 			}
-			assert.IsType(t, 0, <-slowSub.C, "expected at least one message on %s", slowSub)
+			assert.IsType(t, &msgT{}, <-slowSub.C, "expected at least one message on %s", slowSub)
 
 			ctx, cancel := context.WithTimeout(context.Background(), waitAlertDuration)
 			defer cancel()
 
 			select {
 			case i := <-subAlert.C:
-				assert.IsTypef(t, SubscriptionError{}, i, "missing message SubscriptionError")
+				assert.IsTypef(t, &SubscriptionError{}, i, "missing message SubscriptionError")
 				t.Logf("alert is %s %v", reflect.TypeOf(i), i)
 			case <-ctx.Done():
 				assert.Nilf(t, ctx.Err(), "SubscriptionError not yet received")
