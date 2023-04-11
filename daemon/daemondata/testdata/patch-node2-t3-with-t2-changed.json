@@ -1,23 +1,11 @@
 {
   "kind": "patch",
-  "deltas": {
+  "events": {
     "21": [
-      [
-        [
-          "stats",
-          "load_15m"
-        ],
-        2
-      ]
+      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":2,"mem_avail":10,"mem_total":1000,"score":0,"swap_avail":89,"swap_total":121}}}
     ],
     "22": [
-      [
-        [
-          "stats",
-          "score"
-        ],
-        2
-      ]
+      {"kind":"InstanceConfigUpdated","data":{"Labels":[["path","foo"],["node","node2"]],"Path":"foo","Node":"node2","Value":{"csum":"b06b3d0039a6fec4ed542951a2623b23","orchestrate":"no","placement_policy":"nodes order","priority":50,"resources":{},"scope":["node2"],"topology":"failover","updated":"2023-04-11T09:07:05.852864117+02:00"}}}
     ]
   },
   "gen": {

@@ -41,7 +41,7 @@ func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, para
 	}
 	subRefreshed.Unlock()
 
-	status := databus.GetStatus()
+	status := databus.ClusterData()
 	if params.Selector != nil {
 		status = status.WithSelector(*params.Selector)
 	}

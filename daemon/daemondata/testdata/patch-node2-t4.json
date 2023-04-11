@@ -1,23 +1,11 @@
 {
   "kind": "patch",
-  "deltas": {
+  "events": {
     "24": [
-      [
-        [
-          "stats",
-          "score"
-        ],
-        30
-      ]
+      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":0.5,"mem_avail":10,"mem_total":1000,"score":30,"swap_avail":89,"swap_total":11}}}
     ],
     "25": [
-      [
-        [
-          "stats",
-          "swap_total"
-        ],
-        25
-      ]
+      {"kind":"NodeStatsUpdated","data":{"Labels":[["node","node2"],["peer","true"]],"Node":"node2","Value":{"load_15m":2,"mem_avail":10,"mem_total":1000,"score":30,"swap_avail":89,"swap_total":25}}}
     ]
   },
   "gen": {

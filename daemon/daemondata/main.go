@@ -6,11 +6,11 @@ cmdC, cancel := daemondata.Start(context.Background())
 defer cancel()
 dataBus := daemondata.New(cmdC)
 
-status := dataBus.GetStatus() // retrieve daemon data
+status := dataBus.ClusterData() // retrieve daemon data
 bus.ApplyFull("remote-1", remoteNodeStatus)
 bus.ApplyPatch("remote-1", patchMsg)
 bus.CommitPending(context.Background())
-status = bus.GetStatus()
+status = bus.ClusterData()
 localNodeStatus := bus.GetLocalNodeStatus()
 */
 package daemondata
