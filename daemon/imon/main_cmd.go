@@ -103,7 +103,7 @@ func (o *imon) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		case *msgbus.InstanceConfigUpdated:
 			o.onInstanceConfigUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigDeleted:
-			o.onInstanceConfigDeletedFromNode(c.Node)
+			o.onInstanceConfigDeletedFromNode(srcCmd.Node)
 		case *msgbus.InstanceMonitorUpdated:
 			o.onInstanceMonitorUpdated(srcCmd)
 		case *msgbus.InstanceMonitorDeleted:
