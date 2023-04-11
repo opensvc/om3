@@ -16,40 +16,42 @@ type (
 
 func (data *ClusterData) ApplyMessage(m pubsub.Messager) error {
 	switch c := m.(type) {
+	case *ClusterStatusUpdated:
+		data.onClusterStatusUpdated(c)
 	case *ClusterConfigUpdated:
-		data.OnClusterConfigUpdated(c)
+		data.onClusterConfigUpdated(c)
 	case *DaemonHb:
-		data.OnDaemonHb(c)
+		data.onDaemonHb(c)
 	case *ObjectStatusDeleted:
 		data.onObjectStatusDeleted(c)
 	case *ObjectStatusUpdated:
 		data.onObjectStatusUpdated(c)
 	case *InstanceConfigDeleted:
-		data.OnInstanceConfigDeleted(c)
+		data.onInstanceConfigDeleted(c)
 	case *InstanceConfigUpdated:
-		data.OnInstanceConfigUpdated(c)
+		data.onInstanceConfigUpdated(c)
 	case *InstanceMonitorDeleted:
-		data.OnInstanceMonitorDeleted(c)
+		data.onInstanceMonitorDeleted(c)
 	case *InstanceMonitorUpdated:
-		data.OnInstanceMonitorUpdated(c)
+		data.onInstanceMonitorUpdated(c)
 	case *InstanceStatusDeleted:
-		data.OnInstanceStatusDeleted(c)
+		data.onInstanceStatusDeleted(c)
 	case *InstanceStatusUpdated:
-		data.OnInstanceStatusUpdated(c)
+		data.onInstanceStatusUpdated(c)
 	case *NodeConfigUpdated:
-		data.OnNodeConfigUpdated(c)
+		data.onNodeConfigUpdated(c)
 	case *NodeDataUpdated:
 		data.onNodeDataUpdated(c)
 	case *NodeMonitorDeleted:
-		data.OnNodeMonitorDeleted(c)
+		data.onNodeMonitorDeleted(c)
 	case *NodeMonitorUpdated:
-		data.OnNodeMonitorUpdated(c)
+		data.onNodeMonitorUpdated(c)
 	case *NodeOsPathsUpdated:
-		data.OnNodeOsPathsUpdated(c)
+		data.onNodeOsPathsUpdated(c)
 	case *NodeStatsUpdated:
-		data.OnNodeStatsUpdated(c)
+		data.onNodeStatsUpdated(c)
 	case *NodeStatusUpdated:
-		data.OnNodeStatusUpdated(c)
+		data.onNodeStatusUpdated(c)
 	default:
 	}
 	return nil

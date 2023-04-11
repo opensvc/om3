@@ -5,8 +5,8 @@ import (
 	"github.com/opensvc/om3/core/node"
 )
 
-// OnInstanceMonitorDeleted delete .cluster.node.<node>.instance.<path>.monitor
-func (data *ClusterData) OnInstanceMonitorDeleted(m *InstanceMonitorDeleted) {
+// onInstanceMonitorDeleted delete .cluster.node.<node>.instance.<path>.monitor
+func (data *ClusterData) onInstanceMonitorDeleted(m *InstanceMonitorDeleted) {
 	s := m.Path.String()
 	if inst, ok := data.Cluster.Node[m.Node].Instance[s]; ok && inst.Monitor != nil {
 		inst.Monitor = nil
@@ -14,8 +14,8 @@ func (data *ClusterData) OnInstanceMonitorDeleted(m *InstanceMonitorDeleted) {
 	}
 }
 
-// OnInstanceMonitorUpdated updates .cluster.node.<node>.instance.<path>.monitor
-func (data *ClusterData) OnInstanceMonitorUpdated(m *InstanceMonitorUpdated) {
+// onInstanceMonitorUpdated updates .cluster.node.<node>.instance.<path>.monitor
+func (data *ClusterData) onInstanceMonitorUpdated(m *InstanceMonitorUpdated) {
 	s := m.Path.String()
 	value := &m.Value
 	if cnode, ok := data.Cluster.Node[m.Node]; ok {

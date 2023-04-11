@@ -1,6 +1,6 @@
 package msgbus
 
-// OnClusterConfigUpdated sets .cluster.config
-func (data *ClusterData) OnClusterConfigUpdated(c *ClusterConfigUpdated) {
+// onClusterConfigUpdated sets .cluster.config
+func (data *ClusterData) onClusterConfigUpdated(c *ClusterConfigUpdated) {
 	data.Cluster.Config = c.Value
 }
