@@ -67,6 +67,10 @@ func setup(t *testing.T) {
 func TestDaemonData(t *testing.T) {
 	setup(t)
 
+	// waitDurationForHbMsgProcessed is the duration to wait after a message is sent to the hbRecvMsgQ (the message
+	// process may take few milliseconds)
+	waitDurationForHbMsgProcessed := 50 * time.Millisecond
+
 	drainDuration := 10 * time.Millisecond
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -159,6 +163,7 @@ func TestDaemonData(t *testing.T) {
 				Nodename: remoteHost,
 			}
 			hbRecvMsgQ <- &msg
+			time.Sleep(waitDurationForHbMsgProcessed)
 
 			nodeLocal := bus.ClusterNodeData(remoteHost)
 			t.Log("check cluster local gens view of remote")
@@ -192,6 +197,7 @@ func TestDaemonData(t *testing.T) {
 				Nodename: peerNotMemmber,
 			}
 			hbRecvMsgQ <- &msg
+			time.Sleep(waitDurationForHbMsgProcessed)
 
 			assert.Nilf(t, bus.ClusterNodeData(peerNotMemmber),
 				"not cluster member '%s' message should not be applied", peerNotMemmber)
@@ -205,6 +211,7 @@ func TestDaemonData(t *testing.T) {
 			t.Run("patch-node2-t2.json", func(t *testing.T) {
 				patchMsg := LoadPatch(t, "patch-node2-t2.json")
 				hbRecvMsgQ <- patchMsg
+				time.Sleep(waitDurationForHbMsgProcessed)
 
 				nodeLocal := bus.ClusterNodeData(localNode)
 				require.Equal(t, patchMsg.Gen[remoteHost], nodeLocal.Status.Gen[remoteHost], "local node gens has not been updated with remote gen value")
@@ -223,8 +230,7 @@ func TestDaemonData(t *testing.T) {
 				assert.Equal(t, instance.MonitorStateStarting, bus.ClusterNodeData(remoteHost).Instance["foo"].Monitor.State)
 				patchMsg := LoadPatch(t, "patch-node2-t3-with-t2-changed.json")
 				hbRecvMsgQ <- patchMsg
-
-				time.Sleep(10 * time.Millisecond)
+				time.Sleep(waitDurationForHbMsgProcessed)
 
 				remoteNode := bus.ClusterNodeData(remoteHost)
 				assert.Equal(t, 0.5, remoteNode.Stats.Load15M, "hum hacked gen 21 has been reapplied !")
@@ -238,6 +244,8 @@ func TestDaemonData(t *testing.T) {
 				assert.Equal(t, uint64(22), nextMsgType.Gens[remoteHost], "expect remote applied gen 22")
 				patchMsg := LoadPatch(t, "patch-node2-t4.json")
 				hbRecvMsgQ <- patchMsg
+				time.Sleep(waitDurationForHbMsgProcessed)
+
 				nextMsgType = bus.GetHbMessageType()
 				t.Logf("show next message type after apply broken sequence: %+v", nextMsgType)
 				assert.Equal(t, uint64(0), nextMsgType.Gens[remoteHost], "expect local node needs full from remote")
