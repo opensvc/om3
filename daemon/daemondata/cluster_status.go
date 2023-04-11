@@ -6,11 +6,11 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 )
 
-// GetStatus returns deep copy of status
-func (t T) GetStatus() *cluster.Data {
+// ClusterData returns deep copy of status
+func (t T) ClusterData() *cluster.Data {
 	status := make(chan *cluster.Data, 1)
 	err := make(chan error, 1)
-	t.cmdC <- opGetStatus{
+	t.cmdC <- opGetClusterData{
 		errC:   err,
 		status: status,
 	}
@@ -20,12 +20,12 @@ func (t T) GetStatus() *cluster.Data {
 	return <-status
 }
 
-type opGetStatus struct {
+type opGetClusterData struct {
 	errC
 	status chan<- *cluster.Data
 }
 
-func (o opGetStatus) call(ctx context.Context, d *data) error {
+func (o opGetClusterData) call(ctx context.Context, d *data) error {
 	d.statCount[idGetStatus]++
 	o.status <- d.clusterData.DeepCopy()
 	return nil

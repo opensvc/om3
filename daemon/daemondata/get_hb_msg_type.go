@@ -11,6 +11,7 @@ type (
 		Type        string
 		Nodes       []string
 		JoinedNodes []string
+		Gens        map[string]uint64
 	}
 	opGetHbMessageType struct {
 		errC
@@ -40,6 +41,7 @@ func (o opGetHbMessageType) call(ctx context.Context, d *data) error {
 		Type:        d.hbMessageType,
 		Nodes:       d.clusterData.Cluster.Config.Nodes,
 		JoinedNodes: xmap.Keys(d.hbGens[d.localNode]),
+		Gens:        d.deepCopyLocalGens(),
 	}
 	return nil
 }

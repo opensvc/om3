@@ -399,18 +399,18 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 // that match c expectation, or latest received InstanceMonitorUpdated when duration is reached.
 //
 // It emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
-func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase, factory Factory) <-chan msgbus.InstanceMonitorUpdated {
-	r := make(chan chan msgbus.InstanceMonitorUpdated)
+func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, duration time.Duration, c tCase, factory Factory) <-chan *msgbus.InstanceMonitorUpdated {
+	r := make(chan chan *msgbus.InstanceMonitorUpdated)
 
 	go func() {
 		var (
-			evC = make(chan msgbus.InstanceMonitorUpdated)
+			evC = make(chan *msgbus.InstanceMonitorUpdated)
 
 			p = path.T{Kind: kind.Svc, Name: c.name}
 
 			monStarted bool
 
-			latestInstanceMonitorUpdated msgbus.InstanceMonitorUpdated
+			latestInstanceMonitorUpdated *msgbus.InstanceMonitorUpdated
 		)
 		ctx, cancel := context.WithTimeout(ctx, duration)
 		defer cancel()
@@ -435,7 +435,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 				return
 			case i := <-sub.C:
 				switch o := i.(type) {
-				case msgbus.InstanceConfigUpdated:
+				case *msgbus.InstanceConfigUpdated:
 					if monStarted {
 						continue
 					}
@@ -444,7 +444,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 						t.Errorf("omon.Start failed: %s", err)
 					}
 					monStarted = true
-				case msgbus.InstanceMonitorUpdated:
+				case *msgbus.InstanceMonitorUpdated:
 					latestInstanceMonitorUpdated = o
 					value := o.Value
 					t.Logf("----  WATCH InstanceMonitorUpdated %s state: %s localExpect: %s globalExpect: %s isLeader: %v isHaLeader: %v",

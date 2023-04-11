@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -67,6 +68,10 @@ func setup(t *testing.T) {
 func TestDaemonData(t *testing.T) {
 	setup(t)
 
+	// waitDurationForHbMsgProcessed is the duration to wait after a message is sent to the hbRecvMsgQ (the message
+	// process may take few milliseconds)
+	waitDurationForHbMsgProcessed := 50 * time.Millisecond
+
 	drainDuration := 10 * time.Millisecond
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,6 +80,8 @@ func TestDaemonData(t *testing.T) {
 	psbus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, psbus)
 	defer psbus.Stop()
+
+	hbcache.Start(ctx, drainDuration)
 
 	t.Logf("start daemondata")
 	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx, 10*time.Millisecond)
@@ -102,13 +109,13 @@ func TestDaemonData(t *testing.T) {
 		})
 		require.False(t, t.Failed()) // fail on first error
 
-		t.Run("GetNode return node data with local data initialized", func(t *testing.T) {
-			localNode := bus.GetNode(localNode)
+		t.Run("ClusterNodeData return node data with local data initialized", func(t *testing.T) {
+			localNode := bus.ClusterNodeData(localNode)
 			require.Equalf(t, node.MonitorGlobalExpectNone, localNode.Monitor.GlobalExpect,
 				"got %+v", localNode)
 		})
 		t.Run("the initial localhost node monitor state must prevent imon orchestrations (not idle)", func(t *testing.T) {
-			localNode := bus.GetNode(localNode)
+			localNode := bus.ClusterNodeData(localNode)
 			require.NotEqualf(t, node.MonitorStateIdle, localNode.Monitor.State,
 				"The initial localhost node monitor state doesn't prevent imon to orchestrate: got %+v", localNode)
 		})
@@ -116,11 +123,11 @@ func TestDaemonData(t *testing.T) {
 	})
 	require.False(t, t.Failed()) // fail on first error
 
-	t.Run("Ensure GetNode result is a deep copy", func(t *testing.T) {
-		initial := bus.GetNode(localNode)
+	t.Run("Ensure ClusterNodeData result is a deep copy", func(t *testing.T) {
+		initial := bus.ClusterNodeData(localNode)
 		initial.Monitor.State = node.MonitorStateIdle
 		initial.Status.Gen[localNode] = 30
-		refreshed := bus.GetNode(localNode)
+		refreshed := bus.ClusterNodeData(localNode)
 		assert.NotNil(t, refreshed)
 		assert.Equal(t, uint64(1), refreshed.Status.Gen[localNode])
 		assert.Equal(t, node.MonitorStateZero, refreshed.Monitor.State)
@@ -155,16 +162,17 @@ func TestDaemonData(t *testing.T) {
 			msg := hbtype.Msg{
 				Kind:     "full",
 				Gen:      fullGens,
-				Full:     *full,
+				Full:     *full.DeepCopy(),
 				Nodename: remoteHost,
 			}
 			hbRecvMsgQ <- &msg
+			time.Sleep(waitDurationForHbMsgProcessed)
 
-			nodeLocal := bus.GetNode(remoteHost)
+			nodeLocal := bus.ClusterNodeData(remoteHost)
 			t.Log("check cluster local gens view of remote")
 			require.Equal(t, full.Status.Gen[remoteHost], nodeLocal.Status.Gen[remoteHost], "local node gens has not been updated with remote gen value")
 
-			nodeRemote := bus.GetNode(remoteHost)
+			nodeRemote := bus.ClusterNodeData(remoteHost)
 			t.Log("check remote node gens")
 			require.Equal(t, full.Status.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 			t.Log("check remote node instance status")
@@ -192,10 +200,11 @@ func TestDaemonData(t *testing.T) {
 				Nodename: peerNotMemmber,
 			}
 			hbRecvMsgQ <- &msg
+			time.Sleep(waitDurationForHbMsgProcessed)
 
-			assert.Nilf(t, bus.GetNode(peerNotMemmber),
+			assert.Nilf(t, bus.ClusterNodeData(peerNotMemmber),
 				"not cluster member '%s' message should not be applied", peerNotMemmber)
-			nodeLocal := bus.GetNode(localNode)
+			nodeLocal := bus.ClusterNodeData(localNode)
 			notPeerGens, ok := nodeLocal.Status.Gen[peerNotMemmber]
 			assert.Falsef(t, ok, "not cluster member has been added to local status gens: %v", notPeerGens)
 		})
@@ -205,11 +214,12 @@ func TestDaemonData(t *testing.T) {
 			t.Run("patch-node2-t2.json", func(t *testing.T) {
 				patchMsg := LoadPatch(t, "patch-node2-t2.json")
 				hbRecvMsgQ <- patchMsg
+				time.Sleep(waitDurationForHbMsgProcessed)
 
-				nodeLocal := bus.GetNode(localNode)
+				nodeLocal := bus.ClusterNodeData(localNode)
 				require.Equal(t, patchMsg.Gen[remoteHost], nodeLocal.Status.Gen[remoteHost], "local node gens has not been updated with remote gen value")
 
-				nodeRemote := bus.GetNode(remoteHost)
+				nodeRemote := bus.ClusterNodeData(remoteHost)
 				require.NotNil(t, nodeRemote)
 				require.Equal(t, patchMsg.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 				require.Equal(t, 0.5, nodeRemote.Stats.Load15M)
@@ -220,27 +230,33 @@ func TestDaemonData(t *testing.T) {
 			require.False(t, t.Failed()) // fail on first error
 
 			t.Run("patch with some already applied gens gen patch-node2-t3-with-t2-changed.json", func(t *testing.T) {
-				assert.Equal(t, instance.MonitorStateStarting, bus.GetNode(remoteHost).Instance["foo"].Monitor.State)
+				assert.Equal(t, instance.MonitorStateStarting, bus.ClusterNodeData(remoteHost).Instance["foo"].Monitor.State)
 				patchMsg := LoadPatch(t, "patch-node2-t3-with-t2-changed.json")
 				hbRecvMsgQ <- patchMsg
+				time.Sleep(waitDurationForHbMsgProcessed)
 
-				remoteNode := bus.GetNode(remoteHost)
+				remoteNode := bus.ClusterNodeData(remoteHost)
 				assert.Equal(t, 0.5, remoteNode.Stats.Load15M, "hum hacked gen 21 has been reapplied !")
-				assert.Equal(t, uint64(2), remoteNode.Stats.Score, "hum gen 22 has not been applied !")
+				assert.Equal(t, "b06b3d0039a6fec4ed542951a2623b23", remoteNode.Instance["foo"].Config.Checksum, "hum gen 22 has not been applied !")
 			})
 			require.False(t, t.Failed()) // fail on first error
 
 			t.Run("broken gen sequence patch-node2-t4.json", func(t *testing.T) {
+				nextMsgType := bus.GetHbMessageType()
+				t.Logf("show next message type before apply broken sequence: %+v", nextMsgType)
+				assert.Equal(t, uint64(22), nextMsgType.Gens[remoteHost], "expect remote applied gen 22")
 				patchMsg := LoadPatch(t, "patch-node2-t4.json")
 				hbRecvMsgQ <- patchMsg
+				time.Sleep(waitDurationForHbMsgProcessed)
 
-				localNode := bus.GetNode(localNode)
-				assert.Equal(t, uint64(0), localNode.Status.Gen[remoteHost], "expect local node needs full from remote")
+				nextMsgType = bus.GetHbMessageType()
+				t.Logf("show next message type after apply broken sequence: %+v", nextMsgType)
+				assert.Equal(t, uint64(0), nextMsgType.Gens[remoteHost], "expect local node needs full from remote")
 
 				t.Log("ensure future delta not applied")
-				remoteNode := bus.GetNode(remoteHost)
+				remoteNode := bus.ClusterNodeData(remoteHost)
 				require.NotNil(t, remoteNode)
-				require.Equal(t, uint64(2), bus.GetNode(remoteHost).Stats.Score, "hum some remote data should has been applied !")
+				require.Equal(t, uint64(2), bus.ClusterData().GetNodeData(remoteHost).Stats.Score, "hum have applied broken sequence data !")
 
 			})
 			require.False(t, t.Failed()) // fail on first error
@@ -248,7 +264,7 @@ func TestDaemonData(t *testing.T) {
 		require.False(t, t.Failed()) // fail on first error
 
 		t.Run("verify cluster schema", func(t *testing.T) {
-			cluster := bus.GetStatus().Cluster
+			cluster := bus.ClusterData().Cluster
 
 			// cluster.node.<node>.config
 			require.Equal(t, "cluster1", cluster.Config.Name)
