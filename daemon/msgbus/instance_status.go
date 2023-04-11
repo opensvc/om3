@@ -5,8 +5,8 @@ import (
 	"github.com/opensvc/om3/core/node"
 )
 
-// OnInstanceStatusDeleted remove .cluster.node.<node>.instance.<path>.status
-func (data *ClusterData) OnInstanceStatusDeleted(c *InstanceStatusDeleted) {
+// onInstanceStatusDeleted remove .cluster.node.<node>.instance.<path>.status
+func (data *ClusterData) onInstanceStatusDeleted(c *InstanceStatusDeleted) {
 	s := c.Path.String()
 	if inst, ok := data.Cluster.Node[c.Node].Instance[s]; ok && inst.Status != nil {
 		inst.Status = nil
@@ -14,8 +14,8 @@ func (data *ClusterData) OnInstanceStatusDeleted(c *InstanceStatusDeleted) {
 	}
 }
 
-// OnInstanceStatusUpdated updates .cluster.node.<node>.instance.<path>.status
-func (data *ClusterData) OnInstanceStatusUpdated(c *InstanceStatusUpdated) {
+// onInstanceStatusUpdated updates .cluster.node.<node>.instance.<path>.status
+func (data *ClusterData) onInstanceStatusUpdated(c *InstanceStatusUpdated) {
 	s := c.Path.String()
 	value := c.Value.DeepCopy()
 	if cnode, ok := data.Cluster.Node[c.Node]; ok {

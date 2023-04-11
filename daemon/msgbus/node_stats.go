@@ -1,7 +1,7 @@
 package msgbus
 
-// OnNodeStatsUpdated updates .cluster.node.<node>.stats
-func (data *ClusterData) OnNodeStatsUpdated(m *NodeStatsUpdated) {
+// onNodeStatsUpdated updates .cluster.node.<node>.stats
+func (data *ClusterData) onNodeStatsUpdated(m *NodeStatsUpdated) {
 	v := data.Cluster.Node[m.Node]
 	if v.Stats == m.Value {
 		return
