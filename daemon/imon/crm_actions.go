@@ -37,7 +37,7 @@ func SetCmdPathForTest(s string) {
 
 func (o *imon) orchestrateAfterAction(state, newState instance.MonitorState) {
 	select {
-	case <- o.ctx.Done():
+	case <-o.ctx.Done():
 		return
 	default:
 	}
@@ -58,6 +58,11 @@ func (o *imon) crmProvisionNonLeader() error {
 
 func (o *imon) crmProvisionLeader() error {
 	return o.crmAction("provision leader", o.path.String(), "provision", "--local", "--leader", "--disable-rollback")
+}
+
+func (o *imon) crmResourceStartStandby(rids []string) error {
+	s := strings.Join(rids, ",")
+	return o.crmAction("start", o.path.String(), "startstandby", "--local", "--rid", s)
 }
 
 func (o *imon) crmResourceStart(rids []string) error {

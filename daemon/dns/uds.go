@@ -96,7 +96,7 @@ func (t *dns) startUDSListener() error {
 
 	sendBytes := func(conn net.Conn, b []byte) error {
 		b = append(b, []byte("\n")...)
-		t.log.Info().Msgf("response: %s", string(b))
+		t.log.Debug().Msgf("response: %s", string(b))
 		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 		for {
 			n, err := conn.Write(b)
@@ -138,7 +138,7 @@ func (t *dns) startUDSListener() error {
 			req     request
 		)
 		defer conn.Close()
-		t.log.Info().Msgf("Client connected [%s]", conn.RemoteAddr().Network())
+		t.log.Debug().Msg("Client connected")
 		for {
 			conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 			buffer := make([]byte, 1024)
@@ -147,9 +147,11 @@ func (t *dns) startUDSListener() error {
 			message = buffer[:n]
 
 			if n > 0 {
-				t.log.Info().Msgf("request: %s", string(message))
+				t.log.Debug().Msgf("request: %s", string(message))
 			}
-			if err != nil {
+			if os.IsTimeout(err) {
+				return
+			} else if err != nil {
 				t.log.Error().Err(err).Msg("request read")
 				return
 			}
