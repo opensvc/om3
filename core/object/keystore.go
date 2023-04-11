@@ -1,7 +1,6 @@
 package object
 
 import (
-	"io/ioutil"
 	"os"
 
 	"github.com/opensvc/om3/util/key"
@@ -62,7 +61,7 @@ func (t keystore) temporaryKeyFile(name string) (f *os.File, err error) {
 	if b, err = t.decode(name); err != nil {
 		return
 	}
-	if f, err = ioutil.TempFile(t.core.paths.tmpDir, ".TemporaryKeyFile.*"); err != nil {
+	if f, err = os.CreateTemp(t.core.paths.tmpDir, ".TemporaryKeyFile.*"); err != nil {
 		return
 	}
 	if _, err = f.Write(b); err != nil {

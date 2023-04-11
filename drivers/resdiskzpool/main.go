@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -79,7 +78,7 @@ func (t T) updateSubDevsFile() ([]string, error) {
 
 func (t T) writeSubDevsFile(l []string) error {
 	path := t.subDevsFilePath()
-	f, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
 		return errors.Wrap(err, "open temp sub devs cache")
 	}
