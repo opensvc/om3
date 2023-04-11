@@ -16,7 +16,9 @@ func (o *imon) orchestratePurged() {
 		o.purgedFromUnprovisioned()
 	case instance.MonitorStateWaitNonLeader:
 		o.purgedFromWaitNonLeader()
-	case instance.MonitorStateUnprovisioning:
+	case instance.MonitorStateUnprovisioning,
+		instance.MonitorStateDeleting,
+		instance.MonitorStateStopping:
 	default:
 		o.log.Warn().Msgf("orchestratePurged has no solution from state %s", o.state.State)
 	}
