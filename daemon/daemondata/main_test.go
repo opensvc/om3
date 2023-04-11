@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/testhelper"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -79,6 +80,8 @@ func TestDaemonData(t *testing.T) {
 	psbus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, psbus)
 	defer psbus.Stop()
+
+	hbcache.Start(ctx, drainDuration)
 
 	t.Logf("start daemondata")
 	cmdC, hbRecvMsgQ, cancel := daemondata.Start(ctx, 10*time.Millisecond)
