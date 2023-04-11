@@ -155,7 +155,7 @@ func TestDaemonData(t *testing.T) {
 			msg := hbtype.Msg{
 				Kind:     "full",
 				Gen:      fullGens,
-				Full:     *full,
+				Full:     *full.DeepCopy(),
 				Nodename: remoteHost,
 			}
 			hbRecvMsgQ <- &msg
