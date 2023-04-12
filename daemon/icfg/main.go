@@ -120,10 +120,7 @@ func (o *T) startSubscriptions() {
 	o.sub = o.bus.Sub(o.path.String() + " icfg")
 	o.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
 	o.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
-	// TODO change AddFilterGetLast to AddFilter + cache for ClusterConfigUpdated
-	if last := o.sub.AddFilterGetLast(&msgbus.ClusterConfigUpdated{}); last != nil {
-		o.onClusterConfigUpdated(last.(*msgbus.ClusterConfigUpdated))
-	}
+	o.sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	if o.path.String() != clusterId {
 		o.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", clusterId})
 	}
@@ -135,6 +132,9 @@ func (o *T) worker() {
 	defer o.log.Debug().Msg("done")
 	o.log.Debug().Msg("starting")
 
+	if last := cluster.ConfigData.Get(); last != nil {
+		o.onClusterConfigUpdated(&msgbus.ClusterConfigUpdated{Value: *last})
+	}
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := o.configFileCheck(); err != nil {
 		o.log.Warn().Err(err).Msg("initial configFileCheck")
