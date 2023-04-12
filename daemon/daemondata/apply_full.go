@@ -1,6 +1,9 @@
 package daemondata
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -22,53 +25,313 @@ func (d *data) applyFull(msg *hbtype.Msg) error {
 
 	d.bus.Pub(&msgbus.NodeDataUpdated{Node: remote, Value: msg.Full}, peerLabel, labelPeerNode)
 
-	// TODO improve delta change has it was done in apply_commit_remote_diff to
-	// avoid recreate all events on each applied full
-	node.StatusData.Set(remote, &msg.Full.Status)
-	d.bus.Pub(&msgbus.NodeStatusUpdated{Node: remote, Value: msg.Full.Status},
-		labelPeerNode,
-		peerLabel,
-	)
-	node.ConfigData.Set(remote, &msg.Full.Config)
-	d.bus.Pub(&msgbus.NodeConfigUpdated{Node: remote, Value: msg.Full.Config},
-		labelPeerNode,
-		peerLabel,
-	)
-	node.MonitorData.Set(remote, &msg.Full.Monitor)
-	d.bus.Pub(&msgbus.NodeMonitorUpdated{Node: remote, Value: msg.Full.Monitor},
-		labelPeerNode,
-		peerLabel,
-	)
-	for s, i := range msg.Full.Instance {
-		p, err := path.Parse(s)
-		if err != nil {
-			panic("invalid instance path: " + s)
+	d.pubPeerDataChanges(remote)
+	return nil
+}
+
+func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
+	if prev, ok := d.previousRemoteInfo[peer]; ok {
+		if prev.gen == d.clusterData.Cluster.Node[peer].Status.Gen[peer] {
+			return nil
 		}
-		if i.Config != nil {
-			instance.ConfigData.Set(p, remote, i.Config)
-			d.bus.Pub(&msgbus.InstanceConfigUpdated{Path: p, Node: remote, Value: *i.Config},
-				pubsub.Label{"path", s},
-				labelPeerNode,
-				peerLabel,
-			)
+	}
+	c := d.clusterData.Cluster.Node[peer]
+	result := remoteInfo{
+		nodeStatus:        *c.Status.DeepCopy(),
+		nodeStats:         *c.Stats.DeepCopy(),
+		nodeConfig:        *c.Config.DeepCopy(),
+		imonUpdated:       make(map[string]time.Time),
+		instConfigUpdated: make(map[string]time.Time),
+		instStatusUpdated: make(map[string]time.Time),
+	}
+
+	nmonUpdated := c.Monitor.StateUpdated
+	if c.Monitor.GlobalExpectUpdated.After(nmonUpdated) {
+		nmonUpdated = c.Monitor.GlobalExpectUpdated
+	}
+	result.nmonUpdated = nmonUpdated
+
+	for p, inst := range c.Instance {
+		if inst.Status != nil {
+			instUpdated := inst.Status.Updated
+			if inst.Status.Frozen.After(instUpdated) {
+				instUpdated = inst.Status.Frozen
+			}
+			result.instStatusUpdated[p] = instUpdated
 		}
-		if i.Status != nil {
-			instance.StatusData.Set(p, remote, i.Status)
-			d.bus.Pub(&msgbus.InstanceStatusUpdated{Path: p, Node: remote, Value: *i.Status},
-				pubsub.Label{"path", s},
-				labelPeerNode,
-				peerLabel,
-			)
+		if inst.Config != nil {
+			result.instConfigUpdated[p] = inst.Config.Updated
 		}
-		if i.Monitor != nil {
-			instance.MonitorData.Set(p, remote, i.Monitor)
-			d.bus.Pub(&msgbus.InstanceMonitorUpdated{Path: p, Node: remote, Value: *i.Monitor},
-				pubsub.Label{"path", s},
-				labelPeerNode,
-				peerLabel,
+		if inst.Monitor != nil {
+			imonUpdated := inst.Monitor.StateUpdated
+			if inst.Monitor.UpdatedAt.After(imonUpdated) {
+				imonUpdated = inst.Monitor.UpdatedAt
+			}
+			result.imonUpdated[p] = imonUpdated
+		}
+	}
+	result.gen = c.Status.Gen[peer]
+
+	return &result
+}
+
+// pubPeerDataChanges propagate peers data changes (node status, node monitor,
+// node config, node instances) since last call has new publications.
+func (d *data) pubPeerDataChanges(peer string) {
+	current := d.refreshPreviousUpdated(peer)
+	if current == nil {
+		return
+	}
+	d.pubMsgFromNodeConfigDiffForNode(peer)
+	d.pubMsgFromNodeStatusDiffForNode(peer)
+	d.pubMsgFromNodeStatsDiffForNode(peer)
+	d.pubMsgFromNodeMonitorDiffForNode(peer, current)
+	d.pubMsgFromNodeInstanceDiffForNode(peer, current)
+	d.previousRemoteInfo[peer] = *current
+}
+
+func (d *data) pubMsgFromNodeConfigDiffForNode(peer string) {
+	var (
+		prevTime         remoteInfo
+		nextNode         node.Node
+		next, prev       node.Config
+		hasNext, hasPrev bool
+	)
+	if nextNode, hasNext = d.clusterData.Cluster.Node[peer]; hasNext {
+		next = nextNode.Config
+	}
+	prevTime, hasPrev = d.previousRemoteInfo[peer]
+	prev = prevTime.nodeConfig
+	onUpdate := func() {
+		if !reflect.DeepEqual(prev, next) {
+			node.ConfigData.Set(peer, next.DeepCopy())
+			d.bus.Pub(&msgbus.NodeConfigUpdated{Node: peer, Value: *next.DeepCopy()},
+				pubsub.Label{"node", peer},
 			)
 		}
 	}
+	onCreate := func() {
+		node.ConfigData.Set(peer, next.DeepCopy())
+		d.bus.Pub(&msgbus.NodeConfigUpdated{Node: peer, Value: *next.DeepCopy()},
+			pubsub.Label{"node", peer},
+		)
+	}
 
-	return nil
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
+	}
+}
+
+func (d *data) pubMsgFromNodeStatsDiffForNode(peer string) {
+	var (
+		prevTime         remoteInfo
+		nextNode         node.Node
+		next, prev       node.Stats
+		hasNext, hasPrev bool
+	)
+	if nextNode, hasNext = d.clusterData.Cluster.Node[peer]; hasNext {
+		next = nextNode.Stats
+	}
+	prevTime, hasPrev = d.previousRemoteInfo[peer]
+	prev = prevTime.nodeStats
+	onUpdate := func() {
+		if !reflect.DeepEqual(prev, next) {
+			node.StatsData.Set(peer, next.DeepCopy())
+			d.bus.Pub(&msgbus.NodeStatsUpdated{Node: peer, Value: *next.DeepCopy()},
+				pubsub.Label{"node", peer},
+				labelPeerNode,
+			)
+		}
+	}
+	onCreate := func() {
+		node.StatsData.Set(peer, next.DeepCopy())
+		d.bus.Pub(&msgbus.NodeStatsUpdated{Node: peer, Value: *next.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
+	}
+}
+
+func (d *data) pubMsgFromNodeStatusDiffForNode(peer string) {
+	var (
+		prevTime         remoteInfo
+		nextNode         node.Node
+		next, prev       node.Status
+		hasNext, hasPrev bool
+	)
+	if nextNode, hasNext = d.clusterData.Cluster.Node[peer]; hasNext {
+		next = nextNode.Status
+	}
+	prevTime, hasPrev = d.previousRemoteInfo[peer]
+	prev = prevTime.nodeStatus
+	labels := []pubsub.Label{
+		{"node", peer},
+		labelPeerNode,
+	}
+	onUpdate := func() {
+		var changed bool
+		if !reflect.DeepEqual(prev.Labels, next.Labels) {
+			d.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: peer, Value: next.Labels.DeepCopy()}, labels...)
+			changed = true
+		}
+		if changed || !reflect.DeepEqual(prev, next) {
+			node.StatusData.Set(peer, next.DeepCopy())
+			d.bus.Pub(&msgbus.NodeStatusUpdated{Node: peer, Value: *next.DeepCopy()}, labels...)
+		}
+	}
+	onCreate := func() {
+		d.bus.Pub(&msgbus.NodeStatusLabelsUpdated{Node: peer, Value: next.Labels.DeepCopy()}, labels...)
+		node.StatusData.Set(peer, next.DeepCopy())
+		d.bus.Pub(&msgbus.NodeStatusUpdated{Node: peer, Value: *next.DeepCopy()}, labels...)
+	}
+
+	switch {
+	case hasNext && hasPrev:
+		onUpdate()
+	case hasNext:
+		onCreate()
+	}
+}
+
+func (d *data) pubMsgFromNodeMonitorDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
+	prevTimes, hasPrev := d.previousRemoteInfo[peer]
+	if !hasPrev || current.nmonUpdated.After(prevTimes.nmonUpdated) {
+		localMonitor := d.clusterData.Cluster.Node[peer].Monitor
+		node.MonitorData.Set(peer, localMonitor.DeepCopy())
+		d.bus.Pub(&msgbus.NodeMonitorUpdated{Node: peer, Value: *localMonitor.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+		return
+	}
+}
+
+func getUpdatedRemoved(toPath map[string]path.T, previous, current map[string]time.Time) (updates, removes []string) {
+	for s, updated := range current {
+		if _, ok := toPath[s]; !ok {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			toPath[s] = p
+		}
+		if previousUpdated, ok := previous[s]; !ok {
+			// new object
+			updates = append(updates, s)
+		} else if !updated.Equal(previousUpdated) {
+			// update object
+			updates = append(updates, s)
+		}
+	}
+	for s := range previous {
+		if _, ok := toPath[s]; !ok {
+			p, err := path.Parse(s)
+			if err != nil {
+				continue
+			}
+			toPath[s] = p
+		}
+		if _, ok := current[s]; !ok {
+			removes = append(removes, s)
+		}
+	}
+	return
+}
+
+func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInfo) {
+	var updates, removes []string
+	toPath := make(map[string]path.T)
+	previous, ok := d.previousRemoteInfo[peer]
+	if !ok {
+		previous = remoteInfo{
+			imonUpdated:       make(map[string]time.Time),
+			instConfigUpdated: make(map[string]time.Time),
+			instStatusUpdated: make(map[string]time.Time),
+		}
+	}
+	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated)
+	for _, s := range updates {
+		instance.ConfigData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Config.DeepCopy())
+		d.bus.Pub(&msgbus.InstanceConfigUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Config.DeepCopy()},
+			pubsub.Label{"path", s},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+	for _, s := range removes {
+		instance.ConfigData.Unset(toPath[s], peer)
+		d.bus.Pub(&msgbus.InstanceConfigDeleted{Path: toPath[s], Node: peer},
+			pubsub.Label{"path", s},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+
+	updates, removes = getUpdatedRemoved(toPath, previous.instStatusUpdated, current.instStatusUpdated)
+	for _, s := range updates {
+		instance.StatusData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Status.DeepCopy())
+		d.bus.Pub(&msgbus.InstanceStatusUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Status.DeepCopy()},
+			pubsub.Label{"path", s},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+	for _, s := range removes {
+		instance.StatusData.Unset(toPath[s], peer)
+		d.bus.Pub(&msgbus.InstanceStatusDeleted{Path: toPath[s], Node: peer},
+			pubsub.Label{"path", s},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+
+	updates, removes = getUpdatedRemoved(toPath, previous.imonUpdated, current.imonUpdated)
+	for _, s := range updates {
+		instance.MonitorData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Monitor.DeepCopy())
+		d.bus.Pub(&msgbus.InstanceMonitorUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Monitor.DeepCopy()},
+			pubsub.Label{"path", s},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+	for _, s := range removes {
+		instance.MonitorData.Unset(toPath[s], peer)
+		d.bus.Pub(&msgbus.InstanceMonitorDeleted{Path: toPath[s], Node: peer},
+			pubsub.Label{"path", s},
+			pubsub.Label{"node", peer},
+			labelPeerNode,
+		)
+	}
+
+	for s, updated := range current.instConfigUpdated {
+		var update bool
+		if previousUpdated, ok := previous.instConfigUpdated[s]; !ok {
+			// new cfg object
+			update = true
+		} else if !updated.Equal(previousUpdated) {
+			// update cfg object
+			update = true
+		}
+		if update {
+
+		}
+	}
+	for s := range previous.instConfigUpdated {
+		if _, ok := current.instConfigUpdated[s]; !ok {
+			// removal cfg
+		}
+	}
 }
