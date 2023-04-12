@@ -128,6 +128,10 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	if err != nil {
 		return nil
 	}
+	if err := d.clusterData.ApplyMessage(msg); err != nil {
+		d.log.Error().Err(err).Msgf("apply patch: can't apply message %+v", msg)
+		panic("apply patch -> ApplyMessage error "+err.Error())
+	}
 	switch c := msg.(type) {
 	case *msgbus.ObjectStatusDeleted:
 		object.StatusData.Unset(c.Path)

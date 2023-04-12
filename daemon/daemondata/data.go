@@ -376,22 +376,22 @@ func (d *data) startSubscriptions() {
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalNode)
 
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalNode)
 
-	sub.AddFilter(&msgbus.InstanceMonitorDeleted{})
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{})
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, d.labelLocalNode)
 
-	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalNode)
 
-	sub.AddFilter(&msgbus.NodeConfigUpdated{})
+	sub.AddFilter(&msgbus.NodeConfigUpdated{}, d.labelLocalNode)
 
-	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
-	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
-	sub.AddFilter(&msgbus.NodeOsPathsUpdated{})
-	sub.AddFilter(&msgbus.NodeStatsUpdated{})
-	sub.AddFilter(&msgbus.NodeStatusUpdated{})
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.NodeStatsUpdated{}, d.labelLocalNode)
+	sub.AddFilter(&msgbus.NodeStatusUpdated{}, d.labelLocalNode)
 
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalNode)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalNode)
