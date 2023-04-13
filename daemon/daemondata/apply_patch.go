@@ -17,7 +17,7 @@ var (
 	eventId uint64
 )
 
-func (d *data) applyPatch(msg *hbtype.Msg) error {
+func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 	d.statCount[idApplyPatch]++
 	local := d.localNode
 	remote := msg.Nodename
@@ -127,6 +127,10 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	msg, err := msgbus.EventToMessage(ev)
 	if err != nil {
 		return nil
+	}
+	if err := d.clusterData.ApplyMessage(msg); err != nil {
+		d.log.Error().Err(err).Msgf("apply patch: can't apply message %+v", msg)
+		panic("apply patch -> ApplyMessage error " + err.Error())
 	}
 	switch c := msg.(type) {
 	case *msgbus.ObjectStatusDeleted:

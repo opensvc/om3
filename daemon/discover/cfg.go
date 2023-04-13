@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
@@ -27,10 +28,7 @@ func (d *discover) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
-	// TODO: change AddFilterGetLast to AddFilter + cache
-	if last := sub.AddFilterGetLast(&msgbus.ClusterConfigUpdated{}); last != nil {
-		d.onClusterConfigUpdated(last.(*msgbus.ClusterConfigUpdated))
-	}
+	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	sub.Start()
 	return sub
 }
@@ -56,6 +54,10 @@ func (d *discover) cfg(started chan<- bool) {
 			d.log.Error().Err(err).Msg("subscription stop")
 		}
 	}()
+	if last := cluster.ConfigData.Get(); last != nil {
+		msg := &msgbus.ClusterConfigUpdated{Value: *last}
+		d.onClusterConfigUpdated(msg)
+	}
 	started <- true
 	for {
 		select {

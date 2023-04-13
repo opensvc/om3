@@ -138,6 +138,8 @@ var (
 
 		"SubscriptionError": func() any { return &pubsub.SubscriptionError{} },
 
+		"SubscriptionQueueThreshold": func() any { return &pubsub.SubscriptionQueueThreshold{} },
+
 		"WatchDog": func() any { return &WatchDog{} },
 
 		"ZoneRecordDeleted": func() any { return &ZoneRecordDeleted{} },
@@ -268,6 +270,8 @@ type (
 		Nodes []string
 		// JoinedNodes are nodes with hb message type patch
 		JoinedNodes []string
+		// InstalledGens are the current installed node gens
+		InstalledGens map[string]uint64
 	}
 
 	HbStale struct {

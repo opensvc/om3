@@ -43,6 +43,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -100,6 +101,10 @@ type (
 
 		// drainChanDuration is the max duration during draining channels
 		drainChanDuration time.Duration
+
+		queuedMin uint64
+		queuedMax uint64
+		queued    atomic.Uint64
 	}
 
 	cmdPub struct {
@@ -116,20 +121,6 @@ type (
 		resp     chan<- error
 	}
 
-	cmdGetLasts struct {
-		id       uuid.UUID
-		labels   labelMap
-		dataType string
-		resp     chan<- []any
-	}
-
-	cmdGetLast struct {
-		id       uuid.UUID
-		labels   labelMap
-		dataType string
-		resp     chan<- any
-	}
-
 	cmdSub struct {
 		name      string
 		resp      chan<- *Subscription
@@ -140,11 +131,6 @@ type (
 	cmdUnsub struct {
 		id  uuid.UUID
 		err chan<- error
-	}
-
-	cacheEntry struct {
-		cmdPub      cmdPub
-		publishedAt time.Time
 	}
 
 	Bus struct {
@@ -158,7 +144,6 @@ type (
 		subMap      subscriptionMap
 		beginNotify chan uuid.UUID
 		endNotify   chan uuid.UUID
-		lastPub     map[string]cacheEntry
 		started     bool
 
 		// drainChanDuration is the max duration during draining private and exposed
@@ -194,6 +179,8 @@ var (
 
 	// defaultDrainChanDuration is the default duration to wait while draining channel
 	defaultDrainChanDuration = 10 * time.Millisecond
+
+	uint64Incr = uint64(1)
 )
 
 // Key returns labelMap key as a string
@@ -263,7 +250,6 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.lastPub = make(map[string]cacheEntry)
 	b.log = log.Logger.With().Str("bus", name).Logger()
 	b.drainChanDuration = defaultDrainChanDuration
 	return b
@@ -304,10 +290,6 @@ func (b *Bus) Start(ctx context.Context) {
 			case cmd := <-b.cmdC:
 				beginCmd <- cmd
 				switch c := cmd.(type) {
-				case cmdGetLast:
-					b.onGetLastCmd(c)
-				case cmdGetLasts:
-					b.onGetLastsCmd(c)
 				case cmdPub:
 					b.onPubCmd(c)
 				case cmdSubAddFilter:
@@ -346,6 +328,8 @@ func (b *Bus) onSubCmd(c cmdSub) {
 		bus:     b,
 
 		drainChanDuration: b.drainChanDuration,
+		queuedMax:         c.queueSize / 32,
+		queuedMin:         c.queueSize / 32,
 	}
 	b.subs[id] = sub
 	c.resp <- sub
@@ -370,12 +354,6 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 }
 
 func (b *Bus) onPubCmd(c cmdPub) {
-	// store last event to serve subscribers using AddFilterGetLast()
-	b.lastPub[c.key()] = cacheEntry{
-		cmdPub:      c,
-		publishedAt: time.Now(),
-	}
-
 	for _, toFilterKey := range c.keys() {
 		// search publication that listen on one of cmdPub.keys
 		if subIdM, ok := b.subMap[toFilterKey]; ok {
@@ -387,39 +365,21 @@ func (b *Bus) onPubCmd(c cmdPub) {
 					continue
 				}
 				b.log.Debug().Msgf("route %s to %s", c, sub)
+				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
+				if queueLen > sub.queuedMax {
+					sub.queuedMax *= 2
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
+					b.log.Debug().Msgf("subscription %s has reached %d queued increase next threshold %d", sub.name, queueLen, sub.queuedMax)
+				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
+					sub.queuedMax /= 2
+					b.log.Debug().Msgf("subscription %s has reached %d queued decrease next threshold %d", sub.name, queueLen, sub.queuedMax)
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
+				}
 			}
 		}
 	}
 	c.resp <- true
-}
-
-func (bus *Bus) onGetLastsCmd(c cmdGetLasts) {
-	var lasts []any
-	filterKey := fmtKey(c.dataType, c.labels)
-	for _, entry := range bus.lastPub {
-		for _, key := range pubKeys(entry.cmdPub.dataType, entry.cmdPub.labels) {
-			if key == filterKey {
-				lasts = append(lasts, entry.cmdPub.data)
-			}
-		}
-	}
-	c.resp <- lasts
-}
-
-func (bus *Bus) onGetLastCmd(c cmdGetLast) {
-	var last any
-	lastPublished := time.Time{}
-	filterKey := fmtKey(c.dataType, c.labels)
-	for _, entry := range bus.lastPub {
-		for _, key := range pubKeys(entry.cmdPub.dataType, entry.cmdPub.labels) {
-			if (key == filterKey) && entry.publishedAt.After(lastPublished) {
-				last = entry.cmdPub.data
-				lastPublished = entry.publishedAt
-			}
-		}
-	}
-	c.resp <- last
 }
 
 func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
@@ -527,13 +487,13 @@ func (t Timeout) timout() time.Duration {
 // defaults is no timeout
 //
 // when QueueSizer, it sets the subscriber queue size.
-// default is 2000
+// default is 4000
 func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	respC := make(chan *Subscription)
 	op := cmdSub{
 		name:      name,
 		resp:      respC,
-		queueSize: 2000,
+		queueSize: 4000,
 	}
 
 	for _, opt := range options {
@@ -672,6 +632,7 @@ func (sub *Subscription) drain() {
 	for {
 		select {
 		case <-sub.q:
+			sub.queued.Add(-uint64Incr)
 		case <-ticker.C:
 			return
 		}
@@ -744,61 +705,6 @@ func (sub *Subscription) String() string {
 	return s
 }
 
-func (sub *Subscription) AddFilterGetLasts(v Messager, labels ...Label) []any {
-	sub.AddFilter(v, labels...)
-	return sub.GetLasts(v, labels...)
-}
-
-// GetLasts returns all last published events of each type and labelset, matching type and labels
-func (sub *Subscription) GetLasts(v any, labels ...Label) []any {
-	respC := make(chan []any)
-	op := cmdGetLasts{
-		id:     sub.id,
-		labels: newLabels(labels...),
-		resp:   respC,
-	}
-	dataType := reflect.TypeOf(v)
-	if dataType != nil {
-		op.dataType = dataType.String()
-	}
-	select {
-	case sub.bus.cmdC <- op:
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
-	select {
-	case last := <-respC:
-		return last
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
-}
-
-func (sub *Subscription) AddFilterGetLast(v Messager, labels ...Label) any {
-	sub.AddFilter(v, labels...)
-	return sub.GetLast(v, labels...)
-}
-
-// GetLast returns the last published event matching type and labels
-func (sub *Subscription) GetLast(v any, labels ...Label) any {
-	respC := make(chan any)
-	op := cmdGetLast{
-		id:     sub.id,
-		labels: newLabels(labels...),
-		resp:   respC,
-	}
-	dataType := reflect.TypeOf(v)
-	if dataType != nil {
-		op.dataType = dataType.String()
-	}
-	select {
-	case sub.bus.cmdC <- op:
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
-	return <-respC
-}
-
 func (sub *Subscription) AddFilter(v any, labels ...Label) {
 	respC := make(chan error)
 	op := cmdSubAddFilter{
@@ -837,6 +743,7 @@ func (sub *Subscription) Start() {
 			case <-ctx.Done():
 				return
 			case i := <-sub.q:
+				sub.queued.Add(-uint64Incr)
 				select {
 				case <-ctx.Done():
 					// sub, or bus is done

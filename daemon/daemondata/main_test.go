@@ -162,7 +162,7 @@ func TestDaemonData(t *testing.T) {
 			msg := hbtype.Msg{
 				Kind:     "full",
 				Gen:      fullGens,
-				Full:     *full.DeepCopy(),
+				NodeData: *full.DeepCopy(),
 				Nodename: remoteHost,
 			}
 			hbRecvMsgQ <- &msg
@@ -196,7 +196,7 @@ func TestDaemonData(t *testing.T) {
 			msg := hbtype.Msg{
 				Kind:     "full",
 				Gen:      fullGens,
-				Full:     *full,
+				NodeData: *full,
 				Nodename: peerNotMemmber,
 			}
 			hbRecvMsgQ <- &msg
