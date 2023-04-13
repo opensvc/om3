@@ -55,11 +55,12 @@ func (d *data) setHbMsgType(node string, msgType string) {
 			}
 		}
 		d.bus.Pub(&msgbus.HbMessageTypeUpdated{
-			Node:        node,
-			From:        previous,
-			To:          msgType,
-			Nodes:       append([]string{}, d.clusterData.Cluster.Config.Nodes...),
-			JoinedNodes: joinedNodes,
+			Node:          node,
+			From:          previous,
+			To:            msgType,
+			Nodes:         append([]string{}, d.clusterData.Cluster.Config.Nodes...),
+			JoinedNodes:   joinedNodes,
+			InstalledGens: d.deepCopyLocalGens(),
 		}, pubsub.Label{"node", node})
 	}
 }

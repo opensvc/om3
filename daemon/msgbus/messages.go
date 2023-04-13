@@ -270,6 +270,8 @@ type (
 		Nodes []string
 		// JoinedNodes are nodes with hb message type patch
 		JoinedNodes []string
+		// InstalledGens are the current installed node gens
+		InstalledGens map[string]uint64
 	}
 
 	HbStale struct {
