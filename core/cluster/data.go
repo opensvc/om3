@@ -33,7 +33,7 @@ func (c *DataT[T]) Set(v *T) {
 
 func (c *DataT[T]) Get() *T {
 	c.RLock()
-	c.RUnlock()
+	defer c.RUnlock()
 	return c.data
 }
 

@@ -26,19 +26,20 @@ func (o *ccfg) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 
 func (o *ccfg) pubClusterConfig() {
 	previousNodes := o.state.Nodes
-	o.state = o.getClusterConfig()
+	state := o.getClusterConfig()
+	o.state = *state.DeepCopy()
 	labelLocalNode := pubsub.Label{"node", o.localhost}
 
-	removed, added := stringslice.Diff(previousNodes, o.state.Nodes)
+	removed, added := stringslice.Diff(previousNodes, state.Nodes)
 	if len(added) > 0 {
 		o.log.Debug().Msgf("added nodes: %s", added)
 	}
 	if len(removed) > 0 {
 		o.log.Debug().Msgf("removed nodes: %s", removed)
 	}
-	cluster.ConfigData.Set(&o.state)
+	cluster.ConfigData.Set(&state)
 
-	o.bus.Pub(&msgbus.ClusterConfigUpdated{Node: o.localhost, Value: o.state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)
+	o.bus.Pub(&msgbus.ClusterConfigUpdated{Node: o.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)
 
 	for _, v := range added {
 		o.bus.Pub(&msgbus.JoinSuccess{Node: v}, labelLocalNode, pubsub.Label{"added", v})

@@ -45,3 +45,16 @@ func (t Nodes) Contains(s string) bool {
 	}
 	return false
 }
+
+func (t *Config) DeepCopy() *Config {
+	return &Config{
+		ID:         t.ID,
+		Name:       t.Name,
+		Nodes:      append(Nodes{}, t.Nodes...),
+		DNS:        append([]string{}, t.DNS...),
+		CASecPaths: append([]string{}, t.CASecPaths...),
+		Listener:   t.Listener,
+		Quorum:     t.Quorum,
+		secret:     t.secret,
+	}
+}
