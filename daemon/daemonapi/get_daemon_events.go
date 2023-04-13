@@ -85,7 +85,9 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	sub := bus.Sub(name, pubsub.Timeout(time.Second))
 
 	for _, filter := range filters {
-		if kind, ok := filter.Kind.(event.Kinder); ok {
+		if filter.Kind == nil {
+			log.Debug().Msgf("filtering %v %v", filter.Kind, filter.Labels)
+		} else if kind, ok := filter.Kind.(event.Kinder); ok {
 			log.Debug().Msgf("filtering %s %v", kind.Kind(), filter.Labels)
 		} else {
 			log.Warn().Msgf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
@@ -150,10 +152,8 @@ func parseFilter(s string) (filter Filter, err error) {
 		}
 		splitted := strings.Split(elem, "=")
 		if len(splitted) == 1 {
-			filter.Kind, err = msgbus.KindToT(splitted[0])
-			if err != nil {
-				return
-			}
+			// ignore error => use kind nil when value has invalid kind
+			filter.Kind, _ = msgbus.KindToT(splitted[0])
 		} else if len(splitted) == 2 {
 			filter.Labels = append(filter.Labels, pubsub.Label{splitted[0], splitted[1]})
 		} else {
