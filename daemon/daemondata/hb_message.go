@@ -97,8 +97,15 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 		d.setHbMsgMode(d.localNode, fmt.Sprintf("%d", len(msg.Events)))
 		return msg, nil
 	case "full":
+		events, err := d.eventQueue.deepCopy()
+		if err != nil {
+			d.log.Error().Err(err).Msg("can't create events for hb patch message")
+			return msg, err
+		} else {
+			msg.Events = events
+		}
 		nodeData := d.clusterData.Cluster.Node[d.localNode]
-		msg.Full = *nodeData.DeepCopy()
+		msg.NodeData = *nodeData.DeepCopy()
 		d.setHbMsgMode(d.localNode, msg.Kind)
 		return msg, nil
 	case "ping":

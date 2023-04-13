@@ -29,14 +29,15 @@ func (d *data) commitPendingOps() (changes bool) {
 		d.hbGens[d.localNode][d.localNode] = d.gen
 		d.clusterData.Cluster.Node[d.localNode].Status.Gen[d.localNode] = d.gen
 	}
-	if d.hbMessageType == "patch" {
+	switch d.hbMessageType {
+	case "patch", "full":
 		if changes {
 			// add new eventQueue entry created for gen in event queue with events
 			d.eventQueue[strconv.FormatUint(d.gen, 10)] = d.pendingEvs
 			d.pendingEvs = []event.Event{}
 		}
 		d.purgeAppliedPatchQueue()
-	} else {
+	default:
 		d.pendingEvs = []event.Event{}
 		d.eventQueue = make(map[string][]event.Event)
 	}
@@ -52,29 +53,23 @@ func (d *data) commitPendingOps() (changes bool) {
 // on all peers
 func (d *data) purgeAppliedPatchQueue() {
 	local := d.localNode
-	remoteMinGen := d.gen
-	for _, clusterNode := range d.clusterData.Cluster.Node {
-		if gen, ok := clusterNode.Status.Gen[local]; ok {
-			if gen < remoteMinGen {
-				remoteMinGen = gen
-			}
+	peerMinGen := d.gen
+	for peer, peerGens := range d.hbGens {
+		if peer == local {
+			continue
+		}
+		if peerGen := peerGens[local]; peerGen != 0 && peerGen < peerMinGen {
+			peerMinGen = peerGen
 		}
 	}
-	purged := make([]string, 0)
-	queueGens := make([]string, 0)
-	queueGen := make([]uint64, 0)
 	for genS := range d.eventQueue {
-		queueGens = append(queueGens, genS)
 		gen, err := strconv.ParseUint(genS, 10, 64)
 		if err != nil {
 			delete(d.eventQueue, genS)
-			purged = append(purged, genS)
 			continue
 		}
-		queueGen = append(queueGen, gen)
-		if gen <= remoteMinGen {
+		if gen <= peerMinGen {
 			delete(d.eventQueue, genS)
-			purged = append(purged, genS)
 		}
 	}
 }

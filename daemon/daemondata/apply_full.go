@@ -12,18 +12,18 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (d *data) applyFull(msg *hbtype.Msg) error {
+func (d *data) applyNodeData(msg *hbtype.Msg) error {
 	d.statCount[idApplyFull]++
 	remote := msg.Nodename
 	peerLabel := pubsub.Label{"node", remote}
 	local := d.localNode
-	d.log.Debug().Msgf("applyFull %s", remote)
+	d.log.Debug().Msgf("applyNodeData %s", remote)
 
-	d.clusterData.Cluster.Node[remote] = msg.Full
-	d.hbGens[local][remote] = msg.Full.Status.Gen[remote]
-	d.clusterData.Cluster.Node[local].Status.Gen[remote] = msg.Full.Status.Gen[remote]
+	d.clusterData.Cluster.Node[remote] = msg.NodeData
+	d.hbGens[local][remote] = msg.NodeData.Status.Gen[remote]
+	d.clusterData.Cluster.Node[local].Status.Gen[remote] = msg.NodeData.Status.Gen[remote]
 
-	d.bus.Pub(&msgbus.NodeDataUpdated{Node: remote, Value: msg.Full}, peerLabel, labelPeerNode)
+	d.bus.Pub(&msgbus.NodeDataUpdated{Node: remote, Value: msg.NodeData}, peerLabel, labelPeerNode)
 
 	d.pubPeerDataChanges(remote)
 	return nil
