@@ -121,20 +121,6 @@ type (
 		resp     chan<- error
 	}
 
-	cmdGetLasts struct {
-		id       uuid.UUID
-		labels   labelMap
-		dataType string
-		resp     chan<- []any
-	}
-
-	cmdGetLast struct {
-		id       uuid.UUID
-		labels   labelMap
-		dataType string
-		resp     chan<- any
-	}
-
 	cmdSub struct {
 		name      string
 		resp      chan<- *Subscription
@@ -145,11 +131,6 @@ type (
 	cmdUnsub struct {
 		id  uuid.UUID
 		err chan<- error
-	}
-
-	cacheEntry struct {
-		cmdPub      cmdPub
-		publishedAt time.Time
 	}
 
 	Bus struct {
@@ -163,7 +144,6 @@ type (
 		subMap      subscriptionMap
 		beginNotify chan uuid.UUID
 		endNotify   chan uuid.UUID
-		lastPub     map[string]cacheEntry
 		started     bool
 
 		// drainChanDuration is the max duration during draining private and exposed
@@ -270,7 +250,6 @@ func NewBus(name string) *Bus {
 	b.cmdC = make(chan any)
 	b.beginNotify = make(chan uuid.UUID)
 	b.endNotify = make(chan uuid.UUID)
-	b.lastPub = make(map[string]cacheEntry)
 	b.log = log.Logger.With().Str("bus", name).Logger()
 	b.drainChanDuration = defaultDrainChanDuration
 	return b
@@ -311,10 +290,6 @@ func (b *Bus) Start(ctx context.Context) {
 			case cmd := <-b.cmdC:
 				beginCmd <- cmd
 				switch c := cmd.(type) {
-				case cmdGetLast:
-					b.onGetLastCmd(c)
-				case cmdGetLasts:
-					b.onGetLastsCmd(c)
 				case cmdPub:
 					b.onPubCmd(c)
 				case cmdSubAddFilter:
@@ -379,12 +354,6 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 }
 
 func (b *Bus) onPubCmd(c cmdPub) {
-	// store last event to serve subscribers using AddFilterGetLast()
-	b.lastPub[c.key()] = cacheEntry{
-		cmdPub:      c,
-		publishedAt: time.Now(),
-	}
-
 	for _, toFilterKey := range c.keys() {
 		// search publication that listen on one of cmdPub.keys
 		if subIdM, ok := b.subMap[toFilterKey]; ok {
@@ -411,34 +380,6 @@ func (b *Bus) onPubCmd(c cmdPub) {
 		}
 	}
 	c.resp <- true
-}
-
-func (bus *Bus) onGetLastsCmd(c cmdGetLasts) {
-	var lasts []any
-	filterKey := fmtKey(c.dataType, c.labels)
-	for _, entry := range bus.lastPub {
-		for _, key := range pubKeys(entry.cmdPub.dataType, entry.cmdPub.labels) {
-			if key == filterKey {
-				lasts = append(lasts, entry.cmdPub.data)
-			}
-		}
-	}
-	c.resp <- lasts
-}
-
-func (bus *Bus) onGetLastCmd(c cmdGetLast) {
-	var last any
-	lastPublished := time.Time{}
-	filterKey := fmtKey(c.dataType, c.labels)
-	for _, entry := range bus.lastPub {
-		for _, key := range pubKeys(entry.cmdPub.dataType, entry.cmdPub.labels) {
-			if (key == filterKey) && entry.publishedAt.After(lastPublished) {
-				last = entry.cmdPub.data
-				lastPublished = entry.publishedAt
-			}
-		}
-	}
-	c.resp <- last
 }
 
 func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
@@ -762,61 +703,6 @@ func (sub *Subscription) String() string {
 		}
 	}
 	return s
-}
-
-func (sub *Subscription) AddFilterGetLasts(v Messager, labels ...Label) []any {
-	sub.AddFilter(v, labels...)
-	return sub.GetLasts(v, labels...)
-}
-
-// GetLasts returns all last published events of each type and labelset, matching type and labels
-func (sub *Subscription) GetLasts(v any, labels ...Label) []any {
-	respC := make(chan []any)
-	op := cmdGetLasts{
-		id:     sub.id,
-		labels: newLabels(labels...),
-		resp:   respC,
-	}
-	dataType := reflect.TypeOf(v)
-	if dataType != nil {
-		op.dataType = dataType.String()
-	}
-	select {
-	case sub.bus.cmdC <- op:
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
-	select {
-	case last := <-respC:
-		return last
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
-}
-
-func (sub *Subscription) AddFilterGetLast(v Messager, labels ...Label) any {
-	sub.AddFilter(v, labels...)
-	return sub.GetLast(v, labels...)
-}
-
-// GetLast returns the last published event matching type and labels
-func (sub *Subscription) GetLast(v any, labels ...Label) any {
-	respC := make(chan any)
-	op := cmdGetLast{
-		id:     sub.id,
-		labels: newLabels(labels...),
-		resp:   respC,
-	}
-	dataType := reflect.TypeOf(v)
-	if dataType != nil {
-		op.dataType = dataType.String()
-	}
-	select {
-	case sub.bus.cmdC <- op:
-	case <-sub.bus.ctx.Done():
-		return nil
-	}
-	return <-respC
 }
 
 func (sub *Subscription) AddFilter(v any, labels ...Label) {
