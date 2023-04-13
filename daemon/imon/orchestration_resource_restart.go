@@ -169,8 +169,8 @@ func (o *imon) orchestrateResourceRestart() {
 			o.log.Debug().Msgf("resource %s restart skip: already ran the monitor action", rid)
 		default:
 			rmon := o.state.Resources[rid]
-			o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 			if started {
+				o.log.Info().Msgf("resource %s status %s, restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				if rmon.Restart.Remaining == 0 {
 					o.state.MonitorActionExecutedAt = time.Now()
 					o.change = true
@@ -179,6 +179,7 @@ func (o *imon) orchestrateResourceRestart() {
 					todoRestart.Add(rid)
 				}
 			} else if rcfg.IsStandby {
+				o.log.Info().Msgf("resource %s status %s, standby restart remaining %d out of %d", rid, resStatus, rmon.Restart.Remaining, rcfg.Restart)
 				todoStandby.Add(rid)
 			} else {
 				o.log.Debug().Msgf("resource %s restart skip: instance not started", rid)
