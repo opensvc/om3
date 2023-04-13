@@ -230,6 +230,7 @@ func TestDropSlowSubscription(t *testing.T) {
 			queueSize := QueueSize(2)
 			t.Log("subscribe with a short timeout, and small queue size")
 			slowSub := bus.Sub("listen with short timeout", Timeout(timeout), queueSize)
+			slowSub.AddFilter(&msgT{})
 			slowSub.Start()
 			defer func() {
 				// ensure stop subscription as been automatically called

@@ -43,6 +43,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -100,6 +101,10 @@ type (
 
 		// drainChanDuration is the max duration during draining channels
 		drainChanDuration time.Duration
+
+		queuedMin uint64
+		queuedMax uint64
+		queued    atomic.Uint64
 	}
 
 	cmdPub struct {
@@ -194,6 +199,8 @@ var (
 
 	// defaultDrainChanDuration is the default duration to wait while draining channel
 	defaultDrainChanDuration = 10 * time.Millisecond
+
+	uint64Incr = uint64(1)
 )
 
 // Key returns labelMap key as a string
@@ -346,6 +353,8 @@ func (b *Bus) onSubCmd(c cmdSub) {
 		bus:     b,
 
 		drainChanDuration: b.drainChanDuration,
+		queuedMax:         c.queueSize / 32,
+		queuedMin:         c.queueSize / 32,
 	}
 	b.subs[id] = sub
 	c.resp <- sub
@@ -387,7 +396,17 @@ func (b *Bus) onPubCmd(c cmdPub) {
 					continue
 				}
 				b.log.Debug().Msgf("route %s to %s", c, sub)
+				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
+				if queueLen > sub.queuedMax {
+					sub.queuedMax *= 2
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
+					b.log.Debug().Msgf("subscription %s has reached %d queued increase next threshold %d", sub.name, queueLen, sub.queuedMax)
+				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
+					sub.queuedMax /= 2
+					b.log.Debug().Msgf("subscription %s has reached %d queued decrease next threshold %d", sub.name, queueLen, sub.queuedMax)
+					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
+				}
 			}
 		}
 	}
@@ -527,13 +546,13 @@ func (t Timeout) timout() time.Duration {
 // defaults is no timeout
 //
 // when QueueSizer, it sets the subscriber queue size.
-// default is 2000
+// default is 4000
 func (b *Bus) Sub(name string, options ...interface{}) *Subscription {
 	respC := make(chan *Subscription)
 	op := cmdSub{
 		name:      name,
 		resp:      respC,
-		queueSize: 2000,
+		queueSize: 4000,
 	}
 
 	for _, opt := range options {
@@ -672,6 +691,7 @@ func (sub *Subscription) drain() {
 	for {
 		select {
 		case <-sub.q:
+			sub.queued.Add(-uint64Incr)
 		case <-ticker.C:
 			return
 		}
@@ -837,6 +857,7 @@ func (sub *Subscription) Start() {
 			case <-ctx.Done():
 				return
 			case i := <-sub.q:
+				sub.queued.Add(-uint64Incr)
 				select {
 				case <-ctx.Done():
 					// sub, or bus is done

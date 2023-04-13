@@ -138,6 +138,8 @@ var (
 
 		"SubscriptionError": func() any { return &pubsub.SubscriptionError{} },
 
+		"SubscriptionQueueThreshold": func() any { return &pubsub.SubscriptionQueueThreshold{} },
+
 		"WatchDog": func() any { return &WatchDog{} },
 
 		"ZoneRecordDeleted": func() any { return &ZoneRecordDeleted{} },
