@@ -180,7 +180,7 @@ type (
 		pubsub.Msg
 		Node string
 		Name string
-		Err  error
+		ErrS string
 	}
 
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.

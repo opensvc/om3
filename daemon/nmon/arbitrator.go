@@ -78,7 +78,7 @@ func (o *nmon) getStatusArbitrators() map[string]node.ArbitratorStatus {
 			o.bus.Pub(&msgbus.ArbitratorError{
 				Node: o.localhost,
 				Name: name,
-				Err:  r.err,
+				ErrS: r.err.Error(),
 			})
 		}
 		result[name] = node.ArbitratorStatus{Url: url, Status: aStatus}
