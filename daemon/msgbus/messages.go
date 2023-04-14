@@ -100,6 +100,8 @@ var (
 
 		"NodeFrozen": func() any { return &NodeFrozen{} },
 
+		"NodeFrozenFileRemoved": func() any { return &NodeFrozenFileRemoved{} },
+
 		"NodeFrozenFileUpdated": func() any { return &NodeFrozenFileUpdated{} },
 
 		"NodeMonitorDeleted": func() any { return &NodeMonitorDeleted{} },
@@ -178,7 +180,7 @@ type (
 		pubsub.Msg
 		Node string
 		Name string
-		Err  error
+		ErrS string
 	}
 
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
