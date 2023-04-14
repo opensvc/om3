@@ -100,6 +100,8 @@ var (
 
 		"NodeFrozen": func() any { return &NodeFrozen{} },
 
+		"NodeFrozenFileRemoved": func() any { return &NodeFrozenFileRemoved{} },
+
 		"NodeFrozenFileUpdated": func() any { return &NodeFrozenFileUpdated{} },
 
 		"NodeMonitorDeleted": func() any { return &NodeMonitorDeleted{} },
