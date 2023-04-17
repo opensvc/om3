@@ -957,6 +957,8 @@ func newCmdNodeEvents() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagEventFilters(flags, &options.Filters)
 	addFlagDuration(flags, &options.Duration)
+	addFlagEventTemplate(flags, &options.Template)
+	addFlagWait(flags, &options.Wait)
 	flags.Uint64Var(&options.Limit, "limit", 0, "limit event count to fetch")
 	return cmd
 }

@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	_ "embed"
 	"time"
 
 	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/core/commands"
+)
+
+var (
+	//go:embed text/node-events/flag/template
+	usageFlagEventTemplate string
 )
 
 func addFlagsAsync(flagSet *pflag.FlagSet, p *commands.OptsAsync) {
@@ -221,6 +227,10 @@ func addFlagRelay(flagSet *pflag.FlagSet, p *string) {
 
 func addFlagRID(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "rid", "", "Resource selector expression (ip#1,app,disk.type=zvol).")
+}
+
+func addFlagEventTemplate(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "template", "", usageFlagEventTemplate)
 }
 
 func addFlagTime(flagSet *pflag.FlagSet, p *time.Duration) {
