@@ -196,12 +196,21 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		o.state.State = *c.Value.State
 	}
 
+	globalExpectRefused := func() {
+		o.pubsubBus.Pub(&msgbus.SetInstanceMonitorRefused{
+			Path:  o.path,
+			Node:  o.localhost,
+			Value: c.Value,
+		}, o.labelPath, o.labelLocalhost)
+	}
+
 	doGlobalExpect := func() {
 		if c.Value.GlobalExpect == nil {
 			return
 		}
 		if _, ok := instance.MonitorGlobalExpectStrings[*c.Value.GlobalExpect]; !ok {
 			o.log.Warn().Msgf("refuse to set global expect '%s': invalid value", *c.Value.GlobalExpect)
+			globalExpectRefused()
 			return
 		}
 		switch *c.Value.GlobalExpect {
@@ -215,6 +224,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				dst := o.nextPlacedAtCandidate()
 				if dst == "" {
 					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from candidates", *c.Value.GlobalExpect)
+					globalExpectRefused()
 					return
 				}
 				options.Destination = []string{dst}
@@ -224,6 +234,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				can := o.nextPlacedAtCandidates(want)
 				if can == "" {
 					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from %s", *c.Value.GlobalExpect, want)
+					globalExpectRefused()
 					return
 				} else if can != want[0] {
 					o.log.Info().Msgf("change destination nodes from %s to %s", want, can)
@@ -234,6 +245,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := o.isStartable(); !v {
 				o.log.Info().Msgf("refuse to set global expect '%s': %s", *c.Value.GlobalExpect, reason)
+				globalExpectRefused()
 				return
 			}
 		}

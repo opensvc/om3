@@ -27,6 +27,8 @@ func (t *CmdObjectTakeover) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithAsyncTarget(target),
 		objectaction.WithAsyncTargetOptions(options),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 	).Do()
 }

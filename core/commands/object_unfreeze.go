@@ -24,6 +24,8 @@ func (t *CmdObjectUnfreeze) Run(selector, kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithServer(t.Server),
 		objectaction.WithAsyncTarget("thawed"),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteAction("unfreeze"),
