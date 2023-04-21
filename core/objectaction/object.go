@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"runtime/debug"
+	"time"
 
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
@@ -15,15 +17,18 @@ import (
 
 	"github.com/opensvc/om3/core/actionrouter"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/progress"
+	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xsession"
@@ -149,6 +154,25 @@ func WithAsyncTargetOptions(o any) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.TargetOptions = o
+		return nil
+	})
+}
+
+// WithAsyncTime is the maximum duration to wait for an async action
+// It needs WithAsyncWait(true)
+func WithAsyncTime(d time.Duration) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.WaitDuration = d
+		return nil
+	})
+}
+
+// WithAsyncWait runs an event-watcher waiting for target state, global expect return to none
+func WithAsyncWait(v bool) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Wait = v
 		return nil
 	})
 }
@@ -333,7 +357,6 @@ func (t T) DoAsync() error {
 	if err != nil {
 		return err
 	}
-	var errs error
 	type (
 		result struct {
 			Path            string `json:"path"`
@@ -342,41 +365,63 @@ func (t T) DoAsync() error {
 		}
 		results []result
 	)
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+		errs   error
+		waitC  chan error
+		toWait int
+	)
+	if t.WaitDuration > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), t.WaitDuration)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
 	rs := make(results, 0)
-	for _, path := range paths {
+	if t.Wait {
+		waitC = make(chan error, len(paths))
+	}
+	for _, p := range paths {
 		var (
 			b   []byte
 			err error
 		)
+		if t.Wait {
+			t.waitExpectation(ctx, c, t.Target, p, waitC)
+		}
 		switch t.Target {
 		case instance.MonitorGlobalExpectPlacedAt.String():
 			req := c.NewPostObjectSwitchTo()
-			req.ObjectSelector = path.String()
+			req.ObjectSelector = p.String()
 			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			req.Destination = options.Destination
 			req.SetNode(t.NodeSelector)
 			b, err = req.Do()
 		default:
 			req := c.NewPostObjectMonitor()
-			req.ObjectSelector = path.String()
+			req.ObjectSelector = p.String()
 			req.GlobalExpect = t.Target
 			req.SetNode(t.NodeSelector)
 			b, err = req.Do()
 		}
 		if err != nil {
 			errs = xerrors.Append(errs, err)
+		} else {
+			toWait++
 		}
 		var orchestrationId string
 		var r result
 		if err := json.Unmarshal(b, &orchestrationId); err == nil {
 			r = result{
 				OrchestrationId: orchestrationId,
-				Path:            path.String(),
+				Path:            p.String(),
 			}
 		} else {
 			r = result{
 				Error: err,
-				Path:  path.String(),
+				Path:  p.String(),
 			}
 		}
 		rs = append(rs, r)
@@ -395,6 +440,19 @@ func (t T) DoAsync() error {
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+	if t.Wait && toWait > 0 {
+		for i := 0; i < toWait; i++ {
+			select {
+			case <-ctx.Done():
+				errs = xerrors.Append(errs, ctx.Err())
+				return errs
+			case err := <-waitC:
+				if err != nil {
+					errs = xerrors.Append(errs, ctx.Err())
+				}
+			}
+		}
+	}
 	return errs
 }
 
@@ -482,4 +540,84 @@ func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Cont
 		results = append(results, r)
 	}
 	return results, nil
+}
+
+// waitExpectation will subscribe on path related messages, and will write to errC when expectation in not reached
+// It starts new subscription before return to avoid missed events.
+// it starts go routine to watch events for expectation reached
+func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string, p path.T, errC chan<- error) {
+	var (
+		filters []string
+		msg     pubsub.Messager
+
+		err      error
+		evReader event.ReadCloser
+	)
+	switch expectation {
+	case instance.MonitorGlobalExpectPurged.String():
+		filters = []string{"ObjectStatusDeleted,path=" + p.String()}
+	default:
+		filters = []string{"InstanceMonitorUpdated,path=" + p.String()}
+	}
+	filters = append(filters, "SetInstanceMonitorRefused,path="+p.String())
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if t.WaitDuration > 0 {
+		getEvents = getEvents.SetDuration(t.WaitDuration)
+	}
+	evReader, err = getEvents.GetReader()
+	if err != nil {
+		return
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	}
+	go func() {
+		defer func() {
+			if err != nil {
+				err = errors.Wrapf(err, "wait expectation %s failed on object %s", expectation, p)
+			}
+			select {
+			case <-ctx.Done():
+			case errC <- err:
+			}
+		}()
+
+		go func() {
+			// close reader when ctx is done
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
+		}()
+		for {
+			ev, readError := evReader.Read()
+			if readError != nil {
+				if errors.Is(readError, io.EOF) {
+					err = errors.Errorf("no more events (%s), wait %v failed", err, p)
+				} else {
+					err = readError
+				}
+				return
+			}
+			msg, err = msgbus.EventToMessage(*ev)
+			if err != nil {
+				return
+			}
+			switch m := msg.(type) {
+			case *msgbus.SetInstanceMonitorRefused:
+				err = errors.Errorf("can't wait %s expectation %s, got SetInstanceMonitorRefused", p, expectation)
+				log.Debug().Err(err).Msgf("waitExpectation")
+				return
+			case *msgbus.InstanceMonitorUpdated:
+				if m.Value.GlobalExpect == instance.MonitorGlobalExpectNone {
+					log.Debug().Msgf("InstanceMonitorUpdated %s reached global expect %s -> %s", p, expectation, m.Value.GlobalExpect)
+					return
+				}
+			case *msgbus.ObjectStatusDeleted:
+				log.Debug().Msgf("ObjectStatusDeleted %s reached %s", p, expectation)
+				return
+			}
+		}
+	}()
 }

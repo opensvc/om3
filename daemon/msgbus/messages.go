@@ -136,6 +136,8 @@ var (
 
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
 
+		"SetInstanceMonitorRefused": func() any { return &SetInstanceMonitorRefused{} },
+
 		"SetNodeMonitor": func() any { return &SetNodeMonitor{} },
 
 		"SubscriptionError": func() any { return &pubsub.SubscriptionError{} },
@@ -566,6 +568,13 @@ type (
 		Value instance.MonitorUpdate
 	}
 
+	SetInstanceMonitorRefused struct {
+		pubsub.Msg
+		Path  path.T
+		Node  string
+		Value instance.MonitorUpdate
+	}
+
 	SetNodeMonitor struct {
 		pubsub.Msg
 		Node  string
@@ -872,6 +881,10 @@ func (e *RemoteFileConfig) Kind() string {
 
 func (e *SetInstanceMonitor) Kind() string {
 	return "SetInstanceMonitor"
+}
+
+func (e *SetInstanceMonitorRefused) Kind() string {
+	return "SetInstanceMonitorRefused"
 }
 
 func (e *SetNodeMonitor) Kind() string {

@@ -20,6 +20,8 @@ func (t *CmdObjectGiveback) Run(selector, kind string) error {
 		objectaction.WithFormat(t.Format),
 		objectaction.WithColor(t.Color),
 		objectaction.WithAsyncTarget("placed"),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
 	).Do()
 }
