@@ -32,8 +32,8 @@ type (
 var (
 	MaxMessages     = 100
 	MaxFragments    = 1000
-	MaxData         = 1000
-	MaxDatagramSize = 8192
+	MaxChunkSize    = 1 * 1024
+	MaxDatagramSize = 60 * 1024
 )
 
 func New() hbcfg.Confer {
