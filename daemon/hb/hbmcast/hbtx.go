@@ -128,8 +128,8 @@ func (t *tx) send(b []byte) {
 	defer c.Close()
 	msgID := uuid.New().String()
 	msgLength := len(b)
-	total := msgLength / MaxDatagramSize
-	if (msgLength % MaxDatagramSize) != 0 {
+	total := msgLength / MaxData
+	if (msgLength % MaxData) != 0 {
 		total += 1
 	}
 	for i := 1; i <= total; i += 1 {
@@ -141,8 +141,8 @@ func (t *tx) send(b []byte) {
 		if i == total {
 			f.Chunk = b
 		} else {
-			f.Chunk = b[:MaxDatagramSize]
-			b = b[MaxDatagramSize:]
+			f.Chunk = b[:MaxData]
+			b = b[MaxData:]
 		}
 		dgram, err := json.Marshal(f)
 		if err != nil {
