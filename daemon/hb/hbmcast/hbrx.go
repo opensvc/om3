@@ -104,8 +104,8 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			}
 		}()
 		started <- true
+		b := make([]byte, MaxDatagramSize)
 		for {
-			b := make([]byte, MaxDatagramSize)
 			n, src, err := listener.ReadFromUDP(b)
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {
@@ -131,7 +131,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	b = b[:n]
 	//fmt.Println("xx <<<\n", hex.Dump(b))
 	if err := json.Unmarshal(b, &f); err != nil {
-		t.log.Warn().Err(err).Msgf("umarshal fragment from src %s", s)
+		t.log.Warn().Err(err).Msgf("unmarshal fragment from src %s", s)
 		return
 	}
 
