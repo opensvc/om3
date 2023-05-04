@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/placement"
@@ -307,17 +305,16 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		o.orchestrate()
 		o.updateIfChange()
 	} else {
-		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
-			Node:  o.localhost,
-			Path:  o.path,
-			Id:    c.Value.CandidateOrchestrationId,
-			Error: errors.Errorf("dropped set instance monitor request: %v", c.Value),
+		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationRefused{
+			Node:   o.localhost,
+			Path:   o.path,
+			Id:     c.Value.CandidateOrchestrationId,
+			Reason: fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
 		},
 			o.labelPath,
 			o.labelLocalhost,
 		)
 	}
-
 }
 
 func (o *imon) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {

@@ -94,10 +94,9 @@ func (o *imon) endOrchestration() {
 	o.updateIfChange()
 	if o.acceptedOrchestrationId != "" {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
-			Node:  o.localhost,
-			Path:  o.path,
-			Id:    o.acceptedOrchestrationId,
-			Error: nil,
+			Node: o.localhost,
+			Path: o.path,
+			Id:   o.acceptedOrchestrationId,
 		},
 			o.labelPath,
 			o.labelLocalhost,
