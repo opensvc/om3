@@ -133,6 +133,9 @@ var (
 	// abitratorCheckDuration is the maximum duration to wait while
 	// checking arbitrators
 	arbitratorCheckDuration = daemonenv.ReadyDuration / 3
+
+	// unexpectedDelay is a delay duration to wait on unexpected situation
+	unexpectedDelay = 500 * time.Millisecond
 )
 
 // Start launches the nmon worker goroutine
