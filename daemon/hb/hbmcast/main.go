@@ -1,6 +1,4 @@
-/*
-Package hbmcast implement a hb multicast driver
-*/
+// Package hbmcast implement a hb multicast driver
 package hbmcast
 
 import (
@@ -16,6 +14,16 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
+// T is the multicast heartbeat
+//
+// The maximum size of messages that this heartbeat is able to send and receive depends on
+// var Max... values
+//
+// The maximum size of hb message to send is MaxFragments * MaxChunkSize: 10M
+//
+// The maximum size of hb message to receive is MaxFragments * MaxDatagramSize: 12M
+//
+// The maximum total data size from a source is MaxMessages * MaxFragments * MaxDatagramSize: 100M
 type (
 	T struct {
 		hbcfg.T
@@ -30,10 +38,20 @@ type (
 )
 
 var (
-	MaxMessages     = 100
-	MaxFragments    = 1000
-	MaxData         = 1000
-	MaxDatagramSize = 8192
+	// TODO define common rule for message length, hb ucast defines msgMaxSize 10*1000*1000)
+
+	// MaxMessages is the maximum number of messages from a source
+	MaxMessages = 10
+
+	// MaxFragments is the maximum number of fragments when Tx split the message
+	// into fragments.
+	MaxFragments = 200
+
+	// MaxChunkSize is the maximum size of chunk in a fragment
+	MaxChunkSize = 50 * 1024
+
+	// MaxDatagramSize is the maximum size of a datagram to read
+	MaxDatagramSize = 60 * 1024
 )
 
 func New() hbcfg.Confer {
