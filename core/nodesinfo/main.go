@@ -1,6 +1,7 @@
 package nodesinfo
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -90,13 +91,13 @@ func ReqWithClient(c *client.T) (NodesInfo, error) {
 	if c == nil {
 		panic("nodesinfo.ReqWithClient(nil): no client")
 	}
-	req := c.NewGetNodesInfo()
-	b, err := req.Do()
+	resp, err := c.GetNodesInfo(context.Background())
 	if err != nil {
 		return nil, err
 	}
 	var data NodesInfo
-	err = json.Unmarshal(b, &data)
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&data)
 	return data, err
 }
 

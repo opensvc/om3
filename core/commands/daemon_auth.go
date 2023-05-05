@@ -1,13 +1,12 @@
 package commands
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/goccy/go-json"
-
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
@@ -26,28 +25,30 @@ func (t *CmdDaemonAuth) Run() error {
 	if err != nil {
 		return err
 	}
-	req := c.NewPostDaemonAuth().
-		SetDuration(t.Duration).
-		SetRoles(t.Roles)
-	var b []byte
-	b, err = req.Do()
+	duration := t.Duration.String()
+	roles := make(api.QueryRoles, 0)
+	for _, s := range t.Roles {
+		roles = append(roles, api.Role(s))
+	}
+	params := api.PostAuthTokenParams{
+		Duration: &duration,
+		Role:     &roles,
+	}
+	resp, err := c.PostAuthTokenWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
 	if len(t.Out) == 0 {
-		_, err = fmt.Fprintf(os.Stdout, "%s\n", b)
-		if err != nil {
-			return err
-		}
+		t.Out = []string{"token", "token_expire_at"}
 	} else {
-		var parsed map[string] interface{}
-		if err := json.Unmarshal(b, &parsed); err != nil {
-			return err
-		}
 		for _, out := range t.Out {
-			if v, ok := parsed[out]; ok {
-				_, err := fmt.Printf("%s\n", v)
-				if err != nil {
+			switch out {
+			case "token":
+				if _, err := fmt.Printf("%s\n", resp.JSON200.Token); err != nil {
+					return err
+				}
+			case "token_expire_at":
+				if _, err := fmt.Printf("%s\n", resp.JSON200.TokenExpireAt); err != nil {
 					return err
 				}
 			}

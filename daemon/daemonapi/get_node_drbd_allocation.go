@@ -73,7 +73,7 @@ func init() {
 }
 
 func (a *DaemonApi) GetNodeDrbdAllocation(w http.ResponseWriter, r *http.Request) {
-	write, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDrbdAllocate")
+	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDrbdAllocate")
 	log.Debug().Msg("starting")
 
 	pendingDrbdAllocations.Lock()
@@ -108,16 +108,12 @@ func (a *DaemonApi) GetNodeDrbdAllocation(w http.ResponseWriter, r *http.Request
 		resp.Port = port
 	}
 
-	b, err := json.Marshal(resp)
-	if err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Error().Err(err).Msg("marshal drbd allocation")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	if _, err := write(b); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	pendingDrbdAllocations.add(resp)
+	w.WriteHeader(http.StatusOK)
 }

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -60,39 +60,36 @@ func (t *CmdObjectEditKey) doLocal(obj object.Keystore, c *client.T) error {
 }
 
 func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {
-	var (
-		b []byte
-	)
-	handle := c.NewGetKey()
-	handle.Path = p.String()
-	handle.Key = key
-	b, err = handle.Do()
-	if err != nil {
-		return []byte{}, err
-	}
-	resp := struct {
-		data []byte
-	}{}
-	if err = json.Unmarshal(b, &resp); err != nil {
-		return []byte{}, err
-	}
-	return resp.data, nil
+	/*
+		params := api.GetKey{}
+		params.Path = p.String()
+		params.Key = key
+		resp, err = c.GetKeyWithResponse(context.Background(), &params)
+		if err != nil {
+			return []byte{}, err
+		}
+		return *resp.JSON200.Data, nil
+	*/
+	return nil, errors.Errorf("TODO")
 }
 
 func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
-	var b []byte
-	if b, err = os.ReadFile(fName); err != nil {
-		return err
-	}
-	req := c.NewPostKey()
-	req.Path = p.String()
-	req.Key = key
-	req.Data = b
-	_, err = req.Do()
-	if err != nil {
-		return err
-	}
-	return nil
+	/*
+		var b []byte
+		if b, err = os.ReadFile(fName); err != nil {
+			return err
+		}
+		params := api.PostKey{
+			Path: p.String(),
+			Key:  key,
+			Data: b,
+		}
+		if _, err = c.PostKey(context.Background(), params); err != nil {
+			return err
+		}
+		return nil
+	*/
+	return errors.Errorf("TODO")
 }
 
 func (t *CmdObjectEditKey) doRemote(p path.T, c *client.T) error {

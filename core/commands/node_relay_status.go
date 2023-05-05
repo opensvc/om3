@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -73,16 +73,12 @@ func (t *CmdNodeRelayStatus) Run() error {
 		if err != nil {
 			return err
 		}
-		req := cli.NewGetRelayMessage()
-		b, err := req.Do()
+		params := api.GetRelayMessageParams{}
+		resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 		if err != nil {
 			return err
 		}
-		var data api.RelayMessages
-		if err := json.Unmarshal(b, &data); err != nil {
-			return err
-		}
-		for _, message := range data.Messages {
+		for _, message := range resp.JSON200.Messages {
 			messages = append(messages, relayMessage{
 				Relay:        hbRelay,
 				RelayMessage: message,

@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/goccy/go-json"
 
 	"github.com/opensvc/om3/core/client"
@@ -22,14 +24,13 @@ func (t *CmdDaemonDNSDump) Run() error {
 	if err != nil {
 		return err
 	}
-	req := c.NewGetDaemonDNSDump()
-	var b []byte
-	b, err = req.Do()
+	resp, err := c.GetDaemonDNSDump(context.Background())
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	var parsed dns.Zone
-	if err := json.Unmarshal(b, &parsed); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return err
 	}
 	renderer := output.Renderer{

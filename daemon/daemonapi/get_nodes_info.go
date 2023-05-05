@@ -9,14 +9,14 @@ import (
 )
 
 func (a *DaemonApi) GetNodesInfo(w http.ResponseWriter, r *http.Request) {
-	write, log := handlerhelper.GetWriteAndLog(w, r, "GetNodesInfo")
+	_, log := handlerhelper.GetWriteAndLog(w, r, "GetNodesInfo")
 	log.Debug().Msg("starting")
 	data := node.GetNodesInfo()
-	b, err := json.Marshal(data)
-	if err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Error().Err(err).Msg("marshal nodes info")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	_, _ = write(b)
+	w.WriteHeader(http.StatusOK)
 }

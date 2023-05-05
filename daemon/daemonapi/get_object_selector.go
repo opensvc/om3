@@ -29,6 +29,10 @@ func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, pa
 	for _, v := range matchedPaths {
 		result = append(result, v.String())
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

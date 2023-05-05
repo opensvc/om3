@@ -1,6 +1,7 @@
 package objectselector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -328,16 +330,15 @@ func (t *Selection) daemonExpand() error {
 	if env.HasDaemonOrigin() {
 		return errors.New("Action origin is daemon")
 	}
-	if !t.client.HasRequester() {
-		return errors.New("client has no requester")
+	params := api.GetObjectSelectorParams{
+		Selector: t.SelectorExpression,
 	}
-	handle := t.client.NewGetObjectSelector()
-	handle.ObjectSelector = t.SelectorExpression
-	b, err := handle.Do()
-	if err != nil {
+	if resp, err := t.client.GetObjectSelector(context.Background(), &params); err != nil {
 		return err
+	} else {
+		defer resp.Body.Close()
+		return json.NewDecoder(resp.Body).Decode(&t.paths)
 	}
-	return json.Unmarshal(b, &t.paths)
 }
 
 // Objects returns the selected list of objects. This function relays its

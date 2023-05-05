@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -48,7 +49,7 @@ func (t *CmdDaemonCommon) isRunning() bool {
 	if err != nil {
 		return false
 	}
-	if _, err := cli.NewGetDaemonRunning().Do(); err == nil {
+	if _, err := cli.GetDaemonRunning(context.Background()); err == nil {
 		return true
 	}
 	return false

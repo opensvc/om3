@@ -4,7 +4,7 @@
 package remoteconfig
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 func FetchObjectFile(cli *client.T, p path.T) (filename string, updated time.Time, err error) {
@@ -50,20 +51,11 @@ func FetchObjectFile(cli *client.T, p path.T) (filename string, updated time.Tim
 
 func fetchFromApi(cli *client.T, p path.T) (b []byte, updated time.Time, err error) {
 	var (
-		readB []byte
+		resp *api.GetObjectFileResponse
 	)
-	handle := cli.NewGetObjectConfigFile()
-	handle.ObjectSelector = p.String()
-	if readB, err = handle.Do(); err != nil {
+	resp, err = cli.GetObjectFileWithResponse(context.Background(), &api.GetObjectFileParams{Path: p.String()})
+	if err != nil {
 		return
 	}
-	type response struct {
-		Data    []byte
-		Updated time.Time `json:"mtime"`
-	}
-	resp := response{}
-	if err = json.Unmarshal(readB, &resp); err != nil {
-		return
-	}
-	return resp.Data, resp.Updated, nil
+	return resp.JSON200.Data, resp.JSON200.Mtime, nil
 }

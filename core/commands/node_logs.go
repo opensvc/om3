@@ -1,18 +1,14 @@
 package commands
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/slog"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -24,46 +20,50 @@ type (
 )
 
 func (t *CmdNodeLogs) backlog(node string) (slog.Events, error) {
-	c, err := client.New(
-		client.WithURL(node),
-		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(rawconfig.ClusterSection().Secret),
-	)
-	if err != nil {
-		return nil, err
-	}
-	req := c.NewGetNodeBacklog().SetFilters(t.Filters())
-	b, err := req.Do()
-	if err != nil {
-		return nil, err
-	}
 	events := make(slog.Events, 0)
-	if err := json.Unmarshal(b, &events); err != nil {
-		return nil, err
-	}
-	return events, nil
+	/*
+		c, err := client.New(
+			client.WithURL(node),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(rawconfig.ClusterSection().Secret),
+		)
+		if err != nil {
+			return nil, err
+		}
+		req := c.NewGetNodeBacklog().SetFilters(t.Filters())
+		b, err := req.Do()
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(b, &events); err != nil {
+			return nil, err
+		}
+	*/
+	return events, errors.Errorf("TODO")
 }
 
 func (t *CmdNodeLogs) stream(node string) {
-	c, err := client.New(
-		client.WithURL(node),
-		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(rawconfig.ClusterSection().Secret),
-	)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	streamer := c.NewGetNodeLog()
-	streamer.Filters = t.Filters()
-	events, err := streamer.Do()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	for event := range events {
-		event.Render(t.Format)
-	}
+	/*
+		c, err := client.New(
+			client.WithURL(node),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(rawconfig.ClusterSection().Secret),
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		streamer := c.NewGetNodeLog()
+		streamer.Filters = t.Filters()
+		events, err := streamer.Do()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		for event := range events {
+			event.Render(t.Format)
+		}
+	*/
 }
 
 func (t *CmdNodeLogs) remote() error {

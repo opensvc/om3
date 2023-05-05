@@ -11,7 +11,7 @@ import (
 )
 
 func (a *DaemonApi) GetNodeDrbdConfig(w http.ResponseWriter, r *http.Request, params api.GetNodeDrbdConfigParams) {
-	write, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDrbdConfig")
+	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDrbdConfig")
 	log.Debug().Msg("starting")
 
 	if params.Name == "" {
@@ -31,14 +31,11 @@ func (a *DaemonApi) GetNodeDrbdConfig(w http.ResponseWriter, r *http.Request, pa
 		resp.Data = data
 	}
 
-	b, err := json.Marshal(resp)
-	if err != nil {
-		log.Error().Err(err).Msgf("marshal response error %s", filename)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Error().Err(err).Msg("json encode")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if _, err := write(b); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	w.WriteHeader(http.StatusOK)
 }

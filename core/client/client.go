@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/opensvc/om3/core/client/api"
 	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
-	reqjsonrpc "github.com/opensvc/om3/core/client/requester/jsonrpc"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/rawconfig"
+	oapi "github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -19,13 +18,13 @@ import (
 type (
 	// T is the agent api client configuration
 	T struct {
+		*oapi.ClientWithResponses
 		url                string
 		insecureSkipVerify bool
 		clientCertificate  string
 		clientKey          string
 		username           string
 		password           string
-		requester          api.Requester
 		bearer             string
 		rootCA             string
 	}
@@ -146,10 +145,12 @@ func WithPassword(s string) funcopt.O {
 // configure allocates a new requester with a requester for the server found in Config,
 // or for the server found in Context.
 func (t *T) configure() error {
-	if t.url == "" {
+	if env.Context() != "" {
 		if err := t.loadContext(); err != nil {
 			return err
 		}
+	} else if t.url == "" {
+		t.url = daemonenv.UrlUxHttp()
 	} else if t.bearer == "" && t.username == "" {
 		t.username = hostname.Hostname()
 		t.password = rawconfig.ClusterSection().Secret
@@ -159,7 +160,6 @@ func (t *T) configure() error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("connected %s", t.requester)
 	return nil
 }
 
@@ -171,29 +171,19 @@ func (t *T) newRequester() (err error) {
 	}
 	switch {
 	case t.url == "":
-		t.requester, err = reqh2.NewUDS(t.url)
-	case t.url == "raw", t.url == "raw://", t.url == "raw:///":
-		t.url = ""
-		t.requester, err = reqjsonrpc.New(t.url)
-	case strings.HasPrefix(t.url, reqjsonrpc.UDSPrefix) == true:
-		t.requester, err = reqjsonrpc.New(t.url)
-	case strings.HasSuffix(t.url, "lsnr.sock"):
-		t.requester, err = reqjsonrpc.New(t.url)
-	case strings.HasPrefix(t.url, reqjsonrpc.InetPrefix):
-		t.requester, err = reqjsonrpc.New(t.url)
 	case strings.HasPrefix(t.url, reqh2.UDSPrefix):
 		t.url = t.url[7:]
-		t.requester, err = reqh2.NewUDS(t.url)
+		t.ClientWithResponses, err = reqh2.NewUDS(t.url)
 	case strings.HasSuffix(t.url, "h2.sock"):
-		t.requester, err = reqh2.NewUDS(t.url)
+		t.ClientWithResponses, err = reqh2.NewUDS(t.url)
 	case strings.HasPrefix(t.url, reqh2.InetPrefix):
-		t.requester, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
+		t.ClientWithResponses, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
 	default:
 		if !strings.Contains(t.url, ":") {
 			t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
 		}
 		t.url = reqh2.InetPrefix + t.url
-		t.requester, err = reqh2.NewInet(t.url, "", "", t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
+		t.ClientWithResponses, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
 	}
 	return err
 }
@@ -210,4 +200,12 @@ func (t *T) loadContext() error {
 		t.clientKey = context.User.ClientKey
 	}
 	return nil
+}
+
+func (t *T) NewGetEvents() *api.GetEvents {
+	return api.NewGetEvents(t)
+}
+
+func (t *T) NewGetDaemonStatus() *api.GetDaemonStatus {
+	return api.NewGetDaemonStatus(t)
 }

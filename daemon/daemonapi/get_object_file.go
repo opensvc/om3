@@ -12,9 +12,7 @@ import (
 )
 
 func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params api.GetObjectFileParams) {
-	var b []byte
-	var err error
-	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetObjectFile")
+	_, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetObjectFile")
 	log.Debug().Msg("starting")
 
 	objPath, err := path.Parse(params.Path)
@@ -48,14 +46,11 @@ func (a *DaemonApi) GetObjectFile(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 
-	b, err = json.Marshal(resp)
-	if err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Error().Err(err).Msgf("marshal response error %s %s", objPath, filename)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if _, err := write(b); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	w.WriteHeader(http.StatusOK)
 }

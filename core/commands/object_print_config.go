@@ -1,12 +1,12 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
@@ -14,6 +14,8 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -70,27 +72,24 @@ func (t *CmdObjectPrintConfig) extractLocal(p path.T) (rawconfig.T, error) {
 }
 
 func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconfig.T, error) {
-	var (
-		err error
-		b   []byte
-	)
-	handle := c.NewGetObjectConfig()
-	handle.ObjectSelector = p.String()
-	handle.Evaluate = t.Eval
-	handle.Impersonate = t.Impersonate
-	handle.SetNode(t.NodeSelector)
-	b, err = handle.Do()
+	params := api.GetObjectConfigParams{
+		Path:        p.String(),
+		Evaluate:    &t.Eval,
+		Impersonate: &t.Impersonate,
+	}
+	resp, err := c.GetObjectConfigWithResponse(context.Background(), &params)
 	if err != nil {
 		return rawconfig.T{}, err
 	}
-	if data, err := parseRoutedResponse(b); err == nil {
-		return data, nil
-	}
 	data := rawconfig.T{}
-	if err := json.Unmarshal(b, &data); err == nil {
-		return data, nil
-	} else {
+	if resp.JSON200 == nil {
+		panic("response json is nil")
+	} else if b, err := json.Marshal(resp.JSON200.Data); err != nil {
 		return rawconfig.T{}, err
+	} else if err := json.Unmarshal(b, &data); err != nil {
+		return rawconfig.T{}, err
+	} else {
+		return data, nil
 	}
 }
 

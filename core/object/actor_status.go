@@ -76,7 +76,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err
 		data.Optional = status.NotApplicable
 	}
 	data.Csum = csumStatusData(data)
-	t.statusDump(data)
+	err = t.statusDump(data)
 	return
 }
 

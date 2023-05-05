@@ -1,8 +1,11 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xerrors"
 )
 
@@ -28,9 +31,10 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 			if err != nil {
 				return err
 			}
-			req := c.NewPostObjectClear()
-			req.Path = p
-			if _, err := req.Do(); err != nil {
+			params := api.PostObjectClear{
+				Path: p.String(),
+			}
+			if _, err := c.PostObjectClear(context.Background(), params); err != nil {
 				errs = xerrors.Append(errs, err)
 			}
 		}

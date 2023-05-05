@@ -1,23 +1,18 @@
 package reqh2
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
-	"github.com/opensvc/om3/core/client/request"
+	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/util/httpclientcache"
 
@@ -27,12 +22,12 @@ import (
 type (
 	// T is the agent HTTP/2 requester
 	T struct {
+		Client      api.ClientWithResponses
 		Certificate string
 		Username    string
-		Password    string      `json:"-"`
-		Client      http.Client `json:"-"`
-		URL         string      `json:"url"`
-		Bearer      string      `json:"-"`
+		Password    string `json:"-"`
+		URL         string `json:"url"`
+		Bearer      string `json:"-"`
 	}
 )
 
@@ -57,11 +52,10 @@ func defaultUDSPath() string {
 	return filepath.FromSlash(fmt.Sprintf("%s/lsnr/h2.sock", rawconfig.Paths.Var))
 }
 
-func NewUDS(url string) (*T, error) {
+func NewUDS(url string) (apiClient *api.ClientWithResponses, err error) {
 	if url == "" {
 		url = defaultUDSPath()
 	}
-	r := &T{}
 	tp := &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, cfg *tls.Config) (con net.Conn, err error) {
@@ -82,16 +76,19 @@ func NewUDS(url string) (*T, error) {
 			}
 		},
 	}
-	r.URL = "http://localhost"
-	r.Client = http.Client{
+	httpClient := &http.Client{
 		Transport: tp,
 		Timeout:   clientTimeout,
 	}
-	return r, nil
+	if apiClient, err = api.NewClientWithResponses("http://localhost", api.WithHTTPClient(httpClient)); err != nil {
+		return apiClient, err
+	} else {
+		return apiClient, nil
+	}
 }
 
-func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, username, password string, bearer string, rootCa string) (*T, error) {
-	client, err := httpclientcache.Client(httpclientcache.Options{
+func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, username, password string, bearer string, rootCa string) (apiClient *api.ClientWithResponses, err error) {
+	httpClient, err := httpclientcache.Client(httpclientcache.Options{
 		CertFile:           clientCertificate,
 		KeyFile:            clientKey,
 		Timeout:            clientTimeout,
@@ -104,191 +101,28 @@ func NewInet(url, clientCertificate, clientKey string, insecureSkipVerify bool, 
 	if !strings.Contains(url[8:], ":") {
 		url += fmt.Sprintf(":%d", daemonenv.HttpPort)
 	}
-	r := &T{
-		Username: username,
-		Password: password,
-		URL:      url,
-		Client:   *client,
-		Bearer:   bearer,
-	}
-	return r, nil
-}
 
-func (t T) newRequest(method string, r request.T) (*http.Request, error) {
-	jsonStr, _ := json.Marshal(r.Options)
-	body := bytes.NewBuffer(jsonStr)
+	options := []api.ClientOption{api.WithHTTPClient(httpClient)}
 
-	action := r.Action
-	if !strings.HasPrefix(action, "/") {
-		action = "/" + action
-	}
-	reqUrl := url.URL{
-		Path:     t.URL + action,
-		RawQuery: r.Values.Encode(),
-	}
-	req, err := http.NewRequest(method, reqUrl.RequestURI(), body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("o-node", r.Node)
-	if t.Password != "" {
-		req.SetBasicAuth(t.Username, t.Password)
-	} else if t.Bearer != "" {
-		req.Header.Set("Authorization", "Bearer "+t.Bearer)
-	}
-	return req, nil
-}
-
-func (t T) doReq(method string, r request.T) (*http.Response, error) {
-	req, err := t.newRequest(method, r)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := t.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-func (t T) doReqReadResponse(method string, r request.T) ([]byte, error) {
-	resp, err := t.doReq(method, r)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("%s: %s: %s", t, r, resp.Status)
-	}
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-// Get implements the Get interface for the H2 protocol
-func (t T) Get(r request.T) ([]byte, error) {
-	return t.doReqReadResponse("GET", r)
-}
-
-// Post implements the Post interface for the H2 protocol
-func (t T) Post(r request.T) ([]byte, error) {
-	return t.doReqReadResponse("POST", r)
-}
-
-// Put implements the Put interface for the H2 protocol
-func (t T) Put(r request.T) ([]byte, error) {
-	return t.doReqReadResponse("PUT", r)
-}
-
-// Delete implements the Delete interface for the H2 protocol
-func (t T) Delete(r request.T) ([]byte, error) {
-	return t.doReqReadResponse("DELETE", r)
-}
-
-// GetReader returns a response io.ReadCloser
-func (t T) GetReader(r request.T) (reader io.ReadCloser, err error) {
-	// TODO add a stopper to allow GetStream clients to stop sse retries
-	var req *http.Request
-	var resp *http.Response
-	req, err = t.newRequest("GET", r)
-	if err != nil {
-		return
-	}
-
-	// override default Timeout for server side calm events
-	client := t.Client
-	client.Timeout = 0
-	req.Header.Set("Accept", "text/event-stream")
-	resp, err = client.Do(req)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		if b, errRead := io.ReadAll(resp.Body); errRead == nil {
-			err = fmt.Errorf("%s: %s", resp.Status, string(b))
-		} else {
-			err = fmt.Errorf("%s", resp.Status)
-		}
-		return
-	}
-	reader = resp.Body
-	return
-}
-
-// GetStream returns a chan of raw json messages
-func (t T) GetStream(r request.T) (chan []byte, error) {
-	// TODO add a stopper to allow GetStream clients to stop sse retries
-	q := make(chan []byte, 1000)
-	errChan := make(chan error)
-	delayRestart := 500 * time.Millisecond
-	go func() {
-		defer close(q)
-		defer close(errChan)
-		hasRunOnce := false
-		for {
-			req, err := t.newRequest("GET", r)
-			if err != nil {
-				if !hasRunOnce {
-					// Notify initial create request failure
-					errChan <- err
-				}
-				return
-			}
-			if !hasRunOnce {
-				hasRunOnce = true
-				errChan <- nil
-			}
-			// override default Timeout for server side calm events
-			client := t.Client
-			client.Timeout = 0
-			req.Header.Set("Accept", "text/event-stream")
-			resp, _ := client.Do(req)
-			_ = getServerSideEvents(q, resp)
-			time.Sleep(delayRestart)
-		}
-	}()
-	err := <-errChan
-	return q, err
-}
-
-func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
-	if resp == nil {
-		return errors.Errorf("<nil> event")
-	}
-	br := bufio.NewReader(resp.Body)
-	delim := []byte{':', ' '}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	for {
-		bs, err := br.ReadBytes('\n')
-
+	if username != "" && password != "" {
+		provider, err := securityprovider.NewSecurityProviderBasicAuth(username, password)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		if len(bs) < 2 {
-			continue
-		}
-
-		spl := bytes.Split(bs, delim)
-
-		if len(spl) < 2 {
-			continue
-		}
-
-		switch string(spl[0]) {
-		case "data":
-			b := bytes.TrimLeft(bs, "data: ")
-			q <- b
-		}
-		if err == io.EOF {
-			break
-		}
+		options = append(options, api.WithRequestEditorFn(provider.Intercept))
 	}
-	return nil
+
+	if bearer != "" {
+		provider, err := securityprovider.NewSecurityProviderBearerToken(bearer)
+		if err != nil {
+			return nil, err
+		}
+		options = append(options, api.WithRequestEditorFn(provider.Intercept))
+	}
+
+	if apiClient, err = api.NewClientWithResponses(url, options...); err != nil {
+		return apiClient, err
+	} else {
+		return apiClient, nil
+	}
 }

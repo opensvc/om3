@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -241,17 +241,17 @@ func (t T) DoAsync() error {
 		ctx, cancel = context.WithCancel(context.Background())
 		defer cancel()
 	}
-	req := c.NewPostNodeMonitor()
+	params := api.PostNodeMonitor{}
 	switch t.Target {
 	case "":
 	case node.MonitorStateDrained.String():
 		s := t.Target
-		req.LocalExpect = &s
+		params.LocalExpect = &s
 		expectation = node.MonitorStateDrained
 	default:
 		if globalExpect, ok := node.MonitorGlobalExpectValues[t.Target]; ok {
 			s := t.Target
-			req.GlobalExpect = &s
+			params.GlobalExpect = &s
 			expectation = globalExpect
 		} else {
 			return errors.Errorf("unexpected global expect value %s", t.Target)
@@ -260,25 +260,26 @@ func (t T) DoAsync() error {
 	if t.Wait {
 		go t.waitExpectation(ctx, c, expectation, waitC)
 	}
-	b, err := req.Do()
+	resp, err := c.PostNodeMonitorWithResponse(ctx, params)
+	if err != nil {
+		return err
+	}
+
 	human := func() string {
-		if len(b) == 0 {
+		if len(resp.JSON200.Status) == 0 {
 			return ""
 		}
-		s := fmt.Sprintln(string(b))
+		s := fmt.Sprintln(resp.JSON200.Status)
 		return s
 	}
 	output.Renderer{
 		Format:        t.Format,
 		Color:         t.Color,
-		Data:          b,
+		Data:          resp.JSON200.Status,
 		HumanRenderer: human,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 
-	if err != nil {
-		return err
-	}
 	if t.Wait {
 		select {
 		case <-ctx.Done():
@@ -293,29 +294,31 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	c, err := client.New(client.WithURL(t.Server))
-	if err != nil {
-		return err
-	}
-	req := c.NewPostNodeAction()
-	req.NodeSelector = t.NodeSelector
-	req.Action = t.Action
-	req.Options = t.PostFlags
-	b, err := req.Do()
-	if err != nil {
-		return err
-	}
-	data := &struct {
-		Err    string `json:"err"`
-		Out    string `json:"out"`
-		Status int    `json:"status"`
-	}{}
-	if err := json.Unmarshal(b, data); err != nil {
-		return err
-	}
-	_, _ = fmt.Fprintf(os.Stdout, data.Out)
-	_, _ = fmt.Fprintf(os.Stderr, data.Err)
-	return nil
+	/*
+		c, err := client.New(client.WithURL(t.Server))
+		if err != nil {
+			return err
+		}
+		req := c.PostNodeAction()
+		req.NodeSelector = t.NodeSelector
+		req.Action = t.Action
+		req.Options = t.PostFlags
+		b, err := req.Do()
+		if err != nil {
+			return err
+		}
+		data := &struct {
+			Err    string `json:"err"`
+			Out    string `json:"out"`
+			Status int    `json:"status"`
+		}{}
+		if err := json.Unmarshal(b, data); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(os.Stdout, data.Out)
+		_, _ = fmt.Fprintf(os.Stderr, data.Err)
+	*/
+	return errors.Errorf("TODO")
 }
 
 func (t T) Do() error {

@@ -19,7 +19,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -296,21 +295,9 @@ Enter "yes" if you really want to run.`, t.RID())
 	return fmt.Errorf("run aborted")
 }
 
+// notifyRunDone is a noop here as for now the daemon api has no support for
+// POST /run_done, and may not need one.
 func (t T) notifyRunDone() error {
-	c, err := client.New()
-	if err != nil {
-		return err
-	}
-	req := c.NewPostRunDone()
-	req.RIDs = []string{t.RID()}
-	req.Action = "run"
-	req.Path = t.Path.String()
-	_, err = req.Do()
-	if err != nil {
-		t.Log().Warn().Msgf("failed to notify the daemon the run is done: %s", err)
-		return err
-	}
-	t.Log().Debug().Msg("daemon notified the run is done")
 	return nil
 }
 

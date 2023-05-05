@@ -42,6 +42,7 @@ func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
 	bus := pubsub.BusFromContext(r.Context())
 	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: value},
 		pubsub.Label{"path", p.String()}, labelApi)
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(orchestrationId)
+	w.WriteHeader(http.StatusOK)
 }

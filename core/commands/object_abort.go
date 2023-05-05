@@ -1,8 +1,11 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xerrors"
 )
 
@@ -24,10 +27,10 @@ func (t *CmdObjectAbort) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	req := c.NewPostObjectAbort()
+	params := api.PostObjectAbort{}
 	for _, p := range paths {
-		req.Path = p
-		if _, err := req.Do(); err != nil {
+		params.Path = p.String()
+		if _, err := c.PostObjectAbort(context.Background(), params); err != nil {
 			errs = xerrors.Append(errs, err)
 			break // no need to post on every node
 		}

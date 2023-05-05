@@ -180,8 +180,8 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 	}
 	if payloadStatus.Subsets != nil {
 		subSets := make(map[string]instance.SubsetStatus)
-		for _, s := range *payloadStatus.Subsets {
-			subSets[s.Rid] = instance.SubsetStatus{
+		for rid, s := range *payloadStatus.Subsets {
+			subSets[rid] = instance.SubsetStatus{
 				Parallel: s.Parallel,
 			}
 		}

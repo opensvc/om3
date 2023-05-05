@@ -9,9 +9,7 @@ import (
 )
 
 func (a *DaemonApi) GetSwagger(w http.ResponseWriter, r *http.Request) {
-	var b []byte
-	var err error
-	write, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetOpenapi")
+	_, log := handlerhelper.GetWriteAndLog(w, r, "objecthandler.GetOpenapi")
 	log.Debug().Msg("starting")
 
 	swagger, err := api.GetSwagger()
@@ -20,13 +18,9 @@ func (a *DaemonApi) GetSwagger(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	b, err = json.Marshal(swagger)
-	if err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(swagger); err != nil {
 		log.Error().Err(err).Msg("can't marshall schema")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if _, err := write(b); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

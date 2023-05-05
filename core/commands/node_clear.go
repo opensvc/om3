@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/core/client"
 )
 
@@ -15,7 +17,6 @@ func (t *CmdNodeClear) Run() error {
 	if err != nil {
 		return err
 	}
-	req := c.NewPostNodeClear()
-	_, err = req.Do()
+	_, err = c.PostNodeClear(context.Background())
 	return err
 }

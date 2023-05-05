@@ -1,36 +1,40 @@
 package api
 
 import (
+	"bufio"
+	"bytes"
+	"context"
 	"encoding/json"
-	"fmt"
 	"io"
+	"net/http"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/opensvc/om3/core/client/request"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 // GetEvents describes the events request options.
 type GetEvents struct {
-	client    GetStreamReader
-	namespace string
-	selector  string
-	relatives bool
-	Limit     uint64
+	client    api.ClientInterface
+	namespace *string
+	selector  *string
+	relatives *bool
+	Limit     *uint64
 	Filters   []string
-	Duration  time.Duration
+	Duration  *time.Duration
 }
 
 func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
-	t.Duration = duration
+	t.Duration = &duration
 	return t
 }
 
 func (t *GetEvents) SetLimit(limit uint64) *GetEvents {
-	t.Limit = limit
+	t.Limit = &limit
 	return t
 }
 
@@ -40,90 +44,112 @@ func (t *GetEvents) SetFilters(filters []string) *GetEvents {
 }
 
 func (t *GetEvents) SetNamespace(s string) *GetEvents {
-	t.namespace = s
+	t.namespace = &s
 	return t
 }
 
 func (t *GetEvents) SetSelector(s string) *GetEvents {
-	t.selector = s
+	t.selector = &s
 	return t
 }
 
 func (t *GetEvents) SetRelatives(s bool) *GetEvents {
-	t.relatives = s
+	t.relatives = &s
 	return t
-}
-
-func (t GetEvents) Namespace() string {
-	return t.namespace
-}
-
-func (t GetEvents) Selector() string {
-	return t.selector
-}
-
-func (t GetEvents) Relatives() bool {
-	return t.relatives
 }
 
 // NewGetEvents allocates a EventsCmdConfig struct and sets
 // default values to its keys.
-func NewGetEvents(t GetStreamReader) *GetEvents {
+func NewGetEvents(t api.ClientInterface) *GetEvents {
 	options := &GetEvents{
-		client:    t,
-		namespace: "*",
-		selector:  "",
-		relatives: true,
+		client: t,
 	}
 	return options
 }
 
+func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
+	if resp == nil {
+		return errors.Errorf("<nil> event")
+	}
+	br := bufio.NewReader(resp.Body)
+	delim := []byte{':', ' '}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	for {
+		bs, err := br.ReadBytes('\n')
+
+		if err != nil {
+			return err
+		}
+
+		if len(bs) < 2 {
+			continue
+		}
+
+		spl := bytes.Split(bs, delim)
+
+		if len(spl) < 2 {
+			continue
+		}
+
+		switch string(spl[0]) {
+		case "data":
+			b := bytes.TrimLeft(bs, "data: ")
+			q <- b
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	return nil
+}
+
 // GetRaw fetchs an event json RawMessage stream from the agent api
 func (t GetEvents) GetRaw() (chan []byte, error) {
-	return t.eventsBase()
+	resp, err := t.eventsBase()
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO add a stopper to allow GetStream clients to stop sse retries
+	q := make(chan []byte, 1000)
+	delayRestart := 500 * time.Millisecond
+	go func() {
+		defer close(q)
+		_ = getServerSideEvents(q, resp)
+		time.Sleep(delayRestart)
+	}()
+	return q, nil
+
 }
 
 // Do fetchs an Event stream from the agent api
 func (t GetEvents) Do() (chan event.Event, error) {
-	// TODO add a stopper to allow GetReader clients to stop fetching event streams retries
+	q, err := t.GetRaw()
+	if err != nil {
+		return nil, err
+	}
 
+	// TODO add a stopper to allow GetReader clients to stop fetching event streams retries
 	out := make(chan event.Event, 1000)
-	errChan := make(chan error)
 
 	go func() {
 		defer close(out)
-		defer close(errChan)
-		hasRunOnce := false
 		for {
-			q, err := t.eventsBase()
-			if err != nil {
-				if !hasRunOnce {
-					// Notify initial create request failure
-					errChan <- err
-				}
-				return
-			}
-			if !hasRunOnce {
-				hasRunOnce = true
-				errChan <- nil
-			}
 			marshalMessages(q, out)
 		}
 	}()
-	err := <-errChan
-	return out, err
+	return out, nil
 }
 
 // GetReader returns event.ReadCloser for GetEventReader
-func (t *GetEvents) GetReader() (evReader event.ReadCloser, err error) {
-	var r io.ReadCloser
-	req := t.newRequest()
-	r, err = t.client.GetReader(*req)
+func (t *GetEvents) GetReader() (event.ReadCloser, error) {
+	resp, err := t.eventsBase()
 	if err != nil {
-		return
+		return nil, err
 	}
-	evReader = sseevent.NewReadCloser(r)
-	return
+	return sseevent.NewReadCloser(resp.Body), nil
 }
 
 func marshalMessages(q chan []byte, out chan event.Event) {
@@ -145,25 +171,17 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (t GetEvents) eventsBase() (chan []byte, error) {
-	req := t.newRequest()
-	return t.client.GetStream(*req)
-}
-
-func (t GetEvents) newRequest() *request.T {
-	req := request.New()
-	req.Action = "daemon/events"
-	req.Options["selector"] = t.selector
-	req.Options["namespace"] = t.namespace
-	req.Options["full"] = t.relatives
-	if t.Limit > 0 {
-		req.Values.Add("limit", fmt.Sprintf("%d", t.Limit))
+func (t GetEvents) eventsBase() (*http.Response, error) {
+	params := api.GetDaemonEventsParams{
+		Filter: &t.Filters,
 	}
-	for _, filter := range t.Filters {
-		req.Values.Add("filter", filter)
+	if t.Limit != nil {
+		i := int64(*t.Limit)
+		params.Limit = &i
 	}
-	if t.Duration > 0 {
-		req.Values.Add("duration", t.Duration.String())
+	if t.Duration != nil {
+		s := t.Duration.String()
+		params.Duration = &s
 	}
-	return req
+	return t.client.GetDaemonEvents(context.Background(), &params)
 }

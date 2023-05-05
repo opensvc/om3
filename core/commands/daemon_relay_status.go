@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"encoding/json"
+	"context"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/output"
@@ -22,16 +22,13 @@ func (t *CmdDaemonRelayStatus) Run() error {
 	if err != nil {
 		return err
 	}
-	req := cli.NewGetRelayMessage()
-	b, err := req.Do()
+	params := api.GetRelayMessageParams{}
+	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
 	}
-	var data api.RelayMessages
-	if err := json.Unmarshal(b, &data); err != nil {
-		return err
-	}
 	relay := t.Server
+	data := *resp.JSON200
 	if t.Server == "" {
 		relay = hostname.Hostname()
 	}

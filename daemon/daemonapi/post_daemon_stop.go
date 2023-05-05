@@ -39,8 +39,9 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 		maintenance()
 
 		log.Info().Msg("daemon stopping")
-		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(api.ResponseText("daemon stopping"))
+		w.WriteHeader(http.StatusOK)
 		go func() {
 			// Give time for response received by client before stop daemon
 			time.Sleep(50 * time.Millisecond)
@@ -51,7 +52,8 @@ func (a *DaemonApi) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
 			log.Info().Msg("daemon stopped")
 		}()
 	} else {
-		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(api.ResponseText("no daemon to stop"))
+		w.WriteHeader(http.StatusOK)
 	}
 }

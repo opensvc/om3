@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -385,26 +386,33 @@ func (t T) DoAsync() error {
 	}
 	for _, p := range paths {
 		var (
-			b   []byte
 			err error
+			b   []byte
 		)
 		if t.Wait {
 			t.waitExpectation(ctx, c, t.Target, p, waitC)
 		}
 		switch t.Target {
 		case instance.MonitorGlobalExpectPlacedAt.String():
-			req := c.NewPostObjectSwitchTo()
-			req.ObjectSelector = p.String()
+			params := api.PostObjectSwitchTo{}
+			params.Path = p.String()
 			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
-			req.Destination = options.Destination
-			req.SetNode(t.NodeSelector)
-			b, err = req.Do()
+			params.Destination = options.Destination
+			if resp, e := c.PostObjectSwitchToWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				b = resp.Body
+			}
+
 		default:
-			req := c.NewPostObjectMonitor()
-			req.ObjectSelector = p.String()
-			req.GlobalExpect = t.Target
-			req.SetNode(t.NodeSelector)
-			b, err = req.Do()
+			params := api.PostObjectMonitor{}
+			params.Path = p.String()
+			params.GlobalExpect = &t.Target
+			if resp, e := c.PostObjectMonitorWithResponse(ctx, params); e != nil {
+				err = e
+			} else {
+				b = resp.Body
+			}
 		}
 		if err != nil {
 			errs = xerrors.Append(errs, err)
@@ -459,30 +467,32 @@ func (t T) DoAsync() error {
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
-	c, err := client.New(client.WithURL(t.Server))
-	if err != nil {
-		return err
-	}
-	req := c.NewPostObjectAction()
-	req.ObjectSelector = t.ObjectSelector
-	req.NodeSelector = t.NodeSelector
-	req.Action = t.Action
-	req.Options = t.PostFlags
-	b, err := req.Do()
-	if err != nil {
-		return err
-	}
-	human := func() string {
-		s := fmt.Sprintln(string(b))
-		return s
-	}
-	output.Renderer{
-		Format:        t.Format,
-		Color:         t.Color,
-		Data:          b,
-		HumanRenderer: human,
-	}.Print()
-	return nil
+	/*
+		c, err := client.New(client.WithURL(t.Server))
+		if err != nil {
+			return err
+		}
+		req := c.NewPostObjectAction()
+		req.ObjectSelector = t.ObjectSelector
+		req.NodeSelector = t.NodeSelector
+		req.Action = t.Action
+		req.Options = t.PostFlags
+		b, err := req.Do()
+		if err != nil {
+			return err
+		}
+		human := func() string {
+			s := fmt.Sprintln(string(b))
+			return s
+		}
+		output.Renderer{
+			Format:        t.Format,
+			Color:         t.Color,
+			Data:          b,
+			HumanRenderer: human,
+		}.Print()
+	*/
+	return errors.Errorf("TODO")
 }
 
 func (t T) Do() error {
