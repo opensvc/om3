@@ -156,7 +156,7 @@ func (t *CmdNodeEvents) Run() error {
 			return err
 		}
 	}
-	c, err = client.New(client.WithURL(t.Server))
+	c, err = client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}

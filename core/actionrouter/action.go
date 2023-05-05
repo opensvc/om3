@@ -166,7 +166,7 @@ func Do(t Actioner) error {
 		m.SetColor(o.Color)
 		m.SetFormat(o.Format)
 		m.SetSelector(o.ObjectSelector)
-		cli, e := client.New(client.WithURL(o.Server))
+		cli, e := client.New(client.WithURL(o.Server), client.WithTimeout(0))
 		if e != nil {
 			_, _ = fmt.Fprintln(os.Stderr, e)
 			return e

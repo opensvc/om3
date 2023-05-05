@@ -346,7 +346,7 @@ func (t T) DoLocal() error {
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t T) DoAsync() error {
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}

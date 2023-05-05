@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/core/client/api"
 	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
@@ -27,6 +28,7 @@ type (
 		password           string
 		bearer             string
 		rootCA             string
+		timeout            time.Duration
 	}
 )
 
@@ -34,7 +36,9 @@ type (
 // so users are not tempted to use client.Config{} dereferenced, which would
 // make loadContext useless.
 func New(opts ...funcopt.O) (*T, error) {
-	t := &T{}
+	t := &T{
+		timeout: 5 * time.Second,
+	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		return nil, err
 	}
@@ -73,6 +77,15 @@ func WithURL(url string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.url = url
+		return nil
+	})
+}
+
+// WithTimeout set a timeout on the connection
+func WithTimeout(v time.Duration) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.timeout = v
 		return nil
 	})
 }
@@ -173,17 +186,43 @@ func (t *T) newRequester() (err error) {
 	case t.url == "":
 	case strings.HasPrefix(t.url, reqh2.UDSPrefix):
 		t.url = t.url[7:]
-		t.ClientWithResponses, err = reqh2.NewUDS(t.url)
+		t.ClientWithResponses, err = reqh2.NewUDS(reqh2.Config{
+			URL:     t.url,
+			Timeout: t.timeout,
+		})
 	case strings.HasSuffix(t.url, "h2.sock"):
-		t.ClientWithResponses, err = reqh2.NewUDS(t.url)
+		t.ClientWithResponses, err = reqh2.NewUDS(reqh2.Config{
+			URL:     t.url,
+			Timeout: t.timeout,
+		})
 	case strings.HasPrefix(t.url, reqh2.InetPrefix):
-		t.ClientWithResponses, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
+		t.ClientWithResponses, err = reqh2.NewInet(reqh2.Config{
+			URL:                t.url,
+			Certificate:        t.clientCertificate,
+			Key:                t.clientKey,
+			InsecureSkipVerify: t.insecureSkipVerify,
+			Username:           t.username,
+			Password:           t.password,
+			Bearer:             t.bearer,
+			RootCA:             t.rootCA,
+			Timeout:            t.timeout,
+		})
 	default:
 		if !strings.Contains(t.url, ":") {
 			t.url += ":" + fmt.Sprint(daemonenv.HttpPort)
 		}
 		t.url = reqh2.InetPrefix + t.url
-		t.ClientWithResponses, err = reqh2.NewInet(t.url, t.clientCertificate, t.clientKey, t.insecureSkipVerify, t.username, t.password, t.bearer, t.rootCA)
+		t.ClientWithResponses, err = reqh2.NewInet(reqh2.Config{
+			URL:                t.url,
+			Certificate:        t.clientCertificate,
+			Key:                t.clientKey,
+			InsecureSkipVerify: t.insecureSkipVerify,
+			Username:           t.username,
+			Password:           t.password,
+			Bearer:             t.bearer,
+			RootCA:             t.rootCA,
+			Timeout:            t.timeout,
+		})
 	}
 	return err
 }

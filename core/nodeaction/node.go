@@ -230,7 +230,7 @@ func (t T) DoAsync() error {
 		expectation any
 		waitC       = make(chan error)
 	)
-	c, err := client.New(client.WithURL(t.Server))
+	c, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
