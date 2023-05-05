@@ -124,6 +124,8 @@ var (
 
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
+		"ObjectOrchestrationRefused": func() any { return &ObjectOrchestrationRefused{} },
+
 		"ObjectStatusDeleted": func() any { return &ObjectStatusDeleted{} },
 
 		"ObjectStatusDone": func() any { return &ObjectStatusDone{} },
@@ -517,10 +519,17 @@ type (
 
 	ObjectOrchestrationEnd struct {
 		pubsub.Msg
-		Id    string
-		Node  string
-		Path  path.T
-		Error error
+		Id   string
+		Node string
+		Path path.T
+	}
+
+	ObjectOrchestrationRefused struct {
+		pubsub.Msg
+		Id     string
+		Node   string
+		Path   path.T
+		Reason string
 	}
 
 	ObjectStatusDeleted struct {
@@ -851,6 +860,10 @@ func (e *NodeStatusUpdated) Kind() string {
 
 func (e *ObjectOrchestrationEnd) Kind() string {
 	return "ObjectOrchestrationEnd"
+}
+
+func (e *ObjectOrchestrationRefused) Kind() string {
+	return "ObjectOrchestrationRefused"
 }
 
 func (e *ObjectStatusDeleted) Kind() string {

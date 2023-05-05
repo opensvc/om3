@@ -63,6 +63,7 @@ func (t *rx) Stop() error {
 }
 
 // Start implements the Start function of the Receiver interface for rx
+// TODO need purge too old or dropped node assembly ?
 func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
@@ -104,8 +105,8 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			}
 		}()
 		started <- true
+		b := make([]byte, MaxDatagramSize)
 		for {
-			b := make([]byte, MaxDatagramSize)
 			n, src, err := listener.ReadFromUDP(b)
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {
@@ -131,7 +132,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	b = b[:n]
 	//fmt.Println("xx <<<\n", hex.Dump(b))
 	if err := json.Unmarshal(b, &f); err != nil {
-		t.log.Warn().Err(err).Msgf("umarshal fragment from src %s", s)
+		t.log.Warn().Err(err).Msgf("unmarshal fragment from src %s", s)
 		return
 	}
 
@@ -149,11 +150,16 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	msg := t.assembly[s]
 
 	// verify fragment DoS
-	if fragments, ok := msg[f.MsgID]; !ok {
+	if f.Total > MaxFragments {
+		// fast drop (len(fragments) will exceed MaxFragments)
+		t.log.Warn().Msgf("too many  fragments from src %s msg %s. drop", s, f.MsgID)
+		return
+	} else if fragments, ok := msg[f.MsgID]; !ok {
 		msg[f.MsgID] = dataMap{}
 		t.assembly[s] = msg
 	} else if len(fragments) > MaxFragments {
 		t.log.Warn().Msgf("too many pending message fragments from src %s msg %s. purge", s, f.MsgID)
+		// TODO delete(msg, f.MsgID) ?
 		msg[f.MsgID] = dataMap{}
 		t.assembly[s] = msg
 		return
@@ -170,26 +176,31 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 
-	// assemble chunks
-	message := []byte{}
-	for i := 1; i <= f.Total; i += 1 {
-		chunk, ok := chunks[i]
-		if !ok {
-			t.log.Warn().Msgf("missing fragment %d in msg %s from src %s. purge", i, f.MsgID, s)
-			delete(msg, f.MsgID)
-			t.assembly[s] = msg
-			return
+	// assemble chunks of f.MsgID from peer s
+	defer func() {
+		delete(msg, f.MsgID)
+		t.assembly[s] = msg
+	}()
+	var encMsg *reqjsonrpc.Message
+	if f.Total > 1 {
+		var message []byte
+		for i := 1; i <= f.Total; i += 1 {
+			chunk, ok := chunks[i]
+			if !ok {
+				t.log.Warn().Msgf("missing fragment %d in msg %s from src %s. purge", i, f.MsgID, s)
+				return
+			}
+			message = append(message, chunk...)
 		}
-		message = append(message, chunk...)
+		encMsg = reqjsonrpc.NewMessage(message)
+	} else {
+		encMsg = reqjsonrpc.NewMessage(chunks[1])
 	}
-
-	encMsg := reqjsonrpc.NewMessage(message)
 	b, _, err := encMsg.DecryptWithNode()
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("recv: decrypting msg from %s: %s", s, hex.Dump(message))
+		t.log.Debug().Err(err).Msgf("recv: decrypting msg from %s: %s", s, hex.Dump(encMsg.Data))
 		return
 	}
-
 	data := hbtype.Msg{}
 	if err := json.Unmarshal(b, &data); err != nil {
 		t.log.Warn().Err(err).Msgf("can't unmarshal msg from %s", s)
@@ -205,8 +216,6 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		Success:  true,
 	}
 	t.msgC <- &data
-	delete(msg, f.MsgID)
-	t.assembly[s] = msg
 }
 
 func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf *net.Interface, timeout time.Duration) *rx {

@@ -1,25 +1,34 @@
 package nmon
 
-import "github.com/opensvc/om3/core/node"
+import (
+	"time"
+
+	"github.com/opensvc/om3/core/node"
+)
 
 func (o *nmon) orchestrateDrained() {
 	switch o.state.State {
 	case node.MonitorStateIdle:
-		o.drainFreezeFromIdle()
-	case node.MonitorStateFrozen:
 		o.drainFromIdle()
+	case node.MonitorStateFrozen:
+		o.drainFromFrozen()
 	case node.MonitorStateDrained:
 		o.change = true
 		o.state.State = node.MonitorStateIdle
 		o.state.LocalExpect = node.MonitorLocalExpectNone
+	default:
+		o.log.Warn().Msgf("orchestrate drained no solution from state %s", o.state.State)
+		time.Sleep(unexpectedDelay)
 	}
 }
 
-func (o *nmon) drainFreezeFromIdle() {
+func (o *nmon) drainFromIdle() {
 	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.Frozen.IsZero() {
-		// already frozen... advance to "frozen" state
-		o.change = true
+		// already frozen, ... advance to "frozen" state
 		o.state.State = node.MonitorStateFrozen
+		go func() {
+			o.cmdC <- cmdOrchestrate{state: node.MonitorStateFrozen, newState: node.MonitorStateFrozen}
+		}()
 		return
 	}
 
@@ -38,7 +47,7 @@ func (o *nmon) drainFreezeFromIdle() {
 	return
 }
 
-func (o *nmon) drainFromIdle() {
+func (o *nmon) drainFromFrozen() {
 	o.change = true
 	o.state.State = node.MonitorStateDraining
 	o.updateIfChange()

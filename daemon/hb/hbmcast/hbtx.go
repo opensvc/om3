@@ -128,9 +128,15 @@ func (t *tx) send(b []byte) {
 	defer c.Close()
 	msgID := uuid.New().String()
 	msgLength := len(b)
-	total := msgLength / MaxDatagramSize
-	if (msgLength % MaxDatagramSize) != 0 {
+	total := msgLength / MaxChunkSize
+	if (msgLength % MaxChunkSize) != 0 {
 		total += 1
+	}
+	if total > MaxFragments {
+		// the message will not be sent by this heart beat.
+		t.log.Error().Msgf("drop message for udp conn to %s: maximum fragment to create %d (message length %d)",
+			t.udpAddr, total, msgLength)
+		return
 	}
 	for i := 1; i <= total; i += 1 {
 		f := fragment{
@@ -141,8 +147,8 @@ func (t *tx) send(b []byte) {
 		if i == total {
 			f.Chunk = b
 		} else {
-			f.Chunk = b[:MaxDatagramSize]
-			b = b[MaxDatagramSize:]
+			f.Chunk = b[:MaxChunkSize]
+			b = b[MaxChunkSize:]
 		}
 		dgram, err := json.Marshal(f)
 		if err != nil {
