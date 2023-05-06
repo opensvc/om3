@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -105,7 +106,9 @@ func (t *CmdDaemonJoin) Run() error {
 		Node: hostname.Hostname(),
 	}
 	if resp, err := cli.PostDaemonJoin(context.Background(), &params); err != nil {
-		return errors.Wrapf(err, "Daemon join %s response %s", t.Node, resp.Status)
+		return errors.Wrapf(err, "Daemon join %s", t.Node)
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("Daemon join %s unexpected status code %s", t.Node, resp.Status)
 	}
 
 	if err := t.waitJoinResult(ctx, evReader); err != nil {

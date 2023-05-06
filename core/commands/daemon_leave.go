@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -137,7 +138,9 @@ func (t *CmdDaemonLeave) leave() error {
 		Node: t.localhost,
 	}
 	if resp, err := t.cli.PostDaemonLeave(context.Background(), &params); err != nil {
-		return errors.Wrapf(err, "Daemon leave error: %s", resp.Status)
+		return errors.Wrapf(err, "Daemon leave error: %s", resp)
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("Daemon leave unexpected status code %s", resp.Status)
 	}
 	return nil
 }
