@@ -161,19 +161,20 @@ func (t *CmdNodeEvents) Run() error {
 		return err
 	}
 
-	getEvents := c.NewGetEvents().
+	evReader, err := c.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
-		SetFilters(t.Filters)
+		SetFilters(t.Filters).
+		SetDuration(t.Duration).
+		GetReader()
+
 	ctx := context.Background()
 	if t.Duration > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, t.Duration)
 		defer cancel()
-		getEvents.SetDuration(t.Duration)
 	}
 
-	evReader, err := getEvents.GetReader()
 	if err != nil {
 		return err
 	}

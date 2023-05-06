@@ -49,8 +49,8 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
 			sendError(w, http.StatusBadRequest, "invalid duration")
-		} else {
-			ctx, cancel = context.WithTimeout(ctx, *v.(*time.Duration))
+		} else if timeout := *v.(*time.Duration) ; timeout > 0 {
+			ctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
 		}
 	}
