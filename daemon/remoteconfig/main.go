@@ -5,10 +5,12 @@ package remoteconfig
 
 import (
 	"context"
-	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/path"
@@ -55,6 +57,9 @@ func fetchFromApi(cli *client.T, p path.T) (b []byte, updated time.Time, err err
 	)
 	resp, err = cli.GetObjectFileWithResponse(context.Background(), &api.GetObjectFileParams{Path: p.String()})
 	if err != nil {
+		return
+	} else if resp.StatusCode() != http.StatusOK {
+		err = errors.Errorf("unexpected status code %s while fetching object %s", resp.Status(), p)
 		return
 	}
 	return resp.JSON200.Data, resp.JSON200.Mtime, nil
