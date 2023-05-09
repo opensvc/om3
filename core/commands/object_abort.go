@@ -35,10 +35,8 @@ func (t *CmdObjectAbort) Run(selector, kind string) error {
 		params.Path = p.String()
 		if resp, err := c.PostObjectAbort(context.Background(), params); err != nil {
 			errs = xerrors.Append(errs, err)
-			break // no need to post on every node, TODO should not break here
 		} else if resp.StatusCode != http.StatusOK {
 			errs = xerrors.Append(errs, errors.Errorf("unexpected post object abort status code %s", resp.Status))
-			break // no need to post on every node, TODO should not break here
 		}
 	}
 	return errs
