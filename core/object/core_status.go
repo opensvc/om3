@@ -176,10 +176,11 @@ func (t *core) statusDump(data instance.Status) error {
 	}
 	t.log.Debug().Str("file", p).Msg("dumped")
 	if err := t.postInstanceStatus(data); err != nil {
-		t.log.Error().Err(err).Msg("post instance status")
-		return err
+		// daemon can be down
+		t.log.Debug().Err(err).Msg("post instance status")
+	} else {
+		t.log.Debug().Msg("posted instance status")
 	}
-	t.log.Debug().Msg("posted instance status")
 	return nil
 }
 
@@ -198,16 +199,17 @@ func (t *core) postInstanceStatus(data instance.Status) error {
 	if c, err := client.New(); err != nil {
 		return err
 	} else {
-		resp, err := c.PostInstanceStatus(context.Background(), api.PostInstanceStatus{
+		body := api.PostInstanceStatus{
 			Path:   t.path.String(),
 			Status: instanceStatus,
-		})
-		if err != nil {
+		}
+		if resp, err := c.PostInstanceStatus(context.Background(), body); err != nil {
 			return err
 		} else if resp.StatusCode != http.StatusOK {
 			return errors.Errorf("unexpected post instance status code %s", resp.Status)
+		} else {
+			return nil
 		}
-		return nil
 	}
 }
 
