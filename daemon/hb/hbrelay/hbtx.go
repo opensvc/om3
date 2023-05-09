@@ -2,6 +2,7 @@ package hbrelay
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -121,7 +122,10 @@ func (t *tx) send(b []byte) {
 	}
 	resp, err := cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("send: %s", resp.Status)
+		t.log.Debug().Err(err).Msg("send: PostRelayMessage")
+		return
+	} else if resp.StatusCode != http.StatusOK {
+		t.log.Debug().Msgf("send: unexpected PostRelayMessage status: %s", resp.Status)
 		return
 	}
 
