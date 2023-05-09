@@ -138,7 +138,7 @@ func (t *CmdDaemonLeave) leave() error {
 		Node: t.localhost,
 	}
 	if resp, err := t.cli.PostDaemonLeave(context.Background(), &params); err != nil {
-		return errors.Wrapf(err, "Daemon leave error: %s", resp)
+		return errors.Wrap(err, "Daemon leave error")
 	} else if resp.StatusCode != http.StatusOK {
 		return errors.Errorf("Daemon leave unexpected status code %s", resp.Status)
 	}
