@@ -157,10 +157,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return errors.Wrap(err, "expand selection")
 	}
-	data, err = t.extract(mergedSelector, c)
-	if err != nil {
-		return errors.Wrap(err, "extract data")
-	}
+	data, _ = t.extract(mergedSelector, c)
 
 	output.Renderer{
 		Format: t.Format,
