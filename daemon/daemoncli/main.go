@@ -3,6 +3,7 @@ package daemoncli
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -277,6 +278,9 @@ func (t *T) running() bool {
 	resp, err := t.client.GetDaemonRunningWithResponse(context.Background())
 	if err != nil {
 		log.Debug().Err(err).Msg("daemon is not running")
+		return false
+	} else if resp.StatusCode() != http.StatusOK {
+		log.Warn().Msgf("unexpected get daemon running status code %s", resp.Status())
 		return false
 	}
 	nodename := t.node

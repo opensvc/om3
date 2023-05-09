@@ -2,6 +2,9 @@ package commands
 
 import (
 	"context"
+	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/objectselector"
@@ -34,8 +37,12 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 			params := api.PostObjectClear{
 				Path: p.String(),
 			}
-			if _, err := c.PostObjectClear(context.Background(), params); err != nil {
-				errs = xerrors.Append(errs, err)
+			if resp, err := c.PostObjectClear(context.Background(), params); err != nil {
+				errs = xerrors.Append(errs,
+					errors.Errorf("unexpected post object clear %s@%s error %s", p, node, err))
+			} else if resp.StatusCode != http.StatusOK {
+				errs = xerrors.Append(errs,
+					errors.Errorf("unexpected post object clear %s@%s status code %s", p, node, resp.Status))
 			}
 		}
 	}

@@ -3,7 +3,10 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -14,7 +17,6 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -77,6 +79,8 @@ func fetchConfig(p path.T, c *client.T) ([]byte, error) {
 	resp, err := c.GetObjectFileWithResponse(context.Background(), &params)
 	if err != nil {
 		return nil, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("unexpected get object file status %s", resp.Status())
 	}
 	return resp.JSON200.Data, nil
 }

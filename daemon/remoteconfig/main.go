@@ -59,7 +59,7 @@ func fetchFromApi(cli *client.T, p path.T) (b []byte, updated time.Time, err err
 	if err != nil {
 		return
 	} else if resp.StatusCode() != http.StatusOK {
-		err = errors.Errorf("unexpected status code %s while fetching object %s", resp.Status(), p)
+		err = errors.Errorf("unexpected get object file %s status %s", p, resp.Status())
 		return
 	}
 	return resp.JSON200.Data, resp.JSON200.Mtime, nil

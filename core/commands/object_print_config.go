@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -15,7 +18,6 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -80,6 +82,8 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconf
 	resp, err := c.GetObjectConfigWithResponse(context.Background(), &params)
 	if err != nil {
 		return rawconfig.T{}, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return rawconfig.T{}, errors.Errorf("unexpected get object config status %s", resp.Status())
 	}
 	data := rawconfig.T{}
 	if resp.JSON200 == nil {

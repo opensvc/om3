@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -263,6 +264,8 @@ func (t T) DoAsync() error {
 	resp, err := c.PostNodeMonitorWithResponse(ctx, params)
 	if err != nil {
 		return err
+	} else if resp.StatusCode() != http.StatusOK {
+		return errors.Errorf("unexpected post node monitor status %s", resp.Status())
 	}
 
 	human := func() string {

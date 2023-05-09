@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime/debug"
@@ -232,7 +233,7 @@ func WithServer(s string) funcopt.O {
 	})
 }
 
-// WithLocalRun sets a function to run if the the action is local
+// WithLocalRun sets a function to run if the action is local
 func WithLocalRun(f func(context.Context, path.T) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
@@ -400,6 +401,8 @@ func (t T) DoAsync() error {
 			params.Destination = options.Destination
 			if resp, e := c.PostObjectSwitchToWithResponse(ctx, params); e != nil {
 				err = e
+			} else if resp.StatusCode() != http.StatusOK {
+				err = errors.Errorf("unexpected post object switch status %s", resp.Status())
 			} else {
 				b = resp.Body
 			}
@@ -410,6 +413,8 @@ func (t T) DoAsync() error {
 			params.GlobalExpect = &t.Target
 			if resp, e := c.PostObjectMonitorWithResponse(ctx, params); e != nil {
 				err = e
+			} else if resp.StatusCode() != http.StatusOK {
+				err = errors.Errorf("unexpected post object monitor status %s", resp.Status())
 			} else {
 				b = resp.Body
 			}
