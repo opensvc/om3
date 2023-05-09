@@ -3,8 +3,11 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/object"
@@ -77,6 +80,8 @@ func (t *CmdNodeRelayStatus) Run() error {
 		resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 		if err != nil {
 			return err
+		} else if resp.StatusCode() != http.StatusOK {
+			return errors.Errorf("unexpected get relay message status code %s", resp.Status())
 		}
 		for _, message := range resp.JSON200.Messages {
 			messages = append(messages, relayMessage{

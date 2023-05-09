@@ -7,11 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
@@ -20,7 +24,6 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/ssrathi/go-attr"
 )
 
 func (t *core) statusFile() string {
@@ -195,11 +198,16 @@ func (t *core) postInstanceStatus(data instance.Status) error {
 	if c, err := client.New(); err != nil {
 		return err
 	} else {
-		_, err = c.PostInstanceStatus(context.Background(), api.PostInstanceStatus{
+		resp, err := c.PostInstanceStatus(context.Background(), api.PostInstanceStatus{
 			Path:   t.path.String(),
 			Status: instanceStatus,
 		})
-		return err
+		if err != nil {
+			return err
+		} else if resp.StatusCode != http.StatusOK {
+			return errors.Errorf("unexpected post instance status code %s", resp.Status)
+		}
+		return nil
 	}
 }
 

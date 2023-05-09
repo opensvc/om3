@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"time"
@@ -49,10 +50,12 @@ func (t *CmdDaemonCommon) isRunning() bool {
 	if err != nil {
 		return false
 	}
-	if _, err := cli.GetDaemonRunning(context.Background()); err == nil {
-		return true
+	if resp, err := cli.GetDaemonRunning(context.Background()); err != nil {
+		return false
+	} else if resp.StatusCode != http.StatusOK {
+		return false
 	}
-	return false
+	return true
 }
 
 func (t *CmdDaemonCommon) nodeDrain() (err error) {

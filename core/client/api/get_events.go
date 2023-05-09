@@ -183,5 +183,9 @@ func (t GetEvents) eventsBase() (*http.Response, error) {
 		s := t.Duration.String()
 		params.Duration = &s
 	}
-	return t.client.GetDaemonEvents(context.Background(), &params)
+	resp, err := t.client.GetDaemonEvents(context.Background(), &params)
+	if err == nil && resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("unexpected get events status code %s", resp.Status)
+	}
+	return resp, err
 }

@@ -3,7 +3,10 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/daemon/api"
@@ -37,6 +40,8 @@ func (t *CmdDaemonAuth) Run() error {
 	resp, err := c.PostAuthTokenWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
+	} else if resp.StatusCode() != http.StatusOK {
+		return errors.Errorf("unexpected post auth token status code %s", resp.Status())
 	}
 	if len(t.Out) == 0 {
 		t.Out = []string{"token", "token_expire_at"}

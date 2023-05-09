@@ -3,18 +3,20 @@
 package resdiskdrbd
 
 import (
-	_ "embed"
-
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/network"
@@ -31,7 +33,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -405,6 +406,8 @@ func (t T) getDrbdAllocations() (map[string]api.DrbdAllocation, error) {
 		resp, err := c.GetNodeDrbdAllocationWithResponse(context.Background())
 		if err != nil {
 			return nil, err
+		} else if resp.StatusCode() != http.StatusOK {
+			return nil, errors.Errorf("unexpected get node drbd allocation status code %s", resp.Status())
 		}
 		if resp.JSON200 == nil {
 			return nil, errors.Errorf("drbd allocation response: no json data")
@@ -558,6 +561,8 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	resp, err := c.GetNodeDrbdConfigWithResponse(context.Background(), &params)
 	if err != nil {
 		return nil, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("unexpected get node drbd config status code %s", resp.Status())
 	}
 	return resp.JSON200.Data, nil
 }
@@ -650,8 +655,12 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 		AllocationId: allocationId,
 		Data:         b,
 	}
-	_, err = c.PostNodeDrbdConfig(context.Background(), &params, body)
-	return err
+	if resp, err := c.PostNodeDrbdConfig(context.Background(), &params, body); err != nil {
+		return err
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("unexpected post node drbd config status code %s", resp.Status)
+	}
+	return nil
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {

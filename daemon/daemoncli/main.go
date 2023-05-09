@@ -214,6 +214,7 @@ func (t *T) stop() error {
 		log.Debug().Msg("Already stopped")
 		return nil
 	}
+	// TODO check status code ?
 	_, err := t.client.PostDaemonStop(context.Background())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
