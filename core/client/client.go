@@ -155,6 +155,10 @@ func WithPassword(s string) funcopt.O {
 	})
 }
 
+func (t *T) URL() string {
+	return t.url
+}
+
 // configure allocates a new requester with a requester for the server found in Config,
 // or for the server found in Context.
 func (t *T) configure() error {

@@ -121,7 +121,7 @@ func (t *tx) send(b []byte) {
 	}
 	resp, err := cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Debug().Err(err).Msgf("send: %s", resp)
+		t.log.Debug().Err(err).Msgf("send: %s", resp.Status)
 		return
 	}
 

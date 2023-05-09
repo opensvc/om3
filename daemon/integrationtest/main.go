@@ -82,7 +82,7 @@ func GetDaemonStatus(t *testing.T) (cluster.Data, error) {
 	t.Helper()
 	cli, err := GetClient(t)
 	require.Nil(t, err)
-	b, err := cli.NewGetDaemonStatus().Do()
+	b, err := cli.NewGetDaemonStatus().Get()
 	require.Nil(t, err)
 	require.Greater(t, len(b), 0)
 	cData := cluster.Data{}
