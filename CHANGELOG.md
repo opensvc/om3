@@ -106,6 +106,8 @@
 	 -               -               -               -               -                -               
 	=============== =============== =============== =============== ================ =================
 
+*  **breaking change:** The raw protocol is dropped. `echo <json> | socat - /var/lib/opensvc/lsnr/lsnr.sock`
+
 ### commands
 
 * **breaking change:** "om node freeze" is now local only. Use "om cluster freeze" for the orchestrated freeze of all nodes. Same applies to "unfreeze" and its hidden alias "thaw".
