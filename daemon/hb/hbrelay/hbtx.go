@@ -2,6 +2,7 @@ package hbrelay
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
@@ -112,14 +114,18 @@ func (t *tx) send(b []byte) {
 	}
 
 	cluster := ccfg.Get()
-	req := cli.NewPostRelayMessage()
-	req.Nodename = hostname.Hostname()
-	req.ClusterId = cluster.ID
-	req.ClusterName = cluster.Name
-	req.Msg = string(b)
-	b, err = req.Do()
+	params := api.PostRelayMessage{
+		Nodename:    hostname.Hostname(),
+		ClusterId:   cluster.ID,
+		ClusterName: cluster.Name,
+		Msg:         string(b),
+	}
+	resp, err := cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Debug().Err(err).Msg("send: do request")
+		t.log.Debug().Err(err).Msg("send: PostRelayMessage")
+		return
+	} else if resp.StatusCode != http.StatusOK {
+		t.log.Debug().Msgf("send: unexpected PostRelayMessage status: %s", resp.Status)
 		return
 	}
 

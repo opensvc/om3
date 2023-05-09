@@ -1,63 +1,57 @@
 package api
 
 import (
-	"github.com/opensvc/om3/core/client/request"
+	"context"
+	"io"
+	"net/http"
+
+	"github.com/pkg/errors"
+
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type GetDaemonStatus struct {
-	client    Getter
-	namespace string
-	selector  string
-	relatives bool
+	client    api.ClientInterface
+	namespace *string
+	selector  *string
+	relatives *bool
 }
 
 func (t *GetDaemonStatus) SetNamespace(s string) *GetDaemonStatus {
-	t.namespace = s
+	t.namespace = &s
 	return t
 }
 
 func (t *GetDaemonStatus) SetSelector(s string) *GetDaemonStatus {
-	t.selector = s
+	t.selector = &s
 	return t
 }
 
 func (t *GetDaemonStatus) SetRelatives(s bool) *GetDaemonStatus {
-	t.relatives = s
+	t.relatives = &s
 	return t
 }
 
-func (t GetDaemonStatus) Namespace() string {
-	return t.namespace
-}
-
-func (t GetDaemonStatus) Selector() string {
-	return t.selector
-}
-
-func (t GetDaemonStatus) Relatives() bool {
-	return t.relatives
-}
-
-func NewGetDaemonStatus(t Getter) *GetDaemonStatus {
+func NewGetDaemonStatus(t api.ClientInterface) *GetDaemonStatus {
 	options := &GetDaemonStatus{
-		client:    t,
-		namespace: "",
-		selector:  "*",
-		relatives: false,
+		client: t,
 	}
 	return options
 }
 
 // Do fetches the daemon status structure from the agent api
-func (t GetDaemonStatus) Do() ([]byte, error) {
-	req := request.New()
-	req.Action = "/daemon/status"
-	req.Options["namespace"] = t.namespace
-	req.Options["selector"] = t.selector
-	req.Options["relatives"] = t.relatives
-	return t.client.Get(*req)
-}
-
 func (t GetDaemonStatus) Get() ([]byte, error) {
-	return t.Do()
+	params := api.GetDaemonStatusParams{
+		Namespace: t.namespace,
+		Selector:  t.selector,
+		Relatives: t.relatives,
+	}
+	resp, err := t.client.GetDaemonStatus(context.Background(), &params)
+	if err != nil {
+		return nil, err
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("unexpected get daemon status code %s", resp.Status)
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
 }

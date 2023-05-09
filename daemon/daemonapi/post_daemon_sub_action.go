@@ -35,9 +35,10 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 		subs = append(subs, sub)
 	}
 	if len(subs) == 0 {
-		w.WriteHeader(http.StatusOK)
 		msg := fmt.Sprintf("empty component list to %s", action)
+		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(api.ResponseText(msg))
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 	log.Info().Msgf("asking to %s sub components: %s", action, subs)
@@ -46,7 +47,8 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 		log.Info().Msgf("ask to %s sub component: %s", action, sub)
 		bus.Pub(&msgbus.DaemonCtl{Component: sub, Action: action}, pubsub.Label{"id", sub}, labelApi)
 	}
-	w.WriteHeader(http.StatusOK)
 	msg := fmt.Sprintf("ask to %s sub components: %s", action, subs)
+	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(api.ResponseText(msg))
+	w.WriteHeader(http.StatusOK)
 }

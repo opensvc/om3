@@ -830,19 +830,16 @@ components:
         status_group:
           type: string
         subsets:
-          type: array
-          description: resources properties
-          items:
+          type: object
+          description: subset properties
+          additionalProperties:
             type: object
             required:
               - parallel
-              - rid
             properties:
               parallel:
                 type: boolean
                 default: false
-              rid:
-                type: string
         topology:
           $ref: '#/components/schemas/topology'
         updated:
@@ -890,6 +887,9 @@ components:
         $ref: '#/components/schemas/nodeInfo'
     objectConfig:
       type: object
+      required:
+        - data
+        - mtime
       properties:
         data:
           type: object

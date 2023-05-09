@@ -19,7 +19,7 @@ type (
 
 func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	cli, err := client.New(client.WithURL(t.Server))
+	cli, err := client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}

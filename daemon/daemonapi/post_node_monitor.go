@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/goccy/go-json"
+	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/api"
@@ -45,8 +46,13 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 	bus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: value}, labelApi)
 	response := api.ResponseInfoStatus{
 		Info:   0,
-		Status: "instance monitor pushed pending ops",
+		Status: "instance monitor change queued",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Error().Err(err).Msg("json encode")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(response)
 }

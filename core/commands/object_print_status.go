@@ -30,20 +30,27 @@ type (
 )
 
 func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
+	var errs error
 	if t.Refresh || t.Local {
 		// explicitely local
-		data, err = t.extractLocal(selector)
+		if data, err = t.extractLocal(selector); err != nil {
+			errs = xerrors.Append(errs, err)
+		}
+
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		// try daemon
-		return data, nil
-	} else if clientcontext.IsSet() {
-		// no fallback for remote cluster
-		return []object.Digest{}, err
+		return data, errs
+	} else {
+		errs = xerrors.Append(errs, err)
+		if clientcontext.IsSet() {
+			// no fallback for remote cluster
+			return []object.Digest{}, errs
+		}
 	}
 	// fallback to local
 	if data != nil {
-		return data, err
+		return data, errs
 	}
 	return t.extractLocal(selector)
 }
@@ -81,7 +88,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 			status, err = obj.Status(ctx)
 		}
 		if err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = xerrors.Append(errs, errors.Wrap(err, p.String()))
 			continue
 		}
 		o := object.Digest{
@@ -112,7 +119,7 @@ func (t *CmdObjectPrintStatus) extractFromDaemon(selector string, c *client.T) (
 	b, err = c.NewGetDaemonStatus().
 		SetSelector(selector).
 		SetRelatives(true).
-		Do()
+		Get()
 	if err != nil {
 		return []object.Digest{}, err
 	}
@@ -150,10 +157,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	if err != nil {
 		return errors.Wrap(err, "expand selection")
 	}
-	data, err = t.extract(mergedSelector, c)
-	if err != nil {
-		return errors.Wrap(err, "extract data")
-	}
+	data, _ = t.extract(mergedSelector, c)
 
 	output.Renderer{
 		Format: t.Format,

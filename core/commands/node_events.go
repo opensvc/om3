@@ -156,7 +156,7 @@ func (t *CmdNodeEvents) Run() error {
 			return err
 		}
 	}
-	c, err = client.New(client.WithURL(t.Server))
+	c, err = client.New(client.WithURL(t.Server), client.WithTimeout(0))
 	if err != nil {
 		return err
 	}
@@ -167,6 +167,7 @@ func (t *CmdNodeEvents) Run() error {
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		GetReader()
+
 	ctx := context.Background()
 	if t.Duration > 0 {
 		var cancel context.CancelFunc

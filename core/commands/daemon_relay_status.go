@@ -1,7 +1,10 @@
 package commands
 
 import (
-	"encoding/json"
+	"context"
+	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/output"
@@ -22,16 +25,15 @@ func (t *CmdDaemonRelayStatus) Run() error {
 	if err != nil {
 		return err
 	}
-	req := cli.NewGetRelayMessage()
-	b, err := req.Do()
+	params := api.GetRelayMessageParams{}
+	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
-	}
-	var data api.RelayMessages
-	if err := json.Unmarshal(b, &data); err != nil {
-		return err
+	} else if resp.StatusCode() != http.StatusOK {
+		return errors.Errorf("unexpected get relay message status %s", resp.Status())
 	}
 	relay := t.Server
+	data := *resp.JSON200
 	if t.Server == "" {
 		relay = hostname.Hostname()
 	}

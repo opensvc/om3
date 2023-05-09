@@ -1,0 +1,7 @@
+package: api
+generate:
+  client: true
+  chi-server: false
+  models: false
+  embedded-spec: false
+output: codegen_client_gen.go

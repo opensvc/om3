@@ -1,24 +1,29 @@
 package object
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
+
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/ssrathi/go-attr"
 )
 
 func (t *core) statusFile() string {
@@ -67,7 +72,7 @@ func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.Overall = status.NotApplicable
 	data.Optional = status.NotApplicable
 	data.Csum = csumStatusData(data)
-	t.statusDump(data)
+	err = t.statusDump(data)
 	return
 }
 
@@ -170,20 +175,42 @@ func (t *core) statusDump(data instance.Status) error {
 		return err
 	}
 	t.log.Debug().Str("file", p).Msg("dumped")
-	_ = t.postInstanceStatus(data)
+	if err := t.postInstanceStatus(data); err != nil {
+		// daemon can be down
+		t.log.Debug().Err(err).Msg("post instance status")
+	} else {
+		t.log.Debug().Msg("posted instance status")
+	}
 	return nil
 }
 
 func (t *core) postInstanceStatus(data instance.Status) error {
-	c, err := client.New()
-	if err != nil {
+	var (
+		instanceStatus api.InstanceStatus
+		b              []byte
+	)
+	buff := bytes.NewBuffer(b)
+	if err := json.NewEncoder(buff).Encode(data); err != nil {
 		return err
 	}
-	req := c.NewPostInstanceStatus()
-	req.Path = t.path.String()
-	req.Data = data
-	_, err = req.Do()
-	return err
+	if err := json.NewDecoder(buff).Decode(&instanceStatus); err != nil {
+		return err
+	}
+	if c, err := client.New(); err != nil {
+		return err
+	} else {
+		body := api.PostInstanceStatus{
+			Path:   t.path.String(),
+			Status: instanceStatus,
+		}
+		if resp, err := c.PostInstanceStatus(context.Background(), body); err != nil {
+			return err
+		} else if resp.StatusCode != http.StatusOK {
+			return errors.Errorf("unexpected post instance status code %s", resp.Status)
+		} else {
+			return nil
+		}
+	}
 }
 
 func (t *core) statusLoad() (instance.Status, error) {

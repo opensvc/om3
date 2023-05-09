@@ -1,9 +1,13 @@
 package nodesinfo
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -90,13 +94,15 @@ func ReqWithClient(c *client.T) (NodesInfo, error) {
 	if c == nil {
 		panic("nodesinfo.ReqWithClient(nil): no client")
 	}
-	req := c.NewGetNodesInfo()
-	b, err := req.Do()
+	resp, err := c.GetNodesInfo(context.Background())
 	if err != nil {
 		return nil, err
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("unexpected get nodes info status code %s", resp.Status)
 	}
 	var data NodesInfo
-	err = json.Unmarshal(b, &data)
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&data)
 	return data, err
 }
 

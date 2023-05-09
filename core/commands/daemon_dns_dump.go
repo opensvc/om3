@@ -1,7 +1,11 @@
 package commands
 
 import (
+	"context"
+	"net/http"
+
 	"github.com/goccy/go-json"
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/output"
@@ -22,14 +26,15 @@ func (t *CmdDaemonDNSDump) Run() error {
 	if err != nil {
 		return err
 	}
-	req := c.NewGetDaemonDNSDump()
-	var b []byte
-	b, err = req.Do()
+	resp, err := c.GetDaemonDNSDump(context.Background())
 	if err != nil {
 		return err
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("unexpected get daemon dns dump status code %s", resp.Status)
 	}
+	defer resp.Body.Close()
 	var parsed dns.Zone
-	if err := json.Unmarshal(b, &parsed); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return err
 	}
 	renderer := output.Renderer{

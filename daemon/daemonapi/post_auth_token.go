@@ -71,11 +71,17 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 		}
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(api.ResponsePostAuthToken{
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(api.ResponsePostAuthToken{
 		Token:         tk,
 		TokenExpireAt: expireAt,
 	})
+	if err != nil {
+		log.Error().Err(err).Msg("json encode")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // userXClaims returns new user and Claims from p and current user

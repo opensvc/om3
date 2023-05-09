@@ -1,20 +1,17 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/slog"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/xmap"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -34,49 +31,53 @@ func (t CmdObjectLogs) Filters() map[string]any {
 }
 
 func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) {
-	c, err := client.New(
-		client.WithURL(node),
-		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(rawconfig.ClusterSection().Secret),
-	)
-	if err != nil {
-		return nil, err
-	}
-	req := c.NewGetObjectsBacklog()
-	req.Filters = t.Filters()
-	req.Paths = paths
-	b, err := req.Do()
-	if err != nil {
-		return nil, err
-	}
 	events := make(slog.Events, 0)
-	if err := json.Unmarshal(b, &events); err != nil {
-		return nil, err
-	}
-	return events, nil
+	/*
+		c, err := client.New(
+			client.WithURL(node),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(rawconfig.ClusterSection().Secret),
+		)
+		if err != nil {
+			return nil, err
+		}
+		req := c.NewGetObjectsBacklog()
+		req.Filters = t.Filters()
+		req.Paths = paths
+		b, err := req.Do()
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(b, &events); err != nil {
+			return nil, err
+		}
+	*/
+	return events, errors.Errorf("TODO")
 }
 
 func (t *CmdObjectLogs) stream(node string, paths path.L) {
-	c, err := client.New(
-		client.WithURL(node),
-		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(rawconfig.ClusterSection().Secret),
-	)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	streamer := c.NewGetObjectsLog()
-	streamer.Filters = t.Filters()
-	streamer.Paths = paths
-	events, err := streamer.Do()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	for event := range events {
-		event.Render(t.Format)
-	}
+	/*
+		c, err := client.New(
+			client.WithURL(node),
+			client.WithUsername(hostname.Hostname()),
+			client.WithPassword(rawconfig.ClusterSection().Secret),
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		streamer := c.NewGetObjectsLog()
+		streamer.Filters = t.Filters()
+		streamer.Paths = paths
+		events, err := streamer.Do()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		for event := range events {
+			event.Render(t.Format)
+		}
+	*/
 }
 
 func nodesFromPath(p path.T) []string {

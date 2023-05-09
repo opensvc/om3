@@ -25,10 +25,9 @@ func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, para
 	if params.Impersonate != nil {
 		impersonate = *params.Impersonate
 	}
-	var b []byte
 	var err error
 	var data *orderedmap.OrderedMap
-	write, log := handlerhelper.GetWriteAndLog(w, r, "GetObjectConfig")
+	_, log := handlerhelper.GetWriteAndLog(w, r, "GetObjectConfig")
 	log.Debug().Msg("starting")
 
 	objPath, err := path.Parse(params.Path)
@@ -69,16 +68,12 @@ func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, para
 	}
 	data.Set("metadata", objPath.ToMetadata())
 	resp := api.ObjectConfig{
-		Data:  &respData,
-		Mtime: &mtime,
+		Data:  respData,
+		Mtime: mtime,
 	}
-	b, err = json.Marshal(resp)
-	if err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Error().Err(err).Msgf("marshal response error %s %s", objPath, filename)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if _, err := write(b); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

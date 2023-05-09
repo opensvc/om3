@@ -3,6 +3,7 @@ package hbrelay
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"sync"
 	"time"
 
@@ -115,19 +116,23 @@ func (t *rx) recv(nodename string) {
 		return
 	}
 
-	req := cli.NewGetRelayMessage()
-	req.Nodename = nodename
-	req.ClusterId = cluster.ID
-	b, err := req.Do()
+	params := api.GetRelayMessageParams{
+		Nodename:  &nodename,
+		ClusterId: &cluster.ID,
+	}
+	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
 		t.log.Debug().Err(err).Msgf("recv: node %s do request", nodename)
 		return
-	}
-	var messages api.RelayMessages
-	if err := json.Unmarshal(b, &messages); err != nil {
-		t.log.Debug().Err(err).Msgf("recv: node %s unmarshal data", nodename)
+	} else if resp.StatusCode() != http.StatusOK {
+		t.log.Debug().Msgf("unexpected get relay message %s status %s", nodename, resp.Status())
 		return
 	}
+	if resp.JSON200 == nil {
+		t.log.Debug().Msgf("recv: node %s data has no stored data", nodename)
+		return
+	}
+	messages := resp.JSON200
 	if len(messages.Messages) == 0 {
 		t.log.Debug().Msgf("recv: node %s data has no stored data", nodename)
 		return

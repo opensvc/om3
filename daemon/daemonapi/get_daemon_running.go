@@ -16,6 +16,7 @@ func (a *DaemonApi) GetDaemonRunning(w http.ResponseWriter, r *http.Request) {
 func (a *DaemonApi) getDaemonRunning(w http.ResponseWriter, r *http.Request) {
 	daemon := daemonctx.Daemon(r.Context())
 	running := daemon.Running()
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(running)
+	w.WriteHeader(http.StatusOK)
 }

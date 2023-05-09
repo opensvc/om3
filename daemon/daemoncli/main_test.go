@@ -39,16 +39,12 @@ func getClientUrl(withConfig bool) (urlM map[string]string) {
 	case true:
 		urlM = map[string]string{
 			"UrlUxHttp":   daemonenv.UrlUxHttp(),
-			"UrlUxRaw":    daemonenv.UrlUxRaw(),
 			"UrlInetHttp": "https://localhost:1315",
-			"UrlInetRaw":  "raw://localhost:1314",
 		}
 	case false:
 		urlM = map[string]string{
 			"UrlUxHttp":   daemonenv.UrlUxHttp(),
-			"UrlUxRaw":    daemonenv.UrlUxRaw(),
 			"UrlInetHttp": daemonenv.UrlInetHttp(),
-			"UrlInetRaw":  daemonenv.UrlInetRaw(),
 		}
 	}
 	return
@@ -109,7 +105,7 @@ func TestDaemonBootstrap(t *testing.T) {
 					SetDuration(1 * time.Second).
 					GetReader()
 				require.NoError(t, err)
-				_, _ = cli.NewGetDaemonStatus().Do()
+				_, _ = cli.NewGetDaemonStatus().Get()
 				events := make([]event.Event, 0)
 				for {
 					if ev, err := readEv.Read(); err != nil {
@@ -132,7 +128,7 @@ func TestDaemonBootstrap(t *testing.T) {
 				time.Sleep(150 * time.Millisecond)
 
 				var b []byte
-				b, err = cli.NewGetDaemonStatus().Do()
+				b, err = cli.NewGetDaemonStatus().Get()
 				require.NoError(t, err)
 				t.Logf("get daemon status response: %s", b)
 				cData := cluster.Data{}

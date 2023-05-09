@@ -52,6 +52,7 @@ func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, para
 		// TODO: WithRelatives()
 		//status = status.WithRelatives(*params.Relatives)
 	}
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(status)
+	w.WriteHeader(http.StatusOK)
 }

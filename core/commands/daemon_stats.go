@@ -3,10 +3,8 @@ package commands
 import (
 	"encoding/json"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -16,33 +14,39 @@ type (
 )
 
 func (t *CmdDaemonStats) Run() error {
-	var (
-		err  error
-		b    []byte
-		data cluster.Stats
-		c    *client.T
-	)
-	c, err = client.New(client.WithURL(t.Server))
-	if err != nil {
-		return err
-	}
-	handle := c.NewGetDaemonStats()
-	b, err = handle.Do()
-	if err != nil {
-		return err
-	}
-	data, err = parseDaemonStats(b)
-	if err != nil {
-		return err
-	}
-	renderer := output.Renderer{
-		Format:   t.Format,
-		Color:    t.Color,
-		Data:     data,
-		Colorize: rawconfig.Colorize,
-	}
-	renderer.Print()
-	return nil
+	/*
+		var (
+			err  error
+			b    []byte
+			data cluster.Stats
+			c    *client.T
+		)
+		c, err = client.New(client.WithURL(t.Server))
+		if err != nil {
+			return err
+		}
+		resp, err := c.GetDaemonStats(context.Background())
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		data, err = parseDaemonStats(b)
+		if err != nil {
+			return err
+		}
+		renderer := output.Renderer{
+			Format:   t.Format,
+			Color:    t.Color,
+			Data:     data,
+			Colorize: rawconfig.Colorize,
+		}
+		renderer.Print()
+	*/
+	return errors.Errorf("TODO")
 }
 
 func parseDaemonStats(b []byte) (cluster.Stats, error) {

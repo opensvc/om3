@@ -1,10 +1,12 @@
 package commands
 
 import (
-	"encoding/json"
-	"errors"
+	"context"
 	"fmt"
+	"net/http"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -12,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
 )
@@ -69,44 +72,41 @@ func (t *CmdObjectEditConfig) doLocal(obj object.Configurer, c *client.T) error 
 	return nil
 }
 
-func fetchConfig(p path.T, c *client.T) (s string, err error) {
-	var (
-		b []byte
-	)
-	handle := c.NewGetObjectConfig()
-	handle.ObjectSelector = p.String()
-	handle.Format = "ini"
-	b, err = handle.Do()
+func fetchConfig(p path.T, c *client.T) ([]byte, error) {
+	params := api.GetObjectFileParams{
+		Path: p.String(),
+	}
+	resp, err := c.GetObjectFileWithResponse(context.Background(), &params)
 	if err != nil {
-		return "", err
+		return nil, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("unexpected get object file status %s", resp.Status())
 	}
-	if err = json.Unmarshal(b, &s); err != nil {
-		return "", err
-	}
-	return s, nil
+	return resp.JSON200.Data, nil
 }
 
 func pushConfig(p path.T, fName string, c *client.T) (err error) {
-	var cfg *xconfig.T
-	if cfg, err = xconfig.NewObject("", fName); err != nil {
-		return err
-	}
-	req := c.NewPostObjectCreate()
-	req.ObjectSelector = p.String()
-	req.Restore = true
-	req.Data[p.String()] = cfg.Raw()
-	_, err = req.Do()
-	if err != nil {
-		return err
-	}
-	return nil
+	/*
+		var cfg *xconfig.T
+		if cfg, err = xconfig.NewObject("", fName); err != nil {
+			return err
+		}
+		params := api.PostObjectCreate()
+		params.Restore = true
+		params.Data[p.String()] = cfg.Raw()
+		_, err = c.PostObjectCreate(context.Background(), params)
+		if err != nil {
+			return err
+		}
+	*/
+	return errors.Errorf("TODO")
 }
 
 func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
 	var (
 		err    error
 		refSum []byte
-		buff   string
+		buff   []byte
 		f      *os.File
 	)
 	if buff, err = fetchConfig(p, c); err != nil {
@@ -117,7 +117,7 @@ func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {
 	}
 	fName := f.Name()
 	defer os.Remove(fName)
-	if _, err = f.Write([]byte(buff)); err != nil {
+	if _, err = f.Write(buff); err != nil {
 		return err
 	}
 	if refSum, err = file.MD5(fName); err != nil {

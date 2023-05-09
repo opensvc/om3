@@ -122,18 +122,21 @@ func (t *CmdObjectCreate) Do() error {
 }
 
 func (t *CmdObjectCreate) submit(pivot Pivot) error {
-	data := make(map[string]interface{})
-	for opath, c := range pivot {
-		data[opath] = c
-	}
-	req := t.client.NewPostObjectCreate()
-	req.Restore = t.Restore
-	req.Force = t.Force
-	req.Data = data
-	if _, err := req.Do(); err != nil {
-		return err
-	}
-	return nil
+	/*
+		data := make(map[string]interface{})
+		for opath, c := range pivot {
+			data[opath] = c
+		}
+		req := t.client.NewPostObjectCreate()
+		req.Restore = t.Restore
+		req.Force = t.Force
+		req.Data = data
+		if resp, err := t.client.PostObjectCreate()
+		if _, err := req.Do(); err != nil {
+			return err
+		}
+	*/
+	return errors.Errorf("TODO")
 }
 
 func (t CmdObjectCreate) fromPaths(paths path.L) error {

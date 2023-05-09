@@ -3,19 +3,20 @@
 package resdiskdrbd
 
 import (
-	_ "embed"
-	"encoding/json"
-
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/network"
@@ -32,7 +33,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -403,16 +403,16 @@ func (t T) getDrbdAllocations() (map[string]api.DrbdAllocation, error) {
 		if err != nil {
 			return nil, err
 		}
-		req := c.NewGetNodeDrbdAllocation()
-		b, err := req.Do()
+		resp, err := c.GetNodeDrbdAllocationWithResponse(context.Background())
 		if err != nil {
 			return nil, err
+		} else if resp.StatusCode() != http.StatusOK {
+			return nil, errors.Errorf("unexpected get node drbd allocation status code %s", resp.Status())
 		}
-		var allocation api.DrbdAllocation
-		if err := json.Unmarshal(b, &allocation); err != nil {
-			return nil, err
+		if resp.JSON200 == nil {
+			return nil, errors.Errorf("drbd allocation response: no json data")
 		}
-		allocations[nodename] = allocation
+		allocations[nodename] = *resp.JSON200
 	}
 	return allocations, nil
 }
@@ -555,17 +555,16 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req := c.NewGetNodeDrbdConfig()
-	req.Name = t.Res
-	b, err := req.Do()
+	params := api.GetNodeDrbdConfigParams{
+		Name: t.Res,
+	}
+	resp, err := c.GetNodeDrbdConfigWithResponse(context.Background(), &params)
 	if err != nil {
 		return nil, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("unexpected get node drbd config status code %s", resp.Status())
 	}
-	var data api.ObjectFile
-	if err := json.Unmarshal(b, &data); err != nil {
-		return nil, err
-	}
-	return data.Data, nil
+	return resp.JSON200.Data, nil
 }
 
 func (t T) fetchConfig() error {
@@ -649,12 +648,19 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 	if err != nil {
 		return err
 	}
-	req := c.NewPostNodeDrbdConfig()
-	req.Name = t.Res
-	req.AllocationId = allocationId
-	req.Data = b
-	_, err = req.Do()
-	return err
+	params := api.PostNodeDrbdConfigParams{
+		Name: t.Res,
+	}
+	body := api.PostNodeDrbdConfigRequestBody{
+		AllocationId: allocationId,
+		Data:         b,
+	}
+	if resp, err := c.PostNodeDrbdConfig(context.Background(), &params, body); err != nil {
+		return err
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("unexpected post node drbd config status code %s", resp.Status)
+	}
+	return nil
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {

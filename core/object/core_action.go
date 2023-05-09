@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
@@ -158,17 +160,22 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	if err != nil {
 		return err
 	}
-	req := c.NewPostObjectProgress()
-	req.Path = t.path.String()
-	req.State = progress
-	req.SessionId = xsession.ID
-	req.IsPartial = !resourceselector.FromContext(ctx, nil).IsZero()
-	_, err = req.Do()
+	isPartial := !resourceselector.FromContext(ctx, nil).IsZero()
+	resp, err := c.PostObjectProgress(ctx, api.PostObjectProgress{
+		Path:      t.path.String(),
+		State:     progress,
+		SessionId: xsession.ID,
+		IsPartial: &isPartial,
+	})
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		t.log.Debug().Msg("skip announce progress: daemon is not running")
 		return nil
 	case err != nil:
+		t.log.Error().Err(err).Msgf("announce %s state", progress)
+		return err
+	case resp.StatusCode != http.StatusOK:
+		err := errors.Errorf("unexpected post object progress status %s", resp.Status)
 		t.log.Error().Err(err).Msgf("announce %s state", progress)
 		return err
 	}

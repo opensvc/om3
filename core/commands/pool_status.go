@@ -1,11 +1,8 @@
 package commands
 
 import (
-	"encoding/json"
-
 	"github.com/pkg/errors"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
@@ -60,25 +57,30 @@ func (t *CmdPoolStatus) extractLocal() (pool.StatusList, error) {
 }
 
 func (t *CmdPoolStatus) extractDaemon() (pool.StatusList, error) {
-	c, err := client.New(client.WithURL(t.Server))
-	if err != nil {
-		return nil, err
-	}
 	l := pool.NewStatusList()
-	data := make(map[string]pool.Status)
-	req := c.NewGetPools()
-	req.SetName(t.Name)
-	b, err := req.Do()
-	if err != nil {
-		return l, err
-	}
-	err = json.Unmarshal(b, &data)
-	if err != nil {
-		return l, errors.Wrapf(err, "unmarshal GET /pools")
-	}
-	for name, d := range data {
-		d.Name = name
-		l = append(l, d)
-	}
-	return l, nil
+	/*
+		c, err := client.New(client.WithURL(t.Server))
+		if err != nil {
+			return nil, err
+		}
+		params := api.GetPools{
+			Name: t.Name,
+		}
+		resp, err := c.GetPools(context.Background(), &params)
+		if err != nil {
+			return l, err
+		}
+		defer resp.Body.Close()
+		data := make(map[string]pool.Status)
+		err = json.NewDecoder(resp.Body).Decode(&data)
+		if err != nil {
+			return l, errors.Wrapf(err, "unmarshal GET /pools")
+		}
+		for name, d := range data {
+			d.Name = name
+			l = append(l, d)
+		}
+		return l, nil
+	*/
+	return l, errors.Errorf("TODO")
 }

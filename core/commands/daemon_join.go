@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -10,11 +11,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/client/api"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -100,11 +101,14 @@ func (t *CmdDaemonJoin) Run() error {
 	}()
 
 	_, _ = fmt.Fprintf(os.Stdout, "Add localhost node to the remote cluster configuration on %s\n", t.Node)
-	join := api.NewPostDaemonJoin(cli)
-	join.SetNode(hostname.Hostname())
 	_, _ = fmt.Fprintf(os.Stdout, "Daemon join\n")
-	if b, err := join.Do(); err != nil {
-		return errors.Wrapf(err, "daemon join %s response %s", t.Node, b)
+	params := api.PostDaemonJoinParams{
+		Node: hostname.Hostname(),
+	}
+	if resp, err := cli.PostDaemonJoin(context.Background(), &params); err != nil {
+		return errors.Wrapf(err, "Daemon join %s", t.Node)
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("Daemon join %s unexpected status code %s", t.Node, resp.Status)
 	}
 
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
@@ -112,7 +116,7 @@ func (t *CmdDaemonJoin) Run() error {
 	}
 	err = t.onJoined(cli, clusterName)
 	if err != nil {
-		return errors.Wrapf(err, "post join action")
+		return errors.Wrapf(err, "Post join action")
 	}
 	return err
 }

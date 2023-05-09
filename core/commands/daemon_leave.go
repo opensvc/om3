@@ -3,15 +3,16 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/client/api"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
@@ -132,11 +133,14 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 }
 
 func (t *CmdDaemonLeave) leave() error {
-	req := api.NewPostDaemonLeave(t.cli)
-	req.SetNode(t.localhost)
 	_, _ = fmt.Fprintf(os.Stdout, "Daemon leave\n")
-	if _, err := req.Do(); err != nil {
-		return errors.Wrapf(err, "daemon leave error")
+	params := api.PostDaemonLeaveParams{
+		Node: t.localhost,
+	}
+	if resp, err := t.cli.PostDaemonLeave(context.Background(), &params); err != nil {
+		return errors.Wrap(err, "Daemon leave error")
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("Daemon leave unexpected status code %s", resp.Status)
 	}
 	return nil
 }

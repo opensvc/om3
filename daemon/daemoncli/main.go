@@ -1,8 +1,9 @@
 package daemoncli
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,7 +19,6 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
@@ -215,7 +215,8 @@ func (t *T) stop() error {
 		log.Debug().Msg("Already stopped")
 		return nil
 	}
-	_, err := t.client.NewPostDaemonStop().Do()
+	// TODO check status code ?
+	_, err := t.client.PostDaemonStop(context.Background())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
 			!strings.Contains(err.Error(), "unexpected EOF") &&
@@ -274,23 +275,19 @@ func (t *T) restart() (waiter, error) {
 }
 
 func (t *T) running() bool {
-	request := t.client.NewGetDaemonRunning()
-	request.SetNode(t.node)
-	b, err := request.Do()
+	resp, err := t.client.GetDaemonRunningWithResponse(context.Background())
 	if err != nil {
 		log.Debug().Err(err).Msg("daemon is not running")
 		return false
-	}
-	var resp api.ResponseMuxBool
-	if err := json.Unmarshal(b, &resp.Data); err != nil {
-		log.Error().Err(err).Msgf("Unmarshal b: %s", b)
+	} else if resp.StatusCode() != http.StatusOK {
+		log.Warn().Msgf("unexpected get daemon running status code %s", resp.Status())
 		return false
 	}
 	nodename := t.node
 	if nodename == "" {
 		nodename = hostname.Hostname()
 	}
-	for _, item := range resp.Data {
+	for _, item := range resp.JSON200.Data {
 		if item.Endpoint == nodename {
 			val := item.Data
 			log.Debug().Msgf("daemon running is %v", val)

@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/client"
@@ -67,18 +67,23 @@ func (t *CmdObjectPrintSchedule) extractLocal(selector string) schedule.Table {
 
 func (t *CmdObjectPrintSchedule) extractFromDaemon(selector string, c *client.T) (schedule.Table, error) {
 	data := schedule.NewTable()
-	req := c.NewGetSchedules()
-	req.ObjectSelector = selector
-	b, err := req.Do()
-	if err != nil {
-		return data, err
-	}
-	err = json.Unmarshal(b, &data)
-	if err != nil {
-		log.Debug().Err(err).Msg("unmarshal GET /schedules")
-		return data, err
-	}
-	return data, nil
+	/*
+		params := api.GetSchedules{
+			Selector: selector,
+		}
+		resp, err := c.GetObjectSchedule(context.Background(), &params)
+		if err != nil {
+			return data, err
+		}
+		defer resp.Body.Close()
+		err = json.NewDecoder(resp.Body).Decode(&data)
+		if err != nil {
+			log.Debug().Err(err).Msg("unmarshal GET /schedules")
+			return data, err
+		}
+		return data, nil
+	*/
+	return data, errors.Errorf("TODO")
 }
 
 func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {

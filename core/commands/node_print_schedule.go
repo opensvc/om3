@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/client"
@@ -49,17 +49,19 @@ func (t *CmdNodePrintSchedule) extractLocal() schedule.Table {
 
 func (t *CmdNodePrintSchedule) extractFromDaemon(c *client.T) (schedule.Table, error) {
 	data := schedule.NewTable()
-	req := c.NewGetSchedules()
-	b, err := req.Do()
-	if err != nil {
-		return data, err
-	}
-	err = json.Unmarshal(b, &data)
-	if err != nil {
-		log.Debug().Err(err).Msg("unmarshal GET /schedules")
-		return data, err
-	}
-	return data, nil
+	/*
+		req := c.NewGetSchedules()
+		b, err := req.Do()
+		if err != nil {
+			return data, err
+		}
+		err = json.Unmarshal(b, &data)
+		if err != nil {
+			log.Debug().Err(err).Msg("unmarshal GET /schedules")
+			return data, err
+		}
+	*/
+	return data, errors.Errorf("TODO")
 }
 
 func (t *CmdNodePrintSchedule) Run() error {
