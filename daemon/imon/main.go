@@ -21,6 +21,8 @@ package imon
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,9 +34,11 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/bootid"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -196,6 +200,30 @@ func (o *imon) worker(initialNodes []string) {
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
 	if err := o.crmStatus(); err != nil {
 		o.log.Error().Err(err).Msg("error during initial crm status")
+	}
+
+	// Verify if instance boot action is required
+	instanceLastBootID := o.lastBootID()
+	nodeLastBootID := bootid.Get()
+	if instanceLastBootID == "" {
+		// no last instance boot file, create it
+		o.log.Info().Msgf("set last object boot id")
+		_ = o.updateLastBootID(nodeLastBootID)
+	} else if instanceLastBootID != bootid.Get() {
+		// last instance boot id differ from current node boot id
+		// try boot and refresh last instance boot id if succeed
+		o.log.Info().Msgf("need boot (node boot id differ from last object boot id")
+		o.transitionTo(instance.MonitorStateBooting)
+		if err := o.crmBoot(); err == nil {
+			o.log.Info().Msgf("set last object boot id")
+			_ = o.updateLastBootID(nodeLastBootID)
+			o.transitionTo(instance.MonitorStateBooted)
+			o.transitionTo(instance.MonitorStateIdle)
+		} else {
+			// boot failed, next daemon restart will retry boot
+			o.log.Warn().Err(err).Msg("crm boot failure")
+			o.transitionTo(instance.MonitorStateBootFailed)
+		}
 	}
 
 	// Populate caches (published messages before subscription startup are lost)
@@ -402,4 +430,28 @@ func (o *imon) loggerWithState() *zerolog.Logger {
 	}
 	stateLogger := ctx.Logger()
 	return &stateLogger
+}
+
+func (o *imon) lastBootIDFile() string {
+	if o.path.Namespace != "root" {
+		return filepath.Join(rawconfig.Paths.Var, "namespaces", o.path.String(), "last_boot_id")
+	} else {
+		return filepath.Join(rawconfig.Paths.Var, o.path.Kind.String(), o.path.String(), "last_boot_id")
+	}
+}
+
+func (o *imon) lastBootID() string {
+	if b, err := os.ReadFile(o.lastBootIDFile()); err != nil {
+		return ""
+	} else {
+		return string(b)
+	}
+}
+
+func (o *imon) updateLastBootID(s string) error {
+	if err := os.WriteFile(o.lastBootIDFile(), []byte(s), 0644); err != nil {
+		o.log.Error().Err(err).Msg("can't update instance last boot id file")
+		return err
+	}
+	return nil
 }
