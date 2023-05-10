@@ -252,6 +252,35 @@ type InstanceStatus struct {
 // Kind defines model for kind.
 type Kind = string
 
+// NetworkStatus defines model for networkStatus.
+type NetworkStatus struct {
+	Errors  *[]string           `json:"errors,omitempty"`
+	Ips     *[]NetworkStatusIp  `json:"ips,omitempty"`
+	Name    *string             `json:"name,omitempty"`
+	Network *string             `json:"network,omitempty"`
+	Type    *string             `json:"type,omitempty"`
+	Usage   *NetworkStatusUsage `json:"usage,omitempty"`
+}
+
+// NetworkStatusIp defines model for networkStatusIp.
+type NetworkStatusIp struct {
+	Ip   string `json:"ip"`
+	Node string `json:"node"`
+	Path string `json:"path"`
+	Rid  string `json:"rid"`
+}
+
+// NetworkStatusList defines model for networkStatusList.
+type NetworkStatusList = []NetworkStatus
+
+// NetworkStatusUsage defines model for networkStatusUsage.
+type NetworkStatusUsage struct {
+	Free int     `json:"free"`
+	Pct  float32 `json:"pct"`
+	Size int     `json:"size"`
+	Used int     `json:"used"`
+}
+
 // NodeInfo defines model for nodeInfo.
 type NodeInfo struct {
 	// Labels labels is the list of node labels.
@@ -612,6 +641,12 @@ type GetDaemonStatusParams struct {
 
 	// Selector selector
 	Selector *QuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// GetNetworksParams defines parameters for GetNetworks.
+type GetNetworksParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // GetNodeDrbdConfigParams defines parameters for GetNodeDrbdConfig.

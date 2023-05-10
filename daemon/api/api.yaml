@@ -226,6 +226,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseText'
+  /networks:
+    get:
+      operationId: GetNetworks
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a cluster backend network
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/networkStatusList'
   /node/drbd/allocation:
     get:
       operationId: GetNodeDrbdAllocation
@@ -849,6 +871,61 @@ components:
       type: string
     namespace:
       type: string
+    networkStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        network:
+          type: string
+        ips:
+          type: array
+          items:
+            $ref: '#/components/schemas/networkStatusIp'
+        errors:
+          type: array
+          items:
+            type: string
+        usage:
+          $ref: '#/components/schemas/networkStatusUsage'
+    networkStatusIp:
+      type: object
+      required:
+        - ip
+        - node
+        - path
+        - rid
+      properties:
+        ip:
+          type: string
+        node:
+          type: string
+        path:
+          type: string
+        rid:
+          type: string
+    networkStatusList:
+      type: array
+      items:
+        $ref: '#/components/schemas/networkStatus'
+    networkStatusUsage:
+      type: object
+      required:
+        - free
+        - used
+        - size
+        - pct
+      properties:
+        free:
+          type: integer
+        used:
+          type: integer
+        size:
+          type: integer
+        pct:
+          type: number
     nodeInfo:
       type: object
       required:
