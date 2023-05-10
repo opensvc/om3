@@ -1291,6 +1291,22 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectBoot(kind string) *cobra.Command {
+	var options commands.CmdObjectBoot
+	cmd := &cobra.Command{
+		Use:   "boot",
+		Short: "Clean up actions executed before the daemon starts." +
+			" For example scsi reservation release and vg tags removal." +
+			" Never execute this action manually.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdObjectClear(kind string) *cobra.Command {
 	var options commands.CmdObjectClear
 	cmd := &cobra.Command{
