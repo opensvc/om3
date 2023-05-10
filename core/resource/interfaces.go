@@ -92,6 +92,9 @@ type (
 	stopper interface {
 		Stop(context.Context) error
 	}
+	booter interface {
+		Boot(ctx context.Context) error
+	}
 	resyncer interface {
 		Resync(context.Context) error
 	}

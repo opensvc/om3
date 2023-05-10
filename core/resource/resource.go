@@ -713,6 +713,12 @@ func checkRequires(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// Boot deactivates a resource when the node is rebooted
+func Boot(ctx context.Context, r Driver) error {
+	defer Status(ctx, r)
+	return boot(ctx, r)
+}
+
 // Run calls Run() if the resource is a Runner
 func Run(ctx context.Context, r Driver) error {
 	runner, ok := r.(Runner)
@@ -928,6 +934,30 @@ func Shutdown(ctx context.Context, r Driver) error {
 func Stop(ctx context.Context, r Driver) error {
 	defer Status(ctx, r)
 	return stop(ctx, r)
+}
+
+// boot turns the resource to a state ready for a start after node reboot.
+func boot(ctx context.Context, r Driver) error {
+	var (
+		progressAction string
+		i              any = r
+		fn             func(context.Context) error
+	)
+	if s, ok := i.(booter); ok {
+		fn = s.Boot
+		progressAction = "boot"
+	} else {
+		return ErrActionNotSupported
+	}
+	if r.IsDisabled() {
+		return ErrDisabled
+	}
+	Setenv(r)
+	r.Progress(ctx, "▶ "+progressAction)
+	if err := fn(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 // shutdown turns the resource to a state ready for a server halt
