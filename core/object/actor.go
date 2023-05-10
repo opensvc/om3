@@ -5,6 +5,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/ssrathi/go-attr"
+
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
@@ -17,8 +20,6 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
-	"github.com/pkg/errors"
-	"github.com/ssrathi/go-attr"
 )
 
 type (
@@ -56,6 +57,7 @@ type (
 		ConfigureResources()
 		IsDisabled() bool
 
+		Boot(context.Context) error
 		Restart(context.Context) error
 		Run(context.Context) error
 		Shutdown(context.Context) error
