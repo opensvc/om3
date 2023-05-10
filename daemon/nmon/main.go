@@ -42,6 +42,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/bootid"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -172,6 +173,21 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	// first ConfigFileUpdated event to do the job.
 	if err := o.loadAndPublishConfig(); err != nil {
 		return err
+	}
+
+	bootID := bootid.Get()
+	if len(bootID) > 0 {
+		fileLastBootID := filepath.Join(rawconfig.Paths.Var, "node", "last_boot_id")
+		if b, err := os.ReadFile(fileLastBootID); err == nil && len(b) > 0 {
+			lastBootID := string(b)
+			if lastBootID != bootID {
+				o.log.Info().Msgf("fist daemon startup since boot")
+				// TODO implement kern freeze
+			}
+		}
+		if err := os.WriteFile(fileLastBootID, []byte(bootID), 0644); err != nil {
+			o.log.Error().Err(err).Msgf("unable to write %s '%s'", fileLastBootID, bootID)
+		}
 	}
 
 	o.setArbitratorConfig()
