@@ -44,6 +44,10 @@ func (o *imon) orchestrateAfterAction(state, newState instance.MonitorState) {
 	o.cmdC <- cmdOrchestrate{state: state, newState: newState}
 }
 
+func (o *imon) crmBoot() error {
+	return o.crmAction("boot", o.path.String(), "boot", "--local")
+}
+
 func (o *imon) crmDelete() error {
 	return o.crmAction("delete", o.path.String(), "delete")
 }
