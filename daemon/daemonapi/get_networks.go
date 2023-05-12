@@ -12,8 +12,6 @@ import (
 
 // GetDaemonDNSDump returns the DNS zone content.
 func (a *DaemonApi) GetNetworks(w http.ResponseWriter, r *http.Request, params api.GetNetworksParams) {
-	WriteProblem(w, http.StatusInternalServerError, "Failed to allocate a new object.Node", "foo")
-	return
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		WriteProblem(w, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
