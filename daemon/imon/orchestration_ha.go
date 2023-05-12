@@ -53,14 +53,10 @@ func (o *imon) orchestrateHAStart() {
 
 // clearBootFailed clears the boot failed state when the following conditions are met:
 //
-// + object avail is UP
 // + local avail is Down, StandbyDown, NotApplicable
 // + global expect is none
 func (o *imon) clearBootFailed() {
 	if o.state.State != instance.MonitorStateBootFailed {
-		return
-	}
-	if o.objStatus.Avail != status.Up {
 		return
 	}
 	switch o.instStatus[o.localhost].Avail {
