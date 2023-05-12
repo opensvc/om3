@@ -3,3 +3,20 @@
 //go:generate oapi-codegen --config=codegen_client.yaml ./api.yaml
 
 package api
+
+import "fmt"
+
+func (t MonitorUpdateQueued) String() (out string) {
+	return fmt.Sprint(t.OrchestrationId)
+}
+
+func (t Problem) String() (out string) {
+	if t.Status != 200 {
+		out += fmt.Sprintf("%s ", t.Status)
+	}
+	out += fmt.Sprintf(t.Title)
+	if t.Detail != "" {
+		out += fmt.Sprintf(": %s", t.Detail)
+	}
+	return
+}

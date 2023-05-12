@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type (
@@ -25,6 +27,9 @@ type (
 		State        *MonitorState        `json:"state"`
 		LocalExpect  *MonitorLocalExpect  `json:"local_expect"`
 		GlobalExpect *MonitorGlobalExpect `json:"global_expect"`
+
+		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
+		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
 	}
 
 	MonitorState        int

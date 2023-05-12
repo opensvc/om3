@@ -655,10 +655,20 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 		AllocationId: allocationId,
 		Data:         b,
 	}
-	if resp, err := c.PostNodeDrbdConfig(context.Background(), &params, body); err != nil {
+	resp, err := c.PostNodeDrbdConfigWithResponse(context.Background(), &params, body)
+	if err != nil {
 		return err
-	} else if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("unexpected post node drbd config status code %s", resp.Status)
+	}
+	switch resp.StatusCode() {
+	case 400:
+		return errors.Errorf("%s", resp.JSON400)
+	case 401:
+		return errors.Errorf("%s", resp.JSON401)
+	case 403:
+		return errors.Errorf("%s", resp.JSON403)
+	case 500:
+		return errors.Errorf("%s", resp.JSON500)
+
 	}
 	return nil
 }

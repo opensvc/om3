@@ -3,6 +3,7 @@ package imon
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -92,16 +93,16 @@ func (o *imon) endOrchestration() {
 	o.state.GlobalExpectOptions = nil
 	o.clearPending()
 	o.updateIfChange()
-	if o.acceptedOrchestrationId != "" {
+	if o.acceptedOrchestrationId.String() != "" {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node: o.localhost,
 			Path: o.path,
-			Id:   o.acceptedOrchestrationId,
+			Id:   o.acceptedOrchestrationId.String(),
 		},
 			o.labelPath,
 			o.labelLocalhost,
 		)
-		o.acceptedOrchestrationId = ""
+		o.acceptedOrchestrationId = uuid.UUID{}
 	}
 }
 
@@ -110,14 +111,14 @@ func (o *imon) endOrchestration() {
 func (o *imon) setReached() {
 	o.change = true
 	o.state.State = instance.MonitorStateReached
-	o.state.OrchestrationId = ""
+	o.state.OrchestrationId = uuid.UUID{}
 }
 
 // isConvergedOrchestrationReached returns true instance orchestration is reached
 // for all object instances (OrchestrationId == "" for all instance monitor cache).
 func (o *imon) isConvergedOrchestrationReached() bool {
 	for nodename, oImon := range o.instMonitor {
-		if oImon.OrchestrationId != "" {
+		if oImon.OrchestrationId.String() != "" {
 			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
 				o.log.Info().Msgf("not yet converged orchestration (node: %s %s)", nodename, msg)

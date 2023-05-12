@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -30,15 +31,19 @@ func Register(r chi.Router, enableUi bool) {
 	api.HandlerFromMux(daemonApi, r)
 }
 
-func sendError(w http.ResponseWriter, code int, message string) {
-	w.WriteHeader(code)
-	_, _ = w.Write([]byte(message))
+func WriteProblemf(w http.ResponseWriter, code int, title, detail string, argv ...any) {
+	detail = fmt.Sprintf(detail, argv...)
+	WriteProblem(w, code, title, detail)
 }
 
-func sendErrorf(w http.ResponseWriter, code int, format string, a ...any) {
-	message := fmt.Sprintf(format, a...)
+func WriteProblem(w http.ResponseWriter, code int, title, detail string) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write([]byte(message))
+	_ = json.NewEncoder(w).Encode(api.Problem{
+		Detail: detail,
+		Title:  title,
+		Status: code,
+	})
 }
 
 func getLogger(r *http.Request, name string) zerolog.Logger {

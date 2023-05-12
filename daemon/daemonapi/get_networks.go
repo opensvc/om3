@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/opensvc/om3/core/network"
@@ -11,9 +12,11 @@ import (
 
 // GetDaemonDNSDump returns the DNS zone content.
 func (a *DaemonApi) GetNetworks(w http.ResponseWriter, r *http.Request, params api.GetNetworksParams) {
+	WriteProblem(w, http.StatusInternalServerError, "Failed to allocate a new object.Node", "foo")
+	return
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "new node")
+		WriteProblem(w, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
 		return
 	}
 	var l network.StatusList

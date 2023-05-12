@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/goccy/go-json"
 	"github.com/opensvc/om3/core/client"
@@ -70,9 +71,13 @@ func (t *CmdNetworkStatus) extractDaemon() (network.StatusList, error) {
 		return data, err
 	}
 	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
-		return data, errors.Wrapf(err, "unmarshal GET /networks")
+	if resp.StatusCode != http.StatusOK {
+		var problem api.Problem
+		_ = json.NewDecoder(resp.Body).Decode(&problem)
+		return data, errors.Errorf("%s", problem)
+	}
+	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return data, errors.Wrapf(err, "Unmarshal GET /networks")
 	}
 	return data, nil
 }

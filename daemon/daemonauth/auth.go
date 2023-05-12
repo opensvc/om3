@@ -2,6 +2,8 @@ package daemonauth
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/util/key"
@@ -58,7 +61,13 @@ func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 			if err != nil {
 				log.Logger.Error().Err(err).Str("remote", r.RemoteAddr).Msg("auth")
 				code := http.StatusUnauthorized
-				http.Error(w, http.StatusText(code), code)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(code)
+				_ = json.NewEncoder(w).Encode(api.Problem{
+					Detail: fmt.Sprint(err),
+					Status: code,
+					Title:  http.StatusText(code),
+				})
 				return
 			}
 			log.Logger.Debug().Msgf("user %s authenticated", user.GetUserName())

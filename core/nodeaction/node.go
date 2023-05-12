@@ -264,24 +264,29 @@ func (t T) DoAsync() error {
 	resp, err := c.PostNodeMonitorWithResponse(ctx, params)
 	if err != nil {
 		return err
-	} else if resp.StatusCode() != http.StatusOK {
-		return errors.Errorf("unexpected post node monitor status %s", resp.Status())
 	}
-
-	human := func() string {
-		if len(resp.JSON200.Status) == 0 {
-			return ""
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		human := func() string {
+			s := fmt.Sprintln(resp.JSON200)
+			return s
 		}
-		s := fmt.Sprintln(resp.JSON200.Status)
-		return s
+		output.Renderer{
+			Format:        t.Format,
+			Color:         t.Color,
+			Data:          resp.JSON200,
+			HumanRenderer: human,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
+	case 400:
+		return errors.Errorf("%s", resp.JSON400)
+	case 401:
+		return errors.Errorf("%s", resp.JSON403)
+	case 403:
+		return errors.Errorf("%s", resp.JSON401)
+	case 500:
+		return errors.Errorf("%s", resp.JSON500)
 	}
-	output.Renderer{
-		Format:        t.Format,
-		Color:         t.Color,
-		Data:          resp.JSON200.Status,
-		HumanRenderer: human,
-		Colorize:      rawconfig.Colorize,
-	}.Print()
 
 	if t.Wait {
 		select {

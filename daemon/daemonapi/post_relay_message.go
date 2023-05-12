@@ -2,7 +2,6 @@ package daemonapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -20,7 +19,7 @@ func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("starting")
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error())
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
 
@@ -33,6 +32,5 @@ func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
 
 	relay.Map.Store(payload.ClusterId, payload.Nodename, value)
 	log.Debug().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "stored")
+	WriteProblemf(w, http.StatusOK, "stored", "at %s from %s", value.Updated, value.Addr)
 }
