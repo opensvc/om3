@@ -47,9 +47,10 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	}
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
-			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
-			sendError(w, http.StatusBadRequest, "invalid duration")
-		} else if timeout := *v.(*time.Duration) ; timeout > 0 {
+			log.Info().Err(err).Msgf("Invalid parameter: field 'duration' with value '%s' validation error", *params.Duration)
+			WriteProblemf(w, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+			return
+		} else if timeout := *v.(*time.Duration); timeout > 0 {
 			ctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
 		}
@@ -64,8 +65,8 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 
 	filters, err := parseFilters(params)
 	if err != nil {
-		log.Warn().Err(err).Msgf("invalid filter")
-		sendError(w, http.StatusBadRequest, err.Error())
+		log.Info().Err(err).Msgf("Invalid parameter: field 'filter' with value '%s' validation error", *params.Filter)
+		WriteProblemf(w, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 		return
 	}
 

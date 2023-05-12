@@ -19,12 +19,12 @@ func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
 		err     error
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error())
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		sendError(w, http.StatusBadRequest, "invalid path: "+payload.Path)
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Path, err)
 		return
 	}
 	globalExpect := instance.MonitorGlobalExpectAborted

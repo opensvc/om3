@@ -655,12 +655,24 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 		AllocationId: allocationId,
 		Data:         b,
 	}
-	if resp, err := c.PostNodeDrbdConfig(context.Background(), &params, body); err != nil {
+	resp, err := c.PostNodeDrbdConfigWithResponse(context.Background(), &params, body)
+	if err != nil {
 		return err
-	} else if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("unexpected post node drbd config status code %s", resp.Status)
 	}
-	return nil
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 400:
+		return errors.Errorf("%s", resp.JSON400)
+	case 401:
+		return errors.Errorf("%s", resp.JSON401)
+	case 403:
+		return errors.Errorf("%s", resp.JSON403)
+	case 500:
+		return errors.Errorf("%s", resp.JSON500)
+	default:
+		return errors.Errorf("Unexpected status code: %s", resp.Status())
+	}
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {

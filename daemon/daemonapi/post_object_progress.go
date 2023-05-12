@@ -20,17 +20,17 @@ func (a *DaemonApi) PostObjectProgress(w http.ResponseWriter, r *http.Request) {
 		isPartial bool
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error())
+		WriteProblem(w, http.StatusBadRequest, "Failed to json decode request body", err.Error())
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		sendError(w, http.StatusBadRequest, "invalid path: "+payload.Path)
+		WriteProblem(w, http.StatusBadRequest, "Invalid field", "path: "+payload.Path)
 		return
 	}
 	state, ok := instance.MonitorStateValues[payload.State]
 	if !ok {
-		sendError(w, http.StatusBadRequest, "invalid state: "+payload.State)
+		WriteProblem(w, http.StatusBadRequest, "Invalid field", "state: "+payload.State)
 		return
 	}
 	if payload.IsPartial != nil {

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.6.36
+  version: 3.7.0
 servers:
   - url: https://localhost:1215
 paths:
@@ -22,12 +22,20 @@ paths:
             type: string
             example: 10m
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responsePostAuthToken'
+                $ref: '#/components/schemas/AuthToken'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
   /daemon/dns/dump:
     get:
       operationId: GetDaemonDNSDump
@@ -40,12 +48,18 @@ paths:
       description: |
         Dump the cluster DNS zone content.
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/dnsZone'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/logs/control:
     post:
       operationId: PostDaemonLogsControl
@@ -62,12 +76,14 @@ paths:
             schema:
               $ref: '#/components/schemas/postDaemonLogsControl'
       responses:
-        '200':
-          description: success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/responseText'
+        200:
+          $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/events:
     get:
       operationId: GetDaemonEvents
@@ -83,12 +99,18 @@ paths:
         - $ref: '#/components/parameters/queryLimit'
         - $ref: '#/components/parameters/queryEventFilter'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/responseEventList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/join:
     post:
       operationId: PostDaemonJoin
@@ -118,10 +140,14 @@ paths:
             example: newnode
             minLength: 2
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/leave:
     post:
       operationId: PostDaemonLeave
@@ -151,10 +177,8 @@ paths:
             example: node-wto-remove
             minLength: 2
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
   /daemon/running:
     get:
       operationId: GetDaemonRunning
@@ -164,12 +188,18 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseMuxBool'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/status:
     get:
       operationId: GetDaemonStatus
@@ -183,12 +213,18 @@ paths:
         - $ref: '#/components/parameters/queryRelativesOptional'
         - $ref: '#/components/parameters/querySelectorOptional'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseDaemonStatus'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/stop:
     post:
       operationId: PostDaemonStop
@@ -198,12 +234,14 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       responses:
-        '200':
-          description: success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/responseText'
+        200:
+          $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /daemon/sub/action:
     post:
       operationId: PostDaemonSubAction
@@ -220,12 +258,42 @@ paths:
             schema:
               $ref: '#/components/schemas/postDaemonSubAction'
       responses:
-        '200':
-          description: success
+        200:
+          $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /networks:
+    get:
+      operationId: GetNetworks
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a cluster backend network
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseText'
+                $ref: '#/components/schemas/networkStatusList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/drbd/allocation:
     get:
       operationId: GetNodeDrbdAllocation
@@ -235,12 +303,18 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/drbdAllocation'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/clear:
     post:
       operationId: PostNodeClear
@@ -251,10 +325,16 @@ paths:
         - bearerAuth: []
       description: Clears errors (for example, failed) in the node monitor state.
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/drbd/config:
     get:
       operationId: GetNodeDrbdConfig
@@ -266,12 +346,20 @@ paths:
       parameters:
         - $ref: '#/components/parameters/queryDrbdConfigName'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/responseGetNodeDrbdConfig'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
     post:
       operationId: PostNodeDrbdConfig
       tags:
@@ -289,8 +377,16 @@ paths:
             schema:
                 $ref: '#/components/schemas/postNodeDrbdConfigRequestBody'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/monitor:
     post:
       operationId: PostNodeMonitor
@@ -307,14 +403,20 @@ paths:
             schema:
               $ref: '#/components/schemas/postNodeMonitor'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseInfoStatus'
-        default:
-          description: unexpected error
+                $ref: '#/components/schemas/monitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /nodes/info:
     get:
       operationId: GetNodesInfo
@@ -324,12 +426,18 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/nodesInfo'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/abort:
     post:
       operationId: PostObjectAbort
@@ -346,10 +454,14 @@ paths:
             schema:
               $ref: '#/components/schemas/postObjectAbort'
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/clear:
     post:
       operationId: PostObjectClear
@@ -366,10 +478,14 @@ paths:
             schema:
               $ref: '#/components/schemas/postObjectClear'
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/config:
     get:
       operationId: GetObjectConfig
@@ -391,12 +507,18 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectConfig'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/file:
     get:
       operationId: GetObjectFile
@@ -408,12 +530,18 @@ paths:
       parameters:
         - $ref: '#/components/parameters/queryObjectPath'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectFile'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/monitor:
     post:
       operationId: PostObjectMonitor
@@ -430,14 +558,20 @@ paths:
             schema:
               $ref: '#/components/schemas/postObjectMonitor'
       responses:
-        '200':
-          description: success
-        '400':
-          description: body decode error
-        '500':
-          description: file write error
-        default:
-          description: unexpected error
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/monitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/progress:
     post:
       operationId: PostObjectProgress
@@ -454,10 +588,14 @@ paths:
             schema:
               $ref: '#/components/schemas/postObjectProgress'
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/selector:
     get:
       operationId: GetObjectSelector
@@ -469,12 +607,18 @@ paths:
       parameters:
         - $ref: '#/components/parameters/queryObjectSelector'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/objectSelector'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /instance/status:
     post:
       operationId: PostInstanceStatus
@@ -491,10 +635,16 @@ paths:
             schema:
               $ref: '#/components/schemas/postInstanceStatus'
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /object/switchTo:
     post:
       operationId: PostObjectSwitchTo
@@ -511,22 +661,38 @@ paths:
             schema:
               $ref: '#/components/schemas/postObjectSwitchTo'
       responses:
-        '200':
-          description: success
-        default:
-          description: unexpected error
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/monitorUpdateQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /public/openapi:
     get:
       operationId: GetSwagger
       tags:
         - public
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: object
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /relay/message:
     get:
       operationId: GetRelayMessage
@@ -539,12 +705,18 @@ paths:
         - $ref: '#/components/parameters/queryRelayNodename'
         - $ref: '#/components/parameters/queryRelayClusterId'
       responses:
-        '200':
-          description: success
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/relayMessages'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
     post:
       operationId: PostRelayMessage
       tags:
@@ -560,12 +732,29 @@ paths:
             schema:
               $ref: '#/components/schemas/postRelayMessage'
       responses:
-        '200':
-          description: success
+        200:
+          $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
 components:
   schemas:
     app:
       type: string
+    AuthToken:
+      type: object
+      required:
+        - token
+        - token_expire_at
+      properties:
+        token:
+          type: string
+        token_expire_at:
+          type: string
+          format: date-time
     cluster:
       type: object
       required:
@@ -849,6 +1038,61 @@ components:
       type: string
     namespace:
       type: string
+    networkStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        network:
+          type: string
+        ips:
+          type: array
+          items:
+            $ref: '#/components/schemas/networkStatusIp'
+        errors:
+          type: array
+          items:
+            type: string
+        usage:
+          $ref: '#/components/schemas/networkStatusUsage'
+    networkStatusIp:
+      type: object
+      required:
+        - ip
+        - node
+        - path
+        - rid
+      properties:
+        ip:
+          type: string
+        node:
+          type: string
+        path:
+          type: string
+        rid:
+          type: string
+    networkStatusList:
+      type: array
+      items:
+        $ref: '#/components/schemas/networkStatus'
+    networkStatusUsage:
+      type: object
+      required:
+        - free
+        - used
+        - size
+        - pct
+      properties:
+        free:
+          type: integer
+        used:
+          type: integer
+        size:
+          type: integer
+        pct:
+          type: number
     nodeInfo:
       type: object
       required:
@@ -921,6 +1165,14 @@ components:
         - no
         - start
       default: no
+    monitorUpdateQueued:
+      type: object
+      properties:
+        orchestration_id:
+          type: string
+          format: uuid
+      required:
+        - orchestration_id
     pathRelation:
       type: array
       items:
@@ -1076,6 +1328,30 @@ components:
       type: integer
       description: scheduling priority of an object instance on a its node
       default: 50
+    problem:
+      type: object
+      properties:
+        detail:
+          description: |
+            A human-readable explanation specific to this occurrence of the
+            problem.
+          type: string
+        status:
+          type: integer
+          description: |
+            The HTTP status code ([RFC7231], Section 6) generated by the
+            origin server for this occurrence of the problem.
+        title:
+          type: string
+          description: |
+            A short, human-readable summary of the problem type.  It SHOULD
+            NOT change from occurrence to occurrence of the problem, except
+            for purposes of localization (e.g., using proactive content
+            negotiation; see [RFC7231], Section 3.4).
+      required:
+        - detail
+        - status
+        - title
     provisioned:
       type: string
       description: service, instance or resource provisioned state
@@ -1218,16 +1494,6 @@ components:
         data:
           type: string
           format: byte
-    responseInfoStatus:
-      type: object
-      required:
-        - info
-        - status
-      properties:
-        info:
-          type: integer
-        status:
-          type: string
     responseMuxBool:
       type: object
       required:
@@ -1251,19 +1517,6 @@ components:
                 type: boolean
               endpoint:
                 type: string
-    responsePostAuthToken:
-      type: object
-      required:
-        - token
-        - token_expire_at
-      properties:
-        token:
-          type: string
-        token_expire_at:
-          type: string
-          format: date-time
-    responseText:
-      type: string
     role:
       type: string
       enum:
@@ -1421,3 +1674,55 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    '200':
+      type: object
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"
+    '204':
+      description: No Content
+    '400':
+      type: object
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"
+    '401':
+      type: object
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"
+    '403':
+      type: object
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"
+    '404':
+      type: object
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"
+    '500':
+      type: object
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"
+    '503':
+      type: object
+      description: Service Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/problem"

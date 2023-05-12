@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type (
@@ -20,7 +22,7 @@ type (
 
 		// OrchestrationId is the accepted orchestration id that will be unset
 		// when orchestration is reached on local node
-		OrchestrationId string `json:"orchestration_id"`
+		OrchestrationId uuid.UUID `json:"orchestration_id"`
 
 		SessionId               string             `json:"session_id"`
 		State                   MonitorState       `json:"state"`
@@ -42,7 +44,7 @@ type (
 		State               *MonitorState        `json:"state"`
 
 		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
-		CandidateOrchestrationId string `json:"orchestration_id"`
+		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
 	}
 
 	// ResourceMonitor describes the restart states maintained by the daemon

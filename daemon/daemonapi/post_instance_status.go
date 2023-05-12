@@ -27,19 +27,19 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("starting")
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		log.Warn().Err(err).Msgf("decode body")
-		sendError(w, http.StatusBadRequest, err.Error())
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
 		log.Warn().Err(err).Msgf("can't parse path: %s", payload.Path)
-		sendErrorf(w, http.StatusBadRequest, "invalid path %s", payload.Path)
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Path, err)
 		return
 	}
 	instanceStatus, err := postInstanceStatusToInstanceStatus(payload)
 	if err != nil {
-		log.Warn().Err(err).Msgf("can't parse instance status %s", payload.Path)
-		sendError(w, http.StatusBadRequest, "can't parse instance status")
+		log.Warn().Err(err).Msgf("Error transtyping instance status: %#v", payload)
+		WriteProblemf(w, http.StatusBadRequest, "Error transtyping instance status", "%s", err)
 		return
 	}
 	bus := pubsub.BusFromContext(r.Context())

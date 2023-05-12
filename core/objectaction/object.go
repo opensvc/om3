@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -361,9 +362,9 @@ func (t T) DoAsync() error {
 	}
 	type (
 		result struct {
-			Path            string `json:"path"`
-			OrchestrationId string `json:"orchestration_id,omitempty"`
-			Error           error  `json:"error,omitempty"`
+			Path            string    `json:"path"`
+			OrchestrationId uuid.UUID `json:"orchestration_id,omitempty"`
+			Error           error     `json:"error,omitempty"`
 		}
 		results []result
 	)
@@ -399,24 +400,42 @@ func (t T) DoAsync() error {
 			params.Path = p.String()
 			options := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
 			params.Destination = options.Destination
-			if resp, e := c.PostObjectSwitchToWithResponse(ctx, params); e != nil {
+			resp, e := c.PostObjectSwitchToWithResponse(ctx, params)
+			if e != nil {
 				err = e
-			} else if resp.StatusCode() != http.StatusOK {
-				err = errors.Errorf("unexpected post object switch status %s", resp.Status())
-			} else {
+			}
+			switch resp.StatusCode() {
+			case http.StatusOK:
 				b = resp.Body
+			case 400:
+				err = errors.Errorf("%s", resp.JSON400)
+			case 401:
+				err = errors.Errorf("%s", resp.JSON403)
+			case 403:
+				err = errors.Errorf("%s", resp.JSON401)
+			case 500:
+				err = errors.Errorf("%s", resp.JSON500)
 			}
 
 		default:
 			params := api.PostObjectMonitor{}
 			params.Path = p.String()
 			params.GlobalExpect = &t.Target
-			if resp, e := c.PostObjectMonitorWithResponse(ctx, params); e != nil {
+			resp, e := c.PostObjectMonitorWithResponse(ctx, params)
+			if e != nil {
 				err = e
-			} else if resp.StatusCode() != http.StatusOK {
-				err = errors.Errorf("unexpected post object monitor status %s", resp.Status())
-			} else {
+			}
+			switch resp.StatusCode() {
+			case http.StatusOK:
 				b = resp.Body
+			case 400:
+				err = errors.Errorf("%s", resp.JSON400)
+			case 401:
+				err = errors.Errorf("%s", resp.JSON403)
+			case 403:
+				err = errors.Errorf("%s", resp.JSON401)
+			case 500:
+				err = errors.Errorf("%s", resp.JSON500)
 			}
 		}
 		if err != nil {
@@ -424,11 +443,11 @@ func (t T) DoAsync() error {
 		} else {
 			toWait++
 		}
-		var orchestrationId string
+		var monitorUpdateQueued api.MonitorUpdateQueued
 		var r result
-		if err := json.Unmarshal(b, &orchestrationId); err == nil {
+		if err := json.Unmarshal(b, &monitorUpdateQueued); err == nil {
 			r = result{
-				OrchestrationId: orchestrationId,
+				OrchestrationId: monitorUpdateQueued.OrchestrationId,
 				Path:            p.String(),
 			}
 		} else {

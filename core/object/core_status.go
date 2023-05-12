@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -203,13 +202,24 @@ func (t *core) postInstanceStatus(data instance.Status) error {
 			Path:   t.path.String(),
 			Status: instanceStatus,
 		}
-		if resp, err := c.PostInstanceStatus(context.Background(), body); err != nil {
+		resp, err := c.PostInstanceStatusWithResponse(context.Background(), body)
+		if err != nil {
 			return err
-		} else if resp.StatusCode != http.StatusOK {
-			return errors.Errorf("unexpected post instance status code %s", resp.Status)
-		} else {
-			return nil
 		}
+		switch resp.StatusCode() {
+		case 200:
+		case 400:
+			return errors.Errorf("%s", resp.JSON400)
+		case 401:
+			return errors.Errorf("%s", resp.JSON401)
+		case 403:
+			return errors.Errorf("%s", resp.JSON403)
+		case 500:
+			return errors.Errorf("%s", resp.JSON500)
+		default:
+			return errors.Errorf("unexpected response: %s", string(resp.Body))
+		}
+		return nil
 	}
 }
 

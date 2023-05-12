@@ -22,12 +22,12 @@ func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
 		err     error
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error())
+		WriteProblem(w, http.StatusBadRequest, "Invalid Body", err.Error())
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		sendError(w, http.StatusBadRequest, "invalid path: "+payload.Path)
+		WriteProblem(w, http.StatusBadRequest, "Invalid Body", "Invalid path: "+payload.Path)
 		return
 	}
 	globalExpect := instance.MonitorGlobalExpectPlacedAt
@@ -37,12 +37,13 @@ func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
 		GlobalExpect:        &globalExpect,
 		GlobalExpectOptions: options,
 	}
-	orchestrationId := uuid.New().String()
-	value.CandidateOrchestrationId = orchestrationId
+	value.CandidateOrchestrationId = uuid.New()
 	bus := pubsub.BusFromContext(r.Context())
 	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: value},
 		pubsub.Label{"path", p.String()}, labelApi)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(orchestrationId)
+	_ = json.NewEncoder(w).Encode(api.MonitorUpdateQueued{
+		OrchestrationId: value.CandidateOrchestrationId,
+	})
 	w.WriteHeader(http.StatusOK)
 }

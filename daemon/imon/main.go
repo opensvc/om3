@@ -23,6 +23,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
@@ -77,7 +78,7 @@ type (
 		// It is used while we are waiting for orchestration reached
 		waitConvergedOrchestrationMsg map[string]string
 
-		acceptedOrchestrationId string
+		acceptedOrchestrationId uuid.UUID
 
 		drainDuration time.Duration
 

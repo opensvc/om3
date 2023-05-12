@@ -32,7 +32,7 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
-			sendError(w, http.StatusBadRequest, "invalid duration")
+			WriteProblemf(w, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
 			return
 		} else {
 			duration = *v.(*time.Duration)
@@ -54,7 +54,7 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 		user, xClaims, err = userXClaims(params, user)
 		if err != nil {
 			log.Error().Err(err).Msg("userXClaims")
-			sendError(w, http.StatusServiceUnavailable, err.Error())
+			WriteProblemf(w, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", user.GetUserName())
 			return
 		}
 	}
@@ -64,15 +64,15 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 		switch err {
 		case daemonauth.NotImplementedError:
 			log.Warn().Err(err).Msg("")
-			sendError(w, http.StatusNotImplemented, err.Error())
+			WriteProblem(w, http.StatusNotImplemented, err.Error(), "")
 		default:
 			log.Error().Err(err).Msg("can't create token")
-			sendError(w, http.StatusInternalServerError, err.Error())
+			WriteProblemf(w, http.StatusInternalServerError, "Unexpected error", "%s", err)
 		}
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(api.ResponsePostAuthToken{
+	err = json.NewEncoder(w).Encode(api.AuthToken{
 		Token:         tk,
 		TokenExpireAt: expireAt,
 	})

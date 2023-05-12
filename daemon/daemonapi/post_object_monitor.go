@@ -16,38 +16,39 @@ import (
 
 func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 	var (
-		payload     = api.PostObjectMonitor{}
-		instMonitor = instance.MonitorUpdate{}
-		p           path.T
-		err         error
+		payload api.PostObjectMonitor
+		update  instance.MonitorUpdate
+		p       path.T
+		err     error
 	)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error())
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		sendError(w, http.StatusBadRequest, "invalid path: "+payload.Path)
+		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing path %s: %s", payload.Path, err)
 		return
 	}
 	if payload.GlobalExpect != nil {
 		i := instance.MonitorGlobalExpectValues[*payload.GlobalExpect]
-		instMonitor.GlobalExpect = &i
+		update.GlobalExpect = &i
 	}
 	if payload.LocalExpect != nil {
 		i := instance.MonitorLocalExpectValues[*payload.LocalExpect]
-		instMonitor.LocalExpect = &i
+		update.LocalExpect = &i
 	}
 	if payload.State != nil {
 		i := instance.MonitorStateValues[*payload.State]
-		instMonitor.State = &i
+		update.State = &i
 	}
-	orchestrationId := uuid.New().String()
-	instMonitor.CandidateOrchestrationId = orchestrationId
+	update.CandidateOrchestrationId = uuid.New()
 	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: instMonitor},
+	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: update},
 		pubsub.Label{"path", p.String()}, labelApi)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(orchestrationId)
+	_ = json.NewEncoder(w).Encode(api.MonitorUpdateQueued{
+		OrchestrationId: update.CandidateOrchestrationId,
+	})
 	w.WriteHeader(http.StatusOK)
 }

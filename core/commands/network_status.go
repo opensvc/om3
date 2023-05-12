@@ -1,11 +1,17 @@
 package commands
 
 import (
+	"context"
+	"net/http"
+
+	"github.com/goccy/go-json"
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/pkg/errors"
 )
 
@@ -51,34 +57,27 @@ func (t *CmdNetworkStatus) extractLocal() (network.StatusList, error) {
 }
 
 func (t *CmdNetworkStatus) extractDaemon() (network.StatusList, error) {
-	/*
-		c, err := client.New(client.WithURL(t.Server))
-		if err != nil {
-			return nil, err
-		}
-		l := network.NewStatusList()
-		data := make(map[string]network.Status)
-		params := api.GetNetworksParams{
-			Name: t.Name,
-		}
-		resp, err := c.GetNetworksWithResponse(context.Background(), &params)
-		if err != nil {
-			return l, err
-		}
-		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&data)
-		if err != nil {
-			return l, errors.Wrapf(err, "unmarshal GET /networks")
-		}
-		for name, d := range data {
-			if t.Name != "" && name != t.Name {
-				// TODO: api handler should honor the name filter set in request
-				continue
-			}
-			d.Name = name
-			l = append(l, d)
-		}
-		return l, nil
-	*/
-	return network.StatusList{}, errors.Errorf("TODO")
+	c, err := client.New(client.WithURL(t.Server))
+	if err != nil {
+		return nil, err
+	}
+	data := network.NewStatusList()
+	params := api.GetNetworksParams{}
+	if t.Name != "" {
+		params.Name = &t.Name
+	}
+	resp, err := c.GetNetworks(context.Background(), &params)
+	if err != nil {
+		return data, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var problem api.Problem
+		_ = json.NewDecoder(resp.Body).Decode(&problem)
+		return data, errors.Errorf("%s", problem)
+	}
+	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return data, errors.Wrapf(err, "Unmarshal GET /networks")
+	}
+	return data, nil
 }
