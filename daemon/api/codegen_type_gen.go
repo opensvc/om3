@@ -536,9 +536,6 @@ type ResponseMuxBool struct {
 	Status     int    `json:"status"`
 }
 
-// ResponseText defines model for responseText.
-type ResponseText = string
-
 // Role defines model for role.
 type Role string
 

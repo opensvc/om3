@@ -235,11 +235,7 @@ paths:
         - bearerAuth: []
       responses:
         200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/responseText'
+          $ref: '#/components/responses/200'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1688,6 +1684,8 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/problem"
+    '204':
+      description: No Content
     '400':
       type: object
       description: Bad Request

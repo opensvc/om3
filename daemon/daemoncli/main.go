@@ -2,7 +2,6 @@ package daemoncli
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/soellman/pidfile"
 
@@ -216,7 +216,7 @@ func (t *T) stop() error {
 		return nil
 	}
 	// TODO check status code ?
-	_, err := t.client.PostDaemonStop(context.Background())
+	resp, err := t.client.PostDaemonStop(context.Background())
 	if err != nil {
 		if !errors.Is(err, syscall.ECONNRESET) &&
 			!strings.Contains(err.Error(), "unexpected EOF") &&
@@ -225,14 +225,19 @@ func (t *T) stop() error {
 			return err
 		}
 	}
-	log.Debug().Msg("wait for stop...")
-	if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
-		log.Debug().Msg("cli-stop still running after stop")
-		return errors.New("daemon still running after stop")
+	switch resp.StatusCode {
+	case 200:
+		log.Debug().Msg("wait for stop...")
+		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
+			log.Debug().Msg("cli-stop still running after stop")
+			return errors.New("daemon still running after stop")
+		}
+		log.Debug().Msg("stopped")
+		// one more delay before return listener not anymore responding
+		time.Sleep(WaitStoppedDelay)
+	default:
+		return errors.Errorf("unexpected status: %s", resp.Status)
 	}
-	log.Debug().Msg("stopped")
-	// one more delay before return listener not anymore responding
-	time.Sleep(WaitStoppedDelay)
 	return nil
 }
 

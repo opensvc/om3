@@ -286,6 +286,8 @@ func (t T) DoAsync() error {
 		return errors.Errorf("%s", resp.JSON401)
 	case 500:
 		return errors.Errorf("%s", resp.JSON500)
+	default:
+		return errors.Errorf("Unexpected status %s", resp.StatusCode())
 	}
 
 	if t.Wait {

@@ -2296,7 +2296,7 @@ func (r GetDaemonStatusResponse) StatusCode() int {
 type PostDaemonStopResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ResponseText
+	JSON200      *Problem
 	JSON401      *Problem
 	JSON403      *Problem
 	JSON500      *Problem
@@ -3522,7 +3522,7 @@ func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ResponseText
+		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -2,7 +2,6 @@ package daemonapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/opensvc/om3/daemon/api"
@@ -35,10 +34,7 @@ func (a *DaemonApi) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) 
 		subs = append(subs, sub)
 	}
 	if len(subs) == 0 {
-		msg := fmt.Sprintf("empty component list to %s", action)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.ResponseText(msg))
-		w.WriteHeader(http.StatusOK)
+		WriteProblemf(w, http.StatusOK, "Daemon routine not found", "No daemon routine to %s", action)
 		return
 	}
 	log.Info().Msgf("asking to %s sub components: %s", action, subs)
