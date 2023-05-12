@@ -1517,8 +1517,6 @@ components:
                 type: boolean
               endpoint:
                 type: string
-    responseText:
-      type: string
     role:
       type: string
       enum:

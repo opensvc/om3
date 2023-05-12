@@ -236,7 +236,7 @@ func (t *T) stop() error {
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		return errors.Errorf("unexpected status: %s", resp.Status)
+		return errors.Errorf("Unexpected status code: %s", resp.Status)
 	}
 	return nil
 }

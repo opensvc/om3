@@ -671,7 +671,7 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 	case 500:
 		return errors.Errorf("%s", resp.JSON500)
 	default:
-		return errors.Errorf("Unexpected status: %s", resp.StatusCode())
+		return errors.Errorf("Unexpected status code: %s", resp.Status())
 	}
 }
 
