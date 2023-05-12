@@ -404,16 +404,14 @@ func (o *imon) hasOtherNodeActing() bool {
 	return false
 }
 
-func (o *imon) createPendingWithCancel() {
-	o.pendingCtx, o.pendingCancel = context.WithCancel(o.ctx)
-}
-
 func (o *imon) createPendingWithDuration(duration time.Duration) {
+	o.log.Debug().Msgf("create new pending context with duration %s", duration)
 	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
 }
 
 func (o *imon) clearPending() {
 	if o.pendingCancel != nil {
+		o.log.Debug().Msgf("clear pending context")
 		o.pendingCancel()
 		o.pendingCancel = nil
 		o.pendingCtx = nil
