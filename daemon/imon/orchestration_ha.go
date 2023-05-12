@@ -42,7 +42,12 @@ func (o *imon) orchestrateHAStart() {
 		}
 		return
 	}
-	if v, _ := o.isStartable(); !v {
+	if v, reason := o.isStartable(); !v {
+		if o.pendingCancel != nil && o.state.State == instance.MonitorStateReady {
+			o.log.Info().Msgf("instance is not start able, leave ready state: %s", reason)
+			o.clearPending()
+			o.transitionTo(instance.MonitorStateIdle)
+		}
 		return
 	}
 	if o.isLocalStarted() {
