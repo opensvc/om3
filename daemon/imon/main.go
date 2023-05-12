@@ -433,10 +433,10 @@ func (o *imon) loggerWithState() *zerolog.Logger {
 }
 
 func (o *imon) lastBootIDFile() string {
-	if o.path.Namespace != "root" {
+	if o.path.Namespace != "root" && o.path.Namespace != "" {
 		return filepath.Join(rawconfig.Paths.Var, "namespaces", o.path.String(), "last_boot_id")
 	} else {
-		return filepath.Join(rawconfig.Paths.Var, o.path.Kind.String(), o.path.String(), "last_boot_id")
+		return filepath.Join(rawconfig.Paths.Var, o.path.Kind.String(), o.path.Name, "last_boot_id")
 	}
 }
 
