@@ -203,12 +203,14 @@ func (o *imon) worker(initialNodes []string) {
 	}
 
 	// Verify if instance boot action is required
-	instanceLastBootID := o.lastBootID()
+	instanceLastBootID := lastBootID(o.path)
 	nodeLastBootID := bootid.Get()
 	if instanceLastBootID == "" {
 		// no last instance boot file, create it
 		o.log.Info().Msgf("set last object boot id")
-		_ = o.updateLastBootID(nodeLastBootID)
+		if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
+			o.log.Error().Err(err).Msg("can't update instance last boot id file")
+		}
 	} else if instanceLastBootID != bootid.Get() {
 		// last instance boot id differ from current node boot id
 		// try boot and refresh last instance boot id if succeed
@@ -216,7 +218,9 @@ func (o *imon) worker(initialNodes []string) {
 		o.transitionTo(instance.MonitorStateBooting)
 		if err := o.crmBoot(); err == nil {
 			o.log.Info().Msgf("set last object boot id")
-			_ = o.updateLastBootID(nodeLastBootID)
+			if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
+				o.log.Error().Err(err).Msg("can't update instance last boot id file")
+			}
 			o.transitionTo(instance.MonitorStateBooted)
 			o.transitionTo(instance.MonitorStateIdle)
 		} else {
@@ -432,26 +436,22 @@ func (o *imon) loggerWithState() *zerolog.Logger {
 	return &stateLogger
 }
 
-func (o *imon) lastBootIDFile() string {
-	if o.path.Namespace != "root" && o.path.Namespace != "" {
-		return filepath.Join(rawconfig.Paths.Var, "namespaces", o.path.String(), "last_boot_id")
+func lastBootIDFile(p path.T) string {
+	if p.Namespace != "root" && p.Namespace != "" {
+		return filepath.Join(rawconfig.Paths.Var, "namespaces", p.String(), "last_boot_id")
 	} else {
-		return filepath.Join(rawconfig.Paths.Var, o.path.Kind.String(), o.path.Name, "last_boot_id")
+		return filepath.Join(rawconfig.Paths.Var, p.Kind.String(), p.Name, "last_boot_id")
 	}
 }
 
-func (o *imon) lastBootID() string {
-	if b, err := os.ReadFile(o.lastBootIDFile()); err != nil {
+func lastBootID(p path.T) string {
+	if b, err := os.ReadFile(lastBootIDFile(p)); err != nil {
 		return ""
 	} else {
 		return string(b)
 	}
 }
 
-func (o *imon) updateLastBootID(s string) error {
-	if err := os.WriteFile(o.lastBootIDFile(), []byte(s), 0644); err != nil {
-		o.log.Error().Err(err).Msg("can't update instance last boot id file")
-		return err
-	}
-	return nil
+func updateLastBootID(p path.T, s string) error {
+	return os.WriteFile(lastBootIDFile(p), []byte(s), 0644)
 }

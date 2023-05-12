@@ -3,6 +3,7 @@ package imon
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -26,6 +27,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/omon"
 	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/bootid"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -48,7 +50,10 @@ type (
 
 	tCase struct {
 		name        string
+		obj         string
 		srcFile     string
+		bootID      string
+		lastBootID  string
 		sideEffects map[string]sideEffect
 
 		nodeMonitorStates []node.MonitorState
@@ -72,11 +77,249 @@ var (
 	testCount atomic.Uint64
 )
 
-func Test_Orchestrate_HA(t *testing.T) {
+func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 	cases := []tCase{
 		{
-			name:    "ha",
-			srcFile: "./testdata/ha.conf",
+			name:       "if boot is required but boot fails then state is boot failed",
+			srcFile:    "./testdata/orchestrate-ha.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Warn, Overall: status.Down, Provisioned: provisioned.True},
+					err:     errors.New("boot fails for test"),
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateBootFailed,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+				{"obj", "boot", "--local"},
+			},
+		},
+
+		{
+			name:       "if boot is required but boot fails with side effect avail UP then instance is local expect started",
+			srcFile:    "./testdata/orchestrate-ha.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Warn, Overall: status.Warn, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+				{"obj", "boot", "--local"},
+			},
+		},
+
+		{
+			name:    "if instance avail is up then instance has local expect started",
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "if node is frozen then instance has local expect none and is not leader", // frozen node => no orchestration
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			nodeFrozen:           true,
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "if node state is rejoin and not frozen then instance has local expect none and is not leader", // rejoin => no orchestration
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateRejoin},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "if nmon has no state then instance has local expect none and is not leader", // nmon state undef => no orchestration
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     false,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+			},
+		},
+
+		{
+			name:    "if instance is not provisioned then is is leader",
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.False},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			orchestrateTestfunc(t, c)
+		})
+	}
+}
+
+func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
+	cases := []tCase{
+		{
+			name:       "if instance last boot is not current node boot then boot is required and we call instance boot to ensure start able instance",
+			srcFile:    "./testdata/orchestrate-ha.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Warn, Overall: status.Warn, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+				{"obj", "boot", "--local"},
+				{"obj", "start", "--local"},
+			},
+		},
+
+		{
+			name:       "if boot is required but boot fails with avail down then instance is started",
+			srcFile:    "./testdata/orchestrate-ha.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     errors.New("boot fails for test"),
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+				{"obj", "boot", "--local"},
+				{"obj", "start", "--local"},
+			},
+		},
+
+		{
+			name:    "if ha instance avail is down then instance is started and local expect is started",
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
 			sideEffects: map[string]sideEffect{
 				"status": {
 					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
@@ -94,14 +337,17 @@ func Test_Orchestrate_HA(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"ha", "status", "-r"},
-				{"ha", "start", "--local"},
+				{"obj", "status", "-r"},
+				{"obj", "start", "--local"},
 			},
 		},
 
 		{
-			name:    "ha-with-frozen-node", // frozen node => no orchestration
-			srcFile: "./testdata/ha.conf",
+			name:       "if orchestrate ha is already booted then no boot action is required, but instance will be started",
+			srcFile:    "./testdata/orchestrate-ha.conf",
+			obj:        "obj",
+			bootID:     "bootID1",
+			lastBootID: "bootID1",
 			sideEffects: map[string]sideEffect{
 				"status": {
 					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
@@ -113,92 +359,49 @@ func Test_Orchestrate_HA(t *testing.T) {
 				},
 			},
 			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
-			nodeFrozen:           true,
 			expectedState:        instance.MonitorStateIdle,
 			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
-			expectedLocalExpect:  instance.MonitorLocalExpectNone,
-			expectedIsLeader:     false,
-			expectedIsHALeader:   false,
-			expectedCrm: [][]string{
-				{"ha-with-frozen-node", "status", "-r"},
-			},
-		},
-
-		{
-			name:    "ha-no-orchestration-when-nmon-state-is-rejoin",
-			srcFile: "./testdata/ha.conf",
-			sideEffects: map[string]sideEffect{
-				"status": {
-					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
-					err:     nil,
-				},
-				"start": {
-					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
-					err:     nil,
-				},
-			},
-			nodeMonitorStates:    []node.MonitorState{node.MonitorStateRejoin},
-			expectedState:        instance.MonitorStateIdle,
-			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
-			expectedLocalExpect:  instance.MonitorLocalExpectNone,
-			expectedIsLeader:     false,
-			expectedIsHALeader:   false,
-			expectedCrm: [][]string{
-				{"ha-no-orchestration-when-nmon-state-is-rejoin", "status", "-r"},
-			},
-		},
-
-		{
-			name:    "ha-no-orchestration-when-no-nmon-publication",
-			srcFile: "./testdata/ha.conf",
-			sideEffects: map[string]sideEffect{
-				"status": {
-					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
-					err:     nil,
-				},
-				"start": {
-					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
-					err:     nil,
-				},
-			},
-			nodeMonitorStates:    []node.MonitorState{},
-			expectedState:        instance.MonitorStateIdle,
-			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
-			expectedLocalExpect:  instance.MonitorLocalExpectNone,
-			expectedIsLeader:     false,
-			expectedIsHALeader:   false,
-			expectedCrm: [][]string{
-				{"ha-no-orchestration-when-no-nmon-publication", "status", "-r"},
-			},
-		},
-
-		{
-			name:    "ha-unprov",
-			srcFile: "./testdata/ha.conf",
-			sideEffects: map[string]sideEffect{
-				"status": {
-					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.False},
-					err:     nil,
-				},
-				"start": {
-					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.False},
-					err:     nil,
-				},
-			},
-			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
-			expectedState:        instance.MonitorStateIdle,
-			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
-			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"ha-unprov", "status", "-r"},
+				{"obj", "status", "-r"},
+				{"obj", "start", "--local"},
 			},
 		},
 
 		{
-			name:    "ha-err",
-			srcFile: "./testdata/ha.conf",
+			name:       "if orchestrate ha is already booted, but boot id is empty then no boot action is required, but instance will be started",
+			srcFile:    "./testdata/orchestrate-ha.conf",
+			obj:        "obj",
+			bootID:     "",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+				{"obj", "start", "--local"},
+			},
+		},
+
+		{
+			name:    "if orchestrate ha instance start action has error then instance state is start failed with local expect none and leader false",
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
 			sideEffects: map[string]sideEffect{
 				"status": {
 					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
@@ -217,112 +420,156 @@ func Test_Orchestrate_HA(t *testing.T) {
 			expectedIsHALeader:   false,
 
 			expectedCrm: [][]string{
-				{"ha-err", "status", "-r"},
-				{"ha-err", "start", "--local"},
+				{"obj", "status", "-r"},
+				{"obj", "start", "--local"},
 			},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			var err error
-			maxRoutine := 10
-			maxWaitTime := 2 * 1000 * time.Millisecond
-			testCount.Add(1)
-			now := time.Now()
-			t.Logf("iteration %d starting", testCount.Load())
-
-			setup := daemonhelper.Setup(t, nil)
-			defer setup.Cancel()
-
-			require.NoError(t, istat.Start(setup.Ctx))
-
-			c := c
-			p := path.T{Kind: kind.Svc, Name: c.name}
-
-			bus := pubsub.BusFromContext(setup.Ctx)
-
-			for _, nmonState := range c.nodeMonitorStates {
-				t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
-				nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
-				node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
-				bus.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
-					pubsub.Label{"node", hostname.Hostname()})
-			}
-
-			t.Logf("publish initial node status with frozen %v", c.nodeFrozen)
-			nodeStatus := node.Status{}
-			if c.nodeFrozen {
-				nodeStatus.Frozen = time.Now()
-			}
-			node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
-			bus.Pub(&msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
-				pubsub.Label{"node", hostname.Hostname()})
-
-			initialReadyDuration := defaultReadyDuration
-			defaultReadyDuration = 1 * time.Millisecond
-			crm := crmBuilder(t, setup.Ctx, p, c.sideEffects)
-			crmAction = crm.action
-			defer func() {
-				defaultReadyDuration = initialReadyDuration
-				crmAction = nil
-			}()
-
-			factory := Factory{DrainDuration: setup.DrainDuration}
-			evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c, factory)
-
-			cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.name)
-			setup.Env.InstallFile(c.srcFile, cfgEtcFile)
-			t.Logf("--- starting icfg for %s", p)
-			err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20))
-			require.Nil(t, err)
-
-			t.Logf("waiting for watcher result")
-			evImon := <-evC
-
-			calls := crm.getCalls()
-			t.Logf("crm calls: %v", calls)
-
-			t.Logf("verify state")
-			assert.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
-				"expected state %s found %s", c.expectedState, evImon.Value.State)
-
-			t.Logf("verify global expect")
-			assert.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
-				"expected global expect %s found %s", c.expectedGlobalExpect, evImon.Value.GlobalExpect)
-
-			t.Logf("verify local expect")
-			assert.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
-				"expected local expect %s found %s", c.expectedLocalExpect, evImon.Value.LocalExpect)
-
-			t.Logf("verify leader")
-			assert.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
-				"expected IsLeader %v found %v", c.expectedIsLeader, evImon.Value.IsLeader)
-
-			t.Logf("verify ha leader")
-			assert.Equalf(t, c.expectedIsHALeader, evImon.Value.IsHALeader,
-				"expected IsHALeader %v found %v", c.expectedIsHALeader, evImon.Value.IsHALeader)
-
-			t.Logf("verify calls")
-			assert.Equalf(t, c.expectedCrm, calls,
-				"expected calls %v, found %v", c.expectedCrm, calls)
-
-			drainDuration := setup.DrainDuration + 15*time.Millisecond
-			t.Logf("setup cancel and wait for drain duration %s", drainDuration)
-			setup.Cancel()
-			time.Sleep(drainDuration)
-
-			t.Logf("Verify goroutine counts")
-			numGoroutine := runtime.NumGoroutine()
-			t.Logf("iteration %d goroutines: %d", testCount.Load(), numGoroutine)
-			if numGoroutine > maxRoutine {
-				buf := make([]byte, 1<<16)
-				runtime.Stack(buf, true)
-				require.LessOrEqualf(t, numGoroutine, maxRoutine, "end test %d goroutines:\n %s", testCount.Load(), buf)
-			}
-
-			t.Logf("iteration %d duration: %s now: %s", testCount.Load(), time.Now().Sub(now), time.Now())
+			orchestrateTestfunc(t, c)
 		})
 	}
+}
+
+func Test_Orchestrate_No(t *testing.T) {
+	cases := []tCase{
+		{
+			name:    "if instance avail is down then instance is not started and local expect is none",
+			srcFile: "./testdata/orchestrate-no.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "status", "-r"},
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			orchestrateTestfunc(t, c)
+		})
+	}
+}
+
+func orchestrateTestfunc(t *testing.T, c tCase) {
+	var err error
+	maxRoutine := 10
+	maxWaitTime := 2 * 1000 * time.Millisecond
+	testCount.Add(1)
+	now := time.Now()
+	t.Logf("iteration %d starting", testCount.Load())
+
+	setup := daemonhelper.Setup(t, nil)
+	defer setup.Cancel()
+
+	if c.bootID != "" {
+		t.Logf("set node boot id for test to %s", c.bootID)
+		bootid.Set(c.bootID)
+	}
+
+	require.NoError(t, istat.Start(setup.Ctx))
+
+	//c := c
+	p := path.T{Kind: kind.Svc, Name: c.obj}
+
+	if c.lastBootID != "" {
+		t.Logf("set %s last instance boot id for test to %s", p, c.lastBootID)
+		require.NoError(t, os.MkdirAll(filepath.Dir(lastBootIDFile(p)), 0755))
+		require.NoError(t, updateLastBootID(p, c.lastBootID))
+	}
+	bus := pubsub.BusFromContext(setup.Ctx)
+
+	for _, nmonState := range c.nodeMonitorStates {
+		t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
+		nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
+		node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
+		bus.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
+			pubsub.Label{"node", hostname.Hostname()})
+	}
+
+	t.Logf("publish initial node status with frozen %v", c.nodeFrozen)
+	nodeStatus := node.Status{}
+	if c.nodeFrozen {
+		nodeStatus.Frozen = time.Now()
+	}
+	node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
+	bus.Pub(&msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
+		pubsub.Label{"node", hostname.Hostname()})
+
+	initialReadyDuration := defaultReadyDuration
+	defaultReadyDuration = 1 * time.Millisecond
+	crm := crmBuilder(t, setup.Ctx, p, c.sideEffects)
+	crmAction = crm.action
+	defer func() {
+		defaultReadyDuration = initialReadyDuration
+		crmAction = nil
+	}()
+
+	factory := Factory{DrainDuration: setup.DrainDuration}
+	evC := objectMonCreatorAndExpectationWatch(t, setup.Ctx, maxWaitTime, c, factory)
+
+	cfgEtcFile := fmt.Sprintf("/etc/%s.conf", c.obj)
+	setup.Env.InstallFile(c.srcFile, cfgEtcFile)
+	t.Logf("--- starting icfg for %s", p)
+	err = icfg.Start(setup.Ctx, p, filepath.Join(setup.Env.Root, cfgEtcFile), make(chan any, 20))
+	require.Nil(t, err)
+
+	t.Logf("waiting for watcher result")
+	evImon := <-evC
+
+	calls := crm.getCalls()
+	t.Logf("crm calls: %v", calls)
+
+	t.Logf("verify state")
+	assert.Equalf(t, c.expectedState.String(), evImon.Value.State.String(),
+		"expected state %s found %s", c.expectedState, evImon.Value.State)
+
+	t.Logf("verify global expect")
+	assert.Equalf(t, c.expectedGlobalExpect.String(), evImon.Value.GlobalExpect.String(),
+		"expected global expect %s found %s", c.expectedGlobalExpect, evImon.Value.GlobalExpect)
+
+	t.Logf("verify local expect")
+	assert.Equalf(t, c.expectedLocalExpect.String(), evImon.Value.LocalExpect.String(),
+		"expected local expect %s found %s", c.expectedLocalExpect, evImon.Value.LocalExpect)
+
+	t.Logf("verify leader")
+	assert.Equalf(t, c.expectedIsLeader, evImon.Value.IsLeader,
+		"expected IsLeader %v found %v", c.expectedIsLeader, evImon.Value.IsLeader)
+
+	t.Logf("verify ha leader")
+	assert.Equalf(t, c.expectedIsHALeader, evImon.Value.IsHALeader,
+		"expected IsHALeader %v found %v", c.expectedIsHALeader, evImon.Value.IsHALeader)
+
+	t.Logf("verify calls")
+	assert.Equalf(t, c.expectedCrm, calls,
+		"expected calls %v, found %v", c.expectedCrm, calls)
+
+	drainDuration := setup.DrainDuration + 15*time.Millisecond
+	t.Logf("setup cancel and wait for drain duration %s", drainDuration)
+	setup.Cancel()
+	time.Sleep(drainDuration)
+
+	t.Logf("Verify goroutine counts")
+	numGoroutine := runtime.NumGoroutine()
+	t.Logf("iteration %d goroutines: %d", testCount.Load(), numGoroutine)
+	if numGoroutine > maxRoutine {
+		buf := make([]byte, 1<<16)
+		runtime.Stack(buf, true)
+		require.LessOrEqualf(t, numGoroutine, maxRoutine, "end test %d goroutines:\n %s", testCount.Load(), buf)
+	}
+
+	t.Logf("iteration %d duration: %s now: %s", testCount.Load(), time.Now().Sub(now), time.Now())
 }
 
 func (c *crmSpy) addCall(cmdArgs ...string) {
@@ -406,7 +653,7 @@ func objectMonCreatorAndExpectationWatch(t *testing.T, ctx context.Context, dura
 		var (
 			evC = make(chan *msgbus.InstanceMonitorUpdated)
 
-			p = path.T{Kind: kind.Svc, Name: c.name}
+			p = path.T{Kind: kind.Svc, Name: c.obj}
 
 			monStarted bool
 
