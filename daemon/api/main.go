@@ -12,7 +12,7 @@ func (t MonitorUpdateQueued) String() (out string) {
 
 func (t Problem) String() (out string) {
 	if t.Status != 200 {
-		out += fmt.Sprintf("%s ", t.Status)
+		out += fmt.Sprintf("%d ", t.Status)
 	}
 	out += fmt.Sprintf(t.Title)
 	if t.Detail != "" {
