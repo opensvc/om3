@@ -660,6 +660,8 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 		return err
 	}
 	switch resp.StatusCode() {
+	case 200:
+		return nil
 	case 400:
 		return errors.Errorf("%s", resp.JSON400)
 	case 401:
@@ -668,9 +670,9 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 		return errors.Errorf("%s", resp.JSON403)
 	case 500:
 		return errors.Errorf("%s", resp.JSON500)
-
+	default:
+		return errors.Errorf("Unexpected status: %s", resp.StatusCode())
 	}
-	return nil
 }
 
 func (t *T) ProvisionLeaded(ctx context.Context) error {
