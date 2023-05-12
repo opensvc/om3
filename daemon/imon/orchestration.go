@@ -93,7 +93,7 @@ func (o *imon) endOrchestration() {
 	o.state.GlobalExpectOptions = nil
 	o.clearPending()
 	o.updateIfChange()
-	if o.acceptedOrchestrationId.String() != "" {
+	if o.acceptedOrchestrationId != uuid.Nil {
 		o.pubsubBus.Pub(&msgbus.ObjectOrchestrationEnd{
 			Node: o.localhost,
 			Path: o.path,
@@ -118,7 +118,7 @@ func (o *imon) setReached() {
 // for all object instances (OrchestrationId == "" for all instance monitor cache).
 func (o *imon) isConvergedOrchestrationReached() bool {
 	for nodename, oImon := range o.instMonitor {
-		if oImon.OrchestrationId.String() != "" {
+		if oImon.OrchestrationId != uuid.Nil {
 			msg := fmt.Sprintf("state:%s orchestrationId:%s", oImon.State, oImon.OrchestrationId)
 			if o.waitConvergedOrchestrationMsg[nodename] != msg {
 				o.log.Info().Msgf("not yet converged orchestration (node: %s %s)", nodename, msg)
