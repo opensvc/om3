@@ -3,7 +3,6 @@
 package asset
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -18,6 +17,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/talos-systems/go-smbios/smbios"
 	"github.com/zcalusic/sysinfo"
+
+	"github.com/opensvc/om3/util/bootid"
 )
 
 var (
@@ -89,7 +90,7 @@ func (t T) Get(s string) (interface{}, error) {
 	case "last_boot":
 		return LastBoot()
 	case "boot_id":
-		return BootID()
+		return bootid.Scan()
 	case "connect_to":
 		return ConnectTo()
 	default:
@@ -298,28 +299,4 @@ func LastBoot() (string, error) {
 	now := time.Now()
 	last := now.Add(time.Duration(-int(secs * float64(time.Second))))
 	return last.Format(time.RFC3339), nil
-}
-
-func BootID() (string, error) {
-	p := "/proc/sys/kernel/random/boot_id"
-	b, err := os.ReadFile(p)
-	if err == nil {
-		s := string(b)
-		s = strings.TrimRight(s, "\n\r")
-		return s, nil
-	}
-	p = "/proc/stat"
-	file, err := os.Open(p)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	s := bufio.NewScanner(file)
-	for s.Scan() {
-		lineFields := strings.Fields(s.Text())
-		if len(lineFields) == 2 && lineFields[0] == "btime" {
-			return lineFields[1], nil
-		}
-	}
-	return "", fmt.Errorf("unable to format a boot id from /proc/sys/kernel/random/boot_id nor /proc/stat")
 }

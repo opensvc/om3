@@ -69,6 +69,9 @@ type (
 
 const (
 	MonitorStateZero MonitorState = iota
+	MonitorStateBooted
+	MonitorStateBootFailed
+	MonitorStateBooting
 	MonitorStateIdle
 	MonitorStateReached
 	MonitorStateDeleted
@@ -121,6 +124,9 @@ const (
 
 var (
 	MonitorStateStrings = map[MonitorState]string{
+		MonitorStateBooted:            "booted",
+		MonitorStateBootFailed:        "boot failed",
+		MonitorStateBooting:           "booting",
 		MonitorStateDeleted:           "deleted",
 		MonitorStateDeleting:          "deleting",
 		MonitorStateFreezeFailed:      "freeze failed",
@@ -153,6 +159,9 @@ var (
 
 	MonitorStateValues = map[string]MonitorState{
 		"":                   MonitorStateZero,
+		"booted":             MonitorStateBooted,
+		"boot failed":        MonitorStateBootFailed,
+		"booting":            MonitorStateBooting,
 		"idle":               MonitorStateIdle,
 		"deleted":            MonitorStateDeleted,
 		"deleting":           MonitorStateDeleting,

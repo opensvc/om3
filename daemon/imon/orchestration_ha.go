@@ -8,6 +8,7 @@ import (
 
 func (o *imon) orchestrateNone() {
 	o.clearStartFailed()
+	o.clearBootFailed()
 	if o.objStatus.Orchestrate == "ha" {
 		o.orchestrateHAStart()
 		o.orchestrateHAStop()
@@ -41,13 +42,45 @@ func (o *imon) orchestrateHAStart() {
 		}
 		return
 	}
-	if v, _ := o.isStartable(); !v {
+	if v, reason := o.isStartable(); !v {
+		if o.pendingCancel != nil && o.state.State == instance.MonitorStateReady {
+			o.log.Info().Msgf("instance is not start able, leave ready state: %s", reason)
+			o.clearPending()
+			o.transitionTo(instance.MonitorStateIdle)
+		}
 		return
 	}
 	if o.isLocalStarted() {
 		return
 	}
 	o.orchestrateStarted()
+}
+
+// clearBootFailed clears the boot failed state when the following conditions are met:
+//
+// + local avail is Down, StandbyDown, NotApplicable
+// + global expect is none
+func (o *imon) clearBootFailed() {
+	if o.state.State != instance.MonitorStateBootFailed {
+		return
+	}
+	switch o.instStatus[o.localhost].Avail {
+	case status.Down:
+	case status.StandbyDown:
+	case status.NotApplicable:
+	default:
+		return
+	}
+	for _, instanceMonitor := range o.instMonitor {
+		switch instanceMonitor.GlobalExpect {
+		case instance.MonitorGlobalExpectNone:
+		default:
+			return
+		}
+	}
+	o.log.Info().Msgf("clear instance %s: local instance avail is %s, object avail is %s",
+		o.state.State, o.instStatus[o.localhost].Avail, o.objStatus.Avail)
+	o.transitionTo(instance.MonitorStateIdle)
 }
 
 func (o *imon) clearStartFailed() {

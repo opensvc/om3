@@ -21,6 +21,8 @@ package imon
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,9 +34,11 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/bootid"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -196,6 +200,34 @@ func (o *imon) worker(initialNodes []string) {
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
 	if err := o.crmStatus(); err != nil {
 		o.log.Error().Err(err).Msg("error during initial crm status")
+	}
+
+	// Verify if instance boot action is required
+	instanceLastBootID := lastBootID(o.path)
+	nodeLastBootID := bootid.Get()
+	if instanceLastBootID == "" {
+		// no last instance boot file, create it
+		o.log.Info().Msgf("set last object boot id")
+		if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
+			o.log.Error().Err(err).Msg("can't update instance last boot id file")
+		}
+	} else if instanceLastBootID != bootid.Get() {
+		// last instance boot id differ from current node boot id
+		// try boot and refresh last instance boot id if succeed
+		o.log.Info().Msgf("need boot (node boot id differ from last object boot id")
+		o.transitionTo(instance.MonitorStateBooting)
+		if err := o.crmBoot(); err == nil {
+			o.log.Info().Msgf("set last object boot id")
+			if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
+				o.log.Error().Err(err).Msg("can't update instance last boot id file")
+			}
+			o.transitionTo(instance.MonitorStateBooted)
+			o.transitionTo(instance.MonitorStateIdle)
+		} else {
+			// boot failed, next daemon restart will retry boot
+			o.log.Warn().Err(err).Msg("crm boot failure")
+			o.transitionTo(instance.MonitorStateBootFailed)
+		}
 	}
 
 	// Populate caches (published messages before subscription startup are lost)
@@ -372,16 +404,14 @@ func (o *imon) hasOtherNodeActing() bool {
 	return false
 }
 
-func (o *imon) createPendingWithCancel() {
-	o.pendingCtx, o.pendingCancel = context.WithCancel(o.ctx)
-}
-
 func (o *imon) createPendingWithDuration(duration time.Duration) {
+	o.log.Debug().Msgf("create new pending context with duration %s", duration)
 	o.pendingCtx, o.pendingCancel = context.WithTimeout(o.ctx, duration)
 }
 
 func (o *imon) clearPending() {
 	if o.pendingCancel != nil {
+		o.log.Debug().Msgf("clear pending context")
 		o.pendingCancel()
 		o.pendingCancel = nil
 		o.pendingCtx = nil
@@ -402,4 +432,24 @@ func (o *imon) loggerWithState() *zerolog.Logger {
 	}
 	stateLogger := ctx.Logger()
 	return &stateLogger
+}
+
+func lastBootIDFile(p path.T) string {
+	if p.Namespace != "root" && p.Namespace != "" {
+		return filepath.Join(rawconfig.Paths.Var, "namespaces", p.String(), "last_boot_id")
+	} else {
+		return filepath.Join(rawconfig.Paths.Var, p.Kind.String(), p.Name, "last_boot_id")
+	}
+}
+
+func lastBootID(p path.T) string {
+	if b, err := os.ReadFile(lastBootIDFile(p)); err != nil {
+		return ""
+	} else {
+		return string(b)
+	}
+}
+
+func updateLastBootID(p path.T, s string) error {
+	return os.WriteFile(lastBootIDFile(p), []byte(s), 0644)
 }

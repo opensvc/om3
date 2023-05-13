@@ -32,6 +32,19 @@ var (
 		Progress:    "aborting",
 		LocalExpect: "unset",
 	}
+	Boot = Properties{
+		Name:            "boot",
+		Target:          "booted",
+		Progress:        "booting",
+		Local:           true,
+		MustLock:        true,
+		Order:           ordering.Desc,
+		LocalExpect:     "",
+		Kinds:           []kind.T{kind.Svc, kind.Vol},
+		Freeze:          true,
+		TimeoutKeywords: []string{"timeout"},
+		PG:              true,
+	}
 	Decode = Properties{
 		Name:       "decode",
 		RelayToAny: true,

@@ -8,10 +8,14 @@ func (o *imon) orchestrateThawed() {
 	switch o.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStartFailed,
+		instance.MonitorStateStarted,
 		instance.MonitorStateStopFailed,
+		instance.MonitorStateStopped,
 		instance.MonitorStatePurgeFailed,
 		instance.MonitorStateProvisionFailed,
+		instance.MonitorStateProvisioned,
 		instance.MonitorStateUnprovisionFailed,
+		instance.MonitorStateUnprovisioned,
 		instance.MonitorStateReady:
 		o.ThawedFromIdle()
 	}
