@@ -187,6 +187,9 @@ type ClientInterface interface {
 
 	PostObjectSwitchTo(ctx context.Context, body PostObjectSwitchToJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetPools request
+	GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetSwagger request
 	GetSwagger(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -621,6 +624,18 @@ func (c *Client) PostObjectSwitchToWithBody(ctx context.Context, contentType str
 
 func (c *Client) PostObjectSwitchTo(ctx context.Context, body PostObjectSwitchToJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectSwitchToRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPoolsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1815,6 +1830,53 @@ func NewPostObjectSwitchToRequestWithBody(server string, contentType string, bod
 	return req, nil
 }
 
+// NewGetPoolsRequest generates requests for GetPools
+func NewGetPoolsRequest(server string, params *GetPoolsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/pools")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Name != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, *params.Name); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetSwaggerRequest generates requests for GetSwagger
 func NewGetSwaggerRequest(server string) (*http.Request, error) {
 	var err error
@@ -2085,6 +2147,9 @@ type ClientWithResponsesInterface interface {
 	PostObjectSwitchToWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectSwitchToResponse, error)
 
 	PostObjectSwitchToWithResponse(ctx context.Context, body PostObjectSwitchToJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectSwitchToResponse, error)
+
+	// GetPools request
+	GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error)
 
 	// GetSwagger request
 	GetSwaggerWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSwaggerResponse, error)
@@ -2745,6 +2810,31 @@ func (r PostObjectSwitchToResponse) StatusCode() int {
 	return 0
 }
 
+type GetPoolsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PoolStatusList
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPoolsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPoolsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetSwaggerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -3132,6 +3222,15 @@ func (c *ClientWithResponses) PostObjectSwitchToWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParsePostObjectSwitchToResponse(rsp)
+}
+
+// GetPoolsWithResponse request returning *GetPoolsResponse
+func (c *ClientWithResponses) GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error) {
+	rsp, err := c.GetPools(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPoolsResponse(rsp)
 }
 
 // GetSwaggerWithResponse request returning *GetSwaggerResponse
@@ -4340,6 +4439,53 @@ func ParsePostObjectSwitchToResponse(rsp *http.Response) (*PostObjectSwitchToRes
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPoolsResponse parses an HTTP response from a GetPoolsWithResponse call
+func ParseGetPoolsResponse(rsp *http.Response) (*GetPoolsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPoolsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PoolStatusList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem

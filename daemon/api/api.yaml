@@ -266,6 +266,32 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /instance/status:
+    post:
+      operationId: PostInstanceStatus
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: post object status
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostInstanceStatus'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /networks:
     get:
       operationId: GetNetworks
@@ -619,32 +645,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-  /instance/status:
-    post:
-      operationId: PostInstanceStatus
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: post object status
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostInstanceStatus'
-      responses:
-        200:
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
   /object/switchTo:
     post:
       operationId: PostObjectSwitchTo
@@ -669,6 +669,34 @@ paths:
                 $ref: '#/components/schemas/MonitorUpdateQueued'
         400:
           $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /pools:
+    get:
+      operationId: GetPools
+      tags:
+        - storage
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a backend storage pool
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolStatusList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1172,6 +1200,69 @@ components:
       items:
         type: string
         description: object path or an instance path (path@node)
+    PoolStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        head:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+        usage:
+          $ref: '#/components/schemas/PoolStatusUsage'
+        volumes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoolStatusVolume'
+    PoolStatusVolume:
+      type: object
+      required:
+        - ip
+        - node
+        - path
+        - rid
+      properties:
+        ip:
+          type: string
+        node:
+          type: string
+        path:
+          type: string
+        rid:
+          type: string
+    PoolStatusList:
+      type: array
+      items:
+        $ref: '#/components/schemas/PoolStatus'
+    PoolStatusUsage:
+      type: object
+      required:
+        - children
+        - orphan
+        - path
+        - size
+      properties:
+        children:
+          type: array
+          items:
+            type: string
+        orphan:
+          description: an orphan is a volume driven by no svc resource
+          type: boolean
+        path:
+          type: string
+        size:
+          description: volume size in bytes
+          type: number
     Placement:
       type: string
       default: none

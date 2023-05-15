@@ -369,6 +369,40 @@ type PathRelation = []string
 // Placement object placement policy
 type Placement string
 
+// PoolStatus defines model for PoolStatus.
+type PoolStatus struct {
+	Capabilities *[]string           `json:"capabilities,omitempty"`
+	Errors       *[]string           `json:"errors,omitempty"`
+	Head         *string             `json:"head,omitempty"`
+	Name         *string             `json:"name,omitempty"`
+	Type         *string             `json:"type,omitempty"`
+	Usage        *PoolStatusUsage    `json:"usage,omitempty"`
+	Volumes      *[]PoolStatusVolume `json:"volumes,omitempty"`
+}
+
+// PoolStatusList defines model for PoolStatusList.
+type PoolStatusList = []PoolStatus
+
+// PoolStatusUsage defines model for PoolStatusUsage.
+type PoolStatusUsage struct {
+	Children []string `json:"children"`
+
+	// Orphan an orphan is a volume driven by no svc resource
+	Orphan bool   `json:"orphan"`
+	Path   string `json:"path"`
+
+	// Size volume size in bytes
+	Size float32 `json:"size"`
+}
+
+// PoolStatusVolume defines model for PoolStatusVolume.
+type PoolStatusVolume struct {
+	Ip   string `json:"ip"`
+	Node string `json:"node"`
+	Path string `json:"path"`
+	Rid  string `json:"rid"`
+}
+
 // PostDaemonLogsControl defines model for PostDaemonLogsControl.
 type PostDaemonLogsControl struct {
 	Level PostDaemonLogsControlLevel `json:"level"`
@@ -710,6 +744,12 @@ type GetObjectFileParams struct {
 type GetObjectSelectorParams struct {
 	// Selector object selector
 	Selector ObjectSelector `form:"selector" json:"selector"`
+}
+
+// GetPoolsParams defines parameters for GetPools.
+type GetPoolsParams struct {
+	// Name the name of a backend storage pool
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // GetRelayMessageParams defines parameters for GetRelayMessage.
