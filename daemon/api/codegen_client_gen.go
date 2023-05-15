@@ -2127,7 +2127,7 @@ func (r PostAuthTokenResponse) StatusCode() int {
 type GetDaemonDNSDumpResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DnsZone
+	JSON200      *DNSZone
 	JSON401      *Problem
 	JSON403      *Problem
 	JSON500      *Problem
@@ -3238,7 +3238,7 @@ func ParseGetDaemonDNSDumpResponse(rsp *http.Response) (*GetDaemonDNSDumpRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DnsZone
+		var dest DNSZone
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

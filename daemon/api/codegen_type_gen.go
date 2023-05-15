@@ -78,6 +78,9 @@ type AuthToken struct {
 	TokenExpireAt time.Time `json:"token_expire_at"`
 }
 
+// DNSZone defines model for DNSZone.
+type DNSZone = []DnsRecord
+
 // App defines model for app.
 type App = string
 
@@ -194,9 +197,6 @@ type DnsRecord struct {
 	Ttl   int    `json:"ttl"`
 	Type  string `json:"type"`
 }
-
-// DnsZone defines model for dnsZone.
-type DnsZone = []DnsRecord
 
 // DrbdAllocation defines model for drbdAllocation.
 type DrbdAllocation struct {

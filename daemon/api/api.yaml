@@ -53,7 +53,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/dnsZone'
+                $ref: '#/components/schemas/DNSZone'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -925,7 +925,7 @@ components:
           type: integer
         data:
           type: string
-    dnsZone:
+    DNSZone:
       type: array
       items:
         $ref: '#/components/schemas/dnsRecord'
