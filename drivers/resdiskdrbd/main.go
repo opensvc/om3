@@ -396,14 +396,14 @@ func (t T) ProvisionStart(ctx context.Context) error {
 	return nil
 }
 
-func (t T) getDrbdAllocations() (map[string]api.DrbdAllocation, error) {
-	allocations := make(map[string]api.DrbdAllocation)
+func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
+	allocations := make(map[string]api.DRBDAllocation)
 	for _, nodename := range t.Nodes {
 		c, err := client.New(client.WithURL(nodename))
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.GetNodeDrbdAllocationWithResponse(context.Background())
+		resp, err := c.GetNodeDRBDAllocationWithResponse(context.Background())
 		if err != nil {
 			return nil, err
 		} else if resp.StatusCode() != http.StatusOK {
@@ -431,7 +431,7 @@ func (t T) formatConfig(wr io.Writer, res ConfRes) error {
 	return templ.Execute(wr, res)
 }
 
-func (t T) makeConfRes(allocations map[string]api.DrbdAllocation) (ConfRes, error) {
+func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, error) {
 	res := ConfRes{
 		Name:  t.Res,
 		Hosts: make([]ConfResOn, 0),
@@ -555,10 +555,10 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	params := api.GetNodeDrbdConfigParams{
+	params := api.GetNodeDRBDConfigParams{
 		Name: t.Res,
 	}
-	resp, err := c.GetNodeDrbdConfigWithResponse(context.Background(), &params)
+	resp, err := c.GetNodeDRBDConfigWithResponse(context.Background(), &params)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
@@ -599,7 +599,7 @@ func (t T) writeConfig(ctx context.Context) error {
 	defer func() {
 		_ = t.unlock(ctx)
 	}()
-	allocations, err := t.getDrbdAllocations()
+	allocations, err := t.getDRBDAllocations()
 	if err != nil {
 		return err
 	}
@@ -625,7 +625,7 @@ func (t T) writeConfig(ctx context.Context) error {
 	return nil
 }
 
-func (t T) sendConfig(b []byte, allocations map[string]api.DrbdAllocation) error {
+func (t T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error {
 	for _, nodename := range t.Nodes {
 		var allocationId uuid.UUID
 		if nodename == hostname.Hostname() {
@@ -648,14 +648,14 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 	if err != nil {
 		return err
 	}
-	params := api.PostNodeDrbdConfigParams{
+	params := api.PostNodeDRBDConfigParams{
 		Name: t.Res,
 	}
-	body := api.PostNodeDrbdConfigRequestBody{
+	body := api.PostNodeDRBDConfigRequestBody{
 		AllocationId: allocationId,
 		Data:         b,
 	}
-	resp, err := c.PostNodeDrbdConfigWithResponse(context.Background(), &params, body)
+	resp, err := c.PostNodeDRBDConfigWithResponse(context.Background(), &params, body)
 	if err != nil {
 		return err
 	}

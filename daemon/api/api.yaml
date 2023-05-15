@@ -74,7 +74,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postDaemonLogsControl'
+              $ref: '#/components/schemas/PostDaemonLogsControl'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -104,7 +104,7 @@ paths:
           content:
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/responseEventList'
+                $ref: '#/components/schemas/EventList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -193,7 +193,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseMuxBool'
+                $ref: '#/components/schemas/DaemonRunning'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -218,7 +218,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseDaemonStatus'
+                $ref: '#/components/schemas/DaemonStatus'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -287,7 +287,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/networkStatusList'
+                $ref: '#/components/schemas/NetworkStatusList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -296,7 +296,7 @@ paths:
           $ref: '#/components/responses/500'
   /node/drbd/allocation:
     get:
-      operationId: GetNodeDrbdAllocation
+      operationId: GetNodeDRBDAllocation
       tags:
         - node
       security:
@@ -308,7 +308,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/drbdAllocation'
+                $ref: '#/components/schemas/DRBDAllocation'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -337,21 +337,21 @@ paths:
           $ref: '#/components/responses/500'
   /node/drbd/config:
     get:
-      operationId: GetNodeDrbdConfig
+      operationId: GetNodeDRBDConfig
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryDrbdConfigName'
+        - $ref: '#/components/parameters/DRBDConfigName'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseGetNodeDrbdConfig'
+                $ref: '#/components/schemas/DRBDConfig'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -361,21 +361,21 @@ paths:
         500:
           $ref: '#/components/responses/500'
     post:
-      operationId: PostNodeDrbdConfig
+      operationId: PostNodeDRBDConfig
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryDrbdConfigName'
+        - $ref: '#/components/parameters/DRBDConfigName'
       requestBody:
         description: monitor
         required: true
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/postNodeDrbdConfigRequestBody'
+                $ref: '#/components/schemas/postNodeDRBDConfigRequestBody'
       responses:
         200:
           description: OK
@@ -929,7 +929,7 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/dnsRecord'
-    drbdAllocation:
+    DRBDAllocation:
       type: object
       required:
         - port
@@ -1038,7 +1038,7 @@ components:
       type: string
     namespace:
       type: string
-    networkStatus:
+    NetworkStatus:
       type: object
       properties:
         name:
@@ -1050,14 +1050,14 @@ components:
         ips:
           type: array
           items:
-            $ref: '#/components/schemas/networkStatusIp'
+            $ref: '#/components/schemas/NetworkStatusIp'
         errors:
           type: array
           items:
             type: string
         usage:
-          $ref: '#/components/schemas/networkStatusUsage'
-    networkStatusIp:
+          $ref: '#/components/schemas/NetworkStatusUsage'
+    NetworkStatusIp:
       type: object
       required:
         - ip
@@ -1073,11 +1073,11 @@ components:
           type: string
         rid:
           type: string
-    networkStatusList:
+    NetworkStatusList:
       type: array
       items:
-        $ref: '#/components/schemas/networkStatus'
-    networkStatusUsage:
+        $ref: '#/components/schemas/NetworkStatus'
+    NetworkStatusUsage:
       type: object
       required:
         - free
@@ -1189,7 +1189,7 @@ components:
         - score
         - spread
         - shift
-    postDaemonLogsControl:
+    PostDaemonLogsControl:
       type: object
       required:
         - level
@@ -1222,7 +1222,7 @@ components:
           items:
             type: string
             example: hb#1.rx
-    postNodeDrbdConfigRequestBody:
+    postNodeDRBDConfigRequestBody:
       type: object
       required:
         - allocation_id
@@ -1472,7 +1472,7 @@ components:
           format: date-time
         state:
           $ref: '#/components/schemas/provisioned'
-    responseDaemonStatus:
+    DaemonStatus:
       type: object
       required:
         - cluster
@@ -1482,11 +1482,11 @@ components:
           $ref: '#/components/schemas/cluster'
         daemon:
           $ref: '#/components/schemas/daemon'
-    responseEventList:
+    EventList:
       description: responseEventList is a list of sse
       type: string
       format: binary
-    responseGetNodeDrbdConfig:
+    DRBDConfig:
       type: object
       required:
         - data
@@ -1494,7 +1494,7 @@ components:
         data:
           type: string
           format: byte
-    responseMuxBool:
+    DaemonRunning:
       type: object
       required:
         - data
@@ -1599,7 +1599,7 @@ components:
           description: |
             filter expression: [kind][,label=value]*
           example: ObjectStatusUpdated,path=foo
-    queryDrbdConfigName:
+    DRBDConfigName:
       name: name
       in: query
       description: the full path of the file is deduced from the name

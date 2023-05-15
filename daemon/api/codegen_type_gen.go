@@ -14,6 +14,17 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for PostDaemonLogsControlLevel.
+const (
+	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
+	PostDaemonLogsControlLevelError PostDaemonLogsControlLevel = "error"
+	PostDaemonLogsControlLevelFatal PostDaemonLogsControlLevel = "fatal"
+	PostDaemonLogsControlLevelInfo  PostDaemonLogsControlLevel = "info"
+	PostDaemonLogsControlLevelNone  PostDaemonLogsControlLevel = "none"
+	PostDaemonLogsControlLevelPanic PostDaemonLogsControlLevel = "panic"
+	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
+)
+
 // Defines values for Orchestrate.
 const (
 	OrchestrateHa    Orchestrate = "ha"
@@ -29,17 +40,6 @@ const (
 	PlacementScore      Placement = "score"
 	PlacementShift      Placement = "shift"
 	PlacementSpread     Placement = "spread"
-)
-
-// Defines values for PostDaemonLogsControlLevel.
-const (
-	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
-	PostDaemonLogsControlLevelError PostDaemonLogsControlLevel = "error"
-	PostDaemonLogsControlLevelFatal PostDaemonLogsControlLevel = "fatal"
-	PostDaemonLogsControlLevelInfo  PostDaemonLogsControlLevel = "info"
-	PostDaemonLogsControlLevelNone  PostDaemonLogsControlLevel = "none"
-	PostDaemonLogsControlLevelPanic PostDaemonLogsControlLevel = "panic"
-	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
 )
 
 // Defines values for PostDaemonSubActionAction.
@@ -80,6 +80,75 @@ type AuthToken struct {
 
 // DNSZone defines model for DNSZone.
 type DNSZone = []DnsRecord
+
+// DRBDAllocation defines model for DRBDAllocation.
+type DRBDAllocation struct {
+	ExpireAt time.Time          `json:"expire_at"`
+	Id       openapi_types.UUID `json:"id"`
+	Minor    int                `json:"minor"`
+	Port     int                `json:"port"`
+}
+
+// DRBDConfig defines model for DRBDConfig.
+type DRBDConfig struct {
+	Data []byte `json:"data"`
+}
+
+// DaemonRunning defines model for DaemonRunning.
+type DaemonRunning struct {
+	Data []struct {
+		Data     bool   `json:"data"`
+		Endpoint string `json:"endpoint"`
+	} `json:"data"`
+	Entrypoint string `json:"entrypoint"`
+	Status     int    `json:"status"`
+}
+
+// DaemonStatus defines model for DaemonStatus.
+type DaemonStatus struct {
+	Cluster Cluster `json:"cluster"`
+	Daemon  Daemon  `json:"daemon"`
+}
+
+// EventList responseEventList is a list of sse
+type EventList = openapi_types.File
+
+// NetworkStatus defines model for NetworkStatus.
+type NetworkStatus struct {
+	Errors  *[]string           `json:"errors,omitempty"`
+	Ips     *[]NetworkStatusIp  `json:"ips,omitempty"`
+	Name    *string             `json:"name,omitempty"`
+	Network *string             `json:"network,omitempty"`
+	Type    *string             `json:"type,omitempty"`
+	Usage   *NetworkStatusUsage `json:"usage,omitempty"`
+}
+
+// NetworkStatusIp defines model for NetworkStatusIp.
+type NetworkStatusIp struct {
+	Ip   string `json:"ip"`
+	Node string `json:"node"`
+	Path string `json:"path"`
+	Rid  string `json:"rid"`
+}
+
+// NetworkStatusList defines model for NetworkStatusList.
+type NetworkStatusList = []NetworkStatus
+
+// NetworkStatusUsage defines model for NetworkStatusUsage.
+type NetworkStatusUsage struct {
+	Free int     `json:"free"`
+	Pct  float32 `json:"pct"`
+	Size int     `json:"size"`
+	Used int     `json:"used"`
+}
+
+// PostDaemonLogsControl defines model for PostDaemonLogsControl.
+type PostDaemonLogsControl struct {
+	Level PostDaemonLogsControlLevel `json:"level"`
+}
+
+// PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
+type PostDaemonLogsControlLevel string
 
 // App defines model for app.
 type App = string
@@ -198,14 +267,6 @@ type DnsRecord struct {
 	Type  string `json:"type"`
 }
 
-// DrbdAllocation defines model for drbdAllocation.
-type DrbdAllocation struct {
-	ExpireAt time.Time          `json:"expire_at"`
-	Id       openapi_types.UUID `json:"id"`
-	Minor    int                `json:"minor"`
-	Port     int                `json:"port"`
-}
-
 // InstanceStatus defines model for instanceStatus.
 type InstanceStatus struct {
 	App         *App          `json:"app,omitempty"`
@@ -263,35 +324,6 @@ type MonitorUpdateQueued struct {
 	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
 }
 
-// NetworkStatus defines model for networkStatus.
-type NetworkStatus struct {
-	Errors  *[]string           `json:"errors,omitempty"`
-	Ips     *[]NetworkStatusIp  `json:"ips,omitempty"`
-	Name    *string             `json:"name,omitempty"`
-	Network *string             `json:"network,omitempty"`
-	Type    *string             `json:"type,omitempty"`
-	Usage   *NetworkStatusUsage `json:"usage,omitempty"`
-}
-
-// NetworkStatusIp defines model for networkStatusIp.
-type NetworkStatusIp struct {
-	Ip   string `json:"ip"`
-	Node string `json:"node"`
-	Path string `json:"path"`
-	Rid  string `json:"rid"`
-}
-
-// NetworkStatusList defines model for networkStatusList.
-type NetworkStatusList = []NetworkStatus
-
-// NetworkStatusUsage defines model for networkStatusUsage.
-type NetworkStatusUsage struct {
-	Free int     `json:"free"`
-	Pct  float32 `json:"pct"`
-	Size int     `json:"size"`
-	Used int     `json:"used"`
-}
-
 // NodeInfo defines model for nodeInfo.
 type NodeInfo struct {
 	// Labels labels is the list of node labels.
@@ -343,14 +375,6 @@ type PathRelation = []string
 // Placement object placement policy
 type Placement string
 
-// PostDaemonLogsControl defines model for postDaemonLogsControl.
-type PostDaemonLogsControl struct {
-	Level PostDaemonLogsControlLevel `json:"level"`
-}
-
-// PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
-type PostDaemonLogsControlLevel string
-
 // PostDaemonSubAction defines model for postDaemonSubAction.
 type PostDaemonSubAction struct {
 	Action PostDaemonSubActionAction `json:"action"`
@@ -368,8 +392,8 @@ type PostInstanceStatus struct {
 	Status InstanceStatus `json:"status"`
 }
 
-// PostNodeDrbdConfigRequestBody defines model for postNodeDrbdConfigRequestBody.
-type PostNodeDrbdConfigRequestBody struct {
+// PostNodeDRBDConfigRequestBody defines model for postNodeDRBDConfigRequestBody.
+type PostNodeDRBDConfigRequestBody struct {
 	AllocationId openapi_types.UUID `json:"allocation_id"`
 	Data         []byte             `json:"data"`
 }
@@ -512,30 +536,6 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
-// ResponseDaemonStatus defines model for responseDaemonStatus.
-type ResponseDaemonStatus struct {
-	Cluster Cluster `json:"cluster"`
-	Daemon  Daemon  `json:"daemon"`
-}
-
-// ResponseEventList responseEventList is a list of sse
-type ResponseEventList = openapi_types.File
-
-// ResponseGetNodeDrbdConfig defines model for responseGetNodeDrbdConfig.
-type ResponseGetNodeDrbdConfig struct {
-	Data []byte `json:"data"`
-}
-
-// ResponseMuxBool defines model for responseMuxBool.
-type ResponseMuxBool struct {
-	Data []struct {
-		Data     bool   `json:"data"`
-		Endpoint string `json:"endpoint"`
-	} `json:"data"`
-	Entrypoint string `json:"entrypoint"`
-	Status     int    `json:"status"`
-}
-
 // Role defines model for role.
 type Role string
 
@@ -575,8 +575,8 @@ type Status = string
 // Topology object topology
 type Topology string
 
-// QueryDrbdConfigName defines model for queryDrbdConfigName.
-type QueryDrbdConfigName = string
+// DRBDConfigName defines model for DRBDConfigName.
+type DRBDConfigName = string
 
 // QueryDuration defines model for queryDuration.
 type QueryDuration = string
@@ -680,16 +680,16 @@ type GetNetworksParams struct {
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
-// GetNodeDrbdConfigParams defines parameters for GetNodeDrbdConfig.
-type GetNodeDrbdConfigParams struct {
+// GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
+type GetNodeDRBDConfigParams struct {
 	// Name the full path of the file is deduced from the name
-	Name QueryDrbdConfigName `form:"name" json:"name"`
+	Name DRBDConfigName `form:"name" json:"name"`
 }
 
-// PostNodeDrbdConfigParams defines parameters for PostNodeDrbdConfig.
-type PostNodeDrbdConfigParams struct {
+// PostNodeDRBDConfigParams defines parameters for PostNodeDRBDConfig.
+type PostNodeDRBDConfigParams struct {
 	// Name the full path of the file is deduced from the name
-	Name QueryDrbdConfigName `form:"name" json:"name"`
+	Name DRBDConfigName `form:"name" json:"name"`
 }
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.
@@ -734,8 +734,8 @@ type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = PostInstanceStatus
 
-// PostNodeDrbdConfigJSONRequestBody defines body for PostNodeDrbdConfig for application/json ContentType.
-type PostNodeDrbdConfigJSONRequestBody = PostNodeDrbdConfigRequestBody
+// PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
+type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequestBody
 
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitor

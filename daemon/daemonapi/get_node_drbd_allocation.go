@@ -13,29 +13,29 @@ import (
 )
 
 type (
-	pendingDrbdAllocationsMap struct {
+	pendingDRBDAllocationsMap struct {
 		sync.Mutex
-		m map[uuid.UUID]api.DrbdAllocation
+		m map[uuid.UUID]api.DRBDAllocation
 	}
 )
 
 var (
-	pendingDrbdAllocations *pendingDrbdAllocationsMap
+	pendingDRBDAllocations *pendingDRBDAllocationsMap
 )
 
-func newpendingDrbdAllocationsMap() *pendingDrbdAllocationsMap {
-	t := pendingDrbdAllocationsMap{
-		m: make(map[uuid.UUID]api.DrbdAllocation),
+func newpendingDRBDAllocationsMap() *pendingDRBDAllocationsMap {
+	t := pendingDRBDAllocationsMap{
+		m: make(map[uuid.UUID]api.DRBDAllocation),
 	}
 	return &t
 }
 
-func (t pendingDrbdAllocationsMap) get(id uuid.UUID) (api.DrbdAllocation, bool) {
+func (t pendingDRBDAllocationsMap) get(id uuid.UUID) (api.DRBDAllocation, bool) {
 	a, ok := t.m[id]
 	return a, ok
 }
 
-func (t pendingDrbdAllocationsMap) minors() []int {
+func (t pendingDRBDAllocationsMap) minors() []int {
 	l := make([]int, len(t.m))
 	i := 0
 	for _, a := range t.m {
@@ -45,7 +45,7 @@ func (t pendingDrbdAllocationsMap) minors() []int {
 	return l
 }
 
-func (t pendingDrbdAllocationsMap) ports() []int {
+func (t pendingDRBDAllocationsMap) ports() []int {
 	l := make([]int, len(t.m))
 	i := 0
 	for _, a := range t.m {
@@ -55,7 +55,7 @@ func (t pendingDrbdAllocationsMap) ports() []int {
 	return l
 }
 
-func (t *pendingDrbdAllocationsMap) expire() {
+func (t *pendingDRBDAllocationsMap) expire() {
 	now := time.Now()
 	for id, a := range t.m {
 		if a.ExpireAt.After(now) {
@@ -64,23 +64,23 @@ func (t *pendingDrbdAllocationsMap) expire() {
 	}
 }
 
-func (t *pendingDrbdAllocationsMap) add(a api.DrbdAllocation) {
+func (t *pendingDRBDAllocationsMap) add(a api.DRBDAllocation) {
 	t.m[a.Id] = a
 }
 
 func init() {
-	pendingDrbdAllocations = newpendingDrbdAllocationsMap()
+	pendingDRBDAllocations = newpendingDRBDAllocationsMap()
 }
 
-func (a *DaemonApi) GetNodeDrbdAllocation(w http.ResponseWriter, r *http.Request) {
-	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDrbdAllocate")
+func (a *DaemonApi) GetNodeDRBDAllocation(w http.ResponseWriter, r *http.Request) {
+	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDRBDAllocate")
 	log.Debug().Msg("starting")
 
-	pendingDrbdAllocations.Lock()
-	defer pendingDrbdAllocations.Unlock()
-	pendingDrbdAllocations.expire()
+	pendingDRBDAllocations.Lock()
+	defer pendingDRBDAllocations.Unlock()
+	pendingDRBDAllocations.expire()
 
-	resp := api.DrbdAllocation{
+	resp := api.DRBDAllocation{
 		Id:       uuid.New(),
 		ExpireAt: time.Now().Add(5 * time.Second),
 	}
@@ -92,7 +92,7 @@ func (a *DaemonApi) GetNodeDrbdAllocation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if minor, err := digest.FreeMinor(pendingDrbdAllocations.minors()); err != nil {
+	if minor, err := digest.FreeMinor(pendingDRBDAllocations.minors()); err != nil {
 		log.Error().Err(err).Msgf("get free minor from drbd dump digest")
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -100,7 +100,7 @@ func (a *DaemonApi) GetNodeDrbdAllocation(w http.ResponseWriter, r *http.Request
 		resp.Minor = minor
 	}
 
-	if port, err := digest.FreePort(pendingDrbdAllocations.ports()); err != nil {
+	if port, err := digest.FreePort(pendingDRBDAllocations.ports()); err != nil {
 		log.Error().Err(err).Msgf("get free port from drbd dump digest")
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -114,6 +114,6 @@ func (a *DaemonApi) GetNodeDrbdAllocation(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	pendingDrbdAllocations.add(resp)
+	pendingDRBDAllocations.add(resp)
 	w.WriteHeader(http.StatusOK)
 }
