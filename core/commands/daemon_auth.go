@@ -29,7 +29,7 @@ func (t *CmdDaemonAuth) Run() error {
 		return err
 	}
 	duration := t.Duration.String()
-	roles := make(api.QueryRoles, 0)
+	roles := make(api.Roles, 0)
 	for _, s := range t.Roles {
 		roles = append(roles, api.Role(s))
 	}

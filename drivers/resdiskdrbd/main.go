@@ -651,7 +651,7 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 	params := api.PostNodeDRBDConfigParams{
 		Name: t.Res,
 	}
-	body := api.PostNodeDRBDConfigRequestBody{
+	body := api.PostNodeDRBDConfigRequest{
 		AllocationId: allocationId,
 		Data:         b,
 	}

@@ -2697,7 +2697,7 @@ func (r PostObjectProgressResponse) StatusCode() int {
 type GetObjectSelectorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ObjectSelector
+	JSON200      *ObjectSelection
 	JSON401      *Problem
 	JSON403      *Problem
 	JSON500      *Problem
@@ -4281,7 +4281,7 @@ func ParseGetObjectSelectorResponse(rsp *http.Response) (*GetObjectSelectorRespo
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ObjectSelector
+		var dest ObjectSelection
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

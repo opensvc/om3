@@ -12,7 +12,7 @@ import (
 )
 
 func (a *DaemonApi) PostNodeDRBDConfig(w http.ResponseWriter, r *http.Request, params api.PostNodeDRBDConfigParams) {
-	payload := api.PostNodeDRBDConfigRequestBody{}
+	payload := api.PostNodeDRBDConfigRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return

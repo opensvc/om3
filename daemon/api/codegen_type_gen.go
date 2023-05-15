@@ -14,17 +14,6 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
-// Defines values for PostDaemonLogsControlLevel.
-const (
-	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
-	PostDaemonLogsControlLevelError PostDaemonLogsControlLevel = "error"
-	PostDaemonLogsControlLevelFatal PostDaemonLogsControlLevel = "fatal"
-	PostDaemonLogsControlLevelInfo  PostDaemonLogsControlLevel = "info"
-	PostDaemonLogsControlLevelNone  PostDaemonLogsControlLevel = "none"
-	PostDaemonLogsControlLevelPanic PostDaemonLogsControlLevel = "panic"
-	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
-)
-
 // Defines values for Orchestrate.
 const (
 	OrchestrateHa    Orchestrate = "ha"
@@ -42,6 +31,17 @@ const (
 	PlacementSpread     Placement = "spread"
 )
 
+// Defines values for PostDaemonLogsControlLevel.
+const (
+	PostDaemonLogsControlLevelDebug PostDaemonLogsControlLevel = "debug"
+	PostDaemonLogsControlLevelError PostDaemonLogsControlLevel = "error"
+	PostDaemonLogsControlLevelFatal PostDaemonLogsControlLevel = "fatal"
+	PostDaemonLogsControlLevelInfo  PostDaemonLogsControlLevel = "info"
+	PostDaemonLogsControlLevelNone  PostDaemonLogsControlLevel = "none"
+	PostDaemonLogsControlLevelPanic PostDaemonLogsControlLevel = "panic"
+	PostDaemonLogsControlLevelWarn  PostDaemonLogsControlLevel = "warn"
+)
+
 // Defines values for PostDaemonSubActionAction.
 const (
 	PostDaemonSubActionActionStart PostDaemonSubActionAction = "start"
@@ -50,10 +50,10 @@ const (
 
 // Defines values for Provisioned.
 const (
-	False Provisioned = "false"
-	Mixed Provisioned = "mixed"
-	Na    Provisioned = "n/a"
-	True  Provisioned = "true"
+	ProvisionedFalse Provisioned = "false"
+	ProvisionedMixed Provisioned = "mixed"
+	ProvisionedNa    Provisioned = "n/a"
+	ProvisionedTrue  Provisioned = "true"
 )
 
 // Defines values for Role.
@@ -64,6 +64,17 @@ const (
 	Heartbeat      Role = "heartbeat"
 	Root           Role = "root"
 	Squatter       Role = "squatter"
+)
+
+// Defines values for Status.
+const (
+	StatusDown      Status = "down"
+	StatusNa        Status = "n/a"
+	StatusStdbyDown Status = "stdby down"
+	StatusStdbyUp   Status = "stdby up"
+	StatusUndef     Status = "undef"
+	StatusUp        Status = "up"
+	StatusWarn      Status = "warn"
 )
 
 // Defines values for Topology.
@@ -78,8 +89,37 @@ type AuthToken struct {
 	TokenExpireAt time.Time `json:"token_expire_at"`
 }
 
+// Cluster defines model for Cluster.
+type Cluster struct {
+	Config ClusterConfig `json:"config"`
+	Node   ClusterNode   `json:"node"`
+	Object ClusterObject `json:"object"`
+	Status ClusterStatus `json:"status"`
+}
+
+// ClusterConfig defines model for ClusterConfig.
+type ClusterConfig = map[string]interface{}
+
+// ClusterNode defines model for ClusterNode.
+type ClusterNode = map[string]interface{}
+
+// ClusterObject defines model for ClusterObject.
+type ClusterObject = map[string]interface{}
+
+// ClusterStatus defines model for ClusterStatus.
+type ClusterStatus = map[string]interface{}
+
+// DNSRecord defines model for DNSRecord.
+type DNSRecord struct {
+	Class string `json:"class"`
+	Data  string `json:"data"`
+	Name  string `json:"name"`
+	Ttl   int    `json:"ttl"`
+	Type  string `json:"type"`
+}
+
 // DNSZone defines model for DNSZone.
-type DNSZone = []DnsRecord
+type DNSZone = []DNSRecord
 
 // DRBDAllocation defines model for DRBDAllocation.
 type DRBDAllocation struct {
@@ -94,6 +134,73 @@ type DRBDConfig struct {
 	Data []byte `json:"data"`
 }
 
+// Daemon defines model for Daemon.
+type Daemon struct {
+	Collector DaemonCollector `json:"collector"`
+	Dns       DaemonDNS       `json:"dns"`
+	Hb        DaemonHb        `json:"hb"`
+	Listener  DaemonListener  `json:"listener"`
+	Monitor   DaemonMonitor   `json:"monitor"`
+	Routines  int             `json:"routines"`
+	Scheduler DaemonScheduler `json:"scheduler"`
+}
+
+// DaemonCollector defines model for DaemonCollector.
+type DaemonCollector = DaemonSubsystemStatus
+
+// DaemonDNS defines model for DaemonDNS.
+type DaemonDNS = DaemonSubsystemStatus
+
+// DaemonHb defines model for DaemonHb.
+type DaemonHb struct {
+	Modes   []DaemonHbMode   `json:"modes"`
+	Streams []DaemonHbStream `json:"streams"`
+}
+
+// DaemonHbMode defines model for DaemonHbMode.
+type DaemonHbMode struct {
+	// Mode the type of hb message used by node except when Type is patch where it is the patch queue length
+	Mode string `json:"mode"`
+
+	// Node a cluster node
+	Node string `json:"node"`
+
+	// Type the heartbeat message type used by node
+	Type string `json:"type"`
+}
+
+// DaemonHbStream defines model for DaemonHbStream.
+type DaemonHbStream struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Beating    bool                   `json:"beating"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	Last       time.Time              `json:"last"`
+	State      string                 `json:"state"`
+
+	// Type hb stream type
+	Type string `json:"type"`
+}
+
+// DaemonHbStreamPeer defines model for DaemonHbStreamPeer.
+type DaemonHbStreamPeer struct {
+	Beating bool      `json:"beating"`
+	Last    time.Time `json:"last"`
+}
+
+// DaemonHbStreamType defines model for DaemonHbStreamType.
+type DaemonHbStreamType struct {
+	// Type hb stream type
+	Type string `json:"type"`
+}
+
+// DaemonListener defines model for DaemonListener.
+type DaemonListener = DaemonSubsystemStatus
+
+// DaemonMonitor defines model for DaemonMonitor.
+type DaemonMonitor = DaemonSubsystemStatus
+
 // DaemonRunning defines model for DaemonRunning.
 type DaemonRunning struct {
 	Data []struct {
@@ -104,14 +211,86 @@ type DaemonRunning struct {
 	Status     int    `json:"status"`
 }
 
+// DaemonScheduler defines model for DaemonScheduler.
+type DaemonScheduler = DaemonSubsystemStatus
+
 // DaemonStatus defines model for DaemonStatus.
 type DaemonStatus struct {
 	Cluster Cluster `json:"cluster"`
 	Daemon  Daemon  `json:"daemon"`
 }
 
+// DaemonSubsystemAlert defines model for DaemonSubsystemAlert.
+type DaemonSubsystemAlert struct {
+	Message  string `json:"message"`
+	Severity string `json:"severity"`
+}
+
+// DaemonSubsystemStatus defines model for DaemonSubsystemStatus.
+type DaemonSubsystemStatus struct {
+	Alerts     []DaemonSubsystemAlert `json:"alerts"`
+	Configured time.Time              `json:"configured"`
+	Created    time.Time              `json:"created"`
+	Id         string                 `json:"id"`
+	State      string                 `json:"state"`
+}
+
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
+
+// InstanceStatus defines model for InstanceStatus.
+type InstanceStatus struct {
+	App         *string       `json:"app,omitempty"`
+	Avail       Status        `json:"avail"`
+	Children    *PathRelation `json:"children,omitempty"`
+	Constraints *bool         `json:"constraints,omitempty"`
+	Csum        *string       `json:"csum,omitempty"`
+	Drp         *bool         `json:"drp,omitempty"`
+	Env         *string       `json:"env,omitempty"`
+	FlexMax     *int          `json:"flex_max,omitempty"`
+	FlexMin     *int          `json:"flex_min,omitempty"`
+	FlexTarget  *int          `json:"flex_target,omitempty"`
+	Frozen      time.Time     `json:"frozen"`
+	Kind        string        `json:"kind"`
+	Optional    *Status       `json:"optional,omitempty"`
+	Orchestrate *Orchestrate  `json:"orchestrate,omitempty"`
+	Overall     Status        `json:"overall"`
+	Parents     *PathRelation `json:"parents,omitempty"`
+
+	// Placement object placement policy
+	Placement *Placement `json:"placement,omitempty"`
+
+	// Preserved preserve is true if this status has not been updated due to a
+	// heartbeat downtime covered by a maintenance period.
+	// when the maintenance period ends, the status should be unchanged,
+	// and preserve will be set to false.
+	Preserved *bool `json:"preserved,omitempty"`
+
+	// Priority scheduling priority of an object instance on a its node
+	Priority *int `json:"priority,omitempty"`
+
+	// Provisioned service, instance or resource provisioned state
+	Provisioned Provisioned              `json:"provisioned"`
+	Resources   *[]ResourceExposedStatus `json:"resources,omitempty"`
+	Running     *[]string                `json:"running,omitempty"`
+	Scale       *int                     `json:"scale,omitempty"`
+	Slaves      *PathRelation            `json:"slaves,omitempty"`
+	StatusGroup *string                  `json:"status_group,omitempty"`
+
+	// Subsets subset properties
+	Subsets *map[string]struct {
+		Parallel bool `json:"parallel"`
+	} `json:"subsets,omitempty"`
+
+	// Topology object topology
+	Topology *Topology `json:"topology,omitempty"`
+	Updated  time.Time `json:"updated"`
+}
+
+// MonitorUpdateQueued defines model for MonitorUpdateQueued.
+type MonitorUpdateQueued struct {
+	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
+}
 
 // NetworkStatus defines model for NetworkStatus.
 type NetworkStatus struct {
@@ -142,189 +321,7 @@ type NetworkStatusUsage struct {
 	Used int     `json:"used"`
 }
 
-// PostDaemonLogsControl defines model for PostDaemonLogsControl.
-type PostDaemonLogsControl struct {
-	Level PostDaemonLogsControlLevel `json:"level"`
-}
-
-// PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
-type PostDaemonLogsControlLevel string
-
-// App defines model for app.
-type App = string
-
-// Cluster defines model for cluster.
-type Cluster struct {
-	Config ClusterConfig `json:"config"`
-	Node   ClusterNode   `json:"node"`
-	Object ClusterObject `json:"object"`
-	Status ClusterStatus `json:"status"`
-}
-
-// ClusterConfig defines model for clusterConfig.
-type ClusterConfig = map[string]interface{}
-
-// ClusterNode defines model for clusterNode.
-type ClusterNode = map[string]interface{}
-
-// ClusterObject defines model for clusterObject.
-type ClusterObject = map[string]interface{}
-
-// ClusterStatus defines model for clusterStatus.
-type ClusterStatus = map[string]interface{}
-
-// Daemon defines model for daemon.
-type Daemon struct {
-	Collector DaemonCollector `json:"collector"`
-	Dns       DaemonDNS       `json:"dns"`
-	Hb        DaemonHb        `json:"hb"`
-	Listener  DaemonListener  `json:"listener"`
-	Monitor   DaemonMonitor   `json:"monitor"`
-	Routines  int             `json:"routines"`
-	Scheduler DaemonScheduler `json:"scheduler"`
-}
-
-// DaemonCollector defines model for daemonCollector.
-type DaemonCollector = DaemonSubsystemStatus
-
-// DaemonDNS defines model for daemonDNS.
-type DaemonDNS = DaemonSubsystemStatus
-
-// DaemonHb defines model for daemonHb.
-type DaemonHb struct {
-	Modes   []DaemonHbMode   `json:"modes"`
-	Streams []DaemonHbStream `json:"streams"`
-}
-
-// DaemonHbMode defines model for daemonHbMode.
-type DaemonHbMode struct {
-	// Mode the type of hb message used by node except when Type is patch where it is the patch queue length
-	Mode string `json:"mode"`
-
-	// Node a cluster node
-	Node string `json:"node"`
-
-	// Type the heartbeat message type used by node
-	Type string `json:"type"`
-}
-
-// DaemonHbStream defines model for daemonHbStream.
-type DaemonHbStream struct {
-	Alerts     []DaemonSubsystemAlert `json:"alerts"`
-	Beating    bool                   `json:"beating"`
-	Configured time.Time              `json:"configured"`
-	Created    time.Time              `json:"created"`
-	Id         string                 `json:"id"`
-	Last       time.Time              `json:"last"`
-	State      string                 `json:"state"`
-
-	// Type hb stream type
-	Type string `json:"type"`
-}
-
-// DaemonHbStreamPeer defines model for daemonHbStreamPeer.
-type DaemonHbStreamPeer struct {
-	Beating bool      `json:"beating"`
-	Last    time.Time `json:"last"`
-}
-
-// DaemonHbStreamType defines model for daemonHbStreamType.
-type DaemonHbStreamType struct {
-	// Type hb stream type
-	Type string `json:"type"`
-}
-
-// DaemonListener defines model for daemonListener.
-type DaemonListener = DaemonSubsystemStatus
-
-// DaemonMonitor defines model for daemonMonitor.
-type DaemonMonitor = DaemonSubsystemStatus
-
-// DaemonScheduler defines model for daemonScheduler.
-type DaemonScheduler = DaemonSubsystemStatus
-
-// DaemonSubsystemAlert defines model for daemonSubsystemAlert.
-type DaemonSubsystemAlert struct {
-	Message  string   `json:"message"`
-	Severity Severity `json:"severity"`
-}
-
-// DaemonSubsystemStatus defines model for daemonSubsystemStatus.
-type DaemonSubsystemStatus struct {
-	Alerts     []DaemonSubsystemAlert `json:"alerts"`
-	Configured time.Time              `json:"configured"`
-	Created    time.Time              `json:"created"`
-	Id         string                 `json:"id"`
-	State      string                 `json:"state"`
-}
-
-// DnsRecord defines model for dnsRecord.
-type DnsRecord struct {
-	Class string `json:"class"`
-	Data  string `json:"data"`
-	Name  string `json:"name"`
-	Ttl   int    `json:"ttl"`
-	Type  string `json:"type"`
-}
-
-// InstanceStatus defines model for instanceStatus.
-type InstanceStatus struct {
-	App         *App          `json:"app,omitempty"`
-	Avail       Status        `json:"avail"`
-	Children    *PathRelation `json:"children,omitempty"`
-	Constraints *bool         `json:"constraints,omitempty"`
-	Csum        *string       `json:"csum,omitempty"`
-	Drp         *bool         `json:"drp,omitempty"`
-	Env         *string       `json:"env,omitempty"`
-	FlexMax     *int          `json:"flex_max,omitempty"`
-	FlexMin     *int          `json:"flex_min,omitempty"`
-	FlexTarget  *int          `json:"flex_target,omitempty"`
-	Frozen      time.Time     `json:"frozen"`
-	Kind        Kind          `json:"kind"`
-	Optional    *Status       `json:"optional,omitempty"`
-	Orchestrate *Orchestrate  `json:"orchestrate,omitempty"`
-	Overall     Status        `json:"overall"`
-	Parents     *PathRelation `json:"parents,omitempty"`
-
-	// Placement object placement policy
-	Placement *Placement `json:"placement,omitempty"`
-
-	// Preserved preserve is true if this status has not been updated due to a
-	// heartbeat downtime covered by a maintenance period.
-	// when the maintenance period ends, the status should be unchanged,
-	// and preserve will be set to false.
-	Preserved *bool `json:"preserved,omitempty"`
-
-	// Priority scheduling priority of an object instance on a its node
-	Priority *Priority `json:"priority,omitempty"`
-
-	// Provisioned service, instance or resource provisioned state
-	Provisioned Provisioned              `json:"provisioned"`
-	Resources   *[]ResourceExposedStatus `json:"resources,omitempty"`
-	Running     *[]string                `json:"running,omitempty"`
-	Scale       *int                     `json:"scale,omitempty"`
-	Slaves      *PathRelation            `json:"slaves,omitempty"`
-	StatusGroup *string                  `json:"status_group,omitempty"`
-
-	// Subsets subset properties
-	Subsets *map[string]struct {
-		Parallel bool `json:"parallel"`
-	} `json:"subsets,omitempty"`
-
-	// Topology object topology
-	Topology *Topology `json:"topology,omitempty"`
-	Updated  time.Time `json:"updated"`
-}
-
-// Kind defines model for kind.
-type Kind = string
-
-// MonitorUpdateQueued defines model for monitorUpdateQueued.
-type MonitorUpdateQueued struct {
-	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
-}
-
-// NodeInfo defines model for nodeInfo.
+// NodeInfo defines model for NodeInfo.
 type NodeInfo struct {
 	// Labels labels is the list of node labels.
 	Labels []NodeLabel `json:"labels"`
@@ -333,10 +330,10 @@ type NodeInfo struct {
 	Nodename string `json:"nodename"`
 
 	// Paths paths is the list of node to storage array san paths.
-	Paths []SanPath `json:"paths"`
+	Paths []SANPath `json:"paths"`
 }
 
-// NodeLabel defines model for nodeLabel.
+// NodeLabel defines model for NodeLabel.
 type NodeLabel struct {
 	// Name name is the label name.
 	Name string `json:"name"`
@@ -345,37 +342,42 @@ type NodeLabel struct {
 	Value string `json:"value"`
 }
 
-// NodesInfo defines model for nodesInfo.
+// NodesInfo defines model for NodesInfo.
 type NodesInfo = []NodeInfo
 
-// ObjectConfig defines model for objectConfig.
+// ObjectConfig defines model for ObjectConfig.
 type ObjectConfig struct {
 	Data  map[string]interface{} `json:"data"`
 	Mtime time.Time              `json:"mtime"`
 }
 
-// ObjectFile defines model for objectFile.
+// ObjectFile defines model for ObjectFile.
 type ObjectFile struct {
 	Data  []byte    `json:"data"`
 	Mtime time.Time `json:"mtime"`
 }
 
-// ObjectPath defines model for objectPath.
-type ObjectPath = string
+// ObjectSelection defines model for ObjectSelection.
+type ObjectSelection = []string
 
-// ObjectSelector defines model for objectSelector.
-type ObjectSelector = []ObjectPath
-
-// Orchestrate defines model for orchestrate.
+// Orchestrate defines model for Orchestrate.
 type Orchestrate string
 
-// PathRelation defines model for pathRelation.
+// PathRelation defines model for PathRelation.
 type PathRelation = []string
 
 // Placement object placement policy
 type Placement string
 
-// PostDaemonSubAction defines model for postDaemonSubAction.
+// PostDaemonLogsControl defines model for PostDaemonLogsControl.
+type PostDaemonLogsControl struct {
+	Level PostDaemonLogsControlLevel `json:"level"`
+}
+
+// PostDaemonLogsControlLevel defines model for PostDaemonLogsControl.Level.
+type PostDaemonLogsControlLevel string
+
+// PostDaemonSubAction defines model for PostDaemonSubAction.
 type PostDaemonSubAction struct {
 	Action PostDaemonSubActionAction `json:"action"`
 
@@ -386,36 +388,36 @@ type PostDaemonSubAction struct {
 // PostDaemonSubActionAction defines model for PostDaemonSubAction.Action.
 type PostDaemonSubActionAction string
 
-// PostInstanceStatus defines model for postInstanceStatus.
+// PostInstanceStatus defines model for PostInstanceStatus.
 type PostInstanceStatus struct {
 	Path   string         `json:"path"`
 	Status InstanceStatus `json:"status"`
 }
 
-// PostNodeDRBDConfigRequestBody defines model for postNodeDRBDConfigRequestBody.
-type PostNodeDRBDConfigRequestBody struct {
+// PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
+type PostNodeDRBDConfigRequest struct {
 	AllocationId openapi_types.UUID `json:"allocation_id"`
 	Data         []byte             `json:"data"`
 }
 
-// PostNodeMonitor defines model for postNodeMonitor.
+// PostNodeMonitor defines model for PostNodeMonitor.
 type PostNodeMonitor struct {
 	GlobalExpect *string `json:"global_expect,omitempty"`
 	LocalExpect  *string `json:"local_expect,omitempty"`
 	State        *string `json:"state,omitempty"`
 }
 
-// PostObjectAbort defines model for postObjectAbort.
+// PostObjectAbort defines model for PostObjectAbort.
 type PostObjectAbort struct {
 	Path string `json:"path"`
 }
 
-// PostObjectClear defines model for postObjectClear.
+// PostObjectClear defines model for PostObjectClear.
 type PostObjectClear struct {
 	Path string `json:"path"`
 }
 
-// PostObjectMonitor defines model for postObjectMonitor.
+// PostObjectMonitor defines model for PostObjectMonitor.
 type PostObjectMonitor struct {
 	GlobalExpect *string `json:"global_expect,omitempty"`
 	LocalExpect  *string `json:"local_expect,omitempty"`
@@ -423,7 +425,7 @@ type PostObjectMonitor struct {
 	State        *string `json:"state,omitempty"`
 }
 
-// PostObjectProgress defines model for postObjectProgress.
+// PostObjectProgress defines model for PostObjectProgress.
 type PostObjectProgress struct {
 	IsPartial *bool  `json:"is_partial,omitempty"`
 	Path      string `json:"path"`
@@ -431,13 +433,13 @@ type PostObjectProgress struct {
 	State     string `json:"state"`
 }
 
-// PostObjectSwitchTo defines model for postObjectSwitchTo.
+// PostObjectSwitchTo defines model for PostObjectSwitchTo.
 type PostObjectSwitchTo struct {
 	Destination []string `json:"destination"`
 	Path        string   `json:"path"`
 }
 
-// PostRelayMessage defines model for postRelayMessage.
+// PostRelayMessage defines model for PostRelayMessage.
 type PostRelayMessage struct {
 	ClusterId   string `json:"cluster_id"`
 	ClusterName string `json:"cluster_name"`
@@ -445,10 +447,7 @@ type PostRelayMessage struct {
 	Nodename    string `json:"nodename"`
 }
 
-// Priority scheduling priority of an object instance on a its node
-type Priority = int
-
-// Problem defines model for problem.
+// Problem defines model for Problem.
 type Problem struct {
 	// Detail A human-readable explanation specific to this occurrence of the
 	// problem.
@@ -468,7 +467,7 @@ type Problem struct {
 // Provisioned service, instance or resource provisioned state
 type Provisioned string
 
-// RelayMessage defines model for relayMessage.
+// RelayMessage defines model for RelayMessage.
 type RelayMessage struct {
 	Addr        string    `json:"addr"`
 	ClusterId   string    `json:"cluster_id"`
@@ -478,15 +477,15 @@ type RelayMessage struct {
 	Updated     time.Time `json:"updated"`
 }
 
-// RelayMessageList defines model for relayMessageList.
+// RelayMessageList defines model for RelayMessageList.
 type RelayMessageList = []RelayMessage
 
-// RelayMessages defines model for relayMessages.
+// RelayMessages defines model for RelayMessages.
 type RelayMessages struct {
 	Messages RelayMessageList `json:"messages"`
 }
 
-// ResourceExposedStatus defines model for resourceExposedStatus.
+// ResourceExposedStatus defines model for ResourceExposedStatus.
 type ResourceExposedStatus struct {
 	// Disable hints the resource ignores all state transition actions
 	Disable *bool `json:"disable,omitempty"`
@@ -525,10 +524,10 @@ type ResourceExposedStatus struct {
 	Type   string    `json:"type"`
 }
 
-// ResourceId defines model for resourceId.
+// ResourceId defines model for ResourceId.
 type ResourceId = string
 
-// ResourceProvisionStatus defines model for resourceProvisionStatus.
+// ResourceProvisionStatus defines model for ResourceProvisionStatus.
 type ResourceProvisionStatus struct {
 	Mtime *time.Time `json:"mtime,omitempty"`
 
@@ -536,20 +535,20 @@ type ResourceProvisionStatus struct {
 	State Provisioned `json:"state"`
 }
 
-// Role defines model for role.
+// Role defines model for Role.
 type Role string
 
-// SanPath defines model for sanPath.
-type SanPath struct {
+// SANPath defines model for SANPath.
+type SANPath struct {
 	// Initiator initiator is the host side san path endpoint.
-	Initiator SanPathInitiator `json:"initiator"`
+	Initiator SANPathInitiator `json:"initiator"`
 
 	// Target target is the storage array side san path endpoint.
-	Target SanPathTarget `json:"target"`
+	Target SANPathTarget `json:"target"`
 }
 
-// SanPathInitiator initiator is the host side san path endpoint.
-type SanPathInitiator struct {
+// SANPathInitiator initiator is the host side san path endpoint.
+type SANPathInitiator struct {
 	// Name name is a worldwide unique path endpoint identifier.
 	Name *string `json:"name,omitempty"`
 
@@ -557,8 +556,8 @@ type SanPathInitiator struct {
 	Type *string `json:"type,omitempty"`
 }
 
-// SanPathTarget target is the storage array side san path endpoint.
-type SanPathTarget struct {
+// SANPathTarget target is the storage array side san path endpoint.
+type SANPathTarget struct {
 	// Name name is a worldwide unique path endpoint identifier.
 	Name *string `json:"name,omitempty"`
 
@@ -566,11 +565,8 @@ type SanPathTarget struct {
 	Type *string `json:"type,omitempty"`
 }
 
-// Severity defines model for severity.
-type Severity = string
-
-// Status defines model for status.
-type Status = string
+// Status defines model for Status.
+type Status string
 
 // Topology object topology
 type Topology string
@@ -578,38 +574,38 @@ type Topology string
 // DRBDConfigName defines model for DRBDConfigName.
 type DRBDConfigName = string
 
-// QueryDuration defines model for queryDuration.
-type QueryDuration = string
+// Duration defines model for Duration.
+type Duration = string
 
-// QueryEventFilter defines model for queryEventFilter.
-type QueryEventFilter = []string
+// EventFilter defines model for EventFilter.
+type EventFilter = []string
 
-// QueryLimit defines model for queryLimit.
-type QueryLimit = int64
+// Limit defines model for Limit.
+type Limit = int64
 
-// QueryNamespaceOptional defines model for queryNamespaceOptional.
-type QueryNamespaceOptional = string
+// NamespaceOptional defines model for NamespaceOptional.
+type NamespaceOptional = string
 
-// QueryObjectPath defines model for queryObjectPath.
-type QueryObjectPath = string
+// ObjectPath defines model for ObjectPath.
+type ObjectPath = string
 
-// QueryObjectSelector defines model for queryObjectSelector.
-type QueryObjectSelector = string
+// ObjectSelector defines model for ObjectSelector.
+type ObjectSelector = string
 
-// QueryRelativesOptional defines model for queryRelativesOptional.
-type QueryRelativesOptional = bool
+// RelativesOptional defines model for RelativesOptional.
+type RelativesOptional = bool
 
-// QueryRelayClusterId defines model for queryRelayClusterId.
-type QueryRelayClusterId = string
+// RelayClusterId defines model for RelayClusterId.
+type RelayClusterId = string
 
-// QueryRelayNodename defines model for queryRelayNodename.
-type QueryRelayNodename = string
+// RelayNodename defines model for RelayNodename.
+type RelayNodename = string
 
-// QueryRoles defines model for queryRoles.
-type QueryRoles = []Role
+// Roles defines model for Roles.
+type Roles = []Role
 
-// QuerySelectorOptional defines model for querySelectorOptional.
-type QuerySelectorOptional = string
+// SelectorOptional defines model for SelectorOptional.
+type SelectorOptional = string
 
 // N200 defines model for 200.
 type N200 = Problem
@@ -632,7 +628,7 @@ type N503 = Problem
 // PostAuthTokenParams defines parameters for PostAuthToken.
 type PostAuthTokenParams struct {
 	// Role list of api role
-	Role *QueryRoles `form:"role,omitempty" json:"role,omitempty"`
+	Role *Roles `form:"role,omitempty" json:"role,omitempty"`
 
 	// Duration max token duration, maximum value 24h
 	Duration *string `form:"duration,omitempty" json:"duration,omitempty"`
@@ -641,13 +637,13 @@ type PostAuthTokenParams struct {
 // GetDaemonEventsParams defines parameters for GetDaemonEvents.
 type GetDaemonEventsParams struct {
 	// Duration max duration
-	Duration *QueryDuration `form:"duration,omitempty" json:"duration,omitempty"`
+	Duration *Duration `form:"duration,omitempty" json:"duration,omitempty"`
 
 	// Limit limit items count
-	Limit *QueryLimit `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Filter list of event filter
-	Filter *QueryEventFilter `form:"filter,omitempty" json:"filter,omitempty"`
+	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
 // PostDaemonJoinParams defines parameters for PostDaemonJoin.
@@ -665,13 +661,13 @@ type PostDaemonLeaveParams struct {
 // GetDaemonStatusParams defines parameters for GetDaemonStatus.
 type GetDaemonStatusParams struct {
 	// Namespace namespace
-	Namespace *QueryNamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
+	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
 
 	// Relatives relatives
-	Relatives *QueryRelativesOptional `form:"relatives,omitempty" json:"relatives,omitempty"`
+	Relatives *RelativesOptional `form:"relatives,omitempty" json:"relatives,omitempty"`
 
 	// Selector selector
-	Selector *QuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetNetworksParams defines parameters for GetNetworks.
@@ -695,7 +691,7 @@ type PostNodeDRBDConfigParams struct {
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
 	// Path object path
-	Path QueryObjectPath `form:"path" json:"path"`
+	Path ObjectPath `form:"path" json:"path"`
 
 	// Evaluate evaluate
 	Evaluate *bool `form:"evaluate,omitempty" json:"evaluate,omitempty"`
@@ -707,22 +703,22 @@ type GetObjectConfigParams struct {
 // GetObjectFileParams defines parameters for GetObjectFile.
 type GetObjectFileParams struct {
 	// Path object path
-	Path QueryObjectPath `form:"path" json:"path"`
+	Path ObjectPath `form:"path" json:"path"`
 }
 
 // GetObjectSelectorParams defines parameters for GetObjectSelector.
 type GetObjectSelectorParams struct {
 	// Selector object selector
-	Selector QueryObjectSelector `form:"selector" json:"selector"`
+	Selector ObjectSelector `form:"selector" json:"selector"`
 }
 
 // GetRelayMessageParams defines parameters for GetRelayMessage.
 type GetRelayMessageParams struct {
 	// Nodename the nodename component of the slot id on the relay
-	Nodename *QueryRelayNodename `form:"nodename,omitempty" json:"nodename,omitempty"`
+	Nodename *RelayNodename `form:"nodename,omitempty" json:"nodename,omitempty"`
 
 	// ClusterId the cluster id component of the slot id on the relay
-	ClusterId *QueryRelayClusterId `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
+	ClusterId *RelayClusterId `form:"cluster_id,omitempty" json:"cluster_id,omitempty"`
 }
 
 // PostDaemonLogsControlJSONRequestBody defines body for PostDaemonLogsControl for application/json ContentType.
@@ -735,7 +731,7 @@ type PostDaemonSubActionJSONRequestBody = PostDaemonSubAction
 type PostInstanceStatusJSONRequestBody = PostInstanceStatus
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
-type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequestBody
+type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
 
 // PostNodeMonitorJSONRequestBody defines body for PostNodeMonitor for application/json ContentType.
 type PostNodeMonitorJSONRequestBody = PostNodeMonitor

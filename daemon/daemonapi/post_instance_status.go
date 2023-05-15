@@ -54,10 +54,10 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instance.Status, error) {
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
-		Avail:       status.Parse(payloadStatus.Avail),
+		Avail:       status.Parse(string(payloadStatus.Avail)),
 		Frozen:      payloadStatus.Frozen,
 		Kind:        kind.New(payloadStatus.Kind),
-		Overall:     status.Parse(payloadStatus.Overall),
+		Overall:     status.Parse(string(payloadStatus.Overall)),
 		StatusGroup: nil,
 		Updated:     payloadStatus.Updated,
 	}
@@ -83,7 +83,7 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 		instanceStatus.Env = *payloadStatus.Env
 	}
 	if payloadStatus.Optional != nil {
-		instanceStatus.Optional = status.Parse(*payloadStatus.Optional)
+		instanceStatus.Optional = status.Parse(string(*payloadStatus.Optional))
 	}
 	if payloadStatus.Parents != nil {
 		relation := toPathRelationL(payloadStatus.Parents)
@@ -105,7 +105,7 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 			exposed := resource.ExposedStatus{
 				Rid:    v.Rid,
 				Label:  v.Label,
-				Status: status.Parse(v.Status),
+				Status: status.Parse(string(v.Status)),
 				Type:   v.Type,
 			}
 			if v.Disable != nil {
