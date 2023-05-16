@@ -140,7 +140,10 @@ func (d *discover) fsWatcherStart() (func(), error) {
 
 		if updated := file.ModTime(nodeFrozenFile); !updated.IsZero() {
 			log.Info().Msgf("detect %s initially exists", nodeFrozenFile)
-			bus.Pub(&msgbus.NodeFrozenFileUpdated{Filename: nodeFrozenFile, Updated: updated})
+			bus.Pub(&msgbus.NodeFrozenFileUpdated{Filename: nodeFrozenFile, Updated: updated}, pubsub.Label{"node", d.localhost})
+		} else {
+			log.Info().Msgf("detect %s initially absent", nodeFrozenFile)
+			bus.Pub(&msgbus.NodeFrozenFileRemoved{Filename: nodeFrozenFile}, pubsub.Label{"node", d.localhost})
 		}
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
@@ -168,7 +171,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 					case event.Op&fsnotify.Remove != 0:
 						log.Debug().Msgf("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(&msgbus.NodeFrozenFileRemoved{Filename: filename}, pubsub.Label{"path", "node"})
+							bus.Pub(&msgbus.NodeFrozenFileRemoved{Filename: filename}, pubsub.Label{"node", d.localhost})
 						}
 					case event.Op&updateMask != 0:
 						if event.Op&needReAddMask != 0 {
@@ -186,7 +189,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 						}
 						log.Debug().Msgf("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
-							bus.Pub(&msgbus.NodeFrozenFileUpdated{Filename: filename, Updated: file.ModTime(filename)}, pubsub.Label{"path", "node"})
+							bus.Pub(&msgbus.NodeFrozenFileUpdated{Filename: filename, Updated: file.ModTime(filename)}, pubsub.Label{"node", d.localhost})
 						}
 					}
 				case strings.HasSuffix(filename, ".conf"):

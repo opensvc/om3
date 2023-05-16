@@ -163,7 +163,11 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
-		livePeers:   map[string]bool{localhost: true},
+		nodeStatus: node.Status{
+			Frozen: time.Now(), // ensure initial frozen
+		},
+		frozen:    true, // ensure initial frozen
+		livePeers: map[string]bool{localhost: true},
 
 		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
@@ -177,16 +181,28 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 
 	bootID := bootid.Get()
 	if len(bootID) > 0 {
-		fileLastBootID := filepath.Join(rawconfig.Paths.Var, "node", "last_boot_id")
+		var (
+			lastBootID     string
+			fileLastBootID = filepath.Join(rawconfig.Paths.Var, "node", "last_boot_id")
+		)
 		if b, err := os.ReadFile(fileLastBootID); err == nil && len(b) > 0 {
-			lastBootID := string(b)
+			lastBootID = string(b)
 			if lastBootID != bootID {
-				o.log.Info().Msgf("fist daemon startup since boot")
-				// TODO implement kern freeze
+				o.log.Info().Msgf("first daemon startup since node boot")
+				if osBootedWithOpensvcFreeze() {
+					o.log.Info().Msgf("will freeze node due to kernel cmdline flag")
+					err := o.crmFreeze()
+					if err != nil {
+						o.log.Error().Err(err).Msgf("freeze node due to kernel cmdline flag")
+						return err
+					}
+				}
 			}
 		}
-		if err := os.WriteFile(fileLastBootID, []byte(bootID), 0644); err != nil {
-			o.log.Error().Err(err).Msgf("unable to write %s '%s'", fileLastBootID, bootID)
+		if lastBootID != bootID {
+			if err := os.WriteFile(fileLastBootID, []byte(bootID), 0644); err != nil {
+				o.log.Error().Err(err).Msgf("unable to write %s '%s'", fileLastBootID, bootID)
+			}
 		}
 	}
 

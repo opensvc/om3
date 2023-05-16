@@ -165,6 +165,11 @@
 
 * Add a 60 seconds timeout to pre_monitor_action. The 2.1 daemon waits forever for this callout to terminate.
 
+* Earlier local object instance orchestration after node boot
+
+    * In 2.1 local object instance orchestration waits for all local object instances boot action done
+    * Now object instance <foo@localhost> orchestration only waits for <foo@localhost> boot action completed. Each instance has a last boot id.
+
 * **breaking change:** switch to time.Time in RFC3389 format in all internal and exposed data
 
 	A unix timestamp was previously used, but it was tedious for users to understand the json data. And go makes the time.Time type unavoidable anyway, so the performance argument for timestamps doesn't stand anymore.
