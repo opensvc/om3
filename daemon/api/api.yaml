@@ -14,7 +14,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryRoles'
+        - $ref: '#/components/parameters/Roles'
         - in: query
           name: duration
           description: max token duration, maximum value 24h
@@ -53,7 +53,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/dnsZone'
+                $ref: '#/components/schemas/DNSZone'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -74,7 +74,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postDaemonLogsControl'
+              $ref: '#/components/schemas/PostDaemonLogsControl'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -95,16 +95,16 @@ paths:
       description: |
         Listen daemon events
       parameters:
-        - $ref: '#/components/parameters/queryDuration'
-        - $ref: '#/components/parameters/queryLimit'
-        - $ref: '#/components/parameters/queryEventFilter'
+        - $ref: '#/components/parameters/Duration'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/EventFilter'
       responses:
         200:
           description: OK
           content:
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/responseEventList'
+                $ref: '#/components/schemas/EventList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -193,7 +193,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseMuxBool'
+                $ref: '#/components/schemas/DaemonRunning'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -209,16 +209,16 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryNamespaceOptional'
-        - $ref: '#/components/parameters/queryRelativesOptional'
-        - $ref: '#/components/parameters/querySelectorOptional'
+        - $ref: '#/components/parameters/NamespaceOptional'
+        - $ref: '#/components/parameters/RelativesOptional'
+        - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseDaemonStatus'
+                $ref: '#/components/schemas/DaemonStatus'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -256,10 +256,36 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postDaemonSubAction'
+              $ref: '#/components/schemas/PostDaemonSubAction'
       responses:
         200:
           $ref: '#/components/responses/200'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /instance/status:
+    post:
+      operationId: PostInstanceStatus
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: post object status
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostInstanceStatus'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -287,7 +313,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/networkStatusList'
+                $ref: '#/components/schemas/NetworkStatusList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -296,7 +322,7 @@ paths:
           $ref: '#/components/responses/500'
   /node/drbd/allocation:
     get:
-      operationId: GetNodeDrbdAllocation
+      operationId: GetNodeDRBDAllocation
       tags:
         - node
       security:
@@ -308,7 +334,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/drbdAllocation'
+                $ref: '#/components/schemas/DRBDAllocation'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -337,21 +363,21 @@ paths:
           $ref: '#/components/responses/500'
   /node/drbd/config:
     get:
-      operationId: GetNodeDrbdConfig
+      operationId: GetNodeDRBDConfig
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryDrbdConfigName'
+        - $ref: '#/components/parameters/DRBDConfigName'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responseGetNodeDrbdConfig'
+                $ref: '#/components/schemas/DRBDConfig'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -361,21 +387,21 @@ paths:
         500:
           $ref: '#/components/responses/500'
     post:
-      operationId: PostNodeDrbdConfig
+      operationId: PostNodeDRBDConfig
       tags:
         - node
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryDrbdConfigName'
+        - $ref: '#/components/parameters/DRBDConfigName'
       requestBody:
         description: monitor
         required: true
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/postNodeDrbdConfigRequestBody'
+                $ref: '#/components/schemas/PostNodeDRBDConfigRequest'
       responses:
         200:
           description: OK
@@ -401,14 +427,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postNodeMonitor'
+              $ref: '#/components/schemas/PostNodeMonitor'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/monitorUpdateQueued'
+                $ref: '#/components/schemas/MonitorUpdateQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -431,7 +457,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/nodesInfo'
+                $ref: '#/components/schemas/NodesInfo'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -452,7 +478,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postObjectAbort'
+              $ref: '#/components/schemas/PostObjectAbort'
       responses:
         200:
           description: OK
@@ -476,7 +502,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postObjectClear'
+              $ref: '#/components/schemas/PostObjectClear'
       responses:
         200:
           description: OK
@@ -495,7 +521,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryObjectPath'
+        - $ref: '#/components/parameters/ObjectPath'
         - name: evaluate
           in: query
           description: evaluate
@@ -512,7 +538,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/objectConfig'
+                $ref: '#/components/schemas/ObjectConfig'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -528,14 +554,14 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryObjectPath'
+        - $ref: '#/components/parameters/ObjectPath'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/objectFile'
+                $ref: '#/components/schemas/ObjectFile'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -556,14 +582,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postObjectMonitor'
+              $ref: '#/components/schemas/PostObjectMonitor'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/monitorUpdateQueued'
+                $ref: '#/components/schemas/MonitorUpdateQueued'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -586,7 +612,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postObjectProgress'
+              $ref: '#/components/schemas/PostObjectProgress'
       responses:
         200:
           description: OK
@@ -605,40 +631,14 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryObjectSelector'
+        - $ref: '#/components/parameters/ObjectSelector'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/objectSelector'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-  /instance/status:
-    post:
-      operationId: PostInstanceStatus
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: post object status
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/postInstanceStatus'
-      responses:
-        200:
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
+                $ref: '#/components/schemas/ObjectSelection'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -659,16 +659,44 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postObjectSwitchTo'
+              $ref: '#/components/schemas/PostObjectSwitchTo'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/monitorUpdateQueued'
+                $ref: '#/components/schemas/MonitorUpdateQueued'
         400:
           $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /pools:
+    get:
+      operationId: GetPools
+      tags:
+        - storage
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: name
+        description: the name of a backend storage pool
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolStatusList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -702,15 +730,15 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/queryRelayNodename'
-        - $ref: '#/components/parameters/queryRelayClusterId'
+        - $ref: '#/components/parameters/RelayNodename'
+        - $ref: '#/components/parameters/RelayClusterId'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/relayMessages'
+                $ref: '#/components/schemas/RelayMessages'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -730,7 +758,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/postRelayMessage'
+              $ref: '#/components/schemas/PostRelayMessage'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -742,8 +770,6 @@ paths:
           $ref: '#/components/responses/500'
 components:
   schemas:
-    app:
-      type: string
     AuthToken:
       type: object
       required:
@@ -755,7 +781,7 @@ components:
         token_expire_at:
           type: string
           format: date-time
-    cluster:
+    Cluster:
       type: object
       required:
         - config
@@ -764,22 +790,22 @@ components:
         - status
       properties:
         config:
-          $ref: '#/components/schemas/clusterConfig'
+          $ref: '#/components/schemas/ClusterConfig'
         node:
-          $ref: '#/components/schemas/clusterNode'
+          $ref: '#/components/schemas/ClusterNode'
         object:
-          $ref: '#/components/schemas/clusterObject'
+          $ref: '#/components/schemas/ClusterObject'
         status:
-          $ref: '#/components/schemas/clusterStatus'
-    clusterConfig:
+          $ref: '#/components/schemas/ClusterStatus'
+    ClusterConfig:
       type: object
-    clusterNode:
+    ClusterNode:
       type: object
-    clusterObject:
+    ClusterObject:
       type: object
-    clusterStatus:
+    ClusterStatus:
       type: object
-    daemon:
+    Daemon:
       type: object
       required:
         - collector
@@ -791,26 +817,26 @@ components:
         - scheduler
       properties:
         collector:
-          $ref: '#/components/schemas/daemonCollector'
+          $ref: '#/components/schemas/DaemonCollector'
         dns:
-          $ref: '#/components/schemas/daemonDNS'
+          $ref: '#/components/schemas/DaemonDNS'
         hb:
-          $ref: '#/components/schemas/daemonHb'
+          $ref: '#/components/schemas/DaemonHb'
         listener:
-          $ref: '#/components/schemas/daemonListener'
+          $ref: '#/components/schemas/DaemonListener'
         monitor:
-          $ref: '#/components/schemas/daemonMonitor'
+          $ref: '#/components/schemas/DaemonMonitor'
         routines:
           type: integer
         scheduler:
-          $ref: '#/components/schemas/daemonScheduler'
-    daemonCollector:
+          $ref: '#/components/schemas/DaemonScheduler'
+    DaemonCollector:
       allOf:
-        - $ref: '#/components/schemas/daemonSubsystemStatus'
-    daemonDNS:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+    DaemonDNS:
       allOf:
-        - $ref: '#/components/schemas/daemonSubsystemStatus'
-    daemonHb:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+    DaemonHb:
       type: object
       required:
         - streams
@@ -819,17 +845,17 @@ components:
         streams:
           type: array
           items:
-            $ref: '#/components/schemas/daemonHbStream'
+            $ref: '#/components/schemas/DaemonHbStream'
         modes:
           type: array
           items:
-            $ref: '#/components/schemas/daemonHbMode'
-    daemonHbStream:
+            $ref: '#/components/schemas/DaemonHbMode'
+    DaemonHbStream:
       allOf:
-        - $ref: '#/components/schemas/daemonSubsystemStatus'
-        - $ref: '#/components/schemas/daemonHbStreamType'
-        - $ref: '#/components/schemas/daemonHbStreamPeer'
-    daemonHbMode:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+        - $ref: '#/components/schemas/DaemonHbStreamType'
+        - $ref: '#/components/schemas/DaemonHbStreamPeer'
+    DaemonHbMode:
       type: object
       required:
         - node
@@ -845,7 +871,7 @@ components:
         type:
           type: string
           description: the heartbeat message type used by node
-    daemonHbStreamType:
+    DaemonHbStreamType:
       type: object
       required:
         - type
@@ -853,7 +879,7 @@ components:
         type:
           type: string
           description: hb stream type
-    daemonHbStreamPeer:
+    DaemonHbStreamPeer:
       type: object
       required:
         - beating
@@ -864,16 +890,16 @@ components:
         last:
           type: string
           format: date-time
-    daemonListener:
+    DaemonListener:
       allOf:
-        - $ref: '#/components/schemas/daemonSubsystemStatus'
-    daemonMonitor:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+    DaemonMonitor:
       allOf:
-        - $ref: '#/components/schemas/daemonSubsystemStatus'
-    daemonScheduler:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+    DaemonScheduler:
       allOf:
-        - $ref: '#/components/schemas/daemonSubsystemStatus'
-    daemonSubsystemAlert:
+        - $ref: '#/components/schemas/DaemonSubsystemStatus'
+    DaemonSubsystemAlert:
       type: object
       required:
         - message
@@ -882,8 +908,8 @@ components:
         message:
           type: string
         severity:
-          $ref: '#/components/schemas/severity'
-    daemonSubsystemStatus:
+          type: string
+    DaemonSubsystemStatus:
       type: object
       required:
         - alerts
@@ -895,7 +921,7 @@ components:
         alerts:
           type: array
           items:
-            $ref: '#/components/schemas/daemonSubsystemAlert'
+            $ref: '#/components/schemas/DaemonSubsystemAlert'
         configured:
           type: string
           format: date-time
@@ -906,7 +932,7 @@ components:
           type: string
         state:
           type: string
-    dnsRecord:
+    DNSRecord:
       type: object
       required:
         - name
@@ -925,11 +951,11 @@ components:
           type: integer
         data:
           type: string
-    dnsZone:
+    DNSZone:
       type: array
       items:
-        $ref: '#/components/schemas/dnsRecord'
-    drbdAllocation:
+        $ref: '#/components/schemas/DNSRecord'
+    DRBDAllocation:
       type: object
       required:
         - port
@@ -947,7 +973,7 @@ components:
         expire_at:
           type: string
           format: date-time
-    instanceStatus:
+    InstanceStatus:
       type: object
       required:
         - avail
@@ -958,11 +984,11 @@ components:
         - updated
       properties:
         app:
-          $ref: '#/components/schemas/app'
+          type: string
         avail:
-          $ref: '#/components/schemas/status'
+          $ref: '#/components/schemas/Status'
         children:
-          $ref: '#/components/schemas/pathRelation'
+          $ref: '#/components/schemas/PathRelation'
         constraints:
           type: boolean
         csum:
@@ -981,17 +1007,17 @@ components:
           type: string
           format: date-time
         kind:
-          $ref: '#/components/schemas/kind'
+          type: string
         optional:
-          $ref: '#/components/schemas/status'
+          $ref: '#/components/schemas/Status'
         orchestrate:
-          $ref: '#/components/schemas/orchestrate'
+          $ref: '#/components/schemas/Orchestrate'
         overall:
-          $ref: '#/components/schemas/status'
+          $ref: '#/components/schemas/Status'
         parents:
-          $ref: '#/components/schemas/pathRelation'
+          $ref: '#/components/schemas/PathRelation'
         placement:
-          $ref: '#/components/schemas/placement'
+          $ref: '#/components/schemas/Placement'
         preserved:
           type: boolean
           description: |
@@ -1001,13 +1027,15 @@ components:
             and preserve will be set to false.
           default: false
         priority:
-          $ref: '#/components/schemas/priority'
+          type: integer
+          description: scheduling priority of an object instance on a its node
+          default: 50
         provisioned:
-          $ref: '#/components/schemas/provisioned'
+          $ref: '#/components/schemas/Provisioned'
         resources:
           type: array
           items:
-            $ref: '#/components/schemas/resourceExposedStatus'
+            $ref: '#/components/schemas/ResourceExposedStatus'
         running:
           type: array
           items:
@@ -1015,7 +1043,7 @@ components:
         scale:
           type: integer
         slaves:
-          $ref: '#/components/schemas/pathRelation'
+          $ref: '#/components/schemas/PathRelation'
         status_group:
           type: string
         subsets:
@@ -1030,15 +1058,11 @@ components:
                 type: boolean
                 default: false
         topology:
-          $ref: '#/components/schemas/topology'
+          $ref: '#/components/schemas/Topology'
         updated:
           type: string
           format: date-time
-    kind:
-      type: string
-    namespace:
-      type: string
-    networkStatus:
+    NetworkStatus:
       type: object
       properties:
         name:
@@ -1050,14 +1074,14 @@ components:
         ips:
           type: array
           items:
-            $ref: '#/components/schemas/networkStatusIp'
+            $ref: '#/components/schemas/NetworkStatusIp'
         errors:
           type: array
           items:
             type: string
         usage:
-          $ref: '#/components/schemas/networkStatusUsage'
-    networkStatusIp:
+          $ref: '#/components/schemas/NetworkStatusUsage'
+    NetworkStatusIp:
       type: object
       required:
         - ip
@@ -1073,11 +1097,11 @@ components:
           type: string
         rid:
           type: string
-    networkStatusList:
+    NetworkStatusList:
       type: array
       items:
-        $ref: '#/components/schemas/networkStatus'
-    networkStatusUsage:
+        $ref: '#/components/schemas/NetworkStatus'
+    NetworkStatusUsage:
       type: object
       required:
         - free
@@ -1093,7 +1117,7 @@ components:
           type: integer
         pct:
           type: number
-    nodeInfo:
+    NodeInfo:
       type: object
       required:
         - labels
@@ -1104,7 +1128,7 @@ components:
           type: array
           description: labels is the list of node labels.
           items:
-            $ref: '#/components/schemas/nodeLabel'
+            $ref: '#/components/schemas/NodeLabel'
         nodename:
           type: string
           description: nodename is the name of the node where the labels and paths are coming from.
@@ -1112,8 +1136,8 @@ components:
           type: array
           description: paths is the list of node to storage array san paths.
           items:
-            $ref: '#/components/schemas/sanPath'
-    nodeLabel:
+            $ref: '#/components/schemas/SANPath'
+    NodeLabel:
       type: object
       required:
         - name
@@ -1125,11 +1149,11 @@ components:
         value:
           type: string
           description: value is the label value.
-    nodesInfo:
+    NodesInfo:
       type: array
       items:
-        $ref: '#/components/schemas/nodeInfo'
-    objectConfig:
+        $ref: '#/components/schemas/NodeInfo'
+    ObjectConfig:
       type: object
       required:
         - data
@@ -1140,7 +1164,7 @@ components:
         mtime:
           type: string
           format: date-time
-    objectFile:
+    ObjectFile:
       type: object
       required:
         - data
@@ -1152,20 +1176,18 @@ components:
         mtime:
           type: string
           format: date-time
-    objectPath:
-      type: string
-    objectSelector:
+    ObjectSelection:
       type: array
       items:
-        $ref: '#/components/schemas/objectPath'
-    orchestrate:
+        type: string
+    Orchestrate:
       type: string
       enum:
         - ha
         - no
         - start
       default: no
-    monitorUpdateQueued:
+    MonitorUpdateQueued:
       type: object
       properties:
         orchestration_id:
@@ -1173,12 +1195,75 @@ components:
           format: uuid
       required:
         - orchestration_id
-    pathRelation:
+    PathRelation:
       type: array
       items:
         type: string
         description: object path or an instance path (path@node)
-    placement:
+    PoolStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        head:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+        usage:
+          $ref: '#/components/schemas/PoolStatusUsage'
+        volumes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoolStatusVolume'
+    PoolStatusVolume:
+      type: object
+      required:
+        - ip
+        - node
+        - path
+        - rid
+      properties:
+        ip:
+          type: string
+        node:
+          type: string
+        path:
+          type: string
+        rid:
+          type: string
+    PoolStatusList:
+      type: array
+      items:
+        $ref: '#/components/schemas/PoolStatus'
+    PoolStatusUsage:
+      type: object
+      required:
+        - children
+        - orphan
+        - path
+        - size
+      properties:
+        children:
+          type: array
+          items:
+            type: string
+        orphan:
+          description: an orphan is a volume driven by no svc resource
+          type: boolean
+        path:
+          type: string
+        size:
+          description: volume size in bytes
+          type: number
+    Placement:
       type: string
       default: none
       description: object placement policy
@@ -1189,7 +1274,7 @@ components:
         - score
         - spread
         - shift
-    postDaemonLogsControl:
+    PostDaemonLogsControl:
       type: object
       required:
         - level
@@ -1205,7 +1290,7 @@ components:
             - panic
             - none
           default: info
-    postDaemonSubAction:
+    PostDaemonSubAction:
       type: object
       required:
         - action
@@ -1222,7 +1307,7 @@ components:
           items:
             type: string
             example: hb#1.rx
-    postNodeDrbdConfigRequestBody:
+    PostNodeDRBDConfigRequest:
       type: object
       required:
         - allocation_id
@@ -1234,7 +1319,7 @@ components:
         data:
           type: string
           format: byte
-    postNodeMonitor:
+    PostNodeMonitor:
       type: object
       properties:
         local_expect:
@@ -1243,21 +1328,21 @@ components:
           type: string
         state:
           type: string
-    postObjectAbort:
+    PostObjectAbort:
       type: object
       required:
         - path
       properties:
         path:
           type: string
-    postObjectClear:
+    PostObjectClear:
       type: object
       required:
         - path
       properties:
         path:
           type: string
-    postObjectMonitor:
+    PostObjectMonitor:
       type: object
       required:
         - path
@@ -1270,7 +1355,7 @@ components:
           type: string
         state:
           type: string
-    postObjectProgress:
+    PostObjectProgress:
       type: object
       required:
         - path
@@ -1285,7 +1370,7 @@ components:
           type: string
         is_partial:
           type: boolean
-    postInstanceStatus:
+    PostInstanceStatus:
       type: object
       required:
         - path
@@ -1294,8 +1379,8 @@ components:
         path:
           type: string
         status:
-          $ref: '#/components/schemas/instanceStatus'
-    postObjectSwitchTo:
+          $ref: '#/components/schemas/InstanceStatus'
+    PostObjectSwitchTo:
       type: object
       required:
         - path
@@ -1308,7 +1393,7 @@ components:
             type: string
         path:
           type: string
-    postRelayMessage:
+    PostRelayMessage:
       type: object
       required:
         - cluster_id
@@ -1324,11 +1409,7 @@ components:
           type: string
         msg:
           type: string
-    priority:
-      type: integer
-      description: scheduling priority of an object instance on a its node
-      default: 50
-    problem:
+    Problem:
       type: object
       properties:
         detail:
@@ -1352,7 +1433,7 @@ components:
         - detail
         - status
         - title
-    provisioned:
+    Provisioned:
       type: string
       description: service, instance or resource provisioned state
       enum:
@@ -1360,7 +1441,7 @@ components:
         - mixed
         - n/a
         - true
-    relayMessage:
+    RelayMessage:
       type: object
       required:
         - addr
@@ -1383,18 +1464,18 @@ components:
         updated:
           type: string
           format: date-time
-    relayMessageList:
+    RelayMessageList:
       type: array
       items:
-        $ref: '#/components/schemas/relayMessage'
-    relayMessages:
+        $ref: '#/components/schemas/RelayMessage'
+    RelayMessages:
       type: object
       required:
         - messages
       properties:
         messages:
-          $ref: '#/components/schemas/relayMessageList'
-    resourceExposedStatus:
+          $ref: '#/components/schemas/RelayMessageList'
+    ResourceExposedStatus:
       type: object
       required:
         - label
@@ -1440,17 +1521,17 @@ components:
             is resource status aggregated into Overall instead of Avail instance status.
             Errors in optional resource don't stop a state transition action
         provisioned:
-          $ref: '#/components/schemas/resourceProvisionStatus'
+          $ref: '#/components/schemas/ResourceProvisionStatus'
         restart:
           type: integer
         rid:
-          $ref: '#/components/schemas/resourceId'
+          $ref: '#/components/schemas/ResourceId'
         standby:
           type: boolean
           description: |
             resource should always be up, even after a stop state transition action
         status:
-          $ref: '#/components/schemas/status'
+          $ref: '#/components/schemas/Status'
         subset:
           type: string
           description: the name of the subset this resource is assigned to
@@ -1460,9 +1541,9 @@ components:
             type: string
         type:
           type: string
-    resourceId:
+    ResourceId:
       type: string
-    resourceProvisionStatus:
+    ResourceProvisionStatus:
       type: object
       required:
         - state
@@ -1471,22 +1552,22 @@ components:
           type: string
           format: date-time
         state:
-          $ref: '#/components/schemas/provisioned'
-    responseDaemonStatus:
+          $ref: '#/components/schemas/Provisioned'
+    DaemonStatus:
       type: object
       required:
         - cluster
         - daemon
       properties:
         cluster:
-          $ref: '#/components/schemas/cluster'
+          $ref: '#/components/schemas/Cluster'
         daemon:
-          $ref: '#/components/schemas/daemon'
-    responseEventList:
+          $ref: '#/components/schemas/Daemon'
+    EventList:
       description: responseEventList is a list of sse
       type: string
       format: binary
-    responseGetNodeDrbdConfig:
+    DRBDConfig:
       type: object
       required:
         - data
@@ -1494,7 +1575,7 @@ components:
         data:
           type: string
           format: byte
-    responseMuxBool:
+    DaemonRunning:
       type: object
       required:
         - data
@@ -1517,7 +1598,7 @@ components:
                 type: boolean
               endpoint:
                 type: string
-    role:
+    Role:
       type: string
       enum:
         - admin
@@ -1526,17 +1607,17 @@ components:
         - heartbeat
         - root
         - squatter
-    sanPath:
+    SANPath:
       type: object
       required:
         - initiator
         - target
       properties:
         initiator:
-          $ref: '#/components/schemas/sanPathInitiator'
+          $ref: '#/components/schemas/SANPathInitiator'
         target:
-          $ref: '#/components/schemas/sanPathTarget'
-    sanPathInitiator:
+          $ref: '#/components/schemas/SANPathTarget'
+    SANPathInitiator:
       type: object
       description: initiator is the host side san path endpoint.
       properties:
@@ -1548,7 +1629,7 @@ components:
           type: string
           description: type is the endpoint type.
           example: iscsi
-    sanPathTarget:
+    SANPathTarget:
       type: object
       description: target is the storage array side san path endpoint.
       properties:
@@ -1560,13 +1641,17 @@ components:
           type: string
           description: type is a the endpoint type.
           example: iscsi
-    selector:
+    Status:
       type: string
-    severity:
-      type: string
-    status:
-      type: string
-    topology:
+      enum:
+        - up
+        - down
+        - warn
+        - n/a
+        - undef
+        - stdby up
+        - stdby down
+    Topology:
       type: string
       description: "object topology"
       enum:
@@ -1574,21 +1659,14 @@ components:
         - flex
       default: failover
   parameters:
-    postObjectMonitor:
-      name: selector
-      in: query
-      description: object selector
-      required: true
-      schema:
-        type: string
-    queryDuration:
+    Duration:
       name: duration
       in: query
       description: max duration
       schema:
         type: string
         example: 5s
-    queryEventFilter:
+    EventFilter:
       name: filter
       in: query
       description: list of event filter
@@ -1599,22 +1677,22 @@ components:
           description: |
             filter expression: [kind][,label=value]*
           example: ObjectStatusUpdated,path=foo
-    queryDrbdConfigName:
+    DRBDConfigName:
       name: name
       in: query
       description: the full path of the file is deduced from the name
       required: true
       schema:
         type: string
-    queryRoles:
+    Roles:
       name: role
       in: query
       description: list of api role
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/role'
-    queryLimit:
+          $ref: '#/components/schemas/Role'
+    Limit:
       name: limit
       in: query
       description: limit items count
@@ -1622,45 +1700,45 @@ components:
         type: integer
         format: int64
         example: 1
-    queryNamespaceOptional:
+    NamespaceOptional:
       name: namespace
       in: query
       description: namespace
       schema:
         type: string
-    queryObjectPath:
+    ObjectPath:
       name: path
       in: query
       description: object path
       required: true
       schema:
         type: string
-    queryObjectSelector:
+    ObjectSelector:
       name: selector
       in: query
       description: object selector
       required: true
       schema:
         type: string
-    queryRelativesOptional:
+    RelativesOptional:
       name: relatives
       in: query
       description: relatives
       schema:
         type: boolean
-    queryRelayClusterId:
+    RelayClusterId:
       name: cluster_id
       in: query
       description: the cluster id component of the slot id on the relay
       schema:
         type: string
-    queryRelayNodename:
+    RelayNodename:
       name: nodename
       in: query
       description: the nodename component of the slot id on the relay
       schema:
         type: string
-    querySelectorOptional:
+    SelectorOptional:
       name: selector
       in: query
       description: selector
@@ -1681,7 +1759,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"
     '204':
       description: No Content
     '400':
@@ -1690,39 +1768,39 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"
     '401':
       type: object
       description: Unauthorized
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"
     '403':
       type: object
       description: Bad Request
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"
     '404':
       type: object
       description: Not Found
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"
     '500':
       type: object
       description: Internal Server Error
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"
     '503':
       type: object
       description: Service Unavailable
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/problem"
+            $ref: "#/components/schemas/Problem"

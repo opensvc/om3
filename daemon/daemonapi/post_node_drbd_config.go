@@ -11,13 +11,13 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) PostNodeDrbdConfig(w http.ResponseWriter, r *http.Request, params api.PostNodeDrbdConfigParams) {
-	payload := api.PostNodeDrbdConfigRequestBody{}
+func (a *DaemonApi) PostNodeDRBDConfig(w http.ResponseWriter, r *http.Request, params api.PostNodeDRBDConfigParams) {
+	payload := api.PostNodeDRBDConfigRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
-	if a, ok := pendingDrbdAllocations.get(payload.AllocationId); !ok || time.Now().After(a.ExpireAt) {
+	if a, ok := pendingDRBDAllocations.get(payload.AllocationId); !ok || time.Now().After(a.ExpireAt) {
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "drbd allocation expired: %#v", a)
 		return
 	}

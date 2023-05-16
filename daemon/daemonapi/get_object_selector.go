@@ -25,7 +25,7 @@ func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, pa
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	result := api.ObjectSelector{}
+	result := api.ObjectSelection{}
 	for _, v := range matchedPaths {
 		result = append(result, v.String())
 	}

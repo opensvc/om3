@@ -10,8 +10,8 @@ import (
 	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 )
 
-func (a *DaemonApi) GetNodeDrbdConfig(w http.ResponseWriter, r *http.Request, params api.GetNodeDrbdConfigParams) {
-	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDrbdConfig")
+func (a *DaemonApi) GetNodeDRBDConfig(w http.ResponseWriter, r *http.Request, params api.GetNodeDRBDConfigParams) {
+	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDRBDConfig")
 	log.Debug().Msg("starting")
 
 	if params.Name == "" {
@@ -21,7 +21,7 @@ func (a *DaemonApi) GetNodeDrbdConfig(w http.ResponseWriter, r *http.Request, pa
 	}
 
 	filename := fmt.Sprintf("/etc/drbd.d/%s.res", params.Name)
-	resp := api.ResponseGetNodeDrbdConfig{}
+	resp := api.DRBDConfig{}
 
 	if data, err := os.ReadFile(filename); err != nil {
 		log.Info().Err(err).Msgf("Readfile %s (may be deleted)", filename)

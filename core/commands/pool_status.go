@@ -1,13 +1,18 @@
 package commands
 
 import (
+	"context"
+
+	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 
+	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
@@ -58,29 +63,31 @@ func (t *CmdPoolStatus) extractLocal() (pool.StatusList, error) {
 
 func (t *CmdPoolStatus) extractDaemon() (pool.StatusList, error) {
 	l := pool.NewStatusList()
-	/*
-		c, err := client.New(client.WithURL(t.Server))
-		if err != nil {
-			return nil, err
-		}
-		params := api.GetPools{
-			Name: t.Name,
-		}
-		resp, err := c.GetPools(context.Background(), &params)
-		if err != nil {
-			return l, err
-		}
-		defer resp.Body.Close()
-		data := make(map[string]pool.Status)
-		err = json.NewDecoder(resp.Body).Decode(&data)
-		if err != nil {
+	c, err := client.New(client.WithURL(t.Server))
+	if err != nil {
+		return nil, err
+	}
+	params := api.GetPoolsParams{}
+	if t.Name != "" {
+		params.Name = &t.Name
+	}
+	resp, err := c.GetPoolsWithResponse(context.Background(), &params)
+	if err != nil {
+		return l, err
+	}
+	switch resp.StatusCode() {
+	case 200:
+		if err := json.Unmarshal(resp.Body, &l); err != nil {
 			return l, errors.Wrapf(err, "unmarshal GET /pools")
 		}
-		for name, d := range data {
-			d.Name = name
-			l = append(l, d)
-		}
 		return l, nil
-	*/
-	return l, errors.Errorf("TODO")
+	case 401:
+		return l, errors.Errorf("%s", resp.JSON401)
+	case 403:
+		return l, errors.Errorf("%s", resp.JSON403)
+	case 500:
+		return l, errors.Errorf("%s", resp.JSON500)
+	default:
+		return l, errors.Errorf("Unexpected status code: %d", resp.StatusCode())
+	}
 }
