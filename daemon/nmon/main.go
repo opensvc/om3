@@ -163,7 +163,11 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
-		livePeers:   map[string]bool{localhost: true},
+		nodeStatus: node.Status{
+			Frozen: time.Now(), // ensure initial frozen
+		},
+		frozen:    true, // ensure initial frozen
+		livePeers: map[string]bool{localhost: true},
 
 		cacheNodesInfo: map[string]nodesinfo.NodeInfo{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
