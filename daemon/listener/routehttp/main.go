@@ -36,6 +36,8 @@ var (
 	// logRequestLevelPerPath defines logRequestMiddleWare log level per path.
 	// The default value is LevelInfo
 	logRequestLevelPerPath = map[string]zerolog.Level{
+		"/metrics": zerolog.DebugLevel,
+
 		"/relay/message": zerolog.DebugLevel,
 	}
 )
