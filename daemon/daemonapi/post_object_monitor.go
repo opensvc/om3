@@ -5,10 +5,12 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/httpmetric"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -20,13 +22,20 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 		update  instance.MonitorUpdate
 		p       path.T
 		err     error
+		statusC string
 	)
+	defer func() {
+		labels := prometheus.Labels{"code": statusC, "method": "POST", "path": r.URL.Path}
+		httpmetric.Counter.With(labels).Inc()
+	}()
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		statusC = "400"
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
+		statusC = "400"
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing path %s: %s", payload.Path, err)
 		return
 	}
@@ -50,5 +59,6 @@ func (a *DaemonApi) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(api.MonitorUpdateQueued{
 		OrchestrationId: update.CandidateOrchestrationId,
 	})
+	statusC = "200"
 	w.WriteHeader(http.StatusOK)
 }
