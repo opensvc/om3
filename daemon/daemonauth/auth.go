@@ -49,13 +49,23 @@ func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO verify for alternate method for /public
-			if strings.HasPrefix(r.URL.Path, "/public") {
-				extensions := NewGrants().Extensions()
-				extensions.Add("strategy", "public")
-				user := auth.NewUserInfo("nobody", "", nil, extensions)
-				r = auth.RequestWithUser(user, r)
-				next.ServeHTTP(w, r)
-				return
+			if r.Method == http.MethodGet {
+				if strings.HasPrefix(r.URL.Path, "/public") {
+					extensions := NewGrants().Extensions()
+					extensions.Add("strategy", "public")
+					user := auth.NewUserInfo("nobody", "", nil, extensions)
+					r = auth.RequestWithUser(user, r)
+					next.ServeHTTP(w, r)
+					return
+				} else if r.URL.Path == "/metrics" {
+					// TODO confirm no auth GET /metrics
+					extensions := NewGrants().Extensions()
+					extensions.Add("strategy", "metrics")
+					user := auth.NewUserInfo("nobody", "", nil, extensions)
+					r = auth.RequestWithUser(user, r)
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
 			_, user, err := strategies.AuthenticateRequest(r)
 			if err != nil {
