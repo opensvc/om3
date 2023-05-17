@@ -48,6 +48,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -181,6 +183,34 @@ var (
 	defaultDrainChanDuration = 10 * time.Millisecond
 
 	uint64Incr = uint64(1)
+
+	publicationTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_publication_total",
+			Help: "The total number of pubsub publications",
+		},
+		[]string{"kind"})
+
+	publicationPushedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_publication_pushed_total",
+			Help: "The total number of pubsub publications pushed",
+		},
+		[]string{"filterkey"})
+
+	subscriptionTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_subscription_total",
+			Help: "The total number of pubsub subscriptions",
+		},
+		[]string{"operation"})
+
+	subscriptionFilterTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_subscription_filter_total",
+			Help: "The total number of pubsub subscription filter operations",
+		},
+		[]string{"kind"})
 )
 
 // Key returns labelMap key as a string
@@ -334,6 +364,7 @@ func (b *Bus) onSubCmd(c cmdSub) {
 	b.subs[id] = sub
 	c.resp <- sub
 	b.log.Debug().Msgf("subscribe %s timeout %s queueSize %d", sub.name, c.timeout, c.queueSize)
+	subscriptionTotal.With(prometheus.Labels{"operation": "create"}).Inc()
 }
 
 func (b *Bus) onUnsubCmd(c cmdUnsub) {
@@ -351,6 +382,7 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 	case c.err <- nil:
 	}
 	b.log.Debug().Msgf("unsubscribe %s", sub.name)
+	subscriptionTotal.With(prometheus.Labels{"operation": "delete"}).Inc()
 }
 
 func (b *Bus) onPubCmd(c cmdPub) {
@@ -367,6 +399,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 				b.log.Debug().Msgf("route %s to %s", c, sub)
 				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
+				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
 				if queueLen > sub.queuedMax {
 					sub.queuedMax *= 2
 					go sub.bus.Pub(&SubscriptionQueueThreshold{Name: sub.name, Id: sub.id, Value: queueLen, Next: sub.queuedMax}, Label{"counter", ""})
@@ -380,6 +413,7 @@ func (b *Bus) onPubCmd(c cmdPub) {
 		}
 	}
 	c.resp <- true
+	publicationTotal.With(prometheus.Labels{"kind": c.dataType}).Inc()
 }
 
 func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
@@ -526,6 +560,7 @@ func (b *Bus) unsub(sub *Subscription) error {
 	case <-b.ctx.Done():
 		return b.ctx.Err()
 	}
+	defer subscriptionTotal.With(prometheus.Labels{"operation": "stop"}).Inc()
 	return <-errC
 }
 
@@ -722,6 +757,7 @@ func (sub *Subscription) AddFilter(v any, labels ...Label) {
 		return
 	}
 	<-respC
+	subscriptionFilterTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
 }
 
 func (sub *Subscription) Start() {
@@ -775,6 +811,7 @@ func (sub *Subscription) Start() {
 		}
 	}()
 	<-started
+	subscriptionTotal.With(prometheus.Labels{"operation": "start"}).Inc()
 }
 
 // Stop closes the subscription and deueues private and exposed subscription channels
