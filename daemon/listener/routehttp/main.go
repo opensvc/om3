@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
@@ -66,11 +67,12 @@ func New(ctx context.Context, enableUi bool) *T {
 	mux.Use(daemondataMiddleWare(ctx))
 	mux.Use(eventbusCmdCMiddleWare(ctx))
 	daemonapi.Register(mux, enableUi)
-	mux.Get("/objects_log", objecthandler.GetObjectsLog)
-	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
-	mux.Get("/node_log", daemonhandler.GetNodeLog)
-	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
 	mux.Mount("/debug", middleware.Profiler())
+	mux.Get("/metrics", promhttp.Handler().ServeHTTP)
+	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
+	mux.Get("/node_log", daemonhandler.GetNodeLog)
+	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
+	mux.Get("/objects_log", objecthandler.GetObjectsLog)
 
 	t.mux = mux
 	return t

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
@@ -12,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/httpmetric"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -22,23 +25,31 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 		err     error
 		p       path.T
 		payload api.PostInstanceStatus
+		statusC string
 	)
+	defer func() {
+		labels := prometheus.Labels{"code": statusC, "method": "POST", "path": r.URL.Path}
+		httpmetric.Counter.With(labels).Inc()
+	}()
 	log := getLogger(r, "PostInstanceStatus")
 	log.Debug().Msgf("starting")
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		log.Warn().Err(err).Msgf("decode body")
+		statusC = "400"
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
 		return
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
 		log.Warn().Err(err).Msgf("can't parse path: %s", payload.Path)
+		statusC = "400"
 		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Path, err)
 		return
 	}
 	instanceStatus, err := postInstanceStatusToInstanceStatus(payload)
 	if err != nil {
 		log.Warn().Err(err).Msgf("Error transtyping instance status: %#v", payload)
+		statusC = "400"
 		WriteProblemf(w, http.StatusBadRequest, "Error transtyping instance status", "%s", err)
 		return
 	}
@@ -48,6 +59,7 @@ func (a *DaemonApi) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
 		pubsub.Label{"path", payload.Path},
 		pubsub.Label{"node", localhost},
 	)
+	statusC = "200"
 	w.WriteHeader(http.StatusOK)
 }
 

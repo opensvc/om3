@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shaj13/libcache"
 	_ "github.com/shaj13/libcache/fifo"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/httpmetric"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/util/key"
@@ -49,13 +51,23 @@ func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO verify for alternate method for /public
-			if strings.HasPrefix(r.URL.Path, "/public") {
-				extensions := NewGrants().Extensions()
-				extensions.Add("strategy", "public")
-				user := auth.NewUserInfo("nobody", "", nil, extensions)
-				r = auth.RequestWithUser(user, r)
-				next.ServeHTTP(w, r)
-				return
+			if r.Method == http.MethodGet {
+				if strings.HasPrefix(r.URL.Path, "/public") {
+					extensions := NewGrants().Extensions()
+					extensions.Add("strategy", "public")
+					user := auth.NewUserInfo("nobody", "", nil, extensions)
+					r = auth.RequestWithUser(user, r)
+					next.ServeHTTP(w, r)
+					return
+				} else if r.URL.Path == "/metrics" {
+					// TODO confirm no auth GET /metrics
+					extensions := NewGrants().Extensions()
+					extensions.Add("strategy", "metrics")
+					user := auth.NewUserInfo("nobody", "", nil, extensions)
+					r = auth.RequestWithUser(user, r)
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
 			_, user, err := strategies.AuthenticateRequest(r)
 			if err != nil {
@@ -68,6 +80,8 @@ func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
 					Status: code,
 					Title:  http.StatusText(code),
 				})
+				label := prometheus.Labels{"code": "401", "method": r.Method, "path": r.URL.Path}
+				httpmetric.Counter.With(label).Inc()
 				return
 			}
 			log.Logger.Debug().Msgf("user %s authenticated", user.GetUserName())
