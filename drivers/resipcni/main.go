@@ -10,6 +10,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
@@ -46,6 +48,11 @@ type (
 		Code int    `json:"code"`
 		Msg  string `json:"msg"`
 	}
+)
+
+var (
+	ErrNoIPAddrAvail = errors.New("No ip address available")
+	ErrDupIPAlloc    = errors.New("Duplicate ip allocation")
 )
 
 func New() resource.Driver {
@@ -175,6 +182,63 @@ func (t T) delObjectNetNS() error {
 	}
 	_ = netns.DeleteNamed(t.objectNSPID())
 	return nil
+}
+
+func (t T) purgeCNIVarDir() error {
+	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/*.*.*.*", t.Network)
+	paths, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	for _, p := range paths {
+		if err := t.purgeCNIVarFile(p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t T) purgeCNIVarFile(p string) error {
+	buff, err := os.ReadFile(p)
+	if err != nil {
+		return err
+	}
+
+	line := strings.Fields(string(buff))[0]
+	_, err = strconv.Atoi(line)
+	if _, err := strconv.Atoi(line); err != nil {
+		runNetNSFile := fmt.Sprintf("/run/netns/%s", line)
+		if _, err := os.Stat(runNetNSFile); err == nil || !errors.Is(err, os.ErrNotExist) {
+			// the process is still alive, don't remove
+			return nil
+		}
+	} else {
+		pidFile := fmt.Sprintf("/proc/%s", line)
+		if _, err := os.Stat(pidFile); err == nil || !errors.Is(err, os.ErrNotExist) {
+			// the process is still alive, don't remove
+			return nil
+		}
+	}
+	if err = os.Remove(p); err == nil {
+		t.Log().Info().Msgf("removed %s: %s no longer exist", p, line)
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t T) purgeCNIVarFileWithIP(ip net.IP) error {
+	p := fmt.Sprintf("/var/lib/cni/networks/%s/%s", t.Network, ip)
+	err := os.Remove(p)
+	switch {
+	case err == nil:
+		t.Log().Info().Msgf("removed %s", p)
+		return nil
+	case errors.Is(err, os.ErrNotExist):
+		return nil
+	default:
+		return err
+	}
 }
 
 func (t *T) StatusInfo() map[string]interface{} {
@@ -364,6 +428,7 @@ func (t T) netConf() (types.NetConf, error) {
 }
 
 func (t T) stop() error {
+	ip, _, _ := t.ipNet()
 	netConf, err := t.netConf()
 	if err != nil {
 		return err
@@ -428,6 +493,9 @@ func (t T) stop() error {
 	if err != nil {
 		return err
 	}
+	if t.purgeCNIVarFileWithIP(ip); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -460,42 +528,64 @@ func (t T) start() error {
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
 
-	cmd := command.New(
-		command.WithName(bin),
-		command.WithEnv(env),
-		command.WithLogger(t.Log()),
-		command.WithBufferedStdout(),
-		command.WithBufferedStderr(),
-	)
-
 	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
 	stdinData, err := t.netConfBytes()
 	if err != nil {
 		return err
 	}
-	cmd.Cmd().Stdin = bytes.NewReader(stdinData)
-	t.Log().Info().
-		Stringer("cmd", cmd.Cmd()).
-		Str("input", string(stdinData)).
-		Strs("env", env).
-		Msg("run")
-	err = cmd.Run()
-	if outB := cmd.Stdout(); len(outB) > 0 {
-		var resp response
-		if err := json.Unmarshal(outB, &resp); err == nil && resp.Code != 0 {
-			msg := fmt.Sprintf("cni error code %d: %s", resp.Code, resp.Msg)
-			t.Log().Error().Msg(msg)
-			return errors.New(msg)
-		} else {
+	run := func() error {
+		var outB, errB []byte
+		cmd := command.New(
+			command.WithName(bin),
+			command.WithEnv(env),
+			command.WithLogger(t.Log()),
+			command.WithBufferedStdout(),
+			command.WithBufferedStderr(),
+		)
+		t.Log().Info().
+			Stringer("cmd", cmd.Cmd()).
+			Str("input", string(stdinData)).
+			Strs("env", env).
+			Msg("run")
+
+		cmd.Cmd().Stdin = bytes.NewReader(stdinData)
+		err := cmd.Run()
+		outB = cmd.Stdout()
+		errB = cmd.Stderr()
+
+		if len(outB) > 0 {
 			t.Log().Info().Msg(string(outB))
 		}
-	}
-	if errB := cmd.Stderr(); len(errB) > 0 {
-		t.Log().Info().Msg(string(errB))
-	}
-	if err != nil {
-		return err
-	}
-	return nil
+		if len(errB) > 0 {
+			t.Log().Info().Msg(string(errB))
+		}
 
+		var resp response
+		if err := json.Unmarshal(outB, &resp); err != nil {
+			return err
+		}
+		if resp.Code == 0 {
+			return nil
+		}
+		if strings.Contains(resp.Msg, "no IP addresses available") {
+			return ErrNoIPAddrAvail
+		}
+		if strings.Contains(resp.Msg, "duplicate allocation") {
+			return ErrDupIPAlloc
+		}
+		return errors.Wrapf(err, "cni error code %d: %s", resp.Code, resp.Msg)
+	}
+
+	err = run()
+	switch {
+	case err == nil:
+	case errors.Is(err, ErrNoIPAddrAvail), errors.Is(err, ErrDupIPAlloc):
+		t.Log().Info().Err(err).Msg("clean allocations and retry")
+		t.purgeCNIVarDir()
+		t.stop() // clean run leftovers (container veth name provided (eth12) already exists)
+		err = run()
+	default:
+		t.Log().Error().Msgf("%s", err)
+	}
+	return err
 }
