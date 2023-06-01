@@ -1247,6 +1247,17 @@ func newCmdNodeUnset() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeVersion() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "display agent version",
+		Run: func(cmd *cobra.Command, args []string) {
+			commands.CmdNodeVersion()
+		},
+	}
+	return cmd
+}
+
 func newCmdNodeValidate() *cobra.Command {
 	var options commands.CmdNodeValidateConfig
 	cmd := &cobra.Command{
@@ -1294,7 +1305,7 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 func newCmdObjectBoot(kind string) *cobra.Command {
 	var options commands.CmdObjectBoot
 	cmd := &cobra.Command{
-		Use:   "boot",
+		Use: "boot",
 		Short: "Clean up actions executed before the daemon starts." +
 			" For example scsi reservation release and vg tags removal." +
 			" Never execute this action manually.",
