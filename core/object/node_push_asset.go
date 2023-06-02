@@ -3,12 +3,12 @@ package object
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-	"github.com/opensvc/om3/core/version"
 	"github.com/opensvc/om3/util/asset"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/version"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -51,7 +51,7 @@ func (t Node) assetValueFromProbe(kw string, title string, probe prober, dflt in
 func (t Node) assetAgentVersion() (data asset.Value) {
 	data.Title = "agent version"
 	data.Source = asset.SrcProbe
-	data.Value = version.Version
+	data.Value = version.Version()
 	return
 }
 
