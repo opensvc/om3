@@ -43,6 +43,7 @@ func (t *dns) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 
 func (t *dns) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	t.cluster = c.Value
+	_ = t.sockChown()
 }
 
 func (t *dns) pubDeleted(record Record, p path.T, node string) {

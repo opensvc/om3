@@ -431,6 +431,18 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Section: "listener",
+		Option:  "dns_sock_uid",
+		Default: "953",
+		Text:    keywords.NewText(fs, "text/kw/node/listener.dns_sock_uid"),
+	},
+	{
+		Section: "listener",
+		Option:  "dns_sock_gid",
+		Default: "953",
+		Text:    keywords.NewText(fs, "text/kw/node/listener.dns_sock_gid"),
+	},
+	{
+		Section: "listener",
 		Option:  "tls_addr",
 		Default: "",
 		Example: "1.2.3.4",

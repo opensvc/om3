@@ -26,6 +26,8 @@ type (
 		TLSAddr         string `json:"tls_addr"`
 		TLSPort         int    `json:"tls_port"`
 		OpenIdWellKnown string `json:"openid_well_known"`
+		DNSSockGID      string `json:"dns_sock_gid"`
+		DNSSockUID      string `json:"dns_sock_uid"`
 	}
 )
 

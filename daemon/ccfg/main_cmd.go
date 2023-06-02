@@ -65,6 +65,8 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 		keyListenerTLSAddr         = key.New("listener", "tls_addr")
 		keyListenerTLSPort         = key.New("listener", "tls_port")
 		keyListenerOpenIdWellKnown = key.New("listener", "openid_well_known")
+		keyListenerDNSSockUID      = key.New("listener", "dns_sock_uid")
+		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
 	)
 
 	cfg := cluster.Config{}
@@ -82,6 +84,8 @@ func (o *ccfg) getClusterConfig() cluster.Config {
 	cfg.Listener.TLSAddr = o.clusterConfig.GetString(keyListenerTLSAddr)
 	cfg.Listener.TLSPort = o.clusterConfig.GetInt(keyListenerTLSPort)
 	cfg.Listener.OpenIdWellKnown = o.clusterConfig.GetString(keyListenerOpenIdWellKnown)
+	cfg.Listener.DNSSockGID = o.clusterConfig.GetString(keyListenerDNSSockGID)
+	cfg.Listener.DNSSockUID = o.clusterConfig.GetString(keyListenerDNSSockUID)
 
 	var change bool
 

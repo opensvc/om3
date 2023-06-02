@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/user"
+	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/core/rawconfig"
@@ -74,6 +77,66 @@ func (t *dns) getRecords(recordType, recordName string) Zone {
 	return <-c.resp
 }
 
+func (t *dns) sockGID() (int, error) {
+	s := t.cluster.Listener.DNSSockGID
+	if s == "" {
+		return -1, nil
+	}
+	if i, err := strconv.Atoi(s); err == nil {
+		return i, nil
+	} else if grp, err := user.LookupGroupId(s); err != nil {
+		return -1, err
+	} else if grp == nil {
+		return -1, nil
+	} else {
+		i, _ := strconv.Atoi(grp.Gid)
+		return i, nil
+	}
+}
+
+func (t *dns) sockUID() (int, error) {
+	s := t.cluster.Listener.DNSSockUID
+	if s == "" {
+		return -1, nil
+	}
+	if i, err := strconv.Atoi(s); err == nil {
+		return i, nil
+	} else if usr, err := user.LookupId(s); err != nil {
+		return -1, err
+	} else if usr == nil {
+		return -1, nil
+	} else {
+		i, _ := strconv.Atoi(usr.Uid)
+		return i, nil
+	}
+}
+
+func (t *dns) sockChown() error {
+	var uid, gid int
+	sockPath := rawconfig.DNSUDSFile()
+	if info, err := os.Stat(sockPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	} else if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		uid = int(stat.Uid)
+		gid = int(stat.Gid)
+	}
+	if sockUID, err := t.sockUID(); err != nil {
+		return err
+	} else if sockGID, err := t.sockGID(); err != nil {
+		return err
+	} else if (sockUID == uid) && (sockGID == gid) {
+		// no change
+		return nil
+	} else if err := os.Chown(sockPath, sockUID, sockGID); err != nil {
+		return err
+	} else {
+		t.log.Info().Msgf("chown %d:%d %s", sockUID, sockGID, sockPath)
+		return nil
+	}
+}
+
 func (t *dns) startUDSListener() error {
 	sockDir := rawconfig.DNSUDSDir()
 	sockPath := rawconfig.DNSUDSFile()
@@ -86,6 +149,10 @@ func (t *dns) startUDSListener() error {
 
 	l, err := net.Listen("unix", sockPath)
 	if err != nil {
+		return err
+	}
+
+	if err := t.sockChown(); err != nil {
 		return err
 	}
 
