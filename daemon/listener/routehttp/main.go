@@ -49,7 +49,7 @@ func New(ctx context.Context, enableUi bool) *T {
 	api.RegisterHandlers(e, &daemonapi.DaemonApi{
 		Daemon:     daemonctx.Daemon(ctx),
 		Daemondata: daemondata.FromContext(ctx),
-		PubSub:     pubsub.BusFromContext(ctx),
+		EventBus:   pubsub.BusFromContext(ctx),
 	})
 	g := e.Group("/public/ui")
 	if enableUi {

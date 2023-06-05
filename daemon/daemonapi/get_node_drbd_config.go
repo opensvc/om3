@@ -1,23 +1,22 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 )
 
-func (a *DaemonApi) GetNodeDRBDConfig(w http.ResponseWriter, r *http.Request, params api.GetNodeDRBDConfigParams) {
-	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDRBDConfig")
+func (a *DaemonApi) GetNodeDRBDConfig(ctx echo.Context, params api.GetNodeDRBDConfigParams) error {
+	log := LogHandler(ctx, "GetNodeDRBDConfig")
 	log.Debug().Msg("starting")
 
 	if params.Name == "" {
 		log.Warn().Msgf("invalid file name: %s", params.Name)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid file name: %s", params.Name)
 	}
 
 	filename := fmt.Sprintf("/etc/drbd.d/%s.res", params.Name)
@@ -25,17 +24,10 @@ func (a *DaemonApi) GetNodeDRBDConfig(w http.ResponseWriter, r *http.Request, pa
 
 	if data, err := os.ReadFile(filename); err != nil {
 		log.Info().Err(err).Msgf("Readfile %s (may be deleted)", filename)
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Readfile %s (may be deleted)", filename)
 	} else {
 		resp.Data = data
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Error().Err(err).Msg("json encode")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, resp)
 }

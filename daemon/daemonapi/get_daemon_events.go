@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
-	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/pubsub"
@@ -29,16 +29,16 @@ type (
 
 // GetDaemonEvents feeds publications in rss format.
 // TODO: Honor subscribers params.
-func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, params api.GetDaemonEventsParams) {
+func (a *DaemonApi) GetDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
 	var (
 		handlerName = "GetDaemonEvents"
 		limit       uint64
 		eventCount  uint64
 
-		ctx    context.Context = r.Context()
+		evCtx  = ctx.Request().Context()
 		cancel context.CancelFunc
 	)
-	log := getLogger(r, handlerName)
+	log := LogHandler(ctx, handlerName)
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
 
@@ -48,42 +48,41 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Info().Err(err).Msgf("Invalid parameter: field 'duration' with value '%s' validation error", *params.Duration)
-			WriteProblemf(w, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
-			return
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 		} else if timeout := *v.(*time.Duration); timeout > 0 {
-			ctx, cancel = context.WithTimeout(ctx, timeout)
+			evCtx, cancel = context.WithTimeout(evCtx, timeout)
 			defer cancel()
 		}
 	}
 
-	grants := daemonauth.UserGrants(r)
+	user := User(ctx)
+	grants := Grants(user)
 	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleJoin) {
 		log.Info().Msg("not allowed, need at least 'root' or 'join' grant")
-		w.WriteHeader(http.StatusForbidden)
-		return
+		return ctx.NoContent(http.StatusForbidden)
 	}
 
 	filters, err := parseFilters(params)
 	if err != nil {
 		log.Info().Err(err).Msgf("Invalid parameter: field 'filter' with value '%s' validation error", *params.Filter)
-		WriteProblemf(w, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
 
+	r := ctx.Request()
+	w := ctx.Response()
 	if r.Header.Get("accept") == "text/event-stream" {
 		setStreamHeaders(w)
 	}
 
-	name := fmt.Sprintf("lsnr-handler-event %s from %s %s", handlerName, r.RemoteAddr, daemonctx.Uuid(r.Context()))
+	name := fmt.Sprintf("lsnr-handler-event %s from %s %s", handlerName, ctx.Request().RemoteAddr, ctx.Get("uuid"))
 	if params.Filter != nil && len(*params.Filter) > 0 {
 		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
 
-	bus := pubsub.BusFromContext(r.Context())
-	AnnounceSub(bus, name)
-	defer AnnounceUnSub(bus, name)
+	AnnounceSub(a.EventBus, name)
+	defer AnnounceUnSub(a.EventBus, name)
 
-	sub := bus.Sub(name, pubsub.Timeout(time.Second))
+	sub := a.EventBus.Sub(name, pubsub.Timeout(time.Second))
 
 	for _, filter := range filters {
 		if filter.Kind == nil {
@@ -102,26 +101,24 @@ func (a *DaemonApi) GetDaemonEvents(w http.ResponseWriter, r *http.Request, para
 
 	w.WriteHeader(http.StatusOK)
 
-	if f, ok := w.(http.Flusher); ok {
-		// don't wait first event to flush response
-		f.Flush()
-	}
-	eventC := event.ChanFromAny(ctx, sub.C)
+	// don't wait first event to flush response
+	w.Flush()
+
+	eventC := event.ChanFromAny(evCtx, sub.C)
 	sseWriter := sseevent.NewWriter(w)
 	for ev := range eventC {
 		log.Debug().Msgf("write event %s", ev.Kind)
 		if _, err := sseWriter.Write(ev); err != nil {
 			log.Debug().Err(err).Msgf("write event %s", ev.Kind)
-			return
+			break
 		}
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
+		w.Flush()
 		eventCount++
 		if limit > 0 && eventCount >= limit {
-			return
+			break
 		}
 	}
+	return nil
 }
 
 // parseFilters return filters from b.Filter

@@ -3,25 +3,23 @@ package daemonapi
 import (
 	"net/http"
 
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostNodeMonitor(ctx echo.Context) error {
 	var (
 		payload      api.PostNodeMonitor
 		validRequest bool
 		update       node.MonitorUpdate
 	)
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		WriteProblem(w, http.StatusBadRequest, "Invalid Body", err.Error())
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", err.Error())
 	}
 	if payload.LocalExpect != nil {
 		validRequest = true
@@ -40,14 +38,10 @@ func (a *DaemonApi) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	update.CandidateOrchestrationId = uuid.New()
 	if !validRequest {
-		WriteProblem(w, http.StatusBadRequest, "Invalid Body", "Need at least 'state', 'local_expect' or 'global_expect'")
-		return
+		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", "Need at least 'state', 'local_expect' or 'global_expect'")
 	}
-	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: update}, labelApi)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(api.MonitorUpdateQueued{
+	a.EventBus.Pub(&msgbus.SetNodeMonitor{Node: hostname.Hostname(), Value: update}, labelApi)
+	return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
 		OrchestrationId: update.CandidateOrchestrationId,
 	})
-	w.WriteHeader(http.StatusOK)
 }

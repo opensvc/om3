@@ -1,17 +1,17 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 )
 
-func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, params api.GetObjectSelectorParams) {
-	log := daemonlogctx.Logger(r.Context()).With().Str("func", "GetObjectSelector").Logger()
+func (a *DaemonApi) GetObjectSelector(ctx echo.Context, params api.GetObjectSelectorParams) error {
+	log := LogHandler(ctx, "GetObjectSelector")
 	log.Debug().Msg("starting")
 	paths := object.StatusData.GetPaths()
 	selection := objectselector.NewSelection(
@@ -21,18 +21,12 @@ func (a *DaemonApi) GetObjectSelector(w http.ResponseWriter, r *http.Request, pa
 	)
 	matchedPaths, err := selection.Expand()
 	if err != nil {
-		log.Error().Err(err).Msg("expand selection")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		log.Error().Err(err).Msgf("expand selection from param selector %s", params.Selector)
+		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	result := api.ObjectSelection{}
 	for _, v := range matchedPaths {
 		result = append(result, v.String())
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	return ctx.JSON(http.StatusOK, result)
 }

@@ -7,11 +7,16 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemondata"
+	"github.com/opensvc/om3/daemon/subdaemon"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 type DaemonApi struct {
+	Daemon     subdaemon.RootManager
+	Daemondata *daemondata.T
+	EventBus   *pubsub.Bus
 }
 
 var (

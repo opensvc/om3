@@ -1,14 +1,14 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 	"github.com/opensvc/om3/util/drbd"
 )
 
@@ -72,8 +72,8 @@ func init() {
 	pendingDRBDAllocations = newpendingDRBDAllocationsMap()
 }
 
-func (a *DaemonApi) GetNodeDRBDAllocation(w http.ResponseWriter, r *http.Request) {
-	_, log := handlerhelper.GetWriteAndLog(w, r, "nodehandler.GetNodeDRBDAllocate")
+func (a *DaemonApi) GetNodeDRBDAllocation(ctx echo.Context) error {
+	log := LogHandler(ctx, "GetNodeDRBDAllocation")
 	log.Debug().Msg("starting")
 
 	pendingDRBDAllocations.Lock()
@@ -87,33 +87,27 @@ func (a *DaemonApi) GetNodeDRBDAllocation(w http.ResponseWriter, r *http.Request
 
 	digest, err := drbd.GetDigest()
 	if err != nil {
-		log.Error().Err(err).Msgf("get drbd dump digest")
-		w.WriteHeader(http.StatusNotFound)
-		return
+		detail := "get drbd dump digest"
+		log.Error().Err(err).Msgf(detail)
+		return JSONProblemf(ctx, http.StatusNotFound, "Get Node DRBD allocation", detail)
 	}
 
 	if minor, err := digest.FreeMinor(pendingDRBDAllocations.minors()); err != nil {
-		log.Error().Err(err).Msgf("get free minor from drbd dump digest")
-		w.WriteHeader(http.StatusNotFound)
-		return
+		detail := "get free minor from drbd dump digest"
+		log.Error().Err(err).Msgf(detail)
+		return JSONProblemf(ctx, http.StatusNotFound, "Get Node DRBD allocation", detail)
 	} else {
 		resp.Minor = minor
 	}
 
 	if port, err := digest.FreePort(pendingDRBDAllocations.ports()); err != nil {
-		log.Error().Err(err).Msgf("get free port from drbd dump digest")
-		w.WriteHeader(http.StatusNotFound)
-		return
+		detail := "get free port from drbd dump digest"
+		log.Error().Err(err).Msgf(detail)
+		return JSONProblemf(ctx, http.StatusNotFound, "Get Node DRBD allocation", detail)
 	} else {
 		resp.Port = port
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Error().Err(err).Msg("marshal drbd allocation")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	pendingDRBDAllocations.add(resp)
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, resp)
 }

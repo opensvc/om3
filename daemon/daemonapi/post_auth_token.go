@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/labstack/echo/v4"
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/api"
@@ -18,7 +18,7 @@ import (
 //
 // When role parameter exists a new user is created with grants from role and
 // extra claims may be added to token
-func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params api.PostAuthTokenParams) {
+func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams) error {
 	var (
 		// duration define the default token duration
 		duration = time.Minute * 10
@@ -28,12 +28,11 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 
 		xClaims = make(daemonauth.Claims)
 	)
-	log := getLogger(r, "PostAuthToken")
+	log := LogHandler(c, "PostAuthToken")
 	if params.Duration != nil {
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Info().Err(err).Msgf("invalid duration: %s", *params.Duration)
-			WriteProblemf(w, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
-			return
+			return JSONProblemf(c, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
 		} else {
 			duration = *v.(*time.Duration)
 			if duration > durationMax {
@@ -41,21 +40,19 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 			}
 		}
 	}
-	user := auth.User(r)
+	user := c.Get("user").(auth.Info)
 	// TODO verify if user is allowed to create token => 403 Forbidden
 	if params.Role != nil {
-		grants := daemonauth.UserGrants(r)
+		grants := Grants(user)
 		if !grants.HasRoot() {
 			log.Info().Msg("not allowed, need grant root")
-			w.WriteHeader(http.StatusForbidden)
-			return
+			return c.NoContent(http.StatusForbidden)
 		}
 		var err error
 		user, xClaims, err = userXClaims(params, user)
 		if err != nil {
 			log.Error().Err(err).Msg("userXClaims")
-			WriteProblemf(w, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", user.GetUserName())
-			return
+			return JSONProblemf(c, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", user.GetUserName())
 		}
 	}
 
@@ -64,24 +61,16 @@ func (a *DaemonApi) PostAuthToken(w http.ResponseWriter, r *http.Request, params
 		switch err {
 		case daemonauth.NotImplementedError:
 			log.Warn().Err(err).Msg("")
-			WriteProblem(w, http.StatusNotImplemented, err.Error(), "")
+			return JSONProblemf(c, http.StatusNotImplemented, err.Error(), "")
 		default:
 			log.Error().Err(err).Msg("can't create token")
-			WriteProblemf(w, http.StatusInternalServerError, "Unexpected error", "%s", err)
+			return JSONProblemf(c, http.StatusInternalServerError, "Unexpected error", "%s", err)
 		}
-		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(api.AuthToken{
+	return c.JSON(http.StatusOK, api.AuthToken{
 		Token:         tk,
 		TokenExpireAt: expireAt,
 	})
-	if err != nil {
-		log.Error().Err(err).Msg("json encode")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
 }
 
 // userXClaims returns new user and Claims from p and current user

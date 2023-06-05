@@ -3,18 +3,18 @@ package daemonapi
 import (
 	"net/http"
 
-	"github.com/goccy/go-json"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
+
+	"github.com/opensvc/om3/daemon/api"
 )
 
-func (a *DaemonApi) PostDaemonLogsControl(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostDaemonLogsControl(ctx echo.Context) error {
 	var (
 		payload api.PostDaemonLogsControl
 	)
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "error: %s", err)
 	}
 	var level string
 	if payload.Level != "none" {
@@ -22,9 +22,8 @@ func (a *DaemonApi) PostDaemonLogsControl(w http.ResponseWriter, r *http.Request
 	}
 	newLevel, err := zerolog.ParseLevel(string(level))
 	if err != nil {
-		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing 'level': %s", err)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing 'level': %s", err)
 	}
 	zerolog.SetGlobalLevel(newLevel)
-	WriteProblemf(w, http.StatusOK, "New log level", "%s", payload.Level)
+	return JSONProblemf(ctx, http.StatusOK, "New log level", "%s", payload.Level)
 }
