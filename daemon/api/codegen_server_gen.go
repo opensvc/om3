@@ -6,7 +6,6 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -16,1263 +15,824 @@ import (
 
 	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/go-chi/chi/v5"
+	"github.com/labstack/echo/v4"
 )
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
 	// (POST /auth/token)
-	PostAuthToken(w http.ResponseWriter, r *http.Request, params PostAuthTokenParams)
+	PostAuthToken(ctx echo.Context, params PostAuthTokenParams) error
 
 	// (GET /daemon/dns/dump)
-	GetDaemonDNSDump(w http.ResponseWriter, r *http.Request)
+	GetDaemonDNSDump(ctx echo.Context) error
 
 	// (GET /daemon/events)
-	GetDaemonEvents(w http.ResponseWriter, r *http.Request, params GetDaemonEventsParams)
+	GetDaemonEvents(ctx echo.Context, params GetDaemonEventsParams) error
 
 	// (POST /daemon/join)
-	PostDaemonJoin(w http.ResponseWriter, r *http.Request, params PostDaemonJoinParams)
+	PostDaemonJoin(ctx echo.Context, params PostDaemonJoinParams) error
 
 	// (POST /daemon/leave)
-	PostDaemonLeave(w http.ResponseWriter, r *http.Request, params PostDaemonLeaveParams)
+	PostDaemonLeave(ctx echo.Context, params PostDaemonLeaveParams) error
 
 	// (POST /daemon/logs/control)
-	PostDaemonLogsControl(w http.ResponseWriter, r *http.Request)
+	PostDaemonLogsControl(ctx echo.Context) error
 
 	// (GET /daemon/running)
-	GetDaemonRunning(w http.ResponseWriter, r *http.Request)
+	GetDaemonRunning(ctx echo.Context) error
 
 	// (GET /daemon/status)
-	GetDaemonStatus(w http.ResponseWriter, r *http.Request, params GetDaemonStatusParams)
+	GetDaemonStatus(ctx echo.Context, params GetDaemonStatusParams) error
 
 	// (POST /daemon/stop)
-	PostDaemonStop(w http.ResponseWriter, r *http.Request)
+	PostDaemonStop(ctx echo.Context) error
 
 	// (POST /daemon/sub/action)
-	PostDaemonSubAction(w http.ResponseWriter, r *http.Request)
+	PostDaemonSubAction(ctx echo.Context) error
 
 	// (POST /instance/status)
-	PostInstanceStatus(w http.ResponseWriter, r *http.Request)
+	PostInstanceStatus(ctx echo.Context) error
 
 	// (GET /networks)
-	GetNetworks(w http.ResponseWriter, r *http.Request, params GetNetworksParams)
+	GetNetworks(ctx echo.Context, params GetNetworksParams) error
 
 	// (POST /node/clear)
-	PostNodeClear(w http.ResponseWriter, r *http.Request)
+	PostNodeClear(ctx echo.Context) error
 
 	// (GET /node/drbd/allocation)
-	GetNodeDRBDAllocation(w http.ResponseWriter, r *http.Request)
+	GetNodeDRBDAllocation(ctx echo.Context) error
 
 	// (GET /node/drbd/config)
-	GetNodeDRBDConfig(w http.ResponseWriter, r *http.Request, params GetNodeDRBDConfigParams)
+	GetNodeDRBDConfig(ctx echo.Context, params GetNodeDRBDConfigParams) error
 
 	// (POST /node/drbd/config)
-	PostNodeDRBDConfig(w http.ResponseWriter, r *http.Request, params PostNodeDRBDConfigParams)
+	PostNodeDRBDConfig(ctx echo.Context, params PostNodeDRBDConfigParams) error
 
 	// (POST /node/monitor)
-	PostNodeMonitor(w http.ResponseWriter, r *http.Request)
+	PostNodeMonitor(ctx echo.Context) error
 
 	// (GET /nodes/info)
-	GetNodesInfo(w http.ResponseWriter, r *http.Request)
+	GetNodesInfo(ctx echo.Context) error
 
 	// (POST /object/abort)
-	PostObjectAbort(w http.ResponseWriter, r *http.Request)
+	PostObjectAbort(ctx echo.Context) error
 
 	// (POST /object/clear)
-	PostObjectClear(w http.ResponseWriter, r *http.Request)
+	PostObjectClear(ctx echo.Context) error
 
 	// (GET /object/config)
-	GetObjectConfig(w http.ResponseWriter, r *http.Request, params GetObjectConfigParams)
+	GetObjectConfig(ctx echo.Context, params GetObjectConfigParams) error
 
 	// (GET /object/file)
-	GetObjectFile(w http.ResponseWriter, r *http.Request, params GetObjectFileParams)
+	GetObjectFile(ctx echo.Context, params GetObjectFileParams) error
 
 	// (POST /object/monitor)
-	PostObjectMonitor(w http.ResponseWriter, r *http.Request)
+	PostObjectMonitor(ctx echo.Context) error
 
 	// (POST /object/progress)
-	PostObjectProgress(w http.ResponseWriter, r *http.Request)
+	PostObjectProgress(ctx echo.Context) error
 
 	// (GET /object/selector)
-	GetObjectSelector(w http.ResponseWriter, r *http.Request, params GetObjectSelectorParams)
+	GetObjectSelector(ctx echo.Context, params GetObjectSelectorParams) error
 
 	// (POST /object/switchTo)
-	PostObjectSwitchTo(w http.ResponseWriter, r *http.Request)
+	PostObjectSwitchTo(ctx echo.Context) error
 
 	// (GET /pools)
-	GetPools(w http.ResponseWriter, r *http.Request, params GetPoolsParams)
+	GetPools(ctx echo.Context, params GetPoolsParams) error
 
 	// (GET /public/openapi)
-	GetSwagger(w http.ResponseWriter, r *http.Request)
+	GetSwagger(ctx echo.Context) error
 
 	// (GET /relay/message)
-	GetRelayMessage(w http.ResponseWriter, r *http.Request, params GetRelayMessageParams)
+	GetRelayMessage(ctx echo.Context, params GetRelayMessageParams) error
 
 	// (POST /relay/message)
-	PostRelayMessage(w http.ResponseWriter, r *http.Request)
+	PostRelayMessage(ctx echo.Context) error
 }
 
-// ServerInterfaceWrapper converts contexts to parameters.
+// ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
-	Handler            ServerInterface
-	HandlerMiddlewares []MiddlewareFunc
-	ErrorHandlerFunc   func(w http.ResponseWriter, r *http.Request, err error)
+	Handler ServerInterface
 }
 
-type MiddlewareFunc func(http.Handler) http.Handler
-
-// PostAuthToken operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthToken(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostAuthToken converts echo context to params.
+func (w *ServerInterfaceWrapper) PostAuthToken(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostAuthTokenParams
-
 	// ------------- Optional query parameter "role" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "role", r.URL.Query(), &params.Role)
+	err = runtime.BindQueryParameter("form", true, false, "role", ctx.QueryParams(), &params.Role)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter role: %s", err))
 	}
 
 	// ------------- Optional query parameter "duration" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	err = runtime.BindQueryParameter("form", true, false, "duration", ctx.QueryParams(), &params.Duration)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter duration: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthToken(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostAuthToken(ctx, params)
+	return err
 }
 
-// GetDaemonDNSDump operation middleware
-func (siw *ServerInterfaceWrapper) GetDaemonDNSDump(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDaemonDNSDump(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetDaemonEvents operation middleware
-func (siw *ServerInterfaceWrapper) GetDaemonEvents(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// GetDaemonDNSDump converts echo context to params.
+func (w *ServerInterfaceWrapper) GetDaemonDNSDump(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetDaemonDNSDump(ctx)
+	return err
+}
+
+// GetDaemonEvents converts echo context to params.
+func (w *ServerInterfaceWrapper) GetDaemonEvents(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetDaemonEventsParams
-
 	// ------------- Optional query parameter "duration" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "duration", r.URL.Query(), &params.Duration)
+	err = runtime.BindQueryParameter("form", true, false, "duration", ctx.QueryParams(), &params.Duration)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "duration", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter duration: %s", err))
 	}
 
 	// ------------- Optional query parameter "limit" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
 	}
 
 	// ------------- Optional query parameter "filter" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "filter", r.URL.Query(), &params.Filter)
+	err = runtime.BindQueryParameter("form", true, false, "filter", ctx.QueryParams(), &params.Filter)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter filter: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDaemonEvents(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetDaemonEvents(ctx, params)
+	return err
 }
 
-// PostDaemonJoin operation middleware
-func (siw *ServerInterfaceWrapper) PostDaemonJoin(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostDaemonJoin converts echo context to params.
+func (w *ServerInterfaceWrapper) PostDaemonJoin(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostDaemonJoinParams
-
 	// ------------- Required query parameter "node" -------------
 
-	if paramValue := r.URL.Query().Get("node"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "node"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "node", r.URL.Query(), &params.Node)
+	err = runtime.BindQueryParameter("form", true, true, "node", ctx.QueryParams(), &params.Node)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter node: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDaemonJoin(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostDaemonJoin(ctx, params)
+	return err
 }
 
-// PostDaemonLeave operation middleware
-func (siw *ServerInterfaceWrapper) PostDaemonLeave(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostDaemonLeave converts echo context to params.
+func (w *ServerInterfaceWrapper) PostDaemonLeave(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostDaemonLeaveParams
-
 	// ------------- Required query parameter "node" -------------
 
-	if paramValue := r.URL.Query().Get("node"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "node"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "node", r.URL.Query(), &params.Node)
+	err = runtime.BindQueryParameter("form", true, true, "node", ctx.QueryParams(), &params.Node)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter node: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDaemonLeave(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostDaemonLeave(ctx, params)
+	return err
 }
 
-// PostDaemonLogsControl operation middleware
-func (siw *ServerInterfaceWrapper) PostDaemonLogsControl(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDaemonLogsControl(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetDaemonRunning operation middleware
-func (siw *ServerInterfaceWrapper) GetDaemonRunning(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDaemonRunning(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetDaemonStatus operation middleware
-func (siw *ServerInterfaceWrapper) GetDaemonStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostDaemonLogsControl converts echo context to params.
+func (w *ServerInterfaceWrapper) PostDaemonLogsControl(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostDaemonLogsControl(ctx)
+	return err
+}
+
+// GetDaemonRunning converts echo context to params.
+func (w *ServerInterfaceWrapper) GetDaemonRunning(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetDaemonRunning(ctx)
+	return err
+}
+
+// GetDaemonStatus converts echo context to params.
+func (w *ServerInterfaceWrapper) GetDaemonStatus(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetDaemonStatusParams
-
 	// ------------- Optional query parameter "namespace" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "namespace", r.URL.Query(), &params.Namespace)
+	err = runtime.BindQueryParameter("form", true, false, "namespace", ctx.QueryParams(), &params.Namespace)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "namespace", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
 	}
 
 	// ------------- Optional query parameter "relatives" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "relatives", r.URL.Query(), &params.Relatives)
+	err = runtime.BindQueryParameter("form", true, false, "relatives", ctx.QueryParams(), &params.Relatives)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relatives", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter relatives: %s", err))
 	}
 
 	// ------------- Optional query parameter "selector" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "selector", r.URL.Query(), &params.Selector)
+	err = runtime.BindQueryParameter("form", true, false, "selector", ctx.QueryParams(), &params.Selector)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "selector", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter selector: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDaemonStatus(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetDaemonStatus(ctx, params)
+	return err
 }
 
-// PostDaemonStop operation middleware
-func (siw *ServerInterfaceWrapper) PostDaemonStop(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDaemonStop(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// PostDaemonSubAction operation middleware
-func (siw *ServerInterfaceWrapper) PostDaemonSubAction(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDaemonSubAction(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// PostInstanceStatus operation middleware
-func (siw *ServerInterfaceWrapper) PostInstanceStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostInstanceStatus(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetNetworks operation middleware
-func (siw *ServerInterfaceWrapper) GetNetworks(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostDaemonStop converts echo context to params.
+func (w *ServerInterfaceWrapper) PostDaemonStop(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostDaemonStop(ctx)
+	return err
+}
+
+// PostDaemonSubAction converts echo context to params.
+func (w *ServerInterfaceWrapper) PostDaemonSubAction(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostDaemonSubAction(ctx)
+	return err
+}
+
+// PostInstanceStatus converts echo context to params.
+func (w *ServerInterfaceWrapper) PostInstanceStatus(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostInstanceStatus(ctx)
+	return err
+}
+
+// GetNetworks converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNetworks(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetNetworksParams
-
 	// ------------- Optional query parameter "name" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "name", r.URL.Query(), &params.Name)
+	err = runtime.BindQueryParameter("form", true, false, "name", ctx.QueryParams(), &params.Name)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetNetworks(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetNetworks(ctx, params)
+	return err
 }
 
-// PostNodeClear operation middleware
-func (siw *ServerInterfaceWrapper) PostNodeClear(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostNodeClear(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetNodeDRBDAllocation operation middleware
-func (siw *ServerInterfaceWrapper) GetNodeDRBDAllocation(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetNodeDRBDAllocation(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetNodeDRBDConfig operation middleware
-func (siw *ServerInterfaceWrapper) GetNodeDRBDConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostNodeClear converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodeClear(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostNodeClear(ctx)
+	return err
+}
+
+// GetNodeDRBDAllocation converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNodeDRBDAllocation(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetNodeDRBDAllocation(ctx)
+	return err
+}
+
+// GetNodeDRBDConfig converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNodeDRBDConfig(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetNodeDRBDConfigParams
-
 	// ------------- Required query parameter "name" -------------
 
-	if paramValue := r.URL.Query().Get("name"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "name"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "name", r.URL.Query(), &params.Name)
+	err = runtime.BindQueryParameter("form", true, true, "name", ctx.QueryParams(), &params.Name)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetNodeDRBDConfig(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetNodeDRBDConfig(ctx, params)
+	return err
 }
 
-// PostNodeDRBDConfig operation middleware
-func (siw *ServerInterfaceWrapper) PostNodeDRBDConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostNodeDRBDConfig converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodeDRBDConfig(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostNodeDRBDConfigParams
-
 	// ------------- Required query parameter "name" -------------
 
-	if paramValue := r.URL.Query().Get("name"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "name"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "name", r.URL.Query(), &params.Name)
+	err = runtime.BindQueryParameter("form", true, true, "name", ctx.QueryParams(), &params.Name)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostNodeDRBDConfig(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostNodeDRBDConfig(ctx, params)
+	return err
 }
 
-// PostNodeMonitor operation middleware
-func (siw *ServerInterfaceWrapper) PostNodeMonitor(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostNodeMonitor(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetNodesInfo operation middleware
-func (siw *ServerInterfaceWrapper) GetNodesInfo(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetNodesInfo(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// PostObjectAbort operation middleware
-func (siw *ServerInterfaceWrapper) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostObjectAbort(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// PostObjectClear operation middleware
-func (siw *ServerInterfaceWrapper) PostObjectClear(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostObjectClear(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetObjectConfig operation middleware
-func (siw *ServerInterfaceWrapper) GetObjectConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostNodeMonitor converts echo context to params.
+func (w *ServerInterfaceWrapper) PostNodeMonitor(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostNodeMonitor(ctx)
+	return err
+}
+
+// GetNodesInfo converts echo context to params.
+func (w *ServerInterfaceWrapper) GetNodesInfo(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetNodesInfo(ctx)
+	return err
+}
+
+// PostObjectAbort converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectAbort(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostObjectAbort(ctx)
+	return err
+}
+
+// PostObjectClear converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectClear(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostObjectClear(ctx)
+	return err
+}
+
+// GetObjectConfig converts echo context to params.
+func (w *ServerInterfaceWrapper) GetObjectConfig(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetObjectConfigParams
-
 	// ------------- Required query parameter "path" -------------
 
-	if paramValue := r.URL.Query().Get("path"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "path", r.URL.Query(), &params.Path)
+	err = runtime.BindQueryParameter("form", true, true, "path", ctx.QueryParams(), &params.Path)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter path: %s", err))
 	}
 
 	// ------------- Optional query parameter "evaluate" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "evaluate", r.URL.Query(), &params.Evaluate)
+	err = runtime.BindQueryParameter("form", true, false, "evaluate", ctx.QueryParams(), &params.Evaluate)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "evaluate", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter evaluate: %s", err))
 	}
 
 	// ------------- Optional query parameter "impersonate" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "impersonate", r.URL.Query(), &params.Impersonate)
+	err = runtime.BindQueryParameter("form", true, false, "impersonate", ctx.QueryParams(), &params.Impersonate)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "impersonate", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter impersonate: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetObjectConfig(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetObjectConfig(ctx, params)
+	return err
 }
 
-// GetObjectFile operation middleware
-func (siw *ServerInterfaceWrapper) GetObjectFile(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// GetObjectFile converts echo context to params.
+func (w *ServerInterfaceWrapper) GetObjectFile(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetObjectFileParams
-
 	// ------------- Required query parameter "path" -------------
 
-	if paramValue := r.URL.Query().Get("path"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "path", r.URL.Query(), &params.Path)
+	err = runtime.BindQueryParameter("form", true, true, "path", ctx.QueryParams(), &params.Path)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter path: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetObjectFile(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetObjectFile(ctx, params)
+	return err
 }
 
-// PostObjectMonitor operation middleware
-func (siw *ServerInterfaceWrapper) PostObjectMonitor(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostObjectMonitor(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// PostObjectProgress operation middleware
-func (siw *ServerInterfaceWrapper) PostObjectProgress(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostObjectProgress(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetObjectSelector operation middleware
-func (siw *ServerInterfaceWrapper) GetObjectSelector(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostObjectMonitor converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectMonitor(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostObjectMonitor(ctx)
+	return err
+}
+
+// PostObjectProgress converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectProgress(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostObjectProgress(ctx)
+	return err
+}
+
+// GetObjectSelector converts echo context to params.
+func (w *ServerInterfaceWrapper) GetObjectSelector(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetObjectSelectorParams
-
 	// ------------- Required query parameter "selector" -------------
 
-	if paramValue := r.URL.Query().Get("selector"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "selector"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "selector", r.URL.Query(), &params.Selector)
+	err = runtime.BindQueryParameter("form", true, true, "selector", ctx.QueryParams(), &params.Selector)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "selector", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter selector: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetObjectSelector(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetObjectSelector(ctx, params)
+	return err
 }
 
-// PostObjectSwitchTo operation middleware
-func (siw *ServerInterfaceWrapper) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostObjectSwitchTo(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetPools operation middleware
-func (siw *ServerInterfaceWrapper) GetPools(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// PostObjectSwitchTo converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectSwitchTo(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostObjectSwitchTo(ctx)
+	return err
+}
+
+// GetPools converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPools(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetPoolsParams
-
 	// ------------- Optional query parameter "name" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "name", r.URL.Query(), &params.Name)
+	err = runtime.BindQueryParameter("form", true, false, "name", ctx.QueryParams(), &params.Name)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPools(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetPools(ctx, params)
+	return err
 }
 
-// GetSwagger operation middleware
-func (siw *ServerInterfaceWrapper) GetSwagger(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetSwagger(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetRelayMessage operation middleware
-func (siw *ServerInterfaceWrapper) GetRelayMessage(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+// GetSwagger converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSwagger(ctx echo.Context) error {
 	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetSwagger(ctx)
+	return err
+}
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+// GetRelayMessage converts echo context to params.
+func (w *ServerInterfaceWrapper) GetRelayMessage(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BasicAuthScopes, []string{""})
+
+	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetRelayMessageParams
-
 	// ------------- Optional query parameter "nodename" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "nodename", r.URL.Query(), &params.Nodename)
+	err = runtime.BindQueryParameter("form", true, false, "nodename", ctx.QueryParams(), &params.Nodename)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "nodename", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter nodename: %s", err))
 	}
 
 	// ------------- Optional query parameter "cluster_id" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "cluster_id", r.URL.Query(), &params.ClusterId)
+	err = runtime.BindQueryParameter("form", true, false, "cluster_id", ctx.QueryParams(), &params.ClusterId)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cluster_id", Err: err})
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cluster_id: %s", err))
 	}
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetRelayMessage(w, r, params)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetRelayMessage(ctx, params)
+	return err
 }
 
-// PostRelayMessage operation middleware
-func (siw *ServerInterfaceWrapper) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+// PostRelayMessage converts echo context to params.
+func (w *ServerInterfaceWrapper) PostRelayMessage(ctx echo.Context) error {
+	var err error
 
-	ctx = context.WithValue(ctx, BasicAuthScopes, []string{""})
+	ctx.Set(BasicAuthScopes, []string{""})
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{""})
 
-	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostRelayMessage(w, r)
-	})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PostRelayMessage(ctx)
+	return err
 }
 
-type UnescapedCookieParamError struct {
-	ParamName string
-	Err       error
+// This is a simple interface which specifies echo.Route addition functions which
+// are present on both echo.Echo and echo.Group, since we want to allow using
+// either of them for path registration
+type EchoRouter interface {
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 }
 
-func (e *UnescapedCookieParamError) Error() string {
-	return fmt.Sprintf("error unescaping cookie parameter '%s'", e.ParamName)
+// RegisterHandlers adds each server route to the EchoRouter.
+func RegisterHandlers(router EchoRouter, si ServerInterface) {
+	RegisterHandlersWithBaseURL(router, si, "")
 }
 
-func (e *UnescapedCookieParamError) Unwrap() error {
-	return e.Err
-}
+// Registers handlers, and prepends BaseURL to the paths, so that the paths
+// can be served under a prefix.
+func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
 
-type UnmarshallingParamError struct {
-	ParamName string
-	Err       error
-}
-
-func (e *UnmarshallingParamError) Error() string {
-	return fmt.Sprintf("Error unmarshalling parameter %s as JSON: %s", e.ParamName, e.Err.Error())
-}
-
-func (e *UnmarshallingParamError) Unwrap() error {
-	return e.Err
-}
-
-type RequiredParamError struct {
-	ParamName string
-}
-
-func (e *RequiredParamError) Error() string {
-	return fmt.Sprintf("Query argument %s is required, but not found", e.ParamName)
-}
-
-type RequiredHeaderError struct {
-	ParamName string
-	Err       error
-}
-
-func (e *RequiredHeaderError) Error() string {
-	return fmt.Sprintf("Header parameter %s is required, but not found", e.ParamName)
-}
-
-func (e *RequiredHeaderError) Unwrap() error {
-	return e.Err
-}
-
-type InvalidParamFormatError struct {
-	ParamName string
-	Err       error
-}
-
-func (e *InvalidParamFormatError) Error() string {
-	return fmt.Sprintf("Invalid format for parameter %s: %s", e.ParamName, e.Err.Error())
-}
-
-func (e *InvalidParamFormatError) Unwrap() error {
-	return e.Err
-}
-
-type TooManyValuesForParamError struct {
-	ParamName string
-	Count     int
-}
-
-func (e *TooManyValuesForParamError) Error() string {
-	return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
-}
-
-// Handler creates http.Handler with routing matching OpenAPI spec.
-func Handler(si ServerInterface) http.Handler {
-	return HandlerWithOptions(si, ChiServerOptions{})
-}
-
-type ChiServerOptions struct {
-	BaseURL          string
-	BaseRouter       chi.Router
-	Middlewares      []MiddlewareFunc
-	ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
-}
-
-// HandlerFromMux creates http.Handler with routing matching OpenAPI spec based on the provided mux.
-func HandlerFromMux(si ServerInterface, r chi.Router) http.Handler {
-	return HandlerWithOptions(si, ChiServerOptions{
-		BaseRouter: r,
-	})
-}
-
-func HandlerFromMuxWithBaseURL(si ServerInterface, r chi.Router, baseURL string) http.Handler {
-	return HandlerWithOptions(si, ChiServerOptions{
-		BaseURL:    baseURL,
-		BaseRouter: r,
-	})
-}
-
-// HandlerWithOptions creates http.Handler with additional options
-func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handler {
-	r := options.BaseRouter
-
-	if r == nil {
-		r = chi.NewRouter()
-	}
-	if options.ErrorHandlerFunc == nil {
-		options.ErrorHandlerFunc = func(w http.ResponseWriter, r *http.Request, err error) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-	}
 	wrapper := ServerInterfaceWrapper{
-		Handler:            si,
-		HandlerMiddlewares: options.Middlewares,
-		ErrorHandlerFunc:   options.ErrorHandlerFunc,
+		Handler: si,
 	}
 
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/auth/token", wrapper.PostAuthToken)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/daemon/dns/dump", wrapper.GetDaemonDNSDump)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/daemon/events", wrapper.GetDaemonEvents)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/daemon/join", wrapper.PostDaemonJoin)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/daemon/leave", wrapper.PostDaemonLeave)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/daemon/logs/control", wrapper.PostDaemonLogsControl)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/daemon/running", wrapper.GetDaemonRunning)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/daemon/status", wrapper.GetDaemonStatus)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/daemon/stop", wrapper.PostDaemonStop)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/daemon/sub/action", wrapper.PostDaemonSubAction)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/instance/status", wrapper.PostInstanceStatus)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/networks", wrapper.GetNetworks)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/node/clear", wrapper.PostNodeClear)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/node/drbd/allocation", wrapper.GetNodeDRBDAllocation)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/node/drbd/config", wrapper.GetNodeDRBDConfig)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/node/drbd/config", wrapper.PostNodeDRBDConfig)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/node/monitor", wrapper.PostNodeMonitor)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/nodes/info", wrapper.GetNodesInfo)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/object/abort", wrapper.PostObjectAbort)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/object/clear", wrapper.PostObjectClear)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/object/config", wrapper.GetObjectConfig)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/object/file", wrapper.GetObjectFile)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/object/monitor", wrapper.PostObjectMonitor)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/object/progress", wrapper.PostObjectProgress)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/object/selector", wrapper.GetObjectSelector)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/object/switchTo", wrapper.PostObjectSwitchTo)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/pools", wrapper.GetPools)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/public/openapi", wrapper.GetSwagger)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/relay/message", wrapper.GetRelayMessage)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/relay/message", wrapper.PostRelayMessage)
-	})
+	router.POST(baseURL+"/auth/token", wrapper.PostAuthToken)
+	router.GET(baseURL+"/daemon/dns/dump", wrapper.GetDaemonDNSDump)
+	router.GET(baseURL+"/daemon/events", wrapper.GetDaemonEvents)
+	router.POST(baseURL+"/daemon/join", wrapper.PostDaemonJoin)
+	router.POST(baseURL+"/daemon/leave", wrapper.PostDaemonLeave)
+	router.POST(baseURL+"/daemon/logs/control", wrapper.PostDaemonLogsControl)
+	router.GET(baseURL+"/daemon/running", wrapper.GetDaemonRunning)
+	router.GET(baseURL+"/daemon/status", wrapper.GetDaemonStatus)
+	router.POST(baseURL+"/daemon/stop", wrapper.PostDaemonStop)
+	router.POST(baseURL+"/daemon/sub/action", wrapper.PostDaemonSubAction)
+	router.POST(baseURL+"/instance/status", wrapper.PostInstanceStatus)
+	router.GET(baseURL+"/networks", wrapper.GetNetworks)
+	router.POST(baseURL+"/node/clear", wrapper.PostNodeClear)
+	router.GET(baseURL+"/node/drbd/allocation", wrapper.GetNodeDRBDAllocation)
+	router.GET(baseURL+"/node/drbd/config", wrapper.GetNodeDRBDConfig)
+	router.POST(baseURL+"/node/drbd/config", wrapper.PostNodeDRBDConfig)
+	router.POST(baseURL+"/node/monitor", wrapper.PostNodeMonitor)
+	router.GET(baseURL+"/nodes/info", wrapper.GetNodesInfo)
+	router.POST(baseURL+"/object/abort", wrapper.PostObjectAbort)
+	router.POST(baseURL+"/object/clear", wrapper.PostObjectClear)
+	router.GET(baseURL+"/object/config", wrapper.GetObjectConfig)
+	router.GET(baseURL+"/object/file", wrapper.GetObjectFile)
+	router.POST(baseURL+"/object/monitor", wrapper.PostObjectMonitor)
+	router.POST(baseURL+"/object/progress", wrapper.PostObjectProgress)
+	router.GET(baseURL+"/object/selector", wrapper.GetObjectSelector)
+	router.POST(baseURL+"/object/switchTo", wrapper.PostObjectSwitchTo)
+	router.GET(baseURL+"/pools", wrapper.GetPools)
+	router.GET(baseURL+"/public/openapi", wrapper.GetSwagger)
+	router.GET(baseURL+"/relay/message", wrapper.GetRelayMessage)
+	router.POST(baseURL+"/relay/message", wrapper.PostRelayMessage)
 
-	return r
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"97lFJ4YAAA==",
+	"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",
+	"5uW4jEt1fPT06MXk/vr+/wMAAP//Y3oBy9eGAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

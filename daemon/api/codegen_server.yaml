@@ -1,6 +1,6 @@
 package: api
 generate:
-  chi-server: true
+  echo-server: true
   models: false
   embedded-spec: true
 output: codegen_server_gen.go
