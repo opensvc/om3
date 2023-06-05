@@ -14,30 +14,54 @@ import (
 )
 
 type (
-	request struct {
-		Method string `json:"method"`
+	domain struct {
+		Zone string `json:"zone"`
+	}
+
+	getAllDomainMetadataResponse map[string][]string
+
+	getAllDomainsResponse []domain
+
+	getDomainMetadata struct {
+		Method     string                      `json:"method"`
+		Parameters getDomainMetadataParameters `json:"parameters"`
 	}
 
 	getDomainMetadataParameters struct {
 		Kind string `json:"kind"`
 		Name string `json:"name"`
 	}
-	getDomainMetadata struct {
-		Method     string                      `json:"method"`
-		Parameters getDomainMetadataParameters `json:"parameters"`
-	}
+
 	getDomainMetadataResponse []string
+
+	lookup struct {
+		Method     string           `json:"method"`
+		Parameters lookupParameters `json:"parameters"`
+	}
 
 	lookupParameters struct {
 		Type string `json:"qtype"`
 		Name string `json:"qname"`
 	}
-	lookup struct {
-		Method     string           `json:"method"`
-		Parameters lookupParameters `json:"parameters"`
-	}
+
 	lookupResponse any
+
+	request struct {
+		Method string `json:"method"`
+	}
 )
+
+func (t *dns) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
+	return getAllDomainMetadataResponse{
+		"ALLOW-AXFR-FROM": []string{"0.0.0.0/0", "AUTO-NS"},
+	}
+}
+
+func (t *dns) getAllDomains(b []byte) getAllDomainsResponse {
+	return getAllDomainsResponse{
+		domain{Zone: t.cluster.Name},
+	}
+}
 
 func (t *dns) getDomainMetadata(b []byte) getDomainMetadataResponse {
 	var req getDomainMetadata
@@ -227,6 +251,10 @@ func (t *dns) startUDSListener() error {
 				return
 			}
 			switch req.Method {
+			case "getAllDomainMetadata":
+				_ = send(conn, t.getAllDomainMetadata(message))
+			case "getAllDomains":
+				_ = send(conn, t.getAllDomains(message))
 			case "getDomainMetadata":
 				_ = send(conn, t.getDomainMetadata(message))
 			case "lookup":
