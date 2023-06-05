@@ -2,7 +2,9 @@ package dns
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/user"
@@ -237,15 +239,22 @@ func (t *dns) startUDSListener() error {
 			n, err := conn.Read(buffer)
 			message = buffer[:n]
 
-			if n > 0 {
-				t.log.Debug().Msgf("request: %s", string(message))
-			}
 			if os.IsTimeout(err) {
 				return
+			} else if errors.Is(err, io.EOF) {
+				// pass
 			} else if err != nil {
 				t.log.Error().Err(err).Msg("request read")
 				return
 			}
+
+			if n <= 0 {
+				// empty message
+				return
+			}
+
+			t.log.Debug().Msgf("request: %s", string(message))
+
 			if err := json.Unmarshal(message, &req); err != nil {
 				t.log.Error().Err(err).Msg("request parse")
 				return
