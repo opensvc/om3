@@ -9,167 +9,63 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog"
-	"github.com/shaj13/go-guardian/v2/auth"
+	"github.com/labstack/echo-contrib/echoprometheus"
+	"github.com/labstack/echo-contrib/pprof"
+	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonapi"
-	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
-	"github.com/opensvc/om3/daemon/handlers/daemonhandler"
-	"github.com/opensvc/om3/daemon/handlers/objecthandler"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
 type (
 	T struct {
-		mux *chi.Mux
+		mux *echo.Echo
 	}
 )
 
 var (
-	// logRequestLevelPerPath defines logRequestMiddleWare log level per path.
-	// The default value is LevelInfo
-	logRequestLevelPerPath = map[string]zerolog.Level{
-		"/metrics": zerolog.DebugLevel,
-
-		"/relay/message": zerolog.DebugLevel,
-	}
+	mwProm = echoprometheus.NewMiddleware("opensvc_api")
 )
 
 // New returns *T with log, rootDaemon
 // it prepares middlewares and routes for Opensvc daemon listeners
 // when enableUi is true swagger-ui is serverd from /ui
 func New(ctx context.Context, enableUi bool) *T {
-	t := &T{}
-	mux := chi.NewRouter()
-	// cors not required since /ui is served from swagger-ui
-	//mux.Use(cors.Handler(cors.Options{
-	//	// TODO update AllowedOrigins, and verify other settings
-	//	AllowedOrigins:     []string{"https://editor.swagger.io", "https://editor-next.swagger.io"},
-	//	AllowedMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-	//	ExposedHeaders:     []string{"Link"},
-	//	AllowedHeaders:     []string{"Authorization"},
-	//	AllowCredentials:   false,
-	//	MaxAge:             300, // Maximum value not ignored by any of major browsers
-	//	OptionsPassthrough: false,
-	//	Debug:              true,
-	//}))
-	mux.Use(logMiddleWare(ctx))
-	mux.Use(listenAddrMiddleWare(ctx))
-	mux.Use(daemonauth.MiddleWare(ctx))
-	mux.Use(logUserMiddleWare(ctx))
-	mux.Use(logRequestMiddleWare(ctx))
-	mux.Use(daemonMiddleWare(ctx))
-	mux.Use(daemondataMiddleWare(ctx))
-	mux.Use(eventbusCmdCMiddleWare(ctx))
-	daemonapi.Register(mux, enableUi)
-	mux.Mount("/debug", middleware.Profiler())
-	mux.Get("/metrics", promhttp.Handler().ServeHTTP)
-	mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
-	mux.Get("/node_log", daemonhandler.GetNodeLog)
-	mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
-	mux.Get("/objects_log", objecthandler.GetObjectsLog)
+	e := echo.New()
+	pprof.Register(e)
+	e.Use(mwProm)
+	e.GET("/metrics", echoprometheus.NewHandler())
+	e.Use(daemonapi.LogMiddleware(ctx))
+	e.Use(daemonapi.ListenAddrMiddleWare(ctx))
+	e.Use(daemonapi.AuthMiddleware(ctx))
+	e.Use(daemonapi.LogUserMiddleware(ctx))
+	e.Use(daemonapi.LogRequestMiddleWare(ctx))
+	e.Use(daemonapi.DaemonMiddleware(ctx))
+	e.Use(daemonapi.DaemondataMiddleware(ctx))
+	e.Use(daemonapi.PubsubMiddleware(ctx))
+	api.RegisterHandlers(e, &daemonapi.DaemonApi{
+		Daemon:     daemonctx.Daemon(ctx),
+		Daemondata: daemondata.FromContext(ctx),
+		PubSub:     pubsub.BusFromContext(ctx),
+	})
+	g := e.Group("/public/ui")
+	if enableUi {
+		g.Use(daemonapi.UiMiddleware(ctx))
+	}
 
-	t.mux = mux
-	return t
+	// TODO convert to echo + openapi
+	//mux.Get("/node_backlog", daemonhandler.GetNodeBacklog)
+	//mux.Get("/node_log", daemonhandler.GetNodeLog)
+	//mux.Get("/objects_backlog", objecthandler.GetObjectsBacklog)
+	//mux.Get("/objects_log", objecthandler.GetObjectsLog)
+
+	return &T{mux: e}
 }
 
 // ServerHTTP implement http.Handler interface for T
 func (t *T) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.mux.ServeHTTP(w, r)
-}
-
-func eventbusCmdCMiddleWare(parent context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := pubsub.ContextWithBus(r.Context(), pubsub.BusFromContext(parent)) // Why ?
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func logMiddleWare(parent context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			reqUuid := uuid.New()
-			addr := daemonctx.ListenAddr(parent)
-			log := daemonlogctx.Logger(parent)
-			log = log.With().
-				Str("request-uuid", reqUuid.String()).
-				Str("method", r.Method).
-				Str("path", r.URL.Path).
-				Str("remote", r.RemoteAddr).
-				Str("addr", addr).Logger()
-			ctx := daemonlogctx.WithLogger(r.Context(), log)
-			ctx = daemonctx.WithUuid(ctx, reqUuid)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func logUserMiddleWare(_ context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authUser := auth.User(r)
-			extensions := authUser.GetExtensions()
-			log := daemonlogctx.Logger(r.Context()).With().
-				Str("auth-user", authUser.GetUserName()).
-				Strs("auth-grant", extensions.Values("grant")).
-				Str("auth-strategy", extensions.Get("strategy")).
-				Logger()
-			r = r.WithContext(daemonlogctx.WithLogger(r.Context(), log))
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func logRequestMiddleWare(_ context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			level := zerolog.InfoLevel
-			if l, ok := logRequestLevelPerPath[r.URL.Path]; ok {
-				level = l
-			}
-			if level != zerolog.NoLevel {
-				log := daemonlogctx.Logger(r.Context())
-				log.WithLevel(level).Msg("request")
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func daemonMiddleWare(parent context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemonctx.WithDaemon(r.Context(), daemonctx.Daemon(parent))
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func daemondataMiddleWare(parent context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := daemondata.ContextWithBus(r.Context(), daemondata.BusFromContext(parent))
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// listenAddrMiddleWare adds the listen addr to the request context, for use by the ux auth middleware
-func listenAddrMiddleWare(parent context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			addr := daemonctx.ListenAddr(parent)
-			ctx := daemonctx.WithListenAddr(r.Context(), addr)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
 }
