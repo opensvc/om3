@@ -3,8 +3,6 @@
 package poolvg
 
 import (
-	"strings"
-
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/util/lvm2"
@@ -54,11 +52,11 @@ func (t T) Usage() (pool.StatusUsage, error) {
 	if err != nil {
 		return pool.StatusUsage{}, err
 	}
-	size, err := sizeconv.FromSize(strings.TrimLeft(info.VGSize, "<>+"))
+	size, err := info.Size()
 	if err != nil {
 		return pool.StatusUsage{}, err
 	}
-	free, err := sizeconv.FromSize(strings.TrimLeft(info.VGFree, "<>+"))
+	free, err := info.Free()
 	if err != nil {
 		return pool.StatusUsage{}, err
 	}
