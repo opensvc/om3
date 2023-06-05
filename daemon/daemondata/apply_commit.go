@@ -22,7 +22,6 @@ import (
 //			   drop clusterData pending events
 //			   drop event queue
 func (d *data) commitPendingOps() (changes bool) {
-	d.log.Debug().Msg("commitPendingOps")
 	if len(d.pendingEvs) > 0 {
 		changes = true
 		d.gen++
@@ -42,10 +41,6 @@ func (d *data) commitPendingOps() (changes bool) {
 		d.eventQueue = make(map[string][]event.Event)
 	}
 	d.hbGens[d.localNode][d.localNode] = d.gen
-
-	d.log.Debug().
-		Interface("local gens", d.clusterData.Cluster.Node[d.localNode].Status.Gen).
-		Msg("commitPendingOps")
 	return
 }
 
