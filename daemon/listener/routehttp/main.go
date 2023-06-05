@@ -39,13 +39,9 @@ func New(ctx context.Context, enableUi bool) *T {
 	e.Use(mwProm)
 	e.GET("/metrics", echoprometheus.NewHandler())
 	e.Use(daemonapi.LogMiddleware(ctx))
-	e.Use(daemonapi.ListenAddrMiddleWare(ctx))
 	e.Use(daemonapi.AuthMiddleware(ctx))
 	e.Use(daemonapi.LogUserMiddleware(ctx))
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))
-	e.Use(daemonapi.DaemonMiddleware(ctx))
-	e.Use(daemonapi.DaemondataMiddleware(ctx))
-	e.Use(daemonapi.PubsubMiddleware(ctx))
 	api.RegisterHandlers(e, &daemonapi.DaemonApi{
 		Daemon:     daemonctx.Daemon(ctx),
 		Daemondata: daemondata.FromContext(ctx),

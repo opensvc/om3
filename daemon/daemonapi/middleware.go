@@ -13,10 +13,7 @@ import (
 
 	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/daemon/daemonctx"
-	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
-	"github.com/opensvc/om3/daemon/subdaemon"
-	"github.com/opensvc/om3/util/pubsub"
 )
 
 var (
@@ -50,50 +47,8 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	}
 }
 
-// ListenAddrMiddleWare adds the listen addr to the request context, for use by the ux auth middleware
-func ListenAddrMiddleWare(parent context.Context) echo.MiddlewareFunc {
-	addr := daemonctx.ListenAddr(parent)
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Set("listen_addr", addr)
-			return next(c)
-		}
-	}
-}
-
-func PubsubMiddleware(parent context.Context) echo.MiddlewareFunc {
-	pub := pubsub.BusFromContext(parent)
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Set("pubsub", pub)
-			return next(c)
-		}
-	}
-}
-
-func DaemonMiddleware(parent context.Context) echo.MiddlewareFunc {
-	d := daemonctx.Daemon(parent)
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Set("daemon", d)
-			return next(c)
-		}
-	}
-}
-
-func DaemondataMiddleware(parent context.Context) echo.MiddlewareFunc {
-	dataC := daemondata.BusFromContext(parent)
-	data := daemondata.FromContext(parent)
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Set("daemondata", data)
-			c.Set("daemondataC", dataC)
-			return next(c)
-		}
-	}
-}
-
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
+	serverAddr := daemonctx.ListenAddr(parent)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// TODO verify for alternate method for /public
@@ -114,8 +69,8 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				}
 			}
 			log := LogHandler(c, "auth")
-			serverAddr := c.Get("listen_addr").(string)
 			req := c.Request()
+			// serverAddr is used by AuthenticateRequest
 			reqCtx := daemonctx.WithListenAddr(req.Context(), serverAddr)
 			_, user, err := daemonauth.Strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
@@ -187,14 +142,6 @@ func GrantsFromContext(ctx echo.Context) daemonauth.Grants {
 
 func Grants(user auth.Info) daemonauth.Grants {
 	return daemonauth.NewGrants(user.GetExtensions()["grant"]...)
-}
-
-func Daemon(ctx echo.Context) subdaemon.RootManager {
-	return ctx.Get("daemon").(subdaemon.RootManager)
-}
-
-func PubSub(ctx echo.Context) *pubsub.Bus {
-	return ctx.Get("pubsub").(*pubsub.Bus)
 }
 
 func LogHandler(c echo.Context, name string) *zerolog.Logger {
