@@ -16,7 +16,7 @@ var (
 	}
 )
 
-func TestVGInfo_Size(t *testing.T) {
+func TestVGInfo_Free(t *testing.T) {
 	for vgFree, expected := range tc {
 		vgInfo := VGInfo{VGFree: vgFree}
 		size, err := vgInfo.Free()
@@ -25,10 +25,10 @@ func TestVGInfo_Size(t *testing.T) {
 	}
 }
 
-func TestVGInfo_Free(t *testing.T) {
+func TestVGInfo_Size(t *testing.T) {
 	for vgSize, expected := range tc {
 		vgInfo := VGInfo{VGSize: vgSize}
-		size, err := vgInfo.Free()
+		size, err := vgInfo.Size()
 		require.Nil(t, err)
 		require.Equal(t, expected, size)
 	}
