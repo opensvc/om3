@@ -33,6 +33,7 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/util/version"
 )
 
 type (
@@ -131,9 +132,11 @@ func (t *T) MainStart(ctx context.Context) error {
 	bus.Start(t.ctx)
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 
+	localhost := hostname.Hostname()
+
 	go func(ctx context.Context) {
 		labels := []pubsub.Label{
-			{"os", hostname.Hostname()},
+			{"os", localhost},
 			{"sub", "pubsub"},
 		}
 		ticker := time.NewTicker(4 * time.Second)
@@ -211,6 +214,7 @@ func (t *T) MainStart(ctx context.Context) error {
 		cancelDiscover()
 		t.log.Debug().Msg("stopped daemon discover")
 	})
+	bus.Pub(&msgbus.DaemonStart{Node: localhost, Version: version.Version()})
 	return nil
 }
 

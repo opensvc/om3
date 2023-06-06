@@ -40,6 +40,8 @@ var (
 
 		"DaemonHb": func() any { return &DaemonHb{} },
 
+		"DaemonStart": func() any { return &DaemonStart{} },
+
 		"DataUpdated": func() any { return &DataUpdated{} },
 
 		"Exit": func() any { return &Exit{} },
@@ -243,6 +245,12 @@ type (
 		pubsub.Msg
 		Node  string
 		Value cluster.DaemonHb
+	}
+
+	DaemonStart struct {
+		pubsub.Msg
+		Node    string
+		Version string
 	}
 
 	Exit struct {
@@ -678,6 +686,10 @@ func (e *DaemonCtl) Kind() string {
 
 func (e *DaemonHb) Kind() string {
 	return "DaemonHb"
+}
+
+func (e *DaemonStart) Kind() string {
+	return "DaemonStart"
 }
 
 func (e *Exit) Kind() string {
