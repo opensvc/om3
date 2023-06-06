@@ -21,8 +21,8 @@ func TestMain(m *testing.M) {
 func setup(t *testing.T) testhelper.Env {
 	env := testhelper.Setup(t)
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
-	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
-	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
+	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 	rawconfig.LoadSections()
 	return env
 }

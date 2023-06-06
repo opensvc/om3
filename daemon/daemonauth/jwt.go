@@ -82,7 +82,7 @@ func initJWT() error {
 	jwtVerifyKeyFile = daemonenv.CACertChainFile()
 
 	if jwtSignKeyFile == "" && jwtVerifyKeyFile == "" {
-		return fmt.Errorf("the system/sec/cert-{clustername} listener private_key and certificate must exist.")
+		return fmt.Errorf("the system/sec/cert listener private_key and certificate must exist.")
 	} else if jwtSignKeyFile != "" {
 		signBytes, err := os.ReadFile(jwtSignKeyFile)
 		if err != nil {
@@ -109,7 +109,7 @@ func initJWT() error {
 			TokenAuth = jwtauth.New("RS256", signKey, verifyKey)
 		}
 	} else {
-		return errors.Errorf("the system/sec/cert-{clustername} listener private_key must exist.")
+		return errors.Errorf("the system/sec/cert listener private_key must exist.")
 		// If we want to support less secure HMAC token from a static sign key:
 		//	TokenAuth = jwtauth.New("HMAC", []byte(jwtSignKey), nil)
 	}

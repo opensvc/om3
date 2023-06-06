@@ -27,8 +27,8 @@ func setup(t *testing.T, withConfig bool) testhelper.Env {
 	env := testhelper.Setup(t)
 	if withConfig {
 		env.InstallFile("./testdata/cluster.conf", "etc/cluster.conf")
-		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca-cluster1.conf")
-		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert-cluster1.conf")
+		env.InstallFile("./testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
+		env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 	}
 	rawconfig.LoadSections()
 	return env
@@ -141,8 +141,8 @@ func TestDaemonBootstrap(t *testing.T) {
 				}
 				require.Equal(t, expectedClusterName, cData.Cluster.Config.Name)
 				for _, objectName := range []string{
-					"system/sec/cert-" + expectedClusterName,
-					"system/sec/ca-" + expectedClusterName,
+					"system/sec/cert",
+					"system/sec/ca",
 					"cluster",
 				} {
 					t.Logf("search object %s", objectName)
