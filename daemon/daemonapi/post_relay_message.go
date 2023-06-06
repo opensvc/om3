@@ -1,26 +1,25 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/relay"
 )
 
-func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostRelayMessage(ctx echo.Context) error {
 	var (
 		payload api.PostRelayMessage
 		value   api.RelayMessage
 	)
-	log := daemonlogctx.Logger(r.Context()).With().Str("func", "PostRelayMessage").Logger()
+	log := LogHandler(ctx, "PostRelayMessage")
 	log.Debug().Msg("starting")
 
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 	}
 
 	value.ClusterName = payload.ClusterName
@@ -28,9 +27,9 @@ func (a *DaemonApi) PostRelayMessage(w http.ResponseWriter, r *http.Request) {
 	value.Nodename = payload.Nodename
 	value.Msg = payload.Msg
 	value.Updated = time.Now()
-	value.Addr = r.RemoteAddr
+	value.Addr = ctx.Request().RemoteAddr
 
 	relay.Map.Store(payload.ClusterId, payload.Nodename, value)
 	log.Debug().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
-	WriteProblemf(w, http.StatusOK, "stored", "at %s from %s", value.Updated, value.Addr)
+	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.Updated, value.Addr)
 }

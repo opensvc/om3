@@ -1,8 +1,9 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
@@ -12,32 +13,28 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectProgress(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostObjectProgress(ctx echo.Context) error {
 	var (
 		payload   = api.PostObjectProgress{}
 		p         path.T
 		err       error
 		isPartial bool
 	)
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		WriteProblem(w, http.StatusBadRequest, "Failed to json decode request body", err.Error())
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return JSONProblem(ctx, http.StatusBadRequest, "Failed to json decode request body", err.Error())
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		WriteProblem(w, http.StatusBadRequest, "Invalid field", "path: "+payload.Path)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid field", "path: %s", payload.Path)
 	}
 	state, ok := instance.MonitorStateValues[payload.State]
 	if !ok {
-		WriteProblem(w, http.StatusBadRequest, "Invalid field", "state: "+payload.State)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid field", "state: %s", payload.State)
 	}
 	if payload.IsPartial != nil {
 		isPartial = *payload.IsPartial
 	}
-	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: hostname.Hostname(), SessionId: payload.SessionId, State: state, IsPartial: isPartial},
+	a.EventBus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: hostname.Hostname(), SessionId: payload.SessionId, State: state, IsPartial: isPartial},
 		pubsub.Label{"path", p.String()}, labelApi)
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, nil)
 }

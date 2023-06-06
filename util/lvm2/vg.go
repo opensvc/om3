@@ -8,30 +8,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 )
 
 type (
-	VGInfo struct {
-		VGName    string `json:"vg_name"`
-		VGAttr    string `json:"vg_attr"`
-		VGSize    string `json:"vg_size"`
-		VGFree    string `json:"vg_free"`
-		VGTags    string `json:"vg_tags"`
-		SnapCount string `json:"snap_count"`
-		PVCount   string `json:"pv_count"`
-		LVCount   string `json:"lv_count"`
-		PVName    string `json:"pv_name"`
-		LVName    string `json:"lv_name"`
-		Devices   string `json:"devices"`
-	}
 	VG struct {
 		driver
 		VGName string

@@ -1,10 +1,10 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
@@ -14,21 +14,19 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostObjectSwitchTo(ctx echo.Context) error {
 	var (
 		payload = api.PostObjectSwitchTo{}
 		value   = instance.MonitorUpdate{}
 		p       path.T
 		err     error
 	)
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		WriteProblem(w, http.StatusBadRequest, "Invalid Body", err.Error())
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return JSONProblem(ctx, http.StatusBadRequest, "Invalid Body", err.Error())
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		WriteProblem(w, http.StatusBadRequest, "Invalid Body", "Invalid path: "+payload.Path)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "Invalid path: %s", payload.Path)
 	}
 	globalExpect := instance.MonitorGlobalExpectPlacedAt
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
@@ -38,12 +36,9 @@ func (a *DaemonApi) PostObjectSwitchTo(w http.ResponseWriter, r *http.Request) {
 		GlobalExpectOptions: options,
 	}
 	value.CandidateOrchestrationId = uuid.New()
-	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: value},
+	a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: value},
 		pubsub.Label{"path", p.String()}, labelApi)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(api.MonitorUpdateQueued{
+	return ctx.JSON(http.StatusOK, api.MonitorUpdateQueued{
 		OrchestrationId: value.CandidateOrchestrationId,
 	})
-	w.WriteHeader(http.StatusOK)
 }

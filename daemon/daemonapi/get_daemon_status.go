@@ -1,13 +1,13 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemondata"
 )
 
 type (
@@ -29,19 +29,18 @@ var (
 // GetDaemonStatus returns daemon data status
 //
 // When sub data hIt forces refreshing of sub data every 1
-func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, params api.GetDaemonStatusParams) {
+func (a *DaemonApi) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
 	now := time.Now()
 	subRefreshed.Lock()
-	databus := daemondata.FromContext(r.Context())
 	if now.After(subRefreshed.updated.Add(daemonRefreshInterval)) {
-		if err := databus.DaemonRefresh(); err != nil {
+		if err := a.Daemondata.DaemonRefresh(); err != nil {
 
 		}
 		subRefreshed.updated = now
 	}
 	subRefreshed.Unlock()
 
-	status := databus.ClusterData()
+	status := a.Daemondata.ClusterData()
 	if params.Selector != nil {
 		status = status.WithSelector(*params.Selector)
 	}
@@ -52,7 +51,5 @@ func (a *DaemonApi) GetDaemonStatus(w http.ResponseWriter, r *http.Request, para
 		// TODO: WithRelatives()
 		//status = status.WithRelatives(*params.Relatives)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(status)
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, status)
 }

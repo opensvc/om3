@@ -1,21 +1,21 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 )
 
-// GetDaemonDNSDump returns the DNS zone content.
-func (a *DaemonApi) GetNetworks(w http.ResponseWriter, r *http.Request, params api.GetNetworksParams) {
+// GetNetworks returns network status list.
+func (a *DaemonApi) GetNetworks(ctx echo.Context, params api.GetNetworksParams) error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		WriteProblem(w, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
-		return
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
 	}
 	var l network.StatusList
 	if params.Name != nil {
@@ -23,7 +23,5 @@ func (a *DaemonApi) GetNetworks(w http.ResponseWriter, r *http.Request, params a
 	} else {
 		l = network.ShowNetworks(n)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(l)
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, l)
 }

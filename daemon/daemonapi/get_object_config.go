@@ -1,20 +1,19 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/iancoleman/orderedmap"
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/handlers/handlerhelper"
 	"github.com/opensvc/om3/util/file"
 )
 
-func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, params api.GetObjectConfigParams) {
+func (a *DaemonApi) GetObjectConfig(ctx echo.Context, params api.GetObjectConfigParams) error {
 	var (
 		evaluate    bool
 		impersonate string
@@ -27,14 +26,13 @@ func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, para
 	}
 	var err error
 	var data *orderedmap.OrderedMap
-	_, log := handlerhelper.GetWriteAndLog(w, r, "GetObjectConfig")
+	log := LogHandler(ctx, "GetObjectConfig")
 	log.Debug().Msg("starting")
 
 	objPath, err := path.Parse(params.Path)
 	if err != nil {
 		log.Info().Err(err).Msgf("invalid path: %s", params.Path)
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parametter", "invalid path: %s", params.Path)
 	}
 	if impersonate != "" && !evaluate {
 		// Force evaluate when impersonate
@@ -44,20 +42,17 @@ func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, para
 	mtime := file.ModTime(filename)
 	if mtime.IsZero() {
 		log.Error().Msgf("configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "configFile no present(mtime) %s %s (may be deleted)", filename, mtime)
 	}
 
 	data, err = configData(objPath, evaluate, impersonate)
 	if err != nil {
 		log.Error().Err(err).Msgf("can't get configData for %s %s", objPath, filename)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "can't get configData for %s %s", objPath, filename)
 	}
 	if file.ModTime(filename) != mtime {
 		log.Error().Msgf("file has changed %s", filename)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error TODO", "file has changed %s", filename)
 	}
 	respData := make(map[string]interface{})
 	respData["metadata"] = objPath.ToMetadata()
@@ -71,12 +66,7 @@ func (a *DaemonApi) GetObjectConfig(w http.ResponseWriter, r *http.Request, para
 		Data:  respData,
 		Mtime: mtime,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Error().Err(err).Msgf("marshal response error %s %s", objPath, filename)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	return ctx.JSON(http.StatusOK, resp)
 }
 
 func configData(p path.T, eval bool, impersonate string) (data *orderedmap.OrderedMap, err error) {

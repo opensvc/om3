@@ -2,23 +2,17 @@ package daemonauth
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shaj13/libcache"
 	_ "github.com/shaj13/libcache/fifo"
 
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/httpmetric"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/util/key"
@@ -34,7 +28,7 @@ type (
 )
 
 var (
-	strategies union.Union
+	Strategies union.Union
 	cache      libcache.Cache
 )
 
@@ -42,53 +36,6 @@ var (
 // This func hides the go-guardian pkg from the handlers.
 func User(r *http.Request) auth.Info {
 	return auth.User(r)
-}
-
-// MiddleWare breaks the chain if none of the configured authentication strategy succeeds.
-// On success, the user information is added to the request context, so it is available
-// to handlers via User().
-func MiddleWare(_ context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO verify for alternate method for /public
-			if r.Method == http.MethodGet {
-				if strings.HasPrefix(r.URL.Path, "/public") {
-					extensions := NewGrants().Extensions()
-					extensions.Add("strategy", "public")
-					user := auth.NewUserInfo("nobody", "", nil, extensions)
-					r = auth.RequestWithUser(user, r)
-					next.ServeHTTP(w, r)
-					return
-				} else if r.URL.Path == "/metrics" {
-					// TODO confirm no auth GET /metrics
-					extensions := NewGrants().Extensions()
-					extensions.Add("strategy", "metrics")
-					user := auth.NewUserInfo("nobody", "", nil, extensions)
-					r = auth.RequestWithUser(user, r)
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-			_, user, err := strategies.AuthenticateRequest(r)
-			if err != nil {
-				log.Logger.Error().Err(err).Str("remote", r.RemoteAddr).Msg("auth")
-				code := http.StatusUnauthorized
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(code)
-				_ = json.NewEncoder(w).Encode(api.Problem{
-					Detail: fmt.Sprint(err),
-					Status: code,
-					Title:  http.StatusText(code),
-				})
-				label := prometheus.Labels{"code": "401", "method": r.Method, "path": r.URL.Path}
-				httpmetric.Counter.With(label).Inc()
-				return
-			}
-			log.Logger.Debug().Msgf("user %s authenticated", user.GetUserName())
-			r = auth.RequestWithUser(user, r)
-			next.ServeHTTP(w, r)
-		})
-	}
 }
 
 func validateNode(_ context.Context, _ *http.Request, username, password string) (auth.Info, error) {
@@ -195,6 +142,6 @@ func Init() error {
 		}
 		l = append(l, s)
 	}
-	strategies = union.New(l...)
+	Strategies = union.New(l...)
 	return nil
 }

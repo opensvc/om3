@@ -1,21 +1,19 @@
 package daemonapi
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/api"
 )
 
-// GetDaemonDNSDump returns the DNS zone content.
-func (a *DaemonApi) GetPools(w http.ResponseWriter, r *http.Request, params api.GetPoolsParams) {
+func (a *DaemonApi) GetPools(ctx echo.Context, params api.GetPoolsParams) error {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		WriteProblem(w, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
-		return
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "Failed to allocate a new object.Node: %s", err)
 	}
 	var l pool.StatusList
 	if params.Name != nil {
@@ -23,7 +21,5 @@ func (a *DaemonApi) GetPools(w http.ResponseWriter, r *http.Request, params api.
 	} else {
 		l = n.ShowPools()
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(l)
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, l)
 }

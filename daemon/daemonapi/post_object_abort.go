@@ -1,8 +1,9 @@
 package daemonapi
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/path"
@@ -12,27 +13,24 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-func (a *DaemonApi) PostObjectAbort(w http.ResponseWriter, r *http.Request) {
+func (a *DaemonApi) PostObjectAbort(ctx echo.Context) error {
 	var (
 		payload = api.PostObjectAbort{}
 		p       path.T
 		err     error
 	)
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "%s", err)
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)
 	}
 	p, err = path.Parse(payload.Path)
 	if err != nil {
-		WriteProblemf(w, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Path, err)
-		return
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing path '%s': %s", payload.Path, err)
 	}
 	globalExpect := instance.MonitorGlobalExpectAborted
 	instMonitor := instance.MonitorUpdate{
 		GlobalExpect: &globalExpect,
 	}
-	bus := pubsub.BusFromContext(r.Context())
-	bus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: instMonitor},
+	a.EventBus.Pub(&msgbus.SetInstanceMonitor{Path: p, Node: hostname.Hostname(), Value: instMonitor},
 		pubsub.Label{"path", p.String()}, labelApi)
-	w.WriteHeader(http.StatusOK)
+	return ctx.JSON(http.StatusOK, nil)
 }
