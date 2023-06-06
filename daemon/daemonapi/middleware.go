@@ -34,7 +34,7 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			reqUuid := uuid.New()
 			r := c.Request()
-			log = log.With().
+			log := log.With().
 				Str("request-uuid", reqUuid.String()).
 				Str("method", r.Method).
 				Str("path", r.URL.Path).
