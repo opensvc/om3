@@ -14,9 +14,6 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/path"
@@ -27,6 +24,9 @@ import (
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xstrings"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -1018,6 +1018,8 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string) 
 		return v, nil
 	}
 	switch ref {
+	case "dns_janitor_major":
+		return "3", nil
 	case "nodename":
 		return impersonate, nil
 	case "short_nodename":
