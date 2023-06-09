@@ -1,25 +1,31 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/core/collector"
-	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/core/path"
 	"github.com/pkg/errors"
 )
 
 type (
-	CmdNodeCollectorTagShow struct {
+	CmdObjectCollectorTagShow struct {
 		OptsGlobal
 		Verbose bool
 	}
 )
 
-func (t *CmdNodeCollectorTagShow) Run() error {
-	return nodeaction.New(
-		nodeaction.WithLocal(t.Local),
-		nodeaction.WithFormat(t.Format),
-		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocalRun(func() (interface{}, error) {
+func (t *CmdObjectCollectorTagShow) Run(selector, kind string) error {
+	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	return objectaction.New(
+		objectaction.LocalFirst(),
+		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithLocal(t.Local),
+		objectaction.WithFormat(t.Format),
+		objectaction.WithColor(t.Color),
+		objectaction.WithLocalRun(func(ctx context.Context, p path.T) (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
@@ -29,7 +35,7 @@ func (t *CmdNodeCollectorTagShow) Run() error {
 				return nil, err
 			}
 			options := make(map[string]any)
-			//options["svcname"] =
+			options["svcname"] = p.String()
 			type respType struct {
 				Ret  int      `json:"ret"`
 				Msg  string   `json:"msg"`

@@ -4,6 +4,8 @@ func init() {
 	kind := "vol"
 
 	cmdObject := newCmdVol()
+	cmdObjectCollector := newCmdObjectCollector(kind)
+	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
@@ -16,6 +18,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddCommand(
+		cmdObjectCollector,
 		cmdObjectEdit,
 		cmdObjectPrint,
 		cmdObjectPush,
@@ -53,6 +56,16 @@ func init() {
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
+	)
+	cmdObjectCollector.AddCommand(
+		cmdObjectCollectorTag,
+	)
+	cmdObjectCollectorTag.AddCommand(
+		newCmdObjectCollectorTagAttach(kind),
+		newCmdObjectCollectorTagCreate(kind),
+		newCmdObjectCollectorTagDetach(kind),
+		newCmdObjectCollectorTagList(kind),
+		newCmdObjectCollectorTagShow(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
