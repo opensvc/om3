@@ -598,7 +598,7 @@ func newCmdNodeCollectorTagAttach() *cobra.Command {
 		Long:    "The tag must already exist in the collector.",
 		Aliases: []string{"atta", "att", "at", "a"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("tag-attach-data").Changed {
+			if cmd.Flag("attach-data").Changed {
 				options.AttachData = &attachData
 			}
 			return options.Run()
@@ -606,8 +606,8 @@ func newCmdNodeCollectorTagAttach() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "tag", "", "the tag name")
-	flags.StringVar(&attachData, "tag-attach-data", "", "the data stored with the tag attachment")
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&attachData, "attach-data", "", "the data stored with the tag attachment")
 	return cmd
 }
 
@@ -621,10 +621,10 @@ func newCmdNodeCollectorTagCreate() *cobra.Command {
 		Use:   "create",
 		Short: "create a new tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("tag-data").Changed {
+			if cmd.Flag("data").Changed {
 				options.Data = &data
 			}
-			if cmd.Flag("tag-exclude").Changed {
+			if cmd.Flag("exclude").Changed {
 				options.Exclude = &exclude
 			}
 			return options.Run()
@@ -632,9 +632,9 @@ func newCmdNodeCollectorTagCreate() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "tag", "", "the tag name")
-	flags.StringVar(&data, "tag-data", "", "the data stored with the tag")
-	flags.StringVar(&exclude, "tag-exclude", "", "a pattern to prevent attachment of incompatible tags")
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&data, "data", "", "the data stored with the tag")
+	flags.StringVar(&exclude, "exclude", "", "a pattern to prevent attachment of incompatible tags")
 	return cmd
 }
 
@@ -650,7 +650,7 @@ func newCmdNodeCollectorTagDetach() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "tag", "", "the tag name")
+	flags.StringVar(&options.Name, "name", "", "the tag name")
 	return cmd
 }
 
@@ -1492,7 +1492,7 @@ func newCmdObjectCollectorTagAttach(kind string) *cobra.Command {
 		Long:    "The tag must already exist in the collector.",
 		Aliases: []string{"atta", "att", "at", "a"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("tag-attach-data").Changed {
+			if cmd.Flag("attach-data").Changed {
 				options.AttachData = &attachData
 			}
 			return options.Run(selectorFlag, kind)
@@ -1500,8 +1500,8 @@ func newCmdObjectCollectorTagAttach(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "tag", "", "the tag name")
-	flags.StringVar(&attachData, "tag-attach-data", "", "the data stored with the tag attachment")
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&attachData, "attach-data", "", "the data stored with the tag attachment")
 	return cmd
 }
 
@@ -1515,10 +1515,10 @@ func newCmdObjectCollectorTagCreate(kind string) *cobra.Command {
 		Use:   "create",
 		Short: "create a new tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("tag-data").Changed {
+			if cmd.Flag("data").Changed {
 				options.Data = &data
 			}
-			if cmd.Flag("tag-exclude").Changed {
+			if cmd.Flag("exclude").Changed {
 				options.Exclude = &exclude
 			}
 			return options.Run(selectorFlag, kind)
@@ -1526,9 +1526,9 @@ func newCmdObjectCollectorTagCreate(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "tag", "", "the tag name")
-	flags.StringVar(&data, "tag-data", "", "the data stored with the tag")
-	flags.StringVar(&exclude, "tag-exclude", "", "a pattern to prevent attachment of incompatible tags")
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&data, "data", "", "the data stored with the tag")
+	flags.StringVar(&exclude, "exclude", "", "a pattern to prevent attachment of incompatible tags")
 	return cmd
 }
 
@@ -1544,7 +1544,7 @@ func newCmdObjectCollectorTagDetach(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Name, "tag", "", "the tag name")
+	flags.StringVar(&options.Name, "name", "", "the tag name")
 	return cmd
 }
 
