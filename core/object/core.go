@@ -109,7 +109,7 @@ func (t *core) init(referrer xconfig.Referrer, id any, opts ...funcopt.O) error 
 		With().
 		Stringer("o", t.path).
 		Str("n", hostname.Hostname()).
-		Str("sid", xsession.ID).
+		Stringer("sid", xsession.ID).
 		Logger()
 
 	if err := t.loadConfig(referrer); err != nil {

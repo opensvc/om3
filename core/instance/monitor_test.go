@@ -23,17 +23,17 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 
 		t0 := time.Time{}
 		expected := Monitor{
-			GlobalExpect:        MonitorGlobalExpectPlacedAt,
-			GlobalExpectUpdated: t0,
+			GlobalExpect:          MonitorGlobalExpectPlacedAt,
+			GlobalExpectUpdatedAt: t0,
 			GlobalExpectOptions: MonitorGlobalExpectOptionsPlacedAt{
 				Destination: []string{"node1", "node2"},
 			},
-			IsLeader:           true,
-			IsHALeader:         false,
-			LocalExpect:        MonitorLocalExpectNone,
-			LocalExpectUpdated: t0,
-			State:              MonitorStateIdle,
-			StateUpdated:       t0,
+			IsLeader:             true,
+			IsHALeader:           false,
+			LocalExpect:          MonitorLocalExpectNone,
+			LocalExpectUpdatedAt: t0,
+			State:                MonitorStateIdle,
+			StateUpdatedAt:       t0,
 			Resources: ResourceMonitorMap{
 				"fs#1": ResourceMonitor{
 					Restart: ResourceMonitorRestart{
@@ -59,8 +59,8 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 
 func Test_Monitor_DeepCopy(t *testing.T) {
 	mon1 := Monitor{
-		LocalExpectUpdated:  time.Now(),
-		GlobalExpectUpdated: time.Now(),
+		LocalExpectUpdatedAt:  time.Now(),
+		GlobalExpectUpdatedAt: time.Now(),
 		Resources: ResourceMonitorMap{
 			"a": ResourceMonitor{Restart: ResourceMonitorRestart{Remaining: 1, LastAt: time.Now()}},
 			"b": ResourceMonitor{Restart: ResourceMonitorRestart{Remaining: 8, LastAt: time.Now()}},
@@ -68,11 +68,11 @@ func Test_Monitor_DeepCopy(t *testing.T) {
 	}
 	mon2 := *mon1.DeepCopy()
 
-	mon2.LocalExpectUpdated = time.Now()
-	require.True(t, mon2.LocalExpectUpdated.After(mon1.LocalExpectUpdated))
+	mon2.LocalExpectUpdatedAt = time.Now()
+	require.True(t, mon2.LocalExpectUpdatedAt.After(mon1.LocalExpectUpdatedAt))
 
-	mon2.GlobalExpectUpdated = time.Now()
-	require.True(t, mon2.GlobalExpectUpdated.After(mon1.GlobalExpectUpdated))
+	mon2.GlobalExpectUpdatedAt = time.Now()
+	require.True(t, mon2.GlobalExpectUpdatedAt.After(mon1.GlobalExpectUpdatedAt))
 
 	if e, ok := mon2.Resources["a"]; ok {
 		e.Restart.LastAt = time.Now()

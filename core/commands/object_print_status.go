@@ -92,14 +92,14 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 			continue
 		}
 		o := object.Digest{
-			Path:   p,
-			Compat: true,
-			Object: object.Status{},
+			Path:     p,
+			IsCompat: true,
+			Object:   object.Status{},
 			Instances: map[string]instance.States{
 				h: {
 					Node: instance.Node{
-						Name:   h,
-						Frozen: n.Frozen(),
+						Name:     h,
+						FrozenAt: n.Frozen(),
 					},
 					Status: status,
 				},

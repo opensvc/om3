@@ -132,7 +132,7 @@ func (t *CmdDaemonJoin) checkParams() error {
 func (t *CmdDaemonJoin) extractCaClaim() (ca []byte, err error) {
 	type (
 		joinClaim struct {
-			Ca string `json:"ca"`
+			Ca string `json:"ca" yaml:"ca"`
 			*daemonauth.ApiClaims
 		}
 	)

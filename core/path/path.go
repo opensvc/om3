@@ -1,7 +1,6 @@
 package path
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -43,9 +42,9 @@ type (
 
 	// Metadata is the parsed representation of a path, used by api handlers to ease dumb clients access to individual path fields.
 	Metadata struct {
-		Name      string `json:"name"`
-		Namespace string `json:"namespace"`
-		Kind      kind.T `json:"kind"`
+		Name      string `json:"name" yaml:"name"`
+		Namespace string `json:"namespace" yaml:"namespace"`
+		Kind      kind.T `json:"kind" yaml:"kind"`
 	}
 
 	pather interface {
@@ -233,15 +232,12 @@ func Parse(s string) (T, error) {
 }
 
 // MarshalJSON implements the json interface
-func (t T) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(t.String())
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+func (t T) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
 }
 
 // UnmarshalJSON implements the json interface
-func (t *T) UnmarshalJSON(b []byte) error {
+func (t *T) UnmarshalText(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err

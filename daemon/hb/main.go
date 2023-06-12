@@ -363,12 +363,12 @@ func (t *T) msgFromRx(ctx context.Context) {
 			}
 		case msg := <-t.readMsgQueue:
 			peer := msg.Nodename
-			if msgTimes[peer].Equal(msg.Updated) {
+			if msgTimes[peer].Equal(msg.UpdatedAt) {
 				t.log.Debug().Msgf("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				continue
 			}
 			t.log.Debug().Msgf("process msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
-			msgTimes[peer] = msg.Updated
+			msgTimes[peer] = msg.UpdatedAt
 			dataMsgRecvQ <- msg
 			count++
 		}

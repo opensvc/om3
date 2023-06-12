@@ -27,9 +27,9 @@ func Test_Instance_States_Render(t *testing.T) {
 			require.Nil(t, err)
 			var timeZero time.Time
 			instanceState := instance.States{
-				Node:    instance.Node{Name: "node1", Frozen: timeZero},
+				Node:    instance.Node{Name: "node1", FrozenAt: timeZero},
 				Status:  instanceStatus,
-				Monitor: instance.Monitor{State: instance.MonitorStateIdle, StateUpdated: time.Now(), UpdatedAt: time.Now()},
+				Monitor: instance.Monitor{State: instance.MonitorStateIdle, StateUpdatedAt: time.Now(), UpdatedAt: time.Now()},
 				Config:  instance.Config{Priority: 50},
 			}
 			goldenFile := filepath.Join("testdata", name+".render")

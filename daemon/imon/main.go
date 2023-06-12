@@ -125,11 +125,11 @@ func start(parent context.Context, p path.T, nodes []string, drainDuration time.
 	id := p.String()
 
 	previousState := instance.Monitor{
-		LocalExpect:  instance.MonitorLocalExpectNone,
-		GlobalExpect: instance.MonitorGlobalExpectNone,
-		State:        instance.MonitorStateIdle,
-		Resources:    make(map[string]instance.ResourceMonitor),
-		StateUpdated: time.Now(),
+		LocalExpect:    instance.MonitorLocalExpectNone,
+		GlobalExpect:   instance.MonitorGlobalExpectNone,
+		State:          instance.MonitorStateIdle,
+		Resources:      make(map[string]instance.ResourceMonitor),
+		StateUpdatedAt: time.Now(),
 	}
 	state := previousState
 	databus := daemondata.FromContext(ctx)
@@ -375,11 +375,11 @@ func (o *imon) updateIfChange() {
 		o.loggerWithState().Info().Msgf("change monitor global expect %s -> %s", previousVal.GlobalExpect, newVal.GlobalExpect)
 	}
 	if newVal.LocalExpect != previousVal.LocalExpect {
-		o.state.LocalExpectUpdated = now
+		o.state.LocalExpectUpdatedAt = now
 		o.loggerWithState().Info().Msgf("change monitor local expect %s -> %s", previousVal.LocalExpect, newVal.LocalExpect)
 	}
 	if newVal.State != previousVal.State {
-		o.state.StateUpdated = now
+		o.state.StateUpdatedAt = now
 		o.loggerWithState().Info().Msgf("change monitor state %s -> %s", previousVal.State, newVal.State)
 	}
 	if newVal.IsLeader != previousVal.IsLeader {

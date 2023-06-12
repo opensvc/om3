@@ -13,17 +13,17 @@ type (
 	Table []Entry
 
 	Entry struct {
-		Path               path.T    `json:"path"`
-		Node               string    `json:"node"`
-		Action             string    `json:"action"`
-		Key                string    `json:"config_parameter"`
-		Last               time.Time `json:"last_run"`
-		Next               time.Time `json:"next_run"`
-		Definition         string    `json:"schedule_definition"`
-		LastRunFile        string    `json:"last_run_file"`
-		LastSuccessFile    string    `json:"last_success_file"`
-		RequireCollector   bool      `json:"require_collector"`
-		RequireProvisioned bool      `json:"require_provisioned"`
+		Action             string    `json:"action" yaml:"action"`
+		Definition         string    `json:"schedule_definition" yaml:"schedule_definition"`
+		Key                string    `json:"config_parameter" yaml:"config_parameter"`
+		LastRunAt          time.Time `json:"last_run_at" yaml:"last_run_at"`
+		LastRunFile        string    `json:"last_run_file" yaml:"last_run_file"`
+		LastSuccessFile    string    `json:"last_success_file" yaml:"last_success_file"`
+		NextRunAt          time.Time `json:"next_run_at" yaml:"next_run_at"`
+		Node               string    `json:"node" yaml:"node"`
+		Path               path.T    `json:"path" yaml:"path"`
+		RequireCollector   bool      `json:"require_collector" yaml:"require_collector"`
+		RequireProvisioned bool      `json:"require_provisioned" yaml:"require_provisioned"`
 	}
 )
 
@@ -55,7 +55,7 @@ func (t Table) AddEntries(l ...Entry) Table {
 
 func (t Entry) GetNext() (time.Time, time.Duration, error) {
 	sc := usched.New(t.Definition)
-	return sc.Next(usched.NextWithLast(t.Last))
+	return sc.Next(usched.NextWithLast(t.LastRunAt))
 }
 
 func (t Entry) RID() string {

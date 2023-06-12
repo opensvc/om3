@@ -23,9 +23,9 @@ type (
 	NodesInfo map[string]NodeInfo
 
 	NodeInfo struct {
-		Env    string    `json:"env"`
-		Labels Labels    `json:"labels"`
-		Paths  san.Paths `json:"paths"`
+		Env    string    `json:"env" yaml:"env"`
+		Labels Labels    `json:"labels" yaml:"labels"`
+		Paths  san.Paths `json:"paths" yaml:"paths"`
 	}
 
 	// Labels holds the key/value pairs defined in the labels section of the node.conf

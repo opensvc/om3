@@ -137,18 +137,18 @@ func TestDaemonData(t *testing.T) {
 	t.Run("Ensure node.MonitorData.Get result is a deep copy", func(t *testing.T) {
 		initial := *node.MonitorData.Get(localNode)
 		require.Equal(t, node.MonitorGlobalExpectNone, initial.GlobalExpect, "GlobalExpect changed !")
-		initialUpdated := initial.StateUpdated
-		initialGlobalExpectUpdated := initial.GlobalExpectUpdated
+		initialUpdated := initial.StateUpdatedAt
+		initialGlobalExpectUpdated := initial.GlobalExpectUpdatedAt
 		initial.State = node.MonitorStateIdle
-		initial.StateUpdated = time.Now()
+		initial.StateUpdatedAt = time.Now()
 		initial.GlobalExpect = node.MonitorGlobalExpectAborted
-		initial.GlobalExpectUpdated = time.Now()
+		initial.GlobalExpectUpdatedAt = time.Now()
 
 		refreshed := *node.MonitorData.Get(localNode)
 		require.Equal(t, node.MonitorStateZero, refreshed.State, "State changed !")
-		require.Equal(t, initialUpdated, refreshed.StateUpdated, "StateUpdated changed !")
+		require.Equal(t, initialUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")
 		require.Equal(t, node.MonitorGlobalExpectNone, refreshed.GlobalExpect, "GlobalExpect changed !")
-		require.Equal(t, initialGlobalExpectUpdated, refreshed.GlobalExpectUpdated, "GlobalExpectUpdated changed !")
+		require.Equal(t, initialGlobalExpectUpdated, refreshed.GlobalExpectUpdatedAt, "GlobalExpectUpdated changed !")
 	})
 	require.False(t, t.Failed()) // fail on first error
 
@@ -176,7 +176,7 @@ func TestDaemonData(t *testing.T) {
 			t.Log("check remote node gens")
 			require.Equal(t, full.Status.Gen, nodeRemote.Status.Gen, "remote status gens are not gens from message")
 			t.Log("check remote node instance status")
-			require.Equal(t, full.Instance["foo"].Status.Updated, nodeRemote.Instance["foo"].Status.Updated, "instance status updated mismatch")
+			require.Equal(t, full.Instance["foo"].Status.UpdatedAt, nodeRemote.Instance["foo"].Status.UpdatedAt, "instance status updated mismatch")
 			t.Log("check remote node instance monitor")
 			require.Equal(t, instance.MonitorStateStarting, nodeRemote.Instance["foo"].Monitor.State, "instance monitor state mismatch")
 			t.Log("check remote node stats monitor")
@@ -273,7 +273,7 @@ func TestDaemonData(t *testing.T) {
 			//require.Equal(t, []string{"node1", "node2"}, cluster.Config.Nodes)
 
 			// cluster.node.<node>.status
-			require.Equal(t, false, cluster.Status.Compat)
+			require.Equal(t, false, cluster.Status.IsCompat)
 
 			// instance
 			remoteNodeInstanceX := cluster.Node["node2"].Instance["foo"]

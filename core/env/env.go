@@ -46,7 +46,7 @@ func DaemonOriginSetenvArg() string {
 // setter functions to hint the called CRM command was launched with a different
 // session id.
 func ParentSessionIDSetenvArg() string {
-	return ParentSessionIDVar + "=" + xsession.ID
+	return ParentSessionIDVar + "=" + xsession.ID.String()
 }
 
 // Namespace returns the namespace filter forced via the OSVC_NAMESPACE environment

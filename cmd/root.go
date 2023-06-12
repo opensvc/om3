@@ -86,7 +86,7 @@ func configureLogger() {
 	}).
 		With().
 		Str("n", hostname.Hostname()).
-		Str("sid", xsession.ID).
+		Stringer("sid", xsession.ID).
 		Logger()
 
 	switch logFlag {

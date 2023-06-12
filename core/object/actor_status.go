@@ -60,12 +60,12 @@ func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err
 	data.App = t.App()
 	data.Env = t.Env()
 	data.Kind = t.path.Kind
-	data.Updated = time.Now()
+	data.UpdatedAt = time.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
 	data.Subsets = t.subsetsStatus()
-	data.Frozen = t.Frozen()
+	data.FrozenAt = t.Frozen()
 	data.Running = runningRIDList(t)
 	if err = t.resourceStatusEval(ctx, &data); err != nil {
 		return

@@ -164,7 +164,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
 		nodeStatus: node.Status{
-			Frozen: time.Now(), // ensure initial frozen
+			FrozenAt: time.Now(), // ensure initial frozen
 		},
 		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},
@@ -407,7 +407,7 @@ func (o *nmon) updateIfChange() {
 		return
 	}
 	o.change = false
-	o.state.StateUpdated = time.Now()
+	o.state.StateUpdatedAt = time.Now()
 	previousVal := o.previousState
 	newVal := o.state
 	if newVal.State != previousVal.State {

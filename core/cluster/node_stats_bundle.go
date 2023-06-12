@@ -13,59 +13,59 @@ type (
 	// NodeStatsBundle embeds all daemon threads and each objet system
 	// resource usage metrics.
 	NodeStatsBundle struct {
-		Timestamp  time.Time              `json:"time"`
-		Collector  ThreadStats            `json:"collector"`
-		Daemon     ThreadStats            `json:"daemon"`
-		DNS        ThreadStats            `json:"dns"`
-		Scheduler  ThreadStats            `json:"scheduler"`
-		Listener   ThreadStats            `json:"listener"`
-		Monitor    ThreadStats            `json:"monitor"`
-		Heartbeats map[string]ThreadStats `json:"-"`
-		Services   map[string]ObjectStats `json:"services"`
+		Time       time.Time              `json:"time" yaml:"time"`
+		Collector  ThreadStats            `json:"collector" yaml:"collector"`
+		Daemon     ThreadStats            `json:"daemon" yaml:"daemon"`
+		DNS        ThreadStats            `json:"dns" yaml:"dns"`
+		Scheduler  ThreadStats            `json:"scheduler" yaml:"scheduler"`
+		Listener   ThreadStats            `json:"listener" yaml:"listener"`
+		Monitor    ThreadStats            `json:"monitor" yaml:"monitor"`
+		Heartbeats map[string]ThreadStats `json:"-" yaml:"-"`
+		Objects    map[string]ObjectStats `json:"objects" yaml:"objects"`
 	}
 
 	// ThreadStats holds a daemon thread system resource usage metrics
 	ThreadStats struct {
-		CPU     CPUStats `json:"cpu"`
-		Mem     MemStats `json:"mem"`
-		Procs   uint64   `json:"procs"`
-		Threads uint64   `json:"threads"`
+		CPU     CPUStats `json:"cpu" yaml:"cpu"`
+		Mem     MemStats `json:"mem" yaml:"mem"`
+		Procs   uint64   `json:"procs" yaml:"procs"`
+		Threads uint64   `json:"threads" yaml:"threads"`
 	}
 
 	// CPUStats holds CPU resource usage metrics.
 	CPUStats struct {
-		Time uint64 `json:"time"`
+		Time uint64 `json:"time" yaml:"time"`
 	}
 
 	// MemStats holds CPU resource usage metrics.
 	MemStats struct {
-		Total uint64 `json:"total"`
+		Total uint64 `json:"total" yaml:"total"`
 	}
 
 	// BlkStats holds block devices resource usage metrics.
 	BlkStats struct {
-		Read      uint64 `json:"r"`
-		ReadByte  uint64 `json:"rb"`
-		Write     uint64 `json:"w"`
-		WriteByte uint64 `json:"wb"`
+		Read      uint64 `json:"r" yaml:"r"`
+		ReadByte  uint64 `json:"rb" yaml:"rb"`
+		Write     uint64 `json:"w" yaml:"w"`
+		WriteByte uint64 `json:"wb" yaml:"wb"`
 	}
 
 	// NetStats holds network resource usage metrics.
 	NetStats struct {
-		Read      uint64 `json:"r"`
-		ReadByte  uint64 `json:"rb"`
-		Write     uint64 `json:"w"`
-		WriteByte uint64 `json:"wb"`
+		Read      uint64 `json:"r" yaml:"r"`
+		ReadByte  uint64 `json:"rb" yaml:"rb"`
+		Write     uint64 `json:"w" yaml:"w"`
+		WriteByte uint64 `json:"wb" yaml:"wb"`
 	}
 
 	// ObjectStats holds an object (ie cgroup) system resource usage metrics
 	ObjectStats struct {
-		Blk     BlkStats  `json:"blk"`
-		Net     NetStats  `json:"net"`
-		Mem     MemStats  `json:"mem"`
-		CPU     CPUStats  `json:"cpu"`
-		Tasks   uint64    `json:"tasks"`
-		Created time.Time `json:"created"`
+		Blk       BlkStats  `json:"blk" yaml:"blk"`
+		Net       NetStats  `json:"net" yaml:"net"`
+		Mem       MemStats  `json:"mem" yaml:"mem"`
+		CPU       CPUStats  `json:"cpu" yaml:"cpu"`
+		Tasks     uint64    `json:"tasks" yaml:"tasks"`
+		CreatedAt time.Time `json:"created_at" yaml:"created_at"`
 	}
 )
 
@@ -108,7 +108,7 @@ func (t *NodeStatsBundle) UnmarshalJSON(b []byte) error {
 				return err
 			}
 		case "pid":
-			if err := json.Unmarshal(tmp, &ns.Services); err != nil {
+			if err := json.Unmarshal(tmp, &ns.Objects); err != nil {
 				return err
 			}
 		case "listener":

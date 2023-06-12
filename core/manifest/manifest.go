@@ -16,7 +16,7 @@ type (
 	// m := New("fs", "flag").AddKeyword(kws...).AddContext(ctx...)
 	//
 	T struct {
-		DriverID driver.ID `json:"driver"`
+		DriverID driver.ID `json:"driver" yaml:"driver"`
 		Attrs    map[string]Attr
 	}
 

@@ -39,7 +39,7 @@ func (t *PersistentReservationHandle) setup() error {
 
 func doWithLock(timeout time.Duration, name, intent string, f func() error) error {
 	p := filepath.Join(rawconfig.Paths.Lock, strings.Join([]string{"scsi", name}, "."))
-	lock := flock.New(p, xsession.ID, fcntllock.New)
+	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return err

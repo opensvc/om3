@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
 
 	"github.com/opensvc/om3/core/actionrouter"
 	"github.com/opensvc/om3/core/client"
@@ -192,15 +193,10 @@ func (t T) DoLocal() error {
 		if r.HumanRenderer != nil {
 			s += r.HumanRenderer()
 		} else if r.Data != nil {
-			switch v := r.Data.(type) {
-			case string:
-				s += fmt.Sprintln(v)
-			case []string:
-				for _, e := range v {
-					s += fmt.Sprintln(e)
-				}
-			default:
-				log.Error().Msgf("unimplemented default renderer for local action result of type %s", reflect.TypeOf(v))
+			if b, err := yaml.Marshal(r.Data); err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "%s", err)
+			} else {
+				_, _ = os.Stdout.Write(b)
 			}
 		}
 		return s
@@ -318,9 +314,9 @@ func (t T) DoRemote() error {
 			return err
 		}
 		data := &struct {
-			Err    string `json:"err"`
-			Out    string `json:"out"`
-			Status int    `json:"status"`
+			Err    string `json:"err" yaml:"err"`
+			Out    string `json:"out" yaml:"out"`
+			Status int    `json:"status" yaml:"status"`
 		}{}
 		if err := json.Unmarshal(b, data); err != nil {
 			return err

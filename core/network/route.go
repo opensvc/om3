@@ -13,12 +13,12 @@ import (
 
 type (
 	Route struct {
-		Nodename string     `json:"node"`
-		Dev      string     `json:"dev"`
-		Dst      *net.IPNet `json:"dst"`
-		Src      net.IP     `json:"ip"`
-		Gateway  net.IP     `json:"gw"`
-		Table    string     `json:"table"`
+		Nodename string     `json:"node" yaml:"node"`
+		Dev      string     `json:"dev" yaml:"dev"`
+		Dst      *net.IPNet `json:"dst" yaml:"dst"`
+		Src      net.IP     `json:"ip" yaml:"ip"`
+		Gateway  net.IP     `json:"gw" yaml:"gw"`
+		Table    string     `json:"table" yaml:"table"`
 	}
 	Routes []Route
 )

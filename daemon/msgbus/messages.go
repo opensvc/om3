@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
@@ -564,7 +565,7 @@ type (
 		Path      path.T
 		Node      string
 		State     instance.MonitorState
-		SessionId string
+		SessionId uuid.UUID
 		IsPartial bool
 	}
 

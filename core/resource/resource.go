@@ -101,17 +101,17 @@ type (
 	// T is the resource type, embedded in each drivers type
 	T struct {
 		Driver
-		ResourceID              *resourceid.T  `json:"rid"`
-		Subset                  string         `json:"subset"`
-		Disable                 bool           `json:"disable"`
-		Monitor                 bool           `json:"monitor"`
-		Optional                bool           `json:"optional"`
-		Standby                 bool           `json:"standby"`
-		Shared                  bool           `json:"shared"`
-		Encap                   bool           `json:"shared"`
-		Restart                 int            `json:"restart"`
-		RestartDelay            *time.Duration `json:"restart_delay"`
-		Tags                    *set.Set       `json:"tags"`
+		ResourceID              *resourceid.T
+		Subset                  string
+		Disable                 bool
+		Monitor                 bool
+		Optional                bool
+		Standby                 bool
+		Shared                  bool
+		Encap                   bool
+		Restart                 int
+		RestartDelay            *time.Duration
+		Tags                    *set.Set
 		BlockingPreStart        string
 		BlockingPreStop         string
 		BlockingPreRun          string
@@ -172,8 +172,8 @@ type (
 
 	// ProvisionStatus define if and when the resource became provisioned.
 	ProvisionStatus struct {
-		Mtime time.Time     `json:"mtime,omitempty"`
-		State provisioned.T `json:"state"`
+		Mtime time.Time     `json:"mtime,omitempty" yaml:"mtime,omitempty"`
+		State provisioned.T `json:"state" yaml:"state"`
 	}
 
 	// MonitorFlag tells the daemon if it should trigger a monitor action
@@ -206,37 +206,37 @@ type (
 	// ExposedStatus is the structure representing the resource status,
 	// which is embedded in the instance status.
 	ExposedStatus struct {
-		ResourceID  *resourceid.T     `json:"-"`
-		Rid         string            `json:"rid"`
-		Label       string            `json:"label"`
-		Log         []*StatusLogEntry `json:"log,omitempty"`
-		Status      status.T          `json:"status"`
-		Type        string            `json:"type"`
-		Provisioned ProvisionStatus   `json:"provisioned,omitempty"`
-		Monitor     MonitorFlag       `json:"monitor,omitempty"`
-		Disable     DisableFlag       `json:"disable,omitempty"`
-		Optional    OptionalFlag      `json:"optional,omitempty"`
-		Encap       EncapFlag         `json:"encap,omitempty"`
-		Standby     StandbyFlag       `json:"standby,omitempty"`
+		ResourceID  *resourceid.T     `json:"-" yaml:"-"`
+		Rid         string            `json:"rid" yaml:"rid"`
+		Label       string            `json:"label" yaml:"label"`
+		Log         []*StatusLogEntry `json:"log,omitempty" yaml:"log,omitempty"`
+		Status      status.T          `json:"status" yaml:"status"`
+		Type        string            `json:"type" yaml:"type"`
+		Provisioned ProvisionStatus   `json:"provisioned,omitempty" yaml:"provisioned,omitempty"`
+		Monitor     MonitorFlag       `json:"monitor,omitempty" yaml:"monitor,omitempty"`
+		Disable     DisableFlag       `json:"disable,omitempty" yaml:"disable,omitempty"`
+		Optional    OptionalFlag      `json:"optional,omitempty" yaml:"optional,omitempty"`
+		Encap       EncapFlag         `json:"encap,omitempty" yaml:"encap,omitempty"`
+		Standby     StandbyFlag       `json:"standby,omitempty" yaml:"standby,omitempty"`
 
 		// Subset is the name of the subset this resource is assigned to.
-		Subset string `json:"subset,omitempty"`
+		Subset string `json:"subset,omitempty" yaml:"subset,omitempty"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
-		Info map[string]any `json:"info,omitempty"`
+		Info map[string]any `json:"info,omitempty" yaml:"info,omitempty"`
 
 		// Restart is the number of restart to be tried before giving up.
-		Restart RestartFlag `json:"restart,omitempty"`
+		Restart RestartFlag `json:"restart,omitempty" yaml:"restart,omitempty"`
 
 		// Tags is a set of words attached to the resource.
-		Tags TagSet `json:"tags,omitempty"`
+		Tags TagSet `json:"tags,omitempty" yaml:"tags,omitempty"`
 	}
 
 	Hook int
 
 	ExposedStatusInfoSchedAction struct {
-		Last time.Time `json:"last"`
+		Last time.Time `json:"last" yaml:"last"`
 	}
 
 	// ScheduleOptions contains the information needed by the object to create a
@@ -1207,7 +1207,7 @@ func (t *T) DoWithLock(disable bool, timeout time.Duration, intent string, f fun
 		return nil
 	}
 	p := filepath.Join(t.VarDir(), intent)
-	lock := flock.New(p, xsession.ID, fcntllock.New)
+	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return err
@@ -1232,7 +1232,7 @@ func exposedStatusInfoSched(t Scheduler) map[string]ExposedStatusInfoSchedAction
 	data := make(map[string]ExposedStatusInfoSchedAction)
 	for _, e := range t.Schedules() {
 		ad := ExposedStatusInfoSchedAction{
-			Last: e.Last,
+			Last: e.LastRunAt,
 		}
 		data[e.Action] = ad
 	}

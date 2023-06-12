@@ -42,8 +42,8 @@ func (t *CmdObjectCollectorTagAttach) Run(selector, kind string) error {
 				options["tag_attach_data"] = *t.AttachData
 			}
 			type respType struct {
-				Ret int    `json:"ret"`
-				Msg string `json:"msg"`
+				Ret int    `json:"ret" yaml:"ret"`
+				Msg string `json:"msg" yaml:"msg"`
 			}
 			var resp respType
 			if err := cli.CallFor(&resp, "collector_tag", options); err != nil {

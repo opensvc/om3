@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/rs/zerolog/log"
 	"github.com/opensvc/om3/core/env"
+	"github.com/rs/zerolog/log"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -16,38 +16,38 @@ type (
 	// It contains the credentials and endpoint information to connect to
 	// remote clusters.
 	config struct {
-		Contexts map[string]relation `json:"contexts"`
-		Clusters map[string]cluster  `json:"clusters"`
-		Users    map[string]user     `json:"users"`
+		Contexts map[string]relation `json:"contexts" yaml:"contexts"`
+		Clusters map[string]cluster  `json:"clusters" yaml:"clusters"`
+		Users    map[string]user     `json:"users" yaml:"users"`
 	}
 
 	// T is a dereferenced Cluster-User relation.
 	T struct {
-		Cluster   cluster `json:"cluster"`
-		User      user    `json:"user"`
-		Namespace string  `json:"namespace"`
+		Cluster   cluster `json:"cluster" yaml:"cluster"`
+		User      user    `json:"user" yaml:"user"`
+		Namespace string  `json:"namespace" yaml:"namespace"`
 	}
 
 	// relation is a Cluster-User relation.
 	relation struct {
-		ClusterRefName string `json:"cluster"`
-		UserRefName    string `json:"user"`
-		Namespace      string `json:"namespace"`
+		ClusterRefName string `json:"cluster" yaml:"cluster"`
+		UserRefName    string `json:"user" yaml:"user"`
+		Namespace      string `json:"namespace" yaml:"namespace"`
 	}
 
 	// cluster host the endpoint address or name, and the certificate authority
 	// to trust.
 	cluster struct {
-		CertificateAuthority string `json:"certificate_authority,omitempty"`
-		Server               string `json:"server"`
-		InsecureSkipVerify   bool   `json:"insecure"`
+		CertificateAuthority string `json:"certificate_authority,omitempty" yaml:"certificate_authority,omitempty"`
+		Server               string `json:"server" yaml:"server"`
+		InsecureSkipVerify   bool   `json:"insecure" yaml:"insecure"`
 	}
 
 	// user hosts the certificate and private to use to connect to the remote
 	// cluster.
 	user struct {
-		ClientCertificate string `json:"client_certificate"`
-		ClientKey         string `json:"client_key"`
+		ClientCertificate string `json:"client_certificate" yaml:"client_certificate"`
+		ClientKey         string `json:"client_key" yaml:"client_key"`
 	}
 )
 

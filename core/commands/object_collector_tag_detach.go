@@ -38,8 +38,8 @@ func (t *CmdObjectCollectorTagDetach) Run(selector, kind string) error {
 			options["svcname"] = p.String()
 			options["tag_name"] = t.Name
 			type respType struct {
-				Ret int    `json:"ret"`
-				Msg string `json:"msg"`
+				Ret int    `json:"ret" yaml:"ret"`
+				Msg string `json:"msg" yaml:"msg"`
 			}
 			var resp respType
 			if err := cli.CallFor(&resp, "collector_untag", options); err != nil {

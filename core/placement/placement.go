@@ -1,10 +1,8 @@
 package placement
 
 import (
-	"bytes"
-	"encoding/json"
-
 	"github.com/opensvc/om3/util/xmap"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -31,7 +29,9 @@ const (
 	Spread
 	// Score is the policy where node priorities are assigned to nodes based on score. The higher the score, the higher the priority.
 	Score
+)
 
+const (
 	Undef State = iota
 	NotApplicable
 	Optimal
@@ -40,6 +40,7 @@ const (
 
 var (
 	policyToString = map[Policy]string{
+		Invalid:    "",
 		None:       "none",
 		NodesOrder: "nodes order",
 		LoadAvg:    "load avg",
@@ -49,6 +50,7 @@ var (
 	}
 
 	policyToID = map[string]Policy{
+		"":            Invalid,
 		"none":        None,
 		"nodes order": NodesOrder,
 		"load avg":    LoadAvg,
@@ -77,23 +79,24 @@ func (t State) String() string {
 	return stateToString[t]
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t State) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(stateToString[t])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a quoted json string
+func (t State) MarshalText() ([]byte, error) {
+	if s, ok := stateToString[t]; !ok {
+		return nil, errors.Errorf("unknown placement state %d", t)
+	} else {
+		return []byte(s), nil
+	}
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *State) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
+// UnmarshalText unmashals a quoted json string to the enum value
+func (t *State) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := stateToID[s]; !ok {
+		return errors.Errorf("unknown placement state '%s'", s)
+	} else {
+		*t = v
+		return nil
 	}
-	*t = stateToID[j]
-	return nil
 }
 
 func (t Policy) String() string {
@@ -109,23 +112,24 @@ func NewPolicy(s string) Policy {
 	return Invalid
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t Policy) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(policyToString[t])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a quoted json string
+func (t Policy) MarshalText() ([]byte, error) {
+	if s, ok := policyToString[t]; !ok {
+		return nil, errors.Errorf("unknown placement policy %d", t)
+	} else {
+		return []byte(s), nil
+	}
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *Policy) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
+// UnmarshalText unmashals a quoted json string to the enum value
+func (t *Policy) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := policyToID[s]; !ok {
+		return errors.Errorf("unknown placement policy '%s'", s)
+	} else {
+		*t = v
+		return nil
 	}
-	*t = policyToID[j]
-	return nil
 }
 
 func PolicyNames() []string {

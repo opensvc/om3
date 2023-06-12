@@ -52,11 +52,11 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
 		Avail:       status.Parse(string(payloadStatus.Avail)),
-		Frozen:      payloadStatus.Frozen,
+		FrozenAt:    payloadStatus.FrozenAt,
 		Kind:        kind.New(payloadStatus.Kind),
 		Overall:     status.Parse(string(payloadStatus.Overall)),
 		StatusGroup: nil,
-		Updated:     payloadStatus.Updated,
+		UpdatedAt:   payloadStatus.UpdatedAt,
 	}
 	if payloadStatus.App != nil {
 		instanceStatus.App = *payloadStatus.App

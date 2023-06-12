@@ -492,7 +492,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 
 	for _, nmonState := range c.nodeMonitorStates {
 		t.Logf("publish NodeMonitorUpdated state: %s", nmonState)
-		nodeMonitor := node.Monitor{State: nmonState, StateUpdated: time.Now(), GlobalExpectUpdated: now, LocalExpectUpdated: now}
+		nodeMonitor := node.Monitor{State: nmonState, StateUpdatedAt: time.Now(), GlobalExpectUpdatedAt: now, LocalExpectUpdatedAt: now}
 		node.MonitorData.Set(hostname.Hostname(), nodeMonitor.DeepCopy())
 		bus.Pub(&msgbus.NodeMonitorUpdated{Node: hostname.Hostname(), Value: nodeMonitor},
 			pubsub.Label{"node", hostname.Hostname()})
@@ -501,7 +501,7 @@ func orchestrateTestfunc(t *testing.T, c tCase) {
 	t.Logf("publish initial node status with frozen %v", c.nodeFrozen)
 	nodeStatus := node.Status{}
 	if c.nodeFrozen {
-		nodeStatus.Frozen = time.Now()
+		nodeStatus.FrozenAt = time.Now()
 	}
 	node.StatusData.Set(hostname.Hostname(), nodeStatus.DeepCopy())
 	bus.Pub(&msgbus.NodeStatusUpdated{Node: hostname.Hostname(), Value: *nodeStatus.DeepCopy()},
@@ -622,14 +622,14 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 				Kind:        p.Kind,
 				Provisioned: se.iStatus.Provisioned,
 				Optional:    se.iStatus.Optional,
-				Updated:     time.Now(),
-				Frozen:      time.Time{},
+				UpdatedAt:   time.Now(),
+				FrozenAt:    time.Time{},
 			}
 			bus.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)
-			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.Updated, v.Frozen)
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.UpdatedAt, v.FrozenAt)
 		}
 
 		if se.err != nil {

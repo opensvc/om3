@@ -12,24 +12,24 @@ import (
 type (
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
-		GlobalExpect        MonitorGlobalExpect `json:"global_expect"`
-		GlobalExpectUpdated time.Time           `json:"global_expect_updated"`
-		GlobalExpectOptions any                 `json:"global_expect_options"`
-		IsLeader            bool                `json:"is_leader"`
-		IsHALeader          bool                `json:"is_ha_leader"`
-		LocalExpect         MonitorLocalExpect  `json:"local_expect"`
-		LocalExpectUpdated  time.Time           `json:"local_expect_updated"`
+		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:""global_expect`
+		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+		GlobalExpectOptions   any                 `json:"global_expect_options" yaml:"global_expect_options"`
+		IsLeader              bool                `json:"is_leader" yaml:"is_leader"`
+		IsHALeader            bool                `json:"is_ha_leader" yaml:"is_ha_leader"`
+		LocalExpect           MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
+		LocalExpectUpdatedAt  time.Time           `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
 
 		// OrchestrationId is the accepted orchestration id that will be unset
 		// when orchestration is reached on local node
-		OrchestrationId uuid.UUID `json:"orchestration_id"`
+		OrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
 
-		SessionId               string             `json:"session_id"`
-		State                   MonitorState       `json:"state"`
-		StateUpdated            time.Time          `json:"state_updated"`
-		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at"`
-		Resources               ResourceMonitorMap `json:"resources,omitempty"`
-		UpdatedAt               time.Time          `json:"updated_at"`
+		SessionId               uuid.UUID          `json:"session_id" yaml:"session_id"`
+		State                   MonitorState       `json:"state" yaml:"state"`
+		StateUpdatedAt          time.Time          `json:"state_updated_at" yaml:"state_updated_at"`
+		MonitorActionExecutedAt time.Time          `json:"monitor_action_executed_at" yaml:"monitor_action_executed_at"`
+		Resources               ResourceMonitorMap `json:"resources,omitempty" yaml:"resources,omitempty"`
+		UpdatedAt               time.Time          `json:"updated_at" yaml:"updated_at"`
 	}
 
 	ResourceMonitorMap map[string]ResourceMonitor
@@ -38,24 +38,24 @@ type (
 	// change some Monitor values. A nil value does not change the
 	// current value.
 	MonitorUpdate struct {
-		GlobalExpect        *MonitorGlobalExpect `json:"global_expect"`
-		GlobalExpectOptions any                  `json:"global_expect_options"`
-		LocalExpect         *MonitorLocalExpect  `json:"local_expect"`
-		State               *MonitorState        `json:"state"`
+		GlobalExpect        *MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		GlobalExpectOptions any                  `json:"global_expect_options" yaml:"global_expect_options"`
+		LocalExpect         *MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
+		State               *MonitorState        `json:"state" yaml:"state"`
 
 		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
-		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
+		CandidateOrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ResourceMonitor describes the restart states maintained by the daemon
 	// for an object instance.
 	ResourceMonitor struct {
-		Restart ResourceMonitorRestart `json:"restart"`
+		Restart ResourceMonitorRestart `json:"restart" yaml:"restart"`
 	}
 	ResourceMonitorRestart struct {
-		Remaining int         `json:"remaining"`
-		LastAt    time.Time   `json:"last_at"`
-		Timer     *time.Timer `json:"-"`
+		Remaining int         `json:"remaining" yaml:"remaining"`
+		LastAt    time.Time   `json:"last_at" yaml:"last_at"`
+		Timer     *time.Timer `json:"-" yaml:"-"`
 	}
 
 	MonitorState        int
@@ -63,7 +63,7 @@ type (
 	MonitorGlobalExpect int
 
 	MonitorGlobalExpectOptionsPlacedAt struct {
-		Destination []string `json:"destination"`
+		Destination []string `json:"destination" yaml:"destination"`
 	}
 )
 
@@ -242,12 +242,11 @@ func (t MonitorState) String() string {
 	return MonitorStateStrings[t]
 }
 
-func (t MonitorState) MarshalJSON() ([]byte, error) {
+func (t MonitorState) MarshalText() ([]byte, error) {
 	if s, ok := MonitorStateStrings[t]; !ok {
-		fmt.Printf("unexpected MonitorState value: %d\n", t)
 		return []byte{}, fmt.Errorf("unexpected MonitorState value: %d", t)
 	} else {
-		return json.Marshal(s)
+		return []byte(s), nil
 	}
 }
 
@@ -272,69 +271,58 @@ func (t *Monitor) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (t *MonitorState) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+func (t *MonitorState) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := MonitorStateValues[s]; !ok {
+		return fmt.Errorf("unexpected MonitorState value: %s", s)
+	} else {
+		*t = v
+		return nil
 	}
-	v, ok := MonitorStateValues[s]
-	if !ok {
-		return fmt.Errorf("unexpected MonitorState value: %s", b)
-	}
-	*t = v
-	return nil
 }
 
 func (t MonitorLocalExpect) String() string {
 	return MonitorLocalExpectStrings[t]
 }
 
-func (t MonitorLocalExpect) MarshalJSON() ([]byte, error) {
+func (t MonitorLocalExpect) MarshalText() ([]byte, error) {
 	if s, ok := MonitorLocalExpectStrings[t]; !ok {
-		fmt.Printf("unexpected MonitorLocalExpect value: %d\n", t)
 		return []byte{}, fmt.Errorf("unexpected MonitorLocalExpect value: %d", t)
 	} else {
-		return json.Marshal(s)
+		return []byte(s), nil
 	}
 }
 
-func (t *MonitorLocalExpect) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+func (t *MonitorLocalExpect) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := MonitorLocalExpectValues[s]; !ok {
+		return fmt.Errorf("unexpected MonitorLocalExpect value: %s", s)
+	} else {
+		*t = v
+		return nil
 	}
-	v, ok := MonitorLocalExpectValues[s]
-	if !ok {
-		return fmt.Errorf("unexpected MonitorLocalExpect value: %s", b)
-	}
-	*t = v
-	return nil
 }
 
 func (t MonitorGlobalExpect) String() string {
 	return MonitorGlobalExpectStrings[t]
 }
 
-func (t MonitorGlobalExpect) MarshalJSON() ([]byte, error) {
+func (t MonitorGlobalExpect) MarshalText() ([]byte, error) {
 	if s, ok := MonitorGlobalExpectStrings[t]; !ok {
-		fmt.Printf("unexpected MonitorGlobalExpect value: %d\n", t)
 		return []byte{}, fmt.Errorf("unexpected MonitorGlobalExpect value: %d", t)
 	} else {
-		return json.Marshal(s)
+		return []byte(s), nil
 	}
 }
 
-func (t *MonitorGlobalExpect) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := MonitorGlobalExpectValues[s]; !ok {
+		return fmt.Errorf("unexpected MonitorGlobalExpect value: %s", s)
+	} else {
+		*t = v
+		return nil
 	}
-	v, ok := MonitorGlobalExpectValues[s]
-	if !ok {
-		return fmt.Errorf("unexpected MonitorGlobalExpect value: %s", b)
-	}
-	*t = v
-	return nil
 }
 
 func (m ResourceMonitorMap) DecRestartRemaining(rid string) {

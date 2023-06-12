@@ -13,18 +13,18 @@ import (
 
 type (
 	StatusUsage struct {
-		Free int     `json:"free"`
-		Used int     `json:"used"`
-		Size int     `json:"size"`
-		Pct  float64 `json:"pct"`
+		Free int     `json:"free" yaml:"free"`
+		Used int     `json:"used" yaml:"used"`
+		Size int     `json:"size" yaml:"size"`
+		Pct  float64 `json:"pct" yaml:"pct"`
 	}
 
 	Status struct {
-		Name    string      `json:"name"`
-		Type    string      `json:"type"`
-		Network string      `json:"network"`
-		IPs     clusterip.L `json:"ips"`
-		Errors  []string    `json:"errors,omitempty"`
+		Name    string      `json:"name" yaml:"name"`
+		Type    string      `json:"type" yaml:"type"`
+		Network string      `json:"network" yaml:"network"`
+		IPs     clusterip.L `json:"ips" yaml:"ips"`
+		Errors  []string    `json:"errors,omitempty" yaml:"errors,omitempty"`
 		StatusUsage
 	}
 	StatusList []Status

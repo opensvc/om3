@@ -18,8 +18,8 @@ type (
 
 	// StatusLogEntry is an element of LogType.Log
 	StatusLogEntry struct {
-		Level   Level  `json:"level"`
-		Message string `json:"message"`
+		Level   Level  `json:"level" yaml:"level"`
+		Message string `json:"message" yaml:"message"`
 	}
 )
 

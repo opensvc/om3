@@ -32,7 +32,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 		Csum:        "01e51d8e37b378e2281ccf72d09e5e1b",
 		Kind:        kind.Svc,
 		Provisioned: provisioned.Mixed,
-		Updated:     time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
+		UpdatedAt:   time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
 		Resources: []resource.ExposedStatus{
 			{
 				ResourceID: (*resourceid.T)(nil),

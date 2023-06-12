@@ -362,9 +362,9 @@ func (t T) DoAsync() error {
 	}
 	type (
 		result struct {
-			Path            string    `json:"path"`
-			OrchestrationId uuid.UUID `json:"orchestration_id,omitempty"`
-			Error           error     `json:"error,omitempty"`
+			Path            string    `json:"path" yaml:"path"`
+			OrchestrationId uuid.UUID `json:"orchestration_id,omitempty" yaml:"orchestration_id,omitempty"`
+			Error           error     `json:"error,omitempty" yaml:"error,omitempty"`
 		}
 		results []result
 	)

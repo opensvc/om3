@@ -1,10 +1,8 @@
 package kind
 
 import (
-	"bytes"
-	"encoding/json"
-
 	"github.com/opensvc/om3/util/xmap"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -69,24 +67,24 @@ func New(s string) T {
 	return Invalid
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t T) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(toString[t])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a string
+func (t T) MarshalText() ([]byte, error) {
+	if s, ok := toString[t]; !ok {
+		return nil, errors.Errorf("unknown kind %v", t)
+	} else {
+		return []byte(s), nil
+	}
 }
 
 // UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *T) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
+func (t *T) UnmarshalText(b []byte) error {
+	s := string(b)
+	if k, ok := toID[s]; !ok {
+		return errors.Errorf("unknown kind %s", s)
+	} else {
+		*t = k
+		return nil
 	}
-	// Note that if the string cannot be found then it will be set to the zero value, 'Created' in this case.
-	*t = toID[j]
-	return nil
 }
 
 func Names() []string {

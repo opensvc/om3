@@ -20,15 +20,15 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 				Status: status.Up,
 			},
 		},
-		Compat: 9,
-		Frozen: t1,
+		Compat:   9,
+		FrozenAt: t1,
 		Gen: map[string]uint64{
 			"node1": uint64(19),
 			"node2": uint64(10),
 		},
 		MinAvailMemPct:  9,
 		MinAvailSwapPct: 15,
-		Speaker:         true,
+		IsSpeaker:       true,
 		Labels: map[string]string{
 			"node1": "abc",
 			"node2": "efg",
@@ -56,10 +56,10 @@ func Test_TStatus_DeepCopy(t *testing.T) {
 	require.Equal(t, copyValue.Arbitrators["node2"].Url, "bar")
 
 	newFrozen := time.Now()
-	value.Frozen = newFrozen
-	require.True(t, value.Frozen.After(copyValue.Frozen))
+	value.FrozenAt = newFrozen
+	require.True(t, value.FrozenAt.After(copyValue.FrozenAt))
 
-	require.True(t, copyValue.Frozen.Equal(t1))
-	copyValue.Frozen = time.Now()
-	require.True(t, copyValue.Frozen.After(value.Frozen))
+	require.True(t, copyValue.FrozenAt.Equal(t1))
+	copyValue.FrozenAt = time.Now()
+	require.True(t, copyValue.FrozenAt.After(value.FrozenAt))
 }

@@ -84,7 +84,7 @@ func sObjectInstanceHALeader(instanceMonitor instance.Monitor) string {
 }
 
 func sObjectInstanceFrozen(instance instance.Status) string {
-	if !instance.Frozen.IsZero() {
+	if !instance.FrozenAt.IsZero() {
 		return iconFrozen
 	}
 	return ""

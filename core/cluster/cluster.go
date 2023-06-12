@@ -13,58 +13,58 @@ import (
 type (
 	// Data describes the full Cluster state.
 	Data struct {
-		Cluster Cluster `json:"cluster"`
-		Daemon  Deamon  `json:"daemon"`
+		Cluster Cluster `json:"cluster" yaml:"cluster"`
+		Daemon  Deamon  `json:"daemon" yaml:"daemon"`
 	}
 
 	Cluster struct {
-		Config Config                   `json:"config"`
-		Status Status                   `json:"status"`
-		Object map[string]object.Status `json:"object"`
+		Config Config                   `json:"config" yaml:"config"`
+		Status Status                   `json:"status" yaml:"status"`
+		Object map[string]object.Status `json:"object" yaml:"object"`
 
-		Node map[string]node.Node `json:"node"`
+		Node map[string]node.Node `json:"node" yaml:"node"`
 	}
 
 	Status struct {
-		Compat bool `json:"compat"`
-		Frozen bool `json:"frozen"`
+		IsCompat bool `json:"is_compat" yaml:"is_compat"`
+		IsFrozen bool `json:"is_frozen" yaml:"is_frozen"`
 	}
 
 	Deamon struct {
-		Collector DaemonCollector `json:"collector"`
-		DNS       DaemonDNS       `json:"dns"`
-		Hb        DaemonHb        `json:"hb"`
-		Listener  DaemonListener  `json:"listener"`
-		Monitor   DaemonMonitor   `json:"monitor"`
-		Nodename  string          `json:"nodename"`
-		Routines  int             `json:"routines"`
-		Scheduler DaemonScheduler `json:"scheduler"`
+		Collector DaemonCollector `json:"collector" yaml:"collector"`
+		DNS       DaemonDNS       `json:"dns" yaml:"dns"`
+		Hb        DaemonHb        `json:"hb" yaml:"hb"`
+		Listener  DaemonListener  `json:"listener" yaml:"listener"`
+		Monitor   DaemonMonitor   `json:"monitor" yaml:"monitor"`
+		Nodename  string          `json:"nodename" yaml:"nodename"`
+		Routines  int             `json:"routines" yaml:"routines"`
+		Scheduler DaemonScheduler `json:"scheduler" yaml:"scheduler"`
 	}
 
 	DaemonHb struct {
-		Streams []HeartbeatStream `json:"streams"`
-		Modes   []HbMode          `json:"modes"`
+		Streams []HeartbeatStream `json:"streams" yaml:"streams"`
+		Modes   []HbMode          `json:"modes" yaml:"modes"`
 	}
 
 	HbMode struct {
-		Node string `json:"node"`
+		Node string `json:"node" yaml:"node"`
 
 		// Mode is the type of hb message except when Type is patch where it is the patch queue length
-		Mode string `json:"mode"`
+		Mode string `json:"mode" yaml:"mode"`
 
 		// Type is the hb message type (unset/ping/full/patch)
-		Type string `json:"type"`
+		Type string `json:"type" yaml:"type"`
 	}
 )
 
 func (s *Data) DeepCopy() *Data {
 	b, err := json.Marshal(s)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	newStatus := Data{}
 	if err := json.Unmarshal(b, &newStatus); err != nil {
-		return nil
+		panic(err)
 	}
 	return &newStatus
 }
@@ -143,11 +143,11 @@ func (s *Data) GetObjectStatus(p path.T) object.Digest {
 	ps := p.String()
 	data := object.NewStatus()
 	data.Path = p
-	data.Compat = s.Cluster.Status.Compat
+	data.IsCompat = s.Cluster.Status.IsCompat
 	data.Object, _ = s.Cluster.Object[ps]
 	for nodename, ndata := range s.Cluster.Node {
 		instanceStates := instance.States{}
-		instanceStates.Node.Frozen = ndata.Status.Frozen
+		instanceStates.Node.FrozenAt = ndata.Status.FrozenAt
 		instanceStates.Node.Name = nodename
 		inst, ok := ndata.Instance[ps]
 		if !ok {

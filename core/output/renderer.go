@@ -1,13 +1,16 @@
 package output
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
 
+	"github.com/andreazorzetto/yh/highlight"
 	"github.com/fatih/color"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/render/palette"
+	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -59,14 +62,20 @@ func (t Renderer) Sprint() string {
 	}
 	switch format {
 	case Flat:
-		b, _ := json.Marshal(t.Data)
+		b, err := json.Marshal(t.Data)
+		if err != nil {
+			panic(err)
+		}
 		if color.NoColor {
 			return SprintFlat(b)
 		} else {
 			return SprintFlatColor(b, t.Colorize)
 		}
 	case JSON:
-		b, _ := json.MarshalIndent(t.Data, "", indent)
+		b, err := json.MarshalIndent(t.Data, "", indent)
+		if err != nil {
+			panic(err)
+		}
 		s := string(b) + "\n"
 		s = regexpJSONKey.ReplaceAllString(s, t.Colorize.Primary("$1"))
 		s = regexpJSONReference.ReplaceAllString(s, t.Colorize.Optimal("$1"))
@@ -77,8 +86,31 @@ func (t Renderer) Sprint() string {
 		s = regexpJSONSecondary.ReplaceAllString(s, "$1"+t.Colorize.Secondary("$2")+"$3")
 		return s
 	case JSONLine:
-		b, _ := json.Marshal(t.Data)
+		b, err := json.Marshal(t.Data)
+		if err != nil {
+			panic(err)
+		}
 		return string(b) + "\n"
+	case YAML:
+		if color.NoColor {
+			b, err := yaml.Marshal(t.Data)
+			if err != nil {
+				panic(err)
+			}
+			return string(b)
+		} else {
+			b := bytes.NewBuffer(nil)
+			enc := yaml.NewEncoder(b)
+			err := enc.Encode(t.Data)
+			if err != nil {
+				panic(err)
+			}
+			s, err := highlight.Highlight(b)
+			if err != nil {
+				panic(err)
+			}
+			return s
+		}
 	default:
 		if t.HumanRenderer != nil {
 			return t.HumanRenderer()
@@ -86,7 +118,10 @@ func (t Renderer) Sprint() string {
 		if r, ok := t.Data.(renderer); ok {
 			return r.Render()
 		}
-		b, _ := json.MarshalIndent(t.Data, "", indent)
+		b, err := json.MarshalIndent(t.Data, "", indent)
+		if err != nil {
+			panic(err)
+		}
 		return string(b) + "\n"
 	}
 }

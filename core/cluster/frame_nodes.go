@@ -68,7 +68,7 @@ func (f Frame) sNodeVersionLine() string {
 }
 
 func (f Frame) sNodeCompatLine() string {
-	if f.Current.Cluster.Status.Compat {
+	if f.Current.Cluster.Status.IsCompat {
 		return ""
 	}
 	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator)
@@ -153,7 +153,7 @@ func (f Frame) sNodeMonState(n string) string {
 
 func (f Frame) sNodeFrozen(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		if !val.Status.Frozen.IsZero() {
+		if !val.Status.FrozenAt.IsZero() {
 			return iconFrozen
 		}
 	}

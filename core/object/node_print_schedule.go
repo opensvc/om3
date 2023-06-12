@@ -45,7 +45,7 @@ func (t *Node) newScheduleEntry(action, keyStr, rid, base string) schedule.Entry
 	return schedule.Entry{
 		Node:            hostname.Hostname(),
 		Action:          action,
-		Last:            t.loadLast(action, rid, base),
+		LastRunAt:       t.loadLast(action, rid, base),
 		Key:             k.String(),
 		Definition:      def,
 		LastRunFile:     t.lastRunFile(action, rid, base),

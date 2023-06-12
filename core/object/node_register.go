@@ -9,28 +9,28 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
-	"golang.org/x/term"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/pkg/errors"
+	"golang.org/x/term"
 )
 
 type (
 	// registerReq structures the POST /register request body
 	registerReq struct {
-		Nodename string `json:"nodename"`
-		App      string `json:"app,omitempty"`
+		Nodename string `json:"nodename" yaml:"nodename"`
+		App      string `json:"app,omitempty" yaml:"app,omitempty"`
 	}
 
 	// registerRes structures the POST /register response body
 	registerRes struct {
-		Data  registerResData `json:"data"`
-		Info  string          `json:"info"`
-		Error string          `json:"error"`
+		Data  registerResData `json:"data" yaml:"data"`
+		Info  string          `json:"info" yaml:"info"`
+		Error string          `json:"error" yaml:"error"`
 	}
 	registerResData struct {
-		UUID string `json:"uuid"`
+		UUID string `json:"uuid" yaml:"uuid"`
 	}
 )
 

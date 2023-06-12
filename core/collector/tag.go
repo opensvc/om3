@@ -8,13 +8,13 @@ import (
 type (
 	TagAttachmentList []TagAttachment
 	TagAttachment     struct {
-		TagName       string `json:"tag_name"`
-		TagData       string `json:"tag_data"`
-		TagAttachData string `json:"tag_attach_data"`
+		TagName       string `json:"tag_name" yaml:"tag_name"`
+		TagData       string `json:"tag_data" yaml:"tag_data"`
+		TagAttachData string `json:"tag_attach_data" yaml:"tag_attach_data"`
 	}
 )
 
-func (t TagAttachmentList) String() string {
+func (t TagAttachmentList) Render() string {
 	head := tree.New()
 	head.AddColumn().AddText("tag_name").SetColor(rawconfig.Color.Bold)
 	head.AddColumn().AddText("tag_data").SetColor(rawconfig.Color.Bold)

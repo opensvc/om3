@@ -17,7 +17,7 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 		if data.GlobalExpect == node.MonitorGlobalExpectNone {
 			continue
 		}
-		nodeTime := data.GlobalExpectUpdated
+		nodeTime := data.GlobalExpectUpdatedAt
 		if mostRecentUpdated.Before(nodeTime) {
 			mostRecentNode = nodename
 			mostRecentUpdated = nodeTime
@@ -26,10 +26,10 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 	if mostRecentUpdated.IsZero() {
 		return
 	}
-	if mostRecentUpdated.After(o.state.GlobalExpectUpdated) {
+	if mostRecentUpdated.After(o.state.GlobalExpectUpdatedAt) {
 		o.change = true
 		o.state.GlobalExpect = o.nodeMonitor[mostRecentNode].GlobalExpect
-		o.state.GlobalExpectUpdated = o.nodeMonitor[mostRecentNode].GlobalExpectUpdated
+		o.state.GlobalExpectUpdatedAt = o.nodeMonitor[mostRecentNode].GlobalExpectUpdatedAt
 		strVal := o.nodeMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
@@ -40,12 +40,12 @@ func (o *nmon) convergeGlobalExpectFromRemote() {
 }
 
 func (o *nmon) isConvergedGlobalExpect() bool {
-	localUpdated := o.state.GlobalExpectUpdated
+	localUpdated := o.state.GlobalExpectUpdatedAt
 	for s, data := range o.nodeMonitor {
 		if s == o.localhost {
 			continue
 		}
-		if localUpdated.After(data.GlobalExpectUpdated) {
+		if localUpdated.After(data.GlobalExpectUpdatedAt) {
 			o.log.Debug().Msgf("wait GlobalExpect propagation on %s", s)
 			return false
 		}

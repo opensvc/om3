@@ -1,9 +1,9 @@
 package status
 
 import (
-	"bytes"
-	"encoding/json"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type (
@@ -80,24 +80,21 @@ func (t T) Is(l ...T) bool {
 	return false
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t T) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(toString[t])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a quoted json string
+func (t T) MarshalText() ([]byte, error) {
+	s := t.String()
+	return []byte(s), nil
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *T) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
+// UnmarshalText unmashals a quoted json string to the enum value
+func (t *T) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := toID[s]; !ok {
+		return errors.Errorf("unknown state %s", s)
+	} else {
+		*t = v
+		return nil
 	}
-	// Note that if the string cannot be found then it will be set to the zero value, 'Created' in this case.
-	*t = toID[j]
-	return nil
 }
 
 // Add merges two states and returns the aggregate state.

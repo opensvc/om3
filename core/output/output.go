@@ -1,16 +1,11 @@
 package output
 
-import (
-	"bytes"
-	"encoding/json"
-)
-
 // T encodes as an integer one of the supported output formats
 // (json, flat, human, table, csv)
 type T int
 
 const (
-	// Human is the prefered human friendly output format
+	// Human is the prefered human friendly custom output format
 	Human T = iota
 	// JSON is the json output format
 	JSON
@@ -22,6 +17,8 @@ const (
 	Table
 	// CSV is the csv tabular output format
 	CSV
+	// YAML is the standard human readable, commentable, complex data representation
+	YAML
 )
 
 var toString = map[T]string{
@@ -31,6 +28,7 @@ var toString = map[T]string{
 	Flat:     "flat",
 	Table:    "table",
 	CSV:      "csv",
+	YAML:     "yaml",
 }
 
 var toID = map[string]T{
@@ -41,6 +39,7 @@ var toID = map[string]T{
 	"flat_json": Flat, // compat
 	"table":     Table,
 	"csv":       CSV,
+	"yaml":      YAML,
 }
 
 func (t T) String() string {
@@ -52,22 +51,15 @@ func New(s string) T {
 	return toID[s]
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t T) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(toString[t])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a quoted json string
+func (t T) MarshalText() ([]byte, error) {
+	s := t.String()
+	return []byte(s), nil
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *T) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
-	}
-	// Note that if the string cannot be found then it will be set to the zero value, 'Created' in this case.
-	*t = toID[j]
+// UnmarshalText unmashals a quoted json string to the enum value
+func (t *T) UnmarshalText(b []byte) error {
+	s := string(b)
+	*t = toID[s]
 	return nil
 }

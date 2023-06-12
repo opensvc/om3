@@ -28,8 +28,8 @@ func (t Table) Render() string {
 		n.AddColumn().AddText(e.Node).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(e.Path.String()).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(e.Action).SetColor(rawconfig.Color.Primary)
-		n.AddColumn().AddText(SprintTime(e.Last))
-		n.AddColumn().AddText(SprintTime(e.Next))
+		n.AddColumn().AddText(SprintTime(e.LastRunAt))
+		n.AddColumn().AddText(SprintTime(e.NextRunAt))
 		n.AddColumn().AddText(e.Key)
 		n.AddColumn().AddText(e.Definition)
 	}

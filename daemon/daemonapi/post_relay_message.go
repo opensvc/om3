@@ -26,10 +26,10 @@ func (a *DaemonApi) PostRelayMessage(ctx echo.Context) error {
 	value.ClusterId = payload.ClusterId
 	value.Nodename = payload.Nodename
 	value.Msg = payload.Msg
-	value.Updated = time.Now()
+	value.UpdatedAt = time.Now()
 	value.Addr = ctx.Request().RemoteAddr
 
 	relay.Map.Store(payload.ClusterId, payload.Nodename, value)
 	log.Debug().Msgf("stored %s %s", payload.ClusterId, payload.Nodename)
-	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.Updated, value.Addr)
+	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.UpdatedAt, value.Addr)
 }

@@ -152,7 +152,7 @@ func (t *T) createJob(e schedule.Entry) {
 		t.jobs.Del(e)
 		return
 	}
-	e.Next = next
+	e.NextRunAt = next
 	delay := next.Sub(now)
 	log.Info().Msgf("schedule to run at %s (in %s)", next, delay)
 	tmr := time.AfterFunc(delay, func() {
@@ -262,7 +262,7 @@ func (t *T) loop() {
 			switch c := ev.(type) {
 			case eventJobDone:
 				// remember last run
-				c.schedule.Last = c.begin
+				c.schedule.LastRunAt = c.begin
 				// reschedule
 				t.createJob(c.schedule)
 			default:

@@ -172,11 +172,11 @@ type DaemonHbMode struct {
 // DaemonHbStream defines model for DaemonHbStream.
 type DaemonHbStream struct {
 	Alerts     []DaemonSubsystemAlert `json:"alerts"`
-	Beating    bool                   `json:"beating"`
 	Configured time.Time              `json:"configured"`
-	Created    time.Time              `json:"created"`
+	CreatedAt  time.Time              `json:"created_at"`
 	Id         string                 `json:"id"`
-	Last       time.Time              `json:"last"`
+	IsBeating  bool                   `json:"is_beating"`
+	LastAt     time.Time              `json:"last_at"`
 	State      string                 `json:"state"`
 
 	// Type hb stream type
@@ -185,8 +185,8 @@ type DaemonHbStream struct {
 
 // DaemonHbStreamPeer defines model for DaemonHbStreamPeer.
 type DaemonHbStreamPeer struct {
-	Beating bool      `json:"beating"`
-	Last    time.Time `json:"last"`
+	IsBeating bool      `json:"is_beating"`
+	LastAt    time.Time `json:"last_at"`
 }
 
 // DaemonHbStreamType defines model for DaemonHbStreamType.
@@ -230,7 +230,7 @@ type DaemonSubsystemAlert struct {
 type DaemonSubsystemStatus struct {
 	Alerts     []DaemonSubsystemAlert `json:"alerts"`
 	Configured time.Time              `json:"configured"`
-	Created    time.Time              `json:"created"`
+	CreatedAt  time.Time              `json:"created_at"`
 	Id         string                 `json:"id"`
 	State      string                 `json:"state"`
 }
@@ -250,7 +250,7 @@ type InstanceStatus struct {
 	FlexMax     *int          `json:"flex_max,omitempty"`
 	FlexMin     *int          `json:"flex_min,omitempty"`
 	FlexTarget  *int          `json:"flex_target,omitempty"`
-	Frozen      time.Time     `json:"frozen"`
+	FrozenAt    time.Time     `json:"frozen_at"`
 	Kind        string        `json:"kind"`
 	Optional    *Status       `json:"optional,omitempty"`
 	Orchestrate *Orchestrate  `json:"orchestrate,omitempty"`
@@ -283,8 +283,8 @@ type InstanceStatus struct {
 	} `json:"subsets,omitempty"`
 
 	// Topology object topology
-	Topology *Topology `json:"topology,omitempty"`
-	Updated  time.Time `json:"updated"`
+	Topology  *Topology `json:"topology,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // MonitorUpdateQueued defines model for MonitorUpdateQueued.
@@ -461,10 +461,10 @@ type PostObjectMonitor struct {
 
 // PostObjectProgress defines model for PostObjectProgress.
 type PostObjectProgress struct {
-	IsPartial *bool  `json:"is_partial,omitempty"`
-	Path      string `json:"path"`
-	SessionId string `json:"session_id"`
-	State     string `json:"state"`
+	IsPartial *bool              `json:"is_partial,omitempty"`
+	Path      string             `json:"path"`
+	SessionId openapi_types.UUID `json:"session_id"`
+	State     string             `json:"state"`
 }
 
 // PostObjectSwitchTo defines model for PostObjectSwitchTo.
@@ -508,7 +508,7 @@ type RelayMessage struct {
 	ClusterName string    `json:"cluster_name"`
 	Msg         string    `json:"msg"`
 	Nodename    string    `json:"nodename"`
-	Updated     time.Time `json:"updated"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // RelayMessageList defines model for RelayMessageList.

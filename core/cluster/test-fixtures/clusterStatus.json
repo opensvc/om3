@@ -15,7 +15,7 @@
           "group": "1"
         },
         "targets": [],
-        "services": {
+        "objects": {
           "status": {
             "toto": {
               "updated": "2020-03-04T16:33:23.16700383+01:00",
@@ -126,7 +126,7 @@
         "updated": "2020-03-04T16:33:23.16700383+01:00"
       }
     },
-    "services": {
+    "objects": {
       "toto": {
         "avail": "up",
         "frozen": "thawed",

@@ -29,31 +29,30 @@ type (
 
 	StatusUsage struct {
 		// Free unit is KiB
-		Free float64 `json:"free"`
+		Free float64 `json:"free" yaml:"free"`
 		// Used unit is KiB
-		Used float64 `json:"used"`
+		Used float64 `json:"used" yaml:"used"`
 		// Size unit is KiB
-		Size float64 `json:"size"`
+		Size float64 `json:"size" yaml:"size"`
 	}
 
 	Status struct {
-		Type         string         `json:"type"`
-		Name         string         `json:"name"`
-		Capabilities []string       `json:"capabilities"`
-		Head         string         `json:"head"`
-		Errors       []string       `json:"errors"`
-		Volumes      []VolumeStatus `json:"volumes"`
+		Type         string         `json:"type" yaml:"type"`
+		Name         string         `json:"name" yaml:"name"`
+		Capabilities []string       `json:"capabilities" yaml:"capabilities"`
+		Head         string         `json:"head" yaml:"head"`
+		Errors       []string       `json:"errors" yaml:"errors"`
+		Volumes      []VolumeStatus `json:"volumes" yaml:"volumes"`
 		StatusUsage
 	}
 	StatusList   []Status
 	Capabilities []string
 
 	VolumeStatus struct {
-		Path     path.T   `json:"path"`
-		Children []path.T `json:"children"`
-		Orphan   bool     `json:"orphan"`
-		// Size unit is B
-		Size float64 `json:"size"`
+		Path     path.T   `json:"path" yaml:"path"`
+		Children []path.T `json:"children" yaml:"children"`
+		IsOrphan bool     `json:"is_orphan" yaml:"is_orphan"`
+		Bytes    float64  `json:"bytes" yaml:"bytes"`
 	}
 	VolumeStatusList []VolumeStatus
 
@@ -499,9 +498,9 @@ func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Path.String())
 	head.AddColumn().AddText("")
 	head.AddColumn().AddText(path.L(t.Children).String())
-	head.AddColumn().AddText(strconv.FormatBool(t.Orphan))
+	head.AddColumn().AddText(strconv.FormatBool(t.IsOrphan))
 	head.AddColumn().AddText("")
-	head.AddColumn().AddText(sizeconv.BSizeCompact(t.Size))
+	head.AddColumn().AddText(sizeconv.BSizeCompact(t.Bytes))
 	head.AddColumn().AddText("")
 	head.AddColumn().AddText("")
 }

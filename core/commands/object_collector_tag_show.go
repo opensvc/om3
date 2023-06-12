@@ -37,14 +37,14 @@ func (t *CmdObjectCollectorTagShow) Run(selector, kind string) error {
 			options := make(map[string]any)
 			options["svcname"] = p.String()
 			type respType struct {
-				Ret  int      `json:"ret"`
-				Msg  string   `json:"msg"`
-				Data []string `json:"data"`
+				Ret  int      `json:"ret" yaml:"ret"`
+				Msg  string   `json:"msg" yaml:"msg"`
+				Data []string `json:"data" yaml:"data"`
 			}
 			type respTypeFull struct {
-				Ret  int                         `json:"ret"`
-				Msg  string                      `json:"msg"`
-				Data collector.TagAttachmentList `json:"data"`
+				Ret  int                         `json:"ret" yaml:"ret"`
+				Msg  string                      `json:"msg" yaml:"msg"`
+				Data collector.TagAttachmentList `json:"data" yaml:"data"`
 			}
 			if t.Verbose {
 				var resp respTypeFull

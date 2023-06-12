@@ -44,8 +44,8 @@ func (t *CmdNodeCollectorTagCreate) Run() error {
 				options["tag_exclude"] = *t.Exclude
 			}
 			type respType struct {
-				Ret int    `json:"ret"`
-				Msg string `json:"msg"`
+				Ret int    `json:"ret" yaml:"ret"`
+				Msg string `json:"msg" yaml:"msg"`
 			}
 			var resp respType
 			if err := cli.CallFor(&resp, "collector_create_tag", options); err != nil {

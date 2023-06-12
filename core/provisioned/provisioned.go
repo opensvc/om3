@@ -1,7 +1,6 @@
 package provisioned
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -105,29 +104,24 @@ func (t T) FlagString() string {
 	}
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t T) MarshalJSON() (b []byte, err error) {
-	v, ok := toString[t]
-	if ok {
-		return json.Marshal(v)
+// MarshalText marshals the enum as a quoted json string
+func (t T) MarshalText() ([]byte, error) {
+	if s, ok := toString[t]; !ok {
+		return nil, fmt.Errorf("unexpected provisioned.T value %d", s)
+	} else {
+		return []byte(s), nil
 	}
-	err = fmt.Errorf("MarshalJSON unexpected provisioned.T value %d", t)
-	return
 }
 
-// UnmarshalJSON unmarshals a quoted json string to the enum value
-func (t *T) UnmarshalJSON(b []byte) error {
-	var s string
-	err := json.Unmarshal(b, &s)
-	if err != nil {
-		return err
+// UnmarshalText unmarshals a quoted json string to the enum value
+func (t *T) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := sToID[s]; !ok {
+		return fmt.Errorf("unexpected provisioned value: %s", s)
+	} else {
+		*t = v
+		return nil
 	}
-	v, ok := sToID[s]
-	if !ok {
-		return fmt.Errorf("unexpected provisioned value: %s", b)
-	}
-	*t = v
-	return nil
 }
 
 func (t *T) Add(o T) {

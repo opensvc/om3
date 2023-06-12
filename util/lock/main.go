@@ -12,7 +12,7 @@ import (
 
 // Func call f() inside lock protection
 func Func(lockPath string, timeout time.Duration, intent string, f func() error) error {
-	lock := flock.New(lockPath, xsession.ID, fcntllock.New)
+	lock := flock.New(lockPath, xsession.ID.String(), fcntllock.New)
 	log.Debug().Msgf("Locking %s: %s", intent, lockPath)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
@@ -27,7 +27,7 @@ func Func(lockPath string, timeout time.Duration, intent string, f func() error)
 
 // Lock tries lock and returns release function to release lock
 func Lock(lockPath string, timeout time.Duration, intent string) (func(), error) {
-	lock := flock.New(lockPath, xsession.ID, fcntllock.New)
+	lock := flock.New(lockPath, xsession.ID.String(), fcntllock.New)
 	log.Debug().Msgf("Locking %s: %s", intent, lockPath)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
