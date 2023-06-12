@@ -3,10 +3,10 @@
   "avail": "down",
   "overall": "down",
   "csum": "01e51d8e37b378e2281ccf72d09e5e1b",
-  "frozen": "0001-01-01T00:00:00Z",
+  "frozen_at": "0001-01-01T00:00:00Z",
   "kind": "svc",
   "provisioned": "mixed",
-  "updated": "2022-12-28T11:21:45.800780633Z",
+  "updated_at": "2022-12-28T11:21:45.800780633Z",
   "resources": [
     {
       "rid": "volume#1",
