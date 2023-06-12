@@ -107,7 +107,7 @@ func (t T) FlagString() string {
 // MarshalText marshals the enum as a quoted json string
 func (t T) MarshalText() ([]byte, error) {
 	if s, ok := toString[t]; !ok {
-		return nil, fmt.Errorf("unexpected provisioned.T value %d", s)
+		return nil, fmt.Errorf("unexpected provisioned.T value %d", int(s))
 	} else {
 		return []byte(s), nil
 	}

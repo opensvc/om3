@@ -267,9 +267,9 @@ func TestUnmarshalJSON(t *testing.T) {
 		case false:
 			assert.NotNil(t, err)
 		}
-		assert.Equal(t, path.Namespace, test.namespace)
-		assert.Equal(t, path.Name, test.name)
-		assert.Equal(t, path.Kind.String(), test.kind)
+		assert.Equal(t, test.namespace, path.Namespace)
+		assert.Equal(t, test.name, path.Name)
+		assert.Equal(t, test.kind, path.Kind.String())
 	}
 }
 

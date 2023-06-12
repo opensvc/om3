@@ -1,7 +1,6 @@
 package path
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -238,18 +237,13 @@ func (t T) MarshalText() ([]byte, error) {
 
 // UnmarshalJSON implements the json interface
 func (t *T) UnmarshalText(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
+	s := string(b)
+	if p, err := Parse(s); err != nil {
 		return err
+	} else {
+		*t = p
+		return nil
 	}
-	p, err := Parse(s)
-	if err != nil {
-		return err
-	}
-	t.Name = p.Name
-	t.Namespace = p.Namespace
-	t.Kind = p.Kind
-	return nil
 }
 
 // Match returns true if the object matches the pattern, using a fnmatch
