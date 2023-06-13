@@ -3,6 +3,7 @@
 package scsi
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xsession"
 )
 
@@ -73,7 +73,7 @@ func ScanAllBusTargetLun(b, t, l string) error {
 	}
 	for _, h := range hosts {
 		if e := ScanHostDirBusTargetLun(h, b, t, l); err != nil {
-			err = xerrors.Append(err, e)
+			err = errors.Join(err, e)
 		}
 	}
 	return err

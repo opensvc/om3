@@ -3,12 +3,12 @@ package device
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"syscall"
 
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -110,7 +110,7 @@ func (t L) SCSIPaths() (L, error) {
 	l := make(L, 0)
 	for _, dev := range t {
 		if paths, err := dev.SCSIPaths(); err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		} else {
 			l = append(l, paths...)
 		}

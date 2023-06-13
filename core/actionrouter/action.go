@@ -1,6 +1,7 @@
 package actionrouter
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -173,9 +173,9 @@ func Do(t Actioner) error {
 		}
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(o.ObjectSelector)
 		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).GetReader()
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 		err = m.DoWatch(statusGetter, evReader, os.Stdout)
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 	}
 	return errs
 }

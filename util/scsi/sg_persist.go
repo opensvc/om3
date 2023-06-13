@@ -1,15 +1,15 @@
 package scsi
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/xerrors"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -29,7 +29,7 @@ func (t SGPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
 			return regs, nil
 		}
 	}
-	return []string{}, errors.Errorf("no operating path to read registrations on")
+	return []string{}, fmt.Errorf("no operating path to read registrations on")
 }
 
 func (t SGPersistDriver) readRegistrations(dev device.T) ([]string, error) {
@@ -98,7 +98,7 @@ func (t SGPersistDriver) ReadReservation(dev device.T) (string, error) {
 			return key, nil
 		}
 	}
-	return "", errors.Errorf("no operating path to read reservation on")
+	return "", fmt.Errorf("no operating path to read reservation on")
 }
 
 func (t SGPersistDriver) readReservation(dev device.T) (string, error) {
@@ -130,10 +130,10 @@ func (t SGPersistDriver) Reserve(dev device.T, key string) error {
 		if err := t.reserve(path, key); err == nil {
 			return nil
 		} else {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
-	return errors.Errorf("no %s path accepted reservation: %s", dev, errs)
+	return fmt.Errorf("no %s path accepted reservation: %s", dev, errs)
 }
 
 func (t SGPersistDriver) reserve(dev device.T, key string) error {
@@ -151,10 +151,10 @@ func (t SGPersistDriver) Release(dev device.T, key string) error {
 		if err := t.release(path, key); err == nil {
 			return nil
 		} else {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
-	return errors.Errorf("no %s path accepted reservation release: %s", dev, errs)
+	return fmt.Errorf("no %s path accepted reservation release: %s", dev, errs)
 }
 
 func (t SGPersistDriver) release(dev device.T, key string) error {
@@ -172,10 +172,10 @@ func (t SGPersistDriver) Clear(dev device.T, key string) error {
 		if err := t.clear(path, key); err == nil {
 			return nil
 		} else {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
-	return errors.Errorf("no %s path accepted reservation clear: %s", dev, errs)
+	return fmt.Errorf("no %s path accepted reservation clear: %s", dev, errs)
 }
 
 func (t SGPersistDriver) clear(dev device.T, key string) error {
@@ -193,10 +193,10 @@ func (t SGPersistDriver) Preempt(dev device.T, oldKey, newKey string) error {
 		if err := t.preempt(path, oldKey, newKey); err == nil {
 			return nil
 		} else {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
-	return errors.Errorf("no %s path accepted reservation preempt: %s", dev, errs)
+	return fmt.Errorf("no %s path accepted reservation preempt: %s", dev, errs)
 }
 
 func (t SGPersistDriver) preempt(dev device.T, oldKey, newKey string) error {
@@ -214,10 +214,10 @@ func (t SGPersistDriver) PreemptAbort(dev device.T, oldKey, newKey string) error
 		if err := t.preemptAbort(path, oldKey, newKey); err == nil {
 			return nil
 		} else {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
-	return errors.Errorf("no %s path accepted reservation preempt-abort: %s", dev, errs)
+	return fmt.Errorf("no %s path accepted reservation preempt-abort: %s", dev, errs)
 }
 
 func (t SGPersistDriver) preemptAbort(dev device.T, oldKey, newKey string) error {

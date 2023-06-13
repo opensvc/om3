@@ -2,13 +2,13 @@ package hb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/goccy/go-json"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -27,7 +27,6 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -120,7 +119,7 @@ func (t *T) MainStop() error {
 		}
 	}
 	if len(failedIds) > 0 {
-		return errors.New("failure while stopping heartbeat " + strings.Join(failedIds, ", "))
+		return fmt.Errorf("failure while stopping heartbeat %s", strings.Join(failedIds, ", "))
 	}
 	return nil
 }
@@ -138,10 +137,10 @@ func (t *T) stopHb(hb hbtype.IdStopper) error {
 func (t *T) startHb(hb hbcfg.Confer) error {
 	var errs error
 	if err := t.startHbRx(hb); err != nil {
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 	}
 	if err := t.startHbTx(hb); err != nil {
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 	}
 	return errs
 }
@@ -149,7 +148,7 @@ func (t *T) startHb(hb hbcfg.Confer) error {
 func (t *T) startHbTx(hb hbcfg.Confer) error {
 	tx := hb.Tx()
 	if tx == nil {
-		return errors.New("nil tx for " + hb.Name())
+		return fmt.Errorf("nil tx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{Id: tx.Id(), Type: hb.Type()}
 	localDataC := make(chan []byte)
@@ -166,7 +165,7 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 func (t *T) startHbRx(hb hbcfg.Confer) error {
 	rx := hb.Rx()
 	if rx == nil {
-		return errors.New("nil rx for " + hb.Name())
+		return fmt.Errorf("nil rx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{Id: rx.Id(), Type: hb.Type()}
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
@@ -229,7 +228,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 		if err := t.stopHbRid(rid); err == nil {
 			delete(t.ridSignature, rid)
 		} else {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 	// Stop first to release connexion holders
@@ -239,7 +238,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 			if sig != newSig {
 				t.log.Info().Msgf("heartbeat config changed %s => stopping", rid)
 				if err := t.stopHbRid(rid); err != nil {
-					errs = xerrors.Append(errs, err)
+					errs = errors.Join(errs, err)
 					continue
 				}
 				stoppedRids[rid] = newSig
@@ -249,7 +248,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 	for rid, newSig := range stoppedRids {
 		t.log.Info().Msgf("heartbeat config changed %s => starting (from stoppped)", rid)
 		if err := t.startHb(ridHb[rid]); err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 		t.ridSignature[rid] = newSig
 	}
@@ -257,7 +256,7 @@ func (t *T) rescanHb(ctx context.Context) error {
 		if _, ok := t.ridSignature[rid]; !ok {
 			t.log.Info().Msgf("heartbeat config new %s => starting", rid)
 			if err := t.startHb(ridHb[rid]); err != nil {
-				errs = xerrors.Append(errs, err)
+				errs = errors.Join(errs, err)
 				continue
 			}
 		}
@@ -271,7 +270,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 	msgC := make(chan hbtype.Msg)
 	databus := daemondata.FromContext(ctx)
 	if err := databus.SetHBSendQ(msgC); err != nil {
-		return errors.New("msgToTx can't set daemondata HBSendQ")
+		return fmt.Errorf("msgToTx can't set daemondata HBSendQ")
 	}
 	t.registerTxC = make(chan registerTxQueue)
 	t.unregisterTxC = make(chan string)
@@ -517,6 +516,6 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 			return
 		}
 	}
-	err = errors.New("not found rid")
+	err = fmt.Errorf("not found rid")
 	return
 }

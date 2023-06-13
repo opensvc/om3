@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/logging"
-	"github.com/opensvc/om3/util/xerrors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -139,7 +138,7 @@ func (stream *Stream) Stop() error {
 	}
 	for _, t := range stream.tails {
 		if err := t.Stop(); err != nil {
-			xerrors.Append(errs, err)
+			errors.Join(errs, err)
 		}
 	}
 	return errs
@@ -190,7 +189,7 @@ func GetEventStreamFromFiles(files []string, filters map[string]interface{}) (*S
 	var errs error
 	for _, p := range files {
 		if err := stream.Follow(p); err != nil {
-			xerrors.Append(errs, err)
+			errors.Join(errs, err)
 		}
 	}
 	return stream, errs
@@ -208,7 +207,7 @@ func GetEventsFromObjects(paths []path.T, filters map[string]interface{}) (Event
 		fpath := p.LogFile()
 		more, err := GetEventsFromFile(fpath, filters)
 		if err != nil {
-			xerrors.Append(errs, err)
+			errors.Join(errs, err)
 		}
 		events = append(events, more...)
 	}

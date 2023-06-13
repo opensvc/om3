@@ -3,16 +3,15 @@ package nodesinfo
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/san"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -98,7 +97,7 @@ func ReqWithClient(c *client.T) (NodesInfo, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("unexpected get nodes info status code %s", resp.Status)
+		return nil, fmt.Errorf("unexpected get nodes info status code %s", resp.Status)
 	}
 	var data NodesInfo
 	defer resp.Body.Close()
@@ -113,12 +112,12 @@ func Get() (NodesInfo, error) {
 	if data, err := Req(); err == nil {
 		return data, nil
 	} else {
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 	}
 	if data, err := Load(); err == nil {
 		return data, nil
 	} else {
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 	}
 	return nil, errs
 }

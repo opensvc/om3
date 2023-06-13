@@ -1,13 +1,12 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/xerrors"
-	"github.com/pkg/errors"
 )
 
 // WithConfigFile sets a non-standard configuration location.
@@ -61,7 +60,7 @@ func NewList(paths path.L, opts ...funcopt.O) ([]any, error) {
 	l := make([]any, 0)
 	for _, p := range paths {
 		if obj, err := New(p, opts...); err != nil {
-			xerrors.Append(errs, err)
+			errors.Join(errs, err)
 		} else {
 			l = append(l, obj)
 		}
@@ -83,7 +82,7 @@ func toPathType(id any) (path.T, error) {
 		p = i
 		return p, nil
 	default:
-		return p, errors.Errorf("unsupported object path type: %#v", i)
+		return p, fmt.Errorf("unsupported object path type: %#v", i)
 	}
 }
 

@@ -3,13 +3,13 @@ package nodeaction
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 
@@ -23,7 +23,6 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -210,10 +209,10 @@ func (t T) DoLocal() error {
 	}.Print()
 	var errs error
 	if r.Panic != nil {
-		errs = xerrors.Append(errs, errors.New(fmt.Sprint(r.Panic)))
+		errs = errors.Join(errs, fmt.Errorf("%s", r.Panic))
 	}
 	if r.Error != nil {
-		errs = xerrors.Append(errs, r.Error)
+		errs = errors.Join(errs, r.Error)
 	}
 	return errs
 }
@@ -251,7 +250,7 @@ func (t T) DoAsync() error {
 			params.GlobalExpect = &s
 			expectation = globalExpect
 		} else {
-			return errors.Errorf("unexpected global expect value %s", t.Target)
+			return fmt.Errorf("unexpected global expect value %s", t.Target)
 		}
 	}
 	if t.Wait {
@@ -275,15 +274,15 @@ func (t T) DoAsync() error {
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	case 400:
-		return errors.Errorf("%s", resp.JSON400)
+		return fmt.Errorf("%s", resp.JSON400)
 	case 401:
-		return errors.Errorf("%s", resp.JSON403)
+		return fmt.Errorf("%s", resp.JSON403)
 	case 403:
-		return errors.Errorf("%s", resp.JSON401)
+		return fmt.Errorf("%s", resp.JSON401)
 	case 500:
-		return errors.Errorf("%s", resp.JSON500)
+		return fmt.Errorf("%s", resp.JSON500)
 	default:
-		return errors.Errorf("Unexpected status code %s", resp.Status())
+		return fmt.Errorf("Unexpected status code %s", resp.Status())
 	}
 
 	if t.Wait {
@@ -324,7 +323,7 @@ func (t T) DoRemote() error {
 		_, _ = fmt.Fprintf(os.Stdout, data.Out)
 		_, _ = fmt.Fprintf(os.Stderr, data.Err)
 	*/
-	return errors.Errorf("TODO")
+	return fmt.Errorf("TODO")
 }
 
 func (t T) Do() error {
@@ -392,7 +391,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 		ev, readError := evReader.Read()
 		if readError != nil {
 			if errors.Is(readError, io.EOF) {
-				err = errors.Errorf("no more events (%s), wait %v failed", err, exp)
+				err = fmt.Errorf("no more events (%w), wait %v failed", err, exp)
 			} else {
 				err = readError
 			}

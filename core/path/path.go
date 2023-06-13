@@ -1,20 +1,19 @@
 package path
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xmap"
 	"github.com/opensvc/om3/util/xstrings"
 )
@@ -88,24 +87,24 @@ func New(name string, namespace string, kd string) (T, error) {
 	k := kind.New(kd)
 	switch k {
 	case kind.Invalid:
-		return path, errors.Wrapf(ErrInvalid, "invalid kind %s", kd)
+		return path, fmt.Errorf("%w: invalid kind %s", ErrInvalid, kd)
 	case kind.Nscfg:
 		name = "namespace"
 	}
 
 	if name == "" {
-		return path, errors.Wrap(ErrInvalid, "name is empty")
+		return path, fmt.Errorf("%w: name is empty", ErrInvalid)
 	}
 	validatedName := strings.TrimLeft(name, "0123456789.") // trim the slice number from the validated name
 	if !hostname.IsValid(validatedName) {
-		return path, errors.Wrapf(ErrInvalid, "invalid name %s (rfc952)", name)
+		return path, fmt.Errorf("%w: invalid name %s (rfc952)", ErrInvalid, name)
 	}
 	if !hostname.IsValid(namespace) {
-		return path, errors.Wrapf(ErrInvalid, "invalid namespace %s (rfc952)", namespace)
+		return path, fmt.Errorf("%w: invalid namespace %s (rfc952)", ErrInvalid, namespace)
 	}
 	for _, reserved := range forbiddenNames {
 		if reserved == name {
-			return path, errors.Wrapf(ErrInvalid, "reserved name '%s'", name)
+			return path, fmt.Errorf("%w: reserved name '%s'", ErrInvalid, name)
 		}
 	}
 	path.Namespace = namespace
@@ -182,7 +181,7 @@ func ParseList(l ...string) (L, error) {
 	paths := make(L, 0)
 	for _, s := range l {
 		if p, err := Parse(s); err != nil {
-			xerrors.Append(errs, err)
+			errors.Join(errs, err)
 		} else {
 			paths = append(paths, p)
 		}

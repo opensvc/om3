@@ -3,6 +3,7 @@ package xconfig
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,9 +23,7 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
-	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xstrings"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -70,6 +69,7 @@ var (
 	RegexpOperation = regexp.MustCompile(`(\$\(\(.+\)\))`)
 	ErrExist        = errors.New("configuration does not exist")
 	ErrNoKeyword    = errors.New("keyword does not exist")
+	ErrType         = errors.New("type error")
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
@@ -345,7 +345,7 @@ func (t *T) GetStrict(k key.T) (string, error) {
 	if section.HasKey(k.Option) {
 		return section.Key(k.Option).Value(), nil
 	}
-	return "", errors.Wrapf(ErrExist, "key '%s' not found (unscopable kw)", k)
+	return "", fmt.Errorf("%w: key '%s' not found (unscopable kw)", ErrExist, k)
 }
 
 func (t *T) GetString(k key.T) string {
@@ -383,7 +383,7 @@ func (t *T) GetBoolStrict(k key.T) (bool, error) {
 	if v, err := t.Eval(k); err != nil {
 		return false, err
 	} else if i, ok := v.(bool); !ok {
-		return false, errors.Errorf("type error: expected int, got %v", v)
+		return false, fmt.Errorf("%w: expected int, got %v", ErrType, v)
 	} else {
 		return i, nil
 	}
@@ -398,7 +398,7 @@ func (t *T) GetDurationStrict(k key.T) (*time.Duration, error) {
 	if v, err := t.Eval(k); err != nil {
 		return nil, err
 	} else if i, ok := v.(*time.Duration); !ok {
-		return nil, errors.Errorf("type error: expected *time.Duration, got %v", v)
+		return nil, fmt.Errorf("%w: expected *time.Duration, got %v", ErrType, v)
 	} else {
 		return i, nil
 	}
@@ -413,7 +413,7 @@ func (t *T) GetIntStrict(k key.T) (int, error) {
 	if v, err := t.Eval(k); err != nil {
 		return 0, err
 	} else if i, ok := v.(int); !ok {
-		return 0, errors.Errorf("type error: expected int, got %v", v)
+		return 0, fmt.Errorf("%w: expected int, got %v", ErrType, v)
 	} else {
 		return i, nil
 	}
@@ -658,11 +658,11 @@ func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (int
 func getKeyword(k key.T, sectionType string, referrer Referrer) (keywords.Keyword, error) {
 	var kw keywords.Keyword
 	if referrer == nil {
-		return kw, errors.Wrapf(ErrNoKeyword, "no referrer")
+		return kw, fmt.Errorf("%w: no referrer", ErrNoKeyword)
 	}
 	kw = referrer.KeywordLookup(k, sectionType)
 	if kw.IsZero() {
-		return kw, errors.Wrapf(ErrNoKeyword, "%s", k)
+		return kw, fmt.Errorf("%w: %s", ErrNoKeyword, k)
 	}
 	return kw, nil
 }
@@ -746,7 +746,7 @@ func (t *T) replaceReferences(v string, section string, impersonate string) (str
 		if err != nil {
 			switch err.(type) {
 			case ErrPostponedRef:
-				errs = xerrors.Append(errs, err)
+				errs = errors.Join(errs, err)
 			}
 			return ref
 		}
@@ -778,7 +778,7 @@ func (t T) SectionMap(section string) map[string]string {
 func (t T) SectionMapStrict(section string) (map[string]string, error) {
 	s, err := t.file.GetSection(section)
 	if err != nil {
-		return nil, errors.Wrapf(ErrExist, "section '%s'", section)
+		return nil, fmt.Errorf("%w: section '%s'", ErrExist, section)
 	}
 	return s.KeysHash(), nil
 }
@@ -817,7 +817,7 @@ func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, e
 			return v, nil
 		}
 	}
-	return "", errors.Wrapf(ErrExist, "key '%s' not found (all scopes tried)", k)
+	return "", fmt.Errorf("%w: key '%s' not found (all scopes tried)", ErrExist, k)
 }
 
 func (t T) Raw() rawconfig.T {
@@ -858,7 +858,7 @@ func (t T) RawEvaluatedAs(impersonate string) (rawconfig.T, error) {
 			_k := key.New(s.Name(), k)
 			_k.Option = _k.BaseOption()
 			if v, err := t.EvalAs(_k, impersonate); err != nil {
-				return rawconfig.New(), errors.Wrap(err, "eval")
+				return rawconfig.New(), fmt.Errorf("%w: eval", err)
 			} else {
 				sectionMap.Set(_k.Option, v)
 			}
@@ -1125,7 +1125,7 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 	}
 	if validate {
 		if _, err := t.Validate(); err != nil {
-			return errors.Errorf("abort config commit: validation errors")
+			return fmt.Errorf("abort config commit: validation errors")
 		}
 	}
 	if !t.Referrer.IsVolatile() {

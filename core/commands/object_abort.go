@@ -2,14 +2,13 @@ package commands
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
-
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -34,9 +33,9 @@ func (t *CmdObjectAbort) Run(selector, kind string) error {
 	for _, p := range paths {
 		params.Path = p.String()
 		if resp, err := c.PostObjectAbort(context.Background(), params); err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		} else if resp.StatusCode != http.StatusOK {
-			errs = xerrors.Append(errs, errors.Errorf("unexpected post object abort status code %s", resp.Status))
+			errs = errors.Join(errs, fmt.Errorf("unexpected post object abort status code %s", resp.Status))
 		}
 	}
 	return errs
