@@ -43,8 +43,6 @@ var (
 
 		"DaemonStart": func() any { return &DaemonStart{} },
 
-		"DataUpdated": func() any { return &DataUpdated{} },
-
 		"Exit": func() any { return &Exit{} },
 
 		"ForgetPeer": func() any { return &ForgetPeer{} },
@@ -228,12 +226,6 @@ type (
 		pubsub.Msg
 		Node  string
 		Value cluster.Status
-	}
-
-	// DataUpdated is a patch of changed data
-	DataUpdated struct {
-		pubsub.Msg
-		json.RawMessage
 	}
 
 	DaemonCtl struct {
@@ -671,14 +663,6 @@ func (e *ClientSub) Kind() string {
 
 func (e *ClientUnSub) Kind() string {
 	return "ClientUnSub"
-}
-
-func (e *DataUpdated) Bytes() []byte {
-	return e.RawMessage
-}
-
-func (e *DataUpdated) Kind() string {
-	return "DataUpdated"
 }
 
 func (e *DaemonCtl) Kind() string {
