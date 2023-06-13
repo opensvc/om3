@@ -34,13 +34,13 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 		d.log.Debug().Msgf("apply patch skipped %s gen %v (wait full)", remote, msg.Gen[remote])
 		return nil
 	}
-	if msg.Updated.Before(d.hbPatchMsgUpdated[remote]) {
+	if msg.UpdatedAt.Before(d.hbPatchMsgUpdated[remote]) {
 		d.log.Debug().Msgf(
 			"apply patch skipped %s outdated msg "+
 				"(msg [gen:%d updated:%s], "+
 				"latest applied msg:[gen:%d updated:%s])",
 			remote,
-			msg.Gen[remote], msg.Updated,
+			msg.Gen[remote], msg.UpdatedAt,
 			d.clusterData.Cluster.Node[remote].Status.Gen[remote], d.hbPatchMsgUpdated[remote],
 		)
 		return nil
@@ -112,7 +112,7 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 			d.hbGens[local][remote] = gen
 		}
 
-		d.hbPatchMsgUpdated[remote] = msg.Updated
+		d.hbPatchMsgUpdated[remote] = msg.UpdatedAt
 
 		pendingNodeGen = gen
 	}

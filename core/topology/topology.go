@@ -1,10 +1,8 @@
 package topology
 
 import (
-	"bytes"
-	"encoding/json"
-
 	"github.com/opensvc/om3/util/xmap"
+	"github.com/pkg/errors"
 )
 
 // T is an integer representing the opensvc object topology.
@@ -21,6 +19,7 @@ const (
 
 var (
 	toString = map[T]string{
+		Invalid:  "invalid",
 		Failover: "failover",
 		Flex:     "flex",
 	}
@@ -35,32 +34,29 @@ func (t T) String() string {
 	return toString[t]
 }
 
-// New returns a topogy id from its string representation.
+// New returns a topology from its string representation.
 func New(s string) T {
-	t, ok := toID[s]
-	if ok {
+	if t, ok := toID[s]; ok {
 		return t
+	} else {
+		return Invalid
 	}
-	return Invalid
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t T) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(toString[t])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a quoted json string
+func (t T) MarshalText() ([]byte, error) {
+	if s, ok := toString[t]; !ok {
+		return nil, errors.Errorf("unknown topology %d", t)
+	} else {
+		return []byte(s), nil
+	}
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *T) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
-	}
-	// Note that if the string cannot be found then it will be set to the zero value, 'Created' in this case.
-	*t = toID[j]
+// UnmarshalText unmashals a quoted json string to the enum value
+func (t *T) UnmarshalText(b []byte) error {
+	s := string(b)
+	v := New(s)
+	*t = v
 	return nil
 }
 

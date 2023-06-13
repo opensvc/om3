@@ -23,7 +23,7 @@ func (o *nmon) orchestrateDrained() {
 }
 
 func (o *nmon) drainFromIdle() {
-	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.Frozen.IsZero() {
+	if nodeStatus := node.StatusData.Get(o.localhost); nodeStatus != nil && !nodeStatus.FrozenAt.IsZero() {
 		// already frozen, ... advance to "frozen" state
 		o.state.State = node.MonitorStateFrozen
 		go func() {

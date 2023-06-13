@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
@@ -19,62 +18,61 @@ import (
 
 type (
 	Instance struct {
-		Config  *Config  `json:"config"`
-		Monitor *Monitor `json:"monitor"`
-		Status  *Status  `json:"status"`
+		Config  *Config  `json:"config" yaml:"config"`
+		Monitor *Monitor `json:"monitor" yaml:"monitor"`
+		Status  *Status  `json:"status" yaml:"status"`
 	}
 
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Checksum         string                    `json:"csum"`
-		FlexMax          int                       `json:"flex_max,omitempty"`
-		FlexMin          int                       `json:"flex_min,omitempty"`
-		FlexTarget       int                       `json:"flex_target,omitempty"`
-		MonitorAction    MonitorAction             `json:"monitor_action,omitempty"`
-		PreMonitorAction string                    `json:"pre_monitor_action,omitempty"`
-		Nodename         string                    `json:"-"`
-		Orchestrate      string                    `json:"orchestrate"`
-		Path             path.T                    `json:"-"`
-		PlacementPolicy  placement.Policy          `json:"placement_policy"`
-		Priority         priority.T                `json:"priority,omitempty"`
-		Resources        map[string]ResourceConfig `json:"resources"`
-		Scope            []string                  `json:"scope"`
-		Topology         topology.T                `json:"topology"`
-		Updated          time.Time                 `json:"updated"`
+		Checksum         string                    `json:"csum" yaml:"csum"`
+		FlexMax          int                       `json:"flex_max,omitempty" yaml:"flex_max,omitempty"`
+		FlexMin          int                       `json:"flex_min,omitempty" yaml:"flex_min,omitempty"`
+		FlexTarget       int                       `json:"flex_target,omitempty" yaml:"flex_target,omitempty"`
+		MonitorAction    MonitorAction             `json:"monitor_action,omitempty" yaml:"monitor_action,omitempty"`
+		PreMonitorAction string                    `json:"pre_monitor_action,omitempty" yaml:"pre_monitor_action,omitempty"`
+		Nodename         string                    `json:"-" yaml:"-"`
+		Orchestrate      string                    `json:"orchestrate" yaml:"orchestrate"`
+		Path             path.T                    `json:"-" yaml:"-"`
+		PlacementPolicy  placement.Policy          `json:"placement_policy" yaml:"placement_policy"`
+		Priority         priority.T                `json:"priority,omitempty" yaml:"priority,omitempty"`
+		Resources        map[string]ResourceConfig `json:"resources" yaml:"resources"`
+		Scope            []string                  `json:"scope" yaml:"scope"`
+		Topology         topology.T                `json:"topology" yaml:"topology"`
+		UpdatedAt        time.Time                 `json:"updated_at" yaml:"updated_at"`
 	}
 	ResourceConfig struct {
-		IsDisabled   bool           `json:"is_disabled"`
-		IsMonitored  bool           `json:"is_monitored"`
-		IsStandby    bool           `json:"is_standby"`
-		Restart      int            `json:"restart"`
-		RestartDelay *time.Duration `json:"restart_delay"`
+		IsDisabled   bool           `json:"is_disabled" yaml:"is_disabled"`
+		IsMonitored  bool           `json:"is_monitored" yaml:"is_monitored"`
+		IsStandby    bool           `json:"is_standby" yaml:"is_standby"`
+		Restart      int            `json:"restart" yaml:"restart"`
+		RestartDelay *time.Duration `json:"restart_delay" yaml:"restart_delay"`
 	}
 
 	MonitorAction string
 
 	// Status describes the instance status.
 	Status struct {
-		App         string                   `json:"app,omitempty"`
-		Avail       status.T                 `json:"avail"`
-		Constraints bool                     `json:"constraints,omitempty"`
-		DRP         bool                     `json:"drp,omitempty"`
-		Overall     status.T                 `json:"overall"`
-		Csum        string                   `json:"csum,omitempty"`
-		Env         string                   `json:"env,omitempty"`
-		Frozen      time.Time                `json:"frozen,omitempty"`
-		Kind        kind.T                   `json:"kind"`
-		Optional    status.T                 `json:"optional,omitempty"`
-		Provisioned provisioned.T            `json:"provisioned"`
-		Preserved   bool                     `json:"preserved,omitempty"`
-		Updated     time.Time                `json:"updated"`
-		Subsets     map[string]SubsetStatus  `json:"subsets,omitempty"`
-		Resources   []resource.ExposedStatus `json:"resources,omitempty"`
-		Running     ResourceRunningSet       `json:"running,omitempty"`
-		Parents     []path.Relation          `json:"parents,omitempty"`
-		Children    []path.Relation          `json:"children,omitempty"`
-		Slaves      []path.Relation          `json:"slaves,omitempty"`
-		StatusGroup map[string]string        `json:"status_group,omitempty"`
+		App         string                   `json:"app,omitempty" yaml:"app,omitempty"`
+		Avail       status.T                 `json:"avail" yaml:"avail"`
+		Constraints bool                     `json:"constraints,omitempty" yaml:"constraints,omitempty"`
+		DRP         bool                     `json:"drp,omitempty" yaml:"drp,omitempty"`
+		Overall     status.T                 `json:"overall" yaml:"overall"`
+		Csum        string                   `json:"csum,omitempty" yaml:"csum,omitempty"`
+		Env         string                   `json:"env,omitempty" yaml:"env,omitempty"`
+		FrozenAt    time.Time                `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
+		Optional    status.T                 `json:"optional,omitempty" yaml:"optional,omitempty"`
+		Provisioned provisioned.T            `json:"provisioned" yaml:"provisioned"`
+		Preserved   bool                     `json:"preserved,omitempty" yaml:"preserved,omitempty"`
+		UpdatedAt   time.Time                `json:"updated_at" yaml:"updated_at"`
+		Subsets     map[string]SubsetStatus  `json:"subsets,omitempty" yaml:"subsets,omitempty"`
+		Resources   []resource.ExposedStatus `json:"resources,omitempty" yaml:"resources,omitempty"`
+		Running     ResourceRunningSet       `json:"running,omitempty" yaml:"running,omitempty"`
+		Parents     []path.Relation          `json:"parents,omitempty" yaml:"parents,omitempty"`
+		Children    []path.Relation          `json:"children,omitempty" yaml:"children,omitempty"`
+		Slaves      []path.Relation          `json:"slaves,omitempty" yaml:"slaves,omitempty"`
+		StatusGroup map[string]string        `json:"status_group,omitempty" yaml:"status_group,omitempty"`
 	}
 
 	// ResourceOrder is a sortable list representation of the
@@ -86,7 +84,7 @@ type (
 
 	// SubsetStatus describes a resource subset properties.
 	SubsetStatus struct {
-		Parallel bool `json:"parallel,omitempty"`
+		Parallel bool `json:"parallel,omitempty" yaml:"parallel,omitempty"`
 	}
 )
 
@@ -126,11 +124,11 @@ func (t *Status) SortedResources() []resource.ExposedStatus {
 }
 
 func (t Status) IsFrozen() bool {
-	return !t.Frozen.IsZero()
+	return !t.FrozenAt.IsZero()
 }
 
 func (t Status) IsThawed() bool {
-	return t.Frozen.IsZero()
+	return t.FrozenAt.IsZero()
 }
 
 func (t Status) DeepCopy() *Status {
@@ -252,7 +250,7 @@ func (mon Monitor) DeepCopy() *Monitor {
 //
 // Nodename and Path are not compared
 func ConfigEqual(a, b *Config) bool {
-	if a.Updated != b.Updated {
+	if a.UpdatedAt != b.UpdatedAt {
 		return false
 	}
 	if a.Checksum != b.Checksum {

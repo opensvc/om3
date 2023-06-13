@@ -1,16 +1,11 @@
 package driver
 
 import (
-	"bytes"
-	"encoding/json"
-
 	"github.com/opensvc/om3/util/xmap"
 )
 
-//
 // Group groups drivers sharing some properties.
 // A resourceset is a collection of resources having the same drivergroup and subset.
-//
 type Group int
 
 const (
@@ -112,21 +107,14 @@ func (t Group) String() string {
 	return ""
 }
 
-// MarshalJSON marshals the enum as a quoted json string
-func (t Group) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(t.String())
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText marshals the enum as a quoted json string
+func (t Group) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
 }
 
-// UnmarshalJSON unmashals a quoted json string to the enum value
-func (t *Group) UnmarshalJSON(b []byte) error {
-	var j string
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
-	}
-	*t = NewGroup(j)
+// UnmarshalText unmashals a quoted json string to the enum value
+func (t *Group) UnmarshalText(b []byte) error {
+	s := string(b)
+	*t = NewGroup(s)
 	return nil
 }

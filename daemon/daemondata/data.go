@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"runtime"
@@ -15,7 +16,6 @@ import (
 	"github.com/opensvc/om3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/durationlog"
-	"github.com/opensvc/om3/util/jsondelta"
 	"github.com/opensvc/om3/util/pubsub"
 )
 
@@ -399,13 +399,19 @@ func (d *data) startSubscriptions() {
 	d.sub = sub
 }
 
+func marshalEventData(v any) json.RawMessage {
+	var b json.RawMessage
+	b, _ = json.Marshal(v)
+	return b
+}
+
 func (d *data) appendEv(i event.Kinder) {
 	eventId++
 	d.pendingEvs = append(d.pendingEvs, event.Event{
 		Kind: i.Kind(),
 		ID:   eventId,
 		Time: time.Now(),
-		Data: *jsondelta.NewOptValue(i),
+		Data: marshalEventData(i),
 	})
 }
 

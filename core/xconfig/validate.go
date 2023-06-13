@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -14,17 +13,18 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/stringslice"
+	"github.com/pkg/errors"
 )
 
 type (
 	ValidateAlerts []ValidateAlert
 	ValidateAlert  struct {
-		Path    path.T             `json:"path"`
-		Level   ValidateAlertLevel `json:"level"`
-		Kind    ValidateAlertKind  `json:"kind"`
-		Key     key.T              `json:"key"`
-		Driver  driver.ID          `json:"driver"`
-		Comment string             `json:"comment"`
+		Path    path.T             `json:"path" yaml:"path"`
+		Level   ValidateAlertLevel `json:"level" yaml:"level"`
+		Kind    ValidateAlertKind  `json:"kind" yaml:"kind"`
+		Key     key.T              `json:"key" yaml:"key"`
+		Driver  driver.ID          `json:"driver" yaml:"driver"`
+		Comment string             `json:"comment" yaml:"comment"`
 	}
 	ValidateAlertKind  int
 	ValidateAlertLevel int

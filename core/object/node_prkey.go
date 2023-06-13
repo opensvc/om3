@@ -2,13 +2,13 @@ package object
 
 import (
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 func validatePRKey(s string) error {
@@ -24,16 +24,16 @@ func validatePRKey(s string) error {
 		length += 1
 	}
 	if length < minLength {
-		err := errors.Errorf("prkey %s is too short: %d < %d chars", s, length, minLength)
-		errs = xerrors.Append(errs, err)
+		err := fmt.Errorf("prkey %s is too short: %d < %d chars", s, length, minLength)
+		errs = errors.Join(errs, err)
 	}
 	if length > maxLength {
-		err := errors.Errorf("prkey %s is too long: %d > %d chars", s, length, maxLength)
-		errs = xerrors.Append(errs, err)
+		err := fmt.Errorf("prkey %s is too long: %d > %d chars", s, length, maxLength)
+		errs = errors.Join(errs, err)
 	}
 	if _, err := hex.DecodeString(s); err != nil {
-		err = errors.Errorf("prkey %s is not parseable as hexa, %s", s, err)
-		errs = xerrors.Append(errs, err)
+		err = fmt.Errorf("prkey %s is not parseable as hexa, %s", s, err)
+		errs = errors.Join(errs, err)
 	}
 	return errs
 }
@@ -52,7 +52,7 @@ func (t Node) PRKey() (string, error) {
 	case prkey == "":
 		prkey = newPRKey()
 		if err := validatePRKey(prkey); err != nil {
-			return "", errors.Wrap(err, "new prkey")
+			return "", fmt.Errorf("%w: new prkey", err)
 		}
 		op := keyop.T{
 			Key:   prkeyKey,

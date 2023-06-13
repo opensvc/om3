@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -17,8 +18,6 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/xerrors"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -34,7 +33,7 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []obj
 	if t.Refresh || t.Local {
 		// explicitely local
 		if data, err = t.extractLocal(selector); err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 
 	}
@@ -42,7 +41,7 @@ func (t *CmdObjectPrintStatus) extract(selector string, c *client.T) (data []obj
 		// try daemon
 		return data, errs
 	} else {
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 		if clientcontext.IsSet() {
 			// no fallback for remote cluster
 			return []object.Digest{}, errs
@@ -78,7 +77,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 	for _, p := range paths {
 		obj, err := object.NewCore(p)
 		if err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 			continue
 		}
 		var status instance.Status
@@ -88,18 +87,18 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 			status, err = obj.Status(ctx)
 		}
 		if err != nil {
-			errs = xerrors.Append(errs, errors.Wrap(err, p.String()))
+			errs = errors.Join(errs, fmt.Errorf("%w: %s", err, p.String()))
 			continue
 		}
 		o := object.Digest{
-			Path:   p,
-			Compat: true,
-			Object: object.Status{},
+			Path:     p,
+			IsCompat: true,
+			Object:   object.Status{},
 			Instances: map[string]instance.States{
 				h: {
 					Node: instance.Node{
-						Name:   h,
-						Frozen: n.Frozen(),
+						Name:     h,
+						FrozenAt: n.Frozen(),
 					},
 					Status: status,
 				},
@@ -155,7 +154,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {
-		return errors.Wrap(err, "expand selection")
+		return fmt.Errorf("%w: expand selection", err)
 	}
 	data, _ = t.extract(mergedSelector, c)
 

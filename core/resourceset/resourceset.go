@@ -2,6 +2,7 @@ package resourceset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,8 +10,6 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/xerrors"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -140,14 +139,14 @@ func (t T) String() string {
 // This function make the resourceset a ResourceLister.
 func (t T) Resources() resource.Drivers {
 	if t.ResourceLister == nil {
-		panic(errors.WithStack(errors.New("resourceset has no ResourceLister set")))
+		panic(fmt.Errorf("resourceset has no ResourceLister set"))
 	}
 	return t.filterResources(t.ResourceLister)
 }
 
 func (t T) ReconfigureResource(r resource.Driver) error {
 	if t.ResourceLister == nil {
-		panic(errors.WithStack(errors.New("resourceset has no ResourceLister set")))
+		panic(fmt.Errorf("resourceset has no ResourceLister set"))
 	}
 	return t.ResourceLister.ReconfigureResource(r)
 }
@@ -218,7 +217,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		if res.Resource.IsOptional() {
 			continue
 		}
-		xerrors.Append(err, errors.Wrap(res.Error, res.Resource.RID()))
+		errors.Join(err, fmt.Errorf("%w: %s", res.Error, res.Resource.RID()))
 	}
 	return errs
 }
@@ -242,7 +241,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		case r.IsOptional():
 			continue
 		default:
-			return errors.Wrap(err, rid)
+			return fmt.Errorf("%w: %s", err, rid)
 		}
 	}
 	return nil

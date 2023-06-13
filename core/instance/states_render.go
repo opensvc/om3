@@ -90,12 +90,12 @@ func (t States) descString() string {
 	}
 
 	// Frozen
-	if !t.Status.Frozen.IsZero() {
+	if !t.Status.FrozenAt.IsZero() {
 		l = append(l, rawconfig.Colorize.Frozen("frozen"))
 	}
 
 	// Node frozen
-	if !t.Node.Frozen.IsZero() {
+	if !t.Node.FrozenAt.IsZero() {
 		l = append(l, rawconfig.Colorize.Frozen("node-frozen"))
 	}
 
@@ -112,7 +112,7 @@ func (t States) descString() string {
 		l = append(l, rawconfig.Colorize.Error("mix-provisioned"))
 	}
 
-	if !t.Config.Updated.IsZero() {
+	if !t.Config.UpdatedAt.IsZero() {
 		// Priority
 		if s := t.Config.Priority.StatusString(); s != "" {
 			l = append(l, rawconfig.Colorize.Secondary(s))

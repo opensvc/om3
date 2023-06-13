@@ -30,8 +30,8 @@ func (o *cstat) updateCompat() {
 		}
 		return true
 	}
-	if compat := getCompat(); o.state.Compat != compat {
-		o.state.Compat = compat
+	if compat := getCompat(); o.state.IsCompat != compat {
+		o.state.IsCompat = compat
 		o.change = true
 	}
 }
@@ -45,8 +45,8 @@ func (o *cstat) updateFrozen() {
 		}
 		return false
 	}
-	if frozen := getFrozen(); o.state.Frozen != frozen {
-		o.state.Frozen = frozen
+	if frozen := getFrozen(); o.state.IsFrozen != frozen {
+		o.state.IsFrozen = frozen
 		o.change = true
 	}
 }

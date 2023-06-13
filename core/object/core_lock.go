@@ -29,7 +29,7 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 		return unlock, nil
 	}
 	p := t.lockPath(props.LockGroup)
-	lock := flock.New(p, xsession.ID, fcntllock.New)
+	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
 	err := lock.Lock(actioncontext.LockTimeout(ctx), props.Name)
 	if err != nil {
 		return unlock, err

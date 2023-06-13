@@ -17,16 +17,16 @@ type (
 		// installing a full dataset with received full dataset
 		// or
 		// patching a full dataset with received patch events
-		Kind string `json:"kind"`
+		Kind string `json:"kind" yaml:"kind"`
 
 		// ID is a unique event id
-		ID uint64 `json:"id"`
+		ID uint64 `json:"id" yaml:"id"`
 
 		// Time is the time the event was published
-		Time time.Time `json:"t"`
+		Time time.Time `json:"t" yaml:"t"`
 
 		// Data is the free-format dataset of the event
-		Data json.RawMessage `json:"data"`
+		Data json.RawMessage `json:"data" yaml:"data"`
 	}
 
 	Reader interface {

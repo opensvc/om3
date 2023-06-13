@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
@@ -30,9 +29,8 @@ func Test_Status_Unmarshal(t *testing.T) {
 		Avail:       status.Down,
 		Overall:     status.Down,
 		Csum:        "01e51d8e37b378e2281ccf72d09e5e1b",
-		Kind:        kind.Svc,
 		Provisioned: provisioned.Mixed,
-		Updated:     time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
+		UpdatedAt:   time.Date(2022, time.December, 28, 11, 21, 45, 800780633, time.UTC),
 		Resources: []resource.ExposedStatus{
 			{
 				ResourceID: (*resourceid.T)(nil),

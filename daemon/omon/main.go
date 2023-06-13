@@ -162,7 +162,7 @@ func (o *T) worker() {
 	for n, v := range instance.ConfigData.GetByPath(o.path) {
 		o.instConfig[n] = *v
 	}
-	if !o.instStatus[o.localhost].Updated.IsZero() {
+	if !o.instStatus[o.localhost].UpdatedAt.IsZero() {
 		o.srcEvent = &msgbus.InstanceStatusUpdated{Path: o.path, Node: o.localhost, Value: o.instStatus[o.localhost]}
 	}
 
@@ -340,7 +340,7 @@ func (o *T) updateStatus() {
 			false: 0,
 		}
 		for _, instStatus := range o.instStatus {
-			m[instStatus.Frozen.IsZero()] += 1
+			m[instStatus.FrozenAt.IsZero()] += 1
 		}
 		n := len(o.instStatus)
 		switch {

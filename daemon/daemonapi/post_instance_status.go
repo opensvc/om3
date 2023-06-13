@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -52,11 +51,10 @@ func postInstanceStatusToInstanceStatus(payload api.PostInstanceStatus) (*instan
 	payloadStatus := payload.Status
 	instanceStatus := instance.Status{
 		Avail:       status.Parse(string(payloadStatus.Avail)),
-		Frozen:      payloadStatus.Frozen,
-		Kind:        kind.New(payloadStatus.Kind),
+		FrozenAt:    payloadStatus.FrozenAt,
 		Overall:     status.Parse(string(payloadStatus.Overall)),
 		StatusGroup: nil,
-		Updated:     payloadStatus.Updated,
+		UpdatedAt:   payloadStatus.UpdatedAt,
 	}
 	if payloadStatus.App != nil {
 		instanceStatus.App = *payloadStatus.App

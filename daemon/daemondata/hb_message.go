@@ -80,11 +80,11 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 	d.setNextMsgType()
 	var err error
 	msg := hbtype.Msg{
-		Compat:   d.clusterData.Cluster.Node[d.localNode].Status.Compat,
-		Kind:     d.hbMessageType,
-		Nodename: d.localNode,
-		Gen:      d.deepCopyLocalGens(),
-		Updated:  time.Now(),
+		Compat:    d.clusterData.Cluster.Node[d.localNode].Status.Compat,
+		Kind:      d.hbMessageType,
+		Nodename:  d.localNode,
+		Gen:       d.deepCopyLocalGens(),
+		UpdatedAt: time.Now(),
 	}
 	switch d.hbMessageType {
 	case "patch":

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.7.1
+  version: 3.9.0
 servers:
   - url: https://localhost:1215
 paths:
@@ -884,12 +884,12 @@ components:
     DaemonHbStreamPeer:
       type: object
       required:
-        - beating
-        - last
+        - is_beating
+        - last_at
       properties:
-        beating:
+        is_beating:
           type: boolean
-        last:
+        last_at:
           type: string
           format: date-time
     DaemonListener:
@@ -916,7 +916,7 @@ components:
       required:
         - alerts
         - configured
-        - created
+        - created_at
         - id
         - state
       properties:
@@ -927,7 +927,7 @@ components:
         configured:
           type: string
           format: date-time
-        created:
+        created_at:
           type: string
           format: date-time
         id:
@@ -979,11 +979,10 @@ components:
       type: object
       required:
         - avail
-        - frozen
-        - kind
+        - frozen_at
         - overall
         - provisioned
-        - updated
+        - updated_at
       properties:
         app:
           type: string
@@ -1005,11 +1004,9 @@ components:
           type: integer
         flex_target:
           type: integer
-        frozen:
+        frozen_at:
           type: string
           format: date-time
-        kind:
-          type: string
         optional:
           $ref: '#/components/schemas/Status'
         orchestrate:
@@ -1061,7 +1058,7 @@ components:
                 default: false
         topology:
           $ref: '#/components/schemas/Topology'
-        updated:
+        updated_at:
           type: string
           format: date-time
     NetworkStatus:
@@ -1368,6 +1365,7 @@ components:
           type: string
         session_id:
           type: string
+          format: uuid
         state:
           type: string
         is_partial:
@@ -1451,7 +1449,7 @@ components:
         - cluster_name
         - msg
         - nodename
-        - updated
+        - updated_at
       properties:
         addr:
           type: string
@@ -1463,7 +1461,7 @@ components:
           type: string
         nodename:
           type: string
-        updated:
+        updated_at:
           type: string
           format: date-time
     RelayMessageList:

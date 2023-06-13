@@ -20,8 +20,8 @@ import (
 type (
 	// T is the agent JSON RPC requester
 	T struct {
-		URL  string `json:"url"`
-		Inet bool   `json:"inet"`
+		URL  string `json:"url" yaml:"url"`
+		Inet bool   `json:"inet" yaml:"inet"`
 	}
 )
 

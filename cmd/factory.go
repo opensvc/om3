@@ -589,6 +589,102 @@ func newCmdNodeClear() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeCollectorTagAttach() *cobra.Command {
+	var attachData string
+	var options commands.CmdNodeCollectorTagAttach
+	cmd := &cobra.Command{
+		Use:     "attach",
+		Short:   "attach a tag to this node",
+		Long:    "The tag must already exist in the collector.",
+		Aliases: []string{"atta", "att", "at", "a"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("attach-data").Changed {
+				options.AttachData = &attachData
+			}
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&attachData, "attach-data", "", "the data stored with the tag attachment")
+	return cmd
+}
+
+func newCmdNodeCollectorTagCreate() *cobra.Command {
+	var (
+		data    string
+		exclude string
+	)
+	var options commands.CmdNodeCollectorTagCreate
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "create a new tag",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("data").Changed {
+				options.Data = &data
+			}
+			if cmd.Flag("exclude").Changed {
+				options.Exclude = &exclude
+			}
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&data, "data", "", "the data stored with the tag")
+	flags.StringVar(&exclude, "exclude", "", "a pattern to prevent attachment of incompatible tags")
+	return cmd
+}
+
+func newCmdNodeCollectorTagDetach() *cobra.Command {
+	var options commands.CmdNodeCollectorTagDetach
+	cmd := &cobra.Command{
+		Use:     "detach",
+		Short:   "detach a tag from this node",
+		Aliases: []string{"deta", "det", "de", "d"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	return cmd
+}
+
+func newCmdNodeCollectorTagList() *cobra.Command {
+	var options commands.CmdNodeCollectorTagList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list available tags",
+		Aliases: []string{"lis", "li", "ls", "l"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdNodeCollectorTagShow() *cobra.Command {
+	var options commands.CmdNodeCollectorTagShow
+	cmd := &cobra.Command{
+		Use:     "show",
+		Short:   "show tags attached to this node",
+		Aliases: []string{"sho", "sh", "s"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.BoolVar(&options.Verbose, "verbose", false, "also show the attach data")
+	return cmd
+}
+
 func newCmdNodeComplianceAttachModuleset() *cobra.Command {
 	var options commands.CmdNodeComplianceAttachModuleset
 	cmd := &cobra.Command{
@@ -1370,6 +1466,117 @@ func newCmdObjectSync(kind string) *cobra.Command {
 		Short:   "data synchronization command group",
 		Aliases: []string{"syn", "sy"},
 	}
+}
+
+func newCmdObjectCollector(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "collector",
+		Short:   "collector data management commands",
+		Aliases: []string{"coll"},
+	}
+}
+
+func newCmdObjectCollectorTag(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "tag",
+		Short: "collector tags management commands",
+	}
+}
+
+func newCmdObjectCollectorTagAttach(kind string) *cobra.Command {
+	var attachData string
+	var options commands.CmdObjectCollectorTagAttach
+	cmd := &cobra.Command{
+		Use:     "attach",
+		Short:   "attach a tag to this node",
+		Long:    "The tag must already exist in the collector.",
+		Aliases: []string{"atta", "att", "at", "a"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("attach-data").Changed {
+				options.AttachData = &attachData
+			}
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&attachData, "attach-data", "", "the data stored with the tag attachment")
+	return cmd
+}
+
+func newCmdObjectCollectorTagCreate(kind string) *cobra.Command {
+	var (
+		data    string
+		exclude string
+	)
+	var options commands.CmdObjectCollectorTagCreate
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "create a new tag",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("data").Changed {
+				options.Data = &data
+			}
+			if cmd.Flag("exclude").Changed {
+				options.Exclude = &exclude
+			}
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	flags.StringVar(&data, "data", "", "the data stored with the tag")
+	flags.StringVar(&exclude, "exclude", "", "a pattern to prevent attachment of incompatible tags")
+	return cmd
+}
+
+func newCmdObjectCollectorTagDetach(kind string) *cobra.Command {
+	var options commands.CmdObjectCollectorTagDetach
+	cmd := &cobra.Command{
+		Use:     "detach",
+		Short:   "detach a tag from this node",
+		Aliases: []string{"deta", "det", "de", "d"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Name, "name", "", "the tag name")
+	return cmd
+}
+
+func newCmdObjectCollectorTagList(kind string) *cobra.Command {
+	var options commands.CmdObjectCollectorTagList
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list available tags",
+		Aliases: []string{"lis", "li", "ls", "l"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
+func newCmdObjectCollectorTagShow(kind string) *cobra.Command {
+	var options commands.CmdObjectCollectorTagShow
+	cmd := &cobra.Command{
+		Use:     "show",
+		Short:   "show tags attached to this node",
+		Aliases: []string{"sho", "sh", "s"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selectorFlag, kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.BoolVar(&options.Verbose, "verbose", false, "also show the attach data")
+	return cmd
 }
 
 func newCmdObjectCompliance(kind string) *cobra.Command {

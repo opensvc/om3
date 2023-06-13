@@ -10,39 +10,39 @@ import (
 
 type (
 	Status struct {
-		Agent           string                      `json:"agent"`
-		API             uint64                      `json:"api"`
-		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators"`
-		Compat          uint64                      `json:"compat"`
-		Frozen          time.Time                   `json:"frozen"`
-		Gen             map[string]uint64           `json:"gen"`
-		MinAvailMemPct  uint64                      `json:"min_avail_mem"`
-		MinAvailSwapPct uint64                      `json:"min_avail_swap"`
-		Speaker         bool                        `json:"speaker"`
-		Labels          nodesinfo.Labels            `json:"labels"`
+		Agent           string                      `json:"agent" yaml:"agent"`
+		API             uint64                      `json:"api" yaml:"api"`
+		Arbitrators     map[string]ArbitratorStatus `json:"arbitrators" yaml:"arbitrators"`
+		Compat          uint64                      `json:"compat" yaml:"compat"`
+		FrozenAt        time.Time                   `json:"frozen_at" yaml:"frozen_at"`
+		Gen             map[string]uint64           `json:"gen" yaml:"gen"`
+		MinAvailMemPct  uint64                      `json:"min_avail_mem" yaml:"min_avail_mem"`
+		MinAvailSwapPct uint64                      `json:"min_avail_swap" yaml:"min_avail_swap"`
+		IsSpeaker       bool                        `json:"is_speaker" yaml:"is_speaker"`
+		Labels          nodesinfo.Labels            `json:"labels" yaml:"label"`
 	}
 
 	// Instances groups instances configuration digest and status
 	Instances struct {
-		Config  map[string]instance.Config  `json:"config"`
-		Status  map[string]instance.Status  `json:"status"`
-		Monitor map[string]instance.Monitor `json:"monitor"`
+		Config  map[string]instance.Config  `json:"config" yaml:"config"`
+		Status  map[string]instance.Status  `json:"status" yaml:"status"`
+		Monitor map[string]instance.Monitor `json:"monitor" yaml:"monitor"`
 	}
 
 	// ArbitratorStatus describes the internet name of an arbitrator and
 	// if it is join-able.
 	ArbitratorStatus struct {
-		Url    string   `json:"url"`
-		Status status.T `json:"status"`
+		Url    string   `json:"url" yaml:"url"`
+		Status status.T `json:"status" yaml:"status"`
 	}
 )
 
 func (t Status) IsFrozen() bool {
-	return !t.Frozen.IsZero()
+	return !t.FrozenAt.IsZero()
 }
 
 func (t Status) IsThawed() bool {
-	return t.Frozen.IsZero()
+	return t.FrozenAt.IsZero()
 }
 
 func (t *Status) DeepCopy() *Status {

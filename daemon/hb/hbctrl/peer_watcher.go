@@ -49,7 +49,7 @@ func (c *ctrl) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename
 		log.Info().Msg("watching")
 		started <- true
 		setBeating := func(v bool) {
-			peer.Beating = v
+			peer.IsBeating = v
 			changes = true
 			pubTicker.Reset(pubDelay)
 		}
@@ -63,16 +63,16 @@ func (c *ctrl) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename
 				return
 			case beating := <-beatingC:
 				switch {
-				case beating && peer.Beating:
+				case beating && peer.IsBeating:
 					// continue beating (normal situation)
 					staleTicker.Reset(timeout)
-					peer.Last = time.Now()
-				case beating && !peer.Beating:
+					peer.LastAt = time.Now()
+				case beating && !peer.IsBeating:
 					// resume beating
 					setBeating(true)
 					staleTicker.Reset(timeout)
-					peer.Last = time.Now()
-				case !beating && peer.Beating:
+					peer.LastAt = time.Now()
+				case !beating && peer.IsBeating:
 					// stop beating
 					setBeating(false)
 					staleTicker.Stop()
@@ -81,9 +81,9 @@ func (c *ctrl) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename
 				pubTicker.Stop()
 				if changes {
 					changes = false
-					if beatingOnLastPub != peer.Beating {
+					if beatingOnLastPub != peer.IsBeating {
 						evName := evBeating
-						if !peer.Beating {
+						if !peer.IsBeating {
 							evName = evStale
 						}
 						c.cmd <- CmdEvent{
@@ -96,11 +96,11 @@ func (c *ctrl) peerWatch(ctx context.Context, beatingC chan bool, hbId, nodename
 							HbId:       hbId,
 							PeerStatus: peer,
 						}
-						beatingOnLastPub = peer.Beating
+						beatingOnLastPub = peer.IsBeating
 					}
 				}
 			case <-staleTicker.C:
-				if peer.Beating {
+				if peer.IsBeating {
 					setBeating(false)
 				}
 				staleTicker.Stop()

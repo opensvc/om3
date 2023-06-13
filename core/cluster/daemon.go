@@ -7,17 +7,17 @@ type (
 	// was last configured, when it was created, its current state and its
 	// id.
 	DaemonSubsystemStatus struct {
-		Id         string        `json:"id"`
-		Configured time.Time     `json:"configured"`
-		Created    time.Time     `json:"created"`
-		State      string        `json:"state"`
-		Alerts     []ThreadAlert `json:"alerts,omitempty"`
+		Id           string        `json:"id" yaml:"id"`
+		ConfiguredAt time.Time     `json:"configured_at" yaml:"configured_at"`
+		CreatedAt    time.Time     `json:"created_at" yaml:"created_at"`
+		State        string        `json:"state" yaml:"state"`
+		Alerts       []ThreadAlert `json:"alerts,omitempty" yaml:"alerts,omitempty"`
 	}
 
 	// ThreadAlert describes a message with a severity. Embedded in DaemonSubsystemStatus
 	ThreadAlert struct {
-		Message  string `json:"message"`
-		Severity string `json:"severity"`
+		Message  string `json:"message" yaml:"message"`
+		Severity string `json:"severity" yaml:"severity"`
 	}
 
 	// DaemonCollector describes the OpenSVC daemon collector thread,
@@ -41,14 +41,14 @@ type (
 	HeartbeatStream struct {
 		DaemonSubsystemStatus
 		// Type is the heartbeat type example: unicast, ...
-		Type  string                         `json:"type"`
-		Peers map[string]HeartbeatPeerStatus `json:"peers"`
+		Type  string                         `json:"type" yaml:"type"`
+		Peers map[string]HeartbeatPeerStatus `json:"peers" yaml:"peers"`
 	}
 
 	// HeartbeatPeerStatus describes the status of the communication
 	// with a specific peer node.
 	HeartbeatPeerStatus struct {
-		Beating bool      `json:"beating"`
-		Last    time.Time `json:"last"`
+		IsBeating bool      `json:"is_beating" yaml:"is_beating"`
+		LastAt    time.Time `json:"last_at" yaml:"last_at"`
 	}
 )

@@ -59,7 +59,7 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) error {
 
 func NewClusterData(cd *cluster.Data) *ClusterData {
 	return &ClusterData{
-		Data:         cd,
-		localhost:    cd.Daemon.Nodename,
+		Data:      cd,
+		localhost: cd.Daemon.Nodename,
 	}
 }

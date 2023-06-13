@@ -141,7 +141,7 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	// Never drop local cluster config, ignore remote config older that local
-	if !p.Equal(path.Cluster) && remoteConfig.Updated.After(localUpdated) && !d.inScope(&remoteConfig) {
+	if !p.Equal(path.Cluster) && remoteConfig.UpdatedAt.After(localUpdated) && !d.inScope(&remoteConfig) {
 		d.cancelFetcher(s)
 		cfgFile := p.ConfigFile()
 		if file.Exists(cfgFile) {
@@ -153,17 +153,17 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 		return
 	}
 	if mtime, ok := d.cfgMTime[s]; ok {
-		if !remoteConfig.Updated.After(mtime) {
+		if !remoteConfig.UpdatedAt.After(mtime) {
 			// our version is more recent than remote one
 			return
 		}
-	} else if !remoteConfig.Updated.After(localUpdated) {
+	} else if !remoteConfig.UpdatedAt.After(localUpdated) {
 		// Not yet started icfg, but file exists
 		return
 	}
 	if remoteFetcherUpdated, ok := d.fetcherUpdated[s]; ok {
 		// fetcher in progress for s, verify if new fetcher is required
-		if remoteConfig.Updated.After(remoteFetcherUpdated) {
+		if remoteConfig.UpdatedAt.After(remoteFetcherUpdated) {
 			d.log.Warn().Msgf("cancel pending remote cfg fetcher, more recent config from %s on %s", s, node)
 			d.cancelFetcher(s)
 		} else {
@@ -172,7 +172,7 @@ func (d *discover) onRemoteConfigUpdated(p path.T, node string, remoteConfig ins
 		}
 	}
 	d.log.Info().Msgf("fetch config %s from node %s", s, node)
-	d.fetchConfigFromRemote(p, node, remoteConfig.Updated)
+	d.fetchConfigFromRemote(p, node, remoteConfig.UpdatedAt)
 }
 
 func (d *discover) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {

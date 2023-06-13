@@ -43,7 +43,7 @@ func (t *actor) newScheduleEntry(action, keyStr, rid, base string, reqCol, reqPr
 		Node:               hostname.Hostname(),
 		Path:               t.path,
 		Action:             action,
-		Last:               t.loadLast(action, rid, base),
+		LastRunAt:          t.loadLast(action, rid, base),
 		Key:                k.String(),
 		Definition:         def,
 		LastRunFile:        t.lastRunFile(action, rid, base),

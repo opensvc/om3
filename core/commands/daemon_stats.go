@@ -52,12 +52,12 @@ func (t *CmdDaemonStats) Run() error {
 func parseDaemonStats(b []byte) (cluster.Stats, error) {
 	type (
 		nodeData struct {
-			Status int                     `json:"status"`
-			Data   cluster.NodeStatsBundle `json:"data"`
+			Status int                     `json:"status" yaml:"status"`
+			Data   cluster.NodeStatsBundle `json:"data" yaml:"data"`
 		}
 		responseType struct {
-			Status int                 `json:"status"`
-			Nodes  map[string]nodeData `json:"nodes"`
+			Status int                 `json:"status" yaml:"status"`
+			Nodes  map[string]nodeData `json:"nodes" yaml:"nodes"`
 		}
 	)
 	var t responseType

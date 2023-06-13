@@ -13,22 +13,31 @@ var (
 	cmdNodeCapabilities = &cobra.Command{
 		Use:     "capabilities",
 		Short:   "scan and list what the node is capable of",
-		Aliases: []string{"capa", "caps", "cap", "ca"},
+		Aliases: []string{"capa", "caps", "cap"},
+	}
+	cmdNodeCollector = &cobra.Command{
+		Use:     "collector",
+		Short:   "node collector data management commands",
+		Aliases: []string{"coll"},
+	}
+	cmdNodeCollectorTag = &cobra.Command{
+		Use:   "tag",
+		Short: "collector tags management commands",
 	}
 	cmdNodeCompliance = &cobra.Command{
 		Use:     "compliance",
 		Short:   "node configuration manager commands",
-		Aliases: []string{"compli", "comp", "com", "co"},
+		Aliases: []string{"comp"},
 	}
 	cmdNodeComplianceAttach = &cobra.Command{
 		Use:     "attach",
 		Short:   "attach modulesets and rulesets to the node",
-		Aliases: []string{"attac", "atta", "att", "at"},
+		Aliases: []string{"atta", "att", "at"},
 	}
 	cmdNodeComplianceDetach = &cobra.Command{
 		Use:     "detach",
 		Short:   "detach modulesets and rulesets from the node",
-		Aliases: []string{"detac", "deta", "det", "de"},
+		Aliases: []string{"deta", "det", "de"},
 	}
 	cmdNodeComplianceList = &cobra.Command{
 		Use:     "list",
@@ -63,6 +72,15 @@ func init() {
 	cmdNodeCapabilities.AddCommand(
 		newCmdNodeCapabilitiesList(),
 		newCmdNodeCapabilitiesScan(),
+	)
+	cmdNode.AddCommand(cmdNodeCollector)
+	cmdNodeCollector.AddCommand(cmdNodeCollectorTag)
+	cmdNodeCollectorTag.AddCommand(
+		newCmdNodeCollectorTagAttach(),
+		newCmdNodeCollectorTagDetach(),
+		newCmdNodeCollectorTagCreate(),
+		newCmdNodeCollectorTagList(),
+		newCmdNodeCollectorTagShow(),
 	)
 	cmdNode.AddCommand(cmdNodeCompliance)
 	cmdNodeCompliance.AddCommand(

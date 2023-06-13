@@ -40,7 +40,7 @@ func (o *imon) freeze() error {
 	}
 	frozen = file.ModTime(p)
 	if instanceStatus, ok := o.instStatus[o.localhost]; ok {
-		instanceStatus.Frozen = frozen
+		instanceStatus.FrozenAt = frozen
 		o.instStatus[o.localhost] = instanceStatus
 	}
 	if frozen.IsZero() {
@@ -70,7 +70,7 @@ func (o *imon) unfreeze() error {
 		}
 	}
 	if instanceStatus, ok := o.instStatus[o.localhost]; ok {
-		instanceStatus.Frozen = time.Time{}
+		instanceStatus.FrozenAt = time.Time{}
 		o.instStatus[o.localhost] = instanceStatus
 	}
 	o.pubsubBus.Pub(&msgbus.InstanceFrozenFileRemoved{Path: o.path, Updated: time.Now()},

@@ -24,24 +24,25 @@ var (
 	// their out, err, ret from the session cache identified by
 	// the spawner ID.
 	//
-	ID string
+	ID uuid.UUID
 )
 
-func getID() string {
+func getID() uuid.UUID {
 	id := os.Getenv("OSVC_SESSION_ID")
 	if id == "" {
 		// No uuid set. Generate a new one.
 		return newID()
 	}
-	if _, err := uuid.Parse(id); err != nil {
+	if u, err := uuid.Parse(id); err != nil {
 		// Invalid uuid format. Generate a new one.
 		return newID()
+	} else {
+		return u
 	}
-	return id
 }
 
-func newID() string {
-	return uuid.New().String()
+func newID() uuid.UUID {
+	return uuid.New()
 }
 
 // for init() test

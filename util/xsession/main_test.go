@@ -1,15 +1,16 @@
 package xsession
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_init(t *testing.T) {
 
 	t.Run("default ID is defined with expected len", func(t *testing.T) {
-		if len(ID) != 36 {
+		if len(ID.String()) != 36 {
 			t.Fatalf("Unexpected ID value: %q, len %v", ID, len(ID))
 		}
 	})
@@ -27,7 +28,7 @@ func Test_init(t *testing.T) {
 		expectedValue := "def79ece-b952-4e48-9ec7-23e2ffb47aa7"
 		_ = os.Setenv(varName, expectedValue)
 		initID()
-		assert.Equal(t, expectedValue, ID)
+		assert.Equal(t, expectedValue, ID.String())
 	})
 
 	t.Run("invalid env var OSVC_SESSION_ID value are ignored and a valid ID is created", func(t *testing.T) {
@@ -43,7 +44,7 @@ func Test_init(t *testing.T) {
 		_ = os.Setenv(varName, "bad-uuid")
 
 		initID()
-		if len(ID) != 36 {
+		if len(ID.String()) != 36 {
 			t.Fatalf("Unexpected ID value: %q, len %v", ID, len(ID))
 		}
 	})

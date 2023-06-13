@@ -1,7 +1,6 @@
 package node
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -12,24 +11,24 @@ import (
 type (
 	// Monitor describes the in-daemon states of a node
 	Monitor struct {
-		State               MonitorState        `json:"state"`
-		LocalExpect         MonitorLocalExpect  `json:"local_expect"`
-		GlobalExpect        MonitorGlobalExpect `json:"global_expect"`
-		StateUpdated        time.Time           `json:"state_updated"`
-		GlobalExpectUpdated time.Time           `json:"global_expect_updated"`
-		LocalExpectUpdated  time.Time           `json:"local_expect_updated"`
+		State                 MonitorState        `json:"state" yaml:"state"`
+		LocalExpect           MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
+		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		StateUpdatedAt        time.Time           `json:"state_updated_at" yaml:"state_updated_at"`
+		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+		LocalExpectUpdatedAt  time.Time           `json:"local_expect_updated_at" yaml:"local_expect_updated_at"`
 	}
 
 	// MonitorUpdate is embedded in the SetNodeMonitor message to
 	// change some Monitor values. A nil value does not change the
 	// current value.
 	MonitorUpdate struct {
-		State        *MonitorState        `json:"state"`
-		LocalExpect  *MonitorLocalExpect  `json:"local_expect"`
-		GlobalExpect *MonitorGlobalExpect `json:"global_expect"`
+		State        *MonitorState        `json:"state" yaml:"state"`
+		LocalExpect  *MonitorLocalExpect  `json:"local_expect" yaml:"local_expect"`
+		GlobalExpect *MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
 
 		// CandidateOrchestrationId is a candidate orchestration id for a new imon orchestration.
-		CandidateOrchestrationId uuid.UUID `json:"orchestration_id"`
+		CandidateOrchestrationId uuid.UUID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	MonitorState        int
@@ -160,76 +159,64 @@ func (t MonitorState) String() string {
 	return MonitorStateStrings[t]
 }
 
-func (t MonitorState) MarshalJSON() ([]byte, error) {
+func (t MonitorState) MarshalText() ([]byte, error) {
 	if s, ok := MonitorStateStrings[t]; !ok {
-		fmt.Printf("unexpected node.MonitorState value: %d\n", t)
-		return []byte{}, fmt.Errorf("unexpected node.MonitorState value: %d", t)
+		return nil, fmt.Errorf("unexpected node.MonitorState value: %d", t)
 	} else {
-		return json.Marshal(s)
+		return []byte(s), nil
 	}
 }
 
-func (t *MonitorState) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	v, ok := MonitorStateValues[s]
-	if !ok {
+func (t *MonitorState) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := MonitorStateValues[s]; !ok {
 		return fmt.Errorf("unexpected node.MonitorState value: %s", b)
+	} else {
+		*t = v
+		return nil
 	}
-	*t = v
-	return nil
 }
 
 func (t MonitorLocalExpect) String() string {
 	return MonitorLocalExpectStrings[t]
 }
 
-func (t MonitorLocalExpect) MarshalJSON() ([]byte, error) {
+func (t MonitorLocalExpect) MarshalText() ([]byte, error) {
 	if s, ok := MonitorLocalExpectStrings[t]; !ok {
-		fmt.Printf("unexpected node.MonitorLocalExpect value: %d\n", t)
-		return []byte{}, fmt.Errorf("unexpected node.MonitorLocalExpect value: %d", t)
+		return nil, fmt.Errorf("unexpected node.MonitorLocalExpect value: %d", t)
 	} else {
-		return json.Marshal(s)
+		return []byte(s), nil
 	}
 }
 
-func (t *MonitorLocalExpect) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	v, ok := MonitorLocalExpectValues[s]
-	if !ok {
+func (t *MonitorLocalExpect) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := MonitorLocalExpectValues[s]; !ok {
 		return fmt.Errorf("unexpected node.MonitorLocalExpect value: %s", b)
+	} else {
+		*t = v
+		return nil
 	}
-	*t = v
-	return nil
 }
 
 func (t MonitorGlobalExpect) String() string {
 	return MonitorGlobalExpectStrings[t]
 }
 
-func (t MonitorGlobalExpect) MarshalJSON() ([]byte, error) {
+func (t MonitorGlobalExpect) MarshalText() ([]byte, error) {
 	if s, ok := MonitorGlobalExpectStrings[t]; !ok {
-		fmt.Printf("unexpected MonitorGlobalExpect value: %d\n", t)
-		return []byte{}, fmt.Errorf("unexpected MonitorGlobalExpect value: %d", t)
+		return nil, fmt.Errorf("unexpected MonitorGlobalExpect value: %d", t)
 	} else {
-		return json.Marshal(s)
+		return []byte(s), nil
 	}
 }
 
-func (t *MonitorGlobalExpect) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	v, ok := MonitorGlobalExpectValues[s]
-	if !ok {
+func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
+	s := string(b)
+	if v, ok := MonitorGlobalExpectValues[s]; !ok {
 		return fmt.Errorf("unexpected node.MonitorGlobalExpect value: %s", b)
+	} else {
+		*t = v
+		return nil
 	}
-	*t = v
-	return nil
 }

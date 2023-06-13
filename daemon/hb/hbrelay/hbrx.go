@@ -31,7 +31,7 @@ type (
 		insecure bool
 		timeout  time.Duration
 		interval time.Duration
-		last     time.Time
+		lastAt   time.Time
 
 		name   string
 		log    zerolog.Logger
@@ -138,15 +138,15 @@ func (t *rx) recv(nodename string) {
 		return
 	}
 	c := messages.Messages[0]
-	if c.Updated.IsZero() {
+	if c.UpdatedAt.IsZero() {
 		t.log.Debug().Msgf("recv: node %s data has never been updated", nodename)
 		return
 	}
-	if !t.last.IsZero() && c.Updated == t.last {
+	if !t.lastAt.IsZero() && c.UpdatedAt == t.lastAt {
 		t.log.Debug().Msgf("recv: node %s data has not change since last read", nodename)
 		return
 	}
-	elapsed := time.Now().Sub(c.Updated)
+	elapsed := time.Now().Sub(c.UpdatedAt)
 	if elapsed > t.timeout {
 		t.log.Debug().Msgf("recv: node %s data has not been updated for %s", nodename, elapsed)
 		return
@@ -176,7 +176,7 @@ func (t *rx) recv(nodename string) {
 		Success:  true,
 	}
 	t.msgC <- &msg
-	t.last = c.Updated
+	t.lastAt = c.UpdatedAt
 }
 
 func newRx(ctx context.Context, name string, nodes []string, relay, username, password string, insecure bool, timeout, interval time.Duration) *rx {

@@ -3,19 +3,18 @@
 package device
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/devicedriver"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 func (t T) IsReadWrite() (bool, error) {
@@ -106,7 +105,7 @@ func (t T) SlaveHosts() ([]string, error) {
 	}
 	for _, slave := range slaves {
 		if host, err := slave.Host(); err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 			continue
 		} else {
 			l = append(l, host)
@@ -127,7 +126,7 @@ func (t T) Host() (string, error) {
 	}
 	hbtl := strings.Split(filepath.Base(devicePath), ":")
 	if len(hbtl) == 4 {
-		return "", errors.Errorf("dev %s host device path unexpected format: %v", devicePath, hbtl)
+		return "", fmt.Errorf("dev %s host device path unexpected format: %v", devicePath, hbtl)
 	}
 	return "host" + hbtl[0], nil
 }
@@ -235,7 +234,7 @@ func (t T) identityString(s string) (string, error) {
 		for _, slave := range slaves {
 			return slave.scsiIdentityString(s)
 		}
-		return "", errors.Errorf("%s has no slave to query for %s", t, s)
+		return "", fmt.Errorf("%s has no slave to query for %s", t, s)
 	} else {
 		return t.scsiIdentityString(s)
 	}

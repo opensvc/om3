@@ -3,6 +3,7 @@ package objectaction
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mattn/go-isatty"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -33,7 +33,6 @@ import (
 	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/render/tree"
-	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xsession"
 )
 
@@ -337,9 +336,9 @@ func (t T) DoLocal() error {
 	for _, ar := range rs {
 		switch {
 		case ar.Panic != nil:
-			errs = xerrors.Append(errs, errors.Errorf(fmt.Sprintf("%s: %s", ar.Path, ar.Panic)))
+			errs = errors.Join(errs, fmt.Errorf("%s: %s", ar.Path, ar.Panic))
 		case ar.Error != nil:
-			errs = xerrors.Append(errs, errors.Errorf(fmt.Sprintf("%s: %s", ar.Path, ar.Error)))
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", ar.Path, ar.Error))
 		}
 	}
 	return errs
@@ -362,9 +361,9 @@ func (t T) DoAsync() error {
 	}
 	type (
 		result struct {
-			Path            string    `json:"path"`
-			OrchestrationId uuid.UUID `json:"orchestration_id,omitempty"`
-			Error           error     `json:"error,omitempty"`
+			Path            string    `json:"path" yaml:"path"`
+			OrchestrationId uuid.UUID `json:"orchestration_id,omitempty" yaml:"orchestration_id,omitempty"`
+			Error           error     `json:"error,omitempty" yaml:"error,omitempty"`
 		}
 		results []result
 	)
@@ -408,13 +407,13 @@ func (t T) DoAsync() error {
 			case http.StatusOK:
 				b = resp.Body
 			case 400:
-				err = errors.Errorf("%s", resp.JSON400)
+				err = fmt.Errorf("%s", resp.JSON400)
 			case 401:
-				err = errors.Errorf("%s", resp.JSON403)
+				err = fmt.Errorf("%s", resp.JSON403)
 			case 403:
-				err = errors.Errorf("%s", resp.JSON401)
+				err = fmt.Errorf("%s", resp.JSON401)
 			case 500:
-				err = errors.Errorf("%s", resp.JSON500)
+				err = fmt.Errorf("%s", resp.JSON500)
 			}
 
 		default:
@@ -429,17 +428,17 @@ func (t T) DoAsync() error {
 			case http.StatusOK:
 				b = resp.Body
 			case 400:
-				err = errors.Errorf("%s", resp.JSON400)
+				err = fmt.Errorf("%s", resp.JSON400)
 			case 401:
-				err = errors.Errorf("%s", resp.JSON403)
+				err = fmt.Errorf("%s", resp.JSON403)
 			case 403:
-				err = errors.Errorf("%s", resp.JSON401)
+				err = fmt.Errorf("%s", resp.JSON401)
 			case 500:
-				err = errors.Errorf("%s", resp.JSON500)
+				err = fmt.Errorf("%s", resp.JSON500)
 			}
 		}
 		if err != nil {
-			errs = xerrors.Append(errs, err)
+			errs = errors.Join(errs, err)
 		} else {
 			toWait++
 		}
@@ -476,11 +475,11 @@ func (t T) DoAsync() error {
 		for i := 0; i < toWait; i++ {
 			select {
 			case <-ctx.Done():
-				errs = xerrors.Append(errs, ctx.Err())
+				errs = errors.Join(errs, ctx.Err())
 				return errs
 			case err := <-waitC:
 				if err != nil {
-					errs = xerrors.Append(errs, ctx.Err())
+					errs = errors.Join(errs, ctx.Err())
 				}
 			}
 		}
@@ -516,7 +515,7 @@ func (t T) DoRemote() error {
 			HumanRenderer: human,
 		}.Print()
 	*/
-	return errors.Errorf("TODO")
+	return fmt.Errorf("TODO")
 }
 
 func (t T) Do() error {
@@ -609,7 +608,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 	go func() {
 		defer func() {
 			if err != nil {
-				err = errors.Wrapf(err, "wait expectation %s failed on object %s", expectation, p)
+				err = fmt.Errorf("%w: wait expectation %s failed on object %s", err, expectation, p)
 			}
 			select {
 			case <-ctx.Done():
@@ -628,7 +627,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 			ev, readError := evReader.Read()
 			if readError != nil {
 				if errors.Is(readError, io.EOF) {
-					err = errors.Errorf("no more events (%s), wait %v failed", err, p)
+					err = fmt.Errorf("%w: no more events, wait %v failed", err, p)
 				} else {
 					err = readError
 				}
@@ -640,7 +639,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 			}
 			switch m := msg.(type) {
 			case *msgbus.SetInstanceMonitorRefused:
-				err = errors.Errorf("can't wait %s expectation %s, got SetInstanceMonitorRefused", p, expectation)
+				err = fmt.Errorf("can't wait %s expectation %s, got SetInstanceMonitorRefused", p, expectation)
 				log.Debug().Err(err).Msgf("waitExpectation")
 				return
 			case *msgbus.InstanceMonitorUpdated:

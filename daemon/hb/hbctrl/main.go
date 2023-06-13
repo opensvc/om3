@@ -214,10 +214,10 @@ func (c *ctrl) run(ctx context.Context) {
 				now := time.Now()
 				heartbeat[o.Id] = cluster.HeartbeatStream{
 					DaemonSubsystemStatus: cluster.DaemonSubsystemStatus{
-						Id:         o.Id,
-						Created:    now,
-						Configured: now,
-						State:      "running",
+						Id:           o.Id,
+						CreatedAt:    now,
+						ConfiguredAt: now,
+						State:        "running",
 					},
 					Type:  o.Type,
 					Peers: make(map[string]cluster.HeartbeatPeerStatus),
@@ -226,10 +226,10 @@ func (c *ctrl) run(ctx context.Context) {
 				if hbStatus, ok := heartbeat[o.Id]; ok {
 					if strings.HasSuffix(o.Id, ".rx") {
 						for peerNode, peerStatus := range hbStatus.Peers {
-							if !peerStatus.Beating {
+							if !peerStatus.IsBeating {
 								continue
 							}
-							if peerStatus.Beating {
+							if peerStatus.IsBeating {
 								if remote, ok := remotes[peerNode]; ok {
 									remote.rxBeating--
 									remotes[peerNode] = remote

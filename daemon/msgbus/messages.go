@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/instance"
@@ -41,8 +42,6 @@ var (
 		"DaemonHb": func() any { return &DaemonHb{} },
 
 		"DaemonStart": func() any { return &DaemonStart{} },
-
-		"DataUpdated": func() any { return &DataUpdated{} },
 
 		"Exit": func() any { return &Exit{} },
 
@@ -227,12 +226,6 @@ type (
 		pubsub.Msg
 		Node  string
 		Value cluster.Status
-	}
-
-	// DataUpdated is a patch of changed data
-	DataUpdated struct {
-		pubsub.Msg
-		json.RawMessage
 	}
 
 	DaemonCtl struct {
@@ -564,7 +557,7 @@ type (
 		Path      path.T
 		Node      string
 		State     instance.MonitorState
-		SessionId string
+		SessionId uuid.UUID
 		IsPartial bool
 	}
 
@@ -670,14 +663,6 @@ func (e *ClientSub) Kind() string {
 
 func (e *ClientUnSub) Kind() string {
 	return "ClientUnSub"
-}
-
-func (e *DataUpdated) Bytes() []byte {
-	return e.RawMessage
-}
-
-func (e *DataUpdated) Kind() string {
-	return "DataUpdated"
 }
 
 func (e *DaemonCtl) Kind() string {

@@ -3,6 +3,8 @@ package cmd
 func init() {
 	kind := ""
 	cmdObject := newCmdAll()
+	cmdObjectCollector := newCmdObjectCollector(kind)
+	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectCompliance := newCmdObjectCompliance(kind)
 	cmdObjectComplianceAttach := newCmdObjectComplianceAttach(kind)
 	cmdObjectComplianceDetach := newCmdObjectComplianceDetach(kind)
@@ -20,6 +22,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddCommand(
+		cmdObjectCollector,
 		cmdObjectCompliance,
 		cmdObjectEdit,
 		cmdObjectPrint,
@@ -83,6 +86,16 @@ func init() {
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
+	)
+	cmdObjectCollector.AddCommand(
+		cmdObjectCollectorTag,
+	)
+	cmdObjectCollectorTag.AddCommand(
+		newCmdObjectCollectorTagAttach(kind),
+		newCmdObjectCollectorTagCreate(kind),
+		newCmdObjectCollectorTagDetach(kind),
+		newCmdObjectCollectorTagList(kind),
+		newCmdObjectCollectorTagShow(kind),
 	)
 	cmdObjectCompliance.AddCommand(
 		cmdObjectComplianceAttach,

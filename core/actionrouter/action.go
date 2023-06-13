@@ -1,6 +1,7 @@
 package actionrouter
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/path"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -129,12 +129,12 @@ type (
 
 	// Result is a predictible type of actions return value, for reflect.
 	Result struct {
-		Nodename      string        `json:"nodename"`
-		Path          path.T        `json:"path"`
-		Data          interface{}   `json:"data"`
-		Error         error         `json:"error,omitempty"`
-		Panic         interface{}   `json:"panic,omitempty"`
-		HumanRenderer func() string `json:"-"`
+		Nodename      string        `json:"nodename" yaml:"nodename"`
+		Path          path.T        `json:"path,omitempty" yaml:"path,omitempty`
+		Data          interface{}   `json:"data" yaml:"data"`
+		Error         error         `json:"error,omitempty" yaml:"error,omitempty"`
+		Panic         interface{}   `json:"panic,omitempty" yaml:"panic,omitempty"`
+		HumanRenderer func() string `json:"-" yaml:"-"`
 	}
 
 	// renderer is implemented by data type stored in ActionResults.Data.
@@ -173,9 +173,9 @@ func Do(t Actioner) error {
 		}
 		statusGetter := cli.NewGetDaemonStatus().SetSelector(o.ObjectSelector)
 		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).GetReader()
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 		err = m.DoWatch(statusGetter, evReader, os.Stdout)
-		errs = xerrors.Append(errs, err)
+		errs = errors.Join(errs, err)
 	}
 	return errs
 }

@@ -28,7 +28,7 @@ func (f Frame) wThreadCollector() string {
 	s += "\t"
 	s += f.info.separator + "\t"
 	for _, v := range f.Current.Cluster.Node {
-		if v.Status.Speaker {
+		if v.Status.IsSpeaker {
 			s += green("O") + "\t"
 		} else {
 			s += "\t"
@@ -121,7 +121,7 @@ func (f Frame) wThreadHeartbeats() string {
 				s += iconUndef + "\t"
 				continue
 			}
-			if peerData.Beating {
+			if peerData.IsBeating {
 				s += iconUp + "\t"
 			} else {
 				s += iconDownIssue + "\t"

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/ncw/directio"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/hbcfg"
@@ -26,7 +26,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/xerrors"
 )
 
 type (
@@ -82,50 +81,50 @@ func init() {
 
 func (d *device) open() error {
 	if d.path == "" {
-		return errors.Errorf("the 'dev' keyword is not set")
+		return fmt.Errorf("the 'dev' keyword is not set")
 	}
 	newDev, err := filepath.EvalSymlinks(d.path)
 	if err != nil {
-		return errors.Wrapf(err, "%s eval symlink", d.path)
+		return fmt.Errorf("%w: %s eval symlink", err, d.path)
 	}
 
 	isBlockDevice, err := file.IsBlockDevice(newDev)
 	if os.IsNotExist(err) {
-		return errors.Errorf("%s does not exist", d.path)
+		return fmt.Errorf("%w: %s does not exist", err, d.path)
 	} else if err != nil {
 		return err
 	}
 
 	isCharDevice, err := file.IsCharDevice(newDev)
 	if os.IsNotExist(err) {
-		return errors.Errorf("%s does not exist", d.path)
+		return fmt.Errorf("%w: %s does not exist", err, d.path)
 	} else if err != nil {
 		return err
 	}
 
 	if runtime.GOOS == "linux" {
 		if !isBlockDevice {
-			return errors.Errorf("%s must be a block device", d.path)
+			return fmt.Errorf("%s must be a block device", d.path)
 		}
 		if strings.HasPrefix("/dev/dm-", d.path) {
-			return errors.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", d.path)
+			return fmt.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", d.path)
 		}
 		if strings.HasPrefix("/dev/sd", d.path) {
-			return errors.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", d.path)
+			return fmt.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", d.path)
 		}
 		d.mode = "directio"
 		if d.file, err = directio.OpenFile(d.path, os.O_RDWR|os.O_SYNC|syscall.O_DSYNC, 0755); err != nil {
-			return errors.Errorf("%s must be a block device", d.path)
+			return fmt.Errorf("%s must be a block device", d.path)
 		}
 	} else {
 		if isCharDevice {
-			return errors.Errorf("using char device %s", d.path)
+			return fmt.Errorf("using char device %s", d.path)
 		} else {
-			return errors.Errorf("%s must be a block device", d.path)
+			return fmt.Errorf("%s must be a block device", d.path)
 		}
 		d.mode = "raw"
 		if d.file, err = os.OpenFile(d.path, os.O_RDWR, 0755); err != nil {
-			return errors.Errorf("%s must be a block device", d.path)
+			return fmt.Errorf("%w: %s must be a block device", err, d.path)
 		}
 	}
 	return nil
@@ -180,7 +179,7 @@ func (t device) ReadMetaSlot(slot int) ([]byte, error) {
 
 func (t device) WriteMetaSlot(slot int, b []byte) error {
 	if len(b) > PageSize {
-		return errors.Errorf("attempt to write too long data in meta slot %d", slot)
+		return fmt.Errorf("attempt to write too long data in meta slot %d", slot)
 	}
 	offset := t.MetaSlotOffset(slot)
 	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
@@ -238,11 +237,11 @@ func (t device) WriteDataSlot(slot int, b []byte) error {
 	}
 	b, err := json.Marshal(c)
 	if err != nil {
-		return errors.Wrap(err, "msg encapsulation")
+		return fmt.Errorf("%w: msg encapsulation", err)
 	}
 	b = append(b, []byte{'\x00'}...)
 	if len(b) > SlotSize {
-		return errors.Errorf("attempt to write too long data in data slot %d", slot)
+		return fmt.Errorf("attempt to write too long data in data slot %d", slot)
 	}
 	offset := t.DataSlotOffset(slot)
 	if _, err := t.file.Seek(offset, os.SEEK_SET); err != nil {
@@ -276,7 +275,7 @@ func (t *base) LoadPeerConfig(nodes []string) error {
 	for slot := 0; slot < MaxSlots; slot += 1 {
 		b, err := t.device.ReadMetaSlot(slot)
 		if err != nil {
-			errs := xerrors.Append(errs, err)
+			errs := errors.Join(errs, err)
 			return errs
 		}
 		nodename := string(b[:bytes.IndexRune(b, '\x00')])
@@ -286,7 +285,7 @@ func (t *base) LoadPeerConfig(nodes []string) error {
 			continue
 		}
 		if data.Slot > 0 && data.Slot != slot {
-			errs = xerrors.Append(errs, errors.Errorf("duplicate slot %d for node %s (first %d)", slot, nodename, data.Slot))
+			errs = errors.Join(errs, fmt.Errorf("duplicate slot %d for node %s (first %d)", slot, nodename, data.Slot))
 			continue
 		}
 		t.log.Info().Msgf("detect slot %d for node %s", slot, nodename)

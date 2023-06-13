@@ -45,25 +45,25 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 		instStatusUpdated: make(map[string]time.Time),
 	}
 
-	nmonUpdated := c.Monitor.StateUpdated
-	if c.Monitor.GlobalExpectUpdated.After(nmonUpdated) {
-		nmonUpdated = c.Monitor.GlobalExpectUpdated
+	nmonUpdated := c.Monitor.StateUpdatedAt
+	if c.Monitor.GlobalExpectUpdatedAt.After(nmonUpdated) {
+		nmonUpdated = c.Monitor.GlobalExpectUpdatedAt
 	}
 	result.nmonUpdated = nmonUpdated
 
 	for p, inst := range c.Instance {
 		if inst.Status != nil {
-			instUpdated := inst.Status.Updated
-			if inst.Status.Frozen.After(instUpdated) {
-				instUpdated = inst.Status.Frozen
+			instUpdated := inst.Status.UpdatedAt
+			if inst.Status.FrozenAt.After(instUpdated) {
+				instUpdated = inst.Status.FrozenAt
 			}
 			result.instStatusUpdated[p] = instUpdated
 		}
 		if inst.Config != nil {
-			result.instConfigUpdated[p] = inst.Config.Updated
+			result.instConfigUpdated[p] = inst.Config.UpdatedAt
 		}
 		if inst.Monitor != nil {
-			imonUpdated := inst.Monitor.StateUpdated
+			imonUpdated := inst.Monitor.StateUpdatedAt
 			if inst.Monitor.UpdatedAt.After(imonUpdated) {
 				imonUpdated = inst.Monitor.UpdatedAt
 			}

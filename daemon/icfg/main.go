@@ -283,7 +283,7 @@ func (o *T) configFileCheck() error {
 	cfg.PreMonitorAction = cf.GetString(keyPreMonitorAction)
 	cfg.Scope = scope
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
-	cfg.Updated = mtime
+	cfg.UpdatedAt = mtime
 
 	if cfg.Topology == topology.Flex {
 		cfg.FlexMin = o.getFlexMin(cf)

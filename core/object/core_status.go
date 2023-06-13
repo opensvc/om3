@@ -61,8 +61,7 @@ func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
 func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
-	data.Kind = t.path.Kind
-	data.Updated = time.Now()
+	data.UpdatedAt = time.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
 	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())

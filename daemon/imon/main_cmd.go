@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/placement"
@@ -25,7 +26,7 @@ func (o *imon) onInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceSt
 		case !ok:
 			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
 			o.instStatus[srcCmd.Node] = srcCmd.Value
-		case instStatus.Updated.Before(srcCmd.Value.Updated):
+		case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
 			// only update if more recent
 			o.log.Debug().Msgf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
 			o.instStatus[srcCmd.Node] = srcCmd.Value
@@ -147,7 +148,7 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 			return
 		}
 		switch o.state.SessionId {
-		case "":
+		case uuid.Nil:
 		case c.SessionId:
 			// pass
 		default:
@@ -157,7 +158,7 @@ func (o *imon) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 		o.change = true
 		o.state.State = c.State
 		if c.State == instance.MonitorStateIdle {
-			o.state.SessionId = ""
+			o.state.SessionId = uuid.Nil
 		} else {
 			o.state.SessionId = c.SessionId
 		}
@@ -257,7 +258,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			if instMon.GlobalExpect == instance.MonitorGlobalExpectNone {
 				continue
 			}
-			if instMon.GlobalExpectUpdated.After(o.state.GlobalExpectUpdated) {
+			if instMon.GlobalExpectUpdatedAt.After(o.state.GlobalExpectUpdatedAt) {
 				o.log.Info().Msgf("refuse to set global expect '%s': node %s global expect is already '%s'", instMon.GlobalExpect, node, *c.Value.GlobalExpect)
 				return
 			}
@@ -269,7 +270,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			o.state.GlobalExpectOptions = c.Value.GlobalExpectOptions
 			// update GlobalExpectUpdated now
 			// This will allow remote nodes to pickup most recent value
-			o.state.GlobalExpectUpdated = time.Now()
+			o.state.GlobalExpectUpdatedAt = time.Now()
 		}
 	}
 

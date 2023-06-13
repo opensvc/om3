@@ -194,7 +194,7 @@ func newClient(url *url.URL, secret string) (*Client, error) {
 		}).
 			With().
 			Str("n", hostname.Hostname()).
-			Str("sid", xsession.ID).
+			Stringer("sid", xsession.ID).
 			Logger(),
 	}
 	return client, nil

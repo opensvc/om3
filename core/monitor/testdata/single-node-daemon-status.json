@@ -21,9 +21,9 @@
           "state": "idle",
           "local_expect": "none",
           "global_expect": "none",
-          "state_updated": "2023-02-07T18:59:38.067674438+01:00",
-          "global_expect_updated": "0001-01-01T00:00:00Z",
-          "local_expect_updated": "0001-01-01T00:00:00Z"
+          "state_updated_at": "2023-02-07T18:59:38.067674438+01:00",
+          "global_expect_updated_at": "0001-01-01T00:00:00Z",
+          "local_expect_updated_at": "0001-01-01T00:00:00Z"
         },
         "stats": {
           "load_15m": 0.08,
@@ -39,7 +39,7 @@
           "arbitrators": {},
           "compat": 12,
           "env": "",
-          "frozen": "2023-02-07T18:49:21.985310975+01:00",
+          "frozen_at": "2023-02-07T18:49:21.985310975+01:00",
           "gen": {
             "dev1n3": 18
           },
@@ -82,30 +82,30 @@
   },
   "collector": {
     "id": "",
-    "configured": "0001-01-01T00:00:00Z",
-    "created": "0001-01-01T00:00:00Z",
+    "configured_at": "0001-01-01T00:00:00Z",
+    "created_at": "0001-01-01T00:00:00Z",
     "state": "",
     "tid": 0
   },
   "dns": {
     "id": "",
-    "configured": "0001-01-01T00:00:00Z",
-    "created": "0001-01-01T00:00:00Z",
+    "configured_at": "0001-01-01T00:00:00Z",
+    "created_at": "0001-01-01T00:00:00Z",
     "state": "",
     "tid": 0
   },
   "scheduler": {
     "id": "",
-    "configured": "0001-01-01T00:00:00Z",
-    "created": "0001-01-01T00:00:00Z",
+    "configured_at": "0001-01-01T00:00:00Z",
+    "created_at": "0001-01-01T00:00:00Z",
     "state": "",
     "tid": 0,
     "delayed": null
   },
   "listener": {
     "id": "",
-    "configured": "0001-01-01T00:00:00Z",
-    "created": "0001-01-01T00:00:00Z",
+    "configured_at": "0001-01-01T00:00:00Z",
+    "created_at": "0001-01-01T00:00:00Z",
     "state": "",
     "tid": 0,
     "config": {
@@ -125,8 +125,8 @@
   },
   "Monitor": {
     "id": "",
-    "configured": "0001-01-01T00:00:00Z",
-    "created": "0001-01-01T00:00:00Z",
+    "configured_at": "0001-01-01T00:00:00Z",
+    "created_at": "0001-01-01T00:00:00Z",
     "state": "",
     "tid": 0,
     "routines": 76

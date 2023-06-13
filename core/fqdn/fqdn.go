@@ -1,8 +1,6 @@
 package fqdn
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 
 	"github.com/opensvc/om3/core/path"
@@ -51,20 +49,14 @@ func (t T) Domain() string {
 	return fmt.Sprintf("%s.%s.%s", t.Path.Namespace, t.Path.Kind, t.Cluster)
 }
 
-// MarshalJSON implements the json interface
-func (t T) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(t.String())
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+// MarshalText implements the json interface
+func (t T) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
 }
 
-// UnmarshalJSON implements the json interface
-func (t *T) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
+// UnmarshalText implements the json interface
+func (t *T) UnmarshalText(b []byte) error {
+	s := string(b)
 	p, err := Parse(s)
 	if err != nil {
 		return err

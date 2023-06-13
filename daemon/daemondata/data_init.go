@@ -28,8 +28,8 @@ func newData() *data {
 	status := cluster.Data{
 		Cluster: cluster.Cluster{
 			Status: cluster.Status{
-				Compat: false,
-				Frozen: true,
+				IsCompat: false,
+				IsFrozen: true,
 			},
 			Object: map[string]object.Status{},
 
@@ -86,12 +86,12 @@ func newNodeData(localNode string) node.Node {
 			API:             8,
 			Arbitrators:     map[string]node.ArbitratorStatus{},
 			Compat:          12,
-			Frozen:          frozen,
+			FrozenAt:        frozen,
 			Gen:             map[string]uint64{localNode: 1},
 			Labels:          nodesinfo.Labels{},
 			MinAvailMemPct:  0,
 			MinAvailSwapPct: 0,
-			Speaker:         false,
+			IsSpeaker:       false,
 		},
 		Os: node.Os{
 			Paths: san.Paths{},

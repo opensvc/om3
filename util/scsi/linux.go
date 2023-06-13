@@ -3,6 +3,7 @@
 package scsi
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/xerrors"
 	"github.com/opensvc/om3/util/xsession"
 )
 
@@ -39,7 +39,7 @@ func (t *PersistentReservationHandle) setup() error {
 
 func doWithLock(timeout time.Duration, name, intent string, f func() error) error {
 	p := filepath.Join(rawconfig.Paths.Lock, strings.Join([]string{"scsi", name}, "."))
-	lock := flock.New(p, xsession.ID, fcntllock.New)
+	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func ScanAllBusTargetLun(b, t, l string) error {
 	}
 	for _, h := range hosts {
 		if e := ScanHostDirBusTargetLun(h, b, t, l); err != nil {
-			err = xerrors.Append(err, e)
+			err = errors.Join(err, e)
 		}
 	}
 	return err

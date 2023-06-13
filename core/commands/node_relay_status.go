@@ -27,7 +27,7 @@ type (
 	}
 	relayMessage struct {
 		api.RelayMessage
-		Relay string `json:"relay"`
+		Relay string `json:"relay" yaml:"relay"`
 	}
 	relayMessages []relayMessage
 )
@@ -144,7 +144,7 @@ func (t relayMessages) Render() string {
 		n.AddColumn().AddText(e.ClusterName).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(e.Nodename).SetColor(rawconfig.Color.Primary)
 		n.AddColumn().AddText(e.Addr)
-		n.AddColumn().AddText(fmt.Sprint(e.Updated))
+		n.AddColumn().AddText(fmt.Sprint(e.UpdatedAt))
 		n.AddColumn().AddText(fmt.Sprint(len(e.Msg)))
 	}
 	return tree.Render()

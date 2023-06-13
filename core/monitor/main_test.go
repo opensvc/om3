@@ -50,7 +50,7 @@ var expected = "" +
 	"                        \n" +
 	"Objects                 \n"
 
-var daemonResultString = string(`{"monitor": {"nodes": {}, "services": {}}}`)
+var daemonResultString = string(`{"monitor": {"nodes": {}, "objects": {}}}`)
 
 func TestMonitorOutputIsCorrect(t *testing.T) {
 	m := New()
