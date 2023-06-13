@@ -176,11 +176,23 @@ func (t *T) MainStart(ctx context.Context) error {
 	if err := lsnr.Start(t.ctx); err != nil {
 		return err
 	}
+
+	if err := nmon.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
+		return err
+	}
+	if err := dns.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
+		return err
+	}
+
 	cancelDiscover, err := discover.Start(t.ctx, daemonenv.DrainChanDuration)
 	if err != nil {
 		return err
 	}
-	t.log.Error().Msg("daemon discover started")
+	t.cancelFuncs = append(t.cancelFuncs, func() {
+		t.log.Debug().Msg("stop daemon discover")
+		cancelDiscover()
+		t.log.Debug().Msg("stopped daemon discover")
+	})
 
 	for _, sub := range []subdaemon.Manager {
 		hb.New(hb.WithRoutineTracer(&t.TT), hb.WithRootDaemon(t)),
@@ -194,18 +206,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		}
 	}
 
-	if err := nmon.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
-		return err
-	}
-	if err := dns.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
-		return err
-	}
-
-	t.cancelFuncs = append(t.cancelFuncs, func() {
-		t.log.Debug().Msg("stop daemon discover")
-		cancelDiscover()
-		t.log.Debug().Msg("stopped daemon discover")
-	})
 	bus.Pub(&msgbus.DaemonStart{Node: localhost, Version: version.Version()})
 	return nil
 }
