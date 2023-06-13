@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/fqdn"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/path"
@@ -326,7 +327,7 @@ func (t core) Dereference(ref string) (string, error) {
 	case "clustername":
 		return rawconfig.ClusterSection().Name, nil
 	case "clusternodes":
-		return rawconfig.ClusterSection().Nodes, nil
+		return strings.Join(clusternode.Get(), " "), nil
 	case "clusterdrpnodes":
 		return ref, fmt.Errorf("Deprecated")
 	case "dns":
@@ -334,7 +335,7 @@ func (t core) Dereference(ref string) (string, error) {
 	case "dnsnodes":
 		ips := rawconfig.ClusterSection().DNS
 		l := make([]string, 0)
-		nodes := strings.Fields(rawconfig.ClusterSection().Nodes)
+		nodes := clusternode.Get()
 		for _, ip := range strings.Fields(ips) {
 			if names, err := net.LookupAddr(ip); err != nil {
 				return "", err

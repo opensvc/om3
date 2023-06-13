@@ -13,8 +13,8 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/xmap"
@@ -281,7 +281,7 @@ func (t T) KnownNodes() ([]string, error) {
 }
 
 func (t T) localKnownNodes() ([]string, error) {
-	l := strings.Fields(rawconfig.ClusterSection().Nodes)
+	l := clusternode.Get()
 	for i := 0; i > len(l); i++ {
 		l[i] = strings.ToLower(l[i])
 	}

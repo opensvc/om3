@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/render/palette"
@@ -228,5 +229,10 @@ func loadSections() {
 		return
 	}
 	sectionCluster = fromViper.Cluster
+	clusterNodes := []string{}
+	for _, s := range strings.Fields(sectionCluster.Nodes) {
+		clusterNodes = append(clusterNodes, strings.ToLower(s))
+	}
+	clusternode.Set(clusterNodes)
 	sectionNode = fromViper.Node
 }
