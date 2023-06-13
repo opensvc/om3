@@ -18,7 +18,7 @@ func TestGenCert(t *testing.T) {
 		expectedKeys []string
 	}{
 		{
-			name: "system/sec/ca-cluster1",
+			name: "system/sec/ca",
 			keywords: []string{
 				"c=fr",
 				"ts=oise",
@@ -31,9 +31,9 @@ func TestGenCert(t *testing.T) {
 			expectedKeys: []string{"private_key", "certificate", "certificate_chain"},
 		},
 		{
-			name: "system/sec/cert-cluster1",
+			name: "system/sec/cert",
 			keywords: []string{
-				"ca=system/sec/ca-cluster1",
+				"ca=system/sec/ca",
 				"cn=vip.local",
 			},
 			expectedKeys: []string{"private_key", "certificate", "certificate_chain"},

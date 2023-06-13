@@ -39,7 +39,7 @@ func Test_GetDaemonStatus(t *testing.T) {
 	cData, err := GetDaemonStatus(t)
 	require.Nil(t, err)
 
-	paths := []string{"cluster", "system/sec/ca-cluster1", "system/sec/cert-cluster1"}
+	paths := []string{"cluster", "system/sec/ca", "system/sec/cert"}
 	for _, p := range paths {
 		t.Run("check instance "+p, func(t *testing.T) {
 			inst, ok := cData.Cluster.Node["node1"].Instance[p]

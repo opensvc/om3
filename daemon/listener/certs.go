@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -26,6 +27,9 @@ var (
 	certGrp                  = daemonenv.Groupname
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
+
+	caPath   = path.T{Name: "ca", Namespace: "system", Kind: kind.Sec}
+	certPath = path.T{Name: "cert", Namespace: "system", Kind: kind.Sec}
 )
 
 func startCertFS() error {
@@ -79,18 +83,15 @@ func mountCertFS() error {
 }
 
 func installCaFiles(clusterName string) error {
-	var (
-		caPath path.T
-	)
-	caPath, err := getSecCaPath(clusterName)
-	if err != nil {
-		return err
-	}
 	if !caPath.Exists() {
-		log.Logger.Info().Msgf("bootstrap initial %s", caPath)
-		if err := bootStrapCaPath(caPath); err != nil {
-			log.Logger.Error().Err(err).Msgf("bootStrapCaPath %s", caPath)
+		if ok, err := migrateCaPathV2(clusterName); err != nil {
 			return err
+		} else if !ok {
+			log.Logger.Info().Msgf("bootstrap initial %s", caPath)
+			if err := bootStrapCaPath(caPath); err != nil {
+				log.Logger.Error().Err(err).Msgf("bootStrapCaPath %s", caPath)
+				return err
+			}
 		}
 	}
 	caSec, err := object.NewSec(caPath, object.WithVolatile(true))
@@ -154,18 +155,14 @@ func installCaFiles(clusterName string) error {
 }
 
 func installCertFiles(clusterName string) error {
-	certPath, err := getSecCertPath(clusterName)
-	if err != nil {
-		return err
-	}
-	caPath, err := getSecCaPath(clusterName)
-	if err != nil {
-		return err
-	}
 	if !certPath.Exists() {
-		log.Logger.Info().Msgf("bootstrap initial %s", certPath)
-		if err := bootStrapCertPath(certPath, caPath); err != nil {
+		if ok, err := migrateCertPathV2(clusterName); err != nil {
 			return err
+		} else if !ok {
+			log.Logger.Info().Msgf("bootstrap initial %s", certPath)
+			if err := bootStrapCertPath(certPath, caPath); err != nil {
+				return err
+			}
 		}
 	}
 	certSec, err := object.NewSec(certPath, object.WithVolatile(true))
@@ -173,6 +170,7 @@ func installCertFiles(clusterName string) error {
 		log.Logger.Error().Err(err).Msgf("create %s", certPath)
 		return err
 	}
+
 	dst := daemonenv.KeyFile()
 	if err := certSec.InstallKeyTo("private_key", dst, &certFileMode, &certDirMode, certUsr, certGrp); err != nil {
 		return err
@@ -205,6 +203,24 @@ func bootStrapCaPath(p path.T) error {
 	return caSec.GenCert()
 }
 
+// migrateCaPathV2 migrates v2 ca to v3+ cert
+//
+//	return true, nil when v2 ca is migrated to v3
+//	return false, nil when no v2 ca exists
+//	return true, != nil when migration fails
+func migrateCaPathV2(clusterName string) (ok bool, err error) {
+	caPathV2 := path.T{Name: "ca-" + clusterName, Namespace: "system", Kind: kind.Sec}
+	ok = caPathV2.Exists()
+	if !ok {
+		return
+	}
+	log.Logger.Info().Msgf("migrate ca from %s to %s", caPathV2, caPath)
+	if err = os.Rename(caPathV2.ConfigFile(), caPath.ConfigFile()); err != nil {
+		log.Logger.Error().Err(err).Msgf("migrate ca %s to %s", caPathV2, caPath)
+	}
+	return
+}
+
 func bootStrapCertPath(p path.T, caPath path.T) error {
 	log.Logger.Info().Msgf("create %s", p)
 	certSec, err := object.NewSec(p, object.WithVolatile(false))
@@ -232,10 +248,33 @@ func getClusterName() (string, error) {
 	return clusterCfg.Name(), nil
 }
 
-func getSecCaPath(clusterName string) (path.T, error) {
-	return path.Parse("system/sec/ca-" + clusterName)
-}
-
-func getSecCertPath(clusterName string) (path.T, error) {
-	return path.Parse("system/sec/cert-" + clusterName)
+// migrateCertPathV2 migrates v2 cert to v3+ cert
+//
+//	return true, nil when v2 cert is migrated to v3
+//	return false, nil when no v2 cert exists
+//	return true, != nil when migration fails
+func migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
+	certPathV2 := path.T{Name: "cert-" + clusterName, Namespace: "system", Kind: kind.Sec}
+	hasV2cert = certPathV2.Exists()
+	if !hasV2cert {
+		return
+	}
+	log.Logger.Info().Msgf("migrate cert %s to %s", certPathV2, certPath)
+	if err = os.Rename(certPathV2.ConfigFile(), certPath.ConfigFile()); err != nil {
+		log.Logger.Error().Err(err).Msgf("migrate cert %s to %s", certPathV2, certPath)
+		return
+	}
+	certSec, err2 := object.NewSec(certPath, object.WithVolatile(false))
+	if err2 != nil {
+		err = err2
+		log.Logger.Error().Err(err).Msgf("create %s", certPath)
+		return
+	}
+	log.Logger.Info().Msgf("update migrated cert ca keyword to %s", caPath)
+	op := keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0)
+	if err = certSec.Config().Set(*op); err != nil {
+		return
+	}
+	err = certSec.Config().Commit()
+	return
 }

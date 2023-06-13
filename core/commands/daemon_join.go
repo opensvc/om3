@@ -72,11 +72,9 @@ func (t *CmdDaemonJoin) Run() error {
 	defer func() {
 		_ = os.Remove(file)
 	}()
-	clusterCfg, err := object.NewCluster(object.WithConfigFile(file))
-	if err != nil {
+	if _, err := object.NewCluster(object.WithConfigFile(file)); err != nil {
 		return err
 	}
-	clusterName := clusterCfg.Name()
 
 	localhost := hostname.Hostname()
 	filters := []string{
@@ -114,7 +112,7 @@ func (t *CmdDaemonJoin) Run() error {
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
 		return err
 	}
-	err = t.onJoined(cli, clusterName)
+	err = t.onJoined(cli)
 	if err != nil {
 		return errors.Wrapf(err, "Post join action")
 	}
@@ -180,12 +178,12 @@ func (t *CmdDaemonJoin) createTmpCertFile(b []byte) (certFile string, err error)
 	return
 }
 
-func (t *CmdDaemonJoin) onJoined(cli *client.T, clusterName string) (err error) {
+func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 	filePaths := make(map[string]path.T)
 	toFetch := []path.T{
 		path.Cluster,
-		{Namespace: "system", Kind: kind.Sec, Name: "ca-" + clusterName},
-		{Namespace: "system", Kind: kind.Sec, Name: "cert-" + clusterName},
+		{Namespace: "system", Kind: kind.Sec, Name: "ca"},
+		{Namespace: "system", Kind: kind.Sec, Name: "cert"},
 	}
 	downloadedFiles := make([]string, 0)
 	defer func([]string) {
