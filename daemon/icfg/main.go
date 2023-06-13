@@ -2,10 +2,14 @@
 //
 // instConfig are created by daemon discover.
 // It provides the cluster data at cluster.node.<localhost>.instance.<path>.config
-// It watches local config file to load updates.
-// It watches for local cluster config update to refresh scopes.
+// It reloads config updates:
+//   - for not cluster config
+//   - when on ConfigFileUpdated is fired
+//   - when on InstanceConfigUpdated for local cluster is fired (scope may need refresh)
+//   - for cluster config
+//   - when on ClusterConfigUpdated for local node is fired
 //
-// The worker routine is terminated when config file is not any more present, or
+// The worker routine is terminated when ConfigFileUpdated is fired, or
 // when daemon discover context is done.
 package icfg
 
@@ -18,7 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/object"
@@ -48,7 +52,6 @@ type (
 		bus                      *pubsub.Bus
 		sub                      *pubsub.Subscription
 		instanceConfig           instance.Config
-		clusterConfig            cluster.Config
 		instanceMonitorCtx       context.Context
 		isInstanceMonitorStarted bool
 
@@ -119,10 +122,24 @@ func (o *T) startSubscriptions() {
 	label := pubsub.Label{"path", o.path.String()}
 	o.sub = o.bus.Sub(o.path.String() + " icfg")
 	o.sub.AddFilter(&msgbus.ConfigFileRemoved{}, label)
-	o.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
-	o.sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	if o.path.String() != clusterId {
-		o.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", clusterId})
+		o.sub.AddFilter(&msgbus.ConfigFileUpdated{}, label)
+
+		// the scope value may depend on cluster nodes values: *, clusternodes ...
+		// so we must also watch for cluster config updates to configFileCheckRefresh non cluster instance config scope
+		localClusterLabels := []pubsub.Label{{"path", clusterId}, {"node", o.localhost}}
+		o.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, localClusterLabels...)
+	} else {
+		// Special note for cluster instance config: we don't subscribe for ConfigFileUpdated, instead we subscribe for
+		// ClusterConfigUpdated.
+		// The cluster instance config scope is computed from cached cluster nodes.
+		// cached cluster nodes is updated by ccfg on ConfigFileUpdated event:
+		//     on ConfigFileUpdated -> update cached cluster nodes -> publish ClusterConfigUpdated
+		// So watch ConfigFileUpdated is replaced by ClusterConfigUpdated to ensure sequence:
+		//     ccfg: ConfigFileUpdated =>  - update cached cluster nodes
+		//                                 - ClusterConfigUpdated
+		//     icfg:                         ClusterConfigUpdated         => cluster InstanceConfigUpdated
+		o.sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", o.localhost})
 	}
 	o.sub.Start()
 }
@@ -132,9 +149,6 @@ func (o *T) worker() {
 	defer o.log.Debug().Msg("done")
 	o.log.Debug().Msg("starting")
 
-	if last := cluster.ConfigData.Get(); last != nil {
-		o.onClusterConfigUpdated(&msgbus.ClusterConfigUpdated{Value: *last})
-	}
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := o.configFileCheck(); err != nil {
 		o.log.Warn().Err(err).Msg("initial configFileCheck")
@@ -148,44 +162,49 @@ func (o *T) worker() {
 		case <-o.ctx.Done():
 			return
 		case i := <-o.sub.C:
-			switch c := i.(type) {
-			case *msgbus.ConfigFileUpdated:
-				o.onConfigFileUpdated(c)
-			case *msgbus.ConfigFileRemoved:
-				o.onConfigFileRemoved(c)
-			case *msgbus.InstanceConfigUpdated:
-				o.onInstanceConfigUpdated(c)
+			switch i.(type) {
 			case *msgbus.ClusterConfigUpdated:
-				o.onClusterConfigUpdated(c)
+				o.onClusterConfigUpdated()
+			case *msgbus.ConfigFileRemoved:
+				o.onConfigFileRemoved()
+			case *msgbus.ConfigFileUpdated:
+				o.onConfigFileUpdated()
+			case *msgbus.InstanceConfigUpdated:
+				o.onLocalClusterInstanceConfigUpdated()
 			}
 		}
 	}
 }
 
-func (o *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
-	o.clusterConfig = c.Value
-}
-
-func (o *T) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
-	var err error
-	o.log.Debug().Msgf("recv %#v", c)
-	if err = o.configFileCheck(); err != nil {
+func (o *T) configFileCheckRefresh(force bool) error {
+	if force {
+		o.forceRefresh = true
+	}
+	err := o.configFileCheck()
+	if err != nil {
 		o.log.Error().Err(err).Msg("configFileCheck error")
 		o.cancel()
-		return
 	}
+	return err
 }
 
-func (o *T) onConfigFileRemoved(c *msgbus.ConfigFileRemoved) {
+func (o *T) onClusterConfigUpdated() {
+	o.log.Info().Msg("cluster config updated => refresh")
+	_ = o.configFileCheckRefresh(true)
+}
+
+func (o *T) onConfigFileUpdated() {
+	o.log.Info().Msgf("config file changed => refresh")
+	_ = o.configFileCheckRefresh(false)
+}
+
+func (o *T) onLocalClusterInstanceConfigUpdated() {
+	o.log.Info().Msg("cluster instance config changed => refresh")
+	_ = o.configFileCheckRefresh(true)
+}
+
+func (o *T) onConfigFileRemoved() {
 	o.cancel()
-}
-
-func (o *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
-	o.log.Info().Msg("local cluster config changed => refresh cfg")
-	o.forceRefresh = true
-	if err := o.configFileCheck(); err != nil {
-		o.cancel()
-	}
 }
 
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
@@ -285,7 +304,7 @@ func (o *T) configFileCheck() error {
 func (o *T) getScope(cf *xconfig.T) (scope []string, err error) {
 	switch o.path.Kind {
 	case kind.Ccfg:
-		scope = o.clusterConfig.Nodes
+		scope = clusternode.Get()
 	default:
 		var evalNodes interface{}
 		evalNodes, err = cf.Eval(keyNodes)
