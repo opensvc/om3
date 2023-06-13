@@ -11,28 +11,28 @@
           "node2"
         ],
         "topology": "failover",
-        "updated": "2022-12-05T14:57:20.726323705+01:00"
+        "updated_at": "2022-12-05T14:57:20.726323705+01:00"
       },
       "monitor": {
         "global_expect": "started",
-        "global_expect_updated": "2022-12-29T13:45:06.540989804+01:00",
+        "global_expect_updated_at": "2022-12-29T13:45:06.540989804+01:00",
         "global_expect_options": null,
         "is_leader": false,
         "is_ha_leader": false,
         "local_expect": "none",
-        "local_expect_updated": "0001-01-01T00:00:00Z",
+        "local_expect_updated_at": "0001-01-01T00:00:00Z",
         "state": "starting",
-        "state_updated": "2022-12-29T13:45:06.984597202+01:00"
+        "state_updated_at": "2022-12-29T13:45:06.984597202+01:00"
       },
       "status": {
         "app": "default",
         "avail": "down",
         "overall": "down",
         "csum": "474bac9aa2be320dd2bb3f24f5871a99",
-        "frozen": "2022-12-29T13:45:06.978675685+01:00",
+        "frozen_at": "2022-12-29T13:45:06.978675685+01:00",
         "kind": "svc",
         "provisioned": "true",
-        "updated": "2022-12-29T13:45:06.978675685+01:00",
+        "updated_at": "2022-12-29T13:45:06.978675685+01:00",
         "resources": [
           {
             "rid": "fs#1",
@@ -83,9 +83,9 @@
     "state": "idle",
     "local_expect": "none",
     "global_expect": "none",
-    "state_updated": "2022-12-29T13:43:03.563020909+01:00",
-    "global_expect_updated": "2022-12-29T13:43:02.719851626+01:00",
-    "local_expect_updated": "0001-01-01T00:00:00Z"
+    "state_updated_at": "2022-12-29T13:43:03.563020909+01:00",
+    "global_expect_updated_at": "2022-12-29T13:43:02.719851626+01:00",
+    "local_expect_updated_at": "0001-01-01T00:00:00Z"
   },
   "stats": {
     "load_15m": 0.4,
@@ -101,7 +101,7 @@
     "arbitrators": {},
     "compat": 12,
     "env": "",
-    "frozen": "0001-01-01T00:00:00Z",
+    "frozen_at": "0001-01-01T00:00:00Z",
     "gen": {
       "node1": 17,
       "node2": 19

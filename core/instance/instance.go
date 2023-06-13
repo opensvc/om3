@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
@@ -63,7 +62,6 @@ type (
 		Csum        string                   `json:"csum,omitempty" yaml:"csum,omitempty"`
 		Env         string                   `json:"env,omitempty" yaml:"env,omitempty"`
 		FrozenAt    time.Time                `json:"frozen_at,omitempty" yaml:"frozen_at,omitempty"`
-		Kind        kind.T                   `json:"kind" yaml:"kind"`
 		Optional    status.T                 `json:"optional,omitempty" yaml:"optional,omitempty"`
 		Provisioned provisioned.T            `json:"provisioned" yaml:"provisioned"`
 		Preserved   bool                     `json:"preserved,omitempty" yaml:"preserved,omitempty"`

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.8.1
+  version: 3.9.0
 servers:
   - url: https://localhost:1215
 paths:
@@ -980,7 +980,6 @@ components:
       required:
         - avail
         - frozen_at
-        - kind
         - overall
         - provisioned
         - updated_at
@@ -1008,8 +1007,6 @@ components:
         frozen_at:
           type: string
           format: date-time
-        kind:
-          type: string
         optional:
           $ref: '#/components/schemas/Status'
         orchestrate:

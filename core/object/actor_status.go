@@ -59,7 +59,6 @@ func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
 func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
 	data.App = t.App()
 	data.Env = t.Env()
-	data.Kind = t.path.Kind
 	data.UpdatedAt = time.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()

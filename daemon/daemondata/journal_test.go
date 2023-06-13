@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,6 +61,7 @@ func TestJournal(t *testing.T) {
 			patches := make(jsondelta.Patch, 0)
 			patches = append(patches, op)
 			b, err = patches.Apply(b)
+			fmt.Printf("xx %#v\n%s\n", string(b), err)
 			require.NoError(t, err)
 		})
 		require.False(t, t.Failed())

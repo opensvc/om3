@@ -251,7 +251,6 @@ type InstanceStatus struct {
 	FlexMin     *int          `json:"flex_min,omitempty"`
 	FlexTarget  *int          `json:"flex_target,omitempty"`
 	FrozenAt    time.Time     `json:"frozen_at"`
-	Kind        string        `json:"kind"`
 	Optional    *Status       `json:"optional,omitempty"`
 	Orchestrate *Orchestrate  `json:"orchestrate,omitempty"`
 	Overall     Status        `json:"overall"`
