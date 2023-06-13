@@ -90,7 +90,7 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 		return errors.Wrapf(err, "%s", cmd.String())
 	}
 
-	backup := path.Join(pathEtc, name+time.Now().Format(name+"-2006-01-02T15:04:05.json"))
+	backup := path.Join(pathEtc, time.Now().Format(name+"-2006-01-02T15:04:05.json"))
 	_, _ = fmt.Fprintf(os.Stdout, "Save configs to %s\n", backup)
 	if err := os.WriteFile(backup, cmd.Stdout(), 0o400); err != nil {
 		return err
