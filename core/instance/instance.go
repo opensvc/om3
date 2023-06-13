@@ -84,7 +84,7 @@ type (
 
 	// SubsetStatus describes a resource subset properties.
 	SubsetStatus struct {
-		Parallel bool `json:"parallel,omitempty" yaml:""parallel,omitempty`
+		Parallel bool `json:"parallel,omitempty" yaml:"parallel,omitempty"`
 	}
 )
 

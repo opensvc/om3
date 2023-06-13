@@ -12,7 +12,7 @@ import (
 type (
 	// Monitor describes the in-daemon states of an instance
 	Monitor struct {
-		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:""global_expect`
+		GlobalExpect          MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
 		GlobalExpectUpdatedAt time.Time           `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
 		GlobalExpectOptions   any                 `json:"global_expect_options" yaml:"global_expect_options"`
 		IsLeader              bool                `json:"is_leader" yaml:"is_leader"`
