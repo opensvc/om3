@@ -619,7 +619,6 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 			v := instance.Status{
 				Avail:       se.iStatus.Avail,
 				Overall:     se.iStatus.Overall,
-				Kind:        p.Kind,
 				Provisioned: se.iStatus.Provisioned,
 				Optional:    se.iStatus.Optional,
 				UpdatedAt:   time.Now(),
