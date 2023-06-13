@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -38,6 +39,7 @@ func (o *ccfg) pubClusterConfig() {
 		o.log.Debug().Msgf("removed nodes: %s", removed)
 	}
 	cluster.ConfigData.Set(&state)
+	clusternode.Set(state.Nodes)
 
 	o.bus.Pub(&msgbus.ClusterConfigUpdated{Node: o.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalNode)
 

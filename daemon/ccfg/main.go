@@ -1,8 +1,11 @@
 // Package ccfg is responsible for the cluster config
 //
-// It provides:
+// It subscribes on msgbus.ConfigFileUpdated for cluster to provide:
 //
-//	.cluster.config
+//	cluster configuration reload:
+//	  => cluster.ConfigData update => .cluster.config
+//	  => clusternode update (for node selector, clusternodes dereference)
+//	  => publication of msgbus.ClusterConfigUpdated for local node
 package ccfg
 
 import (
@@ -89,7 +92,7 @@ func Start(parent context.Context, drainDuration time.Duration) error {
 	go func() {
 		defer func() {
 			draincommand.Do(o.cmdC, drainDuration)
-			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled){
+			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 				o.log.Warn().Err(err).Msg("subscription stop")
 			}
 		}()
