@@ -336,9 +336,9 @@ func (t T) DoLocal() error {
 	for _, ar := range rs {
 		switch {
 		case ar.Panic != nil:
-			errs = errors.Join(errs, fmt.Errorf(fmt.Sprintf("%s: %s", ar.Path, ar.Panic)))
+			errs = errors.Join(errs, fmt.Errorf("%s: %s", ar.Path, ar.Panic))
 		case ar.Error != nil:
-			errs = errors.Join(errs, fmt.Errorf(fmt.Sprintf("%s: %w", ar.Path, ar.Error)))
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", ar.Path, ar.Error))
 		}
 	}
 	return errs
