@@ -73,7 +73,7 @@ func TestAppStart(t *testing.T) {
 		err = s.Start(ctx)
 		assert.NoErrorf(t, err, "Start() should not err")
 		require.True(t, file.Exists(fpath), "%s should exist after start", fpath)
-		events, err := slog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID})
+		events, err := slog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID.String()})
 		assert.NoError(t, err)
 		assert.Truef(t, events.MatchString("cmd", ".*touch.*"), "logs should contain a cmd~/touch/ event")
 	})

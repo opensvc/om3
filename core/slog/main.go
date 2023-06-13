@@ -3,6 +3,7 @@ package slog
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,12 +12,12 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/tail"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/logging"
 	"github.com/opensvc/om3/util/xerrors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -106,15 +107,17 @@ func GetEventsFromFile(fpath string, filters map[string]interface{}) (Events, er
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	events := make(Events, 0)
+	var errs error
 	for scanner.Scan() {
 		b := []byte(scanner.Text())
 		if event, err := NewEvent(b); err != nil {
+			errors.Join(errs, err)
 			continue
 		} else if event.IsMatching(filters) {
 			events = append(events, event)
 		}
 	}
-	return events, nil
+	return events, errs
 }
 
 func NewStream() *Stream {
