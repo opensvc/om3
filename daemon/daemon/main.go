@@ -58,25 +58,6 @@ type (
 )
 
 var (
-	mandatorySubs = []func(t *T) subdaemon.Manager{
-		func(t *T) subdaemon.Manager {
-			return listener.New(
-				listener.WithRoutineTracer(&t.TT),
-			)
-		},
-		func(t *T) subdaemon.Manager {
-			return hb.New(
-				hb.WithRoutineTracer(&t.TT),
-				hb.WithRootDaemon(t),
-			)
-		},
-		func(t *T) subdaemon.Manager {
-			return scheduler.New(
-				scheduler.WithRoutineTracer(&t.TT),
-			)
-		},
-	}
-
 	profiling = true
 )
 
@@ -188,9 +169,23 @@ func (t *T) MainStart(ctx context.Context) error {
 	if ccfg.Get().Name == "" {
 		panic("cluster name read from ccfg is empty")
 	}
+	lsnr := listener.New(listener.WithRoutineTracer(&t.TT))
+	if err := t.Register(lsnr); err != nil {
+		return err
+	}
+	if err := lsnr.Start(t.ctx); err != nil {
+		return err
+	}
+	cancelDiscover, err := discover.Start(t.ctx, daemonenv.DrainChanDuration)
+	if err != nil {
+		return err
+	}
+	t.log.Error().Msg("daemon discover started")
 
-	for _, newSub := range mandatorySubs {
-		sub := newSub(t)
+	for _, sub := range []subdaemon.Manager {
+		hb.New(hb.WithRoutineTracer(&t.TT), hb.WithRootDaemon(t)),
+		scheduler.New(scheduler.WithRoutineTracer(&t.TT)),
+	} {
 		if err := t.Register(sub); err != nil {
 			return err
 		}
@@ -198,6 +193,7 @@ func (t *T) MainStart(ctx context.Context) error {
 			return err
 		}
 	}
+
 	if err := nmon.Start(t.ctx, daemonenv.DrainChanDuration); err != nil {
 		return err
 	}
@@ -205,10 +201,6 @@ func (t *T) MainStart(ctx context.Context) error {
 		return err
 	}
 
-	cancelDiscover, err := discover.Start(t.ctx, daemonenv.DrainChanDuration)
-	if err != nil {
-		return err
-	}
 	t.cancelFuncs = append(t.cancelFuncs, func() {
 		t.log.Debug().Msg("stop daemon discover")
 		cancelDiscover()
