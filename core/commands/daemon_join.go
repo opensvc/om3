@@ -2,13 +2,13 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
@@ -35,7 +35,19 @@ type (
 	}
 )
 
+var (
+	ErrCmdDaemonJoin = errors.New("command daemon join")
+)
+
 func (t *CmdDaemonJoin) Run() error {
+	err := t.run()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrCmdDaemonJoin, err)
+	}
+	return nil
+}
+
+func (t *CmdDaemonJoin) run() error {
 	var (
 		certFile string
 		cli      *client.T
@@ -104,27 +116,27 @@ func (t *CmdDaemonJoin) Run() error {
 		Node: hostname.Hostname(),
 	}
 	if resp, err := cli.PostDaemonJoin(context.Background(), &params); err != nil {
-		return errors.Wrapf(err, "Daemon join %s", t.Node)
+		return fmt.Errorf("%w: %w", ErrClientRequest, err)
 	} else if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("Daemon join %s unexpected status code %s", t.Node, resp.Status)
+		return fmt.Errorf("%w: got %d wanted %d", ErrClientStatusCode, resp.StatusCode, http.StatusOK)
 	}
 
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
-		return err
+		return fmt.Errorf("wait join result: %w", err)
 	}
 	err = t.onJoined(cli)
 	if err != nil {
-		return errors.Wrapf(err, "Post join action")
+		return fmt.Errorf("on joined: %w", err)
 	}
 	return err
 }
 
 func (t *CmdDaemonJoin) checkParams() error {
 	if t.Node == "" {
-		return errors.New("need a cluster node to join cluster")
+		return fmt.Errorf("%w: node is empty", ErrFlagInvalid)
 	}
 	if t.Token == "" {
-		return errors.New("need a token to join cluster")
+		return fmt.Errorf("%w: token is empty", ErrFlagInvalid)
 	}
 	return nil
 }
@@ -197,7 +209,7 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
 		file, _, err = remoteconfig.FetchObjectFile(cli, p)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: for path %s: %w", ErrFetchFile, p, err)
 		}
 		downloadedFiles = append(downloadedFiles, file)
 		filePaths[file] = p
@@ -224,7 +236,7 @@ func (t *CmdDaemonJoin) onJoined(cli *client.T) (err error) {
 		_, _ = fmt.Fprintf(os.Stdout, "Install fetched config %s\n", p)
 		err := os.Rename(fileName, p.ConfigFile())
 		if err != nil {
-			return errors.Wrapf(err, "Can't install fetched config %s from file %s\n", p, fileName)
+			return fmt.Errorf("%w: config %s from file %s: %w", ErrInstallFile, p, fileName, err)
 		}
 	}
 
@@ -252,14 +264,14 @@ func (t *CmdDaemonJoin) waitJoinResult(ctx context.Context, evReader event.Reade
 				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
 			case (&msgbus.JoinError{}).Kind():
-				err := errors.Errorf("join error: %s", ev.Data)
+				err := fmt.Errorf("join error event %s", ev.Data)
 				return err
 			case (&msgbus.JoinIgnored{}).Kind():
 				// TODO parse Reason
 				_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s", ev.Data)
 				return nil
 			default:
-				return errors.Errorf("unexpected event %s %v", ev.Kind, ev.Data)
+				return fmt.Errorf("%w: %s data: %v", ErrEventKindUnexpected, ev.Kind, ev.Data)
 			}
 		}
 	}
