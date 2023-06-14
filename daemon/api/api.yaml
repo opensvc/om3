@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: opensvc agent api
-  version: 3.9.0
+  version: 3.9.1
 servers:
   - url: https://localhost:1215
 paths:
@@ -775,14 +775,14 @@ components:
     AuthToken:
       type: object
       required:
+        - expired_at
         - token
-        - token_expire_at
       properties:
-        token:
-          type: string
-        token_expire_at:
+        expired_at:
           type: string
           format: date-time
+        token:
+          type: string
     Cluster:
       type: object
       required:
@@ -1605,6 +1605,8 @@ components:
         - blacklistadmin
         - guest
         - heartbeat
+        - join
+        - leave
         - root
         - squatter
     SANPath:
