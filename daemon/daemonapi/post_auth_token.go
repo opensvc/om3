@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -93,8 +94,19 @@ func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, 
 				return
 			}
 			xClaims["ca"] = string(b)
-			grants = append(grants, daemonauth.Grant(r))
+		case daemonauth.RoleAdmin:
+		case daemonauth.RoleBlacklistAdmin:
+		case daemonauth.RoleGuest:
+		case daemonauth.RoleHeartbeat:
+		case daemonauth.RoleLeave:
+		case daemonauth.RoleRoot:
+		case daemonauth.RoleSquatter:
+		case daemonauth.RoleUndef:
+		default:
+			err = fmt.Errorf("%w: unexpected role %s", echo.ErrBadRequest, role)
+			return
 		}
+		grants = append(grants, daemonauth.Grant(r))
 		roleDone[r] = true
 	}
 	userName := srcInfo.GetUserName()
