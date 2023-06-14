@@ -20,12 +20,6 @@ import (
 )
 
 type (
-	// TokenResponse is the struct returned as response to GET /auth/token
-	TokenResponse struct {
-		Token         string    `json:"token"`
-		TokenExpireAt time.Time `json:"token_expire_at"`
-	}
-
 	Claims map[string]interface{}
 
 	// ApiClaims defines api claims
@@ -116,15 +110,15 @@ func initJWT() error {
 	return nil
 }
 
-func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims) (tk string, expireAt time.Time, err error) {
+func CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims Claims) (tk string, expiredAt time.Time, err error) {
 	if TokenAuth == nil {
 		err = NotImplementedError
 		return
 	}
-	expireAt = time.Now().Add(duration)
+	expiredAt = time.Now().Add(duration)
 	claims := Claims{
 		"sub":   userInfo.GetUserName(),
-		"exp":   expireAt.Unix(),
+		"exp":   expiredAt.Unix(),
 		"grant": userInfo.GetExtensions()["grant"],
 	}
 	for c, v := range xClaims {

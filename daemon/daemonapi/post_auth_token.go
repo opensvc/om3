@@ -41,6 +41,7 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 		}
 	}
 	user := c.Get("user").(auth.Info)
+	username := user.GetUserName()
 	// TODO verify if user is allowed to create token => 403 Forbidden
 	if params.Role != nil {
 		grants := Grants(user)
@@ -52,7 +53,7 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 		user, xClaims, err = userXClaims(params, user)
 		if err != nil {
 			log.Error().Err(err).Msg("userXClaims")
-			return JSONProblemf(c, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", user.GetUserName())
+			return JSONProblemf(c, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", username)
 		}
 	}
 
@@ -68,8 +69,8 @@ func (a *DaemonApi) PostAuthToken(c echo.Context, params api.PostAuthTokenParams
 		}
 	}
 	return c.JSON(http.StatusOK, api.AuthToken{
-		Token:         tk,
-		TokenExpireAt: expireAt,
+		ExpiredAt: expireAt,
+		Token:     tk,
 	})
 }
 

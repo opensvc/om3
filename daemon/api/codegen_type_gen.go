@@ -62,6 +62,8 @@ const (
 	Blacklistadmin Role = "blacklistadmin"
 	Guest          Role = "guest"
 	Heartbeat      Role = "heartbeat"
+	Join           Role = "join"
+	Leave          Role = "leave"
 	Root           Role = "root"
 	Squatter       Role = "squatter"
 )
@@ -85,8 +87,8 @@ const (
 
 // AuthToken defines model for AuthToken.
 type AuthToken struct {
-	Token         string    `json:"token"`
-	TokenExpireAt time.Time `json:"token_expire_at"`
+	ExpiredAt time.Time `json:"expired_at"`
+	Token     string    `json:"token"`
 }
 
 // Cluster defines model for Cluster.
