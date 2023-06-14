@@ -188,7 +188,7 @@ func newCmdDaemonAuth() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagRoles(flags, &options.Roles)
 	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
-	flags.StringArrayVar(&options.Out, "out", []string{}, "output 'token' or 'token_expire_at'")
+	flags.StringArrayVar(&options.Out, "out", []string{"token"}, "output 'token' or 'token_expire_at'")
 	return cmd
 }
 
