@@ -3,7 +3,6 @@ package objectselector
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -329,7 +328,7 @@ func (t *Selection) daemonExpand() error {
 		Str("mode", "daemon").
 		Msg("expand selection")
 	if env.HasDaemonOrigin() {
-		return errors.New("action origin is daemon")
+		return fmt.Errorf("action origin is daemon")
 	}
 	params := api.GetObjectSelectorParams{
 		Selector: t.SelectorExpression,

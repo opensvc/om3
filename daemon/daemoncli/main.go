@@ -231,7 +231,7 @@ func (t *T) stop() error {
 		log.Debug().Msg("wait for stop...")
 		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
 			log.Debug().Msg("cli-stop still running after stop")
-			return errors.New("daemon still running after stop")
+			return fmt.Errorf("daemon still running after stop")
 		}
 		log.Debug().Msg("stopped")
 		// one more delay before return listener not anymore responding
@@ -318,7 +318,7 @@ func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool
 	for {
 		select {
 		case <-timeoutTicker.C:
-			return errors.New("timeout reached")
+			return fmt.Errorf("timeout reached")
 		case <-retryTicker.C:
 			if f() == expected {
 				return nil

@@ -1,7 +1,6 @@
 package rawconfig
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -81,10 +80,10 @@ func CreateMandatoryDirectories() error {
 		info, err := os.Stat(d)
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(d, 0700); err != nil {
-				return errors.New("can't create mandatory dir '" + d + "'")
+				return fmt.Errorf("can't create mandatory dir '%s'", d)
 			}
 		} else if !info.IsDir() {
-			return errors.New("mandatory dir '" + d + "' is not a directory")
+			return fmt.Errorf("mandatory dir '%s' is not a directory", d)
 		}
 	}
 	return nil

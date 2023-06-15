@@ -8,17 +8,17 @@ import (
 )
 
 func HasCarrier(_ string) (bool, error) {
-	return false, errors.New("netif.HasCarrier() not implemented")
+	return false, fmt.Errorf("netif.HasCarrier() not implemented")
 }
 
 func AddAddr(_ string, _ *net.IPNet) error {
-	return errors.New("netif.AddAddr() not implemented")
+	return fmt.Errorf("netif.AddAddr() not implemented")
 }
 
 func DelAddr(_ string, _ *net.IPNet) error {
-	return errors.New("netif.DelAddr() not implemented")
+	return fmt.Errorf("netif.DelAddr() not implemented")
 }
 
 func InterfaceNameByIP(ref net.IP) (string, error) {
-	return "", errors.New("netif.InterfaceNameByIP() not implemented")
+	return "", fmt.Errorf("netif.InterfaceNameByIP() not implemented")
 }
