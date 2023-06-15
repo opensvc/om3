@@ -13,7 +13,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -208,15 +207,15 @@ func (t *core) postInstanceStatus(data instance.Status) error {
 		switch resp.StatusCode() {
 		case 200:
 		case 400:
-			return errors.Errorf("%s", resp.JSON400)
+			return fmt.Errorf("%s", resp.JSON400)
 		case 401:
-			return errors.Errorf("%s", resp.JSON401)
+			return fmt.Errorf("%s", resp.JSON401)
 		case 403:
-			return errors.Errorf("%s", resp.JSON403)
+			return fmt.Errorf("%s", resp.JSON403)
 		case 500:
-			return errors.Errorf("%s", resp.JSON500)
+			return fmt.Errorf("%s", resp.JSON500)
 		default:
-			return errors.Errorf("unexpected response: %s", string(resp.Body))
+			return fmt.Errorf("unexpected response: %s", string(resp.Body))
 		}
 		return nil
 	}

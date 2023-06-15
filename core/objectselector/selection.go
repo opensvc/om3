@@ -3,13 +3,13 @@ package objectselector
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/goombaio/orderedset"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/client"
@@ -337,7 +337,7 @@ func (t *Selection) daemonExpand() error {
 	if resp, err := t.client.GetObjectSelector(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("Unexpected get objects selector status %s", resp.Status)
+		return fmt.Errorf("Unexpected get objects selector status %s", resp.Status)
 	} else {
 		defer resp.Body.Close()
 		return json.NewDecoder(resp.Body).Decode(&t.paths)

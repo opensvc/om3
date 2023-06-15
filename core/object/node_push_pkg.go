@@ -1,7 +1,8 @@
 package object
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/packages"
 )
@@ -57,7 +58,7 @@ func (t Node) pushPkg(data []packages.Pkg) error {
 	if response, err := client.Call("insert_pkg", vars, pkgsAsList(data)); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

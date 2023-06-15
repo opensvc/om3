@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -39,5 +39,5 @@ func (t *CmdNetworkSetup) doDaemon() error {
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		return err
 	}
-	return errors.Errorf("TODO %v", c)
+	return fmt.Errorf("todo %v", c)
 }

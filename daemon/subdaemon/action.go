@@ -2,9 +2,8 @@ package subdaemon
 
 import (
 	"context"
+	"fmt"
 	"sort"
-
-	"github.com/pkg/errors"
 )
 
 // Start starts the control loop, the main loop and sub daemons
@@ -84,7 +83,7 @@ func (t *T) controlLoop() {
 				a.done <- nil
 				return // exit control routine
 			default:
-				a.done <- errors.Errorf("unknown action: %s", a.name)
+				a.done <- fmt.Errorf("unknown action: %s", a.name)
 			}
 		}
 	}
@@ -145,7 +144,7 @@ func (t *T) Register(sub Manager) error {
 // do is a synchronous controlAction submitter
 func (t *T) do(what string) error {
 	if !t.enabled.Enabled() {
-		err := errors.Errorf("disabled sub")
+		err := fmt.Errorf("disabled sub")
 		t.log.Error().Err(err).Msgf("%s", what)
 		return err
 	}

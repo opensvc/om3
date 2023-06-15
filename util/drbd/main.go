@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/command"
@@ -405,7 +404,7 @@ func (t T) Role() (string, error) {
 			// drbd8
 			l := strings.Split(s, "/")
 			if len(l) != 2 {
-				return s, errors.Errorf("unexpected role: %s", s)
+				return s, fmt.Errorf("unexpected role: %s", s)
 			}
 			// the second element was the remote role.
 			return l[0], nil
@@ -455,7 +454,7 @@ func (t T) Remove() error {
 }
 
 func (t T) IsUp() (bool, string, error) {
-	return false, "", errors.Errorf("TODO")
+	return false, "", fmt.Errorf("todo")
 }
 
 func (t T) IsDefined() (bool, error) {
@@ -536,7 +535,7 @@ func (t T) devpathFromName() string {
 }
 
 func (t *T) Create(disk string, addr string, port int) error {
-	return errors.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func retry(cmd *command.T) error {
@@ -603,7 +602,7 @@ func (t Digest) FreeMinor(exclude []int) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, errors.Errorf("no free minor")
+	return 0, fmt.Errorf("no free minor")
 }
 
 func (t Digest) FreePort(exclude []int) (int, error) {
@@ -620,5 +619,5 @@ func (t Digest) FreePort(exclude []int) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, errors.Errorf("no free port")
+	return 0, fmt.Errorf("no free port")
 }

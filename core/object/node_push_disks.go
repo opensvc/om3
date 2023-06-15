@@ -1,7 +1,8 @@
 package object
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/disks"
@@ -76,7 +77,7 @@ func pushSvcDisks(client *collector.Client, data disks.Disks) error {
 	if response, err := client.Call("register_disks", vars, disksAsList(data)); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 
 	return nil
@@ -95,7 +96,7 @@ func pushDiskInfo(client *collector.Client, data disks.Disks) error {
 	if response, err := client.Call("register_diskinfo", vars, vals); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

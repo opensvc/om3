@@ -1,8 +1,9 @@
 package placement
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/util/xmap"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -82,7 +83,7 @@ func (t State) String() string {
 // MarshalText marshals the enum as a quoted json string
 func (t State) MarshalText() ([]byte, error) {
 	if s, ok := stateToString[t]; !ok {
-		return nil, errors.Errorf("unknown placement state %d", t)
+		return nil, fmt.Errorf("unknown placement state %d", t)
 	} else {
 		return []byte(s), nil
 	}
@@ -92,7 +93,7 @@ func (t State) MarshalText() ([]byte, error) {
 func (t *State) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := stateToID[s]; !ok {
-		return errors.Errorf("unknown placement state '%s'", s)
+		return fmt.Errorf("unknown placement state '%s'", s)
 	} else {
 		*t = v
 		return nil
@@ -115,7 +116,7 @@ func NewPolicy(s string) Policy {
 // MarshalText marshals the enum as a quoted json string
 func (t Policy) MarshalText() ([]byte, error) {
 	if s, ok := policyToString[t]; !ok {
-		return nil, errors.Errorf("unknown placement policy %d", t)
+		return nil, fmt.Errorf("unknown placement policy %d", t)
 	} else {
 		return []byte(s), nil
 	}
@@ -125,7 +126,7 @@ func (t Policy) MarshalText() ([]byte, error) {
 func (t *Policy) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := policyToID[s]; !ok {
-		return errors.Errorf("unknown placement policy '%s'", s)
+		return fmt.Errorf("unknown placement policy '%s'", s)
 	} else {
 		*t = v
 		return nil

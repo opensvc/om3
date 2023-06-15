@@ -2,6 +2,8 @@ package daemoncli
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/soellman/pidfile"
 
@@ -236,7 +237,7 @@ func (t *T) stop() error {
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		return errors.Errorf("Unexpected status code: %s", resp.Status)
+		return fmt.Errorf("Unexpected status code: %s", resp.Status)
 	}
 	return nil
 }

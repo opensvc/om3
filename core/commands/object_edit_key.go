@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/editor"
 	"github.com/opensvc/om3/util/file"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -70,7 +69,7 @@ func fetchKey(p path.T, key string, c *client.T) (s []byte, err error) {
 		}
 		return *resp.JSON200.Data, nil
 	*/
-	return nil, errors.Errorf("TODO")
+	return nil, fmt.Errorf("todo")
 }
 
 func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
@@ -89,7 +88,7 @@ func pushKey(p path.T, key string, fName string, c *client.T) (err error) {
 		}
 		return nil
 	*/
-	return errors.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t *CmdObjectEditKey) doRemote(p path.T, c *client.T) error {

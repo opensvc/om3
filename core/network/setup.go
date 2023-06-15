@@ -2,14 +2,13 @@ package network
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/file"
@@ -72,7 +71,7 @@ func checkOverlap(nw Networker, nws []Networker) error {
 		return err
 	} else if prefix.Addr().String() != refIPNet.IP.String() {
 		// ex: 172.10.10.0/22 prefix addr 172.10.10.0 does not match the prefix length (expected 172.10.8.0)
-		return errors.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), refIPNet.IP)
+		return fmt.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), refIPNet.IP)
 	}
 	for _, other := range nws {
 		if nw == other {

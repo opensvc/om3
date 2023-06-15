@@ -1,10 +1,11 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/opensvc/om3/core/object"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -48,7 +49,7 @@ func (t *CmdNodeCollectorTagShow) Run() error {
 				} else if resp.Ret == 0 {
 					return resp.Data, nil
 				} else {
-					return nil, errors.Errorf("%s", resp.Msg)
+					return nil, fmt.Errorf("%s", resp.Msg)
 				}
 			} else {
 				var resp respType
@@ -57,7 +58,7 @@ func (t *CmdNodeCollectorTagShow) Run() error {
 				} else if resp.Ret == 0 {
 					return resp.Data, nil
 				} else {
-					return nil, errors.Errorf("%s", resp.Msg)
+					return nil, fmt.Errorf("%s", resp.Msg)
 				}
 			}
 		}),

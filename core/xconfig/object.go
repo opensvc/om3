@@ -8,7 +8,6 @@ import (
 
 	"github.com/cvaroqui/ini"
 	"github.com/iancoleman/orderedmap"
-	"github.com/pkg/errors"
 )
 
 // NewObject configures and returns a T instance pointer.
@@ -120,6 +119,6 @@ func toIniSource(i any) (any, error) {
 		cf.WriteTo(b)
 		return b.Bytes(), nil
 	default:
-		return nil, errors.Errorf("unsupported WithConfigData() type: %s", reflect.TypeOf(data))
+		return nil, fmt.Errorf("unsupported WithConfigData() type: %s", reflect.TypeOf(data))
 	}
 }

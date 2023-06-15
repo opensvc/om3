@@ -17,7 +17,6 @@ import (
 	"github.com/go-ping/ping"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-version"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -243,7 +242,7 @@ func (t *T) destroy() error {
 
 func (t *T) containerStart(ctx context.Context) error {
 	if !t.hasConfigFile() {
-		return errors.Errorf("%s not found", t.configFile())
+		return fmt.Errorf("%s not found", t.configFile())
 	}
 	if err := t.doPartitions(); err != nil {
 		return err
@@ -437,7 +436,7 @@ func domStateFromReader(r io.Reader) (string, error) {
 			return strings.TrimSpace(s[len("State:"):]), nil
 		}
 	}
-	return "", errors.Errorf("state not found")
+	return "", fmt.Errorf("state not found")
 }
 
 func (t T) hasConfigFile() bool {
@@ -484,7 +483,7 @@ func (t T) setPartitions() error {
 	}
 	root := xmlquery.FindOne(doc, "//domain")
 	if root == nil {
-		return errors.Errorf("no <domain> node in %s", cf)
+		return fmt.Errorf("no <domain> node in %s", cf)
 	}
 	if n := root.SelectElement("//resource/partition"); n != nil {
 		p := n.InnerText()
@@ -618,7 +617,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 		return nil
 	}
 	if len(t.VirtInst) == 0 {
-		return errors.Errorf("the 'virtinst' parameter must be set")
+		return fmt.Errorf("the 'virtinst' parameter must be set")
 	}
 	cmd := command.New(
 		command.WithName("virtinst"),
@@ -679,7 +678,7 @@ func (t T) rcmd() ([]string, error) {
 	if len(t.RCmd) > 0 {
 		return t.RCmd, nil
 	}
-	return nil, errors.Errorf("unable to identify a remote command method. install ssh or set the rcmd keyword.")
+	return nil, fmt.Errorf("unable to identify a remote command method. install ssh or set the rcmd keyword.")
 }
 
 func (t T) rexec(cmd string) error {
@@ -924,7 +923,7 @@ func WaitFor(fn func() bool, interval time.Duration, timeout time.Duration) erro
 			return nil
 		}
 		if time.Now().After(limit) {
-			return errors.Errorf("timeout")
+			return fmt.Errorf("timeout")
 		}
 		time.Sleep(interval)
 	}

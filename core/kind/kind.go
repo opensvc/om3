@@ -1,8 +1,9 @@
 package kind
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/util/xmap"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -70,7 +71,7 @@ func New(s string) T {
 // MarshalText marshals the enum as a string
 func (t T) MarshalText() ([]byte, error) {
 	if s, ok := toString[t]; !ok {
-		return nil, errors.Errorf("unknown kind %v", t)
+		return nil, fmt.Errorf("unknown kind %v", t)
 	} else {
 		return []byte(s), nil
 	}
@@ -80,7 +81,7 @@ func (t T) MarshalText() ([]byte, error) {
 func (t *T) UnmarshalText(b []byte) error {
 	s := string(b)
 	if k, ok := toID[s]; !ok {
-		return errors.Errorf("unknown kind %s", s)
+		return fmt.Errorf("unknown kind %s", s)
 	} else {
 		*t = k
 		return nil

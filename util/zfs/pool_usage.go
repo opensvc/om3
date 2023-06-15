@@ -1,13 +1,13 @@
 package zfs
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -23,12 +23,12 @@ func parsePoolUsage(b []byte) (PoolUsage, error) {
 	data := PoolUsage{}
 	lines := strings.Split(string(b), "\n")
 	if len(lines) != 3 {
-		return data, errors.Errorf("unexpected 'zpool get -H size,alloc,free' output: %s", string(b))
+		return data, fmt.Errorf("unexpected 'zpool get -H size,alloc,free' output: %s", string(b))
 	}
 	parseLine := func(line string) (int64, error) {
 		l := strings.Fields(line)
 		if len(l) < 3 {
-			return 0, errors.Errorf("unexpected number of elements in line: %s", line)
+			return 0, fmt.Errorf("unexpected number of elements in line: %s", line)
 		}
 		return strconv.ParseInt(l[2], 10, 64)
 	}

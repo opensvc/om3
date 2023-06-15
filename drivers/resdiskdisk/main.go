@@ -2,10 +2,9 @@ package resdiskdisk
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
@@ -17,6 +16,7 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -139,7 +139,7 @@ func (t T) pooler() (pool.ArrayPooler, error) {
 		return nil, err
 	}
 	if ap, ok := p.(pool.ArrayPooler); !ok {
-		return nil, errors.Errorf("pool %s is not backed by a storage array", p.Name())
+		return nil, fmt.Errorf("pool %s is not backed by a storage array", p.Name())
 	} else {
 		return ap, nil
 	}
@@ -187,7 +187,7 @@ func (t T) createDisk() ([]pool.Disk, error) {
 		return []pool.Disk{}, err
 	}
 	if t.Size == nil {
-		return []pool.Disk{}, errors.Errorf("the size keyword is required for disk provisioning")
+		return []pool.Disk{}, fmt.Errorf("the size keyword is required for disk provisioning")
 	}
 	diskName := t.diskName(p)
 	size := float64(*t.Size)
@@ -249,7 +249,7 @@ func (t *T) setDiskIDKeywords(ctx context.Context, disks []pool.Disk) error {
 	ops := keyop.L{}
 	for _, disk := range disks {
 		if disk.ID == "" {
-			return errors.Errorf("created disk has no id: %v", disk)
+			return fmt.Errorf("created disk has no id: %v", disk)
 		}
 		nodes := nodesInfo.GetNodesWithAnyPaths(disk.Paths)
 		for _, node := range nodes {

@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/output"
@@ -81,7 +79,7 @@ func (t *CmdNodeRelayStatus) Run() error {
 		if err != nil {
 			return err
 		} else if resp.StatusCode() != http.StatusOK {
-			return errors.Errorf("unexpected get relay message status code %s", resp.Status())
+			return fmt.Errorf("unexpected get relay message status code %s", resp.Status())
 		}
 		for _, message := range resp.JSON200.Messages {
 			messages = append(messages, relayMessage{

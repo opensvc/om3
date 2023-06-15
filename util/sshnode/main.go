@@ -1,15 +1,15 @@
 package sshnode
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/opensvc/om3/util/file"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"github.com/opensvc/om3/util/file"
 )
 
 var (
@@ -22,7 +22,7 @@ func NewClient(n string) (*ssh.Client, error) {
 		if ips, err := net.LookupIP(n); err != nil {
 			return nil, err
 		} else if len(ips) == 0 {
-			return nil, errors.Errorf("no ip address found for host %s", n)
+			return nil, fmt.Errorf("no ip address found for host %s", n)
 		} else {
 			ip = ips[0]
 		}
@@ -67,7 +67,7 @@ func AddingKnownHostCallback(host string, remote net.Addr, key ssh.PublicKey) er
 	}
 	v := errors.As(err, &keyErr)
 	if v && len(keyErr.Want) > 0 {
-		return errors.Errorf("%s: conflicting %s +%d", keyErr, keyErr.Want[0].Filename, keyErr.Want[0].Line)
+		return fmt.Errorf("%s: conflicting %s +%d", keyErr, keyErr.Want[0].Filename, keyErr.Want[0].Line)
 	}
 	if v && len(keyErr.Want) == 0 {
 		return AddKnownHost(host, remote, key)

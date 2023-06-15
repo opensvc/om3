@@ -2,9 +2,9 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -46,7 +46,7 @@ func (t *CmdDaemonStats) Run() error {
 		}
 		renderer.Print()
 	*/
-	return errors.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func parseDaemonStats(b []byte) (cluster.Stats, error) {

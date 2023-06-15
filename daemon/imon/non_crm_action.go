@@ -1,11 +1,10 @@
 package imon
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
@@ -44,7 +43,7 @@ func (o *imon) freeze() error {
 		o.instStatus[o.localhost] = instanceStatus
 	}
 	if frozen.IsZero() {
-		err := errors.Errorf("unexpected frozen reset on %s", p)
+		err := fmt.Errorf("unexpected frozen reset on %s", p)
 		o.log.Error().Err(err).Msg("freeze")
 		return err
 	}

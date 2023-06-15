@@ -20,7 +20,6 @@ import (
 	"github.com/cpuguy83/go-docker/image/imageapi"
 	"github.com/google/uuid"
 	"github.com/kballard/go-shellquote"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -702,7 +701,7 @@ func getImage(ctx context.Context, name string) (imageapi.Image, error) {
 			return img, nil
 		}
 	}
-	return imageapi.Image{}, errors.Errorf("image %s not found", name)
+	return imageapi.Image{}, fmt.Errorf("image %s not found", name)
 }
 
 func (t T) env() (env []string, err error) {

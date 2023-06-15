@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
@@ -54,7 +52,7 @@ func (t *CmdObjectPrintConfig) extractOne(p path.T, c *client.T) (rawconfig.T, e
 		return data, nil
 	}
 	if clientcontext.IsSet() {
-		return rawconfig.T{}, errors.New("can not fetch from daemon")
+		return rawconfig.T{}, fmt.Errorf("can not fetch from daemon")
 	}
 	return t.extractLocal(p)
 }
@@ -83,7 +81,7 @@ func (t *CmdObjectPrintConfig) extractFromDaemon(p path.T, c *client.T) (rawconf
 	if err != nil {
 		return rawconfig.T{}, err
 	} else if resp.StatusCode() != http.StatusOK {
-		return rawconfig.T{}, errors.Errorf("unexpected get object config status %s", resp.Status())
+		return rawconfig.T{}, fmt.Errorf("unexpected get object config status %s", resp.Status())
 	}
 	data := rawconfig.T{}
 	if resp.JSON200 == nil {
@@ -127,7 +125,7 @@ func (t *CmdObjectPrintConfig) Run(selector, kind string) error {
 		return err
 	}
 	if len(data) == 0 {
-		return errors.Errorf("no match")
+		return fmt.Errorf("no match")
 	}
 	var render func() string
 	if _, err := path.Parse(selector); err == nil {

@@ -2,8 +2,8 @@ package object
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/util/hostname"
@@ -98,7 +98,7 @@ func (t *actor) collectorPushResInfo(infos resource.Infos) error {
 	if response, err := client.Call("push_resinfo", vars, vals); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 
 	return nil
