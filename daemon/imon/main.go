@@ -31,6 +31,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
@@ -202,32 +203,8 @@ func (o *imon) worker(initialNodes []string) {
 		o.log.Error().Err(err).Msg("error during initial crm status")
 	}
 
-	// Verify if instance boot action is required
-	instanceLastBootID := lastBootID(o.path)
-	nodeLastBootID := bootid.Get()
-	if instanceLastBootID == "" {
-		// no last instance boot file, create it
-		o.log.Info().Msgf("set last object boot id")
-		if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
-			o.log.Error().Err(err).Msg("can't update instance last boot id file")
-		}
-	} else if instanceLastBootID != bootid.Get() {
-		// last instance boot id differ from current node boot id
-		// try boot and refresh last instance boot id if succeed
-		o.log.Info().Msgf("need boot (node boot id differ from last object boot id")
-		o.transitionTo(instance.MonitorStateBooting)
-		if err := o.crmBoot(); err == nil {
-			o.log.Info().Msgf("set last object boot id")
-			if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
-				o.log.Error().Err(err).Msg("can't update instance last boot id file")
-			}
-			o.transitionTo(instance.MonitorStateBooted)
-			o.transitionTo(instance.MonitorStateIdle)
-		} else {
-			// boot failed, next daemon restart will retry boot
-			o.log.Warn().Err(err).Msg("crm boot failure")
-			o.transitionTo(instance.MonitorStateBootFailed)
-		}
+	if o.bootAble() {
+		o.ensureBooted()
 	}
 
 	// Populate caches (published messages before subscription startup are lost)
@@ -324,6 +301,36 @@ func (o *imon) worker(initialNodes []string) {
 			case cmdOrchestrate:
 				o.needOrchestrate(c)
 			}
+		}
+	}
+}
+
+// ensureBooted runs the bot action on not yet booted object
+func (o *imon) ensureBooted() {
+	instanceLastBootID := lastBootID(o.path)
+	nodeLastBootID := bootid.Get()
+	if instanceLastBootID == "" {
+		// no last instance boot file, create it
+		o.log.Info().Msgf("set last object boot id")
+		if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
+			o.log.Error().Err(err).Msg("can't update instance last boot id file")
+		}
+	} else if instanceLastBootID != bootid.Get() {
+		// last instance boot id differ from current node boot id
+		// try boot and refresh last instance boot id if succeed
+		o.log.Info().Msgf("need boot (node boot id differ from last object boot id")
+		o.transitionTo(instance.MonitorStateBooting)
+		if err := o.crmBoot(); err == nil {
+			o.log.Info().Msgf("set last object boot id")
+			if err := updateLastBootID(o.path, nodeLastBootID); err != nil {
+				o.log.Error().Err(err).Msg("can't update instance last boot id file")
+			}
+			o.transitionTo(instance.MonitorStateBooted)
+			o.transitionTo(instance.MonitorStateIdle)
+		} else {
+			// boot failed, next daemon restart will retry boot
+			o.log.Warn().Err(err).Msg("crm boot failure")
+			o.transitionTo(instance.MonitorStateBootFailed)
 		}
 	}
 }
@@ -452,4 +459,15 @@ func lastBootID(p path.T) string {
 
 func updateLastBootID(p path.T, s string) error {
 	return os.WriteFile(lastBootIDFile(p), []byte(s), 0644)
+}
+
+func (o *imon) bootAble() bool {
+	switch o.path.Kind {
+	case kind.Svc:
+		return true
+	case kind.Vol:
+		return true
+	default:
+		return false
+	}
 }
