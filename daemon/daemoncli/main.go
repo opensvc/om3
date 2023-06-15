@@ -111,6 +111,10 @@ func (t *T) SetNode(node string) {
 
 // Start function will start daemon with internal lock protection
 func (t *T) Start() error {
+	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
+		log.Error().Err(err).Msgf("cli-start can't create mandatory directories")
+		return err
+	}
 	release, err := getLock("Start")
 	if err != nil {
 		return err
@@ -143,6 +147,10 @@ func (t *T) Stop() error {
 
 // ReStart function will restart daemon with internal lock protection
 func (t *T) ReStart() error {
+	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
+		log.Error().Err(err).Msgf("cli-restart can't create mandatory directories")
+		return err
+	}
 	release, err := getLock("Restart")
 	if err != nil {
 		return err
@@ -248,10 +256,6 @@ func (t *T) start() (waiter, error) {
 	}
 	log.Info().Strs("capabilities", capabilities.Data()).Msg("rescanned node capabilities")
 
-	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
-		log.Error().Err(err).Msgf("cli-start can't create mandatory directories")
-		return nil, err
-	}
 	if err := bootStrapCcfg(); err != nil {
 		return nil, err
 	}
