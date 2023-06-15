@@ -19,7 +19,7 @@ func (t *CmdNodeEditConfig) Run() error {
 	}
 	switch {
 	//case t.Discard && t.Recover:
-	//        return errors.New("discard and recover options are mutually exclusive")
+	//        return fmt.Errorf("discard and recover options are mutually exclusive")
 	case t.Discard:
 		err = n.DiscardAndEditConfig()
 	case t.Recover:

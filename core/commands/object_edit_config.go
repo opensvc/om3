@@ -2,11 +2,10 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -80,7 +79,7 @@ func fetchConfig(p path.T, c *client.T) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
-		return nil, errors.Errorf("unexpected get object file status %s", resp.Status())
+		return nil, fmt.Errorf("unexpected get object file status %s", resp.Status())
 	}
 	return resp.JSON200.Data, nil
 }
@@ -99,7 +98,7 @@ func pushConfig(p path.T, fName string, c *client.T) (err error) {
 			return err
 		}
 	*/
-	return errors.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t *CmdObjectEditConfig) doRemote(p path.T, c *client.T) error {

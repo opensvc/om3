@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -68,7 +67,7 @@ func (t T) updateSubDevsFile() ([]string, error) {
 	}
 	l, err := t.pool().VDevPaths()
 	if err != nil {
-		return nil, errors.Wrap(err, "update sub devs cache")
+		return nil, fmt.Errorf("update sub devs cache: %w", err)
 	}
 	if err := t.writeSubDevsFile(l); err != nil {
 		return l, err
@@ -80,19 +79,19 @@ func (t T) writeSubDevsFile(l []string) error {
 	path := t.subDevsFilePath()
 	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
-		return errors.Wrap(err, "open temp sub devs cache")
+		return fmt.Errorf("open temp sub devs cache: %w", err)
 	}
 	enc := json.NewEncoder(f)
 	err = enc.Encode(l)
 	if err != nil {
 		_ = f.Close()
-		return errors.Wrap(err, "json encode in sub devs cache")
+		return fmt.Errorf("json encode in sub devs cache: %w", err)
 	}
 	if err := f.Close(); err != nil {
-		return errors.Wrap(err, "close temp sub devs cache")
+		return fmt.Errorf("close temp sub devs cache: %w", err)
 	}
 	if err := os.Rename(f.Name(), path); err != nil {
-		return errors.Wrap(err, "install sub devs cache")
+		return fmt.Errorf("install sub devs cache: %w", err)
 	}
 	return nil
 }
@@ -102,13 +101,13 @@ func (t T) loadSubDevsFile() ([]string, error) {
 	l := make([]string, 0)
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "open sub devs cache")
+		return nil, fmt.Errorf("open sub devs cache: %w", err)
 	}
 	defer f.Close()
 	dec := json.NewDecoder(f)
 	err = dec.Decode(&l)
 	if err != nil {
-		return nil, errors.Wrap(err, "decode sub devs cache")
+		return nil, fmt.Errorf("decode sub devs cache: %w", err)
 	}
 	return l, nil
 }

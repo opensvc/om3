@@ -6,8 +6,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type (
@@ -57,7 +55,7 @@ func (t *Var) UnmarshalJSON(b []byte) error {
 	if s, ok := pivot[0].(string); ok {
 		t.Name = s
 	} else {
-		return errors.Errorf("invalid var name type: %+v", pivot[0])
+		return fmt.Errorf("invalid var name type: %+v", pivot[0])
 	}
 	t.Value = pivot[1]
 	switch class := pivot[2].(type) {
@@ -66,7 +64,7 @@ func (t *Var) UnmarshalJSON(b []byte) error {
 	case nil:
 		t.Class = "raw"
 	default:
-		return errors.Errorf("invalid var class type: %+v", pivot[2])
+		return fmt.Errorf("invalid var class type: %+v", pivot[2])
 	}
 	return nil
 }

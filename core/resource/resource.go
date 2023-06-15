@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,7 +14,6 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -256,10 +256,10 @@ const (
 )
 
 var (
-	ErrActionNotSupported      = errors.New("The resource action is not supported on resource")
-	ErrActionPostponedToLinker = errors.New("The resource action is postponed to its linker")
-	ErrDisabled                = errors.New("The resource is disabled")
-	ErrActionReqNotMet         = errors.New("The resource action requirements are not met")
+	ErrActionNotSupported      = errors.New("the resource action is not supported on resource")
+	ErrActionPostponedToLinker = errors.New("the resource action is postponed to its linker")
+	ErrDisabled                = errors.New("the resource is disabled")
+	ErrActionReqNotMet         = errors.New("the resource action requirements are not met")
 )
 
 // FlagString returns a one character representation of the type instance.
@@ -672,7 +672,7 @@ func StatusCheckRequires(ctx context.Context, r Driver) error {
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
-		return errors.Wrapf(ErrActionReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+		return fmt.Errorf("%w: action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met
 	return nil
@@ -687,7 +687,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 		if state == status.Undef {
 			return fmt.Errorf("invalid requirement: resource '%s' does not exist (syntax: <rid>(<state>[,<state])", rid)
 		}
-		r.Log().Info().Msgf("action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
+		r.Log().Info().Msgf("Action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
@@ -700,13 +700,13 @@ func checkRequires(ctx context.Context, r Driver) error {
 		}
 		switch props.Name {
 		case "start", "stop", "provision", "unprovision", "deploy", "purge":
-			r.Log().Info().Msgf("requirement not met yet. wait %s", timeout.Round(time.Second))
+			r.Log().Info().Msgf("Requirement not met yet. wait %s", timeout.Round(time.Second))
 			state = sb.Wait(rid, timeout)
 			if reqStates.Has(state) {
 				continue // requirement met
 			}
 		}
-		return errors.Wrapf(ErrActionReqNotMet, "action %s on resource %s requires %s in states (%s), but is %s", props.Name, r.RID(), rid, reqStates, state)
+		return fmt.Errorf("%w: action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met. flag a status transition as pending in the bus.
 	sb.Pending(r.RID())
@@ -731,20 +731,20 @@ func Run(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "run requires")
+		return fmt.Errorf("run requires: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Run); err != nil {
-		return errors.Wrapf(err, "pre run trigger")
+		return fmt.Errorf("pre run trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
 	}
 	r.Progress(ctx, "▶ run")
 	if err := runner.Run(ctx); err != nil {
-		return errors.Wrapf(err, "run")
+		return fmt.Errorf("run: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Run); err != nil {
-		return errors.Wrapf(err, "post run trigger")
+		return fmt.Errorf("post run trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Run); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -760,7 +760,7 @@ func PRStop(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "start requires")
+		return fmt.Errorf("start requires: %w", err)
 	}
 	if err := SCSIPersistentReservationStop(ctx, r); err != nil {
 		return err
@@ -776,7 +776,7 @@ func PRStart(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "start requires")
+		return fmt.Errorf("start requires: %w", err)
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -806,10 +806,10 @@ func StartStandby(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "start requires")
+		return fmt.Errorf("start requires: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Start); err != nil {
-		return errors.Wrapf(err, "pre start trigger")
+		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -819,10 +819,10 @@ func StartStandby(ctx context.Context, r Driver) error {
 	}
 	r.Progress(ctx, "▶ start standby")
 	if err := fn(ctx); err != nil {
-		return errors.Wrapf(err, "start standby")
+		return fmt.Errorf("start standby: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Start); err != nil {
-		return errors.Wrapf(err, "post start trigger")
+		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -843,10 +843,10 @@ func Start(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "start requires")
+		return fmt.Errorf("start requires: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Start); err != nil {
-		return errors.Wrapf(err, "pre start trigger")
+		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -856,10 +856,10 @@ func Start(ctx context.Context, r Driver) error {
 	}
 	r.Progress(ctx, "▶ start")
 	if err := s.Start(ctx); err != nil {
-		return errors.Wrapf(err, "start")
+		return fmt.Errorf("start: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Start); err != nil {
-		return errors.Wrapf(err, "post start trigger")
+		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -981,10 +981,10 @@ func shutdown(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "requires")
+		return fmt.Errorf("requires: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Shutdown); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -997,7 +997,7 @@ func shutdown(ctx context.Context, r Driver) error {
 		return err
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Shutdown); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Shutdown); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -1035,10 +1035,10 @@ func stop(ctx context.Context, r Driver) error {
 	}
 	Setenv(r)
 	if err := checkRequires(ctx, r); err != nil {
-		return errors.Wrapf(err, "requires")
+		return fmt.Errorf("requires: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Stop); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)
@@ -1051,7 +1051,7 @@ func stop(ctx context.Context, r Driver) error {
 		return err
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Stop); err != nil {
-		return errors.Wrapf(err, "trigger")
+		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Stop); err != nil {
 		r.Log().Warn().Int("exitcode", exitCode(err)).Msgf("trigger: %s", err)

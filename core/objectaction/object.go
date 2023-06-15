@@ -515,7 +515,7 @@ func (t T) DoRemote() error {
 			HumanRenderer: human,
 		}.Print()
 	*/
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t T) Do() error {
@@ -608,7 +608,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 	go func() {
 		defer func() {
 			if err != nil {
-				err = fmt.Errorf("%w: wait expectation %s failed on object %s", err, expectation, p)
+				err = fmt.Errorf("wait expectation %s failed on object %s: %w", expectation, p, err)
 			}
 			select {
 			case <-ctx.Done():
@@ -627,7 +627,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, expectation string,
 			ev, readError := evReader.Read()
 			if readError != nil {
 				if errors.Is(readError, io.EOF) {
-					err = fmt.Errorf("%w: no more events, wait %v failed", err, p)
+					err = fmt.Errorf("no more events, wait %v failed: %w", p, err)
 				} else {
 					err = readError
 				}

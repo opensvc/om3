@@ -24,7 +24,6 @@ import (
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/go-ping/ping"
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 )
 
@@ -203,7 +202,7 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 		}
 		t.Log().Info().Msgf("add %s to netns %s", ipnet, guestDev)
 		if err := netif.AddAddr(guestDev, ipnet); err != nil {
-			return errors.Wrapf(err, "in netns %s", guestDev)
+			return fmt.Errorf("in netns %s: %w", guestDev, err)
 		}
 		actionrollback.Register(ctx, func() error {
 			return t.stopIP(netns, guestDev)
@@ -220,13 +219,13 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 		_, defNet, _ := net.ParseCIDR("0.0.0.0/0")
 		routes, err := netlink.RouteListFiltered(unix.AF_UNSPEC, &netlink.Route{Dst: nil}, netlink.RT_FILTER_DST)
 		if err != nil {
-			return errors.Wrap(err, "ip route list default")
+			return fmt.Errorf("ip route list default: %w", err)
 		}
 		if len(routes) == 0 {
 			if t.Gateway == "" {
 				dev, err := netlink.LinkByName(guestDev)
 				if err != nil {
-					return errors.Wrapf(err, "route add default dev %s", guestDev)
+					return fmt.Errorf("route add default dev %s: %w", guestDev, err)
 				}
 				t.Log().Info().Msgf("route add default dev %s", guestDev)
 				err = netlink.RouteAdd(&netlink.Route{
@@ -236,7 +235,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 					Gw:        nil,
 				})
 				if err != nil {
-					return errors.Wrapf(err, "route add default dev %s", guestDev)
+					return fmt.Errorf("route add default dev %s: %w", guestDev, err)
 				}
 				return nil
 			} else {
@@ -248,7 +247,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 					Gw:        net.ParseIP(t.Gateway),
 				})
 				if err != nil {
-					return errors.Wrapf(err, "route add default via %s", t.Gateway)
+					return fmt.Errorf("route add default via %s: %w", t.Gateway, err)
 				}
 				return nil
 			}
@@ -257,7 +256,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 		if t.Gateway == "" {
 			dev, err := netlink.LinkByName(guestDev)
 			if err != nil {
-				return errors.Wrapf(err, "route replace default dev %s", guestDev)
+				return fmt.Errorf("route replace default dev %s: %w", guestDev, err)
 			}
 			if curRoute.LinkIndex == dev.Attrs().Index {
 				t.Log().Info().Msgf("route already added: default dev %s", guestDev)
@@ -269,7 +268,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 			curRoute.LinkIndex = dev.Attrs().Index
 			err = netlink.RouteReplace(&curRoute)
 			if err != nil {
-				return errors.Wrapf(err, "route replace default dev %s", guestDev)
+				return fmt.Errorf("route replace default dev %s: %w", guestDev, err)
 			}
 			return nil
 		} else {
@@ -283,7 +282,7 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 			curRoute.LinkIndex = 0
 			err = netlink.RouteReplace(&curRoute)
 			if err != nil {
-				return errors.Wrapf(err, "route replace default via %s", t.Gateway)
+				return fmt.Errorf("route replace default via %s: %w", t.Gateway, err)
 			}
 			return nil
 		}
@@ -306,7 +305,7 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 	if err := netns.Do(func(_ ns.NetNS) error {
 		dev, err := netlink.LinkByName(guestDev)
 		if err != nil {
-			return errors.Wrapf(err, "route del %s dev %s", n, guestDev)
+			return fmt.Errorf("route del %s dev %s: %w", n, guestDev, err)
 		}
 		route := &netlink.Route{
 			LinkIndex: dev.Attrs().Index,
@@ -316,14 +315,14 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 		}
 		routes, err := netlink.RouteListFiltered(unix.AF_UNSPEC, route, netlink.RT_FILTER_DST|netlink.RT_FILTER_IIF)
 		if err != nil {
-			return errors.Wrapf(err, "ip route list %s dev %s", n, guestDev)
+			return fmt.Errorf("ip route list %s dev %s: %w", n, guestDev, err)
 		}
 		if len(routes) > 0 {
 			for _, r := range routes {
 				t.Log().Info().Msgf("route del %s dev %s", r.Dst, guestDev)
 				err := netlink.RouteDel(&r)
 				if err != nil {
-					return errors.Wrapf(err, "route del %s dev %s", r.Dst, guestDev)
+					return fmt.Errorf("route del %s dev %s: %w", r.Dst, guestDev, err)
 				}
 				actionrollback.Register(ctx, func() error {
 					return netns.Do(func(_ ns.NetNS) error {
@@ -377,7 +376,7 @@ func (t *T) Stop(ctx context.Context) error {
 func (t T) devMTU() (int, error) {
 	iface, err := net.InterfaceByName(t.IpDev)
 	if err != nil {
-		return 0, errors.Wrapf(err, "%s mtu", t.IpDev)
+		return 0, fmt.Errorf("%s mtu: %w", t.IpDev, err)
 	}
 	return iface.MTU, nil
 }
@@ -586,7 +585,7 @@ func (t Addrs) Has(ip net.IP) bool {
 
 func parseCIDRMask(s string, bits int) (net.IPMask, error) {
 	if bits == 0 {
-		return nil, errors.New("invalid bits: 0")
+		return nil, fmt.Errorf("invalid bits: 0")
 	}
 	i, err := strconv.Atoi(s)
 	if err != nil {
@@ -599,7 +598,7 @@ func parseDottedMask(s string) (net.IPMask, error) {
 	m := []byte{}
 	l := strings.Split(s, ".")
 	if len(l) != 4 {
-		return nil, errors.New("invalid number of elements in dotted mask")
+		return nil, fmt.Errorf("invalid number of elements in dotted mask")
 	}
 	for _, e := range l {
 		i, err := strconv.Atoi(e)
@@ -649,7 +648,7 @@ func (t T) arpAnnounce(dev string) error {
 	}
 	t.Log().Info().Msgf("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)
 	if err := t.arpGratuitous(ip, dev); err != nil {
-		return errors.Wrapf(err, "arping -i %s %s", dev, ip)
+		return fmt.Errorf("arping -i %s %s: %w", dev, ip, err)
 	}
 	return nil
 }

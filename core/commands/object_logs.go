@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/xmap"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -52,7 +51,7 @@ func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) 
 			return nil, err
 		}
 	*/
-	return events, errors.Errorf("TODO")
+	return events, fmt.Errorf("todo")
 }
 
 func (t *CmdObjectLogs) stream(node string, paths path.L) {

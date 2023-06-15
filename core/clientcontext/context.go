@@ -2,13 +2,14 @@ package clientcontext
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/rs/zerolog/log"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -81,20 +82,20 @@ func New() (T, error) {
 	}
 	cr, ok := cfg.Contexts[n]
 	if !ok {
-		return c, errors.Wrapf(Err, "context not defined: %s", n)
+		return c, fmt.Errorf("%w: context not defined: %s", Err, n)
 	}
 	c.Cluster, ok = cfg.Clusters[cr.ClusterRefName]
 	if !ok {
-		return c, errors.Wrapf(Err, "cluster not defined: %s", cr.ClusterRefName)
+		return c, fmt.Errorf("%w: cluster not defined: %s", Err, cr.ClusterRefName)
 	}
 	if cr.UserRefName != "" {
 		c.User, ok = cfg.Users[cr.UserRefName]
 		if !ok {
-			return c, errors.Wrapf(Err, "user not defined: %s", cr.ClusterRefName)
+			return c, fmt.Errorf("%w: user not defined: %s", Err, cr.ClusterRefName)
 		}
 	}
 	c.Namespace = cr.Namespace
-	log.Debug().Msgf("new context: %s", c)
+	log.Debug().Msgf("New context: %s", c)
 	return c, nil
 }
 

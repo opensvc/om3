@@ -1,8 +1,9 @@
 package topology
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/util/xmap"
-	"github.com/pkg/errors"
 )
 
 // T is an integer representing the opensvc object topology.
@@ -46,7 +47,7 @@ func New(s string) T {
 // MarshalText marshals the enum as a quoted json string
 func (t T) MarshalText() ([]byte, error) {
 	if s, ok := toString[t]; !ok {
-		return nil, errors.Errorf("unknown topology %d", t)
+		return nil, fmt.Errorf("unknown topology %d", t)
 	} else {
 		return []byte(s), nil
 	}

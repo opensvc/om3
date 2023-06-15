@@ -3,9 +3,9 @@
 package network
 
 import (
+	"fmt"
 	"net"
 
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/util/rttables"
@@ -60,13 +60,13 @@ func (t Route) Add() error {
 	}
 	if t.Dev != "" {
 		if intf, err := net.InterfaceByName(t.Dev); err != nil {
-			return errors.Wrapf(err, "interface lookup '%s'", t.Dev)
+			return fmt.Errorf("interface '%s' lookup: %w", t.Dev, err)
 		} else {
 			nlRoute.LinkIndex = intf.Index
 		}
 	}
 	if i, err := rttables.Index(t.Table); err != nil {
-		return errors.Wrapf(err, "table lookup '%s'", t.Table)
+		return fmt.Errorf("table '%s' lookup: %w", t.Table, err)
 	} else {
 		nlRoute.Table = i
 	}

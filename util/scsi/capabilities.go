@@ -3,6 +3,7 @@ package scsi
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -10,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 )
@@ -81,7 +81,7 @@ func mpathVersion() (string, error) {
 			return words[1][1:], nil
 		}
 	}
-	return "", errors.Errorf("multipath tools version not found")
+	return "", fmt.Errorf("multipath tools version not found")
 }
 
 func isMpathReservationKeyConfigured() (bool, error) {

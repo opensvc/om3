@@ -1,7 +1,8 @@
 package commands
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/object"
@@ -30,7 +31,7 @@ func (t *CmdObjectPrintDevices) extract(selector string, c *client.T) (objectdev
 		return data, nil
 	}
 	if clientcontext.IsSet() {
-		return objectdevice.NewList(), errors.Errorf("can not fetch daemon data")
+		return objectdevice.NewList(), fmt.Errorf("can not fetch daemon data")
 	}
 	return t.extractLocal(selector)
 }

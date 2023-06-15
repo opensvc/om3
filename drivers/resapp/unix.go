@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/driver"
@@ -230,7 +229,7 @@ func (t T) CmdArgs(s string, action string) ([]string, error) {
 	wrapArgs := t.toCaps().Argv()
 	prog := ""
 	if prog, err = os.Executable(); err != nil {
-		return nil, errors.Wrap(err, "lookup prog")
+		return nil, fmt.Errorf("lookup prog: %w", err)
 	}
 	if len(wrapArgs) > 0 {
 		wrap := append([]string{prog, "exec"}, wrapArgs...)

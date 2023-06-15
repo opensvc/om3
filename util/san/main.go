@@ -1,9 +1,8 @@
 package san
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -50,11 +49,11 @@ func ParseMapping(s string) (Paths, error) {
 		l := strings.Split(s, ":")
 		switch len(l) {
 		case 1:
-			return Path{}, errors.Errorf("san paths parser: %s path has too few columns. ex: initiatorName:targetName", s)
+			return Path{}, fmt.Errorf("san paths parser: %s path has too few columns. ex: initiatorName:targetName", s)
 		case 2:
 			// normal
 		default:
-			return Path{}, errors.Errorf("san paths parser: %s path has too many columns. ex: initiatorName:targetName", s)
+			return Path{}, fmt.Errorf("san paths parser: %s path has too many columns. ex: initiatorName:targetName", s)
 		}
 		p := Path{
 			Initiator{
@@ -72,11 +71,11 @@ func ParseMapping(s string) (Paths, error) {
 		l := strings.Split(s, ":iqn.")
 		switch len(l) {
 		case 1:
-			return Path{}, errors.Errorf("san paths parser: %s path has too few columns. ex: initiatorName:targetName", s)
+			return Path{}, fmt.Errorf("san paths parser: %s path has too few columns. ex: initiatorName:targetName", s)
 		case 2:
 			// normal
 		default:
-			return Path{}, errors.Errorf("san paths parser: %s path has too many columns. ex: initiatorName:targetName", s)
+			return Path{}, fmt.Errorf("san paths parser: %s path has too many columns. ex: initiatorName:targetName", s)
 		}
 		p := Path{
 			Initiator{

@@ -2,6 +2,7 @@ package imon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -597,20 +597,20 @@ func crmBuilder(t *testing.T, ctx context.Context, p path.T, sideEffect map[stri
 		t.Logf("--- crmAction %s %s", title, cmdArgs)
 		c.addCall(cmdArgs...)
 		if len(cmdArgs) < 2 {
-			err := errors.Errorf("unexpected command %s", cmdArgs)
+			err := fmt.Errorf("unexpected command %s", cmdArgs)
 			t.Logf("--- crmAction error %s", err)
 			return err
 		}
 		name := cmdArgs[0]
 		action := cmdArgs[1]
 		if name != p.Name {
-			err := errors.Errorf("unexpected object %s vs %s", name, p.Name)
+			err := fmt.Errorf("unexpected object %s vs %s", name, p.Name)
 			t.Logf("--- crmAction error %s", err)
 			return err
 		}
 		se, ok := sideEffect[action]
 		if !ok {
-			err := errors.Errorf("unexpected action %s: %s", action, cmdArgs)
+			err := fmt.Errorf("unexpected action %s: %s", action, cmdArgs)
 			t.Logf("--- crmAction error %s", err)
 			return err
 		}

@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -285,11 +283,11 @@ func backup(path string) (string, error) {
 	dir = filepath.Dir(backupFilePath)
 	if !file.Exists(dir) {
 		if err := os.MkdirAll(dir, 0700); err != nil {
-			return "", errors.Errorf("create dir %s: %s", dir, err)
+			return "", fmt.Errorf("create dir %s: %s", dir, err)
 		}
 	}
 	if err := file.Copy(path, backupFilePath); err != nil {
-		return "", errors.Errorf("backup copy of %s => %s: %s", path, dir, err)
+		return "", fmt.Errorf("backup copy of %s => %s: %s", path, dir, err)
 	}
 	_ = removeOldBackups()
 	return backupFilePath, nil

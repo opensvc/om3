@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/hostname"
@@ -111,7 +110,7 @@ func (t *Run) endInit() {
 func (t *Run) init() error {
 	defer t.endInit()
 	if len(t.Mods) > 0 && len(t.Modsets) > 0 {
-		return errors.Errorf("modules and modulesets can't be selected both")
+		return fmt.Errorf("modules and modulesets can't be selected both")
 	}
 	if t.Attach && len(t.Modsets) > 0 {
 		if err := t.main.AttachModulesets(t.Modsets); err != nil {
@@ -119,7 +118,7 @@ func (t *Run) init() error {
 		}
 	}
 	if data, err := t.main.GetData(t.Modsets); err != nil {
-		return errors.Wrap(err, "init data")
+		return fmt.Errorf("init data: %w", err)
 	} else {
 		t.data = data
 	}
@@ -136,7 +135,7 @@ func (t *Run) init() error {
 			t.modules = append(t.modules, mod)
 			continue
 		}
-		return errors.Wrap(err, "init module")
+		return fmt.Errorf("init module: %w", err)
 	}
 	sort.Sort(t.modules)
 	return nil
@@ -469,7 +468,7 @@ func (t *Run) moduleAction(mod *Module, action Action) error {
 			return err
 		}
 	default:
-		return errors.Errorf("%s: invalid action", action)
+		return fmt.Errorf("%s: invalid action", action)
 	}
 	return nil
 }

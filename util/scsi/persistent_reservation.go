@@ -1,11 +1,11 @@
 package scsi
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/status"
@@ -43,7 +43,7 @@ type (
 
 var (
 	DefaultPersistentReservationType = "5" // Write-Exclusive Registrants-Only
-	ErrNotSupported                  = errors.New("SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
+	ErrNotSupported                  = errors.New("the SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
 )
 
 func MakePRKey() []byte {
@@ -204,7 +204,7 @@ func (t *PersistentReservationHandle) Start() error {
 			continue
 		}
 		if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
-			return errors.Wrapf(err, "%s spr register", dev.Path())
+			return fmt.Errorf("%s spr register: %w", dev.Path(), err)
 		}
 
 		if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
@@ -214,19 +214,19 @@ func (t *PersistentReservationHandle) Start() error {
 		} else if reservation == "" {
 			// not reserved => Reserve action
 			if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
-				return errors.Wrapf(err, "%s spr reserve", dev.Path())
+				return fmt.Errorf("%s spr reserve: %w", dev.Path(), err)
 			}
 		} else if t.NoPreemptAbort {
 			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
-				return errors.Wrapf(err, "%s spr preempt (no_preempt_abort kw)", dev.Path())
+				return fmt.Errorf("%s spr preempt (no_preempt_abort kw): %w", dev.Path(), err)
 			}
 		} else if vendor, _ := dev.Vendor(); vendor == "VMware" {
 			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
-				return errors.Wrapf(err, "%s spr preempt (VMware vdisk quirk)", dev.Path())
+				return fmt.Errorf("%s spr preempt (VMware vdisk quirk): %w", dev.Path(), err)
 			}
 		} else {
 			if err := t.persistentReservationDriver.PreemptAbort(dev, reservation, t.Key); err != nil {
-				return errors.Wrapf(err, "%s spr preempt-abort", dev.Path())
+				return fmt.Errorf("%s spr preempt-abort: %w", dev.Path(), err)
 			}
 		}
 	}
@@ -243,10 +243,10 @@ func (t *PersistentReservationHandle) Stop() error {
 			continue
 		}
 		if err := t.persistentReservationDriver.Release(dev, t.Key); err != nil {
-			return errors.Wrapf(err, "%s spr release", dev.Path())
+			return fmt.Errorf("%s spr release: %w", dev.Path(), err)
 		}
 		if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
-			return errors.Wrapf(err, "%s spr unregister", dev.Path())
+			return fmt.Errorf("%s spr unregister: %w", dev.Path(), err)
 		}
 	}
 	return nil

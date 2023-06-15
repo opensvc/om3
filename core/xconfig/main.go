@@ -858,7 +858,7 @@ func (t T) RawEvaluatedAs(impersonate string) (rawconfig.T, error) {
 			_k := key.New(s.Name(), k)
 			_k.Option = _k.BaseOption()
 			if v, err := t.EvalAs(_k, impersonate); err != nil {
-				return rawconfig.New(), fmt.Errorf("%w: eval", err)
+				return rawconfig.New(), fmt.Errorf("eval: %w", err)
 			} else {
 				sectionMap.Set(_k.Option, v)
 			}

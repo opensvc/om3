@@ -1,10 +1,9 @@
 package hostname
 
 import (
+	"fmt"
 	"os"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -26,15 +25,15 @@ func validate(s string) error {
 	n := len(s)
 	switch {
 	case n < 1:
-		return errors.Errorf("too short (<1)")
+		return fmt.Errorf("too short (<1)")
 	case n > 63:
-		return errors.Errorf("too long (>63)")
+		return fmt.Errorf("too long (>63)")
 	}
 	if strings.Trim(s[0:1], alnums) != "" {
-		return errors.Errorf("invalid first character")
+		return fmt.Errorf("invalid first character")
 	}
 	if strings.Trim(s[1:], alnums+"-") != "" {
-		return errors.Errorf("invalid characters")
+		return fmt.Errorf("invalid characters")
 	}
 	return nil
 }

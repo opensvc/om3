@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/event/sseevent"
@@ -155,7 +154,7 @@ func parseFilter(s string) (filter Filter, err error) {
 		} else if len(splitted) == 2 {
 			filter.Labels = append(filter.Labels, pubsub.Label{splitted[0], splitted[1]})
 		} else {
-			err = errors.New("invalid filter expression: " + s)
+			err = fmt.Errorf("invalid filter expression: %s", s)
 			return
 		}
 	}

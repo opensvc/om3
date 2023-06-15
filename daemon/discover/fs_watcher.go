@@ -2,6 +2,7 @@ package discover
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/path"
@@ -259,7 +259,7 @@ func filenameToPath(filename, prefix, suffix string) (path.T, error) {
 	svcName = strings.TrimPrefix(svcName, "namespaces/")
 	svcName = strings.TrimSuffix(svcName, suffix)
 	if len(svcName) == 0 {
-		return path.T{}, errors.New("skipped null filename")
+		return path.T{}, fmt.Errorf("skipped null filename")
 	}
 	return path.Parse(svcName)
 }

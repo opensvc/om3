@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/path"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -52,7 +51,7 @@ func (t *CmdObjectCollectorTagAttach) Run(selector, kind string) error {
 				fmt.Println(resp.Msg)
 				return nil, nil
 			} else {
-				return nil, errors.Errorf("%s", resp.Msg)
+				return nil, fmt.Errorf("%s", resp.Msg)
 			}
 		}),
 	).Do()

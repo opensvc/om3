@@ -5,7 +5,6 @@ import (
 
 	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/opensvc/om3/core/object"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -42,7 +41,7 @@ func (t *CmdNodeCollectorTagDetach) Run() error {
 				fmt.Println(resp.Msg)
 				return nil, nil
 			} else {
-				return nil, errors.Errorf("%s", resp.Msg)
+				return nil, fmt.Errorf("%s", resp.Msg)
 			}
 		}),
 	).Do()

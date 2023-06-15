@@ -1,10 +1,9 @@
 package ulimit
 
 import (
+	"fmt"
 	"syscall"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type Config struct {
@@ -23,37 +22,37 @@ type Config struct {
 
 func (c Config) Apply() error {
 	if err := setDurationRlimit(c.CPU, syscall.RLIMIT_CPU); err != nil {
-		return errors.Wrapf(err, "cpu")
+		return fmt.Errorf("cpu: %w", err)
 	}
 	if err := setSizeRlimit(c.FSize, syscall.RLIMIT_FSIZE); err != nil {
-		return errors.Wrapf(err, "fsize")
+		return fmt.Errorf("fsize: %w", err)
 	}
 	if err := setSizeRlimit(c.Data, syscall.RLIMIT_DATA); err != nil {
-		return errors.Wrapf(err, "data")
+		return fmt.Errorf("data: %w", err)
 	}
 	if err := setSizeRlimit(c.Stack, syscall.RLIMIT_STACK); err != nil {
-		return errors.Wrapf(err, "stack")
+		return fmt.Errorf("stack: %w", err)
 	}
 	if err := setSizeRlimit(c.Core, syscall.RLIMIT_CORE); err != nil {
-		return errors.Wrapf(err, "core")
+		return fmt.Errorf("core: %w", err)
 	}
 	if err := setSizeRlimit(c.NoFile, syscall.RLIMIT_NOFILE); err != nil {
-		return errors.Wrapf(err, "nofile")
+		return fmt.Errorf("nofile: %w", err)
 	}
 	if err := setSizeRlimit(c.AS, syscall.RLIMIT_AS); err != nil {
-		return errors.Wrapf(err, "as")
+		return fmt.Errorf("as: %w", err)
 	}
 	if err := setNProc(c.NProc); err != nil {
-		return errors.Wrapf(err, "nproc")
+		return fmt.Errorf("nproc: %w", err)
 	}
 	if err := setRss(c.RSS); err != nil {
-		return errors.Wrapf(err, "rss")
+		return fmt.Errorf("rss: %w", err)
 	}
 	if err := setMemLock(c.MemLock); err != nil {
-		return errors.Wrapf(err, "memlock")
+		return fmt.Errorf("memlock: %w", err)
 	}
 	if err := setSizeRlimit(c.VMem, syscall.RLIMIT_AS); err != nil {
-		return errors.Wrapf(err, "as via vmem")
+		return fmt.Errorf("as via vmem: %w", err)
 	}
 	return nil
 }
@@ -77,7 +76,7 @@ func setRlimit(max uint64, what int) error {
 	var rLimit syscall.Rlimit
 	err := syscall.Getrlimit(what, &rLimit)
 	if err != nil {
-		return errors.Wrapf(err, "get_rlimit")
+		return fmt.Errorf("get_rlimit: %w", err)
 	}
 	rLimit.Max = max
 	if rLimit.Max < rLimit.Cur {
@@ -85,7 +84,7 @@ func setRlimit(max uint64, what int) error {
 	}
 	err = syscall.Setrlimit(what, &rLimit)
 	if err != nil {
-		return errors.Wrapf(err, "set_rlimit: %+v", rLimit)
+		return fmt.Errorf("set_rlimit: %+v: %w", rLimit, err)
 	}
 	return nil
 }

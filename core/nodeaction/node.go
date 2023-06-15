@@ -282,7 +282,7 @@ func (t T) DoAsync() error {
 	case 500:
 		return fmt.Errorf("%s", resp.JSON500)
 	default:
-		return fmt.Errorf("Unexpected status code %s", resp.Status())
+		return fmt.Errorf("unexpected status code %s", resp.Status())
 	}
 
 	if t.Wait {
@@ -323,7 +323,7 @@ func (t T) DoRemote() error {
 		_, _ = fmt.Fprintf(os.Stdout, data.Out)
 		_, _ = fmt.Fprintf(os.Stderr, data.Err)
 	*/
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t T) Do() error {

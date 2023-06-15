@@ -9,7 +9,6 @@ import (
 	cgroups "github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/sizeconv"
@@ -21,7 +20,7 @@ func (c Config) ApplyProc(pid int) error {
 		return nil
 	}
 	if c.ID == "" {
-		return fmt.Errorf("pg config application requires a non empty pg id")
+		return fmt.Errorf("the pg config application requires a non empty pg id")
 	}
 	r := specs.LinuxResources{
 		CPU:     &specs.LinuxCPU{},
@@ -72,18 +71,18 @@ func (c Config) ApplyProc(pid int) error {
 			return nil
 		}
 		if err := control.AddProc(uint64(pid)); err != nil {
-			return errors.Wrapf(err, "add pid to pg %s", c.ID)
+			return fmt.Errorf("add pid to pg %s: %w", c.ID, err)
 		}
 	} else {
 		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
 		if err != nil {
-			return errors.Wrapf(err, "cnf pg %s", c.ID)
+			return fmt.Errorf("new pg %s: %w", c.ID, err)
 		}
 		if pid == 0 {
 			return nil
 		}
 		if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
-			return errors.Wrapf(err, "add pid to pg %s", c.ID)
+			return fmt.Errorf("add pid to pg %s: %w", c.ID, err)
 		}
 	}
 	return nil

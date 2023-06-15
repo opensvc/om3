@@ -2,7 +2,7 @@
 package fcache
 
 import (
-	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,7 +32,7 @@ func Clear(sig string) error {
 func PurgeCache() error {
 	cacheDir := cacheDir()
 	if !strings.Contains(cacheDir, "/cache/") {
-		return errors.New("unexpected cachedir " + cacheDir)
+		return fmt.Errorf("unexpected cachedir %s", cacheDir)
 	}
 	return fcache.Purge(cacheDir)
 }

@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -58,5 +58,5 @@ func (t *CmdArrayLs) extractDaemon() ([]string, error) {
 	if c, err = client.New(client.WithURL(t.Server)); err != nil {
 		return []string{}, err
 	}
-	return []string{}, errors.Errorf("TODO %v", c)
+	return []string{}, fmt.Errorf("todo %v", c)
 }

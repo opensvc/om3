@@ -1,6 +1,7 @@
 package disks
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -183,5 +183,5 @@ func getDeviceFromPath(s string) (Dev, error) {
 			return d, nil
 		}
 	}
-	return Dev{}, errors.Errorf("path:%s number:%s not found in parsed devices", s, number)
+	return Dev{}, fmt.Errorf("path:%s number:%s not found in parsed devices", s, number)
 }

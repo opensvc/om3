@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -80,7 +79,7 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (path.T, error) {
 		objectselector.SelectionWithServer(t.Server),
 	).Expand()
 	if err == nil && len(paths) > 1 {
-		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions.")
+		return p, fmt.Errorf("at most one object can be selected for create. to create many objects in a single create, use --config - and pipe json definitions")
 	}
 	return p, nil
 }
@@ -136,7 +135,7 @@ func (t *CmdObjectCreate) submit(pivot Pivot) error {
 			return err
 		}
 	*/
-	return errors.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t CmdObjectCreate) fromPaths(paths path.L) error {
@@ -151,11 +150,11 @@ func (t CmdObjectCreate) fromPaths(paths path.L) error {
 			if t.Namespace != "" {
 				p.Namespace = t.Namespace
 			} else {
-				return errors.Errorf("Can not create multiple objects without a target namespace.")
+				return fmt.Errorf("can not create multiple objects without a target namespace")
 			}
 		} else {
 			if t.path.IsZero() {
-				return errors.Errorf("Need a target object path.")
+				return fmt.Errorf("need a target object path")
 			}
 			p = t.path
 			if t.Namespace != "" {
@@ -216,7 +215,7 @@ func (t CmdObjectCreate) fromData(pivot Pivot) error {
 }
 
 func (t CmdObjectCreate) rawFromTemplate(template string) (Pivot, error) {
-	return nil, fmt.Errorf("TODO: collector requester")
+	return nil, fmt.Errorf("todo: collector requester")
 }
 
 func (t CmdObjectCreate) rawFromConfig() (Pivot, error) {
@@ -339,7 +338,7 @@ func (t CmdObjectCreate) localFromData(pivot Pivot) error {
 
 func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
 	if !t.Force && p.Exists() {
-		return errors.Errorf("%s already exists", p)
+		return fmt.Errorf("%s already exists", p)
 	}
 	o, err := object.New(p)
 	if err != nil {
@@ -353,7 +352,7 @@ func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
 	if !t.Restore {
 		op := keyop.Parse("id=" + uuid.New().String())
 		if op == nil {
-			return errors.New("invalid id reset op")
+			return fmt.Errorf("invalid id reset op")
 		}
 		ops = append(ops, *op)
 	}
@@ -362,7 +361,7 @@ func (t CmdObjectCreate) localFromRaw(p path.T, c rawconfig.T) error {
 
 func (t CmdObjectCreate) localEmpty(p path.T) error {
 	if !t.Force && p.Exists() {
-		return errors.Errorf("%s already exists", p)
+		return fmt.Errorf("%s already exists", p)
 	}
 	o, err := object.New(p)
 	if err != nil {

@@ -16,7 +16,6 @@ import (
 
 	"github.com/go-ping/ping"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/crypto/ssh"
@@ -171,7 +170,7 @@ func (t *T) NetNSPath() (string, error) {
 	if pid, err := t.getPID(); err != nil {
 		return "", err
 	} else if pid == 0 {
-		return "", errors.Errorf("container %s is not running", t.Name)
+		return "", fmt.Errorf("container %s is not running", t.Name)
 	} else {
 		return fmt.Sprintf("/proc/%d/ns/net", pid), nil
 	}
@@ -294,7 +293,7 @@ func (t T) ProvisionLeader(ctx context.Context) error {
 			args = append(args, t.TemplateOptions...)
 		}
 	} else {
-		return errors.Errorf("the template keyword is mandatory for provision")
+		return fmt.Errorf("the template keyword is mandatory for provision")
 	}
 	env, err := t.createEnv()
 	if err != nil {
@@ -404,7 +403,7 @@ func (t T) rcmd() ([]string, error) {
 			return []string{exe, "-n", t.Name, "--clear-env", "--"}, nil
 		}
 	}
-	return nil, errors.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword.")
+	return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword")
 }
 
 // SetEncapFileOwnership sets the ownership of the file to be the
@@ -479,11 +478,11 @@ func (t *T) checkHostname() error {
 	}
 	b, err := os.ReadFile(p)
 	if err != nil {
-		return errors.Wrap(err, "can not read container hostname")
+		return fmt.Errorf("can not read container hostname: %w", err)
 	}
 	target := t.hostname()
 	if string(b) != target {
-		return errors.Errorf("container hostname is %s, should be %s", string(b), target)
+		return fmt.Errorf("container hostname is %s, should be %s", string(b), target)
 	}
 	return nil
 }
@@ -515,7 +514,7 @@ func (t *T) getPrefix() (string, error) {
 			return p, nil
 		}
 	}
-	return "", errors.Errorf("lxc install prefix not found")
+	return "", fmt.Errorf("lxc install prefix not found")
 }
 
 // orderedPrefixes returns prefixes with the one containing lxc-start first
@@ -576,7 +575,7 @@ func (t *T) getConfigFile() (string, error) {
 		return p, nil
 	}
 
-	return "", errors.Errorf("unable to find the container configuration file")
+	return "", fmt.Errorf("unable to find the container configuration file")
 }
 
 func (t T) getConfigValue(key string) (string, error) {
@@ -603,7 +602,7 @@ func (t T) getConfigValue(key string) (string, error) {
 		v = strings.TrimSpace(v)
 		return v, nil
 	}
-	return "", errors.Errorf("key %s not found in %s", key, cf)
+	return "", fmt.Errorf("key %s not found in %s", key, cf)
 }
 
 func (t T) rootDirFromConfigFile() (string, error) {
@@ -631,7 +630,7 @@ func (t T) rootfsFromConfigFile() (string, error) {
 	if p, err := t.getConfigValue("lxc.rootfs.path"); err == nil {
 		return p, nil
 	}
-	return "", errors.Errorf("could not determine lxc container rootfs")
+	return "", fmt.Errorf("could not determine lxc container rootfs")
 }
 
 func (t *T) getRootDir() (string, error) {
@@ -826,7 +825,7 @@ func (t T) setCpusetCloneChildren() error {
 	}
 	if !file.Exists(path) {
 		if err := os.MkdirAll(path, 0755); err != nil {
-			return errors.Wrapf(err, "set clone_children for container %s", t.Name)
+			return fmt.Errorf("set clone_children for container %s: %w", t.Name, err)
 		} else {
 			t.Log().Info().Msgf("%s created", path)
 		}
@@ -900,7 +899,7 @@ func (t T) createCgroup(p string) error {
 		return nil
 	}
 	if err := os.MkdirAll(p, 0755); err != nil {
-		return errors.Wrapf(err, "create %s", p)
+		return fmt.Errorf("create %s: %w", p, err)
 	}
 	t.Log().Info().Msgf("%s created", p)
 	return nil
@@ -951,7 +950,7 @@ func (t T) installCF() error {
 		}
 	}
 	if err := file.Copy(cf, nativeCF); err != nil {
-		return errors.Wrapf(err, "install %s as %s", cf, nativeCF)
+		return fmt.Errorf("install %s as %s: %w", cf, nativeCF, err)
 	}
 	t.Log().Info().Msgf("%s installed as %s", cf, nativeCF)
 	return err
@@ -1001,7 +1000,7 @@ func (t *T) cleanupLink(s string) error {
 		return nil
 	}
 	if err := netlink.LinkDel(link); err != nil {
-		return errors.Wrapf(err, "link %s delete", s)
+		return fmt.Errorf("link %s delete: %w", s, err)
 	}
 
 	t.Log().Info().Msgf("link %s deleted", s)
@@ -1040,7 +1039,7 @@ func (t *T) getPID() (int, error) {
 			return strconv.Atoi(fields[1])
 		}
 	}
-	return 0, errors.Errorf("pid not found")
+	return 0, fmt.Errorf("pid not found")
 }
 
 func (t *T) getLinks() []string {

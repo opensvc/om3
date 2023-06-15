@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/key"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -44,7 +44,7 @@ func runArray(args []string) error {
 		arrayName = "array#" + arrayName
 	}
 	if !o.Config().HasSectionString(arrayName) {
-		return errors.Errorf("no section found matching %s in the cluster config", arrayName)
+		return fmt.Errorf("no section found matching %s in the cluster config", arrayName)
 	}
 	arrayType, err := o.Config().GetStringStrict(key.T{arrayName, "type"})
 	if err != nil {
@@ -52,7 +52,7 @@ func runArray(args []string) error {
 	}
 	drv := array.GetDriver(arrayType)
 	if drv == nil {
-		return errors.Errorf("no array driver found matching type %s", arrayType)
+		return fmt.Errorf("no array driver found matching type %s", arrayType)
 	}
 	drv.SetName(arrayName)
 	drv.SetConfig(o.Config())

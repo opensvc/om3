@@ -8,11 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/stringslice"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -262,7 +261,7 @@ func (t T) getShowmounts() (Mounts, error) {
 	)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "showmount")
+		return nil, fmt.Errorf("showmount: %w", err)
 	}
 	mounts := make(Mounts, 0)
 	for _, line := range strings.Split(string(out), "\n") {

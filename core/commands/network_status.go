@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/goccy/go-json"
@@ -12,7 +13,6 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -74,10 +74,10 @@ func (t *CmdNetworkStatus) extractDaemon() (network.StatusList, error) {
 	if resp.StatusCode != http.StatusOK {
 		var problem api.Problem
 		_ = json.NewDecoder(resp.Body).Decode(&problem)
-		return data, errors.Errorf("%s", problem)
+		return data, fmt.Errorf("%s", problem)
 	}
 	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return data, errors.Wrapf(err, "Unmarshal GET /networks")
+		return data, fmt.Errorf("unmarshal GET /networks: %w", err)
 	}
 	return data, nil
 }

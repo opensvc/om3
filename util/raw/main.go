@@ -3,6 +3,7 @@ package raw
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/command"
@@ -29,7 +29,7 @@ const (
 
 var (
 	regexpQueryLine = regexp.MustCompile(`/dev/raw/raw([0-9]+):  bound to major ([0-9]+), minor ([0-9]+)`)
-	ErrExist        = errors.New("raw device is already bound")
+	ErrExist        = errors.New("the raw device is already bound")
 )
 
 type (
@@ -232,7 +232,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 		return 0, err
 	}
 	if e := data.FromBDevPath(bDevPath); e != nil {
-		return e.Index, errors.Wrapf(ErrExist, "%s -> %s", bDevPath, e.CDevPath())
+		return e.Index, fmt.Errorf("%w: %s -> %s", ErrExist, bDevPath, e.CDevPath())
 	}
 	m := data.nextMinor()
 	if m == 0 {
@@ -250,7 +250,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 	err = cmd.Run()
 	fcache.Clear("raw")
 	if err != nil {
-		return 0, fmt.Errorf("%s Run error %v", cmd, err)
+		return 0, fmt.Errorf("%s run error %v", cmd, err)
 	}
 	if cmd.ExitCode() != 0 {
 		return 0, fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
@@ -294,7 +294,7 @@ func (t T) Unbind(cDevPath string) error {
 	err := cmd.Run()
 	fcache.Clear("raw")
 	if err != nil {
-		return fmt.Errorf("%s Run error %v", cmd, err)
+		return fmt.Errorf("%s run error %v", cmd, err)
 	}
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())

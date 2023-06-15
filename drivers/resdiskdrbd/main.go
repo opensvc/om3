@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
@@ -144,7 +143,7 @@ func (t T) WaitKnownDiskStates(dev DRBDDriver) error {
 			return nil
 		}
 		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
-			return errors.Errorf("Timeout waiting for peers to have a known dstate")
+			return fmt.Errorf("Timeout waiting for peers to have a known dstate")
 		}
 		time.Sleep(WaitKnownDiskStatesDelay)
 	}
@@ -407,10 +406,10 @@ func (t T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 		if err != nil {
 			return nil, err
 		} else if resp.StatusCode() != http.StatusOK {
-			return nil, errors.Errorf("unexpected get node drbd allocation status code %s", resp.Status())
+			return nil, fmt.Errorf("unexpected get node drbd allocation status code %s", resp.Status())
 		}
 		if resp.JSON200 == nil {
-			return nil, errors.Errorf("drbd allocation response: no json data")
+			return nil, fmt.Errorf("drbd allocation response: no json data")
 		}
 		allocations[nodename] = *resp.JSON200
 	}
@@ -444,10 +443,10 @@ func (t T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, erro
 		)
 		allocation, ok := allocations[nodename]
 		if !ok {
-			return ConfRes{}, errors.Errorf("drbd allocation for node %s not found", nodename)
+			return ConfRes{}, fmt.Errorf("drbd allocation for node %s not found", nodename)
 		}
 		if time.Now().After(allocation.ExpireAt) {
-			return ConfRes{}, errors.Errorf("drbd allocation for node %s has expired", nodename)
+			return ConfRes{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
 		}
 		device := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
 		if s, err := obj.Config().EvalAs(key.T{t.RID(), "disk"}, nodename); err != nil {
@@ -518,7 +517,7 @@ func (t T) getNodeIPWithNetwork(nodename string) (net.IP, error) {
 			return ip, nil
 		}
 	}
-	return nil, errors.Errorf("node %s ip not found on network %s", nodename, t.Network)
+	return nil, fmt.Errorf("node %s ip not found on network %s", nodename, t.Network)
 }
 
 func (t T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
@@ -529,7 +528,7 @@ func (t T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 	n := len(ips)
 	switch n {
 	case 0:
-		return nil, errors.Errorf("ipname %s is unresolvable", nodename)
+		return nil, fmt.Errorf("ipname %s is unresolvable", nodename)
 	case 1:
 		// ok
 	default:
@@ -562,7 +561,7 @@ func (t T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
-		return nil, errors.Errorf("unexpected get node drbd config status code %s", resp.Status())
+		return nil, fmt.Errorf("unexpected get node drbd config status code %s", resp.Status())
 	}
 	return resp.JSON200.Data, nil
 }
@@ -584,7 +583,7 @@ func (t T) fetchConfig() error {
 		}
 		return nil
 	}
-	return errors.Errorf("Failed to fetch %s, tried node %s", cf, t.Nodes)
+	return fmt.Errorf("Failed to fetch %s, tried node %s", cf, t.Nodes)
 }
 
 func (t T) writeConfig(ctx context.Context) error {
@@ -634,7 +633,7 @@ func (t T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error
 		if a, ok := allocations[nodename]; ok {
 			allocationId = a.Id
 		} else {
-			return errors.Errorf("allocation id for node %s not found", nodename)
+			return fmt.Errorf("allocation id for node %s not found", nodename)
 		}
 		if err := t.sendConfigToNode(nodename, allocationId, b); err != nil {
 			return err
@@ -663,15 +662,15 @@ func (t T) sendConfigToNode(nodename string, allocationId uuid.UUID, b []byte) e
 	case 200:
 		return nil
 	case 400:
-		return errors.Errorf("%s", resp.JSON400)
+		return fmt.Errorf("%s", resp.JSON400)
 	case 401:
-		return errors.Errorf("%s", resp.JSON401)
+		return fmt.Errorf("%s", resp.JSON401)
 	case 403:
-		return errors.Errorf("%s", resp.JSON403)
+		return fmt.Errorf("%s", resp.JSON403)
 	case 500:
-		return errors.Errorf("%s", resp.JSON500)
+		return fmt.Errorf("%s", resp.JSON500)
 	default:
-		return errors.Errorf("Unexpected status code: %s", resp.Status())
+		return fmt.Errorf("Unexpected status code: %s", resp.Status())
 	}
 }
 

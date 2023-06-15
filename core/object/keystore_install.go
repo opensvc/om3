@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/kind"
@@ -260,17 +259,17 @@ func (t keystore) InstallKey(keyName string) error {
 }
 
 func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, dirmode *os.FileMode, usr, grp string) error {
-	t.log.Debug().Msgf("install key=%s to %s", keyName, dst)
+	t.log.Debug().Msgf("Install %s key %s to %s", t.path, keyName, dst)
 	keys, err := t.resolveKey(keyName)
 	if err != nil {
-		return errors.Wrapf(err, "%s", t.path)
+		return fmt.Errorf("resolve %s key %s: %w", t.path, keyName, err)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("%s key=%s not found", t.path, keyName)
+		return fmt.Errorf("resolve %s key %s: no key found", t.path, keyName)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
-			return errors.Wrapf(err, "%s: %s", t.path, vk.Key)
+			return fmt.Errorf("install key %s at path %s: %w", vk.Key, t.path, err)
 		}
 	}
 	return nil

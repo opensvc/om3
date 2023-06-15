@@ -8,12 +8,12 @@ package routeraw
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	clientrequest "github.com/opensvc/om3/core/client/request"

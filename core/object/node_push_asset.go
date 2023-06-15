@@ -1,6 +1,7 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opensvc/om3/util/asset"
@@ -8,7 +9,6 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/san"
 	"github.com/opensvc/om3/util/version"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -261,14 +261,14 @@ func (t Node) pushAsset(data asset.Data) error {
 	if response, err := client.Call("insert_generic", gen); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 
 	args := props()
 	if response, err := client.Call("update_asset", args...); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
 	}
 	return nil
 }

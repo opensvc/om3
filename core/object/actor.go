@@ -2,10 +2,10 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
 
 	"github.com/opensvc/om3/core/actionresdeps"
@@ -390,11 +390,11 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				continue
 			}
 			if err := o.SetValue(r, val); err != nil {
-				return errors.Wrapf(err, "%s.%s", rid, o.Option)
+				return fmt.Errorf("%s.%s: %w", rid, o.Option, err)
 			}
 		case manifest.Context:
 			if err := setAttr(o); err != nil {
-				return errors.Wrapf(err, "%s", o.Attr)
+				return fmt.Errorf("%s: %w", o.Attr, err)
 			}
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -53,13 +52,13 @@ func (t T) Abort(ctx context.Context) bool {
 	test := func(n string) bool {
 		client, err := sshnode.NewClient(n)
 		if err != nil {
-			t.Log().Warn().Str("peer", n).Msgf("no abort: %s", err)
+			t.Log().Warn().Str("peer", n).Msgf("No abort: %s", err)
 			return false
 		}
 		defer client.Close()
 		session, err := client.NewSession()
 		if err != nil {
-			t.Log().Warn().Str("peer", n).Msgf("no abort: %s", err)
+			t.Log().Warn().Str("peer", n).Msgf("No abort: %s", err)
 			return false
 		}
 		defer session.Close()
@@ -79,7 +78,7 @@ func (t T) Abort(ctx context.Context) bool {
 			continue
 		}
 		if test(n) {
-			t.Log().Info().Msgf("abort: conflict with node %s", n)
+			t.Log().Info().Msgf("Abort: Conflict with node %s", n)
 			return true
 		}
 	}
@@ -89,16 +88,16 @@ func (t T) Abort(ctx context.Context) bool {
 // Start the Resource
 func (t T) Start(ctx context.Context) error {
 	if t.file() == "" {
-		return errors.New("empty file path")
+		return fmt.Errorf("empty file path")
 	}
 	if t.exists() {
-		t.Log().Info().Msgf("flag file %s is already installed", t.file())
+		t.Log().Info().Msgf("Flag file %s is already installed", t.file())
 		return nil
 	}
 	if err := os.MkdirAll(t.dir(), os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to create directory %s", t.dir())
+		return fmt.Errorf("failed to create directory %s: %w", t.dir(), err)
 	}
-	t.Log().Info().Msgf("install flag file %s", t.file())
+	t.Log().Info().Msgf("Install flag file %s", t.file())
 	if _, err := os.Create(t.file()); err != nil {
 		return err
 	}
@@ -111,10 +110,10 @@ func (t T) Start(ctx context.Context) error {
 // Stop the Resource
 func (t T) Stop(ctx context.Context) error {
 	if t.file() == "" {
-		return errors.New("empty file path")
+		return fmt.Errorf("empty file path")
 	}
 	if !t.exists() {
-		t.Log().Info().Msgf("flag file %s is already uninstalled", t.file())
+		t.Log().Info().Msgf("Flag file %s is already uninstalled", t.file())
 		return nil
 	}
 	return t.stop()
@@ -122,7 +121,7 @@ func (t T) Stop(ctx context.Context) error {
 
 func (t T) stop() error {
 	p := t.file()
-	t.Log().Info().Msgf("uninstall flag file %s", p)
+	t.Log().Info().Msgf("Uninstall flag file %s", p)
 	return os.Remove(p)
 }
 
@@ -134,7 +133,7 @@ func (t T) Label() string {
 // Status evaluates and display the Resource status and logs
 func (t *T) Status(ctx context.Context) status.T {
 	if t.file() == "" {
-		t.StatusLog().Error("empty file path")
+		t.StatusLog().Error("Empty file path")
 		return status.NotApplicable
 	}
 	if t.exists() {

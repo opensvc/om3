@@ -3,11 +3,12 @@ package lsnrhttpinet
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	golog "log"
 	"net"
 	"net/http"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -94,7 +95,7 @@ func (t *T) start(ctx context.Context) error {
 	t.log.Info().Msg("listener starting")
 	for _, fname := range []string{t.certFile, t.keyFile} {
 		if !file.Exists(fname) {
-			return errors.Errorf("can't listen: %s does not exist", fname)
+			return fmt.Errorf("can't listen: %s does not exist", fname)
 		}
 	}
 	started := make(chan bool)

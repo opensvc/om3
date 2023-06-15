@@ -20,7 +20,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/filesystems"
 	"github.com/opensvc/om3/util/findmnt"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -355,7 +354,7 @@ func (t *T) ProvisionLeader(ctx context.Context) error {
 	}
 	devpath := t.devpath()
 	if devpath == "" {
-		return errors.Errorf("%s real dev path is empty", t.Device)
+		return fmt.Errorf("%s real dev path is empty", t.Device)
 	}
 	if v, err := i1.IsFormated(devpath); err != nil {
 		t.Log().Warn().Msgf("skip mkfs: %s", err)

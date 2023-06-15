@@ -1,13 +1,13 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 	"runtime/pprof"
 	"time"
 
 	"github.com/opensvc/om3/daemon/daemoncli"
 	"github.com/opensvc/om3/util/command"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -28,16 +28,16 @@ func (t *CmdDaemonStart) Run() error {
 		if t.CpuProfile != "" {
 			f, err := os.Create(t.CpuProfile)
 			if err != nil {
-				return errors.Wrap(err, "create CPU profile")
+				return fmt.Errorf("create CPU profile: %w", err)
 			}
 			defer f.Close() // error handling omitted for example
 			if err := pprof.StartCPUProfile(f); err != nil {
-				return errors.Wrap(err, "start CPU profile")
+				return fmt.Errorf("start CPU profile: %w", err)
 			}
 			defer pprof.StopCPUProfile()
 		}
 		if err := daemoncli.New(cli).Start(); err != nil {
-			return errors.Wrap(err, "start daemon cli")
+			return fmt.Errorf("start daemon cli: %w", err)
 		}
 	} else {
 		args := []string{"daemon", "start", "--foreground"}
@@ -54,7 +54,7 @@ func (t *CmdDaemonStart) Run() error {
 		checker := func() error {
 			time.Sleep(60 * time.Millisecond)
 			if err := daemoncli.New(cli).WaitRunning(); err != nil {
-				return errors.Wrap(err, "daemon not running")
+				return fmt.Errorf("daemon not running: %w", err)
 			}
 			return nil
 		}

@@ -1,12 +1,12 @@
 package scheduler
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/util/command"
-	"github.com/pkg/errors"
 )
 
 func (o T) action(e schedule.Entry) error {
@@ -53,7 +53,7 @@ func (o T) action(e schedule.Entry) error {
 	//	cmdArgs = append(cmdArgs, "rotate", "root", "pw", "--local")
 	default:
 		o.log.Error().Str("action", e.Action).Stringer("path", e.Path).Msg("unknown scheduler action")
-		return errors.Errorf("unknown scheduler action")
+		return fmt.Errorf("unknown scheduler action")
 	}
 	var cmdEnv []string
 	cmdEnv = append(

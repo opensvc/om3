@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -58,13 +56,13 @@ func (m *Message) DecryptWithNode() ([]byte, string, error) {
 	msg := &encryptedMessage{}
 	err := json.Unmarshal(m.Data, msg)
 	if err != nil {
-		retErr := errors.New("analyse message unmarshal failure: " + err.Error())
+		retErr := fmt.Errorf("analyse message unmarshal failure: " + err.Error())
 		return nil, "", retErr
 	}
 	// TODO: test nodename and clustername, plug blacklist
 	b, err = decode(msg.Data, msg.IV, key)
 	if err != nil {
-		retErr := errors.New("analyse message decode failure: " + err.Error())
+		retErr := fmt.Errorf("analyse message decode failure: " + err.Error())
 		return b, "", retErr
 	}
 	return b, msg.NodeName, err
@@ -146,7 +144,7 @@ func decrypt(b []byte, key []byte, iv []byte) ([]byte, error) {
 	//iv := b[:aes.BlockSize]
 	//b = b[aes.BlockSize:]
 	if len(b)%aes.BlockSize != 0 {
-		return nil, errors.New("cipherText is not a multiple of the block size")
+		return nil, fmt.Errorf("cipherText is not a multiple of the block size")
 	}
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(b, b)
@@ -168,22 +166,22 @@ func encrypt(b []byte, key []byte) ([]byte, []byte, error) {
 
 func unpadPKCSS(b []byte, blockSize int) ([]byte, error) {
 	if blockSize < 1 {
-		return nil, errors.New("block size too small")
+		return nil, fmt.Errorf("block size too small")
 	}
 	if len(b)%blockSize != 0 {
-		return nil, errors.New("data isn't aligned to blockSize")
+		return nil, fmt.Errorf("data isn't aligned to blockSize")
 	}
 	if len(b) == 0 {
-		return nil, errors.New("data is empty")
+		return nil, fmt.Errorf("data is empty")
 	}
 	paddingLength := int(b[len(b)-1])
 	if paddingLength > len(b) {
-		return nil, errors.Errorf("PKCSS padding (%d) is longer than message (%d)", paddingLength, len(b))
+		return nil, fmt.Errorf("the PKCSS padding (%d) is longer than message (%d)", paddingLength, len(b))
 	}
 	for _, el := range b[len(b)-paddingLength:] {
 		if el != byte(paddingLength) {
 			errStr := fmt.Sprintf("padding had malformed entry '%x', expected '%x'", paddingLength, el)
-			return nil, errors.New(errStr)
+			return nil, fmt.Errorf(errStr)
 		}
 	}
 	return b[:len(b)-paddingLength], nil

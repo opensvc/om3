@@ -4,11 +4,11 @@ package lvm2
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/command"
@@ -165,7 +165,7 @@ func (t *VG) CachedDevicesShow() (*VGInfo, error) {
 			return &d, nil
 		}
 	}
-	return nil, errors.Wrap(ErrExist, t.VGName)
+	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
 }
 
 func (t *VG) CachedNormalShow() (*VGInfo, error) {
@@ -197,7 +197,7 @@ func (t *VG) CachedNormalShow() (*VGInfo, error) {
 			return &d, nil
 		}
 	}
-	return nil, errors.Wrap(ErrExist, t.VGName)
+	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
 }
 
 func (t *VG) Show(fields string) (*VGInfo, error) {
@@ -213,7 +213,7 @@ func (t *VG) Show(fields string) (*VGInfo, error) {
 	)
 	if err := cmd.Run(); err != nil {
 		if cmd.ExitCode() == 5 {
-			return nil, errors.Wrap(ErrExist, t.VGName)
+			return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
 		}
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (t *VG) Show(fields string) (*VGInfo, error) {
 	if len(data.Report) == 1 && len(data.Report[0].VG) == 1 {
 		return &data.Report[0].VG[0], nil
 	}
-	return nil, errors.Wrap(ErrExist, t.VGName)
+	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
 }
 
 func (t *VG) Attrs() (VGAttrs, error) {

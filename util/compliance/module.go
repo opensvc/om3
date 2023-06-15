@@ -1,13 +1,13 @@
 package compliance
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/util/file"
 )
 
@@ -35,29 +35,29 @@ func (t Modules) Less(i, j int) bool {
 
 func validatePath(path string) error {
 	if path == "" {
-		return errors.Errorf("empty path")
+		return fmt.Errorf("empty path")
 	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
 	if !info.Mode().IsRegular() {
-		return errors.Errorf("%s is not a regular file", path)
+		return fmt.Errorf("%s is not a regular file", path)
 	}
 	if info.Mode()&0111 == 0 {
-		return errors.Errorf("%s is a not executable (%s)", path, info.Mode())
+		return fmt.Errorf("%s is a not executable (%s)", path, info.Mode())
 	}
 	uid, gid, err := file.Ownership(path)
 	if err != nil {
 		return err
 	}
 	if uid != 0 {
-		return errors.Errorf("%s is not owned by uid 0", path)
+		return fmt.Errorf("%s is not owned by uid 0", path)
 	}
 	switch gid {
 	case 0, 2, 3, 4:
 	default:
-		return errors.Errorf("%s is not owned by gid 0,2,3,4", path)
+		return fmt.Errorf("%s is not owned by gid 0,2,3,4", path)
 	}
 	return nil
 }
@@ -90,11 +90,11 @@ func (t T) lookupModule(s string) (string, error) {
 	}
 	switch len(hits) {
 	case 0:
-		return "", errors.Errorf("no installed modules found matching %s", s)
+		return "", fmt.Errorf("no installed modules found matching %s", s)
 	case 1:
 		return hits[0], nil
 	default:
-		return "", errors.Errorf("multiple installed modules found matching %s: %s", s, hits)
+		return "", fmt.Errorf("multiple installed modules found matching %s: %s", s, hits)
 	}
 }
 

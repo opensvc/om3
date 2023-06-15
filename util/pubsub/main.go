@@ -47,7 +47,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
@@ -831,7 +830,7 @@ func (sub *Subscription) push(i any) error {
 				<-timer.C
 			}
 		case <-timer.C:
-			return errors.New("push exceed timeout " + sub.timeout.String())
+			return fmt.Errorf("push exceed timeout %s", sub.timeout)
 		}
 	}
 	return nil

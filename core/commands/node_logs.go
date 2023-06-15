@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/util/render"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -39,7 +38,7 @@ func (t *CmdNodeLogs) backlog(node string) (slog.Events, error) {
 			return nil, err
 		}
 	*/
-	return events, errors.Errorf("TODO")
+	return events, fmt.Errorf("todo")
 }
 
 func (t *CmdNodeLogs) stream(node string) {
@@ -73,7 +72,7 @@ func (t *CmdNodeLogs) remote() error {
 	)
 	nodes := sel.Expand()
 	if len(nodes) == 0 {
-		return errors.New("no nodes to fetch logs from")
+		return fmt.Errorf("no nodes to fetch logs from")
 	}
 	events := make(slog.Events, 0)
 	for _, node := range nodes {

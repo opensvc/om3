@@ -2,11 +2,11 @@ package daemonauth
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/shaj13/libcache"
 	_ "github.com/shaj13/libcache/fifo"
 
@@ -40,18 +40,18 @@ func User(r *http.Request) auth.Info {
 
 func validateNode(_ context.Context, _ *http.Request, username, password string) (auth.Info, error) {
 	if username == "" {
-		return nil, errors.Errorf("empty user")
+		return nil, fmt.Errorf("empty user")
 	}
 	cluster := ccfg.Get()
 	if !cluster.Nodes.Contains(username) {
-		return nil, errors.Errorf("user %s is not a cluster node", username)
+		return nil, fmt.Errorf("user %s is not a cluster node", username)
 	}
 	storedPassword := cluster.Secret()
 	if storedPassword == "" {
-		return nil, errors.Errorf("no cluster.secret set")
+		return nil, fmt.Errorf("no cluster.secret set")
 	}
 	if storedPassword != password {
-		return nil, errors.Errorf("wrong cluster.secret")
+		return nil, fmt.Errorf("wrong cluster.secret")
 	}
 	extensions := NewGrants("root").Extensions()
 	extensions.Add("strategy", "node")
@@ -71,10 +71,10 @@ func validateUser(_ context.Context, _ *http.Request, username, password string)
 	}
 	storedPassword, err := usr.DecodeKey("password")
 	if err != nil {
-		return nil, errors.Wrapf(err, "read password from %s", usrPath)
+		return nil, fmt.Errorf("read password from %s: %w", usrPath, err)
 	}
 	if string(storedPassword) != password {
-		return nil, errors.Errorf("wrong password")
+		return nil, fmt.Errorf("wrong password")
 	}
 	grants := NewGrants(usr.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"})...)
 	extensions := grants.Extensions()
@@ -86,7 +86,7 @@ func validateUser(_ context.Context, _ *http.Request, username, password string)
 func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Info, error) {
 	addr := daemonctx.ListenAddr(ctx)
 	if _, _, err := net.SplitHostPort(addr); err == nil {
-		return nil, errors.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
+		return nil, fmt.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
 	}
 	extensions := NewGrants("root").Extensions()
 	extensions.Add("strategy", "ux")

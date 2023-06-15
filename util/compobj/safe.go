@@ -2,12 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/hostname"
@@ -36,7 +35,7 @@ func collectorSafeURIToUUID(uri string) (string, error) {
 		return uuid, nil
 	}
 	if _, err := strconv.Atoi(uuid); err != nil {
-		return "", errors.Errorf("invalid safe uri. use safe://<int> or safe.uuid.<hex>.<ext>")
+		return "", fmt.Errorf("invalid safe uri. use safe://<int> or safe.uuid.<hex>.<ext>")
 	}
 	return uuid, nil
 }
@@ -98,7 +97,7 @@ func collectorSafeGetMeta(uuid string) (SafeFileMeta, error) {
 		return SafeFileMeta{}, err
 	}
 	if len(r.Data) == 0 {
-		return SafeFileMeta{}, errors.Errorf("safe file %s not found", uuid)
+		return SafeFileMeta{}, fmt.Errorf("safe file %s not found", uuid)
 	}
 	return r.Data[0], nil
 }

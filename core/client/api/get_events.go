@@ -5,11 +5,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/event"
@@ -69,7 +69,7 @@ func NewGetEvents(t api.ClientInterface) *GetEvents {
 
 func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
 	if resp == nil {
-		return errors.Errorf("<nil> event")
+		return fmt.Errorf("<nil> event")
 	}
 	br := bufio.NewReader(resp.Body)
 	delim := []byte{':', ' '}
@@ -185,7 +185,7 @@ func (t GetEvents) eventsBase() (*http.Response, error) {
 	}
 	resp, err := t.client.GetDaemonEvents(context.Background(), &params)
 	if err == nil && resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("unexpected get events status code %s", resp.Status)
+		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
 	}
 	return resp, err
 }

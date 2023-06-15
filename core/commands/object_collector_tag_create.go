@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/core/path"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -41,7 +40,7 @@ func (t *CmdObjectCollectorTagCreate) Run(selector, kind string) error {
 			options["svcname"] = p.String()
 			options["tag_name"] = t.Name
 			if t.Name == "" {
-				return nil, errors.New("The tag name must not be empty.")
+				return nil, fmt.Errorf("the tag name must not be empty")
 			}
 			if t.Data != nil {
 				options["tag_data"] = *t.Data
@@ -60,7 +59,7 @@ func (t *CmdObjectCollectorTagCreate) Run(selector, kind string) error {
 				fmt.Println(resp.Msg)
 				return nil, nil
 			} else {
-				return nil, errors.Errorf("%s", resp.Msg)
+				return nil, fmt.Errorf("%s", resp.Msg)
 			}
 		}),
 	).Do()

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
-	"github.com/pkg/errors"
 
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -51,8 +51,8 @@ type (
 )
 
 var (
-	ErrNoIPAddrAvail = errors.New("No ip address available")
-	ErrDupIPAlloc    = errors.New("Duplicate ip allocation")
+	ErrNoIPAddrAvail = errors.New("no ip address available")
+	ErrDupIPAlloc    = errors.New("duplicate ip allocation")
 )
 
 func New() resource.Driver {
@@ -482,7 +482,7 @@ func (t T) stop() error {
 		if err := json.Unmarshal(outB, &resp); err == nil && resp.Code != 0 {
 			msg := fmt.Sprintf("cni error code %d: %s", resp.Code, resp.Msg)
 			t.Log().Error().Msg(msg)
-			return errors.New(msg)
+			return fmt.Errorf(msg)
 		} else {
 			t.Log().Info().Msg(string(outB))
 		}
@@ -573,7 +573,7 @@ func (t T) start() error {
 		if strings.Contains(resp.Msg, "duplicate allocation") {
 			return ErrDupIPAlloc
 		}
-		return errors.Wrapf(err, "cni error code %d: %s", resp.Code, resp.Msg)
+		return fmt.Errorf("cni error code %d msg %s: %w", resp.Code, resp.Msg, err)
 	}
 
 	err = run()

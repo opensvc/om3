@@ -5,11 +5,11 @@ package drbd
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os/exec"
 	"strings"
 
 	"github.com/opensvc/om3/util/command"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -55,5 +55,5 @@ func Version() (string, error) {
 			return s[8:], nil
 		}
 	}
-	return "", errors.Errorf("could not parse drbd version")
+	return "", fmt.Errorf("could not parse drbd version")
 }

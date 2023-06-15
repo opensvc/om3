@@ -3,6 +3,7 @@ package daemonauth
 import (
 	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
@@ -76,7 +76,7 @@ func initJWT() error {
 	jwtVerifyKeyFile = daemonenv.CACertChainFile()
 
 	if jwtSignKeyFile == "" && jwtVerifyKeyFile == "" {
-		return fmt.Errorf("the system/sec/cert listener private_key and certificate must exist.")
+		return fmt.Errorf("the system/sec/cert listener private_key and certificate must exist")
 	} else if jwtSignKeyFile != "" {
 		signBytes, err := os.ReadFile(jwtSignKeyFile)
 		if err != nil {
@@ -86,7 +86,7 @@ func initJWT() error {
 			return err
 		}
 		if jwtVerifyKeyFile == "" {
-			return errors.Errorf("key file is set to the path of a RSA key. In this case, the certificate file must also be set to the path of the RSA public key.")
+			return fmt.Errorf("key file is set to the path of a RSA key. In this case, the certificate file must also be set to the path of the RSA public key")
 		}
 		if verifyBytes, err = os.ReadFile(jwtVerifyKeyFile); err != nil {
 			return err
@@ -103,7 +103,7 @@ func initJWT() error {
 			TokenAuth = jwtauth.New("RS256", signKey, verifyKey)
 		}
 	} else {
-		return errors.Errorf("the system/sec/cert listener private_key must exist.")
+		return fmt.Errorf("the system/sec/cert listener private_key must exist")
 		// If we want to support less secure HMAC token from a static sign key:
 		//	TokenAuth = jwtauth.New("HMAC", []byte(jwtSignKey), nil)
 	}

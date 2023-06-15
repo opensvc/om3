@@ -1,9 +1,8 @@
 package status
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 type (
@@ -90,7 +89,7 @@ func (t T) MarshalText() ([]byte, error) {
 func (t *T) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := toID[s]; !ok {
-		return errors.Errorf("unknown state %s", s)
+		return fmt.Errorf("unknown state %s", s)
 	} else {
 		*t = v
 		return nil

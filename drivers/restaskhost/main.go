@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -286,7 +285,7 @@ Please make sure you fully understand its role and effects before confirming the
 Enter "yes" if you really want to run.`, t.RID())
 	s, err := confirmation.ReadLn(description, time.Second*30)
 	if err != nil {
-		return errors.Wrap(err, "read confirmation")
+		return fmt.Errorf("read confirmation: %w", err)
 	}
 	if s == "yes" {
 		t.Log().Info().Msg("run confirmed interactively")

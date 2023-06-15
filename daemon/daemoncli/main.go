@@ -2,6 +2,8 @@ package daemoncli
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/soellman/pidfile"
 
@@ -230,13 +231,13 @@ func (t *T) stop() error {
 		log.Debug().Msg("wait for stop...")
 		if err := waitForBool(WaitStoppedTimeout, WaitStoppedDelay, true, t.notRunning); err != nil {
 			log.Debug().Msg("cli-stop still running after stop")
-			return errors.New("daemon still running after stop")
+			return fmt.Errorf("daemon still running after stop")
 		}
 		log.Debug().Msg("stopped")
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
-		return errors.Errorf("Unexpected status code: %s", resp.Status)
+		return fmt.Errorf("Unexpected status code: %s", resp.Status)
 	}
 	return nil
 }
@@ -317,7 +318,7 @@ func waitForBool(timeout, retryDelay time.Duration, expected bool, f func() bool
 	for {
 		select {
 		case <-timeoutTicker.C:
-			return errors.New("timeout reached")
+			return fmt.Errorf("timeout reached")
 		case <-retryTicker.C:
 			if f() == expected {
 				return nil

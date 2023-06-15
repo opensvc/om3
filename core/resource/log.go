@@ -2,7 +2,6 @@ package resource
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -74,7 +73,7 @@ func (t *StatusLogEntry) UnmarshalJSON(data []byte) error {
 	}
 	splitN := strings.SplitN(s, ":", 2)
 	if len(splitN) != 2 {
-		return errors.New("unmarshal StatusLogEntry")
+		return fmt.Errorf("unmarshal StatusLogEntry")
 	}
 	t.Level = Level(splitN[0])
 	t.Message = strings.TrimSpace(splitN[1])

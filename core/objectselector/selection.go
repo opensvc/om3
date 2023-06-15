@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/goombaio/orderedset"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/client"
@@ -155,7 +154,7 @@ func (t *Selection) expand() error {
 		if err := t.daemonExpand(); err == nil {
 			return nil
 		} else if clientcontext.IsSet() {
-			return errors.Wrapf(err, "daemon expansion fatal error")
+			return fmt.Errorf("daemon expansion fatal error: %w", err)
 		} else {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
@@ -329,7 +328,7 @@ func (t *Selection) daemonExpand() error {
 		Str("mode", "daemon").
 		Msg("expand selection")
 	if env.HasDaemonOrigin() {
-		return errors.New("Action origin is daemon")
+		return fmt.Errorf("action origin is daemon")
 	}
 	params := api.GetObjectSelectorParams{
 		Selector: t.SelectorExpression,
@@ -337,7 +336,7 @@ func (t *Selection) daemonExpand() error {
 	if resp, err := t.client.GetObjectSelector(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("unexpected get objects selector status %s", resp.Status)
+		return fmt.Errorf("Unexpected get objects selector status %s", resp.Status)
 	} else {
 		defer resp.Body.Close()
 		return json.NewDecoder(resp.Body).Decode(&t.paths)

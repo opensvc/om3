@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/ybbus/jsonrpc"
 	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/ybbus/jsonrpc"
 )
 
 type (
@@ -53,12 +52,12 @@ func (t *ModulesetModule) UnmarshalJSON(b []byte) error {
 	if s, ok := pivot[0].(string); ok {
 		t.Name = s
 	} else {
-		return errors.Errorf("invalid moduleset name type: %+v", pivot[0])
+		return fmt.Errorf("invalid moduleset name type: %+v", pivot[0])
 	}
 	if s, ok := pivot[1].(bool); ok {
 		t.AutoFix = s
 	} else {
-		return errors.Errorf("invalid moduleset autofix type: %+v", pivot[1])
+		return fmt.Errorf("invalid moduleset autofix type: %+v", pivot[1])
 	}
 	return nil
 }
@@ -136,7 +135,7 @@ func (t T) ListModulesets(filter string) ([]string, error) {
 func (t T) AttachModulesets(l []string) error {
 	for _, s := range l {
 		if err := t.AttachModuleset(s); err != nil {
-			return errors.Wrap(err, s)
+			return fmt.Errorf("%s: %w", s, err)
 		}
 	}
 	return nil

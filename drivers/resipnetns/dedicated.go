@@ -8,9 +8,9 @@ import (
 )
 
 func (t *T) startDedicated(ctx context.Context) error {
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t *T) stopDedicated(ctx context.Context) error {
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }

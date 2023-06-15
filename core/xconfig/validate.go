@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/stringslice"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -177,7 +176,7 @@ func (t ValidateAlertLevel) MarshalJSON() ([]byte, error) {
 	if s, ok := validateAlertLevelNames[t]; ok {
 		return json.Marshal(s)
 	} else {
-		return nil, errors.Errorf("unknown validate alert level: %d", t)
+		return nil, fmt.Errorf("unknown validate alert level: %d", t)
 	}
 }
 
@@ -196,7 +195,7 @@ func (t ValidateAlertKind) MarshalJSON() ([]byte, error) {
 	if s, ok := validateAlertKindNames[t]; ok {
 		return json.Marshal(s)
 	} else {
-		return nil, errors.Errorf("unknown validate alert kind: %d", t)
+		return nil, fmt.Errorf("unknown validate alert kind: %d", t)
 	}
 }
 
@@ -316,7 +315,7 @@ func (t T) Validate() (ValidateAlerts, error) {
 		}
 	}
 	if alerts.HasError() {
-		return alerts, errors.New("")
+		return alerts, fmt.Errorf("")
 	}
 	return alerts, nil
 }

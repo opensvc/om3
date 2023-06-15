@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/stringslice"
-	"github.com/pkg/errors"
 	"github.com/ssrathi/go-attr"
 )
 
@@ -223,11 +222,11 @@ func (t *Keyword) SetValue(r, v interface{}) error {
 	for i := 0; i < n-1; i = i + 1 {
 		o, err = getValueAddr(o, elements[i])
 		if err != nil {
-			return errors.Wrapf(err, "set keyword %s: %s", t.Option, elements[i])
+			return fmt.Errorf("set keyword %s=%s: %w", t.Option, elements[i], err)
 		}
 	}
 	if err := attr.SetValue(o, elements[n-1], v); err != nil {
-		return errors.Wrapf(err, "set keyword %s: %s", t.Option, elements[n-1])
+		return fmt.Errorf("set keyword %s = %s: %w", t.Option, elements[n-1], err)
 	}
 	return nil
 }

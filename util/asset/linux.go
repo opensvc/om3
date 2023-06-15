@@ -14,7 +14,6 @@ import (
 
 	dosmbios "github.com/digitalocean/go-smbios/smbios"
 	"github.com/jaypipes/pcidb"
-	"github.com/pkg/errors"
 	"github.com/talos-systems/go-smbios/smbios"
 	"github.com/zcalusic/sysinfo"
 
@@ -187,7 +186,7 @@ func Hardware() ([]Device, error) {
 func memSlots() (int, error) {
 	smb, err := SMBIOS()
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to parse smbios")
+		return 0, fmt.Errorf("parse smbios: %w", err)
 	}
 	n := 0
 	for _, s := range smb.Structures {
@@ -202,7 +201,7 @@ func memSlots() (int, error) {
 func memBanks() (int, error) {
 	smb, err := SMBIOS()
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to parse smbios")
+		return 0, fmt.Errorf("parse smbios: %w", err)
 	}
 	n := 0
 	for _, s := range smb.Structures {
@@ -243,7 +242,7 @@ func hardwareMemDevices() ([]Device, error) {
 	devs := make([]Device, 0)
 	smb, err := SMBIOS()
 	if err != nil {
-		return devs, errors.Wrap(err, "failed to parse smbios")
+		return devs, fmt.Errorf("parse smbios: %w", err)
 	}
 
 	for _, s := range smb.Structures {
@@ -289,12 +288,12 @@ func LastBoot() (string, error) {
 	p := "/proc/uptime"
 	b, err := os.ReadFile(p)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to get last boot time from /proc/uptime")
+		return "", fmt.Errorf("unable to get last boot time from /proc/uptime: %w", err)
 	}
 	l := strings.Fields(string(b))
 	secs, err := strconv.ParseFloat(l[0], 64)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to get last boot time from /proc/uptime")
+		return "", fmt.Errorf("unable to get last boot time from /proc/uptime: %w", err)
 	}
 	now := time.Now()
 	last := now.Add(time.Duration(-int(secs * float64(time.Second))))

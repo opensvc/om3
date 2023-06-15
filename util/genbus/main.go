@@ -9,10 +9,10 @@ package genbus
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -103,7 +103,6 @@ func (t *T) Stop() {
 // bus := T{}
 // defer bus.Stop()
 // bus.Start()
-//
 func (t *T) Start() {
 	if t.started {
 		panic(ErrorStarted)
@@ -121,9 +120,9 @@ func (t *T) Start() {
 // Post push a new object id i to bus
 //
 // bus.Post(TNameT("foo"),
-//          "idx",
-//          i))
 //
+//	"idx",
+//	i))
 func (t *T) Post(p TName, id string, i interface{}, pending bool) {
 	if !t.started {
 		panic(ErrorNeedStart)
@@ -153,15 +152,15 @@ func (t *T) Pending(p TName, id string) {
 // returns status.Undef if no object id is not found
 //
 // Example:
-//    p := path.T{Name:"foo",Namespace: "root", Kind: kind.Svc}
-//    bus.Post(p, "app#1", status.Up)
-//    bus.Post(p, "app#2", status.Down)
 //
-//    bus.Get(p, "app#1") // returns status.Up
-//    bus.Get(p, "app#2") // returns status.Down
-//    bus.Get(p, "app#99") // returns status.Undef
-//    bus.Get(path.T{}, "app#1") // returns status.Undef
+//	p := path.T{Name:"foo",Namespace: "root", Kind: kind.Svc}
+//	bus.Post(p, "app#1", status.Up)
+//	bus.Post(p, "app#2", status.Down)
 //
+//	bus.Get(p, "app#1") // returns status.Up
+//	bus.Get(p, "app#2") // returns status.Down
+//	bus.Get(p, "app#99") // returns status.Undef
+//	bus.Get(path.T{}, "app#1") // returns status.Undef
 func (t *T) Get(name TName, id string) interface{} {
 	if !t.started {
 		panic(ErrorNeedStart)

@@ -3,9 +3,9 @@
 package lvm2
 
 import (
+	"errors"
 	"os/exec"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/util/command"

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/client"
@@ -83,7 +82,7 @@ func (t *CmdObjectPrintSchedule) extractFromDaemon(selector string, c *client.T)
 		}
 		return data, nil
 	*/
-	return data, errors.Errorf("TODO")
+	return data, fmt.Errorf("todo")
 }
 
 func (t *CmdObjectPrintSchedule) Run(selector, kind string) error {

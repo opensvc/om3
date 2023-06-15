@@ -2,10 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/daemon/api"
 )
@@ -50,7 +49,7 @@ func (t GetDaemonStatus) Get() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("unexpected get daemon status code %s", resp.Status)
+		return nil, fmt.Errorf("unexpected get daemon status code %s", resp.Status)
 	}
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)

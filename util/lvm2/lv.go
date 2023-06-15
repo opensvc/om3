@@ -4,6 +4,7 @@ package lvm2
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -143,7 +143,7 @@ func (t *LV) Show() (*LVInfo, error) {
 	)
 	if err := cmd.Run(); err != nil {
 		if cmd.ExitCode() == 5 {
-			return nil, errors.Wrap(ErrExist, fqn)
+			return nil, fmt.Errorf("%w: %s", ErrExist, fqn)
 		}
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (t *LV) Show() (*LVInfo, error) {
 	if len(data.Report) == 1 && len(data.Report[0].LV) == 1 {
 		return &data.Report[0].LV[0], nil
 	}
-	return nil, errors.Wrap(ErrExist, fqn)
+	return nil, fmt.Errorf("%w: %s", ErrExist, fqn)
 }
 
 func (t *LV) Attrs() (LVAttrs, error) {

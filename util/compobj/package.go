@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -209,10 +208,10 @@ func (t *CompPackages) Add(s string) error {
 
 func loadInstalledPackages() error {
 	if osVendor == "" {
-		return errors.Errorf("OSVC_COMP_NODES_OS_VENDOR not set")
+		return fmt.Errorf("the OSVC_COMP_NODES_OS_VENDOR env var is not set")
 	}
 	if osName == "" {
-		return errors.Errorf("OSVC_COMP_NODES_OS_NAME not set")
+		return fmt.Errorf("the OSVC_COMP_NODES_OS_NAME env var not set")
 	}
 	var err error
 	switch {
@@ -225,7 +224,7 @@ func loadInstalledPackages() error {
 	case hasFreebsdPkg():
 		err = freebsdPkgLoadInstalledPackages()
 	default:
-		return errors.Errorf("unsupported os")
+		return fmt.Errorf("unsupported os")
 	}
 	return err
 }
@@ -439,7 +438,7 @@ func rpmLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return errors.Wrap(err, "can not fetch installed packages list")
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {
@@ -458,7 +457,7 @@ func pkginfoLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return errors.Wrap(err, "can not fetch installed packages list")
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {
@@ -485,7 +484,7 @@ func dpkgLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return errors.Wrap(err, "can not fetch installed packages list")
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {
@@ -509,7 +508,7 @@ func freebsdPkgLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return errors.Wrap(err, "can not fetch installed packages list")
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {

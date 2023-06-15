@@ -2,13 +2,13 @@ package collector
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/ybbus/jsonrpc"
 
@@ -116,7 +116,7 @@ func RestURL(s string) (*url.URL, error) {
 func BaseURL(s string) (*url.URL, error) {
 	url, err := url.Parse(s)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	// sanitize

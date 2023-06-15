@@ -1,7 +1,8 @@
 package poolvirtual
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/kind"
 	"github.com/opensvc/om3/core/path"
@@ -64,13 +65,13 @@ func (t T) Usage() (pool.StatusUsage, error) {
 func (t *T) translate(name string, size float64, shared bool) ([]string, error) {
 	template, err := t.template()
 	if err != nil {
-		return nil, errors.Wrapf(err, "unexpected template")
+		return nil, fmt.Errorf("unexpected template: %w", err)
 	}
 	if !template.Exists() {
-		return nil, errors.Errorf("template object %s does not exist", template)
+		return nil, fmt.Errorf("template object %s does not exist", template)
 	}
 	if template.Kind != kind.Vol {
-		return nil, errors.Errorf("template object %s is not a vol", template)
+		return nil, fmt.Errorf("template object %s is not a vol", template)
 	}
 	cf := template.ConfigFile()
 	config, err := xconfig.NewObject("", cf)
