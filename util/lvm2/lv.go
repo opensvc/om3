@@ -4,6 +4,7 @@ package lvm2
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 

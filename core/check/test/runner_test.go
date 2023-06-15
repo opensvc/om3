@@ -1,9 +1,6 @@
 package check_test
 
 import (
-	"github.com/pkg/errors"
-	"github.com/opensvc/om3/core/check"
-
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opensvc/om3/core/check"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -91,7 +89,7 @@ type fakeChecker struct {
 func (t fakeChecker) Check(objs []interface{}) (*check.ResultSet, error) {
 	var results []check.Result
 	if strings.Contains(t.DriverGroup, "error") {
-		return &check.ResultSet{}, errors.New("something wrong happen")
+		return &check.ResultSet{}, fmt.Errorf("something wrong happen")
 	}
 	for _, id := range t.Ids {
 		results = append(results, check.Result{

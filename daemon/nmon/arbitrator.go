@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -112,7 +110,7 @@ func (o *nmon) arbitratorCheck(ctx context.Context, a arbitratorConfig) error {
 	if a.Uri != "" {
 		return a.checkDial(ctx)
 	}
-	return errors.New("invalid arbitrator uri")
+	return fmt.Errorf("invalid arbitrator uri")
 }
 
 func (a *arbitratorConfig) checkUrl(ctx context.Context) error {

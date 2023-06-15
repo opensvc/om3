@@ -9,11 +9,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/api/apimodel"
@@ -216,9 +214,9 @@ func (d *dispatch) writeResponses(w http.ResponseWriter) error {
 		if muxR.err != nil {
 			respError = muxR.err
 		} else if muxR.response.StatusCode != d.okStatus {
-			respError = errors.New("unexpected status code " + strconv.Itoa(muxR.response.StatusCode))
+			respError = fmt.Errorf("unexpected status code %d", muxR.response.StatusCode)
 		} else if data, err := io.ReadAll(muxR.response.Body); err != nil {
-			respError = errors.New("read response error")
+			respError = fmt.Errorf("read response error")
 		} else {
 			endPointResponse.Data = data
 			response.Data = append(response.Data, endPointResponse)
@@ -231,7 +229,7 @@ func (d *dispatch) writeResponses(w http.ResponseWriter) error {
 	}
 
 	if okCount < d.minSuccess {
-		err := errors.New("not enough succeed status")
+		err := fmt.Errorf("not enough succeed status")
 		d.log.Debug().Err(err).Msgf("found %d wants %d", okCount, d.minSuccess)
 		response.Error = err.Error()
 		response.Status = 1

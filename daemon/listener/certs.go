@@ -1,11 +1,11 @@
 package listener
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/keyop"
@@ -65,7 +65,7 @@ func mountCertFS() error {
 				if exists, err := file.ExistsAndDir(rawconfig.Paths.Certs); err != nil {
 					return err
 				} else if !exists {
-					return errors.New("missing mandatory dir " + rawconfig.Paths.Certs)
+					return fmt.Errorf("missing mandatory dir %s", rawconfig.Paths.Certs)
 				}
 				return nil
 			}

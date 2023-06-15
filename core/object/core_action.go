@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,7 +26,6 @@ import (
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xsession"
-	"github.com/pkg/errors"
 )
 
 // Resources implementing setters
@@ -268,7 +268,7 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 		ret = ret || <-q
 	}
 	if ret {
-		return errors.New("abort start")
+		return fmt.Errorf("abort start")
 	}
 	return nil
 }

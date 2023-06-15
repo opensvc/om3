@@ -1,12 +1,12 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/opensvc/om3/daemon/daemoncli"
 	"github.com/opensvc/om3/util/command"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -42,7 +42,7 @@ func (t *CmdDaemonRestart) Run() error {
 		checker := func() error {
 			time.Sleep(60 * time.Millisecond)
 			if err := daemoncli.New(cli).WaitRunning(); err != nil {
-				return errors.New("daemon not running")
+				return fmt.Errorf("daemon not running")
 			}
 			return nil
 		}

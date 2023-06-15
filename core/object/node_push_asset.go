@@ -1,6 +1,7 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opensvc/om3/util/asset"
@@ -8,7 +9,6 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/san"
 	"github.com/opensvc/om3/util/version"
-	"github.com/pkg/errors"
 )
 
 type (

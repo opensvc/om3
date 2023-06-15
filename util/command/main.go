@@ -3,6 +3,7 @@ package command
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/anmitsu/go-shlex"
 	"github.com/kballard/go-shellquote"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -119,7 +119,7 @@ func (t T) Stderr() []byte {
 // it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
 	if t.started {
-		return errors.WithStack(ErrAlreadyStarted)
+		return fmt.Errorf("%w", ErrAlreadyStarted)
 	}
 	t.started = true
 	cmd := t.Cmd()
@@ -133,7 +133,7 @@ func (t *T) Start() (err error) {
 			if log != nil {
 				log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("command.Start() -> StdoutPipe()")
 			}
-			return errors.WithStack(err)
+			return fmt.Errorf("%w", err)
 		}
 		t.closeAfterStart = append(t.closeAfterStart, r)
 		t.goroutine = append(t.goroutine, func() {
@@ -158,7 +158,7 @@ func (t *T) Start() (err error) {
 			if log != nil {
 				log.WithLevel(t.logLevel).Err(err).Str("cmd", cmd.String()).Msg("command.Start() -> StderrPipe()")
 			}
-			return errors.WithStack(err)
+			return fmt.Errorf("%w", err)
 		}
 		t.closeAfterStart = append(t.closeAfterStart, r)
 		t.goroutine = append(t.goroutine, func() {
@@ -233,7 +233,7 @@ func (t *T) Start() (err error) {
 		if log != nil {
 			log.WithLevel(t.logLevel).Err(err).Stringer("cmd", cmd).Msg("run")
 		}
-		return errors.WithStack(err)
+		return fmt.Errorf("%w", err)
 	}
 	if cmd.Process != nil {
 		t.pid = cmd.Process.Pid
@@ -303,7 +303,7 @@ func (t T) checkExitCode(exitCode int) error {
 	}
 	err := &ErrExitCode{exitCode: exitCode, successCodes: t.okExitCodes}
 	t.logErrorExitCode(exitCode, err)
-	return errors.WithStack(err)
+	return fmt.Errorf("%w", err)
 }
 
 func (e *ErrExitCode) ExitCode() int {
@@ -357,7 +357,7 @@ func (t *T) update() error {
 func commandArgsFromString(s string) ([]string, error) {
 	var needShell bool
 	if len(s) == 0 {
-		return nil, errors.New("can not create command from empty string")
+		return nil, fmt.Errorf("can not create command from empty string")
 	}
 	switch {
 	case strings.Contains(s, "|"):
@@ -375,7 +375,7 @@ func commandArgsFromString(s string) ([]string, error) {
 		return nil, err
 	}
 	if len(sSplit) == 0 {
-		return nil, errors.New("unexpected empty command args from string")
+		return nil, fmt.Errorf("unexpected empty command args from string")
 	}
 	return sSplit, nil
 }

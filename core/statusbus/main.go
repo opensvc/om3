@@ -9,10 +9,10 @@ package statusbus
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/status"
