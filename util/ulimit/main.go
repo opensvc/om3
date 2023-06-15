@@ -84,7 +84,7 @@ func setRlimit(max uint64, what int) error {
 	}
 	err = syscall.Setrlimit(what, &rLimit)
 	if err != nil {
-		return fmt.Errorf("set_rlimit: %+v", rLimit, err)
+		return fmt.Errorf("set_rlimit: %+v: %w", rLimit, err)
 	}
 	return nil
 }

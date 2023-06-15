@@ -282,7 +282,7 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 	// clean up existing tunnels with same endpoints but different name
 	link, err := t.getTunnelByEndpoints(localIP, peerIP)
 	if err != nil {
-		return fmt.Errorf("get tunnel from %s to %s: %w", err, localIP, peerIP)
+		return fmt.Errorf("get tunnel from %s to %s: %w", localIP, peerIP, err)
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
@@ -314,7 +314,7 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 		return nil
 	default:
 		if err := t.modTunnel(name, localIP, peerIP); err != nil {
-			return fmt.Errorf("modify tunnel to %s", nodename, err)
+			return fmt.Errorf("modify tunnel to %s: %w", nodename, err)
 		}
 	}
 	return nil
