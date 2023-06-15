@@ -3,7 +3,7 @@
 package netif
 
 import (
-	"errors"
+	"fmt"
 	"net"
 )
 
