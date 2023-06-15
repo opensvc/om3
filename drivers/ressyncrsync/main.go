@@ -2,6 +2,7 @@ package ressyncrsync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,7 +32,6 @@ import (
 	"github.com/opensvc/om3/util/progress"
 	"github.com/opensvc/om3/util/schedule"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -109,13 +109,13 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 	if t.isFlexAndNotPrimary() {
 		msg := fmt.Sprintf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
 		t.Log().Error().Msg(msg)
-		return errors.New(msg)
+		return fmt.Errorf(msg)
 	}
 
 	if v, rids := t.isInstanceSufficientlyStarted(ctx); !v {
 		msg := fmt.Sprintf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 		t.Log().Error().Msg(msg)
-		return errors.New(msg)
+		return fmt.Errorf(msg)
 	}
 	for _, nodename := range t.getTargetPeernames(target) {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
@@ -357,7 +357,7 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 	} else if !v {
 		msg := fmt.Sprintf("The destination fs %s is not mounted on node %s. Refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
 		t.Log().Error().Msg(msg)
-		return errors.New(msg)
+		return fmt.Errorf(msg)
 	}
 	options := t.fullOptions()
 	dst := t.user() + "@" + nodename + ":" + t.Dst
@@ -571,11 +571,11 @@ func (t *T) isSendAllowedToPeerEnv(nodename string) error {
 	var localEnv, peerEnv string
 	nodesInfo, err := nodesinfo.Get()
 	if err != nil {
-		return errors.Wrap(err, "error loading nodes_info.json")
+		return fmt.Errorf("Error loading nodes_info.json: %w", err)
 	}
 	getEnv := func(n string, s *string) error {
 		if m, ok := nodesInfo[n]; !ok {
-			return errors.Errorf("node %s not found in nodes_info.json", n)
+			return fmt.Errorf("Node %s not found in nodes_info.json", n)
 		} else {
 			*s = m.Env
 		}
@@ -588,7 +588,7 @@ func (t *T) isSendAllowedToPeerEnv(nodename string) error {
 		return err
 	}
 	if localEnv != "PRD" && peerEnv == "PRD" {
-		return errors.Errorf("Refuse to sync from a non-PRD node to a PRD node")
+		return fmt.Errorf("Refuse to sync from a non-PRD node to a PRD node")
 	}
 	return nil
 }

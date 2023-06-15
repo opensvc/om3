@@ -2,10 +2,10 @@ package daemonhandler
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/core/slog"
@@ -21,11 +21,11 @@ func getLogPayload(w http.ResponseWriter, r *http.Request) (logPayload, error) {
 	var payload logPayload
 
 	if reqBody, err := io.ReadAll(r.Body); err != nil {
-		return payload, errors.Wrap(err, "read body request")
+		return payload, fmt.Errorf("read body request: %w", err)
 	} else if len(reqBody) == 0 {
 		// pass
 	} else if err := json.Unmarshal(reqBody, &payload); err != nil {
-		return payload, errors.Wrap(err, "request body unmarshal")
+		return payload, fmt.Errorf("request body unmarshal: %w", err)
 	}
 	return payload, nil
 }

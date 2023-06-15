@@ -5,6 +5,8 @@ package vpath
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/opensvc/om3/core/kind"
@@ -13,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/loop"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -46,7 +47,7 @@ func HostPath(s string, namespace string) (string, error) {
 		return s, err
 	}
 	if !vol.Path().Exists() {
-		return s, errors.Errorf("%s does not exist", vol.Path())
+		return s, fmt.Errorf("%s does not exist", vol.Path())
 	}
 	st, err := vol.Status(context.Background())
 	if err != nil {
@@ -55,7 +56,7 @@ func HostPath(s string, namespace string) (string, error) {
 	switch st.Avail {
 	case status.Up, status.NotApplicable, status.StandbyUp:
 	default:
-		return s, errors.Wrapf(ErrAccess, "%s(%s)", volPath, st.Avail)
+		return s, fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, st.Avail)
 	}
 	return vol.Head() + "/" + volRelativeSourcePath, nil
 }
@@ -107,11 +108,11 @@ func HostDevpath(s string, namespace string) (string, error) {
 	switch st.Avail {
 	case status.Up, status.NotApplicable, status.StandbyUp:
 	default:
-		return s, errors.Wrapf(ErrAccess, "%s(%s)", volPath, st.Avail)
+		return s, fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, st.Avail)
 	}
 	dev := vol.Device()
 	if dev == nil {
-		return s, errors.Errorf("%s is not a device-capable vol", s)
+		return s, fmt.Errorf("%s is not a device-capable vol", s)
 	}
 	return dev.Path(), nil
 }

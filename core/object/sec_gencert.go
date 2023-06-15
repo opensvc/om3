@@ -11,8 +11,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/util/fqdn"
 	"github.com/opensvc/om3/util/hostname"
@@ -197,10 +195,10 @@ func (t *sec) getCASec() (*sec, error) {
 	s := t.CertInfo("ca")
 	p, err := path.Parse(s)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid ca secret path: %s", s)
+		return nil, fmt.Errorf("Invalid ca secret path %s: %w", s, err)
 	}
 	if !p.Exists() {
-		return nil, fmt.Errorf("secret %s does not exist", p.String())
+		return nil, fmt.Errorf("Secret %s does not exist", p.String())
 	}
 	return NewSec(p, WithVolatile(true))
 }

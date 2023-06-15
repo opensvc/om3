@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/util/xmap"
 )
 
@@ -232,12 +230,10 @@ func (c Config) String() string {
 	return buff + ": " + strings.Join(l, " ")
 }
 
-//
 // Convert converts, for a 100us period and 4 cpu threads,
 // * 100%@all => 400000 100000
 // * 50% => 50000 100000
 // * 50%@3 => 150000 100000
-//
 func (t CpuQuota) Convert(period uint64) (int64, error) {
 	maxCpus := runtime.NumCPU()
 	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 1000, 50%%@all, 10%%@2)"
@@ -251,7 +247,7 @@ func (t CpuQuota) Convert(period uint64) (int64, error) {
 		if s == "all" {
 			return maxCpus, nil
 		} else if cpus, err := strconv.Atoi(s); err != nil {
-			return 0, errors.Wrapf(err, invalidFmtError, t)
+			return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
 		} else if cpus > maxCpus {
 			return maxCpus, nil
 		} else {
@@ -276,10 +272,10 @@ func (t CpuQuota) Convert(period uint64) (int64, error) {
 		err       error
 	)
 	if cpus, err = parseCpus(cpusString); err != nil {
-		return 0, errors.Wrapf(err, invalidFmtError, t)
+		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
 	}
 	if pct, err = parsePct(l[0]); err != nil {
-		return 0, errors.Wrapf(err, invalidFmtError, t)
+		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
 	}
 	return int64(pct) * int64(cpus) * int64(period) / 100, nil
 }

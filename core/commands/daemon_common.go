@@ -8,8 +8,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
@@ -27,7 +25,7 @@ func (t *CmdDaemonCommon) startDaemon() (err error) {
 	)
 	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "%s", cmd.String())
+		return fmt.Errorf("%s: %w", cmd, err)
 	}
 	return nil
 }
@@ -39,7 +37,7 @@ func (t *CmdDaemonCommon) stopDaemon() (err error) {
 	)
 	_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "%s", cmd.String())
+		return fmt.Errorf("%s: %w", cmd, err)
 	}
 	return nil
 }
@@ -65,7 +63,7 @@ func (t *CmdDaemonCommon) nodeDrain() (err error) {
 	)
 	_, _ = fmt.Fprintf(os.Stdout, "Draining node\n")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "%s", cmd.String())
+		return fmt.Errorf("%s: %w", cmd, err)
 	}
 	return nil
 }
@@ -87,7 +85,7 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 	)
 	_, _ = fmt.Fprintln(os.Stdout, "Dump all configs")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "%s", cmd.String())
+		return fmt.Errorf("%s: %w", cmd, err)
 	}
 
 	backup := path.Join(pathEtc, time.Now().Format(name+"-2006-01-02T15:04:05.json"))
@@ -109,7 +107,7 @@ func (t *CmdDaemonCommon) deleteLocalConfig() error {
 		)
 		_, _ = fmt.Fprintf(os.Stdout, "Delete all config\n")
 		if err := cmd.Run(); err != nil {
-			return errors.Wrapf(err, "%s", cmd.String())
+			return fmt.Errorf("%s: %w", cmd, err)
 		}
 	} else {
 		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip delete local config\n", pathEtc)

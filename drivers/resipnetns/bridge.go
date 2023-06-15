@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -15,16 +14,16 @@ import (
 func (t *T) startBridgePort(ctx context.Context, dev string) error {
 	masterLink, err := netlink.LinkByName(t.IpDev)
 	if err != nil {
-		return errors.Wrap(err, t.IpDev)
+		return fmt.Errorf("%s: %w", t.IpDev, err)
 	}
 	link, err := netlink.LinkByName(dev)
 	if err != nil {
-		return errors.Wrap(err, dev)
+		return fmt.Errorf("%s: %w", dev, err)
 	}
 	actionrollback.Register(ctx, func() error {
 		return t.stopBridgePort(dev)
 	})
-	t.Log().Info().Msgf("set %s master %s", dev, t.IpDev)
+	t.Log().Info().Msgf("Set %s master %s", dev, t.IpDev)
 	return netlink.LinkSetMaster(link, masterLink)
 }
 
@@ -33,7 +32,7 @@ func (t *T) stopBridgePort(dev string) error {
 	if err != nil {
 		return nil
 	}
-	t.Log().Info().Msgf("unset %s master %s", dev, t.IpDev)
+	t.Log().Info().Msgf("Unset %s master %s", dev, t.IpDev)
 	return netlink.LinkSetMaster(link, nil)
 }
 

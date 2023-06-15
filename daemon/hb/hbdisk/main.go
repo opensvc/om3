@@ -85,19 +85,19 @@ func (d *device) open() error {
 	}
 	newDev, err := filepath.EvalSymlinks(d.path)
 	if err != nil {
-		return fmt.Errorf("%w: %s eval symlink", err, d.path)
+		return fmt.Errorf("%s eval symlink: %w", d.path, err)
 	}
 
 	isBlockDevice, err := file.IsBlockDevice(newDev)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("%w: %s does not exist", err, d.path)
+		return fmt.Errorf("%s does not exist: %w", d.path, err)
 	} else if err != nil {
 		return err
 	}
 
 	isCharDevice, err := file.IsCharDevice(newDev)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("%w: %s does not exist", err, d.path)
+		return fmt.Errorf("%s does not exist: %w", d.path, err)
 	} else if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (d *device) open() error {
 		}
 		d.mode = "raw"
 		if d.file, err = os.OpenFile(d.path, os.O_RDWR, 0755); err != nil {
-			return fmt.Errorf("%w: %s must be a block device", err, d.path)
+			return fmt.Errorf("%s must be a block device: %w", d.path, err)
 		}
 	}
 	return nil
@@ -237,7 +237,7 @@ func (t device) WriteDataSlot(slot int, b []byte) error {
 	}
 	b, err := json.Marshal(c)
 	if err != nil {
-		return fmt.Errorf("%w: msg encapsulation", err)
+		return fmt.Errorf("msg encapsulation: %w", err)
 	}
 	b = append(b, []byte{'\x00'}...)
 	if len(b) > SlotSize {

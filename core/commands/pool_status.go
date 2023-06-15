@@ -2,9 +2,9 @@ package commands
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/goccy/go-json"
-	"github.com/pkg/errors"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -78,16 +78,16 @@ func (t *CmdPoolStatus) extractDaemon() (pool.StatusList, error) {
 	switch resp.StatusCode() {
 	case 200:
 		if err := json.Unmarshal(resp.Body, &l); err != nil {
-			return l, errors.Wrapf(err, "unmarshal GET /pools")
+			return l, fmt.Errorf("Unmarshal GET /pools: %w", err)
 		}
 		return l, nil
 	case 401:
-		return l, errors.Errorf("%s", resp.JSON401)
+		return l, fmt.Errorf("%s", resp.JSON401)
 	case 403:
-		return l, errors.Errorf("%s", resp.JSON403)
+		return l, fmt.Errorf("%s", resp.JSON403)
 	case 500:
-		return l, errors.Errorf("%s", resp.JSON500)
+		return l, fmt.Errorf("%s", resp.JSON500)
 	default:
-		return l, errors.Errorf("Unexpected status code: %d", resp.StatusCode())
+		return l, fmt.Errorf("Unexpected status code: %d", resp.StatusCode())
 	}
 }

@@ -52,7 +52,7 @@ func (t Node) PRKey() (string, error) {
 	case prkey == "":
 		prkey = newPRKey()
 		if err := validatePRKey(prkey); err != nil {
-			return "", fmt.Errorf("%w: new prkey", err)
+			return "", fmt.Errorf("new prkey: %w", err)
 		}
 		op := keyop.T{
 			Key:   prkeyKey,

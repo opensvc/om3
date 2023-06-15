@@ -1,13 +1,13 @@
 package xconfig
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/util/editor"
@@ -28,7 +28,7 @@ var (
 	ErrEditPending = errors.New(`The configuration is already being edited.
 Set --discard to edit from the installed configuration,
 or --recover to edit the unapplied config`)
-	ErrEditValidate = errors.New("validation errors")
+	ErrEditValidate = errors.New("Validation errors")
 )
 
 func Diff(a, b string) (string, error) {
@@ -58,7 +58,7 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 			ref.Log().Debug().Str("dst", dst).Msg("recover existing configuration temporary copy")
 		default:
 			diff, _ := Diff(src, dst)
-			return errors.Wrapf(ErrEditPending, "%s", diff)
+			return fmt.Errorf("%w: %s", ErrEditPending, diff)
 		}
 	}
 	if !file.Exists(dst) {

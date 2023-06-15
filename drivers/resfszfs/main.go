@@ -23,7 +23,6 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/opensvc/om3/util/zfs"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -308,7 +307,7 @@ func (t *T) validateDevice() error {
 		return fmt.Errorf("device keyword value must be formatted like <pool>/<ds>")
 	}
 	if v, err := t.pool().Exists(); err != nil {
-		return errors.Wrap(err, "pool existance validation error")
+		return fmt.Errorf("pool existance validation error: %w", err)
 	} else if !v {
 		return fmt.Errorf("pool %s does not exist", t.poolName())
 	}
@@ -384,7 +383,7 @@ func (t T) mkfsOptions() []string {
 
 func (t *T) ProvisionLeader(ctx context.Context) error {
 	if v, err := t.fs().Exists(); err != nil {
-		return errors.Wrap(err, "fs existance check")
+		return fmt.Errorf("fs existance check: %w", err)
 	} else if v {
 		t.Log().Info().Msgf("dataset %s already exists", t.Device)
 		return nil

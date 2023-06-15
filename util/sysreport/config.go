@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/anmitsu/go-shlex"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -146,13 +145,13 @@ func (t *T) init() error {
 
 func (t *T) initDir(s string) error {
 	if err := os.MkdirAll(s, 0700); err != nil {
-		return errors.Wrap(err, s)
+		return fmt.Errorf("%s: %w", s, err)
 	}
 	if err := os.Chown(s, rootUID, rootGID); err != nil {
-		return errors.Wrap(err, s)
+		return fmt.Errorf("%s: %w", s, err)
 	}
 	if err := os.Chmod(s, 0700); err != nil {
-		return errors.Wrap(err, s)
+		return fmt.Errorf("%s: %w", s, err)
 	}
 	return nil
 }
@@ -165,13 +164,13 @@ func (t *T) loadStat() error {
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return errors.Wrap(err, "loading files stat cache")
+		return fmt.Errorf("Loading files stat cache: %w", err)
 	}
 	defer f.Close()
 	if err := t.stats.Load(f); err != nil {
 		return err
 	}
-	srLog.Debug().Str("path", path).Int("len", len(t.stats)).Msg("load stat")
+	srLog.Debug().Str("path", path).Int("len", len(t.stats)).Msg("Load stat")
 	return nil
 }
 
@@ -180,10 +179,10 @@ func (t *T) writeStat() error {
 		return nil
 	}
 	path := t.collectStatFile()
-	srLog.Debug().Str("path", path).Msg("rewrite")
+	srLog.Debug().Str("path", path).Msg("Rewrite")
 	f, err := os.Create(path)
 	if err != nil {
-		return errors.Wrap(err, "write stat")
+		return fmt.Errorf("Write stat: %w", err)
 	}
 	defer f.Close()
 	if err := t.stats.Write(f); err != nil {
@@ -217,7 +216,7 @@ func (t *T) collectFile(path string) error {
 	}
 	buff, err := os.ReadFile(path)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("Collect file: %w", err)
 	}
 	buff = obfuscateClusterSecret(dest, buff)
 	if err := t.write(dest, buff); err != nil {
@@ -230,7 +229,7 @@ func (t *T) collectFile(path string) error {
 		return err
 	}
 
-	srLog.Debug().Str("path", path).Msg("collected")
+	srLog.Debug().Str("path", path).Msg("Collected")
 	t.full[path] = nil
 	return nil
 }
@@ -281,7 +280,7 @@ func (t *T) write(path string, buff []byte) error {
 		}
 	}
 	if err := os.WriteFile(path, buff, 0600); err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("%w", err)
 	}
 	//srLog.Debug().Str("path", path).Msg("changed")
 	t.full[path] = nil
@@ -295,29 +294,29 @@ func (t *T) loadConfigs() error {
 	}
 	err := filepath.Walk(t.etcDir, func(path string, info fs.FileInfo, err error) error {
 		if info == nil {
-			srLog.Debug().Str("path", path).Msg("ignore non existing config file")
+			srLog.Debug().Str("path", path).Msg("Ignore non existing config file")
 			return nil
 		}
 		if info.Mode().IsDir() {
 			return nil
 		}
 		if !info.Mode().IsRegular() {
-			srLog.Debug().Str("path", path).Msg("ignore non regular config file")
+			srLog.Debug().Str("path", path).Msg("Ignore non regular config file")
 			return nil
 		}
 		if err := isConfigFileSecure(path); err != nil {
-			srLog.Warn().Str("path", path).Msgf("ignore non secure config file: %s", err)
+			srLog.Warn().Str("path", path).Msgf("Ignore non secure config file: %s", err)
 			return nil
 		}
 		f, err := os.Open(path)
 		if err != nil {
-			srLog.Warn().Err(err).Str("path", path).Msg("open config file")
+			srLog.Warn().Err(err).Str("path", path).Msg("Open config file")
 			return nil
 		}
 		defer f.Close()
 		if err := t.loadConfigReader(f); err != nil {
-			srLog.Warn().Err(err).Str("cf", path).Msg("load config file")
-			return errors.Wrapf(err, path)
+			srLog.Warn().Err(err).Str("cf", path).Msg("Load config file")
+			return fmt.Errorf("%s: %w", path, err)
 		}
 		return nil
 	})
@@ -331,14 +330,14 @@ func isConfigFileSecure(s string) error {
 	}
 	mode := info.Mode()
 	if mode&0002 != 0 {
-		return errors.Errorf("%s: file mode is insecure ('other' has write permission)", s)
+		return fmt.Errorf("%s: File mode is insecure ('other' has write permission)", s)
 	}
 	uid, gid, err := file.Ownership(s)
 	if err != nil {
 		return err
 	}
 	if uid != rootUID || gid != rootGID {
-		return errors.Errorf("%s: file ownership is insecure (must be owned by %d:%d)", s, rootUID, rootGID)
+		return fmt.Errorf("%s: File ownership is insecure (Must be owned by %d:%d)", s, rootUID, rootGID)
 	}
 	return nil
 }
@@ -368,7 +367,7 @@ func (t *T) loadConfigReader(r io.Reader) error {
 		case strings.HasPrefix(line, ";"):
 			continue
 		default:
-			srLog.Warn().Msgf("unsupported item type: %s", line)
+			srLog.Warn().Msgf("Unsupported item type: %s", line)
 			continue
 		}
 	}
@@ -392,7 +391,7 @@ func (t *T) findDeleted() error {
 			return nil
 		}
 		if _, ok := t.expanded[path]; !ok {
-			srLog.Debug().Str("path", path).Msg("deleted file")
+			srLog.Debug().Str("path", path).Msg("Deleted file")
 			t.statsDel(path)
 			t.deleted = append(t.deleted, path)
 		}
@@ -431,14 +430,14 @@ func expand(in []string, excludes map[string]string) map[string]string {
 		for _, match := range matches {
 			err := filepath.Walk(match, func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
-					srLog.Error().Err(err).Str("path", path).Msg("expand")
+					srLog.Error().Err(err).Str("path", path).Msg("Expand")
 					return nil
 				}
 				if !info.Mode().IsRegular() {
 					return nil
 				}
 				if cf, ok := excludes[path]; ok {
-					srLog.Debug().Str("path", path).Msgf("excluded by %s", cf)
+					srLog.Debug().Str("path", path).Msgf("Excluded by %s", cf)
 					return nil
 				}
 				//srLog.Debug().Str("path", path).Msgf("included by %s", s)
@@ -446,7 +445,7 @@ func expand(in []string, excludes map[string]string) map[string]string {
 				return nil
 			})
 			if err != nil {
-				srLog.Error().Err(err).Str("path", match).Msg("walk")
+				srLog.Error().Err(err).Str("path", match).Msg("Walk")
 				continue
 			}
 		}
@@ -475,7 +474,7 @@ func (t T) getLstree() ([]string, error) {
 	}
 	if response.Error != nil {
 		errStr := response.Error.Error()
-		return nil, errors.Errorf(errStr)
+		return nil, fmt.Errorf(errStr)
 	}
 	switch l := response.Result.(type) {
 	case []interface{}:
@@ -489,7 +488,7 @@ func (t T) getLstree() ([]string, error) {
 	case []string:
 		return l, nil
 	default:
-		return nil, errors.Errorf("unexpected sysreport_lstree rpc result: %+v\n", response.Result)
+		return nil, fmt.Errorf("Unexpected sysreport_lstree rpc result: %+v\n", response.Result)
 	}
 }
 
@@ -500,7 +499,7 @@ func (t T) send() error {
 		toSend = sortedKeys(t.full)
 		lstreeData, err := t.getLstree()
 		if err != nil {
-			return errors.Wrap(err, "can not get lstree from collector")
+			return fmt.Errorf("Can not get lstree from collector: %w", err)
 		}
 		deleted = t.filterLstree(lstreeData)
 	} else {
@@ -509,7 +508,7 @@ func (t T) send() error {
 	}
 
 	if len(toSend) == 0 && len(deleted) == 0 {
-		srLog.Info().Msg("no change to report")
+		srLog.Info().Msg("No change to report")
 		return nil
 	}
 
@@ -533,9 +532,9 @@ func (t T) send() error {
 	}
 	if response.Error != nil {
 		errStr := response.Error.Error()
-		return errors.Errorf(errStr)
+		return fmt.Errorf(errStr)
 	}
-	srLog.Info().Int("size", len(b)).Msg("sysreport sent")
+	srLog.Info().Int("size", len(b)).Msg("Report sent")
 	return nil
 }
 
@@ -544,7 +543,7 @@ func (t T) send() error {
 func (t T) unlink(path string) error {
 	base := t.collectDir()
 	if !strings.HasPrefix(path, base) {
-		return errors.Errorf("abort unlink %s: not based on %s", path, base)
+		return fmt.Errorf("Abort unlink %s: Not based on %s", path, base)
 	}
 	return os.Remove(path)
 }
@@ -552,7 +551,7 @@ func (t T) unlink(path string) error {
 func (t T) unlinkAll(path string) error {
 	base := t.collectDir()
 	if !strings.HasPrefix(path, base) {
-		return errors.Errorf("abort recursive unlink %s: not based on %s", path, base)
+		return fmt.Errorf("Abort recursive unlink %s: Not based on %s", path, base)
 	}
 	return os.RemoveAll(path)
 }
@@ -631,7 +630,7 @@ func (t T) statsGet(path string) (Stat, error) {
 	default:
 		stat, ok := t.stats[path]
 		if !ok {
-			return stat, errors.Errorf("%s not found in file stats cache", path)
+			return stat, fmt.Errorf("File %s not found in the file stats cache", path)
 		}
 		return stat, nil
 	}
@@ -649,15 +648,15 @@ func (t T) archive(l []string) (string, error) {
 		if !strings.HasPrefix(path, sysreportDir) {
 			continue
 		}
-		srLog.Info().Str("path", path).Msg("add changed file to archive")
+		srLog.Info().Str("path", path).Msg("Add changed file to archive")
 		statPath := relPath(t.collectFileDir(), path)
 		stat, err := t.statsGet(statPath)
 		if err != nil {
-			return f.Name(), err
+			return f.Name(), fmt.Errorf("%w", err)
 		}
 		r, err := os.Open(path)
 		if err != nil {
-			return f.Name(), errors.WithStack(err)
+			return f.Name(), fmt.Errorf("%w", err)
 		}
 		defer r.Close()
 		hdr := &tar.Header{
@@ -667,14 +666,14 @@ func (t T) archive(l []string) (string, error) {
 			ModTime: stat.MTime.Time(),
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
-			return f.Name(), errors.WithStack(err)
+			return f.Name(), fmt.Errorf("%w", err)
 		}
 		if _, err = io.Copy(tw, r); err != nil {
-			return f.Name(), errors.WithStack(err)
+			return f.Name(), fmt.Errorf("%w", err)
 		}
 	}
 	if err := tw.Close(); err != nil {
-		return f.Name(), err
+		return f.Name(), fmt.Errorf("%w", err)
 	}
 	return f.Name(), nil
 }
@@ -735,9 +734,9 @@ func (t *T) deleteCollected() error {
 	for _, path := range t.deleted {
 		path = filepath.Join(t.collectFileDir(), path)
 		if err := t.unlink(path); err != nil {
-			return errors.Wrap(err, "deleteCollected")
+			return fmt.Errorf("Delete cache of deleted file: %w", err)
 		}
-		srLog.Debug().Str("path", path).Msg("delete cache of deleted file")
+		srLog.Debug().Str("path", path).Msg("Delete cache of deleted file")
 	}
 	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/path"
 )
@@ -20,8 +19,9 @@ type (
 
 // From return []string env from configs_environment or secrets_environment
 // Examples:
-//    From([]string{"FOO=cfg1/key1"}, "namespace1", "cfg")
-//    From([]string{"FOO=sec1/key1"}, "namespace1", "sec")
+//
+//	From([]string{"FOO=cfg1/key1"}, "namespace1", "cfg")
+//	From([]string{"FOO=sec1/key1"}, "namespace1", "sec")
 func From(items []string, ns, kd string) (result []string, err error) {
 	for _, item := range items {
 		if item == "[]" {
@@ -103,7 +103,7 @@ func getKey(name, ns, kd, key string) (string, error) {
 func decodeKey(o decoder, key string) (s string, err error) {
 	var b []byte
 	if b, err = o.DecodeKey(key); err != nil {
-		return "", errors.Wrapf(err, "env decode from %s", o)
+		return "", fmt.Errorf("env decode from %s: %w", o, err)
 	}
 	return string(b), nil
 }

@@ -87,7 +87,7 @@ func (t *CmdObjectPrintStatus) extractLocal(selector string) ([]object.Digest, e
 			status, err = obj.Status(ctx)
 		}
 		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("%w: %s", err, p.String()))
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 			continue
 		}
 		o := object.Digest{
@@ -154,7 +154,7 @@ func (t *CmdObjectPrintStatus) Run(selector, kind string) error {
 	)
 	paths, err := sel.ExpandSet()
 	if err != nil {
-		return fmt.Errorf("%w: expand selection", err)
+		return fmt.Errorf("expand selection: %w", err)
 	}
 	data, _ = t.extract(mergedSelector, c)
 

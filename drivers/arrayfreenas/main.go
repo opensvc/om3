@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/array"
@@ -498,7 +497,7 @@ func (t Array) DelZvol(name string) (*Dataset, error) {
 	}
 	dataset, ok := datasets.GetByName(name)
 	if !ok {
-		return nil, errors.Errorf("dataset not found")
+		return nil, fmt.Errorf("dataset not found")
 	}
 	client, err := t.client()
 	if err != nil {
@@ -536,7 +535,7 @@ func (t Array) DelISCSIExtent(name string) (*ISCSIExtent, error) {
 	}
 	extent, ok := extents.GetByPath("zvol/" + name)
 	if !ok {
-		return nil, errors.Errorf("extent %s not found (%d scanned)", name, len(extents))
+		return nil, fmt.Errorf("extent %s not found (%d scanned)", name, len(extents))
 	}
 	return &extent, t.delISCSIExtent(extent)
 }
@@ -678,7 +677,7 @@ func (t Array) GetPoolByName(name string) (Pool, error) {
 			return pool, nil
 		}
 	}
-	return Pool{}, errors.Errorf("pool %s not found", name)
+	return Pool{}, fmt.Errorf("pool %s not found", name)
 }
 
 func dump(data any) error {
@@ -710,7 +709,7 @@ func (t Array) UpdateDataset(id string, params UpdateDatasetParams) (*Dataset, e
 	if err := parseRespError(r.Body); err != nil {
 		return nil, err
 	}
-	return nil, errors.Errorf("%s", string(r.Body))
+	return nil, fmt.Errorf("%s", string(r.Body))
 }
 
 func (t Array) CreateDataset(params CreateDatasetParams) (*Dataset, error) {
@@ -728,7 +727,7 @@ func (t Array) CreateDataset(params CreateDatasetParams) (*Dataset, error) {
 	if err := parseRespError(r.Body); err != nil {
 		return nil, err
 	}
-	return nil, errors.Errorf("%s", string(r.Body))
+	return nil, fmt.Errorf("%s", string(r.Body))
 }
 
 func (t Array) DeleteDataset(id string) (*Dataset, error) {
@@ -747,7 +746,7 @@ func (t Array) DeleteDataset(id string) (*Dataset, error) {
 	if r.StatusCode() == http.StatusOK {
 		return dataset, nil
 	}
-	return nil, errors.Errorf("%s", r.Status())
+	return nil, fmt.Errorf("%s", r.Status())
 }
 
 func (t Array) GetPools() ([]Pool, error) {
@@ -972,7 +971,7 @@ func (t Array) MapDisk(name, mapping string, lunID *int) (ISCSITargetExtentsResp
 	if err != nil {
 		return missingTargetExtents, err
 	} else if len(paths) == 0 {
-		return missingTargetExtents, errors.New("no paths parsed from mapping")
+		return missingTargetExtents, fmt.Errorf("no paths parsed from mapping")
 	}
 	targets, err := t.GetISCSITargets()
 	if err != nil {
@@ -989,12 +988,12 @@ func (t Array) MapDisk(name, mapping string, lunID *int) (ISCSITargetExtentsResp
 	for _, p := range paths {
 		target, ok := targets.GetByName(p.Target.Name)
 		if !ok {
-			return missingTargetExtents, errors.Errorf("target %s not found (%d scanned)", p.Target.Name, len(targets))
+			return missingTargetExtents, fmt.Errorf("target %s not found (%d scanned)", p.Target.Name, len(targets))
 		}
 		extentName := "zvol/" + name
 		extent, ok := extents.GetByPath(extentName)
 		if !ok {
-			return missingTargetExtents, errors.Errorf("extent %s not found (%d scanned)", extentName, len(extents))
+			return missingTargetExtents, fmt.Errorf("extent %s not found (%d scanned)", extentName, len(extents))
 		}
 		filteredTargetextents := targetextents.WithExtent(extent).WithTarget(target)
 		if len(filteredTargetextents) == 1 {
@@ -1030,7 +1029,7 @@ func (t Array) createISCSITargetExtent(params CreateISCSITargetExtentParams) (*I
 	if err := parseRespError(r.Body); err != nil {
 		return nil, err
 	}
-	return nil, errors.Errorf("%s", string(r.Body))
+	return nil, fmt.Errorf("%s", string(r.Body))
 }
 
 func (t Array) createISCSIExtent(params CreateISCSIExtentParams) (*ISCSIExtent, error) {
@@ -1048,26 +1047,26 @@ func (t Array) createISCSIExtent(params CreateISCSIExtentParams) (*ISCSIExtent, 
 	if err := parseRespError(r.Body); err != nil {
 		return nil, err
 	}
-	return nil, errors.Errorf("%s", string(r.Body))
+	return nil, fmt.Errorf("%s", string(r.Body))
 }
 
 func (t Array) client() (*ClientWithResponses, error) {
 	api, err := t.api()
 	if err != nil {
-		return nil, errors.Wrap(err, "load api url")
+		return nil, fmt.Errorf("load api url: %w", err)
 	}
 	username := t.username()
 	password, err := t.password()
 	if err != nil {
-		return nil, errors.Wrap(err, "load password")
+		return nil, fmt.Errorf("load password: %w", err)
 	}
 	basicAuthProvider, err := securityprovider.NewSecurityProviderBasicAuth(username, password)
 	if err != nil {
-		return nil, errors.Wrap(err, "new openapi basic auth security provider")
+		return nil, fmt.Errorf("new openapi basic auth security provider: %w", err)
 	}
 	client, err := NewClientWithResponses(api.String(), WithRequestEditorFn(basicAuthProvider.Intercept))
 	if err != nil {
-		return nil, errors.Wrap(err, "new open api client")
+		return nil, fmt.Errorf("new openapi client: %w", err)
 	}
 	return client, nil
 }
@@ -1091,7 +1090,7 @@ func (t Array) DiskPaths(disk Disk) (san.Paths, error) {
 	for _, targetextent := range disk.ISCSI.TargetExtents {
 		target, ok := targets.GetByID(targetextent.TargetId)
 		if !ok {
-			return paths, errors.Errorf("target id %d not found", targetextent.TargetId)
+			return paths, fmt.Errorf("target id %d not found", targetextent.TargetId)
 		}
 		pathTarget := san.Target{
 			Name: target.Name,
@@ -1100,7 +1099,7 @@ func (t Array) DiskPaths(disk Disk) (san.Paths, error) {
 		for _, group := range target.Groups {
 			initiator, ok := initiators.GetByID(group.InitiatorId)
 			if !ok {
-				return paths, errors.Errorf("initiator id %d not found", group.InitiatorId)
+				return paths, fmt.Errorf("initiator id %d not found", group.InitiatorId)
 			}
 			for _, iqn := range initiator.Initiators {
 				pathInitiator := san.Initiator{

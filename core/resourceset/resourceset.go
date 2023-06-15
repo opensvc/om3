@@ -188,7 +188,6 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn Do
 }
 
 func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
-	var err error
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
@@ -217,7 +216,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		if res.Resource.IsOptional() {
 			continue
 		}
-		errors.Join(err, fmt.Errorf("%w: %s", res.Error, res.Resource.RID()))
+		errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 	}
 	return errs
 }
@@ -241,7 +240,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		case r.IsOptional():
 			continue
 		default:
-			return fmt.Errorf("%w: %s", err, rid)
+			return fmt.Errorf("%s: %w", rid, err)
 		}
 	}
 	return nil

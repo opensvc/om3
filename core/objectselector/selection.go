@@ -155,7 +155,7 @@ func (t *Selection) expand() error {
 		if err := t.daemonExpand(); err == nil {
 			return nil
 		} else if clientcontext.IsSet() {
-			return errors.Wrapf(err, "daemon expansion fatal error")
+			return fmt.Errorf("Daemon expansion fatal error: %w", err)
 		} else {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
@@ -337,7 +337,7 @@ func (t *Selection) daemonExpand() error {
 	if resp, err := t.client.GetObjectSelector(context.Background(), &params); err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("unexpected get objects selector status %s", resp.Status)
+		return errors.Errorf("Unexpected get objects selector status %s", resp.Status)
 	} else {
 		defer resp.Body.Close()
 		return json.NewDecoder(resp.Body).Decode(&t.paths)

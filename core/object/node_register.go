@@ -12,7 +12,6 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/pkg/errors"
 	"golang.org/x/term"
 )
 
@@ -113,30 +112,30 @@ func (t Node) registerAsUser(user, password, app string) error {
 	}
 	b, err := json.Marshal(reqData)
 	if err != nil {
-		return errors.Wrap(err, "encode request body")
+		return fmt.Errorf("Encode request body: %w", err)
 	}
 	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
 	req.SetBasicAuth(user, password)
 	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "do request")
+		return fmt.Errorf("Do request: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		if b, err := io.ReadAll(response.Body); err != nil {
-			return errors.Errorf("%d: %s", response.StatusCode, response.Status)
+			return fmt.Errorf("%d: %s", response.StatusCode, response.Status)
 		} else {
-			return errors.Errorf("%s", string(b))
+			return fmt.Errorf("%s", string(b))
 		}
 	}
 	dec := json.NewDecoder(response.Body)
 	data := registerRes{}
 	if err := dec.Decode(&data); err != nil {
-		return errors.Wrapf(err, "decode response body")
+		return fmt.Errorf("Decode response body: %w", err)
 	}
 	if data.Error != "" {
-		return errors.New(data.Error)
+		return fmt.Errorf(data.Error)
 	}
 	if data.Info != "" {
 		t.Log().Info().Msg(data.Info)
@@ -152,7 +151,7 @@ func (t Node) registerAsNode() error {
 	if response, err := client.Call("register_node"); err != nil {
 		return err
 	} else if response.Error != nil {
-		return errors.Errorf("rpc: %s: %s", response.Error.Message, response.Error.Data)
+		return fmt.Errorf("rpc: %s: %s", response.Error.Message, response.Error.Data)
 	} else if response.Result != nil {
 		switch v := response.Result.(type) {
 		case []interface{}:
@@ -164,16 +163,16 @@ func (t Node) registerAsNode() error {
 				if strings.Contains(s, "already") {
 					t.Log().Info().Msg(s)
 				} else {
-					return errors.New(s)
+					return fmt.Errorf(s)
 				}
 			}
 		case string:
 			return t.writeUUID(v)
 		default:
-			return errors.Errorf("unknown response result type: %+v", v)
+			return fmt.Errorf("Unknown response result type: %+v", v)
 		}
 	} else {
-		return errors.Errorf("unexpected rpc response: %+v", response)
+		return fmt.Errorf("Unexpected rpc response: %+v", response)
 	}
 	return nil
 }

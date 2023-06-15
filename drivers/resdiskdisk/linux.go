@@ -4,11 +4,11 @@ package resdiskdisk
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/yookoala/realpath"
 
 	"github.com/opensvc/om3/core/status"
@@ -59,17 +59,17 @@ func (t T) unconfigure() error {
 	for _, dev := range t.ExposedDevices() {
 		slaves, err := dev.Slaves()
 		if err != nil {
-			return errors.Wrapf(err, "%s get slaves", dev)
+			return fmt.Errorf("%s get slaves: %w", dev, err)
 		}
 		for _, slave := range slaves {
 			if err := slave.Delete(); err != nil {
-				return errors.Wrapf(err, "%s slave %s delete", dev, slave)
+				return fmt.Errorf("%s slave %s delete: %w", dev, slave, err)
 			} else {
 				t.Log().Info().Msgf("%s slave %s deleted", dev, slave)
 			}
 		}
 		if err := dev.RemoveMultipath(); err != nil {
-			return errors.Wrapf(err, "%s multipath remove", dev)
+			return fmt.Errorf("%s multipath remove: %w", dev, err)
 		} else {
 			t.Log().Info().Msgf("%s multipath removed", dev)
 		}
@@ -84,25 +84,25 @@ func (t T) configure(force forceMode) error {
 		return nil
 	}
 	if t.DiskID == "" {
-		return errors.Errorf("system configuration: disk_id is not set")
+		return fmt.Errorf("system configuration: disk_id is not set")
 	}
 	t.Log().Info().Msg("system configuration: scsi scan")
 	if err := scsi.LockedScanAll(10 * time.Second); err != nil {
-		return errors.Wrap(err, "system configuration")
+		return fmt.Errorf("system configuration: %w", err)
 	}
 	time.Sleep(2 * time.Second)
 	udevadm.Settle()
 	exposedDevices = t.ExposedDevices()
 	if len(exposedDevices) == 0 {
-		return errors.Errorf("system configuration: %s is not exposed device after scan", t.DiskID)
+		return fmt.Errorf("system configuration: %s is not exposed device after scan", t.DiskID)
 	}
 	exposedDevice := exposedDevices[0]
 	slaves, err := exposedDevice.Slaves()
 	if err != nil {
-		return errors.Wrap(err, "system configuration")
+		return fmt.Errorf("system configuration: %w", err)
 	}
 	if len(slaves) < 1 {
-		return errors.Errorf("system configuration: no slaves appeared for disk %s", exposedDevice.Path())
+		return fmt.Errorf("system configuration: no slaves appeared for disk %s", exposedDevice.Path())
 	}
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/core/driver"
@@ -138,10 +137,10 @@ func (t T) allocateSubnets() error {
 
 	ipsPerNode := t.GetInt("ips_per_node")
 	if ipsPerNode == 0 {
-		return errors.Errorf("ips_per_node must be greater than 0")
+		return fmt.Errorf("ips_per_node must be greater than 0")
 	}
 	if ipsPerNode&(ipsPerNode-1) == 1 {
-		return errors.Errorf("ips_per_node must be a power of 2")
+		return fmt.Errorf("ips_per_node must be a power of 2")
 	}
 
 	ip, network, err := net.ParseCIDR(t.Network())
@@ -155,7 +154,7 @@ func (t T) allocateSubnets() error {
 	subnetOnes := int(math.Log2(float64(maxIpsPerNodes)))
 	maxIpsPerNodes = 1 << subnetOnes
 	if ipsPerNode > maxIpsPerNodes {
-		return errors.Errorf("ips_per_node must be <%d (%d ips in %s divided by %d nodes)", maxIpsPerNodes, maxIps, network, len(nodes))
+		return fmt.Errorf("ips_per_node must be <%d (%d ips in %s divided by %d nodes)", maxIpsPerNodes, maxIps, network, len(nodes))
 	}
 	addr, err := netip.ParseAddr(ip.String())
 	if err != nil {
@@ -192,23 +191,23 @@ func (t *T) Setup() error {
 		return err
 	}
 	if link, err = t.setupBridge(); err != nil {
-		return errors.Wrap(err, "setup br")
+		return fmt.Errorf("setup br: %w", err)
 	}
 	if err := t.setupBridgeIP(link, brIP); err != nil {
-		return errors.Wrap(err, "setup br ip")
+		return fmt.Errorf("setup br ip: %w", err)
 	}
 	if err := t.setupBridgeMAC(link, brIP); err != nil {
-		return errors.Wrap(err, "setup mac")
+		return fmt.Errorf("setup mac: %w", err)
 	}
 	if err := netlink.LinkSetUp(link); err != nil {
-		return errors.Wrap(err, "link up")
+		return fmt.Errorf("link up: %w", err)
 	}
 	if localIP, err = t.getLocalIP(); err != nil {
-		return errors.Wrap(err, "get local ip")
+		return fmt.Errorf("get local ip: %w", err)
 	}
 	for idx, nodename := range t.Nodes() {
 		if err := t.setupNode(nodename, idx, localIP, brIP); err != nil {
-			return errors.Wrapf(err, "setup network to node %s", nodename)
+			return fmt.Errorf("setup network to node %s: %w", nodename, err)
 		}
 	}
 	return nil
@@ -219,14 +218,14 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 	tunnel := t.tunnel()
 	peerIP, err := t.getNodeIP(nodename)
 	if err != nil {
-		return errors.Wrap(err, "get peer ip")
+		return fmt.Errorf("get peer ip: %w", err)
 	}
 	dst, err := t.NodeSubnet(nodename)
 	if err != nil {
-		return errors.Wrap(err, "get peer subnet")
+		return fmt.Errorf("get peer subnet: %w", err)
 	}
 	if dst == nil {
-		return errors.Wrap(err, "no peer subnet")
+		return fmt.Errorf("no peer subnet: %w", err)
 	}
 	if hostname.Hostname() == nodename {
 		route = network.Route{
@@ -235,14 +234,14 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 			Dev:      t.brName(),
 		}
 	} else if v, err := t.mustTunnel(tunnel, peerIP); err != nil {
-		return errors.Wrap(err, "must tunnel")
+		return fmt.Errorf("must tunnel: %w", err)
 	} else if v {
 		name := tunName(peerIP, nodeIndex)
 		if err := t.setupNodeTunnelLink(nodename, name, localIP, peerIP); err != nil {
-			return errors.Wrap(err, "setup tunnel")
+			return fmt.Errorf("setup tunnel: %w", err)
 		}
 		if err := t.setupNodeTunnelLinkUp(name); err != nil {
-			return errors.Wrap(err, "setup tunnel")
+			return fmt.Errorf("setup tunnel: %w", err)
 		}
 		route = network.Route{
 			Nodename: nodename,
@@ -258,7 +257,7 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 		}
 	}
 	if err := t.setupNodeRoutes(route); err != nil {
-		return errors.Wrap(err, "setup route")
+		return fmt.Errorf("setup route: %w", err)
 	}
 	return nil
 }
@@ -283,7 +282,7 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 	// clean up existing tunnels with same endpoints but different name
 	link, err := t.getTunnelByEndpoints(localIP, peerIP)
 	if err != nil {
-		return errors.Wrapf(err, "get tunnel from %s to %s", localIP, peerIP)
+		return fmt.Errorf("get tunnel from %s to %s: %w", err, localIP, peerIP)
 	}
 	if link != nil {
 		if link.Attrs().Name == name {
@@ -308,14 +307,14 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 		fallthrough
 	case link == nil:
 		if err := t.addTunnel(name, localIP, peerIP); err != nil {
-			return errors.Wrap(err, "add tunnel")
+			return fmt.Errorf("add tunnel: %w", err)
 		}
 	case link != nil && t.isSameTunnel(link, localIP, peerIP):
 		t.Log().Info().Msgf("tunnel to %s is already configured", nodename)
 		return nil
 	default:
 		if err := t.modTunnel(name, localIP, peerIP); err != nil {
-			return errors.Wrapf(err, "modify tunnel to %s", nodename)
+			return fmt.Errorf("modify tunnel to %s", nodename, err)
 		}
 	}
 	return nil
@@ -323,7 +322,7 @@ func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) e
 
 func (t *T) setupNodeTunnelLinkUp(name string) error {
 	if link, err := netlink.LinkByName(name); err != nil {
-		return errors.Wrapf(err, "link up")
+		return fmt.Errorf("link up: %w", err)
 	} else if link != nil {
 		t.Log().Info().Msgf("link up %s", name)
 		netlink.LinkSetUp(link)
@@ -605,7 +604,7 @@ func (t *T) setupNodeRoutes(route network.Route) error {
 		route.Table = table
 		t.Log().Info().Msgf("route add %s", route)
 		if err := route.Add(); err != nil {
-			return errors.Wrapf(err, "%s", route)
+			return fmt.Errorf("route add %s: %w", route, err)
 		}
 	}
 	return nil

@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
@@ -27,6 +25,7 @@ import (
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xsession"
+	"github.com/pkg/errors"
 )
 
 // Resources implementing setters
@@ -40,14 +39,14 @@ type (
 )
 
 var (
-	ErrInvalidNode = errors.New("invalid node")
-	ErrDisabled    = errors.New("object instance is disabled")
+	ErrInvalidNode = errors.New("Invalid node")
+	ErrDisabled    = errors.New("Object instance is disabled")
 )
 
 func (t *actor) validateAction() error {
 	node := rawconfig.NodeSection()
 	if t.Env() != "PRD" && node.Env == "PRD" {
-		return errors.Wrapf(ErrInvalidNode, "not allowed to run on this node (svc env=%s node env=%s)", t.Env(), node.Env)
+		return fmt.Errorf("%w: Not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, t.Env(), node.Env)
 	}
 	if t.config.IsInNodes(hostname.Hostname()) {
 		return nil
@@ -55,7 +54,7 @@ func (t *actor) validateAction() error {
 	if t.config.IsInDRPNodes(hostname.Hostname()) {
 		return nil
 	}
-	return errors.Wrapf(ErrInvalidNode, "hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", hostname.Hostname())
+	return fmt.Errorf("%w: The hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", ErrInvalidNode, hostname.Hostname())
 }
 
 func (t *actor) setenv(action string, leader bool) {
@@ -80,35 +79,35 @@ func (t *actor) preAction(ctx context.Context) error {
 
 func (t *actor) needRollback(ctx context.Context) bool {
 	if actionrollback.Len(ctx) == 0 {
-		t.Log().Debug().Msgf("skip rollback: empty stack")
+		t.Log().Debug().Msgf("Skip rollback: Empty stack")
 		return false
 	}
 	action := actioncontext.Props(ctx)
 	if !action.Rollback {
-		t.Log().Debug().Msgf("skip rollback: not demanded by the %s action", action.Name)
+		t.Log().Debug().Msgf("Skip rollback: Not demanded by the %s action", action.Name)
 		return false
 	}
 	if actioncontext.IsRollbackDisabled(ctx) {
-		t.Log().Debug().Msg("skip rollback: disabled via the command flag")
+		t.Log().Debug().Msg("Skip rollback: Disabled via the command flag")
 		return false
 	}
 	k := key.Parse("rollback")
 	if !t.Config().GetBool(k) {
-		t.Log().Debug().Msg("skip rollback: disabled via configuration keyword")
+		t.Log().Debug().Msg("Skip rollback: Disabled via configuration keyword")
 		return false
 	}
 	return true
 }
 
 func (t *actor) rollback(ctx context.Context) error {
-	t.Log().Info().Msg("rollback")
+	t.Log().Info().Msg("Rollback")
 	return actionrollback.Rollback(ctx)
 }
 
 func (t *actor) withTimeout(ctx context.Context) (context.Context, func()) {
 	props := actioncontext.Props(ctx)
 	timeout, source := t.actionTimeout(props.TimeoutKeywords)
-	t.log.Debug().Msgf("action timeout set to %s from keyword %s", timeout, source)
+	t.log.Debug().Msgf("Action timeout set to %s from keyword %s", timeout, source)
 	if timeout == 0 {
 		return ctx, func() {}
 	}
@@ -169,17 +168,17 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	})
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		t.log.Debug().Msg("skip announce progress: daemon is not running")
+		t.log.Debug().Msg("Skip announce progress: The daemon is not running")
 		return nil
 	case err != nil:
-		t.log.Error().Err(err).Msgf("announce %s state", progress)
+		t.log.Error().Err(err).Msgf("Announce %s state", progress)
 		return err
 	case resp.StatusCode != http.StatusOK:
-		err := errors.Errorf("unexpected post object progress status %s", resp.Status)
-		t.log.Error().Err(err).Msgf("announce %s state", progress)
+		err := fmt.Errorf("Unexpected post object progress status %s", resp.Status)
+		t.log.Error().Err(err).Msgf("Announce %s state", progress)
 		return err
 	}
-	t.log.Info().Msgf("announce %s state", progress)
+	t.log.Info().Msgf("Announce %s state", progress)
 	return nil
 }
 
@@ -203,35 +202,35 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	for _, pStr := range t.HardAffinity() {
 		p, err := path.Parse(pStr)
 		if err != nil {
-			return errors.Wrapf(err, "hard affinity object %s parse path", p)
+			return fmt.Errorf("Hard affinity object %s parse path: %w", p, err)
 		}
 		obj, err := NewCore(p, WithVolatile(true))
 		if err != nil {
-			return errors.Wrapf(err, "hard affinity object %s init", p)
+			return fmt.Errorf("Hard affinity object %s init: %w", p, err)
 		}
 		instanceStatus, err := obj.Status(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "hard affinity object %s status", p)
+			return fmt.Errorf("Hard affinity object %s status: %w", p, err)
 		}
 		switch instanceStatus.Avail {
 		case status.Up:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("Hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
 		}
 	}
 	for _, pStr := range t.HardAntiAffinity() {
 		p, err := path.Parse(pStr)
 		if err != nil {
-			return errors.Wrapf(err, "hard affinity object %s parse path", p)
+			return fmt.Errorf("Hard anti affinity object %s parse path: %w", p, err)
 		}
 		obj, err := NewCore(p, WithVolatile(true))
 		if err != nil {
-			return errors.Wrapf(err, "hard affinity object %s init", p)
+			return fmt.Errorf("Hard anti affinity object %s init: %w", p, err)
 		}
 		instanceStatus, err := obj.Status(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "hard affinity object %s status", p)
+			return fmt.Errorf("Hard anti affinity object %s status: %w", p, err)
 		}
 		switch instanceStatus.Avail {
 		case status.Down:
@@ -239,7 +238,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		case status.StandbyDown:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("Hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
 		}
 	}
 	return nil
@@ -269,7 +268,7 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 		ret = ret || <-q
 	}
 	if ret {
-		return errors.New("abort start")
+		return errors.New("Abort start")
 	}
 	return nil
 }
@@ -392,7 +391,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if err := t.ResourceSets().Do(ctx, l, b, action.Name, progressWrap(linkWrap(fn))); err != nil {
 		if t.needRollback(ctx) {
 			if errRollback := t.rollback(ctx); errRollback != nil {
-				t.Log().Err(errRollback).Msg("rollback")
+				t.Log().Err(errRollback).Msg("Rollback")
 			}
 		}
 		return err
@@ -418,13 +417,13 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 		switch instStatus.Avail {
 		case status.Down, status.StandbyUp, status.StandbyUpWithDown, status.NotApplicable:
 		default:
-			return errors.Errorf("the stop action returned no error but end avail status is %s", instStatus.Avail)
+			return fmt.Errorf("The stop action returned no error but end avail status is %s", instStatus.Avail)
 		}
 	case "start":
 		switch instStatus.Avail {
 		case status.Up, status.NotApplicable, status.StandbyUpWithUp:
 		default:
-			return errors.Errorf("the start action returned no error but end avail status is %s", instStatus.Avail)
+			return fmt.Errorf("The start action returned no error but end avail status is %s", instStatus.Avail)
 		}
 	}
 	return nil
@@ -436,19 +435,19 @@ func (t *actor) mayFreeze(ctx context.Context) error {
 		return nil
 	}
 	if actioncontext.IsDryRun(ctx) {
-		t.log.Debug().Msg("skip freeze: dry run")
+		t.log.Debug().Msg("Skip freeze: Dry run")
 		return nil
 	}
 	if !resourceselector.FromContext(ctx, nil).IsZero() {
-		t.log.Debug().Msg("skip freeze: resource selection")
+		t.log.Debug().Msg("Skip freeze: Resource selection")
 		return nil
 	}
 	if !t.orchestrateWantsFreeze() {
-		t.log.Debug().Msg("skip freeze: orchestrate value")
+		t.log.Debug().Msg("Skip freeze: Orchestrate value")
 		return nil
 	}
 	if env.HasDaemonOrigin() {
-		t.log.Debug().Msg("skip freeze: action has daemon origin")
+		t.log.Debug().Msg("Skip freeze: Action has daemon origin")
 		return nil
 	}
 	return t.Freeze(ctx)

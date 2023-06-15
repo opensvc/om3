@@ -8,7 +8,6 @@ import (
 	"net"
 
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -31,7 +30,7 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	tmpDev := fmt.Sprintf("ph%d%s", pid, dev)
 	parentLink, err := netlink.LinkByName(t.IpDev)
 	if err != nil {
-		return errors.Wrap(err, t.IpDev)
+		return fmt.Errorf("%s: %w", t.IpDev, err)
 	}
 	if _, err := netlink.LinkByName(tmpDev); err == nil {
 		return fmt.Errorf("%s exists, should not", tmpDev)
@@ -61,10 +60,10 @@ func (t *T) startIPVLANDev(ctx context.Context, netns ns.NetNS, pid int, dev str
 	}
 	if err := netns.Do(func(_ ns.NetNS) error {
 		if err := netlink.LinkSetName(link, dev); err != nil {
-			return errors.Wrapf(err, "ip link set %s name %s", tmpDev, dev)
+			return fmt.Errorf("ip link set %s name %s: %w", tmpDev, dev, err)
 		}
 		if err := netlink.LinkSetUp(link); err != nil {
-			return errors.Wrapf(err, "ip link set %s up", dev)
+			return fmt.Errorf("ip link set %s up: %w", dev, err)
 		}
 		return nil
 	}); err != nil {
