@@ -9,13 +9,12 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/uri"
-	"github.com/pkg/errors"
 )
 
 // AddKey sets a new key and commits immediately
 func (t *keystore) AddKey(name string, b []byte) error {
 	if t.HasKey(name) {
-		return fmt.Errorf("key already exist: %s. use the change action.", name)
+		return fmt.Errorf("key already exist: %s. use the change action", name)
 	}
 	if err := t.addKey(name, b); err != nil {
 		return err
@@ -26,7 +25,7 @@ func (t *keystore) AddKey(name string, b []byte) error {
 // ChangeKey changes the value of a existing key and commits immediately
 func (t *keystore) ChangeKey(name string, b []byte) error {
 	if !t.HasKey(name) {
-		return fmt.Errorf("key does not exist: %s. use the add action.", name)
+		return fmt.Errorf("key does not exist: %s. use the add action", name)
 	}
 	if err := t.addKey(name, b); err != nil {
 		return err
@@ -38,7 +37,7 @@ func (t *keystore) AddKeyFrom(name string, from string) error {
 		return fmt.Errorf("key name can not be empty")
 	}
 	if t.HasKey(name) {
-		return fmt.Errorf("key already exist: %s. use the change action.", name)
+		return fmt.Errorf("key already exist: %s. use the change action", name)
 	}
 	if err := t.alterFrom(name, from); err != nil {
 		return err
@@ -51,7 +50,7 @@ func (t *keystore) ChangeKeyFrom(name string, from string) error {
 		return fmt.Errorf("key name can not be empty")
 	}
 	if !t.HasKey(name) {
-		return fmt.Errorf("key does not exist: %s. use the add action.", name)
+		return fmt.Errorf("key does not exist: %s. use the add action", name)
 	}
 	if err := t.alterFrom(name, from); err != nil {
 		return err
@@ -94,7 +93,7 @@ func (t *keystore) fromStdin(name string) error {
 		}
 		return t.addKey(name, b)
 	} else {
-		return errors.Errorf("stdin must be a pipe")
+		return fmt.Errorf("stdin must be a pipe")
 	}
 }
 

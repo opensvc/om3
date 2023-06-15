@@ -160,10 +160,10 @@ func (t *CmdDaemonJoin) extractCaClaim() (ca []byte, err error) {
 	if claim, ok := token.Claims.(*joinClaim); ok {
 		ca = []byte(claim.Ca)
 	} else {
-		err = fmt.Errorf("Invalid token claims")
+		err = fmt.Errorf("invalid token claims")
 	}
 	if len(ca) == 0 {
-		err = fmt.Errorf("Token claim ca is empty")
+		err = fmt.Errorf("token claim ca is empty")
 	}
 	return
 }

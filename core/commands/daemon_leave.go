@@ -117,14 +117,14 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
 			case (&msgbus.LeaveError{}).Kind():
-				err := fmt.Errorf("Leave error: %s", ev.Data)
+				err := fmt.Errorf("leave error: %s", ev.Data)
 				return err
 			case (&msgbus.LeaveIgnored{}).Kind():
 				// TODO parse Reason
 				_, _ = fmt.Fprintf(os.Stdout, "Leave ignored: %s", ev.Data)
 				return nil
 			default:
-				return fmt.Errorf("Unexpected event %s %v", ev.Kind, ev.Data)
+				return fmt.Errorf("unexpected event %s %v", ev.Kind, ev.Data)
 			}
 		}
 	}
@@ -136,9 +136,9 @@ func (t *CmdDaemonLeave) leave() error {
 		Node: t.localhost,
 	}
 	if resp, err := t.cli.PostDaemonLeave(context.Background(), &params); err != nil {
-		return fmt.Errorf("Daemon leave error: %w", err)
+		return fmt.Errorf("daemon leave error: %w", err)
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Daemon leave unexpected status code %s", resp.Status)
+		return fmt.Errorf("daemon leave unexpected status code %s", resp.Status)
 	}
 	return nil
 }
@@ -155,7 +155,7 @@ func (t *CmdDaemonLeave) checkParams() error {
 				return nil
 			}
 		}
-		return fmt.Errorf("Unable to find api node to post leave request")
+		return fmt.Errorf("unable to find api node to post leave request")
 	}
 	return nil
 }

@@ -51,8 +51,8 @@ type (
 )
 
 var (
-	ErrNoIPAddrAvail = errors.New("No ip address available")
-	ErrDupIPAlloc    = errors.New("Duplicate ip allocation")
+	ErrNoIPAddrAvail = errors.New("no ip address available")
+	ErrDupIPAlloc    = errors.New("duplicate ip allocation")
 )
 
 func New() resource.Driver {

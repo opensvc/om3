@@ -112,14 +112,14 @@ func (t Node) registerAsUser(user, password, app string) error {
 	}
 	b, err := json.Marshal(reqData)
 	if err != nil {
-		return fmt.Errorf("Encode request body: %w", err)
+		return fmt.Errorf("encode request body: %w", err)
 	}
 	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(b))
 	req.SetBasicAuth(user, password)
 	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Do request: %w", err)
+		return fmt.Errorf("do request: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
@@ -132,7 +132,7 @@ func (t Node) registerAsUser(user, password, app string) error {
 	dec := json.NewDecoder(response.Body)
 	data := registerRes{}
 	if err := dec.Decode(&data); err != nil {
-		return fmt.Errorf("Decode response body: %w", err)
+		return fmt.Errorf("decode response body: %w", err)
 	}
 	if data.Error != "" {
 		return fmt.Errorf(data.Error)
@@ -169,10 +169,10 @@ func (t Node) registerAsNode() error {
 		case string:
 			return t.writeUUID(v)
 		default:
-			return fmt.Errorf("Unknown response result type: %+v", v)
+			return fmt.Errorf("unknown response result type: %+v", v)
 		}
 	} else {
-		return fmt.Errorf("Unexpected rpc response: %+v", response)
+		return fmt.Errorf("unexpected rpc response: %+v", response)
 	}
 	return nil
 }

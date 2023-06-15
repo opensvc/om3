@@ -8,9 +8,9 @@ import (
 )
 
 func (t *T) startMACVLAN(ctx context.Context) error {
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t *T) stopMACVLAN(ctx context.Context) error {
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }

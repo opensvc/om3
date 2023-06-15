@@ -60,13 +60,13 @@ func (t Route) Add() error {
 	}
 	if t.Dev != "" {
 		if intf, err := net.InterfaceByName(t.Dev); err != nil {
-			return fmt.Errorf("Interface '%s' lookup: %w", t.Dev, err)
+			return fmt.Errorf("interface '%s' lookup: %w", t.Dev, err)
 		} else {
 			nlRoute.LinkIndex = intf.Index
 		}
 	}
 	if i, err := rttables.Index(t.Table); err != nil {
-		return fmt.Errorf("Table '%s' lookup: %w", t.Table, err)
+		return fmt.Errorf("table '%s' lookup: %w", t.Table, err)
 	} else {
 		nlRoute.Table = i
 	}

@@ -28,16 +28,16 @@ func (t *CmdDaemonStart) Run() error {
 		if t.CpuProfile != "" {
 			f, err := os.Create(t.CpuProfile)
 			if err != nil {
-				return fmt.Errorf("Create CPU profile: %w", err)
+				return fmt.Errorf("create CPU profile: %w", err)
 			}
 			defer f.Close() // error handling omitted for example
 			if err := pprof.StartCPUProfile(f); err != nil {
-				return fmt.Errorf("Start CPU profile: %w", err)
+				return fmt.Errorf("start CPU profile: %w", err)
 			}
 			defer pprof.StopCPUProfile()
 		}
 		if err := daemoncli.New(cli).Start(); err != nil {
-			return fmt.Errorf("Start daemon cli: %w", err)
+			return fmt.Errorf("start daemon cli: %w", err)
 		}
 	} else {
 		args := []string{"daemon", "start", "--foreground"}
@@ -54,7 +54,7 @@ func (t *CmdDaemonStart) Run() error {
 		checker := func() error {
 			time.Sleep(60 * time.Millisecond)
 			if err := daemoncli.New(cli).WaitRunning(); err != nil {
-				return fmt.Errorf("Daemon not running: %w", err)
+				return fmt.Errorf("daemon not running: %w", err)
 			}
 			return nil
 		}

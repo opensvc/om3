@@ -208,10 +208,10 @@ func (t *CompPackages) Add(s string) error {
 
 func loadInstalledPackages() error {
 	if osVendor == "" {
-		return fmt.Errorf("OSVC_COMP_NODES_OS_VENDOR not set")
+		return fmt.Errorf("the OSVC_COMP_NODES_OS_VENDOR env var is not set")
 	}
 	if osName == "" {
-		return fmt.Errorf("OSVC_COMP_NODES_OS_NAME not set")
+		return fmt.Errorf("the OSVC_COMP_NODES_OS_NAME env var not set")
 	}
 	var err error
 	switch {
@@ -438,7 +438,7 @@ func rpmLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Can not fetch installed packages list: %w", err)
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {
@@ -457,7 +457,7 @@ func pkginfoLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Can not fetch installed packages list: %w", err)
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {
@@ -484,7 +484,7 @@ func dpkgLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Can not fetch installed packages list: %w", err)
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {
@@ -508,7 +508,7 @@ func freebsdPkgLoadInstalledPackages() error {
 	)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Can not fetch installed packages list: %w", err)
+		return fmt.Errorf("can not fetch installed packages list: %w", err)
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(cmd.Stdout()))
 	for scanner.Scan() {

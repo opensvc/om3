@@ -37,7 +37,7 @@ func NewObject(p string, sources ...any) (*T, error) {
 		sources = append(sources, []byte{})
 	}
 	if f, err := ini.LoadSources(loadOptions, sources[0], sources[1:]...); err != nil {
-		return nil, fmt.Errorf("Load config sources error: %w", err)
+		return nil, fmt.Errorf("load config sources error: %w", err)
 	} else {
 		t.file = f
 	}

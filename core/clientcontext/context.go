@@ -54,7 +54,7 @@ type (
 
 var (
 	// Err is raised when a context definition has issues.
-	Err = errors.New("Context error")
+	Err = errors.New("context error")
 )
 
 // IsSet returns true if the OSVC_CONTEXT environment variable is set
@@ -82,16 +82,16 @@ func New() (T, error) {
 	}
 	cr, ok := cfg.Contexts[n]
 	if !ok {
-		return c, fmt.Errorf("%w: Context not defined: %s", Err, n)
+		return c, fmt.Errorf("%w: context not defined: %s", Err, n)
 	}
 	c.Cluster, ok = cfg.Clusters[cr.ClusterRefName]
 	if !ok {
-		return c, fmt.Errorf("%w: Cluster not defined: %s", Err, cr.ClusterRefName)
+		return c, fmt.Errorf("%w: cluster not defined: %s", Err, cr.ClusterRefName)
 	}
 	if cr.UserRefName != "" {
 		c.User, ok = cfg.Users[cr.UserRefName]
 		if !ok {
-			return c, fmt.Errorf("%w: User not defined: %s", Err, cr.ClusterRefName)
+			return c, fmt.Errorf("%w: user not defined: %s", Err, cr.ClusterRefName)
 		}
 	}
 	c.Namespace = cr.Namespace

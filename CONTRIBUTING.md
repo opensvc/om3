@@ -22,4 +22,7 @@ The `%w` wildcard in `fmt.Errorf` format triggers the error wrapping.
 
 	fmt.Errorf("Creating %s: %w", objectPath, err) 
 
+## Do not capitalize error strings
+
+https://google.github.io/styleguide/go/decisions.html#error-strings
 

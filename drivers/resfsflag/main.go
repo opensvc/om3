@@ -88,14 +88,14 @@ func (t T) Abort(ctx context.Context) bool {
 // Start the Resource
 func (t T) Start(ctx context.Context) error {
 	if t.file() == "" {
-		return fmt.Errorf("Empty file path")
+		return fmt.Errorf("empty file path")
 	}
 	if t.exists() {
 		t.Log().Info().Msgf("Flag file %s is already installed", t.file())
 		return nil
 	}
 	if err := os.MkdirAll(t.dir(), os.ModePerm); err != nil {
-		return fmt.Errorf("Failed to create directory %s: %w", t.dir(), err)
+		return fmt.Errorf("failed to create directory %s: %w", t.dir(), err)
 	}
 	t.Log().Info().Msgf("Install flag file %s", t.file())
 	if _, err := os.Create(t.file()); err != nil {
@@ -110,7 +110,7 @@ func (t T) Start(ctx context.Context) error {
 // Stop the Resource
 func (t T) Stop(ctx context.Context) error {
 	if t.file() == "" {
-		return fmt.Errorf("Empty file path")
+		return fmt.Errorf("empty file path")
 	}
 	if !t.exists() {
 		t.Log().Info().Msgf("Flag file %s is already uninstalled", t.file())

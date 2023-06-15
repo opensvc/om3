@@ -329,7 +329,7 @@ func (t core) Dereference(ref string) (string, error) {
 	case "clusternodes":
 		return strings.Join(clusternode.Get(), " "), nil
 	case "clusterdrpnodes":
-		return ref, fmt.Errorf("Deprecated")
+		return ref, fmt.Errorf("deprecated")
 	case "dns":
 		return rawconfig.ClusterSection().DNS, nil
 	case "dnsnodes":
@@ -355,7 +355,7 @@ func (t core) Dereference(ref string) (string, error) {
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):
-		return ref, fmt.Errorf("TODO")
+		return ref, fmt.Errorf("todo")
 	case strings.Contains(ref, ".exposed_devs"):
 		return t.dereferenceExposedDevices(ref)
 	}

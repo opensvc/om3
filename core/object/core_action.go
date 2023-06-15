@@ -39,14 +39,14 @@ type (
 )
 
 var (
-	ErrInvalidNode = errors.New("Invalid node")
-	ErrDisabled    = errors.New("Object instance is disabled")
+	ErrInvalidNode = errors.New("invalid node")
+	ErrDisabled    = errors.New("object instance is disabled")
 )
 
 func (t *actor) validateAction() error {
 	node := rawconfig.NodeSection()
 	if t.Env() != "PRD" && node.Env == "PRD" {
-		return fmt.Errorf("%w: Not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, t.Env(), node.Env)
+		return fmt.Errorf("%w: not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, t.Env(), node.Env)
 	}
 	if t.config.IsInNodes(hostname.Hostname()) {
 		return nil
@@ -54,7 +54,7 @@ func (t *actor) validateAction() error {
 	if t.config.IsInDRPNodes(hostname.Hostname()) {
 		return nil
 	}
-	return fmt.Errorf("%w: The hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", ErrInvalidNode, hostname.Hostname())
+	return fmt.Errorf("%w: the hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", ErrInvalidNode, hostname.Hostname())
 }
 
 func (t *actor) setenv(action string, leader bool) {
@@ -174,7 +174,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		t.log.Error().Err(err).Msgf("Announce %s state", progress)
 		return err
 	case resp.StatusCode != http.StatusOK:
-		err := fmt.Errorf("Unexpected post object progress status %s", resp.Status)
+		err := fmt.Errorf("unexpected post object progress status %s", resp.Status)
 		t.log.Error().Err(err).Msgf("Announce %s state", progress)
 		return err
 	}
@@ -202,35 +202,35 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	for _, pStr := range t.HardAffinity() {
 		p, err := path.Parse(pStr)
 		if err != nil {
-			return fmt.Errorf("Hard affinity object %s parse path: %w", p, err)
+			return fmt.Errorf("hard affinity object %s parse path: %w", p, err)
 		}
 		obj, err := NewCore(p, WithVolatile(true))
 		if err != nil {
-			return fmt.Errorf("Hard affinity object %s init: %w", p, err)
+			return fmt.Errorf("hard affinity object %s init: %w", p, err)
 		}
 		instanceStatus, err := obj.Status(ctx)
 		if err != nil {
-			return fmt.Errorf("Hard affinity object %s status: %w", p, err)
+			return fmt.Errorf("hard affinity object %s status: %w", p, err)
 		}
 		switch instanceStatus.Avail {
 		case status.Up:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("Hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
 		}
 	}
 	for _, pStr := range t.HardAntiAffinity() {
 		p, err := path.Parse(pStr)
 		if err != nil {
-			return fmt.Errorf("Hard anti affinity object %s parse path: %w", p, err)
+			return fmt.Errorf("hard anti affinity object %s parse path: %w", p, err)
 		}
 		obj, err := NewCore(p, WithVolatile(true))
 		if err != nil {
-			return fmt.Errorf("Hard anti affinity object %s init: %w", p, err)
+			return fmt.Errorf("hard anti affinity object %s init: %w", p, err)
 		}
 		instanceStatus, err := obj.Status(ctx)
 		if err != nil {
-			return fmt.Errorf("Hard anti affinity object %s status: %w", p, err)
+			return fmt.Errorf("hard anti affinity object %s status: %w", p, err)
 		}
 		switch instanceStatus.Avail {
 		case status.Down:
@@ -238,7 +238,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		case status.StandbyDown:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("Hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
 		}
 	}
 	return nil
@@ -268,7 +268,7 @@ func (t *actor) abortStartDrivers(ctx context.Context, l resourceLister) (err er
 		ret = ret || <-q
 	}
 	if ret {
-		return errors.New("Abort start")
+		return errors.New("abort start")
 	}
 	return nil
 }
@@ -417,13 +417,13 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 		switch instStatus.Avail {
 		case status.Down, status.StandbyUp, status.StandbyUpWithDown, status.NotApplicable:
 		default:
-			return fmt.Errorf("The stop action returned no error but end avail status is %s", instStatus.Avail)
+			return fmt.Errorf("the stop action returned no error but end avail status is %s", instStatus.Avail)
 		}
 	case "start":
 		switch instStatus.Avail {
 		case status.Up, status.NotApplicable, status.StandbyUpWithUp:
 		default:
-			return fmt.Errorf("The start action returned no error but end avail status is %s", instStatus.Avail)
+			return fmt.Errorf("the start action returned no error but end avail status is %s", instStatus.Avail)
 		}
 	}
 	return nil

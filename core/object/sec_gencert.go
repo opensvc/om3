@@ -195,10 +195,10 @@ func (t *sec) getCASec() (*sec, error) {
 	s := t.CertInfo("ca")
 	p, err := path.Parse(s)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid ca secret path %s: %w", s, err)
+		return nil, fmt.Errorf("invalid ca secret path %s: %w", s, err)
 	}
 	if !p.Exists() {
-		return nil, fmt.Errorf("Secret %s does not exist", p.String())
+		return nil, fmt.Errorf("secret %s does not exist", p.String())
 	}
 	return NewSec(p, WithVolatile(true))
 }
@@ -247,7 +247,7 @@ func (t *sec) getCACert() (*x509.Certificate, []byte, error) {
 func certFromPEM(b []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(b)
 	if block.Type != "CERTIFICATE" {
-		return nil, fmt.Errorf("certFromPEM: PEM block type is not CERTIFICATE")
+		return nil, fmt.Errorf("certFromPEM: the PEM block type is not CERTIFICATE")
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
@@ -274,7 +274,7 @@ func (t *sec) getCAPriv() (*rsa.PrivateKey, error) {
 func privFromPEM(b []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(b)
 	if block.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("PEM block type is not PRIVATE KEY")
+		return nil, fmt.Errorf("privFromPEM: the PEM block type is not PRIVATE KEY")
 	}
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {

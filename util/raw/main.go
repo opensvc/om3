@@ -29,7 +29,7 @@ const (
 
 var (
 	regexpQueryLine = regexp.MustCompile(`/dev/raw/raw([0-9]+):  bound to major ([0-9]+), minor ([0-9]+)`)
-	ErrExist        = errors.New("The raw device is already bound")
+	ErrExist        = errors.New("the raw device is already bound")
 )
 
 type (
@@ -250,7 +250,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 	err = cmd.Run()
 	fcache.Clear("raw")
 	if err != nil {
-		return 0, fmt.Errorf("%s Run error %v", cmd, err)
+		return 0, fmt.Errorf("%s run error %v", cmd, err)
 	}
 	if cmd.ExitCode() != 0 {
 		return 0, fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
@@ -294,7 +294,7 @@ func (t T) Unbind(cDevPath string) error {
 	err := cmd.Run()
 	fcache.Clear("raw")
 	if err != nil {
-		return fmt.Errorf("%s Run error %v", cmd, err)
+		return fmt.Errorf("%s run error %v", cmd, err)
 	}
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())

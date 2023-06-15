@@ -262,14 +262,14 @@ func (t keystore) InstallKeyTo(keyName string, dst string, mode *os.FileMode, di
 	t.log.Debug().Msgf("Install %s key %s to %s", t.path, keyName, dst)
 	keys, err := t.resolveKey(keyName)
 	if err != nil {
-		return fmt.Errorf("Resolve %s key %s: %w", t.path, keyName, err)
+		return fmt.Errorf("resolve %s key %s: %w", t.path, keyName, err)
 	}
 	if len(keys) == 0 {
-		return fmt.Errorf("Resolve %s key %s: No key found", t.path, keyName)
+		return fmt.Errorf("resolve %s key %s: no key found", t.path, keyName)
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, dst, mode, dirmode, usr, grp); err != nil {
-			return fmt.Errorf("Install key %s at path %s: %w", vk.Key, t.path, err)
+			return fmt.Errorf("install key %s at path %s: %w", vk.Key, t.path, err)
 		}
 	}
 	return nil

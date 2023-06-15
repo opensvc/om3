@@ -19,12 +19,12 @@ import (
 var (
 	timeLayout = "2006-01-02 Z15:04:05"
 
-	ErrNotAllowed = errors.New("Not allowed")
-	ErrExcluded   = errors.New("Excluded")
-	ErrInvalid    = errors.New("Invalid expression")
-	ErrImpossible = errors.New("Impossible schedule")
-	ErrDrift      = errors.New("Drift")
-	ErrNextDay    = errors.New("Next day")
+	ErrNotAllowed = errors.New("not allowed")
+	ErrExcluded   = errors.New("excluded")
+	ErrInvalid    = errors.New("invalid expression")
+	ErrImpossible = errors.New("impossible schedule")
+	ErrDrift      = errors.New("drift")
+	ErrNextDay    = errors.New("next day")
 
 	// ISO-8601 weeks. week one is the first week with thursday in year
 
@@ -234,7 +234,7 @@ func (t timerange) TestIncludes(tm time.Time) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: Not in timerange %s-%s", ErrNotAllowed, t.begin, t.end)
+	return fmt.Errorf("%w: not in timerange %s-%s", ErrNotAllowed, t.begin, t.end)
 }
 
 // TestIncludes returns true if <tm> is in the Timerange
@@ -379,7 +379,7 @@ func (t Schedule) TestIsInWeeks(tm time.Time) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: Not in allowed weeks", ErrNotAllowed)
+	return fmt.Errorf("%w: not in allowed weeks", ErrNotAllowed)
 }
 
 func (t Schedule) IsInMonths(tm time.Time) bool {
@@ -394,7 +394,7 @@ func (t Schedule) TestIsInMonths(tm time.Time) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: Not in allowed months", ErrNotAllowed)
+	return fmt.Errorf("%w: not in allowed months", ErrNotAllowed)
 }
 
 func (t Schedule) IsInDays(tm time.Time) bool {
@@ -426,7 +426,7 @@ func (t Schedule) TestIsInDays(tm time.Time) error {
 			return err
 		}
 	}
-	return fmt.Errorf("%w: Not in allowed days", ErrNotAllowed)
+	return fmt.Errorf("%w: not in allowed days", ErrNotAllowed)
 }
 
 func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error) {
@@ -457,13 +457,13 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	// isInTimerangeInterval validates the last task run is old enough to allow running again.
 	isInTimerangeInterval := func(tr timerange) error {
 		if tr.interval == 0 {
-			return fmt.Errorf("%w: The interval is set to 0", ErrNotAllowed)
+			return fmt.Errorf("%w: the interval is set to 0", ErrNotAllowed)
 		}
 		if last.IsZero() {
 			return nil
 		}
 		if !needActionInterval(tr.interval) {
-			return fmt.Errorf("%w: The last run is too soon", ErrNotAllowed)
+			return fmt.Errorf("%w: the last run is too soon", ErrNotAllowed)
 		}
 		return nil
 	}
@@ -497,7 +497,7 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	//
 	isInTimeranges := func(d Schedule) (time.Duration, error) {
 		if len(d.timeranges) == 0 {
-			return 0, fmt.Errorf("%w: No timeranges", ErrNotAllowed)
+			return 0, fmt.Errorf("%w: no timeranges", ErrNotAllowed)
 		}
 		ec := errchain.New()
 		ec.Add(ErrNotAllowed)
@@ -536,7 +536,7 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 	}
 
 	if len(t.dataset) == 0 {
-		return 0, fmt.Errorf("%w: No schedule", ErrNotAllowed)
+		return 0, fmt.Errorf("%w: no schedule", ErrNotAllowed)
 	}
 	reasons := make([]string, 0)
 	for _, d := range t.dataset {
@@ -549,7 +549,7 @@ func (t *Expr) TestWithLast(tm time.Time, last time.Time) (time.Duration, error)
 			return delay, err
 		}
 		if d.exclude {
-			return delay, fmt.Errorf("%w: Schedule element '%s', delay '%s'", ErrExcluded, d.raw, delay)
+			return delay, fmt.Errorf("%w: schedule element '%s', delay '%s'", ErrExcluded, d.raw, delay)
 		}
 		return delay, nil
 	}
@@ -685,7 +685,7 @@ func parseExpr(s string) (Schedule, error) {
 			return *data, err
 		}
 	default:
-		return *data, fmt.Errorf("%w: The number of elements must be between 1-4: %s", ErrInvalid, s)
+		return *data, fmt.Errorf("%w: the number of elements must be between 1-4: %s", ErrInvalid, s)
 	}
 	data.exclude = exclude
 	return *data, nil
@@ -699,33 +699,33 @@ func parseTime(s string) (time.Duration, error) {
 		if i, err := strconv.Atoi(elements[0]); err == nil {
 			t += time.Hour * time.Duration(i)
 		} else {
-			return 0, fmt.Errorf("%w: Time: %s", ErrInvalid, s)
+			return 0, fmt.Errorf("%w: time: %s", ErrInvalid, s)
 		}
 		if i, err := strconv.Atoi(elements[1]); err == nil {
 			t += time.Minute * time.Duration(i)
 		} else {
-			return 0, fmt.Errorf("%w: Time: %s", ErrInvalid, s)
+			return 0, fmt.Errorf("%w: time: %s", ErrInvalid, s)
 		}
 		if i, err := strconv.Atoi(elements[2]); err == nil {
 			t += time.Second * time.Duration(i)
 		} else {
-			return 0, fmt.Errorf("%w: Time: %s", ErrInvalid, s)
+			return 0, fmt.Errorf("%w: time: %s", ErrInvalid, s)
 		}
 		return t, nil
 	case 2:
 		if i, err := strconv.Atoi(elements[0]); err == nil {
 			t += time.Hour * time.Duration(i)
 		} else {
-			return 0, fmt.Errorf("%w: Time: %s", ErrInvalid, s)
+			return 0, fmt.Errorf("%w: time: %s", ErrInvalid, s)
 		}
 		if i, err := strconv.Atoi(elements[1]); err == nil {
 			t += time.Minute * time.Duration(i)
 		} else {
-			return 0, fmt.Errorf("%w: Time: %s", ErrInvalid, s)
+			return 0, fmt.Errorf("%w: time: %s", ErrInvalid, s)
 		}
 		return t, nil
 	default:
-		return 0, fmt.Errorf("%w: Time: %s", ErrInvalid, s)
+		return 0, fmt.Errorf("%w: time: %s", ErrInvalid, s)
 	}
 }
 
@@ -752,7 +752,7 @@ func parseTimeranges(s string) (timeranges, error) {
 			beginStr = elements[0]
 			endStr = elements[1]
 		default:
-			return 0, 0, fmt.Errorf("%w: Too many '-' in timerange expression: %s", ErrInvalid, s)
+			return 0, 0, fmt.Errorf("%w: too many '-' in timerange expression: %s", ErrInvalid, s)
 		}
 		if begin, err = parseTime(beginStr); err != nil {
 			return 0, 0, err
@@ -827,7 +827,7 @@ func parseTimeranges(s string) (timeranges, error) {
 				continue
 			}
 		default:
-			return nil, fmt.Errorf("%w: Only one @<interval> allowed: %s", ErrInvalid, spec)
+			return nil, fmt.Errorf("%w: only one @<interval> allowed: %s", ErrInvalid, spec)
 		}
 	}
 	return l, nil
@@ -851,7 +851,7 @@ func parseDay(s string) ([]day, error) {
 		dayOfWeekStr = elements[0]
 		dayOfMonthStr := elements[1]
 		if len(dayOfMonthStr) == 0 {
-			return nil, fmt.Errorf("%w: The day_of_month specifier is empty: %s", ErrInvalid, s)
+			return nil, fmt.Errorf("%w: the day_of_month specifier is empty: %s", ErrInvalid, s)
 		}
 		switch dayOfMonthStr {
 		case "first", "1st":
@@ -870,14 +870,14 @@ func parseDay(s string) ([]day, error) {
 			if i, err := strconv.Atoi(dayOfMonthStr); err == nil {
 				dayOfMonth = i
 				if dayOfMonth == 0 {
-					return nil, fmt.Errorf("%w: The day_of_month expression not supported: %s", ErrInvalid, s)
+					return nil, fmt.Errorf("%w: the day_of_month expression not supported: %s", ErrInvalid, s)
 				}
 			} else {
-				return nil, fmt.Errorf("%w: The day_of_month expression not supported: %s", ErrInvalid, s)
+				return nil, fmt.Errorf("%w: the day_of_month expression not supported: %s", ErrInvalid, s)
 			}
 		}
 	default:
-		return nil, fmt.Errorf("%w: Only one ':' allowed in day spec: %s", ErrInvalid, s)
+		return nil, fmt.Errorf("%w: only one ':' allowed in day spec: %s", ErrInvalid, s)
 	}
 	days, err := parseWeekdays(dayOfWeekStr)
 	if err != nil {
@@ -909,7 +909,7 @@ func resolveCalendarName(s string) (int, error) {
 	}
 	s = strings.ToLower(s)
 	if i, ok := CalendarNames[s]; !ok {
-		return -1, fmt.Errorf("%w: Unknown calendar name: %s", ErrInvalid, s)
+		return -1, fmt.Errorf("%w: unknown calendar name: %s", ErrInvalid, s)
 	} else {
 		return i, nil
 	}
@@ -993,9 +993,9 @@ func parseOneCalendarExpression(spec string, all []int) (map[int]interface{}, er
 		}
 		return m, nil
 	default:
-		return m, fmt.Errorf("%w: Only one '-' is allowed in range: %s", ErrInvalid, spec)
+		return m, fmt.Errorf("%w: only one '-' is allowed in range: %s", ErrInvalid, spec)
 	}
-	return m, fmt.Errorf("%w: Unexpected syntax: %s", ErrInvalid, spec)
+	return m, fmt.Errorf("%w: unexpected syntax: %s", ErrInvalid, spec)
 }
 func parseMonths(spec string) ([]int, error) {
 	elements := strings.Split(spec, "%")
@@ -1009,7 +1009,7 @@ func parseMonths(spec string) ([]int, error) {
 		}
 		return filterWithModulo(months, elements[1])
 	default:
-		return nil, fmt.Errorf("%w: Too many '%%': %s", ErrInvalid, spec)
+		return nil, fmt.Errorf("%w: too many '%%': %s", ErrInvalid, spec)
 	}
 }
 func parseWeekdays(spec string) ([]int, error) {
@@ -1041,16 +1041,16 @@ func parseModulo(s string) (int, int, error) {
 	case 1:
 		l := strings.SplitN(s, "+", 2)
 		if shift, err = strconv.Atoi(l[1]); err != nil {
-			return 0, 0, fmt.Errorf("%w: Modulo shift must be an int: %s", ErrInvalid, s)
+			return 0, 0, fmt.Errorf("%w: modulo shift must be an int: %s", ErrInvalid, s)
 		}
 		s = l[0]
 	case 0:
 		shift = 0
 	default:
-		return 0, 0, fmt.Errorf("%w: Only one '+' is allowed in modulo: %s", ErrInvalid, s)
+		return 0, 0, fmt.Errorf("%w: only one '+' is allowed in modulo: %s", ErrInvalid, s)
 	}
 	if modulo, err = strconv.Atoi(s); err != nil {
-		return 0, 0, fmt.Errorf("%w: Modulo must be an int: %s", ErrInvalid, s)
+		return 0, 0, fmt.Errorf("%w: modulo must be an int: %s", ErrInvalid, s)
 	}
 	return modulo, shift, nil
 }

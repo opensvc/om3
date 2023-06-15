@@ -107,15 +107,13 @@ func (t T) lockedSync(ctx context.Context, mode modeT, target []string) (err err
 	isCron := actioncontext.IsCron(ctx)
 
 	if t.isFlexAndNotPrimary() {
-		msg := fmt.Sprintf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
-		t.Log().Error().Msg(msg)
-		return fmt.Errorf(msg)
+		t.Log().Error().Msgf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
+		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
 	if v, rids := t.isInstanceSufficientlyStarted(ctx); !v {
-		msg := fmt.Sprintf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
-		t.Log().Error().Msg(msg)
-		return fmt.Errorf(msg)
+		t.Log().Error().Msgf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
+		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
 	for _, nodename := range t.getTargetPeernames(target) {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
@@ -355,9 +353,8 @@ func (t T) peerSync(ctx context.Context, mode modeT, nodename string) (err error
 	if v, err := t.isDstFSMounted(nodename); err != nil {
 		return err
 	} else if !v {
-		msg := fmt.Sprintf("The destination fs %s is not mounted on node %s. Refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
-		t.Log().Error().Msg(msg)
-		return fmt.Errorf(msg)
+		t.Log().Error().Msgf("The destination fs %s is not mounted on node %s. Refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
+		return fmt.Errorf("the destination fs %s is not mounted on node %s. refuse to sync %s to protect parent fs", t.DstFS, nodename, t.Dst)
 	}
 	options := t.fullOptions()
 	dst := t.user() + "@" + nodename + ":" + t.Dst
@@ -571,11 +568,11 @@ func (t *T) isSendAllowedToPeerEnv(nodename string) error {
 	var localEnv, peerEnv string
 	nodesInfo, err := nodesinfo.Get()
 	if err != nil {
-		return fmt.Errorf("Error loading nodes_info.json: %w", err)
+		return fmt.Errorf("get nodes info: %w", err)
 	}
 	getEnv := func(n string, s *string) error {
 		if m, ok := nodesInfo[n]; !ok {
-			return fmt.Errorf("Node %s not found in nodes_info.json", n)
+			return fmt.Errorf("node %s not found in nodes_info.json", n)
 		} else {
 			*s = m.Env
 		}
@@ -588,7 +585,7 @@ func (t *T) isSendAllowedToPeerEnv(nodename string) error {
 		return err
 	}
 	if localEnv != "PRD" && peerEnv == "PRD" {
-		return fmt.Errorf("Refuse to sync from a non-PRD node to a PRD node")
+		return fmt.Errorf("refuse to sync from a non-PRD node to a PRD node")
 	}
 	return nil
 }

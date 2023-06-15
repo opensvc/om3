@@ -20,7 +20,7 @@ func (c Config) ApplyProc(pid int) error {
 		return nil
 	}
 	if c.ID == "" {
-		return fmt.Errorf("The pg config application requires a non empty pg id")
+		return fmt.Errorf("the pg config application requires a non empty pg id")
 	}
 	r := specs.LinuxResources{
 		CPU:     &specs.LinuxCPU{},
@@ -71,18 +71,18 @@ func (c Config) ApplyProc(pid int) error {
 			return nil
 		}
 		if err := control.AddProc(uint64(pid)); err != nil {
-			return fmt.Errorf("Add pid to pg %s: %w", c.ID, err)
+			return fmt.Errorf("add pid to pg %s: %w", c.ID, err)
 		}
 	} else {
 		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
 		if err != nil {
-			return fmt.Errorf("New pg %s: %w", c.ID, err)
+			return fmt.Errorf("new pg %s: %w", c.ID, err)
 		}
 		if pid == 0 {
 			return nil
 		}
 		if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
-			return fmt.Errorf("Add pid to pg %s: %w", c.ID, err)
+			return fmt.Errorf("add pid to pg %s: %w", c.ID, err)
 		}
 	}
 	return nil

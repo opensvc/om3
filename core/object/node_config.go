@@ -108,7 +108,7 @@ func (t Node) Dereference(ref string) (string, error) {
 	}
 	switch {
 	case strings.HasPrefix(ref, "safe://"):
-		return ref, fmt.Errorf("TODO")
+		return ref, fmt.Errorf("todo")
 	}
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }

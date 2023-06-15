@@ -155,7 +155,7 @@ func (t *Selection) expand() error {
 		if err := t.daemonExpand(); err == nil {
 			return nil
 		} else if clientcontext.IsSet() {
-			return fmt.Errorf("Daemon expansion fatal error: %w", err)
+			return fmt.Errorf("daemon expansion fatal error: %w", err)
 		} else {
 			log.Debug().Msgf("%s daemon expansion error: %s", t, err)
 		}
@@ -329,7 +329,7 @@ func (t *Selection) daemonExpand() error {
 		Str("mode", "daemon").
 		Msg("expand selection")
 	if env.HasDaemonOrigin() {
-		return errors.New("Action origin is daemon")
+		return errors.New("action origin is daemon")
 	}
 	params := api.GetObjectSelectorParams{
 		Selector: t.SelectorExpression,

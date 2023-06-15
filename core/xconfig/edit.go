@@ -25,10 +25,8 @@ const (
 )
 
 var (
-	ErrEditPending = errors.New(`The configuration is already being edited.
-Set --discard to edit from the installed configuration,
-or --recover to edit the unapplied config`)
-	ErrEditValidate = errors.New("Validation errors")
+	ErrEditPending  = errors.New(`the configuration is already being edited (--discard to edit from the installed configuration or --recover to edit the unapplied config)`)
+	ErrEditValidate = errors.New("validation error")
 )
 
 func Diff(a, b string) (string, error) {

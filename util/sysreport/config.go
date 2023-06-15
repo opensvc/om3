@@ -164,7 +164,7 @@ func (t *T) loadStat() error {
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("Loading files stat cache: %w", err)
+		return fmt.Errorf("loading files stat cache: %w", err)
 	}
 	defer f.Close()
 	if err := t.stats.Load(f); err != nil {
@@ -182,7 +182,7 @@ func (t *T) writeStat() error {
 	srLog.Debug().Str("path", path).Msg("Rewrite")
 	f, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("Write stat: %w", err)
+		return fmt.Errorf("write stat: %w", err)
 	}
 	defer f.Close()
 	if err := t.stats.Write(f); err != nil {
@@ -216,7 +216,7 @@ func (t *T) collectFile(path string) error {
 	}
 	buff, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("Collect file: %w", err)
+		return fmt.Errorf("collect file: %w", err)
 	}
 	buff = obfuscateClusterSecret(dest, buff)
 	if err := t.write(dest, buff); err != nil {
@@ -330,14 +330,14 @@ func isConfigFileSecure(s string) error {
 	}
 	mode := info.Mode()
 	if mode&0002 != 0 {
-		return fmt.Errorf("%s: File mode is insecure ('other' has write permission)", s)
+		return fmt.Errorf("%s: file mode is insecure ('other' has write permission)", s)
 	}
 	uid, gid, err := file.Ownership(s)
 	if err != nil {
 		return err
 	}
 	if uid != rootUID || gid != rootGID {
-		return fmt.Errorf("%s: File ownership is insecure (Must be owned by %d:%d)", s, rootUID, rootGID)
+		return fmt.Errorf("%s: file ownership is insecure (Must be owned by %d:%d)", s, rootUID, rootGID)
 	}
 	return nil
 }
@@ -488,7 +488,7 @@ func (t T) getLstree() ([]string, error) {
 	case []string:
 		return l, nil
 	default:
-		return nil, fmt.Errorf("Unexpected sysreport_lstree rpc result: %+v\n", response.Result)
+		return nil, fmt.Errorf("unexpected sysreport_lstree rpc result: %+v\n", response.Result)
 	}
 }
 
@@ -499,7 +499,7 @@ func (t T) send() error {
 		toSend = sortedKeys(t.full)
 		lstreeData, err := t.getLstree()
 		if err != nil {
-			return fmt.Errorf("Can not get lstree from collector: %w", err)
+			return fmt.Errorf("can not get lstree from collector: %w", err)
 		}
 		deleted = t.filterLstree(lstreeData)
 	} else {
@@ -543,7 +543,7 @@ func (t T) send() error {
 func (t T) unlink(path string) error {
 	base := t.collectDir()
 	if !strings.HasPrefix(path, base) {
-		return fmt.Errorf("Abort unlink %s: Not based on %s", path, base)
+		return fmt.Errorf("abort unlink %s: not based on %s", path, base)
 	}
 	return os.Remove(path)
 }
@@ -551,7 +551,7 @@ func (t T) unlink(path string) error {
 func (t T) unlinkAll(path string) error {
 	base := t.collectDir()
 	if !strings.HasPrefix(path, base) {
-		return fmt.Errorf("Abort recursive unlink %s: Not based on %s", path, base)
+		return fmt.Errorf("abort recursive unlink %s: not based on %s", path, base)
 	}
 	return os.RemoveAll(path)
 }
@@ -630,7 +630,7 @@ func (t T) statsGet(path string) (Stat, error) {
 	default:
 		stat, ok := t.stats[path]
 		if !ok {
-			return stat, fmt.Errorf("File %s not found in the file stats cache", path)
+			return stat, fmt.Errorf("file %s not found in the file stats cache", path)
 		}
 		return stat, nil
 	}
@@ -734,7 +734,7 @@ func (t *T) deleteCollected() error {
 	for _, path := range t.deleted {
 		path = filepath.Join(t.collectFileDir(), path)
 		if err := t.unlink(path); err != nil {
-			return fmt.Errorf("Delete cache of deleted file: %w", err)
+			return fmt.Errorf("delete cache of deleted file: %w", err)
 		}
 		srLog.Debug().Str("path", path).Msg("Delete cache of deleted file")
 	}

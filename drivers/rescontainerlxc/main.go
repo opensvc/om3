@@ -403,7 +403,7 @@ func (t T) rcmd() ([]string, error) {
 			return []string{exe, "-n", t.Name, "--clear-env", "--"}, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword.")
+	return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword")
 }
 
 // SetEncapFileOwnership sets the ownership of the file to be the

@@ -41,7 +41,7 @@ func (t *CmdObjectCollectorTagCreate) Run(selector, kind string) error {
 			options["svcname"] = p.String()
 			options["tag_name"] = t.Name
 			if t.Name == "" {
-				return nil, errors.New("The tag name must not be empty.")
+				return nil, errors.New("the tag name must not be empty")
 			}
 			if t.Data != nil {
 				options["tag_data"] = *t.Data

@@ -256,10 +256,10 @@ const (
 )
 
 var (
-	ErrActionNotSupported      = errors.New("The resource action is not supported on resource")
-	ErrActionPostponedToLinker = errors.New("The resource action is postponed to its linker")
-	ErrDisabled                = errors.New("The resource is disabled")
-	ErrActionReqNotMet         = errors.New("The resource action requirements are not met")
+	ErrActionNotSupported      = errors.New("the resource action is not supported on resource")
+	ErrActionPostponedToLinker = errors.New("the resource action is postponed to its linker")
+	ErrDisabled                = errors.New("the resource is disabled")
+	ErrActionReqNotMet         = errors.New("the resource action requirements are not met")
 )
 
 // FlagString returns a one character representation of the type instance.
@@ -672,7 +672,7 @@ func StatusCheckRequires(ctx context.Context, r Driver) error {
 		if reqStates.Has(state) {
 			continue // requirement met
 		}
-		return fmt.Errorf("%w: Action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
+		return fmt.Errorf("%w: action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met
 	return nil
@@ -685,7 +685,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 	for rid, reqStates := range reqs.Requirements() {
 		state := sb.Get(rid)
 		if state == status.Undef {
-			return fmt.Errorf("Invalid requirement: resource '%s' does not exist (syntax: <rid>(<state>[,<state])", rid)
+			return fmt.Errorf("invalid requirement: resource '%s' does not exist (syntax: <rid>(<state>[,<state])", rid)
 		}
 		r.Log().Info().Msgf("Action %s on resource %s requires %s in states (%s), currently is %s", props.Name, r.RID(), rid, reqStates, state)
 		if reqStates.Has(state) {
@@ -706,7 +706,7 @@ func checkRequires(ctx context.Context, r Driver) error {
 				continue // requirement met
 			}
 		}
-		return fmt.Errorf("%w: Action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
+		return fmt.Errorf("%w: action %s on resource %s requires %s in states (%s), but is %s", ErrActionReqNotMet, props.Name, r.RID(), rid, reqStates, state)
 	}
 	// all requirements met. flag a status transition as pending in the bus.
 	sb.Pending(r.RID())

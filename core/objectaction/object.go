@@ -515,7 +515,7 @@ func (t T) DoRemote() error {
 			HumanRenderer: human,
 		}.Print()
 	*/
-	return fmt.Errorf("TODO")
+	return fmt.Errorf("todo")
 }
 
 func (t T) Do() error {

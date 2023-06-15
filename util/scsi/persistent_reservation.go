@@ -43,7 +43,7 @@ type (
 
 var (
 	DefaultPersistentReservationType = "5" // Write-Exclusive Registrants-Only
-	ErrNotSupported                  = errors.New("SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
+	ErrNotSupported                  = errors.New("the SCSI PR is not supported on this node: no usable mpathpersist or sg_persist")
 )
 
 func MakePRKey() []byte {

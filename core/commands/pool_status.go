@@ -78,7 +78,7 @@ func (t *CmdPoolStatus) extractDaemon() (pool.StatusList, error) {
 	switch resp.StatusCode() {
 	case 200:
 		if err := json.Unmarshal(resp.Body, &l); err != nil {
-			return l, fmt.Errorf("Unmarshal GET /pools: %w", err)
+			return l, fmt.Errorf("unmarshal GET /pools: %w", err)
 		}
 		return l, nil
 	case 401:
@@ -88,6 +88,6 @@ func (t *CmdPoolStatus) extractDaemon() (pool.StatusList, error) {
 	case 500:
 		return l, fmt.Errorf("%s", resp.JSON500)
 	default:
-		return l, fmt.Errorf("Unexpected status code: %d", resp.StatusCode())
+		return l, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
 }

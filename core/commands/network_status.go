@@ -77,7 +77,7 @@ func (t *CmdNetworkStatus) extractDaemon() (network.StatusList, error) {
 		return data, fmt.Errorf("%s", problem)
 	}
 	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return data, fmt.Errorf("Unmarshal GET /networks: %w", err)
+		return data, fmt.Errorf("unmarshal GET /networks: %w", err)
 	}
 	return data, nil
 }
