@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"syscall"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"github.com/soellman/pidfile"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keyop"
@@ -46,10 +44,6 @@ type (
 		Wait()
 	}
 )
-
-func DaemonPidFile() string {
-	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
-}
 
 func bootStrapCcfg() error {
 	type mandatoryKeyT struct {
@@ -119,11 +113,7 @@ func (t *T) Start() error {
 	if err != nil {
 		return err
 	}
-	daemonPidFile := DaemonPidFile()
-	if err := pidfile.WriteControl(daemonPidFile, os.Getpid(), true); err != nil {
-		return err
-	}
-	defer os.Remove(daemonPidFile)
+
 	d, err := t.start()
 	release()
 	if err != nil {
