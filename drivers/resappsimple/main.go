@@ -6,6 +6,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -42,7 +44,10 @@ func (t T) Start(ctx context.Context) (err error) {
 	if err := t.ApplyPGChain(ctx); err != nil {
 		return err
 	}
-	opts = append(opts, command.WithLogger(t.Log()))
+	opts = append(opts,
+		command.WithLogger(t.Log()),
+		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
+	)
 	cmd := command.New(opts...)
 	t.Log().Info().Stringer("cmd", cmd).Msg("run")
 	if err := cmd.Start(); err != nil {

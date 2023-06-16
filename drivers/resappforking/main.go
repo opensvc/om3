@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
@@ -38,6 +39,7 @@ func (t T) Start(ctx context.Context) (err error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
 		command.WithTimeout(t.GetTimeout("start")),
