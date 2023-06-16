@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/util/funcopt"
 )
 
@@ -74,6 +75,15 @@ func WithIgnoredExitCodes(codes ...int) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.okExitCodes = codes
+		return nil
+	})
+}
+
+// WithLogLevel sets the level of the log entries.
+func WithLogLevel(l zerolog.Level) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.logLevel = l
 		return nil
 	})
 }
