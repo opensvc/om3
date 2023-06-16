@@ -88,6 +88,7 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.WarnLevel),
 		command.WithTimeout(t.GetTimeout("stop")),
