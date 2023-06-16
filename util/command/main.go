@@ -15,31 +15,34 @@ import (
 
 	"github.com/anmitsu/go-shlex"
 	"github.com/kballard/go-shellquote"
-	"github.com/opensvc/om3/util/funcopt"
 	"github.com/rs/zerolog"
+
+	"github.com/opensvc/om3/util/funcopt"
 )
 
 type (
 	T struct {
-		name            string
-		args            []string
-		log             *zerolog.Logger
-		logLevel        zerolog.Level
-		commandLogLevel zerolog.Level
-		stdoutLogLevel  zerolog.Level
-		stderrLogLevel  zerolog.Level
-		bufferStdout    bool
-		bufferStderr    bool
-		user            string
-		group           string
-		cwd             string
-		env             []string
-		cmd             *exec.Cmd
-		label           string
-		timeout         time.Duration
-		onStdoutLine    func(string)
-		onStderrLine    func(string)
-		okExitCodes     []int
+		name         string
+		args         []string
+		bufferStdout bool
+		bufferStderr bool
+		user         string
+		group        string
+		cwd          string
+		env          []string
+		cmd          *exec.Cmd
+		label        string
+		timeout      time.Duration
+		onStdoutLine func(string)
+		onStderrLine func(string)
+		okExitCodes  []int
+
+		log                   *zerolog.Logger
+		logLevel              zerolog.Level
+		commandLogLevel       zerolog.Level
+		errorExitCodeLogLevel zerolog.Level
+		stdoutLogLevel        zerolog.Level
+		stderrLogLevel        zerolog.Level
 
 		pid             int
 		commandString   string
@@ -322,7 +325,7 @@ func (t T) logExitCode(exitCode int) {
 
 func (t T) logErrorExitCode(exitCode int, err error) {
 	if t.log != nil {
-		t.log.WithLevel(t.logLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Send()
+		t.log.WithLevel(t.errorExitCodeLogLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msg("")
 	}
 }
 

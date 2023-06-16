@@ -79,6 +79,15 @@ func WithIgnoredExitCodes(codes ...int) funcopt.O {
 	})
 }
 
+// WithErrorExitCodeLogLevel sets the level of the log entries for error exit code.
+func WithErrorExitCodeLogLevel(l zerolog.Level) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.errorExitCodeLogLevel = l
+		return nil
+	})
+}
+
 // WithLogLevel sets the level of the log entries.
 func WithLogLevel(l zerolog.Level) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
