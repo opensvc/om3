@@ -7,12 +7,16 @@ package daemon
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/retailnext/cannula"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/soellman/pidfile"
 
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/cstat"
 	"github.com/opensvc/om3/daemon/daemonctx"
@@ -98,6 +102,15 @@ func RunDaemon(opts ...funcopt.O) (*T, error) {
 
 // MainStart starts loop, mandatory subdaemons
 func (t *T) MainStart(ctx context.Context) error {
+	daemonPidFile := DaemonPidFile()
+	if err := pidfile.WriteControl(daemonPidFile, os.Getpid(), true); err != nil {
+		return nil
+	}
+	defer func() {
+		t.cancelFuncs = append(t.cancelFuncs, func() {
+			_ = os.Remove(DaemonPidFile())
+		})
+	}()
 	t.ctx = ctx
 	started := make(chan bool)
 	t.Add(1)
@@ -194,7 +207,7 @@ func (t *T) MainStart(ctx context.Context) error {
 		t.log.Debug().Msg("stopped daemon discover")
 	})
 
-	for _, sub := range []subdaemon.Manager {
+	for _, sub := range []subdaemon.Manager{
 		hb.New(hb.WithRoutineTracer(&t.TT), hb.WithRootDaemon(t)),
 		scheduler.New(scheduler.WithRoutineTracer(&t.TT)),
 	} {
@@ -251,4 +264,8 @@ func startProfiling() {
 	//    $ curl -o profile.out --unix-socket /var/lib/opensvc/lsnr/profile.sock http://localhost/debug/pprof/profile
 	//    $ pprof opensvc profile.out
 	cannula.Start(daemonenv.PathUxProfile())
+}
+
+func DaemonPidFile() string {
+	return filepath.Join(rawconfig.Paths.Var, "osvcd.pid")
 }
