@@ -373,8 +373,7 @@ func (t core) Dereference(ref string) (string, error) {
 }
 
 func (t core) Nodes() ([]string, error) {
-	v := t.config.Get(key.Parse("nodes"))
-	l, err := xconfig.NodesConverter.Convert(v)
+	l, err := t.config.Eval(key.Parse("nodes"))
 	if err != nil {
 		return []string{}, err
 	}
@@ -382,8 +381,7 @@ func (t core) Nodes() ([]string, error) {
 }
 
 func (t core) DRPNodes() ([]string, error) {
-	v := t.config.Get(key.Parse("drpnodes"))
-	l, err := xconfig.OtherNodesConverter.Convert(v)
+	l, err := t.config.Eval(key.Parse("drpnodes"))
 	if err != nil {
 		return nil, err
 	}
@@ -391,8 +389,7 @@ func (t core) DRPNodes() ([]string, error) {
 }
 
 func (t core) EncapNodes() ([]string, error) {
-	v := t.config.Get(key.Parse("encapnodes"))
-	l, err := xconfig.OtherNodesConverter.Convert(v)
+	l, err := t.config.Eval(key.Parse("encapnodes"))
 	if err != nil {
 		return nil, err
 	}
