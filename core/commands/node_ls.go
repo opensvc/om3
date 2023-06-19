@@ -29,12 +29,15 @@ func (t *CmdNodeLs) Run() error {
 	} else {
 		selector = t.NodeSelector
 	}
-	nodes := nodeselector.New(
+	nodes, err := nodeselector.New(
 		selector,
 		nodeselector.WithLocal(t.Local),
 		nodeselector.WithServer(t.Server),
 		nodeselector.WithClient(c),
 	).Expand()
+	if err != nil {
+		return err
+	}
 	output.Renderer{
 		Format: t.Format,
 		Color:  t.Color,

@@ -26,7 +26,12 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	}
 	var errs error
 	for _, p := range paths {
-		for _, node := range nodesFromPath(p) {
+		nodes, err := nodesFromPath(p)
+		if err != nil {
+			errors.Join(errs, fmt.Errorf("%s: %w", p, err))
+			continue
+		}
+		for _, node := range nodes {
 			c, err := client.New(
 				client.WithURL(node),
 			)

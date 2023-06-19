@@ -79,22 +79,26 @@ func (t *CmdObjectLogs) stream(node string, paths path.L) {
 	*/
 }
 
-func nodesFromPath(p path.T) []string {
+func nodesFromPath(p path.T) ([]string, error) {
 	o, err := object.NewCore(p, object.WithVolatile(true))
 	if err != nil {
-		return []string{}
+		return nil, err
 	}
 	return o.Nodes()
 }
 
-func nodesFromPaths(paths path.L) []string {
+func nodesFromPaths(paths path.L) ([]string, error) {
 	m := make(map[string]any)
 	for _, p := range paths {
-		for _, node := range nodesFromPath(p) {
+		nodes, err := nodesFromPath(p)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
 			m[node] = nil
 		}
 	}
-	return xmap.Keys(m)
+	return xmap.Keys(m), nil
 }
 
 func (t *CmdObjectLogs) remote(selStr string) error {
@@ -106,7 +110,10 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	if err != nil {
 		return err
 	}
-	nodes := nodesFromPaths(paths)
+	nodes, err := nodesFromPaths(paths)
+	if err != nil {
+		return err
+	}
 	filters := make(map[string]interface{})
 	if t.SID != "" {
 		filters["sid"] = t.SID

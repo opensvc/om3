@@ -337,15 +337,21 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				return err
 			}
 		case c.Ref == "object.drpnodes":
-			if err := attr.SetValue(r, c.Attr, t.DRPNodes()); err != nil {
+			if nodes, err := t.DRPNodes(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
 			}
 		case c.Ref == "object.nodes":
-			if err := attr.SetValue(r, c.Attr, t.Nodes()); err != nil {
+			if nodes, err := t.Nodes(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
 			}
 		case c.Ref == "object.peers":
-			if err := attr.SetValue(r, c.Attr, t.Peers()); err != nil {
+			if nodes, err := t.Peers(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
 			}
 		case c.Ref == "object.id":

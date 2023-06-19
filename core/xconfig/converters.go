@@ -26,7 +26,10 @@ func (t TNodesConverter) String() string {
 }
 
 func (t TNodesConverter) Convert(s string) (interface{}, error) {
-	l := nodeselector.LocalExpand(s)
+	l, err := nodeselector.LocalExpand(s)
+	if err != nil {
+		return nil, err
+	}
 	if len(l) == 0 && env.Context() == "" {
 		return []string{hostname.Hostname()}, nil
 	}
@@ -38,6 +41,5 @@ func (t TOtherNodesConverter) String() string {
 }
 
 func (t TOtherNodesConverter) Convert(s string) (interface{}, error) {
-	l := nodeselector.LocalExpand(s)
-	return l, nil
+	return nodeselector.LocalExpand(s)
 }

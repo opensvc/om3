@@ -63,12 +63,16 @@ func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.UpdatedAt = time.Now()
 	data.Parents = t.Parents()
 	data.Children = t.Children()
-	data.DRP = t.config.IsInDRPNodes(hostname.Hostname())
 	data.Running = runningRIDList(t)
 	data.Avail = status.NotApplicable
 	data.Overall = status.NotApplicable
 	data.Optional = status.NotApplicable
 	data.Csum = csumStatusData(data)
+	if v, err := t.config.IsInDRPNodes(hostname.Hostname()); err != nil {
+		return data, err
+	} else {
+		data.DRP = v
+	}
 	err = t.statusDump(data)
 	return
 }

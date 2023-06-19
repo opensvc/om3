@@ -230,7 +230,12 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				c.Value.GlobalExpectOptions = options
 			} else {
 				want := options.Destination
-				can := o.nextPlacedAtCandidates(want)
+				can, err := o.nextPlacedAtCandidates(want)
+				if err != nil {
+					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could ne selected from %s: %s", *c.Value.GlobalExpect, err)
+					globalExpectRefused()
+					return
+				}
 				if can == "" {
 					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could be selected from %s", *c.Value.GlobalExpect, want)
 					globalExpectRefused()
@@ -547,16 +552,20 @@ func (o *imon) sortWithNodesOrderPolicy(candidates []string) []string {
 	return l
 }
 
-func (o *imon) nextPlacedAtCandidates(want []string) string {
+func (o *imon) nextPlacedAtCandidates(want []string) (string, error) {
 	expr := strings.Join(want, " ")
 	var wantNodes []string
-	for _, node := range nodeselector.LocalExpand(expr) {
+	nodes, err := nodeselector.LocalExpand(expr)
+	if err != nil {
+		return "", err
+	}
+	for _, node := range nodes {
 		if _, ok := o.instStatus[node]; !ok {
 			continue
 		}
 		wantNodes = append(wantNodes, node)
 	}
-	return strings.Join(wantNodes, ",")
+	return strings.Join(wantNodes, ","), nil
 }
 
 func (o *imon) nextPlacedAtCandidate() string {

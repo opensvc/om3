@@ -128,7 +128,11 @@ func (t T) bridgeIP() (net.IP, error) {
 }
 
 func (t T) allocateSubnets() error {
-	for _, s := range t.subnetMap() {
+	subnetMap, err := t.subnetMap()
+	if err != nil {
+		return err
+	}
+	for _, s := range subnetMap {
 		if s != "" {
 			// A subnet setup is already configured. Don't change, even if bogus.
 			return nil
@@ -147,7 +151,10 @@ func (t T) allocateSubnets() error {
 	if err != nil {
 		return err
 	}
-	nodes := t.Nodes()
+	nodes, err := t.Nodes()
+	if err != nil {
+		return err
+	}
 	ones, bits := network.Mask.Size()
 	maxIps := 1 << (bits - ones)
 	maxIpsPerNodes := maxIps / len(nodes)
@@ -162,7 +169,7 @@ func (t T) allocateSubnets() error {
 	}
 
 	kops := make([]keyop.T, 0)
-	for _, nodename := range t.Nodes() {
+	for _, nodename := range nodes {
 		subnet := fmt.Sprintf("%s/%d", addr, bits-subnetOnes)
 		for i := 0; i < maxIpsPerNodes; i += 1 {
 			addr = addr.Next()
@@ -205,7 +212,11 @@ func (t *T) Setup() error {
 	if localIP, err = t.getLocalIP(); err != nil {
 		return fmt.Errorf("get local ip: %w", err)
 	}
-	for idx, nodename := range t.Nodes() {
+	nodes, err := t.Nodes()
+	if err != nil {
+		return err
+	}
+	for idx, nodename := range nodes {
 		if err := t.setupNode(nodename, idx, localIP, brIP); err != nil {
 			return fmt.Errorf("setup network to node %s: %w", nodename, err)
 		}
@@ -495,12 +506,16 @@ func (t T) subnet() string {
 	return t.GetString("subnet")
 }
 
-func (t T) subnetMap() map[string]string {
+func (t T) subnetMap() (map[string]string, error) {
 	m := make(map[string]string)
-	for _, nodename := range t.Nodes() {
+	nodes, err := t.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	for _, nodename := range nodes {
 		m[nodename] = t.GetString("subnet@" + nodename)
 	}
-	return m
+	return m, nil
 }
 
 func (t T) tunnel() string {

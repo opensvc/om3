@@ -34,7 +34,7 @@ type (
 	Noder interface {
 		MergedConfig() *xconfig.T
 		Log() *zerolog.Logger
-		Nodes() []string
+		Nodes() ([]string, error)
 	}
 	Networker interface {
 		// SetDriver sets the driver name, which is obtained from the
@@ -102,7 +102,7 @@ type (
 
 		// Nodes is a wrapper for the noder Nodes, which returns the
 		// list of cluster nodes to make the network available on.
-		Nodes() []string
+		Nodes() ([]string, error)
 
 		NodeSubnet(nodename string) (*net.IPNet, error)
 		NodeSubnetIP(nodename string) (net.IP, error)
@@ -128,7 +128,7 @@ func (t *T) Log() *zerolog.Logger {
 	return t.log
 }
 
-func (t T) Nodes() []string {
+func (t T) Nodes() ([]string, error) {
 	return t.noder.Nodes()
 }
 
@@ -345,7 +345,11 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 		return ipnet, nil
 	}
 
-	idx := stringslice.Index(nodename, t.Nodes())
+	nodes, err := t.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	idx := stringslice.Index(nodename, nodes)
 	ipsPerNode, err := t.IPsPerNode()
 	ipsPerNode = 1 << bits.Len(uint(ipsPerNode)-1)
 	if err != nil {
