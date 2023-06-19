@@ -232,7 +232,7 @@ func (o *imon) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				want := options.Destination
 				can, err := o.nextPlacedAtCandidates(want)
 				if err != nil {
-					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could ne selected from %s: %s", *c.Value.GlobalExpect, err)
+					o.log.Info().Msgf("refuse to set global expect '%s': no destination node could ne selected from %s: %s", *c.Value.GlobalExpect, want, err)
 					globalExpectRefused()
 					return
 				}
