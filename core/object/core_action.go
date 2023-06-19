@@ -316,6 +316,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
+			l := t.log.With().Str("rid", r.RID()).Logger()
+			ctx = l.WithContext(ctx)
 			err := fn(ctx, r)
 			switch {
 			case errors.Is(err, resource.ErrDisabled):

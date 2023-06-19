@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/converters"
 )
 
@@ -24,6 +25,8 @@ func init() {
 func (t T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Add(
+		manifest.ContextPath,
+		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Option:   "ipname",
 			Attr:     "IpName",
@@ -52,13 +55,6 @@ func (t T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/gateway"),
 			Provisioning: true,
-		},
-		keywords.Keyword{
-			Option:    "wait_dns",
-			Attr:      "WaitDNS",
-			Scopable:  true,
-			Converter: converters.Bool,
-			Text:      keywords.NewText(fs, "text/kw/wait_dns"),
 		},
 		keywords.Keyword{
 			Option:       "network",

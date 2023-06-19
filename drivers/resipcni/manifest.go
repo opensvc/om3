@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
+	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/converters"
 )
 
@@ -29,6 +30,8 @@ func (t T) Manifest() *manifest.T {
 		manifest.ContextCNIPlugins,
 		manifest.ContextCNIConfig,
 		manifest.ContextObjectID,
+		manifest.ContextPath,
+		resip.KeywordWaitDNS,
 		keywords.Keyword{
 			Option:    "expose",
 			Attr:      "Expose",

@@ -14,9 +14,11 @@ import (
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/fqdn"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
@@ -36,23 +38,25 @@ type (
 	T struct {
 		resource.T
 
+		Path path.T
+
 		// config
-		NetNS        string   `json:"netns"`
-		VLANTag      string   `json:"vlan_tag"`
-		VLANMode     string   `json:"vlan_mode"`
-		Mode         string   `json:"mode"`
-		NSDev        string   `json:"nsdev"`
-		MacAddr      string   `json:"mac_addr"`
-		DelNetRoute  bool     `json:"del_net_route"`
-		IpName       string   `json:"ipname"`
-		IpDev        string   `json:"ipdev"`
-		Netmask      string   `json:"netmask"`
-		Gateway      string   `json:"gateway"`
-		Network      string   `json:"network"`
-		WaitDNS      bool     `json:"wait_dns"`
-		CheckCarrier bool     `json:"check_carrier"`
-		Alias        bool     `json:"alias"`
-		Expose       []string `json:"expose"`
+		NetNS        string         `json:"netns"`
+		VLANTag      string         `json:"vlan_tag"`
+		VLANMode     string         `json:"vlan_mode"`
+		Mode         string         `json:"mode"`
+		NSDev        string         `json:"nsdev"`
+		MacAddr      string         `json:"mac_addr"`
+		DelNetRoute  bool           `json:"del_net_route"`
+		IpName       string         `json:"ipname"`
+		IpDev        string         `json:"ipdev"`
+		Netmask      string         `json:"netmask"`
+		Gateway      string         `json:"gateway"`
+		Network      string         `json:"network"`
+		WaitDNS      *time.Duration `json:"wait_dns"`
+		CheckCarrier bool           `json:"check_carrier"`
+		Alias        bool           `json:"alias"`
+		Expose       []string       `json:"expose"`
 
 		// cache
 		_ipaddr net.IP
@@ -120,6 +124,17 @@ func (t T) ActionResourceDeps() []actionresdeps.Dep {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if err := t.startMode(ctx); err != nil {
+		return err
+	}
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.Path); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) startMode(ctx context.Context) error {
+
 	if t.Tags.Has(tagDedicated) {
 		t.Log().Info().Msgf("mode %s (via resource tag)", tagDedicated)
 		return t.startDedicated(ctx)
