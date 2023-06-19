@@ -117,21 +117,21 @@ func (t Node) PostCommit() error {
 	return nil
 }
 
-func (t Node) Nodes() []string {
+func (t Node) Nodes() ([]string, error) {
 	k := key.T{Section: "cluster", Option: "nodes"}
 	nodes := t.MergedConfig().GetStrings(k)
 	if len(nodes) == 0 {
-		return []string{hostname.Hostname()}
+		return []string{hostname.Hostname()}, nil
 	}
-	return nodes
+	return nodes, nil
 }
 
-func (t Node) DRPNodes() []string {
-	return []string{}
+func (t Node) DRPNodes() ([]string, error) {
+	return []string{}, nil
 }
 
-func (t Node) EncapNodes() []string {
-	return []string{}
+func (t Node) EncapNodes() ([]string, error) {
+	return []string{}, nil
 }
 
 func (t *Node) Nameservers() ([]string, error) {

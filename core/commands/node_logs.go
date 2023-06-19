@@ -70,7 +70,10 @@ func (t *CmdNodeLogs) remote() error {
 		t.NodeSelector,
 		nodeselector.WithServer(t.Server),
 	)
-	nodes := sel.Expand()
+	nodes, err := sel.Expand()
+	if err != nil {
+		return err
+	}
 	if len(nodes) == 0 {
 		return fmt.Errorf("no nodes to fetch logs from")
 	}

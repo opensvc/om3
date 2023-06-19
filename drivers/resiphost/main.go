@@ -11,9 +11,11 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/fqdn"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
@@ -29,16 +31,19 @@ type (
 	T struct {
 		resource.T
 
+		Path path.T
+
 		// config
-		IpName       string   `json:"ipname"`
-		IpDev        string   `json:"ipdev"`
-		Netmask      string   `json:"netmask"`
-		Network      string   `json:"network"`
-		Gateway      string   `json:"gateway"`
-		Provisioner  string   `json:"provisioner"`
-		CheckCarrier bool     `json:"check_carrier"`
-		Alias        bool     `json:"alias"`
-		Expose       []string `json:"expose"`
+		IpName       string         `json:"ipname"`
+		IpDev        string         `json:"ipdev"`
+		Netmask      string         `json:"netmask"`
+		Network      string         `json:"network"`
+		Gateway      string         `json:"gateway"`
+		Provisioner  string         `json:"provisioner"`
+		CheckCarrier bool           `json:"check_carrier"`
+		Alias        bool           `json:"alias"`
+		Expose       []string       `json:"expose"`
+		WaitDNS      *time.Duration `json:"wait_dns"`
 
 		// cache
 		_ipaddr net.IP
@@ -76,6 +81,9 @@ func (t *T) Start(ctx context.Context) error {
 		return t.stop()
 	})
 	if err := t.arpAnnounce(); err != nil {
+		return err
+	}
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.Path); err != nil {
 		return err
 	}
 	return nil

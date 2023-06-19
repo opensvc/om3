@@ -285,7 +285,11 @@ func fetch(ctx context.Context, cli *client.T, p path.T, node string, cmdC chan<
 		log.Error().Err(err).Msgf("configure error for %s", p)
 		return
 	}
-	nodes := configure.Config().Referrer.Nodes()
+	nodes, err := configure.Config().Referrer.Nodes()
+	if err != nil {
+		log.Error().Err(err).Msgf("nodes eval error for %s", p)
+		return
+	}
 	validScope := false
 	for _, n := range nodes {
 		if n == hostname.Hostname() {

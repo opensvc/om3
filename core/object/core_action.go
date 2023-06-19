@@ -48,10 +48,14 @@ func (t *actor) validateAction() error {
 	if t.Env() != "PRD" && node.Env == "PRD" {
 		return fmt.Errorf("%w: not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, t.Env(), node.Env)
 	}
-	if t.config.IsInNodes(hostname.Hostname()) {
+	if v, err := t.config.IsInNodes(hostname.Hostname()); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
-	if t.config.IsInDRPNodes(hostname.Hostname()) {
+	if v, err := t.config.IsInDRPNodes(hostname.Hostname()); err != nil {
+		return err
+	} else if v {
 		return nil
 	}
 	return fmt.Errorf("%w: the hostname '%s' is not a member of DEFAULT.nodes, DEFAULT.drpnode nor DEFAULT.drpnodes", ErrInvalidNode, hostname.Hostname())
@@ -316,6 +320,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
+			l := t.log.With().Str("rid", r.RID()).Logger()
+			ctx = l.WithContext(ctx)
 			err := fn(ctx, r)
 			switch {
 			case errors.Is(err, resource.ErrDisabled):

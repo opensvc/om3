@@ -13,12 +13,15 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
 
@@ -32,6 +35,8 @@ type (
 	T struct {
 		resource.T
 
+		Path path.T
+
 		// config
 		Expose     []string `json:"expose"`
 		NetNS      string   `json:"netns"`
@@ -40,6 +45,7 @@ type (
 		CNIConfig  string
 		CNIPlugins string
 		ObjectID   uuid.UUID
+		WaitDNS    *time.Duration `json:"wait_dns"`
 	}
 
 	Addrs []net.Addr
@@ -281,6 +287,9 @@ func (t *T) Start(ctx context.Context) error {
 		return t.delObjectNetNS()
 	})
 	if err := t.start(); err != nil {
+		return err
+	}
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.Path); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func() error {

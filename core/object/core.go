@@ -66,7 +66,7 @@ type (
 		FQDN() string
 		Status(context.Context) (instance.Status, error)
 		FreshStatus(context.Context) (instance.Status, error)
-		Nodes() []string
+		Nodes() ([]string, error)
 	}
 )
 

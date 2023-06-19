@@ -104,7 +104,7 @@ func (t T) String() string {
 
 // LocalExpand resolves a selector expression into a list of object paths
 // without asking the daemon for nodes information.
-func LocalExpand(s string) []string {
+func LocalExpand(s string) ([]string, error) {
 	return New(s, WithLocal(true)).Expand()
 }
 
@@ -114,20 +114,14 @@ func LocalExpand(s string) []string {
 // daemons know all cluster objects, even remote ones.
 // If executed on a cluster node, fallback to a local selector, which
 // looks up knownNodes configuration files.
-func (t *T) Expand() []string {
+func (t *T) Expand() ([]string, error) {
 	if t.nodes != nil {
-		return t.nodes
+		return t.nodes, nil
 	}
 	if err := t.expand(); err != nil {
-		t.log.Debug().Msg(err.Error())
-		return t.nodes
+		return nil, err
 	}
-	t.log.Debug().
-		Bool("local", t.local).
-		Str("selector", t.SelectorExpression).
-		Strs("result", t.nodes).
-		Msg("expand node selector")
-	return t.nodes
+	return t.nodes, nil
 }
 
 func (t *T) add(node string) {

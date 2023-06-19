@@ -54,9 +54,9 @@ type (
 		Dereference(string) (string, error)
 
 		// for scoping
-		Nodes() []string
-		DRPNodes() []string
-		EncapNodes() []string
+		Nodes() ([]string, error)
+		DRPNodes() ([]string, error)
+		EncapNodes() ([]string, error)
 	}
 
 	ErrPostponedRef struct {
@@ -798,18 +798,30 @@ func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, e
 		}
 	}
 	for _, o := range l {
-		if v, ok := s[o+"@nodes"]; ok && t.IsInNodes(impersonate) {
-			return v, nil
+		if v, ok := s[o+"@nodes"]; ok {
+			if in, err := t.IsInNodes(impersonate); err != nil {
+				return "", err
+			} else if in {
+				return v, nil
+			}
 		}
 	}
 	for _, o := range l {
-		if v, ok := s[o+"@drpnodes"]; ok && t.IsInDRPNodes(impersonate) {
-			return v, nil
+		if v, ok := s[o+"@drpnodes"]; ok {
+			if in, err := t.IsInDRPNodes(impersonate); err != nil {
+				return "", err
+			} else if in {
+				return v, nil
+			}
 		}
 	}
 	for _, o := range l {
-		if v, ok := s[o+"@encapnodes"]; ok && t.IsInEncapNodes(impersonate) {
-			return v, nil
+		if v, ok := s[o+"@encapnodes"]; ok {
+			if in, err := t.IsInEncapNodes(impersonate); err != nil {
+				return "", err
+			} else if in {
+				return v, nil
+			}
 		}
 	}
 	for _, o := range l {
@@ -882,28 +894,40 @@ func (t T) SectionStrings() []string {
 	return t.file.SectionStrings()
 }
 
-func (t *T) IsInNodes(impersonate string) bool {
+func (t *T) IsInNodes(impersonate string) (bool, error) {
 	s := set.New()
-	for _, n := range t.Referrer.Nodes() {
+	nodes, err := t.Referrer.Nodes()
+	if err != nil {
+		return false, err
+	}
+	for _, n := range nodes {
 		s.Insert(n)
 	}
-	return s.Has(impersonate)
+	return s.Has(impersonate), nil
 }
 
-func (t *T) IsInDRPNodes(impersonate string) bool {
+func (t *T) IsInDRPNodes(impersonate string) (bool, error) {
 	s := set.New()
-	for _, n := range t.Referrer.DRPNodes() {
+	nodes, err := t.Referrer.DRPNodes()
+	if err != nil {
+		return false, err
+	}
+	for _, n := range nodes {
 		s.Insert(n)
 	}
-	return s.Has(impersonate)
+	return s.Has(impersonate), nil
 }
 
-func (t *T) IsInEncapNodes(impersonate string) bool {
+func (t *T) IsInEncapNodes(impersonate string) (bool, error) {
 	s := set.New()
-	for _, n := range t.Referrer.EncapNodes() {
+	nodes, err := t.Referrer.EncapNodes()
+	if err != nil {
+		return false, err
+	}
+	for _, n := range nodes {
 		s.Insert(n)
 	}
-	return s.Has(impersonate)
+	return s.Has(impersonate), nil
 }
 
 func (t T) dereference(ref string, section string, impersonate string) (string, error) {

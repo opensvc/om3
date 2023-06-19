@@ -126,16 +126,19 @@ func (t core) Priority() priority.T {
 	}
 }
 
-func (t core) Peers() []string {
+func (t core) Peers() ([]string, error) {
 	impersonate := hostname.Hostname()
-	switch {
-	case t.config.IsInNodes(impersonate):
+	if v, err := t.config.IsInNodes(impersonate); err != nil {
+		return nil, err
+	} else if v {
 		return t.Nodes()
-	case t.config.IsInDRPNodes(impersonate):
-		return t.DRPNodes()
-	default:
-		return []string{}
 	}
+	if v, err := t.config.IsInDRPNodes(impersonate); err != nil {
+		return nil, err
+	} else if v {
+		return t.DRPNodes()
+	}
+	return nil, fmt.Errorf("node %s has no peers: not in nodes nor drpnodes", impersonate)
 }
 
 func (t core) Children() []path.Relation {
@@ -166,65 +169,72 @@ func (t core) Parents() []path.Relation {
 	return data
 }
 
-func (t core) FlexMin() int {
+func (t core) FlexMin() (int, error) {
 	var (
-		i   int
-		err error
+		i, max int
+		err    error
 	)
 	k := key.Parse("flex_min")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		//t.log.Error().Err(err).Msg("")
-		return 0
+		return 0, nil
 	}
 	if i < 0 {
-		return 0
+		return 0, nil
 	}
-	max := t.FlexMax()
+	if max, err = t.FlexMax(); err != nil {
+		return 0, err
+	}
 	if i > max {
-		return max
+		return max, nil
 	}
-	return i
+	return i, nil
 }
 
-func (t core) FlexMax() int {
+func (t core) FlexMax() (int, error) {
 	var (
 		i   int
 		err error
 	)
-	max := len(t.Peers())
+	nodes, err := t.Peers()
+	if err != nil {
+		return 0, err
+	}
+	max := len(nodes)
 	k := key.Parse("flex_max")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		//t.log.Error().Err(err).Msg("")
-		return max
+		return max, nil
 	}
 	if i > max {
-		return max
+		return max, nil
 	}
 	if i < 0 {
-		return 0
+		return 0, nil
 	}
-	return i
+	return i, nil
 }
 
-func (t core) FlexTarget() int {
+func (t core) FlexTarget() (int, error) {
 	var (
-		i   int
-		err error
+		i, min, max int
+		err         error
 	)
 	k := key.Parse("flex_target")
 	if i, err = t.config.GetIntStrict(k); err != nil {
-		//t.log.Error().Err(err).Msg("")
 		return t.FlexMin()
 	}
-	min := t.FlexMin()
-	max := t.FlexMax()
+	if min, err = t.FlexMin(); err != nil {
+		return 0, err
+	}
+	if max, err = t.FlexMax(); err != nil {
+		return 0, err
+	}
 	if i < min {
-		return min
+		return min, nil
 	}
 	if i > max {
-		return max
+		return max, nil
 	}
-	return i
+	return i, nil
 }
 
 func (t core) dereferenceExposedDevices(ref string) (string, error) {
@@ -362,22 +372,28 @@ func (t core) Dereference(ref string) (string, error) {
 	return ref, fmt.Errorf("unknown reference: %s", ref)
 }
 
-func (t core) Nodes() []string {
-	v := t.config.Get(key.Parse("nodes"))
-	l, _ := xconfig.NodesConverter.Convert(v)
-	return l.([]string)
+func (t core) Nodes() ([]string, error) {
+	l, err := t.config.Eval(key.Parse("nodes"))
+	if err != nil {
+		return []string{}, err
+	}
+	return l.([]string), nil
 }
 
-func (t core) DRPNodes() []string {
-	v := t.config.Get(key.Parse("drpnodes"))
-	l, _ := xconfig.OtherNodesConverter.Convert(v)
-	return l.([]string)
+func (t core) DRPNodes() ([]string, error) {
+	l, err := t.config.Eval(key.Parse("drpnodes"))
+	if err != nil {
+		return nil, err
+	}
+	return l.([]string), nil
 }
 
-func (t core) EncapNodes() []string {
-	v := t.config.Get(key.Parse("encapnodes"))
-	l, _ := xconfig.OtherNodesConverter.Convert(v)
-	return l.([]string)
+func (t core) EncapNodes() ([]string, error) {
+	l, err := t.config.Eval(key.Parse("encapnodes"))
+	if err != nil {
+		return nil, err
+	}
+	return l.([]string), nil
 }
 
 func (t core) HardAffinity() []string {

@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrouter"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/event"
@@ -533,6 +534,9 @@ func (t T) selectionDo(selection *objectselector.Selection, fn func(context.Cont
 	}
 
 	ctx := context.Background()
+	ctx = actioncontext.WithRID(ctx, t.RID)
+	ctx = actioncontext.WithTag(ctx, t.Tag)
+	ctx = actioncontext.WithSubset(ctx, t.Subset)
 
 	// push a progress view to the context, so objects can use it to
 	// display what they are doing.
