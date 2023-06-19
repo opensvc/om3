@@ -44,9 +44,6 @@ func (t *CmdObjectStartStandby) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithRID(ctx, t.RID)
-			ctx = actioncontext.WithTag(ctx, t.Tag)
-			ctx = actioncontext.WithSubset(ctx, t.Subset)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)

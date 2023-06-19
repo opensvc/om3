@@ -44,9 +44,6 @@ func (t *CmdObjectRun) Run(selector, kind string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithRID(ctx, t.RID)
-			ctx = actioncontext.WithTag(ctx, t.Tag)
-			ctx = actioncontext.WithSubset(ctx, t.Subset)
 			ctx = actioncontext.WithCron(ctx, t.Cron)
 			ctx = actioncontext.WithConfirm(ctx, t.Confirm)
 			ctx = actioncontext.WithDryRun(ctx, t.DryRun)
