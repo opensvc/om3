@@ -167,7 +167,7 @@ func (t *dns) startUDSListener() error {
 	sockDir := rawconfig.DNSUDSDir()
 	sockPath := rawconfig.DNSUDSFile()
 
-	if err := os.MkdirAll(sockDir, 0750); err != nil {
+	if err := os.MkdirAll(sockDir, 0755); err != nil {
 		return err
 	}
 
