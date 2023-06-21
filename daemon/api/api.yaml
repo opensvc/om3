@@ -415,6 +415,58 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+  /node/backlogs:
+    get:
+      operationId: GetNodeBacklogs
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve recent logs
+      parameters:
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /node/logs:
+    get:
+      operationId: GetNodeLogs
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve new logs
+      parameters:
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /node/monitor:
     post:
       operationId: PostNodeMonitor
@@ -484,6 +536,58 @@ paths:
       responses:
         200:
           description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /object/backlogs:
+    get:
+      operationId: GetObjectBacklogs
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve recent logs
+      parameters:
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+  /object/logs:
+    get:
+      operationId: GetObjectLogs
+      tags:
+        - object
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve new logs
+      parameters:
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/Paths'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/LogList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1563,6 +1667,10 @@ components:
           $ref: '#/components/schemas/Cluster'
         daemon:
           $ref: '#/components/schemas/Daemon'
+    LogList:
+      description: responseLogList is a list of sse
+      type: string
+      format: binary
     EventList:
       description: responseEventList is a list of sse
       type: string
@@ -1668,6 +1776,27 @@ components:
       schema:
         type: string
         example: 5s
+    Paths:
+      name: paths
+      in: query
+      description: list of object paths to send logs for
+      required: true
+      schema:
+        type: array
+        items:
+          type: string
+          description: object path
+          example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
+    LogFilter:
+      name: filter
+      in: query
+      description: list of log filter
+      schema:
+        type: array
+        items:
+          type: string
+          description: "a filter expression: label=value[,label=value]..."
+          example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
     EventFilter:
       name: filter
       in: query

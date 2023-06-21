@@ -1,14 +1,19 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
 
+	"github.com/goccy/go-json"
+	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/slog"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -21,62 +26,69 @@ type (
 	}
 )
 
-func (t CmdObjectLogs) Filters() map[string]any {
-	filters := make(map[string]any)
+func (t CmdObjectLogs) Filters() *[]string {
+	m := make(map[string]any)
+	l := make([]string, 0)
 	if t.SID != "" {
-		filters["sid"] = t.SID
+		m["sid"] = t.SID
 	}
-	return filters
+	if len(m) == 0 {
+		return nil
+	}
+	for k, v := range m {
+		l = append(l, fmt.Sprint("%s=%s", k, v))
+	}
+	return &l
 }
 
 func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) {
 	events := make(slog.Events, 0)
-	/*
-		c, err := client.New(
-			client.WithURL(node),
-			client.WithUsername(hostname.Hostname()),
-			client.WithPassword(rawconfig.ClusterSection().Secret),
-		)
-		if err != nil {
-			return nil, err
-		}
-		req := c.NewGetObjectsBacklog()
-		req.Filters = t.Filters()
-		req.Paths = paths
-		b, err := req.Do()
-		if err != nil {
-			return nil, err
-		}
-		if err := json.Unmarshal(b, &events); err != nil {
-			return nil, err
-		}
-	*/
-	return events, fmt.Errorf("todo")
+	c, err := client.New(client.WithURL(node))
+	if err != nil {
+		return nil, err
+	}
+	filters := t.Filters()
+	resp, err := c.GetObjectBacklogs(context.Background(), &api.GetObjectBacklogsParams{Filter: filters, Paths: paths.StrSlice()})
+	if err != nil {
+		return nil, err
+	}
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&events); err != nil {
+		return nil, err
+	}
+	return events, nil
 }
 
 func (t *CmdObjectLogs) stream(node string, paths path.L) {
-	/*
-		c, err := client.New(
-			client.WithURL(node),
-			client.WithUsername(hostname.Hostname()),
-			client.WithPassword(rawconfig.ClusterSection().Secret),
-		)
+	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	l := paths.StrSlice()
+	reader, err := c.NewGetLogs().
+		SetFilters(t.Filters()).
+		SetPaths(&l).
+		GetReader()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	defer reader.Close()
+
+	for {
+		event, err := reader.Read()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			break
 		}
-		streamer := c.NewGetObjectsLog()
-		streamer.Filters = t.Filters()
-		streamer.Paths = paths
-		events, err := streamer.Do()
+		rec, err := slog.NewEvent(event.Data)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			break
 		}
-		for event := range events {
-			event.Render(t.Format)
-		}
-	*/
+		rec.Render(t.Format)
+	}
 }
 
 func nodesFromPath(p path.T) ([]string, error) {
@@ -102,6 +114,10 @@ func nodesFromPaths(paths path.L) ([]string, error) {
 }
 
 func (t *CmdObjectLogs) remote(selStr string) error {
+	var (
+		nodes []string
+		err   error
+	)
 	sel := objectselector.NewSelection(
 		selStr,
 		objectselector.SelectionWithLocal(true),
@@ -110,13 +126,20 @@ func (t *CmdObjectLogs) remote(selStr string) error {
 	if err != nil {
 		return err
 	}
-	nodes, err := nodesFromPaths(paths)
-	if err != nil {
-		return err
-	}
-	filters := make(map[string]interface{})
-	if t.SID != "" {
-		filters["sid"] = t.SID
+	if t.NodeSelector != "" {
+		nodeSelector := nodeselector.New(
+			t.NodeSelector,
+			nodeselector.WithLocal(true),
+		)
+		nodes, err = nodeSelector.Expand()
+		if err != nil {
+			return err
+		}
+	} else {
+		nodes, err = nodesFromPaths(paths)
+		if err != nil {
+			return err
+		}
 	}
 	events := make(slog.Events, 0)
 	for _, node := range nodes {

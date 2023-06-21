@@ -249,6 +249,10 @@ func (t *T) NewGetEvents() *api.GetEvents {
 	return api.NewGetEvents(t)
 }
 
+func (t *T) NewGetLogs() *api.GetLogs {
+	return api.NewGetLogs(t)
+}
+
 func (t *T) NewGetDaemonStatus() *api.GetDaemonStatus {
 	return api.NewGetDaemonStatus(t)
 }

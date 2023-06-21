@@ -131,6 +131,9 @@ type ClientInterface interface {
 	// GetNetworks request
 	GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeBacklogs request
+	GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNodeClear request
 	PostNodeClear(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -145,6 +148,9 @@ type ClientInterface interface {
 
 	PostNodeDRBDConfig(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeLogs request
+	GetNodeLogs(ctx context.Context, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNodeMonitor request with any body
 	PostNodeMonitorWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -158,6 +164,9 @@ type ClientInterface interface {
 
 	PostObjectAbort(ctx context.Context, body PostObjectAbortJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetObjectBacklogs request
+	GetObjectBacklogs(ctx context.Context, params *GetObjectBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostObjectClear request with any body
 	PostObjectClearWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -168,6 +177,9 @@ type ClientInterface interface {
 
 	// GetObjectFile request
 	GetObjectFile(ctx context.Context, params *GetObjectFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetObjectLogs request
+	GetObjectLogs(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectMonitor request with any body
 	PostObjectMonitorWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -382,6 +394,18 @@ func (c *Client) GetNetworks(ctx context.Context, params *GetNetworksParams, req
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetNodeBacklogs(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeBacklogsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostNodeClear(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeClearRequest(c.Server)
 	if err != nil {
@@ -432,6 +456,18 @@ func (c *Client) PostNodeDRBDConfigWithBody(ctx context.Context, params *PostNod
 
 func (c *Client) PostNodeDRBDConfig(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeDRBDConfigRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeLogs(ctx context.Context, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeLogsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -502,6 +538,18 @@ func (c *Client) PostObjectAbort(ctx context.Context, body PostObjectAbortJSONRe
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetObjectBacklogs(ctx context.Context, params *GetObjectBacklogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectBacklogsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostObjectClearWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectClearRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -540,6 +588,18 @@ func (c *Client) GetObjectConfig(ctx context.Context, params *GetObjectConfigPar
 
 func (c *Client) GetObjectFile(ctx context.Context, params *GetObjectFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectFileRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetObjectLogs(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectLogsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1249,6 +1309,65 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 	return req, nil
 }
 
+// NewGetNodeBacklogsRequest generates requests for GetNodeBacklogs
+func NewGetNodeBacklogsRequest(server string, params *GetNodeBacklogsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/backlogs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Filter != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostNodeClearRequest generates requests for PostNodeClear
 func NewPostNodeClearRequest(server string) (*http.Request, error) {
 	var err error
@@ -1402,6 +1521,65 @@ func NewPostNodeDRBDConfigRequestWithBody(server string, params *PostNodeDRBDCon
 	return req, nil
 }
 
+// NewGetNodeLogsRequest generates requests for GetNodeLogs
+func NewGetNodeLogsRequest(server string, params *GetNodeLogsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/logs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Filter != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostNodeMonitorRequest calls the generic PostNodeMonitor builder with application/json body
 func NewPostNodeMonitorRequest(server string, body PostNodeMonitorJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1505,6 +1683,65 @@ func NewPostObjectAbortRequestWithBody(server string, contentType string, body i
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetObjectBacklogsRequest generates requests for GetObjectBacklogs
+func NewGetObjectBacklogsRequest(server string, params *GetObjectBacklogsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/backlogs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Filter != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -1646,6 +1883,65 @@ func NewGetObjectFileRequest(server string, params *GetObjectFileParams) (*http.
 	queryValues := queryURL.Query()
 
 	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "path", runtime.ParamLocationQuery, params.Path); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetObjectLogsRequest generates requests for GetObjectLogs
+func NewGetObjectLogsRequest(server string, params *GetObjectLogsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/logs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.Filter != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "paths", runtime.ParamLocationQuery, params.Paths); err != nil {
 		return nil, err
 	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 		return nil, err
@@ -2092,6 +2388,9 @@ type ClientWithResponsesInterface interface {
 	// GetNetworks request
 	GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error)
 
+	// GetNodeBacklogs request
+	GetNodeBacklogsWithResponse(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*GetNodeBacklogsResponse, error)
+
 	// PostNodeClear request
 	PostNodeClearWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeClearResponse, error)
 
@@ -2106,6 +2405,9 @@ type ClientWithResponsesInterface interface {
 
 	PostNodeDRBDConfigWithResponse(ctx context.Context, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
 
+	// GetNodeLogs request
+	GetNodeLogsWithResponse(ctx context.Context, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error)
+
 	// PostNodeMonitor request with any body
 	PostNodeMonitorWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeMonitorResponse, error)
 
@@ -2119,6 +2421,9 @@ type ClientWithResponsesInterface interface {
 
 	PostObjectAbortWithResponse(ctx context.Context, body PostObjectAbortJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectAbortResponse, error)
 
+	// GetObjectBacklogs request
+	GetObjectBacklogsWithResponse(ctx context.Context, params *GetObjectBacklogsParams, reqEditors ...RequestEditorFn) (*GetObjectBacklogsResponse, error)
+
 	// PostObjectClear request with any body
 	PostObjectClearWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectClearResponse, error)
 
@@ -2129,6 +2434,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectFile request
 	GetObjectFileWithResponse(ctx context.Context, params *GetObjectFileParams, reqEditors ...RequestEditorFn) (*GetObjectFileResponse, error)
+
+	// GetObjectLogs request
+	GetObjectLogsWithResponse(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*GetObjectLogsResponse, error)
 
 	// PostObjectMonitor request with any body
 	PostObjectMonitorWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectMonitorResponse, error)
@@ -2458,6 +2766,31 @@ func (r GetNetworksResponse) StatusCode() int {
 	return 0
 }
 
+type GetNodeBacklogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LogList
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeBacklogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeBacklogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostNodeClearResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2561,6 +2894,30 @@ func (r PostNodeDRBDConfigResponse) StatusCode() int {
 	return 0
 }
 
+type GetNodeLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostNodeMonitorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2636,6 +2993,31 @@ func (r PostObjectAbortResponse) StatusCode() int {
 	return 0
 }
 
+type GetObjectBacklogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LogList
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetObjectBacklogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetObjectBacklogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostObjectClearResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2704,6 +3086,30 @@ func (r GetObjectFileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetObjectFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetObjectLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *Problem
+	JSON403      *Problem
+	JSON500      *Problem
+}
+
+// Status returns HTTPResponse.Status
+func (r GetObjectLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetObjectLogsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3043,6 +3449,15 @@ func (c *ClientWithResponses) GetNetworksWithResponse(ctx context.Context, param
 	return ParseGetNetworksResponse(rsp)
 }
 
+// GetNodeBacklogsWithResponse request returning *GetNodeBacklogsResponse
+func (c *ClientWithResponses) GetNodeBacklogsWithResponse(ctx context.Context, params *GetNodeBacklogsParams, reqEditors ...RequestEditorFn) (*GetNodeBacklogsResponse, error) {
+	rsp, err := c.GetNodeBacklogs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeBacklogsResponse(rsp)
+}
+
 // PostNodeClearWithResponse request returning *PostNodeClearResponse
 func (c *ClientWithResponses) PostNodeClearWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostNodeClearResponse, error) {
 	rsp, err := c.PostNodeClear(ctx, reqEditors...)
@@ -3085,6 +3500,15 @@ func (c *ClientWithResponses) PostNodeDRBDConfigWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParsePostNodeDRBDConfigResponse(rsp)
+}
+
+// GetNodeLogsWithResponse request returning *GetNodeLogsResponse
+func (c *ClientWithResponses) GetNodeLogsWithResponse(ctx context.Context, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error) {
+	rsp, err := c.GetNodeLogs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeLogsResponse(rsp)
 }
 
 // PostNodeMonitorWithBodyWithResponse request with arbitrary body returning *PostNodeMonitorResponse
@@ -3130,6 +3554,15 @@ func (c *ClientWithResponses) PostObjectAbortWithResponse(ctx context.Context, b
 	return ParsePostObjectAbortResponse(rsp)
 }
 
+// GetObjectBacklogsWithResponse request returning *GetObjectBacklogsResponse
+func (c *ClientWithResponses) GetObjectBacklogsWithResponse(ctx context.Context, params *GetObjectBacklogsParams, reqEditors ...RequestEditorFn) (*GetObjectBacklogsResponse, error) {
+	rsp, err := c.GetObjectBacklogs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetObjectBacklogsResponse(rsp)
+}
+
 // PostObjectClearWithBodyWithResponse request with arbitrary body returning *PostObjectClearResponse
 func (c *ClientWithResponses) PostObjectClearWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectClearResponse, error) {
 	rsp, err := c.PostObjectClearWithBody(ctx, contentType, body, reqEditors...)
@@ -3163,6 +3596,15 @@ func (c *ClientWithResponses) GetObjectFileWithResponse(ctx context.Context, par
 		return nil, err
 	}
 	return ParseGetObjectFileResponse(rsp)
+}
+
+// GetObjectLogsWithResponse request returning *GetObjectLogsResponse
+func (c *ClientWithResponses) GetObjectLogsWithResponse(ctx context.Context, params *GetObjectLogsParams, reqEditors ...RequestEditorFn) (*GetObjectLogsResponse, error) {
+	rsp, err := c.GetObjectLogs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetObjectLogsResponse(rsp)
 }
 
 // PostObjectMonitorWithBodyWithResponse request with arbitrary body returning *PostObjectMonitorResponse
@@ -3795,6 +4237,53 @@ func ParseGetNetworksResponse(rsp *http.Response) (*GetNetworksResponse, error) 
 	return response, nil
 }
 
+// ParseGetNodeBacklogsResponse parses an HTTP response from a GetNodeBacklogsWithResponse call
+func ParseGetNodeBacklogsResponse(rsp *http.Response) (*GetNodeBacklogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeBacklogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LogList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostNodeClearResponse parses an HTTP response from a PostNodeClearWithResponse call
 func ParsePostNodeClearResponse(rsp *http.Response) (*PostNodeClearResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4004,6 +4493,46 @@ func ParsePostNodeDRBDConfigResponse(rsp *http.Response) (*PostNodeDRBDConfigRes
 	return response, nil
 }
 
+// ParseGetNodeLogsResponse parses an HTTP response from a GetNodeLogsWithResponse call
+func ParseGetNodeLogsResponse(rsp *http.Response) (*GetNodeLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostNodeMonitorResponse parses an HTTP response from a PostNodeMonitorWithResponse call
 func ParsePostNodeMonitorResponse(rsp *http.Response) (*PostNodeMonitorResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4145,6 +4674,53 @@ func ParsePostObjectAbortResponse(rsp *http.Response) (*PostObjectAbortResponse,
 	return response, nil
 }
 
+// ParseGetObjectBacklogsResponse parses an HTTP response from a GetObjectBacklogsWithResponse call
+func ParseGetObjectBacklogsResponse(rsp *http.Response) (*GetObjectBacklogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetObjectBacklogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LogList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostObjectClearResponse parses an HTTP response from a PostObjectClearWithResponse call
 func ParsePostObjectClearResponse(rsp *http.Response) (*PostObjectClearResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4253,6 +4829,46 @@ func ParseGetObjectFileResponse(rsp *http.Response) (*GetObjectFileResponse, err
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetObjectLogsResponse parses an HTTP response from a GetObjectLogsWithResponse call
+func ParseGetObjectLogsResponse(rsp *http.Response) (*GetObjectLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetObjectLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

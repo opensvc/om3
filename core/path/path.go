@@ -344,6 +344,16 @@ func (t L) StrMap() M {
 	return m
 }
 
+// StrSlice converts L into a string slice.
+// This format is useful to prepare api handlers parameters.
+func (t L) StrSlice() []string {
+	l := make([]string, len(t))
+	for i, p := range t {
+		l[i] = p.String()
+	}
+	return l
+}
+
 // Namespaces return the list of unique namespaces in L
 func (t L) Namespaces() []string {
 	m := make(map[string]interface{})
