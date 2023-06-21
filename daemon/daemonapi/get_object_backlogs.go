@@ -35,7 +35,7 @@ func (a *DaemonApi) GetObjectBacklogs(ctx echo.Context, params api.GetObjectBack
 
 	paths, err := path.ParseList(params.Paths...)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s", params.Paths, err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}
 	events, err := slog.GetEventsFromObjects(paths, filters)
 	if err != nil {
