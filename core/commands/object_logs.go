@@ -22,24 +22,9 @@ type (
 	CmdObjectLogs struct {
 		OptsGlobal
 		Follow bool
-		SID    string
+		Filter *[]string
 	}
 )
-
-func (t CmdObjectLogs) Filters() *[]string {
-	m := make(map[string]any)
-	l := make([]string, 0)
-	if t.SID != "" {
-		m["sid"] = t.SID
-	}
-	if len(m) == 0 {
-		return nil
-	}
-	for k, v := range m {
-		l = append(l, fmt.Sprint("%s=%s", k, v))
-	}
-	return &l
-}
 
 func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) {
 	events := make(slog.Events, 0)
@@ -47,8 +32,7 @@ func (t *CmdObjectLogs) backlog(node string, paths path.L) (slog.Events, error) 
 	if err != nil {
 		return nil, err
 	}
-	filters := t.Filters()
-	resp, err := c.GetObjectBacklogs(context.Background(), &api.GetObjectBacklogsParams{Filter: filters, Paths: paths.StrSlice()})
+	resp, err := c.GetObjectBacklogs(context.Background(), &api.GetObjectBacklogsParams{Filter: t.Filter, Paths: paths.StrSlice()})
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +51,7 @@ func (t *CmdObjectLogs) stream(node string, paths path.L) {
 	}
 	l := paths.StrSlice()
 	reader, err := c.NewGetLogs().
-		SetFilters(t.Filters()).
+		SetFilters(t.Filter).
 		SetPaths(&l).
 		GetReader()
 	if err != nil {
@@ -176,10 +160,7 @@ func (t *CmdObjectLogs) local(selStr string) error {
 	if err != nil {
 		return err
 	}
-	filters := make(map[string]interface{})
-	if t.SID != "" {
-		filters["sid"] = t.SID
-	}
+	filters := filterMap(t.Filter)
 	if events, err := slog.GetEventsFromObjects(paths, filters); err == nil {
 		events.Render(t.Format)
 	} else {

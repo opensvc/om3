@@ -122,7 +122,7 @@ func addFlagEval(flagSet *pflag.FlagSet, p *bool) {
 }
 
 func addFlagEventFilters(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringArrayVar(p, "filter", []string{}, "request only events matching kind (InstanceStatusUpdated) or labels (path=svc1) or both (InstanceStatusUpdated,path=svc1,node=n1).")
+	flagSet.StringArrayVar(p, "filter", []string{}, "Request only events matching kind (InstanceStatusUpdated) or labels (path=svc1) or both (InstanceStatusUpdated,path=svc1,node=n1).")
 }
 
 func addFlagForeground(flagSet *pflag.FlagSet, p *bool) {
@@ -169,8 +169,8 @@ func addFlagLogsFollow(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVarP(p, "logs-follow", "f", false, "Follow the log feed.")
 }
 
-func addFlagLogsSID(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "sid", "", "Filter on the session id of an action.")
+func addFlagLogsFilter(flagSet *pflag.FlagSet, p *[]string) {
+	flagSet.StringArrayVar(p, "filter", []string{}, "Request only logs matching labels (path=svc1).")
 }
 
 func addFlagMatch(flagSet *pflag.FlagSet, p *string) {

@@ -88,7 +88,7 @@ func parseLogFilters(l *[]string) (map[string]any, error) {
 //
 // filter syntax is: label=value[,label=value]*
 func parseLogFilter(s string) (string, string, error) {
-	splitted := strings.SplitN(s, "=", 1)
+	splitted := strings.SplitN(s, "=", 2)
 	if len(splitted) == 2 {
 		return splitted[0], splitted[1], nil
 	} else {

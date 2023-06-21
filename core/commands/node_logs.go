@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/goccy/go-json"
@@ -18,23 +19,20 @@ type (
 	CmdNodeLogs struct {
 		OptsGlobal
 		Follow bool
-		SID    string
+		Filter *[]string
 	}
 )
 
-func (t CmdNodeLogs) Filters() *[]string {
+func filterMap(l *[]string) map[string]any {
 	m := make(map[string]any)
-	l := make([]string, 0)
-	if t.SID != "" {
-		m["sid"] = t.SID
+	if l == nil {
+		return m
 	}
-	if len(m) == 0 {
-		return nil
+	for _, s := range *l {
+		e := strings.SplitN(s, "=", 2)
+		m[e[0]] = e[1]
 	}
-	for k, v := range m {
-		l = append(l, fmt.Sprint("%s=%s", k, v))
-	}
-	return &l
+	return m
 }
 
 func (t *CmdNodeLogs) backlog(node string) (slog.Events, error) {
@@ -43,8 +41,7 @@ func (t *CmdNodeLogs) backlog(node string) (slog.Events, error) {
 	if err != nil {
 		return nil, err
 	}
-	filters := t.Filters()
-	resp, err := c.GetNodeBacklogs(context.Background(), &api.GetNodeBacklogsParams{Filter: filters})
+	resp, err := c.GetNodeBacklogs(context.Background(), &api.GetNodeBacklogsParams{Filter: t.Filter})
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +59,7 @@ func (t *CmdNodeLogs) stream(node string) {
 		return
 	}
 	reader, err := c.NewGetLogs().
-		SetFilters(t.Filters()).
+		SetFilters(t.Filter).
 		GetReader()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -123,10 +120,7 @@ func (t *CmdNodeLogs) remote() error {
 }
 
 func (t *CmdNodeLogs) local() error {
-	filters := make(map[string]interface{})
-	if t.SID != "" {
-		filters["sid"] = t.SID
-	}
+	filters := filterMap(t.Filter)
 	if events, err := slog.GetEventsFromNode(filters); err == nil {
 		events.Render(t.Format)
 	} else {
