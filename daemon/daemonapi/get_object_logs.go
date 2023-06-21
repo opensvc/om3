@@ -50,7 +50,7 @@ func (a *DaemonApi) GetObjectLogs(ctx echo.Context, params api.GetObjectLogsPara
 
 	paths, err := path.ParseList(params.Paths...)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s", params.Paths, err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "error parsing paths: %s error: %s", params.Paths, err)
 	}
 	stream, err := slog.GetEventStreamFromObjects(paths, filters)
 	if err != nil {
