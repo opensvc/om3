@@ -1,9 +1,10 @@
 module github.com/opensvc/om3
 
-go 1.19
+go 1.20
 
 require (
 	github.com/allenai/go-swaggerui v0.1.0
+	github.com/andreazorzetto/yh v0.4.0
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/antchfx/xmlquery v1.3.10
 	github.com/atomicgo/cursor v0.0.1
@@ -30,7 +31,6 @@ require (
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
 	github.com/google/uuid v1.3.0
 	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
-	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/go-version v1.4.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/hpcloud/tail v1.0.0
@@ -52,7 +52,6 @@ require (
 	github.com/opensvc/fcntllock v1.0.3
 	github.com/opensvc/flock v1.0.3
 	github.com/opensvc/testhelper v1.0.0
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.15.1
 	github.com/prometheus/procfs v0.9.0
 	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695
@@ -78,13 +77,14 @@ require (
 	golang.org/x/time v0.3.0
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	software.sslmate.com/src/go-pkcs12 v0.2.0
 )
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/Microsoft/go-winio v0.4.15 // indirect
-	github.com/andreazorzetto/yh v0.4.0 // indirect
 	github.com/antchfx/xpath v1.2.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -105,7 +105,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/goombaio/orderedmap v0.0.0-20180924084748-ba921b7e2419 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/invopop/yaml v0.1.0 // indirect
@@ -133,6 +132,7 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
@@ -154,8 +154,6 @@ require (
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.2.2 // indirect
 )
 
