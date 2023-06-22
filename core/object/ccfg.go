@@ -55,8 +55,8 @@ func (t ccfg) Name() string {
 	return t.config.GetString(k)
 }
 
-// ClusterNodes return cluster nodes from config cluster.nodes
-func (t ccfg) ClusterNodes() []string {
+// Nodes implements Nodes() ([]string, error) to retrieve cluster nodes from config cluster.nodes
+func (t ccfg) Nodes() ([]string, error) {
 	k := key.New("cluster", "nodes")
-	return t.config.GetStrings(k)
+	return t.config.GetStrings(k), nil
 }

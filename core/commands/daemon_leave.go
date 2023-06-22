@@ -145,11 +145,15 @@ func (t *CmdDaemonLeave) leave() error {
 
 func (t *CmdDaemonLeave) checkParams() error {
 	if t.ApiNode == "" {
+		var clusterNodes []string
 		ccfg, err := object.NewCluster(object.WithVolatile(true))
 		if err != nil {
 			return err
 		}
-		for _, node := range ccfg.ClusterNodes() {
+		if clusterNodes, err = ccfg.Nodes(); err != nil {
+			return err
+		}
+		for _, node := range clusterNodes {
 			if node != hostname.Hostname() {
 				t.ApiNode = node
 				return nil

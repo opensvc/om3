@@ -403,14 +403,14 @@ func (t *T) startJanitorHb(ctx context.Context) {
 				return
 			case i := <-t.sub.C:
 				switch msg := i.(type) {
-				case msgbus.InstanceConfigUpdated:
+				case *msgbus.InstanceConfigUpdated:
 					if msg.Node != hostname.Hostname() {
 						continue
 					}
 					t.log.Info().Msg("rescan heartbeat configurations (local cluster config changed)")
 					_ = t.rescanHb(ctx)
 					t.log.Info().Msg("rescan heartbeat configurations done")
-				case msgbus.DaemonCtl:
+				case *msgbus.DaemonCtl:
 					hbId := msg.Component
 					action := msg.Action
 					if !strings.HasPrefix(hbId, "hb#") {
