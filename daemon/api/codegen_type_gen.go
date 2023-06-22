@@ -288,6 +288,9 @@ type InstanceStatus struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// LogList responseLogList is a list of sse
+type LogList = openapi_types.File
+
 // MonitorUpdateQueued defines model for MonitorUpdateQueued.
 type MonitorUpdateQueued struct {
 	OrchestrationId openapi_types.UUID `json:"orchestration_id"`
@@ -618,6 +621,9 @@ type EventFilter = []string
 // Limit defines model for Limit.
 type Limit = int64
 
+// LogFilter defines model for LogFilter.
+type LogFilter = []string
+
 // NamespaceOptional defines model for NamespaceOptional.
 type NamespaceOptional = string
 
@@ -626,6 +632,9 @@ type ObjectPath = string
 
 // ObjectSelector defines model for ObjectSelector.
 type ObjectSelector = string
+
+// Paths defines model for Paths.
+type Paths = []string
 
 // RelativesOptional defines model for RelativesOptional.
 type RelativesOptional = bool
@@ -714,6 +723,15 @@ type GetNetworksParams struct {
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
+// GetNodeBacklogsParams defines parameters for GetNodeBacklogs.
+type GetNodeBacklogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
 type GetNodeDRBDConfigParams struct {
 	// Name the full path of the file is deduced from the name
@@ -724,6 +742,24 @@ type GetNodeDRBDConfigParams struct {
 type PostNodeDRBDConfigParams struct {
 	// Name the full path of the file is deduced from the name
 	Name DRBDConfigName `form:"name" json:"name"`
+}
+
+// GetNodeLogsParams defines parameters for GetNodeLogs.
+type GetNodeLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
+}
+
+// GetObjectBacklogsParams defines parameters for GetObjectBacklogs.
+type GetObjectBacklogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.
@@ -742,6 +778,15 @@ type GetObjectConfigParams struct {
 type GetObjectFileParams struct {
 	// Path object path
 	Path ObjectPath `form:"path" json:"path"`
+}
+
+// GetObjectLogsParams defines parameters for GetObjectLogs.
+type GetObjectLogsParams struct {
+	// Filter list of log filter
+	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Paths list of object paths to send logs for
+	Paths Paths `form:"paths" json:"paths"`
 }
 
 // GetObjectSelectorParams defines parameters for GetObjectSelector.

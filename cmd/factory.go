@@ -1097,18 +1097,22 @@ func newCmdNodeGet() *cobra.Command {
 
 func newCmdNodeLogs() *cobra.Command {
 	var options commands.CmdNodeLogs
+	var filter []string
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "Filter and format logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("filter").Changed {
+				options.Filter = &filter
+			}
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagLogsFollow(flags, &options.Follow)
-	addFlagLogsSID(flags, &options.SID)
+	addFlagLogsFilter(flags, &filter)
 	return cmd
 }
 
@@ -2048,18 +2052,22 @@ func newCmdObjectGiveback(kind string) *cobra.Command {
 
 func newCmdObjectLogs(kind string) *cobra.Command {
 	var options commands.CmdObjectLogs
+	var filter []string
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "filter and format logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flag("filter").Changed {
+				options.Filter = &filter
+			}
 			return options.Run(selectorFlag, kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	addFlagLogsFollow(flags, &options.Follow)
-	addFlagLogsSID(flags, &options.SID)
+	addFlagLogsFilter(flags, &filter)
 	return cmd
 }
 
