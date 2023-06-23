@@ -157,7 +157,7 @@ func (d *discover) fsWatcherStart() (func(), error) {
 				log.Info().Msg("stopped")
 				return
 			case e := <-watcher.Errors:
-				log.Error().Err(e).Msg("")
+				log.Error().Err(e).Send()
 			case event := <-watcher.Events:
 				log.Debug().Msgf("event: %s", event)
 				filename := event.Name

@@ -99,7 +99,7 @@ func (t T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status
 func (t T) Start(ctx context.Context) error {
 	volume, err := t.Volume()
 	if err != nil {
-		t.Log().Error().Err(err).Msg("")
+		t.Log().Error().Err(err).Send()
 		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
 	}
 	if !volume.Path().Exists() {

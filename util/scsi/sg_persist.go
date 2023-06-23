@@ -259,14 +259,14 @@ func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O
 		err := cmd.Run()
 		if err == nil {
 			// all good
-			t.Log.Debug().Str("out", string(cmd.Stdout())).Msg("")
+			t.Log.Debug().Str("out", string(cmd.Stdout())).Send()
 			return err
 		}
 		if cmd.ExitCode() == 6 {
 			if countdown == 1 {
 				t.Log.Warn().Msgf("Unit Attention received from %s. max retries exhausted", dev)
-				t.Log.Info().Str("out", string(cmd.Stdout())).Msg("")
-				t.Log.Error().Str("err", string(cmd.Stderr())).Msg("")
+				t.Log.Info().Str("out", string(cmd.Stdout())).Send()
+				t.Log.Error().Str("err", string(cmd.Stderr())).Send()
 				return err
 			}
 			t.Log.Warn().Msgf("Unit Attention received from %s. ack and retry in 0.1s", dev)
@@ -276,8 +276,8 @@ func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O
 			continue
 		}
 		// other exit codes are not retryable
-		t.Log.Info().Str("out", string(cmd.Stdout())).Msg("")
-		t.Log.Error().Str("err", string(cmd.Stderr())).Msg("")
+		t.Log.Info().Str("out", string(cmd.Stdout())).Send()
+		t.Log.Error().Str("err", string(cmd.Stderr())).Send()
 		return err
 
 	}

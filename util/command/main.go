@@ -325,7 +325,7 @@ func (t T) logExitCode(exitCode int) {
 
 func (t T) logErrorExitCode(exitCode int, err error) {
 	if t.log != nil {
-		t.log.WithLevel(t.errorExitCodeLogLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Msg("")
+		t.log.WithLevel(t.errorExitCodeLogLevel).Err(err).Str("cmd", t.cmd.String()).Int("exitCode", exitCode).Send()
 	}
 }
 

@@ -95,7 +95,7 @@ func (t T) lockedRun(ctx context.Context) (err error) {
 		return err
 	}
 	if err != nil {
-		t.Log().Err(err).Msg("")
+		t.Log().Err(err).Send()
 		if err := t.onError(); err != nil {
 			t.Log().Warn().Msgf("%s", err)
 		}

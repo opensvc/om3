@@ -376,7 +376,7 @@ func (t *T) start() error {
 	ipnet := t.ipnet()
 	if ipnet.Mask == nil {
 		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
-		t.Log().Error().Err(err).Msg("")
+		t.Log().Error().Err(err).Send()
 		return err
 	}
 	t.Log().Info().Msgf("add %s to %s", ipnet, t.IpDev)
@@ -387,7 +387,7 @@ func (t *T) stop() error {
 	ipnet := t.ipnet()
 	if ipnet.Mask == nil {
 		err := fmt.Errorf("ipnet definition error: %s/%s", t.ipaddr(), t.ipmask())
-		t.Log().Error().Err(err).Msg("")
+		t.Log().Error().Err(err).Send()
 		return err
 	}
 	t.Log().Info().Msgf("delete %s from %s", t.ipnet(), t.IpDev)

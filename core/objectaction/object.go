@@ -284,11 +284,11 @@ func (t T) DoLocal() error {
 				}
 				rs[i].Error = nil
 			case (r.Error != nil) && fmt.Sprint(r.Error) != "":
-				log.Error().Err(r.Error).Msg("")
+				log.Error().Err(r.Error).Send()
 			case r.Panic != nil:
 				switch err := r.Panic.(type) {
 				case error:
-					log.Fatal().Stack().Err(err).Msg("")
+					log.Fatal().Stack().Err(err).Send()
 				default:
 					log.Fatal().Msgf("%s", err)
 				}

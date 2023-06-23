@@ -127,7 +127,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	configureLogger()
 	if env.HasDaemonOrigin() {
 		if err := osagentservice.Join(); err != nil {
-			log.Logger.Debug().Err(err).Msg("")
+			log.Logger.Debug().Err(err).Send()
 		}
 	}
 	return nil

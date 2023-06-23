@@ -75,7 +75,7 @@ func (t Node) ID() uuid.UUID {
 	}
 	_ = t.config.Set(op)
 	if err := t.config.Commit(); err != nil {
-		t.log.Error().Err(err).Msg("")
+		t.log.Error().Err(err).Send()
 	}
 	return t.id
 }
