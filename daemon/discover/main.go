@@ -22,6 +22,7 @@ import (
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusternode"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonlogctx"
@@ -126,15 +127,14 @@ func Start(ctx context.Context, drainDuration time.Duration) (stopFunc func(), e
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		d.nodeList.Add(clusternode.Get()...)
 		d.nodeList.Loop()
 	}()
-
-	// initialize node list
-	d.nodeList.Add(clusternode.Get()...)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		d.nodeList.Add(object.StatusData.GetPaths().StrSlice()...)
 		d.objectList.Loop()
 	}()
 
