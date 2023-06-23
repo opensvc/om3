@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -11,6 +12,8 @@ type (
 	// objectList janitors the list.objects file used by the
 	// shell autocompletion.
 	objectList struct {
+		sync.RWMutex
+
 		// File is where the object list is dumped
 		File string
 
@@ -82,6 +85,8 @@ func (t *objectList) requestWrite() bool {
 }
 
 func (t *objectList) Add(l ...string) {
+	t.Lock()
+	defer t.Unlock()
 	var changed bool
 	for _, s := range l {
 		if _, ok := t.m[s]; ok {
@@ -96,6 +101,8 @@ func (t *objectList) Add(l ...string) {
 }
 
 func (t *objectList) Del(l ...string) {
+	t.Lock()
+	defer t.Unlock()
 	var changed bool
 	for _, s := range l {
 		if _, ok := t.m[s]; !ok {
@@ -110,6 +117,8 @@ func (t *objectList) Del(l ...string) {
 }
 
 func (t *objectList) write() error {
+	t.RLock()
+	defer t.RUnlock()
 	f, err := os.OpenFile(t.File, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		return err
