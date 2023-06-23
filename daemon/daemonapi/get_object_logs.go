@@ -1,9 +1,7 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -12,24 +10,16 @@ import (
 	"github.com/opensvc/om3/core/path"
 	"github.com/opensvc/om3/core/slog"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
 )
 
 // GetObjectLogs feeds publications in rss format.
 func (a *DaemonApi) GetObjectLogs(ctx echo.Context, params api.GetObjectLogsParams) error {
-	var (
-		handlerName = "GetObjectLogs"
-	)
-	log := LogHandler(ctx, handlerName)
+	if err := assertRoleRoot(ctx); err != nil {
+		return err
+	}
+	log := LogHandler(ctx, "GetObjectLogs")
 	log.Debug().Msg("starting")
 	defer log.Debug().Msg("done")
-
-	user := User(ctx)
-	grants := Grants(user)
-	if !grants.HasAnyRole(daemonauth.RoleRoot, daemonauth.RoleJoin) {
-		log.Info().Msg("not allowed, need at least 'root' or 'join' grant")
-		return ctx.NoContent(http.StatusForbidden)
-	}
 
 	filters, err := parseLogFilters(params.Filter)
 	if err != nil {
@@ -41,11 +31,6 @@ func (a *DaemonApi) GetObjectLogs(ctx echo.Context, params api.GetObjectLogsPara
 	w := ctx.Response()
 	if r.Header.Get("accept") == "text/event-stream" {
 		setStreamHeaders(w)
-	}
-
-	name := fmt.Sprintf("lsnr-handler-log %s from %s %s", handlerName, ctx.Request().RemoteAddr, ctx.Get("uuid"))
-	if params.Filter != nil && len(*params.Filter) > 0 {
-		name += " filters: [" + strings.Join(*params.Filter, " ") + "]"
 	}
 
 	paths, err := path.ParseList(params.Paths...)
